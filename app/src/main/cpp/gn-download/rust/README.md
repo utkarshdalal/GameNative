@@ -12,6 +12,7 @@ This README is the map of how the whole thing fits together.
 | Path | Role |
 |---|---|
 | `fetch_core.rs` | Shared HTTP engine: adaptive in-flight window, byte budget, per-host caps, retries, backoff, stall detection |
+| `queue_delay.rs` | LEDBAT (RFC 6817) queueing-delay estimator: TCP-connect RTT prober + base-delay history, shared by both window controllers |
 | `store_dl/ordered_drain.rs` | Shared per-file ordered writer used by GOG and Epic (the Steam model): pending BTreeMap + cursor + coalesced 16 MiB batches + **Verified markers** |
 | `store_dl/steam/depot_downloader.rs` | Steam orchestration: manifests, depot keys, DLC/redist depots, cache validation |
 | `store_dl/steam/depot_writer.rs` | Steam depot pipeline: verify/resume, chunk dispatch, ordered writes, stall watchdog |
@@ -89,6 +90,18 @@ the files it touched, so a partial file can never be reported as success.
 Concurrency: an adaptive in-flight window ramps up while the link delivers; a global byte
 budget caps buffered data; per-host connection caps (`PER_HOST_CAP = 8`, device-validated)
 spread load, scaled by distinct CDN host count for GOG/Epic.
+
+Congestion control is **LEDBAT** (RFC 6817, `queue_delay.rs`): a background thread takes one
+TCP-connect round trip per 250 ms to the CDN hosts (round-robin) and publishes the queueing
+delay — RTT minus a per-host base (minimum over a 10-min history). A connect carries no body,
+so its RTT inflation IS queueing, not transfer time. On each 2 s probe tick both window
+controllers (Steam's and the fetch core's) yield **proportionally** (`window × (1 − 0.1 × off)`,
+at most ~10%/tick, floored at the window minimum) when the queue exceeds the 40 ms target,
+and the throughput-gated growth logic only runs while the queue is under target — the window
+is the congestion knob; there is no byte-rate pacer. While the prober has no sample yet, the
+classic logic (error-rate shrink + the Steam 5×-latency/throughput-confirm congestion shrink)
+runs untouched. The `fetch-window` log lines carry `queue=…ms rtt_base=…ms` (`-` until the
+first sample).
 
 ## 3. CDN server handling
 
