@@ -5,7 +5,7 @@
 //! - resume/skip: [`file_verified`] ≈ `GogDownloadManager.fileVerified` (exists, non-empty, size
 //!   when known) but STRICTER: the manifest MD5 is mandatory — Java's size-only pass for
 //!   MD5-less files let pre-allocated (set_len'd) zero files pose as complete forever.
-//!   MD5-less files fall through to the chunk-level [`verified_prefix`] sweep instead.
+//!   MD5-less files fall through to the chunk-level [`verified_chunks`] sweep instead.
 //!   A verified file is reported as "Verified…" progress with NO bytes credited, exactly like
 //!   the Java task;
 //! - per chunk: compressed size → compressed MD5 → inflate (stored fallback) → decompressed size →
@@ -171,7 +171,7 @@ pub struct GogRunResult {
 /// MD5 on a size-only check. Combined with the old pre-allocation (`setLength` made every file
 /// exactly the expected size up front), that accepted zero-filled/partial files as complete —
 /// corrupt forever, and every later verify run "passed" them again. Returning false here is
-/// cheap and safe: the caller falls through to [`verified_prefix`], which re-hashes every
+/// cheap and safe: the caller falls through to [`verified_chunks`], which re-hashes every
 /// chunk against the manifest's chunk MD5s (same I/O as an MD5 file read) and either proves
 /// the file intact via the resume-complete gate or re-fetches from the first bad chunk.
 pub fn file_verified(path: &Path, expected_size: u64, expected_md5: &str) -> bool {
@@ -194,42 +194,44 @@ pub fn file_verified(path: &Path, expected_size: u64, expected_md5: &str) -> boo
     }
 }
 
-/// Cancelled-run resume: read back an unfinished file AT ITS FINAL PATH and find its longest
-/// CHUNK-VERIFIED prefix. The file is written as a strictly contiguous prefix (the ordered drain
-/// forbids holes), so walking the manifest's chunks in order and re-hashing the on-disk bytes
-/// of each — decompressed size + MD5, exactly what `fetchChunkVerified` checks after inflate —
-/// proves which chunks are already downloaded and intact. Stops at the first chunk that is
-/// unverifiable (unknown size/MD5), truncated, or mismatched; everything past the returned
-/// prefix is re-fetched. No trust is involved: every kept byte re-hashes against the manifest.
-/// Returns (verified chunk count, verified byte length).
-fn verified_prefix(path: &Path, chunks: &[ChunkRef]) -> (usize, u64) {
+/// Cancelled-run / repair resume: read back an unfinished file AT ITS FINAL PATH and verify
+/// EVERY chunk against the manifest (decompressed size + MD5, exactly what `fetchChunkVerified`
+/// checks after inflate), returning a per-chunk bitmap — the Steam writer's selective-redispatch
+/// concept: only chunks whose on-disk bytes are missing or mismatched are re-fetched; verified
+/// chunks become markers in the file's ordered drain and are never rewritten. Unlike the old
+/// prefix model, verification does NOT stop at the first bad chunk, so one corrupt chunk in the
+/// middle of a large file no longer costs the whole suffix. No trust is involved: every kept
+/// byte re-hashes against the manifest. A chunk with unknown size/MD5, truncated bytes, or a
+/// mismatch is simply `false` (re-fetched).
+fn verified_chunks(path: &Path, chunks: &[ChunkRef]) -> Vec<bool> {
+    let mut out = vec![false; chunks.len()];
     let Ok(file) = File::open(path) else {
-        return (0, 0);
+        return out;
     };
     let mut buf = vec![0u8; 256 * 1024];
-    let mut cursor = 0u64;
     for (n, chunk) in chunks.iter().enumerate() {
         if chunk.size == 0 || chunk.md5.is_empty() {
-            return (n, cursor);
+            continue; // unverifiable → stays false → re-fetched
         }
         let mut hasher = crate::md5_small::Md5::new();
-        let mut off = cursor;
+        let mut off = chunk.offset;
         let mut left = chunk.size;
+        let mut readable = true;
         while left > 0 {
             let take = (buf.len() as u64).min(left) as usize;
             match file.read_exact_at(&mut buf[..take], off) {
                 Ok(()) => hasher.update(&buf[..take]),
-                Err(_) => return (n, cursor),
+                Err(_) => {
+                    readable = false;
+                    break;
+                }
             }
             off += take as u64;
             left -= take as u64;
         }
-        if !to_hex(&hasher.finalize()).eq_ignore_ascii_case(&chunk.md5) {
-            return (n, cursor);
-        }
-        cursor += chunk.size;
+        out[n] = readable && to_hex(&hasher.finalize()).eq_ignore_ascii_case(&chunk.md5);
     }
-    (chunks.len(), cursor)
+    out
 }
 
 /// Finds an HTTP status in a fetch-core error string (`non-200 HTTP status (403)`, `status 403`,
@@ -265,14 +267,19 @@ struct FileState {
     finalized: bool,
     failed: bool,
     /// The file was opened for writing this run — error cleanup deletes only touched files
-    /// (an untouched pre-existing partial keeps its verified prefix for the next resume).
+    /// (an untouched pre-existing partial keeps its verified chunks for the next resume).
     touched: bool,
     out_path: PathBuf,
-    /// Byte length of the chunk-verified prefix already on disk (resume): the first open keeps
-    /// the file and truncates at this cursor instead of starting empty (0 = fresh).
-    resume_from: u64,
-    /// The ordered write queue: verified chunks park here until contiguous at the cursor, so
-    /// the file grows by pure sequential appends (no positioned writes past EOF).
+    /// Selective resume: the file already exists with at least one chunk-verified region (the
+    /// drain holds markers for those). The first open KEEPS the whole file — no truncation:
+    /// verified bytes anywhere in it stay valid, unverified chunks are rewritten at their
+    /// offsets, and any garbage tail is truncated to the manifest size at finalize
+    /// (`false` = fresh: the first open creates/truncates).
+    resumed_existing: bool,
+    /// The ordered write queue: decoded chunks park here until contiguous at the cursor, and
+    /// verified markers advance the cursor over already-on-disk bytes — the file grows by
+    /// sequential appends and in-place rewrites of re-fetched chunks, never a positioned
+    /// write past EOF.
     drain: OrderedDrain,
 }
 
@@ -442,17 +449,11 @@ impl<'a> GogSink<'a> {
         if let Some(parent) = st.out_path.parent() {
             let _ = fs::create_dir_all(parent);
         }
-        let opened = if st.resume_from > 0 {
-            // Resume: the file already holds a chunk-verified prefix — keep it, drop any
-            // unverified tail past the cursor, and continue appending after it.
-            OpenOptions::new()
-                .read(true)
-                .write(true)
-                .open(&st.out_path)
-                .and_then(|f| {
-                    f.set_len(st.resume_from)?;
-                    Ok(f)
-                })
+        let opened = if st.resumed_existing {
+            // Selective resume: keep the whole file — verified chunks anywhere in it stay
+            // valid, re-fetched chunks are rewritten at their offsets, and a garbage tail
+            // is truncated to the manifest size at finalize. NO truncation here.
+            OpenOptions::new().read(true).write(true).open(&st.out_path)
         } else {
             OpenOptions::new()
                 .create(true)
@@ -559,7 +560,16 @@ impl<'a> GogSink<'a> {
         if let Some(handle) = st.handle.take() {
             drop(handle);
         }
-        let actual = fs::metadata(&st.out_path).map(|m| m.len()).unwrap_or(0);
+        let mut actual = fs::metadata(&st.out_path).map(|m| m.len()).unwrap_or(0);
+        if st.resumed_existing && actual > file.total_size {
+            // Selective resume kept the whole partial, which can carry a garbage tail past
+            // the manifest end (torn write or old pre-allocation). Every kept byte is
+            // chunk-verified, so the tail is safe to simply drop.
+            if let Ok(f) = OpenOptions::new().write(true).open(&st.out_path) {
+                let _ = f.set_len(file.total_size);
+                actual = fs::metadata(&st.out_path).map(|m| m.len()).unwrap_or(0);
+            }
+        }
         if file.total_size > 0 && actual != file.total_size {
             self.log(&format!(
                 "FILE size mismatch file={} exp={} got={}",
@@ -855,12 +865,14 @@ fn run_gen2(req: &GogRequest, cancel: &AtomicBool, events: &dyn GogEvents) -> Go
     // Resume / repair pass — Java does this per task on the pool threads; here it runs up front
     // on `process_workers` threads so the fetch item list can exclude verified files. Files that
     // fail the whole-file check get a second chance at CHUNK granularity: a partial file left at
-    // its final path by a cancelled run is re-hashed chunk-by-chunk ([`verified_prefix`]) and
-    // only the unverified tail is re-fetched.
+    // its final path by a cancelled run (or corrupted by the old pre-allocation) is re-hashed
+    // chunk-by-chunk ([`verified_chunks`]) and ONLY the mismatched/missing chunks are
+    // re-fetched — verified chunks become markers in the file's drain (Steam's selective
+    // redispatch), not a whole-suffix re-download past the first bad chunk.
     let pending: Vec<AtomicBool> = files.iter().map(|_| AtomicBool::new(false)).collect();
-    let prefixes: Vec<(AtomicUsize, AtomicU64)> = files
+    let verified: Vec<Vec<AtomicBool>> = files
         .iter()
-        .map(|_| (AtomicUsize::new(0), AtomicU64::new(0)))
+        .map(|f| f.chunks.iter().map(|_| AtomicBool::new(false)).collect())
         .collect();
     let next = AtomicUsize::new(0);
     // UI status-row counters: 1-based claim order among the sweep's candidates (files minus
@@ -905,9 +917,9 @@ fn run_gen2(req: &GogRequest, cancel: &AtomicBool, events: &dyn GogEvents) -> Go
                     );
                 } else {
                     pending[idx].store(true, Ordering::Relaxed);
-                    let (n, bytes) = verified_prefix(&out_path, &file.chunks);
-                    prefixes[idx].0.store(n, Ordering::Relaxed);
-                    prefixes[idx].1.store(bytes, Ordering::Relaxed);
+                    for (chunk_idx, ok) in verified_chunks(&out_path, &file.chunks).iter().enumerate() {
+                        verified[idx][chunk_idx].store(*ok, Ordering::Relaxed);
+                    }
                 }
             });
         }
@@ -924,7 +936,9 @@ fn run_gen2(req: &GogRequest, cancel: &AtomicBool, events: &dyn GogEvents) -> Go
     }
 
     // Fetch items: one per NOT-yet-verified chunk of every pending file, in plan order (chunks
-    // in manifest order). A file whose on-disk bytes verify WHOLE needs no fetching at all.
+    // in manifest order). Verified chunks become markers in the file's drain (selective
+    // redispatch — the Steam writer's model); a file whose on-disk bytes verify WHOLE needs no
+    // fetching at all.
     let mut table: Vec<(usize, usize)> = Vec::new();
     let mut items: Vec<FetchItem> = Vec::new();
     let mut states: Vec<Mutex<FileState>> = Vec::new();
@@ -938,10 +952,13 @@ fn run_gen2(req: &GogRequest, cancel: &AtomicBool, events: &dyn GogEvents) -> Go
             &file.relative_path,
         ));
         let is_pending = pending[file_idx].load(Ordering::Relaxed);
-        let mut resume_chunks = prefixes[file_idx].0.load(Ordering::Relaxed);
-        let mut resume_bytes = prefixes[file_idx].1.load(Ordering::Relaxed);
+        let mut chunk_ok: Vec<bool> = verified[file_idx]
+            .iter()
+            .map(|b| b.load(Ordering::Relaxed))
+            .collect();
+        let mut verified_count = chunk_ok.iter().filter(|&&ok| ok).count();
         let mut already_final = !is_pending;
-        if is_pending && resume_chunks == file.chunks.len() && !file.chunks.is_empty() {
+        if is_pending && verified_count == file.chunks.len() && !file.chunks.is_empty() {
             // Every chunk of the file re-hashed against the manifest from the bytes already at
             // the final path: gate on size + whole-file MD5 and take it as complete in place.
             let size_ok = file.total_size == 0
@@ -953,8 +970,6 @@ fn run_gen2(req: &GogRequest, cancel: &AtomicBool, events: &dyn GogEvents) -> Go
             if size_ok && md5_ok {
                 events.on_log(&format!("resume-complete file={}", file.relative_path));
                 already_final = true;
-                resume_chunks = 0;
-                resume_bytes = 0;
                 let done = files_done.fetch_add(1, Ordering::Relaxed) + 1;
                 let bytes = bytes_done.fetch_add(file.total_size, Ordering::Relaxed)
                     + file.total_size;
@@ -970,29 +985,44 @@ fn run_gen2(req: &GogRequest, cancel: &AtomicBool, events: &dyn GogEvents) -> Go
             } else {
                 // Gate failed: delete the file and download it from scratch.
                 let _ = fs::remove_file(&out_path);
-                resume_chunks = 0;
-                resume_bytes = 0;
+                chunk_ok.fill(false);
+                verified_count = 0;
+            }
+        }
+        // Selective resume: verified chunks park as markers so the drain's cursor walks over
+        // their on-disk bytes in order; only the missing/mismatched chunks are fetched.
+        let mut drain = OrderedDrain::with_cursor(0);
+        let mut verified_bytes = 0u64;
+        if !already_final {
+            for (chunk_idx, chunk) in file.chunks.iter().enumerate() {
+                if chunk_ok[chunk_idx] {
+                    drain.insert_verified(chunk.offset, chunk.size);
+                    verified_bytes += chunk.size;
+                }
             }
         }
         states.push(Mutex::new(FileState {
             handle: None,
-            chunks_done: resume_chunks,
+            chunks_done: verified_count,
             // Files not pending (verified or skip-listed) are already final for this run.
             finalized: already_final,
             failed: false,
             touched: false,
             out_path,
-            resume_from: resume_bytes,
-            drain: OrderedDrain::with_cursor(resume_bytes),
+            resumed_existing: !already_final && verified_count > 0,
+            drain,
         }));
         if already_final {
             continue;
         }
         pending_files += 1;
         pending_bytes = pending_bytes.saturating_add(file.total_size);
-        resumed_chunks += resume_chunks as u64;
-        resumed_bytes += resume_bytes;
-        for (chunk_idx, chunk) in file.chunks.iter().enumerate().skip(resume_chunks) {
+        resumed_chunks += verified_count as u64;
+        resumed_bytes += verified_bytes;
+        for (chunk_idx, chunk) in file.chunks.iter().enumerate() {
+            if chunk_ok[chunk_idx] {
+                continue;
+            }
             let chunk_path = build_cdn_path(&chunk.hash);
             // One candidate URL per mirror, best-ranked first — the fetch core rotates
             // across hosts and fails over on errors.
@@ -1448,7 +1478,7 @@ mod tests {
         fs::write(&path, b"abc").unwrap();
         // No manifest MD5 → always false, even at the exact expected size: a size-only pass
         // is what let pre-allocated (set_len'd) zero files pose as complete. The caller
-        // falls through to the chunk-level verified_prefix sweep instead.
+        // falls through to the chunk-level verified_chunks sweep instead.
         assert!(!file_verified(&path, 0, ""), "exists, nothing known → false (chunk sweep decides)");
         assert!(!file_verified(&path, 3, ""), "size match without md5 → false");
         assert!(!file_verified(&path, 4, ""));
@@ -1529,7 +1559,7 @@ mod tests {
                 failed: false,
                 touched: false,
                 out_path: out_path.clone(),
-                resume_from: 0,
+                resumed_existing: false,
                 drain: OrderedDrain::default(),
             })],
             streams: vec![Mutex::new(None), Mutex::new(None)],
@@ -1588,7 +1618,7 @@ mod tests {
                 failed: false,
                 touched: false,
                 out_path: out_path.clone(),
-                resume_from: 0,
+                resumed_existing: false,
                 drain: OrderedDrain::default(),
             })],
             streams: vec![Mutex::new(None)],
@@ -1719,7 +1749,7 @@ mod tests {
                 failed: false,
                 touched: false,
                 out_path: out_path.clone(),
-                resume_from: 0,
+                resumed_existing: false,
                 drain: OrderedDrain::default(),
             })],
             streams: vec![Mutex::new(None), Mutex::new(None)],
@@ -1872,9 +1902,11 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
     }
 
-    /// Two stored chunks, md5s known: the on-disk read-back must keep exactly the verified prefix.
+    /// Two stored chunks, md5s known: the on-disk read-back marks each chunk independently —
+    /// a corrupt middle chunk does NOT forfeit the verified chunks around it (the old prefix
+    /// model rewound to the first bad chunk and re-fetched the whole suffix).
     #[test]
-    fn prefix_verify_rewinds_to_the_last_verified_chunk() {
+    fn verified_chunks_marks_each_chunk_independently() {
         let part_a = b"hello".to_vec();
         let part_b = b" WORLD!".to_vec();
         let chunk = |data: &[u8], offset: u64, md5: String| ChunkRef {
@@ -1892,29 +1924,30 @@ mod tests {
         let dir = temp_dir("gogprefix");
         let path = dir.join("f.bin");
         // No file → nothing verified.
-        assert_eq!(verified_prefix(&path, &chunks), (0, 0));
-        // First chunk intact + garbage tail → exactly the first chunk keeps.
+        assert_eq!(verified_chunks(&path, &chunks), vec![false, false]);
+        // First chunk intact + garbage tail → only the first chunk keeps.
         let mut body = part_a.clone();
         body.extend_from_slice(&[0xEE; 3]);
         fs::write(&path, &body).unwrap();
-        assert_eq!(verified_prefix(&path, &chunks), (1, 5));
+        assert_eq!(verified_chunks(&path, &chunks), vec![true, false]);
         // Whole file → both chunks.
         let mut whole = part_a.clone();
         whole.extend_from_slice(&part_b);
         fs::write(&path, &whole).unwrap();
-        assert_eq!(verified_prefix(&path, &chunks), (2, 12));
-        // Corruption inside chunk 0 rewinds to nothing.
+        assert_eq!(verified_chunks(&path, &chunks), vec![true, true]);
+        // Corruption inside chunk 0 keeps chunk 1 — the selective-redispatch case (prefix
+        // model: (0, 0) and a whole-file re-download).
         let mut corrupt = whole.clone();
         corrupt[1] ^= 0xFF;
         fs::write(&path, &corrupt).unwrap();
-        assert_eq!(verified_prefix(&path, &chunks), (0, 0));
-        // A chunk WITHOUT a known md5 cannot re-verify: the prefix stops before it.
+        assert_eq!(verified_chunks(&path, &chunks), vec![false, true]);
+        // A chunk WITHOUT a known md5 cannot re-verify → re-fetched.
         let chunks_blind = vec![
             chunk(&part_a, 0, md5_hex(&part_a)),
             chunk(&part_b, 5, String::new()),
         ];
         fs::write(&path, &whole).unwrap();
-        assert_eq!(verified_prefix(&path, &chunks_blind), (1, 5));
+        assert_eq!(verified_chunks(&path, &chunks_blind), vec![true, false]);
         let _ = fs::remove_dir_all(&dir);
     }
 
@@ -1953,8 +1986,14 @@ mod tests {
                 failed: false,
                 touched: false,
                 out_path: out_path.clone(),
-                resume_from: part_a.len() as u64,
-                drain: OrderedDrain::with_cursor(part_a.len() as u64),
+                resumed_existing: true,
+                drain: {
+                    // Selective-resume shape: chunk 0 verified on disk → a marker at its
+                    // offset; the cursor walks over it, chunk 1 appends after it.
+                    let mut d = OrderedDrain::with_cursor(0);
+                    d.insert_verified(0, part_a.len() as u64);
+                    d
+                },
             })],
             streams: vec![Mutex::new(None)],
             files_total: 1,
