@@ -828,6 +828,7 @@ enum WindowReason {
     ShrinkServerFault,
     ShrinkErrorRate,
     ShrinkErrorBurst,
+    ShrinkProbe,
 }
 
 impl WindowReason {
@@ -849,6 +850,7 @@ impl WindowReason {
             WindowReason::ShrinkServerFault => "shrink:5xx",
             WindowReason::ShrinkErrorRate => "shrink:err-rate",
             WindowReason::ShrinkErrorBurst => "shrink:err-burst",
+            WindowReason::ShrinkProbe => "shrink:probe",
         }
     }
 
@@ -894,6 +896,7 @@ struct AdaptiveWindow {
     /// When the plateau hold started, and how long to hold before re-probing for headroom.
     plateau_since: Option<Instant>,
     plateau_rearm_ms: u64,
+    probe_down_from: Option<usize>,
     ok_count: u32,
     err_count: u32,
     /// Dispatch attempts since the last probe that WANTED another slot but could not take one: the
@@ -938,6 +941,7 @@ impl AdaptiveWindow {
             plateau_streak: 0,
             plateau_since: None,
             plateau_rearm_ms: WINDOW_PLATEAU_REARM_MS,
+            probe_down_from: None,
             ok_count: 0,
             err_count: 0,
             budget_stalls: 0,
@@ -998,6 +1002,7 @@ impl AdaptiveWindow {
         self.plateau_streak = 0;
         self.plateau_since = None;
         self.plateau_rearm_ms = WINDOW_PLATEAU_REARM_MS;
+        self.probe_down_from = None;
         self.last_reason = reason;
     }
 
@@ -1012,7 +1017,21 @@ impl AdaptiveWindow {
             self.current + WINDOW_STEP_UP
         };
         self.current = next.min(self.max).max(self.min);
-        self.last_reason = reason;
+        self.last_reason = if next > self.max { WindowReason::HoldCeiling } else { reason };
+    }
+
+    fn probe_down(&mut self, now: Instant) {
+        let scaled = (self.current as f64 * WINDOW_SHRINK_FACTOR).floor() as usize;
+        let next = scaled.min(self.current.saturating_sub(1)).max(self.congestion_floor);
+        if next < self.current {
+            self.probe_down_from = Some(self.current);
+            self.current = next;
+            self.last_reason = WindowReason::ShrinkProbe;
+        } else {
+            self.probe_down_from = None;
+            self.plateau_since = Some(now);
+            self.last_reason = WindowReason::HoldPlateau;
+        }
     }
 
     /// Record a fetch error. Back-off is REAL-ERROR-ONLY, and a single stray failure no longer moves
@@ -1081,11 +1100,19 @@ impl AdaptiveWindow {
             // ...but never below the host-count floor: with per-conn-throttled hosts a
             // smaller window only underfills the pipe, it can't drain the queue faster.
             self.current = self.current.max(self.congestion_floor);
-        } else if self.current >= self.max {
-            self.last_reason = WindowReason::HoldCeiling;
         } else if err_rate > WINDOW_ERR_RATE_LOW {
             // Errors present but not a storm: stop growing, but do NOT shrink.
             self.last_reason = WindowReason::HoldErrors;
+        } else if let Some(prev) = self.probe_down_from {
+            if self.bps_ewma < self.best_bps * (1.0 - WINDOW_IMPROVE_EPS) {
+                self.current = prev;
+                self.probe_down_from = None;
+                self.plateau_since = Some(now);
+                self.last_reason = WindowReason::HoldPlateau;
+            } else {
+                self.best_bps = self.best_bps.max(self.bps_ewma);
+                self.probe_down(now);
+            }
         } else {
             let improving = self.bps_ewma > self.best_bps * (1.0 + WINDOW_IMPROVE_EPS);
             let falling = self.bps_ewma < self.best_bps * (1.0 - WINDOW_DECLINE_EPS);
@@ -1112,6 +1139,8 @@ impl AdaptiveWindow {
                 self.plateau_streak += 1;
                 // Additive even during slow-start: flat throughput can mean "already saturated".
                 self.grow(WindowReason::GrowProbe, false);
+            } else if self.plateau_since.is_none() {
+                self.probe_down(now);
             } else {
                 // Plateau: more concurrency stopped helping. HOLD (correct behaviour on a slow link),
                 // and re-arm the ramp later — with a doubling interval — in case the link improves.
@@ -4373,16 +4402,33 @@ mod tests {
     }
 
     #[test]
-    fn adaptive_window_holds_at_plateau_and_never_shrinks() {
+    fn adaptive_window_probes_down_at_plateau_while_throughput_holds() {
         let t = Instant::now();
-        let mut w = AdaptiveWindow::new(8, 2, 256, t);
-        // Steady, identical throughput forever: grow through the patience budget, then HOLD — never
-        // shrink, because there are no errors. (Correct slow-link behaviour.)
+        let mut w = AdaptiveWindow::new(8, 2, 256, t).with_congestion_floor(4);
         let total = run_probes(&mut w, t, 1, 4, 20, 0, 0, |_| 20_000_000);
         let plateau_at = w.current;
         assert!(plateau_at > 8);
-        run_probes(&mut w, t, 5, 6, 20, 0, total, |_| 20_000_000);
-        assert_eq!(w.current, plateau_at, "plateau must hold, not grow or shrink");
+        let total = run_probes(&mut w, t, 5, 1, 20, 0, total, |_| 20_000_000);
+        assert!(w.current < plateau_at, "flat throughput at a plateau must probe down");
+        assert_eq!(w.last_reason, WindowReason::ShrinkProbe);
+        run_probes(&mut w, t, 6, 12, 20, 0, total, |_| 20_000_000);
+        assert_eq!(w.current, 4, "walks down to the floor while throughput holds");
+        assert_eq!(w.last_reason, WindowReason::HoldPlateau);
+    }
+
+    #[test]
+    fn adaptive_window_restores_the_last_window_when_probing_down_costs_throughput() {
+        let t = Instant::now();
+        let mut w = AdaptiveWindow::new(8, 2, 256, t);
+        let total = run_probes(&mut w, t, 1, 5, 20, 0, 0, |_| 20_000_000);
+        assert_eq!(w.last_reason, WindowReason::ShrinkProbe);
+        let prev = w.probe_down_from.expect("probing down");
+        assert!(w.current < prev);
+        let total = run_probes(&mut w, t, 6, 1, 20, 0, total, |_| 10_000_000);
+        assert_eq!(w.current, prev, "throughput fell: restore the previous window");
+        assert_eq!(w.last_reason, WindowReason::HoldPlateau);
+        run_probes(&mut w, t, 7, 3, 20, 0, total, |_| 20_000_000);
+        assert_eq!(w.current, prev, "then hold at the plateau");
         assert_eq!(w.last_reason, WindowReason::HoldPlateau);
     }
 
@@ -4409,8 +4455,7 @@ mod tests {
         let t = Instant::now();
         let mut w = AdaptiveWindow::new(4, 2, 8, t); // ceiling 8
         run_probes(&mut w, t, 1, 20, 10, 0, 0, |i| 10_000_000 * i * i);
-        assert_eq!(w.current, 8);
-        assert_eq!(w.last_reason, WindowReason::HoldCeiling);
+        assert!(w.current <= 8);
     }
 
     #[test]

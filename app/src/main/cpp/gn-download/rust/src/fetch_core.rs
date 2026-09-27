@@ -1544,6 +1544,7 @@ enum WindowReason {
     ShrinkServerFault,
     ShrinkErrorRate,
     ShrinkErrorBurst,
+    ShrinkProbe,
 }
 
 impl WindowReason {
@@ -1564,6 +1565,7 @@ impl WindowReason {
             WindowReason::ShrinkServerFault => "shrink:5xx",
             WindowReason::ShrinkErrorRate => "shrink:err-rate",
             WindowReason::ShrinkErrorBurst => "shrink:err-burst",
+            WindowReason::ShrinkProbe => "shrink:probe",
         }
     }
 
@@ -1594,6 +1596,7 @@ struct AdaptiveWindow {
     plateau_streak: u32,
     plateau_since: Option<Instant>,
     plateau_rearm_ms: u64,
+    probe_down_from: Option<usize>,
     ok_count: u32,
     err_count: u32,
     budget_stalls: u32,
@@ -1624,6 +1627,7 @@ impl AdaptiveWindow {
             plateau_streak: 0,
             plateau_since: None,
             plateau_rearm_ms: WINDOW_PLATEAU_REARM_MS,
+            probe_down_from: None,
             ok_count: 0,
             err_count: 0,
             budget_stalls: 0,
@@ -1665,6 +1669,7 @@ impl AdaptiveWindow {
         self.plateau_streak = 0;
         self.plateau_since = None;
         self.plateau_rearm_ms = WINDOW_PLATEAU_REARM_MS;
+        self.probe_down_from = None;
         self.last_reason = reason;
     }
 
@@ -1675,7 +1680,21 @@ impl AdaptiveWindow {
             self.current + WINDOW_STEP_UP
         };
         self.current = next.min(self.max).max(self.min);
-        self.last_reason = reason;
+        self.last_reason = if next > self.max { WindowReason::HoldCeiling } else { reason };
+    }
+
+    fn probe_down(&mut self, now: Instant) {
+        let scaled = (self.current as f64 * WINDOW_SHRINK_FACTOR).floor() as usize;
+        let next = scaled.min(self.current.saturating_sub(1)).max(self.min);
+        if next < self.current {
+            self.probe_down_from = Some(self.current);
+            self.current = next;
+            self.last_reason = WindowReason::ShrinkProbe;
+        } else {
+            self.probe_down_from = None;
+            self.plateau_since = Some(now);
+            self.last_reason = WindowReason::HoldPlateau;
+        }
     }
 
     fn record_err(&mut self, now: Instant, kind: FetchFailKind) -> bool {
@@ -1721,10 +1740,18 @@ impl AdaptiveWindow {
             self.shrink(now, WindowReason::ShrinkErrorRate);
         } else if cooling {
             self.last_reason = WindowReason::HoldCooldown;
-        } else if self.current >= self.max {
-            self.last_reason = WindowReason::HoldCeiling;
         } else if err_rate > WINDOW_ERR_RATE_LOW {
             self.last_reason = WindowReason::HoldErrors;
+        } else if let Some(prev) = self.probe_down_from {
+            if self.bps_ewma < self.best_bps * (1.0 - WINDOW_IMPROVE_EPS) {
+                self.current = prev;
+                self.probe_down_from = None;
+                self.plateau_since = Some(now);
+                self.last_reason = WindowReason::HoldPlateau;
+            } else {
+                self.best_bps = self.best_bps.max(self.bps_ewma);
+                self.probe_down(now);
+            }
         } else {
             let improving = self.bps_ewma > self.best_bps * (1.0 + WINDOW_IMPROVE_EPS);
             let falling = self.bps_ewma < self.best_bps * (1.0 - WINDOW_DECLINE_EPS);
@@ -1746,6 +1773,8 @@ impl AdaptiveWindow {
             } else if self.plateau_streak < WINDOW_PLATEAU_PATIENCE {
                 self.plateau_streak += 1;
                 self.grow(WindowReason::GrowProbe, false);
+            } else if self.plateau_since.is_none() {
+                self.probe_down(now);
             } else {
                 let since = *self.plateau_since.get_or_insert(now);
                 if now.duration_since(since) >= Duration::from_millis(self.plateau_rearm_ms) {
