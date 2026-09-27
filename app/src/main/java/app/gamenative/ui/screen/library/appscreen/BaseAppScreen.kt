@@ -972,6 +972,7 @@ abstract class BaseAppScreen {
             val gpuName = GPUInformation.getRenderer(context)
 
             val bestConfig = BestConfigService.fetchBestConfig(
+                context = context,
                 gameName = gameName,
                 gpuName = gpuName,
                 gameStore = libraryItem.gameSource.name,
