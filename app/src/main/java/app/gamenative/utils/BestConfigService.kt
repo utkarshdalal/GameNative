@@ -96,6 +96,7 @@ object BestConfigService {
                 HardwareUtils.getSOCName()?.let { put("socModel", it) }
                 put("model", Build.MODEL)
                 put("androidSdk", Build.VERSION.SDK_INT)
+                put("androidVersion", Build.VERSION.RELEASE)
                 put("appVersionCode", BuildConfig.VERSION_CODE)
                 val memInfo = ActivityManager.MemoryInfo()
                 (context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager)?.getMemoryInfo(memInfo)
