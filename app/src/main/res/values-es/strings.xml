@@ -1,4 +1,10 @@
 ﻿<resources>
+    <string name="auto_mod_dll_overrides">Configurar automáticamente las sustituciones de DLL para mods</string>
+    <string name="auto_mod_dll_overrides_description">Cargar automáticamente las DLL de mods compatibles de la carpeta del juego. Las sustituciones existentes tienen prioridad.</string>
+    <string name="auto_mod_dll_overrides_detected">Detectadas: %1$s</string>
+    <string name="auto_mod_dll_overrides_preserved">La configuración existente tiene prioridad para: %1$s</string>
+    <string name="auto_mod_dll_overrides_preview">WINEDLLOVERRIDES (automático)</string>
+    <string name="auto_mod_dll_overrides_preview_description">Incluye las sustituciones guardadas. Se recalcula y aplica al iniciar el juego.</string>
     <string name="app_name">GameNative</string>
     <string name="login_user">Inicio de sesión</string>
     <string name="login_2fa">Autenticación de dos factores</string>

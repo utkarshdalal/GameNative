@@ -1,4 +1,10 @@
 ﻿<resources>
+    <string name="auto_mod_dll_overrides">Автоматически настраивать переопределения DLL для модов</string>
+    <string name="auto_mod_dll_overrides_description">Автоматически загружать поддерживаемые DLL модов из папки игры. Существующие переопределения имеют приоритет.</string>
+    <string name="auto_mod_dll_overrides_detected">Обнаружено: %1$s</string>
+    <string name="auto_mod_dll_overrides_preserved">Существующие настройки имеют приоритет для: %1$s</string>
+    <string name="auto_mod_dll_overrides_preview">WINEDLLOVERRIDES (автоматически)</string>
+    <string name="auto_mod_dll_overrides_preview_description">Включает сохранённые переопределения. Значение пересчитывается и применяется при запуске игры.</string>
     <string name="abc_action_bar_up_description">Перейти вверх</string>
     <string name="abc_action_mode_done">Готово</string>
     <string name="abc_capital_off">ВЫКЛ</string>

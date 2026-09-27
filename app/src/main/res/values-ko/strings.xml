@@ -1,4 +1,10 @@
 ﻿<resources>
+    <string name="auto_mod_dll_overrides">모드 DLL 재정의 자동 설정</string>
+    <string name="auto_mod_dll_overrides_description">게임 폴더에서 지원되는 모드 DLL을 자동으로 불러옵니다. 기존 재정의가 우선 적용됩니다.</string>
+    <string name="auto_mod_dll_overrides_detected">감지됨: %1$s</string>
+    <string name="auto_mod_dll_overrides_preserved">기존 설정이 우선 적용되는 DLL: %1$s</string>
+    <string name="auto_mod_dll_overrides_preview">WINEDLLOVERRIDES (자동)</string>
+    <string name="auto_mod_dll_overrides_preview_description">저장된 재정의를 포함합니다. 게임을 실행할 때 다시 계산하여 적용합니다.</string>
     <string name="app_name">GameNative</string>
     <string name="login_user">사용자 로그인</string>
     <string name="login_2fa">2단계 인증</string>

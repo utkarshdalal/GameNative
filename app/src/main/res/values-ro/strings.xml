@@ -1,4 +1,10 @@
 ﻿<resources>
+    <string name="auto_mod_dll_overrides">Configurează automat suprascrierile DLL pentru moduri</string>
+    <string name="auto_mod_dll_overrides_description">Încarcă automat DLL-urile de moduri acceptate din folderul jocului. Suprascrierile existente au prioritate.</string>
+    <string name="auto_mod_dll_overrides_detected">Detectate: %1$s</string>
+    <string name="auto_mod_dll_overrides_preserved">Setările existente au prioritate pentru: %1$s</string>
+    <string name="auto_mod_dll_overrides_preview">WINEDLLOVERRIDES (automat)</string>
+    <string name="auto_mod_dll_overrides_preview_description">Include suprascrierile salvate. Valoarea este recalculată și aplicată la pornirea jocului.</string>
     <string name="app_name">GameNative</string>
     <string name="login_user">Autentificare utilizator</string>
     <string name="login_2fa">Autentificare în doi pași</string>

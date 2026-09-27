@@ -1,4 +1,10 @@
 ﻿<resources>
+    <string name="auto_mod_dll_overrides">Автоматично налаштовувати перевизначення DLL для модів</string>
+    <string name="auto_mod_dll_overrides_description">Автоматично завантажувати підтримувані DLL модів із папки гри. Наявні перевизначення мають пріоритет.</string>
+    <string name="auto_mod_dll_overrides_detected">Виявлено: %1$s</string>
+    <string name="auto_mod_dll_overrides_preserved">Наявні налаштування мають пріоритет для: %1$s</string>
+    <string name="auto_mod_dll_overrides_preview">WINEDLLOVERRIDES (автоматично)</string>
+    <string name="auto_mod_dll_overrides_preview_description">Містить збережені перевизначення. Значення перераховується та застосовується під час запуску гри.</string>
     <string name="app_name">GameNative</string>
     <string name="login_user">Вхід користувача</string>
     <string name="login_2fa">Двофакторна автентифікація</string>

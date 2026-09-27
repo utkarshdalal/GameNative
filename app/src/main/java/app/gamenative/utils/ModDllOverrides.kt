@@ -9,6 +9,7 @@ object ModDllOverrides {
     const val SETTING = "autoModDllOverrides"
     private val proxies = listOf("dinput8", "winhttp", "version", "winmm", "dsound")
     private val frameworkDirectories = setOf("bepinex", "melonloader", "reframework")
+    private val asiDirectories = setOf("scripts", "plugins", "update")
 
     data class Result(val value: String, val added: List<String>, val preserved: List<String>)
     data class Inspection(
@@ -72,6 +73,11 @@ object ModDllOverrides {
             entry != null &&
                 (
                     (name in frameworkDirectories && entry.isDirectory) ||
+                        (
+                            name in asiDirectories &&
+                                entry.isDirectory &&
+                                entry.listFiles()?.any { it.isFile && it.extension.equals("asi", ignoreCase = true) } == true
+                            ) ||
                         ((name == "doorstop_config.ini" || name.endsWith(".asi")) && entry.isFile)
                     )
         }

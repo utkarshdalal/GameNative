@@ -1,4 +1,10 @@
 ﻿<resources>
+    <string name="auto_mod_dll_overrides">自动配置模组 DLL 覆盖设置</string>
+    <string name="auto_mod_dll_overrides_description">自动加载游戏文件夹中受支持的模组 DLL。现有覆盖设置优先。</string>
+    <string name="auto_mod_dll_overrides_detected">已检测到：%1$s</string>
+    <string name="auto_mod_dll_overrides_preserved">以下 DLL 优先使用现有设置：%1$s</string>
+    <string name="auto_mod_dll_overrides_preview">WINEDLLOVERRIDES（自动）</string>
+    <string name="auto_mod_dll_overrides_preview_description">包含已保存的覆盖设置。每次启动游戏时重新计算并应用。</string>
     <string name="app_name">GameNative</string>
     <string name="login_user">登录</string>
     <string name="login_2fa">双重验证</string>

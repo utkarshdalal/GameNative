@@ -83,6 +83,43 @@ class ModDllOverridesTest {
         assertEquals(saved, ModDllOverrides.merge(saved, ModDllOverrides.detect(exe)).value)
     }
 
+    @Test fun asiPluginsInSupportedSubdirectoriesProvideEvidence() {
+        for (folder in listOf("Scripts", "pLuGiNs", "UPDATE")) {
+            val exe = file("$folder/game.exe")
+            val proxies = listOf("version", "winmm", "dsound")
+            proxies.forEach { file("$folder/$it.dll") }
+            val plugin = file("$folder/$folder/Fix.ASI")
+            assertEquals(folder, proxies, ModDllOverrides.detect(exe))
+            assertTrue(plugin.delete())
+            assertTrue("Empty $folder must not count as loader evidence", ModDllOverrides.detect(exe).isEmpty())
+        }
+    }
+
+    @Test fun pluginDirectoriesRequireActualAsiFiles() {
+        val exe = file("Game/game.exe")
+        file("Game/version.dll")
+        for (folder in listOf("scripts", "plugins", "update")) {
+            file("Game/$folder/readme.txt")
+            File(exe.parentFile, "$folder/directory.asi").mkdir()
+        }
+        assertTrue(ModDllOverrides.detect(exe).isEmpty())
+    }
+
+    @Test fun unrelatedAndNestedPluginDirectoriesDoNotProvideEvidence() {
+        val exe = file("Game/game.exe")
+        file("Game/version.dll")
+        file("Game/backup/Fix.asi")
+        file("Game/scripts/nested/Fix.asi")
+        assertTrue(ModDllOverrides.detect(exe).isEmpty())
+    }
+
+    @Test fun subdirectoryEvidenceDoesNotDetectDllsOutsideExecutableDirectory() {
+        val exe = file("Game/game.exe")
+        file("Game/scripts/Fix.asi")
+        file("Game/scripts/version.dll")
+        assertTrue(ModDllOverrides.detect(exe).isEmpty())
+    }
+
     @Test fun ignoresMissingExecutablesAndDllNamedDirectories() {
         assertTrue(ModDllOverrides.detect(File(temp.root, "absent.exe")).isEmpty())
         val exe = file("Game/game.exe")

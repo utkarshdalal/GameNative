@@ -4220,7 +4220,7 @@ private fun setupXEnvironment(
     }
 
     // Resolve mod overrides only for the game process, after all setup commands have finished.
-    guestProgramLauncherComponent.envVars = envVars
+    guestProgramLauncherComponent.envVars = EnvVars().apply { putAll(envVars) }
     fun prepareGameEnvironment() {
         guestProgramLauncherComponent.setGuestEnvironmentCallback { gameEnv ->
             ModDllOverrideLauncher.apply(container, gameEnv, gameLaunch = !bootToContainer && !testGraphics)

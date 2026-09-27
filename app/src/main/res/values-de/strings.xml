@@ -1,4 +1,10 @@
 ﻿<resources>
+    <string name="auto_mod_dll_overrides">DLL-Überschreibungen für Mods automatisch konfigurieren</string>
+    <string name="auto_mod_dll_overrides_description">Unterstützte Mod-DLLs im Spielordner automatisch laden. Vorhandene Überschreibungen haben Vorrang.</string>
+    <string name="auto_mod_dll_overrides_detected">Erkannt: %1$s</string>
+    <string name="auto_mod_dll_overrides_preserved">Vorhandene Einstellungen haben Vorrang für: %1$s</string>
+    <string name="auto_mod_dll_overrides_preview">WINEDLLOVERRIDES (automatisch)</string>
+    <string name="auto_mod_dll_overrides_preview_description">Enthält gespeicherte Überschreibungen. Wird bei jedem Spielstart neu berechnet und angewendet.</string>
     <string name="app_name">GameNative</string>
     <string name="login_user">Benutzeranmeldung</string>
     <string name="login_2fa">Zwei-Faktor-Authentifizierung</string>
