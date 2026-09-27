@@ -18,13 +18,14 @@
 //! Log grammar (all lines go through the `log` callback; `label` is adapter-chosen, e.g.
 //! `epic app=Fortnite`):
 //! - `fetch-start label=… items=… bytes_reserved=… hosts=… ceiling=… budget=…MiB tier_max=… per_host_cap=… distinct_hosts=… window=… mode=body|stream`
-//! - `fetch-window label=… window=N (min=… max=…) in_flight=… last=…MB/s ewma=…MB/s best=…MB/s reason=… cooldown=…ms err_rate=…% phase=… rtt=…ms budget_stalls=… host_stalls=…`
+//! - `fetch-window label=… window=N (min=… max=…) in_flight=… last=…MB/s ewma=…MB/s best=…MB/s reason=… cooldown=…ms err_rate=…% phase=… rtt=…ms budget_stalls=… host_stalls=… rtt_base=…ms queue=…ms queue_max=…ms cap=…MB/s|none rate_stalls=…`
 //!   (same fields as the Steam engine's `fetch-window depot=…` line, so the two are A/B-comparable)
 //! - `throughput label=… overall=…MB/s total=…MB elapsed=…s used=x/y servers: [host …MB/s …MB] …` every 5 s
 //! - `fetch-end label=… items_ok=… bytes=… credited=… elapsed_ms=… avg_mbps=… peak_mbps=… result=ok|cancelled|error [error=…]`
 //!
 //! `MB/s` here means MiB/s (1024²), matching the Steam engine's lines.
 
+use crate::auto_rate::{pace_read, rate_log, AutoRate, RatePacer, RttProber};
 use crate::store_dl::steam::cdn_client::{classify_rejected_status, read_body_capped, AsyncFetchError, CdnClient, FetchFailKind, MAX_WHOLE_BODY_BYTES, USER_AGENT};
 use crate::store_dl::steam::depot_writer::{
     budget_admits, inflight_budget_bytes, retry_backoff_millis, BOOTSTRAP_WINDOW,
@@ -32,7 +33,7 @@ use crate::store_dl::steam::depot_writer::{
     WINDOW_BPS_EWMA_ALPHA, WINDOW_COOLDOWN_MS, WINDOW_DECLINE_EPS, WINDOW_ERR_BURST_IMMEDIATE,
     WINDOW_ERR_RATE_HIGH, WINDOW_ERR_RATE_LOW, WINDOW_HARD_CAP, WINDOW_IMPROVE_EPS,
     WINDOW_LOG_EVERY_PROBES, WINDOW_MIN_FLOOR, WINDOW_PLATEAU_PATIENCE, WINDOW_PLATEAU_REARM_MAX_MS,
-    WINDOW_PLATEAU_REARM_MS, WINDOW_PROBE_INTERVAL_MS, WINDOW_SHRINK_FACTOR,
+    WINDOW_PLATEAU_REARM_MS, WINDOW_PROBE_INTERVAL_MS, WINDOW_RATE_HOLD_MIN_SAMPLES, WINDOW_RATE_REQUEST_S, REQUEST_BYTES_EWMA_ALPHA, WINDOW_SHRINK_FACTOR,
     WINDOW_SLOW_START_FACTOR, WINDOW_STEP_UP,
 };
 use futures_util::stream::FuturesUnordered;
@@ -50,7 +51,7 @@ pub const MAX_ITEM_ATTEMPTS: u32 = MAX_CHUNK_ATTEMPTS;
 /// How often the throughput reporter samples (and logs) — the samples feed `peak_mbps`.
 pub const THROUGHPUT_SAMPLE_INTERVAL_MS: u64 = 5_000;
 /// Upper bound on how long the driver sits in one `await` before re-checking cancel/error/feedback.
-const DRIVER_POLL_MS: u64 = 250;
+pub(crate) const DRIVER_POLL_MS: u64 = 250;
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // Public contract
@@ -773,6 +774,8 @@ async fn fetch_once(
     url: &str,
     range: Option<(u64, u64)>,
     timeout: Duration,
+    pacer: &RatePacer,
+    cancel: &AtomicBool,
 ) -> Result<Vec<u8>, AsyncFetchError> {
     // `timeout` bounds connect+headers and each body read (idle), not the whole body:
     // a slow CDN moving bytes steadily must not hit a total-transfer deadline.
@@ -789,7 +792,7 @@ async fn fetch_once(
     let content_length = response.content_length();
     // Bounded incremental read: a response bigger than its reservation (or with
     // no Content-Length) must not be buffered unboundedly (OOM).
-    let body = read_body_capped(response, MAX_WHOLE_BODY_BYTES, Some(timeout)).await?;
+    let body = read_body_capped(response, MAX_WHOLE_BODY_BYTES, Some(timeout), Some((pacer, Some(cancel)))).await?;
     validate_body_len(body.len() as u64, content_length, range)?;
     Ok(body)
 }
@@ -811,6 +814,9 @@ async fn fetch_stream(
     budget: u64,
     cancel: &AtomicBool,
     abandon: Option<&AtomicU32>,
+    server_idx: usize,
+    meter: &BandwidthMeter,
+    pacer: &RatePacer,
 ) -> Result<u64, AsyncFetchError> {
     let mut response =
         match tokio::time::timeout(timeout, send_checked(http, url, range, None)).await {
@@ -879,6 +885,13 @@ async fn fetch_stream(
             });
         }
         offset += len;
+        meter.record(server_idx, len);
+        if pace_read(pacer, len, Some(cancel)).await.is_err() {
+            return Err(AsyncFetchError {
+                message: "cancelled".to_string(),
+                kind: FetchFailKind::Other,
+            });
+        }
     }
     validate_body_len(offset, content_length, range)?;
     Ok(offset)
@@ -1004,6 +1017,12 @@ async fn run_driver(ctx: DriverCtx<'_>) {
     };
 
     let mut window = AdaptiveWindow::new(bootstrap, win_min, win_max, Instant::now());
+    let mut rate = AutoRate::new(Instant::now());
+    let pacer = RatePacer::new(Instant::now());
+    let mut prober = RttProber::start();
+    let rate_scope = format!("label={label}");
+    let mut request_bytes = NOMINAL_CHUNK_RESERVE_BYTES as f64;
+    let mut tick_stalls = 0u32;
     let mut sched = FetchScheduler::new(hosts, per_host_cap);
     let mut retry: VecDeque<PendingItem> = VecDeque::new();
     let mut next_item = 0usize;
@@ -1057,7 +1076,7 @@ async fn run_driver(ctx: DriverCtx<'_>) {
                     let now = Instant::now();
                     sched.on_error(fb.server_idx, now, FetchFailKind::Other);
                     if window.record_err(now, FetchFailKind::Other) {
-                        log(&window.summary_line(label, inflight.len(), now));
+                        log(&window.summary_line(label, inflight.len(), now, &rate));
                     }
                     if fb.attempts < MAX_ITEM_ATTEMPTS {
                         retry.push_back(PendingItem {
@@ -1080,8 +1099,22 @@ async fn run_driver(ctx: DriverCtx<'_>) {
         }
 
         let probe_now = Instant::now();
+        for (host, rtt) in prober.drain() {
+            rate.record_rtt(&host, rtt, probe_now);
+        }
+        let rate_stalls = pacer.take_stalls();
+        window.add_rate_stalls(rate_stalls);
+        tick_stalls = tick_stalls.saturating_add(rate_stalls);
+        if let Some(tick) = rate.maybe_tick(probe_now, meter.total_bytes()) {
+            rate_log(&tick.line(&rate_scope, inflight.len(), std::mem::take(&mut tick_stalls)));
+            if let Some(event) = tick.event_line(&rate_scope) {
+                rate_log(&event);
+            }
+        }
+        pacer.set_rate(probe_now, rate.cap_bps());
+        window.set_rate_target(rate.cap_bps(), request_bytes);
         if window.maybe_probe(probe_now, meter.total_bytes()) {
-            log(&window.summary_line(label, inflight.len(), probe_now));
+            log(&window.summary_line(label, inflight.len(), probe_now, &rate));
         }
 
         // ── Dispatch up to the current window ──
@@ -1141,7 +1174,9 @@ async fn run_driver(ctx: DriverCtx<'_>) {
                 next_item += 1;
             }
             in_flight.fetch_add(reserve, Ordering::Relaxed);
+            prober.note_dispatch(server_idx, &url);
             let http = &http;
+            let pacer = &pacer;
             let tx = &txs[if stream { idx % txs.len() } else { 0 }];
             let abandon_flag = abandon.get(idx);
             let started = Instant::now();
@@ -1159,11 +1194,14 @@ async fn run_driver(ctx: DriverCtx<'_>) {
                         budget,
                         cancel,
                         abandon_flag,
+                        server_idx,
+                        meter,
+                        pacer,
                     )
                     .await
                     .map(Fetched::Streamed)
                 } else {
-                    fetch_once(http, &url, range, timeout)
+                    fetch_once(http, &url, range, timeout, pacer, cancel)
                         .await
                         .map(Fetched::Body)
                 };
@@ -1213,17 +1251,18 @@ async fn run_driver(ctx: DriverCtx<'_>) {
 
         // ── Await one completion (drives ALL in-flight requests cooperatively), bounded so
         // cancel / a pool Fatal / a Retry verdict are noticed promptly even mid-fetch. ──
-        let done = match tokio::time::timeout(Duration::from_millis(DRIVER_POLL_MS), inflight.next())
-            .await
-        {
+        let poll = Duration::from_millis(DRIVER_POLL_MS);
+        let done = match tokio::time::timeout(poll, inflight.next()).await {
             Ok(Some(done)) => done,
             Ok(None) => continue,
             Err(_elapsed) => continue,
         };
         let now = Instant::now();
+        prober.note_done(done.server_idx);
         match done.res {
             Ok(Fetched::Body(body)) => {
                 let raw_len = body.len() as u64;
+                request_bytes += REQUEST_BYTES_EWMA_ALPHA * (raw_len as f64 - request_bytes);
                 meter.record(done.server_idx, raw_len);
                 sched.on_success(done.server_idx, raw_len, done.elapsed);
                 window.record_ok(done.elapsed.as_secs_f64() * 1000.0);
@@ -1249,7 +1288,7 @@ async fn run_driver(ctx: DriverCtx<'_>) {
                 }
             }
             Ok(Fetched::Streamed(total_len)) => {
-                meter.record(done.server_idx, total_len);
+                request_bytes += REQUEST_BYTES_EWMA_ALPHA * (total_len as f64 - request_bytes);
                 sched.on_success(done.server_idx, total_len, done.elapsed);
                 window.record_ok(done.elapsed.as_secs_f64() * 1000.0);
                 outstanding += 1;
@@ -1289,7 +1328,7 @@ window_shrink={} msg={}",
                 }
                 sched.on_error(done.server_idx, now, err.kind);
                 if !client_rejection && window.record_err(now, err.kind) {
-                    log(&window.summary_line(label, inflight.len(), now));
+                    log(&window.summary_line(label, inflight.len(), now, &rate));
                 }
                 if done.attempts < MAX_ITEM_ATTEMPTS {
                     let backoff = retry_backoff_millis(done.attempts);
@@ -1538,6 +1577,7 @@ enum WindowReason {
     HoldCeiling,
     HoldErrors,
     HoldThroughputDown,
+    HoldRate,
     ShrinkRateLimited,
     ShrinkTimeout,
     ShrinkReset,
@@ -1559,6 +1599,7 @@ impl WindowReason {
             WindowReason::HoldCeiling => "hold:ceiling",
             WindowReason::HoldErrors => "hold:errors",
             WindowReason::HoldThroughputDown => "hold:throughput-down",
+            WindowReason::HoldRate => "hold:rate",
             WindowReason::ShrinkRateLimited => "shrink:429",
             WindowReason::ShrinkTimeout => "shrink:timeout",
             WindowReason::ShrinkReset => "shrink:reset",
@@ -1601,8 +1642,11 @@ struct AdaptiveWindow {
     err_count: u32,
     budget_stalls: u32,
     host_stalls: u32,
+    rate_stalls: u32,
     last_budget_stalls: u32,
     last_host_stalls: u32,
+    last_rate_stalls: u32,
+    rate_target: Option<usize>,
     latency_ewma_ms: f64,
     cooldown_until: Option<Instant>,
     last_reason: WindowReason,
@@ -1632,8 +1676,11 @@ impl AdaptiveWindow {
             err_count: 0,
             budget_stalls: 0,
             host_stalls: 0,
+            rate_stalls: 0,
             last_budget_stalls: 0,
             last_host_stalls: 0,
+            last_rate_stalls: 0,
+            rate_target: None,
             latency_ewma_ms: 0.0,
             cooldown_until: None,
             last_reason: WindowReason::Start,
@@ -1648,6 +1695,26 @@ impl AdaptiveWindow {
 
     fn note_host_stall(&mut self) {
         self.host_stalls = self.host_stalls.saturating_add(1);
+    }
+
+    fn add_rate_stalls(&mut self, n: u32) {
+        self.rate_stalls = self.rate_stalls.saturating_add(n);
+    }
+
+    /// Window that keeps each request near [`WINDOW_RATE_REQUEST_S`] under a binding cap of
+    /// `cap_bps` with requests of `request_bytes` (`None` while the cap is off).
+    fn set_rate_target(&mut self, cap_bps: f64, request_bytes: f64) {
+        self.rate_target = (cap_bps.is_finite() && request_bytes > 0.0).then(|| {
+            ((cap_bps * WINDOW_RATE_REQUEST_S / request_bytes).ceil() as usize).clamp(self.min, self.max)
+        });
+    }
+
+    /// Under a binding rate cap few requests complete per probe, so a timeout/reset/other error
+    /// on a tiny sample is noise, not an error rate. 429 and 5xx still count.
+    fn rate_noise(&self, kind: FetchFailKind) -> bool {
+        self.rate_stalls > 0
+            && !matches!(kind, FetchFailKind::RateLimited | FetchFailKind::ServerFault)
+            && self.ok_count + self.err_count < WINDOW_RATE_HOLD_MIN_SAMPLES
     }
 
     fn record_ok(&mut self, latency_ms: f64) {
@@ -1702,7 +1769,7 @@ impl AdaptiveWindow {
         let immediate = kind == FetchFailKind::RateLimited
             || self.err_count >= WINDOW_ERR_BURST_IMMEDIATE;
         let cooling = self.cooldown_until.is_some_and(|t| now < t);
-        if !immediate || cooling {
+        if !immediate || cooling || self.rate_noise(kind) {
             return false;
         }
         let before = self.current;
@@ -1736,8 +1803,16 @@ impl AdaptiveWindow {
         let before = self.current;
         let cooling = self.cooldown_until.is_some_and(|t| now < t);
 
-        if err_rate > WINDOW_ERR_RATE_HIGH {
+        if err_rate > WINDOW_ERR_RATE_HIGH && !self.rate_noise(FetchFailKind::Other) {
             self.shrink(now, WindowReason::ShrinkErrorRate);
+        } else if self.rate_stalls > 0 {
+            if let Some(prev) = self.probe_down_from.take() {
+                self.current = prev;
+            }
+            if let Some(target) = self.rate_target {
+                self.current = target;
+            }
+            self.last_reason = WindowReason::HoldRate;
         } else if cooling {
             self.last_reason = WindowReason::HoldCooldown;
         } else if err_rate > WINDOW_ERR_RATE_LOW {
@@ -1795,8 +1870,10 @@ impl AdaptiveWindow {
         self.err_count = 0;
         self.last_budget_stalls = self.budget_stalls;
         self.last_host_stalls = self.host_stalls;
+        self.last_rate_stalls = self.rate_stalls;
         self.budget_stalls = 0;
         self.host_stalls = 0;
+        self.rate_stalls = 0;
         self.probes_since_log = self.probes_since_log.saturating_add(1);
         let changed = before != self.current;
         if changed || self.probes_since_log >= WINDOW_LOG_EVERY_PROBES {
@@ -1813,12 +1890,18 @@ impl AdaptiveWindow {
             .unwrap_or(0)
     }
 
-    fn summary_line(&self, label: &str, in_flight_requests: usize, now: Instant) -> String {
+    fn summary_line(
+        &self,
+        label: &str,
+        in_flight_requests: usize,
+        now: Instant,
+        rate: &AutoRate,
+    ) -> String {
         let mbps = |bps: f64| bps / (1024.0 * 1024.0);
         format!(
             "fetch-window label={label} window={} (min={} max={}) in_flight={in_flight_requests} \
 last={:.2}MB/s ewma={:.2}MB/s best={:.2}MB/s reason={} cooldown={}ms err_rate={:.1}% \
-phase={} rtt={:.0}ms budget_stalls={} host_stalls={}",
+phase={} rtt={:.0}ms budget_stalls={} host_stalls={} {}",
             self.current,
             self.min,
             self.max,
@@ -1831,7 +1914,8 @@ phase={} rtt={:.0}ms budget_stalls={} host_stalls={}",
             if self.slow_start { "slow-start" } else { "steady" },
             self.latency_ewma_ms,
             self.last_budget_stalls,
-            self.last_host_stalls
+            self.last_host_stalls,
+            rate.log_fields(self.last_rate_stalls)
         )
     }
 }
@@ -1998,10 +2082,85 @@ mod tests {
         assert!(w.record_err(now, FetchFailKind::Timeout));
         assert_eq!(w.current, 6);
         assert!(!w.slow_start);
-        let line = w.summary_line("t", 3, now);
+        let line = w.summary_line("t", 3, now, &AutoRate::new(now));
         assert!(line.starts_with("fetch-window label=t window=6 (min=2 max=42) in_flight=3 "));
         assert!(line.contains("reason=shrink:timeout"));
         assert!(line.contains("phase=steady"));
+        assert!(line.ends_with(" rtt_base=0ms queue=0ms queue_max=0ms cap=none off=0.00 rate_stalls=0"));
+    }
+
+    #[test]
+    fn window_holds_while_the_rate_cap_defers_dispatch() {
+        let t = Instant::now();
+        let mut w = AdaptiveWindow::new(8, 2, 64, t);
+        w.add_rate_stalls(1);
+        let probe = t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS + 10);
+        w.maybe_probe(probe, 20_000_000);
+        assert_eq!(w.current, 8);
+        assert_eq!(w.last_reason, WindowReason::HoldRate);
+        assert!(w.summary_line("t", 8, probe, &AutoRate::new(t)).contains("rate_stalls=1"));
+        w.maybe_probe(probe + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS + 10), 60_000_000);
+        assert!(w.current > 8, "window resumes once the cap stops binding");
+    }
+
+    #[test]
+    fn a_binding_cap_does_not_turn_small_sample_errors_into_shrinks() {
+        let t = Instant::now();
+        let probe = t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS + 10);
+        let mut w = AdaptiveWindow::new(24, 2, 64, t);
+        w.add_rate_stalls(5);
+        w.record_ok(1_500.0);
+        for _ in 0..3 {
+            assert!(!w.record_err(t, FetchFailKind::Timeout));
+        }
+        w.maybe_probe(probe, 10_000_000);
+        assert_eq!(w.current, 24, "1 ok + 3 timeouts under a binding cap is noise");
+        assert_eq!(w.last_reason, WindowReason::HoldRate);
+        w.maybe_probe(probe + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS + 10), 40_000_000);
+        assert!(w.current > 24, "window regrows once the cap stops binding");
+
+        let mut limited = AdaptiveWindow::new(24, 2, 64, t);
+        limited.add_rate_stalls(5);
+        assert!(limited.record_err(t, FetchFailKind::RateLimited), "429 still shrinks");
+
+        let mut uncapped = AdaptiveWindow::new(24, 2, 64, t);
+        uncapped.record_ok(1_500.0);
+        let mut shrank = false;
+        for _ in 0..3 {
+            shrank |= uncapped.record_err(t, FetchFailKind::Timeout);
+        }
+        assert!(shrank, "the same burst without a binding cap still shrinks");
+    }
+
+    #[test]
+    fn a_binding_cap_sizes_the_window_to_two_seconds_of_requests() {
+        let t = Instant::now();
+        let mib = 1024.0 * 1024.0;
+        let mut w = AdaptiveWindow::new(32, 2, 64, t);
+        w.set_rate_target(4.0 * mib, mib);
+        w.add_rate_stalls(3);
+        w.maybe_probe(t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS + 10), 20_000_000);
+        assert_eq!(w.current, 8);
+        assert_eq!(w.last_reason, WindowReason::HoldRate);
+        w.set_rate_target(0.1 * mib, mib);
+        assert_eq!(w.rate_target, Some(2));
+        w.set_rate_target(f64::INFINITY, mib);
+        assert_eq!(w.rate_target, None);
+    }
+
+    #[test]
+    fn rate_hold_restores_a_pending_probe_down() {
+        let t = Instant::now();
+        let mut w = AdaptiveWindow::new(12, 2, 64, t);
+        w.probe_down(t);
+        assert_eq!(w.probe_down_from, Some(12));
+        let plateau_since = w.plateau_since;
+        w.add_rate_stalls(3);
+        w.maybe_probe(t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS + 10), 20_000_000);
+        assert_eq!(w.current, 12);
+        assert_eq!(w.probe_down_from, None);
+        assert_eq!(w.plateau_since, plateau_since);
+        assert_eq!(w.last_reason, WindowReason::HoldRate);
     }
 
     // ── Minimal HTTP/1.1 stub: one thread per connection, `Connection: close`, Range-aware. ──

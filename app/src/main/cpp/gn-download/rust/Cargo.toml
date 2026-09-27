@@ -31,6 +31,9 @@ sha1 = "0.10"
 sha2 = "0.10"
 zeroize = "1"
 
+[dev-dependencies]
+tokio = { version = "1", default-features = false, features = ["rt", "time", "test-util"] }
+
 [profile.release]
 codegen-units = 1
 lto = "thin"

@@ -1,7 +1,9 @@
+use crate::auto_rate::{pace_read, RatePacer};
 use crate::store_dl::steam::pb::ccontentserverdirectory::CContentServerDirectoryServerInfo;
 use flate2::read::{DeflateDecoder, GzDecoder};
 use std::fs;
 use std::io::Read;
+use std::sync::atomic::AtomicBool;
 use std::time::Duration;
 
 pub const USER_AGENT: &str = "Valve/Steam HTTP Client 1.0";
@@ -510,11 +512,13 @@ pub(crate) const CHUNK_BODY_IDLE_TIMEOUT: std::time::Duration =
 /// Read a response body incrementally, rejecting it as soon as it exceeds `cap`.
 /// Prefer this over `response.bytes()` for any server-supplied body.
 /// `idle` bounds the wait between pieces, NOT the whole body — a slow link moving
-/// bytes steadily must never hit a total-transfer deadline.
+/// bytes steadily must never hit a total-transfer deadline. With `pacing`, every piece is charged
+/// to the pacer and the next read waits out its delay (ending early on cancel).
 pub(crate) async fn read_body_capped(
     mut response: reqwest::Response,
     cap: u64,
     idle: Option<Duration>,
+    pacing: Option<(&RatePacer, Option<&AtomicBool>)>,
 ) -> Result<Vec<u8>, AsyncFetchError> {
     if let Some(len) = response.content_length() {
         if len > cap {
@@ -548,6 +552,14 @@ pub(crate) async fn read_body_capped(
                         message: "response too large (body exceeds cap)".to_string(),
                         kind: FetchFailKind::ServerFault,
                     });
+                }
+                if let Some((pacer, cancel)) = pacing {
+                    if pace_read(pacer, piece.len() as u64, cancel).await.is_err() {
+                        return Err(AsyncFetchError {
+                            message: "cancelled".to_string(),
+                            kind: FetchFailKind::Other,
+                        });
+                    }
                 }
             }
             Ok(None) => break,
@@ -609,10 +621,17 @@ impl AsyncCdnClient {
         &self,
         url: &str,
         timeout: Duration,
+        pacing: Option<(&RatePacer, Option<&AtomicBool>)>,
     ) -> Result<Vec<u8>, AsyncFetchError> {
-        let response = match self.client.get(url).timeout(timeout).send().await {
-            Ok(response) => response,
-            Err(err) => {
+        let response = match tokio::time::timeout(timeout, self.client.get(url).send()).await {
+            Err(_) => {
+                return Err(AsyncFetchError {
+                    message: "http get: response headers timed out".to_string(),
+                    kind: FetchFailKind::Timeout,
+                });
+            }
+            Ok(Ok(response)) => response,
+            Ok(Err(err)) => {
                 let kind = if err.is_timeout() {
                     FetchFailKind::Timeout
                 } else if err.is_connect() {
@@ -637,7 +656,7 @@ impl AsyncCdnClient {
         }
         let content_length = response.content_length();
         let body =
-            match read_body_capped(response, MAX_WHOLE_BODY_BYTES, Some(CHUNK_BODY_IDLE_TIMEOUT))
+            match read_body_capped(response, MAX_WHOLE_BODY_BYTES, Some(CHUNK_BODY_IDLE_TIMEOUT), pacing)
                 .await
             {
                 Ok(body) => body,
