@@ -87,6 +87,51 @@ class ModDllOverrideLauncherTest {
         assertTrue(refreshed.added.isEmpty())
     }
 
+    @Test fun previewResolvesSteamDefaultWithoutSavingAnExecutableChoice() {
+        container.executablePath = ""
+        container.saveData()
+        val saved = container.configFile.readText()
+        for (appId in listOf("STEAM_480", "STEAM_480(1)")) {
+            val path = ModDllOverrideLauncher.resolvePreviewExecutable(container.executablePath, appId) {
+                assertEquals(480, it)
+                "game.exe"
+            }
+            val inspection = ModDllOverrides.inspect(path, ModDllOverrideLauncher.drives(container.drives))
+            assertEquals(listOf("dinput8"), inspection.detected)
+            assertEquals("icu=n;dinput8=n,b", inspection.merge(EnvVars(container.envVars).get("WINEDLLOVERRIDES")).value)
+        }
+        assertEquals("", container.executablePath)
+        assertEquals(saved, container.configFile.readText())
+    }
+
+    @Test fun previewNeverReplacesExplicitExecutablePaths() {
+        for (path in listOf("game.exe", "C:\\Games\\Other.exe", "launch.bat", " ")) {
+            val resolved = ModDllOverrideLauncher.resolvePreviewExecutable(path, "STEAM_480") {
+                error("An explicit executable must not trigger a Steam lookup")
+            }
+            assertEquals(path, resolved)
+        }
+    }
+
+    @Test fun previewDoesNotGuessSteamForOtherContainerSources() {
+        for (appId in listOf(null, "", "480", "CUSTOM_GAME_480", "GOG_480", "EPIC_480", "AMAZON_480", "UNKNOWN_480")) {
+            val resolved = ModDllOverrideLauncher.resolvePreviewExecutable("", appId) {
+                error("A non-Steam container must not trigger a Steam lookup")
+            }
+            assertEquals("", resolved)
+        }
+    }
+
+    @Test fun previewWithoutSteamMetadataLeavesOverridesUnchanged() {
+        val path = ModDllOverrideLauncher.resolvePreviewExecutable("", "STEAM_480") { "" }
+        val inspection = ModDllOverrides.inspect(path, ModDllOverrideLauncher.drives(container.drives))
+        assertNull(inspection.executable)
+        assertTrue(inspection.detected.isEmpty())
+        val result = inspection.merge("icu=n")
+        assertEquals("icu=n", result.value)
+        assertTrue(result.added.isEmpty())
+    }
+
     @Test fun skipsDesktopAndSetupLaunches() {
         val env = EnvVars(container.envVars)
         ModDllOverrideLauncher.apply(container, env, false)

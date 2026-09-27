@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import app.gamenative.R
+import app.gamenative.service.SteamService
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.settings.SettingsCenteredLabel
 import app.gamenative.ui.component.settings.SettingsEnvVars
@@ -68,7 +69,10 @@ fun EnvironmentTabContent(state: ContainerConfigState, appId: String? = null) {
         value = withContext(Dispatchers.IO) {
             runCatching {
                 val prefix = appId?.let { File(ContainerUtils.getContainer(context, it).rootDir, ".wine") }
-                ModDllOverrides.inspect(config.executablePath, ModDllOverrideLauncher.drives(config.drives), prefix)
+                val executablePath = ModDllOverrideLauncher.resolvePreviewExecutable(config.executablePath, appId) {
+                    SteamService.getInstalledExe(it)
+                }
+                ModDllOverrides.inspect(executablePath, ModDllOverrideLauncher.drives(config.drives), prefix)
             }.getOrNull()
         }
     }

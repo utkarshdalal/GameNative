@@ -10,6 +10,12 @@ object ModDllOverrideLauncher {
     // Bionic Steam launches the game directly and takes precedence over the other Steam modes.
     fun supportsLaunch(launchRealSteam: Boolean, launchBionicSteam: Boolean): Boolean = !launchRealSteam || launchBionicSteam
 
+    /** Use Steam's launch fallback for the preview without saving an executable choice. */
+    internal fun resolvePreviewExecutable(path: String, appId: String?, installedSteamExecutable: (Int) -> String): String {
+        if (path.isNotEmpty() || appId?.startsWith("STEAM_") != true) return path
+        return installedSteamExecutable(ContainerUtils.extractGameIdFromContainerId(appId))
+    }
+
     fun drives(value: String): Map<String, File> = Container.drivesIterator(value).asSequence()
         .associate { it[0] to File(it[1]) }
 
