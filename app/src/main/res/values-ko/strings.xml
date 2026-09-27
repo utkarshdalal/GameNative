@@ -1,7 +1,7 @@
 ﻿<resources>
     <string name="auto_mod_dll_overrides_steam_unavailable">Steam GUI/헤드리스 모드에서는 자동 재정의를 사용할 수 없습니다. 수동 재정의는 계속 적용됩니다.</string>
     <string name="auto_mod_dll_overrides">모드 DLL 재정의 자동 설정</string>
-    <string name="auto_mod_dll_overrides_description">게임 폴더에서 지원되는 모드 DLL을 자동으로 불러옵니다. 기존 재정의가 우선 적용됩니다.</string>
+    <string name="auto_mod_dll_overrides_description">게임 실행 시 게임 폴더에서 지원되는 모드 DLL을 감지해 Wine DLL 재정의를 자동으로 설정합니다. 기존 재정의가 우선 적용됩니다.</string>
     <string name="auto_mod_dll_overrides_detected">감지됨: %1$s</string>
     <string name="auto_mod_dll_overrides_preserved">기존 설정이 우선 적용되는 DLL: %1$s</string>
     <string name="auto_mod_dll_overrides_preview">WINEDLLOVERRIDES (자동)</string>
