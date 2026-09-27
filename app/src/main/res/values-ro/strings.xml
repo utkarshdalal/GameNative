@@ -1,4 +1,5 @@
 ﻿<resources>
+    <string name="auto_mod_dll_overrides_steam_unavailable">Suprascrierile automate nu sunt disponibile în modurile Steam GUI și headless. Suprascrierile manuale se aplică în continuare.</string>
     <string name="auto_mod_dll_overrides">Configurează automat suprascrierile DLL pentru moduri</string>
     <string name="auto_mod_dll_overrides_description">Încarcă automat DLL-urile de moduri acceptate din folderul jocului. Suprascrierile existente au prioritate.</string>
     <string name="auto_mod_dll_overrides_detected">Detectate: %1$s</string>

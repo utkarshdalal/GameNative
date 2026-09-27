@@ -1,4 +1,5 @@
 ﻿<resources>
+    <string name="auto_mod_dll_overrides_steam_unavailable">Automatiske tilsidesættelser er ikke tilgængelige i Steams GUI- eller headless-tilstand. Manuelle tilsidesættelser gælder stadig.</string>
     <string name="auto_mod_dll_overrides">Konfigurer automatisk DLL-tilsidesættelser for mods</string>
     <string name="auto_mod_dll_overrides_description">Indlæs automatisk understøttede DLL-filer til mods i spilmappen. Dine eksisterende tilsidesættelser har forrang.</string>
     <string name="auto_mod_dll_overrides_detected">Fundet: %1$s</string>

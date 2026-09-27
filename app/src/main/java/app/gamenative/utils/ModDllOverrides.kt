@@ -34,13 +34,9 @@ object ModDllOverrides {
 
     data class RegistryOverrides(val global: Map<String, String> = emptyMap(), val app: Map<String, String> = emptyMap()) {
         fun preserves(dll: String): Boolean {
-            if (app.keys.any { WineDllOverrides.matches(it, dll) }) return true
-            return global.any { (name, order) ->
-                // WineUtils installs this default itself. A local dinput8 proxy must take priority over it.
-                val isInputDefault = name.equals("dinput8", ignoreCase = true) &&
-                    order.lowercase(Locale.ROOT).replace("builtin", "b").replace("native", "n").replace(" ", "") == "b,n"
-                WineDllOverrides.matches(name, dll) && !isInputDefault
-            }
+            // An existing value may be a deliberate user choice, even if it matches an app default.
+            return app.keys.any { WineDllOverrides.matches(it, dll) } ||
+                global.keys.any { WineDllOverrides.matches(it, dll) }
         }
     }
 

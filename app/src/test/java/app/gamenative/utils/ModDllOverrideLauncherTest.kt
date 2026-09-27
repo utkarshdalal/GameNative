@@ -55,7 +55,7 @@ class ModDllOverrideLauncherTest {
         File(game, "Muck.exe").writeText("test")
         File(game, "winhttp.dll").writeText("test")
         File(game, "dinput8.dll").writeText("test")
-        File(prefix, "user.reg").writeText("[Software\\\\Wine\\\\DllOverrides]\n\"dinput8\"=\"native\"\n")
+        File(prefix, "user.reg").writeText("[Software\\\\Wine\\\\DllOverrides]\n\"dinput8\"=\"builtin,native\"\n")
         container.executablePath = "C:\\Games\\Muck\\Muck.exe"
 
         val inspection = ModDllOverrides.inspect(container.executablePath, ModDllOverrideLauncher.drives(container.drives), prefix)
@@ -91,6 +91,48 @@ class ModDllOverrideLauncherTest {
         val env = EnvVars(container.envVars)
         ModDllOverrideLauncher.apply(container, env, false)
         assertEquals("icu=n", env.get("WINEDLLOVERRIDES"))
+    }
+
+    @Test fun steamClientLaunchesPreserveManualEnvironmentWithoutAutomaticEntries() {
+        container.isLaunchRealSteam = true
+        val steamTypes = listOf(
+            Container.STEAM_TYPE_NORMAL,
+            Container.STEAM_TYPE_LIGHT,
+            Container.STEAM_TYPE_ULTRALIGHT,
+            Container.STEAM_TYPE_HEADLESS,
+        )
+        for (steamType in steamTypes) {
+            container.steamType = steamType
+            val env = EnvVars("WINEDLLOVERRIDES=icu=n;winhttp=b")
+            ModDllOverrideLauncher.apply(container, env, true)
+            assertEquals(steamType, "icu=n;winhttp=b", env.get("WINEDLLOVERRIDES"))
+            assertEquals("WINEDLLOVERRIDES=icu=n", container.envVars)
+            assertFalse(container.configFile.exists())
+        }
+    }
+
+    @Test fun bionicSteamLaunchesStillGetAutomaticOverrides() {
+        container.isLaunchBionicSteam = true
+        for (realSteam in listOf(false, true)) {
+            container.isLaunchRealSteam = realSteam
+            container.steamType = Container.STEAM_TYPE_HEADLESS
+            val env = EnvVars(container.envVars)
+            ModDllOverrideLauncher.apply(container, env, true)
+            assertEquals("icu=n;dinput8=n,b", env.get("WINEDLLOVERRIDES"))
+        }
+    }
+
+    @Test fun switchingFromSteamClientToDirectLaunchReenablesAutomaticOverrides() {
+        container.isLaunchRealSteam = true
+        val steamEnv = EnvVars(container.envVars)
+        ModDllOverrideLauncher.apply(container, steamEnv, true)
+        assertEquals("icu=n", steamEnv.get("WINEDLLOVERRIDES"))
+
+        container.isLaunchRealSteam = false
+        val gameEnv = EnvVars(container.envVars)
+        ModDllOverrideLauncher.apply(container, gameEnv, true)
+        assertEquals("icu=n;dinput8=n,b", gameEnv.get("WINEDLLOVERRIDES"))
+        assertEquals("WINEDLLOVERRIDES=icu=n", container.envVars)
     }
 
     @Test fun respectsDisabledSettingAcrossContainerReload() {

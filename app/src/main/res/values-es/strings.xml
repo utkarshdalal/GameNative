@@ -1,4 +1,5 @@
 ﻿<resources>
+    <string name="auto_mod_dll_overrides_steam_unavailable">Las sustituciones automáticas no están disponibles en los modos de Steam con interfaz gráfica o sin interfaz. Las sustituciones manuales siguen aplicándose.</string>
     <string name="auto_mod_dll_overrides">Configurar automáticamente las sustituciones de DLL para mods</string>
     <string name="auto_mod_dll_overrides_description">Cargar automáticamente las DLL de mods compatibles de la carpeta del juego. Las sustituciones existentes tienen prioridad.</string>
     <string name="auto_mod_dll_overrides_detected">Detectadas: %1$s</string>

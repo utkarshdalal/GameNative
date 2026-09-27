@@ -151,17 +151,30 @@ class ModDllOverridesTest {
         assertNull(ModDllOverrides.resolveExecutable("C:\\Windows\\System32\\tool.exe", emptyMap(), File(temp.root, "prefix")))
     }
 
-    @Test fun preservesRegistryChoicesExceptGameNativeInputDefault() {
+    @Test fun preservesRegistryChoicesIncludingBuiltinFirstInput() {
         val registry = ModDllOverrides.RegistryOverrides(
             global = mapOf("dinput8" to "builtin,native", "winhttp" to "builtin"),
             app = mapOf("version" to ""),
         )
-        val result = ModDllOverrides.merge("icu=n", listOf("dinput8", "winhttp", "version"), registry)
-        assertEquals(listOf("dinput8"), result.added)
-        assertEquals(listOf("winhttp", "version"), result.preserved)
+        val result = ModDllOverrides.merge("icu=n", listOf("dinput8", "winhttp", "version", "winmm"), registry)
+        assertEquals("icu=n;winmm=n,b", result.value)
+        assertEquals(listOf("winmm"), result.added)
+        assertEquals(listOf("dinput8", "winhttp", "version"), result.preserved)
     }
 
-    @Test fun appRegistryAndEnvironmentWinOverDefaultException() {
+    @Test fun preservesGlobalInputChoicesRegardlessOfSpellingOrOrder() {
+        for (name in listOf("dinput8", "DINPUT8.dll", "*dinput8", "*", "C:\\Game\\dinput8.dll")) {
+            for (order in listOf("b,n", "builtin,native", "builtin, native", "n,b", "b", "")) {
+                val registry = ModDllOverrides.RegistryOverrides(global = mapOf(name to order))
+                val result = ModDllOverrides.merge("icu=n", listOf("dinput8"), registry)
+                assertEquals("$name=$order", "icu=n", result.value)
+                assertTrue(result.added.isEmpty())
+                assertEquals(listOf("dinput8"), result.preserved)
+            }
+        }
+    }
+
+    @Test fun preservesAppRegistryAndEnvironmentChoices() {
         val registry = ModDllOverrides.RegistryOverrides(mapOf("dinput8" to "b,n"), mapOf("dinput8" to "b,n"))
         assertEquals("", ModDllOverrides.merge("", listOf("dinput8"), registry).value)
         assertEquals("dinput8=b", ModDllOverrides.merge("dinput8=b", listOf("dinput8"), ModDllOverrides.RegistryOverrides()).value)
@@ -181,7 +194,7 @@ class ModDllOverridesTest {
         """.trimIndent()
         reg.writeText(original)
         val registry = ModDllOverrides.readRegistry(reg, "GAME.exe")
-        assertFalse(registry.preserves("dinput8"))
+        assertTrue(registry.preserves("dinput8"))
         assertTrue(registry.preserves("winhttp"))
         assertTrue(registry.preserves("version"))
         assertFalse(registry.preserves("dsound"))

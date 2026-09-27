@@ -1,4 +1,5 @@
 ﻿<resources>
+    <string name="auto_mod_dll_overrides_steam_unavailable">Steam 圖形介面與無介面模式不支援自動覆寫。手動覆寫仍然有效。</string>
     <string name="auto_mod_dll_overrides">自動設定模組 DLL 覆寫規則</string>
     <string name="auto_mod_dll_overrides_description">自動載入遊戲資料夾中支援的模組 DLL。現有的覆寫設定優先。</string>
     <string name="auto_mod_dll_overrides_detected">已偵測到：%1$s</string>

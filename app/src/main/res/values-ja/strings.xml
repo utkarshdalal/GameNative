@@ -1,4 +1,5 @@
 ﻿<resources>
+    <string name="auto_mod_dll_overrides_steam_unavailable">Steam の GUI／ヘッドレスモードでは自動オーバーライドを利用できません。手動のオーバーライドは引き続き適用されます。</string>
     <string name="auto_mod_dll_overrides">Mod 用 DLL オーバーライドを自動設定</string>
     <string name="auto_mod_dll_overrides_description">ゲームフォルダー内の対応する Mod DLL を自動で読み込みます。既存のオーバーライドが優先されます。</string>
     <string name="auto_mod_dll_overrides_detected">検出済み: %1$s</string>

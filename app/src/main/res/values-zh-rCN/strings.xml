@@ -1,4 +1,5 @@
 ﻿<resources>
+    <string name="auto_mod_dll_overrides_steam_unavailable">Steam 图形界面和无界面模式不支持自动覆盖。手动覆盖仍然生效。</string>
     <string name="auto_mod_dll_overrides">自动配置模组 DLL 覆盖设置</string>
     <string name="auto_mod_dll_overrides_description">自动加载游戏文件夹中受支持的模组 DLL。现有覆盖设置优先。</string>
     <string name="auto_mod_dll_overrides_detected">已检测到：%1$s</string>

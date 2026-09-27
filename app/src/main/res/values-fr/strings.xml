@@ -1,4 +1,5 @@
 ﻿<resources>
+    <string name="auto_mod_dll_overrides_steam_unavailable">Les substitutions automatiques ne sont pas disponibles dans les modes Steam GUI et Headless. Les substitutions manuelles restent appliquées.</string>
     <string name="auto_mod_dll_overrides">Configurer automatiquement les substitutions de DLL des mods</string>
     <string name="auto_mod_dll_overrides_description">Charger automatiquement les DLL de mods prises en charge dans le dossier du jeu. Vos substitutions existantes sont prioritaires.</string>
     <string name="auto_mod_dll_overrides_detected">Détectées : %1$s</string>
