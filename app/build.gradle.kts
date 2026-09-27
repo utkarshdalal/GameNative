@@ -449,6 +449,8 @@ dependencies {
     implementation(libs.libarchive.android)
     implementation(libs.zstd.jni) { artifact { type = "aar" } }
     implementation(libs.xz)
+    implementation(libs.lz4.java)
+    implementation(libs.androidx.work.runtime)
 
     // Jetpack Compose
     implementation(platform(libs.androidx.compose.bom))
@@ -500,6 +502,7 @@ dependencies {
     testImplementation(libs.androidx.ui.test.junit4)
     testImplementation(libs.zstd.jni)
     testImplementation(libs.orgJson)
+    testImplementation(libs.lz4.java)
     testImplementation(libs.mockwebserver)
 
     // Add PostHog Android SDK dependency

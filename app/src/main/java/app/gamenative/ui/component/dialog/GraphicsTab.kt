@@ -7,12 +7,15 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.component.settings.SettingsListDropdownSearchable
@@ -20,7 +23,12 @@ import app.gamenative.ui.component.settings.SettingsMultiListDropdown
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import app.gamenative.utils.LsfgVkManager
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import app.gamenative.texturepack.TexturePackGate
+import app.gamenative.texturepack.TexturePackPaths
 import com.alorma.compose.settings.ui.SettingsGroup
+import com.alorma.compose.settings.ui.SettingsMenuLink
 import com.alorma.compose.settings.ui.SettingsSwitch
 import com.winlator.contents.ContentProfile
 import com.winlator.container.Container
@@ -28,6 +36,9 @@ import com.winlator.core.KeyValueSet
 import com.winlator.core.StringUtils
 import com.winlator.core.envvars.EnvVars
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
@@ -70,6 +81,71 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                     state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
                 },
             )
+            if (state.appId.isNotBlank()) {
+                val texturePackContext = LocalContext.current
+                val texturePackNeeded = remember { TexturePackGate.needsTexturePack(texturePackContext) }
+                val texturePackAvailable = remember { PrefManager.texturePackEnabled && texturePackNeeded }
+                val texturePackScope = rememberCoroutineScope()
+                var textureCacheBytes by remember(state.appId) { mutableStateOf<Long?>(null) }
+                LaunchedEffect(state.appId) {
+                    textureCacheBytes = withContext(Dispatchers.IO) {
+                        TexturePackPaths.sizeOf(TexturePackPaths.cacheDirForApp(texturePackContext, state.appId))
+                    }
+                }
+                if (texturePackAvailable) {
+                    var texturePackOn by remember(state.appId) {
+                        mutableStateOf(!TexturePackGate.isSkipped(texturePackContext, state.appId))
+                    }
+                    val texturePackConfig = KeyValueSet(config.graphicsDriverConfig)
+                    val texturePackBlocker = when {
+                        !config.graphicsDriver.equals(TexturePackGate.COMPATIBLE_DRIVER, ignoreCase = true) ->
+                            stringResource(R.string.texture_pack_game_setting_needs_driver, stringResource(R.string.graphics_driver))
+                        texturePackConfig.get("bcnEmulation").equals("none", ignoreCase = true) ->
+                            stringResource(R.string.texture_pack_game_setting_needs_bcn, stringResource(R.string.bcn_emulation))
+                        else -> null
+                    }
+                    SettingsSwitch(
+                        colors = settingsTileColorsAlt(),
+                        enabled = texturePackBlocker == null,
+                        title = { Text(text = stringResource(R.string.texture_pack_game_setting_title)) },
+                        subtitle = {
+                            Text(
+                                text = texturePackBlocker ?: stringResource(
+                                    R.string.texture_pack_game_setting_subtitle,
+                                    stringResource(R.string.graphics_driver),
+                                    stringResource(R.string.bcn_emulation_type),
+                                ),
+                            )
+                        },
+                        state = texturePackOn,
+                        onCheckedChange = { checked ->
+                            texturePackOn = checked
+                            TexturePackGate.setSkipped(texturePackContext, state.appId, !checked)
+                        },
+                    )
+                }
+                if (texturePackNeeded) {
+                    SettingsMenuLink(
+                        colors = settingsTileColorsAlt(),
+                        title = { Text(text = stringResource(R.string.clear_texture_cache)) },
+                        subtitle = {
+                            Text(
+                                text = textureCacheBytes?.let {
+                                    stringResource(R.string.clear_texture_cache_size, String.format(java.util.Locale.ROOT, "%.1f", it / (1024.0 * 1024.0)))
+                                } ?: stringResource(R.string.clear_texture_cache_subtitle),
+                            )
+                        },
+                        onClick = {
+                            val appId = state.appId
+                            texturePackScope.launch(Dispatchers.IO) {
+                                TexturePackPaths.clear(TexturePackPaths.cacheDirForApp(texturePackContext, appId))
+                                TexturePackGate.resetServerEntries(texturePackContext, appId)
+                                textureCacheBytes = 0L
+                            }
+                        },
+                    )
+                }
+            }
             // Wrapper-gamenative only: BCn transcoder (CPU/GPU) and texture quality (low/high).
             // Both are stored in graphicsDriverConfig and turned into WRAPPER_* env vars on boot.
             if (config.graphicsDriver.equals("wrapper-gamenative", ignoreCase = true)) {

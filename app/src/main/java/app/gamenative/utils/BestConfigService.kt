@@ -1,5 +1,6 @@
 package app.gamenative.utils
 
+import app.gamenative.texturepack.TexturePackGate
 import android.content.Context
 import androidx.compose.ui.graphics.Color
 import app.gamenative.BuildConfig
@@ -282,8 +283,19 @@ object BestConfigService {
         return if (preserveConfigValues) {
             filteredJson
         } else {
-            applyGpuFamilyOverrides(context, filteredJson, matchedGpu)
+            preferWrapperGamenative(context, applyGpuFamilyOverrides(context, filteredJson, matchedGpu))
         }
+    }
+
+    private fun preferWrapperGamenative(context: Context, filteredJson: JSONObject): JSONObject {
+        if (GPUInformation.isAdrenoGPU(context)) return filteredJson
+        val driver = filteredJson.optString("graphicsDriver", "")
+        if (driver.startsWith("wrapper", ignoreCase = true) &&
+            !driver.equals(TexturePackGate.COMPATIBLE_DRIVER, ignoreCase = true)
+        ) {
+            filteredJson.put("graphicsDriver", "Wrapper-gamenative")
+        }
+        return filteredJson
     }
 
     /**

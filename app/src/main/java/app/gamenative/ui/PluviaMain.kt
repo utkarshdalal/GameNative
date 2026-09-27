@@ -1358,6 +1358,7 @@ fun PluviaMain(
                     ContainerConfigDialog(
                         visible = true,
                         title = context.getString(R.string.container_config_title),
+                        appId = appId,
                         initialConfig = config,
                         onDismissRequest = { openContainerConfigForAppId = null },
                         onSave = { newConfig ->
@@ -1941,6 +1942,7 @@ fun PluviaMain(
 
             AchievementOverlay()
             GameInviteOverlay()
+            app.gamenative.ui.component.dialog.TexturePackUploadDialog()
         }
     }
 }
