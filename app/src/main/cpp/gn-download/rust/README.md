@@ -12,13 +12,13 @@ This README is the map of how the whole thing fits together.
 | Path | Role |
 |---|---|
 | `fetch_core.rs` | Shared HTTP engine: adaptive in-flight window, byte budget, per-host caps, retries, backoff, stall detection |
-| `store_dl/ordered_drain.rs` | Shared per-file ordered writer used by GOG and Epic (the Steam model) |
+| `store_dl/ordered_drain.rs` | Shared per-file ordered writer used by GOG and Epic (the Steam model): pending BTreeMap + cursor + coalesced 16 MiB batches + **Verified markers** |
 | `store_dl/steam/depot_downloader.rs` | Steam orchestration: manifests, depot keys, DLC/redist depots, cache validation |
 | `store_dl/steam/depot_writer.rs` | Steam depot pipeline: verify/resume, chunk dispatch, ordered writes, stall watchdog |
-| `store_dl/steam/cdn_client.rs` / `cdn_probe.rs` | Steam CDN client (manifest/chunk GETs) and throughput-based server probing |
+| `store_dl/steam/cdn_client.rs` / `cdn_probe.rs` | Steam CDN client (manifest/chunk GETs) and throughput-based server probing (spawned lazily on the first downloaded byte) |
 | `store_dl/steam/depot_chunk.rs` / `crypto.rs` | Steam chunk decrypt + decompress (`content_manifest.rs`, `proto_wire.rs` + `pb/` parse the manifests; `depot_config.rs` keeps depot metadata + the resume journal) |
-| `store_dl/gog/` | GOG engine (gen1 range-GETs + gen2 chunked galaxy builds) |
-| `store_dl/epic/` | Epic engine (per-(file, part) fetching, streamed writes, verified-prefix resume) |
+| `store_dl/gog/` | GOG engine (gen1 range-GETs + gen2 chunked galaxy builds, multi-mirror CDN pool) |
+| `store_dl/epic/` | Epic engine (per-(file, part) fetching, streamed writes, selective verified resume) |
 | `store_dl/amazon.rs` | Amazon engine (whole-file streaming) |
 | `store_dl/*/jni.rs` | JNI entry points called from Kotlin |
 
@@ -65,8 +65,10 @@ on exFAT/FUSE SD cards forces the filesystem to zero-fill the gap, which wedges 
 - **GOG** (`store_dl/gog/engine.rs`): chunks inflate into an in-memory buffer first
   (MD5-verified), then only *verified* chunks enter the file's `OrderedDrain`
   (`store_dl/ordered_drain.rs`) — the shared component implementing the Steam model
-  (pending BTreeMap + cursor + coalesced 16 MiB batches). The final file opens lazily on the
-  first drained write. gen1 (range-GET) files stream sequentially by construction.
+  (pending BTreeMap + cursor + coalesced 16 MiB batches); on a resumed run, chunks that
+  re-hashed intact enter as **Verified markers** instead of data (see §4). The final file
+  opens lazily on the first drained write. gen1 (range-GET) files stream sequentially by
+  construction.
 - **Epic** (`store_dl/epic/driver.rs`): the fetch unit is one **(file, part) job** — a chunk
   shared by several files is fetched once *per consuming file*, never deduplicated and never
   cached, so every pending file is a fully self-contained download unit (file-granular
@@ -97,11 +99,18 @@ spread load, scaled by distinct CDN host count for GOG/Epic.
   disk keyed by the assigned-server-set hash, refreshed when the cache is older than 6 h,
   the server set changes, or a cached winner was `mark_bad`'d (a host that stalls/errors
   repeatedly mid-download is recorded and the next run re-probes immediately instead of
-  waiting out the TTL). Fetch failures rotate to the next probed host.
+  waiting out the TTL). Fetch failures rotate to the next probed host. The probe spawns
+  lazily on the **first downloaded (non-verifying) byte** — never during prep or the verify
+  sweep, which can take minutes before any fetching starts and must not burn the probe
+  deadline — and is congestion-guarded (skipped while measured throughput is already
+  healthy).
 - **Epic**: the manifest API returns multiple CDN base URLs (`cdn_prefixes`); they become
   distinct fetch-core host keys with per-host caps and rotation on failure.
-- **GOG**: one CDN host gets the whole worker ceiling (`per_host_cap_for` scales by host
-  count).
+- **GOG**: the ranked mirror list from the Kotlin secure_link pass (`cdnBases`) becomes the
+  fetch pool: `mirror_bases_and_hosts` dedupes by host key and keeps bases/hosts
+  index-aligned — the fetch-core contract is `urls[host_idx] ↔ hosts[host_idx]`, so a
+  misaligned or joined host string silently collapses the pool to one fake host.
+  `per_host_cap_for` scales caps by distinct host count.
 - **Amazon**: signed per-file download URLs from the Amazon API.
 
 ## 4. Verify & update flow
@@ -117,24 +126,33 @@ spread load, scaled by distinct CDN host count for GOG/Epic.
   finalize, `assert_pipeline_drained` requires every file's cursor == size and pending empty;
   a violation fails the run as *not* resume-trust-safe, so the retry re-verifies everything.
   Resume across runs uses persisted per-depot journal/progress state; a clean pause marker
-  lets a resumed run trust already-written prefixes.
+  lets a resumed run trust already-written prefixes. **GOG and Epic share this exact
+  Verified-marker model** via the shared `OrderedDrain` (below).
 - **Manifest & key freshness**: cached manifests are validated against current metadata and
   self-healed (deleted + refetched) when stale or poisoned. Depot keys are requested via the
   depot's **owning app** (shared redist depots like 228990 belong to a different app); shared
   depots with no manifest gid for the branch are skipped by design.
-- **GOG**: completed+MD5-verified files are skipped wholesale. Within a file, a **cancelled**
-  run keeps its partial final file; the next run re-reads it chunk-by-chunk, hashing each
-  chunk's on-disk bytes against the manifest's decompressed MD5 (`verified_prefix`), keeps
-  the longest fully verified prefix, truncates any tail past it, and re-fetches only the
-  remaining chunks. A file whose on-disk bytes verify *whole* counts as complete without any
-  fetching. No trust is involved — every kept byte re-hashes against the manifest. An
+- **GOG**: completed+MD5-verified files are skipped wholesale — `file_verified` **requires**
+  a manifest MD5 (deliberately stricter than Java's size-only fallback): a size-only pass
+  combined with the old Kotlin `setLength` pre-allocation let zero-filled files pass verify
+  forever (the pre-allocation corruption hole). MD5-less manifest files fall through to the
+  chunk sweep. Within a file, a **cancelled** run keeps its partial final file; the next run
+  hashes **every** chunk's on-disk bytes against the manifest's decompressed MD5 into a
+  per-chunk bitmap (`verified_chunks`), queues verified chunks as drain markers, and
+  re-fetches **only mismatched/missing chunks** — a single corrupt mid-file chunk costs one
+  chunk, not the whole suffix. The partial file is kept **whole** during the run (no prefix
+  truncation at open, which would destroy verified chunks past a gap); garbage past the
+  manifest size is truncated at finalize. A file whose on-disk bytes verify *whole* counts
+  as complete without any fetching. No trust is involved — every kept byte re-hashes. An
   **error** run deletes the files it touched.
 - **Epic**: completed files are skipped by the delta/verify pass (whole-file size + SHA-1).
-  Within a file the same verified-prefix resume applies to the partial final file, with one
-  caveat: a part can only re-verify when it covers its **whole chunk** (`offset == 0`),
-  because the manifest's SHA-1 spans the entire decompressed chunk — a slice can never match
-  it, so the prefix stops at the first slice part (interior parts of large files are almost
-  always whole-chunk, so nearly all progress keeps).
+  Within a file the same selective model applies per **part** (`verified_parts` bitmap +
+  drain markers on the kept whole file, tail truncated at completion): a part can only
+  re-verify when it covers its **whole chunk** (`offset == 0`, ≤ 64 MiB), because the
+  manifest's SHA-1 spans the entire decompressed chunk — a **slice part stays unverifiable**
+  and is re-fetched, but no longer forfeits verification of later parts (interior parts of
+  large files are almost always whole-chunk, so nearly all progress keeps). Zero-length
+  parts verify trivially.
 - **Amazon**: resume-skip on `st_size == manifest size` (no hash on skip, matching the Java
   behaviour); a partial file deletes on any failed/cancelled attempt (no within-file
   resume).
@@ -142,8 +160,8 @@ spread load, scaled by distinct CDN host count for GOG/Epic.
 Every verify path above reports the file it is re-hashing: Steam fires `DepotWriteOptions.status`
 once per file in the verify-skip path, GOG fires `GogEvents::on_file_verify` per file in its
 verify sweep, and Epic gets a `verify_status` closure in `run_plan`. All three surface to the
-app screen's status row as "Verifying <path>" via the JNI listeners' `onVerifying(String)`
-callback, cleared on the first real download progress.
+app screen's status row as "Verifying Files (k/N)" via the JNI listeners'
+`onVerifying(String, int, int)` callback, cleared on the first real download progress.
 
 ## 5. Error handling
 
@@ -151,7 +169,7 @@ callback, cleared on the first real download progress.
   out-of-order arrival — the run retries/rotates) vs `Fatal` (disk/FS errors, corruption
   invariants — the run stops; a disk error is not CDN-curable). Run end always reports the
   first fatal error; an ERROR run deletes the unfinished files it touched, a CANCELLED run
-  keeps them for the verified-prefix resume (see *Verify & update*).
+  keeps them for the selective verified resume (see *Verify & update*).
 - **Stall watchdog** (Steam): if `bytes_written` stops advancing while the download isn't
   done, the engine dumps a `write-stall depot=… lock=HELD` diagnostic line and aborts the
   run with a deliberate **timeout** failure — designed to be classified transient so the
