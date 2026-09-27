@@ -2,9 +2,12 @@
 //! (`runGen2` base loop, `doInstallDlc` loop, or one `assembleDependencyInstaller`).
 //!
 //! What this mirrors, and where (see `docs/RUST_GOG_PARITY.md`):
-//! - resume/skip: [`file_verified`] = `GogDownloadManager.fileVerified` (exists, non-empty, size
-//!   when known, MD5 when known) — a verified file is reported as "Verified…" progress with NO
-//!   bytes credited, exactly like the Java task;
+//! - resume/skip: [`file_verified`] ≈ `GogDownloadManager.fileVerified` (exists, non-empty, size
+//!   when known) but STRICTER: the manifest MD5 is mandatory — Java's size-only pass for
+//!   MD5-less files let pre-allocated (set_len'd) zero files pose as complete forever.
+//!   MD5-less files fall through to the chunk-level [`verified_prefix`] sweep instead.
+//!   A verified file is reported as "Verified…" progress with NO bytes credited, exactly like
+//!   the Java task;
 //! - per chunk: compressed size → compressed MD5 → inflate (stored fallback) → decompressed size →
 //!   decompressed MD5 (`fetchChunkVerified`); a mismatch is a retryable failure (Java: hard fail
 //!   ≤3 with backoff; the core: ≤5 attempts with backoff);
@@ -42,7 +45,24 @@ pub const USER_AGENT: &str = "GOG Galaxy";
 /// Floor for the per-host cap (the core's default); a single-host store gets the whole ceiling.
 pub const PER_HOST_CAP_FLOOR: usize = 6;
 
-/// `max(6, ceil(max_workers / distinct_hosts))` — GOG's one CDN host gets the whole ceiling.
+/// Distinct mirror bases (input order = Java's ranking, best first), deduped by host key,
+/// paired with their host keys. Contract with the fetch core: `hosts[i]` is the host key of
+/// `bases[i]`, and every chunk's FetchItem carries one URL per base in the same order, so
+/// `urls[host_idx]` always matches `hosts[host_idx]`. Passing anything else (e.g. a single
+/// joined string) silently collapses the pool to one fake host.
+fn mirror_bases_and_hosts(cdn_bases: &[String]) -> (Vec<String>, Vec<String>) {
+    let mut seen: HashSet<String> = HashSet::new();
+    let bases: Vec<String> = cdn_bases
+        .iter()
+        .filter(|b| seen.insert(host_key(b)))
+        .cloned()
+        .collect();
+    let hosts: Vec<String> = bases.iter().map(|b| host_key(b)).collect();
+    (bases, hosts)
+}
+
+/// `max(6, ceil(max_workers / distinct_hosts))` — with one CDN host that host gets the whole
+/// ceiling; multiple mirrors split it evenly (floor 6 keeps small pools useful).
 pub fn per_host_cap_for(max_workers: usize, distinct_hosts: usize) -> usize {
     let hosts = distinct_hosts.max(1);
     let workers = max_workers.max(1);
@@ -77,9 +97,12 @@ pub struct GogRequest {
     /// gen2: inflated depot-manifest JSON strings, in the order Java fetched them (already filtered
     /// by base-product / DLC-product and language in Java). gen1: the inflated build manifest.
     pub depot_manifests: Vec<String>,
-    /// gen2: resolved CDN base from `parseCdnUrl` (secure-link query string kept), or the
-    /// unauthenticated dependency store base. gen1: unused (file URLs live in the manifest).
-    pub cdn_base: String,
+    /// gen2: resolved CDN bases from the secure-link response, best-ranked first (secure-link
+    /// query strings kept), or the unauthenticated dependency store base. Every chunk is
+    /// fetched with one candidate URL per base, so the fetch core spreads load across the
+    /// mirrors and prefers the faster one (Steam-style multi-host pool).
+    /// gen1: unused (file URLs live in the manifest).
+    pub cdn_bases: Vec<String>,
     pub install_dir: String,
     /// Files already completed by an earlier run of this same download (secure-link refresh
     /// re-run): counted as done WITHOUT re-hashing and WITHOUT a progress event.
@@ -141,8 +164,16 @@ pub struct GogRunResult {
     pub files_total: u32,
 }
 
-/// `GogDownloadManager.fileVerified`: true only if the file exists, is non-empty, matches the
-/// expected size when known and the expected MD5 when known.
+/// `GogDownloadManager.fileVerified`, tightened: true only if the file exists, is non-empty,
+/// matches the expected size when known AND the expected MD5 — which the manifest MUST carry.
+///
+/// Deliberately stricter than Java's version: Java passed files whose manifest entry has no
+/// MD5 on a size-only check. Combined with the old pre-allocation (`setLength` made every file
+/// exactly the expected size up front), that accepted zero-filled/partial files as complete —
+/// corrupt forever, and every later verify run "passed" them again. Returning false here is
+/// cheap and safe: the caller falls through to [`verified_prefix`], which re-hashes every
+/// chunk against the manifest's chunk MD5s (same I/O as an MD5 file read) and either proves
+/// the file intact via the resume-complete gate or re-fetches from the first bad chunk.
 pub fn file_verified(path: &Path, expected_size: u64, expected_md5: &str) -> bool {
     let Ok(meta) = fs::metadata(path) else {
         return false;
@@ -153,13 +184,14 @@ pub fn file_verified(path: &Path, expected_size: u64, expected_md5: &str) -> boo
     if expected_size > 0 && meta.len() != expected_size {
         return false;
     }
-    if !expected_md5.is_empty() {
-        return match md5_hex_file(path) {
-            Some(actual) => actual.eq_ignore_ascii_case(expected_md5),
-            None => false,
-        };
+    if expected_md5.is_empty() {
+        // No manifest MD5 → size proves nothing (see above); let the chunk-level sweep decide.
+        return false;
     }
-    true
+    match md5_hex_file(path) {
+        Some(actual) => actual.eq_ignore_ascii_case(expected_md5),
+        None => false,
+    }
 }
 
 /// Cancelled-run resume: read back an unfinished file AT ITS FINAL PATH and find its longest
@@ -785,11 +817,14 @@ fn run_gen2(req: &GogRequest, cancel: &AtomicBool, events: &dyn GogEvents) -> Go
     let chunk_count: usize = files.iter().map(|f| f.chunks.len()).sum();
     let max_workers = req.max_workers.max(1);
     let process_workers = req.process_workers.max(1);
-    let host = host_key(&req.cdn_base);
-    let per_host_cap = per_host_cap_for(max_workers, 1);
+    // Distinct mirror bases + host keys (order = Java's ranking, best first) — see
+    // mirror_bases_and_hosts for the fetch-core alignment contract.
+    let (bases, hosts) = mirror_bases_and_hosts(&req.cdn_bases);
+    let host = hosts.join(",");
+    let per_host_cap = per_host_cap_for(max_workers, hosts.len());
 
     events.on_log(&format!(
-        "engine=rust kind=gen2 mode=stream label={} files={} chunks={} planned_bytes={} skip_paths={} workers={} per_host_cap={} process_workers={} sort_largest_first={} host={}",
+        "engine=rust kind=gen2 mode=stream label={} files={} chunks={} planned_bytes={} skip_paths={} workers={} per_host_cap={} process_workers={} sort_largest_first={} hosts={}",
         req.label,
         files_total,
         chunk_count,
@@ -958,10 +993,16 @@ fn run_gen2(req: &GogRequest, cancel: &AtomicBool, events: &dyn GogEvents) -> Go
         resumed_chunks += resume_chunks as u64;
         resumed_bytes += resume_bytes;
         for (chunk_idx, chunk) in file.chunks.iter().enumerate().skip(resume_chunks) {
-            let url = build_chunk_url(&req.cdn_base, &build_cdn_path(&chunk.hash));
+            let chunk_path = build_cdn_path(&chunk.hash);
+            // One candidate URL per mirror, best-ranked first — the fetch core rotates
+            // across hosts and fails over on errors.
+            let urls: Vec<String> = bases
+                .iter()
+                .map(|base| build_chunk_url(base, &chunk_path))
+                .collect();
             items.push(FetchItem {
                 id: table.len() as u64,
-                urls: vec![url],
+                urls,
                 reserve: chunk.compressed_size,
                 range: None,
             });
@@ -1003,10 +1044,9 @@ fn run_gen2(req: &GogRequest, cancel: &AtomicBool, events: &dyn GogEvents) -> Go
         events,
         speed: Mutex::new(SpeedSampler::new()),
     };
-    let hosts = vec![host];
     let opts = FetchOptions {
         max_workers,
-        // One CDN host gets the whole ceiling (Java has no per-host cap either).
+        // Split evenly across the mirror hosts (floor 6 per host).
         per_host_cap,
         timeout: CHUNK_TIMEOUT,
         headers: vec![("User-Agent".to_string(), USER_AGENT.to_string())],
@@ -1399,18 +1439,23 @@ mod tests {
     }
 
     #[test]
-    fn file_verified_mirrors_java() {
+    fn file_verified_requires_manifest_md5() {
         let dir = temp_dir("verify");
         let path = dir.join("f.bin");
         assert!(!file_verified(&path, 3, ""), "missing → false");
         File::create(&path).unwrap();
         assert!(!file_verified(&path, 0, ""), "empty → false even when nothing is known");
         fs::write(&path, b"abc").unwrap();
-        assert!(file_verified(&path, 0, ""), "exists+non-empty, nothing known → true");
-        assert!(file_verified(&path, 3, ""));
+        // No manifest MD5 → always false, even at the exact expected size: a size-only pass
+        // is what let pre-allocated (set_len'd) zero files pose as complete. The caller
+        // falls through to the chunk-level verified_prefix sweep instead.
+        assert!(!file_verified(&path, 0, ""), "exists, nothing known → false (chunk sweep decides)");
+        assert!(!file_verified(&path, 3, ""), "size match without md5 → false");
         assert!(!file_verified(&path, 4, ""));
         assert!(file_verified(&path, 3, "900150983CD24FB0D6963F7D28E17F72"), "case-insensitive md5");
         assert!(!file_verified(&path, 3, "00000000000000000000000000000000"));
+        // Size mismatch beats a correct MD5 (truncated/padded file).
+        assert!(!file_verified(&path, 4, "900150983CD24FB0D6963F7D28E17F72"));
         assert!(!file_verified(&dir, 0, ""), "a directory is never verified");
         let _ = fs::remove_dir_all(&dir);
     }
@@ -1578,7 +1623,7 @@ mod tests {
         );
         let req = GogRequest {
             depot_manifests: vec![manifest],
-            cdn_base: "https://example.invalid/store?tok=1".to_string(),
+            cdn_bases: vec!["https://example.invalid/store?tok=1".to_string()],
             install_dir: dir.to_string_lossy().into_owned(),
             skip_paths: vec!["skipped.bin".to_string()],
             max_workers: 4,
@@ -1608,6 +1653,32 @@ mod tests {
         assert_eq!(per_host_cap_for(8, 1), 8);
         assert_eq!(per_host_cap_for(4, 1), 6, "floor is the core default");
         assert_eq!(per_host_cap_for(0, 0), 6);
+    }
+
+    #[test]
+    fn mirror_bases_and_hosts_aligns_and_dedupes() {
+        // Two distinct mirrors → two hosts, order = ranking, bases/host keys index-aligned
+        // (the fetch core maps urls[host_idx] against hosts[host_idx]).
+        let (bases, hosts) = mirror_bases_and_hosts(&[
+            "https://gog-cdn.gcdn.co/store?tok=a".to_string(),
+            "https://gog-cdn-fastly.gog.com/store?tok=b".to_string(),
+        ]);
+        assert_eq!(hosts.len(), 2);
+        assert_eq!(hosts[0], "https://gog-cdn.gcdn.co");
+        assert_eq!(hosts[1], "https://gog-cdn-fastly.gog.com");
+        assert_eq!(bases.len(), hosts.len(), "urls are built per base, one per host");
+
+        // Two URLs on the SAME host dedupe to one host (the first wins), so the pool can
+        // never silently collapse into a fake joined host.
+        let (bases, hosts) = mirror_bases_and_hosts(&[
+            "https://cdn.gog.com/a?tok=1".to_string(),
+            "https://cdn.gog.com/b?tok=2".to_string(),
+        ]);
+        assert_eq!(hosts, vec!["https://cdn.gog.com".to_string()]);
+        assert_eq!(bases.len(), 1);
+
+        // Empty input → empty pool (the JNI layer rejects gen2 without a base).
+        assert!(mirror_bases_and_hosts(&[]).0.is_empty());
     }
 
     /// Stream mode: zlib chunk split into pieces (with a poisoned first attempt restarting at
@@ -1787,7 +1858,7 @@ mod tests {
         let manifest = r#"{"depot":{"items":[{"path":"a.bin","chunks":[{"compressedMd5":"ab","size":4}]}]}}"#;
         let req = GogRequest {
             depot_manifests: vec![manifest.to_string()],
-            cdn_base: "https://example.invalid/store".to_string(),
+            cdn_bases: vec!["https://example.invalid/store".to_string()],
             install_dir: dir.to_string_lossy().into_owned(),
             max_workers: 1,
             process_workers: 1,
