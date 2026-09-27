@@ -297,6 +297,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("OPENSSL_CONF", rootDir.getPath() + "/usr/etc/tls/openssl.cnf");
         envVars.put("SSL_CERT_FILE", rootDir.getPath() + "/usr/etc/tls/cert.pem");
         envVars.put("SSL_CERT_DIR", rootDir.getPath() + "/usr/etc/tls/certs");
+        // Wine's crypt32 imports this bundle into the Windows ROOT certificate store. Without it
+        // the store only holds Wine's built-in Microsoft roots: Android 14+ moved the system CAs
+        // to an APEX path Wine does not scan, so TLS verification fails for anything that trusts
+        // via the Windows store (e.g. the EOS SDK's websockets, winhttp/wininet callers).
+        envVars.put("WINE_ADDITIONAL_CERTS_DIR", rootDir.getPath() + "/usr/etc/tls/cert.pem");
         envVars.put("WINE_X11FORCEGLX", "1");
         envVars.put("WINE_GST_NO_GL", "1");
         envVars.put("SteamGameId", "0");
