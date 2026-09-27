@@ -941,7 +941,10 @@ class GOGDownloadManager @Inject constructor(
 
         for (product in orderedProducts) {
             val manifests = rawDepotJsonByProduct.getValue(product).toTypedArray()
-            var cdnBase = productUrlMap.getValue(product).first()
+            // All ranked mirrors, best first: the engine fetches every chunk with one
+            // candidate URL per mirror, so the fetch core spreads load across hosts and
+            // prefers the faster one (a HEAD-probe winner alone can be the slow CDN).
+            var cdnBases = productUrlMap.getValue(product)
             var refreshesLeft = 3
 
             while (true) {
@@ -1027,7 +1030,7 @@ class GOGDownloadManager @Inject constructor(
                 val handle = GameDownloadService.downloadGogChunks(
                     kind = NativeGogDownload.KIND_GEN2_CHUNKS,
                     depotManifests = manifests,
-                    cdnBase = cdnBase,
+                    cdnBases = cdnBases.toTypedArray(),
                     installDir = installDir.absolutePath,
                     skipPaths = donePaths.toTypedArray(),
                     // Adaptive-window ceiling (ramps up only while the link delivers).
@@ -1069,8 +1072,8 @@ class GOGDownloadManager @Inject constructor(
                             linksResult.exceptionOrNull() ?: Exception("Failed to refresh secure link"),
                         )
                     }
-                    cdnBase = CdnRankingUtils.rankBaseUrlsByHeadProbe(urls, Net.http, "GOG Galaxy").first()
-                    productUrlMap[product] = listOf(cdnBase)
+                    cdnBases = CdnRankingUtils.rankBaseUrlsByHeadProbe(urls, Net.http, "GOG Galaxy")
+                    productUrlMap[product] = cdnBases
                     continue
                 }
                 return@withContext Result.failure(

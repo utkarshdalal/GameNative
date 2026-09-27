@@ -101,7 +101,7 @@ object NativeGogDownload {
     fun start(
         kind: Int,
         depotManifests: Array<String>,
-        cdnBase: String,
+        cdnBases: Array<String>,
         installDir: String,
         skipPaths: Array<String>,
         caBundlePath: String,
@@ -114,7 +114,7 @@ object NativeGogDownload {
         if (!isAvailable()) return 0L
         return try {
             nativeStart(
-                kind, depotManifests, cdnBase, installDir, skipPaths, caBundlePath,
+                kind, depotManifests, cdnBases, installDir, skipPaths, caBundlePath,
                 maxWorkers, processWorkers, sortLargestFirst, label,
                 GameDownloadService.SHOW_PIPELINE_LOGS, listener,
             )
@@ -145,7 +145,7 @@ object NativeGogDownload {
     private external fun nativeStart(
         kind: Int,
         depotManifests: Array<String>,
-        cdnBase: String,
+        cdnBases: Array<String>,
         installDir: String,
         skipPaths: Array<String>,
         caBundlePath: String,

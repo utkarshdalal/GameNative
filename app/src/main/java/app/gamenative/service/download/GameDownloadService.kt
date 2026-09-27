@@ -596,7 +596,7 @@ object GameDownloadService {
     fun downloadGogChunks(
         kind: Int,
         depotManifests: Array<String>,
-        cdnBase: String,
+        cdnBases: Array<String>,
         installDir: String,
         skipPaths: Array<String>,
         maxWorkers: Int,
@@ -605,7 +605,7 @@ object GameDownloadService {
         label: String,
         listener: NativeGogDownloadListener,
     ): Long = NativeGogDownload.start(
-        kind, depotManifests, cdnBase, installDir, skipPaths, "",
+        kind, depotManifests, cdnBases, installDir, skipPaths, "",
         maxWorkers, processWorkers, sortLargestFirst, label, listener,
     )
 
