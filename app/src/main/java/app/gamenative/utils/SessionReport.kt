@@ -16,6 +16,7 @@ import app.gamenative.PrefManager
 import app.gamenative.filedetect.GameFileDetection
 import com.winlator.container.Container
 import java.io.File
+import java.security.MessageDigest
 import org.json.JSONObject
 import com.posthog.PostHog
 import com.winlator.core.GPUHelper
@@ -130,6 +131,30 @@ object SessionReport {
     }
 
     private fun appliedConfigFile(container: Container) = File(container.rootDir, "applied_config.json")
+
+    fun configHash(container: Container): String = try {
+        val snapshot = JSONObject(container.containerJson)
+        CONFIG_DIFF_IGNORED.forEach { snapshot.remove(it) }
+        MessageDigest.getInstance("SHA-256").digest(snapshot.toString().toByteArray())
+            .take(8).joinToString("") { "%02x".format(it) }
+    } catch (e: Exception) {
+        ""
+    }
+
+    fun recordRun(container: Container, properties: Map<String, Any>) {
+        try {
+            val dir = File(container.rootDir, ".gamenative/runs").also { it.mkdirs() }
+            val file = File(dir, "${System.currentTimeMillis()}.json")
+            val tmp = File(dir, "${file.name}.tmp")
+            tmp.writeText(JSONObject(properties - "container_config").toString())
+            if (!tmp.renameTo(file)) tmp.delete()
+            dir.listFiles { f -> f.name.endsWith(".json") }?.sortedBy { it.name }?.dropLast(MAX_RUN_FILES)?.forEach { it.delete() }
+        } catch (e: Exception) {
+            Timber.w(e, "SessionReport: record run failed")
+        }
+    }
+
+    private const val MAX_RUN_FILES = 30
 
     fun configProperties(container: Container): Map<String, Any> = buildMap {
         try {
