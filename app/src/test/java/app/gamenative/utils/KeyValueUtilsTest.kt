@@ -1084,7 +1084,6 @@ class KeyValueUtilsTest {
         assertTrue(app.isVrOnly)
         assertFalse(app.isVrSupported)
         assertTrue(app.isVrGame)
-        assertEquals(CURRENT_VR_CATEGORY_PARSE_VERSION, app.vrCategoryParseVersion)
     }
 
     @Test
@@ -1136,7 +1135,6 @@ class KeyValueUtilsTest {
         assertFalse(app.isVrOnly)
         assertFalse(app.isVrSupported)
         assertFalse(app.isVrGame)
-        assertEquals(CURRENT_VR_CATEGORY_PARSE_VERSION, app.vrCategoryParseVersion)
     }
 
     @Test

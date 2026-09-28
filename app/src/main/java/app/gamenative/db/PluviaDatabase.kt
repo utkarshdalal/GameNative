@@ -93,7 +93,7 @@ const val DATABASE_NAME = "pluvia.db"
         AutoMigration(from = 21, to = 22), // Added GOG vertical_cover_url column
         AutoMigration(from = 22, to = 23), // Added local library play history table
         AutoMigration(from = 25, to = 26), // Added GOG hidden column
-        AutoMigration(from = 27, to = 28), // Added is_vr_only, is_vr_supported, vr_category_parse_version to steam_app
+        AutoMigration(from = 27, to = 28), // Added is_vr_only, is_vr_supported to steam_app
     ]
 )
 @TypeConverters(

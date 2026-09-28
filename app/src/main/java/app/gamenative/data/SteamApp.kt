@@ -157,9 +157,6 @@ data class SteamApp(
     val isVrOnly: Boolean = false,
     @ColumnInfo(name = "is_vr_supported", defaultValue = "0")
     val isVrSupported: Boolean = false,
-    // Lets cached apps be reprocessed when CURRENT_VR_CATEGORY_PARSE_VERSION is bumped.
-    @ColumnInfo(name = "vr_category_parse_version", defaultValue = "0")
-    val vrCategoryParseVersion: Int = 0,
 ) {
     val isVrGame: Boolean
         get() = isVrOnly || isVrSupported

@@ -115,6 +115,8 @@ fun LibraryOptionsPanel(
     modifier: Modifier = Modifier,
 ) {
     val firstItemFocusRequester = remember { FocusRequester() }
+    val context = LocalContext.current
+    val isHeadset = remember { app.gamenative.MainActivity.isHeadset(context) }
 
     BackHandler(enabled = isOpen) {
         onDismiss()
@@ -238,11 +240,12 @@ fun LibraryOptionsPanel(
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             AppFilter.entries.forEach { appFilter ->
-                                if (appFilter in listOf(
+                                if (appFilter in listOfNotNull(
                                         AppFilter.GAME,
                                         AppFilter.APPLICATION,
                                         AppFilter.TOOL,
                                         AppFilter.DEMO,
+                                        AppFilter.VR.takeIf { isHeadset },
                                     )
                                 ) {
                                     OptionListItem(
@@ -266,26 +269,18 @@ fun LibraryOptionsPanel(
                                 .padding(horizontal = 8.dp),
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
-                            val context = LocalContext.current
-                            val statusFilters = remember {
-                                buildList {
-                                    addAll(
-                                        listOf(
-                                            AppFilter.INSTALLED,
-                                            AppFilter.SHARED,
-                                            AppFilter.COMPATIBLE,
-                                            AppFilter.EXPIRED,
-                                            AppFilter.PLAYABLE,
-                                            AppFilter.FIVE_STAR,
-                                            AppFilter.FIVE_STAR_GPU,
-                                            AppFilter.PROVEN_GPU,
-                                        ),
-                                    )
-                                    if (app.gamenative.MainActivity.isHeadset(context)) add(AppFilter.VR)
-                                }
-                            }
                             AppFilter.entries.forEach { appFilter ->
-                                if (appFilter in statusFilters) {
+                                if (appFilter in listOf(
+                                        AppFilter.INSTALLED,
+                                        AppFilter.SHARED,
+                                        AppFilter.COMPATIBLE,
+                                        AppFilter.EXPIRED,
+                                        AppFilter.PLAYABLE,
+                                        AppFilter.FIVE_STAR,
+                                        AppFilter.FIVE_STAR_GPU,
+                                        AppFilter.PROVEN_GPU,
+                                    )
+                                ) {
                                     OptionListItem(
                                         text = stringResource(appFilter.displayTextRes),
                                         selected = selectedFilters.contains(appFilter),

@@ -61,15 +61,14 @@ interface SteamAppDao {
     @Update
     suspend fun update(app: SteamApp)
 
-    // observe count + VR flags — triggers re-load without pulling all blobs into one CursorWindow
+    // observe change count — triggers re-load without pulling all blobs into one CursorWindow
     @Query(
-        "SELECT COUNT(*) || ':' || COALESCE(SUM(app.is_vr_only), 0) || ':' || " +
-            "COALESCE(SUM(app.is_vr_supported), 0) FROM steam_app AS app " + OWNED_APPS_WHERE,
+        "SELECT COUNT(*) FROM steam_app AS app " + OWNED_APPS_WHERE,
     )
-    fun _observeOwnedAppsSignature(
+    fun _observeOwnedAppCount(
         invalidPkgId: Int = INVALID_PKG_ID,
         includeExpired: Int = 0,
-    ): Flow<String>
+    ): Flow<Int>
 
     // paged data load — each page fits comfortably in a CursorWindow
     @Query(
@@ -119,8 +118,8 @@ interface SteamAppDao {
         includeExpired: Boolean = false,
     ): Flow<List<SteamApp>> {
         val includeExpiredFlag = if (includeExpired) 1 else 0
-        return _observeOwnedAppsSignature(invalidPkgId, includeExpiredFlag)
-            .distinctUntilChanged() // skip reload when count and VR flags unchanged
+        return _observeOwnedAppCount(invalidPkgId, includeExpiredFlag)
+            .distinctUntilChanged() // skip reload when count unchanged
             .flatMapLatest { // cancel stale reloads during rapid PICS inserts
                 flow { emit(_getAllOwnedAppsPaged(invalidPkgId, includeExpiredFlag)) }
             }
@@ -205,17 +204,4 @@ interface SteamAppDao {
 
     @Query("SELECT * FROM steam_app WHERE id IN (:appIds)")
     suspend fun findSteamAppWithAppIds(appIds: List<Int>): List<SteamApp>
-
-    // Leaves depots and the change number untouched.
-    @Query(
-        "UPDATE steam_app SET is_vr_only = :isVrOnly, is_vr_supported = :isVrSupported, " +
-            "vr_category_parse_version = :version WHERE id = :appId",
-    )
-    suspend fun updateVrClassification(appId: Int, isVrOnly: Boolean, isVrSupported: Boolean, version: Int)
-
-    @Query("SELECT id FROM steam_app WHERE vr_category_parse_version < :currentVersion AND package_id != :invalidPkgId")
-    suspend fun getAppIdsWithOutdatedVrCategoryParseVersion(
-        currentVersion: Int,
-        invalidPkgId: Int = INVALID_PKG_ID,
-    ): List<Int>
 }
