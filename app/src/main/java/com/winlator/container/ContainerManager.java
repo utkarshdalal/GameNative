@@ -128,10 +128,16 @@ public class ContainerManager {
             boolean isMainWineVersion = !data.has("wineVersion") || WineInfo.isMainWineVersion(data.getString("wineVersion"));
             if (!isMainWineVersion) container.setWineVersion(data.getString("wineVersion"));
 
-            if (!extractContainerPatternFile(container.getWineVersion(), contentsManager, containerDir, null)) {
-                Log.w("Container Manager", "Failed to extract container pattern, deleting container directory...");
-                FileUtils.delete(containerDir);
-                return null;
+            boolean thinAttempted = ContainerOverlay.isEligible(container) && ContainerOverlay.isRequested(container);
+            boolean thin = thinAttempted && createThinPrefix(container, contentsManager);
+            if (!thin) {
+                if (!ContainerOverlay.isEligible(container)) container.setOverlay(false);
+                String patternVersion = thinAttempted ? WineInfo.MAIN_WINE_VERSION.identifier() : container.getWineVersion();
+                if (!extractContainerPatternFile(patternVersion, contentsManager, containerDir, null)) {
+                    Log.w("Container Manager", "Failed to extract container pattern, deleting container directory...");
+                    FileUtils.delete(containerDir);
+                    return null;
+                }
             }
 
             container.saveData();
@@ -142,6 +148,25 @@ public class ContainerManager {
             Log.e("ContainerManager", "Failed to create container: " + e);
         }
         return null;
+    }
+
+    private boolean createThinPrefix(Container container, ContentsManager contentsManager) {
+        File wineDir = new File(container.getRootDir(), ".wine");
+        try {
+            contentsManager.syncContents();
+            File baseWine = BasePrefix.ensure(context, contentsManager, container.getWineVersion());
+            if (baseWine != null && ContainerOverlay.createThinPrefix(baseWine, wineDir)) {
+                container.setBasePrefix(ContainerOverlay.canonicalHostPath(baseWine));
+                container.setOverlay(true);
+                return true;
+            }
+        }
+        catch (Exception e) {
+            Log.w("ContainerManager", "Thin prefix creation failed: " + e);
+        }
+        Log.w("ContainerManager", "Falling back to a full prefix for container " + container.id);
+        FileUtils.delete(wineDir);
+        return false;
     }
 
     private void duplicateContainer(Container srcContainer) {
@@ -180,6 +205,11 @@ public class ContainerManager {
         dstContainer.setDesktopTheme(srcContainer.getDesktopTheme());
         dstContainer.setRcfileId(srcContainer.getRCFileId());
         dstContainer.setWineVersion(srcContainer.getWineVersion());
+        dstContainer.setContainerVariant(srcContainer.getContainerVariant());
+        dstContainer.setOverlay(srcContainer.getOverlay());
+        dstContainer.setBasePrefix(srcContainer.getBasePrefix());
+        ContainerOverlay.copyTree(new File(srcContainer.getRootDir(), ".wine/" + ContainerOverlay.OVERLAY_DIR),
+                new File(dstDir, ".wine/" + ContainerOverlay.OVERLAY_DIR), true);
         dstContainer.saveData();
 
         containers.add(dstContainer);
@@ -240,26 +270,26 @@ public class ContainerManager {
      * @param destinationDir Directory where the prefix should be extracted
      * @return true if extraction succeeded, false otherwise
      */
-    private static boolean extractPrefixPack(String wineInstallPath, File destinationDir) {
+    private static boolean extractPrefixPack(String wineInstallPath, File destinationDir, OnExtractFileListener onExtractFileListener) {
         if (wineInstallPath == null || wineInstallPath.isEmpty()) {
             return false;
         }
 
         File tzstFile = new File(wineInstallPath, "prefixPack.tzst");
         if (tzstFile.exists()) {
-            return TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, tzstFile, destinationDir);
+            return TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, tzstFile, destinationDir, onExtractFileListener);
         }
 
         File txzFile = new File(wineInstallPath, "prefixPack.txz");
         if (txzFile.exists()) {
-            return TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, txzFile, destinationDir);
+            return TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, txzFile, destinationDir, onExtractFileListener);
         }
 
         Log.d("ContainerManager", "No prefixPack found, returning false");
         return false;
     }
 
-    private void deleteCommonDlls(String dstName,
+    private static void deleteCommonDlls(String dstName,
                                   JSONObject commonDlls,
                                   File containerDir) throws JSONException {
         // Get the list of DLL names for the given destination folder
@@ -281,7 +311,7 @@ public class ContainerManager {
         }
     }
 
-    private void extractCommonDlls(String srcName, String dstName, JSONObject commonDlls, File containerDir, OnExtractFileListener onExtractFileListener) throws JSONException {
+    private static void extractCommonDlls(Context context, String srcName, String dstName, JSONObject commonDlls, File containerDir, OnExtractFileListener onExtractFileListener) throws JSONException {
         File srcDir = new File(ImageFs.find(context).getRootDir(), "/opt/wine/lib/wine/"+srcName);
         JSONArray dlnames = commonDlls.getJSONArray(dstName);
 
@@ -292,11 +322,11 @@ public class ContainerManager {
                 dstFile = onExtractFileListener.onExtractFile(dstFile, 0);
                 if (dstFile == null) continue;
             }
-            FileUtils.link(new File(srcDir, dlname), dstFile);
+            FileUtils.copy(new File(srcDir, dlname), dstFile);
         }
     }
 
-    private void extractCommonDlls(WineInfo wineInfo, String srcName, String dstName, File containerDir, OnExtractFileListener onExtractFileListener) throws JSONException {
+    private static void extractCommonDlls(WineInfo wineInfo, String srcName, String dstName, File containerDir, OnExtractFileListener onExtractFileListener) throws JSONException {
         Log.d("Extraction", "extracting common dlls for bionic: " + srcName);
         File srcDir = new File(wineInfo.path + "/lib/wine/" + srcName);
 
@@ -313,8 +343,8 @@ public class ContainerManager {
                 dstFile = onExtractFileListener.onExtractFile(dstFile, 0);
                 if (dstFile == null) continue;
             }
-            Log.d("Extraction", "linking " + file + " to " + dstFile);
-            FileUtils.link(file, dstFile);
+            Log.d("Extraction", "copying " + file + " to " + dstFile);
+            FileUtils.copy(file, dstFile);
         }
     }
 
@@ -363,7 +393,20 @@ public class ContainerManager {
         }
     }
 
+    static boolean extractContainerPatternCommonCopy(Context context, File destinationDir, OnExtractFileListener onExtractFileListener) {
+        File componentFile = ContainerFilesDownloaderKt.ensureContainerFileAvailableBlocking(context, "container_pattern_common", null);
+        if (componentFile == null) {
+            return TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context, "container_pattern_common.tzst", destinationDir, onExtractFileListener);
+        }
+        return TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, componentFile, destinationDir, onExtractFileListener);
+    }
+
     public boolean extractContainerPatternFile(String wineVersion, ContentsManager contentsManager, File containerDir, OnExtractFileListener onExtractFileListener) {
+        return extractContainerPatternFile(context, wineVersion, contentsManager, containerDir, onExtractFileListener, null);
+    }
+
+    static boolean extractContainerPatternFile(Context context, String wineVersion, ContentsManager contentsManager, File containerDir, OnExtractFileListener onExtractFileListener, OnExtractFileListener onArchiveFileListener) {
+        OnExtractFileListener archiveListener = onArchiveFileListener != null ? onArchiveFileListener : onExtractFileListener;
         WineInfo wineInfo = WineInfo.fromIdentifier(context, contentsManager, wineVersion);
         if (WineInfo.isMainWineVersion(wineVersion)) {
             Log.d("Extraction", "extracting container_pattern_gamenative.tzst");
@@ -376,17 +419,17 @@ public class ContainerManager {
             boolean result;
             if (componentFile == null) {
                 Log.d("Extraction", "Using bundled asset for container_pattern_gamenative");
-                result = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.getAssets(), "container_pattern_gamenative.tzst", containerDir, onExtractFileListener);
+                result = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.getAssets(), "container_pattern_gamenative.tzst", containerDir, archiveListener);
             } else {
                 Log.d("Extraction", "Using downloaded file for container_pattern_gamenative: " + componentFile.getAbsolutePath());
-                result = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, componentFile, containerDir, onExtractFileListener);
+                result = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, componentFile, containerDir, archiveListener);
             }
 
             if (result) {
                 try {
                     JSONObject commonDlls = new JSONObject(FileUtils.readString(context, "common_dlls.json"));
-                    extractCommonDlls("x86_64-windows", "system32", commonDlls, containerDir, onExtractFileListener);
-                    extractCommonDlls("i386-windows", "syswow64", commonDlls, containerDir, onExtractFileListener);
+                    extractCommonDlls(context, "x86_64-windows", "system32", commonDlls, containerDir, onExtractFileListener);
+                    extractCommonDlls(context, "i386-windows", "syswow64", commonDlls, containerDir, onExtractFileListener);
                 }
                 catch (JSONException e) {
                     return false;
@@ -419,17 +462,17 @@ public class ContainerManager {
 
                 if (componentFile == null) {
                     Log.d("Extraction", "Using bundled asset for " + containerPatternId);
-                    result = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context, containerPattern, containerDir, onExtractFileListener);
+                    result = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context, containerPattern, containerDir, archiveListener);
                 } else {
                     Log.d("Extraction", "Using downloaded file for " + containerPatternId + ": " + componentFile.getAbsolutePath());
-                    result = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, componentFile, containerDir, onExtractFileListener);
+                    result = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, componentFile, containerDir, archiveListener);
                 }
             } catch (Exception e) {
                 Log.w("Extraction", "Failed to download/extract " + containerPatternId + ": " + e.getMessage() + ", trying prefix pack");
             }
 
             if (!result) {
-                result = extractPrefixPack(wineInfo.path, containerDir);
+                result = extractPrefixPack(wineInfo.path, containerDir, archiveListener);
             }
 
             if (result) {

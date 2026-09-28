@@ -158,8 +158,9 @@ import app.gamenative.utils.WineProcessSnapshotHelper
 import com.posthog.PostHog
 import com.winlator.alsaserver.ALSAClient
 import com.winlator.container.Container
-import com.winlator.container.ContainerDeduper
+import com.winlator.container.ContainerFiles
 import com.winlator.container.ContainerManager
+import com.winlator.container.ContainerOverlayMigrator
 import com.winlator.contents.AdrenotoolsManager
 import com.winlator.contents.ContentProfile
 import com.winlator.contents.ContentsManager
@@ -5343,6 +5344,8 @@ private suspend fun setupWineSystemFiles(
     val variantChanged = !markersMissing && container.containerVariant != appliedContainerVariant
     val wineVersionChanged = !markersMissing && container.wineVersion != appliedWineVersion
 
+    ContainerOverlayMigrator.migrateIfNeeded(context, contentsManager, container)
+
     if (firstBoot || imgVersionChanged || variantChanged || wineVersionChanged) {
         applyGeneralPatches(context, container, imageFs, xServerState.value.wineInfo, containerManager, onExtractFileListener)
         container.putExtra("appliedContainerVariant", container.containerVariant)
@@ -5355,12 +5358,6 @@ private suspend fun setupWineSystemFiles(
         container.putExtra("appliedContainerVariant", container.containerVariant)
         container.putExtra("appliedWineVersion", container.wineVersion)
         containerDataChanged = true
-    }
-
-    if (!ContainerDeduper.isDone(container)) {
-        val dedupe = ContainerDeduper.dedupe(context, contentsManager, container)
-        Timber.i("Container dedupe: $dedupe")
-        if (dedupe.completed) ContainerDeduper.markDone(container)
     }
 
     // Always refresh components files
@@ -5451,7 +5448,7 @@ private suspend fun setupWineSystemFiles(
     // non-bionic launches, and the native libsteamclient.so should not be
     // present at all unless bionic is on.
     if (!container.isLaunchBionicSteam) {
-        cleanupBionicSteamAssets(imageFs)
+        cleanupBionicSteamAssets(imageFs, container)
     }
 
     val desktopTheme = container.desktopTheme
@@ -5499,7 +5496,10 @@ private suspend fun applyGeneralPatches(
     Timber.i("Applying general patches")
     val rootDir = imageFs.getRootDir()
     val contentsManager = ContentsManager(context)
-    if (container.containerVariant.equals(Container.GLIBC)) {
+    if (container.isOverlay) {
+        Timber.i("Resetting overlay container from the base prefix for " + container.wineVersion)
+        ContainerOverlayMigrator.resetFromBase(context, contentsManager, container)
+    } else if (container.containerVariant.equals(Container.GLIBC)) {
         FileUtils.delete(File(rootDir, "/opt/apps"))
         val downloaded = File(imageFs.getFilesDir(), "imagefs_patches_gamenative.tzst")
         Timber.i("Extracting imagefs_patches_gamenative.tzst")
@@ -5528,7 +5528,9 @@ private suspend fun applyGeneralPatches(
         containerManager.extractContainerPatternCommon(rootDir, onExtractFileListener)
         Timber.i("Attempting to extract _container_pattern.tzst with wine version " + container.wineVersion)
     }
-    containerManager.extractContainerPatternFile(container.wineVersion, contentsManager, container.rootDir, onExtractFileListener)
+    if (!container.isOverlay) {
+        containerManager.extractContainerPatternFile(container.wineVersion, contentsManager, container.rootDir, onExtractFileListener)
+    }
     WineUtils.applySystemTweaks(context, wineInfo)
     container.putExtra("graphicsDriver", null)
     container.putExtra("desktopTheme", null)
@@ -5679,7 +5681,7 @@ private suspend fun extractDXWrapperFiles(
                 dxvkMinVersion
             }
             Timber.i("Extracting VKD3D DX version for dxwrapper: $dxvkVersionForVkd3d")
-            extractDXWrapperComponent(context, "dxvk-$dxvkVersionForVkd3d", windowsDir, onExtractFileListener)
+            extractDXWrapperComponent(context, "dxvk-$dxvkVersionForVkd3d", windowsDir, ContainerFiles.whiteoutClearingListener(container, onExtractFileListener))
 
             if (profile != null) {
                 Timber.d("Applying user-defined VKD3D content profile: " + dxwrapper)
@@ -5687,7 +5689,7 @@ private suspend fun extractDXWrapperFiles(
             } else {
                 // Determine VKD3D version from state config
                 Timber.i("Extracting VKD3D D3D12 DLLs version: $dxwrapper")
-                extractDXWrapperComponent(context, dxwrapper, windowsDir, onExtractFileListener)
+                extractDXWrapperComponent(context, dxwrapper, windowsDir, ContainerFiles.whiteoutClearingListener(container, onExtractFileListener))
             }
         }
         else -> {
@@ -5699,9 +5701,9 @@ private suspend fun extractDXWrapperFiles(
                 Timber.d("Applying user-defined DXVK content profile: " + dxwrapper)
                 contentsManager.applyContent(profile);
             } else {
-                extractDXWrapperComponent(context, dxwrapper, windowsDir, onExtractFileListener)
+                extractDXWrapperComponent(context, dxwrapper, windowsDir, ContainerFiles.whiteoutClearingListener(container, onExtractFileListener))
             }
-            extractDXWrapperComponent(context, "d8vk-${DefaultVersion.D8VK}", windowsDir, onExtractFileListener)
+            extractDXWrapperComponent(context, "d8vk-${DefaultVersion.D8VK}", windowsDir, ContainerFiles.whiteoutClearingListener(container, onExtractFileListener))
         }
     }
 }
@@ -5727,7 +5729,13 @@ private fun restoreOriginalDllFiles(
     vararg dlls: String,
 ) {
     val rootDir = imageFs.rootDir
-    if (container.containerVariant.equals(Container.GLIBC)) {
+    if (container.isOverlay) {
+        val upperDir = ContainerFiles.upperDir(container)
+        for (dll in dlls) {
+            ContainerFiles.removeOverride(upperDir, "drive_c/windows/system32/$dll")
+            ContainerFiles.removeOverride(upperDir, "drive_c/windows/syswow64/$dll")
+        }
+    } else if (container.containerVariant.equals(Container.GLIBC)) {
         val cacheDir = File(rootDir, ImageFs.CACHE_PATH + "/original_dlls")
         val contentsManager = ContentsManager(context)
         if (cacheDir.isDirectory) {
@@ -6367,7 +6375,14 @@ private fun extractSteamFiles(
     )
 }
 
-private fun cleanupBionicSteamAssets(imageFs: ImageFs) {
+private fun cleanupBionicSteamAssets(imageFs: ImageFs, container: Container) {
+    if (container.isOverlay) {
+        for (rel in ContainerFiles.APP_MANAGED_FILES) {
+            if (!ContainerFiles.deleteWithWhiteout(container, rel)) {
+                Timber.w("Failed to delete bionic-Steam asset $rel")
+            }
+        }
+    }
     val targets = listOf(
         File(imageFs.rootDir, ImageFs.WINEPREFIX + "/drive_c/windows/system32/lsteamclient.dll"),
         File(imageFs.rootDir, ImageFs.WINEPREFIX + "/drive_c/windows/syswow64/lsteamclient.dll"),

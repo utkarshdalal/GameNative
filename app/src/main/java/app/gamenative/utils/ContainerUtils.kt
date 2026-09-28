@@ -150,6 +150,7 @@ object ContainerUtils {
             suspendPolicy = PrefManager.suspendPolicy,
             fasterExternalLoading = PrefManager.fasterExternalLoading,
             disableLibredirect = PrefManager.disableLibredirect,
+            overlay = PrefManager.containerOverlayEnabled,
             wineVersion = PrefManager.wineVersion,
             emulator = PrefManager.emulator,
             fexcoreVersion = PrefManager.fexcoreVersion,
@@ -241,6 +242,9 @@ object ContainerUtils {
         PrefManager.suspendPolicy = containerData.suspendPolicy
         PrefManager.fasterExternalLoading = containerData.fasterExternalLoading
         PrefManager.disableLibredirect = containerData.disableLibredirect
+        if (containerData.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
+            PrefManager.containerOverlayEnabled = containerData.overlay
+        }
         PrefManager.portraitMode = containerData.portraitMode
         PrefManager.sharpnessEffect = containerData.sharpnessEffect
         PrefManager.sharpnessLevel = containerData.sharpnessLevel
@@ -342,6 +346,7 @@ object ContainerUtils {
             sdlControllerAPI = container.isSdlControllerAPI,
             fasterExternalLoading = container.isFasterExternalLoading,
             disableLibredirect = container.isDisableLibredirect,
+            overlay = container.overlay ?: PrefManager.containerOverlayEnabled,
             useSteamInput = useSteamInput,
             forceDlc = container.isForceDlc,
             localSavesOnly = container.isLocalSavesOnly,
@@ -533,6 +538,8 @@ object ContainerUtils {
         container.isSdlControllerAPI = containerData.sdlControllerAPI
         container.isFasterExternalLoading = containerData.fasterExternalLoading
         container.isDisableLibredirect = containerData.disableLibredirect
+        container.overlay = containerData.overlay &&
+            containerData.containerVariant.equals(Container.BIONIC, ignoreCase = true)
         container.putExtra("useSteamInput", containerData.useSteamInput)
         container.desktopTheme = containerData.desktopTheme
         container.graphicsDriverVersion = containerData.graphicsDriverVersion
@@ -785,6 +792,15 @@ object ContainerUtils {
         // Set up data for container creation
         val data = JSONObject()
         data.put("name", "container_$containerId")
+        val intendedVariant = customConfig?.containerVariant ?: PrefManager.containerVariant
+        val intendedOverlay = customConfig?.overlay ?: PrefManager.containerOverlayEnabled
+        if (intendedVariant.equals(Container.BIONIC, ignoreCase = true) && intendedOverlay) {
+            data.put("containerVariant", Container.BIONIC)
+            data.put("wineVersion", customConfig?.wineVersion ?: PrefManager.wineVersion)
+            data.put("overlay", true)
+        } else {
+            data.put("overlay", false)
+        }
 
         // Create the actual container
         var container = containerManager.createContainerFuture(containerId, data).get()
@@ -943,6 +959,7 @@ object ContainerUtils {
                 suspendPolicy = PrefManager.suspendPolicy,
                 fasterExternalLoading = PrefManager.fasterExternalLoading,
                 disableLibredirect = PrefManager.disableLibredirect,
+                overlay = PrefManager.containerOverlayEnabled,
                 portraitMode = PrefManager.portraitMode,
                 externalDisplayMode = PrefManager.externalDisplayInputMode,
                 externalDisplaySwap = PrefManager.externalDisplaySwap,

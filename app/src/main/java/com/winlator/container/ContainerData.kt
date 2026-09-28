@@ -73,6 +73,7 @@ data class ContainerData(
     val sdlControllerAPI: Boolean = true,
     val fasterExternalLoading: Boolean = false,
     val disableLibredirect: Boolean = false,
+    val overlay: Boolean = true,
     /** Enable Steam Input **/
     val useSteamInput: Boolean = false,
     /** Enable XInput API **/
@@ -164,6 +165,7 @@ data class ContainerData(
                     "sdlControllerAPI" to state.sdlControllerAPI,
                     "fasterExternalLoading" to state.fasterExternalLoading,
                     "disableLibredirect" to state.disableLibredirect,
+                    "overlay" to state.overlay,
                     "useSteamInput" to state.useSteamInput,
                     "enableXInput" to state.enableXInput,
                     "enableDInput" to state.enableDInput,
@@ -240,6 +242,7 @@ data class ContainerData(
                     sdlControllerAPI = savedMap["sdlControllerAPI"] as Boolean,
                     fasterExternalLoading = (savedMap["fasterExternalLoading"] as? Boolean) ?: false,
                     disableLibredirect = (savedMap["disableLibredirect"] as? Boolean) ?: false,
+                    overlay = (savedMap["overlay"] as? Boolean) ?: true,
                     useSteamInput = (savedMap["useSteamInput"] as? Boolean) ?: false,
                     enableXInput = savedMap["enableXInput"] as Boolean,
                     enableDInput = savedMap["enableDInput"] as Boolean,

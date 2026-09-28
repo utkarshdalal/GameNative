@@ -5,6 +5,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.service.SteamService
 import app.gamenative.utils.LOADING_PROGRESS_UNKNOWN
 import com.winlator.container.Container
+import com.winlator.container.ContainerFiles
 import com.winlator.contents.ContentsManager
 import com.winlator.core.FileUtils
 import com.winlator.core.TarCompressorUtils
@@ -162,6 +163,8 @@ object BionicSteamAssetsDependency : LaunchDependency {
         val dstSyswow64 = syswow64Dll(container)
         dstSystem32.parentFile?.mkdirs()
         dstSyswow64.parentFile?.mkdirs()
+        ContainerFiles.clearWhiteout(container, "drive_c/windows/system32/$LSTEAMCLIENT_DLL")
+        ContainerFiles.clearWhiteout(container, "drive_c/windows/syswow64/$LSTEAMCLIENT_DLL")
         if (!FileUtils.copy(sys32Src, dstSystem32)) {
             Timber.e("Failed to copy ${sys32Src.absolutePath} to ${dstSystem32.absolutePath}")
         }

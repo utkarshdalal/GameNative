@@ -50,6 +50,19 @@ class ContainerStorageManagerTest {
     }
 
     @Test
+    fun getContainerDirectorySize_countsOverlayMetadataAndNotTheBase() {
+        val container = tempFolder.newFolder("thin")
+        val base = tempFolder.newFolder("base")
+        File(base, "kernel32.dll").writeBytes(ByteArray(8192))
+        File(container, ".wine/drive_c/windows/system32").mkdirs()
+        File(container, ".wine/drive_c/windows/system32/d3d11.dll").writeBytes(ByteArray(1024))
+        File(container, ".wine/.gnoverlay/wh/drive_c/windows").mkdirs()
+        File(container, ".wine/.gnoverlay/wh/drive_c/windows/deleted.dll").writeBytes(ByteArray(16))
+
+        assertEquals(1040L, ContainerStorageManager.getContainerDirectorySize(container.toPath()))
+    }
+
+    @Test
     fun getContainerDirectorySize_sumsFilesWithoutHardlinks() {
         val container = tempFolder.newFolder("container")
         File(container, "a.bin").writeBytes(ByteArray(1024))
