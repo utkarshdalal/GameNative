@@ -16,7 +16,6 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 public final class ContainerOverlayMigrator {
@@ -151,35 +150,6 @@ public final class ContainerOverlayMigrator {
             result.completed = false;
         }
         return result;
-    }
-
-    public static boolean resetFromBase(Context context, ContentsManager contentsManager, Container container) {
-        File baseWine = BasePrefix.ensure(context, contentsManager, container.getWineVersion());
-        if (baseWine == null) {
-            Log.e(TAG, "No base prefix for " + container.getWineVersion() + ", cannot reset container " + container.id);
-            return false;
-        }
-        container.setBasePrefix(ContainerOverlay.canonicalHostPath(baseWine));
-        container.saveData();
-        return resetUpper(new File(container.getRootDir(), ".wine"), baseWine, BasePrefix.readPatternFiles(baseWine));
-    }
-
-    static boolean resetUpper(File upper, File baseWine, Collection<String> patternFiles) {
-        for (String rel : patternFiles) {
-            String normalized = ContainerFiles.normalize(rel);
-            if (normalized.isEmpty()) continue;
-            File file = new File(upper, normalized);
-            if (ContainerFiles.exists(file) && !Files.isDirectory(file.toPath(), LinkOption.NOFOLLOW_LINKS)) {
-                try {
-                    Files.delete(file.toPath());
-                }
-                catch (IOException e) {
-                    Log.w(TAG, "Failed to reset " + file + ": " + e);
-                }
-            }
-            ContainerFiles.removeWhiteout(upper, normalized);
-        }
-        return ContainerOverlay.createThinPrefix(baseWine, upper);
     }
 
     static List<File> protonLibDirs(Context context, ContentsManager contentsManager, String wineVersion) {

@@ -350,29 +350,4 @@ class ContainerOverlayFilesTest {
         assertEquals("wine", ContainerFiles.resolve(upper, base, "drive_c/windows/system32/d3d11.dll")!!.readText())
         assertEquals("wine32", ContainerFiles.resolve(upper, base, "drive_c/windows/syswow64/d3d11.dll")!!.readText())
     }
-
-    @Test
-    fun resetUpper_dropsPatternFilesAndRestoresSkeleton() {
-        val base = tmp.newFolder("base", ".wine")
-        val upper = File(tmp.newFolder("container"), ".wine")
-        write(base, "user.reg", "base-user")
-        write(base, "drive_c/windows/system32/kernel32.dll", "k32")
-        write(upper, "user.reg", "old-user")
-        write(upper, "drive_c/windows/system32/kernel32.dll", "stale")
-        write(upper, "drive_c/windows/system32/dxvk.dll", "component")
-        write(upper, ".gnoverlay/wh/drive_c/windows/system32/kernel32.dll", "")
-
-        assertTrue(
-            ContainerOverlayMigrator.resetUpper(
-                upper,
-                base,
-                listOf("user.reg", "drive_c/windows/system32/kernel32.dll", "drive_c/windows/system32"),
-            ),
-        )
-
-        assertEquals("base-user", File(upper, "user.reg").readText())
-        assertEquals("k32", ContainerFiles.resolve(upper, base, "drive_c/windows/system32/kernel32.dll")!!.readText())
-        assertFalse(exists(File(upper, "drive_c/windows/system32/kernel32.dll")))
-        assertEquals("component", File(upper, "drive_c/windows/system32/dxvk.dll").readText())
-    }
 }

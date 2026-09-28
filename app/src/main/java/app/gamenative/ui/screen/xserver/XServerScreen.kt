@@ -5496,10 +5496,7 @@ private suspend fun applyGeneralPatches(
     Timber.i("Applying general patches")
     val rootDir = imageFs.getRootDir()
     val contentsManager = ContentsManager(context)
-    if (container.isOverlay) {
-        Timber.i("Resetting overlay container from the base prefix for " + container.wineVersion)
-        ContainerOverlayMigrator.resetFromBase(context, contentsManager, container)
-    } else if (container.containerVariant.equals(Container.GLIBC)) {
+    if (container.containerVariant.equals(Container.GLIBC)) {
         FileUtils.delete(File(rootDir, "/opt/apps"))
         val downloaded = File(imageFs.getFilesDir(), "imagefs_patches_gamenative.tzst")
         Timber.i("Extracting imagefs_patches_gamenative.tzst")
@@ -5523,12 +5520,10 @@ private suspend fun applyGeneralPatches(
         check(containerManager.extractContainerPatternCommonWfm(rootDir, onExtractFileListener)) {
             "Failed to extract WFM from container_pattern_common.tzst"
         }
-    } else {
+    } else if (!container.isOverlay) {
         Timber.i("Extracting container_pattern_common.tzst")
         containerManager.extractContainerPatternCommon(rootDir, onExtractFileListener)
         Timber.i("Attempting to extract _container_pattern.tzst with wine version " + container.wineVersion)
-    }
-    if (!container.isOverlay) {
         containerManager.extractContainerPatternFile(container.wineVersion, contentsManager, container.rootDir, onExtractFileListener)
     }
     WineUtils.applySystemTweaks(context, wineInfo)

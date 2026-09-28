@@ -9,18 +9,11 @@ import com.winlator.core.OnExtractFileListener;
 import com.winlator.core.WineInfo;
 import com.winlator.xenvironment.ImageFs;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public final class BasePrefix {
     private static final String TAG = "BasePrefix";
@@ -30,7 +23,6 @@ public final class BasePrefix {
     public static final String DIR_NAME = "base_prefix";
     static final String COMPLETE_MARKER = ".complete";
     static final String BUILDING_MARKER = ".building";
-    static final String PATTERN_FILES = ".pattern_files";
     private static final String STAGING_DIR = ".staging";
     private static final String OLD_DIR = ".wine.old";
     private static final Map<String, Object> LOCKS = new HashMap<>();
@@ -142,12 +134,8 @@ public final class BasePrefix {
             if (!staging.mkdirs()) return false;
 
             File stagingWine = new File(staging, ".wine");
-            Set<String> patternFiles = new LinkedHashSet<>();
-            OnExtractFileListener recorder = (file, size) -> {
-                record(stagingWine, file, patternFiles);
-                return file;
-            };
-            if (!ContainerManager.extractContainerPatternFile(context, wineVersion, contentsManager, staging, null, recorder)) {
+            ContainerManager containerManager = new ContainerManager(context);
+            if (!containerManager.extractContainerPatternFile(wineVersion, contentsManager, staging, null)) {
                 Log.e(TAG, "Failed to extract the container pattern for " + wineVersion);
                 FileUtils.delete(staging);
                 building.delete();
@@ -159,15 +147,12 @@ public final class BasePrefix {
             OnExtractFileListener commonRemap = (file, size) -> {
                 String path = file.getAbsolutePath();
                 if (!path.equals(commonPrefix) && !path.startsWith(commonPrefix + "/")) return null;
-                File mapped = new File(stagingWine, path.substring(commonPrefix.length()));
-                record(stagingWine, mapped, patternFiles);
-                return mapped;
+                return new File(stagingWine, path.substring(commonPrefix.length()));
             };
-            if (!ContainerManager.extractContainerPatternCommonCopy(context, staging, commonRemap)) {
+            if (!containerManager.extractContainerPatternCommon(staging, commonRemap)) {
                 Log.w(TAG, "Failed to extract container_pattern_common into the base for " + wineVersion);
             }
             FileUtils.delete(new File(staging, "home"));
-            addCommonDllNames(context, patternFiles);
 
             if (!new File(stagingWine, "drive_c/windows").isDirectory()) {
                 Log.e(TAG, "Base prefix for " + wineVersion + " has no drive_c/windows");
@@ -191,12 +176,11 @@ public final class BasePrefix {
                 building.delete();
                 return false;
             }
-            FileUtils.writeString(new File(baseDir, PATTERN_FILES), String.join("\n", patternFiles));
             FileUtils.writeString(new File(baseDir, COMPLETE_MARKER), identity);
             building.delete();
             FileUtils.delete(oldDir);
             FileUtils.delete(staging);
-            Log.i(TAG, "Base prefix ready for " + wineVersion + " (" + patternFiles.size() + " pattern entries)");
+            Log.i(TAG, "Base prefix ready for " + wineVersion);
             return true;
         }
         catch (Throwable t) {
@@ -205,35 +189,5 @@ public final class BasePrefix {
             building.delete();
             return false;
         }
-    }
-
-    private static void record(File wineRoot, File file, Set<String> out) {
-        String root = wineRoot.getAbsolutePath();
-        String path = file.getAbsolutePath();
-        if (path.startsWith(root + "/")) out.add(path.substring(root.length() + 1));
-    }
-
-    private static void addCommonDllNames(Context context, Set<String> out) {
-        try {
-            JSONObject commonDlls = new JSONObject(FileUtils.readString(context, "common_dlls.json"));
-            for (String dstName : new String[]{"system32", "syswow64"}) {
-                JSONArray names = commonDlls.getJSONArray(dstName);
-                for (int i = 0; i < names.length(); i++) out.add("drive_c/windows/" + dstName + "/" + names.getString(i));
-            }
-        }
-        catch (Exception e) {
-            Log.w(TAG, "Failed to read common_dlls.json: " + e);
-        }
-    }
-
-    public static List<String> readPatternFiles(File baseWine) {
-        List<String> result = new ArrayList<>();
-        File list = new File(baseWine.getParentFile(), PATTERN_FILES);
-        if (!list.isFile()) return result;
-        for (String line : FileUtils.readLines(list)) {
-            String trimmed = line.trim();
-            if (!trimmed.isEmpty()) result.add(trimmed);
-        }
-        return result;
     }
 }
