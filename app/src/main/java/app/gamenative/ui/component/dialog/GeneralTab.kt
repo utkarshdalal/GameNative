@@ -1,5 +1,11 @@
 package app.gamenative.ui.component.dialog
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,11 +19,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -50,6 +53,21 @@ fun GeneralTabContent(
     nonzeroResolutionError: String,
 ) {
     val config = state.config.value
+
+    // Microphone input is opt-in. The RECORD_AUDIO runtime permission is only requested when
+    // the user turns the toggle on (never at screen entry), and only when it isn't already
+    // granted. The grant state is checked fresh at toggle time rather than cached, so a
+    // permission revoked in system settings is picked up correctly.
+    val context = LocalContext.current
+    val micPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        // Only enable the option once the user actually granted access.
+        if (granted) {
+            state.config.value = state.config.value.copy(micEnabled = true)
+        }
+    }
+
     val graphicsDrivers = state.graphicsDrivers.value
     val glibcWineEntries = state.glibcWineEntries.value
     val bionicWineEntries = state.bionicWineEntries.value
@@ -329,6 +347,25 @@ fun GeneralTabContent(
                 onCheckedChange = { state.config.value = config.copy(pulseaudioLowLatency = it) },
             )
         }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.microphone_input)) },
+            subtitle = { Text(text = stringResource(R.string.microphone_input_description)) },
+            state = config.micEnabled,
+            onCheckedChange = { enabled ->
+                val hasMicPermission = ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.RECORD_AUDIO,
+                ) == PackageManager.PERMISSION_GRANTED
+                if (enabled && !hasMicPermission) {
+                    // Ask only now that the user explicitly wants mic input; the launcher
+                    // callback flips the switch on if they grant.
+                    micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                } else {
+                    state.config.value = config.copy(micEnabled = enabled)
+                }
+            },
+        )
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.force_dlc)) },

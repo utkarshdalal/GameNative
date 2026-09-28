@@ -13,6 +13,7 @@ import com.winlator.xenvironment.components.ALSAServerComponent;
 import com.winlator.xenvironment.components.BionicProgramLauncherComponent;
 import com.winlator.xenvironment.components.GlibcProgramLauncherComponent;
 import com.winlator.xenvironment.components.GuestProgramLauncherComponent;
+import com.winlator.xenvironment.components.MicrophoneComponent;
 import com.winlator.xenvironment.components.PulseAudioComponent;
 
 import java.io.File;
@@ -93,6 +94,9 @@ public class XEnvironment implements Iterable<EnvironmentComponent> {
         if (pulseAudioComponent != null) pulseAudioComponent.pause();
         ALSAServerComponent alsaServerComponent = getComponent(ALSAServerComponent.class);
         if (alsaServerComponent != null) alsaServerComponent.pause();
+        // Release the microphone while backgrounded (drops the mic indicator and its power cost)
+        MicrophoneComponent microphoneComponent = getComponent(MicrophoneComponent.class);
+        if (microphoneComponent != null) microphoneComponent.pause();
     }
 
     public void onResume() {
@@ -101,6 +105,8 @@ public class XEnvironment implements Iterable<EnvironmentComponent> {
         if (pulseAudioComponent != null) pulseAudioComponent.resume();
         ALSAServerComponent alsaServerComponent = getComponent(ALSAServerComponent.class);
         if (alsaServerComponent != null) alsaServerComponent.resume();
+        MicrophoneComponent microphoneComponent = getComponent(MicrophoneComponent.class);
+        if (microphoneComponent != null) microphoneComponent.resume();
 
         // Then resume game processes
         resumeGameProcesses();
