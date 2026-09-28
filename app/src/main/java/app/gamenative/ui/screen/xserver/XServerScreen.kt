@@ -3884,18 +3884,14 @@ private fun runSteamHostCegPass(
     progressFile.delete()
     val batch = File(imageFs.wineprefix, "drive_c/steamhost_ceg.bat")
     batch.writeText("@\"C:\\Program Files (x86)\\Steam\\steam.exe\"\r\n")
-    PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Preparing game executable..."))
+    // Headless Steam never enters DRM through Steamless, so the CEG pass is this boot's DRM step.
+    BootProgress.phase(BootProgress.Phase.DRM, "Steam: signing in", legacy = "Preparing game executable...")
     launcher.envVars.put("STEAMHOST_CEG_ONLY", "1")
     val passStartedAt = System.currentTimeMillis()
     val pollProgress = AtomicBoolean(true)
     thread(name = "steamhost-ceg-progress") {
-        var lastText = ""
         while (pollProgress.get()) {
-            val text = cegSplashText(progressFile, passStartedAt)
-            if (text != lastText) {
-                lastText = text
-                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(text))
-            }
+            reportCegProgress(progressFile, passStartedAt)
             Thread.sleep(500)
         }
     }
@@ -3918,11 +3914,20 @@ private fun runSteamHostCegPass(
     }
 }
 
-private fun cegSplashText(progressFile: File, startedAt: Long): String {
+/**
+ * Puts the steamhost CEG progress file on the splash through [BootProgress]. The legacy text is
+ * what this pass showed before detailed progress existed; the detailed one drops the elapsed
+ * seconds because BootProgress shows its own timer.
+ */
+private fun reportCegProgress(progressFile: File, startedAt: Long) {
     val elapsed = (System.currentTimeMillis() - startedAt) / 1000
     val fields = runCatching { progressFile.readText().trim().split(' ') }.getOrNull()
     if (fields == null || fields.size < 6) {
-        return "Preparing game executable... signing in to Steam (${elapsed}s)"
+        BootProgress.detail(
+            "Steam: signing in",
+            legacy = "Preparing game executable... signing in to Steam (${elapsed}s)",
+        )
+        return
     }
     val jobsDone = fields[1].toIntOrNull() ?: 0
     val jobs = fields[2].toIntOrNull() ?: 0
@@ -3934,7 +3939,12 @@ private fun cegSplashText(progressFile: File, startedAt: Long): String {
         "waiting for Steam's DRM service"
     }
     val files = if (jobs > 1) ", file ${(jobsDone + 1).coerceAtMost(jobs)} of $jobs" else ""
-    return "Preparing game executable... $progress$files (${elapsed}s)"
+    val legacy = "Preparing game executable... $progress$files (${elapsed}s)"
+    if (total > 0) {
+        BootProgress.update(bytes.toFloat() / total, "Steam: $progress$files", legacy = legacy)
+    } else {
+        BootProgress.detail("Steam: $progress$files", legacy = legacy)
+    }
 }
 
 private fun setupXEnvironment(

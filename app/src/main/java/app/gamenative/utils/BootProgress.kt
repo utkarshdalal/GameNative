@@ -122,11 +122,12 @@ object BootProgress {
 
     /**
      * Enters [next]. Phases may be skipped entirely, so the base only ever moves forward.
+     * [legacy] overrides the phase's own legacy text for call sites that said something else.
      */
     @Synchronized
-    fun phase(next: Phase, detail: String? = null) {
+    fun phase(next: Phase, detail: String? = null, legacy: String? = next.legacy) {
         if (!verbose) {
-            next.legacy?.let { emitLegacy(it) }
+            legacy?.let { emitLegacy(it) }
             return
         }
         if (!active) return
