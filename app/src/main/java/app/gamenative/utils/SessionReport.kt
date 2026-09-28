@@ -131,6 +131,21 @@ object SessionReport {
 
     private fun appliedConfigFile(container: Container) = File(container.rootDir, "applied_config.json")
 
+    fun recordRun(container: Container, properties: Map<String, Any>) {
+        try {
+            val dir = File(container.rootDir, ".gamenative/runs").also { it.mkdirs() }
+            val file = File(dir, "${System.currentTimeMillis()}.json")
+            val tmp = File(dir, "${file.name}.tmp")
+            tmp.writeText(JSONObject(properties).toString())
+            if (!tmp.renameTo(file)) tmp.delete()
+            dir.listFiles { f -> f.name.endsWith(".json") }?.sortedBy { it.name }?.dropLast(MAX_RUN_FILES)?.forEach { it.delete() }
+        } catch (e: Exception) {
+            Timber.w(e, "SessionReport: record run failed")
+        }
+    }
+
+    private const val MAX_RUN_FILES = 30
+
     fun configProperties(container: Container): Map<String, Any> = buildMap {
         try {
             put("config_source", container.configSource.ifEmpty { if (PrefManager.autoApplyKnownConfig) "none" else "disabled" })
