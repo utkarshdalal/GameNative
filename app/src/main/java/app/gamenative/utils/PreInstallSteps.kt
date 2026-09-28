@@ -3,6 +3,7 @@ package app.gamenative.utils
 import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
 import com.winlator.container.Container
+import com.winlator.core.envvars.EnvVars
 import java.io.File
 
 /**
@@ -21,6 +22,7 @@ object PreInstallSteps {
     data class PreInstallCommand(
         val marker: Marker,
         val executable: String,
+        val envOverrides: Map<String, String> = emptyMap(),
     )
 
     private val steps: List<PreInstallStep> = listOf(
@@ -74,6 +76,7 @@ object PreInstallSteps {
                         PreInstallCommand(
                             marker = step.marker,
                             executable = wrapAsGuestExecutable(cmd, screenInfo),
+                            envOverrides = step.envOverrides,
                         ),
                     )
                 }
@@ -83,6 +86,12 @@ object PreInstallSteps {
         if (commands.isEmpty()) touchPrefixStamp(container)
         return commands
     }
+
+    fun envVarsForStep(gameEnvVars: EnvVars, command: PreInstallCommand?): EnvVars =
+        EnvVars().apply {
+            putAll(gameEnvVars)
+            command?.envOverrides?.forEach { (name, value) -> put(name, value) }
+        }
 
     fun markAllDone(container: Container) {
         val gameDir = getGameDir(container) ?: return

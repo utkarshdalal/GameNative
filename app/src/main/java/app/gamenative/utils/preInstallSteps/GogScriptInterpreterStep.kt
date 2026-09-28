@@ -8,6 +8,12 @@ import java.io.File
 
 object GogScriptInterpreterStep : PreInstallStep {
     override val marker: Marker = Marker.GOG_SCRIPT_INSTALLED
+    override val envOverrides: Map<String, String> = mapOf(
+        "FEX_TSOENABLED" to "1",
+        "FEX_VECTORTSOENABLED" to "1",
+        "FEX_MEMCPYSETTSOENABLED" to "1",
+        "FEX_HALFBARRIERTSOENABLED" to "1",
+    )
 
     override fun appliesTo(
         container: Container,

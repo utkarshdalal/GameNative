@@ -4249,7 +4249,8 @@ private fun setupXEnvironment(
         environment.addComponent(VortekRendererComponent(xServer, UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.VORTEK_SERVER_PATH), options2, context))
     }
 
-    guestProgramLauncherComponent.envVars = EnvVars().apply { putAll(envVars) }
+    val gameEnvVars = EnvVars().apply { putAll(envVars) }
+    guestProgramLauncherComponent.envVars = PreInstallSteps.envVarsForStep(gameEnvVars, preInstallCommands.firstOrNull())
 
     val gameTerminationCallback = Callback<Int> { status ->
         if (status != 0) {
@@ -4261,10 +4262,12 @@ private fun setupXEnvironment(
 
     fun chainPreInstallSteps(remaining: List<PreInstallSteps.PreInstallCommand>) {
         if (remaining.isEmpty()) {
+            guestProgramLauncherComponent.envVars = gameEnvVars
             guestProgramLauncherComponent.setGuestExecutable(gameExecutable)
             guestProgramLauncherComponent.setTerminationCallback(gameTerminationCallback)
             return
         }
+        guestProgramLauncherComponent.envVars = PreInstallSteps.envVarsForStep(gameEnvVars, remaining.first())
         guestProgramLauncherComponent.setGuestExecutable(remaining.first().executable)
         guestProgramLauncherComponent.setTerminationCallback { _ ->
             val current = remaining.first()
