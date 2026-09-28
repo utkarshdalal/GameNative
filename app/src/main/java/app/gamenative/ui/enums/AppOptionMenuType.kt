@@ -36,6 +36,8 @@ enum class AppOptionMenuType(@StringRes val title: Int) {
     AiDebugRun(R.string.option_ai_debug_run),
     ManageGameContent(R.string.option_manage_dlc),
     ManageWorkshop(R.string.option_manage_workshop),
+    ImportFiles(R.string.option_import_files),
+    ExportFiles(R.string.option_export_files),
     ManageMods(R.string.option_manage_mods),
     ChangeBranch(R.string.change_branch),
     ChangePreferredCopy(R.string.change_preferred_copy),

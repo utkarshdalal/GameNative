@@ -18,13 +18,15 @@
 //! Log grammar (all lines go through the `log` callback; `label` is adapter-chosen, e.g.
 //! `epic app=Fortnite`):
 //! - `fetch-start label=… items=… bytes_reserved=… hosts=… ceiling=… budget=…MiB tier_max=… per_host_cap=… distinct_hosts=… window=… mode=body|stream`
-//! - `fetch-window label=… window=N (min=… max=…) in_flight=… last=…MB/s ewma=…MB/s best=…MB/s reason=… cooldown=…ms err_rate=…% phase=… rtt=…ms budget_stalls=… host_stalls=…`
+//! - `fetch-window label=… window=N (min=… max=…) in_flight=… last=…MB/s ewma=…MB/s best=…MB/s reason=… cooldown=…ms err_rate=…% phase=… rtt=…ms queue=…ms rtt_base=…ms budget_stalls=… host_stalls=…`
+//!   (`queue`/`rtt_base` come from the LEDBAT TCP-connect prober in `queue_delay.rs`; `-` until its first sample)
 //!   (same fields as the Steam engine's `fetch-window depot=…` line, so the two are A/B-comparable)
 //! - `throughput label=… overall=…MB/s total=…MB elapsed=…s used=x/y servers: [host …MB/s …MB] …` every 5 s
 //! - `fetch-end label=… items_ok=… bytes=… credited=… elapsed_ms=… avg_mbps=… peak_mbps=… result=ok|cancelled|error [error=…]`
 //!
 //! `MB/s` here means MiB/s (1024²), matching the Steam engine's lines.
 
+use crate::queue_delay::{delay_offset, QueueDelay, RttProber, QUEUE_GAIN, TARGET_QUEUE_MS};
 use crate::store_dl::steam::cdn_client::{classify_rejected_status, read_body_capped, AsyncFetchError, CdnClient, FetchFailKind, MAX_WHOLE_BODY_BYTES, USER_AGENT};
 use crate::store_dl::steam::depot_writer::{
     budget_admits, inflight_budget_bytes, retry_backoff_millis, BOOTSTRAP_WINDOW,
@@ -1003,7 +1005,11 @@ async fn run_driver(ctx: DriverCtx<'_>) {
         }
     };
 
-    let mut window = AdaptiveWindow::new(bootstrap, win_min, win_max, Instant::now());
+    // LEDBAT queueing-delay signal: a TCP-connect prober on the fetch hosts (stops on drop).
+    let queue_delay = Arc::new(QueueDelay::new());
+    let _rtt_prober = RttProber::spawn(hosts.to_vec(), Arc::clone(&queue_delay));
+    let mut window = AdaptiveWindow::new(bootstrap, win_min, win_max, Instant::now())
+        .with_queue_delay(queue_delay);
     let mut sched = FetchScheduler::new(hosts, per_host_cap);
     let mut retry: VecDeque<PendingItem> = VecDeque::new();
     let mut next_item = 0usize;
@@ -1538,6 +1544,8 @@ enum WindowReason {
     HoldCeiling,
     HoldErrors,
     HoldThroughputDown,
+    ShrinkQueueDelay,
+    HoldQueueDelay,
     ShrinkRateLimited,
     ShrinkTimeout,
     ShrinkReset,
@@ -1558,6 +1566,8 @@ impl WindowReason {
             WindowReason::HoldCeiling => "hold:ceiling",
             WindowReason::HoldErrors => "hold:errors",
             WindowReason::HoldThroughputDown => "hold:throughput-down",
+            WindowReason::ShrinkQueueDelay => "shrink:queue",
+            WindowReason::HoldQueueDelay => "hold:queue",
             WindowReason::ShrinkRateLimited => "shrink:429",
             WindowReason::ShrinkTimeout => "shrink:timeout",
             WindowReason::ShrinkReset => "shrink:reset",
@@ -1605,6 +1615,11 @@ struct AdaptiveWindow {
     last_reason: WindowReason,
     last_err_rate: f64,
     probes_since_log: u32,
+    /// Shared queueing-delay sample from the TCP-connect prober (LEDBAT, `queue_delay.rs`);
+    /// `None` = no prober attached (tests, no hosts) → the classic logic runs untouched.
+    queue: Option<Arc<QueueDelay>>,
+    /// The sample polled on the latest probe tick, for the summary line.
+    last_queue: Option<(f64, f64)>,
 }
 
 impl AdaptiveWindow {
@@ -1635,7 +1650,15 @@ impl AdaptiveWindow {
             last_reason: WindowReason::Start,
             last_err_rate: 0.0,
             probes_since_log: 0,
+            queue: None,
+            last_queue: None,
         }
+    }
+
+    /// Attach the shared queueing-delay sample (LEDBAT shrink / growth veto).
+    fn with_queue_delay(mut self, queue: Arc<QueueDelay>) -> Self {
+        self.queue = Some(queue);
+        self
     }
 
     fn note_budget_stall(&mut self) {
@@ -1658,6 +1681,19 @@ impl AdaptiveWindow {
     fn shrink(&mut self, now: Instant, reason: WindowReason) {
         let scaled = (self.current as f64 * WINDOW_SHRINK_FACTOR).floor() as usize;
         let next = scaled.min(self.current.saturating_sub(1)).max(self.min);
+        self.apply_shrink(now, next, reason);
+    }
+
+    /// LEDBAT proportional shrink: `window × (1 + GAIN × off)` with off ∈ [-1, 0) — at most ~10%
+    /// per probe tick, floored at `min` (a queue over target means the bottleneck pipe IS full).
+    fn shrink_queue(&mut self, now: Instant, queue_ms: f64) {
+        let factor = 1.0 + QUEUE_GAIN * delay_offset(queue_ms);
+        let scaled = (self.current as f64 * factor).floor() as usize;
+        let next = scaled.min(self.current.saturating_sub(1)).max(self.min);
+        self.apply_shrink(now, next, WindowReason::ShrinkQueueDelay);
+    }
+
+    fn apply_shrink(&mut self, now: Instant, next: usize, reason: WindowReason) {
         self.current = next.max(self.min);
         self.cooldown_until = Some(now + Duration::from_millis(WINDOW_COOLDOWN_MS));
         self.slow_start = false;
@@ -1717,10 +1753,23 @@ impl AdaptiveWindow {
         let before = self.current;
         let cooling = self.cooldown_until.is_some_and(|t| now < t);
 
+        // The prober's queueing-delay sample for this tick (`None` until it warms up, or when
+        // no prober is attached — the classic logic then runs untouched).
+        let queue_ms = self.queue.as_ref().and_then(|q| q.sample());
+        self.last_queue = queue_ms;
+
         if err_rate > WINDOW_ERR_RATE_HIGH {
             self.shrink(now, WindowReason::ShrinkErrorRate);
         } else if cooling {
             self.last_reason = WindowReason::HoldCooldown;
+        } else if let Some((over, _)) = queue_ms.filter(|(q, _)| *q > TARGET_QUEUE_MS) {
+            // LEDBAT: the bottleneck queue is over target — yield proportionally, before any
+            // growth path can add into it. At the floor we can only hold.
+            if self.current > self.min {
+                self.shrink_queue(now, over);
+            } else {
+                self.last_reason = WindowReason::HoldQueueDelay;
+            }
         } else if self.current >= self.max {
             self.last_reason = WindowReason::HoldCeiling;
         } else if err_rate > WINDOW_ERR_RATE_LOW {
@@ -1789,7 +1838,7 @@ impl AdaptiveWindow {
         format!(
             "fetch-window label={label} window={} (min={} max={}) in_flight={in_flight_requests} \
 last={:.2}MB/s ewma={:.2}MB/s best={:.2}MB/s reason={} cooldown={}ms err_rate={:.1}% \
-phase={} rtt={:.0}ms budget_stalls={} host_stalls={}",
+phase={} rtt={:.0}ms queue={} rtt_base={} budget_stalls={} host_stalls={}",
             self.current,
             self.min,
             self.max,
@@ -1801,6 +1850,8 @@ phase={} rtt={:.0}ms budget_stalls={} host_stalls={}",
             self.last_err_rate * 100.0,
             if self.slow_start { "slow-start" } else { "steady" },
             self.latency_ewma_ms,
+            self.last_queue.map(|(q, _)| format!("{q:.0}ms")).unwrap_or_else(|| "-".to_string()),
+            self.last_queue.map(|(_, b)| format!("{b:.0}ms")).unwrap_or_else(|| "-".to_string()),
             self.last_budget_stalls,
             self.last_host_stalls
         )
@@ -1858,6 +1909,25 @@ mod tests {
             reserve: 0,
             range,
         }
+    }
+
+    #[test]
+    fn queue_delay_over_target_shrinks_and_under_target_grows() {
+        let t = Instant::now();
+        let q = Arc::new(QueueDelay::new());
+        q.publish(2.0 * TARGET_QUEUE_MS, 30.0);
+        let mut w = AdaptiveWindow::new(64, 2, 256, t).with_queue_delay(Arc::clone(&q));
+        w.maybe_probe(t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS + 10), 1_000_000);
+        assert_eq!(w.last_reason, WindowReason::ShrinkQueueDelay);
+        assert_eq!(w.current, 57, "64 × (1 − 0.10) floored");
+        // Queue back under target past the cooldown → the classic growth path resumes.
+        q.publish(10.0, 30.0);
+        let settled = w.current;
+        w.maybe_probe(
+            t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS * 2 + 10) + Duration::from_secs(4),
+            21_000_000,
+        );
+        assert!(w.current > settled, "growth resumes once the queue drains");
     }
 
     #[test]

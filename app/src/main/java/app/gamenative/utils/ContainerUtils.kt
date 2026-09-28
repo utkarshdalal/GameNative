@@ -847,6 +847,7 @@ object ContainerUtils {
                     runBlocking(Dispatchers.IO) {
                         try {
                             val bestConfig = BestConfigService.fetchBestConfig(
+                                context = context,
                                 gameName = gameName,
                                 gpuName = gpuName,
                                 gameStore = gameSource.name,
@@ -1065,7 +1066,7 @@ object ContainerUtils {
         }
 
         val resolvedGameFolderPath = if (gameSource == GameSource.CUSTOM_GAME) {
-            gameFolderPath
+            CustomGameScanner.migrateFromPublicRoot(gameFolderPath)
         } else {
             StorageUtils.resolveLegacyGameDir(gameFolderPath)
         }

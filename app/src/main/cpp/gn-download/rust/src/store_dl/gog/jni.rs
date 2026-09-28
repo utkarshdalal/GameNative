@@ -271,7 +271,7 @@ pub extern "system" fn Java_app_gamenative_service_download_NativeGogDownload_na
     _class: JClass,
     kind: jint,
     depot_manifests: JObjectArray,
-    cdn_base: JString,
+    cdn_bases: JObjectArray,
     install_dir: JString,
     skip_paths: JObjectArray,
     ca_bundle_path: JString,
@@ -298,7 +298,10 @@ pub extern "system" fn Java_app_gamenative_service_download_NativeGogDownload_na
     let request = GogRequest {
         kind: PlanKind::from_i32(kind),
         depot_manifests: string_array_to_vec(&mut env, &depot_manifests),
-        cdn_base: jstring_to_string(&mut env, &cdn_base).unwrap_or_default(),
+        cdn_bases: string_array_to_vec(&mut env, &cdn_bases)
+            .into_iter()
+            .filter(|b| !b.is_empty())
+            .collect(),
         install_dir: jstring_to_string(&mut env, &install_dir).unwrap_or_default(),
         skip_paths: string_array_to_vec(&mut env, &skip_paths),
         ca_bundle_path: jstring_to_string(&mut env, &ca_bundle_path).unwrap_or_default(),
@@ -308,11 +311,11 @@ pub extern "system" fn Java_app_gamenative_service_download_NativeGogDownload_na
         label: jstring_to_string(&mut env, &label).unwrap_or_else(|| "gog".to_string()),
     };
     let needs_base = request.kind == PlanKind::Gen2Chunks;
-    if (needs_base && request.cdn_base.is_empty())
+    if (needs_base && request.cdn_bases.is_empty())
         || request.install_dir.is_empty()
         || request.depot_manifests.is_empty()
     {
-        android_log("nativeStart: invalid request (empty cdn base / install dir / manifests)");
+        android_log("nativeStart: invalid request (no cdn base / empty install dir / manifests)");
         return 0;
     }
 

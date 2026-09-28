@@ -29,9 +29,11 @@ import com.winlator.core.DefaultVersion
 import `in`.dragonbra.javasteam.enums.EPersonaState
 import java.io.IOException
 import java.util.EnumSet
+import java.util.concurrent.Executors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -44,12 +46,18 @@ import timber.log.Timber
  */
 object PrefManager {
 
+    // NOT Dispatchers.IO: getPref runBlocking-waits on the datastore from IO threads, so if the read also
+    // needed an IO thread, enough concurrent readers would starve the pool and deadlock.
+    private val dataStoreDispatcher =
+        Executors.newSingleThreadExecutor { r -> Thread(r, "PrefDataStore") }.asCoroutineDispatcher()
+
     private val Context.datastore by preferencesDataStore(
         name = "PluviaPreferences",
         corruptionHandler = ReplaceFileCorruptionHandler {
             Timber.e("Preferences (somehow got) corrupted, resetting.")
             emptyPreferences()
         },
+        scope = CoroutineScope(dataStoreDispatcher + SupervisorJob()),
     )
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -1285,6 +1293,13 @@ object PrefManager {
             setPref(RECOMMENDATION_CACHE_TIMESTAMP, value)
         }
 
+    private val FILE_DETECTION_RULES_FETCHED_AT = longPreferencesKey("file_detection_rules_fetched_at")
+    var fileDetectionRulesFetchedAt: Long
+        get() = getPref(FILE_DETECTION_RULES_FETCHED_AT, 0L)
+        set(value) {
+            setPref(FILE_DETECTION_RULES_FETCHED_AT, value)
+        }
+
     // Cached boot-screen sponsor payload; boot renders from this, never from network
     private val BOOT_AD_CACHE_JSON = stringPreferencesKey("boot_ad_cache_json")
     var bootAdCacheJson: String
@@ -1365,6 +1380,21 @@ object PrefManager {
         }
 
     // Day seed when the user last dismissed the frosted rec teaser ("Not now")
+    private val RECOMMENDED_TAB_SEEN_DAY = longPreferencesKey("recommended_tab_seen_day")
+    var recommendedTabSeenDay: Long
+        get() = getPref(RECOMMENDED_TAB_SEEN_DAY, 0L)
+        set(value) {
+            setPref(RECOMMENDED_TAB_SEEN_DAY, value)
+        }
+
+    // Recent campaign CTA clicks keyed by app id, attached to later install/launch events
+    private val CAMPAIGN_CLICKS_JSON = stringPreferencesKey("campaign_clicks_json")
+    var campaignClicksJson: String
+        get() = getPref(CAMPAIGN_CLICKS_JSON, "")
+        set(value) {
+            setPref(CAMPAIGN_CLICKS_JSON, value)
+        }
+
     private val REC_TEASER_DISMISSED_DAY = longPreferencesKey("rec_teaser_dismissed_day")
     var recTeaserDismissedDay: Long
         get() = getPref(REC_TEASER_DISMISSED_DAY, 0L)

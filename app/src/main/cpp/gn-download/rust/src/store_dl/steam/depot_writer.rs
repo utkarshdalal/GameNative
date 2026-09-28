@@ -1,3 +1,4 @@
+use crate::queue_delay::{delay_offset, QueueDelay, RttProber, QUEUE_GAIN, TARGET_QUEUE_MS};
 use crate::store_dl::steam::cdn_client::{auth_status, AsyncCdnClient, AsyncFetchError, CdnClient, CdnConnection, FetchFailKind};
 use crate::store_dl::steam::content_manifest::{ChunkData, ContentManifest};
 use crate::store_dl::steam::depot_chunk::process_depot_chunk;
@@ -822,6 +823,8 @@ enum WindowReason {
     HoldErrors,
     HoldThroughputDown,
     ShrinkCongestion,
+    ShrinkQueueDelay,
+    HoldQueueDelay,
     ShrinkRateLimited,
     ShrinkTimeout,
     ShrinkReset,
@@ -843,6 +846,8 @@ impl WindowReason {
             WindowReason::HoldErrors => "hold:errors",
             WindowReason::HoldThroughputDown => "hold:throughput-down",
             WindowReason::ShrinkCongestion => "shrink:congestion",
+            WindowReason::ShrinkQueueDelay => "shrink:queue",
+            WindowReason::HoldQueueDelay => "hold:queue",
             WindowReason::ShrinkRateLimited => "shrink:429",
             WindowReason::ShrinkTimeout => "shrink:timeout",
             WindowReason::ShrinkReset => "shrink:reset",
@@ -919,6 +924,11 @@ struct AdaptiveWindow {
     /// the pipe (on-device: shrink-to-6 on a 16-host pool sawtoothed throughput). Error
     /// shrinks are unaffected (a storm still goes to `min`).
     congestion_floor: usize,
+    /// Shared queueing-delay sample from the TCP-connect prober (LEDBAT, `queue_delay.rs`);
+    /// `None` = no prober attached (tests, no hosts) → the classic logic runs untouched.
+    queue: Option<Arc<QueueDelay>>,
+    /// The sample polled on the latest probe tick, for the summary line.
+    last_queue: Option<(f64, f64)>,
 }
 
 impl AdaptiveWindow {
@@ -951,7 +961,15 @@ impl AdaptiveWindow {
             last_err_rate: 0.0,
             probes_since_log: 0,
             congestion_floor: min,
+            queue: None,
+            last_queue: None,
         }
+    }
+
+    /// Attach the shared queueing-delay sample (LEDBAT shrink / growth veto).
+    fn with_queue_delay(mut self, queue: Arc<QueueDelay>) -> Self {
+        self.queue = Some(queue);
+        self
     }
 
     /// Set the congestion-shrink floor (defaults to `min`). See the field doc.
@@ -989,6 +1007,20 @@ impl AdaptiveWindow {
         // Always give up at least one slot while above the floor, so a factor that rounds to the same
         // value still makes progress.
         let next = scaled.min(self.current.saturating_sub(1)).max(self.min);
+        self.apply_shrink(now, next, reason);
+    }
+
+    /// LEDBAT proportional shrink: `window × (1 + GAIN × off)` with off ∈ [-1, 0) — at most ~10%
+    /// per probe tick. Floors at `min` (NOT `congestion_floor`): a queue over target means the
+    /// bottleneck pipe IS full — unlike the per-conn-throttle case, a small window DOES drain it.
+    fn shrink_queue(&mut self, now: Instant, queue_ms: f64) {
+        let factor = 1.0 + QUEUE_GAIN * delay_offset(queue_ms);
+        let scaled = (self.current as f64 * factor).floor() as usize;
+        let next = scaled.min(self.current.saturating_sub(1)).max(self.min);
+        self.apply_shrink(now, next, WindowReason::ShrinkQueueDelay);
+    }
+
+    fn apply_shrink(&mut self, now: Instant, next: usize, reason: WindowReason) {
         self.current = next.max(self.min);
         self.cooldown_until = Some(now + Duration::from_millis(WINDOW_COOLDOWN_MS));
         self.slow_start = false;
@@ -1060,16 +1092,34 @@ impl AdaptiveWindow {
         let before = self.current;
         let cooling = self.cooldown_until.is_some_and(|t| now < t);
 
+        // The prober's queueing-delay sample for this tick (`None` until it warms up, or when
+        // no prober is attached — the classic logic then runs untouched).
+        let queue_ms = self.queue.as_ref().and_then(|q| q.sample());
+        self.last_queue = queue_ms;
+
         if err_rate > WINDOW_ERR_RATE_HIGH {
             // A sustained error storm: shrink immediately.
             self.shrink(now, WindowReason::ShrinkErrorRate);
         } else if cooling {
             self.last_reason = WindowReason::HoldCooldown;
-        } else if self.ok_count >= WINDOW_LATENCY_MIN_SAMPLES
+        } else if let Some((over, _)) = queue_ms.filter(|(q, _)| *q > TARGET_QUEUE_MS) {
+            // LEDBAT: the bottleneck queue is over target — yield proportionally. Checked before
+            // every growth path, so nothing grows into an over-target queue; the 3 s cooldown
+            // (set by the shrink) gives the queue time to drain before the next decision. At the
+            // floor we can only hold: a queue we cannot drain at min window is not ours.
+            if self.current > self.min {
+                self.shrink_queue(now, over);
+            } else {
+                self.last_reason = WindowReason::HoldQueueDelay;
+            }
+        } else if queue_ms.is_none()
+            && self.ok_count >= WINDOW_LATENCY_MIN_SAMPLES
             && self.latency_min_ms > 0.0
             && self.latency_ewma_ms > WINDOW_LATENCY_CONGESTION_FACTOR * self.latency_min_ms
             && sample_bps < self.bps_ewma * WINDOW_CONGESTION_BPS_CONFIRM
         {
+            // (Fallback only, while the TCP prober has no sample yet: its queueing-delay signal
+            // is strictly cleaner — a connect carries no body, so its RTT inflation IS queueing.)
             // Bufferbloated at err_rate~0 AND paying for it in throughput: the window exceeds
             // the link's real BDP. The throughput confirmation distinguishes this from ordinary
             // BDP queuing (high RTT but still rising — shrinking THERE only sawtooths; on-device
@@ -1157,7 +1207,7 @@ impl AdaptiveWindow {
         format!(
             "fetch-window depot={depot_id} window={} (min={} max={}) in_flight={in_flight_requests} \
 last={:.2}MB/s ewma={:.2}MB/s best={:.2}MB/s reason={} cooldown={}ms err_rate={:.1}% \
-phase={} rtt={:.0}ms budget_stalls={} host_stalls={}",
+phase={} rtt={:.0}ms queue={} rtt_base={} budget_stalls={} host_stalls={}",
             self.current,
             self.min,
             self.max,
@@ -1169,6 +1219,8 @@ phase={} rtt={:.0}ms budget_stalls={} host_stalls={}",
             self.last_err_rate * 100.0,
             if self.slow_start { "slow-start" } else { "steady" },
             self.latency_ewma_ms,
+            self.last_queue.map(|(q, _)| format!("{q:.0}ms")).unwrap_or_else(|| "-".to_string()),
+            self.last_queue.map(|(_, b)| format!("{b:.0}ms")).unwrap_or_else(|| "-".to_string()),
             self.last_budget_stalls,
             self.last_host_stalls
         )
@@ -2320,10 +2372,17 @@ async fn run_async_fetch_driver(
         }
     };
 
+    // LEDBAT queueing-delay signal: a TCP-connect prober on the assigned CDN hosts (stops on drop).
+    let queue_delay = Arc::new(QueueDelay::new());
+    let _rtt_prober = RttProber::spawn(
+        servers.iter().map(|s| s.host.clone()).collect(),
+        Arc::clone(&queue_delay),
+    );
     let mut window = AdaptiveWindow::new(bootstrap, win_min, win_max, Instant::now())
         // win_max = distinct_hosts × PER_HOST_CAP (capped), so this recovers the host count:
         // the congestion shrink floors there (see the field doc).
-        .with_congestion_floor(win_max / PER_HOST_CAP);
+        .with_congestion_floor(win_max / PER_HOST_CAP)
+        .with_queue_delay(queue_delay);
     let mut sched = FetchScheduler::new(servers, PER_HOST_CAP);
     let mut inflight: FuturesUnordered<_> = FuturesUnordered::new();
     let mut ready: VecDeque<ChunkWriteJob> = VecDeque::new();
@@ -4326,6 +4385,71 @@ mod tests {
             w.record_err(storm_at, FetchFailKind::Timeout);
         }
         assert!(w.current < 16, "error shrink is not floored, got {}", w.current);
+    }
+
+    #[test]
+    fn queue_delay_over_target_shrinks_proportionally_and_vetoes_growth() {
+        let t = Instant::now();
+        let q = Arc::new(QueueDelay::new());
+        q.publish(2.0 * TARGET_QUEUE_MS, 30.0); // off = -1 → window × (1 − GAIN)
+        let mut w = AdaptiveWindow::new(64, 2, 256, t).with_queue_delay(Arc::clone(&q));
+        let before = w.current;
+        w.maybe_probe(t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS + 10), 1_000_000);
+        assert_eq!(w.last_reason, WindowReason::ShrinkQueueDelay);
+        let expect = ((before as f64) * (1.0 - QUEUE_GAIN)).floor() as usize;
+        assert_eq!(w.current, expect, "proportional LEDBAT decrease");
+        assert!(w.cooldown_until.is_some(), "the cooldown gives the queue time to drain");
+        assert!(!w.slow_start);
+        assert_eq!(w.last_queue, Some((2.0 * TARGET_QUEUE_MS, 30.0)));
+        // While the queue stays over target and the cooldown runs: no growth, no double-shrink.
+        w.maybe_probe(t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS * 2 + 10), 2_000_000);
+        assert_eq!(w.current, expect);
+        assert_eq!(w.last_reason, WindowReason::HoldCooldown);
+    }
+
+    #[test]
+    fn queue_delay_under_target_keeps_the_classic_growth_path() {
+        let t = Instant::now();
+        let q = Arc::new(QueueDelay::new());
+        q.publish(10.0, 30.0); // queue well under target
+        let mut w = AdaptiveWindow::new(8, 2, 256, t).with_queue_delay(q);
+        w.maybe_probe(t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS + 10), 20_000_000);
+        assert!(w.current > 8, "healthy queue: slow-start still doubles");
+        assert_eq!(w.last_reason, WindowReason::GrowSlowStart);
+    }
+
+    #[test]
+    fn queue_delay_shrink_floors_at_min_then_holds() {
+        let t = Instant::now();
+        let q = Arc::new(QueueDelay::new());
+        q.publish(10.0 * TARGET_QUEUE_MS, 30.0); // a queue we did not build
+        let mut w = AdaptiveWindow::new(2, 2, 256, t).with_queue_delay(q);
+        w.maybe_probe(t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS + 10), 1_000_000);
+        assert_eq!(w.current, 2, "already at min: nothing left to yield");
+        assert_eq!(w.last_reason, WindowReason::HoldQueueDelay);
+    }
+
+    #[test]
+    fn no_queue_sample_falls_back_to_the_latency_congestion_path() {
+        // Without a prober sample the classic 5x-latency + throughput-confirm shrink must still
+        // fire (prober warm-up, or every CDN host unreachable).
+        let t = Instant::now();
+        let q = Arc::new(QueueDelay::new()); // never published → sample() is None
+        let mut w = AdaptiveWindow::new(8, 2, 256, t)
+            .with_congestion_floor(16)
+            .with_queue_delay(q);
+        for i in 1..=2u64 {
+            for _ in 0..40 {
+                w.record_ok(20.0);
+            }
+            w.maybe_probe(t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS * i + 10), 20_000_000 * i);
+        }
+        for _ in 0..40 {
+            w.record_ok(200.0);
+        }
+        w.maybe_probe(t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS * 3 + 10), 45_000_000);
+        assert_eq!(w.last_reason, WindowReason::ShrinkCongestion);
+        // …and once the prober DOES deliver, an over-target queue supersedes the latency path.
     }
 
     #[test]

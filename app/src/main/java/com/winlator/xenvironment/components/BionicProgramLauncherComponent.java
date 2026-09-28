@@ -31,6 +31,7 @@ import com.winlator.core.envvars.EnvVars;
 import com.winlator.core.FileUtils;
 import com.winlator.core.GPUInformation;
 import com.winlator.core.ProcessHelper;
+import com.winlator.core.SharedComponents;
 import com.winlator.core.TarCompressorUtils;
 import com.winlator.core.WineInfo;
 import com.winlator.fexcore.FEXCorePreset;
@@ -495,7 +496,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             contentsManager.applyContent(wowboxprofile);
         } else {
             Log.d("Extraction", "Extracting box64Version: " + wowbox64Version);
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(), "wowbox64/wowbox64-" + wowbox64Version + ".tzst", system32dir);
+            SharedComponents.extractAndLink(environment.getContext(), "wowbox64-" + wowbox64Version, TarCompressorUtils.Type.ZSTD, "wowbox64/wowbox64-" + wowbox64Version + ".tzst", system32dir, null);
         }
         container.putExtra("box64Version", wowbox64Version);
         containerDataChanged = true;
@@ -505,7 +506,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             contentsManager.applyContent(fexprofile);
         } else {
             Log.d("Extraction", "Extracting fexcoreVersion: " + fexcoreVersion);
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(), "fexcore/fexcore-" + fexcoreVersion + ".tzst", system32dir);
+            SharedComponents.extractAndLink(environment.getContext(), "fexcore-" + fexcoreVersion, TarCompressorUtils.Type.ZSTD, "fexcore/fexcore-" + fexcoreVersion + ".tzst", system32dir, null);
         }
         container.putExtra("fexcoreVersion", fexcoreVersion);
 

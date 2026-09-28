@@ -150,7 +150,7 @@
     <string name="curated_lists_empty">No curated lists available right now.</string>
     <string name="curated_list_4_3_name">Does it 4:3?</string>
     <string name="settings_interface_library_tabs_title">Library tabs</string>
-    <string name="settings_interface_library_tabs_subtitle">Choose which store tabs appear in the library.</string>
+    <string name="settings_interface_library_tabs_subtitle">Choose which tabs appear in the library.</string>
     <string name="settings_interface_library_tabs_none">No store tabs</string>
     <string name="default_user_name">User</string>
 
@@ -1146,7 +1146,7 @@
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Info</string>
     <string name="settings_info_send_tip_title">Become a member</string>
-    <string name="settings_info_send_tip_subtitle">Early access to releases, priority help, and more</string>
+    <string name="settings_info_send_tip_subtitle">AI help getting your games running, early access to releases, and more</string>
     <string name="settings_info_ask_tip_title">Membership offers</string>
     <string name="settings_info_ask_tip_subtitle">Show occasional offers to become a GameNative member</string>
     <string name="settings_info_source_title">Source code</string>
@@ -1328,7 +1328,7 @@
     <string name="main_recent_crash_title">Recent Crash</string>
     <string name="main_recent_crash_message">Sorry about that!\nIt would be nice to know about the recent issue you\'ve had.\nYou can view and export the most recent crash log in the app\'s settings and attach it as a Github issue in the project\'s repository.\nLink to the Github repo is also in settings!</string>
     <string name="main_thank_you_title">Enjoying GameNative?</string>
-    <string name="main_thank_you_message">Become a member today. Members get:\n\n• Early access to new releases\n• Priority help getting your games running\n• Premium roles and exclusive channels on Discord\n• …and more\n\nFrom $5/month</string>
+    <string name="main_thank_you_message">Become a member today. Members get:\n\n• AI help getting your games running\n• Early access to new releases\n• Premium roles and exclusive channels on Discord\n• …and more\n\nFrom $5/month</string>
     <string name="main_join_kofi">Become a member</string>
     <string name="pitch_session_title">Enjoying %1$s?</string>
     <string name="pitch_five_star_title">Glad %1$s ran great!</string>
@@ -1405,7 +1405,7 @@
 
     <!-- Libraries Dialog -->
     <string name="libraries_title">Libraries Used</string>
-    <string name="libraries_message">Pluvia - github.com/oxters168/Pluvia\nJavaSteam - github.com/Longi94/JavaSteam\nWinlator &amp; Vortek - github.com/brunodev85/winlator\nWinlator Cmod - github.com/coffincolors/winlator\nWrapper - https://github.com/leegao/bionic-vulkan-wrapper &amp; https://github.com/pipetto-crypto/\nUbuntu RootFs - releases.ubuntu.com/focal</string>
+    <string name="libraries_message">Pluvia - github.com/oxters168/Pluvia\nJavaSteam - github.com/Longi94/JavaSteam\nWinlator &amp; Vortek - github.com/brunodev85/winlator\nWinlator Cmod - github.com/coffincolors/winlator\nWrapper - https://github.com/leegao/bionic-vulkan-wrapper &amp; https://github.com/pipetto-crypto/\nUbuntu RootFs - releases.ubuntu.com/focal\nGame engine detection rules - SteamDB, github.com/SteamDatabase/FileDetectionRuleSets (MIT)</string>
 
     <!-- Supporters Dialog -->
     <string name="supporters_art_credits">Art Credits</string>
@@ -1856,6 +1856,48 @@
     <string name="diagnostics_share_none">No diagnostics log yet. Use \"Diagnostic Run\" first.</string>
     <string name="option_manage_dlc">Manage DLC</string>
     <string name="option_manage_workshop">Manage Workshop</string>
+    <string name="option_import_files">Import Files</string>
+    <string name="option_export_files">Export Files</string>
+    <string name="container_files_up">Up</string>
+    <string name="container_files_new_folder">New folder</string>
+    <string name="container_files_folder_name_hint">Folder name</string>
+    <string name="container_files_create">Create</string>
+    <string name="container_files_create_folder_failed">Could not create the folder.</string>
+    <string name="container_files_no_subfolders">No subfolders</string>
+    <string name="container_files_empty_folder">This folder is empty</string>
+    <string name="container_files_none_selected">No files selected</string>
+    <string name="container_files_result_failed">%1$d files failed</string>
+    <string name="import_files_title">Import Files</string>
+    <string name="import_files_step_choose_files">1. Choose files</string>
+    <string name="import_files_pick_hint">Pick files from this device.</string>
+    <string name="import_files_step_choose_destination">2. Choose where to put them</string>
+    <string name="import_files_destination_hint">Pick a folder inside the game\'s container.</string>
+    <string name="import_files_select">Select files</string>
+    <string name="import_files_remove">Remove</string>
+    <string name="import_files_selection_summary">%1$d files, %2$s</string>
+    <string name="import_files_replace_existing">Replace existing files</string>
+    <string name="import_files_copy_summary">%1$d files will be copied to %2$s</string>
+    <string name="import_files_copy_button">Copy %1$d files</string>
+    <string name="import_files_progress">Importing %1$d/%2$d</string>
+    <string name="import_files_result">Imported %1$d files to %2$s</string>
+    <string name="import_files_result_skipped">Skipped %1$d existing files</string>
+    <string name="import_files_cancelled">Import cancelled</string>
+    <string name="import_files_no_container">Launch the game once to create its container, then import files.</string>
+    <string name="import_files_not_enough_space">Not enough free space: %1$s needed, %2$s available.</string>
+    <string name="import_files_failed_header">These files could not be imported:</string>
+    <string name="export_files_title">Export Files</string>
+    <string name="export_files_source">Choose files to export</string>
+    <string name="export_files_source_hint">Tick the files you want to copy out of the game\'s container.</string>
+    <string name="export_files_selection_summary">%1$d files selected · %2$s</string>
+    <string name="export_files_clear">Clear</string>
+    <string name="export_files_export_button">Export %1$d files</string>
+    <string name="export_files_saved_to">Files are saved to %1$s</string>
+    <string name="export_files_permission_needed">Storage permission is needed to save files to Downloads.</string>
+    <string name="export_files_progress">Exporting %1$d/%2$d</string>
+    <string name="export_files_saved_result">Saved %1$d files to %2$s</string>
+    <string name="export_files_cancelled">Export cancelled</string>
+    <string name="export_files_no_container">Launch the game once to create its container, then export files.</string>
+    <string name="export_files_failed_header">These files could not be exported:</string>
     <string name="option_manage_mods">Manage Nexus Mods</string>
     <string name="nexus_search_clear">Clear search</string>
     <string name="nexus_filter_all">All</string>
@@ -2315,6 +2357,15 @@
     <!-- FeaturedItem (server-driven promoted slot) -->
     <string name="featured_badge">Sponsored</string>
     <string name="boot_rec_badge">Recommended for you</string>
+    <string name="boot_ad_close_cd">Close this card</string>
+    <string name="boot_ad_sheet_title_sponsored">About sponsor cards</string>
+    <string name="boot_ad_sheet_title_rec">About recommendations</string>
+    <string name="boot_ad_sheet_body_sponsored">Sponsor cards help fund full-time work on GameNative. You can change this any time in Settings.</string>
+    <string name="boot_ad_sheet_body_rec">Recommendations are picked from the games you play. You can change this any time in Settings.</string>
+    <string name="boot_ad_close_one">Close this one</string>
+    <string name="boot_ad_turn_off_sponsored">Turn off sponsor cards</string>
+    <string name="boot_ad_turn_off_rec">Turn off recommendations</string>
+    <string name="boot_ad_not_now">Not now</string>
     <string name="boot_quiz_win_default">Correct!</string>
     <string name="boot_quiz_lose_default">The answer was %1$s</string>
     <string name="featured_action_wishlist">Wishlist</string>
