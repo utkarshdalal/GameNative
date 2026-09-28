@@ -8,6 +8,7 @@ import com.winlator.core.FileUtils;
 import com.winlator.core.WineInfo;
 
 import java.io.File;
+import java.nio.file.StandardCopyOption;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -68,12 +69,21 @@ public final class ContainerOverlayMigrator {
             ContainerFiles.markOpaque(new File(container.getRootDir(), ".wine"), ContainerFiles.DOSDEVICES);
             String basePath = ContainerOverlay.canonicalHostPath(baseWine);
             if (!basePath.equals(container.getBasePrefix())) {
+                refreshSkeleton(new File(container.getRootDir(), ".wine"), baseWine);
                 container.setBasePrefix(basePath);
                 container.saveData();
             }
         }
         catch (Throwable t) {
             Log.w(TAG, "migrateIfNeeded failed", t);
+        }
+    }
+
+    static void refreshSkeleton(File upperWine, File baseWine) throws IOException {
+        ContainerOverlay.copyTree(new File(baseWine, ContainerFiles.DOSDEVICES), new File(upperWine, ContainerFiles.DOSDEVICES), true);
+        for (String name : ContainerOverlay.REGISTRY_FILES) {
+            File src = new File(baseWine, name);
+            if (src.isFile()) Files.copy(src.toPath(), new File(upperWine, name).toPath(), StandardCopyOption.REPLACE_EXISTING);
         }
     }
 

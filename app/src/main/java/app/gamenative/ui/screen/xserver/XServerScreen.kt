@@ -5344,8 +5344,6 @@ private suspend fun setupWineSystemFiles(
     val variantChanged = !markersMissing && container.containerVariant != appliedContainerVariant
     val wineVersionChanged = !markersMissing && container.wineVersion != appliedWineVersion
 
-    ContainerOverlayMigrator.migrateIfNeeded(context, contentsManager, container)
-
     if (firstBoot || imgVersionChanged || variantChanged || wineVersionChanged) {
         applyGeneralPatches(context, container, imageFs, xServerState.value.wineInfo, containerManager, onExtractFileListener)
         container.putExtra("appliedContainerVariant", container.containerVariant)
@@ -5359,6 +5357,8 @@ private suspend fun setupWineSystemFiles(
         container.putExtra("appliedWineVersion", container.wineVersion)
         containerDataChanged = true
     }
+
+    ContainerOverlayMigrator.migrateIfNeeded(context, contentsManager, container)
 
     // Always refresh components files
     refreshComponentsFiles(context)
