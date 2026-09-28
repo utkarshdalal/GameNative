@@ -4935,20 +4935,22 @@ private fun exit(
 
     PerfSampler.halt()
 
+    val exitProperties = mapOf(
+        "game_name" to ContainerUtils.resolveGameName(appId),
+        "game_store" to ContainerUtils.extractGameSourceFromContainerId(appId).name,
+        "session_length" to (frameRating?.sessionLengthSec ?: 0),
+        "avg_fps" to (frameRating?.avgFPS ?: 0.0),
+        "container_config" to container.containerJson,
+    ) + runCatching {
+        SessionReport.exitProperties(frameRating?.context ?: PluviaApp.xServerView?.context, frameRating, windowActivity, container, reason)
+    }.getOrElse { emptyMap() } + runCatching {
+        GameCompatibilityService.badgeProperties(ContainerUtils.resolveGameName(appId))
+    }.getOrElse { emptyMap() }
     PostHog.capture(
         event = "game_exited",
-        properties = mapOf(
-            "game_name" to ContainerUtils.resolveGameName(appId),
-            "game_store" to ContainerUtils.extractGameSourceFromContainerId(appId).name,
-            "session_length" to (frameRating?.sessionLengthSec ?: 0),
-            "avg_fps" to (frameRating?.avgFPS ?: 0.0),
-            "container_config" to container.containerJson,
-        ) + runCatching {
-            SessionReport.exitProperties(frameRating?.context ?: PluviaApp.xServerView?.context, frameRating, windowActivity, container, reason)
-        }.getOrElse { emptyMap() } + runCatching {
-            GameCompatibilityService.badgeProperties(ContainerUtils.resolveGameName(appId))
-        }.getOrElse { emptyMap() },
+        properties = exitProperties,
     )
+    CoroutineScope(Dispatchers.IO).launch { SessionReport.recordRun(container, exitProperties) }
     runCatching { windowActivity.stop() }
 
     // Store session data in container metadata
