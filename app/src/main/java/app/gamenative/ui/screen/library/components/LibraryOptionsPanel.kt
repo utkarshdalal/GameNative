@@ -449,7 +449,7 @@ private fun CollectionFilterSection(
                     }
                 }
                 collections.isEmpty() -> {
-                    val messages = messageRes.ifEmpty { listOf(emptyRes) }
+                    val messages = messageRes.ifEmpty { listOfNotNull(emptyRes) }
                     messages.forEach { message -> CollectionFilterMessage(message) }
                 }
                 else -> {
