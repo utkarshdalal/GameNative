@@ -1580,6 +1580,13 @@
     <string name="recommended_support_message">Riceviamo una commissione sugli acquisti effettuati tramite questo link.</string>
     <string name="recommended_about_heading">Informazioni sul gioco</string>
     <string name="recommended_review_count">Basato su %1$s recensioni</string>
+    <string name="library_store_media_page">%1$d di %2$d</string>
+    <string name="library_store_media_fullscreen">Visualizza contenuti multimediali a schermo intero</string>
+    <string name="library_store_media_close">Chiudi i contenuti multimediali a schermo intero</string>
+    <string name="library_store_media_previous">Contenuto multimediale precedente</string>
+    <string name="library_store_media_next">Contenuto multimediale successivo</string>
+    <string name="library_store_about_expand">Espandi Informazioni sul gioco</string>
+    <string name="library_store_about_collapse">Comprimi Informazioni sul gioco</string>
     <string name="review_overwhelmingly_positive">Estremamente positivo</string>
     <string name="review_very_positive">Molto positivo</string>
     <string name="review_mostly_positive">Perlopiù positivo</string>

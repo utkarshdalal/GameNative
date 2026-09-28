@@ -1607,6 +1607,13 @@
     <string name="recommended_support_message">Nous percevons une commission sur les achats effectués via ce lien.</string>
     <string name="recommended_about_heading">À propos de ce jeu</string>
     <string name="recommended_review_count">Basé sur %1$s avis</string>
+    <string name="library_store_media_page">%1$d sur %2$d</string>
+    <string name="library_store_media_fullscreen">Afficher le média en plein écran</string>
+    <string name="library_store_media_close">Fermer le média en plein écran</string>
+    <string name="library_store_media_previous">Média précédent</string>
+    <string name="library_store_media_next">Média suivant</string>
+    <string name="library_store_about_expand">Développer « À propos de ce jeu »</string>
+    <string name="library_store_about_collapse">Réduire « À propos de ce jeu »</string>
     <string name="review_overwhelmingly_positive">Extrêmement positif</string>
     <string name="review_very_positive">Très positif</string>
     <string name="review_mostly_positive">Plutôt positif</string>

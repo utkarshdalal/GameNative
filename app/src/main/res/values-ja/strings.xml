@@ -1624,6 +1624,13 @@
     <string name="recommended_support_message">このリンクから購入された場合、当社は手数料を受け取ります。</string>
     <string name="recommended_about_heading">このゲームについて</string>
     <string name="recommended_review_count">%1$s のレビューに基づく</string>
+    <string name="library_store_media_page">%2$d 件中 %1$d</string>
+    <string name="library_store_media_fullscreen">メディアを全画面表示</string>
+    <string name="library_store_media_close">全画面メディアを閉じる</string>
+    <string name="library_store_media_previous">前のメディア</string>
+    <string name="library_store_media_next">次のメディア</string>
+    <string name="library_store_about_expand">「このゲームについて」を展開</string>
+    <string name="library_store_about_collapse">「このゲームについて」を折りたたむ</string>
     <string name="review_overwhelmingly_positive">圧倒的にポジティブ</string>
     <string name="review_very_positive">とてもポジティブ</string>
     <string name="review_mostly_positive">ほとんどがポジティブ</string>

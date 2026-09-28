@@ -1515,6 +1515,13 @@ https://gamenative.app
     <string name="recommended_support_message">Мы получаем комиссию с покупок, совершённых по этой ссылке.</string>
     <string name="recommended_about_heading">Об этой игре</string>
     <string name="recommended_review_count">На основе %1$s отзывов</string>
+    <string name="library_store_media_page">%1$d из %2$d</string>
+    <string name="library_store_media_fullscreen">Открыть медиафайлы на весь экран</string>
+    <string name="library_store_media_close">Закрыть полноэкранный просмотр</string>
+    <string name="library_store_media_previous">Предыдущий медиафайл</string>
+    <string name="library_store_media_next">Следующий медиафайл</string>
+    <string name="library_store_about_expand">Развернуть раздел «Об этой игре»</string>
+    <string name="library_store_about_collapse">Свернуть раздел «Об этой игре»</string>
     <string name="review_overwhelmingly_positive">Крайне положительные</string>
     <string name="review_very_positive">Очень положительные</string>
     <string name="review_mostly_positive">В основном положительные</string>
