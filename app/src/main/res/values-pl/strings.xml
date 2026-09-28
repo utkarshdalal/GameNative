@@ -691,6 +691,8 @@
     <string name="pulseaudio_suspend_behavior_thread">Zawieszenie przez wątek (Domyślne)</string>
     <string name="pulseaudio_suspend_behavior_pactl">Zawieszenie przez Pactl (Oszczędzanie energii)</string>
     <string name="pulseaudio_low_latency">Tryb niskiego opóźnienia PulseAudio</string>
+    <string name="microphone_input">Wejście mikrofonu</string>
+    <string name="microphone_input_description">Udostępnia mikrofon urządzenia Wine/Proton jako urządzenie nagrywające. Wymaga uprawnienia do mikrofonu.</string>
     <string name="show_fps">Pokaż FPS</string>
     <string name="portrait_mode">Tryb pionowy</string>
     <string name="portrait_mode_description">Dla kontrolerów typu 8BitDo FlipPad/GameSir Pocket Taco</string>

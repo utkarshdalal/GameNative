@@ -671,6 +671,8 @@
     <string name="pulseaudio_suspend_behavior_thread">通过线程暂停（默认）</string>
     <string name="pulseaudio_suspend_behavior_pactl">通过 Pactl 暂停（省电）</string>
     <string name="pulseaudio_low_latency">PulseAudio 低延迟模式</string>
+    <string name="microphone_input">麦克风输入</string>
+    <string name="microphone_input_description">将设备麦克风作为录音设备提供给 Wine/Proton。需要麦克风权限。</string>
     <string name="show_fps">显示帧率</string>
     <string name="portrait_mode">竖屏模式</string>
     <string name="portrait_mode_description">适用于 8BitDo FlipPad/GameSir Pocket Taco 类型控制器</string>

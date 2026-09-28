@@ -677,6 +677,8 @@
     <string name="pulseaudio_suspend_behavior_thread">Призупинення через потік (За замовчуванням)</string>
     <string name="pulseaudio_suspend_behavior_pactl">Призупинення через Pactl (Енергозбереження)</string>
     <string name="pulseaudio_low_latency">Режим низької затримки PulseAudio</string>
+    <string name="microphone_input">Мікрофонний вхід</string>
+    <string name="microphone_input_description">Надає мікрофон пристрою Wine/Proton як пристрій запису. Потрібен дозвіл на мікрофон.</string>
     <string name="show_fps">Показати FPS</string>
     <string name="portrait_mode">Портретний режим</string>
     <string name="portrait_mode_description">Для контролерів типу 8BitDo FlipPad/GameSir Pocket Taco</string>

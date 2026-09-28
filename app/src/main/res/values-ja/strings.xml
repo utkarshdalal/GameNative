@@ -693,6 +693,8 @@
     <string name="pulseaudio_suspend_behavior_thread">スレッド経由でサスペンド（デフォルト）</string>
     <string name="pulseaudio_suspend_behavior_pactl">Pactl 経由でサスペンド（省電力）</string>
     <string name="pulseaudio_low_latency">PulseAudio 低レイテンシーモード</string>
+    <string name="microphone_input">マイク入力</string>
+    <string name="microphone_input_description">デバイスのマイクを録音デバイスとして Wine/Proton に公開します。マイクの権限が必要です。</string>
     <string name="show_fps">FPS を表示</string>
     <string name="portrait_mode">ポートレートモード</string>
     <string name="portrait_mode_description">8BitDo FlipPad/GameSir Pocket Taco タイプ コントローラー用</string>
