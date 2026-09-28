@@ -694,7 +694,7 @@ class GOGManager @Inject constructor(
         }
     }
 
-    private data class GOGPlayTask(
+    internal data class GOGPlayTask(
         val executablePath: String,
         val arguments: String,
     )
@@ -745,7 +745,7 @@ class GOGManager @Inject constructor(
         return null
     }
 
-    private fun getPrimaryPlayTaskFromGOGInfo(gameDir: File, installPath: String): Result<GOGPlayTask> {
+    internal fun getPrimaryPlayTaskFromGOGInfo(gameDir: File, installPath: String): Result<GOGPlayTask> {
         return try {
             val infoFile = findGOGInfoFile(gameDir)
                 ?: return Result.failure(Exception("GOG info file not found in ${gameDir.absolutePath}"))
