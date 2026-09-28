@@ -115,8 +115,6 @@ fun LibraryOptionsPanel(
     modifier: Modifier = Modifier,
 ) {
     val firstItemFocusRequester = remember { FocusRequester() }
-    val context = LocalContext.current
-    val isHeadset = remember { app.gamenative.MainActivity.isHeadset(context) }
 
     BackHandler(enabled = isOpen) {
         onDismiss()
@@ -240,12 +238,12 @@ fun LibraryOptionsPanel(
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             AppFilter.entries.forEach { appFilter ->
-                                if (appFilter in listOfNotNull(
+                                if (appFilter in listOf(
                                         AppFilter.GAME,
                                         AppFilter.APPLICATION,
                                         AppFilter.TOOL,
                                         AppFilter.DEMO,
-                                        AppFilter.VR.takeIf { isHeadset },
+                                        AppFilter.VR,
                                     )
                                 ) {
                                     OptionListItem(
@@ -451,7 +449,7 @@ private fun CollectionFilterSection(
                     }
                 }
                 collections.isEmpty() -> {
-                    val messages = messageRes.ifEmpty { listOfNotNull(emptyRes) }
+                    val messages = messageRes.ifEmpty { listOf(emptyRes) }
                     messages.forEach { message -> CollectionFilterMessage(message) }
                 }
                 else -> {
