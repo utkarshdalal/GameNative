@@ -401,7 +401,13 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             }
         }
 
-        ContainerOverlay.applyBionicLaunchEnv(context, container, envVars);
+        try {
+            ContainerOverlay.applyBionicLaunchEnv(context, container, envVars);
+        }
+        catch (IllegalStateException e) {
+            Log.e("BionicProgramLauncherComponent", e.getMessage());
+            return -1;
+        }
 
         Log.d("BionicProgramLauncherComponent", "env vars are " + EnvVarRedaction.redact(envVars));
 
@@ -737,7 +743,13 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         String emulator = container.getEmulator();
         if (this.envVars != null) envVars.putAll(this.envVars);
-        ContainerOverlay.applyBionicLaunchEnv(context, container, envVars);
+        try {
+            ContainerOverlay.applyBionicLaunchEnv(context, container, envVars);
+        }
+        catch (IllegalStateException e) {
+            Log.e("BionicProgramLauncherComponent", e.getMessage());
+            return "";
+        }
 
         String finalCommand = getFinalCommand(winePath, emulator, envVars, imageFs.getBinDir(), command);
 

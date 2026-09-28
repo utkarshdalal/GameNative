@@ -65,6 +65,39 @@ static ssize_t o_fd_path(int fd, char *buf, size_t n)
 }
 #endif
 
+static char g_race_up[GNO_PATH_MAX];
+static int g_link_refuse;
+static int count_tmp(const char *dir);
+static int g_link_calls;
+
+static int o_link(const char *a, const char *b)
+{
+    g_link_calls++;
+    if (g_link_refuse) {
+        g_link_refuse = 0;
+        errno = EPERM;
+        return -1;
+    }
+    if (g_race_up[0] && !strcmp(b, g_race_up)) {
+        int fd = open(b, O_WRONLY | O_CREAT | O_EXCL, 0644);
+        if (fd >= 0) {
+            write(fd, "winner", 6);
+            close(fd);
+        }
+        g_race_up[0] = 0;
+    }
+    return link(a, b);
+}
+
+static int o_rename_noreplace(const char *a, const char *b)
+{
+#ifdef __APPLE__
+    return renamex_np(a, b, RENAME_EXCL);
+#else
+    return (int)syscall(SYS_renameat2, AT_FDCWD, a, AT_FDCWD, b, 1);
+#endif
+}
+
 static gno_ops make_ops(void)
 {
     gno_ops o = {0};
@@ -82,7 +115,8 @@ static gno_ops make_ops(void)
     o.rename_exchange = o_rename_exchange;
     o.readlink = readlink;
     o.symlink = symlink;
-    o.link = link;
+    o.link = o_link;
+    o.rename_noreplace = o_rename_noreplace;
     o.fchmod = fchmod;
     o.futimens = futimens;
     o.opendir = opendir;
@@ -392,7 +426,7 @@ static void test_copy_up(void)
     CHECK(getxattr(P(U, "drive_c/windows/system32/a.dll"), "user.test", v, sizeof(v)) == 3);
 #endif
     CHECK(!strcmp(v, "val"));
-    CHECK(!exists(P(U, "drive_c/windows/system32/a.dll.gnoverlay-tmp")));
+    CHECK(count_tmp(P(U, "drive_c/windows/system32")) == 0);
 
     put(P(L, "mt"), "mtime");
     struct timeval tv[2] = {{1200000000, 0}, {1300000000, 0}};
@@ -723,6 +757,54 @@ static void test_dlsym_pick(void)
     CHECK(gno_dlsym_pick(0, "ope", &fake_open_real, names, hooks, reals, 2) == &fake_open_real);
 }
 
+static int count_tmp(const char *dir)
+{
+    int n = 0;
+    DIR *d = opendir(dir);
+    struct dirent *de;
+    while (d && (de = readdir(d)))
+        if (strstr(de->d_name, ".gnoverlay-tmp")) n++;
+    if (d) closedir(d);
+    return n;
+}
+
+static void test_copy_up_race(void)
+{
+    put(P(L, "race/app.ini"), "lower-ini");
+    put(P(U, "race/keep"), "k");
+    snprintf(g_race_up, sizeof(g_race_up), "%s", P(U, "race/app.ini"));
+    int fd = h_open(P(U, "race/app.ini"), O_WRONLY | O_APPEND, 0);
+    CHECK(fd >= 0);
+    CHECK(fd >= 0 && write(fd, "+a", 2) == 2);
+    if (fd >= 0) close(fd);
+    CHECK(g_race_up[0] == 0);
+    CHECK(!strcmp(h_read(P(U, "race/app.ini")), "winner+a"));
+    CHECK(count_tmp(P(U, "race")) == 0);
+
+    put(P(L, "race/b.ini"), "lower-b");
+    int before = g_link_calls;
+    fd = h_open(P(U, "race/b.ini"), O_RDWR, 0);
+    CHECK(fd >= 0);
+    if (fd >= 0) close(fd);
+    CHECK(g_link_calls == before + 1);
+    CHECK(!strcmp(h_read(P(U, "race/b.ini")), "lower-b"));
+    CHECK(count_tmp(P(U, "race")) == 0);
+    struct stat st;
+    CHECK(lstat(P(U, "race/b.ini"), &st) == 0 && st.st_nlink == 1);
+
+    put(P(L, "race/c.ini"), "lower-c");
+    g_link_refuse = 1;
+    fd = h_open(P(U, "race/c.ini"), O_RDWR, 0);
+    CHECK(fd >= 0);
+    if (fd >= 0) close(fd);
+    CHECK(!strcmp(h_read(P(U, "race/c.ini")), "lower-c"));
+    CHECK(count_tmp(P(U, "race")) == 0);
+
+    put(P(U, "race/stray.ini.1.2.gnoverlay-tmp"), "x");
+    char *l = h_list(P(U, "race"));
+    CHECK(l && !strstr(l, "gnoverlay-tmp"));
+}
+
 int main(void)
 {
     setup();
@@ -744,6 +826,7 @@ int main(void)
     test_listing();
     test_fuzz_normalize();
     test_dlsym_pick();
+    test_copy_up_race();
     test_fontconfig_rename(&ops);
     gno_shutdown();
     printf("%d passed, %d failed (tmp %s)\n", g_pass, g_fail, ROOT);

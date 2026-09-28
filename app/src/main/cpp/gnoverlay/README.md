@@ -36,8 +36,11 @@ line (when either var is set, or debug is on) and every hook passes through.
   (open with `O_PATH` + `/proc/self/fd`), then the final name is appended unresolved. So
   `dosdevices/c:/windows/x.dll` and `drive_c/windows/x.dll` share one marker. Parents that
   resolve outside the overlay (for example through `dosdevices/z:`) never get markers.
-- Copy-up temp: `<upper path>.gnoverlay-tmp`, renamed over the final name, removed on failure.
-  Such names are hidden from listings.
+- Copy-up temp: `<upper path>.<pid>.<seq>.gnoverlay-tmp`, unique per copy. It is published
+  without replacing: `link(tmp, upper)` then `unlink(tmp)`, or `renameat2(RENAME_NOREPLACE)`
+  if `link` is refused. If the upper file already exists (another process copied it up first),
+  the temp is discarded and the existing upper file is used. Temps are removed on failure and
+  hidden from listings.
 - `.gnoverlay` is hidden from the UPPER root listing and returns `ENOENT` through aliases.
   Accessing it through the literal UPPER spelling passes straight through.
 
@@ -179,9 +182,9 @@ directories through the ops vtable (host libc, no interposition). It covers:
   lower), not the merged view.
 - Whiteout/opaque checks cost an extra `open`+`readlink`+`close` to canonicalise the parent,
   but only when `.gnoverlay/wh` or `.gnoverlay/opaque` exists.
-- No locking across processes beyond atomic rename of the copy-up temp. Two processes copying up
-  the same file race on the one temp name; the loser's rename is treated as success when the
-  final upper file exists.
+- Concurrent copy-ups of the same file (for example wine and wineserver on a registry file)
+  are safe: one copy wins and the other is discarded, so a published upper file is never
+  replaced by a fresh copy of lower. A process still holding a lower fd keeps reading lower.
 - Lower files sealed read-only (`0444`) report that mode through `stat`/`access` until copied
   up. Wine derives `FILE_ATTRIBUTE_READONLY` from missing write bits.
 - `O_RDONLY|O_CREAT` on a file that exists only in lower opens lower and does not copy up.

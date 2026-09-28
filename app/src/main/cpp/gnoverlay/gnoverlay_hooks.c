@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <linux/stat.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/xattr.h>
@@ -33,7 +34,7 @@ int __openat_2(int dirfd, const char *path, int flags);
 ssize_t __readlink_chk(const char *path, char *buf, size_t n, size_t bufsz);
 ssize_t __readlinkat_chk(int dirfd, const char *path, char *buf, size_t n, size_t bufsz);
 int renameat2(int olddirfd, const char *oldpath, int newdirfd, const char *newpath, unsigned flags);
-int statx(int dirfd, const char *path, int flags, unsigned mask, void *buf);
+int statx(int dirfd, const char *path, int flags, unsigned mask, struct statx *buf);
 
 typedef int (*scandir_filter_t)(const struct dirent *);
 typedef int (*scandir_cmp_t)(const struct dirent **, const struct dirent **);
@@ -143,6 +144,7 @@ static int op_rename2(const char *a, const char *b, unsigned flags)
 }
 static int op_rename(const char *a, const char *b) { return op_rename2(a, b, 0); }
 static int op_rename_exchange(const char *a, const char *b) { return op_rename2(a, b, 2); }
+static int op_rename_noreplace(const char *a, const char *b) { return op_rename2(a, b, 1); }
 static ssize_t op_readlink(const char *p, char *b, size_t n)
 {
     return SC(__NR_readlinkat, AT_FDCWD, p, b, n, 0, 0);
@@ -241,6 +243,7 @@ __attribute__((constructor)) static void gnoverlay_ctor(void)
     o.unlink = op_unlink;
     o.rename = op_rename;
     o.rename_exchange = op_rename_exchange;
+    o.rename_noreplace = op_rename_noreplace;
     o.readlink = op_readlink;
     o.symlink = op_symlink;
     o.link = op_link;
@@ -363,13 +366,13 @@ EXPORT int fstatat64(int dirfd, const char *path, struct stat64 *st, int flags)
     return R(fstatat64)(AT_FDCWD, p, st, flags);
 }
 
-static int call_statx(int dirfd, const char *path, int flags, unsigned mask, void *buf)
+static int call_statx(int dirfd, const char *path, int flags, unsigned mask, struct statx *buf)
 {
     if (R(statx)) return real_statx(dirfd, path, flags, mask, buf);
     return (int)SC(__NR_statx, dirfd, path, flags, mask, buf, 0);
 }
 
-EXPORT int statx(int dirfd, const char *path, int flags, unsigned mask, void *buf)
+EXPORT int statx(int dirfd, const char *path, int flags, unsigned mask, struct statx *buf)
 {
     if (path && !*path && (flags & AT_EMPTY_PATH)) return call_statx(dirfd, path, flags, mask, buf);
     RESOLVE(dirfd, path, call_statx(dirfd, path, flags, mask, buf), -1);

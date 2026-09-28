@@ -27,6 +27,8 @@ typedef struct gno_ops {
     int (*unlink)(const char *path);
     int (*rename)(const char *from, const char *to);
     int (*rename_exchange)(const char *a, const char *b);
+    /** rename that fails with EEXIST instead of replacing (RENAME_NOREPLACE); may be NULL. */
+    int (*rename_noreplace)(const char *from, const char *to);
     ssize_t (*readlink)(const char *path, char *buf, size_t n);
     int (*symlink)(const char *target, const char *path);
     int (*link)(const char *from, const char *to);

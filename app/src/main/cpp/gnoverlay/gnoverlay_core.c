@@ -692,20 +692,31 @@ static void copy_xattrs(int sfd, int dfd)
     free(names);
 }
 
+static unsigned long g_tmp_seq;
+
+static int publish_noreplace(const char *tmp, const char *up)
+{
+    if (O.link(tmp, up) == 0) {
+        O.unlink(tmp);
+        return 0;
+    }
+    int e = errno;
+    if (e == EEXIST) return -1;
+    if (O.rename_noreplace && O.rename_noreplace(tmp, up) == 0) return 0;
+    if (O.rename_noreplace) e = errno;
+    errno = e;
+    return -1;
+}
+
 static int copy_file(const char *lp, const char *up, const struct stat *lst, int copy_data)
 {
     char tmp[PM];
-    size_t ul = strlen(up);
-    if (ul + TMP_SUFFIX_LEN >= PM) return fail(ENAMETOOLONG);
-    memcpy(tmp, up, ul);
-    memcpy(tmp + ul, TMP_SUFFIX, TMP_SUFFIX_LEN + 1);
+    unsigned long seq = __atomic_add_fetch(&g_tmp_seq, 1, __ATOMIC_RELAXED);
+    if (snprintf(tmp, sizeof(tmp), "%s.%d.%lu%s", up, (int)getpid(), seq, TMP_SUFFIX) >= (int)sizeof(tmp))
+        return fail(ENAMETOOLONG);
     int sfd = O.open(lp, O_RDONLY | O_NOFOLLOW | O_CLOEXEC, 0);
     if (sfd < 0) return -1;
     int dfd = O.open(tmp, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600);
-    if (dfd < 0 && errno == EEXIST) {
-        O.unlink(tmp);
-        dfd = O.open(tmp, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600);
-    }
     if (dfd < 0) {
         int e = errno;
         O.close(sfd);
@@ -746,10 +757,13 @@ static int copy_file(const char *lp, const char *up, const struct stat *lst, int
     }
     O.close(sfd);
     if (O.close(dfd) < 0 && !err) err = errno;
-    if (!err && O.rename(tmp, up) < 0) {
+    if (!err && publish_noreplace(tmp, up) < 0) {
         err = errno;
-        struct stat st;
-        if (err == ENOENT && O.lstat(up, &st) == 0) err = 0;
+        if (err == EEXIST) {
+            O.unlink(tmp);
+            gno_log("copy-up %s: %s already published by another copier", lp, up);
+            return 0;
+        }
     }
     if (err) {
         O.unlink(tmp);

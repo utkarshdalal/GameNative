@@ -129,7 +129,10 @@ public final class BasePrefix {
         File oldDir = new File(baseDir, OLD_DIR);
         try {
             if (!baseDir.isDirectory() && !baseDir.mkdirs()) return false;
-            FileUtils.writeString(building, identity);
+            if (!FileUtils.writeString(building, identity)) {
+                Log.e(TAG, "Failed to write the build marker at " + building);
+                return false;
+            }
             FileUtils.delete(staging);
             if (!staging.mkdirs()) return false;
 

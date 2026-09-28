@@ -117,13 +117,11 @@ public final class ContainerOverlay {
         if (container == null || !container.isOverlay()) return false;
         File lib = bionicLibFile(context);
         if (!lib.isFile()) {
-            Log.e(TAG, "Overlay library missing at " + lib + ", launching " + container.id + " without the overlay");
-            return false;
+            throw new IllegalStateException("Overlay library missing, cannot launch thin container " + container.id);
         }
         File lower = new File(container.getBasePrefix());
         if (!lower.isDirectory()) {
-            Log.w(TAG, "Base prefix missing at " + lower + " for " + container.id);
-            return false;
+            throw new IllegalStateException("Base prefix missing at " + lower + ", cannot launch thin container " + container.id);
         }
         ImageFs imageFs = ImageFs.find(context);
         String upperPath = canonicalHostPath(new File(container.getRootDir(), ".wine"));
