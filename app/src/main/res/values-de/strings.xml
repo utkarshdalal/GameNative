@@ -660,6 +660,8 @@
     <string name="pulseaudio_suspend_behavior_thread">Suspend via Thread (Standard)</string>
     <string name="pulseaudio_suspend_behavior_pactl">Suspend via Pactl (Energiesparen)</string>
     <string name="pulseaudio_low_latency">PulseAudio Niedrige Latenz Modus</string>
+    <string name="microphone_input">Mikrofoneingang</string>
+    <string name="microphone_input_description">Stellt das Gerätemikrofon Wine/Proton als Aufnahmegerät zur Verfügung. Erfordert die Mikrofonberechtigung.</string>
     <string name="show_fps">FPS anzeigen</string>
     <string name="portrait_mode">Hochformat-Modus</string>
     <string name="portrait_mode_description">Für 8BitDo FlipPad/GameSir Pocket Taco Controller</string>

@@ -689,6 +689,8 @@
     <string name="pulseaudio_suspend_behavior_thread">스레드를 통한 일시 중단 (기본값)</string>
     <string name="pulseaudio_suspend_behavior_pactl">Pactl을 통한 일시 중단 (절전)</string>
     <string name="pulseaudio_low_latency">PulseAudio 저지연 모드</string>
+    <string name="microphone_input">마이크 입력</string>
+    <string name="microphone_input_description">기기 마이크를 Wine/Proton에 녹음 장치로 노출합니다. 마이크 권한이 필요합니다.</string>
     <string name="show_fps">FPS 표시</string>
     <string name="portrait_mode">세로 모드</string>
     <string name="portrait_mode_description">8BitDo FlipPad/GameSir Pocket Taco 유형 컨트롤러용</string>
