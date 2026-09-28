@@ -151,6 +151,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
                 Timber.tag(TAG).d("Created PServer executor")
             }
 
+            recoverDirtySessionIfNeeded()
             cpuPolicies = discoverCpuPolicies()
             cpuClusters = identifyCpuClusters()
             currentGovernor = getCurrentGovernor()
@@ -601,6 +602,15 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         Timber.tag(POWER_TAG).i(
             "Babysitter spawned (appPid=$appPid, babysitterPid=${babysitterPid ?: "unknown"}, script=$scriptPath)"
         )
+
+        val check = executeAsRoot(
+            PowerBaselineScripts.buildBabysitterCheckCommand(appPid, PowerBaselineScripts.RESTORE_SCRIPT_FILE_NAME)
+        ).getOrNull().orEmpty()
+        val alive = check.contains("ALIVE")
+        val visible = check.contains("VISIBLE")
+        if (!alive || !visible) {
+            Timber.tag(POWER_TAG).w("Babysitter check failed (alive=$alive, appPidVisible=$visible), crash restore may not fire")
+        }
     }
 
     private fun killBabysitter() {

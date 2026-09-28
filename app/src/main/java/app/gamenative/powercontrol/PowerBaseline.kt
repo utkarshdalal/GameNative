@@ -86,8 +86,13 @@ object PowerBaselineScripts {
     ): String {
         val removals = cleanupPaths.distinct().joinToString(" ") { "\"$it\"" }
         val cleanup = if (removals.isEmpty()) "" else "; rm -f $removals"
-        return "nohup sh -c 'while kill -0 $appPid 2>/dev/null; do sleep 5; done; " +
-            "sh \"$restoreScriptPath\"$cleanup' >/dev/null 2>&1 & echo \$!"
+        return "S=\$(command -v setsid); nohup \$S sh -c 'while kill -0 $appPid 2>/dev/null; do sleep 5; done; " +
+            "sh \"$restoreScriptPath\"$cleanup' </dev/null >/dev/null 2>&1 & echo \$!"
+    }
+
+    fun buildBabysitterCheckCommand(appPid: Int, restoreScriptName: String): String {
+        val pattern = "[${restoreScriptName.first()}]${restoreScriptName.drop(1)}"
+        return "pgrep -f '$pattern' >/dev/null 2>&1 && echo ALIVE; kill -0 $appPid 2>/dev/null && echo VISIBLE"
     }
 
     /**
