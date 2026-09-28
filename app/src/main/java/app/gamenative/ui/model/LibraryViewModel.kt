@@ -807,7 +807,9 @@ class LibraryViewModel @Inject constructor(
                     }
                 }
                 .filter { item ->
-                    currentFilter.any { item.type == it }
+                    val inTypeBucket = !item.isVrOnly && currentFilter.any { item.type == it }
+                    val inVrBucket = item.isVrGame && currentState.appInfoSortType.contains(AppFilter.VR)
+                    inTypeBucket || inVrBucket
                 }
                 .filter { item ->
                     if (currentState.appInfoSortType.contains(AppFilter.SHARED)) {
@@ -831,9 +833,6 @@ class LibraryViewModel @Inject constructor(
                     } else {
                         true
                     }
-                }
-                .filter { item ->
-                    !currentState.appInfoSortType.contains(AppFilter.VR) || item.isVrGame
                 }
                 .toList()
 
@@ -1202,10 +1201,7 @@ class LibraryViewModel @Inject constructor(
             // A Steam collection can only contain Steam apps, so when one is selected the non-Steam
             // sources can't match it — keep them out of the combined list (and their tab counts).
             // Curated lists have the same source restriction.
-            // VR flags only exist for Steam apps.
-            val steamListFilterSelected = allowedSteamAppIds != null ||
-                allowedCuratedAppIds != null ||
-                currentState.appInfoSortType.contains(AppFilter.VR)
+            val steamListFilterSelected = allowedSteamAppIds != null || allowedCuratedAppIds != null
 
             val favoriteIds = FavoritesManager.favorites.value
 

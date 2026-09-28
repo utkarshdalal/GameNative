@@ -902,10 +902,17 @@ object PrefManager {
         }
 
     private val LIBRARY_FILTER = intPreferencesKey("library_filter")
+    private val LIBRARY_FILTER_VR_MIGRATED = booleanPreferencesKey("library_filter_vr_migrated")
     var libraryFilter: EnumSet<AppFilter>
         get() {
-            val value = getPref(LIBRARY_FILTER, AppFilter.toFlags(EnumSet.of(AppFilter.GAME, AppFilter.SHARED)))
-            return AppFilter.fromFlags(value)
+            val value = getPref(LIBRARY_FILTER, AppFilter.toFlags(EnumSet.of(AppFilter.GAME, AppFilter.SHARED, AppFilter.VR)))
+            val filters = AppFilter.fromFlags(value)
+            if (!getPref(LIBRARY_FILTER_VR_MIGRATED, false)) {
+                filters.add(AppFilter.VR)
+                setPref(LIBRARY_FILTER, AppFilter.toFlags(filters))
+                setPref(LIBRARY_FILTER_VR_MIGRATED, true)
+            }
+            return filters
         }
         set(value) {
             setPref(LIBRARY_FILTER, AppFilter.toFlags(value))
