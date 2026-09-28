@@ -694,10 +694,15 @@ class GOGManager @Inject constructor(
         }
     }
 
+    private data class GOGPlayTask(
+        val executablePath: String,
+        val arguments: String,
+    )
+
     private fun getGameExecutable(installPath: String, gameDir: File): String {
-        val result = getMainExecutableFromGOGInfo(gameDir, installPath)
+        val result = getPrimaryPlayTaskFromGOGInfo(gameDir, installPath)
         if (result.isSuccess) {
-            val exe = result.getOrNull() ?: ""
+            val exe = result.getOrNull()?.executablePath ?: ""
             Timber.d("Found GOG game executable from info file: $exe")
             return exe
         }
@@ -740,7 +745,7 @@ class GOGManager @Inject constructor(
         return null
     }
 
-    private fun getMainExecutableFromGOGInfo(gameDir: File, installPath: String): Result<String> {
+    private fun getPrimaryPlayTaskFromGOGInfo(gameDir: File, installPath: String): Result<GOGPlayTask> {
         return try {
             val infoFile = findGOGInfoFile(gameDir)
                 ?: return Result.failure(Exception("GOG info file not found in ${gameDir.absolutePath}"))
@@ -763,7 +768,12 @@ class GOGManager @Inject constructor(
                     val exeFile = FileUtils.findFileCaseInsensitive(gameDir, executablePath)
                     if (exeFile != null) {
                         val relativePath = exeFile.relativeTo(installDir).path
-                        return Result.success(relativePath)
+                        return Result.success(
+                            GOGPlayTask(
+                                executablePath = relativePath,
+                                arguments = task.optString("arguments", "").trim(),
+                            ),
+                        )
                     }
                     return Result.failure(Exception("Primary executable '$executablePath' not found in ${gameDir.absolutePath}"))
                 }
@@ -855,6 +865,24 @@ class GOGManager @Inject constructor(
 
         val windowsPath = "$gogDriveLetter:\\$relativePath"
 
+        // GOG stores the command line needed to launch the primary executable in the same
+        // playTasks entry as its path. DOSBox releases depend on these arguments to load the
+        // title-specific .conf files. Keep explicit user arguments authoritative, and only use
+        // metadata arguments when the configured executable is still the primary play task.
+        val gogArguments = if (container.execArgs.isEmpty()) {
+            getPrimaryPlayTaskFromGOGInfo(gameDir, gameInstallPath).getOrNull()
+                ?.takeIf {
+                    it.executablePath.replace('\\', '/').equals(
+                        executablePath.replace('\\', '/'),
+                        ignoreCase = true,
+                    )
+                }
+                ?.arguments
+                .orEmpty()
+        } else {
+            ""
+        }
+
         // Set working directory
         val execWorkingDir = execFile.parentFile
         if (execWorkingDir != null) {
@@ -864,8 +892,9 @@ class GOGManager @Inject constructor(
             guestProgramLauncherComponent.workingDir = gameDir
         }
 
-        Timber.d("GOG Wine command: \"$windowsPath\"")
-        return "\"$windowsPath\""
+        val command = "\"$windowsPath\"" + if (gogArguments.isNotEmpty()) " $gogArguments" else ""
+        Timber.d("GOG Wine command: $command")
+        return command
     }
 
     /**
