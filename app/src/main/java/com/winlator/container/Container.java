@@ -179,8 +179,6 @@ public class Container {
 
     private String containerVariant = DEFAULT_VARIANT;
 
-    private Boolean overlay = null;
-
     private String basePrefix = "";
 
     public String getGraphicsDriverVersion() {
@@ -575,14 +573,6 @@ public class Container {
         return this.containerVariant;
     }
 
-    public Boolean getOverlay() {
-        return overlay;
-    }
-
-    public void setOverlay(Boolean overlay) {
-        this.overlay = overlay;
-    }
-
     public String getBasePrefix() {
         return basePrefix != null ? basePrefix : "";
     }
@@ -592,7 +582,7 @@ public class Container {
     }
 
     public boolean isOverlay() {
-        return BIONIC.equalsIgnoreCase(containerVariant) && !Boolean.FALSE.equals(overlay) && !getBasePrefix().isEmpty();
+        return ContainerOverlay.isEligible(this) && !getBasePrefix().isEmpty();
     }
 
     public String getExtra(String name) {
@@ -829,7 +819,6 @@ public class Container {
             data.put("steamType", steamType);
             data.put("language", language);
             data.put("containerVariant", containerVariant);
-            if (overlay != null) data.put("overlay", overlay.booleanValue());
             if (!getBasePrefix().isEmpty()) data.put("basePrefix", basePrefix);
             data.put("emulator", emulator);
             data.put("fexcoreVersion", fexcoreVersion);
@@ -1096,9 +1085,6 @@ public class Container {
                     break;
                 case "portraitMode":
                     this.portraitMode = data.getBoolean(key);
-                    break;
-                case "overlay":
-                    this.overlay = data.getBoolean(key);
                     break;
                 case "basePrefix":
                     setBasePrefix(data.optString(key, ""));

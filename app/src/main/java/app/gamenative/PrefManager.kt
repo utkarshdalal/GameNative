@@ -612,20 +612,6 @@ object PrefManager {
             setPref(DISABLE_LIBREDIRECT, value)
         }
 
-    private val CONTAINER_OVERLAY_ENABLED = booleanPreferencesKey("container_overlay_enabled")
-    var containerOverlayEnabled: Boolean
-        get() = getPref(CONTAINER_OVERLAY_ENABLED, true)
-        set(value) {
-            setPref(CONTAINER_OVERLAY_ENABLED, value)
-        }
-
-    private val CONTAINER_OVERLAY_DEBUG = booleanPreferencesKey("container_overlay_debug")
-    var containerOverlayDebug: Boolean
-        get() = getPref(CONTAINER_OVERLAY_DEBUG, false)
-        set(value) {
-            setPref(CONTAINER_OVERLAY_DEBUG, value)
-        }
-
     private val SUSPEND_POLICY = stringPreferencesKey("suspend_policy")
     var suspendPolicy: String
         get() = Container.normalizeSuspendPolicy(getPref(SUSPEND_POLICY, Container.SUSPEND_POLICY_MANUAL))

@@ -47,17 +47,10 @@ public final class ContainerOverlayMigrator {
     public static void migrateIfNeeded(Context context, ContentsManager contentsManager, Container container) {
         try {
             if (context == null || container == null || container.getRootDir() == null) return;
+            if (!ContainerOverlay.isEligible(container)) return;
             boolean thin = !container.getBasePrefix().isEmpty();
-            boolean eligible = ContainerOverlay.isEligible(container);
-            boolean requested = ContainerOverlay.isRequested(container);
-            boolean libPresent = ContainerOverlay.bionicLibFile(context).isFile();
-
-            if (!eligible || !requested || !libPresent) {
-                if (eligible && requested) Log.w(TAG, "Overlay library missing, container " + container.id + " stays a full prefix");
-                if (thin) {
-                    ContainerOverlay.splash("Restoring Wine prefix...");
-                    rematerialize(container);
-                }
+            if (!thin && !ContainerOverlay.bionicLibFile(context).isFile()) {
+                Log.e(TAG, "Overlay library missing, container " + container.id + " stays a full prefix");
                 return;
             }
 
@@ -93,7 +86,6 @@ public final class ContainerOverlayMigrator {
             new File(upper, ContainerOverlay.OVERLAY_DIR).mkdirs();
             ContainerFiles.markOpaque(upper, ContainerFiles.DOSDEVICES);
             container.setBasePrefix(ContainerOverlay.canonicalHostPath(baseWine));
-            container.setOverlay(true);
             container.putExtra(LEGACY_DEDUPE_EXTRA, null);
             container.saveData();
         }
@@ -159,67 +151,6 @@ public final class ContainerOverlayMigrator {
             result.completed = false;
         }
         return result;
-    }
-
-    public static boolean rematerialize(Container container) {
-        if (container == null || container.getRootDir() == null) return false;
-        String basePrefix = container.getBasePrefix();
-        File upper = new File(container.getRootDir(), ".wine");
-        File lower = basePrefix.isEmpty() ? null : new File(basePrefix);
-        if (lower == null || !lower.isDirectory()) {
-            Log.e(TAG, "Cannot restore container " + container.id + ": base prefix missing at " + basePrefix);
-            return false;
-        }
-        boolean ok = rematerialize(upper, lower);
-        Log.i(TAG, "Restored full prefix for container " + container.id + ": ok=" + ok);
-        if (ok) {
-            container.setBasePrefix("");
-            container.setOverlay(false);
-            container.saveData();
-        }
-        return ok;
-    }
-
-    static boolean rematerialize(File upper, File lower) {
-        final Path upperRoot = upper.toPath();
-        final Path lowerRoot = lower.toPath();
-        try {
-            Files.createDirectories(upperRoot);
-            Files.walkFileTree(lowerRoot, new SimpleFileVisitor<Path>() {
-                @Override
-                public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-                    String rel = lowerRoot.relativize(dir).toString();
-                    if (rel.isEmpty()) return FileVisitResult.CONTINUE;
-                    if (ContainerFiles.isHidden(upper, rel)) return FileVisitResult.SKIP_SUBTREE;
-                    Path target = upperRoot.resolve(rel);
-                    if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)) {
-                        return Files.isDirectory(target, LinkOption.NOFOLLOW_LINKS) ? FileVisitResult.CONTINUE : FileVisitResult.SKIP_SUBTREE;
-                    }
-                    Files.createDirectory(target);
-                    return FileVisitResult.CONTINUE;
-                }
-
-                @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    String rel = lowerRoot.relativize(file).toString();
-                    if (ContainerFiles.isHidden(upper, rel)) return FileVisitResult.CONTINUE;
-                    Path target = upperRoot.resolve(rel);
-                    if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)) return FileVisitResult.CONTINUE;
-                    if (attrs.isSymbolicLink()) {
-                        Files.createSymbolicLink(target, Files.readSymbolicLink(file));
-                    }
-                    else if (attrs.isRegularFile()) {
-                        ContainerOverlay.copyFile(file, target);
-                    }
-                    return FileVisitResult.CONTINUE;
-                }
-            });
-        }
-        catch (IOException e) {
-            Log.w(TAG, "rematerialize failed for " + upper + ": " + e);
-            return false;
-        }
-        return ContainerFiles.deleteRecursively(new File(upper, ContainerOverlay.OVERLAY_DIR));
     }
 
     public static boolean resetFromBase(Context context, ContentsManager contentsManager, Container container) {

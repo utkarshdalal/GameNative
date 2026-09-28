@@ -1,7 +1,5 @@
 package com.winlator.container;
 
-import com.winlator.core.OnExtractFileListener;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -102,41 +100,6 @@ public final class ContainerFiles {
         return setWhiteout(upper, rel) && ok;
     }
 
-    public static boolean clearWhiteout(Container container, String relPathUnderWine) {
-        if (container == null || container.getRootDir() == null) return false;
-        return clearWhiteout(upperDir(container), lowerDir(container), relPathUnderWine);
-    }
-
-    static boolean clearWhiteout(File upper, File lower, String relPathUnderWine) {
-        String rel = normalize(relPathUnderWine);
-        if (rel.isEmpty()) return true;
-        File overlayDir = new File(upper, ContainerOverlay.OVERLAY_DIR);
-        File whiteoutDir = new File(overlayDir, ContainerOverlay.WHITEOUT_DIR);
-        File opaqueDir = new File(overlayDir, ContainerOverlay.OPAQUE_DIR);
-        boolean ok = true;
-        String[] parts = rel.split("/");
-        StringBuilder prefix = new StringBuilder();
-        for (int i = 0; i < parts.length; i++) {
-            if (i > 0) prefix.append('/');
-            prefix.append(parts[i]);
-            String path = prefix.toString();
-            File marker = new File(whiteoutDir, path);
-            if (!isMarker(marker)) continue;
-            try {
-                Files.delete(marker.toPath());
-                boolean ancestor = i < parts.length - 1;
-                if (ancestor) Files.createDirectories(new File(upper, path).toPath());
-                if (lower != null && Files.isDirectory(new File(lower, path).toPath(), LinkOption.NOFOLLOW_LINKS)) {
-                    ok &= writeMarker(new File(opaqueDir, path));
-                }
-            }
-            catch (IOException e) {
-                ok = false;
-            }
-        }
-        return ok;
-    }
-
     static boolean setWhiteout(File upper, String relPathUnderWine) {
         String rel = normalize(relPathUnderWine);
         File overlayDir = new File(upper, ContainerOverlay.OVERLAY_DIR);
@@ -155,24 +118,6 @@ public final class ContainerFiles {
         catch (IOException e) {
             return false;
         }
-    }
-
-    public static String relPathUnderWine(File file) {
-        String path = file.getAbsolutePath();
-        int index = path.indexOf("/.wine/");
-        return index < 0 ? null : path.substring(index + "/.wine/".length());
-    }
-
-    public static OnExtractFileListener whiteoutClearingListener(Container container, OnExtractFileListener inner) {
-        if (container == null || !container.isOverlay()) return inner;
-        return (destination, size) -> {
-            File result = inner != null ? inner.onExtractFile(destination, size) : destination;
-            if (result != null) {
-                String rel = relPathUnderWine(result);
-                if (rel != null) clearWhiteout(container, rel);
-            }
-            return result;
-        };
     }
 
     static boolean isMarker(File file) {

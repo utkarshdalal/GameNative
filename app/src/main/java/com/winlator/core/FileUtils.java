@@ -162,10 +162,7 @@ public abstract class FileUtils {
     public static boolean delete(File targetFile) {
         if (targetFile == null) return false;
         if (targetFile.isDirectory()) {
-            if (!isSymlink(targetFile)) {
-                if (!targetFile.canWrite()) targetFile.setWritable(true, true);
-                if (!clear(targetFile)) return false;
-            }
+            if (!isSymlink(targetFile)) if (!clear(targetFile)) return false;
         }
         return targetFile.delete();
     }

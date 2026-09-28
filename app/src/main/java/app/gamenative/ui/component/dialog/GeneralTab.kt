@@ -28,7 +28,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.settings.SettingsListDropdown
@@ -223,7 +222,6 @@ fun GeneralTabContent(
                             graphicsDriverConfig = newCfg.toString(),
                             box64Version = "0.3.7",
                             dxwrapperConfig = currentConfig.toString(),
-                            overlay = PrefManager.containerOverlayEnabled,
                         )
                     }
                 },
@@ -438,13 +436,6 @@ fun GeneralTabContent(
                         config.copy(disableLibredirect = false)
                     }
                 },
-            )
-            SettingsSwitch(
-                colors = settingsTileColorsAlt(),
-                title = { Text(text = stringResource(R.string.container_overlay_title)) },
-                subtitle = { Text(text = stringResource(R.string.container_overlay_subtitle)) },
-                state = config.overlay,
-                onCheckedChange = { state.config.value = config.copy(overlay = it) },
             )
         }
         SettingsSwitch(

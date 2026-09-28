@@ -11,8 +11,6 @@ import app.gamenative.service.gog.GOGService
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.FileUtils
-import com.winlator.container.Container
-import com.winlator.container.ContainerFiles
 import com.winlator.xenvironment.ImageFs
 import com.winlator.xenvironment.components.GuestProgramLauncherComponent
 import timber.log.Timber
@@ -171,9 +169,8 @@ object XAudioUtils {
                         .w(e, "Failed to delete batch file: %s", batFile.absolutePath)
                 }
 
-                val container = runCatching { ContainerUtils.getContainer(context, appId) }.getOrNull()
-                moveDllsFromTempToTarget(tempDirWow64, targetDirWow64, container, "drive_c/windows/syswow64")
-                moveDllsFromTempToTarget(tempDirSys32, targetDirSys32, container, "drive_c/windows/system32")
+                moveDllsFromTempToTarget(tempDirWow64, targetDirWow64)
+                moveDllsFromTempToTarget(tempDirSys32, targetDirSys32)
             } else {
                 Timber.tag("XAudioUtils")
                     .w("Batch extraction did not report success. Expected marker: %s", BATCH_SUCCESS_CHECK)
@@ -254,7 +251,7 @@ object XAudioUtils {
         return "$driveName:\\" + unix.substring(1).replace("/", "\\")
     }
 
-    private fun moveDllsFromTempToTarget(tempDir: File, targetDir: File, container: Container?, targetRel: String) {
+    private fun moveDllsFromTempToTarget(tempDir: File, targetDir: File) {
         if (!tempDir.exists()) {
             Timber.tag("XAudioUtils")
                 .d("Temp dir not found, skipping move: %s", tempDir.absolutePath)
@@ -278,32 +275,21 @@ object XAudioUtils {
         }
 
         // Index the target directory once to avoid repeated full disk scans
-        val existingNames = mutableSetOf<String>()
-        targetDir.list()?.let { existingNames.addAll(it) }
-        if (container?.isOverlay == true) {
-            File(container.basePrefix, targetRel).list()?.let { existingNames.addAll(it) }
-        }
-        val existingFilesByLower = existingNames.groupBy { it.lowercase() }
+        val existingFilesByLower = targetDir.listFiles()?.groupBy { it.name.lowercase() } ?: emptyMap()
 
         dllFiles.forEach { dllFile ->
             val desiredName = dllFile.name.lowercase()
 
             // Check our pre-indexed map for case-variant siblings (e.g., "XAudio2_7.dll" vs "xaudio2_7.dll")
-            existingFilesByLower[desiredName]?.forEach { existingName ->
-                if (existingName != desiredName) {
-                    val deleted = if (container != null) {
-                        ContainerFiles.deleteWithWhiteout(container, "$targetRel/$existingName")
-                    } else {
-                        File(targetDir, existingName).delete()
-                    }
-                    if (deleted) {
+            existingFilesByLower[desiredName]?.forEach { existing ->
+                if (existing.name != desiredName) {
+                    if (existing.delete()) {
                         Timber.tag("XAudioUtils")
-                            .d("Removed case-variant sibling: %s", existingName)
+                            .d("Removed case-variant sibling: %s", existing.name)
                     }
                 }
             }
 
-            if (container != null) ContainerFiles.clearWhiteout(container, "$targetRel/$desiredName")
             val outFile = File(targetDir, desiredName)
             try {
                 Files.move(

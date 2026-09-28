@@ -24,7 +24,6 @@ import java.util.Map;
 import java.util.Set;
 
 import app.gamenative.PluviaApp;
-import app.gamenative.PrefManager;
 import app.gamenative.events.AndroidEvent;
 
 public final class ContainerOverlay {
@@ -52,30 +51,6 @@ public final class ContainerOverlay {
         return container != null
                 && Container.BIONIC.equalsIgnoreCase(container.getContainerVariant())
                 && !WineInfo.isMainWineVersion(container.getWineVersion());
-    }
-
-    public static boolean isRequested(Container container) {
-        if (container == null) return false;
-        Boolean overlay = container.getOverlay();
-        return overlay != null ? overlay : isEnabledByDefault();
-    }
-
-    public static boolean isEnabledByDefault() {
-        try {
-            return PrefManager.INSTANCE.getContainerOverlayEnabled();
-        }
-        catch (Throwable t) {
-            return true;
-        }
-    }
-
-    private static boolean isDebugPrefEnabled() {
-        try {
-            return PrefManager.INSTANCE.getContainerOverlayDebug();
-        }
-        catch (Throwable t) {
-            return false;
-        }
     }
 
     public static File bionicLibFile(Context context) {
@@ -142,9 +117,7 @@ public final class ContainerOverlay {
         if (container == null || !container.isOverlay()) return false;
         File lib = bionicLibFile(context);
         if (!lib.isFile()) {
-            Log.w(TAG, "Overlay library missing at " + lib + ", restoring a full prefix for " + container.id);
-            splash("Restoring Wine prefix...");
-            ContainerOverlayMigrator.rematerialize(container);
+            Log.e(TAG, "Overlay library missing at " + lib + ", launching " + container.id + " without the overlay");
             return false;
         }
         File lower = new File(container.getBasePrefix());
@@ -157,7 +130,7 @@ public final class ContainerOverlay {
         String lowerPath = canonicalHostPath(lower);
         List<String> aliasList = aliases(upperPath, imageFs.getRootDir().getAbsolutePath(),
                 ImageFs.getImageFsSharedDir(context).getAbsolutePath());
-        boolean debug = new EnvVars(container.getEnvVars()).has(ENV_DEBUG) || isDebugPrefEnabled();
+        boolean debug = new EnvVars(container.getEnvVars()).has(ENV_DEBUG);
 
         envVars.put("LD_PRELOAD", appendPreload(envVars.get("LD_PRELOAD"), lib.getAbsolutePath(), ":"));
         for (Map.Entry<String, String> entry : buildEnv(upperPath, lowerPath, aliasList, debug).entrySet()) {

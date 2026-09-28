@@ -14,12 +14,7 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -124,9 +119,6 @@ public final class BasePrefix {
         for (String rel : ContainerFiles.APP_MANAGED_FILES) {
             File file = new File(wineDir, rel);
             if (!ContainerFiles.exists(file)) continue;
-            File parent = file.getParentFile();
-            boolean sealed = parent != null && !parent.canWrite();
-            if (sealed) parent.setWritable(true, true);
             try {
                 Files.delete(file.toPath());
             }
@@ -134,7 +126,6 @@ public final class BasePrefix {
                 Log.w(TAG, "Failed to remove " + file + ": " + e);
                 ok = false;
             }
-            if (sealed) parent.setWritable(false, false);
         }
         return ok;
     }
@@ -244,21 +235,5 @@ public final class BasePrefix {
             if (!trimmed.isEmpty()) result.add(trimmed);
         }
         return result;
-    }
-
-    static void seal(File root) throws IOException {
-        Files.walkFileTree(root.toPath(), new SimpleFileVisitor<Path>() {
-            @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                if (attrs.isRegularFile()) Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("r--r--r--"));
-                return FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-                Files.setPosixFilePermissions(dir, PosixFilePermissions.fromString("r-xr-xr-x"));
-                return FileVisitResult.CONTINUE;
-            }
-        });
     }
 }

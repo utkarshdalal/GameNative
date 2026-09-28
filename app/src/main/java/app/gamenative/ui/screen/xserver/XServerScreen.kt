@@ -5448,7 +5448,7 @@ private suspend fun setupWineSystemFiles(
     // non-bionic launches, and the native libsteamclient.so should not be
     // present at all unless bionic is on.
     if (!container.isLaunchBionicSteam) {
-        cleanupBionicSteamAssets(imageFs, container)
+        cleanupBionicSteamAssets(imageFs)
     }
 
     val desktopTheme = container.desktopTheme
@@ -5681,7 +5681,7 @@ private suspend fun extractDXWrapperFiles(
                 dxvkMinVersion
             }
             Timber.i("Extracting VKD3D DX version for dxwrapper: $dxvkVersionForVkd3d")
-            extractDXWrapperComponent(context, "dxvk-$dxvkVersionForVkd3d", windowsDir, ContainerFiles.whiteoutClearingListener(container, onExtractFileListener))
+            extractDXWrapperComponent(context, "dxvk-$dxvkVersionForVkd3d", windowsDir, onExtractFileListener)
 
             if (profile != null) {
                 Timber.d("Applying user-defined VKD3D content profile: " + dxwrapper)
@@ -5689,7 +5689,7 @@ private suspend fun extractDXWrapperFiles(
             } else {
                 // Determine VKD3D version from state config
                 Timber.i("Extracting VKD3D D3D12 DLLs version: $dxwrapper")
-                extractDXWrapperComponent(context, dxwrapper, windowsDir, ContainerFiles.whiteoutClearingListener(container, onExtractFileListener))
+                extractDXWrapperComponent(context, dxwrapper, windowsDir, onExtractFileListener)
             }
         }
         else -> {
@@ -5701,9 +5701,9 @@ private suspend fun extractDXWrapperFiles(
                 Timber.d("Applying user-defined DXVK content profile: " + dxwrapper)
                 contentsManager.applyContent(profile);
             } else {
-                extractDXWrapperComponent(context, dxwrapper, windowsDir, ContainerFiles.whiteoutClearingListener(container, onExtractFileListener))
+                extractDXWrapperComponent(context, dxwrapper, windowsDir, onExtractFileListener)
             }
-            extractDXWrapperComponent(context, "d8vk-${DefaultVersion.D8VK}", windowsDir, ContainerFiles.whiteoutClearingListener(container, onExtractFileListener))
+            extractDXWrapperComponent(context, "d8vk-${DefaultVersion.D8VK}", windowsDir, onExtractFileListener)
         }
     }
 }
@@ -6375,14 +6375,7 @@ private fun extractSteamFiles(
     )
 }
 
-private fun cleanupBionicSteamAssets(imageFs: ImageFs, container: Container) {
-    if (container.isOverlay) {
-        for (rel in ContainerFiles.APP_MANAGED_FILES) {
-            if (!ContainerFiles.deleteWithWhiteout(container, rel)) {
-                Timber.w("Failed to delete bionic-Steam asset $rel")
-            }
-        }
-    }
+private fun cleanupBionicSteamAssets(imageFs: ImageFs) {
     val targets = listOf(
         File(imageFs.rootDir, ImageFs.WINEPREFIX + "/drive_c/windows/system32/lsteamclient.dll"),
         File(imageFs.rootDir, ImageFs.WINEPREFIX + "/drive_c/windows/syswow64/lsteamclient.dll"),

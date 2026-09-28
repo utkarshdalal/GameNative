@@ -31,6 +31,7 @@ class ContainerOverlayFilesTest {
         Container("c1").apply {
             this.rootDir = rootDir
             containerVariant = Container.BIONIC
+            wineVersion = "proton-9.0-arm64ec"
         }
 
     @Test
@@ -78,7 +79,6 @@ class ContainerOverlayFilesTest {
 
         assertEquals(ContainerOverlay.canonicalHostPath(base), container.basePrefix)
         assertEquals(base.canonicalPath, container.basePrefix)
-        assertEquals(true, container.overlay)
         assertTrue(container.isOverlay)
         assertEquals("", container.getExtra("dedupeVersion"))
         assertFalse(exists(File(upper, ".gnoverlay/wh")))
@@ -152,51 +152,13 @@ class ContainerOverlayFilesTest {
         write(upper, "drive_c/windows/system32/a.dll", "u")
         val container = bionicContainer(root).apply {
             basePrefix = base.absolutePath
-            overlay = false
+            containerVariant = Container.GLIBC
         }
 
         assertTrue(ContainerFiles.deleteWithWhiteout(container, "drive_c/windows/system32/a.dll"))
 
         assertFalse(exists(File(upper, "drive_c/windows/system32/a.dll")))
         assertFalse(exists(File(upper, ".gnoverlay")))
-    }
-
-    @Test
-    fun clearWhiteout_removesMarkerAndTurnsWhitedOutParentsOpaque() {
-        val base = tmp.newFolder("base", ".wine")
-        val root = tmp.newFolder("container")
-        val upper = File(root, ".wine")
-        write(base, "drive_c/windows/system32/lsteamclient.dll", "base")
-        write(base, "drive_c/ProgramData/Game/base.txt", "b")
-        write(upper, ".gnoverlay/wh/drive_c/windows/system32/lsteamclient.dll", "")
-        write(upper, ".gnoverlay/wh/drive_c/ProgramData/Game", "")
-        val container = bionicContainer(root).apply { basePrefix = base.absolutePath }
-
-        assertTrue(ContainerFiles.clearWhiteout(container, "drive_c/windows/system32/lsteamclient.dll"))
-        assertTrue(ContainerFiles.clearWhiteout(container, "drive_c/ProgramData/Game/new.txt"))
-
-        assertFalse(exists(File(upper, ".gnoverlay/wh/drive_c/windows/system32/lsteamclient.dll")))
-        assertEquals("base", ContainerFiles.resolve(container, "drive_c/windows/system32/lsteamclient.dll")!!.readText())
-        assertFalse(exists(File(upper, ".gnoverlay/wh/drive_c/ProgramData/Game")))
-        assertTrue(File(upper, "drive_c/ProgramData/Game").isDirectory)
-        assertTrue(Files.isRegularFile(File(upper, ".gnoverlay/opaque/drive_c/ProgramData/Game").toPath()))
-        assertNull(ContainerFiles.resolve(container, "drive_c/ProgramData/Game/base.txt"))
-    }
-
-    @Test
-    fun whiteoutClearingListener_clearsMarkersForExtractedFiles() {
-        val base = tmp.newFolder("base", ".wine")
-        val root = tmp.newFolder("container")
-        val upper = File(root, ".wine")
-        write(base, "drive_c/windows/system32/d3d11.dll", "wine")
-        write(upper, ".gnoverlay/wh/drive_c/windows/system32/d3d11.dll", "")
-        val container = bionicContainer(root).apply { basePrefix = base.absolutePath }
-
-        val listener = ContainerFiles.whiteoutClearingListener(container, null)
-        val dest = File(upper, "drive_c/windows/system32/d3d11.dll")
-        assertEquals(dest, listener.onExtractFile(dest, 4))
-
-        assertFalse(exists(File(upper, ".gnoverlay/wh/drive_c/windows/system32/d3d11.dll")))
     }
 
     @Test
@@ -217,13 +179,12 @@ class ContainerOverlayFilesTest {
     }
 
     @Test
-    fun basePrefix_removesAppManagedFilesFromSealedBase_andUpgradesLegacyMarker() {
+    fun basePrefix_removesAppManagedFiles_andUpgradesLegacyMarker() {
         val baseDir = tmp.newFolder("base_prefix")
         val wine = File(baseDir, ".wine")
         write(wine, "drive_c/windows/system32/lsteamclient.dll", "x")
         write(wine, "drive_c/windows/syswow64/lsteamclient.dll", "x")
         write(wine, "drive_c/windows/system32/kernel32.dll", "k32")
-        BasePrefix.seal(File(wine, "drive_c/windows"))
         File(baseDir, ".complete").writeText("1:proton-9.0-arm64ec:31")
 
         assertFalse(BasePrefix.upgradeLegacyBase(baseDir, "1:proton-9.0-arm64ec:30", "2:proton-9.0-arm64ec:30"))
@@ -232,7 +193,6 @@ class ContainerOverlayFilesTest {
         assertFalse(exists(File(wine, "drive_c/windows/system32/lsteamclient.dll")))
         assertFalse(exists(File(wine, "drive_c/windows/syswow64/lsteamclient.dll")))
         assertEquals("k32", File(wine, "drive_c/windows/system32/kernel32.dll").readText())
-        assertFalse(File(wine, "drive_c/windows/system32").canWrite())
         assertTrue(BasePrefix.isComplete(baseDir, "2:proton-9.0-arm64ec:31"))
     }
 
@@ -308,46 +268,6 @@ class ContainerOverlayFilesTest {
 
         assertEquals(setOf("c:"), dosdevices.list()!!.toSet())
         assertTrue(BasePrefix.isComplete(baseDir, "3:proton-10.0-arm64ec:31"))
-    }
-
-    @Test
-    fun rematerialize_restoresBaseFilesAndHonoursWhiteoutsAndOpaqueDirs() {
-        val base = tmp.newFolder("base", ".wine")
-        val root = tmp.newFolder("container")
-        val upper = File(root, ".wine")
-
-        write(base, "drive_c/windows/system32/kernel32.dll", "k32")
-        write(base, "drive_c/windows/system32/deleted.dll", "gone")
-        write(base, "drive_c/windows/system32/override.dll", "base")
-        write(base, "drive_c/ProgramData/Opaque/base-only.txt", "hidden")
-        write(base, "drive_c/ProgramData/Removed/inner.txt", "hidden")
-        Files.createDirectories(File(base, "dosdevices").toPath())
-        Files.createSymbolicLink(File(base, "dosdevices/c:").toPath(), Paths.get("../drive_c"))
-
-        write(upper, "drive_c/windows/system32/override.dll", "upper")
-        write(upper, "drive_c/ProgramData/Opaque/upper-only.txt", "kept")
-        write(upper, ".gnoverlay/wh/drive_c/windows/system32/deleted.dll", "")
-        write(upper, ".gnoverlay/wh/drive_c/ProgramData/Removed", "")
-        write(upper, ".gnoverlay/opaque/drive_c/ProgramData/Opaque", "")
-
-        val container = bionicContainer(root).apply {
-            basePrefix = base.absolutePath
-            overlay = true
-        }
-        assertTrue(ContainerOverlayMigrator.rematerialize(container))
-
-        assertEquals("k32", File(upper, "drive_c/windows/system32/kernel32.dll").readText())
-        assertTrue(File(upper, "drive_c/windows/system32/kernel32.dll").canWrite())
-        assertEquals("upper", File(upper, "drive_c/windows/system32/override.dll").readText())
-        assertFalse(exists(File(upper, "drive_c/windows/system32/deleted.dll")))
-        assertFalse(exists(File(upper, "drive_c/ProgramData/Removed")))
-        assertFalse(exists(File(upper, "drive_c/ProgramData/Opaque/base-only.txt")))
-        assertEquals("kept", File(upper, "drive_c/ProgramData/Opaque/upper-only.txt").readText())
-        assertTrue(Files.isSymbolicLink(File(upper, "dosdevices/c:").toPath()))
-        assertFalse(exists(File(upper, ".gnoverlay")))
-        assertEquals("", container.basePrefix)
-        assertEquals(false, container.overlay)
-        assertFalse(container.isOverlay)
     }
 
     @Test
@@ -454,19 +374,5 @@ class ContainerOverlayFilesTest {
         assertEquals("k32", ContainerFiles.resolve(upper, base, "drive_c/windows/system32/kernel32.dll")!!.readText())
         assertFalse(exists(File(upper, "drive_c/windows/system32/kernel32.dll")))
         assertEquals("component", File(upper, "drive_c/windows/system32/dxvk.dll").readText())
-    }
-
-    @Test
-    fun seal_makesBaseReadOnly_andFileUtilsDeleteStillRemovesIt() {
-        val base = tmp.newFolder("base", ".wine")
-        write(base, "drive_c/windows/system32/kernel32.dll", "k32")
-        val windows = File(base, "drive_c/windows")
-
-        BasePrefix.seal(windows)
-
-        assertFalse(File(windows, "system32/kernel32.dll").canWrite())
-        assertFalse(File(windows, "system32").canWrite())
-        assertTrue(com.winlator.core.FileUtils.delete(base))
-        assertFalse(base.exists())
     }
 }

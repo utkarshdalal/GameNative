@@ -128,10 +128,9 @@ public class ContainerManager {
             boolean isMainWineVersion = !data.has("wineVersion") || WineInfo.isMainWineVersion(data.getString("wineVersion"));
             if (!isMainWineVersion) container.setWineVersion(data.getString("wineVersion"));
 
-            boolean thinAttempted = ContainerOverlay.isEligible(container) && ContainerOverlay.isRequested(container);
+            boolean thinAttempted = ContainerOverlay.isEligible(container);
             boolean thin = thinAttempted && createThinPrefix(container, contentsManager);
             if (!thin) {
-                if (!ContainerOverlay.isEligible(container)) container.setOverlay(false);
                 String patternVersion = thinAttempted ? WineInfo.MAIN_WINE_VERSION.identifier() : container.getWineVersion();
                 if (!extractContainerPatternFile(patternVersion, contentsManager, containerDir, null)) {
                     Log.w("Container Manager", "Failed to extract container pattern, deleting container directory...");
@@ -157,7 +156,6 @@ public class ContainerManager {
             File baseWine = BasePrefix.ensure(context, contentsManager, container.getWineVersion());
             if (baseWine != null && ContainerOverlay.createThinPrefix(baseWine, wineDir)) {
                 container.setBasePrefix(ContainerOverlay.canonicalHostPath(baseWine));
-                container.setOverlay(true);
                 return true;
             }
         }
@@ -206,7 +204,6 @@ public class ContainerManager {
         dstContainer.setRcfileId(srcContainer.getRCFileId());
         dstContainer.setWineVersion(srcContainer.getWineVersion());
         dstContainer.setContainerVariant(srcContainer.getContainerVariant());
-        dstContainer.setOverlay(srcContainer.getOverlay());
         dstContainer.setBasePrefix(srcContainer.getBasePrefix());
         ContainerOverlay.copyTree(new File(srcContainer.getRootDir(), ".wine/" + ContainerOverlay.OVERLAY_DIR),
                 new File(dstDir, ".wine/" + ContainerOverlay.OVERLAY_DIR), true);
