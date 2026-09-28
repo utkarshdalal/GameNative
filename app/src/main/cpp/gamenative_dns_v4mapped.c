@@ -3,7 +3,13 @@
  * commonly use AF_INET6 + AI_V4MAPPED with a dual-stack socket.  Provide the
  * Windows fallback for IPv4-only hosts by returning IPv4-mapped IPv6 results.
  *
- * This is loaded only for containers that need the compatibility workaround.
+ * Android also reports the machine hostname as "localhost", so applications
+ * that discover their own address via getaddrinfo(gethostname()) - notably
+ * Epic Online Services' P2P stack - resolve 127.0.0.1 and bind their gameplay
+ * sockets to loopback, which breaks online multiplayer.  gethostname() is
+ * interposed below to report the device's routable address instead.
+ *
+ * This shim is preloaded for every bionic launch.
  */
 
 #define _GNU_SOURCE
@@ -133,6 +139,7 @@ struct mapped_result
 static int (*next_getaddrinfo)(const char *, const char *, const struct addrinfo *,
                                struct addrinfo **);
 static void (*next_freeaddrinfo)(struct addrinfo *);
+static int (*next_gethostname)(char *, size_t);
 static pthread_once_t resolver_once = PTHREAD_ONCE_INIT;
 static pthread_mutex_t mapped_results_lock = PTHREAD_MUTEX_INITIALIZER;
 static struct mapped_result *mapped_results;
@@ -141,6 +148,7 @@ static void resolve_next_symbols(void)
 {
     next_getaddrinfo = dlsym(RTLD_NEXT, "getaddrinfo");
     next_freeaddrinfo = dlsym(RTLD_NEXT, "freeaddrinfo");
+    next_gethostname = dlsym(RTLD_NEXT, "gethostname");
 }
 
 static int network_getaddrinfo(const char *node, const char *service,
@@ -326,4 +334,60 @@ void freeaddrinfo(struct addrinfo *result)
     {
         next_freeaddrinfo(result);
     }
+}
+
+/*
+ * Android's hostname is "localhost", which resolves to 127.0.0.1.  When that
+ * is the answer, report the device's routable address instead: connecting a
+ * UDP socket reveals the source address the kernel would use, without the
+ * interface enumeration the app sandbox filters.  connect() on a datagram
+ * socket sends no packets.  On any failure the real hostname is kept.
+ */
+int gethostname(char *name, size_t len)
+{
+    struct sockaddr_in probe;
+    socklen_t probe_len = sizeof(probe);
+    char address[INET_ADDRSTRLEN];
+    int ret, fd;
+
+    pthread_once(&resolver_once, resolve_next_symbols);
+    if (!next_gethostname)
+    {
+        errno = ENOSYS;
+        return -1;
+    }
+
+    ret = next_gethostname(name, len);
+    if (ret != 0)
+        return ret;
+    if (strcmp(name, "localhost") != 0 && name[0] != '\0')
+        return 0;
+
+    fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd < 0)
+        return 0;
+
+    memset(&probe, 0, sizeof(probe));
+    probe.sin_family = AF_INET;
+    probe.sin_port = htons(53);
+    probe.sin_addr.s_addr = htonl(0x08080808); /* any routable destination */
+    if (connect(fd, (const struct sockaddr *)&probe, sizeof(probe)) != 0 ||
+        getsockname(fd, (struct sockaddr *)&probe, &probe_len) != 0)
+    {
+        close(fd);
+        return 0;
+    }
+    close(fd);
+
+    if (probe.sin_addr.s_addr == 0 ||
+        (ntohl(probe.sin_addr.s_addr) >> 24) == 127)
+        return 0;
+    if (!inet_ntop(AF_INET, &probe.sin_addr, address, sizeof(address)))
+        return 0;
+    if (strlen(address) + 1 > len)
+        return 0;
+
+    memcpy(name, address, strlen(address) + 1);
+    DNS_LOG("gethostname -> %s (hostname was localhost)", address);
+    return 0;
 }
