@@ -44,26 +44,26 @@ public final class ContainerOverlayMigrator {
 
     private ContainerOverlayMigrator() {}
 
-    public static void migrateIfNeeded(Context context, ContentsManager contentsManager, Container container) {
+    public static boolean migrateIfNeeded(Context context, ContentsManager contentsManager, Container container) {
         try {
-            if (context == null || container == null || container.getRootDir() == null) return;
-            if (!ContainerOverlay.isEligible(container)) return;
+            if (context == null || container == null || container.getRootDir() == null) return true;
+            if (!ContainerOverlay.isEligible(container)) return true;
             boolean thin = !container.getBasePrefix().isEmpty();
             if (!thin && !ContainerOverlay.bionicLibFile(context).isFile()) {
                 Log.e(TAG, "Overlay library missing, container " + container.id + " stays a full prefix");
-                return;
+                return true;
             }
 
             File baseWine = BasePrefix.ensure(context, contentsManager, container.getWineVersion());
             if (baseWine == null) {
                 Log.e(TAG, "No base prefix for " + container.getWineVersion() + ", container " + container.id);
-                return;
+                return !thin;
             }
 
             if (!thin) {
                 ContainerOverlay.splash("Migrating Wine prefix...");
                 migrate(container, baseWine, protonLibDirs(context, contentsManager, container.getWineVersion()));
-                return;
+                return true;
             }
 
             ContainerFiles.markOpaque(new File(container.getRootDir(), ".wine"), ContainerFiles.DOSDEVICES);
@@ -77,6 +77,7 @@ public final class ContainerOverlayMigrator {
         catch (Throwable t) {
             Log.w(TAG, "migrateIfNeeded failed", t);
         }
+        return true;
     }
 
     static void refreshSkeleton(File upperWine, File baseWine) throws IOException {

@@ -5529,7 +5529,9 @@ private suspend fun applyGeneralPatches(
         containerManager.extractContainerPatternCommon(rootDir, onExtractFileListener)
     }
     if (container.isOverlay) {
-        ContainerOverlayMigrator.migrateIfNeeded(context, contentsManager, container)
+        check(ContainerOverlayMigrator.migrateIfNeeded(context, contentsManager, container)) {
+            "No base prefix for ${container.wineVersion}, cannot switch thin container ${container.id}"
+        }
     } else {
         Timber.i("Attempting to extract _container_pattern.tzst with wine version " + container.wineVersion)
         containerManager.extractContainerPatternFile(container.wineVersion, contentsManager, container.rootDir, onExtractFileListener)
