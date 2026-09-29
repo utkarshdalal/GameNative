@@ -128,7 +128,8 @@ public class ContainerManager {
             boolean isMainWineVersion = !data.has("wineVersion") || WineInfo.isMainWineVersion(data.getString("wineVersion"));
             if (!isMainWineVersion) container.setWineVersion(data.getString("wineVersion"));
 
-            if (!extractContainerPatternFile(container.getWineVersion(), contentsManager, containerDir, null)) {
+            boolean thin = ContainerOverlay.isEligible(container) && createThinPrefix(container, contentsManager);
+            if (!thin && !extractContainerPatternFile(container.getWineVersion(), contentsManager, containerDir, null)) {
                 Log.w("Container Manager", "Failed to extract container pattern, deleting container directory...");
                 FileUtils.delete(containerDir);
                 return null;
@@ -142,6 +143,19 @@ public class ContainerManager {
             Log.e("ContainerManager", "Failed to create container: " + e);
         }
         return null;
+    }
+
+    private boolean createThinPrefix(Container container, ContentsManager contentsManager) {
+        contentsManager.syncContents();
+        File baseWine = BasePrefix.ensure(context, contentsManager, container.getWineVersion());
+        File wineDir = new File(container.getRootDir(), ".wine");
+        if (baseWine != null && ContainerOverlay.createThinPrefix(baseWine, wineDir)) {
+            container.setBasePrefix(ContainerOverlay.canonicalHostPath(baseWine));
+            return true;
+        }
+        Log.w("ContainerManager", "Thin prefix creation failed, using a full prefix for " + container.id);
+        FileUtils.delete(wineDir);
+        return false;
     }
 
     private void duplicateContainer(Container srcContainer) {
@@ -180,6 +194,10 @@ public class ContainerManager {
         dstContainer.setDesktopTheme(srcContainer.getDesktopTheme());
         dstContainer.setRcfileId(srcContainer.getRCFileId());
         dstContainer.setWineVersion(srcContainer.getWineVersion());
+        dstContainer.setContainerVariant(srcContainer.getContainerVariant());
+        dstContainer.setBasePrefix(srcContainer.getBasePrefix());
+        ContainerOverlay.copyTree(new File(srcContainer.getRootDir(), ".wine/" + ContainerOverlay.OVERLAY_DIR),
+                new File(dstDir, ".wine/" + ContainerOverlay.OVERLAY_DIR), true);
         dstContainer.saveData();
 
         containers.add(dstContainer);
@@ -292,7 +310,7 @@ public class ContainerManager {
                 dstFile = onExtractFileListener.onExtractFile(dstFile, 0);
                 if (dstFile == null) continue;
             }
-            FileUtils.link(new File(srcDir, dlname), dstFile);
+            FileUtils.copy(new File(srcDir, dlname), dstFile);
         }
     }
 
@@ -314,7 +332,7 @@ public class ContainerManager {
                 if (dstFile == null) continue;
             }
             Log.d("Extraction", "linking " + file + " to " + dstFile);
-            FileUtils.link(file, dstFile);
+            FileUtils.copy(file, dstFile);
         }
     }
 

@@ -21,6 +21,7 @@ import app.gamenative.utils.LsfgVkManager;
 import com.winlator.box86_64.Box86_64Preset;
 import com.winlator.box86_64.Box86_64PresetManager;
 import com.winlator.container.Container;
+import com.winlator.container.ContainerOverlay;
 import com.winlator.container.Shortcut;
 import com.winlator.contents.ContentProfile;
 import com.winlator.contents.ContentsManager;
@@ -405,6 +406,14 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             }
         }
 
+        try {
+            ContainerOverlay.applyBionicLaunchEnv(context, container, envVars);
+        }
+        catch (IllegalStateException e) {
+            Log.e("BionicProgramLauncherComponent", e.getMessage());
+            return -1;
+        }
+
         Log.d("BionicProgramLauncherComponent", "env vars are " + EnvVarRedaction.redact(envVars));
 
         String emulator = container.getEmulator();
@@ -700,6 +709,10 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     }
 
     public String execShellCommand(String command, boolean includeStderr) {
+        return execShellCommand(command, includeStderr, null, null);
+    }
+
+    public String execShellCommand(String command, boolean includeStderr, EnvVars extraEnv, String[] unsetEnv) {
         Context context = environment.getContext();
         ImageFs imageFs = ImageFs.find(context);
         File rootDir = imageFs.getRootDir();
@@ -739,6 +752,15 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         String emulator = container.getEmulator();
         if (this.envVars != null) envVars.putAll(this.envVars);
+        try {
+            ContainerOverlay.applyBionicLaunchEnv(context, container, envVars);
+        }
+        catch (IllegalStateException e) {
+            Log.e("BionicProgramLauncherComponent", e.getMessage());
+            return "";
+        }
+        if (extraEnv != null) envVars.putAll(extraEnv);
+        if (unsetEnv != null) for (String name : unsetEnv) envVars.remove(name);
 
         String finalCommand = getFinalCommand(winePath, emulator, envVars, imageFs.getBinDir(), command);
 
