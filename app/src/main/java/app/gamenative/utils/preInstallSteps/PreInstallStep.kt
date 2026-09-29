@@ -7,7 +7,7 @@ import java.io.File
 
 interface PreInstallStep {
     val marker: Marker
-    val envOverrides: Map<String, String> get() = emptyMap()
+    val fexCorePreset: String? get() = null
 
     fun appliesTo(
         container: Container,

@@ -4,16 +4,12 @@ import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
 import app.gamenative.service.gog.GOGService
 import com.winlator.container.Container
+import com.winlator.fexcore.FEXCorePreset
 import java.io.File
 
 object GogScriptInterpreterStep : PreInstallStep {
     override val marker: Marker = Marker.GOG_SCRIPT_INSTALLED
-    override val envOverrides: Map<String, String> = mapOf(
-        "FEX_TSOENABLED" to "1",
-        "FEX_VECTORTSOENABLED" to "1",
-        "FEX_MEMCPYSETTSOENABLED" to "1",
-        "FEX_HALFBARRIERTSOENABLED" to "1",
-    )
+    override val fexCorePreset: String = FEXCorePreset.STABILITY
 
     override fun appliesTo(
         container: Container,

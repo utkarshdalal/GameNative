@@ -4249,8 +4249,14 @@ private fun setupXEnvironment(
         environment.addComponent(VortekRendererComponent(xServer, UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.VORTEK_SERVER_PATH), options2, context))
     }
 
-    val gameEnvVars = EnvVars().apply { putAll(envVars) }
-    guestProgramLauncherComponent.envVars = PreInstallSteps.envVarsForStep(gameEnvVars, preInstallCommands.firstOrNull())
+    guestProgramLauncherComponent.envVars = EnvVars().apply { putAll(envVars) }
+
+    fun applyFexCorePreset(command: PreInstallSteps.PreInstallCommand?) {
+        if (guestProgramLauncherComponent is BionicProgramLauncherComponent) {
+            guestProgramLauncherComponent.setFEXCorePreset(command?.fexCorePreset ?: container.fexCorePreset)
+        }
+    }
+    applyFexCorePreset(preInstallCommands.firstOrNull())
 
     val gameTerminationCallback = Callback<Int> { status ->
         if (status != 0) {
@@ -4262,12 +4268,12 @@ private fun setupXEnvironment(
 
     fun chainPreInstallSteps(remaining: List<PreInstallSteps.PreInstallCommand>) {
         if (remaining.isEmpty()) {
-            guestProgramLauncherComponent.envVars = gameEnvVars
+            applyFexCorePreset(null)
             guestProgramLauncherComponent.setGuestExecutable(gameExecutable)
             guestProgramLauncherComponent.setTerminationCallback(gameTerminationCallback)
             return
         }
-        guestProgramLauncherComponent.envVars = PreInstallSteps.envVarsForStep(gameEnvVars, remaining.first())
+        applyFexCorePreset(remaining.first())
         guestProgramLauncherComponent.setGuestExecutable(remaining.first().executable)
         guestProgramLauncherComponent.setTerminationCallback { _ ->
             val current = remaining.first()
