@@ -732,6 +732,10 @@ object PowerManager {
      */
     fun isDriverSupported(): Boolean = driver.isDriverSupported()
 
+    fun isGovernorSupported(): Boolean = driver.isGovernorSupported()
+
+    fun driverName(): String = driver::class.java.simpleName
+
     /**
      * Get display unit preference for frequency values
      */
