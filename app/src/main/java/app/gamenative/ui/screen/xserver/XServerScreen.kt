@@ -153,6 +153,7 @@ import app.gamenative.utils.SteamTokenLogin
 import app.gamenative.enums.Marker
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.SteamUtils
+import app.gamenative.utils.WineMsiCache
 import app.gamenative.utils.downloader.WinComponentDownloader
 import app.gamenative.utils.WineProcessSnapshotHelper
 import com.posthog.PostHog
@@ -5108,6 +5109,8 @@ private fun unpackExecutableFile(
 ) {
     val imageFs = ImageFs.find(context)
     var output = StringBuilder()
+    val monoMsi = File(imageFs.getRootDir(), "opt/mono-gecko-offline/wine-mono-11.0.0-x86.msi")
+    WineMsiCache.deleteCachedCopies(imageFs, monoMsi)
     if (needsUnpacking || containerVariantChanged){
         try {
             PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing Mono..."))
@@ -5119,6 +5122,7 @@ private fun unpackExecutableFile(
         } catch (e: Exception) {
             Timber.e("Error during mono installation: $e")
         }
+        WineMsiCache.deleteCachedCopies(imageFs, monoMsi)
 
         // Install redistributables if shared depots are present
         try {
@@ -5523,10 +5527,12 @@ private suspend fun applyGeneralPatches(
     } else if (!container.isOverlay) {
         Timber.i("Extracting container_pattern_common.tzst")
         containerManager.extractContainerPatternCommon(rootDir, onExtractFileListener)
+    }
+    if (container.isOverlay) {
+        ContainerOverlayMigrator.migrateIfNeeded(context, contentsManager, container)
+    } else {
         Timber.i("Attempting to extract _container_pattern.tzst with wine version " + container.wineVersion)
         containerManager.extractContainerPatternFile(container.wineVersion, contentsManager, container.rootDir, onExtractFileListener)
-    } else {
-        ContainerOverlayMigrator.migrateIfNeeded(context, contentsManager, container)
     }
     WineUtils.applySystemTweaks(context, wineInfo)
     container.putExtra("graphicsDriver", null)
