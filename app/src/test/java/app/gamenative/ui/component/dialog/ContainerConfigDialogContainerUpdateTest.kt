@@ -682,14 +682,5 @@ class ContainerConfigDialogContainerUpdateTest {
 
         assertTrue(container.isPortraitMode)
     }
-
-    @Test
-    fun automaticModDllSetting_roundTripsThroughContainerSettings() {
-        assertTrue(ContainerUtils.toContainerData(container).autoModDllOverrides)
-        ContainerUtils.applyToContainer(context, container, ContainerData(autoModDllOverrides = false), saveToDisk = false)
-        assertFalse(ContainerUtils.toContainerData(container).autoModDllOverrides)
-        ContainerUtils.applyToContainer(context, container, ContainerData(autoModDllOverrides = true), saveToDisk = false)
-        assertTrue(ContainerUtils.toContainerData(container).autoModDllOverrides)
-    }
 }
 

@@ -38,13 +38,11 @@ import app.gamenative.ui.component.settings.SettingsCenteredLabel
 import app.gamenative.ui.component.settings.SettingsEnvVars
 import app.gamenative.ui.component.settings.SettingsMultiListDropdown
 import app.gamenative.ui.theme.settingsTileColors
-import app.gamenative.ui.theme.settingsTileColorsAlt
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.ModDllOverrideLauncher
 import app.gamenative.utils.ModDllOverrides
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
-import com.alorma.compose.settings.ui.SettingsSwitch
 import com.winlator.core.envvars.EnvVarInfo
 import com.winlator.core.envvars.EnvVarSelectionType
 import com.winlator.core.envvars.EnvVars
@@ -57,15 +55,15 @@ fun EnvironmentTabContent(state: ContainerConfigState, appId: String? = null) {
     val context = LocalContext.current
     val config = state.config.value
     val envVars = EnvVars(config.envVars)
-    val supportsAutomaticOverrides = ModDllOverrideLauncher.supportsLaunch(config.launchRealSteam, config.launchBionicSteam)
-    val automaticOverridesEnabled = config.autoModDllOverrides && supportsAutomaticOverrides
+    val supportsAutomaticOverrides =
+        appId != null && ModDllOverrideLauncher.supportsLaunch(config.launchRealSteam, config.launchBionicSteam)
     var inspectionRevision by remember { mutableIntStateOf(0) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { inspectionRevision++ }
     val inspection by produceState<ModDllOverrides.Inspection?>(
-        null, appId, config.executablePath, config.drives, automaticOverridesEnabled, inspectionRevision,
+        null, appId, config.executablePath, config.drives, supportsAutomaticOverrides, inspectionRevision,
     ) {
         value = null
-        if (!automaticOverridesEnabled) return@produceState
+        if (!supportsAutomaticOverrides) return@produceState
         value = withContext(Dispatchers.IO) {
             runCatching {
                 val prefix = appId?.let { File(ContainerUtils.getContainer(context, it).rootDir, ".wine") }
@@ -76,31 +74,38 @@ fun EnvironmentTabContent(state: ContainerConfigState, appId: String? = null) {
             }.getOrNull()
         }
     }
-    val activeInspection = inspection.takeIf { automaticOverridesEnabled }
+    val activeInspection = inspection.takeIf { supportsAutomaticOverrides }
     val detected = activeInspection?.detected.orEmpty()
     val overrides = activeInspection?.merge(envVars.get("WINEDLLOVERRIDES"))
     SettingsGroup {
-        SettingsSwitch(
-            enabled = supportsAutomaticOverrides,
-            colors = settingsTileColorsAlt(),
-            title = { Text(stringResource(R.string.auto_mod_dll_overrides)) },
-            subtitle = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(stringResource(R.string.auto_mod_dll_overrides_description))
-                    if (!supportsAutomaticOverrides) {
-                        Text(stringResource(R.string.auto_mod_dll_overrides_steam_unavailable))
-                    }
-                    if (detected.isNotEmpty()) {
-                        Text(stringResource(R.string.auto_mod_dll_overrides_detected, detected.joinToString { "$it.dll" }))
-                    }
-                    if (overrides?.preserved?.isNotEmpty() == true) {
-                        Text(stringResource(R.string.auto_mod_dll_overrides_preserved, overrides.preserved.joinToString { "$it.dll" }))
-                    }
+        if (appId != null && (!supportsAutomaticOverrides || detected.isNotEmpty())) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                if (!supportsAutomaticOverrides) {
+                    Text(
+                        stringResource(R.string.auto_mod_dll_overrides_steam_unavailable),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
-            },
-            state = config.autoModDllOverrides,
-            onCheckedChange = { state.config.value = config.copy(autoModDllOverrides = it) },
-        )
+                if (detected.isNotEmpty()) {
+                    Text(
+                        stringResource(R.string.auto_mod_dll_overrides_detected, detected.joinToString { "$it.dll" }),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (overrides?.preserved?.isNotEmpty() == true) {
+                    Text(
+                        stringResource(R.string.auto_mod_dll_overrides_preserved, overrides.preserved.joinToString { "$it.dll" }),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
         if (overrides?.added?.isNotEmpty() == true) {
             NoExtractOutlinedTextField(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),

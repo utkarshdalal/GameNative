@@ -21,6 +21,7 @@ class ModDllOverrideLauncherTest {
     @Before fun setUp() {
         val game = temp.newFolder("Game")
         File(game, "game.exe").writeText("test")
+        File(game, "doorstop_config.ini").writeText("test")
         dll = File(game, "dinput8.dll").apply { writeText("test") }
         container = Container("CUSTOM_GAME_1").apply {
             setRootDir(temp.newFolder("container"))
@@ -55,6 +56,7 @@ class ModDllOverrideLauncherTest {
         File(game, "Muck.exe").writeText("test")
         File(game, "winhttp.dll").writeText("test")
         File(game, "dinput8.dll").writeText("test")
+        File(game, "doorstop_config.ini").writeText("test")
         File(prefix, "user.reg").writeText("[Software\\\\Wine\\\\DllOverrides]\n\"dinput8\"=\"builtin,native\"\n")
         container.executablePath = "C:\\Games\\Muck\\Muck.exe"
 
@@ -180,16 +182,27 @@ class ModDllOverrideLauncherTest {
         assertEquals("WINEDLLOVERRIDES=icu=n", container.envVars)
     }
 
-    @Test fun respectsDisabledSettingAcrossContainerReload() {
-        container.putExtra(ModDllOverrides.SETTING, "false")
+    @Test fun retiredToggleDoesNotDisableAutomaticOverridesInExistingContainers() {
+        container.putExtra("autoModDllOverrides", "false")
         container.saveData()
         val reloaded = Container(container.id).apply {
             setRootDir(container.rootDir)
             loadData(JSONObject(container.configFile.readText()))
         }
-        assertEquals("false", reloaded.getExtra(ModDllOverrides.SETTING))
         val env = EnvVars(reloaded.envVars)
         ModDllOverrideLauncher.apply(reloaded, env, true)
-        assertEquals("icu=n", env.get("WINEDLLOVERRIDES"))
+        assertEquals("icu=n;dinput8=n,b", env.get("WINEDLLOVERRIDES"))
+        assertEquals("WINEDLLOVERRIDES=icu=n", reloaded.envVars)
+    }
+
+    @Test fun removingLoaderEvidenceStopsAutomaticOverridesOnNextLaunch() {
+        val first = EnvVars(container.envVars)
+        ModDllOverrideLauncher.apply(container, first, true)
+        assertEquals("icu=n;dinput8=n,b", first.get("WINEDLLOVERRIDES"))
+
+        assertTrue(File(dll.parentFile, "doorstop_config.ini").delete())
+        val second = EnvVars(container.envVars)
+        ModDllOverrideLauncher.apply(container, second, true)
+        assertEquals("icu=n", second.get("WINEDLLOVERRIDES"))
     }
 }

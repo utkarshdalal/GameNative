@@ -1,7 +1,5 @@
 ﻿<resources>
     <string name="auto_mod_dll_overrides_steam_unavailable">Автоматические переопределения недоступны в режимах Steam GUI и headless. Ручные переопределения продолжают действовать.</string>
-    <string name="auto_mod_dll_overrides">Автоматически настраивать переопределения DLL для модов</string>
-    <string name="auto_mod_dll_overrides_description">Автоматически загружать поддерживаемые DLL модов из папки игры. Существующие переопределения имеют приоритет.</string>
     <string name="auto_mod_dll_overrides_detected">Обнаружено: %1$s</string>
     <string name="auto_mod_dll_overrides_preserved">Существующие настройки имеют приоритет для: %1$s</string>
     <string name="auto_mod_dll_overrides_preview">WINEDLLOVERRIDES (автоматически)</string>

@@ -1,7 +1,5 @@
 <resources>
     <string name="auto_mod_dll_overrides_steam_unavailable">Automatic overrides are unavailable in Steam GUI/headless modes. Manual overrides still apply.</string>
-    <string name="auto_mod_dll_overrides">Automatically configure mod DLL overrides</string>
-    <string name="auto_mod_dll_overrides_description">Automatically load supported mod DLLs in the game folder. Your existing overrides take priority.</string>
     <string name="auto_mod_dll_overrides_detected">Detected: %1$s</string>
     <string name="auto_mod_dll_overrides_preserved">Existing settings take priority for: %1$s</string>
     <string name="auto_mod_dll_overrides_preview">WINEDLLOVERRIDES (Automatic)</string>

@@ -6,7 +6,6 @@ import java.util.Locale
 
 /** Recomputed for each launch. Automatic entries are never saved into the container's environment. */
 object ModDllOverrides {
-    const val SETTING = "autoModDllOverrides"
     private val proxies = listOf("dinput8", "winhttp", "version", "winmm", "dsound")
     private val frameworkDirectories = setOf("bepinex", "melonloader", "reframework")
     private val asiDirectories = setOf("scripts", "plugins", "update")
@@ -77,10 +76,9 @@ object ModDllOverrides {
                         ((name == "doorstop_config.ini" || name.endsWith(".asi")) && entry.isFile)
                     )
         }
-        return proxies.filter { dll ->
-            files["$dll.dll"]?.singleOrNull()?.isFile == true &&
-                (dll == "dinput8" || dll == "winhttp" || hasFramework)
-        }
+        // A supported filename alone can also be an ordinary game dependency.
+        if (!hasFramework) return emptyList()
+        return proxies.filter { dll -> files["$dll.dll"]?.singleOrNull()?.isFile == true }
     }
 
     fun merge(value: String, detected: List<String>, registry: RegistryOverrides = RegistryOverrides()): Result {

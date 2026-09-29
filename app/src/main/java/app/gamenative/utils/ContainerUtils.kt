@@ -114,7 +114,6 @@ object ContainerUtils {
         return ContainerData(
             screenSize = PrefManager.screenSize,
             envVars = PrefManager.envVars,
-            autoModDllOverrides = PrefManager.autoModDllOverrides,
             graphicsDriver = PrefManager.graphicsDriver,
             graphicsDriverVersion = PrefManager.graphicsDriverVersion,
             graphicsDriverConfig = PrefManager.graphicsDriverConfig,
@@ -183,7 +182,6 @@ object ContainerUtils {
     fun setDefaultContainerData(containerData: ContainerData) {
         PrefManager.screenSize = containerData.screenSize
         PrefManager.envVars = containerData.envVars
-        PrefManager.autoModDllOverrides = containerData.autoModDllOverrides
         PrefManager.graphicsDriver = containerData.graphicsDriver
         PrefManager.graphicsDriverVersion = containerData.graphicsDriverVersion
         PrefManager.graphicsDriverConfig = containerData.graphicsDriverConfig
@@ -305,7 +303,6 @@ object ContainerUtils {
             name = container.name,
             screenSize = container.screenSize,
             envVars = container.envVars,
-            autoModDllOverrides = container.getExtra(ModDllOverrides.SETTING, "true").toBoolean(),
             graphicsDriver = container.graphicsDriver,
             graphicsDriverVersion = container.graphicsDriverVersion,
             graphicsDriverConfig = container.graphicsDriverConfig,
@@ -446,7 +443,6 @@ object ContainerUtils {
                 "unpackFiles" -> value?.let { updatedData.copy(unpackFiles = it as? Boolean ?: updatedData.unpackFiles) } ?: updatedData
                 "suspendPolicy" -> value?.let { updatedData.copy(suspendPolicy = it as? String ?: updatedData.suspendPolicy) } ?: updatedData
                 "envVars" -> value?.let { updatedData.copy(envVars = it as? String ?: updatedData.envVars) } ?: updatedData
-                ModDllOverrides.SETTING -> updatedData.copy(autoModDllOverrides = value as? Boolean ?: updatedData.autoModDllOverrides)
                 "cpuList" -> value?.let { updatedData.copy(cpuList = it as? String ?: updatedData.cpuList) } ?: updatedData
                 "cpuListWoW64" -> value?.let { updatedData.copy(cpuListWoW64 = it as? String ?: updatedData.cpuListWoW64) } ?: updatedData
                 "audioDriver" -> value?.let { updatedData.copy(audioDriver = it as? String ?: updatedData.audioDriver) } ?: updatedData
@@ -498,7 +494,6 @@ object ContainerUtils {
         container.name = containerData.name
         container.screenSize = containerData.screenSize
         container.envVars = containerData.envVars
-        container.putExtra(ModDllOverrides.SETTING, containerData.autoModDllOverrides.toString())
         container.graphicsDriver = containerData.graphicsDriver
         // Save driver config through to container
         container.graphicsDriverConfig = containerData.graphicsDriverConfig
@@ -893,7 +888,6 @@ object ContainerUtils {
             ContainerData(
                 screenSize = PrefManager.screenSize,
                 envVars = PrefManager.envVars,
-                autoModDllOverrides = PrefManager.autoModDllOverrides,
                 cpuList = PrefManager.cpuList,
                 cpuListWoW64 = PrefManager.cpuListWoW64,
                 graphicsDriver = PrefManager.graphicsDriver,

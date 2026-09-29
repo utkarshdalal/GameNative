@@ -20,7 +20,7 @@ object ModDllOverrideLauncher {
         .associate { it[0] to File(it[1]) }
 
     fun apply(container: Container, env: EnvVars, gameLaunch: Boolean) {
-        if (!gameLaunch || !container.getExtra(ModDllOverrides.SETTING, "true").toBoolean()) return
+        if (!gameLaunch) return
         if (!supportsLaunch(container.isLaunchRealSteam, container.isLaunchBionicSteam)) return
         try {
             val prefix = File(container.rootDir, ".wine")

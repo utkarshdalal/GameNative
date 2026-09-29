@@ -1,7 +1,5 @@
 ﻿<resources>
     <string name="auto_mod_dll_overrides_steam_unavailable">As substituições automáticas não estão disponíveis nos modos GUI e headless do Steam. As substituições manuais continuam sendo aplicadas.</string>
-    <string name="auto_mod_dll_overrides">Configurar automaticamente as substituições de DLL para mods</string>
-    <string name="auto_mod_dll_overrides_description">Carregar automaticamente as DLLs de mods compatíveis na pasta do jogo. As substituições existentes têm prioridade.</string>
     <string name="auto_mod_dll_overrides_detected">Detectadas: %1$s</string>
     <string name="auto_mod_dll_overrides_preserved">As configurações existentes têm prioridade para: %1$s</string>
     <string name="auto_mod_dll_overrides_preview">WINEDLLOVERRIDES (automático)</string>

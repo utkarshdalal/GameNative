@@ -51,17 +51,18 @@ class ModDllOverridesTest {
     @Test fun detectsMixedCaseBesideExecutableOnly() {
         val exe = file("Game/Bin/GAME.exe")
         file("Game/Bin/DINPUT8.DLL")
+        file("Game/Bin/doorstop_config.ini")
         file("Game/winhttp.dll")
         file("Game/Bin/backup/winhttp.dll")
         assertEquals(listOf("dinput8"), ModDllOverrides.detect(exe))
     }
 
-    @Test fun broadProxiesRequireFrameworkEvidenceAndGraphicsAreExcluded() {
+    @Test fun allProxiesRequireLoaderEvidenceAndGraphicsAreExcluded() {
         val exe = file("Game/game.exe")
-        listOf("version", "winmm", "dsound", "dxgi", "d3d11").forEach { file("Game/$it.dll") }
+        listOf("dinput8", "winhttp", "version", "winmm", "dsound", "dxgi", "d3d11").forEach { file("Game/$it.dll") }
         assertTrue(ModDllOverrides.detect(exe).isEmpty())
         file("Game/doorstop_config.ini")
-        assertEquals(listOf("version", "winmm", "dsound"), ModDllOverrides.detect(exe))
+        assertEquals(listOf("dinput8", "winhttp", "version", "winmm", "dsound"), ModDllOverrides.detect(exe))
     }
 
     @Test fun asiAndFrameworkDirectoriesProvideEvidence() {
@@ -77,6 +78,7 @@ class ModDllOverridesTest {
     @Test fun removingProxyRemovesAutomaticEntryOnNextLaunch() {
         val exe = file("Game/game.exe")
         val dll = file("Game/winhttp.dll")
+        file("Game/doorstop_config.ini")
         val saved = "icu=n"
         assertEquals("icu=n;winhttp=n,b", ModDllOverrides.merge(saved, ModDllOverrides.detect(exe)).value)
         assertTrue(dll.delete())
@@ -86,7 +88,7 @@ class ModDllOverridesTest {
     @Test fun asiPluginsInSupportedSubdirectoriesProvideEvidence() {
         for (folder in listOf("Scripts", "pLuGiNs", "UPDATE")) {
             val exe = file("$folder/game.exe")
-            val proxies = listOf("version", "winmm", "dsound")
+            val proxies = listOf("dinput8", "winhttp", "version", "winmm", "dsound")
             proxies.forEach { file("$folder/$it.dll") }
             val plugin = file("$folder/$folder/Fix.ASI")
             assertEquals(folder, proxies, ModDllOverrides.detect(exe))
@@ -123,7 +125,39 @@ class ModDllOverridesTest {
     @Test fun ignoresMissingExecutablesAndDllNamedDirectories() {
         assertTrue(ModDllOverrides.detect(File(temp.root, "absent.exe")).isEmpty())
         val exe = file("Game/game.exe")
+        file("Game/doorstop_config.ini")
         File(exe.parentFile, "winhttp.dll").mkdir()
+        assertTrue(ModDllOverrides.detect(exe).isEmpty())
+    }
+
+    @Test fun bepinexAndMelonLoaderLayoutsQualifyWithoutManualOverrides() {
+        for ((framework, proxy) in listOf("bEpInEx" to "winhttp", "MelonLoader" to "version", "reframework" to "dinput8")) {
+            val exe = file("$framework/game.exe")
+            file("$framework/$proxy.dll")
+            File(exe.parentFile, framework).mkdir()
+            assertEquals(listOf(proxy), ModDllOverrides.detect(exe))
+        }
+    }
+
+    @Test fun unrelatedFilesAndLoaderEvidenceInOtherDirectoriesDoNotQualify() {
+        val exe = file("Game/Bin/game.exe")
+        file("Game/Bin/winhttp.dll")
+        file("Game/Bin/dinput8.dll")
+        file("Game/doorstop_config.ini")
+        file("Game/patch.asi")
+        file("Game/Bin/backup/doorstop_config.ini")
+        file("Game/Bin/readme.txt")
+        assertTrue(ModDllOverrides.detect(exe).isEmpty())
+    }
+
+    @Test fun loaderNamesMustHaveTheExpectedFileType() {
+        val exe = file("Game/game.exe")
+        file("Game/winhttp.dll")
+        file("Game/BepInEx")
+        file("Game/MelonLoader")
+        file("Game/reframework")
+        File(exe.parentFile, "doorstop_config.ini").mkdir()
+        File(exe.parentFile, "patch.asi").mkdir()
         assertTrue(ModDllOverrides.detect(exe).isEmpty())
     }
 

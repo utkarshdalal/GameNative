@@ -41,6 +41,7 @@ public class GuestProgramEnvironmentTest {
             assertEquals("icu=n", launcher.getEnvVars().get("WINEDLLOVERRIDES"));
             File dll = new File(game, "winhttp.dll");
             assertTrue(dll.createNewFile());
+            assertTrue(new File(game, "doorstop_config.ini").createNewFile());
             assertEquals("icu=n;winhttp=n,b", launcher.getGuestEnvironment().get("WINEDLLOVERRIDES"));
             assertEquals("icu=n", launcher.getEnvVars().get("WINEDLLOVERRIDES"));
 

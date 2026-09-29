@@ -189,13 +189,6 @@ object PrefManager {
         }
 
     private val ENV_VARS = stringPreferencesKey("env_vars")
-    private val AUTO_MOD_DLL_OVERRIDES = booleanPreferencesKey("auto_mod_dll_overrides")
-    var autoModDllOverrides: Boolean
-        get() = getPref(AUTO_MOD_DLL_OVERRIDES, true)
-        set(value) {
-            setPref(AUTO_MOD_DLL_OVERRIDES, value)
-        }
-
     var envVars: String
         get() = getPref(ENV_VARS, Container.DEFAULT_ENV_VARS)
         set(value) {

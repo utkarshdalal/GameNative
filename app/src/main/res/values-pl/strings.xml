@@ -1,7 +1,5 @@
 ﻿<resources>
     <string name="auto_mod_dll_overrides_steam_unavailable">Automatyczne nadpisania są niedostępne w trybach Steam GUI i headless. Ręczne nadpisania nadal obowiązują.</string>
-    <string name="auto_mod_dll_overrides">Automatycznie konfiguruj nadpisania DLL dla modów</string>
-    <string name="auto_mod_dll_overrides_description">Automatycznie wczytuj obsługiwane biblioteki DLL modów z folderu gry. Istniejące nadpisania mają pierwszeństwo.</string>
     <string name="auto_mod_dll_overrides_detected">Wykryto: %1$s</string>
     <string name="auto_mod_dll_overrides_preserved">Istniejące ustawienia mają pierwszeństwo dla: %1$s</string>
     <string name="auto_mod_dll_overrides_preview">WINEDLLOVERRIDES (automatycznie)</string>
