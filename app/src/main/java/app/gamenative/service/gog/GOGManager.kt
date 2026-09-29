@@ -1,6 +1,7 @@
 package app.gamenative.service.gog
 
 import android.content.Context
+import app.gamenative.PrefManager
 import app.gamenative.PluviaApp
 import app.gamenative.data.GOGCloudSavesLocation
 import app.gamenative.data.GOGCloudSavesLocationTemplate
@@ -53,6 +54,7 @@ data class GameSizeInfo(
  * - Executable discovery
  * - Wine launch commands
  * - File system operations
+ * - Independent gog.com and Galaxy hidden-state synchronization
  *
  * Uses GOGPythonBridge for all GOGDL command execution.
  * Uses GOGAuthManager for authentication checks.
@@ -79,6 +81,20 @@ class GOGManager @Inject constructor(
     // Track active sync operations to prevent concurrent syncs
     private val activeSyncs = ConcurrentHashMap.newKeySet<String>()
 
+    /** Narrow seams for deterministic hidden/full-sync tests. */
+    internal var hiddenSourceFetcher: suspend (GogHiddenSource) -> Result<GogHiddenSnapshot> = { source ->
+        GOGApiClient.fetchHiddenSnapshot(context, source)
+    }
+    internal var libraryRefreshForFullSync: suspend (Context) -> Result<Int> = { syncContext ->
+        refreshLibrary(syncContext)
+    }
+    internal var credentialsAvailableForFullSync: suspend (Context) -> Boolean = { syncContext ->
+        GOGAuthManager.hasStoredCredentials(syncContext)
+    }
+    internal var backfillVerticalCoversForFullSync: suspend () -> Unit = {
+        backfillVerticalCovers()
+    }
+
     init {
         // Load persisted cloudsave timestamps on initialization
         loadCloudSaveTimestampsFromDisk()
@@ -101,7 +117,7 @@ class GOGManager @Inject constructor(
 
     suspend fun insertGame(game: GOGGame) {
         withContext(Dispatchers.IO) {
-            // Preserve install state and the hidden flag when the row already exists, so a
+            // Preserve install state and hidden source flags when the row already exists, so a
             // single-game refresh cannot reset them.
             gogGameDao.upsertPreservingInstallStatus(listOf(game))
         }
@@ -130,69 +146,103 @@ class GOGManager @Inject constructor(
         }
     }
 
-    suspend fun startBackgroundSync(context: Context): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            if (!GOGAuthManager.hasStoredCredentials(context)) {
-                Timber.w("Cannot start background sync: no stored credentials")
-                return@withContext Result.failure(Exception("No stored credentials found"))
-            }
-
-            Timber.tag("GOG").i("Starting GOG library background sync...")
-
-            val result = refreshLibrary(context)
-
-            if (result.isSuccess) {
-                val count = result.getOrNull() ?: 0
-                Timber.tag("GOG").i("Background sync completed: $count games synced")
-                backfillVerticalCovers()
-                return@withContext Result.success(Unit)
-            } else {
-                val error = result.exceptionOrNull()
-                Timber.e(error, "Background sync failed: ${error?.message}")
-                return@withContext Result.failure(error ?: Exception("Background sync failed"))
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Timber.e(e, "Failed to sync GOG library in background")
-            Result.failure(e)
+    /** Runs the library and hidden-state refresh on the background dispatcher. */
+    suspend fun startBackgroundSync(context: Context): GogFullSyncResult = withContext(Dispatchers.IO) {
+        Timber.tag("GOG").i("Starting GOG library background sync...")
+        val fullSync = refreshFullSync(context)
+        if (fullSync.library is GogLibraryRefreshOutcome.Success) {
+            backfillVerticalCoversForFullSync()
         }
+        fullSync
     }
+
+    /** Clears both hidden source flags and their success timestamps during account cleanup. */
+    suspend fun clearHiddenState() = withContext(Dispatchers.IO) {
+        gogGameDao.clearHiddenSourceFlags()
+        PrefManager.clearHiddenSyncTimestamps()
+    }
+
+    /** Compatibility name retained for the service logout path. */
+    suspend fun clearHiddenFlags() = clearHiddenState()
 
     /**
-     * Fetches hidden-product IDs once per sync and stores them on the matching `gog_games` rows.
-     *
-     * Failures leave the existing hidden flags untouched and are logged; this never throws and
-     * never fails the caller. Staleness is corrected on the next sync.
-     *
-     * @return the fetched hidden product IDs, or null when the fetch failed or the user is not
-     * authenticated (callers can use it to stamp newly inserted rows).
+     * Reconciles complete snapshots from the requested hidden sources in deterministic order.
+     * Each source commits independently; a later source failure never rolls back an earlier one.
      */
-    suspend fun refreshHiddenIds(): Set<String>? {
-        if (!GOGAuthManager.hasStoredCredentials(context)) return null
-        val hiddenIdsResult = GOGApiClient.getHiddenGameIds(context)
-        if (hiddenIdsResult.isFailure) {
-            Timber.tag("GOG").w(
-                hiddenIdsResult.exceptionOrNull(),
-                "Failed to fetch hidden GOG game IDs; keeping existing hidden flags",
-            )
-            return null
-        }
-        val hiddenIds = hiddenIdsResult.getOrNull() ?: emptySet()
-        return try {
-            gogGameDao.applyHiddenFlags(hiddenIds)
-            hiddenIds
+    suspend fun refreshHiddenState(
+        sources: Set<GogHiddenSource> = setOf(GogHiddenSource.GOG_COM, GogHiddenSource.GALAXY),
+    ): GogHiddenRefreshResult = withContext(Dispatchers.IO) {
+        val results = linkedMapOf<GogHiddenSource, GogHiddenSourceResult>()
+        listOf(GogHiddenSource.GOG_COM, GogHiddenSource.GALAXY)
+            .filter { it in sources }
+            .forEach { source ->
+                val result = try {
+                    val snapshotResult = hiddenSourceFetcher(source)
+                    if (snapshotResult.isFailure) {
+                        val error = snapshotResult.exceptionOrNull()
+                            ?: Exception("${source.name} hidden-state fetch failed")
+                        if (error is CancellationException) throw error
+                        Timber.tag("GOG").w(error, "${source.name} hidden-state refresh failed")
+                        GogHiddenSourceResult.Failure(error)
+                    } else {
+                        val snapshot = snapshotResult.getOrNull()
+                            ?: throw IllegalStateException("${source.name} hidden-state snapshot was null")
+                        require(snapshot.source == source) {
+                            "${source.name} fetch returned ${snapshot.source} snapshot"
+                        }
+                        val trueIds = snapshot.observations.filterValues { it }.keys
+                        val falseIds = snapshot.observations.filterValues { !it }.keys
+                        when (source) {
+                            GogHiddenSource.GOG_COM -> gogGameDao.reconcileGogComHidden(trueIds, falseIds)
+                            GogHiddenSource.GALAXY -> gogGameDao.reconcileGalaxyHidden(trueIds, falseIds)
+                        }
+                        when (source) {
+                            GogHiddenSource.GOG_COM ->
+                                PrefManager.setLastSuccessfulGogComHiddenSync(System.currentTimeMillis())
+
+                            GogHiddenSource.GALAXY ->
+                                PrefManager.setLastSuccessfulGalaxyHiddenSync(System.currentTimeMillis())
+                        }
+                        GogHiddenSourceResult.Success(snapshot.observations.size)
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Timber.tag("GOG").w(e, "${source.name} hidden-state refresh failed")
+                    GogHiddenSourceResult.Failure(e)
+                }
+                results[source] = result
+            }
+        GogHiddenRefreshResult(results)
+    }
+
+    /** Runs ownership/details synchronization followed by both hidden sources when authenticated. */
+    suspend fun refreshFullSync(syncContext: Context): GogFullSyncResult = withContext(Dispatchers.IO) {
+        val library = try {
+            val result = libraryRefreshForFullSync(syncContext)
+            if (result.isSuccess) {
+                GogLibraryRefreshOutcome.Success(result.getOrNull() ?: 0)
+            } else {
+                val error = result.exceptionOrNull() ?: Exception("GOG library refresh failed")
+                if (error is CancellationException) throw error
+                GogLibraryRefreshOutcome.Failure(error)
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Timber.tag("GOG").e(e, "Failed to persist hidden GOG game IDs; keeping existing hidden flags")
-            null
+            GogLibraryRefreshOutcome.Failure(e)
         }
-    }
 
-    /** Clears the hidden flag on every GOG row (used when the logged-out account's metadata is removed). */
-    suspend fun clearHiddenFlags() {
-        gogGameDao.clearHiddenFlags()
+        val authenticated = try {
+            credentialsAvailableForFullSync(syncContext)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.tag("GOG").w(e, "Unable to verify GOG credentials for hidden refresh")
+            false
+        }
+        val hidden = if (authenticated) refreshHiddenState() else GogHiddenRefreshResult(emptyMap())
+        GogFullSyncResult(library = library, hidden = hidden)
     }
 
     /**
@@ -222,10 +272,6 @@ class GOGManager @Inject constructor(
 
             val gameIds = gameIdList.getOrNull() ?: emptyList()
             Timber.tag("GOG").i("Successfully fetched ${gameIds.size} game IDs from GOG")
-
-            // Refresh hidden-game metadata even when the owned library itself is unchanged.
-            // A failure keeps the existing flags and must not fail the library refresh.
-            val hiddenIds = refreshHiddenIds()
 
             if (gameIds.isEmpty()) {
                 Timber.w("No games found in GOG library")
@@ -267,14 +313,12 @@ class GOGManager @Inject constructor(
                             Timber.tag("GOG").d("Got Game Details for ID: $id")
                             val parsedGame = parseGameObject(gameDetails)
                             if (parsedGame != null) {
-                                val isHidden = hiddenIds?.contains(id) == true
                                 // Only real (non-excluded) games are shown, so only fetch
                                 // their portrait cover to avoid wasting GamesDB requests.
                                 val game = if (parsedGame.exclude) {
-                                    parsedGame.copy(hidden = isHidden)
+                                    parsedGame
                                 } else {
                                     parsedGame.copy(
-                                        hidden = isHidden,
                                         verticalCoverUrl = GOGApiClient.getVerticalCoverUrl(id),
                                     )
                                 }

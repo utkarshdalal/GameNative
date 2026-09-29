@@ -33,9 +33,14 @@ class CrashHandler(
         private fun logcatCommand(count: Int): String = "logcat -d -t $count --pid=${android.os.Process.myPid()}"
 
         fun initialize(context: Context) {
-            val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
-            val crashHandler = CrashHandler(context.applicationContext, defaultHandler)
-            Thread.setDefaultUncaughtExceptionHandler(crashHandler)
+            synchronized(CrashHandler::class.java) {
+                val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+                // Application initialization can be repeated by embedded runtimes; avoid chaining
+                // handlers because a failure in crash-report persistence would recurse indefinitely.
+                if (defaultHandler is CrashHandler) return
+                val crashHandler = CrashHandler(context.applicationContext, defaultHandler)
+                Thread.setDefaultUncaughtExceptionHandler(crashHandler)
+            }
         }
 
         /**

@@ -74,29 +74,50 @@ interface GOGGameDao {
     @Query("UPDATE gog_games SET vertical_cover_url = :url WHERE id = :gameId")
     suspend fun updateVerticalCoverUrl(gameId: String, url: String)
 
-    /** Clears the hidden flag on every GOG row (used before applying a fresh hidden set). */
-    @Query("UPDATE gog_games SET hidden = 0")
-    suspend fun clearHiddenFlags()
+    /** Marks the supplied product IDs as hidden on GOG.com. */
+    @Query("UPDATE gog_games SET gog_com_hidden = 1 WHERE id IN (:ids)")
+    suspend fun markGogComHidden(ids: Collection<String>)
 
-    /** Marks the given GOG product IDs as hidden. */
-    @Query("UPDATE gog_games SET hidden = 1 WHERE id IN (:hiddenIds)")
-    suspend fun markHidden(hiddenIds: Collection<String>)
+    /** Clears the GOG.com hidden flag for the supplied product IDs. */
+    @Query("UPDATE gog_games SET gog_com_hidden = 0 WHERE id IN (:ids)")
+    suspend fun clearGogComHidden(ids: Collection<String>)
 
-    /**
-     * Replaces the stored hidden state with [hiddenIds]: every GOG row is cleared first, then the
-     * listed product IDs are marked hidden. Large sets are applied in chunks to stay under SQLite's
-     * bind-variable limit.
-     */
+    /** Marks the supplied product IDs as hidden in Galaxy. */
+    @Query("UPDATE gog_games SET galaxy_hidden = 1 WHERE id IN (:ids)")
+    suspend fun markGalaxyHidden(ids: Collection<String>)
+
+    /** Clears the Galaxy hidden flag for the supplied product IDs. */
+    @Query("UPDATE gog_games SET galaxy_hidden = 0 WHERE id IN (:ids)")
+    suspend fun clearGalaxyHidden(ids: Collection<String>)
+
+    /** Applies only the gog.com observations in a validated source snapshot. */
     @Transaction
-    suspend fun applyHiddenFlags(hiddenIds: Collection<String>) {
-        clearHiddenFlags()
-        hiddenIds.chunked(MAX_HIDDEN_BIND_PARAMS).forEach { chunk ->
-            markHidden(chunk)
+    suspend fun reconcileGogComHidden(trueIds: Collection<String>, falseIds: Collection<String>) {
+        trueIds.chunked(MAX_HIDDEN_BIND_PARAMS).forEach { chunk ->
+            if (chunk.isNotEmpty()) markGogComHidden(chunk)
+        }
+        falseIds.chunked(MAX_HIDDEN_BIND_PARAMS).forEach { chunk ->
+            if (chunk.isNotEmpty()) clearGogComHidden(chunk)
         }
     }
 
+    /** Applies only the Galaxy observations in a validated source snapshot. */
+    @Transaction
+    suspend fun reconcileGalaxyHidden(trueIds: Collection<String>, falseIds: Collection<String>) {
+        trueIds.chunked(MAX_HIDDEN_BIND_PARAMS).forEach { chunk ->
+            if (chunk.isNotEmpty()) markGalaxyHidden(chunk)
+        }
+        falseIds.chunked(MAX_HIDDEN_BIND_PARAMS).forEach { chunk ->
+            if (chunk.isNotEmpty()) clearGalaxyHidden(chunk)
+        }
+    }
+
+    /** Resets both authoritative hidden sources for retained rows during account cleanup. */
+    @Query("UPDATE gog_games SET gog_com_hidden = 0, galaxy_hidden = 0")
+    suspend fun clearHiddenSourceFlags()
+
     /**
-     * Upserts GOG games while preserving local install state, play history, and hidden state.
+     * Upserts GOG games while preserving local install state, play history, and hidden sources.
      * When updating an existing row, a nonblank incoming cover replaces the stored cover; blank
      * incoming cover data preserves the existing value.
      */
@@ -113,7 +134,8 @@ interface GOGGameDao {
                     lastPlayed = existingGame.lastPlayed,
                     playTime = existingGame.playTime,
                     verticalCoverUrl = newGame.verticalCoverUrl.ifBlank { existingGame.verticalCoverUrl },
-                    hidden = existingGame.hidden,
+                    gogComHidden = existingGame.gogComHidden,
+                    galaxyHidden = existingGame.galaxyHidden,
                 )
                 insert(gameToInsert)
             } else {

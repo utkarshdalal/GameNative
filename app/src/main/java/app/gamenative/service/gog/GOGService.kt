@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.IBinder
+import app.gamenative.PrefManager
 import app.gamenative.data.DownloadInfo
 import app.gamenative.data.GOGCredentials
 import app.gamenative.data.GOGGame
@@ -12,7 +13,6 @@ import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
-import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.GameSource
 import app.gamenative.service.download.GameDownloadService
@@ -65,6 +65,12 @@ class GOGService : Service() {
         private var backgroundSyncJob: Job? = null
         private var lastSyncTimestamp: Long = 0L
         private var hasPerformedInitialSync: Boolean = false
+
+        /** Test seams for logout orchestration; production defaults preserve the existing flow. */
+        internal var credentialClearerForLogout: (Context) -> Boolean = { context ->
+            clearStoredCredentials(context)
+        }
+        internal var logoutStopper: () -> Unit = { stop() }
 
         val isRunning: Boolean
             get() = instance != null
@@ -153,8 +159,12 @@ class GOGService : Service() {
                         return@withContext Result.failure(Exception("Service not running"))
                     }
 
+                    // Stop account-scoped work before deleting data so it cannot write afterward.
+                    backgroundSyncJob?.cancelAndJoin()
+                    instance.hiddenInitializationJob?.cancelAndJoin()
+
                     // Clear stored credentials
-                    val credentialsCleared = clearStoredCredentials(context)
+                    val credentialsCleared = credentialClearerForLogout(context)
                     if (!credentialsCleared) {
                         Timber.w("[GOGService] Failed to clear credentials during logout")
                     }
@@ -164,10 +174,10 @@ class GOGService : Service() {
                     Timber.i("[GOGService] All non-installed GOG games removed from database")
 
                     // Hidden-game metadata belongs to the logged-out account.
-                    instance.gogManager.clearHiddenFlags()
+                    instance.gogManager.clearHiddenState()
 
                     // Stop the service
-                    stop()
+                    logoutStopper()
 
                     Timber.i("[GOGService] Logout completed successfully")
                     Result.success(Unit)
@@ -740,10 +750,65 @@ class GOGService : Service() {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
+    /** Narrow seams for the service-owned full-sync and OFF-toggle orchestration. */
+    internal var fullSyncRunner: suspend (Context) -> GogFullSyncResult = { syncContext ->
+        gogManager.startBackgroundSync(syncContext)
+    }
+    internal var hiddenCredentialsAvailableForInitialization: (Context) -> Boolean = { syncContext ->
+        GOGAuthManager.hasStoredCredentials(syncContext)
+    }
+    internal var hiddenInitializationTimestamps: suspend () -> Pair<Long, Long> = {
+        PrefManager.getLastSuccessfulGogComHiddenSync() to PrefManager.getLastSuccessfulGalaxyHiddenSync()
+    }
+    internal var hiddenRefreshForInitialization: suspend (Set<GogHiddenSource>) -> GogHiddenRefreshResult = { sources ->
+        gogManager.refreshHiddenState(sources)
+    }
+    internal var hiddenIssueLogger: (GogHiddenRefreshResult) -> Unit = { result ->
+        logHiddenRefreshIssues(result)
+    }
+    internal var hiddenInitializationSyncActive: () -> Boolean = {
+        syncInProgress || backgroundSyncJob?.isActive == true
+    }
+
     // Track active downloads by game ID
     private val activeDownloads = ConcurrentHashMap<String, DownloadInfo>()
 
+    private var hiddenInitializationJob: Job? = null
+
     private val onEndProcess: (AndroidEvent.EndProcess) -> Unit = { stop() }
+
+    /** Initializes only never-successful hidden sources when the local filter is turned off. */
+    private val onHiddenGamesSettingChanged: (AndroidEvent.HiddenGamesSettingChanged) -> Unit = { event ->
+        handleHiddenGamesSettingChanged(event)
+    }
+
+    /** Handles the setting event without starting the service or racing an active full sync. */
+    internal fun handleHiddenGamesSettingChanged(event: AndroidEvent.HiddenGamesSettingChanged) {
+        if (event.showHiddenGamesByDefault) return
+        if (hiddenInitializationSyncActive() || hiddenInitializationJob?.isActive == true) {
+            Timber.tag("GOG").d("Skipping hidden initialization while GOG sync is active")
+            return
+        }
+
+        hiddenInitializationJob = scope.launch {
+            try {
+                if (hiddenInitializationSyncActive()) return@launch
+                if (!hiddenCredentialsAvailableForInitialization(applicationContext)) return@launch
+                val (lastSuccessfulGogComHiddenSync, lastSuccessfulGalaxyHiddenSync) =
+                    hiddenInitializationTimestamps()
+                val sources = GogHiddenSyncPolicy.sourcesNeedingInitialization(
+                    lastSuccessfulGogComHiddenSync = lastSuccessfulGogComHiddenSync,
+                    lastSuccessfulGalaxyHiddenSync = lastSuccessfulGalaxyHiddenSync,
+                )
+                if (sources.isEmpty() || hiddenInitializationSyncActive()) return@launch
+                hiddenIssueLogger(hiddenRefreshForInitialization(sources))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.tag("GOG").w(e, "Initial hidden-state refresh failed")
+            }
+        }
+    }
 
     // GOGManager is injected by Hilt
     override fun onCreate() {
@@ -753,6 +818,7 @@ class GOGService : Service() {
         // Initialize notification helper for foreground service
         notificationHelper = NotificationHelper(applicationContext)
         PluviaApp.events.on<AndroidEvent.EndProcess, Unit>(onEndProcess)
+        PluviaApp.events.on<AndroidEvent.HiddenGamesSettingChanged, Unit>(onHiddenGamesSettingChanged)
         PluviaApp.events.emit(AndroidEvent.ServiceReady)
     }
 
@@ -806,24 +872,37 @@ class GOGService : Service() {
             }
         }
 
-        // Start background library sync if requested
+        // Start the full GOG synchronization if requested.
         if (shouldSync && (backgroundSyncJob == null || backgroundSyncJob?.isActive != true)) {
-            Timber.i("[GOGService] Starting background library sync")
+            Timber.i("[GOGService] Starting background GOG sync")
             backgroundSyncJob?.cancel() // Cancel any existing job
+            val hiddenJobToCancel = hiddenInitializationJob
             backgroundSyncJob = scope.launch {
                 try {
+                    // A normal full sync owns the service's admission slot. Cancel and join a
+                    // toggle-triggered initialization before touching the same Room rows.
+                    hiddenJobToCancel?.cancelAndJoin()
                     setSyncInProgress(true)
-                    Timber.d("[GOGService]: Starting background library sync")
+                    Timber.d("[GOGService]: Starting background GOG sync")
 
-                    val syncResult = gogManager.startBackgroundSync(applicationContext)
-                    if (syncResult.isFailure) {
-                        Timber.w("[GOGService]: Failed to start background sync: ${syncResult.exceptionOrNull()?.message}")
-                    } else {
-                        Timber.i("[GOGService]: Background library sync completed successfully")
-                        // Update last sync timestamp on successful sync
-                        lastSyncTimestamp = System.currentTimeMillis()
-                        // Mark that initial sync has been performed
-                        hasPerformedInitialSync = true
+                    val syncResult = fullSyncRunner(applicationContext)
+                    when (val library = syncResult.library) {
+                        is GogLibraryRefreshOutcome.Success -> {
+                            hiddenIssueLogger(syncResult.hidden)
+                            Timber.i("[GOGService]: Background library sync completed successfully")
+                            // Update last sync timestamp on successful library sync.
+                            lastSyncTimestamp = System.currentTimeMillis()
+                            // Mark that initial sync has been performed.
+                            hasPerformedInitialSync = true
+                        }
+
+                        is GogLibraryRefreshOutcome.Failure -> {
+                            hiddenIssueLogger(syncResult.hidden)
+                            Timber.w(
+                                library.error,
+                                "[GOGService]: Failed to start background sync: ${library.error.message}",
+                            )
+                        }
                     }
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
@@ -849,9 +928,11 @@ class GOGService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         PluviaApp.events.off<AndroidEvent.EndProcess, Unit>(onEndProcess)
+        PluviaApp.events.off<AndroidEvent.HiddenGamesSettingChanged, Unit>(onHiddenGamesSettingChanged)
 
         // Cancel sync operations
         backgroundSyncJob?.cancel()
+        hiddenInitializationJob?.cancel()
         setSyncInProgress(false)
 
         scope.cancel() // Cancel any ongoing operations
@@ -871,4 +952,13 @@ class GOGService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    /** Logs source-specific hidden-state failures without changing the composite result. */
+    private fun logHiddenRefreshIssues(result: GogHiddenRefreshResult) {
+        result.results.forEach { (source, sourceResult) ->
+            if (sourceResult is GogHiddenSourceResult.Failure) {
+                Timber.tag("GOG").w(sourceResult.error, "${source.name} hidden-state issue")
+            }
+        }
+    }
 }

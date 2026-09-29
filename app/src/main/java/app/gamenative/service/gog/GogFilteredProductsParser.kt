@@ -3,27 +3,21 @@ package app.gamenative.service.gog
 import org.json.JSONException
 import org.json.JSONObject
 
-/**
- * Parses a single `account/getFilteredProducts` page fetched with `hiddenFlag=1`, where every
- * returned product is hidden on GOG.
- *
- * Malformed JSON or structurally invalid pages throw instead of silently producing an empty hidden
- * set, so pagination in [GOGApiClient.getHiddenGameIds] can stay all-or-nothing.
- */
+/** Parses one unfiltered `account/getFilteredProducts` response page. */
 object GogFilteredProductsParser {
 
-    /** One response page: hidden product IDs plus the total page count (0 = no hidden games). */
+    /** Product observations and the server-reported number of pages. */
     data class Page(
-        val hiddenProductIds: Set<String>,
+        val observations: Map<String, Boolean>,
         val totalPages: Int,
     )
 
     /**
-     * Parses one `hiddenFlag=1` page. Every product ID is a hidden product ID. A product ID must be
-     * present and non-blank (number or string), otherwise the page is rejected. `totalPages` may be
-     * 0, which is a valid empty hidden set.
+     * Parses one unfiltered page. Every product must provide an explicit Boolean `isHidden` value;
+     * missing, null, string, and numeric values are rejected. Duplicate IDs are accepted only when
+     * they carry the same observation.
      */
-    fun parseHiddenPage(rawJson: String): Page {
+    fun parsePage(rawJson: String): Page {
         val root = try {
             JSONObject(rawJson)
         } catch (e: JSONException) {
@@ -32,12 +26,8 @@ object GogFilteredProductsParser {
 
         val products = root.optJSONArray("products")
             ?: throw IllegalArgumentException("getFilteredProducts response is missing products")
-        val totalPages = root.optInt("totalPages", -1)
-        if (totalPages < 0) {
-            throw IllegalArgumentException("getFilteredProducts response has invalid totalPages: $totalPages")
-        }
-
-        val hiddenProductIds = buildSet {
+        val totalPages = parseTotalPages(root.opt("totalPages"))
+        val observations = buildMap {
             for (i in 0 until products.length()) {
                 val product = products.optJSONObject(i)
                     ?: throw IllegalArgumentException("getFilteredProducts product $i is not an object")
@@ -48,10 +38,31 @@ object GogFilteredProductsParser {
                         ?: throw IllegalArgumentException("getFilteredProducts product $i has a blank id")
                     else -> throw IllegalArgumentException("getFilteredProducts product $i has an invalid id")
                 }
-                add(id)
+                val isHidden = product.opt("isHidden") as? Boolean
+                    ?: throw IllegalArgumentException(
+                        "getFilteredProducts product $i has an invalid isHidden value",
+                    )
+                val previous = this[id]
+                if (previous != null && previous != isHidden) {
+                    throw IllegalArgumentException(
+                        "getFilteredProducts response has conflicting observations for id $id",
+                    )
+                }
+                put(id, isHidden)
             }
         }
 
-        return Page(hiddenProductIds = hiddenProductIds, totalPages = totalPages)
+        return Page(observations = observations, totalPages = totalPages)
+    }
+
+    /** Validates and returns the total page count from a gog.com response. */
+    private fun parseTotalPages(rawValue: Any?): Int {
+        val rawNumber = rawValue as? Number
+            ?: throw IllegalArgumentException("getFilteredProducts response has invalid totalPages")
+        val value = rawNumber.toDouble()
+        if (!value.isFinite() || value < 0 || value > Int.MAX_VALUE || value % 1.0 != 0.0) {
+            throw IllegalArgumentException("getFilteredProducts response has invalid totalPages")
+        }
+        return value.toInt()
     }
 }

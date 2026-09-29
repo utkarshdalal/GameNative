@@ -6,79 +6,99 @@ import org.junit.Test
 
 class GogFilteredProductsParserTest {
 
+/** Verifies the behavior described by this test: parses Explicit Hidden Values For Visible And Hidden Products. */
     @Test
-    fun parsesHiddenPageCollectingAllProductIds() {
-        val page = GogFilteredProductsParser.parseHiddenPage(
-            """{"totalPages":3,"products":[{"id":1,"title":"a"},{"id":2},{"id":3,"isHidden":true}]}""",
+    fun parsesExplicitHiddenValuesForVisibleAndHiddenProducts() {
+        val page = GogFilteredProductsParser.parsePage(
+            """
+            {
+              "totalPages": 2,
+              "products": [
+                {"id": 1, "isHidden": true},
+                {"id": "2", "isHidden": false}
+              ]
+            }
+            """.trimIndent(),
         )
-        assertEquals(setOf("1", "2", "3"), page.hiddenProductIds)
-        assertEquals(3, page.totalPages)
+
+        assertEquals(mapOf("1" to true, "2" to false), page.observations)
+        assertEquals(2, page.totalPages)
     }
 
+/** Verifies the behavior described by this test: accepts IDentical Duplicate Observations. */
     @Test
-    fun emptyHiddenPageWithZeroTotalPagesIsValid() {
-        val page = GogFilteredProductsParser.parseHiddenPage(
+    fun acceptsIdenticalDuplicateObservations() {
+        val page = GogFilteredProductsParser.parsePage(
+            """{"totalPages":1,"products":[{"id":"1","isHidden":true},{"id":"1","isHidden":true}]}""",
+        )
+
+        assertEquals(mapOf("1" to true), page.observations)
+    }
+
+/** Verifies the behavior described by this test: rejects Conflicting Duplicate Observations. */
+    @Test
+    fun rejectsConflictingDuplicateObservations() {
+        assertThrows(IllegalArgumentException::class.java) {
+            GogFilteredProductsParser.parsePage(
+                """{"totalPages":1,"products":[{"id":"1","isHidden":true},{"id":"1","isHidden":false}]}""",
+            )
+        }
+    }
+
+/** Verifies the behavior described by this test: rejects Missing Or Non Boolean Hidden Values. */
+    @Test
+    fun rejectsMissingOrNonBooleanHiddenValues() {
+        listOf(
+            """{"totalPages":1,"products":[{"id":"1"}]}""",
+            """{"totalPages":1,"products":[{"id":"1","isHidden":"true"}]}""",
+            """{"totalPages":1,"products":[{"id":"1","isHidden":1}]}""",
+            """{"totalPages":1,"products":[{"id":"1","isHidden":null}]}""",
+        ).forEach { rawJson ->
+            assertThrows(IllegalArgumentException::class.java) {
+                GogFilteredProductsParser.parsePage(rawJson)
+            }
+        }
+    }
+
+/** Verifies the behavior described by this test: rejects Missing Or Invalid Product IDs. */
+    @Test
+    fun rejectsMissingOrInvalidProductIds() {
+        listOf(
+            """{"totalPages":1,"products":[{"isHidden":true}]}""",
+            """{"totalPages":1,"products":[{"id":"","isHidden":true}]}""",
+            """{"totalPages":1,"products":[{"id":null,"isHidden":true}]}""",
+            """{"totalPages":1,"products":[{"id":{},"isHidden":true}]}""",
+        ).forEach { rawJson ->
+            assertThrows(IllegalArgumentException::class.java) {
+                GogFilteredProductsParser.parsePage(rawJson)
+            }
+        }
+    }
+
+/** Verifies the behavior described by this test: accepts Structurally Valid Empty Pages. */
+    @Test
+    fun acceptsStructurallyValidEmptyPages() {
+        val page = GogFilteredProductsParser.parsePage(
             """{"totalPages":0,"products":[]}""",
         )
-        assertEquals(emptySet<String>(), page.hiddenProductIds)
+
+        assertEquals(emptyMap<String, Boolean>(), page.observations)
         assertEquals(0, page.totalPages)
     }
 
+/** Verifies the behavior described by this test: rejects Malformed Page Envelope. */
     @Test
-    fun emptyHiddenPagePreservesTotalPages() {
-        val page = GogFilteredProductsParser.parseHiddenPage(
-            """{"totalPages":7,"products":[]}""",
-        )
-        assertEquals(emptySet<String>(), page.hiddenProductIds)
-        assertEquals(7, page.totalPages)
-    }
-
-    @Test
-    fun malformedJsonFails() {
-        assertThrows(IllegalArgumentException::class.java) {
-            GogFilteredProductsParser.parseHiddenPage("not json")
-        }
-    }
-
-    @Test
-    fun missingProductsFails() {
-        assertThrows(IllegalArgumentException::class.java) {
-            GogFilteredProductsParser.parseHiddenPage("""{"totalPages":1}""")
-        }
-    }
-
-    @Test
-    fun missingTotalPagesFails() {
-        assertThrows(IllegalArgumentException::class.java) {
-            GogFilteredProductsParser.parseHiddenPage("""{"products":[]}""")
-        }
-    }
-
-    @Test
-    fun negativeTotalPagesFails() {
-        assertThrows(IllegalArgumentException::class.java) {
-            GogFilteredProductsParser.parseHiddenPage("""{"totalPages":-1,"products":[]}""")
-        }
-    }
-
-    @Test
-    fun nonObjectProductFails() {
-        assertThrows(IllegalArgumentException::class.java) {
-            GogFilteredProductsParser.parseHiddenPage("""{"totalPages":1,"products":[42]}""")
-        }
-    }
-
-    @Test
-    fun missingProductIdFails() {
-        assertThrows(IllegalArgumentException::class.java) {
-            GogFilteredProductsParser.parseHiddenPage("""{"totalPages":1,"products":[{"title":"x"}]}""")
-        }
-    }
-
-    @Test
-    fun blankProductIdFails() {
-        assertThrows(IllegalArgumentException::class.java) {
-            GogFilteredProductsParser.parseHiddenPage("""{"totalPages":1,"products":[{"id":""}]}""")
+    fun rejectsMalformedPageEnvelope() {
+        listOf(
+            "not json",
+            """{"products":[]}""",
+            """{"totalPages":-1,"products":[]}""",
+            """{"totalPages":"1","products":[]}""",
+            """{"totalPages":1,"products":{}}""",
+        ).forEach { rawJson ->
+            assertThrows(IllegalArgumentException::class.java) {
+                GogFilteredProductsParser.parsePage(rawJson)
+            }
         }
     }
 }
