@@ -266,7 +266,8 @@ class ContainerOverlayFilesTest {
 
         assertTrue(BasePrefix.upgradeLegacyBase(baseDir, "2:proton-10.0-arm64ec:31", "3:proton-10.0-arm64ec:31"))
 
-        assertEquals(setOf("c:"), dosdevices.list()!!.toSet())
+        assertEquals(setOf("c:", "z:"), dosdevices.list()!!.toSet())
+        assertEquals("/", Files.readSymbolicLink(File(dosdevices, "z:").toPath()).toString())
         assertTrue(BasePrefix.isComplete(baseDir, "3:proton-10.0-arm64ec:31"))
     }
 
