@@ -227,6 +227,13 @@ object PrefManager {
             setPref(RENDERER_PRESENT_MODE, value)
         }
 
+    private val DISPLAY_SERVER = stringPreferencesKey("display_server")
+    var displayServer: String
+        get() = getPref(DISPLAY_SERVER, Container.DEFAULT_DISPLAY_SERVER)
+        set(value) {
+            setPref(DISPLAY_SERVER, value)
+        }
+
     private val DISPLAY_RENDERER_MODE = stringPreferencesKey("display_renderer_mode")
     var displayRendererMode: String
         get() {

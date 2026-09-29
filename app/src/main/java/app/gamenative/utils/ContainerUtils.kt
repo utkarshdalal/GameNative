@@ -121,6 +121,7 @@ object ContainerUtils {
             graphicsDriverConfig = PrefManager.graphicsDriverConfig,
             rendererPresentMode = PrefManager.rendererPresentMode,
             displayRenderer = PrefManager.displayRendererMode,
+            displayServer = PrefManager.displayServer,
             sfCompatMode = PrefManager.sfCompatMode,
             dxwrapper = PrefManager.dxWrapper,
             dxwrapperConfig = PrefManager.dxWrapperConfig,
@@ -193,6 +194,7 @@ object ContainerUtils {
         PrefManager.graphicsDriverConfig = containerData.graphicsDriverConfig
         PrefManager.rendererPresentMode = containerData.rendererPresentMode
         PrefManager.displayRendererMode = containerData.displayRenderer
+        PrefManager.displayServer = containerData.displayServer
         PrefManager.sfCompatMode = containerData.sfCompatMode
         PrefManager.dxWrapper = containerData.dxwrapper
         PrefManager.dxWrapperConfig = containerData.dxwrapperConfig
@@ -318,6 +320,7 @@ object ContainerUtils {
             graphicsDriverConfig = container.graphicsDriverConfig,
             rendererPresentMode = container.rendererPresentMode,
             displayRenderer = container.displayRenderer,
+            displayServer = container.displayServer,
             xrRefreshRate = container.xrRefreshRate,
             xrRenderScale = container.xrRenderScale,
             sfCompatMode = container.sfCompatMode,
@@ -516,6 +519,7 @@ object ContainerUtils {
         container.graphicsDriverConfig = containerData.graphicsDriverConfig
         container.rendererPresentMode = containerData.rendererPresentMode
         container.displayRenderer = containerData.displayRenderer
+        container.displayServer = containerData.displayServer
         container.xrRefreshRate = containerData.xrRefreshRate
         container.xrRenderScale = containerData.xrRenderScale
         container.sfCompatMode = containerData.sfCompatMode
