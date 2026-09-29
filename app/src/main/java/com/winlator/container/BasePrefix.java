@@ -142,7 +142,11 @@ public final class BasePrefix {
         File wineDir = new File(baseDir, ".wine");
         File oldDir = new File(baseDir, OLD_DIR);
         try {
-            if (!baseDir.isDirectory() && !baseDir.mkdirs()) return false;
+            if (!baseDir.getParentFile().isDirectory()) {
+                Log.e(TAG, "Wine content for " + wineVersion + " is missing at " + baseDir.getParentFile());
+                return false;
+            }
+            if (!baseDir.isDirectory() && !baseDir.mkdir()) return false;
             if (!FileUtils.writeString(building, identity)) {
                 Log.e(TAG, "Failed to write the build marker at " + building);
                 return false;
@@ -156,6 +160,7 @@ public final class BasePrefix {
                 Log.e(TAG, "Failed to extract the container pattern for " + wineVersion);
                 FileUtils.delete(staging);
                 building.delete();
+                if (!wineDir.exists()) baseDir.delete();
                 return false;
             }
 
@@ -175,6 +180,7 @@ public final class BasePrefix {
                 Log.e(TAG, "Base prefix for " + wineVersion + " has no drive_c/windows");
                 FileUtils.delete(staging);
                 building.delete();
+                if (!wineDir.exists()) baseDir.delete();
                 return false;
             }
             normalize(stagingWine);
@@ -184,6 +190,7 @@ public final class BasePrefix {
                 Log.e(TAG, "Failed to move the previous base aside at " + wineDir);
                 FileUtils.delete(staging);
                 building.delete();
+                if (!wineDir.exists()) baseDir.delete();
                 return false;
             }
             if (!stagingWine.renameTo(wineDir)) {
@@ -191,6 +198,7 @@ public final class BasePrefix {
                 if (oldDir.exists()) oldDir.renameTo(wineDir);
                 FileUtils.delete(staging);
                 building.delete();
+                if (!wineDir.exists()) baseDir.delete();
                 return false;
             }
             FileUtils.writeString(new File(baseDir, COMPLETE_MARKER), identity);

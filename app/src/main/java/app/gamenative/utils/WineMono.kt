@@ -27,16 +27,22 @@ object WineMono {
         }
     }
 
+    fun ensureBase(container: Container, monoMsi: File, launcher: GuestProgramLauncherComponent) {
+        if (!container.isOverlay || launcher !is BionicProgramLauncherComponent) return
+        val baseWine = File(container.basePrefix)
+        val fragmentDir = File(baseWine.parentFile, ".mono-" + monoMsi.name)
+        if (!fragmentDir.isDirectory || !File(baseWine, "$MONO_DIR/mono-2.0").isDirectory) {
+            installIntoBase(baseWine, fragmentDir, monoMsi, launcher)
+        }
+    }
+
     fun install(container: Container, imageFs: ImageFs, monoMsi: File, launcher: GuestProgramLauncherComponent): String {
         val upper = File(imageFs.wineprefix)
         if (container.isOverlay && launcher is BionicProgramLauncherComponent) {
+            ensureBase(container, monoMsi, launcher)
             val baseWine = File(container.basePrefix)
-            val baseDir = baseWine.parentFile
-            val fragmentDir = File(baseDir, ".mono-" + monoMsi.name)
+            val fragmentDir = File(baseWine.parentFile, ".mono-" + monoMsi.name)
             val baseMono = File(baseWine, "$MONO_DIR/mono-2.0")
-            if (!fragmentDir.isDirectory || !baseMono.isDirectory) {
-                installIntoBase(baseWine, fragmentDir, monoMsi, launcher)
-            }
             if (isRegistered(upper)) {
                 Timber.i("Mono already registered in ${container.id}, skipping msiexec")
                 return ""

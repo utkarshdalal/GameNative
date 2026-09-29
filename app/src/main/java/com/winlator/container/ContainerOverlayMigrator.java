@@ -86,6 +86,48 @@ public final class ContainerOverlayMigrator {
             File src = new File(baseWine, name);
             if (src.isFile()) Files.copy(src.toPath(), new File(upperWine, name).toPath(), StandardCopyOption.REPLACE_EXISTING);
         }
+        dropStaleBuiltins(upperWine, baseWine);
+    }
+
+    static final String[] BUILTIN_DIRS = {"drive_c/windows/system32", "drive_c/windows/syswow64"};
+    private static final byte[] BUILTIN_MARKER = "Wine builtin DLL".getBytes();
+
+    static int dropStaleBuiltins(File upperWine, File baseWine) {
+        int dropped = 0;
+        for (String dir : BUILTIN_DIRS) {
+            File[] files = new File(upperWine, dir).listFiles();
+            if (files == null) continue;
+            for (File file : files) {
+                if (!file.isFile()) continue;
+                String rel = dir + "/" + file.getName();
+                if (ContainerFiles.isAppManaged(rel) || !new File(baseWine, rel).isFile()) continue;
+                if (!isWineBuiltin(file)) continue;
+                if (file.delete()) dropped++;
+            }
+        }
+        if (dropped > 0) Log.i(TAG, "Dropped " + dropped + " stale Wine builtins from " + upperWine);
+        return dropped;
+    }
+
+    static boolean isWineBuiltin(File file) {
+        String name = file.getName().toLowerCase();
+        if (name.endsWith(".json") || name.endsWith(".nls") || name.endsWith(".inf")) return true;
+        try (java.io.FileInputStream in = new java.io.FileInputStream(file)) {
+            byte[] head = new byte[4096];
+            int n = in.read(head);
+            if (n < 2 || head[0] != 'M' || head[1] != 'Z') return false;
+            outer:
+            for (int i = 0; i + BUILTIN_MARKER.length <= n; i++) {
+                for (int j = 0; j < BUILTIN_MARKER.length; j++) {
+                    if (head[i + j] != BUILTIN_MARKER[j]) continue outer;
+                }
+                return true;
+            }
+        }
+        catch (IOException e) {
+            return false;
+        }
+        return false;
     }
 
     public static Result migrate(Container container, File baseWine, List<File> protonLibDirs) {

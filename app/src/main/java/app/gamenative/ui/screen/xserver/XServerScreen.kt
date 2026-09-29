@@ -5113,6 +5113,7 @@ private fun unpackExecutableFile(
     val monoMsi = File(imageFs.getRootDir(), "opt/mono-gecko-offline/wine-mono-11.0.0-x86.msi")
     WineMsiCache.deleteCachedCopies(imageFs, monoMsi)
     WineMono.markOwnInstall(container, imageFs)
+    WineMono.ensureBase(container, monoMsi, guestProgramLauncherComponent)
     if (needsUnpacking || containerVariantChanged){
         try {
             PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing Mono..."))
@@ -5362,7 +5363,9 @@ private suspend fun setupWineSystemFiles(
         containerDataChanged = true
     }
 
-    ContainerOverlayMigrator.migrateIfNeeded(context, contentsManager, container)
+    check(ContainerOverlayMigrator.migrateIfNeeded(context, contentsManager, container)) {
+        "No base prefix for ${container.wineVersion}, cannot launch thin container ${container.id}"
+    }
 
     // Always refresh components files
     refreshComponentsFiles(context)
