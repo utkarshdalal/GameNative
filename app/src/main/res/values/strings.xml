@@ -1,9 +1,4 @@
 <resources>
-    <string name="auto_mod_dll_overrides_steam_unavailable">Automatic overrides are unavailable in Steam GUI/headless modes. Manual overrides still apply.</string>
-    <string name="auto_mod_dll_overrides_detected">Detected: %1$s</string>
-    <string name="auto_mod_dll_overrides_preserved">Existing settings take priority for: %1$s</string>
-    <string name="auto_mod_dll_overrides_preview">WINEDLLOVERRIDES (Automatic)</string>
-    <string name="auto_mod_dll_overrides_preview_description">Includes saved overrides. Recalculated and applied when the game launches.</string>
     <string name="app_name">GameNative</string>
     <string name="login_user">User Login</string>
     <string name="login_2fa">Two Factor</string>

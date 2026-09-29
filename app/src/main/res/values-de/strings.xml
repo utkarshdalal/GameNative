@@ -1,9 +1,4 @@
 ﻿<resources>
-    <string name="auto_mod_dll_overrides_steam_unavailable">Automatische Überschreibungen sind im Steam-GUI- und Headless-Modus nicht verfügbar. Manuelle Überschreibungen gelten weiterhin.</string>
-    <string name="auto_mod_dll_overrides_detected">Erkannt: %1$s</string>
-    <string name="auto_mod_dll_overrides_preserved">Vorhandene Einstellungen haben Vorrang für: %1$s</string>
-    <string name="auto_mod_dll_overrides_preview">WINEDLLOVERRIDES (automatisch)</string>
-    <string name="auto_mod_dll_overrides_preview_description">Enthält gespeicherte Überschreibungen. Wird bei jedem Spielstart neu berechnet und angewendet.</string>
     <string name="app_name">GameNative</string>
     <string name="login_user">Benutzeranmeldung</string>
     <string name="login_2fa">Zwei-Faktor-Authentifizierung</string>

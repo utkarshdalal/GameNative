@@ -1,9 +1,4 @@
 ﻿<resources>
-    <string name="auto_mod_dll_overrides_steam_unavailable">Steam 图形界面和无界面模式不支持自动覆盖。手动覆盖仍然生效。</string>
-    <string name="auto_mod_dll_overrides_detected">已检测到：%1$s</string>
-    <string name="auto_mod_dll_overrides_preserved">以下 DLL 优先使用现有设置：%1$s</string>
-    <string name="auto_mod_dll_overrides_preview">WINEDLLOVERRIDES（自动）</string>
-    <string name="auto_mod_dll_overrides_preview_description">包含已保存的覆盖设置。每次启动游戏时重新计算并应用。</string>
     <string name="app_name">GameNative</string>
     <string name="login_user">登录</string>
     <string name="login_2fa">双重验证</string>

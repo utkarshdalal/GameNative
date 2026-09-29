@@ -1,9 +1,4 @@
 ﻿<resources>
-    <string name="auto_mod_dll_overrides_steam_unavailable">Automatyczne nadpisania są niedostępne w trybach Steam GUI i headless. Ręczne nadpisania nadal obowiązują.</string>
-    <string name="auto_mod_dll_overrides_detected">Wykryto: %1$s</string>
-    <string name="auto_mod_dll_overrides_preserved">Istniejące ustawienia mają pierwszeństwo dla: %1$s</string>
-    <string name="auto_mod_dll_overrides_preview">WINEDLLOVERRIDES (automatycznie)</string>
-    <string name="auto_mod_dll_overrides_preview_description">Uwzględnia zapisane nadpisania. Wartość jest przeliczana i stosowana przy uruchamianiu gry.</string>
     <string name="app_name">GameNative</string>
     <string name="login_user">Logowanie</string>
     <string name="login_2fa">Weryfikacja dwuetapowa</string>

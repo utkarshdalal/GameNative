@@ -1,9 +1,4 @@
 ﻿<resources>
-    <string name="auto_mod_dll_overrides_steam_unavailable">Automatiske tilsidesættelser er ikke tilgængelige i Steams GUI- eller headless-tilstand. Manuelle tilsidesættelser gælder stadig.</string>
-    <string name="auto_mod_dll_overrides_detected">Fundet: %1$s</string>
-    <string name="auto_mod_dll_overrides_preserved">Eksisterende indstillinger har forrang for: %1$s</string>
-    <string name="auto_mod_dll_overrides_preview">WINEDLLOVERRIDES (automatisk)</string>
-    <string name="auto_mod_dll_overrides_preview_description">Inkluderer gemte tilsidesættelser. Genberegnes og anvendes, når spillet starter.</string>
     <string name="app_name">GameNative</string>
     <string name="login_user">Brugerlogin</string>
     <string name="login_2fa">Tofaktorgodkendelse</string>

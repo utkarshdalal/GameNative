@@ -4307,7 +4307,7 @@ private fun setupXEnvironment(
         Timber.i("CPU List: ${container.cpuList}")
         Timber.i("CPU List WoW64: ${container.cpuListWoW64}")
         Timber.i("Env Vars (Container Base): ${EnvVarRedaction.redact(container.envVars)}") // Log base container vars
-        Timber.i("Env Vars (Final Guest): ${EnvVarRedaction.redact(guestProgramLauncherComponent.envVars)}")
+        Timber.i("Env Vars (Guest Base): ${EnvVarRedaction.redact(guestProgramLauncherComponent.envVars)}")
         Timber.i("Guest Executable: ${guestProgramLauncherComponent.guestExecutable}") // Log the command
         Timber.i("---------------------------")
     }

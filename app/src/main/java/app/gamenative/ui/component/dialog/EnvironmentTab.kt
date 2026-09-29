@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ViewList
 import androidx.compose.material.icons.filled.Delete
@@ -28,7 +27,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import app.gamenative.R
@@ -54,7 +52,6 @@ import kotlinx.coroutines.withContext
 fun EnvironmentTabContent(state: ContainerConfigState, appId: String? = null) {
     val context = LocalContext.current
     val config = state.config.value
-    val envVars = EnvVars(config.envVars)
     val supportsAutomaticOverrides =
         appId != null && ModDllOverrideLauncher.supportsLaunch(config.launchRealSteam, config.launchBionicSteam)
     var inspectionRevision by remember { mutableIntStateOf(0) }
@@ -74,75 +71,13 @@ fun EnvironmentTabContent(state: ContainerConfigState, appId: String? = null) {
             }.getOrNull()
         }
     }
-    val activeInspection = inspection.takeIf { supportsAutomaticOverrides }
-    val detected = activeInspection?.detected.orEmpty()
-    val overrides = activeInspection?.merge(envVars.get("WINEDLLOVERRIDES"))
     SettingsGroup {
-        if (appId != null && (!supportsAutomaticOverrides || detected.isNotEmpty())) {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                if (!supportsAutomaticOverrides) {
-                    Text(
-                        stringResource(R.string.auto_mod_dll_overrides_steam_unavailable),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                if (detected.isNotEmpty()) {
-                    Text(
-                        stringResource(R.string.auto_mod_dll_overrides_detected, detected.joinToString { "$it.dll" }),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                if (overrides?.preserved?.isNotEmpty() == true) {
-                    Text(
-                        stringResource(R.string.auto_mod_dll_overrides_preserved, overrides.preserved.joinToString { "$it.dll" }),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        }
-        if (overrides?.added?.isNotEmpty() == true) {
-            NoExtractOutlinedTextField(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                value = overrides.value,
-                onValueChange = {},
-                readOnly = true,
-                textStyle = MaterialTheme.typography.bodyMedium,
-                label = { Text(stringResource(R.string.auto_mod_dll_overrides_preview)) },
-                supportingText = { Text(stringResource(R.string.auto_mod_dll_overrides_preview_description)) },
-            )
-        }
-        if (config.envVars.isNotEmpty()) {
-            SettingsEnvVars(
-                colors = settingsTileColors(),
-                envVars = envVars,
-                onEnvVarsChange = {
-                    state.config.value = config.copy(envVars = it.toString())
-                },
-                knownEnvVars = EnvVarInfo.KNOWN_ENV_VARS,
-                envVarAction = {
-                    IconButton(
-                        onClick = {
-                            envVars.remove(it)
-                            state.config.value = config.copy(envVars = envVars.toString())
-                        },
-                        content = {
-                            Icon(Icons.Filled.Delete, contentDescription = "Delete variable")
-                        },
-                    )
-                },
-            )
-        } else if (overrides?.added?.isNotEmpty() != true) {
-            SettingsCenteredLabel(
-                colors = settingsTileColors(),
-                title = { Text(text = stringResource(R.string.no_environment_variables)) },
-            )
-        }
+        EnvironmentVariableRows(
+            savedEnvVars = config.envVars,
+            inspection = inspection.takeIf { supportsAutomaticOverrides },
+            appId = appId,
+            onEnvVarsChange = { state.config.value = config.copy(envVars = it) },
+        )
         SettingsMenuLink(
             title = {
                 Row(
@@ -305,4 +240,67 @@ fun EnvironmentTabContent(state: ContainerConfigState, appId: String? = null) {
             },
         )
     }
+}
+
+@Composable
+internal fun EnvironmentVariableRows(
+    savedEnvVars: String,
+    inspection: ModDllOverrides.Inspection?,
+    appId: String? = null,
+    onEnvVarsChange: (String) -> Unit,
+) {
+    val saved = EnvVars(savedEnvVars)
+    val displayed = EnvVars(savedEnvVars)
+    // Do not refill the text field between keystrokes, including when the user clears it.
+    var overridesEdited by rememberSaveable(appId) { mutableStateOf(false) }
+    if (!overridesEdited) {
+        inspection?.merge(saved.get("WINEDLLOVERRIDES"))?.takeIf { it.added.isNotEmpty() }?.let {
+            displayed.put("WINEDLLOVERRIDES", it.value)
+        }
+    }
+    val displayedOverrides = displayed.get("WINEDLLOVERRIDES")
+    if (!displayed.isEmpty) {
+        SettingsEnvVars(
+            colors = settingsTileColors(),
+            envVars = displayed,
+            onEnvVarsChange = { edited ->
+                if (edited.get("WINEDLLOVERRIDES") != displayedOverrides) overridesEdited = true
+                onEnvVarsChange(savedEnvironmentAfterEdit(savedEnvVars, displayedOverrides, edited))
+            },
+            knownEnvVars = EnvVarInfo.KNOWN_ENV_VARS,
+            envVarAction = { identifier ->
+                // Only saved variables can be deleted; generated overrides follow the installed mod.
+                if (saved.has(identifier)) {
+                    IconButton(
+                        onClick = {
+                            if (identifier == "WINEDLLOVERRIDES") overridesEdited = false
+                            val updated = EnvVars(savedEnvVars).apply { remove(identifier) }
+                            onEnvVarsChange(updated.toString())
+                        },
+                    ) {
+                        Icon(Icons.Filled.Delete, contentDescription = "Delete variable")
+                    }
+                }
+            },
+        )
+    } else {
+        SettingsCenteredLabel(
+            colors = settingsTileColors(),
+            title = { Text(text = stringResource(R.string.no_environment_variables)) },
+        )
+    }
+}
+
+/** Editing another variable must not turn the displayed automatic overrides into saved settings. */
+private fun savedEnvironmentAfterEdit(savedEnvVars: String, displayedOverrides: String, edited: EnvVars): String {
+    val updated = EnvVars().apply { putAll(edited) }
+    if (updated.get("WINEDLLOVERRIDES") == displayedOverrides) {
+        val saved = EnvVars(savedEnvVars)
+        if (saved.has("WINEDLLOVERRIDES")) {
+            updated.put("WINEDLLOVERRIDES", saved.get("WINEDLLOVERRIDES"))
+        } else {
+            updated.remove("WINEDLLOVERRIDES")
+        }
+    }
+    return updated.toString()
 }

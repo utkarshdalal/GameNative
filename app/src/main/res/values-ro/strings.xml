@@ -1,9 +1,4 @@
 ﻿<resources>
-    <string name="auto_mod_dll_overrides_steam_unavailable">Suprascrierile automate nu sunt disponibile în modurile Steam GUI și headless. Suprascrierile manuale se aplică în continuare.</string>
-    <string name="auto_mod_dll_overrides_detected">Detectate: %1$s</string>
-    <string name="auto_mod_dll_overrides_preserved">Setările existente au prioritate pentru: %1$s</string>
-    <string name="auto_mod_dll_overrides_preview">WINEDLLOVERRIDES (automat)</string>
-    <string name="auto_mod_dll_overrides_preview_description">Include suprascrierile salvate. Valoarea este recalculată și aplicată la pornirea jocului.</string>
     <string name="app_name">GameNative</string>
     <string name="login_user">Autentificare utilizator</string>
     <string name="login_2fa">Autentificare în doi pași</string>

@@ -1,9 +1,4 @@
 ﻿<resources>
-    <string name="auto_mod_dll_overrides_steam_unavailable">Steam の GUI／ヘッドレスモードでは自動オーバーライドを利用できません。手動のオーバーライドは引き続き適用されます。</string>
-    <string name="auto_mod_dll_overrides_detected">検出済み: %1$s</string>
-    <string name="auto_mod_dll_overrides_preserved">既存の設定が優先される DLL: %1$s</string>
-    <string name="auto_mod_dll_overrides_preview">WINEDLLOVERRIDES（自動）</string>
-    <string name="auto_mod_dll_overrides_preview_description">保存済みのオーバーライドを含みます。ゲーム起動時に再計算して適用されます。</string>
     <string name="app_name">GameNative</string>
     <string name="login_user">ユーザーログイン</string>
     <string name="login_2fa">ツーファクター</string>

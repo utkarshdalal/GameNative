@@ -2,13 +2,25 @@ package app.gamenative.utils
 
 import app.gamenative.mods.WindowsTargetNamespace
 import java.io.File
+import java.io.IOException
+import java.io.RandomAccessFile
 import java.util.Locale
 
 /** Recomputed for each launch. Automatic entries are never saved into the container's environment. */
 object ModDllOverrides {
     private val proxies = listOf("dinput8", "winhttp", "version", "winmm", "dsound")
-    private val frameworkDirectories = setOf("bepinex", "melonloader", "reframework")
-    private val asiDirectories = setOf("scripts", "plugins", "update")
+
+    // Each pair identifies the DLL itself, not another loader installed in the same directory.
+    private fun wide(value: String) = value.toByteArray(Charsets.UTF_16LE).toString(Charsets.ISO_8859_1)
+    private val loaderMarkers = listOf(
+        listOf(wide("doorstop_config.ini"), wide("DOORSTOP_INVOKE_DLL_PATH")), // Doorstop 3/4 (BepInEx)
+        listOf("IsUltimateASILoader", wide("Ultimate ASI Loader")),
+        listOf("REFramework entry", "reframework_crash.dmp"),
+        listOf(wide("MelonLoader.Bootstrap.dll"), wide("MelonLoader.NativeHost")), // MelonLoader 0.7
+        listOf("Failed to initialize MelonLoader: ", "Failed to find MelonLoader Bootstrap"), // 0.6
+        listOf(wide("MelonLoader\\Dependencies\\Bootstrap.dll"), wide("--melonloader.basedir")), // 0.5
+    )
+    private val markerOverlap = loaderMarkers.flatten().maxOf { it.length } - 1
 
     data class Result(val value: String, val added: List<String>, val preserved: List<String>)
     data class Inspection(
@@ -63,22 +75,41 @@ object ModDllOverrides {
     fun detect(executable: File?): List<String> {
         if (executable?.isFile != true) return emptyList()
         val files = executable.parentFile?.listFiles()?.groupBy { it.name.lowercase(Locale.ROOT) } ?: return emptyList()
-        val hasFramework = files.any { (name, entries) ->
-            val entry = entries.singleOrNull()
-            entry != null &&
-                (
-                    (name in frameworkDirectories && entry.isDirectory) ||
-                        (
-                            name in asiDirectories &&
-                                entry.isDirectory &&
-                                entry.listFiles()?.any { it.isFile && it.extension.equals("asi", ignoreCase = true) } == true
-                            ) ||
-                        ((name == "doorstop_config.ini" || name.endsWith(".asi")) && entry.isFile)
-                    )
+        return proxies.filter { dll -> files["$dll.dll"]?.singleOrNull()?.let { it.isFile && isModLoader(it) } == true }
+    }
+
+    private fun isModLoader(file: File): Boolean = try {
+        RandomAccessFile(file, "r").use { input ->
+            // Bound both I/O and memory; unknown, oversized or invalid binaries need manual overrides.
+            val size = input.length()
+            if (size !in 64L..32L * 1024 * 1024 || input.readUnsignedShort() != 0x4d5a) return@use false
+            input.seek(0x3c)
+            val peOffset = Integer.reverseBytes(input.readInt()).toLong() and 0xffffffffL
+            if (peOffset < 64 || peOffset + 24 > size) return@use false
+            input.seek(peOffset)
+            if (input.readInt() != 0x50450000) return@use false // PE\0\0
+            input.seek(peOffset + 22)
+            if (input.readUnsignedShort() and 0x0020 == 0) return@use false // IMAGE_FILE_DLL, little endian
+            input.seek(0)
+            val missing = loaderMarkers.map { it.toMutableSet() }
+            val buffer = ByteArray(64 * 1024)
+            var tail = ""
+            var remaining = size
+            while (remaining > 0) {
+                val count = input.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt())
+                if (count <= 0) return@use false
+                val chunk = tail + String(buffer, 0, count, Charsets.ISO_8859_1)
+                for (markers in missing) {
+                    markers.removeAll { chunk.contains(it) }
+                    if (markers.isEmpty()) return@use true
+                }
+                tail = chunk.takeLast(markerOverlap)
+                remaining -= count
+            }
+            false
         }
-        // A supported filename alone can also be an ordinary game dependency.
-        if (!hasFramework) return emptyList()
-        return proxies.filter { dll -> files["$dll.dll"]?.singleOrNull()?.isFile == true }
+    } catch (_: IOException) {
+        false
     }
 
     fun merge(value: String, detected: List<String>, registry: RegistryOverrides = RegistryOverrides()): Result {

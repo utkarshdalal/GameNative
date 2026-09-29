@@ -1,6 +1,7 @@
 package com.winlator.xenvironment.components;
 
 import static org.junit.Assert.*;
+import static app.gamenative.utils.ModDllOverridesTestKt.writeLoaderDll;
 
 import app.gamenative.utils.ModDllOverrideLauncher;
 import com.winlator.container.Container;
@@ -40,8 +41,7 @@ public class GuestProgramEnvironmentTest {
             // Preparation runs after the callback is registered and can install the proxy DLL.
             assertEquals("icu=n", launcher.getEnvVars().get("WINEDLLOVERRIDES"));
             File dll = new File(game, "winhttp.dll");
-            assertTrue(dll.createNewFile());
-            assertTrue(new File(game, "doorstop_config.ini").createNewFile());
+            writeLoaderDll(dll);
             assertEquals("icu=n;winhttp=n,b", launcher.getGuestEnvironment().get("WINEDLLOVERRIDES"));
             assertEquals("icu=n", launcher.getEnvVars().get("WINEDLLOVERRIDES"));
 
