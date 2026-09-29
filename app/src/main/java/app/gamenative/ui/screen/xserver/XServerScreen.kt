@@ -187,6 +187,7 @@ import com.winlator.core.WineUtils
 import com.winlator.core.envvars.EnvVarRedaction
 import com.winlator.core.envvars.EnvVars
 import com.winlator.fexcore.FEXCoreManager
+import com.winlator.fexcore.FEXCorePreset
 import com.winlator.inputcontrols.ControllerManager
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.ExternalController
@@ -4263,6 +4264,9 @@ private fun setupXEnvironment(
     }
 
     fun chainPreInstallSteps(remaining: List<PreInstallSteps.PreInstallCommand>) {
+        (guestProgramLauncherComponent as? BionicProgramLauncherComponent)?.setFEXCorePreset(
+            if (remaining.firstOrNull()?.marker == Marker.GOG_SCRIPT_INSTALLED) FEXCorePreset.STABILITY else container.fexCorePreset,
+        )
         if (remaining.isEmpty()) {
             guestProgramLauncherComponent.setGuestExecutable(gameExecutable)
             guestProgramLauncherComponent.setTerminationCallback(gameTerminationCallback)
