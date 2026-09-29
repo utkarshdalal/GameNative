@@ -98,14 +98,21 @@ class EnvVarsTest {
         assertEquals("another with spaces", parsed.get("C"))
     }
 
-    // The multi-select picker drops tokens it does not list on the first edit.
     @Test
-    fun defaultDebugTokensAreOfferedByThePicker() {
+    fun defaultValuesAreOfferedByThePicker() {
         val defaults = EnvVars(Container.DEFAULT_ENV_VARS)
-        for (name in listOf("ZINK_DEBUG", "TU_DEBUG")) {
-            val offered = EnvVarInfo.KNOWN_ENV_VARS.getValue(name).possibleValues
-            for (token in defaults.get(name).split(",")) {
-                assertTrue("$name token '$token' is not offered by the picker", token in offered)
+        for (name in defaults) {
+            val info = EnvVarInfo.KNOWN_ENV_VARS[name] ?: continue
+            if (info.possibleValues.isEmpty() || info.selectionType == EnvVarSelectionType.SUGGESTIONS) continue
+
+            val value = defaults.get(name)
+            val values = if (info.selectionType == EnvVarSelectionType.MULTI_SELECT) {
+                if (value.isEmpty()) emptyList() else value.split(",")
+            } else {
+                listOf(value)
+            }
+            for (option in values) {
+                assertTrue("$name default '$option' is not offered by the picker", option in info.possibleValues)
             }
         }
     }
