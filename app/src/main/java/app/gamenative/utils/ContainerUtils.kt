@@ -1071,7 +1071,7 @@ object ContainerUtils {
         }
 
         val resolvedGameFolderPath = if (gameSource == GameSource.CUSTOM_GAME) {
-            CustomGameScanner.migrateFromPublicRoot(gameFolderPath)
+            CustomGameScanner.migrateToInternalStorage(gameFolderPath)
         } else {
             StorageUtils.resolveLegacyGameDir(gameFolderPath)
         }
