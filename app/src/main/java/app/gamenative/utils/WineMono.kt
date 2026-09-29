@@ -4,6 +4,7 @@ import com.winlator.container.BasePrefix
 import com.winlator.container.Container
 import com.winlator.container.ContainerFiles
 import com.winlator.container.ContainerOverlay
+import com.winlator.core.FileUtils
 import com.winlator.core.envvars.EnvVars
 import com.winlator.xenvironment.ImageFs
 import com.winlator.xenvironment.components.BionicProgramLauncherComponent
@@ -19,12 +20,35 @@ object WineMono {
     fun markOwnInstall(container: Container, imageFs: ImageFs) {
         if (!container.isOverlay) return
         val upper = File(imageFs.wineprefix)
-        if (File(upper, "$MONO_DIR/mono-2.0/bin/libmono-2.0-x86.dll").isFile &&
-            !File(File(File(upper, ContainerOverlay.OVERLAY_DIR), ContainerOverlay.OPAQUE_DIR), MONO_DIR).exists()
-        ) {
+        val upperLib = File(upper, "$MONO_DIR/mono-2.0/bin/libmono-2.0-x86.dll")
+        if (!upperLib.isFile) return
+        val baseWine = File(container.basePrefix)
+        val baseLib = File(baseWine, "$MONO_DIR/mono-2.0/bin/libmono-2.0-x86.dll")
+        val overlayDir = File(upper, ContainerOverlay.OVERLAY_DIR)
+        val opaque = File(File(overlayDir, ContainerOverlay.OPAQUE_DIR), MONO_DIR)
+        if (baseLib.isFile && FileUtils.contentEquals(upperLib, baseLib)) {
+            val removed = dropDuplicates(File(upper, MONO_DIR), File(baseWine, MONO_DIR))
+            if (!upperLib.exists()) {
+                opaque.delete()
+                File(File(overlayDir, ContainerOverlay.WHITEOUT_DIR), MONO_DIR).deleteRecursively()
+            }
+            Timber.i("Container ${container.id} Mono matches the base, removed $removed duplicate files")
+            return
+        }
+        if (!opaque.exists()) {
             Timber.i("Container ${container.id} has its own Mono, shadowing the base copy")
             ContainerFiles.markOpaque(upper, MONO_DIR)
         }
+    }
+
+    private fun dropDuplicates(upperDir: File, baseDir: File): Int {
+        var removed = 0
+        upperDir.walkBottomUp().forEach { file ->
+            if (!file.isFile) return@forEach
+            val baseFile = File(baseDir, file.relativeTo(upperDir).path)
+            if (baseFile.isFile && file.length() == baseFile.length() && FileUtils.contentEquals(file, baseFile) && file.delete()) removed++
+        }
+        return removed
     }
 
     fun ensureBase(container: Container, monoMsi: File, launcher: GuestProgramLauncherComponent) {

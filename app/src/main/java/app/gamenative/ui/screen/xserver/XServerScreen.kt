@@ -5112,8 +5112,8 @@ private fun unpackExecutableFile(
     var output = StringBuilder()
     val monoMsi = File(imageFs.getRootDir(), "opt/mono-gecko-offline/wine-mono-11.0.0-x86.msi")
     WineMsiCache.deleteCachedCopies(imageFs, monoMsi)
-    WineMono.markOwnInstall(container, imageFs)
     WineMono.ensureBase(container, monoMsi, guestProgramLauncherComponent)
+    WineMono.markOwnInstall(container, imageFs)
     if (needsUnpacking || containerVariantChanged){
         try {
             PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing Mono..."))
