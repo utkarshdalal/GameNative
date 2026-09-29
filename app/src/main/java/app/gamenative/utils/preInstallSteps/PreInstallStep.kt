@@ -7,7 +7,6 @@ import java.io.File
 
 interface PreInstallStep {
     val marker: Marker
-    val fexCorePreset: String? get() = null
 
     fun appliesTo(
         container: Container,

@@ -184,6 +184,7 @@ import com.winlator.core.WineUtils
 import com.winlator.core.envvars.EnvVarRedaction
 import com.winlator.core.envvars.EnvVars
 import com.winlator.fexcore.FEXCoreManager
+import com.winlator.fexcore.FEXCorePreset
 import com.winlator.inputcontrols.ControllerManager
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.ExternalController
@@ -4251,13 +4252,6 @@ private fun setupXEnvironment(
 
     guestProgramLauncherComponent.envVars = EnvVars().apply { putAll(envVars) }
 
-    fun applyFexCorePreset(command: PreInstallSteps.PreInstallCommand?) {
-        if (guestProgramLauncherComponent is BionicProgramLauncherComponent) {
-            guestProgramLauncherComponent.setFEXCorePreset(command?.fexCorePreset ?: container.fexCorePreset)
-        }
-    }
-    applyFexCorePreset(preInstallCommands.firstOrNull())
-
     val gameTerminationCallback = Callback<Int> { status ->
         if (status != 0) {
             Timber.e("Guest program terminated with status: $status")
@@ -4267,13 +4261,14 @@ private fun setupXEnvironment(
     }
 
     fun chainPreInstallSteps(remaining: List<PreInstallSteps.PreInstallCommand>) {
+        (guestProgramLauncherComponent as? BionicProgramLauncherComponent)?.setFEXCorePreset(
+            if (remaining.firstOrNull()?.marker == Marker.GOG_SCRIPT_INSTALLED) FEXCorePreset.STABILITY else container.fexCorePreset,
+        )
         if (remaining.isEmpty()) {
-            applyFexCorePreset(null)
             guestProgramLauncherComponent.setGuestExecutable(gameExecutable)
             guestProgramLauncherComponent.setTerminationCallback(gameTerminationCallback)
             return
         }
-        applyFexCorePreset(remaining.first())
         guestProgramLauncherComponent.setGuestExecutable(remaining.first().executable)
         guestProgramLauncherComponent.setTerminationCallback { _ ->
             val current = remaining.first()

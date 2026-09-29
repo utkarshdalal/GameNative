@@ -21,7 +21,6 @@ object PreInstallSteps {
     data class PreInstallCommand(
         val marker: Marker,
         val executable: String,
-        val fexCorePreset: String? = null,
     )
 
     private val steps: List<PreInstallStep> = listOf(
@@ -75,7 +74,6 @@ object PreInstallSteps {
                         PreInstallCommand(
                             marker = step.marker,
                             executable = wrapAsGuestExecutable(cmd, screenInfo),
-                            fexCorePreset = step.fexCorePreset,
                         ),
                     )
                 }
