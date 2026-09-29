@@ -90,7 +90,7 @@ public final class BasePrefix {
         return FileUtils.writeString(new File(baseDir, COMPLETE_MARKER), identity);
     }
 
-    static boolean normalize(File wineDir) {
+    public static boolean normalize(File wineDir) {
         return removeAppManagedFiles(wineDir) & trimDosdevices(wineDir);
     }
 
@@ -103,7 +103,21 @@ public final class BasePrefix {
             if (BASE_DRIVES.contains(entry.getName().toLowerCase())) continue;
             ok &= ContainerFiles.deleteRecursively(entry);
         }
-        return ok;
+        return ok & ensureRootDrive(wineDir);
+    }
+
+    public static boolean ensureRootDrive(File wineDir) {
+        java.nio.file.Path link = new File(new File(wineDir, ContainerFiles.DOSDEVICES), "z:").toPath();
+        try {
+            if (java.nio.file.Files.isSymbolicLink(link) && "/".equals(java.nio.file.Files.readSymbolicLink(link).toString())) return true;
+            java.nio.file.Files.deleteIfExists(link);
+            java.nio.file.Files.createSymbolicLink(link, java.nio.file.Paths.get("/"));
+            return true;
+        }
+        catch (java.io.IOException e) {
+            Log.w(TAG, "Could not point z: at / in " + wineDir + ": " + e);
+            return false;
+        }
     }
 
     static boolean removeAppManagedFiles(File wineDir) {

@@ -8,9 +8,11 @@ import timber.log.Timber
 object WineMsiCache {
     private const val SAMPLE_BYTES = 65536
 
-    fun deleteCachedCopies(imageFs: ImageFs, source: File): Int {
+    fun deleteCachedCopies(imageFs: ImageFs, source: File): Int =
+        deleteCachedCopies(File(imageFs.wineprefix, "drive_c/windows/Installer"), source)
+
+    fun deleteCachedCopies(installerDir: File, source: File): Int {
         if (!source.isFile) return 0
-        val installerDir = File(imageFs.wineprefix, "drive_c/windows/Installer")
         val cached = installerDir.listFiles() ?: return 0
         val sourceLength = source.length()
         var removed = 0

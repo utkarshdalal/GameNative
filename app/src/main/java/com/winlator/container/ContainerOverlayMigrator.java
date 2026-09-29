@@ -93,6 +93,7 @@ public final class ContainerOverlayMigrator {
         Result result = prune(upper, baseWine, protonLibDirs);
         Log.i(TAG, "Overlay migration for container " + container.id + ": " + result);
         if (result.completed) {
+            ContainerFiles.deleteRecursively(new File(container.getRootDir(), ".cache/original_dlls"));
             new File(upper, ContainerOverlay.OVERLAY_DIR).mkdirs();
             ContainerFiles.markOpaque(upper, ContainerFiles.DOSDEVICES);
             container.setBasePrefix(ContainerOverlay.canonicalHostPath(baseWine));

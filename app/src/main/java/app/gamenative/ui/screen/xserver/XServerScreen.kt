@@ -153,6 +153,7 @@ import app.gamenative.utils.SteamTokenLogin
 import app.gamenative.enums.Marker
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.SteamUtils
+import app.gamenative.utils.WineMono
 import app.gamenative.utils.WineMsiCache
 import app.gamenative.utils.downloader.WinComponentDownloader
 import app.gamenative.utils.WineProcessSnapshotHelper
@@ -5111,12 +5112,11 @@ private fun unpackExecutableFile(
     var output = StringBuilder()
     val monoMsi = File(imageFs.getRootDir(), "opt/mono-gecko-offline/wine-mono-11.0.0-x86.msi")
     WineMsiCache.deleteCachedCopies(imageFs, monoMsi)
+    WineMono.markOwnInstall(container, imageFs)
     if (needsUnpacking || containerVariantChanged){
         try {
             PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing Mono..."))
-            val monoCmd = "wine msiexec /i Z:\\opt\\mono-gecko-offline\\wine-mono-11.0.0-x86.msi && wineserver -k"
-            Timber.i("Install mono command $monoCmd")
-            val monoOutput = guestProgramLauncherComponent.execShellCommand(monoCmd)
+            val monoOutput = WineMono.install(container, imageFs, monoMsi, guestProgramLauncherComponent)
             output.append(monoOutput)
             Timber.i("Result of mono command " + output)
         } catch (e: Exception) {
@@ -5535,6 +5535,10 @@ private suspend fun applyGeneralPatches(
     } else {
         Timber.i("Attempting to extract _container_pattern.tzst with wine version " + container.wineVersion)
         containerManager.extractContainerPatternFile(container.wineVersion, contentsManager, container.rootDir, onExtractFileListener)
+        if (container.basePrefix.isNotEmpty()) {
+            container.basePrefix = ""
+            container.saveData()
+        }
     }
     WineUtils.applySystemTweaks(context, wineInfo)
     container.putExtra("graphicsDriver", null)
@@ -5649,7 +5653,7 @@ private suspend fun extractDXWrapperFiles(
         "ddraw.dll",
     )
     val splitDxWrapper = dxwrapper.split("-")[0]
-    if (firstTimeBoot && splitDxWrapper != "vkd3d") cloneOriginalDllFiles(imageFs, *dlls)
+    if (firstTimeBoot && splitDxWrapper != "vkd3d" && !container.isOverlay) cloneOriginalDllFiles(imageFs, *dlls)
     val rootDir = imageFs.getRootDir()
     val windowsDir = File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows")
 
@@ -5776,7 +5780,7 @@ private fun restoreOriginalDllFiles(
             },
         )
 
-        cloneOriginalDllFiles(imageFs, *dlls)
+        if (!container.isOverlay) cloneOriginalDllFiles(imageFs, *dlls)
     } else {
         val windowsDir = File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows")
         var system32dlls: File? = null
@@ -5825,7 +5829,7 @@ private suspend fun extractWinComponentFiles(
                 }
             }
 
-            cloneOriginalDllFiles(imageFs, *dlls.toTypedArray())
+            if (!container.isOverlay) cloneOriginalDllFiles(imageFs, *dlls.toTypedArray())
             dlls.clear()
         }
 

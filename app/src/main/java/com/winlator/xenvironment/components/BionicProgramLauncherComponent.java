@@ -704,6 +704,10 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     }
 
     public String execShellCommand(String command, boolean includeStderr) {
+        return execShellCommand(command, includeStderr, null, null);
+    }
+
+    public String execShellCommand(String command, boolean includeStderr, EnvVars extraEnv, String[] unsetEnv) {
         Context context = environment.getContext();
         ImageFs imageFs = ImageFs.find(context);
         File rootDir = imageFs.getRootDir();
@@ -750,6 +754,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             Log.e("BionicProgramLauncherComponent", e.getMessage());
             return "";
         }
+        if (extraEnv != null) envVars.putAll(extraEnv);
+        if (unsetEnv != null) for (String name : unsetEnv) envVars.remove(name);
 
         String finalCommand = getFinalCommand(winePath, emulator, envVars, imageFs.getBinDir(), command);
 
