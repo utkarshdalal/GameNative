@@ -2438,8 +2438,15 @@ fun XServerScreen(
                             PowerManager.pinBackgroundProcesses()
 
                             if (!PluviaApp.isActivityInForeground && !neverSuspend) {
-                                PluviaApp.suspendWhenGameShows = true
-                                Timber.d("App backgrounded during boot; game will be paused once its window shows")
+                                PluviaApp.xEnvironment?.onPause()
+                                if (manualResumeMode) {
+                                    view.post {
+                                        PluviaApp.isOverlayPaused = true
+                                        Timber.d("Game paused after environment setup while app was backgrounded (manual resume required)")
+                                    }
+                                } else {
+                                    Timber.d("Game paused after environment setup while app was backgrounded")
+                                }
                             }
                         } catch (e: Exception) {
                             Timber.e(e, "Error during wine setup operations")
@@ -4286,11 +4293,6 @@ private fun setupXEnvironment(
         } catch (e: Exception) {
             Timber.tag("replaceXAudioDllsFromRedistributable").w(e, "Failed to replace XAudio DLLs; continuing launch")
         }
-    }
-
-    // Before the guest starts, so a game window that maps early can't miss it.
-    if (!PluviaApp.isActivityInForeground && !PluviaApp.isNeverSuspendMode()) {
-        PluviaApp.suspendWhenGameShows = true
     }
 
     try {

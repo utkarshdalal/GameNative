@@ -56,9 +56,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -337,20 +334,9 @@ class MainViewModel @Inject constructor(
                 _state.update { it.copy(paletteStyle = value) }
             }
         }
-
-        viewModelScope.launch {
-            _state.map { it.loadingDialogVisible || it.showBootingSplash }
-                .distinctUntilChanged()
-                .collectLatest { active ->
-                    // The dialog hands over to the splash with a short gap; don't drop the guard in it.
-                    if (!active) delay(1_000)
-                    SteamService.isLaunchInProgress = active
-                }
-        }
     }
 
     override fun onCleared() {
-        SteamService.isLaunchInProgress = false
         PluviaApp.events.off<AndroidEvent.BackPressed, Unit>(onBackPressed)
         PluviaApp.events.off<AndroidEvent.ExternalGameLaunch, Unit>(onExternalGameLaunch)
         PluviaApp.events.off<AndroidEvent.SetBootingSplashText, Unit>(onSetBootingSplashText)
@@ -396,7 +382,6 @@ class MainViewModel @Inject constructor(
     }
 
     fun setShowBootingSplash(value: Boolean) {
-        if (value) SteamService.isLaunchInProgress = true
         val wasShowing = _state.value.showBootingSplash
         if (value && !wasShowing) {
             // The splash hides and re-shows between boot phases; a quick re-show is the same
@@ -905,14 +890,6 @@ class MainViewModel @Inject constructor(
             // end it; with no card (or outside boot) any window map hides it as before.
             if (window.isApplicationWindow() && !WineProcessSnapshotHelper.isSystemProcessName(window.className)) {
                 gameWindowSeen = true
-                if (PluviaApp.suspendWhenGameShows) {
-                    PluviaApp.suspendWhenGameShows = false
-                    if (!PluviaApp.isActivityInForeground && !PluviaApp.isNeverSuspendMode()) {
-                        PluviaApp.xEnvironment?.onPause()
-                        if (PluviaApp.isManualSuspendMode()) PluviaApp.isOverlayPaused = true
-                        Timber.d("Game paused now that it booted while the app was backgrounded")
-                    }
-                }
             }
             val windowClass = window.className.trim().lowercase()
             if (bootAwaitingGameWindow && (windowClass.isEmpty() || windowClass == "explorer.exe")) {
@@ -1001,6 +978,7 @@ class MainViewModel @Inject constructor(
             // See onClearBootingSplash's kdoc — broadcast so MainActivity's own instance clears
             // too when this call is actually running on ImmersiveXrActivity's separate instance.
             PluviaApp.events.emit(AndroidEvent.ClearBootingSplash)
+            SteamService.isLaunchInProgress = false
 
             // You could also show an error dialog here if needed
             Timber.tag("MainViewModel").e("Game launch error: $error")
@@ -1017,6 +995,7 @@ class MainViewModel @Inject constructor(
             setShowBootingSplash(false)
             PluviaApp.events.emit(AndroidEvent.ClearBootingSplash)
             PluviaApp.events.emit(SteamEvent.ForceCloseApp)
+            SteamService.isLaunchInProgress = false
         }
     }
 

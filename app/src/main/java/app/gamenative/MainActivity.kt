@@ -511,7 +511,6 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         PowerManager.resume()
         PluviaApp.isActivityInForeground = true
-        PluviaApp.suspendWhenGameShows = false
 
         lifecycleScope.launch { app.gamenative.launch.LaunchReadiness.refresh() }
         // Re-apply immersive mode to ensure fullscreen persists
@@ -576,10 +575,6 @@ class MainActivity : ComponentActivity() {
             when {
                 PluviaApp.isNeverSuspendMode() -> {
                     Timber.d("Game pause skipped due to suspend policy=never")
-                }
-                PluviaApp.isBootingSplashShowing -> {
-                    PluviaApp.suspendWhenGameShows = true
-                    Timber.d("Game pause deferred until the game window shows")
                 }
                 else -> {
                     PluviaApp.xEnvironment?.onPause()
