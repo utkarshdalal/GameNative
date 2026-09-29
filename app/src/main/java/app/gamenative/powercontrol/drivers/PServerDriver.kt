@@ -118,7 +118,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     private val baselineJson = Json { encodeDefaults = true; ignoreUnknownKeys = true }
     private var sessionBaseline: PowerBaseline? = null
     private var rootRestoreScriptPath: String = ""
-    private var rootCleanupPaths: List<String> = emptyList()
+    private var rootWatchdogScriptPath: String = ""
     private var babysitterPid: Int? = null
     private var babysitterActive: Boolean = false
 
@@ -540,6 +540,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
             PowerBaselineScripts.toRootVisiblePath(scriptFile.absolutePath)
         )
         var rootScript = PowerBaselineScripts.toRootVisiblePath(scriptFile.absolutePath)
+        var scriptDir = primaryDir
 
         if (!isRootReadable(rootScript)) {
             val mirrorDir = File(ctx.filesDir, PowerBaselineScripts.DIRECTORY_NAME)
@@ -549,12 +550,17 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
             mirrorJson.writeText(jsonText)
             mirrorScript.writeText(scriptText)
             rootScript = mirrorScript.absolutePath
+            scriptDir = mirrorDir
             cleanupPaths.add(mirrorJson.absolutePath)
             cleanupPaths.add(mirrorScript.absolutePath)
             Timber.tag(POWER_TAG).w("Root cannot read ${scriptFile.absolutePath}, mirrored restore script to $rootScript")
         }
 
-        rootCleanupPaths = cleanupPaths
+        val watchdogFile = File(scriptDir, PowerBaselineScripts.WATCHDOG_SCRIPT_FILE_NAME)
+        val rootWatchdog = PowerBaselineScripts.toRootVisiblePath(watchdogFile.absolutePath)
+        cleanupPaths.add(rootWatchdog)
+        watchdogFile.writeText(PowerBaselineScripts.buildWatchdogScript(rootScript, cleanupPaths))
+        rootWatchdogScriptPath = rootWatchdog
         Timber.tag(POWER_TAG).i("Restore script written: $rootScript (baseline ${jsonFile.absolutePath})")
         return rootScript
     }
@@ -563,7 +569,8 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         for (dir in baselineDirectories()) {
             listOf(
                 PowerBaselineScripts.BASELINE_FILE_NAME,
-                PowerBaselineScripts.RESTORE_SCRIPT_FILE_NAME
+                PowerBaselineScripts.RESTORE_SCRIPT_FILE_NAME,
+                PowerBaselineScripts.WATCHDOG_SCRIPT_FILE_NAME
             ).forEach { name ->
                 try {
                     File(dir, name).delete()
@@ -572,7 +579,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
                 }
             }
         }
-        rootCleanupPaths = emptyList()
+        rootWatchdogScriptPath = ""
     }
 
     private fun isRootReadable(path: String): Boolean {
@@ -584,11 +591,11 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     }
 
     private fun spawnBabysitter() {
-        val scriptPath = rootRestoreScriptPath
+        val scriptPath = rootWatchdogScriptPath
         if (scriptPath.isEmpty()) return
 
         val appPid = android.os.Process.myPid()
-        val command = PowerBaselineScripts.buildBabysitterCommand(appPid, scriptPath, rootCleanupPaths)
+        val command = PowerBaselineScripts.buildBabysitterCommand(appPid, scriptPath)
         val result = executeAsRoot(command)
 
         if (result.isFailure) {
@@ -604,7 +611,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         )
 
         val check = executeAsRoot(
-            PowerBaselineScripts.buildBabysitterCheckCommand(appPid, PowerBaselineScripts.RESTORE_SCRIPT_FILE_NAME)
+            PowerBaselineScripts.buildBabysitterCheckCommand(appPid, PowerBaselineScripts.WATCHDOG_SCRIPT_FILE_NAME)
         ).getOrNull().orEmpty()
         val alive = check.contains("ALIVE")
         val visible = check.contains("VISIBLE")
@@ -619,7 +626,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         val result = executeAsRoot(
             PowerBaselineScripts.buildKillBabysitterCommand(
                 babysitterPid,
-                PowerBaselineScripts.RESTORE_SCRIPT_FILE_NAME
+                PowerBaselineScripts.WATCHDOG_SCRIPT_FILE_NAME
             )
         )
         Timber.tag(POWER_TAG).i("Babysitter killed (pid=${babysitterPid ?: "unknown"}, success=${result.isSuccess})")
@@ -704,7 +711,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         // A babysitter from the dead session may still be sleeping; it would otherwise
         // fire mid-session and delete the new baseline files.
         executeAsRoot(
-            PowerBaselineScripts.buildKillBabysitterCommand(null, PowerBaselineScripts.RESTORE_SCRIPT_FILE_NAME)
+            PowerBaselineScripts.buildKillBabysitterCommand(null, PowerBaselineScripts.WATCHDOG_SCRIPT_FILE_NAME)
         )
 
         deleteBaselineArtifacts()

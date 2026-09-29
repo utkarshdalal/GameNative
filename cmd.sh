@@ -1,1 +1,0 @@
-S=$(command -v setsid); nohup $S sh -c 'while kill -0 767 2>/dev/null; do sleep 1; done; echo restored > /tmp/claude-0/-home-user-GameNative/6fae3d67-9a7b-566e-bbcb-2ad1b17005a4/scratchpad/restored.txt' </dev/null >/dev/null 2>&1 & echo $!
