@@ -5123,7 +5123,6 @@ private fun unpackExecutableFile(
         } catch (e: Exception) {
             Timber.e("Error during mono installation: $e")
         }
-        WineMsiCache.deleteCachedCopies(imageFs, monoMsi)
 
         // Install redistributables if shared depots are present
         try {
