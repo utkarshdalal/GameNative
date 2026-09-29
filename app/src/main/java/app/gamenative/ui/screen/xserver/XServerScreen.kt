@@ -5525,6 +5525,8 @@ private suspend fun applyGeneralPatches(
         containerManager.extractContainerPatternCommon(rootDir, onExtractFileListener)
         Timber.i("Attempting to extract _container_pattern.tzst with wine version " + container.wineVersion)
         containerManager.extractContainerPatternFile(container.wineVersion, contentsManager, container.rootDir, onExtractFileListener)
+    } else {
+        ContainerOverlayMigrator.migrateIfNeeded(context, contentsManager, container)
     }
     WineUtils.applySystemTweaks(context, wineInfo)
     container.putExtra("graphicsDriver", null)
