@@ -72,6 +72,7 @@ public class Container {
     public static final String STEAM_TYPE_NORMAL = "normal";
     public static final String STEAM_TYPE_LIGHT = "light";
     public static final String STEAM_TYPE_ULTRALIGHT = "ultralight";
+    public static final String STEAM_TYPE_HEADLESS = "headless";
     public static final String GLIBC = "glibc";
     public static final String BIONIC = "bionic";
     public static final byte MAX_DRIVE_LETTERS = 8;
@@ -91,6 +92,8 @@ public class Container {
     private String wincomponents = DEFAULT_WINCOMPONENTS;
     private String audioDriver = DEFAULT_AUDIO_DRIVER;
     private boolean pulseaudioLowLatency = false;
+    /** Exposes the Android microphone to Wine/Proton as a capture device. Opt-in, off by default. */
+    private boolean micEnabled = false;
     private String drives = DEFAULT_DRIVES;
     private String wineVersion = WineInfo.MAIN_WINE_VERSION.identifier();
     private boolean showFPS;
@@ -115,6 +118,7 @@ public class Container {
     private String installPath = "";
     private JSONObject extraData;
     private JSONObject sessionMetadata;
+    private String configSource = "";
     private int rcfileId = 0;
     private String midiSoundFont = "";
     private int inputType = WinHandler.PreferredInputApi.BOTH.ordinal();
@@ -153,7 +157,8 @@ public class Container {
     private boolean externalDisplaySwap = false;
     // Prefer DRI3 WSI path
     private boolean useDRI3 = true;
-    // Steam client type for selecting appropriate Box64 RC config: normal, light, ultralight
+    // Steam client flavour: headless (steamhost, no client UI) or the Valve GUI client under
+    // one of the Box64 RC configs (normal, light, ultralight)
     private String steamType = DefaultVersion.STEAM_TYPE;
 
     private boolean gstreamerWorkaround = false;
@@ -176,6 +181,8 @@ public class Container {
 
     private String containerVariant = DEFAULT_VARIANT;
 
+    private String basePrefix = "";
+
     public String getGraphicsDriverVersion() {
         return graphicsDriverVersion;
     }
@@ -196,6 +203,9 @@ public class Container {
                 break;
             case STEAM_TYPE_ULTRALIGHT:
                 this.steamType = STEAM_TYPE_ULTRALIGHT;
+                break;
+            case STEAM_TYPE_HEADLESS:
+                this.steamType = STEAM_TYPE_HEADLESS;
                 break;
             default:
                 this.steamType = STEAM_TYPE_NORMAL;
@@ -316,6 +326,14 @@ public class Container {
         this.pulseaudioLowLatency = pulseaudioLowLatency;
     }
 
+    public boolean getMicEnabled() {
+        return micEnabled;
+    }
+
+    public void setMicEnabled(boolean micEnabled) {
+        this.micEnabled = micEnabled;
+    }
+
     public String getWinComponents() {
         return wincomponents;
     }
@@ -378,6 +396,11 @@ public class Container {
 
     public void setLaunchRealSteam(boolean launchRealSteam) {
         this.launchRealSteam = launchRealSteam;
+    }
+
+    /** Real Steam through the headless steamhost rather than the Valve GUI client. */
+    public boolean isLaunchHeadlessSteam() {
+        return launchRealSteam && STEAM_TYPE_HEADLESS.equals(steamType);
     }
 
     public boolean isLaunchBionicSteam() {
@@ -558,6 +581,18 @@ public class Container {
 
     public String getContainerVariant() {
         return this.containerVariant;
+    }
+
+    public String getBasePrefix() {
+        return basePrefix != null ? basePrefix : "";
+    }
+
+    public void setBasePrefix(String basePrefix) {
+        this.basePrefix = basePrefix != null ? basePrefix : "";
+    }
+
+    public boolean isOverlay() {
+        return ContainerOverlay.isEligible(this) && !getBasePrefix().isEmpty();
     }
 
     public String getExtra(String name) {
@@ -741,6 +776,7 @@ public class Container {
             if (!dxwrapperConfig.isEmpty()) data.put("dxwrapperConfig", dxwrapperConfig);
             data.put("audioDriver", audioDriver);
             data.put("pulseaudioLowLatency", pulseaudioLowLatency);
+            data.put("micEnabled", micEnabled);
             data.put("wincomponents", wincomponents);
             data.put("drives", drives);
             data.put("showFPS", showFPS);
@@ -760,6 +796,7 @@ public class Container {
             data.put("desktopTheme", desktopTheme);
             data.put("extraData", extraData);
             data.put("sessionMetadata", sessionMetadata);
+            data.put("configSource", configSource);
             data.put("rcfileId", rcfileId);
             data.put("midiSoundFont", midiSoundFont);
             data.put("lc_all", lc_all);
@@ -793,6 +830,7 @@ public class Container {
             data.put("steamType", steamType);
             data.put("language", language);
             data.put("containerVariant", containerVariant);
+            if (!getBasePrefix().isEmpty()) data.put("basePrefix", basePrefix);
             data.put("emulator", emulator);
             data.put("fexcoreVersion", fexcoreVersion);
 
@@ -926,6 +964,10 @@ public class Container {
                     setExtraData(extraData);
                     break;
                 }
+                case "configSource" : {
+                    configSource = data.getString(key);
+                    break;
+                }
                 case "sessionMetadata" : {
                     try {
                         JSONObject sessionMetadata = data.getJSONObject(key);
@@ -961,6 +1003,9 @@ public class Container {
                     break;
                 case "pulseaudioLowLatency" :
                     setPulseaudioLowLatency(data.getBoolean(key));
+                    break;
+                case "micEnabled" :
+                    setMicEnabled(data.getBoolean(key));
                     break;
                 case "desktopTheme" :
                     setDesktopTheme(data.getString(key));
@@ -1054,6 +1099,9 @@ public class Container {
                     break;
                 case "portraitMode":
                     this.portraitMode = data.getBoolean(key);
+                    break;
+                case "basePrefix":
+                    setBasePrefix(data.optString(key, ""));
                     break;
             }
         }
@@ -1198,6 +1246,14 @@ public class Container {
         this.portraitMode = portraitMode;
     }
 
+
+    public String getConfigSource() {
+        return configSource;
+    }
+
+    public void setConfigSource(String configSource) {
+        this.configSource = configSource;
+    }
 
     public String getContainerJson() {
         String content = FileUtils.readString(getConfigFile());

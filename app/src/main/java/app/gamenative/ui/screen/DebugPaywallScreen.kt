@@ -181,7 +181,7 @@ fun DebugPaywallScreen(
                 )
 
                 Text(
-                    text = stringResource(R.string.debug_paywall_cancel_anytime),
+                    text = stringResource(R.string.debug_paywall_cancel_anytime) + " " + stringResource(R.string.debug_trial_note),
                     style = MaterialTheme.typography.bodySmall,
                     color = PluviaTheme.colors.textMuted,
                 )

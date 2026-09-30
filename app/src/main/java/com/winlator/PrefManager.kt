@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import java.io.IOException
 import java.util.concurrent.CompletableFuture
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
@@ -66,7 +67,12 @@ object PrefManager {
     }
 
     private fun <T> getPref(key: Preferences.Key<T>, defaultValue: T): T = runBlocking {
-        dataStore!!.data.first()[key] ?: defaultValue
+        try {
+            dataStore!!.data.first()[key] ?: defaultValue
+        } catch (e: IOException) {
+            Timber.w(e, "Failed to read preference ${key.name}, using default")
+            defaultValue
+        }
     }
 
     private fun <T> setPref(key: Preferences.Key<T>, value: T): CompletableFuture<Unit> {

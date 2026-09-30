@@ -39,7 +39,7 @@ class GogScriptInterpreterStepTest {
     }
 
     @Test
-    fun appliesTo_requiresGogAndGlibcAndMissingMarker() {
+    fun appliesTo_requiresGogAndMissingMarker() {
         every { container.containerVariant } returns Container.GLIBC
         assertTrue(GogScriptInterpreterStep.appliesTo(container, GameSource.GOG, gameDir.absolutePath))
         MarkerUtils.addMarker(gameDir.absolutePath, Marker.GOG_SCRIPT_INSTALLED)
@@ -49,7 +49,7 @@ class GogScriptInterpreterStepTest {
         assertFalse(GogScriptInterpreterStep.appliesTo(container, GameSource.STEAM, gameDir.absolutePath))
 
         every { container.containerVariant } returns Container.BIONIC
-        assertFalse(GogScriptInterpreterStep.appliesTo(container, GameSource.GOG, gameDir.absolutePath))
+        assertTrue(GogScriptInterpreterStep.appliesTo(container, GameSource.GOG, gameDir.absolutePath))
     }
 
     @Test

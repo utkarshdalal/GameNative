@@ -6,11 +6,13 @@ import app.gamenative.data.GOGCloudSavesLocation
 import app.gamenative.data.GOGCloudSavesLocationTemplate
 import app.gamenative.data.GOGGame
 import app.gamenative.data.GameSource
+import app.gamenative.service.download.NativeTreeDelete
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.enums.Marker
 import app.gamenative.enums.PathType
+import app.gamenative.service.download.GameDownloadService
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.FileUtils
 import app.gamenative.utils.MarkerUtils
@@ -541,6 +543,9 @@ class GOGManager @Inject constructor(
             try {
                 val gameId = libraryItem.gameId.toString()
 
+                // Remove download from GameDownloadService
+                GameDownloadService.removeDownload(context, GameSource.GOG, gameId)
+
                 val game = getGameFromDbById(gameId)
                 val storedPath = game?.installPath?.takeIf { it.isNotBlank() }
                 val computedPath = getGameInstallPath(gameId, libraryItem.name)
@@ -556,7 +561,7 @@ class GOGManager @Inject constructor(
                 for (path in pathsToClean) {
                     val dir = File(path)
                     if (dir.exists()) {
-                        if (dir.deleteRecursively()) {
+                        if (NativeTreeDelete.deleteTreeFast(dir)) {
                             Timber.i("Successfully deleted game directory: $path")
                         } else {
                             Timber.w("Failed to delete some game files at $path")
@@ -570,7 +575,7 @@ class GOGManager @Inject constructor(
                 }
 
                 // Drop any leftover chunk cache (kept on failed downloads for resume)
-                File(context.cacheDir, "gog_chunks/$gameId").deleteRecursively()
+                NativeTreeDelete.deleteTreeFast(File(context.cacheDir, "gog_chunks/$gameId"))
 
                 if (game != null) {
                     val updatedGame = game.copy(isInstalled = false, installPath = "")
@@ -657,31 +662,44 @@ class GOGManager @Inject constructor(
         try {
             val game = getGameFromDbById(gameId) ?: return@withContext ""
             val installPath = game.installPath.ifEmpty { getGameInstallPath(game.id, game.title) }
-
-            // Try V2 structure first (game_$gameId subdirectory)
-            val v2GameDir = File(installPath, "game_$gameId")
-            if (v2GameDir.exists()) {
-                return@withContext getGameExecutable(installPath, v2GameDir)
-            }
-
-            // Try V1 structure: goggame-*.info and exe can be in install root or in a subdir
-            val installDirFile = File(installPath)
-            val exe = getGameExecutable(installPath, installDirFile)
-            if (exe.isNotEmpty()) return@withContext exe
-            val subdirs = installDirFile.listFiles()?.filter {
-                it.isDirectory && it.name != "saves" && it.name != "_CommonRedist"
-            } ?: emptyList()
-
-            for (subdir in subdirs) {
-                val subdirExe = getGameExecutable(installPath, subdir)
-                if (subdirExe.isNotEmpty()) return@withContext subdirExe
-            }
-
-            ""
+            findInstalledPlayTask(installPath, gameId)?.executablePath ?: ""
         } catch (e: Exception) {
             Timber.e(e, "Failed to get executable for GOG game $gameId")
             ""
         }
+    }
+
+    internal fun findInstalledPlayTask(installPath: String, gameId: String): GOGPlayTask? {
+        // Try V2 structure first (game_$gameId subdirectory)
+        val v2GameDir = File(installPath, "game_$gameId")
+        if (v2GameDir.exists()) {
+            return getGamePlayTask(installPath, v2GameDir)
+        }
+
+        // Try V1 structure: goggame-*.info and exe can be in install root or in a subdir
+        val installDirFile = File(installPath)
+        getGamePlayTask(installPath, installDirFile)?.let { return it }
+        val subdirs = installDirFile.listFiles()?.filter {
+            it.isDirectory && it.name != "saves" && it.name != "_CommonRedist"
+        } ?: emptyList()
+
+        for (subdir in subdirs) {
+            getGamePlayTask(installPath, subdir)?.let { return it }
+        }
+
+        return null
+    }
+
+    internal fun resolveGogLaunchArguments(execArgs: String, executablePath: String, task: GOGPlayTask?): String {
+        if (execArgs.isNotEmpty() || task == null) return ""
+        return if (isSamePlayTaskExecutable(task, executablePath)) task.arguments else ""
+    }
+
+    internal fun isSamePlayTaskExecutable(task: GOGPlayTask, executablePath: String): Boolean {
+        return task.executablePath.replace('\\', '/').equals(
+            executablePath.replace('\\', '/'),
+            ignoreCase = true,
+        )
     }
 
     /**
@@ -694,15 +712,21 @@ class GOGManager @Inject constructor(
         }
     }
 
-    private fun getGameExecutable(installPath: String, gameDir: File): String {
-        val result = getMainExecutableFromGOGInfo(gameDir, installPath)
+    internal data class GOGPlayTask(
+        val executablePath: String,
+        val arguments: String,
+        val workingDir: String,
+    )
+
+    private fun getGamePlayTask(installPath: String, gameDir: File): GOGPlayTask? {
+        val result = getPrimaryPlayTaskFromGOGInfo(gameDir, installPath)
         if (result.isSuccess) {
-            val exe = result.getOrNull() ?: ""
-            Timber.d("Found GOG game executable from info file: $exe")
-            return exe
+            val task = result.getOrNull()
+            Timber.d("Found GOG game executable from info file: ${task?.executablePath}")
+            return task
         }
         Timber.e(result.exceptionOrNull(), "Failed to find executable from GOG info file in: ${gameDir.absolutePath}")
-        return ""
+        return null
     }
 
     private fun findGOGInfoFile(directory: File, gameId: String? = null, maxDepth: Int = 3, currentDepth: Int = 0): File? {
@@ -740,7 +764,7 @@ class GOGManager @Inject constructor(
         return null
     }
 
-    private fun getMainExecutableFromGOGInfo(gameDir: File, installPath: String): Result<String> {
+    private fun getPrimaryPlayTaskFromGOGInfo(gameDir: File, installPath: String): Result<GOGPlayTask> {
         return try {
             val infoFile = findGOGInfoFile(gameDir)
                 ?: return Result.failure(Exception("GOG info file not found in ${gameDir.absolutePath}"))
@@ -763,7 +787,19 @@ class GOGManager @Inject constructor(
                     val exeFile = FileUtils.findFileCaseInsensitive(gameDir, executablePath)
                     if (exeFile != null) {
                         val relativePath = exeFile.relativeTo(installDir).path
-                        return Result.success(relativePath)
+                        val workingDir = optNonNullString(task, "workingDir")
+                            .takeIf { it.isNotEmpty() }
+                            ?.let { FileUtils.resolveCaseInsensitive(gameDir, it) }
+                            ?.takeIf { it.isDirectory }
+                            ?.relativeTo(installDir)?.path
+                            .orEmpty()
+                        return Result.success(
+                            GOGPlayTask(
+                                executablePath = relativePath,
+                                arguments = optNonNullString(task, "arguments").trim(),
+                                workingDir = workingDir,
+                            ),
+                        )
                     }
                     return Result.failure(Exception("Primary executable '$executablePath' not found in ${gameDir.absolutePath}"))
                 }
@@ -773,6 +809,10 @@ class GOGManager @Inject constructor(
         } catch (e: Exception) {
             Result.failure(Exception("Error parsing GOG info file in ${gameDir.absolutePath}: ${e.message}", e))
         }
+    }
+
+    private fun optNonNullString(json: JSONObject, key: String): String {
+        return if (json.has(key) && !json.isNull(key)) json.optString(key, "") else ""
     }
 
     fun getGogWineStartCommand(
@@ -855,8 +895,13 @@ class GOGManager @Inject constructor(
 
         val windowsPath = "$gogDriveLetter:\\$relativePath"
 
+        val playTask = findInstalledPlayTask(gameInstallPath, gameId.toString())
+            ?.takeIf { isSamePlayTaskExecutable(it, executablePath) }
+        val gogArguments = resolveGogLaunchArguments(container.execArgs, executablePath, playTask)
+
         // Set working directory
-        val execWorkingDir = execFile.parentFile
+        val taskWorkingDir = playTask?.workingDir?.takeIf { it.isNotEmpty() }?.let { File(gameInstallPath, it) }
+        val execWorkingDir = taskWorkingDir ?: execFile.parentFile
         if (execWorkingDir != null) {
             guestProgramLauncherComponent.workingDir = execWorkingDir
             envVars.put("WINEPATH", "$gogDriveLetter:\\")
@@ -864,8 +909,9 @@ class GOGManager @Inject constructor(
             guestProgramLauncherComponent.workingDir = gameDir
         }
 
-        Timber.d("GOG Wine command: \"$windowsPath\"")
-        return "\"$windowsPath\""
+        val command = "\"$windowsPath\"" + if (gogArguments.isNotEmpty()) " $gogArguments" else ""
+        Timber.d("GOG Wine command: $command")
+        return command
     }
 
     /**

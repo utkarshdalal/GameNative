@@ -51,6 +51,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.PreferredCopyOption
 import app.gamenative.enums.LoginResult
+import app.gamenative.data.StoreGameDetails
 import app.gamenative.enums.Marker
 import app.gamenative.enums.PathType
 import app.gamenative.enums.SyncResult
@@ -75,6 +76,7 @@ import app.gamenative.workshop.WorkshopManager
 import app.gamenative.NetworkMonitor
 import app.gamenative.service.SteamService.Companion.getInstalledApp
 import com.google.android.play.core.splitcompat.SplitCompat
+import app.gamenative.utils.ConversionTracker
 import com.posthog.PostHog
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
@@ -452,6 +454,9 @@ class SteamAppScreen : BaseAppScreen() {
             onChangePreferredCopy = { showPreferredCopyDialog(gameId) },
             isLoadingPreferredCopy = preferredCopyUi?.isLoading == true ||
                 (preferredCopyUi == null && familyGroupId != 0L),
+            storeDetails = StoreGameDetails(
+                reviewPercentage = appInfo.reviewPercentage.toInt().takeIf { it in 1..100 },
+            ),
         )
     }
 
@@ -698,41 +703,44 @@ class SteamAppScreen : BaseAppScreen() {
     ): AppMenuOption {
         val gameId = libraryItem.gameId
         val appId = libraryItem.appId
+        val scope = rememberCoroutineScope()
 
         return AppMenuOption(
             optionType = AppOptionMenuType.EditContainer,
             onClick = {
-                val container = ContainerUtils.getOrCreateContainer(context, appId)
-                val variant = container.containerVariant
+                scope.launch {
+                    val container = withContext(Dispatchers.IO) { ContainerUtils.getOrCreateContainer(context, appId) }
+                    val variant = container.containerVariant
 
-                if (!SteamService.isImageFsInstalled(context)) {
-                    if (!SteamService.isImageFsInstallable(context, variant)) {
-                        showInstallDialog(
-                            gameId,
-                            MessageDialogState(
-                                visible = true,
-                                type = DialogType.INSTALL_IMAGEFS,
-                                title = context.getString(R.string.steam_imagefs_download_install_title),
-                                message = context.getString(R.string.steam_imagefs_download_install_message),
-                                confirmBtnText = context.getString(R.string.proceed),
-                                dismissBtnText = context.getString(R.string.cancel),
-                            ),
-                        )
+                    if (!SteamService.isImageFsInstalled(context)) {
+                        if (!SteamService.isImageFsInstallable(context, variant)) {
+                            showInstallDialog(
+                                gameId,
+                                MessageDialogState(
+                                    visible = true,
+                                    type = DialogType.INSTALL_IMAGEFS,
+                                    title = context.getString(R.string.steam_imagefs_download_install_title),
+                                    message = context.getString(R.string.steam_imagefs_download_install_message),
+                                    confirmBtnText = context.getString(R.string.proceed),
+                                    dismissBtnText = context.getString(R.string.cancel),
+                                ),
+                            )
+                        } else {
+                            showInstallDialog(
+                                gameId,
+                                MessageDialogState(
+                                    visible = true,
+                                    type = DialogType.INSTALL_IMAGEFS,
+                                    title = context.getString(R.string.steam_imagefs_install_title),
+                                    message = context.getString(R.string.steam_imagefs_install_message),
+                                    confirmBtnText = context.getString(R.string.proceed),
+                                    dismissBtnText = context.getString(R.string.cancel),
+                                ),
+                            )
+                        }
                     } else {
-                        showInstallDialog(
-                            gameId,
-                            MessageDialogState(
-                                visible = true,
-                                type = DialogType.INSTALL_IMAGEFS,
-                                title = context.getString(R.string.steam_imagefs_install_title),
-                                message = context.getString(R.string.steam_imagefs_install_message),
-                                confirmBtnText = context.getString(R.string.proceed),
-                                dismissBtnText = context.getString(R.string.cancel),
-                            ),
-                        )
+                        onEditContainer()
                     }
-                } else {
-                    onEditContainer()
                 }
             },
         )
@@ -861,12 +869,14 @@ class SteamAppScreen : BaseAppScreen() {
             AppMenuOption(
                 AppOptionMenuType.ResetDrm,
                 onClick = {
-                    val container = ContainerUtils.getOrCreateContainer(context, appId)
                     MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
                     MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
                     MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_COLDCLIENT_USED)
-                    container.isNeedsUnpacking = true
-                    container.saveData()
+                    if (ContainerUtils.hasContainer(context, appId)) {
+                        val container = ContainerUtils.getContainer(context, appId)
+                        container.isNeedsUnpacking = true
+                        container.saveData()
+                    }
                 },
             ),
             AppMenuOption(
@@ -1233,7 +1243,8 @@ class SteamAppScreen : BaseAppScreen() {
                     {
                         PostHog.capture(
                             event = "game_install_started",
-                            properties = mapOf("game_name" to (appInfo?.name ?: "")),
+                            properties = mapOf("game_name" to (appInfo?.name ?: "")) +
+                                ConversionTracker.campaignAttribution(gameId),
                         )
                         hideInstallDialog(gameId)
                         CoroutineScope(Dispatchers.IO).launch {
@@ -1485,7 +1496,8 @@ class SteamAppScreen : BaseAppScreen() {
 
                     PostHog.capture(
                         event = "game_install_started",
-                        properties = mapOf("game_name" to (appInfo?.name ?: ""))
+                        properties = mapOf("game_name" to (appInfo?.name ?: "")) +
+                            ConversionTracker.campaignAttribution(gameId),
                     )
                     CoroutineScope(Dispatchers.IO).launch {
                         SteamService.downloadApp(gameId, dlcAppIds, branch = branch, isUpdateOrVerify = false)

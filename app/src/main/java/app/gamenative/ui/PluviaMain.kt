@@ -69,7 +69,15 @@ import app.gamenative.events.AndroidEvent
 import app.gamenative.gamefixes.GameFixesRegistry
 import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.SteamService
+import app.gamenative.service.ea.EaLaunchSupport
+import app.gamenative.service.ea.EaLoginGate
+import app.gamenative.service.rockstar.RockstarLaunchSupport
+import app.gamenative.service.rockstar.RockstarHelperArchive
+import app.gamenative.service.rockstar.RockstarHelperDeployment
+import app.gamenative.service.rockstar.RockstarLoginGate
+import app.gamenative.service.rockstar.RockstarRuntime
 import app.gamenative.service.amazon.AmazonService
+import app.gamenative.utils.ConversionTracker
 import com.posthog.PostHog
 import app.gamenative.ui.component.AchievementOverlay
 import app.gamenative.ui.component.ConnectionStatusBanner
@@ -149,6 +157,12 @@ private const val SNACKBAR_SHOW_TIMEOUT_MS = 15_000L
 
 /** Used to suspend preLaunchApp while the user decides on large workshop updates. */
 private var workshopUpdateDeferred: CompletableDeferred<Boolean>? = null
+
+/** Used to suspend preLaunchApp while the user decides on a pending update for a real-Steam launch. */
+private var steamUpdateDeferred: CompletableDeferred<Boolean>? = null
+
+/** Valve Windows client tree (build 2026-01-29) + headless steam.exe for Real Steam mode; see extractSteamFiles. */
+const val REAL_STEAM_CLIENT_ARCHIVE = "steamhost-20260925.5.tzst"
 
 private fun NavHostController.navigateFromLoginIfNeeded(
     targetRoute: String,
@@ -299,6 +313,11 @@ private fun trackAiDebugOffer(event: String, appId: String, trigger: String) {
 private fun trackGameLaunched(appId: String) {
     val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
     val gameName = ContainerUtils.resolveGameName(appId)
+    val attribution = if (gameSource == GameSource.STEAM) {
+        ConversionTracker.campaignAttribution(runCatching { ContainerUtils.extractGameIdFromContainerId(appId) }.getOrNull())
+    } else {
+        emptyMap()
+    }
     PostHog.capture(
         event = "game_launched",
         properties = mapOf(
@@ -306,7 +325,7 @@ private fun trackGameLaunched(appId: String) {
             "game_store" to gameSource.name,
             "key_attestation_available" to PrefManager.keyAttestationAvailable,
             "play_integrity_available" to PrefManager.playIntegrityAvailable,
-        ),
+        ) + attribution,
     )
 }
 
@@ -388,7 +407,7 @@ fun PluviaMain(
 
     // Check for updates on app start
     LaunchedEffect(Unit) {
-        if (BuildConfig.MODERN_ANDROID) return@LaunchedEffect
+        if (BuildConfig.MODERN_ANDROID || BuildConfig.XR_BUILD) return@LaunchedEffect
         val checkedUpdateInfo = UpdateChecker.checkForUpdate(context)
         if (checkedUpdateInfo != null) {
             val appVersionCode = BuildConfig.VERSION_CODE
@@ -724,16 +743,16 @@ fun PluviaMain(
                 is MainViewModel.MainUiEvent.ShowAiDebugOffer -> {
                     aiDebugOfferAppId = event.appId
                     aiDebugOfferTrigger = event.trigger
-                    PrefManager.lastWarmPitchTime = System.currentTimeMillis()
                     trackAiDebugOffer("ai_debug_offer_shown", event.appId, event.trigger)
+                    val offerMessage = context.getString(
+                        R.string.debug_offer_message,
+                        ContainerUtils.resolveGameName(event.appId),
+                    )
                     msgDialogState = MessageDialogState(
                         visible = true,
                         type = DialogType.AI_DEBUG_OFFER,
                         title = context.getString(R.string.debug_offer_title),
-                        message = context.getString(
-                            R.string.debug_offer_message,
-                            ContainerUtils.resolveGameName(event.appId),
-                        ),
+                        message = offerMessage + " " + context.getString(R.string.debug_trial_note),
                         confirmBtnText = context.getString(R.string.debug_offer_confirm),
                         dismissBtnText = context.getString(R.string.close),
                     )
@@ -1250,6 +1269,18 @@ fun PluviaMain(
             }
         }
 
+        DialogType.STEAM_UPDATE_PROMPT -> {
+            onConfirmClick = {
+                steamUpdateDeferred?.complete(true)
+            }
+            onDismissClick = {
+                steamUpdateDeferred?.complete(false)
+            }
+            onDismissRequest = {
+                steamUpdateDeferred?.complete(false)
+            }
+        }
+
         else -> {
             onDismissRequest = null
             onDismissClick = null
@@ -1415,7 +1446,7 @@ fun PluviaMain(
 
             val shareDebugLog: () -> Unit = {
                 val reportDir = File(debugReportState.reportDir)
-                val files = listOf(DebugReportUtils.logFile(reportDir), DebugReportUtils.perfFile(reportDir))
+                val files = listOf(DebugReportUtils.logFile(reportDir), DebugReportUtils.perfFile(reportDir), DebugReportUtils.logcatFile(reportDir))
                     .filter { it.exists() }
                 if (files.isNotEmpty()) {
                     val uris = files.map { FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", it) }
@@ -1456,7 +1487,8 @@ fun PluviaMain(
                         return@launch
                     }
                     val perfFile = DebugReportUtils.perfFile(dir)
-                    when (val result = DebugReportApi.submit(header, logFile, PrefManager.discordRelayToken, perfFile)) {
+                    val logcatFile = DebugReportUtils.logcatFile(dir)
+                    when (val result = DebugReportApi.submit(header, logFile, PrefManager.discordRelayToken, perfFile, logcatFile)) {
                         is DebugReportApi.SubmitResult.Success -> {
                             withContext(Dispatchers.IO) { DebugReportUtils.deleteReport(dir) }
                             debugReportState = debugReportState.copy(
@@ -1572,6 +1604,8 @@ fun PluviaMain(
                     text = state.bootingSplashText,
                     heroImageUrl = state.bootingSplashHeroImageUrl,
                     bootAd = state.bootAd,
+                    onAbort = { viewModel.abortBoot() },
+                    onDismissAd = { optOut -> viewModel.dismissBootAd(optOut) },
                 )
             }
 
@@ -1812,6 +1846,19 @@ fun PluviaMain(
                 /** Game Screen **/
                 composable(route = PluviaScreen.XServer.route) {
                     val xServerIsOffline by viewModel.isOffline.collectAsStateWithLifecycle()
+                    val launchedAppId = state.launchedAppId
+                    val hasContainer = remember(launchedAppId) {
+                        launchedAppId.isNotEmpty() && ContainerUtils.hasContainer(context, launchedAppId)
+                    }
+                    if (!hasContainer) {
+                        LaunchedEffect(launchedAppId) {
+                            Timber.w("XServer route entered without a container for '$launchedAppId', returning home")
+                            navController.navigate(PluviaScreen.Home.route + "?offline=$xServerIsOffline") {
+                                popUpTo(PluviaScreen.XServer.route) { inclusive = true }
+                            }
+                        }
+                        return@composable
+                    }
                     XServerScreen(
                         appId = state.launchedAppId,
                         bootToContainer = state.bootToContainer,
@@ -2089,7 +2136,127 @@ fun preLaunchApp(
                     "experimental-drm-20260116.tzst",
                 ).await()
             }
-            if ((container.isLaunchRealSteam || container.isLaunchBionicSteam) && !SteamService.isFileInstallable(context, "steam.tzst")) {
+            if (gameSource == GameSource.STEAM && container.isLaunchRealSteam && !isOffline && !container.isSteamOfflineMode &&
+                SteamService.getInstalledApp(gameId) != null
+            ) {
+                // The Valve client refuses to start a build behind its own manifest and never
+                // downloads itself. Offline launches trust the manifest the app wrote, so they skip this.
+                val branch = SteamService.getInstalledApp(gameId)?.branch ?: "public"
+                if (SteamService.isUpdatePending(gameId, branch)) {
+                    val userChoice = CompletableDeferred<Boolean>()
+                    setLoadingDialogVisible(false)
+                    setMessageDialogState(
+                        MessageDialogState(
+                            visible = true,
+                            type = DialogType.STEAM_UPDATE_PROMPT,
+                            title = context.getString(R.string.steam_update_required_title),
+                            message = context.getString(R.string.steam_update_required_message),
+                            confirmBtnText = context.getString(R.string.main_update_button),
+                            dismissBtnText = context.getString(R.string.cancel),
+                        ),
+                    )
+                    steamUpdateDeferred = userChoice
+                    val update = userChoice.await()
+                    steamUpdateDeferred = null
+                    setMessageDialogState(MessageDialogState(false))
+                    if (update) {
+                        val dlcAppIds = SteamService.getInstalledApp(gameId)?.dlcDepots.orEmpty()
+                        SteamService.downloadApp(gameId, dlcAppIds, branch = branch, isUpdateOrVerify = true)
+                    }
+                    return@launch
+                }
+            }
+            if (container.isLaunchHeadlessSteam && !SteamService.isFileInstallable(context, REAL_STEAM_CLIENT_ARCHIVE)) {
+                setLoadingMessage(context.getString(R.string.main_downloading_steam))
+                SteamService.downloadFile(
+                    onDownloadProgress = { setLoadingProgress(it / 1.0f) },
+                    this,
+                    context = context,
+                    REAL_STEAM_CLIENT_ARCHIVE,
+                ).await()
+            }
+            if (container.isLaunchHeadlessSteam && gameSource == GameSource.STEAM &&
+                EaLaunchSupport.isEaTitle(gameId, File(SteamService.getAppDirPath(gameId)))
+            ) {
+                setLoadingMessage(context.getString(R.string.ea_preparing))
+                app.gamenative.service.ea.EaHelperArchive.download(context) { setLoadingProgress(it) }
+                val signIn = EaLoginGate.ensureSignedIn(context)
+                if (signIn.isFailure) {
+                    Timber.tag("preLaunchApp").w(signIn.exceptionOrNull(), "EA sign-in did not complete")
+                    setLoadingDialogVisible(false)
+                    setMessageDialogState(
+                        MessageDialogState(
+                            visible = true,
+                            type = DialogType.SYNC_FAIL,
+                            title = context.getString(R.string.ea_login_required_title),
+                            message = context.getString(R.string.ea_login_failed, signIn.exceptionOrNull()?.message ?: ""),
+                            dismissBtnText = context.getString(R.string.ok),
+                        ),
+                    )
+                    return@launch
+                }
+            }
+            /*
+             * Rockstar titles sign in through Social Club, and the Windows stub needs the
+             * resulting ScAuthToken on disk before the game starts: it mints the ROS ticket with
+             * CreateTicketScAuthToken2 and exits when the token file is missing. Minting from
+             * Steam ownership instead was tried and refused by the server, so the account sign-in
+             * is required rather than a convenience.
+             */
+            if (gameSource == GameSource.STEAM && (container.isLaunchHeadlessSteam || container.isLaunchBionicSteam) &&
+                RockstarLaunchSupport.isRockstarTitle(File(SteamService.getAppDirPath(gameId)))
+            ) {
+                val rockstarGameDir = File(SteamService.getAppDirPath(gameId))
+                setLoadingMessage(context.getString(R.string.rockstar_preparing))
+                RockstarHelperArchive.downloadAndExtract(context) { setLoadingProgress(it) }
+                val signIn = RockstarLoginGate.ensureSignedIn(context, "launcher")
+                if (signIn.isFailure && RockstarLaunchSupport.hasUsableToken(File(SteamService.getAppDirPath(gameId)))) {
+                    /* A token is already in place, so carry on rather than block a launch that works. */
+                    Timber.tag("preLaunchApp").w("Rockstar sign-in did not complete; using the token already in the game directory")
+                } else if (signIn.isFailure) {
+                    Timber.tag("preLaunchApp").w(signIn.exceptionOrNull(), "Rockstar sign-in did not complete")
+                    setLoadingDialogVisible(false)
+                    setMessageDialogState(
+                        MessageDialogState(
+                            visible = true,
+                            type = DialogType.SYNC_FAIL,
+                            title = context.getString(R.string.rockstar_login_required_title),
+                            message = context.getString(R.string.rockstar_login_failed, signIn.exceptionOrNull()?.message ?: ""),
+                            dismissBtnText = context.getString(R.string.ok),
+                        ),
+                    )
+                    return@launch
+                }
+                val prefixDriveC = File(container.rootDir, ".wine/drive_c")
+                if (!RockstarRuntime.isInstalled(prefixDriveC)) {
+                    val installer = RockstarRuntime.installer(rockstarGameDir)
+                    if (installer == null) {
+                        setLoadingDialogVisible(false)
+                        setMessageDialogState(
+                            MessageDialogState(
+                                visible = true,
+                                type = DialogType.SYNC_FAIL,
+                                title = context.getString(R.string.rockstar_login_required_title),
+                                message = context.getString(R.string.rockstar_installer_missing),
+                                dismissBtnText = context.getString(R.string.ok),
+                            ),
+                        )
+                        return@launch
+                    }
+                    setLoadingMessage(context.getString(R.string.rockstar_runtime_installing))
+                    withContext(Dispatchers.IO) { RockstarRuntime.install(context, installer, prefixDriveC) { setLoadingProgress(it) } }
+                }
+                withContext(Dispatchers.IO) { RockstarRuntime.ensureX86(context, RockstarRuntime.installer(rockstarGameDir), prefixDriveC) { setLoadingProgress(it) } }
+                withContext(Dispatchers.IO) {
+                    check(RockstarLaunchSupport.placeToken(context, rockstarGameDir) || RockstarLaunchSupport.hasUsableToken(rockstarGameDir)) {
+                        "Could not place Rockstar sign-in credentials in the game directory"
+                    }
+                    RockstarHelperDeployment.prepare(context.filesDir, rockstarGameDir)
+                }
+            }
+            if ((container.isLaunchBionicSteam || (container.isLaunchRealSteam && !container.isLaunchHeadlessSteam)) &&
+                !SteamService.isFileInstallable(context, "steam.tzst")
+            ) {
                 setLoadingMessage(context.getString(R.string.main_downloading_steam))
                 SteamService.downloadSteam(
                     onDownloadProgress = { setLoadingProgress(it / 1.0f) },

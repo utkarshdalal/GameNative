@@ -36,6 +36,7 @@ enum class DialogType(val icon: ImageVector? = null) {
     APP_UPDATE,
     EXECUTABLE_NOT_FOUND,
     WORKSHOP_UPDATE_PROMPT,
+    STEAM_UPDATE_PROMPT,
 
     NONE,
 

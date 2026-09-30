@@ -1,6 +1,8 @@
 package app.gamenative.utils
 
+import android.app.ActivityManager
 import android.content.Context
+import android.os.Build
 import androidx.compose.ui.graphics.Color
 import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
@@ -70,6 +72,7 @@ object BestConfigService {
      * Returns cached response if available, otherwise makes API call.
      */
     suspend fun fetchBestConfig(
+        context: Context,
         gameName: String,
         gpuName: String,
         gameStore: String,
@@ -90,6 +93,15 @@ object BestConfigService {
                 // Modern build can't run glibc containers — server should pick a config that
                 // doesn't require glibc when this is true.
                 put("modernBuild", BuildConfig.MODERN_ANDROID)
+                HardwareUtils.getSOCName()?.let { put("socModel", it) }
+                put("model", Build.MODEL)
+                put("androidSdk", Build.VERSION.SDK_INT)
+                put("androidVersion", Build.VERSION.RELEASE)
+                put("appVersionCode", BuildConfig.VERSION_CODE)
+                val memInfo = ActivityManager.MemoryInfo()
+                (context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager)?.getMemoryInfo(memInfo)
+                if (memInfo.totalMem > 0) put("ramTotalMb", memInfo.totalMem / (1024L * 1024L))
+                GPUInformation.getVersion(context)?.takeIf { it.isNotBlank() }?.let { put("gpuDriverVersion", it) }
             }
 
             val attestation = KeyAttestationHelper.getAttestationFields("https://api.gamenative.app")
