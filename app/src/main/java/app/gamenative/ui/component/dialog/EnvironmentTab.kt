@@ -13,71 +13,59 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LifecycleEventEffect
 import app.gamenative.R
-import app.gamenative.service.SteamService
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.settings.SettingsCenteredLabel
 import app.gamenative.ui.component.settings.SettingsEnvVars
 import app.gamenative.ui.component.settings.SettingsMultiListDropdown
 import app.gamenative.ui.theme.settingsTileColors
-import app.gamenative.utils.ContainerUtils
-import app.gamenative.utils.ModDllOverrideLauncher
-import app.gamenative.utils.ModDllOverrides
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
 import com.winlator.core.envvars.EnvVarInfo
-import com.winlator.core.envvars.EnvVarSelectionType
 import com.winlator.core.envvars.EnvVars
-import java.io.File
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import com.winlator.core.envvars.EnvVarSelectionType
 
 @Composable
-fun EnvironmentTabContent(state: ContainerConfigState, appId: String? = null) {
-    val context = LocalContext.current
+fun EnvironmentTabContent(state: ContainerConfigState) {
     val config = state.config.value
-    val supportsAutomaticOverrides =
-        appId != null && ModDllOverrideLauncher.supportsLaunch(config.launchRealSteam, config.launchBionicSteam)
-    var inspectionRevision by remember { mutableIntStateOf(0) }
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { inspectionRevision++ }
-    val inspection by produceState<ModDllOverrides.Inspection?>(
-        null, appId, config.executablePath, config.drives, supportsAutomaticOverrides, inspectionRevision,
-    ) {
-        value = null
-        if (!supportsAutomaticOverrides) return@produceState
-        value = withContext(Dispatchers.IO) {
-            runCatching {
-                val prefix = appId?.let { File(ContainerUtils.getContainer(context, it).rootDir, ".wine") }
-                val executablePath = ModDllOverrideLauncher.resolvePreviewExecutable(config.executablePath, appId) {
-                    SteamService.getInstalledExe(it)
-                }
-                ModDllOverrides.inspect(executablePath, ModDllOverrideLauncher.drives(config.drives), prefix)
-            }.getOrNull()
+    val envVars = EnvVars(config.envVars)
+    SettingsGroup() {
+        if (config.envVars.isNotEmpty()) {
+            SettingsEnvVars(
+                colors = settingsTileColors(),
+                envVars = envVars,
+                onEnvVarsChange = {
+                    state.config.value = config.copy(envVars = it.toString())
+                },
+                knownEnvVars = EnvVarInfo.KNOWN_ENV_VARS,
+                envVarAction = {
+                    IconButton(
+                        onClick = {
+                            envVars.remove(it)
+                            state.config.value = config.copy(envVars = envVars.toString())
+                        },
+                        content = {
+                            Icon(Icons.Filled.Delete, contentDescription = "Delete variable")
+                        },
+                    )
+                },
+            )
+        } else {
+            SettingsCenteredLabel(
+                colors = settingsTileColors(),
+                title = { Text(text = stringResource(R.string.no_environment_variables)) },
+            )
         }
-    }
-    SettingsGroup {
-        EnvironmentVariableRows(
-            savedEnvVars = config.envVars,
-            inspection = inspection.takeIf { supportsAutomaticOverrides },
-            appId = appId,
-            onEnvVarsChange = { state.config.value = config.copy(envVars = it) },
-        )
         SettingsMenuLink(
             title = {
                 Row(
@@ -195,7 +183,7 @@ fun EnvironmentTabContent(state: ContainerConfigState, appId: String? = null) {
                                                         Text(
                                                             text = suggestion.removePrefix("---"),
                                                             style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
-                                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                                                         )
                                                     },
                                                     onClick = {},
@@ -213,9 +201,7 @@ fun EnvironmentTabContent(state: ContainerConfigState, appId: String? = null) {
                                         }
                                     }
                                 }
-                            } else {
-                                null
-                            },
+                            } else null,
                         )
                     }
                 }
@@ -240,67 +226,4 @@ fun EnvironmentTabContent(state: ContainerConfigState, appId: String? = null) {
             },
         )
     }
-}
-
-@Composable
-internal fun EnvironmentVariableRows(
-    savedEnvVars: String,
-    inspection: ModDllOverrides.Inspection?,
-    appId: String? = null,
-    onEnvVarsChange: (String) -> Unit,
-) {
-    val saved = EnvVars(savedEnvVars)
-    val displayed = EnvVars(savedEnvVars)
-    // Do not refill the text field between keystrokes, including when the user clears it.
-    var overridesEdited by rememberSaveable(appId) { mutableStateOf(false) }
-    if (!overridesEdited) {
-        inspection?.merge(saved.get("WINEDLLOVERRIDES"))?.takeIf { it.added.isNotEmpty() }?.let {
-            displayed.put("WINEDLLOVERRIDES", it.value)
-        }
-    }
-    val displayedOverrides = displayed.get("WINEDLLOVERRIDES")
-    if (!displayed.isEmpty) {
-        SettingsEnvVars(
-            colors = settingsTileColors(),
-            envVars = displayed,
-            onEnvVarsChange = { edited ->
-                if (edited.get("WINEDLLOVERRIDES") != displayedOverrides) overridesEdited = true
-                onEnvVarsChange(savedEnvironmentAfterEdit(savedEnvVars, displayedOverrides, edited))
-            },
-            knownEnvVars = EnvVarInfo.KNOWN_ENV_VARS,
-            envVarAction = { identifier ->
-                // Only saved variables can be deleted; generated overrides follow the installed mod.
-                if (saved.has(identifier)) {
-                    IconButton(
-                        onClick = {
-                            if (identifier == "WINEDLLOVERRIDES") overridesEdited = false
-                            val updated = EnvVars(savedEnvVars).apply { remove(identifier) }
-                            onEnvVarsChange(updated.toString())
-                        },
-                    ) {
-                        Icon(Icons.Filled.Delete, contentDescription = "Delete variable")
-                    }
-                }
-            },
-        )
-    } else {
-        SettingsCenteredLabel(
-            colors = settingsTileColors(),
-            title = { Text(text = stringResource(R.string.no_environment_variables)) },
-        )
-    }
-}
-
-/** Editing another variable must not turn the displayed automatic overrides into saved settings. */
-private fun savedEnvironmentAfterEdit(savedEnvVars: String, displayedOverrides: String, edited: EnvVars): String {
-    val updated = EnvVars().apply { putAll(edited) }
-    if (updated.get("WINEDLLOVERRIDES") == displayedOverrides) {
-        val saved = EnvVars(savedEnvVars)
-        if (saved.has("WINEDLLOVERRIDES")) {
-            updated.put("WINEDLLOVERRIDES", saved.get("WINEDLLOVERRIDES"))
-        } else {
-            updated.remove("WINEDLLOVERRIDES")
-        }
-    }
-    return updated.toString()
 }

@@ -96,7 +96,6 @@ import app.gamenative.SteamBootstrap
 import app.gamenative.data.GameSource
 import app.gamenative.data.GyroSettings
 import app.gamenative.gamefixes.GameFixesRegistry
-import app.gamenative.utils.ModDllOverrideLauncher
 import app.gamenative.gamefixes.GameInputCompatibility
 import app.gamenative.data.LaunchInfo
 import app.gamenative.filedetect.GameFileDetection
@@ -139,6 +138,7 @@ import app.gamenative.utils.ExecutableSelectionUtils
 import app.gamenative.utils.LsfgQuickMenuHelper
 import app.gamenative.utils.LsfgVkManager
 import app.gamenative.utils.ManifestComponentHelper
+import app.gamenative.utils.ModDllOverrides
 import app.gamenative.utils.WindowActivity
 import app.gamenative.utils.PerfSampler
 import app.gamenative.utils.GameCompatibilityService
@@ -4107,6 +4107,7 @@ private fun setupXEnvironment(
         guestProgramLauncherComponent.setSteamType(container.getSteamType())
 
         envVars.putAll(container.envVars)
+        if (container.isLoadMods && !bootToContainer && !testGraphics) ModDllOverrides.apply(container, envVars)
         immersiveHooks?.windowsVr?.afterContainerEnvironmentMerged(envVars, container)
         envVars.remove("DXVK_FRAME_RATE")
         envVars.remove("VKD3D_FRAME_RATE")
@@ -4219,13 +4220,7 @@ private fun setupXEnvironment(
         environment.addComponent(VortekRendererComponent(xServer, UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.VORTEK_SERVER_PATH), options2, context))
     }
 
-    // Resolve mod overrides only for the game process, after all setup commands have finished.
     guestProgramLauncherComponent.envVars = EnvVars().apply { putAll(envVars) }
-    fun prepareGameEnvironment() {
-        guestProgramLauncherComponent.setGuestEnvironmentCallback { gameEnv ->
-            ModDllOverrideLauncher.apply(container, gameEnv, gameLaunch = !bootToContainer && !testGraphics)
-        }
-    }
 
     val gameTerminationCallback = Callback<Int> { status ->
         if (status != 0) {
@@ -4237,7 +4232,6 @@ private fun setupXEnvironment(
 
     fun chainPreInstallSteps(remaining: List<PreInstallSteps.PreInstallCommand>) {
         if (remaining.isEmpty()) {
-            prepareGameEnvironment()
             guestProgramLauncherComponent.setGuestExecutable(gameExecutable)
             guestProgramLauncherComponent.setTerminationCallback(gameTerminationCallback)
             return
@@ -4266,7 +4260,6 @@ private fun setupXEnvironment(
     if (preInstallCommands.isNotEmpty()) {
         chainPreInstallSteps(preInstallCommands)
     } else {
-        prepareGameEnvironment()
         guestProgramLauncherComponent.setTerminationCallback(gameTerminationCallback)
     }
 
@@ -4307,7 +4300,7 @@ private fun setupXEnvironment(
         Timber.i("CPU List: ${container.cpuList}")
         Timber.i("CPU List WoW64: ${container.cpuListWoW64}")
         Timber.i("Env Vars (Container Base): ${EnvVarRedaction.redact(container.envVars)}") // Log base container vars
-        Timber.i("Env Vars (Guest Base): ${EnvVarRedaction.redact(guestProgramLauncherComponent.envVars)}")
+        Timber.i("Env Vars (Final Guest): ${EnvVarRedaction.redact(envVars)}")   // Log the actual env vars being passed
         Timber.i("Guest Executable: ${guestProgramLauncherComponent.guestExecutable}") // Log the command
         Timber.i("---------------------------")
     }

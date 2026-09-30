@@ -691,6 +691,8 @@
     <string name="use_legacy_drm">Usa DRM Legacy</string>
     <string name="unpack_files">Estrai file</string>
     <string name="unpack_files_description">Usa solo se ottieni \'Application Load Error 3:0000065432\'.</string>
+    <string name="load_mods">Carica mod</string>
+    <string name="load_mods_description">Carica i loader di mod posizionati accanto all\'eseguibile del gioco, come BepInEx, MelonLoader, REFramework, Ultimate ASI Loader e UE4SS</string>
     <string name="force_dlc">Forza DLC</string>
     <string name="force_dlc_description">Abilita solo se i DLC non vengono rilevati o i salvataggi con DLC non funzionano</string>
     <string name="local_saves_only">Solo salvataggi locali</string>

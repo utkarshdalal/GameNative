@@ -281,7 +281,6 @@ fun ContainerConfigDialog(
     initialConfig: ContainerData = ContainerData(),
     onDismissRequest: () -> Unit,
     onSave: (ContainerData) -> Unit,
-    appId: String? = null,
 ) {
     if (visible) {
         val context = LocalContext.current
@@ -1321,7 +1320,7 @@ fun ContainerConfigDialog(
                             if (selectedTab == 3) ControllerTabContent(state, default)
                             if (selectedTab == 4) WineTabContent(state)
                             if (selectedTab == 5) WinComponentsTabContent(state)
-                            if (selectedTab == 6) EnvironmentTabContent(state, appId)
+                            if (selectedTab == 6) EnvironmentTabContent(state)
                             if (selectedTab == 7) DrivesTabContent(state)
                             if (selectedTab == 8) AdvancedTabContent(state)
                         }

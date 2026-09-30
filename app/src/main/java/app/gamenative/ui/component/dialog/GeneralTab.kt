@@ -354,6 +354,13 @@ fun GeneralTabContent(
         }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.load_mods)) },
+            subtitle = { Text(text = stringResource(R.string.load_mods_description)) },
+            state = config.loadMods,
+            onCheckedChange = { state.config.value = config.copy(loadMods = it) },
+        )
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.steam_offline_mode)) },
             subtitle = { Text(text = stringResource(R.string.steam_offline_mode_description)) },
             state = config.steamOfflineMode,
