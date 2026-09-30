@@ -1,21 +1,35 @@
 package app.gamenative.service
 
+import android.app.Application
+import android.app.Service
+import android.content.ComponentName
 import android.content.ContentProvider
 import android.content.ContentValues
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.database.Cursor
 import android.net.Uri
 import android.provider.DocumentsContract
+import androidx.test.core.app.ApplicationProvider
+import app.gamenative.R
 import app.gamenative.data.ModInstall
 import app.gamenative.data.ModInstallSource
 import app.gamenative.data.ModInstallStatus
+import app.gamenative.mods.NexusConnectionState
 import app.gamenative.mods.NexusImportState
+import app.gamenative.mods.NexusModFile
+import app.gamenative.mods.NexusModInfo
+import app.gamenative.mods.NexusModReference
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.shadows.ShadowContentResolver
 
@@ -63,6 +77,46 @@ class NexusModImportServiceRobolectricTest {
         assertEquals(0, provider.mimeTypeProbeCount)
         assertEquals(uris, decoded)
         assertEquals(2, intent.clipData?.itemCount)
+    }
+
+    @Test
+    fun enqueueNexusImport_requiresConnectedStateBeforeServiceHandoff() = runBlocking {
+        val application = ApplicationProvider.getApplicationContext<Application>()
+        val signInRequired = application.getString(R.string.nexus_oauth_sign_in_required)
+        listOf(
+            NexusConnectionState.DISCONNECTED,
+            NexusConnectionState.CONNECTING,
+        ).forEach { connection ->
+            val context = RecordingServiceContext(application)
+            val error = runCatching {
+                enqueueNexusImport(context, connection).await()
+            }.exceptionOrNull()
+
+            assertEquals(signInRequired, error?.message)
+            assertNull(context.startedIntent)
+        }
+
+        val connectedContext = RecordingServiceContext(application)
+        val error = runCatching {
+            enqueueNexusImport(connectedContext, NexusConnectionState.CONNECTED).await()
+        }.exceptionOrNull()
+
+        assertEquals(SERVICE_CAPTURED_MESSAGE, error?.message)
+        val request = NexusModImportService.decodeImportRequest(
+            requireNotNull(connectedContext.startedIntent),
+        )
+        assertEquals("steam_123", request?.appId)
+        assertEquals(20L, request?.file?.fileId)
+    }
+
+    @Test
+    fun nullRestart_remainsStickyWhileResumeWorkMayContinue() {
+        val controller = Robolectric.buildService(NexusModImportService::class.java).create()
+        try {
+            assertEquals(Service.START_STICKY, controller.get().onStartCommand(null, 0, 1))
+        } finally {
+            controller.destroy()
+        }
     }
 
     @Test
@@ -141,6 +195,41 @@ class NexusModImportServiceRobolectricTest {
         archiveSha256 = "fingerprint",
     )
 
+    private fun enqueueNexusImport(
+        context: Context,
+        connection: NexusConnectionState,
+    ) = NexusModImportService.enqueueImport(
+        context = context,
+        appId = "steam_123",
+        reference = NexusModReference("fallout4", 10L, 20L),
+        modInfo = NexusModInfo(10L, "Test mod", "", "1.0"),
+        file = NexusModFile(
+            fileId = 20L,
+            name = "Test file",
+            version = "1.0",
+            fileName = "test.zip",
+            sizeBytes = 1L,
+            uploadedTimestamp = 1L,
+        ),
+        displayName = "Test mod",
+        connection = connection,
+    )
+
+    private class RecordingServiceContext(base: Context) : ContextWrapper(base) {
+        var startedIntent: Intent? = null
+
+        override fun getApplicationContext(): Context = this
+
+        override fun startService(service: Intent): ComponentName? = capture(service)
+
+        override fun startForegroundService(service: Intent): ComponentName? = capture(service)
+
+        private fun capture(service: Intent): Nothing {
+            startedIntent = service
+            throw IllegalStateException(SERVICE_CAPTURED_MESSAGE)
+        }
+    }
+
     private class RejectingMimeProbeProvider : ContentProvider() {
         var mimeTypeProbeCount = 0
 
@@ -182,5 +271,6 @@ class NexusModImportServiceRobolectricTest {
 
     private companion object {
         const val AUTHORITY = "app.gamenative.test.localmodservice"
+        const val SERVICE_CAPTURED_MESSAGE = "service intent captured"
     }
 }

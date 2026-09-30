@@ -2,6 +2,8 @@ package app.gamenative.service.gog
 
 import android.content.Context
 import app.gamenative.data.GOGGame
+import app.gamenative.data.GOGCredentials
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -157,9 +159,124 @@ object GOGApiClient {
                 Timber.tag("GOG").d("First 10 game IDs: ${gameIds.take(10).joinToString()}")
                 return@withContext Result.success(gameIds)
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Timber.e(e, "Exception fetching game IDs: ${e.message}")
             return@withContext Result.failure(e)
+        }
+    }
+
+    /**
+     * Fetch IDs of games the user has hidden in their GOG library.
+     *
+     * Queries `account/getFilteredProducts?hiddenFlag=1` (all pages), where every returned product
+     * is hidden, on the embed host. A primary failure is returned as-is so callers keep their
+     * existing flags. An empty primary *success* is confirmed on the www host before concluding the
+     * account has none, so a host quirk cannot silently clear stored hidden flags.
+     *
+     * @param context Application context for auth access
+     * @return Result containing the set of hidden game IDs or error
+     */
+    suspend fun getHiddenGameIds(context: Context): Result<Set<String>> = withContext(Dispatchers.IO) {
+        try {
+            Timber.tag("GOG").d("Fetching hidden GOG game IDs...")
+
+            // Get credentials from AuthManager
+            val credentialsResult = GOGAuthManager.getStoredCredentials(context)
+            if (credentialsResult.isFailure) {
+                val error = credentialsResult.exceptionOrNull()
+                Timber.tag("GOG").e(error, "Cannot list hidden games: not authenticated")
+                return@withContext Result.failure(Exception("Not authenticated. Please log in first."))
+            }
+
+            val credentials = credentialsResult.getOrNull()
+            if (credentials == null || credentials.accessToken.isEmpty()) {
+                Timber.tag("GOG").e("No valid access token found")
+                return@withContext Result.failure(Exception("No valid credentials found"))
+            }
+
+            val primaryResult = fetchHiddenGameIdsFrom(credentials, GOGConstants.GOG_EMBED_URL)
+            if (primaryResult.isFailure) {
+                return@withContext primaryResult
+            }
+            val primaryIds = primaryResult.getOrNull() ?: emptySet()
+            if (primaryIds.isNotEmpty()) {
+                Timber.tag("GOG").i("Successfully fetched ${primaryIds.size} hidden GOG game IDs")
+                return@withContext Result.success(primaryIds)
+            }
+
+            // An empty primary response may mean "no hidden games" or that the host omitted them.
+            // Confirm on www before clearing stored flags.
+            val fallbackResult = fetchHiddenGameIdsFrom(credentials, "https://www.gog.com")
+            if (fallbackResult.isFailure) {
+                return@withContext fallbackResult
+            }
+            val mergedIds = buildSet {
+                addAll(primaryIds)
+                fallbackResult.getOrNull()?.let { addAll(it) }
+            }
+            Timber.tag("GOG").i("Successfully fetched ${mergedIds.size} hidden GOG game IDs")
+            return@withContext Result.success(mergedIds)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.tag("GOG").e(e, "Exception fetching hidden GOG game IDs: ${e.message}")
+            return@withContext Result.failure(e)
+        }
+    }
+
+    /**
+     * Paginates `account/getFilteredProducts?hiddenFlag=1` on [baseUrl] and returns every product
+     * ID (all products on those pages are hidden). Pagination is all-or-nothing: any page failure
+     * fails the whole attempt so callers can retain their previous cache.
+     */
+    private suspend fun fetchHiddenGameIdsFrom(
+        credentials: GOGCredentials,
+        baseUrl: String,
+    ): Result<Set<String>> {
+        return try {
+            var page = 1
+            var totalPages = 1
+            val hiddenIds = mutableSetOf<String>()
+            while (page <= totalPages) {
+                // hiddenFlag=1 makes the account library endpoint return only hidden products;
+                // without it the response excludes hidden games entirely.
+                val url = "$baseUrl/account/getFilteredProducts?hiddenFlag=1&mediaType=1&page=$page"
+                Timber.tag("GOG").d("Requesting hidden game IDs from: $url")
+                val request = Request.Builder()
+                    .url(url)
+                    .addHeader("Authorization", "Bearer ${credentials.accessToken}")
+                    .addHeader("User-Agent", "GameNative/1.0")
+                    // GOG's embed host expects an AJAX header to return JSON for this endpoint.
+                    .addHeader("X-Requested-With", "XMLHttpRequest")
+                    .get()
+                    .build()
+
+                httpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        val errorBody = response.body?.string() ?: "Unknown error"
+                        Timber.tag("GOG").e("Failed to fetch hidden game IDs: HTTP ${response.code} - $errorBody")
+                        return Result.failure(
+                            Exception("Failed to fetch hidden game IDs: HTTP ${response.code}")
+                        )
+                    }
+
+                    val responseBody = response.body?.string()
+                        ?: return Result.failure(Exception("Empty response from GOG"))
+                    val parsed = GogFilteredProductsParser.parseHiddenPage(responseBody)
+                    hiddenIds.addAll(parsed.hiddenProductIds)
+                    totalPages = parsed.totalPages
+                }
+                page++
+            }
+
+            Timber.tag("GOG").d("Fetched ${hiddenIds.size} hidden GOG game IDs from $baseUrl")
+            Result.success(hiddenIds)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
@@ -238,6 +355,8 @@ object GOGApiClient {
 
                 return@withContext Result.success(transformedResponse)
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Timber.tag("GOG").e(e, "Exception fetching game details for $gameId: ${e.message}")
             return@withContext Result.failure(e)

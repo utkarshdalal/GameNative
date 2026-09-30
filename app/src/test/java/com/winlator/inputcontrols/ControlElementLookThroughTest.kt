@@ -65,4 +65,19 @@ class ControlElementLookThroughTest {
         assertFalse(element.isLookThrough)
         assertFalse(element.isShooterLookThrough)
     }
+
+    @Test
+    fun `radial menu anywhere in combo disables look-through`() {
+        val element = ControlElement(null).apply {
+            setType(ControlElement.Type.BUTTON)
+            lookThroughSetting = true
+            setBindingComboAt(
+                0,
+                BindingCombo.fromBindings(listOf(Binding.OPEN_RADIAL_MENU, Binding.KEY_E)),
+            )
+        }
+
+        assertFalse(element.isLookThrough)
+        assertFalse(element.isShooterLookThrough)
+    }
 }

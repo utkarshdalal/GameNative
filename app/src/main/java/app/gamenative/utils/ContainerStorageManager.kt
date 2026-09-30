@@ -33,6 +33,7 @@ import dagger.hilt.components.SingletonComponent
 import java.io.File
 import java.nio.file.FileVisitResult
 import java.nio.file.Files
+import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.SimpleFileVisitor
@@ -779,7 +780,15 @@ object ContainerStorageManager {
         }
     }
 
-    private fun getStorageLocation(context: Context, gameSource: GameSource, installPath: String): StorageLocation {
+    /**
+     * True when [installPath] resolves to a removable/external volume. Defaults to
+     * false on any resolution failure so callers fall back to internal-storage behavior.
+     */
+    fun isOnExternalStorage(context: Context, gameSource: GameSource, installPath: String): Boolean =
+        runCatching { getStorageLocation(context, gameSource, installPath) == StorageLocation.EXTERNAL }
+            .getOrDefault(false)
+
+    fun getStorageLocation(context: Context, gameSource: GameSource, installPath: String): StorageLocation {
         val normalizedPath = normalizePath(installPath)
 
         val internalRoots = when (gameSource) {
@@ -913,7 +922,7 @@ object ContainerStorageManager {
         }
     }
 
-    private fun getContainerDirectorySize(root: Path): Long {
+    internal fun getContainerDirectorySize(root: Path): Long {
         if (!Files.isDirectory(root)) return 0L
 
         var totalBytes = 0L
@@ -922,6 +931,7 @@ object ContainerStorageManager {
                 root,
                 object : SimpleFileVisitor<Path>() {
                     override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
+                        if (attrs.isRegularFile && hardLinkCount(file) > 1) return FileVisitResult.CONTINUE
                         totalBytes += attrs.size()
                         return FileVisitResult.CONTINUE
                     }
@@ -938,6 +948,10 @@ object ContainerStorageManager {
 
         return totalBytes
     }
+
+    private fun hardLinkCount(file: Path): Int =
+        runCatching { (Files.getAttribute(file, "unix:nlink", LinkOption.NOFOLLOW_LINKS) as Number).toInt() }
+            .getOrDefault(1)
 
     internal fun normalizeContainerId(containerId: String): String = containerId.substringBefore("(")
 

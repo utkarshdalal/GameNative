@@ -4,9 +4,13 @@ import android.content.Context
 import app.gamenative.PrefManager
 import app.gamenative.utils.Net
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -44,7 +48,277 @@ object RecommendationRepository {
               { "type": "GET_DEMO", "url": "https://store.steampowered.com/app/3602270/", "appId": 4320000 },
               { "type": "VISIT", "url": "https://store.steampowered.com/app/3602270/" }
             ]
-          }
+          },
+          "featuredList": [
+            {
+              "campaignId": "mock-lethal",
+              "title": "Lethal Company",
+              "appId": 1966720,
+              "developer": "Zeekerss",
+              "heroImageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1966720/library_hero.jpg",
+              "capsuleImageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1966720/library_600x900.jpg",
+              "tags": ["Roguelike", "Action"],
+              "status": "AVAILABLE",
+              "description": { "en": "Battle beyond the Underworld using dark sorcery to take on the Titan of Time." },
+              "actions": [
+                { "type": "VISIT", "url": "https://store.steampowered.com/app/1966720/", "store": "Steam", "style": "primary" }
+              ]
+            },
+            {
+              "campaignId": "mock-wukong",
+              "title": "Black Myth: Wukong",
+              "appId": 2358720,
+              "developer": "Game Science",
+              "heroImageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2358720/library_hero.jpg",
+              "capsuleImageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2358720/library_600x900.jpg",
+              "tags": ["Card Game", "Roguelike"],
+              "status": "AVAILABLE",
+              "description": { "en": "A poker roguelike. Build illegal poker hands and discover game-changing jokers." },
+              "actions": [
+                { "type": "VISIT", "url": "https://store.steampowered.com/app/2358720/", "store": "Steam", "style": "primary" }
+              ]
+            }
+          ],
+          "bootAds": [
+            {
+              "campaignId": "mock-matiks-quiz",
+              "template": "quiz_card",
+              "imageUrl": "",
+              "title": {
+                "en": "Matiks"
+              },
+              "action": {
+                "type": "VISIT",
+                "url": "https://matiks.com/?utm_source=gamenative&utm_medium=boot_ad&utm_campaign=mock-matiks-quiz",
+                "style": "primary"
+              },
+              "appId": null,
+              "maxShowsPerDay": 0,
+              "questions": [
+                {
+                  "prompt": {
+                    "en": "17 × 6 = ?"
+                  },
+                  "options": [
+                    "98",
+                    "102",
+                    "112"
+                  ],
+                  "correctIndex": 1,
+                  "timerSeconds": 7,
+                  "winBody": {
+                    "en": "Faster than 81% of players. Try a real opponent →"
+                  },
+                  "loseBody": {
+                    "en": "It was 102. Get your rematch →"
+                  }
+                },
+                {
+                  "prompt": {
+                    "en": "What comes next? 3, 6, 12, 24, …"
+                  },
+                  "options": [
+                    "36",
+                    "42",
+                    "48"
+                  ],
+                  "correctIndex": 2,
+                  "timerSeconds": 7,
+                  "winBody": {
+                    "en": "Doubling spotted. Matiks players see it in under 2 seconds →"
+                  },
+                  "loseBody": {
+                    "en": "It doubles: 48. Get your rematch →"
+                  }
+                },
+                {
+                  "prompt": {
+                    "en": "45% of 60 = ?"
+                  },
+                  "options": [
+                    "24",
+                    "27",
+                    "30"
+                  ],
+                  "correctIndex": 1,
+                  "timerSeconds": 7,
+                  "winBody": {
+                    "en": "Clean. Try a real opponent →"
+                  },
+                  "loseBody": {
+                    "en": "45% of 60 is 27. Get your rematch →"
+                  }
+                },
+                {
+                  "prompt": {
+                    "en": "Which is bigger?"
+                  },
+                  "options": [
+                    "7⁄8",
+                    "8⁄9"
+                  ],
+                  "correctIndex": 1,
+                  "timerSeconds": 5,
+                  "winBody": {
+                    "en": "You sure you didn't guess? Prove it on Matiks →"
+                  },
+                  "loseBody": {
+                    "en": "8⁄9 wins by a hair (0.889 vs 0.875). Rematch →"
+                  }
+                },
+                {
+                  "prompt": {
+                    "en": "Make 24 with 3, 3, 8, 8 — possible?"
+                  },
+                  "options": [
+                    "Yes",
+                    "No"
+                  ],
+                  "correctIndex": 0,
+                  "timerSeconds": 7,
+                  "winBody": {
+                    "en": "Yes: 8÷(3−8÷3) = 24. You saw it? Play people who see it faster →"
+                  },
+                  "loseBody": {
+                    "en": "Yes — 8÷(3−8÷3) = 24. Wait, what? Matiks does this daily →"
+                  }
+                },
+                {
+                  "prompt": {
+                    "en": "Solve: 99 + 98 + 97 = ?"
+                  },
+                  "options": [
+                    "294",
+                    "292",
+                    "296"
+                  ],
+                  "correctIndex": 0,
+                  "timerSeconds": 7,
+                  "winBody": {
+                    "en": "You just did what Matiks players do 50 times a day →"
+                  },
+                  "loseBody": {
+                    "en": "3×100 − 6 = 294. Get your rematch →"
+                  }
+                }
+              ]
+            },
+            {
+              "campaignId": "mock-bootdev-quiz",
+              "template": "quiz_card",
+              "imageUrl": "",
+              "title": {
+                "en": "Boot.dev"
+              },
+              "action": {
+                "type": "VISIT",
+                "url": "https://www.boot.dev/?promo=GAMENATIVE&utm_source=gamenative&utm_medium=boot_ad&utm_campaign=bootdev-quiz-example",
+                "style": "primary"
+              },
+              "maxShowsPerDay": 0,
+              "questions": [
+                {
+                  "prompt": {
+                    "en": "What does this print?"
+                  },
+                  "code": "x = [1, 2, 3]\nprint(x * 2)",
+                  "options": [
+                    "[2, 4, 6]",
+                    "[1, 2, 3, 1, 2, 3]",
+                    "error"
+                  ],
+                  "correctIndex": 1,
+                  "timerSeconds": 10,
+                  "winBody": {
+                    "en": "Sequence repetition — you know your Python. Go deeper on Boot.dev →"
+                  },
+                  "loseBody": {
+                    "en": "It duplicates the list. Learn why on Boot.dev — code GAMENATIVE for 25% off"
+                  }
+                },
+                {
+                  "prompt": {
+                    "en": "What does this print?"
+                  },
+                  "code": "print(\"ha\" * 3 + \"!\")",
+                  "options": [
+                    "hahaha!",
+                    "ha3!",
+                    "error"
+                  ],
+                  "correctIndex": 0,
+                  "timerSeconds": 10,
+                  "winBody": {
+                    "en": "hahaha! indeed. Level up on Boot.dev — code GAMENATIVE for 25% off"
+                  },
+                  "loseBody": {
+                    "en": "Strings multiply in Python: hahaha!. Learn why on Boot.dev →"
+                  }
+                },
+                {
+                  "prompt": {
+                    "en": "Which one is NOT a real programming language?"
+                  },
+                  "options": [
+                    "Rust",
+                    "Brainfuck",
+                    "Vermin",
+                    "COBOL"
+                  ],
+                  "correctIndex": 2,
+                  "timerSeconds": 10,
+                  "winBody": {
+                    "en": "Vermin isn't real (yet). The other three? All learnable on Boot.dev →"
+                  },
+                  "loseBody": {
+                    "en": "Vermin was the fake — yes, Brainfuck is real. Boot.dev teaches the useful ones →"
+                  }
+                },
+                {
+                  "prompt": {
+                    "en": "What does this print?"
+                  },
+                  "code": "print(0.1 + 0.2 == 0.3)",
+                  "options": [
+                    "True",
+                    "False"
+                  ],
+                  "correctIndex": 1,
+                  "timerSeconds": 10,
+                  "winBody": {
+                    "en": "Floats lie and you knew it. Boot.dev explains the why →"
+                  },
+                  "loseBody": {
+                    "en": "0.1 + 0.2 is 0.30000000000000004. Floats lie — Boot.dev explains why. Code GAMENATIVE for 25% off"
+                  }
+                }
+              ]
+            },
+            {
+              "campaignId": "mock-whisk-boot",
+              "template": "video_card",
+              "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3602270/92fb97a2832c9c075165c43d14d974c730ca716b/library_hero.jpg",
+              "videoUrl": "https://video.akamai.steamstatic.com/store_trailers/3602270/375401990/4aacd3fefc6bb18a96e07680487c46adb91ca04a/1767578512/microtrailer.mp4",
+              "appId": 3602270,
+              "screenshots": [
+                "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3602270/e0a52a09cd85472aecfb430ad086aae040cb100c/ss_e0a52a09cd85472aecfb430ad086aae040cb100c.1920x1080.jpg",
+                "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3602270/77719570b08d1b46facf8477df20aa5b97b54573/ss_77719570b08d1b46facf8477df20aa5b97b54573.1920x1080.jpg"
+              ],
+              "title": {
+                "en": "Whisk"
+              },
+              "body": {
+                "en": "A two-player platformer about shared movement. Get every Dreamcat home."
+              },
+              "action": {
+                "type": "WISHLIST",
+                "url": "https://store.steampowered.com/app/3602270/",
+                "store": "Steam",
+                "style": "primary"
+              },
+              "maxShowsPerDay": 0
+            }
+          ]
         }
     """.trimIndent()
 
@@ -52,7 +326,8 @@ object RecommendationRepository {
 
     // Latest featured from the most recent fetch. Kept in memory (not the disk cache) so the
     // featured decision is always live and never served stale from the daily recommendation cache.
-    @Volatile private var lastFeatured: FeaturedItem? = null
+    @Volatile private var lastFeatured: List<FeaturedItem> = emptyList()
+    private val featuredListState = MutableStateFlow<List<FeaturedItem>>(emptyList())
 
     /**
      * Static recommendation + optional featured for the All-tab hero slot.
@@ -63,10 +338,20 @@ object RecommendationRepository {
         withContext(Dispatchers.IO) {
             val fetched = if (MOCK_HERO_RESPONSE) parseHero(MOCK_HERO_JSON) else fetchRemote()
             if (fetched != null) {
-                lastFeatured = fetched.featured
+                val featured = fetched.featured?.takeIf { it.flavors.targetsThisBuild() }
+                val featuredList = fetched.featuredList
+                    .filter { it.flavors.targetsThisBuild() }
+                    .distinctBy { it.campaignId }
+                lastFeatured = (listOfNotNull(featured) + featuredList).distinctBy { it.campaignId }
+                featuredListState.value = featuredList
+                val bootAds = fetched.bootAds.ifEmpty { listOfNotNull(fetched.bootAd) }
+                    .filter { it.flavors.targetsThisBuild() }
+                BootAdRepository.store(bootAds)
+                if (PrefManager.bootScreenAdsEnabled) BootAdRepository.prefetchVideos(context, bootAds)
                 return@withContext HeroResponse(
                     recommendation = stableRecommendation(fetched.recommendation),
-                    featured = fetched.featured,
+                    featured = featured,
+                    featuredList = featuredList,
                 )
             }
             // Offline: last stable recommendation (or bundled), no featured.
@@ -79,11 +364,34 @@ object RecommendationRepository {
     suspend fun getCurrentRecommendation(context: Context): RecommendedGame? =
         getHero(context).recommendation
 
-    /** Latest featured (if any) — used by the detail screen; no network. */
-    fun getCachedFeatured(): FeaturedItem? = lastFeatured
+    /** Discover-tab campaigns from the latest fetch; updates as fetches land. */
+    val featuredList: StateFlow<List<FeaturedItem>> = featuredListState.asStateFlow()
 
-    fun getFeaturedGame(context: Context): RecommendedGame? =
-        lastFeatured?.toRecommendedGame(context)
+    /** The day's cached static recommendation, if any; no network. */
+    fun getCachedRecommendation(): RecommendedGame? = loadCachedRecommendation()
+
+    // The recommendation the library hero currently shows: personalized when the user opted in,
+    // else the static pick. Set by LibraryViewModel; read by the boot splash so both agree.
+    @Volatile private var currentHeroRecommendation: RecommendedGame? = null
+
+    fun setCurrentHeroRecommendation(rec: RecommendedGame?) {
+        currentHeroRecommendation = rec
+    }
+
+    fun getCurrentHeroRecommendation(): RecommendedGame? = currentHeroRecommendation ?: loadCachedRecommendation()
+
+    // Today's personalized Discover cards (empty unless the user opted in); the boot splash
+    // rotates through them so it isn't stuck on the single hero pick.
+    @Volatile private var recommendationPool: List<app.gamenative.data.gog.GogRecCard> = emptyList()
+
+    fun setRecommendationPool(cards: List<app.gamenative.data.gog.GogRecCard>) {
+        recommendationPool = cards
+    }
+
+    fun getRecommendationPool(): List<app.gamenative.data.gog.GogRecCard> = recommendationPool
+
+    fun getFeaturedGame(context: Context, campaignId: String): RecommendedGame? =
+        lastFeatured.firstOrNull { it.campaignId == campaignId }?.toRecommendedGame(context)
 
     private fun fetchRemote(): HeroResponse? {
         return try {
@@ -138,7 +446,10 @@ object RecommendationRepository {
         return when {
             trimmed.startsWith("{") -> {
                 val hero = runCatching { json.decodeFromString<HeroResponse>(body) }.getOrNull()
-                if (hero != null && (hero.recommendation != null || hero.featured != null)) {
+                // A payload that carries the bootAds key (even empty) is the current shape: an
+                // empty list means "no campaigns" and must clear the cache, not fall to legacy.
+                val currentShape = runCatching { json.parseToJsonElement(body).jsonObject.containsKey("bootAds") }.getOrDefault(false)
+                if (hero != null && (currentShape || hero.recommendation != null || hero.featured != null || hero.featuredList.isNotEmpty() || hero.bootAd != null || hero.bootAds.isNotEmpty())) {
                     hero
                 } else {
                     // Legacy: a single recommendation object.

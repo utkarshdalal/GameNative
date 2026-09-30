@@ -122,6 +122,7 @@ internal fun LibraryListPane(
     onNavigate: (String) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
+    onFocusedIndexChanged: (Int) -> Unit = {},
 ) {
     val context = LocalContext.current
     val snackBarHost = remember { SnackbarHostState() }
@@ -254,7 +255,10 @@ internal fun LibraryListPane(
                         ) {
                             items(
                                 count = state.appInfoList.size,
-                                key = { listIndex -> state.appInfoList[listIndex].appId },
+                                key = { listIndex ->
+                                    val item = state.appInfoList[listIndex]
+                                    if (item.recSource == "hero") "HERO_SLOT" else item.appId
+                                },
                             ) { listIndex ->
                                 val item = state.appInfoList[listIndex]
                                 val animateFade = remember(item.index) { !listState.isScrollInProgress }
@@ -293,7 +297,10 @@ internal fun LibraryListPane(
                                         appInfo = item,
                                         onClick = { onNavigate(item.appId) },
                                         paneType = currentLayout,
-                                        onFocus = { targetOfScroll = item.index },
+                                        onFocus = {
+                                            targetOfScroll = item.index
+                                            onFocusedIndexChanged(listIndex)
+                                        },
                                         imageRefreshCounter = state.imageRefreshCounter,
                                         compatibilityStatus = state.compatibilityMap[item.name],
                                         gameStats = state.statsFor(item),

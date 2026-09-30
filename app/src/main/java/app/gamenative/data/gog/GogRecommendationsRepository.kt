@@ -22,6 +22,20 @@ object GogRecommendationsRepository {
 
     private const val REC_BASE = "https://recommendations-api.gog.com/v1/recommendations"
     private const val CJ_CLICK = "https://www.anrdoezrs.net/click-101723120-15554897?url="
+    private const val CJ_SID_MAX = 64
+
+    fun isAffiliateLink(url: String): Boolean = url.startsWith(CJ_CLICK)
+
+    /** CJ sub-ID for a click: placement + rank, plus a per-click token when usage analytics is on. */
+    fun affiliateSubId(source: String, rank: Int, clickId: String?): String =
+        listOfNotNull("gn", source.ifBlank { "unknown" }, "r$rank", clickId)
+            .joinToString("_")
+            .replace(Regex("[^A-Za-z0-9_-]"), "-")
+            .take(CJ_SID_MAX)
+
+    /** Insert the sub-ID into a CJ click link so the sale shows up against it in the commission report. */
+    fun withAffiliateSubId(url: String, sid: String): String =
+        if (isAffiliateLink(url)) url.replaceFirst("?url=", "?sid=${URLEncoder.encode(sid, "UTF-8")}&url=") else url
     private const val FIXED_SEEDS = 12
     private const val ROTATING_SEEDS = 6
     private const val ROTATING_WEIGHT = 6.0
@@ -52,6 +66,21 @@ object GogRecommendationsRepository {
     private var cacheDay: Long = -1
 
     private data class Seed(val gogId: String, val name: String, val weight: Double, val iconUrl: String?)
+
+    /** Today's Discover cards if already fetched this session; no network. */
+    fun cachedCards(): List<GogRecCard> = cache ?: emptyList()
+
+    // productId -> Steam HLS trailer ("" when the game has none), resolved on demand at boot.
+    private val trailerCache = java.util.concurrent.ConcurrentHashMap<Long, String>()
+
+    /** The Steam trailer for a Discover card, fetched the first time it's asked for (2 store calls). */
+    suspend fun resolveTrailer(productId: Long, title: String): String? = withContext(Dispatchers.IO) {
+        trailerCache[productId]?.let { return@withContext it.takeIf { url -> url.isNotEmpty() } }
+        val url = runCatching { fetchSteamMedia(productId, title)?.videoUrl }.getOrNull()
+        trailerCache[productId] = url ?: ""
+        Timber.tag("BootAdTrace").i("trailer %s '%s': %s", productId, title, if (url != null) "yes" else "none")
+        url
+    }
 
     suspend fun getRecommendations(
         context: Context,

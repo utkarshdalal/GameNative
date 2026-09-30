@@ -419,14 +419,51 @@ class GOGManifestParser @Inject constructor() {
             }
         }
 
-        Timber.tag(TAG).d("Parsed Gen 1 manifest: installDirectory=$installDirectory, depots=${depots.size}, timestamp=$timestamp")
+        val supportCommands = mutableListOf<SupportCommand>()
+        val supportArray = product.optJSONArray("support_commands")
+        if (supportArray != null) {
+            for (i in 0 until supportArray.length()) {
+                val c = supportArray.getJSONObject(i)
+                val executable = c.optString("executable", "")
+                if (executable.isEmpty()) continue
+                val systemsArr = c.optJSONArray("systems")
+                if (systemsArr != null && systemsArr.length() > 0) {
+                    var forWindows = false
+                    for (j in 0 until systemsArr.length()) {
+                        if (systemsArr.getString(j).equals("Windows", ignoreCase = true)) {
+                            forWindows = true
+                            break
+                        }
+                    }
+                    if (!forWindows) continue
+                }
+                val cmdLangs = mutableListOf<String>()
+                val cmdLangArr = c.optJSONArray("languages")
+                if (cmdLangArr != null) {
+                    for (j in 0 until cmdLangArr.length()) cmdLangs.add(cmdLangArr.getString(j))
+                }
+                supportCommands.add(
+                    SupportCommand(
+                        executable = executable,
+                        gameId = c.optString("gameID", ""),
+                        argument = c.optString("argument", ""),
+                        languages = cmdLangs,
+                    ),
+                )
+            }
+        }
+
+        Timber.tag(TAG).d(
+            "Parsed Gen 1 manifest: installDirectory=$installDirectory, depots=${depots.size}, timestamp=$timestamp, supportCommands=${supportCommands.size}",
+        )
         return GOGManifestMeta(
             baseProductId = baseProductId,
             installDirectory = installDirectory,
             depots = depots,
             dependencies = dependencies,
             products = products,
-            productTimestamp = timestamp
+            productTimestamp = timestamp,
+            supportCommands = supportCommands
         )
     }
 

@@ -9,6 +9,7 @@ import java.io.File
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.FileVisitResult
+import java.nio.file.LinkOption
 import java.nio.file.Paths
 import java.nio.file.SimpleFileVisitor
 import java.nio.file.StandardCopyOption
@@ -51,6 +52,31 @@ object StorageUtils {
         return stat.blockSizeLong * stat.availableBlocksLong
     }
 
+    // Minimum internal free space required to host a transient download chunk cache.
+    // The cache normally stays MB-sized (chunks are deleted as they are assembled),
+    // so this only guards against starting a download on a nearly-full data partition.
+    private const val MIN_INTERNAL_CACHE_BYTES = 512L * 1024 * 1024
+
+    /**
+     * Pre-download disk space check shared by the GOG and Epic download managers.
+     * Returns a human-readable error when there is not enough space, or null when
+     * the download can proceed. [requiredBytes] is checked against the install
+     * volume; the internal volume hosting [internalCacheDir] only needs modest
+     * headroom for the transient chunk cache.
+     */
+    fun downloadSpaceShortfall(installDir: File, requiredBytes: Long, internalCacheDir: File): String? {
+        val available = getAvailableSpaceForUncreatedPath(installDir.absolutePath)
+        if (available < requiredBytes) {
+            return "Not enough free space: need ${formatBinarySize(requiredBytes)}, available ${formatBinarySize(available)}"
+        }
+        val internalAvailable = getAvailableSpaceForUncreatedPath(internalCacheDir.absolutePath)
+        if (internalAvailable < MIN_INTERNAL_CACHE_BYTES) {
+            return "Not enough internal storage for the download cache: " +
+                "${formatBinarySize(internalAvailable)} free, need at least ${formatBinarySize(MIN_INTERNAL_CACHE_BYTES)}"
+        }
+        return null
+    }
+
     fun getTotalSpace(path: String): Long {
         val file = File(path)
         if (!file.exists()) {
@@ -66,7 +92,9 @@ object StorageUtils {
             var bytes = 0L
             val tree = folder.walk()
             tree.forEach {
-                bytes += it.length()
+                if (!it.isFile || hardLinkCount(it.toPath()) <= 1) {
+                    bytes += it.length()
+                }
                 // allow interruption if run as coroutine
                 yield()
             }
@@ -74,6 +102,10 @@ object StorageUtils {
         }
         return 0L
     }
+
+    private fun hardLinkCount(path: Path): Int =
+        runCatching { (Files.getAttribute(path, "unix:nlink", LinkOption.NOFOLLOW_LINKS) as Number).toInt() }
+            .getOrDefault(1)
 
     fun formatBinarySize(bytes: Long, decimalPlaces: Int = 2): String {
         require(bytes > Long.MIN_VALUE) { "Out of range" }

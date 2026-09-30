@@ -42,6 +42,15 @@ object LsfgQuickMenuHelper {
         }
     }
 
+    /** Persist the backend and hot-apply it. */
+    fun applyBackend(container: Container, backend: String) {
+        applyExecutor.execute {
+            container.putExtra(LsfgVkManager.EXTRA_BACKEND, backend)
+            container.saveData()
+            applySettings(container, readSettings(container))
+        }
+    }
+
     /** Persist the present mode and hot-apply it. */
     fun applyPresentMode(container: Container, mode: String) {
         applyExecutor.execute {
@@ -75,5 +84,6 @@ object LsfgQuickMenuHelper {
             flowScale,
             settings.performanceMode,
         )
+        LsfgVkManager.refreshNativeRuntime(container)
     }
 }

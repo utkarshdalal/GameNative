@@ -23,6 +23,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import com.winlator.inputcontrols.Binding
+import com.winlator.inputcontrols.BindingCombo
 
 /**
  * Dialog for selecting controller button bindings.
@@ -40,13 +41,34 @@ import com.winlator.inputcontrols.Binding
 fun ControllerBindingDialog(
     buttonName: String,
     currentBinding: Binding?,
+    currentBindingCombo: BindingCombo? = currentBinding?.let { BindingCombo.of(it) },
     onDismiss: () -> Unit,
-    onBindingSelected: (Binding?) -> Unit
+    onBindingSelected: (Binding?) -> Unit,
+    onBindingComboSelected: ((BindingCombo?) -> Unit)? = null
 ) {
 
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf<Int?>(0) } // 0 = Keyboard, 1 = Mouse, 2 = Gamepad, 3 = Extra, null = All
     var isSearchExpanded by remember { mutableStateOf(false) }
+    val selectedBindings = remember(currentBindingCombo, currentBinding) {
+        mutableStateListOf<Binding>().apply {
+            addAll((currentBindingCombo ?: BindingCombo.of(currentBinding)).bindings)
+        }
+    }
+    var selectedMode by remember(currentBindingCombo, currentBinding) {
+        mutableStateOf((currentBindingCombo ?: BindingCombo.of(currentBinding)).mode)
+    }
+    var selectedSequenceDelayMs by remember(currentBindingCombo, currentBinding) {
+        mutableIntStateOf((currentBindingCombo ?: BindingCombo.of(currentBinding)).sequenceDelayMs)
+    }
+
+    fun submitSelection(combo: BindingCombo?) {
+        if (onBindingComboSelected != null) {
+            onBindingComboSelected(combo)
+        } else {
+            onBindingSelected(combo?.primaryBinding)
+        }
+    }
 
     // Get bindings by category
     val keyboardBindings = remember { Binding.keyboardBindingValues().toList() }
@@ -142,21 +164,39 @@ fun ControllerBindingDialog(
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold
                         )
-                        if (currentBinding != null) {
-                            Text(
-                                text = stringResource(app.gamenative.R.string.current_binding, currentBinding.toString()),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary
+                        val combo = BindingCombo.fromBindings(selectedBindings, selectedMode, selectedSequenceDelayMs)
+                        val comboLabel = if (combo.isSequence) {
+                            stringResource(
+                                app.gamenative.R.string.binding_sequence_current_format,
+                                combo.toString(),
+                                combo.sequenceDelayMs,
                             )
+                        } else {
+                            combo.toString()
                         }
+                        Text(
+                            text = stringResource(app.gamenative.R.string.current_binding, comboLabel),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
 
-                    // Close button
-                    IconButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(Icons.Default.Close, null)
+                    Row {
+                        IconButton(
+                            onClick = {
+                                val combo = BindingCombo.fromBindings(selectedBindings, selectedMode, selectedSequenceDelayMs)
+                                submitSelection(if (combo.isEmpty) null else combo)
+                            },
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(Icons.Default.Check, stringResource(app.gamenative.R.string.save))
+                        }
+                        IconButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(Icons.Default.Close, stringResource(app.gamenative.R.string.close))
+                        }
                     }
                 }
 
@@ -249,6 +289,31 @@ fun ControllerBindingDialog(
                                 modifier = Modifier.padding(bottom = 4.dp)
                             )
 
+                            if (selectedBindings.size > 1) {
+                                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                                    SegmentedButton(
+                                        selected = selectedMode == BindingCombo.Mode.SIMULTANEOUS,
+                                        onClick = { selectedMode = BindingCombo.Mode.SIMULTANEOUS },
+                                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                                        label = { Text(stringResource(app.gamenative.R.string.binding_mode_simultaneous)) },
+                                    )
+                                    SegmentedButton(
+                                        selected = selectedMode == BindingCombo.Mode.SEQUENCE,
+                                        onClick = { selectedMode = BindingCombo.Mode.SEQUENCE },
+                                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                                        label = { Text(stringResource(app.gamenative.R.string.binding_mode_sequence)) },
+                                    )
+                                }
+                                if (selectedMode == BindingCombo.Mode.SEQUENCE) {
+                                    DelayTextField(
+                                        label = stringResource(app.gamenative.R.string.binding_sequence_delay_ms),
+                                        value = selectedSequenceDelayMs,
+                                        valueRange = BindingCombo.MIN_SEQUENCE_DELAY_MS..BindingCombo.MAX_SEQUENCE_DELAY_MS,
+                                        onValueChange = { selectedSequenceDelayMs = it },
+                                    )
+                                }
+                            }
+
                             // Helper function to render category button
                             @Composable
                             fun CategoryButton(
@@ -331,14 +396,14 @@ fun ControllerBindingDialog(
                             )
 
                             // Clear Binding button - more compact for smaller screens
-                            if (currentBinding != null) {
+                            if (selectedBindings.isNotEmpty()) {
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Surface(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable {
                                             Log.d("ControllerBindingDialog", "Clearing binding for $buttonName")
-                                            onBindingSelected(null)
+                                            submitSelection(null)
                                         },
                                     color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f),
                                     shape = MaterialTheme.shapes.small
@@ -390,12 +455,20 @@ fun ControllerBindingDialog(
                             }
                         } else {
                             filteredBindings.forEach { binding ->
+                                val isNone = binding == Binding.NONE
                                 BindingOption(
                                     binding = binding,
-                                    isSelected = binding == currentBinding,
+                                    isSelected = if (isNone) selectedBindings.isEmpty() else binding in selectedBindings,
+                                    enabled = isNone || binding in selectedBindings || selectedBindings.size < BindingCombo.MAX_BINDINGS,
                                     onClick = {
-                                        Log.d("ControllerBindingDialog", "Binding selected for $buttonName: ${binding.name}")
-                                        onBindingSelected(binding)
+                                        if (isNone) {
+                                            selectedBindings.clear()
+                                        } else if (binding in selectedBindings) {
+                                            selectedBindings.remove(binding)
+                                        } else if (selectedBindings.size < BindingCombo.MAX_BINDINGS) {
+                                            selectedBindings.add(binding)
+                                        }
+                                        Log.d("ControllerBindingDialog", "Binding toggled for $buttonName: ${binding.name}")
                                     }
                                 )
                             }
@@ -411,12 +484,13 @@ fun ControllerBindingDialog(
 fun BindingOption(
     binding: Binding,
     isSelected: Boolean,
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .clickable(enabled = enabled, onClick = onClick),
         color = if (isSelected)
             MaterialTheme.colorScheme.primaryContainer
         else
@@ -435,6 +509,8 @@ fun BindingOption(
                 style = MaterialTheme.typography.bodyLarge,
                 color = if (isSelected)
                     MaterialTheme.colorScheme.onPrimaryContainer
+                else if (!enabled)
+                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
                 else
                     MaterialTheme.colorScheme.onSurfaceVariant
             )

@@ -25,6 +25,7 @@ import app.gamenative.R
 import app.gamenative.ui.theme.PluviaTheme
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
+import com.skydoves.landscapist.coil.CoilImageState
 
 @Composable
 internal fun ListItemImage(
@@ -35,6 +36,7 @@ internal fun ListItemImage(
     contentScale: ContentScale = ContentScale.Fit,
     image: () -> Any?,
     onFailure: () -> Unit = {},
+    onSuccess: (() -> Unit)? = null,
 ) {
     CoilImage(
         modifier = modifier
@@ -45,6 +47,9 @@ internal fun ListItemImage(
             contentScale = contentScale,
             contentDescription = contentDescription,
         ),
+        onImageStateChanged = { state ->
+            if (state is CoilImageState.Success) onSuccess?.invoke()
+        },
         loading = {
             CircularProgressIndicator(modifier = Modifier.wrapContentSize())
         },

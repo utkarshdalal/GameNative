@@ -2,6 +2,7 @@ package app.gamenative.ui.screen.library.components
 
 import android.view.KeyEvent
 import androidx.compose.animation.core.Spring
+import androidx.compose.ui.unit.Dp
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -36,7 +37,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,6 +59,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.enums.LibraryTab
@@ -70,6 +74,7 @@ import app.gamenative.ui.util.rememberWindowWidthClass
 @Composable
 fun LibraryTabBar(
     currentTab: LibraryTab,
+    tabs: List<LibraryTab>,
     tabCounts: Map<LibraryTab, Int>,
     onTabSelected: (LibraryTab) -> Unit,
     onOptionsClick: () -> Unit,
@@ -83,10 +88,19 @@ fun LibraryTabBar(
 ) {
     val widthClass = rememberWindowWidthClass()
 
+    val today = System.currentTimeMillis() / (24L * 60 * 60 * 1000)
+    var recommendedSeenDay by remember { mutableLongStateOf(PrefManager.recommendedTabSeenDay) }
+    LaunchedEffect(currentTab) {
+        recommendedSeenDay = PrefManager.recommendedTabSeenDay
+    }
+    val showRecommendedDot = recommendedSeenDay != today
+
     when (widthClass) {
         WindowWidthClass.COMPACT -> CompactLibraryTabBar(
             currentTab = currentTab,
+            tabs = tabs,
             tabCounts = tabCounts,
+            showRecommendedDot = showRecommendedDot,
             onTabSelected = onTabSelected,
             onOptionsClick = onOptionsClick,
             onSearchClick = onSearchClick,
@@ -100,7 +114,9 @@ fun LibraryTabBar(
 
         else -> ExpandedLibraryTabBar(
             currentTab = currentTab,
+            tabs = tabs,
             tabCounts = tabCounts,
+            showRecommendedDot = showRecommendedDot,
             onTabSelected = onTabSelected,
             onOptionsClick = onOptionsClick,
             onSearchClick = onSearchClick,
@@ -121,7 +137,9 @@ fun LibraryTabBar(
 @Composable
 private fun CompactLibraryTabBar(
     currentTab: LibraryTab,
+    tabs: List<LibraryTab>,
     tabCounts: Map<LibraryTab, Int>,
+    showRecommendedDot: Boolean,
     onTabSelected: (LibraryTab) -> Unit,
     onOptionsClick: () -> Unit,
     onSearchClick: () -> Unit,
@@ -132,7 +150,6 @@ private fun CompactLibraryTabBar(
     onNextTab: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val tabs = LibraryTab.visibleEntries
     val currentIndex = tabs.indexOf(currentTab)
     val scrollState = rememberScrollState()
     val tabPositions = remember { mutableStateMapOf<Int, Float>() }
@@ -239,12 +256,25 @@ private fun CompactLibraryTabBar(
                             else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         }
                         if (tab.icon != null) {
-                            Icon(
-                                imageVector = tab.icon,
-                                contentDescription = stringResource(tab.labelResId),
-                                tint = tabColor,
-                                modifier = Modifier.size(18.dp),
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                TabIcon(
+                                    tab = tab,
+                                    isSelected = isSelected,
+                                    showDot = showRecommendedDot,
+                                    tint = tabColor,
+                                    size = 18.dp,
+                                )
+                                if (count != null && count > 0) {
+                                    Text(
+                                        text = "($count)",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        maxLines = 1,
+                                        color = tabColor,
+                                        modifier = Modifier.padding(start = 4.dp),
+                                    )
+                                }
+                            }
                         } else {
                             val label = if (count != null && count > 0) {
                                 stringResource(R.string.library_tab_with_count, stringResource(tab.labelResId), count)
@@ -335,7 +365,9 @@ private fun CompactIconButton(
 @Composable
 private fun ExpandedLibraryTabBar(
     currentTab: LibraryTab,
+    tabs: List<LibraryTab>,
     tabCounts: Map<LibraryTab, Int>,
+    showRecommendedDot: Boolean,
     onTabSelected: (LibraryTab) -> Unit,
     onOptionsClick: () -> Unit,
     onSearchClick: () -> Unit,
@@ -346,7 +378,6 @@ private fun ExpandedLibraryTabBar(
     onNextTab: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val tabs = LibraryTab.visibleEntries
     val currentIndex = tabs.indexOf(currentTab)
     val scrollState = rememberScrollState()
 
@@ -472,6 +503,7 @@ private fun ExpandedLibraryTabBar(
                             tab = tab,
                             count = tabCounts[tab],
                             isSelected = tab == currentTab,
+                            showDot = showRecommendedDot,
                             onClick = { onTabSelected(tab) },
                             onPositioned = { position, width ->
                                 tabPositions[index] = position
@@ -585,6 +617,7 @@ private fun TabItem(
     tab: LibraryTab,
     count: Int?,
     isSelected: Boolean,
+    showDot: Boolean,
     onClick: () -> Unit,
     onPositioned: (Float, Float) -> Unit,
     modifier: Modifier = Modifier,
@@ -632,15 +665,31 @@ private fun TabItem(
         contentAlignment = Alignment.Center,
     ) {
         if (tab.icon != null) {
-            Icon(
-                imageVector = tab.icon,
-                contentDescription = stringResource(tab.labelResId),
-                tint = when {
-                    isSelected -> MaterialTheme.colorScheme.onPrimary
-                    else -> MaterialTheme.colorScheme.onSurface.copy(alpha = textAlpha)
-                },
-                modifier = Modifier.size(20.dp),
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TabIcon(
+                    tab = tab,
+                    isSelected = isSelected,
+                    showDot = showDot,
+                    tint = when {
+                        isSelected -> MaterialTheme.colorScheme.onPrimary
+                        else -> MaterialTheme.colorScheme.onSurface.copy(alpha = textAlpha)
+                    },
+                    size = 20.dp,
+                )
+                if (count != null && count > 0) {
+                    Text(
+                        text = "($count)",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        maxLines = 1,
+                        color = when {
+                            isSelected -> MaterialTheme.colorScheme.onPrimary
+                            else -> MaterialTheme.colorScheme.onSurface.copy(alpha = textAlpha)
+                        },
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
+            }
         } else {
             Text(
                 text = label,
@@ -658,6 +707,35 @@ private fun TabItem(
     }
 }
 
+@Composable
+private fun TabIcon(
+    tab: LibraryTab,
+    isSelected: Boolean,
+    showDot: Boolean,
+    tint: Color,
+    size: Dp,
+) {
+    val icon = tab.icon ?: return
+    Box {
+        Icon(
+            imageVector = icon,
+            contentDescription = stringResource(tab.labelResId),
+            tint = tint,
+            modifier = Modifier.size(size),
+        )
+        if (tab == LibraryTab.RECOMMENDED && !isSelected && showDot) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 3.dp, y = (-2).dp)
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.tertiary),
+            )
+        }
+    }
+}
+
 @Preview(showBackground = true, backgroundColor = 0xFF1A1A1A)
 @Composable
 private fun Preview_LibraryTabBar() {
@@ -669,6 +747,7 @@ private fun Preview_LibraryTabBar() {
         ) {
             LibraryTabBar(
                 currentTab = LibraryTab.ALL,
+                tabs = LibraryTab.visibleEntries,
                 tabCounts = mapOf(
                     LibraryTab.ALL to 42,
                     LibraryTab.STEAM to 30,
@@ -698,6 +777,7 @@ private fun Preview_LibraryTabBar_Steam() {
         ) {
             LibraryTabBar(
                 currentTab = LibraryTab.STEAM,
+                tabs = LibraryTab.visibleEntries,
                 tabCounts = mapOf(
                     LibraryTab.ALL to 42,
                     LibraryTab.STEAM to 30,

@@ -2,6 +2,7 @@ package app.gamenative.utils.launchdependencies
 
 import android.content.Context
 import app.gamenative.data.GameSource
+import app.gamenative.service.epic.EpicOverlayManager
 import app.gamenative.service.epic.EpicService
 import app.gamenative.utils.LOADING_PROGRESS_UNKNOWN
 import com.winlator.container.Container
@@ -21,10 +22,10 @@ object EpicOverlayDependency : LaunchDependency {
     private const val TAG = "EpicOverlayDep"
 
     override fun appliesTo(container: Container, gameSource: GameSource, gameId: Int): Boolean =
-        gameSource == GameSource.EPIC
+        gameSource == GameSource.EPIC && !container.isDisableEpicOverlay
 
     override fun isSatisfied(context: Context, container: Container, gameSource: GameSource, gameId: Int): Boolean =
-        EpicService.isOverlayInstalled(container)
+        EpicOverlayManager.isOverlayConfigured(container)
 
     override fun getLoadingMessage(context: Context, container: Container, gameSource: GameSource, gameId: Int): String =
         "Downloading EOS overlay"

@@ -320,6 +320,13 @@ public class PresentExtension implements Extension {
         long ust = System.nanoTime() / 1000;
         long msc = ust / (targetFps > 0 ? (1_000_000L / targetFps) : (1_000_000L / 60));
 
+        if (!client.xServer.isFlatPresentationEnabled()) {
+            sendCompleteNotify(window, serial, Kind.PIXMAP, Mode.SKIP, ust, msc);
+            if (targetFps > 0) scheduleIdleNotify(window, pixmap, serial, idleFence, targetFps, vr);
+            else sendIdleNotify(window, pixmap, serial, idleFence);
+            return;
+        }
+
         synchronized (content.renderLock) {
             if (asr != null) {
                 content.setTexture(pixmap.drawable.getTexture());

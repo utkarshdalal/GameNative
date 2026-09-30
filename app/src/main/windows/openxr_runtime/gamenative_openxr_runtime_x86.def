@@ -1,0 +1,4 @@
+LIBRARY gamenative_openxr_runtime32.dll
+EXPORTS
+    xrGetInstanceProcAddr = xrGetInstanceProcAddr@16
+    xrNegotiateLoaderRuntimeInterface = xrNegotiateLoaderRuntimeInterface@8

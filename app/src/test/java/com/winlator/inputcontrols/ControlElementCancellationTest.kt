@@ -49,4 +49,22 @@ class ControlElementCancellationTest {
         verify(exactly = 0) { view.handleInputEvent(Binding.KEY_A, true) }
         verify(exactly = 0) { view.handleInputEvent(Binding.KEY_A, false) }
     }
+
+    @Test
+    fun `cancelling a held multi-action button releases the entire combo`() {
+        val view = mockk<InputControlsView>(relaxed = true)
+        every { view.snappingSize } returns 10
+        val combo = BindingCombo.fromBindings(listOf(Binding.KEY_CTRL_L, Binding.KEY_A))
+        val element = ControlElement(view).apply {
+            setX(50)
+            setY(50)
+            setBindingComboAt(0, combo)
+        }
+
+        assertTrue(element.handleTouchDown(9, 50f, 50f))
+        assertTrue(element.cancelTouch())
+
+        verify(exactly = 1) { view.handleInputEvent(combo, true) }
+        verify(exactly = 1) { view.handleInputEvent(combo, false) }
+    }
 }

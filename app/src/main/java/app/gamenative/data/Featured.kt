@@ -1,6 +1,7 @@
 package app.gamenative.data
 
 import android.content.Context
+import app.gamenative.BuildConfig
 import app.gamenative.R
 import kotlinx.serialization.Serializable
 
@@ -9,6 +10,9 @@ import kotlinx.serialization.Serializable
 data class HeroResponse(
     val recommendation: RecommendedGame? = null,
     val featured: FeaturedItem? = null,
+    val featuredList: List<FeaturedItem> = emptyList(),
+    val bootAd: BootAdItem? = null,
+    val bootAds: List<BootAdItem> = emptyList(),
 )
 
 @Serializable
@@ -29,7 +33,15 @@ data class FeaturedItem(
     val actions: List<FeaturedAction> = emptyList(),
     val startsAt: String? = null,
     val endsAt: String? = null,
+    // Build flavors this campaign targets ("modern", "legacy"); empty = every build.
+    val flavors: List<String> = emptyList(),
 )
+
+private val currentBuildFlavor = if (BuildConfig.MODERN_ANDROID) "modern" else "legacy"
+
+/** True when a campaign's flavor list is empty or names this build. */
+fun List<String>.targetsThisBuild(): Boolean =
+    isEmpty() || any { it.equals(currentBuildFlavor, ignoreCase = true) }
 
 @Serializable
 data class FeaturedAction(
@@ -45,7 +57,7 @@ data class FeaturedAction(
 private fun deviceLanguage(context: Context): String =
     context.resources.configuration.locales[0].language
 
-private fun Map<String, String>.forLocale(context: Context): String? =
+internal fun Map<String, String>.forLocale(context: Context): String? =
     this[deviceLanguage(context)] ?: this["en"] ?: values.firstOrNull()
 
 fun FeaturedItem.localizedDescription(context: Context): String =

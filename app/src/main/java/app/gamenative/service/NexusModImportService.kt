@@ -28,6 +28,8 @@ import app.gamenative.mods.LocalModSourceType
 import app.gamenative.mods.ModDownloadRegistry
 import app.gamenative.mods.ModImportProgress
 import app.gamenative.mods.NexusApiClient
+import app.gamenative.mods.NexusAuthManager
+import app.gamenative.mods.NexusConnectionState
 import app.gamenative.mods.NexusDownloadAuthorization
 import app.gamenative.mods.NexusImportState
 import app.gamenative.mods.NexusIntegrationStatus
@@ -76,19 +78,26 @@ class NexusModImportService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         mainHandler.removeCallbacks(delayedStop)
         startForeground(NOTIFICATION_ID, createNotification(getString(R.string.mod_import_preparing)))
-        if (
-            !NexusIntegrationStatus.ONLINE_ACCESS_AVAILABLE &&
-            intent?.action == ACTION_RUN_IMPORT
-        ) {
+        val nexusOnlineBlockMessage = nexusOnlineBlockMessage(applicationContext)
+        if (nexusOnlineBlockMessage != null && intent?.action == ACTION_RUN_IMPORT) {
+            failQueuedIntent(intent, IllegalStateException(nexusOnlineBlockMessage))
             scope.launch {
                 try {
-                    pauseInterruptedImports(applicationContext)
+                    pauseInterruptedImports(applicationContext, nexusOnlineBlockMessage)
                 } finally {
-                    stopForeground(STOP_FOREGROUND_REMOVE)
-                    stopSelf(startId)
+                    mainHandler.post {
+                        if (isIdle()) {
+                            stopForeground(STOP_FOREGROUND_REMOVE)
+                            stopSelf(startId)
+                        } else {
+                            // A local import (or cached-archive completion) may already be active.
+                            // Rejecting a Nexus network task must not cancel that offline-safe work.
+                            resumeOrStopIfIdle()
+                        }
+                    }
                 }
             }
-            return START_NOT_STICKY
+            return START_STICKY
         }
         when {
             intent?.action == ACTION_RUN_IMPORT || intent?.action == ACTION_RUN_LOCAL_IMPORT ->
@@ -97,14 +106,7 @@ class NexusModImportService : Service() {
                 requestResumeInterruptedImports()
             else -> scheduleStopIfIdle()
         }
-        return if (
-            intent?.action == ACTION_RUN_LOCAL_IMPORT ||
-            NexusIntegrationStatus.ONLINE_ACCESS_AVAILABLE
-        ) {
-            START_STICKY
-        } else {
-            START_NOT_STICKY
-        }
+        return START_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -122,6 +124,11 @@ class NexusModImportService : Service() {
 
     private fun startQueuedTask(taskId: String?, intent: Intent) {
         val task = taskId?.let { pendingTasks.remove(it) }
+        nexusOnlineBlockMessage(applicationContext)?.let { message ->
+            task?.deferred?.completeExceptionally(IllegalStateException(message))
+            resumeOrStopIfIdle()
+            return
+        }
         val request = task?.request ?: decodeImportRequest(intent)
         if (request == null) {
             resumeOrStopIfIdle()
@@ -129,15 +136,34 @@ class NexusModImportService : Service() {
         }
         val displayName = task?.displayName ?: request.modInfo.name
         launchImport(displayName, task?.deferred, task?.progressSink, "Nexus mod import failed") { progress ->
-            NexusModManager.importNexusFile(
-                context = applicationContext,
-                appId = request.appId,
-                reference = request.reference,
-                modInfo = request.modInfo,
-                file = request.file,
-                isPremiumAccount = request.isPremiumAccount,
-                onDetailedProgress = progress,
-            )
+            try {
+                NexusModManager.importNexusFile(
+                    context = applicationContext,
+                    appId = request.appId,
+                    reference = request.reference,
+                    modInfo = request.modInfo,
+                    file = request.file,
+                    isPremiumAccount = request.isPremiumAccount,
+                    onDetailedProgress = progress,
+                )
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                nexusOnlineBlockMessage(applicationContext)?.let { message ->
+                    val installId = NexusModManager.installIdFor(
+                        request.appId,
+                        request.reference.gameDomain,
+                        request.reference.modId,
+                        request.file.fileId,
+                    )
+                    pauseImportAfterAuthenticationLoss(
+                        NexusModManager.dao(applicationContext),
+                        installId,
+                        message,
+                    )
+                }
+                throw error
+            }
         }
     }
 
@@ -217,7 +243,7 @@ class NexusModImportService : Service() {
         }
     }
 
-    private fun failQueuedIntent(intent: Intent, error: CancellationException) {
+    private fun failQueuedIntent(intent: Intent, error: Throwable) {
         val taskId = intent.getStringExtra(EXTRA_TASK_ID) ?: return
         when (intent.action) {
             ACTION_RUN_IMPORT -> pendingTasks.remove(taskId)?.deferred?.completeExceptionally(error)
@@ -281,7 +307,8 @@ class NexusModImportService : Service() {
         activeTasks.incrementAndGet()
         scope.launch {
             val dao = NexusModManager.dao(applicationContext)
-            val onlineAccessAvailable = NexusIntegrationStatus.ONLINE_ACCESS_AVAILABLE
+            val onlineBlockMessage = nexusOnlineBlockMessage(applicationContext)
+            val onlineAccessAvailable = onlineBlockMessage == null
             val interrupted = queryResumableImports(dao)
             if (interrupted.isEmpty()) return@launch
             val (localInterrupted, nexusCandidates) = interrupted.partition {
@@ -347,6 +374,7 @@ class NexusModImportService : Service() {
                     applicationContext,
                     dao,
                     nexusInterrupted,
+                    requireNotNull(onlineBlockMessage),
                 ) to emptyList()
             } else {
                 partitionByCompleteArchive(applicationContext, nexusInterrupted)
@@ -358,8 +386,17 @@ class NexusModImportService : Service() {
                     throw e
                 } catch (e: Exception) {
                     Timber.w(e, "Could not validate Nexus account before resuming imports")
-                    downloadsNeedingLinks.forEach { install ->
-                        dao.updateInstallStatus(install.installId, ModInstallStatus.PAUSED.name)
+                    val disconnectedMessage = nexusOnlineBlockMessage(applicationContext)
+                    if (disconnectedMessage != null) {
+                        pauseImportsWhileOnlineAccessUnavailable(
+                            dao,
+                            downloadsNeedingLinks,
+                            disconnectedMessage,
+                        )
+                    } else {
+                        downloadsNeedingLinks.forEach { install ->
+                            dao.updateInstallStatus(install.installId, ModInstallStatus.PAUSED.name)
+                        }
                     }
                     null
                 }
@@ -433,6 +470,9 @@ class NexusModImportService : Service() {
                     throw e
                 } catch (error: Exception) {
                     Timber.w(error, "Failed to resume Nexus import ${install.installId}")
+                    nexusOnlineBlockMessage(applicationContext)?.let { message ->
+                        pauseImportAfterAuthenticationLoss(dao, install.installId, message)
+                    }
                 }
             }
         }.invokeOnCompletion {
@@ -473,6 +513,21 @@ class NexusModImportService : Service() {
                 restorePreviousInstall = previousContentAvailable,
             ),
         )
+    }
+
+    private suspend fun pauseImportAfterAuthenticationLoss(
+        dao: ModDao,
+        installId: String,
+        message: String,
+    ) {
+        val current = dao.getInstall(installId) ?: return
+        if (
+            current.source != ModInstallSource.NEXUS.name ||
+            current.status in NexusImportState.reusableStatuses
+        ) {
+            return
+        }
+        dao.upsertInstall(NexusImportState.pauseWhileOnlineAccessUnavailable(current, message))
     }
 
     private suspend fun currentResumableLocalInstall(
@@ -565,7 +620,7 @@ class NexusModImportService : Service() {
         @Volatile
         private var currentService: NexusModImportService? = null
 
-        fun enqueueImport(
+        internal fun enqueueImport(
             context: Context,
             appId: String,
             reference: NexusModReference,
@@ -574,12 +629,11 @@ class NexusModImportService : Service() {
             displayName: String,
             isPremiumAccount: Boolean? = null,
             onProgress: (ModImportProgress) -> Unit = {},
+            connection: NexusConnectionState = NexusAuthManager.state.value.connection,
         ): Deferred<ModInstall> {
-            if (!NexusIntegrationStatus.ONLINE_ACCESS_AVAILABLE) {
+            nexusOnlineBlockMessage(context, connection)?.let { message ->
                 return failedImport(
-                    IllegalStateException(
-                        context.getString(R.string.nexus_integration_temporarily_unavailable),
-                    ),
+                    IllegalStateException(message),
                 )
             }
             if (reference.fileId != null && reference.fileId != file.fileId) {
@@ -722,11 +776,13 @@ class NexusModImportService : Service() {
                 val (localInterrupted, nexusInterrupted) = interrupted.partition {
                     ModInstallSource.isLocal(it.source)
                 }
-                if (!NexusIntegrationStatus.ONLINE_ACCESS_AVAILABLE) {
+                val onlineBlockMessage = nexusOnlineBlockMessage(appContext)
+                if (onlineBlockMessage != null) {
                     val completeNexusArchives = pauseDownloadsNeedingOnlineAccess(
                         appContext,
                         dao,
                         nexusInterrupted,
+                        onlineBlockMessage,
                     )
                     localInterrupted.isNotEmpty() || completeNexusArchives.isNotEmpty()
                 } else {
@@ -749,12 +805,17 @@ class NexusModImportService : Service() {
             }
         }
 
-        private suspend fun pauseInterruptedImports(context: Context) = withContext(Dispatchers.IO) {
+        private suspend fun pauseInterruptedImports(
+            context: Context,
+            message: String = nexusOnlineBlockMessage(context)
+                ?: context.getString(R.string.nexus_integration_temporarily_unavailable),
+        ) = withContext(Dispatchers.IO) {
             val dao = NexusModManager.dao(context)
             pauseDownloadsNeedingOnlineAccess(
                 context,
                 dao,
                 queryResumableImports(dao).filter { it.source == ModInstallSource.NEXUS.name },
+                message,
             )
         }
 
@@ -774,24 +835,35 @@ class NexusModImportService : Service() {
             context: Context,
             dao: ModDao,
             installs: List<ModInstall>,
+            message: String,
         ): List<ModInstall> {
             val nexusInstalls = installs.filter { it.source == ModInstallSource.NEXUS.name }
             val (completeArchives, downloadsNeedingLinks) =
                 partitionByCompleteArchive(context, nexusInstalls)
-            pauseImportsWhileOnlineAccessUnavailable(context, dao, downloadsNeedingLinks)
+            pauseImportsWhileOnlineAccessUnavailable(dao, downloadsNeedingLinks, message)
             return completeArchives
         }
 
         private suspend fun pauseImportsWhileOnlineAccessUnavailable(
-            context: Context,
             dao: ModDao,
             installs: List<ModInstall>,
+            message: String,
         ) {
-            val message = context.getString(R.string.nexus_integration_temporarily_unavailable)
             installs.forEach { install ->
                 val paused = NexusImportState.pauseWhileOnlineAccessUnavailable(install, message)
                 if (paused != install) dao.upsertInstall(paused)
             }
+        }
+
+        internal fun nexusOnlineBlockMessage(
+            context: Context,
+            connection: NexusConnectionState = NexusAuthManager.state.value.connection,
+        ): String? = when {
+            !NexusIntegrationStatus.ONLINE_ACCESS_AVAILABLE ->
+                context.getString(R.string.nexus_integration_temporarily_unavailable)
+            connection != NexusConnectionState.CONNECTED ->
+                context.getString(R.string.nexus_oauth_sign_in_required)
+            else -> null
         }
 
         internal fun putImportRequest(intent: Intent, request: NexusImportRequest) {

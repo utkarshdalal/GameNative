@@ -9,8 +9,12 @@ import java.util.concurrent.Executors
 import app.gamenative.BuildConfig
 import app.gamenative.service.SteamService
 import com.winlator.container.Container
+import com.winlator.container.ContainerManager
 import com.winlator.core.FileUtils
 import com.winlator.core.envvars.EnvVars
+import com.winlator.renderer.VulkanRenderer
+import com.winlator.renderer.lsfg.LosslessScaling
+import java.lang.ref.WeakReference
 import java.io.File
 import java.util.Locale
 import timber.log.Timber
@@ -65,6 +69,10 @@ object LsfgVkManager {
     const val EXTRA_FLOW_SCALE = "lsfgFlowScale"
     const val EXTRA_PERFORMANCE_MODE = "lsfgPerformanceMode"
     const val EXTRA_PRESENT_MODE = "lsfgPresentMode"
+    const val EXTRA_BACKEND = "lsfgBackend"
+
+    const val BACKEND_LEGACY = "legacy"
+    const val BACKEND_NATIVE = "native"
 
     // FPS limiter extras (owned by XServerScreen)
     private const val EXTRA_FPS_LIMITER_ENABLED = "fpsLimiterEnabled"
@@ -80,11 +88,10 @@ object LsfgVkManager {
     private const val ENV_PROCESS = "LSFG_PROCESS"
 
     // Current runtime version (bumped when the bundled .so changes)
-    private const val RUNTIME_VERSION = "v1.3.2-android-arm64-v8a"
+    private const val RUNTIME_VERSION = "v1.3.3-android-arm64-v8a"
 
-    // Asset paths
+    // Asset path for manifest (still in assets)
     private const val ASSET_DIR = "lsfg_vk/android_arm64_v8a"
-    private const val ASSET_LIB = "$ASSET_DIR/$LIB_FILENAME"
     private const val ASSET_MANIFEST = "$ASSET_DIR/$MANIFEST_FILENAME"
 
     // ---- Public API --------------------------------------------------------
@@ -139,6 +146,18 @@ object LsfgVkManager {
     fun presentMode(container: Container): String =
         container.getExtra(EXTRA_PRESENT_MODE, "mailbox")
             .takeIf { it == "fifo" || it == "mailbox" } ?: "mailbox"
+
+    /**
+     * Frame-generation backend: the legacy lsfg-vk Vulkan layer inside the
+     * container, or the native pipeline in the host renderer.
+     */
+    fun backend(container: Container): String =
+        container.getExtra(EXTRA_BACKEND, BACKEND_NATIVE)
+            .takeIf { it == BACKEND_LEGACY } ?: BACKEND_NATIVE
+
+    @JvmStatic
+    fun isNativeBackend(container: Container): Boolean =
+        backend(container) == BACKEND_NATIVE
 
     /**
      * Base fps cap for the layer's limiter (0 = uncapped). The layer
@@ -207,8 +226,35 @@ object LsfgVkManager {
     @Volatile private var cachedMeasuredFps: Float? = null
     @Volatile private var lastStatsReadMs: Long = 0L
 
+    @Volatile private var lastPresentedFrames: Long = -1L
+    @Volatile private var lastPresentedAtMs: Long = 0L
+
+    private fun readNativeMeasuredFps(): Float? {
+        val renderer = rendererRef?.get() ?: return null
+        val now = System.currentTimeMillis()
+        val frames = try {
+            renderer.presentedFrameCount
+        } catch (t: Throwable) {
+            return null
+        }
+        val prevFrames = lastPresentedFrames
+        val prevAt = lastPresentedAtMs
+        if (prevFrames < 0 || frames < prevFrames) {
+            lastPresentedFrames = frames
+            lastPresentedAtMs = now
+            return null
+        }
+        val elapsed = now - prevAt
+        if (elapsed < 500L) return cachedMeasuredFps
+        lastPresentedFrames = frames
+        lastPresentedAtMs = now
+        cachedMeasuredFps = ((frames - prevFrames) * 1000.0 / elapsed).toFloat()
+        return cachedMeasuredFps
+    }
+
     /** Served from a cache refreshed off the main thread; callers poll ~1/s. */
     fun readMeasuredFps(container: Container): Float? {
+        if (isNativeBackend(container)) return readNativeMeasuredFps()
         val now = System.currentTimeMillis()
         if (now - lastStatsReadMs >= 500L) {
             lastStatsReadMs = now
@@ -231,6 +277,70 @@ object LsfgVkManager {
             }
         }
         return cachedMeasuredFps
+    }
+
+    // ---- Native backend ----------------------------------------------------
+
+    @Volatile private var nativeCachePath: String? = null
+    @Volatile private var rendererRef: WeakReference<VulkanRenderer>? = null
+    @Volatile private var appContext: Context? = null
+
+    /**
+     * Compile (or reuse) the SPIR-V shader cache the native pipeline needs,
+     * derived from the container's copy of Lossless.dll. Takes ~200 ms on a
+     * cold build, so callers should keep it off the launch-critical path.
+     */
+    @JvmStatic
+    @Synchronized
+    fun prepareNativeCache(context: Context, container: Container): String? {
+        val dll = containerDllPath(container)?.let { File(it) } ?: findSteamDll()
+        if (dll == null || !dll.isFile) return null
+        val driverName = LosslessScaling.getDriverName(container)
+        val cache = LosslessScaling.resolveOrBuildCache(context, dll, driverName)
+        nativeCachePath = cache?.absolutePath
+        return nativeCachePath
+    }
+
+    private fun displayRefreshRate(context: Context): Float = runCatching {
+        (context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager)
+            ?.defaultDisplay?.refreshRate
+    }.getOrNull()?.takeIf { it > 1f } ?: 60f
+
+    /** Push the container's LSFG settings into the host renderer's native pipeline. */
+    @JvmStatic
+    fun applyNativeRuntime(renderer: VulkanRenderer, container: Container, context: Context) {
+        rendererRef = WeakReference(renderer)
+        appContext = context.applicationContext
+        val multiplier = multiplier(container)
+        val enabled = isArmed(container) && isNativeBackend(container) && multiplier >= 2
+
+        renderer.setFrameGenerationMode(
+            multiplier.coerceAtLeast(2),
+            0,
+            (flowScale(container) * 100f).toInt(),
+        )
+        renderer.setFrameGenerationRefreshRate(displayRefreshRate(context))
+
+        val cachePath = nativeCachePath
+        if (cachePath == null && enabled) {
+            val ctx = context.applicationContext
+            vsyncWriteExecutor.execute {
+                val built = prepareNativeCache(ctx, container)
+                if (built != null) renderer.setFrameGenerationShaders(built)
+                renderer.setFrameGenerationEnabled(built != null)
+            }
+            return
+        }
+
+        if (cachePath != null) renderer.setFrameGenerationShaders(cachePath)
+        renderer.setFrameGenerationEnabled(enabled)
+    }
+
+    /** Re-push settings to the renderer captured by [applyNativeRuntime], if any. */
+    fun refreshNativeRuntime(container: Container) {
+        val renderer = rendererRef?.get() ?: return
+        val context = appContext ?: return
+        applyNativeRuntime(renderer, container, context)
     }
 
     /**
@@ -269,8 +379,18 @@ object LsfgVkManager {
                 localLibDir.mkdirs()
                 layerDir.mkdirs()
 
-                // Copy the layer .so from assets
-                FileUtils.copy(context, ASSET_LIB, libFile)
+                // Copy the layer .so from native library directory (jniLibs)
+                val nativeLibDir = File(context.applicationInfo.nativeLibraryDir)
+                val sourceLib = File(nativeLibDir, LIB_FILENAME)
+                if (!sourceLib.exists()) {
+                    Timber.tag(TAG).e("Native library not found: %s", sourceLib.absolutePath)
+                    return false
+                }
+                sourceLib.inputStream().use { input ->
+                    libFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
                 // Write the manifest with patched library_path
                 val manifestText = context.assets.open(ASSET_MANIFEST)
                     .bufferedReader().use { it.readText() }
@@ -300,6 +420,10 @@ object LsfgVkManager {
         } else {
             Timber.tag(TAG).d("Runtime %s already installed in %s", RUNTIME_VERSION, rootDir)
         }
+
+        // Delete the Lossless Scaling container if it exists (no longer needed)
+        // We now copy the DLL directly from Steam install dir instead of creating a container
+        deleteLosslessScalingContainerIfExists(context)
 
         // Copy Lossless.dll from Steam install dir into the container
         val dllFile = File(dllDir, LOSSLESS_DLL_NAME)
@@ -342,7 +466,7 @@ object LsfgVkManager {
             val dllPath = containerDllPath(container)
             val savedMultiplier = multiplier(container)
             val frameGenActive = parseBool(container.getExtra(EXTRA_ARMED, "false")) &&
-                dllPath != null && savedMultiplier >= 2
+                dllPath != null && savedMultiplier >= 2 && !isNativeBackend(container)
             val configFile = File(container.rootDir, CONFIG_RELATIVE_PATH)
             val configText = buildConfigToml(
                 dllPath = dllPath,
@@ -432,11 +556,59 @@ object LsfgVkManager {
     /**
      * Find Lossless.dll in the Steam install directory for app 993090.
      * Returns the File if it exists, null otherwise.
+     *
+     * This function searches all possible Steam install paths directly
+     * without creating a container for the Lossless Scaling app.
      */
     private fun findSteamDll(): File? {
-        val appDir = SteamService.getAppDirPath(LOSSLESS_SCALING_APP_ID)
-        val dll = File(appDir, LOSSLESS_DLL_NAME)
-        return dll.takeIf { it.isFile }
+        return findSteamDllDirect()
+    }
+
+    /**
+     * Find Lossless.dll by searching all Steam install paths directly.
+     * This avoids creating a container for app 993090 (Lossless Scaling).
+     *
+     * Search order:
+     * 1. Check if app is already installed in any known Steam path
+     * 2. Look for common install directory names
+     *
+     * @return File pointing to Lossless.dll if found, null otherwise
+     */
+    private fun findSteamDllDirect(): File? {
+        // Get app info to find the install directory name
+        val appInfo = SteamService.getAppInfoOf(LOSSLESS_SCALING_APP_ID)
+        val installDirName = appInfo?.installDir?.takeIf { it.isNotBlank() } ?: "Lossless Scaling"
+
+        // Search all possible Steam install paths
+        val searchPaths = SteamService.allInstallPaths
+
+        for (basePath in searchPaths) {
+            val appDir = File(basePath, installDirName)
+            val dll = File(appDir, LOSSLESS_DLL_NAME)
+            if (dll.isFile) {
+                Timber.tag(TAG).d("Found Lossless.dll at: %s", dll.absolutePath)
+                return dll
+            }
+        }
+
+        // Fallback: search for any directory containing Lossless.dll in Steam paths
+        for (basePath in searchPaths) {
+            val baseDir = File(basePath)
+            if (!baseDir.exists() || !baseDir.isDirectory) continue
+
+            baseDir.listFiles()?.forEach { subDir ->
+                if (subDir.isDirectory) {
+                    val dll = File(subDir, LOSSLESS_DLL_NAME)
+                    if (dll.isFile) {
+                        Timber.tag(TAG).d("Found Lossless.dll in fallback search at: %s", dll.absolutePath)
+                        return dll
+                    }
+                }
+            }
+        }
+
+        Timber.tag(TAG).w("Lossless.dll not found in any Steam install path")
+        return null
     }
 
     // ---- Helpers -----------------------------------------------------------
@@ -507,6 +679,31 @@ object LsfgVkManager {
 
     private fun formatFlowScale(value: Float): String =
         String.format(Locale.US, "%.2f", value.coerceIn(0.25f, 1.0f))
+
+    /**
+     * Delete the Lossless Scaling container if it exists.
+     * This container is no longer needed since we copy the DLL directly from
+     * the Steam install directory instead of creating a container for app 993090.
+     * This saves storage space.
+     */
+    private fun deleteLosslessScalingContainerIfExists(context: Context) {
+        try {
+            val containerManager = ContainerManager(context)
+            val losslessContainer = containerManager.getContainerById("STEAM_$LOSSLESS_SCALING_APP_ID")
+            if (losslessContainer != null) {
+                Timber.tag(TAG).i("Deleting Lossless Scaling container to save storage")
+                if (FileUtils.delete(losslessContainer.rootDir)) {
+                    containerManager.containers.remove(losslessContainer)
+                    Timber.tag(TAG).i("Successfully deleted Lossless Scaling container")
+                } else {
+                    Timber.tag(TAG).w("Failed to delete Lossless Scaling container directory")
+                }
+            }
+        } catch (t: Throwable) {
+            Timber.tag(TAG).w(t, "Error while trying to delete Lossless Scaling container")
+        }
+    }
+
     // ---- Runtime hot-reload -----------------------------------------------
 
     /**
@@ -542,7 +739,7 @@ object LsfgVkManager {
         }
 
         return try {
-            val frameGenActive = enabled && dllPath != null
+            val frameGenActive = enabled && dllPath != null && !isNativeBackend(container)
             val configText = buildConfigToml(
                 dllPath = dllPath,
                 enabled = frameGenActive,

@@ -13,6 +13,7 @@ import java.util.ArrayList;
 
 public class XClient implements XResourceManager.OnResourceLifecycleListener {
     public final XServer xServer;
+    public com.winlator.xconnector.Client connectorClient;
     private boolean authenticated = false;
     public final Integer resourceIDBase;
     private short sequenceNumber = 0;

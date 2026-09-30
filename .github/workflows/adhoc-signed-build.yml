@@ -15,6 +15,11 @@ jobs:
     if: github.actor == 'utkarshdalal'
 
     steps:
+    - name: Free disk space
+      run: |
+        sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/local/share/boost /usr/share/swift
+        df -h /
+
     - uses: actions/checkout@v4
     - name: Check out PR head (fork-aware)
       if: ${{ inputs.pr != '' }}
@@ -91,18 +96,28 @@ jobs:
 
     - name: Stage bundles
       run: |
-        cp app/build/outputs/bundle/legacyRelease/app-legacy-release.aab app-release.aab
-        cp app/build/outputs/bundle/modernRelease/app-modern-release.aab app-modern-release.aab
-        cp app/build/outputs/bundle/legacyXrRelease/app-legacyXr-release.aab app-legacy-xr-release.aab
+        mv app/build/outputs/bundle/legacyRelease/app-legacy-release.aab app-release.aab
+        mv app/build/outputs/bundle/modernRelease/app-modern-release.aab app-modern-release.aab
+        mv app/build/outputs/bundle/legacyXrRelease/app-legacyXr-release.aab app-legacy-xr-release.aab
+
+    - name: Stop Gradle daemons
+      run: |
+        ./gradlew --stop
+        df -h /
+        free -m
 
     - name: Extract APKs from Bundles
       run: |
-        java -jar tools/bundletool-all-1.17.2.jar build-apks --bundle=app-release.aab --output=app-release.apks --mode=universal
+        java -Xmx3g -jar tools/bundletool-all-1.17.2.jar build-apks --bundle=app-release.aab --output=app-release.apks --mode=universal
         unzip -o app-release.apks universal.apk
-        java -jar tools/bundletool-all-1.17.2.jar build-apks --bundle=app-modern-release.aab --output=app-modern-release.apks --mode=universal
+        rm app-release.apks app-release.aab
+        java -Xmx3g -jar tools/bundletool-all-1.17.2.jar build-apks --bundle=app-modern-release.aab --output=app-modern-release.apks --mode=universal
         unzip -p app-modern-release.apks universal.apk > universal-modern.apk
-        java -jar tools/bundletool-all-1.17.2.jar build-apks --bundle=app-legacy-xr-release.aab --output=app-legacy-xr-release.apks --mode=universal
+        rm app-modern-release.apks app-modern-release.aab
+        java -Xmx3g -jar tools/bundletool-all-1.17.2.jar build-apks --bundle=app-legacy-xr-release.aab --output=app-legacy-xr-release.apks --mode=universal
         unzip -p app-legacy-xr-release.apks universal.apk > universal-legacy-xr.apk
+        rm app-legacy-xr-release.apks app-legacy-xr-release.aab
+        df -h /
 
     - name: Copy lineage file
       run: |
