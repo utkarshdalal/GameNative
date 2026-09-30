@@ -345,6 +345,7 @@ private fun FlowRowScope.SuccessView(
                 onCoreToggled = onManualGamePinCoreToggled,
                 accentColor = accentColor,
                 topology = topology,
+                enabled = isDriverSupported && isGamePinningAvailable,
                 modifier = Modifier.fillMaxWidth(),
             )
             CoreCheckboxRow(
@@ -353,6 +354,7 @@ private fun FlowRowScope.SuccessView(
                 onCoreToggled = onManualBackgroundPinCoreToggled,
                 accentColor = accentColor,
                 topology = topology,
+                enabled = isDriverSupported && isGamePinningAvailable,
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -848,12 +850,18 @@ private fun CoreCheckboxRow(
     onCoreToggled: (core: Int, include: Boolean) -> Unit,
     accentColor: Color,
     topology: CpuTopologyDisplayInfo?,
+    enabled: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val cores = remember(topology) {
         topology?.cores ?: (0 until Runtime.getRuntime().availableProcessors()).toList()
     }
-    val selectedCores = remember(value) { PowerManager.parseCpuList(value) }
+    // Taps show immediately; [value] catches up after each re-pin.
+    var localValue by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(value, localValue) { if (localValue == value) localValue = null }
+    val shownValue = localValue ?: value
+    // Only cores the device has count, so the last visible one stays locked.
+    val selectedCores = remember(shownValue, cores) { PowerManager.parseCpuList(shownValue).filter { it in cores }.toSet() }
 
     Column(
         modifier = modifier,
@@ -873,11 +881,14 @@ private fun CoreCheckboxRow(
                     core = core,
                     checked = checked,
                     // Lock the last checked core so at least one core always stays selected.
-                    enabled = !(checked && selectedCores.size == 1),
+                    enabled = enabled && !(checked && selectedCores.size == 1),
                     labelColor = topology?.clusterByCore?.get(core)?.let { clusterColor(it) }
                         ?: MaterialTheme.colorScheme.onSurface,
                     accentColor = accentColor,
-                    onToggle = { include -> onCoreToggled(core, include) },
+                    onToggle = { include ->
+                        localValue = PowerManager.toggleCoreInList(shownValue, core, include)
+                        onCoreToggled(core, include)
+                    },
                 )
             }
         }

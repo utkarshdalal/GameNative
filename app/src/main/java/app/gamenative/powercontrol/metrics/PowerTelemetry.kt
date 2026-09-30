@@ -74,6 +74,10 @@ object PowerTelemetry {
         }
     }
 
+    private val PROFILE_CLOCK_KEYS = setOf(
+        "governor", "min_cpu_khz", "max_cpu_khz", "min_gpu_level", "max_gpu_level", "min_bus_level", "max_bus_level",
+    )
+
     fun sessionProperties(): Map<String, Any> = buildMap {
         val active = PowerManager.isGameStarted && PowerManager.isDriverSupported() && PowerManager.isProfilePowerControlEnabled()
         put("power_enabled", active)
@@ -98,7 +102,10 @@ object PowerTelemetry {
                 "game_pinning" to (p.gamePinningMode != GamePinningMode.OFF),
                 "game_pinning_mode" to p.gamePinningMode.name,
                 "adaptive_fps_cap" to p.adaptiveFpsCapEnabled,
-            ),
+            ).let { profile ->
+                // In Off the OS runs the clocks, so the profile's values don't apply.
+                if (p.autoTuningMode == AutoTuningMode.OFF) profile - PROFILE_CLOCK_KEYS else profile
+            },
         )
         synchronized(lock) {
             if (buckets.isEmpty()) return@buildMap

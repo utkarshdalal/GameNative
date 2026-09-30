@@ -33,6 +33,9 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         /** Thread IDs per `taskset` command, so it stays short enough for PServer. */
         private const val TASKSET_TIDS_PER_COMMAND = 12
 
+        /** How long start() waits for a pending stop() cleanup. */
+        private const val STOP_JOIN_TIMEOUT_MS = 2000L
+
         private const val TAG = "PServerDriver"
         private const val POWER_TAG = "PowerControl"
         private const val FAN_TAG = "PowerFan"
@@ -342,11 +345,18 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
      * Validates CPU frequency scaling support and discovers CPU policies.
      */
     override fun start() {
-        // Interrupt any ongoing stop() cleanup to prevent executor shutdown race
+        // Wait for a pending stop() cleanup: past its restore, an interrupt no longer keeps it from clearing the new baseline.
         stopThread?.let { thread ->
             if (thread.isAlive) {
-                Timber.tag(TAG).d("Interrupting previous stop() cleanup thread")
-                thread.interrupt()
+                try {
+                    thread.join(STOP_JOIN_TIMEOUT_MS)
+                } catch (_: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                }
+                if (thread.isAlive) {
+                    Timber.tag(TAG).w("Previous stop() cleanup still running after ${STOP_JOIN_TIMEOUT_MS}ms, interrupting it")
+                    thread.interrupt()
+                }
             }
         }
         stopThread = null
@@ -377,6 +387,8 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
                     return@Thread
                 }
 
+                // Released explicitly too, in case the session has no baseline.
+                runCatching { holdCoresActive(emptyList()) }
                 val restored = restoreRecordedBaseline()
 
                 if (restored) {

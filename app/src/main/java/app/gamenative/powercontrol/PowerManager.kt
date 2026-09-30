@@ -213,6 +213,13 @@ object PowerManager {
         }
     }
 
+    /** Stops the pin watchdogs, affinities untouched. No [affinityLock]: called on the main thread. */
+    private fun stopPinWatchdogs() {
+        gamePinGeneration++
+        gamePinActive = false
+        backgroundPinGeneration++
+    }
+
     /**
      * Held while an affinity change is checked against its generation and applied, so a pin or an
      * unpin that got superseded meanwhile can never land after the newer one.
@@ -355,6 +362,7 @@ object PowerManager {
         saveProfile()
         AdaptiveFpsCapController.stop()
         PerformanceMetricsCollector.stop()
+        stopPinWatchdogs()
         stopPowerControl()
         isGameStarted = false
         fpsCapApplier = null
@@ -379,11 +387,7 @@ object PowerManager {
         saveProfile()
         AdaptiveFpsCapController.pause()
         PerformanceMetricsCollector.pause()
-        synchronized(affinityLock) {
-            gamePinGeneration++
-            gamePinActive = false
-            backgroundPinGeneration++
-        }
+        stopPinWatchdogs()
         stopPowerControl()
     }
 
@@ -1683,10 +1687,11 @@ object PowerManager {
         runAffinityJob(blocking) {
             try {
                 val pserver = driver as? PServerDriver
-                pserver?.let { releaseCoreHold(it) }
                 // A pin still on its way isn't recorded yet, but may have moved threads already.
                 val pid = pinnedGamePid ?: pserver?.let { findGamePid(it, processName) }
                 val success = synchronized(affinityLock) {
+                    // Only while current, so a newer pin keeps its core_ctl hold.
+                    if (generation == gamePinGeneration) pserver?.let { releaseCoreHold(it) }
                     val applied = applyAffinityIfCurrent(generation, processName, pid, coresToUnpin) ?: return@runAffinityJob
                     // Over taskset too, for threads the winhandler doesn't reach.
                     if (pid != null) pserver?.setCpuAffinityByCores(pid, coresToUnpin, allThreads = true)
@@ -1973,8 +1978,8 @@ object PowerManager {
             Timber.tag("PowerManager").i(
                 "Auto-tuning mode is now Off, released CPU/GPU frequency control back to the OS (success=$released)"
             )
-            // The release may have been applied in part; Manual stays, so put its controls back (Auto's tuner restarts on its own).
-            if (!released && previous == AutoTuningMode.MANUAL) applyCpuGpuControl()
+            // A partial release keeps the previous mode, so re-apply its controls.
+            if (!released) applyCpuGpuControl()
             return released
         } else if (previous == AutoTuningMode.OFF) {
             val reclaimed = applyCpuGpuControl()
@@ -1984,6 +1989,11 @@ object PowerManager {
             // The batch may have been applied in part; the mode stays Off, so hand everything back.
             if (!reclaimed) driver.releaseFrequencyControl()
             return reclaimed
+        } else if (previous == AutoTuningMode.AUTO && next == AutoTuningMode.MANUAL) {
+            // ClusterTuner leaves its per-cluster caps behind.
+            val applied = applyCpuGpuControl()
+            Timber.tag("PowerManager").i("Auto-tuning mode is now Manual, applied the profile's CPU/GPU controls (success=$applied)")
+            return applied
         }
         return true
     }
