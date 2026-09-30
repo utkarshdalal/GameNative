@@ -99,6 +99,8 @@
     <string name="pulseaudio_suspend_behavior_thread">Приостановка через поток (По умолчанию)</string>
     <string name="pulseaudio_suspend_behavior_pactl">Приостановка через Pactl (Энергосбережение)</string>
     <string name="pulseaudio_low_latency">Режим низкой задержки PulseAudio</string>
+    <string name="microphone_input">Микрофонный вход</string>
+    <string name="microphone_input_description">Предоставляет микрофон устройства Wine/Proton как устройство записи. Требуется разрешение на микрофон.</string>
     <string name="auth_webview_title">Авторизация</string>
     <string name="autofill">Автозаполнение</string>
     <string name="back">Назад</string>
@@ -661,7 +663,7 @@
     <string name="last_played">Последний раз играл</string>
     <string name="launch_dependency_failed_message">Ошибка загрузки требуемого компонента. Пожалуйста, попробуйте позже.</string>
     <string name="launch_dependency_failed_title">Ошибка загрузки зависимости запуска</string>
-    <string name="launch_steam_client_beta">Запустить Steam Client (бета)</string>
+    <string name="launch_steam_client_beta">Запустить Steam Client</string>
     <string name="launch_steam_client_description">Рекомендуется Headless\nТребуется для EA, Rockstar, Ubisoft и других лаунчеров\nВключает мультиплеер и устраняет проблемы с DRM и контроллером</string>
     <string name="launch_bionic_steam">Включить экспериментальный Bionic Steam</string>
     <string name="left_analog_stick">Левый аналоговый джойстик</string>
@@ -1520,6 +1522,13 @@ https://gamenative.app
     <string name="recommended_support_message">Мы получаем комиссию с покупок, совершённых по этой ссылке.</string>
     <string name="recommended_about_heading">Об этой игре</string>
     <string name="recommended_review_count">На основе %1$s отзывов</string>
+    <string name="library_store_media_page">%1$d из %2$d</string>
+    <string name="library_store_media_fullscreen">Открыть медиафайлы на весь экран</string>
+    <string name="library_store_media_close">Закрыть полноэкранный просмотр</string>
+    <string name="library_store_media_previous">Предыдущий медиафайл</string>
+    <string name="library_store_media_next">Следующий медиафайл</string>
+    <string name="library_store_about_expand">Развернуть раздел «Об этой игре»</string>
+    <string name="library_store_about_collapse">Свернуть раздел «Об этой игре»</string>
     <string name="review_overwhelmingly_positive">Крайне положительные</string>
     <string name="review_very_positive">Очень положительные</string>
     <string name="review_mostly_positive">В основном положительные</string>
@@ -1557,6 +1566,7 @@ https://gamenative.app
     <string name="hltb_all_styles">Все стили</string>
     <string name="hltb_hours_value">%sh</string>
     <string name="hltb_section_title">HLTB</string>
+    <string name="hltb_show_spoilers">Показать спойлеры</string>
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
@@ -1712,6 +1722,7 @@ https://gamenative.app
     <string name="export_files_cancelled">Экспорт отменён</string>
     <string name="export_files_no_container">Запустите игру один раз, чтобы создать её контейнер, затем экспортируйте файлы.</string>
     <string name="export_files_failed_header">Не удалось экспортировать эти файлы:</string>
+    <string name="app_filter_vr">VR-игра</string>
     <string name="option_manage_mods">Управление модами Nexus</string>
     <string name="nexus_search_clear">Очистить поиск</string>
     <string name="nexus_filter_all">Все</string>

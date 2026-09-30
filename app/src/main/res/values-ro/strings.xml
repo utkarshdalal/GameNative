@@ -688,9 +688,13 @@
 	<string name="pulseaudio_suspend_behavior_thread">Suspendare prin Thread (Implicit)</string>
 	<string name="pulseaudio_suspend_behavior_pactl">Suspendare prin Pactl (Economisire energie)</string>
 	<string name="pulseaudio_low_latency">Mod latență redusă PulseAudio</string>
+	<string name="microphone_input">Intrare microfon</string>
+	<string name="microphone_input_description">Expune microfonul dispozitivului către Wine/Proton ca dispozitiv de înregistrare. Necesită permisiunea pentru microfon.</string>
 	<string name="show_fps">Afișează FPS</string>
 	<string name="portrait_mode">Mod portret</string>
 	<string name="portrait_mode_description">Pentru controlere de tip 8BitDo FlipPad/GameSir Pocket Taco</string>
+	<string name="portrait_below_cutout">Păstrează sub decupajul camerei</string>
+	<string name="portrait_below_cutout_description">Afișează jocul sub decupajul camerei în modul portret</string>
 	<string name="remove_driver_confirmation">Sigur vrei să elimini driverul „%s”? Această acțiune nu poate fi anulată</string>
 
     <!-- Container Configuration: Steam Integration -->
@@ -701,7 +705,7 @@
 	<string name="force_dlc_description">Activează doar dacă DLC‑urile nu sunt detectate sau salvările cu DLC nu funcționează</string>
 	<string name="local_saves_only">Doar salvări locale</string>
 	<string name="local_saves_only_description">Dezactivează sincronizarea salvărilor în cloud pentru acest joc și păstrează salvările doar pe dispozitiv</string>
-	<string name="launch_steam_client_beta">Pornește Steam Client (Beta)</string>
+	<string name="launch_steam_client_beta">Pornește Steam Client</string>
 	<string name="steam_offline_mode">Mod Offline Steam</string>
 	<string name="steam_offline_mode_description">Pornește jocurile Steam în mod offline</string>
 	<string name="epic_offline_mode">Mod Offline Epic</string>
@@ -1585,6 +1589,13 @@
     <string name="recommended_support_message">Primim un comision pentru achizițiile efectuate prin acest link.</string>
     <string name="recommended_about_heading">Despre acest joc</string>
     <string name="recommended_review_count">Pe baza a %1$s recenzii</string>
+    <string name="library_store_media_page">%1$d din %2$d</string>
+    <string name="library_store_media_fullscreen">Vizualizează conținutul media pe ecran complet</string>
+    <string name="library_store_media_close">Închide conținutul media pe ecran complet</string>
+    <string name="library_store_media_previous">Element media anterior</string>
+    <string name="library_store_media_next">Element media următor</string>
+    <string name="library_store_about_expand">Extinde Despre acest joc</string>
+    <string name="library_store_about_collapse">Restrânge Despre acest joc</string>
     <string name="review_overwhelmingly_positive">Copleșitor de pozitiv</string>
     <string name="review_very_positive">Foarte pozitiv</string>
     <string name="review_mostly_positive">Majoritar pozitiv</string>
@@ -1622,6 +1633,7 @@
     <string name="hltb_all_styles">Toate stilurile</string>
     <string name="hltb_hours_value">%sh</string>
     <string name="hltb_section_title">HLTB</string>
+    <string name="hltb_show_spoilers">Afișează spoilere</string>
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
@@ -1777,6 +1789,7 @@
     <string name="export_files_cancelled">Export anulat</string>
     <string name="export_files_no_container">Pornește jocul o dată pentru a-i crea containerul, apoi exportă fișierele.</string>
     <string name="export_files_failed_header">Aceste fișiere nu au putut fi exportate:</string>
+    <string name="app_filter_vr">Joc VR</string>
     <string name="option_manage_mods">Gestionează modurile Nexus</string>
     <string name="nexus_search_clear">Șterge căutarea</string>
     <string name="nexus_filter_all">Toate</string>

@@ -678,9 +678,13 @@
     <string name="pulseaudio_suspend_behavior_thread">透過執行緒暫停（預設）</string>
     <string name="pulseaudio_suspend_behavior_pactl">透過 Pactl 暫停（省電）</string>
     <string name="pulseaudio_low_latency">PulseAudio 低延遲模式</string>
+    <string name="microphone_input">麥克風輸入</string>
+    <string name="microphone_input_description">將裝置麥克風作為錄音裝置提供給 Wine/Proton。需要麥克風權限。</string>
     <string name="show_fps">顯示幀率</string>
     <string name="portrait_mode">直向模式</string>
     <string name="portrait_mode_description">適用於 8BitDo FlipPad/GameSir Pocket Taco 類型控制器</string>
+    <string name="portrait_below_cutout">顯示在相機孔下方</string>
+    <string name="portrait_below_cutout_description">在直向模式下將遊戲畫面顯示在相機孔下方</string>
     <string name="remove_driver_confirmation">您確定要移除驅動程式 "%s"? 此操作無法復原</string>
 
     <!-- Container Configuration: Steam Integration -->
@@ -689,7 +693,7 @@
     <string name="unpack_files_description">僅在出現\'應用程式載入錯誤\'時使用。可能會降低幀率。</string>
     <string name="force_dlc">強制開啟DLC</string>
     <string name="force_dlc_description">僅在未偵測到 DLC 或包含 DLC 的存檔無法運作時啟用</string>
-    <string name="launch_steam_client_beta">啟動 Steam 用戶端 (Beta)</string>
+    <string name="launch_steam_client_beta">啟動 Steam 用戶端</string>
     <string name="steam_offline_mode">Steam 離線模式</string>
     <string name="steam_offline_mode_description">以離線模式啟動 Steam 遊戲</string>
     <string name="epic_offline_mode">Epic 離線模式</string>
@@ -1563,6 +1567,13 @@
     <string name="recommended_support_message">透過此連結購買，我們會獲得佣金。</string>
     <string name="recommended_about_heading">關於本遊戲</string>
     <string name="recommended_review_count">基於 %1$s 則評價</string>
+    <string name="library_store_media_page">第 %1$d 項，共 %2$d 項</string>
+    <string name="library_store_media_fullscreen">以全螢幕檢視媒體</string>
+    <string name="library_store_media_close">關閉全螢幕媒體</string>
+    <string name="library_store_media_previous">上一個媒體</string>
+    <string name="library_store_media_next">下一個媒體</string>
+    <string name="library_store_about_expand">展開「關於本遊戲」</string>
+    <string name="library_store_about_collapse">收合「關於本遊戲」</string>
     <string name="review_overwhelmingly_positive">壓倒性好評</string>
     <string name="review_very_positive">極度好評</string>
     <string name="review_mostly_positive">大多好評</string>
@@ -1671,6 +1682,7 @@
     <string name="hltb_all_styles">所有風格</string>
     <string name="hltb_hours_value">%sh</string>
     <string name="hltb_section_title">HLTB</string>
+    <string name="hltb_show_spoilers">顯示劇透</string>
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
@@ -1794,6 +1806,7 @@
     <string name="export_files_cancelled">已取消匯出</string>
     <string name="export_files_no_container">請先啟動一次遊戲以建立其容器，然後再匯出檔案。</string>
     <string name="export_files_failed_header">以下檔案無法匯出：</string>
+    <string name="app_filter_vr">VR 遊戲</string>
     <string name="option_manage_mods">管理 Nexus 模組</string>
     <string name="nexus_search_clear">清除搜尋</string>
     <string name="nexus_filter_all">全部</string>

@@ -1,5 +1,6 @@
 package com.winlator.core.envvars
 
+import com.winlator.container.Container
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -95,5 +96,24 @@ class EnvVarsTest {
         assertEquals("with space", parsed.get("A"))
         assertEquals("no_space", parsed.get("B"))
         assertEquals("another with spaces", parsed.get("C"))
+    }
+
+    @Test
+    fun defaultValuesAreOfferedByThePicker() {
+        val defaults = EnvVars(Container.DEFAULT_ENV_VARS)
+        for (name in defaults) {
+            val info = EnvVarInfo.KNOWN_ENV_VARS[name] ?: continue
+            if (info.possibleValues.isEmpty() || info.selectionType == EnvVarSelectionType.SUGGESTIONS) continue
+
+            val value = defaults.get(name)
+            val values = if (info.selectionType == EnvVarSelectionType.MULTI_SELECT) {
+                if (value.isEmpty()) emptyList() else value.split(",")
+            } else {
+                listOf(value)
+            }
+            for (option in values) {
+                assertTrue("$name default '$option' is not offered by the picker", option in info.possibleValues)
+            }
+        }
     }
 }

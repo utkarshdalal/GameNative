@@ -96,6 +96,7 @@ internal fun GridViewCard(
     hideText: Boolean,
     imageAlpha: Float,
     onImageLoadFailed: () -> Unit,
+    onImageLoaded: () -> Unit = {},
     compatibilityStatus: GameCompatibilityStatus?,
     gameStats: GameCardStats?,
     showFocusGlow: Boolean,
@@ -214,9 +215,11 @@ internal fun GridViewCard(
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 // Game image (primary + optional fallback for Steam header/hero)
-                val imageUrls = if (appInfo.gameSource == GameSource.CUSTOM_GAME) {
-                    produceState(
-                        initialValue = GridImageUrls("", ""),
+                // Custom game URLs are resolved off the main thread; null means "not resolved yet"
+                // so the image isn't loaded (and can't report a failure) until the real URL is known.
+                val resolvedImageUrls: GridImageUrls? = if (appInfo.gameSource == GameSource.CUSTOM_GAME) {
+                    produceState<GridImageUrls?>(
+                        initialValue = null,
                         key1 = appInfo.appId,
                         key2 = paneType,
                         key3 = imageRefreshCounter,
@@ -230,6 +233,7 @@ internal fun GridViewCard(
                         getGridImageUrl(context, appInfo, paneType)
                     }
                 }
+                val imageUrls = resolvedImageUrls ?: GridImageUrls("", "")
 
                 var currentImageUrl by remember(
                     imageUrls.primary,
@@ -237,7 +241,11 @@ internal fun GridViewCard(
                     appInfo.appId,
                     imageRefreshCounter,
                 ) {
-                    mutableStateOf(imageUrls.primary)
+                    mutableStateOf(imageUrls.primary.ifEmpty { imageUrls.fallback })
+                }
+
+                if (resolvedImageUrls != null && currentImageUrl.isEmpty()) {
+                    LaunchedEffect(resolvedImageUrls) { onImageLoadFailed() }
                 }
 
                 if (isCapsule && currentImageUrl.isNotEmpty()) {
@@ -257,23 +265,26 @@ internal fun GridViewCard(
                     Modifier
                 }
 
-                ListItemImage(
-                    modifier = Modifier.fillMaxSize(),
-                    imageModifier = Modifier
-                        .fillMaxSize()
-                        .alpha(imageAlpha)
-                        .then(gridHeroZoom)
-                        .then(if (frost > 0f) Modifier.blur(10.dp * frost) else Modifier),
-                    contentScale = getGridContentScale(paneType),
-                    image = { currentImageUrl },
-                    onFailure = {
-                        if (imageUrls.fallback.isNotEmpty() && currentImageUrl == imageUrls.primary) {
-                            currentImageUrl = imageUrls.fallback
-                        } else {
-                            onImageLoadFailed()
-                        }
-                    },
-                )
+                if (currentImageUrl.isNotEmpty()) {
+                    ListItemImage(
+                        modifier = Modifier.fillMaxSize(),
+                        imageModifier = Modifier
+                            .fillMaxSize()
+                            .alpha(imageAlpha)
+                            .then(gridHeroZoom)
+                            .then(if (frost > 0f) Modifier.blur(10.dp * frost) else Modifier),
+                        contentScale = getGridContentScale(paneType),
+                        image = { currentImageUrl },
+                        onFailure = {
+                            if (imageUrls.fallback.isNotEmpty() && currentImageUrl == imageUrls.primary) {
+                                currentImageUrl = imageUrls.fallback
+                            } else {
+                                onImageLoadFailed()
+                            }
+                        },
+                        onSuccess = onImageLoaded,
+                    )
+                }
 
                 val displayName = if (appInfo.isRecTeaser) {
                     stringResource(R.string.rec_teaser_title)

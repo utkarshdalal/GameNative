@@ -346,6 +346,13 @@ object PrefManager {
             setPref(PULSEAUDIO_LOW_LATENCY, value)
         }
 
+    private val MIC_ENABLED = booleanPreferencesKey("mic_enabled")
+    var micEnabled: Boolean
+        get() = getPref(MIC_ENABLED, false)
+        set(value) {
+            setPref(MIC_ENABLED, value)
+        }
+
     private val WIN_COMPONENTS = stringPreferencesKey("wincomponents")
     var winComponents: String
         get() = getPref(WIN_COMPONENTS, Container.DEFAULT_WINCOMPONENTS)
@@ -786,6 +793,13 @@ object PrefManager {
             setPref(PORTRAIT_MODE, value)
         }
 
+    private val PORTRAIT_BELOW_CUTOUT = booleanPreferencesKey("portrait_below_cutout")
+    var portraitBelowCutout: Boolean
+        get() = getPref(PORTRAIT_BELOW_CUTOUT, false)
+        set(value) {
+            setPref(PORTRAIT_BELOW_CUTOUT, value)
+        }
+
     private val BOX_86_VERSION = stringPreferencesKey("box86_version")
     var box86Version: String
         get() = getPref(BOX_86_VERSION, DefaultVersion.BOX86)
@@ -904,7 +918,9 @@ object PrefManager {
     private val LIBRARY_FILTER = intPreferencesKey("library_filter")
     var libraryFilter: EnumSet<AppFilter>
         get() {
-            val value = getPref(LIBRARY_FILTER, AppFilter.toFlags(EnumSet.of(AppFilter.GAME, AppFilter.SHARED)))
+            val defaultFilter = EnumSet.of(AppFilter.GAME, AppFilter.SHARED)
+            if (BuildConfig.XR_BUILD) defaultFilter.add(AppFilter.VR)
+            val value = getPref(LIBRARY_FILTER, AppFilter.toFlags(defaultFilter))
             return AppFilter.fromFlags(value)
         }
         set(value) {

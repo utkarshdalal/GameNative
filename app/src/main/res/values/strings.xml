@@ -280,6 +280,10 @@
     <string name="dpad_right">D-Pad Right</string>
     <string name="input_controls">On-screen Controller</string>
     <string name="edit_controls">Edit On-screen Controller</string>
+    <string name="on_screen_controller_settings">On-screen Controller Settings</string>
+    <string name="mouse_speed">Mouse Speed</string>
+    <string name="mouse_speed_subtitle">Adjust pointer speed for touch movement and controls assigned to move the mouse. Shooter Mode uses its own look sensitivity.</string>
+    <string name="reset_mouse_speed">Reset mouse speed</string>
     <string name="edit_physical_controller">Edit Physical Controller</string>
     <string name="controller_disconnected">Disconnected</string>
     <string name="reset_onscreen_controls">Reset On-Screen Controls</string>
@@ -803,6 +807,7 @@
     <string name="filter_five_star_device">5-star reviews on device</string>
     <string name="filter_five_star_gpu">5-star reviews on GPU</string>
     <string name="filter_proven_gpu">Proven on your GPU</string>
+    <string name="app_filter_vr">VR game</string>
 
     <!-- Login & Connection -->
     <string name="connecting_to_steam">Connecting to Steam…</string>
@@ -856,9 +861,13 @@
     <string name="pulseaudio_suspend_behavior_thread">Suspend via Thread (Default)</string>
     <string name="pulseaudio_suspend_behavior_pactl">Suspend via Pactl (Powersave)</string>
     <string name="pulseaudio_low_latency">PulseAudio Low Latency Mode</string>
+    <string name="microphone_input">Microphone Input</string>
+    <string name="microphone_input_description">Expose the device microphone to Wine/Proton as a recording device. Requires the microphone permission.</string>
     <string name="show_fps">Show FPS</string>
     <string name="portrait_mode">Portrait Mode</string>
     <string name="portrait_mode_description">For 8BitDo FlipPad/GameSir Pocket Taco type controllers</string>
+    <string name="portrait_below_cutout">Keep Below Camera Hole</string>
+    <string name="portrait_below_cutout_description">Start the game display below the camera cutout in portrait mode</string>
     <string name="remove_driver_confirmation">Are you sure you want to remove driver "%s"? This cannot be undone</string>
 
     <!-- Container Configuration: Steam Integration -->
@@ -869,7 +878,7 @@
     <string name="force_dlc_description">Only enable if DLCs are not detected or saves with DLC are not working</string>
     <string name="local_saves_only">Local saves only</string>
     <string name="local_saves_only_description">Disable cloud save sync for this game and keep saves on device only</string>
-    <string name="launch_steam_client_beta">Launch Steam Client (Beta)</string>
+    <string name="launch_steam_client_beta">Launch Steam Client</string>
     <string name="launch_steam_client_description">Headless is recommended\nRequired for EA, Rockstar, Ubisoft and other launchers\nEnables multiplayer and fixes DRM and controller issues</string>
     <string name="launch_bionic_steam">Enable Experimental Bionic Steam</string>
     <string name="launch_bionic_steam_description">Enables online play, improves compatibility\nDoes not always work\nBack up your saves before trying this</string>
@@ -2353,6 +2362,13 @@
     <string name="recommended_support_message">We earn a commission on purchases made through this link.</string>
     <string name="recommended_about_heading">About This Game</string>
     <string name="recommended_review_count">Based on %1$s reviews</string>
+    <string name="library_store_media_page">%1$d of %2$d</string>
+    <string name="library_store_media_fullscreen">View media fullscreen</string>
+    <string name="library_store_media_close">Close fullscreen media</string>
+    <string name="library_store_media_previous">Previous media</string>
+    <string name="library_store_media_next">Next media</string>
+    <string name="library_store_about_expand">Expand About This Game</string>
+    <string name="library_store_about_collapse">Collapse About This Game</string>
 
     <!-- FeaturedItem (server-driven promoted slot) -->
     <string name="featured_badge">Sponsored</string>
@@ -2444,6 +2460,7 @@
     <string name="hltb_all_styles">All Styles</string>
     <string name="hltb_hours_value">%sh</string>
     <string name="hltb_section_title">How Long to Beat</string>
+    <string name="hltb_show_spoilers">Show spoilers</string>
 
     <!-- Frontend Sync Settings -->
     <string name="settings_interface_frontend_sync_title">Frontend Sync</string>

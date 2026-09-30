@@ -698,9 +698,13 @@
     <string name="pulseaudio_suspend_behavior_thread">スレッド経由でサスペンド（デフォルト）</string>
     <string name="pulseaudio_suspend_behavior_pactl">Pactl 経由でサスペンド（省電力）</string>
     <string name="pulseaudio_low_latency">PulseAudio 低レイテンシーモード</string>
+    <string name="microphone_input">マイク入力</string>
+    <string name="microphone_input_description">デバイスのマイクを録音デバイスとして Wine/Proton に公開します。マイクの権限が必要です。</string>
     <string name="show_fps">FPS を表示</string>
     <string name="portrait_mode">ポートレートモード</string>
     <string name="portrait_mode_description">8BitDo FlipPad/GameSir Pocket Taco タイプ コントローラー用</string>
+    <string name="portrait_below_cutout">カメラホールの下に表示</string>
+    <string name="portrait_below_cutout_description">ポートレートモードでゲーム画面をカメラホールの下に表示します</string>
     <string name="remove_driver_confirmation">ドライバー「%s」を削除してもよろしいですか?これは元に戻すことはできません</string>
 
     <!-- Container Configuration: Steam Integration -->
@@ -711,7 +715,7 @@
     <string name="force_dlc_description">DLC が検出されない場合、または DLC を含む保存が機能しない場合にのみ有効にします</string>
     <string name="local_saves_only">ローカル保存のみ</string>
     <string name="local_saves_only_description">このゲームのクラウド セーブ同期を無効にし、セーブをデバイス上にのみ保存します</string>
-    <string name="launch_steam_client_beta">Steam クライアント (ベータ版) を起動する</string>
+    <string name="launch_steam_client_beta">Steam クライアントを起動する</string>
     <string name="launch_steam_client_description">Headless を推奨\nEA、Rockstar、Ubisoft などのランチャーに必要\nマルチプレイを有効にし、DRM とコントローラーの問題を修正</string>
     <string name="launch_bionic_steam">実験的な Bionic Steam を有効にする</string>
     <string name="launch_bionic_steam_description">オンライン プレイが可能になり、互換性が向上します\n常に機能するとは限りません\nこれを試す前にセーブデータをバックアップしてください</string>
@@ -1629,6 +1633,13 @@
     <string name="recommended_support_message">このリンクから購入された場合、当社は手数料を受け取ります。</string>
     <string name="recommended_about_heading">このゲームについて</string>
     <string name="recommended_review_count">%1$s のレビューに基づく</string>
+    <string name="library_store_media_page">%2$d 件中 %1$d</string>
+    <string name="library_store_media_fullscreen">メディアを全画面表示</string>
+    <string name="library_store_media_close">全画面メディアを閉じる</string>
+    <string name="library_store_media_previous">前のメディア</string>
+    <string name="library_store_media_next">次のメディア</string>
+    <string name="library_store_about_expand">「このゲームについて」を展開</string>
+    <string name="library_store_about_collapse">「このゲームについて」を折りたたむ</string>
     <string name="review_overwhelmingly_positive">圧倒的にポジティブ</string>
     <string name="review_very_positive">とてもポジティブ</string>
     <string name="review_mostly_positive">ほとんどがポジティブ</string>
@@ -1661,6 +1672,15 @@
     <string name="settings_interface_library_tabs_title">ライブラリのタブ</string>
     <string name="settings_interface_library_tabs_subtitle">ライブラリに表示するストアのタブを選択します。</string>
     <string name="settings_interface_library_tabs_none">ストアのタブなし</string>
+    <!-- HLTB (How Long To Beat) -->
+    <string name="hltb_main_story">メインストーリー</string>
+    <string name="hltb_main_plus_extras">メイン + 追加要素</string>
+    <string name="hltb_completionist">コンプリート</string>
+    <string name="hltb_all_styles">すべてのスタイル</string>
+    <string name="hltb_hours_value">%sh</string>
+    <string name="hltb_section_title">HLTB</string>
+    <string name="hltb_show_spoilers">ネタバレを表示</string>
+
     <!-- Game Launch Tips -->
     <string name="game_launch_tip_1">初回起動時は起動に数分かかる場合があります</string>
     <string name="game_launch_tip_2">ヒント: ゲーム設定で \"%s\" を押すと、ゲーム ファイルを表示できます。</string>
@@ -1742,6 +1762,7 @@
     <string name="export_files_cancelled">エクスポートをキャンセルしました</string>
     <string name="export_files_no_container">ゲームを一度起動してコンテナを作成してから、ファイルをエクスポートしてください。</string>
     <string name="export_files_failed_header">次のファイルをエクスポートできませんでした:</string>
+    <string name="app_filter_vr">VRゲーム</string>
     <string name="option_manage_mods">Nexus Mod を管理</string>
     <string name="nexus_search_clear">検索をクリア</string>
     <string name="nexus_filter_all">すべて</string>

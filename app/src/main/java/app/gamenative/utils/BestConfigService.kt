@@ -974,8 +974,23 @@ object BestConfigService {
                 if (filteredJson.has("launchBionicSteam") && !filteredJson.isNull("launchBionicSteam")) {
                     resultMap["launchBionicSteam"] = filteredJson.optBoolean("launchBionicSteam", false)
                 }
+                if (filteredJson.has("launchRealSteam") && !filteredJson.isNull("launchRealSteam")) {
+                    resultMap["launchRealSteam"] = filteredJson.optBoolean("launchRealSteam", false)
+                }
+                if (filteredJson.has("steamType") && !filteredJson.isNull("steamType")) {
+                    resultMap["steamType"] = filteredJson.optString("steamType", "")
+                }
                 if (filteredJson.has("steamOfflineMode") && !filteredJson.isNull("steamOfflineMode")) {
                     resultMap["steamOfflineMode"] = filteredJson.optBoolean("steamOfflineMode", PrefManager.steamOfflineMode)
+                }
+                if (filteredJson.has("epicOfflineMode") && !filteredJson.isNull("epicOfflineMode")) {
+                    resultMap["epicOfflineMode"] = filteredJson.optBoolean("epicOfflineMode", false)
+                }
+                if (filteredJson.has("unpackFiles") && !filteredJson.isNull("unpackFiles")) {
+                    resultMap["unpackFiles"] = filteredJson.optBoolean("unpackFiles", false)
+                }
+                if (filteredJson.has("suspendPolicy") && !filteredJson.isNull("suspendPolicy")) {
+                    resultMap["suspendPolicy"] = filteredJson.optString("suspendPolicy", "")
                 }
                 if (filteredJson.has("envVars") && !filteredJson.isNull("envVars")) {
                     var envVars = filteredJson.optString("envVars", PrefManager.envVars)

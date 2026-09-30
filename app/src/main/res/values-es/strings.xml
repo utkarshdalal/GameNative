@@ -732,9 +732,13 @@
     <string name="pulseaudio_suspend_behavior_thread">Suspender vía Thread (Predeterminado)</string>
     <string name="pulseaudio_suspend_behavior_pactl">Suspender vía Pactl (Ahorro de energía)</string>
     <string name="pulseaudio_low_latency">Modo de baja latencia PulseAudio</string>
+    <string name="microphone_input">Entrada de micrófono</string>
+    <string name="microphone_input_description">Expone el micrófono del dispositivo a Wine/Proton como dispositivo de grabación. Requiere el permiso de micrófono.</string>
     <string name="show_fps">Mostrar FPS</string>
     <string name="portrait_mode">Modo vertical</string>
     <string name="portrait_mode_description">Para controles tipo 8BitDo FlipPad/GameSir Pocket Taco</string>
+    <string name="portrait_below_cutout">Mantener debajo de la cámara</string>
+    <string name="portrait_below_cutout_description">Muestra el juego debajo del orificio de la cámara en modo vertical</string>
     <string name="remove_driver_confirmation">¿Deseas eliminar el controlador "%s"? Esta acción no se puede deshacer.</string>
 
     <!-- Container Configuration: Steam Integration -->
@@ -745,7 +749,7 @@
     <string name="force_dlc_description">Actívalo solo si los DLC no se detectan o los archivos de guardados con DLC no funcionan.</string>
     <string name="local_saves_only">Solo guardados locales</string>
     <string name="local_saves_only_description">Desactiva la sincronización de guardados en la nube para este juego y mantén las partidas solo en el dispositivo</string>
-    <string name="launch_steam_client_beta">Iniciar cliente de Steam (Beta)</string>
+    <string name="launch_steam_client_beta">Iniciar cliente de Steam</string>
     <string name="launch_steam_client_description">Se recomienda Headless\nNecesario para EA, Rockstar, Ubisoft y otros lanzadores\nActiva el multijugador y corrige problemas de DRM y de mando</string>
     <string name="launch_bionic_steam">Habilitar Bionic Steam experimental</string>
     <string name="steam_offline_mode">Modo sin conexión de Steam</string>
@@ -1592,6 +1596,13 @@
     <string name="recommended_support_message">Recibimos una comisión por las compras realizadas a través de este enlace.</string>
     <string name="recommended_about_heading">Sobre este juego</string>
     <string name="recommended_review_count">Basado en %1$s reseñas</string>
+    <string name="library_store_media_page">%1$d de %2$d</string>
+    <string name="library_store_media_fullscreen">Ver contenido multimedia en pantalla completa</string>
+    <string name="library_store_media_close">Cerrar contenido multimedia en pantalla completa</string>
+    <string name="library_store_media_previous">Contenido multimedia anterior</string>
+    <string name="library_store_media_next">Siguiente contenido multimedia</string>
+    <string name="library_store_about_expand">Expandir Sobre este juego</string>
+    <string name="library_store_about_collapse">Contraer Sobre este juego</string>
     <string name="review_overwhelmingly_positive">Abrumadoramente positivo</string>
     <string name="review_very_positive">Muy positivo</string>
     <string name="review_mostly_positive">Mayormente positivo</string>
@@ -1629,6 +1640,7 @@
     <string name="hltb_all_styles">Todos los estilos</string>
     <string name="hltb_hours_value">%sh</string>
     <string name="hltb_section_title">HLTB</string>
+    <string name="hltb_show_spoilers">Mostrar spoilers</string>
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
@@ -1784,6 +1796,7 @@
     <string name="export_files_cancelled">Exportación cancelada</string>
     <string name="export_files_no_container">Inicia el juego una vez para crear su contenedor y luego exporta los archivos.</string>
     <string name="export_files_failed_header">No se pudieron exportar estos archivos:</string>
+    <string name="app_filter_vr">Juego de RV</string>
     <string name="option_manage_mods">Administrar mods de Nexus</string>
     <string name="nexus_search_clear">Borrar búsqueda</string>
     <string name="nexus_filter_all">Todo</string>

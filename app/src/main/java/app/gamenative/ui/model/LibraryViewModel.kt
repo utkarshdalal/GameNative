@@ -807,7 +807,9 @@ class LibraryViewModel @Inject constructor(
                     }
                 }
                 .filter { item ->
-                    currentFilter.any { item.type == it }
+                    val inTypeBucket = !item.isVrOnly && currentFilter.any { item.type == it }
+                    val inVrBucket = item.isVrGame && currentState.appInfoSortType.contains(AppFilter.VR)
+                    inTypeBucket || inVrBucket
                 }
                 .filter { item ->
                     if (currentState.appInfoSortType.contains(AppFilter.SHARED)) {

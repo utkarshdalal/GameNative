@@ -113,6 +113,7 @@ import app.gamenative.powercontrol.PowerManager
 import app.gamenative.service.AchievementWatcher
 import app.gamenative.service.SteamService
 import app.gamenative.service.ea.EaLaunchSupport
+import app.gamenative.service.epic.EpicConstants
 import app.gamenative.service.rockstar.RockstarHelperDeployment
 import app.gamenative.service.rockstar.RockstarLaunchSupport
 import app.gamenative.service.epic.EpicOverlayManager
@@ -153,13 +154,16 @@ import app.gamenative.utils.SteamTokenLogin
 import app.gamenative.enums.Marker
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.SteamUtils
+import app.gamenative.utils.WineMono
+import app.gamenative.utils.WineMsiCache
 import app.gamenative.utils.downloader.WinComponentDownloader
 import app.gamenative.utils.WineProcessSnapshotHelper
 import com.posthog.PostHog
 import com.winlator.alsaserver.ALSAClient
 import com.winlator.container.Container
-import com.winlator.container.ContainerDeduper
+import com.winlator.container.ContainerFiles
 import com.winlator.container.ContainerManager
+import com.winlator.container.ContainerOverlayMigrator
 import com.winlator.contents.AdrenotoolsManager
 import com.winlator.contents.ContentProfile
 import com.winlator.contents.ContentsManager
@@ -184,6 +188,7 @@ import com.winlator.core.WineUtils
 import com.winlator.core.envvars.EnvVarRedaction
 import com.winlator.core.envvars.EnvVars
 import com.winlator.fexcore.FEXCoreManager
+import com.winlator.fexcore.FEXCorePreset
 import com.winlator.inputcontrols.ControllerManager
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.ExternalController
@@ -210,6 +215,7 @@ import com.winlator.xenvironment.components.BionicProgramLauncherComponent
 import com.winlator.xenvironment.components.GlibcProgramLauncherComponent
 import com.winlator.xenvironment.components.GuestProgramLauncherComponent
 import com.winlator.xenvironment.components.NetworkInfoUpdateComponent
+import com.winlator.xenvironment.components.MicrophoneComponent
 import com.winlator.xenvironment.components.PulseAudioComponent
 import com.winlator.xenvironment.components.SteamClientComponent
 import com.winlator.xenvironment.components.SysVSharedMemoryComponent
@@ -369,17 +375,37 @@ internal fun portraitGameHostHeight(
     return if (availableHeight > 0) minOf(aspectHeight, availableHeight) else aspectHeight
 }
 
+internal fun portraitCutoutTopInset(belowCutout: Boolean, cutoutTop: Int, hostTopInWindow: Int): Int {
+    if (!belowCutout) return 0
+    return (cutoutTop - hostTopInWindow).coerceAtLeast(0)
+}
+
+private fun portraitCutoutTopInset(host: View, belowCutout: Boolean): Int {
+    if (!belowCutout) return 0
+    val cutoutTop = ViewCompat.getRootWindowInsets(host)
+        ?.getInsets(WindowInsetsCompat.Type.displayCutout())?.top ?: return 0
+    val location = IntArray(2)
+    host.getLocationInWindow(location)
+    return portraitCutoutTopInset(belowCutout, cutoutTop, location[1])
+}
+
 private fun updatePortraitGameHostHeight(
     gameHost: View,
     isPortrait: Boolean,
+    belowCutout: Boolean,
     screenWidth: Int,
     screenSize: String,
 ) {
     val params = gameHost.layoutParams ?: return
+    val host = gameHost.parent as? View
+    val topInset = if (isPortrait && host != null) portraitCutoutTopInset(host, belowCutout) else 0
+    if (host != null && host.paddingTop != topInset) {
+        host.setPadding(host.paddingLeft, topInset, host.paddingRight, host.paddingBottom)
+    }
     val height = portraitGameHostHeight(
         isPortrait,
         screenWidth,
-        (gameHost.parent as? View)?.height ?: 0,
+        ((host?.height ?: 0) - topInset).coerceAtLeast(0),
         screenSize,
     )
     if (params.height != height) {
@@ -2489,6 +2515,7 @@ fun XServerScreen(
                     updatePortraitGameHostHeight(
                         gameHost,
                         isPortrait,
+                        container.isPortraitBelowCutout,
                         screenWidth,
                         container.screenSize,
                     )
@@ -2499,6 +2526,7 @@ fun XServerScreen(
                     updatePortraitGameHostHeight(
                         gameHost,
                         isPortrait,
+                        container.isPortraitBelowCutout,
                         screenWidth,
                         container.screenSize,
                     )
@@ -2768,6 +2796,7 @@ fun XServerScreen(
                 updatePortraitGameHostHeight(
                     gameHost,
                     isPortrait,
+                    container.isPortraitBelowCutout,
                     binding.screenWidth,
                     container.screenSize,
                 )
@@ -3839,6 +3868,10 @@ private fun shiftXEnvironmentToContext(
     if (pulseComponent != null) {
         environment.addComponent(pulseComponent)
     }
+    val micComponent = xEnvironment.getComponent<MicrophoneComponent>(MicrophoneComponent::class.java)
+    if (micComponent != null) {
+        environment.addComponent(micComponent)
+    }
     var virglComponent: VirGLRendererComponent? =
         xEnvironment.getComponent<VirGLRendererComponent>(VirGLRendererComponent::class.java)
     if (virglComponent != null) {
@@ -4188,17 +4221,41 @@ private fun setupXEnvironment(
     // environment.addComponent(SteamClientComponent(UnixSocketConfig.createSocket(SteamService.getAppDirPath(appId), "/steam_pipe")))
     // environment.addComponent(SteamClientComponent(UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.STEAM_PIPE_PATH)))
 
+    // Microphone support is published through PulseAudio (module-pipe-source), which Wine/Proton's
+    // winepulse.drv enumerates as a normal recording device. Opt-in per container.
+    val micEnabled = container.getMicEnabled() && PulseAudioComponent.isMicModuleAvailable(context)
+    if (container.getMicEnabled() && !micEnabled) {
+        Timber.w("Microphone enabled for this container but module-pipe-source.so is missing; skipping")
+    }
+
     if (xServerState.value.audioDriver == "alsa") {
         envVars.put("ANDROID_ALSA_SERVER", imageFs.getRootDir().getPath() + UnixSocketConfig.ALSA_SERVER_PATH)
         envVars.put("ANDROID_ASERVER_USE_SHM", "true")
         val options = ALSAClient.Options.fromKeyValueSet(null)
         environment.addComponent(ALSAServerComponent(UnixSocketConfig.createSocket(imageFs.getRootDir().getPath(), UnixSocketConfig.ALSA_SERVER_PATH), options))
+        if (micEnabled) {
+            // Playback stays on the ALSA server; run PulseAudio in mic-only mode (no AAudio sink, so
+            // no extra output path and no added playback latency) purely to expose the capture device.
+            envVars.put("PULSE_SERVER", imageFs.getRootDir().getPath() + UnixSocketConfig.PULSE_SERVER_PATH)
+            environment.addComponent(PulseAudioComponent(
+                UnixSocketConfig.createSocket(imageFs.getRootDir().getPath(), UnixSocketConfig.PULSE_SERVER_PATH),
+                container.pulseaudioLowLatency,
+                true,
+                false
+            ))
+        }
     } else if (xServerState.value.audioDriver == "pulseaudio") {
         envVars.put("PULSE_SERVER", imageFs.getRootDir().getPath() + UnixSocketConfig.PULSE_SERVER_PATH)
         environment.addComponent(PulseAudioComponent(
             UnixSocketConfig.createSocket(imageFs.getRootDir().getPath(), UnixSocketConfig.PULSE_SERVER_PATH),
-            container.pulseaudioLowLatency
+            container.pulseaudioLowLatency,
+            micEnabled,
+            true
         ))
+    }
+
+    if (micEnabled) {
+        environment.addComponent(MicrophoneComponent(PulseAudioComponent.getMicFifoFile(context)))
     }
 
     if (xServerState.value.graphicsDriver == "virgl") {
@@ -4231,6 +4288,9 @@ private fun setupXEnvironment(
     }
 
     fun chainPreInstallSteps(remaining: List<PreInstallSteps.PreInstallCommand>) {
+        (guestProgramLauncherComponent as? BionicProgramLauncherComponent)?.setFEXCorePreset(
+            if (remaining.firstOrNull()?.marker == Marker.GOG_SCRIPT_INSTALLED) FEXCorePreset.STABILITY else container.fexCorePreset,
+        )
         if (remaining.isEmpty()) {
             guestProgramLauncherComponent.setGuestExecutable(gameExecutable)
             guestProgramLauncherComponent.setTerminationCallback(gameTerminationCallback)
@@ -4519,7 +4579,14 @@ private fun getWineStartCommand(
         // Get Epic launch parameters
         Timber.tag("XServerScreen").d("Building Epic launch parameters for ${game.appName}...")
         val runArguments: List<String> = runBlocking {
-            val result = EpicService.buildLaunchParameters(context, container, game, container.isEpicOfflineMode)
+            val epicLocale = EpicConstants.containerLanguageToEpicLocale(container.language)
+            val result = EpicService.buildLaunchParameters(
+                context,
+                container,
+                game,
+                container.isEpicOfflineMode,
+                epicLocale,
+            )
             if (result.isFailure) {
                 Timber.tag("XServerScreen").e(result.exceptionOrNull(), "Failed to build Epic launch parameters")
             }
@@ -4935,20 +5002,22 @@ private fun exit(
 
     PerfSampler.halt()
 
+    val exitProperties = mapOf(
+        "game_name" to ContainerUtils.resolveGameName(appId),
+        "game_store" to ContainerUtils.extractGameSourceFromContainerId(appId).name,
+        "session_length" to (frameRating?.sessionLengthSec ?: 0),
+        "avg_fps" to (frameRating?.avgFPS ?: 0.0),
+        "container_config" to container.containerJson,
+    ) + runCatching {
+        SessionReport.exitProperties(frameRating?.context ?: PluviaApp.xServerView?.context, frameRating, windowActivity, container, reason)
+    }.getOrElse { emptyMap() } + runCatching {
+        GameCompatibilityService.badgeProperties(ContainerUtils.resolveGameName(appId))
+    }.getOrElse { emptyMap() }
     PostHog.capture(
         event = "game_exited",
-        properties = mapOf(
-            "game_name" to ContainerUtils.resolveGameName(appId),
-            "game_store" to ContainerUtils.extractGameSourceFromContainerId(appId).name,
-            "session_length" to (frameRating?.sessionLengthSec ?: 0),
-            "avg_fps" to (frameRating?.avgFPS ?: 0.0),
-            "container_config" to container.containerJson,
-        ) + runCatching {
-            SessionReport.exitProperties(frameRating?.context ?: PluviaApp.xServerView?.context, frameRating, windowActivity, container, reason)
-        }.getOrElse { emptyMap() } + runCatching {
-            GameCompatibilityService.badgeProperties(ContainerUtils.resolveGameName(appId))
-        }.getOrElse { emptyMap() },
+        properties = exitProperties,
     )
+    CoroutineScope(Dispatchers.IO).launch { SessionReport.recordRun(container, exitProperties) }
     runCatching { windowActivity.stop() }
 
     // Store session data in container metadata
@@ -5105,12 +5174,14 @@ private fun unpackExecutableFile(
 ) {
     val imageFs = ImageFs.find(context)
     var output = StringBuilder()
+    val monoMsi = File(imageFs.getRootDir(), "opt/mono-gecko-offline/wine-mono-11.0.0-x86.msi")
+    WineMsiCache.deleteCachedCopies(imageFs, monoMsi)
+    WineMono.ensureBase(container, monoMsi, guestProgramLauncherComponent)
+    WineMono.markOwnInstall(container, imageFs)
     if (needsUnpacking || containerVariantChanged){
         try {
             PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing Mono..."))
-            val monoCmd = "wine msiexec /i Z:\\opt\\mono-gecko-offline\\wine-mono-11.0.0-x86.msi && wineserver -k"
-            Timber.i("Install mono command $monoCmd")
-            val monoOutput = guestProgramLauncherComponent.execShellCommand(monoCmd)
+            val monoOutput = WineMono.install(container, imageFs, monoMsi, guestProgramLauncherComponent)
             output.append(monoOutput)
             Timber.i("Result of mono command " + output)
         } catch (e: Exception) {
@@ -5355,10 +5426,8 @@ private suspend fun setupWineSystemFiles(
         containerDataChanged = true
     }
 
-    if (!ContainerDeduper.isDone(container)) {
-        val dedupe = ContainerDeduper.dedupe(context, contentsManager, container)
-        Timber.i("Container dedupe: $dedupe")
-        if (dedupe.completed) ContainerDeduper.markDone(container)
+    check(ContainerOverlayMigrator.migrateIfNeeded(context, contentsManager, container)) {
+        "No base prefix for ${container.wineVersion}, cannot launch thin container ${container.id}"
     }
 
     // Always refresh components files
@@ -5521,12 +5590,22 @@ private suspend fun applyGeneralPatches(
         check(containerManager.extractContainerPatternCommonWfm(rootDir, onExtractFileListener)) {
             "Failed to extract WFM from container_pattern_common.tzst"
         }
-    } else {
+    } else if (!container.isOverlay) {
         Timber.i("Extracting container_pattern_common.tzst")
         containerManager.extractContainerPatternCommon(rootDir, onExtractFileListener)
-        Timber.i("Attempting to extract _container_pattern.tzst with wine version " + container.wineVersion)
     }
-    containerManager.extractContainerPatternFile(container.wineVersion, contentsManager, container.rootDir, onExtractFileListener)
+    if (container.isOverlay) {
+        check(ContainerOverlayMigrator.migrateIfNeeded(context, contentsManager, container)) {
+            "No base prefix for ${container.wineVersion}, cannot switch thin container ${container.id}"
+        }
+    } else {
+        Timber.i("Attempting to extract _container_pattern.tzst with wine version " + container.wineVersion)
+        containerManager.extractContainerPatternFile(container.wineVersion, contentsManager, container.rootDir, onExtractFileListener)
+        if (container.basePrefix.isNotEmpty()) {
+            container.basePrefix = ""
+            container.saveData()
+        }
+    }
     WineUtils.applySystemTweaks(context, wineInfo)
     container.putExtra("graphicsDriver", null)
     container.putExtra("desktopTheme", null)
@@ -5540,7 +5619,7 @@ private suspend fun applyGeneralPatches(
 
 private fun refreshComponentsFiles(context: Context) {
     val extractionPairs = listOf(
-        "pulseaudio-gamenative-20260612.tzst" to File(context.filesDir, "pulseaudio")
+        "pulseaudio-gamenative-20260919.tzst" to File(context.filesDir, "pulseaudio")
     )
 
     AssetUtils.extractComponentsWithVersionCheck(
@@ -5640,7 +5719,7 @@ private suspend fun extractDXWrapperFiles(
         "ddraw.dll",
     )
     val splitDxWrapper = dxwrapper.split("-")[0]
-    if (firstTimeBoot && splitDxWrapper != "vkd3d") cloneOriginalDllFiles(imageFs, *dlls)
+    if (firstTimeBoot && splitDxWrapper != "vkd3d" && !container.isOverlay) cloneOriginalDllFiles(imageFs, *dlls)
     val rootDir = imageFs.getRootDir()
     val windowsDir = File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows")
 
@@ -5725,7 +5804,13 @@ private fun restoreOriginalDllFiles(
     vararg dlls: String,
 ) {
     val rootDir = imageFs.rootDir
-    if (container.containerVariant.equals(Container.GLIBC)) {
+    if (container.isOverlay) {
+        val upperDir = ContainerFiles.upperDir(container)
+        for (dll in dlls) {
+            ContainerFiles.removeOverride(upperDir, "drive_c/windows/system32/$dll")
+            ContainerFiles.removeOverride(upperDir, "drive_c/windows/syswow64/$dll")
+        }
+    } else if (container.containerVariant.equals(Container.GLIBC)) {
         val cacheDir = File(rootDir, ImageFs.CACHE_PATH + "/original_dlls")
         val contentsManager = ContentsManager(context)
         if (cacheDir.isDirectory) {
@@ -5761,7 +5846,7 @@ private fun restoreOriginalDllFiles(
             },
         )
 
-        cloneOriginalDllFiles(imageFs, *dlls)
+        if (!container.isOverlay) cloneOriginalDllFiles(imageFs, *dlls)
     } else {
         val windowsDir = File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows")
         var system32dlls: File? = null
@@ -5810,7 +5895,7 @@ private suspend fun extractWinComponentFiles(
                 }
             }
 
-            cloneOriginalDllFiles(imageFs, *dlls.toTypedArray())
+            if (!container.isOverlay) cloneOriginalDllFiles(imageFs, *dlls.toTypedArray())
             dlls.clear()
         }
 

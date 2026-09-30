@@ -36,6 +36,8 @@ import app.gamenative.api.prepareCommunityConfigForApply
 import app.gamenative.data.GameSource
 import app.gamenative.data.FavoritesManager
 import app.gamenative.data.LibraryItem
+import app.gamenative.data.StoreDetailsRepository
+import app.gamenative.data.withoutTitleOnlyDescription
 import app.gamenative.events.AndroidEvent
 import app.gamenative.mods.ModContainerResolver
 import app.gamenative.mods.NexusModManager
@@ -1072,6 +1074,7 @@ abstract class BaseAppScreen {
         configJson: kotlinx.serialization.json.JsonObject,
         matchType: String,
         matchedGpu: String,
+        storeMatch: Boolean,
         applyLaunchArguments: Boolean,
         applyEnvironmentVariables: Boolean,
     ): Boolean {
@@ -1105,7 +1108,7 @@ abstract class BaseAppScreen {
                 configJson = safeConfig,
                 matchType = matchType,
                 applyKnownConfig = true,
-                storeMatch = false,
+                storeMatch = storeMatch,
                 matchedGpu = matchedGpu,
                 preserveConfigValues = true,
             )
@@ -1122,7 +1125,7 @@ abstract class BaseAppScreen {
                                     configJson = safeConfig,
                                     matchType = matchType,
                                     applyKnownConfig = true,
-                                    storeMatch = false,
+                                    storeMatch = storeMatch,
                                     forceApply = true,
                                     matchedGpu = matchedGpu,
                                     preserveConfigValues = true,
@@ -1311,14 +1314,36 @@ abstract class BaseAppScreen {
             mutableStateOf<app.gamenative.utils.HltbService.Stats?>(null)
         }
         LaunchedEffect(displayInfoBase.name) {
-            if (displayInfoBase.name.isNotBlank())
+            if (displayInfoBase.name.isNotBlank()) {
                 hltbStats = try {
                     app.gamenative.utils.HltbService.getStats(displayInfoBase.name)
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
-                } catch (_: Exception) { null }
+                } catch (_: Exception) {
+                    null
+                }
+            }
         }
-        val displayInfo = displayInfoBase.copy(hltbStats = hltbStats)
+
+        // Enrich the locally synced catalog record with public storefront description,
+        // reviews, tags, screenshots, and trailers. The local record remains the fallback.
+        val localStoreDetails = displayInfoBase.storeDetails
+            .withoutTitleOnlyDescription(libraryItem.name)
+        var storeDetails by remember(appId) {
+            mutableStateOf(localStoreDetails)
+        }
+        val storeLocale = context.resources.configuration.locales[0]
+        LaunchedEffect(appId, localStoreDetails, storeLocale.toLanguageTag()) {
+            storeDetails = StoreDetailsRepository.getDetails(
+                libraryItem = libraryItem,
+                fallback = localStoreDetails,
+                locale = storeLocale,
+            )
+        }
+        val displayInfo = displayInfoBase.copy(
+            hltbStats = hltbStats,
+            storeDetails = storeDetails.mergedWith(localStoreDetails),
+        )
 
         // Use composable state for values that change over time
         var isInstalledState by remember(libraryItem.appId) {
@@ -1744,6 +1769,7 @@ abstract class BaseAppScreen {
         // Render the common UI
         app.gamenative.ui.screen.library.AppScreenContent(
             displayInfo = displayInfo,
+            resetHeroOnFirstArtworkChange = libraryItem.gameSource == GameSource.AMAZON,
             downloadDisplayDetails = app.gamenative.ui.data.DownloadDisplayDetails(
                 isInstalled = isInstalledState,
                 isValidToDownload = isValidToDownloadState,
@@ -1858,6 +1884,7 @@ abstract class BaseAppScreen {
                                 configJson = run.config,
                                 matchType = matchType,
                                 matchedGpu = run.device.gpu,
+                                storeMatch = run.gameStore.equals(libraryItem.gameSource.name, ignoreCase = true),
                                 applyLaunchArguments = options.applyLaunchArguments,
                                 applyEnvironmentVariables = options.applyEnvironmentVariables,
                             )

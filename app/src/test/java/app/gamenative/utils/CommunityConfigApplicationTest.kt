@@ -42,6 +42,16 @@ class CommunityConfigApplicationTest {
           "fexcoreMultiBlock": "Enabled",
           "fexcorePreset": "INTERMEDIATE",
           "useLegacyDRM": true,
+          "launchRealSteam": true,
+          "launchBionicSteam": true,
+          "steamType": "headless",
+          "steamOfflineMode": true,
+          "epicOfflineMode": true,
+          "unpackFiles": true,
+          "suspendPolicy": "never",
+          "executablePath": "bin/Game.exe",
+          "cpuList": "4,5,6,7",
+          "cpuListWoW64": "0,1,2,3",
           "audioDriver": "alsa",
           "wincomponents": "direct3d=0,directsound=0",
           "videoMemorySize": "4096",
@@ -70,6 +80,16 @@ class CommunityConfigApplicationTest {
         "fexcoreMultiBlock",
         "fexcorePreset",
         "useLegacyDRM",
+        "launchRealSteam",
+        "launchBionicSteam",
+        "steamType",
+        "steamOfflineMode",
+        "epicOfflineMode",
+        "unpackFiles",
+        "suspendPolicy",
+        "executablePath",
+        "cpuList",
+        "cpuListWoW64",
         "audioDriver",
         "wincomponents",
         "videoMemorySize",
@@ -103,7 +123,7 @@ class CommunityConfigApplicationTest {
             configJson = sanitized,
             matchType = "fallback_match",
             applyKnownConfig = true,
-            storeMatch = false,
+            storeMatch = true,
             matchedGpu = "Adreno (TM) 840",
             preserveConfigValues = true,
         )
@@ -136,6 +156,16 @@ class CommunityConfigApplicationTest {
         assertEquals("Enabled", updated.fexcoreMultiBlock)
         assertEquals("INTERMEDIATE", updated.fexcorePreset)
         assertTrue(updated.useLegacyDRM)
+        assertTrue(updated.launchRealSteam)
+        assertTrue(updated.launchBionicSteam)
+        assertEquals("headless", updated.steamType)
+        assertTrue(updated.steamOfflineMode)
+        assertTrue(updated.epicOfflineMode)
+        assertTrue(updated.unpackFiles)
+        assertEquals("never", updated.suspendPolicy)
+        assertEquals("bin/Game.exe", updated.executablePath)
+        assertEquals("4,5,6,7", updated.cpuList)
+        assertEquals("0,1,2,3", updated.cpuListWoW64)
         assertEquals("alsa", updated.audioDriver)
         assertEquals("direct3d=0,directsound=0", updated.wincomponents)
         assertEquals("4096", updated.videoMemorySize)

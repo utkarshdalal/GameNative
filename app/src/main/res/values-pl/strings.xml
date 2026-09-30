@@ -696,9 +696,13 @@
     <string name="pulseaudio_suspend_behavior_thread">Zawieszenie przez wątek (Domyślne)</string>
     <string name="pulseaudio_suspend_behavior_pactl">Zawieszenie przez Pactl (Oszczędzanie energii)</string>
     <string name="pulseaudio_low_latency">Tryb niskiego opóźnienia PulseAudio</string>
+    <string name="microphone_input">Wejście mikrofonu</string>
+    <string name="microphone_input_description">Udostępnia mikrofon urządzenia Wine/Proton jako urządzenie nagrywające. Wymaga uprawnienia do mikrofonu.</string>
     <string name="show_fps">Pokaż FPS</string>
     <string name="portrait_mode">Tryb pionowy</string>
     <string name="portrait_mode_description">Dla kontrolerów typu 8BitDo FlipPad/GameSir Pocket Taco</string>
+    <string name="portrait_below_cutout">Trzymaj pod otworem aparatu</string>
+    <string name="portrait_below_cutout_description">Wyświetla grę pod otworem aparatu w trybie pionowym</string>
     <string name="remove_driver_confirmation">Czy na pewno chcesz usunąć sterownik "%s"? Tej operacji nie można cofnąć</string>
 
     <!-- Container Configuration: Steam Integration -->
@@ -709,7 +713,7 @@
     <string name="force_dlc_description">Włącz tylko jeśli DLC nie są wykrywane lub zapisy z DLC nie działają</string>
     <string name="local_saves_only">Tylko zapisy lokalne</string>
     <string name="local_saves_only_description">Wyłącz synchronizację zapisów w chmurze dla tej gry i przechowuj zapisy tylko na urządzeniu</string>
-    <string name="launch_steam_client_beta">Uruchom Klienta Steam (Beta)</string>
+    <string name="launch_steam_client_beta">Uruchom Klienta Steam</string>
     <string name="steam_offline_mode">Tryb Offline Steam</string>
     <string name="steam_offline_mode_description">Uruchamiaj gry Steam w trybie offline</string>
     <string name="epic_offline_mode">Tryb Offline Epic</string>
@@ -1594,6 +1598,13 @@
     <string name="recommended_support_message">Otrzymujemy prowizję od zakupów dokonanych przez ten link.</string>
     <string name="recommended_about_heading">O tej grze</string>
     <string name="recommended_review_count">Na podstawie %1$s recenzji</string>
+    <string name="library_store_media_page">%1$d z %2$d</string>
+    <string name="library_store_media_fullscreen">Wyświetl multimedia na pełnym ekranie</string>
+    <string name="library_store_media_close">Zamknij multimedia pełnoekranowe</string>
+    <string name="library_store_media_previous">Poprzednie multimedia</string>
+    <string name="library_store_media_next">Następne multimedia</string>
+    <string name="library_store_about_expand">Rozwiń sekcję „O tej grze”</string>
+    <string name="library_store_about_collapse">Zwiń sekcję „O tej grze”</string>
     <string name="review_overwhelmingly_positive">Przytłaczająco pozytywne</string>
     <string name="review_very_positive">Bardzo pozytywne</string>
     <string name="review_mostly_positive">W większości pozytywne</string>
@@ -1631,6 +1642,7 @@
     <string name="hltb_all_styles">Wszystkie style</string>
     <string name="hltb_hours_value">%sh</string>
     <string name="hltb_section_title">HLTB</string>
+    <string name="hltb_show_spoilers">Pokaż spoilery</string>
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
@@ -1786,6 +1798,7 @@
     <string name="export_files_cancelled">Eksport anulowany</string>
     <string name="export_files_no_container">Uruchom grę raz, aby utworzyć jej kontener, a następnie wyeksportuj pliki.</string>
     <string name="export_files_failed_header">Nie udało się wyeksportować tych plików:</string>
+    <string name="app_filter_vr">Gra VR</string>
     <string name="option_manage_mods">Zarządzaj modami Nexus</string>
     <string name="nexus_search_clear">Wyczyść wyszukiwanie</string>
     <string name="nexus_filter_all">Wszystkie</string>

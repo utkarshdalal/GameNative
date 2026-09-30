@@ -520,9 +520,13 @@
     <string name="pulseaudio_suspend_behavior_thread">Suspender via Thread (Padrão)</string>
     <string name="pulseaudio_suspend_behavior_pactl">Suspender via Pactl (Economia de energia)</string>
     <string name="pulseaudio_low_latency">Modo de Baixa Latência PulseAudio</string>
+    <string name="microphone_input">Entrada de Microfone</string>
+    <string name="microphone_input_description">Expõe o microfone do dispositivo ao Wine/Proton como dispositivo de gravação. Requer a permissão de microfone.</string>
     <string name="show_fps">Mostrar FPS</string>
     <string name="portrait_mode">Modo Retrato</string>
     <string name="portrait_mode_description">Para controles tipo 8BitDo FlipPad/GameSir Pocket Taco</string>
+    <string name="portrait_below_cutout">Manter abaixo do furo da câmera</string>
+    <string name="portrait_below_cutout_description">Exibe o jogo abaixo do furo da câmera no modo retrato</string>
     <string name="remove_driver_confirmation">Tem certeza de que deseja remover o driver "%s"? Isso não pode ser desfeito</string>
 
     <!-- Container Configuration: Steam Integration -->
@@ -530,7 +534,7 @@
     <string name="force_dlc_description">Ative somente se os DLCs não forem detectados ou os saves com DLC não estiverem funcionando</string>
     <string name="local_saves_only">Apenas saves locais</string>
     <string name="local_saves_only_description">Desativa a sincronização de saves na nuvem para este jogo e mantém os saves somente no dispositivo</string>
-    <string name="launch_steam_client_beta">Iniciar o cliente Steam (Beta)</string>
+    <string name="launch_steam_client_beta">Iniciar o cliente Steam</string>
     <string name="steam_offline_mode">Modo Offline do Steam</string>
     <string name="steam_offline_mode_description">Iniciar jogos Steam no modo offline</string>
     <string name="epic_offline_mode">Modo Offline da Epic</string>
@@ -1464,6 +1468,13 @@
     <string name="recommended_support_message">Recebemos uma comissão pelas compras feitas por meio deste link.</string>
     <string name="recommended_about_heading">Sobre este jogo</string>
     <string name="recommended_review_count">Baseado em %1$s avaliações</string>
+    <string name="library_store_media_page">%1$d de %2$d</string>
+    <string name="library_store_media_fullscreen">Ver mídia em tela cheia</string>
+    <string name="library_store_media_close">Fechar mídia em tela cheia</string>
+    <string name="library_store_media_previous">Mídia anterior</string>
+    <string name="library_store_media_next">Próxima mídia</string>
+    <string name="library_store_about_expand">Expandir Sobre este jogo</string>
+    <string name="library_store_about_collapse">Recolher Sobre este jogo</string>
     <string name="review_overwhelmingly_positive">Extremamente positivo</string>
     <string name="review_very_positive">Muito positivo</string>
     <string name="review_mostly_positive">Majoritariamente positivo</string>
@@ -1501,6 +1512,7 @@
     <string name="hltb_all_styles">Todos os estilos</string>
     <string name="hltb_hours_value">%sh</string>
     <string name="hltb_section_title">HLTB</string>
+    <string name="hltb_show_spoilers">Mostrar spoilers</string>
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
@@ -1656,6 +1668,7 @@
     <string name="export_files_cancelled">Exportação cancelada</string>
     <string name="export_files_no_container">Inicie o jogo uma vez para criar o contêiner dele e depois exporte os arquivos.</string>
     <string name="export_files_failed_header">Não foi possível exportar estes arquivos:</string>
+    <string name="app_filter_vr">Jogo de RV</string>
     <string name="option_manage_mods">Gerenciar mods Nexus</string>
     <string name="nexus_search_clear">Limpar pesquisa</string>
     <string name="nexus_filter_all">Todos</string>

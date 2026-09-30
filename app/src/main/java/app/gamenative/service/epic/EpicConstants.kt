@@ -60,6 +60,48 @@ object EpicConstants {
         CONTAINER_LANGUAGE_TO_EPIC_INSTALL_TAGS[containerLanguage.lowercase()]
             ?: CONTAINER_LANGUAGE_TO_EPIC_INSTALL_TAGS.getValue(EPIC_FALLBACK_CONTAINER_LANGUAGE)
 
+    const val EPIC_DEFAULT_LOCALE = "en-US"
+
+    /**
+     * Maps container language to the `-epiclocale` launch value. Languages the Epic Games Launcher supports use the
+     * codes the launcher sends; the others use their ISO language code. Keys match [CONTAINER_LANGUAGE_TO_EPIC_INSTALL_TAGS].
+     */
+    internal val CONTAINER_LANGUAGE_TO_EPIC_LOCALE: Map<String, String> = mapOf(
+        "arabic" to "ar",
+        "bulgarian" to "bg",
+        "schinese" to "zh-Hans",
+        "tchinese" to "zh-Hant",
+        "czech" to "cs",
+        "danish" to "da",
+        "dutch" to "nl",
+        "english" to EPIC_DEFAULT_LOCALE,
+        "finnish" to "fi",
+        "french" to "fr",
+        "german" to "de",
+        "greek" to "el",
+        "hungarian" to "hu",
+        "italian" to "it",
+        "japanese" to "ja",
+        "koreana" to "ko",
+        "norwegian" to "nb",
+        "polish" to "pl",
+        "portuguese" to "pt-PT",
+        "brazilian" to "pt-BR",
+        "romanian" to "ro",
+        "russian" to "ru",
+        "spanish" to "es-ES",
+        "latam" to "es-MX",
+        "swedish" to "sv",
+        "thai" to "th",
+        "turkish" to "tr",
+        "ukrainian" to "uk",
+        "vietnamese" to "vi",
+    )
+
+    /** Returns the locale passed to Epic games at launch (for example, `fr`). Unknown languages use [EPIC_DEFAULT_LOCALE]. */
+    fun containerLanguageToEpicLocale(containerLanguage: String): String =
+        CONTAINER_LANGUAGE_TO_EPIC_LOCALE[containerLanguage.lowercase()] ?: EPIC_DEFAULT_LOCALE
+
     //! OAuth Configuration - Using Legendary's official credentials (Do not worry, these are hard-coded and not sensitive.)
     const val EPIC_CLIENT_ID = "34a02cf8f4414e29b15921876da36f9a"
     const val EPIC_CLIENT_SECRET = "daafbccc737745039dffe53d94fc76cf"

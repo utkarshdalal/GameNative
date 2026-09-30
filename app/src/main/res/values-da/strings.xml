@@ -520,9 +520,13 @@
     <string name="pulseaudio_suspend_behavior_thread">Suspender via tråd (Standard)</string>
     <string name="pulseaudio_suspend_behavior_pactl">Suspender via Pactl (Strømbesparelse)</string>
     <string name="pulseaudio_low_latency">PulseAudio lav latenstilstand</string>
+    <string name="microphone_input">Mikrofoninput</string>
+    <string name="microphone_input_description">Gør enhedens mikrofon tilgængelig for Wine/Proton som en optageenhed. Kræver mikrofontilladelse.</string>
     <string name="show_fps">Vis FPS</string>
     <string name="portrait_mode">Portrættilstand</string>
     <string name="portrait_mode_description">Til 8BitDo FlipPad/GameSir Pocket Taco-type controllere</string>
+    <string name="portrait_below_cutout">Hold under kamerahullet</string>
+    <string name="portrait_below_cutout_description">Vis spillet under kamerahullet i portrættilstand</string>
     <string name="remove_driver_confirmation">Er du sikker på, at du vil fjerne driveren "%s"? Dette kan ikke fortrydes</string>
 
     <!-- Container Configuration: Steam Integration -->
@@ -530,7 +534,7 @@
     <string name="force_dlc_description">Kun aktiver hvis DLC\'er ikke opdages, eller gemfiler med DLC ikke virker</string>
     <string name="local_saves_only">Kun lokale gemfiler</string>
     <string name="local_saves_only_description">Deaktiver synkronisering af cloud-gemfiler for dette spil, og behold gemfiler kun på enheden</string>
-    <string name="launch_steam_client_beta">Start Steam-klient (Beta)</string>
+    <string name="launch_steam_client_beta">Start Steam-klient</string>
     <string name="steam_offline_mode">Steam Offline-tilstand</string>
     <string name="steam_offline_mode_description">Start Steam-spil i offline-tilstand</string>
     <string name="epic_offline_mode">Epic Offline-tilstand</string>
@@ -1464,6 +1468,13 @@
     <string name="recommended_support_message">Vi modtager en provision af køb foretaget via dette link.</string>
     <string name="recommended_about_heading">Om dette spil</string>
     <string name="recommended_review_count">Baseret på %1$s anmeldelser</string>
+    <string name="library_store_media_page">%1$d af %2$d</string>
+    <string name="library_store_media_fullscreen">Vis medier i fuld skærm</string>
+    <string name="library_store_media_close">Luk fuldskærmsmedier</string>
+    <string name="library_store_media_previous">Forrige medie</string>
+    <string name="library_store_media_next">Næste medie</string>
+    <string name="library_store_about_expand">Udvid Om dette spil</string>
+    <string name="library_store_about_collapse">Skjul Om dette spil</string>
     <string name="review_overwhelmingly_positive">Overvældende positiv</string>
     <string name="review_very_positive">Meget positiv</string>
     <string name="review_mostly_positive">Overvejende positiv</string>
@@ -1501,6 +1512,7 @@
     <string name="hltb_all_styles">Alle stilarter</string>
     <string name="hltb_hours_value">%sh</string>
     <string name="hltb_section_title">HLTB</string>
+    <string name="hltb_show_spoilers">Vis spoilere</string>
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
@@ -1656,6 +1668,7 @@
     <string name="export_files_cancelled">Eksport annulleret</string>
     <string name="export_files_no_container">Start spillet én gang for at oprette dets container, og eksportér derefter filer.</string>
     <string name="export_files_failed_header">Disse filer kunne ikke eksporteres:</string>
+    <string name="app_filter_vr">VR-spil</string>
     <string name="option_manage_mods">Administrer Nexus-mods</string>
     <string name="nexus_search_clear">Ryd søgning</string>
     <string name="nexus_filter_all">Alle</string>

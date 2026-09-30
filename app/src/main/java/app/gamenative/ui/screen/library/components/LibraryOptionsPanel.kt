@@ -277,6 +277,7 @@ fun LibraryOptionsPanel(
                                         AppFilter.FIVE_STAR,
                                         AppFilter.FIVE_STAR_GPU,
                                         AppFilter.PROVEN_GPU,
+                                        AppFilter.VR,
                                     )
                                 ) {
                                     OptionListItem(

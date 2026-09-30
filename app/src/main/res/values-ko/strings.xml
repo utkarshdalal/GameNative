@@ -694,9 +694,13 @@
     <string name="pulseaudio_suspend_behavior_thread">스레드를 통한 일시 중단 (기본값)</string>
     <string name="pulseaudio_suspend_behavior_pactl">Pactl을 통한 일시 중단 (절전)</string>
     <string name="pulseaudio_low_latency">PulseAudio 저지연 모드</string>
+    <string name="microphone_input">마이크 입력</string>
+    <string name="microphone_input_description">기기 마이크를 Wine/Proton에 녹음 장치로 노출합니다. 마이크 권한이 필요합니다.</string>
     <string name="show_fps">FPS 표시</string>
     <string name="portrait_mode">세로 모드</string>
     <string name="portrait_mode_description">8BitDo FlipPad/GameSir Pocket Taco 유형 컨트롤러용</string>
+    <string name="portrait_below_cutout">카메라 홀 아래에 표시</string>
+    <string name="portrait_below_cutout_description">세로 모드에서 게임 화면을 카메라 홀 아래에 표시합니다</string>
     <string name="remove_driver_confirmation">드라이버 "%s"을(를) 제거하시겠습니까? 이 작업은 실행 취소할 수 없습니다</string>
 
     <!-- Container Configuration: Steam Integration -->
@@ -705,7 +709,7 @@
     <string name="unpack_files_description">\'Application Load Error 3:0000065432\'가 발생하는 경우에만 사용하세요.</string>
     <string name="force_dlc">DLC 강제</string>
     <string name="force_dlc_description">DLC가 감지되지 않거나 DLC가 있는 저장 파일이 작동하지 않는 경우에만 활성화</string>
-    <string name="launch_steam_client_beta">Steam 클라이언트 실행(베타)</string>
+    <string name="launch_steam_client_beta">Steam 클라이언트 실행</string>
     <string name="steam_offline_mode">Steam 오프라인 모드</string>
     <string name="steam_offline_mode_description">Steam 게임을 오프라인 모드로 실행</string>
     <string name="epic_offline_mode">Epic 오프라인 모드</string>
@@ -1567,6 +1571,13 @@
     <string name="recommended_support_message">이 링크를 통해 구매하시면 저희가 수수료를 받습니다.</string>
     <string name="recommended_about_heading">이 게임에 대하여</string>
     <string name="recommended_review_count">%1$s개의 리뷰 기반</string>
+    <string name="library_store_media_page">%2$d개 중 %1$d</string>
+    <string name="library_store_media_fullscreen">미디어 전체 화면으로 보기</string>
+    <string name="library_store_media_close">전체 화면 미디어 닫기</string>
+    <string name="library_store_media_previous">이전 미디어</string>
+    <string name="library_store_media_next">다음 미디어</string>
+    <string name="library_store_about_expand">이 게임에 대하여 펼치기</string>
+    <string name="library_store_about_collapse">이 게임에 대하여 접기</string>
     <string name="review_overwhelmingly_positive">압도적으로 긍정적</string>
     <string name="review_very_positive">매우 긍정적</string>
     <string name="review_mostly_positive">대체로 긍정적</string>
@@ -1592,6 +1603,7 @@
     <string name="hltb_all_styles">모든 스타일</string>
     <string name="hltb_hours_value">%sh</string>
     <string name="hltb_section_title">HLTB</string>
+    <string name="hltb_show_spoilers">스포일러 표시</string>
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
@@ -1783,6 +1795,7 @@
     <string name="export_files_cancelled">내보내기가 취소되었습니다</string>
     <string name="export_files_no_container">게임을 한 번 실행하여 컨테이너를 만든 다음 파일을 내보내세요.</string>
     <string name="export_files_failed_header">다음 파일을 내보낼 수 없습니다:</string>
+    <string name="app_filter_vr">VR 게임</string>
     <string name="option_manage_mods">Nexus 모드 관리</string>
     <string name="nexus_search_clear">검색 지우기</string>
     <string name="nexus_filter_all">전체</string>

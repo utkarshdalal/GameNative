@@ -824,6 +824,16 @@ private val communityConfigAllowedKeys = setOf(
     "fexcoreMultiBlock",
     "fexcorePreset",
     "useLegacyDRM",
+    "launchRealSteam",
+    "launchBionicSteam",
+    "steamType",
+    "steamOfflineMode",
+    "epicOfflineMode",
+    "unpackFiles",
+    "suspendPolicy",
+    "executablePath",
+    "cpuList",
+    "cpuListWoW64",
     "audioDriver",
     "wincomponents",
     "videoMemorySize",
@@ -903,11 +913,21 @@ internal fun sanitizeCommunityConfig(config: JsonObject): JsonObject = JsonObjec
                 "envVars" -> sanitizeCommunityEnvironmentVariables(content)
                     .takeIf { it.isNotEmpty() }
                     ?.let { put(key, JsonPrimitive(it)) }
+                "executablePath" -> content.trim()
+                    .takeIf { isSafeCommunityExecutablePath(it) }
+                    ?.let { put(key, JsonPrimitive(it)) }
                 else -> put(key, value)
             }
         }
     },
 )
+
+internal fun isSafeCommunityExecutablePath(path: String): Boolean {
+    if (path.isEmpty() || path.length > MAX_LAUNCH_ARGUMENT_CHARS) return false
+    if (path.any { it.code < 0x20 || it == '\u007f' }) return false
+    if (path.startsWith("/") || path.startsWith("\\") || path.contains(':')) return false
+    return path.split('/', '\\').none { it == ".." }
+}
 
 internal fun prepareCommunityConfigForApply(
     config: JsonObject,
