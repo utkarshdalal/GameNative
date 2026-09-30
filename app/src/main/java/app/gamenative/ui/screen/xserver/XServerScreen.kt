@@ -695,9 +695,13 @@ fun XServerScreen(
             showGpuUsage = PrefManager.performanceHudShowGpuUsage,
             showRamUsage = PrefManager.performanceHudShowRamUsage,
             showBatteryLevel = PrefManager.performanceHudShowBatteryLevel,
+            batteryLevelWarningEnabled = PrefManager.performanceHudBatteryLevelWarningEnabled,
+            batteryLevelWarningLimit = PrefManager.performanceHudBatteryLevelWarningLimit,
             showPowerDraw = PrefManager.performanceHudShowPowerDraw,
             showBatteryRuntime = PrefManager.performanceHudShowBatteryRuntime,
             showBatteryTemperature = PrefManager.performanceHudShowBatteryTemperature,
+            batteryTemperatureWarningEnabled = PrefManager.performanceHudBatteryTemperatureWarningEnabled,
+            batteryTemperatureWarningLimit = PrefManager.performanceHudBatteryTemperatureWarningLimit,
             showClockTime = PrefManager.performanceHudShowClockTime,
             showCpuTemperature = PrefManager.performanceHudShowCpuTemperature,
             showGpuTemperature = PrefManager.performanceHudShowGpuTemperature,
@@ -728,9 +732,13 @@ fun XServerScreen(
         PrefManager.performanceHudShowGpuUsage = config.showGpuUsage
         PrefManager.performanceHudShowRamUsage = config.showRamUsage
         PrefManager.performanceHudShowBatteryLevel = config.showBatteryLevel
+        PrefManager.performanceHudBatteryLevelWarningEnabled = config.batteryLevelWarningEnabled
+        PrefManager.performanceHudBatteryLevelWarningLimit = config.batteryLevelWarningLimit
         PrefManager.performanceHudShowPowerDraw = config.showPowerDraw
         PrefManager.performanceHudShowBatteryRuntime = config.showBatteryRuntime
         PrefManager.performanceHudShowBatteryTemperature = config.showBatteryTemperature
+        PrefManager.performanceHudBatteryTemperatureWarningEnabled = config.batteryTemperatureWarningEnabled
+        PrefManager.performanceHudBatteryTemperatureWarningLimit = config.batteryTemperatureWarningLimit
         PrefManager.performanceHudShowClockTime = config.showClockTime
         PrefManager.performanceHudShowCpuTemperature = config.showCpuTemperature
         PrefManager.performanceHudShowGpuTemperature = config.showGpuTemperature

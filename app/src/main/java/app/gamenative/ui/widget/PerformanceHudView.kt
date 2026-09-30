@@ -9,10 +9,8 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Typeface
-import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import android.os.BatteryManager
-import android.os.Build
 import android.text.TextUtils
 import android.text.format.DateFormat
 import android.util.TypedValue
@@ -45,13 +43,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import android.hardware.BatteryState
-import android.view.InputDevice
-import androidx.annotation.RequiresApi
-import kotlin.math.roundToInt
-import android.media.AudioManager
-import android.media.ToneGenerator
-
 
 /**
  * Lightweight floating HUD shown above the in-game surface.
@@ -123,12 +114,8 @@ class PerformanceHudView(
     private val fanMetric = createMetricViews(MetricId.FAN, 0xFF80DEEA.toInt())
     private val tuneMetric = createMetricViews(MetricId.TUNE, 0xFFCE93D8.toInt())
 
-    private var currentBackgroundColor = (backgroundDrawable as? GradientDrawable)
-        ?.color?.defaultColor ?: Color.BLACK
+    private var warningColor: Int? = null
 
-    private val backupBackgroundColor = currentBackgroundColor
-    private val batteryLevelBackgroundColor = BATTERY_LEVEL_WARNING_BACKGROUND_COLOR
-    private val batteryTempBackgroundColor = BATTERY_TEMP_WARNING_BACKGROUND_COLOR
     private val allMetrics = listOf(
         fpsMetric,
         cpuMetric,
@@ -150,16 +137,6 @@ class PerformanceHudView(
 
     private val cpuSampler = CpuUsageSampler()
     private val gpuSampler = GpuUsageSampler()
-
-    private var toneGenerator: ToneGenerator? = null
-
-    private fun getToneGenerator(): ToneGenerator =
-        toneGenerator ?: ToneGenerator(AudioManager.STREAM_ALARM, 100).also { toneGenerator = it }
-
-    private fun releaseToneGenerator() {
-        toneGenerator?.release()
-        toneGenerator = null
-    }
 
     init {
         background = backgroundDrawable
@@ -218,7 +195,6 @@ class PerformanceHudView(
 
     override fun onDetachedFromWindow() {
         stopUpdates()
-        releaseToneGenerator()
         super.onDetachedFromWindow()
     }
 
@@ -240,33 +216,19 @@ class PerformanceHudView(
                     collectSnapshot(currentFps)
                 }
                 renderSnapshot(snapshot)
-
-                val levelWarning =  snapshot.batteryPercent != null && config.batteryLevelWarningEnabled &&
-                        snapshot.batteryPercent < (config.batteryLevelWarningLimit * 100)
-
-                val tempWarning = snapshot.batteryTempValue != null && config.batteryTemperatureWarningEnabled &&
-                        snapshot.batteryTempValue >= (config.batteryTemperatureWarningLimit * 100)
-
-                if (levelWarning) {
-                    getToneGenerator().startTone(ToneGenerator.TONE_PROP_ACK, 150)
-                }
-                if (tempWarning) {
-                    getToneGenerator().startTone(ToneGenerator.TONE_CDMA_PIP, 150)
-                }
-
-                val warningColor = when {
-                    tempWarning -> batteryTempBackgroundColor
-                    levelWarning -> batteryLevelBackgroundColor
+                val temp = snapshot.batteryTempValue
+                val level = snapshot.batteryPercent
+                val newWarningColor = when {
+                    config.batteryTemperatureWarningEnabled && temp != null && temp >= config.batteryTemperatureWarningLimit ->
+                        BATTERY_TEMP_WARNING_BACKGROUND_COLOR
+                    config.batteryLevelWarningEnabled && level != null && level < config.batteryLevelWarningLimit ->
+                        BATTERY_LEVEL_WARNING_BACKGROUND_COLOR
                     else -> null
                 }
-
-                currentBackgroundColor = if (warningColor != null) {
-                    if (currentBackgroundColor == backupBackgroundColor) warningColor else backupBackgroundColor
-                } else {
-                    backupBackgroundColor
+                if (newWarningColor != warningColor) {
+                    warningColor = newWarningColor
+                    applyAppearance()
                 }
-                backgroundDrawable.setColor(currentBackgroundColor)
-
                 delay(UPDATE_INTERVAL_MS)
             }
         }
@@ -290,7 +252,7 @@ class PerformanceHudView(
 
         backgroundDrawable.cornerRadius = appearance.cornerRadiusDp.dp.toFloat()
         backgroundDrawable.setColor(
-            Color.argb(
+            warningColor ?: Color.argb(
                 (opacity * 255f).roundToInt(),
                 0,
                 0,

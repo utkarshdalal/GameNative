@@ -423,6 +423,20 @@ object PrefManager {
             setPref(PERFORMANCE_HUD_SHOW_BATTERY_LEVEL, value)
         }
 
+    private val PERFORMANCE_HUD_BATTERY_LEVEL_WARNING_ENABLED = booleanPreferencesKey("performance_hud_battery_level_warning_enabled")
+    var performanceHudBatteryLevelWarningEnabled: Boolean
+        get() = getPref(PERFORMANCE_HUD_BATTERY_LEVEL_WARNING_ENABLED, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_BATTERY_LEVEL_WARNING_ENABLED, value)
+        }
+
+    private val PERFORMANCE_HUD_BATTERY_LEVEL_WARNING_LIMIT = intPreferencesKey("performance_hud_battery_level_warning_limit")
+    var performanceHudBatteryLevelWarningLimit: Int
+        get() = getPref(PERFORMANCE_HUD_BATTERY_LEVEL_WARNING_LIMIT, 10)
+        set(value) {
+            setPref(PERFORMANCE_HUD_BATTERY_LEVEL_WARNING_LIMIT, value)
+        }
+
     private val PERFORMANCE_HUD_SHOW_POWER_DRAW = booleanPreferencesKey("performance_hud_show_power_draw")
     var performanceHudShowPowerDraw: Boolean
         get() = getPref(PERFORMANCE_HUD_SHOW_POWER_DRAW, true)
@@ -442,6 +456,20 @@ object PrefManager {
         get() = getPref(PERFORMANCE_HUD_SHOW_BATTERY_TEMPERATURE, false)
         set(value) {
             setPref(PERFORMANCE_HUD_SHOW_BATTERY_TEMPERATURE, value)
+        }
+
+    private val PERFORMANCE_HUD_BATTERY_TEMPERATURE_WARNING_ENABLED = booleanPreferencesKey("performance_hud_battery_temperature_warning_enabled")
+    var performanceHudBatteryTemperatureWarningEnabled: Boolean
+        get() = getPref(PERFORMANCE_HUD_BATTERY_TEMPERATURE_WARNING_ENABLED, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_BATTERY_TEMPERATURE_WARNING_ENABLED, value)
+        }
+
+    private val PERFORMANCE_HUD_BATTERY_TEMPERATURE_WARNING_LIMIT = intPreferencesKey("performance_hud_battery_temperature_warning_limit")
+    var performanceHudBatteryTemperatureWarningLimit: Int
+        get() = getPref(PERFORMANCE_HUD_BATTERY_TEMPERATURE_WARNING_LIMIT, 40)
+        set(value) {
+            setPref(PERFORMANCE_HUD_BATTERY_TEMPERATURE_WARNING_LIMIT, value)
         }
 
     private val PERFORMANCE_HUD_SHOW_CLOCK_TIME = booleanPreferencesKey("performance_hud_show_clock_time")
