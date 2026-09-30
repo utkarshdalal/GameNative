@@ -1620,6 +1620,7 @@
     <string name="filter_five_star_device">5-stjernede anmeldelser på enhed</string>
     <string name="filter_five_star_gpu">5-stjernede anmeldelser på GPU</string>
     <string name="filter_proven_gpu">Afprøvet på din GPU</string>
+    <string name="vibration_intensity">Vibrationsintensitet</string>
     <string name="option_import_files">Importér filer</string>
     <string name="option_export_files">Eksportér filer</string>
     <string name="container_files_up">Op</string>

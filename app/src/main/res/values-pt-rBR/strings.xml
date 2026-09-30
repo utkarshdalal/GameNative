@@ -1620,6 +1620,7 @@
     <string name="filter_five_star_device">Avaliações 5 estrelas no dispositivo</string>
     <string name="filter_five_star_gpu">Avaliações 5 estrelas na GPU</string>
     <string name="filter_proven_gpu">Comprovado na sua GPU</string>
+    <string name="vibration_intensity">Intensidade da vibração</string>
     <string name="option_import_files">Importar arquivos</string>
     <string name="option_export_files">Exportar arquivos</string>
     <string name="container_files_up">Acima</string>

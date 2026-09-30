@@ -1741,6 +1741,7 @@
     <string name="filter_five_star_device">Recensioni a 5 stelle sul dispositivo</string>
     <string name="filter_five_star_gpu">Recensioni a 5 stelle sulla GPU</string>
     <string name="filter_proven_gpu">Collaudato sulla tua GPU</string>
+    <string name="vibration_intensity">Intensità della vibrazione</string>
     <string name="option_import_files">Importa file</string>
     <string name="option_export_files">Esporta file</string>
     <string name="container_files_up">Su</string>

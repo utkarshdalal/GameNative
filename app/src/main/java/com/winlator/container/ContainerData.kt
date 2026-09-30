@@ -111,6 +111,7 @@ data class ContainerData(
     val sharpnessEffect: String = "None",
     val sharpnessLevel: Int = 100,
     val sharpnessDenoise: Int = 100,
+    val vibrationIntensity: Int = 100,
     // LSFG Vulkan frame generation
     /** Whether LSFG frame generation is enabled for this container */
     val lsfgEnabled: Boolean = false,
@@ -192,6 +193,7 @@ data class ContainerData(
                     "sharpnessEffect" to state.sharpnessEffect,
                     "sharpnessLevel" to state.sharpnessLevel,
                     "sharpnessDenoise" to state.sharpnessDenoise,
+                    "vibrationIntensity" to state.vibrationIntensity,
                     "lsfgEnabled" to state.lsfgEnabled,
                     "windowsVrEnabled" to state.windowsVrEnabled,
                     "openCompositeEnabled" to state.openCompositeEnabled,
@@ -270,6 +272,7 @@ data class ContainerData(
                     sharpnessEffect = (savedMap["sharpnessEffect"] as? String) ?: "None",
                     sharpnessLevel = (savedMap["sharpnessLevel"] as? Int) ?: 100,
                     sharpnessDenoise = (savedMap["sharpnessDenoise"] as? Int) ?: 100,
+                    vibrationIntensity = (savedMap["vibrationIntensity"] as? Int) ?: 100,
                     lsfgEnabled = (savedMap["lsfgEnabled"] as? Boolean) ?: false,
                     windowsVrEnabled = (savedMap["windowsVrEnabled"] as? Boolean) ?: false,
                     openCompositeEnabled = (savedMap["openCompositeEnabled"] as? Boolean) ?: false,

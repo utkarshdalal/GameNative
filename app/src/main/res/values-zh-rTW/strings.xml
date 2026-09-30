@@ -1758,6 +1758,7 @@
     <string name="filter_five_star_device">裝置上的五星評論</string>
     <string name="filter_five_star_gpu">GPU上的五星評論</string>
     <string name="filter_proven_gpu">已在您的GPU上驗證</string>
+    <string name="vibration_intensity">震動強度</string>
     <string name="option_import_files">匯入檔案</string>
     <string name="option_export_files">匯出檔案</string>
     <string name="container_files_up">上一層</string>
