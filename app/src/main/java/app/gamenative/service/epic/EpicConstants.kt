@@ -60,6 +60,14 @@ object EpicConstants {
         CONTAINER_LANGUAGE_TO_EPIC_INSTALL_TAGS[containerLanguage.lowercase()]
             ?: CONTAINER_LANGUAGE_TO_EPIC_INSTALL_TAGS.getValue(EPIC_FALLBACK_CONTAINER_LANGUAGE)
 
+    /** Returns the locale passed to Epic games at launch (for example, `fr-FR`). */
+    fun containerLanguageToEpicLocale(containerLanguage: String): String {
+        val tags = containerLanguageToEpicInstallTags(containerLanguage)
+        return tags.firstOrNull { '-' in it || '_' in it }
+            ?: tags.lastOrNull { it.length in 2..3 && it.all(Char::isLetter) }
+            ?: "en-US"
+    }
+
     //! OAuth Configuration - Using Legendary's official credentials (Do not worry, these are hard-coded and not sensitive.)
     const val EPIC_CLIENT_ID = "34a02cf8f4414e29b15921876da36f9a"
     const val EPIC_CLIENT_SECRET = "daafbccc737745039dffe53d94fc76cf"
