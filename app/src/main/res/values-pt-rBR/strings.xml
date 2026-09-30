@@ -516,9 +516,13 @@
     <string name="pulseaudio_suspend_behavior_thread">Suspender via Thread (Padrão)</string>
     <string name="pulseaudio_suspend_behavior_pactl">Suspender via Pactl (Economia de energia)</string>
     <string name="pulseaudio_low_latency">Modo de Baixa Latência PulseAudio</string>
+    <string name="microphone_input">Entrada de Microfone</string>
+    <string name="microphone_input_description">Expõe o microfone do dispositivo ao Wine/Proton como dispositivo de gravação. Requer a permissão de microfone.</string>
     <string name="show_fps">Mostrar FPS</string>
     <string name="portrait_mode">Modo Retrato</string>
     <string name="portrait_mode_description">Para controles tipo 8BitDo FlipPad/GameSir Pocket Taco</string>
+    <string name="portrait_below_cutout">Manter abaixo do furo da câmera</string>
+    <string name="portrait_below_cutout_description">Exibe o jogo abaixo do furo da câmera no modo retrato</string>
     <string name="remove_driver_confirmation">Tem certeza de que deseja remover o driver "%s"? Isso não pode ser desfeito</string>
 
     <!-- Container Configuration: Steam Integration -->
@@ -526,7 +530,7 @@
     <string name="force_dlc_description">Ative somente se os DLCs não forem detectados ou os saves com DLC não estiverem funcionando</string>
     <string name="local_saves_only">Apenas saves locais</string>
     <string name="local_saves_only_description">Desativa a sincronização de saves na nuvem para este jogo e mantém os saves somente no dispositivo</string>
-    <string name="launch_steam_client_beta">Iniciar o cliente Steam (Beta)</string>
+    <string name="launch_steam_client_beta">Iniciar o cliente Steam</string>
     <string name="steam_offline_mode">Modo Offline do Steam</string>
     <string name="steam_offline_mode_description">Iniciar jogos Steam no modo offline</string>
     <string name="epic_offline_mode">Modo Offline da Epic</string>
@@ -818,7 +822,7 @@
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Informações</string>
     <string name="settings_info_send_tip_title">Tornar-se membro</string>
-    <string name="settings_info_send_tip_subtitle">Acesso antecipado a lançamentos, ajuda prioritária e mais</string>
+    <string name="settings_info_send_tip_subtitle">Ajuda com IA para seus jogos, acesso antecipado a lançamentos e mais</string>
     <string name="settings_info_ask_tip_title">Ofertas para membros</string>
     <string name="settings_info_ask_tip_subtitle">Mostrar ofertas ocasionais para se tornar membro do GameNative</string>
     <string name="settings_info_source_title">Código-fonte</string>
@@ -940,7 +944,7 @@
     <string name="main_recent_crash_title">Falha recente</string>
     <string name="main_recent_crash_message">Desculpe por isso!\nSeria bom saber sobre o problema recente que você teve.\nVocê pode visualizar e exportar o log de falha mais recente nas configurações do aplicativo e anexá-lo como um problema do Github no repositório do projeto.\nO link para o repositório do Github também está nas configurações!</string>
     <string name="main_thank_you_title">Curtindo o GameNative?</string>
-    <string name="main_thank_you_message">Torne-se membro hoje. Membros recebem:\n\n• Acesso antecipado a novos lançamentos\n• Ajuda prioritária para fazer seus jogos rodarem\n• Cargos premium e canais exclusivos no Discord\n• …e mais\n\nA partir de $5/mês</string>
+    <string name="main_thank_you_message">Torne-se membro hoje. Membros recebem:\n\n• Ajuda com IA para fazer seus jogos rodarem\n• Acesso antecipado a novos lançamentos\n• Cargos premium e canais exclusivos no Discord\n• …e mais\n\nA partir de $5/mês</string>
     <string name="main_join_kofi">Tornar-se membro</string>
     <string name="pitch_session_title">Curtindo %1$s?</string>
     <string name="pitch_five_star_title">Que bom que %1$s rodou muito bem!</string>
@@ -1458,6 +1462,13 @@
     <string name="recommended_support_message">Recebemos uma comissão pelas compras feitas por meio deste link.</string>
     <string name="recommended_about_heading">Sobre este jogo</string>
     <string name="recommended_review_count">Baseado em %1$s avaliações</string>
+    <string name="library_store_media_page">%1$d de %2$d</string>
+    <string name="library_store_media_fullscreen">Ver mídia em tela cheia</string>
+    <string name="library_store_media_close">Fechar mídia em tela cheia</string>
+    <string name="library_store_media_previous">Mídia anterior</string>
+    <string name="library_store_media_next">Próxima mídia</string>
+    <string name="library_store_about_expand">Expandir Sobre este jogo</string>
+    <string name="library_store_about_collapse">Recolher Sobre este jogo</string>
     <string name="review_overwhelmingly_positive">Extremamente positivo</string>
     <string name="review_very_positive">Muito positivo</string>
     <string name="review_mostly_positive">Majoritariamente positivo</string>
@@ -1495,6 +1506,7 @@
     <string name="hltb_all_styles">Todos os estilos</string>
     <string name="hltb_hours_value">%sh</string>
     <string name="hltb_section_title">HLTB</string>
+    <string name="hltb_show_spoilers">Mostrar spoilers</string>
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
@@ -1608,6 +1620,49 @@
     <string name="filter_five_star_device">Avaliações 5 estrelas no dispositivo</string>
     <string name="filter_five_star_gpu">Avaliações 5 estrelas na GPU</string>
     <string name="filter_proven_gpu">Comprovado na sua GPU</string>
+    <string name="option_import_files">Importar arquivos</string>
+    <string name="option_export_files">Exportar arquivos</string>
+    <string name="container_files_up">Acima</string>
+    <string name="container_files_new_folder">Nova pasta</string>
+    <string name="container_files_folder_name_hint">Nome da pasta</string>
+    <string name="container_files_create">Criar</string>
+    <string name="container_files_create_folder_failed">Não foi possível criar a pasta.</string>
+    <string name="container_files_no_subfolders">Nenhuma subpasta</string>
+    <string name="container_files_empty_folder">Esta pasta está vazia</string>
+    <string name="container_files_none_selected">Nenhum arquivo selecionado</string>
+    <string name="container_files_result_failed">%1$d arquivos falharam</string>
+    <string name="import_files_title">Importar arquivos</string>
+    <string name="import_files_step_choose_files">1. Escolha os arquivos</string>
+    <string name="import_files_pick_hint">Escolha arquivos deste dispositivo.</string>
+    <string name="import_files_step_choose_destination">2. Escolha onde colocá-los</string>
+    <string name="import_files_destination_hint">Escolha uma pasta dentro do contêiner do jogo.</string>
+    <string name="import_files_select">Selecionar arquivos</string>
+    <string name="import_files_remove">Remover</string>
+    <string name="import_files_selection_summary">%1$d arquivos, %2$s</string>
+    <string name="import_files_replace_existing">Substituir arquivos existentes</string>
+    <string name="import_files_copy_summary">%1$d arquivos serão copiados para %2$s</string>
+    <string name="import_files_copy_button">Copiar %1$d arquivos</string>
+    <string name="import_files_progress">Importando %1$d/%2$d</string>
+    <string name="import_files_result">%1$d arquivos importados para %2$s</string>
+    <string name="import_files_result_skipped">%1$d arquivos existentes ignorados</string>
+    <string name="import_files_cancelled">Importação cancelada</string>
+    <string name="import_files_no_container">Inicie o jogo uma vez para criar o contêiner dele e depois importe os arquivos.</string>
+    <string name="import_files_not_enough_space">Espaço livre insuficiente: %1$s necessários, %2$s disponíveis.</string>
+    <string name="import_files_failed_header">Não foi possível importar estes arquivos:</string>
+    <string name="export_files_title">Exportar arquivos</string>
+    <string name="export_files_source">Escolha os arquivos para exportar</string>
+    <string name="export_files_source_hint">Marque os arquivos que você quer copiar para fora do contêiner do jogo.</string>
+    <string name="export_files_selection_summary">%1$d arquivos selecionados · %2$s</string>
+    <string name="export_files_clear">Limpar</string>
+    <string name="export_files_export_button">Exportar %1$d arquivos</string>
+    <string name="export_files_saved_to">Os arquivos são salvos em %1$s</string>
+    <string name="export_files_permission_needed">É necessária a permissão de armazenamento para salvar arquivos em Downloads.</string>
+    <string name="export_files_progress">Exportando %1$d/%2$d</string>
+    <string name="export_files_saved_result">%1$d arquivos salvos em %2$s</string>
+    <string name="export_files_cancelled">Exportação cancelada</string>
+    <string name="export_files_no_container">Inicie o jogo uma vez para criar o contêiner dele e depois exporte os arquivos.</string>
+    <string name="export_files_failed_header">Não foi possível exportar estes arquivos:</string>
+    <string name="app_filter_vr">Jogo de RV</string>
     <string name="option_manage_mods">Gerenciar mods Nexus</string>
     <string name="nexus_search_clear">Limpar pesquisa</string>
     <string name="nexus_filter_all">Todos</string>
@@ -2431,6 +2486,15 @@
     <string name="settings_info_boot_recs_title">Recomendações de jogos nas telas de carregamento</string>
     <string name="settings_info_boot_recs_subtitle">Mostrar um jogo que você pode gostar enquanto um jogo inicia, quando não há card de patrocinador.</string>
     <string name="boot_rec_badge">Recomendado para você</string>
+    <string name="boot_ad_close_cd">Fechar este cartão</string>
+    <string name="boot_ad_sheet_title_sponsored">Sobre os cartões de patrocínio</string>
+    <string name="boot_ad_sheet_title_rec">Sobre as recomendações</string>
+    <string name="boot_ad_sheet_body_sponsored">Os cartões de patrocínio ajudam a financiar o trabalho em tempo integral no GameNative. Você pode mudar isso a qualquer momento nas Configurações.</string>
+    <string name="boot_ad_sheet_body_rec">As recomendações são escolhidas com base nos jogos que você joga. Você pode mudar isso a qualquer momento nas Configurações.</string>
+    <string name="boot_ad_close_one">Fechar este</string>
+    <string name="boot_ad_turn_off_sponsored">Desativar cartões de patrocínio</string>
+    <string name="boot_ad_turn_off_rec">Desativar recomendações</string>
+    <string name="boot_ad_not_now">Agora não</string>
     <string name="boot_quiz_win_default">Correto!</string>
     <string name="boot_quiz_lose_default">A resposta era %1$s</string>
     <string name="gyro_aiming">Mira por giroscópio</string>

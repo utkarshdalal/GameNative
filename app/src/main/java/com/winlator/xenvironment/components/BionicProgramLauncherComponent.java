@@ -21,6 +21,7 @@ import app.gamenative.utils.LsfgVkManager;
 import com.winlator.box86_64.Box86_64Preset;
 import com.winlator.box86_64.Box86_64PresetManager;
 import com.winlator.container.Container;
+import com.winlator.container.ContainerOverlay;
 import com.winlator.container.Shortcut;
 import com.winlator.contents.ContentProfile;
 import com.winlator.contents.ContentsManager;
@@ -31,6 +32,7 @@ import com.winlator.core.envvars.EnvVars;
 import com.winlator.core.FileUtils;
 import com.winlator.core.GPUInformation;
 import com.winlator.core.ProcessHelper;
+import com.winlator.core.SharedComponents;
 import com.winlator.core.TarCompressorUtils;
 import com.winlator.core.WineInfo;
 import com.winlator.fexcore.FEXCorePreset;
@@ -297,6 +299,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("OPENSSL_CONF", rootDir.getPath() + "/usr/etc/tls/openssl.cnf");
         envVars.put("SSL_CERT_FILE", rootDir.getPath() + "/usr/etc/tls/cert.pem");
         envVars.put("SSL_CERT_DIR", rootDir.getPath() + "/usr/etc/tls/certs");
+        // Wine's crypt32 imports this bundle into the Windows ROOT certificate store. Without it
+        // the store only holds Wine's built-in Microsoft roots: Android 14+ moved the system CAs
+        // to an APEX path Wine does not scan, so TLS verification fails for anything that trusts
+        // via the Windows store (e.g. the EOS SDK's websockets, winhttp/wininet callers).
+        envVars.put("WINE_ADDITIONAL_CERTS_DIR", rootDir.getPath() + "/usr/etc/tls/cert.pem");
         envVars.put("WINE_X11FORCEGLX", "1");
         envVars.put("WINE_GST_NO_GL", "1");
         envVars.put("SteamGameId", "0");
@@ -399,6 +406,14 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             }
         }
 
+        try {
+            ContainerOverlay.applyBionicLaunchEnv(context, container, envVars);
+        }
+        catch (IllegalStateException e) {
+            Log.e("BionicProgramLauncherComponent", e.getMessage());
+            return -1;
+        }
+
         Log.d("BionicProgramLauncherComponent", "env vars are " + EnvVarRedaction.redact(envVars));
 
         String emulator = container.getEmulator();
@@ -495,7 +510,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             contentsManager.applyContent(wowboxprofile);
         } else {
             Log.d("Extraction", "Extracting box64Version: " + wowbox64Version);
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(), "wowbox64/wowbox64-" + wowbox64Version + ".tzst", system32dir);
+            SharedComponents.extractAndLink(environment.getContext(), "wowbox64-" + wowbox64Version, TarCompressorUtils.Type.ZSTD, "wowbox64/wowbox64-" + wowbox64Version + ".tzst", system32dir, null);
         }
         container.putExtra("box64Version", wowbox64Version);
         containerDataChanged = true;
@@ -505,7 +520,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             contentsManager.applyContent(fexprofile);
         } else {
             Log.d("Extraction", "Extracting fexcoreVersion: " + fexcoreVersion);
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(), "fexcore/fexcore-" + fexcoreVersion + ".tzst", system32dir);
+            SharedComponents.extractAndLink(environment.getContext(), "fexcore-" + fexcoreVersion, TarCompressorUtils.Type.ZSTD, "fexcore/fexcore-" + fexcoreVersion + ".tzst", system32dir, null);
         }
         container.putExtra("fexcoreVersion", fexcoreVersion);
 
@@ -694,6 +709,10 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     }
 
     public String execShellCommand(String command, boolean includeStderr) {
+        return execShellCommand(command, includeStderr, null, null);
+    }
+
+    public String execShellCommand(String command, boolean includeStderr, EnvVars extraEnv, String[] unsetEnv) {
         Context context = environment.getContext();
         ImageFs imageFs = ImageFs.find(context);
         File rootDir = imageFs.getRootDir();
@@ -733,6 +752,15 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         String emulator = container.getEmulator();
         if (this.envVars != null) envVars.putAll(this.envVars);
+        try {
+            ContainerOverlay.applyBionicLaunchEnv(context, container, envVars);
+        }
+        catch (IllegalStateException e) {
+            Log.e("BionicProgramLauncherComponent", e.getMessage());
+            return "";
+        }
+        if (extraEnv != null) envVars.putAll(extraEnv);
+        if (unsetEnv != null) for (String name : unsetEnv) envVars.remove(name);
 
         String finalCommand = getFinalCommand(winePath, emulator, envVars, imageFs.getBinDir(), command);
 

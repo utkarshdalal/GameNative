@@ -6,13 +6,21 @@ import java.io.File
 object RockstarHelperDeployment {
     const val DIRECTORY = ".gamenative-rockstar"
     const val EXECUTABLE = "$DIRECTORY/Launcher.exe"
-    private val files = listOf("scpatch.dll", "bink2w64.dll", "SocialClubD3D12Renderer.dll", "SocialClubVulkanLayer.dll")
+    private val files = listOf(
+        "scpatch.dll", "bink2w64.dll", "rgscstub32.exe", "scpatch32.dll", "binkw32.dll",
+        "SocialClubD3D12Renderer.dll", "SocialClubVulkanLayer.dll",
+    )
+
+    fun executable(installDir: File): String {
+        val sub = RockstarHelperArchive.titleDir(installDir).relativeTo(installDir).invariantSeparatorsPath
+        return if (sub.isEmpty()) EXECUTABLE else "$sub/$EXECUTABLE"
+    }
 
     /** Copies the cached helper into the game directory on every launch, so the game runs exactly what the cache holds. */
     @Synchronized
     fun prepare(filesDir: File, gameDir: File) {
         check(RockstarHelperArchive.isReady(filesDir)) { "Rockstar helper archive is not ready" }
-        val target = File(gameDir, DIRECTORY)
+        val target = File(RockstarHelperArchive.titleDir(gameDir), DIRECTORY)
         check(target.isDirectory || target.mkdir()) { "Cannot create Rockstar helper directory" }
         val cache = RockstarHelperArchive.directory(filesDir)
         for (name in files + "Launcher.exe") {
@@ -23,7 +31,7 @@ object RockstarHelperDeployment {
 
     /** The stub publishes this after validating title.rgl, for the game's window-exit watcher. */
     fun gameExecutable(gameDir: File): String? {
-        val file = File(gameDir, "$DIRECTORY/game-executable.txt")
+        val file = File(RockstarHelperArchive.titleDir(gameDir), "$DIRECTORY/game-executable.txt")
         if (!file.isFile || file.length() !in 1..240) return null
         return file.readText().takeIf { value ->
             !value.startsWith('/') && !value.startsWith('\\') && ".." !in value &&

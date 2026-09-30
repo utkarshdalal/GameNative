@@ -36,11 +36,15 @@ import app.gamenative.api.prepareCommunityConfigForApply
 import app.gamenative.data.GameSource
 import app.gamenative.data.FavoritesManager
 import app.gamenative.data.LibraryItem
+import app.gamenative.data.StoreDetailsRepository
+import app.gamenative.data.withoutTitleOnlyDescription
 import app.gamenative.events.AndroidEvent
 import app.gamenative.mods.ModContainerResolver
 import app.gamenative.mods.NexusModManager
 import app.gamenative.ui.component.dialog.CommunityConfigsDialog
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
+import app.gamenative.ui.component.dialog.ExportFilesDialog
+import app.gamenative.ui.component.dialog.ImportFilesDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.NexusModsDialog
 import app.gamenative.ui.data.AppMenuOption
@@ -169,6 +173,8 @@ abstract class BaseAppScreen {
         private val importConfigRequests = mutableStateMapOf<String, Boolean>()
         private val exportSavesRequests = mutableStateMapOf<String, Boolean>()
         private val importSavesRequests = mutableStateMapOf<String, Boolean>()
+        private val importFilesRequests = mutableStateMapOf<String, Boolean>()
+        private val exportFilesRequests = mutableStateMapOf<String, Boolean>()
         private val manageModsRequests = mutableStateMapOf<String, Boolean>()
         private val communityConfigRequests = mutableStateMapOf<String, Boolean>()
         private val knownConfigInstallStates = mutableStateMapOf<Int, KnownConfigInstallState>()
@@ -231,6 +237,30 @@ abstract class BaseAppScreen {
 
         fun shouldImportSaves(appId: String): Boolean {
             return importSavesRequests[appId] == true
+        }
+
+        fun requestImportFiles(appId: String) {
+            importFilesRequests[appId] = true
+        }
+
+        fun clearImportFilesRequest(appId: String) {
+            importFilesRequests.remove(appId)
+        }
+
+        fun shouldImportFiles(appId: String): Boolean {
+            return importFilesRequests[appId] == true
+        }
+
+        fun requestExportFiles(appId: String) {
+            exportFilesRequests[appId] = true
+        }
+
+        fun clearExportFilesRequest(appId: String) {
+            exportFilesRequests.remove(appId)
+        }
+
+        fun shouldExportFiles(appId: String): Boolean {
+            return exportFilesRequests[appId] == true
         }
 
         fun requestManageMods(appId: String) {
@@ -741,6 +771,28 @@ abstract class BaseAppScreen {
     }
 
     @Composable
+    protected open fun getImportFilesOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption = AppMenuOption(
+        optionType = AppOptionMenuType.ImportFiles,
+        onClick = {
+            requestImportFiles(libraryItem.appId)
+        },
+    )
+
+    @Composable
+    protected open fun getExportFilesOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption = AppMenuOption(
+        optionType = AppOptionMenuType.ExportFiles,
+        onClick = {
+            requestExportFiles(libraryItem.appId)
+        },
+    )
+
+    @Composable
     protected open fun getManageModsOption(
         context: Context,
         libraryItem: LibraryItem,
@@ -922,6 +974,7 @@ abstract class BaseAppScreen {
             val gpuName = GPUInformation.getRenderer(context)
 
             val bestConfig = BestConfigService.fetchBestConfig(
+                context = context,
                 gameName = gameName,
                 gpuName = gpuName,
                 gameStore = libraryItem.gameSource.name,
@@ -1021,6 +1074,7 @@ abstract class BaseAppScreen {
         configJson: kotlinx.serialization.json.JsonObject,
         matchType: String,
         matchedGpu: String,
+        storeMatch: Boolean,
         applyLaunchArguments: Boolean,
         applyEnvironmentVariables: Boolean,
     ): Boolean {
@@ -1054,7 +1108,7 @@ abstract class BaseAppScreen {
                 configJson = safeConfig,
                 matchType = matchType,
                 applyKnownConfig = true,
-                storeMatch = false,
+                storeMatch = storeMatch,
                 matchedGpu = matchedGpu,
                 preserveConfigValues = true,
             )
@@ -1071,7 +1125,7 @@ abstract class BaseAppScreen {
                                     configJson = safeConfig,
                                     matchType = matchType,
                                     applyKnownConfig = true,
-                                    storeMatch = false,
+                                    storeMatch = storeMatch,
                                     forceApply = true,
                                     matchedGpu = matchedGpu,
                                     preserveConfigValues = true,
@@ -1212,7 +1266,17 @@ abstract class BaseAppScreen {
         // so container-related items appear as:
         // Reset Container, Reset DRM, Use Known Config, Export Config, Import Config.
         if (isInstalled) {
-            menuOptions.addAll(getConfigMenuOptions(context, libraryItem))
+            val configOptions = getConfigMenuOptions(context, libraryItem)
+            val fileOptions = listOf(
+                getImportFilesOption(context, libraryItem),
+                getExportFilesOption(context, libraryItem),
+            )
+            val insertAt = configOptions.indexOfLast {
+                it.optionType == AppOptionMenuType.ImportConfig || it.optionType == AppOptionMenuType.ExportConfig
+            } + 1
+            menuOptions.addAll(configOptions.take(insertAt))
+            menuOptions.addAll(fileOptions)
+            menuOptions.addAll(configOptions.drop(insertAt))
         }
 
         return menuOptions
@@ -1250,14 +1314,36 @@ abstract class BaseAppScreen {
             mutableStateOf<app.gamenative.utils.HltbService.Stats?>(null)
         }
         LaunchedEffect(displayInfoBase.name) {
-            if (displayInfoBase.name.isNotBlank())
+            if (displayInfoBase.name.isNotBlank()) {
                 hltbStats = try {
                     app.gamenative.utils.HltbService.getStats(displayInfoBase.name)
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
-                } catch (_: Exception) { null }
+                } catch (_: Exception) {
+                    null
+                }
+            }
         }
-        val displayInfo = displayInfoBase.copy(hltbStats = hltbStats)
+
+        // Enrich the locally synced catalog record with public storefront description,
+        // reviews, tags, screenshots, and trailers. The local record remains the fallback.
+        val localStoreDetails = displayInfoBase.storeDetails
+            .withoutTitleOnlyDescription(libraryItem.name)
+        var storeDetails by remember(appId) {
+            mutableStateOf(localStoreDetails)
+        }
+        val storeLocale = context.resources.configuration.locales[0]
+        LaunchedEffect(appId, localStoreDetails, storeLocale.toLanguageTag()) {
+            storeDetails = StoreDetailsRepository.getDetails(
+                libraryItem = libraryItem,
+                fallback = localStoreDetails,
+                locale = storeLocale,
+            )
+        }
+        val displayInfo = displayInfoBase.copy(
+            hltbStats = hltbStats,
+            storeDetails = storeDetails.mergedWith(localStoreDetails),
+        )
 
         // Use composable state for values that change over time
         var isInstalledState by remember(libraryItem.appId) {
@@ -1603,6 +1689,28 @@ abstract class BaseAppScreen {
             }
         }
 
+        var importFilesRequested by remember(appId) {
+            mutableStateOf(shouldImportFiles(appId))
+        }
+
+        LaunchedEffect(appId) {
+            snapshotFlow { shouldImportFiles(appId) }
+                .collect { shouldRequest ->
+                    importFilesRequested = shouldRequest
+                }
+        }
+
+        var exportFilesRequested by remember(appId) {
+            mutableStateOf(shouldExportFiles(appId))
+        }
+
+        LaunchedEffect(appId) {
+            snapshotFlow { shouldExportFiles(appId) }
+                .collect { shouldRequest ->
+                    exportFilesRequested = shouldRequest
+                }
+        }
+
         var manageModsRequested by remember(appId) {
             mutableStateOf(shouldManageMods(appId))
         }
@@ -1671,6 +1779,7 @@ abstract class BaseAppScreen {
         // Render the common UI
         app.gamenative.ui.screen.library.AppScreenContent(
             displayInfo = displayInfo,
+            resetHeroOnFirstArtworkChange = libraryItem.gameSource == GameSource.AMAZON,
             downloadDisplayDetails = app.gamenative.ui.data.DownloadDisplayDetails(
                 isInstalled = isInstalledState,
                 isValidToDownload = isValidToDownloadState,
@@ -1721,7 +1830,7 @@ abstract class BaseAppScreen {
             onBack = onBack,
             achievements = achievementsState,
             optionsMenu = optionsMenu,
-            dialogOpen = showConfigDialog || communityConfigsRequested || manageModsRequested,
+            dialogOpen = showConfigDialog || communityConfigsRequested || manageModsRequested || importFilesRequested || exportFilesRequested,
         )
 
         if (showReadiness && launchActivity != null) {
@@ -1785,6 +1894,7 @@ abstract class BaseAppScreen {
                                 configJson = run.config,
                                 matchType = matchType,
                                 matchedGpu = run.device.gpu,
+                                storeMatch = run.gameStore.equals(libraryItem.gameSource.name, ignoreCase = true),
                                 applyLaunchArguments = options.applyLaunchArguments,
                                 applyEnvironmentVariables = options.applyEnvironmentVariables,
                             )
@@ -1792,6 +1902,30 @@ abstract class BaseAppScreen {
                     },
                 )
             }
+        }
+
+        if (importFilesRequested) {
+            ImportFilesDialog(
+                visible = true,
+                gameName = libraryItem.name,
+                gameRootDir = getInstallPath(context, libraryItem)?.let { File(it) },
+                winePrefix = ModContainerResolver.getWinePrefix(context, libraryItem.appId),
+                onDismissRequest = {
+                    clearImportFilesRequest(appId)
+                },
+            )
+        }
+
+        if (exportFilesRequested) {
+            ExportFilesDialog(
+                visible = true,
+                gameName = libraryItem.name,
+                gameRootDir = getInstallPath(context, libraryItem)?.let { File(it) },
+                winePrefix = ModContainerResolver.getWinePrefix(context, libraryItem.appId),
+                onDismissRequest = {
+                    clearExportFilesRequest(appId)
+                },
+            )
         }
 
         if (manageModsRequested) {

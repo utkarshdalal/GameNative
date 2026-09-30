@@ -9,6 +9,7 @@ import java.io.File
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.FileVisitResult
+import java.nio.file.LinkOption
 import java.nio.file.Paths
 import java.nio.file.SimpleFileVisitor
 import java.nio.file.StandardCopyOption
@@ -91,7 +92,9 @@ object StorageUtils {
             var bytes = 0L
             val tree = folder.walk()
             tree.forEach {
-                bytes += it.length()
+                if (!it.isFile || hardLinkCount(it.toPath()) <= 1) {
+                    bytes += it.length()
+                }
                 // allow interruption if run as coroutine
                 yield()
             }
@@ -99,6 +102,10 @@ object StorageUtils {
         }
         return 0L
     }
+
+    private fun hardLinkCount(path: Path): Int =
+        runCatching { (Files.getAttribute(path, "unix:nlink", LinkOption.NOFOLLOW_LINKS) as Number).toInt() }
+            .getOrDefault(1)
 
     fun formatBinarySize(bytes: Long, decimalPlaces: Int = 2): String {
         require(bytes > Long.MIN_VALUE) { "Out of range" }

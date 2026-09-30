@@ -662,31 +662,44 @@ class GOGManager @Inject constructor(
         try {
             val game = getGameFromDbById(gameId) ?: return@withContext ""
             val installPath = game.installPath.ifEmpty { getGameInstallPath(game.id, game.title) }
-
-            // Try V2 structure first (game_$gameId subdirectory)
-            val v2GameDir = File(installPath, "game_$gameId")
-            if (v2GameDir.exists()) {
-                return@withContext getGameExecutable(installPath, v2GameDir)
-            }
-
-            // Try V1 structure: goggame-*.info and exe can be in install root or in a subdir
-            val installDirFile = File(installPath)
-            val exe = getGameExecutable(installPath, installDirFile)
-            if (exe.isNotEmpty()) return@withContext exe
-            val subdirs = installDirFile.listFiles()?.filter {
-                it.isDirectory && it.name != "saves" && it.name != "_CommonRedist"
-            } ?: emptyList()
-
-            for (subdir in subdirs) {
-                val subdirExe = getGameExecutable(installPath, subdir)
-                if (subdirExe.isNotEmpty()) return@withContext subdirExe
-            }
-
-            ""
+            findInstalledPlayTask(installPath, gameId)?.executablePath ?: ""
         } catch (e: Exception) {
             Timber.e(e, "Failed to get executable for GOG game $gameId")
             ""
         }
+    }
+
+    internal fun findInstalledPlayTask(installPath: String, gameId: String): GOGPlayTask? {
+        // Try V2 structure first (game_$gameId subdirectory)
+        val v2GameDir = File(installPath, "game_$gameId")
+        if (v2GameDir.exists()) {
+            return getGamePlayTask(installPath, v2GameDir)
+        }
+
+        // Try V1 structure: goggame-*.info and exe can be in install root or in a subdir
+        val installDirFile = File(installPath)
+        getGamePlayTask(installPath, installDirFile)?.let { return it }
+        val subdirs = installDirFile.listFiles()?.filter {
+            it.isDirectory && it.name != "saves" && it.name != "_CommonRedist"
+        } ?: emptyList()
+
+        for (subdir in subdirs) {
+            getGamePlayTask(installPath, subdir)?.let { return it }
+        }
+
+        return null
+    }
+
+    internal fun resolveGogLaunchArguments(execArgs: String, executablePath: String, task: GOGPlayTask?): String {
+        if (execArgs.isNotEmpty() || task == null) return ""
+        return if (isSamePlayTaskExecutable(task, executablePath)) task.arguments else ""
+    }
+
+    internal fun isSamePlayTaskExecutable(task: GOGPlayTask, executablePath: String): Boolean {
+        return task.executablePath.replace('\\', '/').equals(
+            executablePath.replace('\\', '/'),
+            ignoreCase = true,
+        )
     }
 
     /**
@@ -699,15 +712,21 @@ class GOGManager @Inject constructor(
         }
     }
 
-    private fun getGameExecutable(installPath: String, gameDir: File): String {
-        val result = getMainExecutableFromGOGInfo(gameDir, installPath)
+    internal data class GOGPlayTask(
+        val executablePath: String,
+        val arguments: String,
+        val workingDir: String,
+    )
+
+    private fun getGamePlayTask(installPath: String, gameDir: File): GOGPlayTask? {
+        val result = getPrimaryPlayTaskFromGOGInfo(gameDir, installPath)
         if (result.isSuccess) {
-            val exe = result.getOrNull() ?: ""
-            Timber.d("Found GOG game executable from info file: $exe")
-            return exe
+            val task = result.getOrNull()
+            Timber.d("Found GOG game executable from info file: ${task?.executablePath}")
+            return task
         }
         Timber.e(result.exceptionOrNull(), "Failed to find executable from GOG info file in: ${gameDir.absolutePath}")
-        return ""
+        return null
     }
 
     private fun findGOGInfoFile(directory: File, gameId: String? = null, maxDepth: Int = 3, currentDepth: Int = 0): File? {
@@ -745,7 +764,7 @@ class GOGManager @Inject constructor(
         return null
     }
 
-    private fun getMainExecutableFromGOGInfo(gameDir: File, installPath: String): Result<String> {
+    private fun getPrimaryPlayTaskFromGOGInfo(gameDir: File, installPath: String): Result<GOGPlayTask> {
         return try {
             val infoFile = findGOGInfoFile(gameDir)
                 ?: return Result.failure(Exception("GOG info file not found in ${gameDir.absolutePath}"))
@@ -768,7 +787,19 @@ class GOGManager @Inject constructor(
                     val exeFile = FileUtils.findFileCaseInsensitive(gameDir, executablePath)
                     if (exeFile != null) {
                         val relativePath = exeFile.relativeTo(installDir).path
-                        return Result.success(relativePath)
+                        val workingDir = optNonNullString(task, "workingDir")
+                            .takeIf { it.isNotEmpty() }
+                            ?.let { FileUtils.resolveCaseInsensitive(gameDir, it) }
+                            ?.takeIf { it.isDirectory }
+                            ?.relativeTo(installDir)?.path
+                            .orEmpty()
+                        return Result.success(
+                            GOGPlayTask(
+                                executablePath = relativePath,
+                                arguments = optNonNullString(task, "arguments").trim(),
+                                workingDir = workingDir,
+                            ),
+                        )
                     }
                     return Result.failure(Exception("Primary executable '$executablePath' not found in ${gameDir.absolutePath}"))
                 }
@@ -778,6 +809,10 @@ class GOGManager @Inject constructor(
         } catch (e: Exception) {
             Result.failure(Exception("Error parsing GOG info file in ${gameDir.absolutePath}: ${e.message}", e))
         }
+    }
+
+    private fun optNonNullString(json: JSONObject, key: String): String {
+        return if (json.has(key) && !json.isNull(key)) json.optString(key, "") else ""
     }
 
     fun getGogWineStartCommand(
@@ -860,8 +895,13 @@ class GOGManager @Inject constructor(
 
         val windowsPath = "$gogDriveLetter:\\$relativePath"
 
+        val playTask = findInstalledPlayTask(gameInstallPath, gameId.toString())
+            ?.takeIf { isSamePlayTaskExecutable(it, executablePath) }
+        val gogArguments = resolveGogLaunchArguments(container.execArgs, executablePath, playTask)
+
         // Set working directory
-        val execWorkingDir = execFile.parentFile
+        val taskWorkingDir = playTask?.workingDir?.takeIf { it.isNotEmpty() }?.let { File(gameInstallPath, it) }
+        val execWorkingDir = taskWorkingDir ?: execFile.parentFile
         if (execWorkingDir != null) {
             guestProgramLauncherComponent.workingDir = execWorkingDir
             envVars.put("WINEPATH", "$gogDriveLetter:\\")
@@ -869,8 +909,9 @@ class GOGManager @Inject constructor(
             guestProgramLauncherComponent.workingDir = gameDir
         }
 
-        Timber.d("GOG Wine command: \"$windowsPath\"")
-        return "\"$windowsPath\""
+        val command = "\"$windowsPath\"" + if (gogArguments.isNotEmpty()) " $gogArguments" else ""
+        Timber.d("GOG Wine command: $command")
+        return command
     }
 
     /**
@@ -1110,6 +1151,15 @@ class GOGManager @Inject constructor(
         }
     }
 
+    // some installs omit clientId from goggame-<id>.info and carry `client_id` only in GalaxyConfig.json.
+    private fun galaxyConfigClientId(installPath: String): String {
+        return runCatching {
+            val cfg = File(installPath, "GalaxyConfig.json")
+            if (!cfg.isFile) return@runCatching ""
+            JSONObject(cfg.readText()).optString("client_id", "")
+        }.getOrDefault("")
+    }
+
     /**
      * Fetch save locations from GOG Remote Config API
      * @param context Android context
@@ -1136,9 +1186,11 @@ class GOGManager @Inject constructor(
             // clientId is optional and missing for many games (e.g. Dead Cells), so prefer the .info value
             // only as a hint and fall back to the build metadata, which always carries both.
             val buildCredentials = GOGApiClient.getClientCredentials(context, gameId.toString(), installPath)
-            val clientId = infoJson.optString("clientId", "").ifEmpty { buildCredentials?.first ?: "" }
+            val clientId = infoJson.optString("clientId", "")
+                .ifEmpty { buildCredentials?.first ?: "" }
+                .ifEmpty { galaxyConfigClientId(installPath) }
             if (clientId.isEmpty()) {
-                Timber.tag("GOG").w("[Cloud Saves] No clientId in info file or build metadata for game $gameId")
+                Timber.tag("GOG").w("[Cloud Saves] No clientId in info file, build metadata, or GalaxyConfig.json for game $gameId")
                 return@withContext null
             }
             Timber.tag("GOG").d("[Cloud Saves] Client ID: $clientId")

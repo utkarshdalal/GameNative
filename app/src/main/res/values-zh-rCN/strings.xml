@@ -670,9 +670,13 @@
     <string name="pulseaudio_suspend_behavior_thread">通过线程暂停（默认）</string>
     <string name="pulseaudio_suspend_behavior_pactl">通过 Pactl 暂停（省电）</string>
     <string name="pulseaudio_low_latency">PulseAudio 低延迟模式</string>
+    <string name="microphone_input">麦克风输入</string>
+    <string name="microphone_input_description">将设备麦克风作为录音设备提供给 Wine/Proton。需要麦克风权限。</string>
     <string name="show_fps">显示帧率</string>
     <string name="portrait_mode">竖屏模式</string>
     <string name="portrait_mode_description">适用于 8BitDo FlipPad/GameSir Pocket Taco 类型控制器</string>
+    <string name="portrait_below_cutout">显示在摄像头挖孔下方</string>
+    <string name="portrait_below_cutout_description">在竖屏模式下将游戏画面显示在摄像头挖孔下方</string>
     <string name="remove_driver_confirmation">确定要移除驱动程序“%s”？此操作无法撤销</string>
 
     <!-- 容器配置：Steam 集成 -->
@@ -681,7 +685,7 @@
     <string name="unpack_files_description">仅在出现\'应用程序加载错误\'时使用。可能会降低帧率。</string>
     <string name="force_dlc">强制开启DLC</string>
     <string name="force_dlc_description">仅在未检测到 DLC 或包含 DLC 的存档无法运作时启用</string>
-    <string name="launch_steam_client_beta">启动 Steam 客户端（Beta）</string>
+    <string name="launch_steam_client_beta">启动 Steam 客户端</string>
     <string name="steam_offline_mode">Steam 离线模式</string>
     <string name="steam_offline_mode_description">以离线模式启动 Steam 游戏</string>
     <string name="epic_offline_mode">Epic 离线模式</string>
@@ -987,7 +991,7 @@
     <!-- 设置：信息组 -->
     <string name="settings_info_title">信息</string>
     <string name="settings_info_send_tip_title">成为会员</string>
-    <string name="settings_info_send_tip_subtitle">版本抢先体验、优先支持等</string>
+    <string name="settings_info_send_tip_subtitle">AI 游戏运行帮助、版本抢先体验等</string>
     <string name="settings_info_ask_tip_title">会员优惠</string>
     <string name="settings_info_ask_tip_subtitle">偶尔显示成为 GameNative 会员的优惠信息</string>
     <string name="settings_info_source_title">源代码</string>
@@ -1101,7 +1105,7 @@
     <string name="main_recent_crash_title">最近应用程序崩溃</string>
     <string name="main_recent_crash_message">若能了解您最近遇到的问题，将有助于我们改善应用程序。\n您可在应用程序设置中查看并导出最近的崩溃日志，将其附加至项目源代码仓库的 Github Issue中\nGithub 源代码仓库的链接亦位于设置页面内</string>
     <string name="main_thank_you_title">喜欢 GameNative 吗？</string>
-    <string name="main_thank_you_message">立即成为会员。会员可享受：\n\n• 新版本抢先体验\n• 游戏运行问题优先支持\n• Discord 高级身份组和专属频道\n• …以及更多\n\n每月 $5 起</string>
+    <string name="main_thank_you_message">立即成为会员。会员可享受：\n\n• AI 帮你解决游戏运行问题\n• 新版本抢先体验\n• Discord 高级身份组和专属频道\n• …以及更多\n\n每月 $5 起</string>
     <string name="main_join_kofi">成为会员</string>
     <string name="pitch_session_title">喜欢《%1$s》吗？</string>
     <string name="pitch_five_star_title">很高兴《%1$s》运行顺畅！</string>
@@ -1555,6 +1559,13 @@
     <string name="recommended_support_message">通过此链接购买，我们会获得佣金。</string>
     <string name="recommended_about_heading">关于本游戏</string>
     <string name="recommended_review_count">基于 %1$s 条评价</string>
+    <string name="library_store_media_page">第 %1$d 项，共 %2$d 项</string>
+    <string name="library_store_media_fullscreen">全屏查看媒体</string>
+    <string name="library_store_media_close">关闭全屏媒体</string>
+    <string name="library_store_media_previous">上一个媒体</string>
+    <string name="library_store_media_next">下一个媒体</string>
+    <string name="library_store_about_expand">展开“关于本游戏”</string>
+    <string name="library_store_about_collapse">收起“关于本游戏”</string>
     <string name="review_overwhelmingly_positive">好评如潮</string>
     <string name="review_very_positive">特别好评</string>
     <string name="review_mostly_positive">多半好评</string>
@@ -1674,6 +1685,7 @@
     <string name="hltb_all_styles">所有风格</string>
     <string name="hltb_hours_value">%sh</string>
     <string name="hltb_section_title">HLTB</string>
+    <string name="hltb_show_spoilers">显示剧透</string>
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
@@ -1755,6 +1767,49 @@
     <string name="filter_five_star_device">设备上的五星好评</string>
     <string name="filter_five_star_gpu">GPU上的五星好评</string>
     <string name="filter_proven_gpu">已在您的GPU上验证</string>
+    <string name="option_import_files">导入文件</string>
+    <string name="option_export_files">导出文件</string>
+    <string name="container_files_up">上一级</string>
+    <string name="container_files_new_folder">新建文件夹</string>
+    <string name="container_files_folder_name_hint">文件夹名称</string>
+    <string name="container_files_create">创建</string>
+    <string name="container_files_create_folder_failed">无法创建文件夹。</string>
+    <string name="container_files_no_subfolders">没有子文件夹</string>
+    <string name="container_files_empty_folder">此文件夹为空</string>
+    <string name="container_files_none_selected">未选择文件</string>
+    <string name="container_files_result_failed">%1$d 个文件失败</string>
+    <string name="import_files_title">导入文件</string>
+    <string name="import_files_step_choose_files">1. 选择文件</string>
+    <string name="import_files_pick_hint">从此设备中选择文件。</string>
+    <string name="import_files_step_choose_destination">2. 选择存放位置</string>
+    <string name="import_files_destination_hint">在游戏容器中选择一个文件夹。</string>
+    <string name="import_files_select">选择文件</string>
+    <string name="import_files_remove">移除</string>
+    <string name="import_files_selection_summary">%1$d 个文件，%2$s</string>
+    <string name="import_files_replace_existing">替换现有文件</string>
+    <string name="import_files_copy_summary">将把 %1$d 个文件复制到 %2$s</string>
+    <string name="import_files_copy_button">复制 %1$d 个文件</string>
+    <string name="import_files_progress">正在导入 %1$d/%2$d</string>
+    <string name="import_files_result">已将 %1$d 个文件导入到 %2$s</string>
+    <string name="import_files_result_skipped">已跳过 %1$d 个现有文件</string>
+    <string name="import_files_cancelled">导入已取消</string>
+    <string name="import_files_no_container">请先启动一次游戏以创建其容器，然后再导入文件。</string>
+    <string name="import_files_not_enough_space">可用空间不足：需要 %1$s，可用 %2$s。</string>
+    <string name="import_files_failed_header">以下文件无法导入：</string>
+    <string name="export_files_title">导出文件</string>
+    <string name="export_files_source">选择要导出的文件</string>
+    <string name="export_files_source_hint">勾选要从游戏容器中复制出来的文件。</string>
+    <string name="export_files_selection_summary">已选择 %1$d 个文件 · %2$s</string>
+    <string name="export_files_clear">清除</string>
+    <string name="export_files_export_button">导出 %1$d 个文件</string>
+    <string name="export_files_saved_to">文件将保存到 %1$s</string>
+    <string name="export_files_permission_needed">需要存储权限才能将文件保存到“下载”。</string>
+    <string name="export_files_progress">正在导出 %1$d/%2$d</string>
+    <string name="export_files_saved_result">已将 %1$d 个文件保存到 %2$s</string>
+    <string name="export_files_cancelled">导出已取消</string>
+    <string name="export_files_no_container">请先启动一次游戏以创建其容器，然后再导出文件。</string>
+    <string name="export_files_failed_header">以下文件无法导出：</string>
+    <string name="app_filter_vr">VR 游戏</string>
     <string name="option_manage_mods">管理 Nexus 模组</string>
     <string name="nexus_search_clear">清除搜索</string>
     <string name="nexus_filter_all">全部</string>
@@ -2575,6 +2630,15 @@
     <string name="settings_info_boot_recs_title">在加载画面显示游戏推荐</string>
     <string name="settings_info_boot_recs_subtitle">没有赞助商卡片时，在游戏启动期间显示你可能喜欢的游戏。</string>
     <string name="boot_rec_badge">为你推荐</string>
+    <string name="boot_ad_close_cd">关闭此卡片</string>
+    <string name="boot_ad_sheet_title_sponsored">关于赞助卡片</string>
+    <string name="boot_ad_sheet_title_rec">关于推荐</string>
+    <string name="boot_ad_sheet_body_sponsored">赞助卡片帮助支持 GameNative 的全职开发。你可以随时在设置中更改。</string>
+    <string name="boot_ad_sheet_body_rec">推荐内容根据你玩过的游戏挑选。你可以随时在设置中更改。</string>
+    <string name="boot_ad_close_one">关闭这一个</string>
+    <string name="boot_ad_turn_off_sponsored">关闭赞助卡片</string>
+    <string name="boot_ad_turn_off_rec">关闭推荐</string>
+    <string name="boot_ad_not_now">暂不</string>
     <string name="boot_quiz_win_default">答对了！</string>
     <string name="boot_quiz_lose_default">正确答案是 %1$s</string>
     <string name="gyro_aiming">陀螺仪瞄准</string>

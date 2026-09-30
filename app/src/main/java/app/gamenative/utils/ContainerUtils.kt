@@ -125,6 +125,7 @@ object ContainerUtils {
             dxwrapperConfig = PrefManager.dxWrapperConfig,
             audioDriver = PrefManager.audioDriver,
             pulseaudioLowLatency = PrefManager.pulseaudioLowLatency,
+            micEnabled = PrefManager.micEnabled,
             wincomponents = PrefManager.winComponents,
             drives = PrefManager.drives,
             execArgs = PrefManager.execArgs,
@@ -172,6 +173,7 @@ object ContainerUtils {
 			dinputMapperType = PrefManager.dinputMapperType.toByte(),
             disableMouseInput = PrefManager.disableMouseInput,
             portraitMode = PrefManager.portraitMode,
+            portraitBelowCutout = PrefManager.portraitBelowCutout,
             externalDisplayMode = PrefManager.externalDisplayInputMode,
             externalDisplaySwap = PrefManager.externalDisplaySwap,
             sharpnessEffect = PrefManager.sharpnessEffect,
@@ -193,6 +195,7 @@ object ContainerUtils {
         PrefManager.dxWrapperConfig = containerData.dxwrapperConfig
         PrefManager.audioDriver = containerData.audioDriver
         PrefManager.pulseaudioLowLatency = containerData.pulseaudioLowLatency
+        PrefManager.micEnabled = containerData.micEnabled
         PrefManager.winComponents = containerData.wincomponents
         PrefManager.drives = containerData.drives
         PrefManager.execArgs = containerData.execArgs
@@ -243,6 +246,7 @@ object ContainerUtils {
         PrefManager.fasterExternalLoading = containerData.fasterExternalLoading
         PrefManager.disableLibredirect = containerData.disableLibredirect
         PrefManager.portraitMode = containerData.portraitMode
+        PrefManager.portraitBelowCutout = containerData.portraitBelowCutout
         PrefManager.sharpnessEffect = containerData.sharpnessEffect
         PrefManager.sharpnessLevel = containerData.sharpnessLevel
         PrefManager.sharpnessDenoise = containerData.sharpnessDenoise
@@ -316,6 +320,7 @@ object ContainerUtils {
             dxwrapperConfig = container.dxWrapperConfig,
             audioDriver = container.audioDriver,
             pulseaudioLowLatency = container.getPulseaudioLowLatency(),
+            micEnabled = container.getMicEnabled(),
             wincomponents = container.winComponents,
             drives = container.drives,
             execArgs = container.execArgs,
@@ -353,6 +358,7 @@ object ContainerUtils {
             unpackFiles = container.isUnpackFiles(),
             suspendPolicy = container.suspendPolicy,
             portraitMode = container.isPortraitMode,
+            portraitBelowCutout = container.isPortraitBelowCutout,
             enableXInput = enableX,
             enableDInput = enableD,
             dinputMapperType = mapperType,
@@ -450,6 +456,8 @@ object ContainerUtils {
                 "wincomponents" -> value?.let { updatedData.copy(wincomponents = it as? String ?: updatedData.wincomponents) } ?: updatedData
                 "videoMemorySize" -> value?.let { updatedData.copy(videoMemorySize = it as? String ?: updatedData.videoMemorySize) } ?: updatedData
                 "launchBionicSteam" -> value?.let { updatedData.copy(launchBionicSteam = it as? Boolean ?: updatedData.launchBionicSteam) } ?: updatedData
+                "launchRealSteam" -> value?.let { updatedData.copy(launchRealSteam = it as? Boolean ?: updatedData.launchRealSteam) } ?: updatedData
+                "steamType" -> value?.let { updatedData.copy(steamType = (it as? String)?.takeIf { s -> s.isNotBlank() } ?: updatedData.steamType) } ?: updatedData
                 else -> updatedData
             }
         }
@@ -507,6 +515,7 @@ object ContainerUtils {
         container.dxWrapperConfig = containerData.dxwrapperConfig
         container.audioDriver = containerData.audioDriver
         container.setPulseaudioLowLatency(containerData.pulseaudioLowLatency)
+        container.setMicEnabled(containerData.micEnabled)
         container.winComponents = containerData.wincomponents
         container.drives = containerData.drives
         container.execArgs = containerData.execArgs
@@ -558,6 +567,7 @@ object ContainerUtils {
         container.setUnpackFiles(containerData.unpackFiles)
         container.setSuspendPolicy(containerData.suspendPolicy)
         container.setPortraitMode(containerData.portraitMode)
+        container.setPortraitBelowCutout(containerData.portraitBelowCutout)
         if (previousUnpackFiles != containerData.unpackFiles && containerData.unpackFiles) {
             container.setNeedsUnpacking(true)
         }
@@ -847,6 +857,7 @@ object ContainerUtils {
                     runBlocking(Dispatchers.IO) {
                         try {
                             val bestConfig = BestConfigService.fetchBestConfig(
+                                context = context,
                                 gameName = gameName,
                                 gpuName = gpuName,
                                 gameStore = gameSource.name,
@@ -900,6 +911,7 @@ object ContainerUtils {
                 dxwrapperConfig = PrefManager.dxWrapperConfig,
                 audioDriver = PrefManager.audioDriver,
                 pulseaudioLowLatency = PrefManager.pulseaudioLowLatency,
+                micEnabled = PrefManager.micEnabled,
                 wincomponents = PrefManager.winComponents,
                 drives = drives,
                 execArgs = PrefManager.execArgs,
@@ -943,6 +955,7 @@ object ContainerUtils {
                 fasterExternalLoading = PrefManager.fasterExternalLoading,
                 disableLibredirect = PrefManager.disableLibredirect,
                 portraitMode = PrefManager.portraitMode,
+                portraitBelowCutout = PrefManager.portraitBelowCutout,
                 externalDisplayMode = PrefManager.externalDisplayInputMode,
                 externalDisplaySwap = PrefManager.externalDisplaySwap,
             )
@@ -1065,7 +1078,7 @@ object ContainerUtils {
         }
 
         val resolvedGameFolderPath = if (gameSource == GameSource.CUSTOM_GAME) {
-            gameFolderPath
+            CustomGameScanner.migrateToInternalStorage(gameFolderPath)
         } else {
             StorageUtils.resolveLegacyGameDir(gameFolderPath)
         }

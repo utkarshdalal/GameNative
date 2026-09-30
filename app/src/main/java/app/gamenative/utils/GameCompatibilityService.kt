@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.ui.graphics.Color
 import app.gamenative.BuildConfig
 import app.gamenative.R
+import app.gamenative.data.GameCompatibilityStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -36,7 +37,8 @@ object GameCompatibilityService {
         val gpuPlayableCount: Int,
         val avgRating: Float,
         val hasBeenTried: Boolean,
-        val isNotWorking: Boolean
+        val isNotWorking: Boolean,
+        val state: String? = null,
     )
 
     /**
@@ -62,6 +64,19 @@ object GameCompatibilityService {
             else ->
                 CompatibilityMessage(context.getString(R.string.library_compatibility_unknown), Color.Gray)
         }
+    }
+
+    fun statusFor(response: GameCompatibilityResponse): GameCompatibilityStatus = when {
+        response.isNotWorking -> GameCompatibilityStatus.NOT_COMPATIBLE
+        !response.hasBeenTried -> GameCompatibilityStatus.UNKNOWN
+        response.gpuPlayableCount > 0 -> GameCompatibilityStatus.GPU_COMPATIBLE
+        response.totalPlayableCount > 0 -> GameCompatibilityStatus.COMPATIBLE
+        else -> GameCompatibilityStatus.UNKNOWN
+    }
+
+    fun badgeProperties(gameName: String): Map<String, Any> {
+        val cached = GameCompatibilityCache.getCached(gameName) ?: return emptyMap()
+        return mapOf("compat_badge" to (cached.state ?: statusFor(cached).name))
     }
 
     /**
