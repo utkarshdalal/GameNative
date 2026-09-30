@@ -4886,6 +4886,7 @@ private fun getWineStartCommand(
             if (isRockstar) {
                 val launcher = "$steamRoot\\steamapps\\common\\$gameFolderName\\$normalizedExe"
                 envVars.put("STEAMHOST_LAUNCH_PARAMS", "-forceLauncherPath \"$launcher\" -skipInstallers")
+                envVars.put("STEAMHOST_INSTALLSCRIPT", "0")
             }
             if (SteamUtils.isSteamInputEnabled(container, gameId)) envVars.put("STEAMHOST_STEAMINPUT", "1")
             Timber.i("Real-Steam via steamhost: game=$gameCmd dir=$gameDir")
