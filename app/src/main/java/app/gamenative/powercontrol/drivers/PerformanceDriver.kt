@@ -3,6 +3,7 @@ package app.gamenative.powercontrol.drivers
 import app.gamenative.powercontrol.AutoTuningMode
 import app.gamenative.powercontrol.GamePinningMode
 import app.gamenative.powercontrol.PowerProfile
+import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.powercontrol.profiles.CpuGovernor
 import app.gamenative.powercontrol.profiles.PerformancePreset
 

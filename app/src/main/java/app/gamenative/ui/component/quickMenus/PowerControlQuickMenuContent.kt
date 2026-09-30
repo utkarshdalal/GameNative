@@ -69,7 +69,6 @@ import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.MathUtils.normalizedProgress
 import kotlinx.coroutines.delay
 
-/** Power Control quick-menu content for [uiState]; every change goes out through the callbacks. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PowerControlQuickMenuContent(
@@ -188,7 +187,6 @@ private fun LoadingView() {
     }
 }
 
-/** Profile, tuning, pinning and fan controls for a loaded [PowerControlUiState.Success]. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun FlowRowScope.SuccessView(
@@ -242,7 +240,6 @@ private fun FlowRowScope.SuccessView(
         selectedMaxRamValue = state.ramInfo?.maxBusLevel ?: 0
     }
 
-    /** Formats a kHz value in the driver's display unit. */
     @SuppressLint("DefaultLocale")
     fun formatFrequency(freqKhz: Long): String {
         return when (PowerManager.getDisplayUnit()) {
@@ -547,42 +544,40 @@ private fun FlowRowScope.SuccessView(
         }
 
         if (isDriverSupported) {
-            if (state.selectedProfile.autoTuningMode != AutoTuningMode.OFF) {
-                state.cpuInfo?.let { cpuInfo ->
-                    SectionHeader(title = "CPU")
+            state.cpuInfo?.takeIf { state.selectedProfile.autoTuningMode != AutoTuningMode.OFF }?.let { cpuInfo ->
+                SectionHeader(title = "CPU")
 
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        Text(
-                            text = stringResource(R.string.power_control_governor),
-                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.power_control_governor),
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
 
-                        SelectorRow(
-                            valueText = cpuInfo.currentGovernor.replaceFirstChar { it.uppercase() },
-                            accentColor = accentColor,
-                            expanded = isGovernorDropdownExpanded,
-                            onExpandedChange = { isGovernorDropdownExpanded = it },
-                        ) { menuFocusRequester ->
-                            cpuInfo.availableGovernors.forEachIndexed { index, governor ->
-                                SelectorMenuItem(
-                                    accentColor = accentColor,
-                                    focusRequester = if (index == 0) menuFocusRequester else null,
-                                    onClick = {
-                                        isGovernorDropdownExpanded = false
-                                        onGovernorSelected(governor)
-                                    },
-                                    text = {
-                                        Text(
-                                            text = governor.replaceFirstChar { it.uppercase() },
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
-                                    },
-                                )
-                            }
+                    SelectorRow(
+                        valueText = cpuInfo.currentGovernor.replaceFirstChar { it.uppercase() },
+                        accentColor = accentColor,
+                        expanded = isGovernorDropdownExpanded,
+                        onExpandedChange = { isGovernorDropdownExpanded = it },
+                    ) { menuFocusRequester ->
+                        cpuInfo.availableGovernors.forEachIndexed { index, governor ->
+                            SelectorMenuItem(
+                                accentColor = accentColor,
+                                focusRequester = if (index == 0) menuFocusRequester else null,
+                                onClick = {
+                                    isGovernorDropdownExpanded = false
+                                    onGovernorSelected(governor)
+                                },
+                                text = {
+                                    Text(
+                                        text = governor.replaceFirstChar { it.uppercase() },
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                },
+                            )
                         }
                     }
                 }

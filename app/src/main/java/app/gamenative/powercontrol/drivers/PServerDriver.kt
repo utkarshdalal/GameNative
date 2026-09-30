@@ -30,6 +30,9 @@ import java.util.concurrent.Executors
 class PServerDriver(private val context: Context? = null) : PerformanceDriver() {
 
     companion object {
+        /** Thread IDs per `taskset` command, so it stays short enough for PServer. */
+        private const val TASKSET_TIDS_PER_COMMAND = 12
+
         private const val TAG = "PServerDriver"
         private const val POWER_TAG = "PowerControl"
         private const val FAN_TAG = "PowerFan"
@@ -377,6 +380,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
                 val restored = restoreRecordedBaseline()
 
                 if (restored) {
+                    synchronized(this) { heldCoreCtl.clear() }
                     killBabysitter()
                     deleteBaselineArtifacts()
                     sessionBaseline = null
@@ -494,7 +498,8 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     }
 
     private fun readBaselineEntries(): List<PowerBaselineEntry> {
-        val paths = baselinePaths()
+        // core_ctl min_cpus rides along, so a crash can't leave a cluster held active.
+        val paths = baselinePaths() + coreCtlMinPaths().values
         if (paths.isEmpty()) return emptyList()
 
         val output = executeAsRoot(PowerBaselineScripts.buildReadCommand(paths)).getOrNull()
@@ -1327,7 +1332,6 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         return writeGpuPowerLevel(maxPath, sysfsLevel)
     }
 
-    /** Full-range profile: tested devices start with Auto tuning and pinning, others with Manual clocks and pinning Off. */
     override fun getDefaultProfile(): PowerProfile {
         val availableFrequencies = getAvailableCpuFrequencies()
         val availableGovernors = getAvailableGovernors()
@@ -1616,9 +1620,11 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
      *
      * @param pid Process ID to pin
      * @param cpuMask CPU affinity mask (e.g., "0xff" for CPUs 0-7, "0x80" for CPU 7 only)
+     * @param allThreads Every thread of the process instead of just the one [pid] names
      * @return true if successful
      */
-    fun setCpuAffinity(pid: Int, cpuMask: String): Boolean {
+    fun setCpuAffinity(pid: Int, cpuMask: String, allThreads: Boolean = false): Boolean {
+        if (allThreads) return setThreadsAffinity(pid, cpuMask)
         return try {
             val command = "taskset -p $cpuMask $pid"
             val result = executeAsRoot(command)
@@ -1637,13 +1643,96 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     }
 
     /**
+     * Every thread of [pid], one `taskset -p` per thread: `taskset -a` run through PServer only reaches the main
+     * thread. The thread list comes from this side, since the process runs under the app's UID, and goes out in
+     * chunks, since PServer drops a long command without a word. True only when every chunk ran and no thread was
+     * refused.
+     */
+    private fun setThreadsAffinity(pid: Int, cpuMask: String): Boolean {
+        val tids = File("/proc/$pid/task").list()?.mapNotNull { it.toIntOrNull() }.orEmpty().ifEmpty { listOf(pid) }
+        val failures = ArrayList<String>()
+        for (chunk in tids.chunked(TASKSET_TIDS_PER_COMMAND)) {
+            val command = "for t in ${chunk.joinToString(" ")}; do " +
+                "r=\$(taskset -p $cpuMask \$t 2>&1) || echo \"fail \$t \$r\"; done; echo done"
+            val result = executeAsRoot(command)
+            val output = result.getOrNull().orEmpty()
+            if (result.isFailure || !output.lines().any { it.trim() == "done" }) {
+                val reason = result.exceptionOrNull()?.message ?: output.take(200)
+                Timber.tag(TAG).e("taskset over ${chunk.size} threads of PID $pid didn't run (${command.length} chars): $reason")
+                return false
+            }
+            // A thread that exited since the list was read isn't a refusal.
+            failures += output.lines().filter { it.startsWith("fail ") && !it.contains("No such process") }
+        }
+        if (failures.isEmpty()) {
+            Timber.tag(TAG).i("Set CPU affinity for PID $pid (${tids.size} threads) to mask $cpuMask")
+            return true
+        }
+        Timber.tag(TAG).w(
+            "taskset refused ${failures.size} of ${tids.size} threads of PID $pid for mask $cpuMask: " +
+                failures.take(3).joinToString(" | ").take(300)
+        )
+        return false
+    }
+
+    /** core_ctl `min_cpus` of each cluster that has one, keyed by the cluster's policy. */
+    private fun coreCtlMinPaths(): Map<CpuPolicy, String> = cpuPolicies
+        .associateWith { "/sys/devices/system/cpu/cpu${it.cpuCores.minOrNull() ?: 0}/core_ctl/min_cpus" }
+        .filterValues { File(it).exists() }
+
+    /** Original `min_cpus` of the clusters [holdCoresActive] raised, by path. */
+    private val heldCoreCtl = HashMap<String, String>()
+
+    /**
+     * Keeps Qualcomm core_ctl from pausing all of [cores] at once: pausing a CPU resets every thread allowed only
+     * paused CPUs to all of them, which undoes a pin. When core_ctl could pause every one of [cores] (each cluster's
+     * share is at most its size minus `min_cpus`), `min_cpus` of the clusters holding them is raised to their size;
+     * otherwise, and for an empty [cores], every raised value goes back. The session baseline restores it too.
+     * @return the changes made, for the log, or null when nothing changed
+     */
+    @Synchronized
+    fun holdCoresActive(cores: Collection<Int>): String? {
+        val paths = coreCtlMinPaths()
+        if (paths.isEmpty()) return null
+        val original = paths.mapValues { (_, path) ->
+            (heldCoreCtl[path] ?: readSysfsFile(path)?.trim())?.toIntOrNull()
+        }
+        val wanted = cores.toSet()
+        // One game core core_ctl can never pause is enough to keep the pin.
+        val alwaysActive = paths.keys.any { policy ->
+            val min = original[policy] ?: return@any false
+            policy.cpuCores.count { it in wanted } > policy.cpuCores.size - min
+        }
+        val hold = if (wanted.isEmpty() || alwaysActive) {
+            emptySet()
+        } else {
+            paths.keys.filter { policy -> policy.cpuCores.any { it in wanted } }.toSet()
+        }
+        val changes = ArrayList<String>()
+        for ((policy, path) in paths) {
+            val min = original[policy] ?: continue
+            val target = if (policy in hold) policy.cpuCores.size else min
+            val current = readSysfsFile(path)?.trim()?.toIntOrNull()
+            if (current == target) continue
+            if (executeAsRoot("echo $target > '$path'").isFailure) {
+                changes += "cpu${policy.cpuCores.minOrNull()} min_cpus $current->$target failed"
+                continue
+            }
+            if (policy in hold) heldCoreCtl.getOrPut(path) { min.toString() } else heldCoreCtl.remove(path)
+            changes += "cpu${policy.cpuCores.minOrNull()} min_cpus $current->$target"
+        }
+        return changes.takeIf { it.isNotEmpty() }?.joinToString(prefix = "core_ctl: ")
+    }
+
+    /**
      * Pin a process to specific CPU cores by core list.
      *
      * @param pid Process ID to pin
      * @param cpuList List of CPU core numbers (e.g., listOf(3, 4, 5, 6, 7))
+     * @param allThreads Every thread of the process instead of just the one [pid] names
      * @return true if successful
      */
-    fun setCpuAffinityByCores(pid: Int, cpuList: List<Int>): Boolean {
+    fun setCpuAffinityByCores(pid: Int, cpuList: List<Int>, allThreads: Boolean = false): Boolean {
         if (cpuList.isEmpty()) {
             Timber.tag(TAG).w("Empty CPU list provided")
             return false
@@ -1654,7 +1743,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         val mask = cpuList.fold(0) { acc, cpu -> acc or (1 shl cpu) }
         val hexMask = getTasksetMask(mask)
 
-        return setCpuAffinity(pid, hexMask)
+        return setCpuAffinity(pid, hexMask, allThreads)
     }
 
     /**

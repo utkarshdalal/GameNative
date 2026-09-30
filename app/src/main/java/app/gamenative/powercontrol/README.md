@@ -146,8 +146,8 @@ GameNative's performance control system provides CPU and GPU tuning capabilities
 - ✅ **CPU Pinning / Process Affinity Control**:
   - ~~Automatic app process pinning to efficiency cores~~ (Removed due to possible ANR happening)
   - Automatic PulseAudio pinning to dedicated performance core
-  - Wine game process pinning with retry logic
-  - Wine infrastructure pinning (wineserver, winhandler, services.exe)
+  - Wine game process pinning, kept in place by a watchdog
+  - Wine infrastructure pinning (wineserver and Wine's own processes), with a watchdog for late starters
   - Cluster-based core selection (EFFICIENCY, PERFORMANCE, PRIME)
   - Wine-aware PID discovery via `/proc/cmdline` scanning
 
@@ -217,26 +217,29 @@ The PServerDriver automatically handles CPU pinning when started/stopped:
 
 Game processes and Wine infrastructure are pinned via PowerManager methods:
 
+*Auto core split:* the background group (Wine, PulseAudio, the watchdogs) gets the whole EFFICIENCY
+cluster and the game every other core (RP6: 0-2 and 3-7). Without an efficiency cluster, or when it
+holds more than half the cores, the 2 lowest-frequency cores go to the background instead.
+
 *Game Process Pinning:*
 ```kotlin
-PowerManager.pinGameWithRetry(
-    processName = "DaveTheDiver.exe",
-    maxRetries = 10,
-    retryDelayMs = 1000
-)
+PowerManager.pinGameWithRetry(processName = "DaveTheDiver.exe")
 ```
-- Uses Wine-aware PID discovery (scans `/proc/cmdline` for `.exe` processes)
-- Retries up to 10 times with 1 second delay
-- Pins to PERFORMANCE + PRIME cores (CPUs 3-7 on typical devices)
-- Logs success/failure with attempt count
+- Finds the game by the executable its `/proc/<pid>/cmdline` runs, case-insensitively
+- A watchdog keeps it pinned for the whole session: every 2 seconds it checks every game thread's allowed
+  CPUs and re-pins the ones that left, through the winhandler and then root `taskset` per thread
+- On Qualcomm core_ctl, pausing a CPU moves threads allowed only paused CPUs onto all of them; when that
+  could hit every game core (e.g. the prime core alone), `min_cpus` of their clusters is raised while pinned
 
 *Wine Infrastructure Pinning:*
 ```kotlin
-PowerManager.pinWineInfrastructure()
+PowerManager.pinBackgroundProcesses()
 ```
-- **wineserver** → PERFORMANCE cores (CPUs 3-6) - Critical for Wine IPC
-- **winhandler.exe** → PERFORMANCE + PRIME cores (CPUs 4-7) - Window management
-- **services.exe** → First 2 PERFORMANCE cores (CPUs 3-4) - Windows services
+- wineserver, the Steam bootstrap and Wine's own processes (run from the Windows directory, or winhandler,
+  services, explorer, ...) go onto the background cores; other `.exe`s stay out, since a game started by a
+  launcher runs under another name
+- A watchdog re-checks the group every 5 seconds and pins processes started later
+- Both watchdogs run at the lowest priority on the background cores
 - Waits 2 seconds for Wine to fully initialize
 - Logs each process pinning result
 
@@ -307,15 +310,11 @@ val executableName = container.executablePath
     .takeIf { it.isNotEmpty() }
     ?.let { name ->
         val baseName = name.substringBefore(".exe", name)
-        PowerManager.pinGameWithRetry(
-            processName = "$baseName.exe",
-            maxRetries = 10,
-            retryDelayMs = 1000
-        )
+        PowerManager.pinGameWithRetry(processName = "$baseName.exe")
     }
 
 // Pin Wine infrastructure
-PowerManager.pinWineInfrastructure()
+PowerManager.pinBackgroundProcesses()
 ```
 
 **Expected Logs:**
