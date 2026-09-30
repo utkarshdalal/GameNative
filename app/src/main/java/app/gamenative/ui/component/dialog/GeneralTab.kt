@@ -2,10 +2,13 @@ package app.gamenative.ui.component.dialog
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
+import android.view.View
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -329,6 +332,15 @@ fun GeneralTabContent(
             state = config.portraitMode,
             onCheckedChange = { state.config.value = config.copy(portraitMode = it) },
         )
+        if (config.portraitMode && displayHasCutout(LocalView.current)) {
+            SettingsSwitch(
+                colors = settingsTileColorsAlt(),
+                title = { Text(text = stringResource(R.string.portrait_below_cutout)) },
+                subtitle = { Text(text = stringResource(R.string.portrait_below_cutout_description)) },
+                state = config.portraitBelowCutout,
+                onCheckedChange = { state.config.value = config.copy(portraitBelowCutout = it) },
+            )
+        }
         SettingsListDropdown(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.audio_driver)) },
@@ -499,4 +511,9 @@ fun GeneralTabContent(
             },
         )
     }
+}
+
+private fun displayHasCutout(view: View): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return true
+    return view.display?.cutout != null
 }

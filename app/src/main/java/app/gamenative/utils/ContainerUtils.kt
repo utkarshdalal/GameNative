@@ -172,6 +172,7 @@ object ContainerUtils {
 			dinputMapperType = PrefManager.dinputMapperType.toByte(),
             disableMouseInput = PrefManager.disableMouseInput,
             portraitMode = PrefManager.portraitMode,
+            portraitBelowCutout = PrefManager.portraitBelowCutout,
             externalDisplayMode = PrefManager.externalDisplayInputMode,
             externalDisplaySwap = PrefManager.externalDisplaySwap,
             sharpnessEffect = PrefManager.sharpnessEffect,
@@ -244,6 +245,7 @@ object ContainerUtils {
         PrefManager.fasterExternalLoading = containerData.fasterExternalLoading
         PrefManager.disableLibredirect = containerData.disableLibredirect
         PrefManager.portraitMode = containerData.portraitMode
+        PrefManager.portraitBelowCutout = containerData.portraitBelowCutout
         PrefManager.sharpnessEffect = containerData.sharpnessEffect
         PrefManager.sharpnessLevel = containerData.sharpnessLevel
         PrefManager.sharpnessDenoise = containerData.sharpnessDenoise
@@ -355,6 +357,7 @@ object ContainerUtils {
             unpackFiles = container.isUnpackFiles(),
             suspendPolicy = container.suspendPolicy,
             portraitMode = container.isPortraitMode,
+            portraitBelowCutout = container.isPortraitBelowCutout,
             enableXInput = enableX,
             enableDInput = enableD,
             dinputMapperType = mapperType,
@@ -563,6 +566,7 @@ object ContainerUtils {
         container.setUnpackFiles(containerData.unpackFiles)
         container.setSuspendPolicy(containerData.suspendPolicy)
         container.setPortraitMode(containerData.portraitMode)
+        container.setPortraitBelowCutout(containerData.portraitBelowCutout)
         if (previousUnpackFiles != containerData.unpackFiles && containerData.unpackFiles) {
             container.setNeedsUnpacking(true)
         }
@@ -951,6 +955,7 @@ object ContainerUtils {
                 fasterExternalLoading = PrefManager.fasterExternalLoading,
                 disableLibredirect = PrefManager.disableLibredirect,
                 portraitMode = PrefManager.portraitMode,
+                portraitBelowCutout = PrefManager.portraitBelowCutout,
                 externalDisplayMode = PrefManager.externalDisplayInputMode,
                 externalDisplaySwap = PrefManager.externalDisplaySwap,
             )

@@ -696,6 +696,8 @@
     <string name="show_fps">Pokaż FPS</string>
     <string name="portrait_mode">Tryb pionowy</string>
     <string name="portrait_mode_description">Dla kontrolerów typu 8BitDo FlipPad/GameSir Pocket Taco</string>
+    <string name="portrait_below_cutout">Trzymaj pod otworem aparatu</string>
+    <string name="portrait_below_cutout_description">Wyświetla grę pod otworem aparatu w trybie pionowym</string>
     <string name="remove_driver_confirmation">Czy na pewno chcesz usunąć sterownik "%s"? Tej operacji nie można cofnąć</string>
 
     <!-- Container Configuration: Steam Integration -->

@@ -178,6 +178,7 @@ public class Container {
     private String suspendPolicy = SUSPEND_POLICY_MANUAL;
 
     private boolean portraitMode = false;
+    private boolean portraitBelowCutout = false;
 
     private String containerVariant = DEFAULT_VARIANT;
 
@@ -855,6 +856,7 @@ public class Container {
             // Process suspend policy setting
             data.put("suspendPolicy", suspendPolicy);
             data.put("portraitMode", portraitMode);
+            data.put("portraitBelowCutout", portraitBelowCutout);
 
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
             FileUtils.writeString(getConfigFile(), data.toString());
@@ -1100,6 +1102,9 @@ public class Container {
                 case "portraitMode":
                     this.portraitMode = data.getBoolean(key);
                     break;
+                case "portraitBelowCutout":
+                    this.portraitBelowCutout = data.getBoolean(key);
+                    break;
                 case "basePrefix":
                     setBasePrefix(data.optString(key, ""));
                     break;
@@ -1246,6 +1251,13 @@ public class Container {
         this.portraitMode = portraitMode;
     }
 
+    public boolean isPortraitBelowCutout() {
+        return portraitBelowCutout;
+    }
+
+    public void setPortraitBelowCutout(boolean portraitBelowCutout) {
+        this.portraitBelowCutout = portraitBelowCutout;
+    }
 
     public String getConfigSource() {
         return configSource;

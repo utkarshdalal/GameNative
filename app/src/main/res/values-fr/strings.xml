@@ -705,6 +705,8 @@
     <string name="show_fps">Afficher les FPS</string>
     <string name="portrait_mode">Mode portrait</string>
     <string name="portrait_mode_description">Pour les manettes de type 8BitDo FlipPad/GameSir Pocket Taco</string>
+    <string name="portrait_below_cutout">Garder sous l\'encoche de la caméra</string>
+    <string name="portrait_below_cutout_description">Affiche le jeu sous l\'encoche de la caméra en mode portrait</string>
     <string name="remove_driver_confirmation">Êtes-vous sûr de vouloir supprimer le pilote « %s » ? Cette action ne peut pas être annulée</string>
 
     <!-- Container Configuration: Steam Integration -->

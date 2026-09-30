@@ -521,6 +521,8 @@
     <string name="show_fps">Vis FPS</string>
     <string name="portrait_mode">Portrættilstand</string>
     <string name="portrait_mode_description">Til 8BitDo FlipPad/GameSir Pocket Taco-type controllere</string>
+    <string name="portrait_below_cutout">Hold under kamerahullet</string>
+    <string name="portrait_below_cutout_description">Vis spillet under kamerahullet i portrættilstand</string>
     <string name="remove_driver_confirmation">Er du sikker på, at du vil fjerne driveren "%s"? Dette kan ikke fortrydes</string>
 
     <!-- Container Configuration: Steam Integration -->
