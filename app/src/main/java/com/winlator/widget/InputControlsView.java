@@ -234,7 +234,24 @@ public class InputControlsView extends View {
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
-        if (profile != null && profile.isElementsLoaded() && oldw > 0 && w != oldw) {
+        snappingSize = Math.max(1, w / 100);
+        if (profile != null && profile.isElementsLoaded() && w > 0 && h > 0
+                && (w != oldw || h != oldh)) {
+            if (editMode && oldw > 0 && oldh > 0) {
+                int oldSnappingSize = Math.max(1, oldw / 100);
+                int oldMaxWidth = Math.max(1, (int)Mathf.roundTo(oldw, oldSnappingSize));
+                int oldMaxHeight = Math.max(1, (int)Mathf.roundTo(oldh, oldSnappingSize));
+                if (!profile.saveElementsForLayoutSize(oldMaxWidth, oldMaxHeight)) {
+                    int newMaxWidth = Math.max(1, getMaxWidth());
+                    int newMaxHeight = Math.max(1, getMaxHeight());
+                    for (ControlElement element : profile.getElements()) {
+                        element.setX(Math.round((float)element.getX() * newMaxWidth / oldMaxWidth));
+                        element.setY(Math.round((float)element.getY() * newMaxHeight / oldMaxHeight));
+                    }
+                    cancelTouchRouting();
+                    return;
+                }
+            }
             cancelTouchRouting();
             profile.loadElements(this);
         }
@@ -250,7 +267,7 @@ public class InputControlsView extends View {
             return;
         }
 
-        snappingSize = width / 100;
+        snappingSize = Math.max(1, width / 100);
         readyToDraw = true;
 
         if (editMode) {
@@ -1365,6 +1382,7 @@ public class InputControlsView extends View {
 
     @Override
     public boolean onGenericMotionEvent(MotionEvent event) {
+        if (!isEnabled()) return false;
         if (!editMode && profile != null) {
             ExternalController controller = profile.getController(event.getDeviceId());
             if (controller != null && controller.updateStateFromMotionEvent(event)) {
@@ -1384,6 +1402,9 @@ public class InputControlsView extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        // Drawing-only profile previews have no touchpad or X server. Disabled views
+        // must leave gestures to their parent (including scrolling over the preview).
+        if (!isEnabled()) return false;
         if (editMode && readyToDraw) {
             switch (event.getAction()) {
                 case MotionEvent.ACTION_DOWN: {
@@ -1563,6 +1584,7 @@ public class InputControlsView extends View {
     }
 
     public boolean onKeyEvent(KeyEvent event) {
+        if (!isEnabled()) return false;
         if (profile != null && event.getRepeatCount() == 0) {
             ExternalController controller = profile.getController(event.getDeviceId());
             if (controller != null) {
@@ -1982,6 +2004,7 @@ public class InputControlsView extends View {
     }
 
     public Bitmap getIcon(byte id) {
+        if (id < 0 || id >= icons.length) return null;
         if (icons[id] == null) {
             Context context = getContext();
             try (InputStream is = context.getAssets().open("inputcontrols/icons/"+id+".png")) {
