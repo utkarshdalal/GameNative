@@ -1973,6 +1973,8 @@ object PowerManager {
             Timber.tag("PowerManager").i(
                 "Auto-tuning mode is now Off, released CPU/GPU frequency control back to the OS (success=$released)"
             )
+            // The release may have been applied in part; Manual stays, so put its controls back (Auto's tuner restarts on its own).
+            if (!released && previous == AutoTuningMode.MANUAL) applyCpuGpuControl()
             return released
         } else if (previous == AutoTuningMode.OFF) {
             val reclaimed = applyCpuGpuControl()
