@@ -113,6 +113,7 @@ import app.gamenative.powercontrol.PowerManager
 import app.gamenative.service.AchievementWatcher
 import app.gamenative.service.SteamService
 import app.gamenative.service.ea.EaLaunchSupport
+import app.gamenative.service.epic.EpicConstants
 import app.gamenative.service.rockstar.RockstarHelperDeployment
 import app.gamenative.service.rockstar.RockstarLaunchSupport
 import app.gamenative.service.epic.EpicOverlayManager
@@ -4555,7 +4556,14 @@ private fun getWineStartCommand(
         // Get Epic launch parameters
         Timber.tag("XServerScreen").d("Building Epic launch parameters for ${game.appName}...")
         val runArguments: List<String> = runBlocking {
-            val result = EpicService.buildLaunchParameters(context, container, game, container.isEpicOfflineMode)
+            val epicLocale = EpicConstants.containerLanguageToEpicLocale(container.language)
+            val result = EpicService.buildLaunchParameters(
+                context,
+                container,
+                game,
+                container.isEpicOfflineMode,
+                epicLocale,
+            )
             if (result.isFailure) {
                 Timber.tag("XServerScreen").e(result.exceptionOrNull(), "Failed to build Epic launch parameters")
             }
