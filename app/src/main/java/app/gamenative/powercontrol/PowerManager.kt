@@ -651,10 +651,11 @@ object PowerManager {
                 stopAutoTuning()
             }
             // Stop the tuner before handing clocks to the OS, and take them back before it starts again.
-            if (isGameStarted && previousProfile.autoTuningMode != profile.autoTuningMode) {
+            val switched = !isGameStarted || previousProfile.autoTuningMode == profile.autoTuningMode ||
                 switchAutoTuningMode(previousProfile.autoTuningMode, profile.autoTuningMode)
-            }
-            if (profile.autoTuningMode == AutoTuningMode.AUTO) {
+            // A failed switch keeps the previous mode, so the profile never reports a state the clocks aren't in.
+            if (!switched) currentProfile = currentProfile.copy(autoTuningMode = previousProfile.autoTuningMode)
+            if (currentProfile.autoTuningMode == AutoTuningMode.AUTO) {
                 startAutoTuning()
             }
         } else {
@@ -1962,18 +1963,26 @@ object PowerManager {
         }
     }
 
-    /** Releases/reclaims CPU-GPU frequency control from the OS on entering/leaving [AutoTuningMode.OFF] live. */
-    private fun switchAutoTuningMode(previous: AutoTuningMode, next: AutoTuningMode) {
+    /**
+     * Releases/reclaims CPU-GPU frequency control from the OS on entering/leaving [AutoTuningMode.OFF] live.
+     * @return false when that failed and [previous] still applies
+     */
+    private fun switchAutoTuningMode(previous: AutoTuningMode, next: AutoTuningMode): Boolean {
         if (next == AutoTuningMode.OFF) {
             val released = driver.releaseFrequencyControl()
             Timber.tag("PowerManager").i(
                 "Auto-tuning mode is now Off, released CPU/GPU frequency control back to the OS (success=$released)"
             )
+            return released
         } else if (previous == AutoTuningMode.OFF) {
             val reclaimed = applyCpuGpuControl()
             Timber.tag("PowerManager").i(
                 "Auto-tuning mode is now $next, reclaimed CPU/GPU frequency control (success=$reclaimed)"
             )
+            // The batch may have been applied in part; the mode stays Off, so hand everything back.
+            if (!reclaimed) driver.releaseFrequencyControl()
+            return reclaimed
         }
+        return true
     }
 }
