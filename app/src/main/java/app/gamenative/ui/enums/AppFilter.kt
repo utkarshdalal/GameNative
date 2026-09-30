@@ -120,7 +120,6 @@ enum class AppFilter(
                 output.add(AppType.demo)
             }
             if (appFilter.contains(PLAYTEST)) {
-                // Steam Playtests are PICS'd with type "Beta".
                 output.add(AppType.beta)
             }
             return output
