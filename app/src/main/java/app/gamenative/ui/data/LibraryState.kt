@@ -4,6 +4,7 @@ import app.gamenative.PrefManager
 import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
+import app.gamenative.data.SteamCollection
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.utils.DeviceGameStatsService.DeviceGameStats
 import app.gamenative.ui.enums.LibraryTab
@@ -32,6 +33,16 @@ data class LibraryState(
     val showEpicInLibrary: Boolean = PrefManager.showEpicInLibrary,
     val showAmazonInLibrary: Boolean = PrefManager.showAmazonInLibrary,
 
+    // Steam collections filter
+    val selectedSteamCollectionIds: Set<String> = PrefManager.librarySteamCollections,
+    val steamCollections: List<SteamCollection>? = null, // null = not loaded
+    val skippedDynamicCollections: Boolean = false,
+    val steamCollectionCounts: Map<String, Int> = emptyMap(),
+
+    val curatedLists: List<SteamCollection>? = null,
+    val selectedCuratedListIds: Set<String> = PrefManager.libraryCuratedLists,
+    val curatedListCounts: Map<String, Int> = emptyMap(),
+
     // Loading state for skeleton loaders
     val isLoading: Boolean = false,
 
@@ -56,6 +67,7 @@ data class LibraryState(
 
     // Current library tab for quick filter access
     val currentTab: LibraryTab = LibraryTab.ALL,
+    val visibleLibraryTabs: List<LibraryTab> = PrefManager.libraryTabs.filter { it in LibraryTab.visibleEntries },
 
     // Per-source game counts for tab badges
     val allCount: Int = 0,
@@ -64,6 +76,7 @@ data class LibraryState(
     val epicCount: Int = 0,
     val amazonCount: Int = 0,
     val localCount: Int = 0,
+    val favoritesCount: Int = 0,
 )
 
 /**

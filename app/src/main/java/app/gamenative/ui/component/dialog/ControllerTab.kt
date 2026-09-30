@@ -5,9 +5,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.theme.settingsTileColors
@@ -20,6 +25,9 @@ import kotlin.math.roundToInt
 @Composable
 fun ControllerTabContent(state: ContainerConfigState, default: Boolean) {
     val config = state.config.value
+    var showControllerDebugMenu by remember {
+        mutableStateOf(PrefManager.showControllerDebugMenu)
+    }
 
     SettingsGroup() {
         if (!default) {
@@ -59,10 +67,13 @@ fun ControllerTabContent(state: ContainerConfigState, default: Boolean) {
         )
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
-            title = { Text(text = stringResource(R.string.shooter_mode_toggle)) },
-            subtitle = { Text(text = stringResource(R.string.shooter_mode_toggle_description)) },
-            state = config.shooterMode,
-            onCheckedChange = { state.config.value = config.copy(shooterMode = it) },
+            title = { Text(text = stringResource(R.string.show_controller_debug_menu)) },
+            subtitle = { Text(text = stringResource(R.string.show_controller_debug_menu_subtitle)) },
+            state = showControllerDebugMenu,
+            onCheckedChange = {
+                showControllerDebugMenu = it
+                PrefManager.showControllerDebugMenu = it
+            },
         )
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             Text(text = stringResource(R.string.vibration_intensity))

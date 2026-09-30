@@ -1,6 +1,5 @@
 package app.gamenative.ui.component.dialog
 
-import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -29,6 +28,7 @@ import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
 import com.alorma.compose.settings.ui.SettingsSwitch
+import com.winlator.inputcontrols.BindingCombo
 import com.winlator.inputcontrols.ControlElement
 import com.winlator.widget.InputControlsView
 import java.util.Locale
@@ -39,9 +39,15 @@ import kotlin.math.roundToInt
  * on-screen control buttons. Keeping this in one place so the derivation in
  * [ElementEditorDialog] stays consistent with [ControlElement.getDisplayText].
  */
-private fun bindingShortLabel(binding: com.winlator.inputcontrols.Binding?): String {
-    if (binding == null) return ""
-    return binding.toString()
+private fun bindingShortLabel(binding: com.winlator.inputcontrols.Binding?): String =
+    bindingShortLabelText(binding?.toString())
+
+private fun bindingShortLabel(bindingCombo: BindingCombo?): String =
+    bindingShortLabelText(bindingCombo?.toString())
+
+private fun bindingShortLabelText(value: String?): String {
+    if (value == null) return ""
+    return value
         .replace("NUMPAD ", "NP")
         .replace("BUTTON ", "")
         .replace("SHOW KEYBOARD", "KEY")
@@ -75,7 +81,7 @@ fun ElementEditorDialog(
     // Store original bindings for restore on cancel
     val originalBindings by remember {
         mutableStateOf(
-            (0 until 4).map { element.getBindingAt(it) }
+            (0 until element.bindingCount).map { element.getBindingComboAt(it) }
         )
     }
 
@@ -91,17 +97,17 @@ fun ElementEditorDialog(
             customText
         } else {
             // Show what's actually displayed (based on first binding)
-            val binding = element.getBindingAt(0)
-            if (binding != null && binding != com.winlator.inputcontrols.Binding.NONE) {
+            val binding = element.getBindingComboAt(0)
+            if (!binding.isEmpty) {
                 var text = bindingShortLabel(binding)
                 if (text.length > 7) {
                     // Abbreviate long binding names (e.g., "KEY A B" -> "KAB")
                     val parts = text.split(" ")
                     val sb = StringBuilder()
                     for (part in parts) {
-                        if (part.isNotEmpty()) sb.append(part[0])
+                        if (part.isNotEmpty() && part != "+" && part != "->") sb.append(part[0])
                     }
-                    text = (if (binding.isMouse) "M" else "") + sb.toString()
+                    text = (if (binding.primaryBinding.isMouse) "M" else "") + sb.toString()
                 }
                 text
             } else {
@@ -113,6 +119,7 @@ fun ElementEditorDialog(
     // Current editing values with live preview
     var currentScale by remember { mutableFloatStateOf(element.scale) }
     var currentText by remember { mutableStateOf(initialDisplayText) }
+    var currentTextEdited by remember { mutableStateOf(false) }
     var showBindingsEditor by remember { mutableStateOf(false) }
     var bindingSlotToEdit by remember { mutableStateOf<Pair<Int, String>?>(null) }
 
@@ -121,8 +128,7 @@ fun ElementEditorDialog(
 
     // Track current dropdown selections
     var currentTypeIndex by remember { mutableIntStateOf(element.type.ordinal) }
-    var currentShapeIndex by remember { mutableIntStateOf(element.shape.ordinal) }
-
+    var currentShape by remember { mutableStateOf(element.shape) }
     // State for size adjustment mode
     var showSizeAdjuster by remember { mutableStateOf(false) }
 
@@ -181,14 +187,96 @@ fun ElementEditorDialog(
     val originalVisibleSegments by remember { mutableIntStateOf(element.bindingCount) }
     val originalScrollLocked by remember { mutableStateOf(element.isScrollLocked) }
 
-    // Button settings state
+    // Control appearance state
     var currentToggleSwitch by remember {
         mutableStateOf(element.isToggleSwitch)
     }
     val originalToggleSwitch by remember { mutableStateOf(element.isToggleSwitch) }
+    var currentButtonColor by remember { mutableIntStateOf(element.buttonColor) }
+    var currentButtonColorText by remember { mutableStateOf(rgbToHex(element.buttonColor)) }
+    var currentButtonActiveColor by remember { mutableIntStateOf(element.buttonActiveColor) }
+    var currentButtonActiveColorCustom by remember { mutableStateOf(element.hasCustomButtonActiveColor()) }
+    var currentButtonActiveColorText by remember { mutableStateOf(rgbToHex(element.buttonActiveColor)) }
+    var currentButtonOpacityInherited by remember { mutableStateOf(element.buttonOpacity < 0f) }
+    var currentButtonOpacity by remember {
+        mutableFloatStateOf(if (element.buttonOpacity >= 0f) element.buttonOpacity else view.overlayOpacity)
+    }
+    var currentButtonStrokeScale by remember { mutableFloatStateOf(element.buttonStrokeScale) }
+    var currentLookThrough by remember { mutableStateOf(element.lookThroughSetting) }
+    var currentLegacyShooterLookThrough by remember {
+        mutableStateOf(element.shooterLookThroughSetting)
+    }
+    val originalControlAppearances by remember {
+        mutableStateOf(
+            view.profile?.elements
+                ?.associateWith { ControlAppearance.capture(it) }
+                .orEmpty()
+        )
+    }
 
     // Get types array for saving
     val types = remember { ControlElement.Type.values() }
+
+    fun applyCurrentControlAppearance() {
+        element.setButtonColor(currentButtonColor)
+        element.setButtonActiveColor(currentButtonActiveColor, currentButtonActiveColorCustom)
+        element.setButtonOpacity(
+            if (currentButtonOpacityInherited) ControlElement.INHERIT_BUTTON_OPACITY else currentButtonOpacity
+        )
+        element.setButtonStrokeScale(currentButtonStrokeScale)
+        element.setShooterLookThrough(currentLegacyShooterLookThrough)
+        element.lookThroughSetting = currentLookThrough
+    }
+
+    fun currentAppearance() = ControlAppearance(
+        scale = currentScale,
+        color = currentButtonColor,
+        activeColor = currentButtonActiveColor,
+        activeColorCustom = currentButtonActiveColorCustom,
+        opacity = if (currentButtonOpacityInherited) ControlElement.INHERIT_BUTTON_OPACITY else currentButtonOpacity,
+        strokeScale = currentButtonStrokeScale,
+        lookThrough = currentLookThrough,
+        legacyShooterLookThrough = currentLegacyShooterLookThrough,
+    )
+
+    fun textForSave(): String? {
+        if (!currentTextEdited) return originalText
+        return currentText.ifEmpty { null }
+    }
+
+    fun saveChanges() {
+        element.setScale(currentScale)
+        element.setText(textForSave())
+
+        val selectedType = types[currentTypeIndex]
+        if (element.type != selectedType) {
+            element.setTypeWithoutReset(selectedType)
+        }
+        element.setShape(currentShape)
+
+        if (selectedType == ControlElement.Type.SHOOTER_MODE) {
+            element.shooterMovementType = movementTypeOptions[currentMovementTypeIndex]
+            element.shooterLookType = lookTypeOptions[currentLookTypeIndex]
+            element.shooterLookSensitivity = currentLookSensitivity
+            element.shooterJoystickSize = currentJoystickSize
+        }
+
+        if (selectedType == ControlElement.Type.RANGE_BUTTON) {
+            element.setRange(rangeTypes[currentRangeTypeIndex])
+            element.setOrientation(currentOrientation.toByte())
+            element.setBindingCount(currentVisibleSegments)
+            element.isScrollLocked = currentScrollLocked
+        }
+
+        if (selectedType == ControlElement.Type.BUTTON) {
+            element.setToggleSwitch(currentToggleSwitch)
+        }
+
+        applyCurrentControlAppearance()
+        view.profile?.save()
+        view.invalidate()
+        hasUnsavedChanges = false
+    }
 
     // Apply changes to element for live preview
     LaunchedEffect(currentScale) {
@@ -196,15 +284,30 @@ fun ElementEditorDialog(
         view.invalidate()
     }
 
-    // Only update element text if user has actually modified it
-    // Don't apply preview for initial display text
-    LaunchedEffect(currentText) {
-        // Only set custom text if user has explicitly modified it from the initial value
-        // AND it's not empty (empty should remain null for binding-based display)
-        if (currentText != initialDisplayText && currentText.isNotEmpty()) {
-            element.setText(currentText)
+    LaunchedEffect(currentText, currentTextEdited) {
+        if (currentTextEdited) {
+            element.setText(currentText.ifEmpty { null })
             view.invalidate()
         }
+    }
+
+    LaunchedEffect(
+        currentButtonColor,
+        currentButtonActiveColor,
+        currentButtonOpacity,
+        currentButtonOpacityInherited,
+        currentButtonStrokeScale,
+        currentLookThrough,
+        currentLegacyShooterLookThrough,
+        currentTypeIndex
+    ) {
+        applyCurrentControlAppearance()
+        view.invalidate()
+    }
+
+    LaunchedEffect(currentShape) {
+        element.setShape(currentShape)
+        view.invalidate()
     }
 
     Dialog(
@@ -228,7 +331,10 @@ fun ElementEditorDialog(
                 element = element,
                 view = view,
                 currentScale = currentScale,
-                onScaleChange = { currentScale = it },
+                onScaleChange = {
+                    currentScale = it
+                    hasUnsavedChanges = true
+                },
                 onConfirm = {
                     showSizeAdjuster = false
                 },
@@ -241,6 +347,7 @@ fun ElementEditorDialog(
                 onReset = {
                     currentScale = 1.0f
                     element.setScale(1.0f)
+                    hasUnsavedChanges = true
                     view.invalidate()
                 }
             )
@@ -280,47 +387,7 @@ fun ElementEditorDialog(
                     },
                     actions = {
                         IconButton(onClick = {
-                            // Save changes to element
-                            element.setScale(currentScale)
-                            // If currentText is empty string, set to null to use binding-based text
-                            // Otherwise use the current text value
-                            element.setText(if (currentText.isEmpty()) null else currentText)
-                            // Change type without resetting bindings
-                            if (element.type != types[currentTypeIndex]) {
-                                element.setTypeWithoutReset(types[currentTypeIndex])
-                            }
-
-                            // Save shooter mode properties
-                            if (types[currentTypeIndex] == ControlElement.Type.SHOOTER_MODE) {
-                                element.shooterMovementType = movementTypeOptions[currentMovementTypeIndex]
-                                element.shooterLookType = lookTypeOptions[currentLookTypeIndex]
-                                element.shooterLookSensitivity = currentLookSensitivity
-                                element.shooterJoystickSize = currentJoystickSize
-                            }
-
-                    // Save range button properties
-                    if (types[currentTypeIndex] == ControlElement.Type.RANGE_BUTTON) {
-                        element.setRange(rangeTypes[currentRangeTypeIndex])
-                        element.setOrientation(currentOrientation.toByte())
-                        element.setBindingCount(currentVisibleSegments)
-                        element.isScrollLocked = currentScrollLocked
-                    }
-
-                            // Save button properties
-                            if (types[currentTypeIndex] == ControlElement.Type.BUTTON) {
-                                element.setToggleSwitch(currentToggleSwitch)
-                            }
-
-                            // Save to disk
-                            view.profile?.save()
-
-                            // Update canvas to show new bindings
-                            view.invalidate()
-
-                            // Mark as saved
-                            hasUnsavedChanges = false
-
-                            // Close dialog
+                            saveChanges()
                             onSave()
                         }) {
                             Icon(Icons.Default.Save, null)
@@ -337,16 +404,6 @@ fun ElementEditorDialog(
             ) {
                 // Appearance Section
                 SettingsGroup(title = { Text(stringResource(R.string.appearance)) }) {
-                    // Scale/Size - click to enter adjustment mode
-                    SettingsMenuLink(
-                        colors = settingsTileColors(),
-                        title = { Text(stringResource(R.string.size)) },
-                        subtitle = { Text(stringResource(R.string.size_subtitle, currentScale)) },
-                        onClick = {
-                            showSizeAdjuster = true
-                        }
-                    )
-
                     // Text/Label - only for BUTTON type
                     if (element.type == ControlElement.Type.BUTTON) {
                         SettingsTextField(
@@ -354,13 +411,19 @@ fun ElementEditorDialog(
                             title = { Text(stringResource(R.string.label_text)) },
                             subtitle = { Text(stringResource(R.string.label_text_subtitle)) },
                             value = currentText,
-                            onValueChange = { currentText = it },
+                            onValueChange = {
+                                currentText = it
+                                currentTextEdited = true
+                                hasUnsavedChanges = true
+                            },
                             action = {
                                 // Reset button to restore original text
                                 IconButton(onClick = {
                                     // Reset to initial display text (binding-based or original custom text)
                                     currentText = initialDisplayText
+                                    currentTextEdited = false
                                     element.setText(originalText)
+                                    hasUnsavedChanges = true
                                     view.invalidate()
                                 }) {
                                     Icon(
@@ -388,6 +451,13 @@ fun ElementEditorDialog(
                         onItemSelected = { index ->
                             val newType = types[index]
                             currentTypeIndex = index
+                            currentShape = when (newType) {
+                                ControlElement.Type.STICK,
+                                ControlElement.Type.SHOOTER_MODE -> ControlElement.Shape.CIRCLE
+                                ControlElement.Type.TRACKPAD,
+                                ControlElement.Type.RANGE_BUTTON -> ControlElement.Shape.ROUND_RECT
+                                else -> currentShape
+                            }
                             element.setTypeWithoutReset(newType)
 
                             // Mark as having unsaved changes
@@ -402,7 +472,8 @@ fun ElementEditorDialog(
                     // Element Shape (with restrictions)
                     // STICK, TRACKPAD, RANGE_BUTTON have fixed rendering shapes
                     // D_PAD uses custom cross-shaped path and doesn't respect shape
-                    val availableShapes = when (element.type) {
+                    val selectedType = types[currentTypeIndex]
+                    val availableShapes = when (selectedType) {
                         ControlElement.Type.STICK -> {
                             // Stick is always rendered as CIRCLE
                             listOf(ControlElement.Shape.CIRCLE)
@@ -415,7 +486,7 @@ fun ElementEditorDialog(
                         ControlElement.Type.D_PAD -> {
                             // D-Pad uses custom cross-shaped path, shape doesn't affect rendering
                             // Don't allow changing shape
-                            listOf(element.shape)
+                            listOf(currentShape)
                         }
                         ControlElement.Type.SHOOTER_MODE -> {
                             // Shooter Mode is always rendered as CIRCLE
@@ -425,12 +496,11 @@ fun ElementEditorDialog(
                             // Buttons fully support all shapes
                             ControlElement.Shape.values().toList()
                         }
-                        else -> ControlElement.Shape.values().toList()
                     }
 
                     if (availableShapes.size > 1) {
                         val shapeNames = availableShapes.map { it.name.replace("_", " ") }
-                        val currentShapeIndexInList = availableShapes.indexOf(element.shape).coerceAtLeast(0)
+                        val currentShapeIndexInList = availableShapes.indexOf(currentShape).coerceAtLeast(0)
                         SettingsListDropdown(
                             colors = settingsTileColors(),
                             title = { Text(stringResource(R.string.shape)) },
@@ -438,35 +508,18 @@ fun ElementEditorDialog(
                             value = currentShapeIndexInList,
                             items = shapeNames,
                             onItemSelected = { index ->
-                                element.shape = availableShapes[index]
-                                view.invalidate()
+                                currentShape = availableShapes[index]
+                                hasUnsavedChanges = true
                             }
                         )
-                    } else if (availableShapes.size == 1 && element.type != ControlElement.Type.D_PAD) {
+                    } else if (availableShapes.size == 1 && selectedType != ControlElement.Type.D_PAD) {
                         // Show info for restricted types (but not D-PAD since it's obvious)
                         SettingsMenuLink(
                             colors = settingsTileColors(),
                             title = { Text(stringResource(R.string.shape)) },
-                            subtitle = { Text(stringResource(R.string.shape_restricted, element.type.name, availableShapes[0].name.replace("_", " "))) },
+                            subtitle = { Text(stringResource(R.string.shape_restricted, selectedType.name, availableShapes[0].name.replace("_", " "))) },
                             enabled = false,
                             onClick = {}
-                        )
-                    }
-                }
-
-                // Button Settings Section (only for BUTTON type)
-                if (types[currentTypeIndex] == ControlElement.Type.BUTTON) {
-                    SettingsGroup(title = { Text(stringResource(R.string.button_settings)) }) {
-                        SettingsSwitch(
-                            colors = settingsTileColorsAlt(),
-                            title = { Text(stringResource(R.string.button_toggleable)) },
-                            subtitle = { Text(stringResource(R.string.button_toggleable_subtitle)) },
-                            state = currentToggleSwitch,
-                            onCheckedChange = {
-                                currentToggleSwitch = it
-                                element.setToggleSwitch(it)
-                                hasUnsavedChanges = true
-                            },
                         )
                     }
                 }
@@ -513,8 +566,8 @@ fun ElementEditorDialog(
                             }
 
                             for (i in 0 until bindingCount) {
-                                val binding = element.getBindingAt(i)
-                                val bindingName = binding?.toString() ?: "NONE"
+                                val binding = element.getBindingComboAt(i)
+                                val bindingName = binding.toString()
 
                                 val slotLabel = when (element.type) {
                                     ControlElement.Type.BUTTON -> {
@@ -749,6 +802,220 @@ fun ElementEditorDialog(
                     }
                 }
 
+                // Control Appearance Section
+                SettingsGroup(title = { Text(stringResource(R.string.control_appearance)) }) {
+                    ControlAppearancePreview(
+                        type = types[currentTypeIndex],
+                        text = currentText.ifEmpty { bindingShortLabel(element.getBindingAt(0)).ifEmpty { "A" } },
+                        shape = currentShape,
+                        orientation = currentOrientation,
+                        segmentCount = currentVisibleSegments,
+                        color = currentButtonColor,
+                        activeColor = currentButtonActiveColor,
+                        opacity = currentButtonOpacity,
+                        strokeScale = currentButtonStrokeScale
+                    )
+
+                    ControlColorField(
+                        title = stringResource(R.string.button_color),
+                        subtitle = stringResource(R.string.button_color_subtitle),
+                        value = currentButtonColorText,
+                        selectedColor = currentButtonColor,
+                        onValueChange = { value ->
+                            currentButtonColorText = value.uppercase(Locale.US)
+                            parseRgbHex(value)?.let {
+                                currentButtonColor = it
+                                hasUnsavedChanges = true
+                            }
+                        },
+                        onPresetSelected = {
+                            currentButtonColor = it
+                            currentButtonColorText = rgbToHex(it)
+                            hasUnsavedChanges = true
+                        }
+                    )
+
+                    ControlColorField(
+                        title = stringResource(R.string.button_active_color),
+                        subtitle = stringResource(R.string.button_active_color_subtitle),
+                        value = currentButtonActiveColorText,
+                        selectedColor = currentButtonActiveColor,
+                        onValueChange = { value ->
+                            currentButtonActiveColorText = value.uppercase(Locale.US)
+                            parseRgbHex(value)?.let {
+                                currentButtonActiveColor = it
+                                currentButtonActiveColorCustom = true
+                                hasUnsavedChanges = true
+                            }
+                        },
+                        onPresetSelected = {
+                            currentButtonActiveColor = it
+                            currentButtonActiveColorCustom = true
+                            currentButtonActiveColorText = rgbToHex(it)
+                            hasUnsavedChanges = true
+                        }
+                    )
+
+                    SettingsMenuLink(
+                        colors = settingsTileColors(),
+                        title = { Text(stringResource(R.string.button_opacity)) },
+                        subtitle = {
+                            Text(
+                                if (currentButtonOpacityInherited) {
+                                    stringResource(R.string.button_opacity_inherited, (currentButtonOpacity * 100).roundToInt())
+                                } else {
+                                    stringResource(R.string.button_opacity_value, (currentButtonOpacity * 100).roundToInt())
+                                }
+                            )
+                        },
+                        onClick = {}
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Slider(
+                            value = currentButtonOpacity,
+                            onValueChange = {
+                                currentButtonOpacity = it
+                                currentButtonOpacityInherited = false
+                                hasUnsavedChanges = true
+                            },
+                            valueRange = 0.0f..1.0f,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = "${(currentButtonOpacity * 100).roundToInt()}%",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    SettingsMenuLink(
+                        colors = settingsTileColors(),
+                        title = { Text(stringResource(R.string.size)) },
+                        subtitle = { Text(stringResource(R.string.size_subtitle, currentScale)) },
+                        onClick = {
+                            showSizeAdjuster = true
+                        }
+                    )
+
+                    val strokeWidthItems = listOf(
+                        stringResource(R.string.control_stroke_width_thin),
+                        stringResource(R.string.control_stroke_width_default),
+                        stringResource(R.string.control_stroke_width_thick),
+                        stringResource(R.string.control_stroke_width_extra_thick)
+                    )
+                    val strokeWidthIndex = closestStrokeWidthIndex(currentButtonStrokeScale)
+                    SettingsListDropdown(
+                        colors = settingsTileColors(),
+                        title = { Text(stringResource(R.string.control_stroke_width)) },
+                        subtitle = { Text(stringResource(R.string.control_stroke_width_subtitle)) },
+                        value = strokeWidthIndex,
+                        items = strokeWidthItems,
+                        onItemSelected = { index ->
+                            currentButtonStrokeScale = controlStrokeWidthScales[index]
+                            hasUnsavedChanges = true
+                        }
+                    )
+
+                    if (types[currentTypeIndex] == ControlElement.Type.BUTTON) {
+                        SettingsSwitch(
+                            colors = settingsTileColorsAlt(),
+                            title = { Text(stringResource(R.string.button_toggleable)) },
+                            subtitle = { Text(stringResource(R.string.button_toggleable_subtitle)) },
+                            state = currentToggleSwitch,
+                            onCheckedChange = {
+                                currentToggleSwitch = it
+                                element.setToggleSwitch(it)
+                                hasUnsavedChanges = true
+                            },
+                        )
+
+                        SettingsSwitch(
+                            colors = settingsTileColorsAlt(),
+                            title = { Text(stringResource(R.string.button_look_through)) },
+                            subtitle = { Text(stringResource(R.string.button_look_through_subtitle)) },
+                            state = currentLookThrough == true,
+                            onCheckedChange = {
+                                currentLookThrough = it
+                                hasUnsavedChanges = true
+                            },
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                showCopyAppearanceDialog(context, element, view) { appearance ->
+                                    currentScale = appearance.scale
+                                    currentButtonColor = appearance.color
+                                    currentButtonColorText = rgbToHex(appearance.color)
+                                    currentButtonActiveColor = appearance.activeColor
+                                    currentButtonActiveColorCustom = appearance.activeColorCustom
+                                    currentButtonActiveColorText = rgbToHex(appearance.activeColor)
+                                    currentButtonOpacityInherited = appearance.opacity < 0f
+                                    currentButtonOpacity = if (appearance.opacity >= 0f) appearance.opacity else view.overlayOpacity
+                                    currentButtonStrokeScale = appearance.strokeScale
+                                    currentLookThrough = appearance.lookThrough
+                                    currentLegacyShooterLookThrough = appearance.legacyShooterLookThrough
+                                    hasUnsavedChanges = true
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)
+                        ) {
+                            Text(stringResource(R.string.copy), style = MaterialTheme.typography.labelSmall)
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                val appearance = currentAppearance()
+                                view.profile?.elements
+                                    ?.forEach { appearance.applyTo(it) }
+                                view.invalidate()
+                                hasUnsavedChanges = true
+                                SnackbarManager.show(context.getString(R.string.toast_applied_button_appearance))
+                            },
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)
+                        ) {
+                            Text(stringResource(R.string.apply_all), style = MaterialTheme.typography.labelSmall)
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                currentButtonColor = ControlElement.DEFAULT_BUTTON_COLOR
+                                currentButtonColorText = rgbToHex(ControlElement.DEFAULT_BUTTON_COLOR)
+                                currentButtonActiveColor = ControlElement.DEFAULT_BUTTON_ACTIVE_COLOR
+                                currentButtonActiveColorCustom = false
+                                currentButtonActiveColorText = rgbToHex(ControlElement.DEFAULT_BUTTON_ACTIVE_COLOR)
+                                currentButtonOpacityInherited = true
+                                currentButtonOpacity = view.overlayOpacity
+                                currentScale = 1.0f
+                                element.setScale(1.0f)
+                                currentButtonStrokeScale = ControlElement.DEFAULT_BUTTON_STROKE_SCALE
+                                currentLookThrough = ControlElement.DEFAULT_LOOK_THROUGH
+                                currentLegacyShooterLookThrough = true
+                                view.invalidate()
+                                hasUnsavedChanges = true
+                            },
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)
+                        ) {
+                            Text(stringResource(R.string.reset), style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+
                 // Properties Section
                 SettingsGroup(title = { Text(stringResource(R.string.properties)) }) {
                     SettingsMenuLink(
@@ -767,16 +1034,19 @@ fun ElementEditorDialog(
     // Show binding selector dialog
     bindingSlotToEdit?.let { (slotIndex, slotLabel) ->
         val currentBinding = element.getBindingAt(slotIndex)
+        val currentBindingCombo = element.getBindingComboAt(slotIndex)
 
         ControllerBindingDialog(
             buttonName = slotLabel,
             currentBinding = currentBinding,
+            currentBindingCombo = currentBindingCombo,
             onDismiss = { bindingSlotToEdit = null },
-            onBindingSelected = { binding ->
+            onBindingSelected = {},
+            onBindingComboSelected = { bindingCombo ->
 
                 // Update binding in memory only (not saved to disk yet)
-                if (binding != null) {
-                    element.setBindingAt(slotIndex, binding)
+                if (bindingCombo != null) {
+                    element.setBindingComboAt(slotIndex, bindingCombo)
                 } else {
                     element.setBindingAt(slotIndex, com.winlator.inputcontrols.Binding.NONE)
                 }
@@ -786,20 +1056,21 @@ fun ElementEditorDialog(
                 if (element.type == ControlElement.Type.BUTTON && slotIndex == 0) {
                     // Check if custom text is empty or same as old binding text
                     val customText = element.text
-                    if (customText.isNullOrEmpty() || customText == bindingShortLabel(currentBinding)) {
+                    if (customText.isNullOrEmpty() || customText == bindingShortLabel(currentBindingCombo)) {
                         // Clear custom text so new binding text will show
                         element.setText(null)
+                        currentTextEdited = false
 
                         // Update currentText state to show what will actually be displayed (new binding text)
-                        val newBindingText = bindingShortLabel(binding)
+                        val newBindingText = bindingShortLabel(bindingCombo)
                         currentText = if (newBindingText.length > 7) {
                             // Abbreviate long names to match getDisplayText() logic
                             val parts = newBindingText.split(" ")
                             val sb = StringBuilder()
                             for (part in parts) {
-                                if (part.isNotEmpty()) sb.append(part[0])
+                                if (part.isNotEmpty() && part != "+" && part != "->") sb.append(part[0])
                             }
-                            (if (binding?.isMouse() == true) "M" else "") + sb.toString()
+                            (if (bindingCombo?.primaryBinding?.isMouse() == true) "M" else "") + sb.toString()
                         } else {
                             newBindingText
                         }
@@ -829,33 +1100,7 @@ fun ElementEditorDialog(
             text = { Text(stringResource(R.string.unsaved_changes_message)) },
             confirmButton = {
                 TextButton(onClick = {
-                    // Save and close
-                    element.setScale(currentScale)
-                    element.setText(if (currentText.isEmpty()) null else currentText)
-                    // Change type without resetting bindings
-                    if (element.type != types[currentTypeIndex]) {
-                        element.setTypeWithoutReset(types[currentTypeIndex])
-                    }
-                    // Save shooter mode properties
-                    if (types[currentTypeIndex] == ControlElement.Type.SHOOTER_MODE) {
-                        element.shooterMovementType = movementTypeOptions[currentMovementTypeIndex]
-                        element.shooterLookType = lookTypeOptions[currentLookTypeIndex]
-                        element.shooterLookSensitivity = currentLookSensitivity
-                        element.shooterJoystickSize = currentJoystickSize
-                    }
-                    // Save range button properties
-                    if (types[currentTypeIndex] == ControlElement.Type.RANGE_BUTTON) {
-                        element.setRange(rangeTypes[currentRangeTypeIndex])
-                        element.setOrientation(currentOrientation.toByte())
-                        element.setBindingCount(currentVisibleSegments)
-                        element.isScrollLocked = currentScrollLocked
-                    }
-                    // Save button properties
-                    if (types[currentTypeIndex] == ControlElement.Type.BUTTON) {
-                        element.setToggleSwitch(currentToggleSwitch)
-                    }
-                    view.profile?.save()
-                    view.invalidate()
+                    saveChanges()
                     showExitConfirmation = false
                     onDismiss()
                 }) {
@@ -866,27 +1111,32 @@ fun ElementEditorDialog(
                 TextButton(onClick = {
                     // Discard changes and close
                     element.setScale(originalScale)
-                    element.setText(originalText)
-                    element.type = originalType
+                    element.setTypeWithoutReset(originalType)
                     element.shape = originalShape
+                    // Restore original range button properties before bindings; setBindingCount resets bindings.
+                    if (originalType == ControlElement.Type.RANGE_BUTTON) {
+                        element.setRange(originalRange)
+                        element.setOrientation(originalOrientation.toByte())
+                        element.setBindingCount(originalVisibleSegments)
+                        element.isScrollLocked = originalScrollLocked
+                    } else if (element.bindingCount != originalBindings.size) {
+                        element.setBindingCount(originalBindings.size)
+                    }
                     // Restore original bindings
                     originalBindings.forEachIndexed { index, binding ->
-                        if (binding != null) {
-                            element.setBindingAt(index, binding)
-                        }
+                        element.setBindingComboAt(index, binding)
                     }
                     // Restore original shooter mode properties
                     element.shooterMovementType = originalMovementType
                     element.shooterLookType = originalLookType
                     element.shooterLookSensitivity = originalLookSensitivity
                     element.shooterJoystickSize = originalJoystickSize
-                    // Restore original range button properties
-                    element.setRange(originalRange)
-                    element.setOrientation(originalOrientation.toByte())
-                    element.setBindingCount(originalVisibleSegments)
-                    element.isScrollLocked = originalScrollLocked
                     // Restore original button properties
                     element.setToggleSwitch(originalToggleSwitch)
+                    element.setText(originalText)
+                    originalControlAppearances.forEach { (control, appearance) ->
+                        appearance.applyTo(control)
+                    }
                     view.invalidate()
                     showExitConfirmation = false
                     onDismiss()
@@ -1072,7 +1322,7 @@ private fun showCopySizeDialog(
             if (binding != null && binding != com.winlator.inputcontrols.Binding.NONE) {
                 binding.toString().take(15)
             } else {
-                "No Binding"
+                context.getString(R.string.binding_none)
             }
         }
 

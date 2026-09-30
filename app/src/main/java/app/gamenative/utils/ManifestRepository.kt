@@ -1,6 +1,7 @@
 package app.gamenative.utils
 
 import android.content.Context
+import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -14,6 +15,13 @@ object ManifestRepository {
     private val json = Json { ignoreUnknownKeys = true }
 
     suspend fun loadManifest(context: Context): ManifestData {
+        if (BuildConfig.DEBUG) {
+            readLocalManifest(context)?.let {
+                Timber.i("ManifestRepository: using local debug manifest")
+                return it
+            }
+        }
+
         val cachedJson = PrefManager.componentManifestJson
         val cachedManifest = parseManifest(cachedJson) ?: ManifestData.empty()
         val lastFetchedAt = PrefManager.componentManifestFetchedAt
@@ -48,6 +56,12 @@ object ManifestRepository {
         null
     }
 }
+
+    private fun readLocalManifest(context: Context): ManifestData? = try {
+        context.assets.open("manifest.json").bufferedReader().use { parseManifest(it.readText()) }
+    } catch (e: Exception) {
+        null
+    }
 
     fun parseManifest(jsonString: String?): ManifestData? {
         if (jsonString.isNullOrBlank()) return null

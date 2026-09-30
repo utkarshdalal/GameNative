@@ -27,6 +27,8 @@ class ManifestIdCorrelationTest {
             for (entry in entries) {
                 if (typeKey == ManifestContentTypes.DRIVER) {
                     verifyDriverEntry(entry)
+                } else if (entry.url.endsWith(".tzst")) {
+                    verifyTzstEntry(typeKey, entry)
                 } else {
                     verifyContentEntry(typeKey, entry)
                 }
@@ -118,6 +120,26 @@ class ManifestIdCorrelationTest {
                 println("Content cleanup type=$typeKey verName=${installedProfile.verName} verCode=${installedProfile.verCode}")
                 manager.removeContent(installedProfile)
             }
+        }
+    }
+
+    private suspend fun verifyTzstEntry(typeKey: String, entry: ManifestEntry) {
+        val expectedType = contentTypeForKey(typeKey)
+        val cacheFile = File(File(context.filesDir, "assets/dxwrapper"), entry.url.substringAfterLast("/"))
+        try {
+            println("Tzst download/install type=$typeKey id=${entry.id} name=${entry.name} url=${entry.url}")
+            val result = ManifestInstaller.downloadAndInstallContent(context, entry, expectedType)
+            println("Tzst install result type=$typeKey id=${entry.id} success=${result.success} message=${result.message}")
+            assertTrue(
+                "Tzst install failed for ${entry.id} ($typeKey): ${result.message}",
+                result.success,
+            )
+            assertTrue(
+                "Tzst not cached for ${entry.id} ($typeKey) at ${cacheFile.absolutePath}",
+                cacheFile.exists() && cacheFile.length() > 0,
+            )
+        } finally {
+            cacheFile.delete()
         }
     }
 

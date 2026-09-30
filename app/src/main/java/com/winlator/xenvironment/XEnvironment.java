@@ -13,11 +13,14 @@ import com.winlator.xenvironment.components.ALSAServerComponent;
 import com.winlator.xenvironment.components.BionicProgramLauncherComponent;
 import com.winlator.xenvironment.components.GlibcProgramLauncherComponent;
 import com.winlator.xenvironment.components.GuestProgramLauncherComponent;
+import com.winlator.xenvironment.components.MicrophoneComponent;
 import com.winlator.xenvironment.components.PulseAudioComponent;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Iterator;
+
+import app.gamenative.powercontrol.PowerManager;
 
 public class XEnvironment implements Iterable<EnvironmentComponent> {
     private final Context context;
@@ -83,28 +86,42 @@ public class XEnvironment implements Iterable<EnvironmentComponent> {
     }
 
     public void onPause() {
+        // Pause game processes FIRST
+        pauseGameProcesses();
+
+        // Then pause audio components
+        PulseAudioComponent pulseAudioComponent = getComponent(PulseAudioComponent.class);
+        if (pulseAudioComponent != null) pulseAudioComponent.pause();
+        ALSAServerComponent alsaServerComponent = getComponent(ALSAServerComponent.class);
+        if (alsaServerComponent != null) alsaServerComponent.pause();
+        // Release the microphone while backgrounded (drops the mic indicator and its power cost)
+        MicrophoneComponent microphoneComponent = getComponent(MicrophoneComponent.class);
+        if (microphoneComponent != null) microphoneComponent.pause();
+    }
+
+    public void onResume() {
+        // Resume audio so it's ready when game processes wake up
+        PulseAudioComponent pulseAudioComponent = getComponent(PulseAudioComponent.class);
+        if (pulseAudioComponent != null) pulseAudioComponent.resume();
+        ALSAServerComponent alsaServerComponent = getComponent(ALSAServerComponent.class);
+        if (alsaServerComponent != null) alsaServerComponent.resume();
+        MicrophoneComponent microphoneComponent = getComponent(MicrophoneComponent.class);
+        if (microphoneComponent != null) microphoneComponent.resume();
+
+        // Then resume game processes
+        resumeGameProcesses();
+    }
+
+    public void pauseGameProcesses() {
         GuestProgramLauncherComponent guestProgramLauncherComponent = getComponent(GuestProgramLauncherComponent.class);
         if (guestProgramLauncherComponent != null) guestProgramLauncherComponent.suspendProcess();
         GlibcProgramLauncherComponent glibcProgramLauncherComponent = getComponent(GlibcProgramLauncherComponent.class);
         if (glibcProgramLauncherComponent != null) glibcProgramLauncherComponent.suspendProcess();
         BionicProgramLauncherComponent bionicProgramLauncherComponent = getComponent(BionicProgramLauncherComponent.class);
         if (bionicProgramLauncherComponent != null) bionicProgramLauncherComponent.suspendProcess();
-
-        // Pause audio components
-        PulseAudioComponent pulseAudioComponent = getComponent(PulseAudioComponent.class);
-        if (pulseAudioComponent != null) pulseAudioComponent.pause();
-        ALSAServerComponent alsaServerComponent = getComponent(ALSAServerComponent.class);
-        if (alsaServerComponent != null) alsaServerComponent.pause();
     }
 
-    public void onResume() {
-        // Resume audio FIRST so it's ready when game processes wake up
-        PulseAudioComponent pulseAudioComponent = getComponent(PulseAudioComponent.class);
-        if (pulseAudioComponent != null) pulseAudioComponent.resume();
-        ALSAServerComponent alsaServerComponent = getComponent(ALSAServerComponent.class);
-        if (alsaServerComponent != null) alsaServerComponent.resume();
-
-        // Then resume game processes
+    public void resumeGameProcesses() {
         GuestProgramLauncherComponent guestProgramLauncherComponent = getComponent(GuestProgramLauncherComponent.class);
         if (guestProgramLauncherComponent != null) guestProgramLauncherComponent.resumeProcess();
         GlibcProgramLauncherComponent glibcProgramLauncherComponent = getComponent(GlibcProgramLauncherComponent.class);

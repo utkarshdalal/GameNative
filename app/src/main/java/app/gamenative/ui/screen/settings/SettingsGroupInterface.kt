@@ -1,7 +1,6 @@
 package app.gamenative.ui.screen.settings
 
 import android.content.res.Configuration
-import android.os.Build
 import android.os.Environment
 import android.os.storage.StorageManager
 import java.io.File
@@ -60,7 +59,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import app.gamenative.ui.component.settings.SettingsListDropdown
+import app.gamenative.ui.component.settings.SettingsMultiListDropdown
 import app.gamenative.ui.component.ACHIEVEMENT_NOTIFICATION_POSITION
+import app.gamenative.ui.enums.LibraryTab
 import androidx.compose.ui.viewinterop.AndroidView
 import android.widget.ImageView
 import app.gamenative.utils.IconSwitcher
@@ -97,6 +98,7 @@ import app.gamenative.ui.screen.auth.GOGOAuthActivity
 import app.gamenative.ui.screen.auth.AmazonOAuthActivity
 import app.gamenative.service.amazon.AmazonAuthManager
 import app.gamenative.utils.PlatformOAuthHandlers
+import app.gamenative.utils.StorageUtils
 import app.gamenative.data.GameSource
 import app.gamenative.sync.FrontendSyncManager
 import app.gamenative.ui.util.PlatformAuthUiHelpers
@@ -152,9 +154,12 @@ fun SettingsGroupInterface(
 
     // Controller/gamepad hints visibility
     var showGamepadHints by rememberSaveable { mutableStateOf(PrefManager.showGamepadHints) }
+    var showRecommendations by rememberSaveable { mutableStateOf(PrefManager.showRecommendations) }
+    var libraryTabs by remember { mutableStateOf(PrefManager.libraryTabs) }
 
     // Achievements
     var showAchievementNotifications by rememberSaveable { mutableStateOf(PrefManager.achievementShowNotification) }
+    var playAchievementSound by rememberSaveable { mutableStateOf(PrefManager.achievementPlaySound) }
 
     // Language selection dialog
     var openLanguageDialog by rememberSaveable { mutableStateOf(false) }
@@ -260,6 +265,15 @@ fun SettingsGroupInterface(
                 PrefManager.achievementShowNotification = it
             },
         )
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_achievement_play_sound)) },
+            state = playAchievementSound,
+            onCheckedChange = {
+                playAchievementSound = it
+                PrefManager.achievementPlaySound = it
+            },
+        )
         // Achievement notification position
         val achPositionKeys = remember { ACHIEVEMENT_NOTIFICATION_POSITION.keys.toList() }
         val achPositionLabelResIds = remember { ACHIEVEMENT_NOTIFICATION_POSITION.values.toList() }
@@ -339,26 +353,97 @@ fun SettingsGroupInterface(
             },
         )
 
-        var showRecommendations by rememberSaveable { mutableStateOf(PrefManager.showRecommendations) }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.settings_interface_show_recommendations_title)) },
             subtitle = { Text(text = stringResource(R.string.settings_interface_show_recommendations_subtitle)) },
             state = showRecommendations,
-            onCheckedChange = {
-                showRecommendations = it
-                PrefManager.showRecommendations = it
+            onCheckedChange = { enabled ->
+                showRecommendations = enabled
+                PrefManager.showRecommendations = enabled
                 PluviaApp.events.emit(AndroidEvent.RecommendationToggleChanged)
                 if (PrefManager.usageAnalyticsEnabled) {
                     com.posthog.PostHog.capture(
                         event = "\$set",
-                        properties = mapOf("\$set" to mapOf("recommendation_enabled" to it)),
+                        properties = mapOf("\$set" to mapOf("recommendation_enabled" to enabled)),
                     )
-                    if (!it) {
+                    if (!enabled) {
                         com.posthog.PostHog.capture("recommendation_disabled")
                     }
                 }
             },
+        )
+
+        var showHiddenGamesByDefault by rememberSaveable { mutableStateOf(PrefManager.showHiddenGamesByDefault) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_interface_show_hidden_games_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_interface_show_hidden_games_subtitle)) },
+            state = showHiddenGamesByDefault,
+            onCheckedChange = {
+                showHiddenGamesByDefault = it
+                PrefManager.showHiddenGamesByDefault = it
+                PluviaApp.events.emit(AndroidEvent.HiddenGamesSettingChanged(showHiddenGamesByDefault = it))
+            },
+        )
+
+        var hideAiFeatures by rememberSaveable { mutableStateOf(PrefManager.hideAiFeatures) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_hide_ai_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_hide_ai_subtitle)) },
+            state = hideAiFeatures,
+            onCheckedChange = {
+                hideAiFeatures = it
+                PrefManager.hideAiFeatures = it
+            },
+        )
+
+        var bootScreenAds by rememberSaveable { mutableStateOf(PrefManager.bootScreenAdsEnabled) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_info_boot_ads_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_info_boot_ads_subtitle)) },
+            state = bootScreenAds,
+            onCheckedChange = {
+                bootScreenAds = it
+                PrefManager.bootScreenAdsEnabled = it
+            },
+        )
+
+        var bootScreenRecs by rememberSaveable { mutableStateOf(PrefManager.bootScreenRecommendationsEnabled) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_info_boot_recs_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_info_boot_recs_subtitle)) },
+            state = bootScreenRecs,
+            onCheckedChange = {
+                bootScreenRecs = it
+                PrefManager.bootScreenRecommendationsEnabled = it
+            },
+        )
+
+        val configurableLibraryTabs = LibraryTab.configurableEntries
+        val selectedLibraryTabIndices = configurableLibraryTabs.mapIndexedNotNull { index, tab ->
+            index.takeIf { tab in libraryTabs }
+        }
+        SettingsMultiListDropdown(
+            colors = settingsTileColorsAlt(),
+            values = selectedLibraryTabIndices,
+            items = configurableLibraryTabs.map { stringResource(it.labelResId) },
+            fallbackDisplay = stringResource(R.string.settings_interface_library_tabs_none),
+            onItemSelected = { index ->
+                val selectedTab = configurableLibraryTabs[index]
+                val selectedTabs = libraryTabs.toMutableSet()
+                if (!selectedTabs.add(selectedTab)) selectedTabs.remove(selectedTab)
+                libraryTabs = LibraryTab.entries.filter {
+                    it !in LibraryTab.configurableEntries || it in selectedTabs
+                }
+                PrefManager.libraryTabs = libraryTabs
+                PluviaApp.events.emit(AndroidEvent.LibraryTabsChanged(libraryTabs))
+            },
+            title = { Text(text = stringResource(R.string.settings_interface_library_tabs_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_interface_library_tabs_subtitle)) },
         )
 
         if (!BuildConfig.MODERN_ANDROID) {
@@ -417,6 +502,23 @@ fun SettingsGroupInterface(
                 )
             }
         }
+    }
+
+    // Custom Game Settings
+    SettingsGroup(
+        modifier = Modifier.background(Color.Transparent),
+        title = { Text(text = stringResource(R.string.settings_interface_custom_games)) },
+    ) {
+        var importCustomGameAsSteamGame by rememberSaveable { mutableStateOf(PrefManager.importCustomGameAsSteamGame) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_interface_custom_game_import_as_steam)) },
+            state = importCustomGameAsSteamGame,
+            onCheckedChange = {
+                importCustomGameAsSteamGame = it
+                PrefManager.importCustomGameAsSteamGame = it
+            },
+        )
     }
 
     // Platform integrations now live in the System Menu. The detailed
@@ -499,36 +601,16 @@ fun SettingsGroupInterface(
         val sm = ctx.getSystemService(StorageManager::class.java)
 
         // All writable non-primary volumes (SD / USB).
-        // getExternalFilesDirs misses USB OTG on most devices, so also enumerate
-        // StorageManager.storageVolumes and synthesize the per-app files dir.
+        // getExternalFilesDirs misses USB OTG on most devices, so StorageUtils also
+        // enumerates StorageManager.storageVolumes and synthesizes the per-app files dir.
         // Runs off the composition thread because synthesizing the USB candidate
         // may need mkdirs() on first plug-in.
         val externalStorageFallbackLabel = stringResource(R.string.storage_external)
         val dirs by produceState(initialValue = emptyList<File>(), ctx) {
             value = withContext(Dispatchers.IO) {
-                val seen = mutableSetOf<String>()
-                val result = mutableListOf<File>()
-
-                fun tryAdd(dir: File?) {
-                    if (dir == null) return
-                    if (Environment.getExternalStorageState(dir) != Environment.MEDIA_MOUNTED) return
-                    if (sm?.getStorageVolume(dir)?.isPrimary == true) return
-                    if (seen.add(dir.absolutePath)) result += dir
-                }
-
-                ctx.getExternalFilesDirs(null)?.forEach { tryAdd(it) }
-
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    sm?.storageVolumes?.forEach { volume ->
-                        if (volume.isPrimary) return@forEach
-                        val volDir = volume.directory ?: return@forEach
-                        val candidate = File(volDir, "Android/data/${ctx.packageName}/files")
-                        if (!candidate.isDirectory) candidate.mkdirs()
-                        if (candidate.isDirectory) tryAdd(candidate)
-                    }
-                }
-
-                result
+                StorageUtils.getAllExternalFilesDirs(ctx)
+                    .filter { Environment.getExternalStorageState(it) == Environment.MEDIA_MOUNTED }
+                    .filter { sm?.getStorageVolume(it)?.isPrimary != true }
             }
         }
 
@@ -554,16 +636,18 @@ fun SettingsGroupInterface(
                 useExternalStorage = it
                 PrefManager.useExternalStorage = it
                 if (it && dirs.isNotEmpty()) {
-                    PrefManager.externalStoragePath = dirs[0].absolutePath
+                    PrefManager.externalStoragePath = StorageUtils.preferredInstallRoot(dirs[0])
                 }
             },
         )
         if (useExternalStorage) {
             // Currently selected item
-            var selectedIndex by rememberSaveable {
+            var selectedIndex by rememberSaveable(dirs) {
                 mutableStateOf(
-                    dirs.indexOfFirst { it.absolutePath == PrefManager.externalStoragePath }
-                        .takeIf { it >= 0 } ?: 0,
+                    dirs.indexOfFirst { dir ->
+                        dir.absolutePath == PrefManager.externalStoragePath ||
+                            StorageUtils.publicInstallRoot(dir)?.absolutePath == PrefManager.externalStoragePath
+                    }.takeIf { it >= 0 } ?: 0,
                 )
             }
             SettingsListDropdown(
@@ -572,7 +656,7 @@ fun SettingsGroupInterface(
                 value = selectedIndex,
                 onItemSelected = { idx ->
                     selectedIndex = idx
-                    PrefManager.externalStoragePath = dirs[idx].absolutePath
+                    PrefManager.externalStoragePath = StorageUtils.preferredInstallRoot(dirs[idx])
                 },
                 colors = settingsTileColorsAlt(),
             )
@@ -795,4 +879,3 @@ private fun Preview_SettingsScreen() {
         )
     }
 }
-

@@ -31,6 +31,9 @@ public class ContentsManager {
     public static final String[] VORTEK_TRUST_FILES = {"${libdir}/libvulkan_vortek.so", "${libdir}/libvulkan_freedreno.so",
             "${sharedir}/vulkan/icd.d/vortek_icd.aarch64.json"};
     public static final String[] VIRGL_TRUST_FILES = {"${libdir}/libGL.so.1", "${libdir}/libglapi.so.0"};
+    public static final String[] WRAPPER_TRUST_FILES = {"${libdir}/libvulkan_wrapper.so",
+            "${sharedir}/vulkan/icd.d/wrapper_icd.aarch64.json", "${libdir}/libmain_hook.so", "${libdir}/libhook_impl.so",
+            "${libdir}/libadrenotools.so", "${libdir}/libgsl_alloc_hook.so", "${libdir}/libfile_redirect_hook.so"};
     public static final String[] DXVK_TRUST_FILES = {"${system32}/d3d8.dll", "${system32}/d3d9.dll", "${system32}/d3d10.dll", "${system32}/d3d10_1.dll",
             "${system32}/d3d10core.dll", "${system32}/d3d11.dll", "${system32}/dxgi.dll", "${syswow64}/d3d8.dll", "${syswow64}/d3d9.dll", "${syswow64}/d3d10.dll",
             "${syswow64}/d3d10_1.dll", "${syswow64}/d3d10core.dll", "${syswow64}/d3d11.dll", "${syswow64}/dxgi.dll"};
@@ -519,6 +522,7 @@ public class ContentsManager {
                     case CONTENT_TYPE_TURNIP -> TURNIP_TRUST_FILES;
                     case CONTENT_TYPE_VORTEK -> VORTEK_TRUST_FILES;
                     case CONTENT_TYPE_VIRGL -> VIRGL_TRUST_FILES;
+                    case CONTENT_TYPE_WRAPPER -> WRAPPER_TRUST_FILES;
                     case CONTENT_TYPE_DXVK -> DXVK_TRUST_FILES;
                     case CONTENT_TYPE_VKD3D -> VKD3D_TRUST_FILES;
                     case CONTENT_TYPE_BOX64 -> BOX64_TRUST_FILES;

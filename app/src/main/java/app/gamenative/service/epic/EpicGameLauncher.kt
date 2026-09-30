@@ -36,46 +36,44 @@ object EpicGameLauncher {
         return try {
             val params = mutableListOf<String>()
 
-            // Offline launch if offline (either via the container settings or the device)
-            if (offline) {
-                    Timber.tag("EPIC").i("Launching ${game.appName} in offline mode (no authentication)")
-                    return Result.success(params)
+            // Offline (either via the container settings or the device) sends the same parameters without tokens
+            val gameToken: EpicGameToken? = if (offline) {
+                Timber.tag("EPIC").i("Launching ${game.appName} in offline mode (no authentication)")
+                null
+            } else {
+                Timber.tag("EPIC").d("Launching ${game.appName} online, getting game launch token...")
+
+                val tokenResult = EpicAuthManager.getGameLaunchToken(
+                    context = context,
+                    namespace = game.namespace,
+                    catalogItemId = game.catalogId,
+                    requiresOwnershipToken = game.requiresOT
+                )
+
+                if (tokenResult.isFailure) {
+                    return Result.failure(tokenResult.exceptionOrNull() ?: Exception("Failed to get launch token"))
+                }
+
+                val token = tokenResult.getOrNull()
+
+                if (token == null) {
+                    Timber.tag("EPIC").w("Game Token is null for ${game.appName}")
+                    return Result.failure(Exception("Game token is null for ${game.appName}"))
+                }
+
+                Timber.tag("EPIC").i("Game launch token obtained for ${game.appName}")
+                token
             }
-
-            Timber.tag("EPIC").d("Launching ${game.appName} online, getting game launch token...")
-
-            val tokenResult = EpicAuthManager.getGameLaunchToken(
-                context = context,
-                namespace = game.namespace,
-                catalogItemId = game.catalogId,
-                requiresOwnershipToken = game.requiresOT
-            )
-
-            if (tokenResult.isFailure) {
-                return Result.failure(tokenResult.exceptionOrNull() ?: Exception("Failed to get launch token"))
-            }
-
-            val gameToken: EpicGameToken? = tokenResult.getOrNull()
-
-            if (gameToken == null) {
-                Timber.tag("EPIC").w("Game Token is null for ${game.appName}")
-                return Result.failure(Exception("Game token is null for ${game.appName}"))
-            }
-
-            Timber.tag("EPIC").d("Got Game Token for ${game.appName}")
+            val storedCredentials = if (offline) EpicAuthManager.loadCredentials(context) else null
 
             // Save ownership token to temp file if present
-            val ownershipTokenPath = if (gameToken.ownershipToken != null) {
-                saveOwnershipTokenToFile(container, game.namespace, game.catalogId, gameToken.ownershipToken)
-            } else {
-                null
+            val ownershipTokenPath = gameToken?.ownershipToken?.let {
+                saveOwnershipTokenToFile(container, game.namespace, game.catalogId, it)
             }
-
-            Timber.tag("EPIC").i("Game launch token obtained for ${game.appName}")
 
             // Authentication parameters
             params.add("-AUTH_LOGIN=unused")
-            params.add("-AUTH_PASSWORD=${gameToken?.authCode ?: "0"}")
+            params.add("-AUTH_PASSWORD=${gameToken?.authCode ?: ""}")
             params.add("-AUTH_TYPE=exchangecode")
             params.add("-epicapp=${game.appName}")
             params.add("-epicenv=Prod")
@@ -84,8 +82,8 @@ object EpicGameLauncher {
             params.add("-EpicPortal")
 
             // User information parameters
-            val displayName = gameToken?.displayName?.takeIf { it.isNotBlank() } ?: "EpicUser"
-            val accountId = gameToken?.accountId ?: "0"
+            val displayName = (gameToken?.displayName ?: storedCredentials?.displayName)?.takeIf { it.isNotBlank() } ?: "EpicUser"
+            val accountId = gameToken?.accountId ?: storedCredentials?.accountId ?: "0"
 
             params.add("-epicusername=$displayName")
             params.add("-epicuserid=$accountId")

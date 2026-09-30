@@ -120,4 +120,43 @@ class CaseInsensitiveFileSystemTest {
         val files = profileDirs[0].listFiles()?.map { it.name }?.sorted() ?: emptyList()
         assertEquals(listOf("slot1.sav", "slot2.sav", "slot3.sav"), files)
     }
+
+    @Test
+    fun `chunk staging paths are redirected and cleaned up on both sides`() {
+        val redirectDir = createTempDir("chunk_redirect")
+        try {
+            val redirectFs = CaseInsensitiveFileSystem(
+                chunkStagingRedirect = redirectDir.toOkioPath(),
+            )
+            val installDir = tmpDir.toOkioPath() / "steamapps" / "common" / "MyGame"
+            val chunkDir = installDir / ".DepotDownloader" / "staging" / "chunks" / "file1"
+            val chunkPath = chunkDir / "0_abc.chunk"
+
+            redirectFs.createDirectories(installDir / ".DepotDownloader" / "staging")
+            redirectFs.createDirectories(chunkDir)
+            redirectFs.write(chunkPath) { writeUtf8("chunkdata") }
+
+            // written under the redirect root, not beside the install dir
+            assertTrue(File(redirectDir, "file1/0_abc.chunk").exists())
+            assertFalse(File(tmpDir, "steamapps/common/MyGame/.DepotDownloader/staging/chunks/file1/0_abc.chunk").exists())
+
+            // read back through the original path
+            assertEquals("chunkdata", redirectFs.read(chunkPath) { readUtf8() })
+            assertTrue(redirectFs.exists(chunkPath))
+
+            redirectFs.delete(chunkPath)
+            assertFalse(File(redirectDir, "file1/0_abc.chunk").exists())
+
+            // deleteRecursively clears the per-file dir on the redirect side
+            redirectFs.write(chunkPath) { writeUtf8("leftover") }
+            redirectFs.deleteRecursively(chunkDir)
+            assertFalse(File(redirectDir, "file1").exists())
+
+            // non-chunk paths are untouched by the redirect
+            redirectFs.write(installDir / "game.pak") { writeUtf8("pak") }
+            assertTrue(File(tmpDir, "steamapps/common/MyGame/game.pak").exists())
+        } finally {
+            redirectDir.deleteRecursively()
+        }
+    }
 }

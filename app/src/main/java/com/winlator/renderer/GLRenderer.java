@@ -61,6 +61,17 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     private boolean sceneInitialized = false;
     private final EffectComposer effectComposer;
     private FrameRating frameRating;
+    private volatile XrFrameBridge xrFrameBridge = null;
+    private volatile boolean flatPresentationEnabled = true;
+
+    public void setFlatPresentationEnabled(boolean enabled) {
+        if (flatPresentationEnabled == enabled) return;
+        flatPresentationEnabled = enabled;
+        if (enabled) {
+            xServerView.queueEvent(this::updateScene);
+            xServerView.requestRender();
+        }
+    }
 
     public GLRenderer(XServerViewGL xServerView, XServer xServer) {
         this.xServerView = xServerView;
@@ -126,6 +137,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
     @Override
     public void onDrawFrame(GL10 gl) {
+        if (!flatPresentationEnabled) return;
         if (toggleFullscreen) {
             fullscreen = !fullscreen;
             toggleFullscreen = false;
@@ -148,8 +160,17 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     }
 
     void drawScene() {
+        // The effect composer renders the scene into its own target, so the XR bridge must not
+        // rebind the framebuffer underneath it.
+        XrFrameBridge bridge = effectComposer.hasEffects() ? null : xrFrameBridge;
         boolean xrFrame = false;
-        // if (XrActivity.isSupported()) xrFrame = XrActivity.getInstance().beginFrame(XrActivity.getImmersive(), XrActivity.getSBS());
+        if (bridge != null) {
+            int[] xrTargetSize = bridge.beginFrame();
+            if (xrTargetSize != null) {
+                xrFrame = true;
+                setRenderTargetSizeOverride(xrTargetSize[0], xrTargetSize[1]);
+            }
+        }
 
         int targetWidth = renderTargetWidthOverride > 0 ? renderTargetWidthOverride : surfaceWidth;
         int targetHeight = renderTargetHeightOverride > 0 ? renderTargetHeightOverride : surfaceHeight;
@@ -222,37 +243,41 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         if ((!magnifierEnabled && !fullscreen) || renderingToOffscreenTarget) GLES20.glDisable(GLES20.GL_SCISSOR_TEST);
 
         if (xrFrame) {
-            // XrActivity.getInstance().endFrame();
-            // XrActivity.updateControllers();
+            bridge.endFrame();
             xServerView.requestRender();
         }
     }
 
     @Override
     public void onMapWindow(Window window) {
+        if (!flatPresentationEnabled) return;
         xServerView.queueEvent(this::updateScene);
         xServerView.requestRender();
     }
 
     @Override
     public void onUnmapWindow(Window window) {
+        if (!flatPresentationEnabled) return;
         xServerView.queueEvent(this::updateScene);
         xServerView.requestRender();
     }
 
     @Override
     public void onChangeWindowZOrder(Window window) {
+        if (!flatPresentationEnabled) return;
         xServerView.queueEvent(this::updateScene);
         xServerView.requestRender();
     }
 
     @Override
     public void onUpdateWindowContent(Window window) {
+        if (!flatPresentationEnabled) return;
         xServerView.requestRender();
     }
 
     @Override
     public void onUpdateWindowGeometry(final Window window, boolean resized) {
+        if (!flatPresentationEnabled) return;
         if (resized) {
             xServerView.queueEvent(this::updateScene);
         }
@@ -262,11 +287,13 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
     @Override
     public void onUpdateWindowAttributes(Window window, Bitmask mask) {
+        if (!flatPresentationEnabled) return;
         if (mask.isSet(WindowAttributes.FLAG_CURSOR)) xServerView.requestRender();
     }
 
     @Override
     public void onPointerMove(short x, short y) {
+        if (!flatPresentationEnabled) return;
         xServerView.requestRender();
     }
 
@@ -341,6 +368,20 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         this.onFrameRenderedListener = onFrameRenderedListener;
     }
 
+    /** See {@link XrFrameBridge}. Pass null to detach (e.g. when leaving immersive mode). */
+    public void setXrFrameBridge(XrFrameBridge xrFrameBridge) {
+        this.xrFrameBridge = xrFrameBridge;
+        if (xrFrameBridge == null) clearRenderTargetSizeOverride();
+        viewportNeedsUpdate = true;
+        if (flatPresentationEnabled) xServerView.requestRender();
+    }
+
+    /** Whether active screen effects are forcing the composer path, which blocks the XR direct
+     * bridge. Mirrors {@link VulkanRenderer#isEffectsRequireCompositor()}. */
+    public boolean isEffectsRequireCompositor() {
+        return effectComposer.hasEffects();
+    }
+
     private Drawable createRootCursorDrawable() {
         Context context = xServerView.getContext();
         BitmapFactory.Options options = new BitmapFactory.Options();
@@ -350,6 +391,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     }
 
     private void updateScene() {
+        if (!flatPresentationEnabled) return;
         try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.DRAWABLE_MANAGER)) {
             renderableWindows.clear();
             collectRenderableWindows(xServer.windowManager.rootWindow, xServer.windowManager.rootWindow.getX(), xServer.windowManager.rootWindow.getY());

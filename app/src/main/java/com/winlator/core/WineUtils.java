@@ -208,25 +208,16 @@ public abstract class WineUtils {
     }
 
     public static void overrideWinComponentDlls(Context context, Container container, String identifier, boolean useNative) {
-        final String dllOverridesKey = "Software\\Wine\\DllOverrides";
         File userRegFile = new File(container.getRootDir(), ".wine/user.reg");
 
         try (WineRegistryEditor registryEditor = new WineRegistryEditor(userRegFile)) {
             JSONObject wincomponentsJSONObject = new JSONObject(FileUtils.readString(context, "wincomponents/wincomponents.json"));
-            JSONArray dlnames = wincomponentsJSONObject.getJSONArray(identifier);
-            for (int i = 0; i < dlnames.length(); i++) {
-                String dlname = dlnames.getString(i);
-                if (useNative) {
-                    registryEditor.setStringValue(dllOverridesKey, dlname, "native,builtin");
-                }
-                else registryEditor.removeValue(dllOverridesKey, dlname);
-            }
+            applyDllOverrides(registryEditor, wincomponentsJSONObject, identifier, useNative);
         }
         catch (JSONException e) {}
     }
 
     public static void overrideWinComponentDlls(Context context, Container container, String wincomponents) {
-        final String dllOverridesKey = "Software\\Wine\\DllOverrides";
         File userRegFile = new File(container.getRootDir(), ".wine/user.reg");
         Iterator<String[]> oldWinComponentsIter = new KeyValueSet(container.getExtra("wincomponents", Container.FALLBACK_WINCOMPONENTS)).iterator();
 
@@ -242,18 +233,30 @@ public abstract class WineUtils {
                 String identifier = wincomponent[0];
                 boolean useNative = wincomponent[1].equals("1");
 
-                JSONArray dlnames = wincomponentsJSONObject.getJSONArray(identifier);
-                for (int i = 0; i < dlnames.length(); i++) {
-                    String dlname = dlnames.getString(i);
-                    if (useNative) {
-                        registryEditor.setStringValue(dllOverridesKey, dlname, "native,builtin");
-                    }
-                    else registryEditor.removeValue(dllOverridesKey, dlname);
-                }
+                applyDllOverrides(registryEditor, wincomponentsJSONObject, identifier, useNative);
             }
         }
         catch (JSONException e) {
             Log.e("WineUtils", "Failed to override win component dlls: " + e);
+        }
+    }
+
+    private static void applyDllOverrides(WineRegistryEditor registryEditor, JSONObject wincomponentsJSONObject, String identifier, boolean useNative) {
+        final String dllOverridesKey = "Software\\Wine\\DllOverrides";
+        try {
+            JSONArray dlnames = wincomponentsJSONObject.getJSONArray(identifier);
+            for (int i = 0; i < dlnames.length(); i++) {
+                String dlname = dlnames.getString(i);
+                if (useNative) {
+                    registryEditor.setStringValue(dllOverridesKey, dlname, "native,builtin");
+                }
+                else if ( dlname.equals("dinput") || dlname.equals("dinput8")) {
+                    registryEditor.setStringValue(dllOverridesKey, dlname, "builtin,native");
+                }
+                else registryEditor.removeValue(dllOverridesKey, dlname);
+            }
+        } catch (JSONException e) {
+            Log.e("WineUtils", "Failed to apply DLL overrides for identifier: " + identifier, e);
         }
     }
 

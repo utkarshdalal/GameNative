@@ -1,6 +1,8 @@
 package app.gamenative.ui.screen.library.components
 
 import android.content.Context
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,10 +21,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ArrowUpward
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Face4
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -42,13 +47,16 @@ import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -56,8 +64,10 @@ import app.gamenative.R
 import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
+import app.gamenative.data.gog.GogRecommendationsRepository
 import app.gamenative.ui.component.CompatibilityBadge
 import app.gamenative.ui.component.GameStatsRow
+import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.data.GameCardStats
 import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.theme.PluviaTheme
@@ -86,10 +96,12 @@ internal fun GridViewCard(
     hideText: Boolean,
     imageAlpha: Float,
     onImageLoadFailed: () -> Unit,
+    onImageLoaded: () -> Unit = {},
     compatibilityStatus: GameCompatibilityStatus?,
     gameStats: GameCardStats?,
     showFocusGlow: Boolean,
     context: Context,
+    animateStats: Boolean = true,
 ) {
     val aspectRatio = if (paneType == PaneType.GRID_CAPSULE) 2f / 3f else 460f / 215f
     val isCapsule = paneType == PaneType.GRID_CAPSULE
@@ -119,12 +131,53 @@ internal fun GridViewCard(
     } else {
         Modifier
     }
-    val focusBorderBrush = Brush.verticalGradient(
-        colors = listOf(
-            MaterialTheme.colorScheme.primary,
-            MaterialTheme.colorScheme.tertiary,
-        ),
+    val cardShape = RoundedCornerShape(12.dp)
+    // 1f = frosted teaser, 0f = normal card; animates the reveal when consent is granted
+    val frost by animateFloatAsState(
+        targetValue = if (appInfo.isRecTeaser) 1f else 0f,
+        animationSpec = tween(durationMillis = 700),
+        label = "recTeaserFrost",
     )
+    val interactionSource = remember { MutableInteractionSource() }
+    val isItemFocused by interactionSource.collectIsFocusedAsState()
+
+    LaunchedEffect(isItemFocused) {
+        onFocusChanged(isItemFocused)
+        if (isItemFocused) onFocus()
+    }
+
+    val favoriteIndicator = rememberFavoriteCardIndicator(
+        appId = appInfo.appId,
+        isRecommended = appInfo.isRecommended,
+    )
+    val favoriteActionLabel = if (!appInfo.isRecommended) {
+        stringResource(
+            if (favoriteIndicator.isFavorite) {
+                R.string.favorite_remove_named
+            } else {
+                R.string.favorite_add_named
+            },
+            appInfo.name,
+        )
+    } else {
+        null
+    }
+    val favoriteState = if (favoriteIndicator.isFavorite) stringResource(R.string.favorite_added) else null
+    val favoriteSemantics = if (favoriteActionLabel != null) {
+        Modifier.semantics(mergeDescendants = true) {
+            if (favoriteState != null) {
+                stateDescription = favoriteState
+            }
+            customActions = listOf(
+                CustomAccessibilityAction(favoriteActionLabel) {
+                    toggleFavorite(context, appInfo.appId, appInfo.name)
+                    true
+                },
+            )
+        }
+    } else {
+        Modifier
+    }
 
     Box(
         modifier = modifier
@@ -132,29 +185,27 @@ internal fun GridViewCard(
             .scale(scale)
             .then(focusHaloModifier),
     ) {
-        val interactionSource = remember { MutableInteractionSource() }
-        val isItemFocused by interactionSource.collectIsFocusedAsState()
-
-        LaunchedEffect(isItemFocused) {
-            onFocusChanged(isItemFocused)
-            if (isItemFocused) onFocus()
-        }
-
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(aspectRatio)
+                .focusRing(interactionSource, cardShape)
+                .favoriteInnerGlow(
+                    isFavorite = favoriteIndicator.isFavorite,
+                    glowAlpha = favoriteIndicator.glowAlpha,
+                    shape = cardShape,
+                )
+                .then(favoriteSemantics)
                 .clickable(
                     onClick = onClick,
                     interactionSource = interactionSource,
                     indication = null,
                 ),
-            shape = RoundedCornerShape(12.dp),
+            shape = cardShape,
             colors = CardDefaults.cardColors(
                 containerColor = Color.Transparent,
             ),
             border = when {
-                isFocused -> BorderStroke(2.dp, focusBorderBrush)
                 appInfo.isRecommended -> BorderStroke(
                     1.dp,
                     MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
@@ -164,16 +215,25 @@ internal fun GridViewCard(
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 // Game image (primary + optional fallback for Steam header/hero)
-                val imageUrls by produceState(
-                    initialValue = GridImageUrls("", ""),
-                    key1 = appInfo.appId,
-                    key2 = paneType,
-                    key3 = imageRefreshCounter,
-                ) {
-                    value = withContext(Dispatchers.IO) {
+                // Custom game URLs are resolved off the main thread; null means "not resolved yet"
+                // so the image isn't loaded (and can't report a failure) until the real URL is known.
+                val resolvedImageUrls: GridImageUrls? = if (appInfo.gameSource == GameSource.CUSTOM_GAME) {
+                    produceState<GridImageUrls?>(
+                        initialValue = null,
+                        key1 = appInfo.appId,
+                        key2 = paneType,
+                        key3 = imageRefreshCounter,
+                    ) {
+                        value = withContext(Dispatchers.IO) {
+                            getGridImageUrl(context, appInfo, paneType)
+                        }
+                    }.value
+                } else {
+                    remember(appInfo.appId, paneType, imageRefreshCounter) {
                         getGridImageUrl(context, appInfo, paneType)
                     }
                 }
+                val imageUrls = resolvedImageUrls ?: GridImageUrls("", "")
 
                 var currentImageUrl by remember(
                     imageUrls.primary,
@@ -181,7 +241,11 @@ internal fun GridViewCard(
                     appInfo.appId,
                     imageRefreshCounter,
                 ) {
-                    mutableStateOf(imageUrls.primary)
+                    mutableStateOf(imageUrls.primary.ifEmpty { imageUrls.fallback })
+                }
+
+                if (resolvedImageUrls != null && currentImageUrl.isEmpty()) {
+                    LaunchedEffect(resolvedImageUrls) { onImageLoadFailed() }
                 }
 
                 if (isCapsule && currentImageUrl.isNotEmpty()) {
@@ -201,22 +265,67 @@ internal fun GridViewCard(
                     Modifier
                 }
 
-                ListItemImage(
-                    modifier = Modifier.fillMaxSize(),
-                    imageModifier = Modifier
-                        .fillMaxSize()
-                        .alpha(imageAlpha)
-                        .then(gridHeroZoom),
-                    contentScale = getGridContentScale(paneType),
-                    image = { currentImageUrl },
-                    onFailure = {
-                        if (imageUrls.fallback.isNotEmpty() && currentImageUrl == imageUrls.primary) {
-                            currentImageUrl = imageUrls.fallback
+                if (currentImageUrl.isNotEmpty()) {
+                    ListItemImage(
+                        modifier = Modifier.fillMaxSize(),
+                        imageModifier = Modifier
+                            .fillMaxSize()
+                            .alpha(imageAlpha)
+                            .then(gridHeroZoom)
+                            .then(if (frost > 0f) Modifier.blur(10.dp * frost) else Modifier),
+                        contentScale = getGridContentScale(paneType),
+                        image = { currentImageUrl },
+                        onFailure = {
+                            if (imageUrls.fallback.isNotEmpty() && currentImageUrl == imageUrls.primary) {
+                                currentImageUrl = imageUrls.fallback
+                            } else {
+                                onImageLoadFailed()
+                            }
+                        },
+                        onSuccess = onImageLoaded,
+                    )
+                }
+
+                val displayName = if (appInfo.isRecTeaser) {
+                    stringResource(R.string.rec_teaser_title)
+                } else {
+                    appInfo.name
+                }
+
+                if (frost > 0f) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .alpha(frost)
+                            .background(Color.Black.copy(alpha = 0.35f))
+                            .padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        if (appInfo.isRecLoading) {
+                            CircularProgressIndicator(
+                                color = Color.White,
+                                modifier = Modifier.size(32.dp),
+                            )
                         } else {
-                            onImageLoadFailed()
+                            Text(
+                                text = stringResource(R.string.rec_teaser_title),
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                ),
+                                color = Color.White,
+                                textAlign = TextAlign.Center,
+                            )
+                            Text(
+                                text = stringResource(R.string.rec_teaser_subtitle),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Color.White.copy(alpha = 0.7f),
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
                         }
-                    },
-                )
+                    }
+                }
 
                 // Fallback text when image fails to load (drawn before overlays so badges/icons stay visible)
                 if (!hideText) {
@@ -227,7 +336,7 @@ internal fun GridViewCard(
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            text = appInfo.name,
+                            text = displayName,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -238,11 +347,13 @@ internal fun GridViewCard(
                 }
 
                 // Gradient overlay at bottom for title
+                if (frost < 1f) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
                         .height(bottomGradientHeight)
+                        .alpha(1f - frost)
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
@@ -258,6 +369,7 @@ internal fun GridViewCard(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .fillMaxWidth()
+                        .alpha(1f - frost)
                         .padding(horizontal = 10.dp, vertical = cardContentBottomPadding),
                     verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
@@ -266,11 +378,6 @@ internal fun GridViewCard(
                             text = appInfo.name,
                             style = MaterialTheme.typography.labelMedium.copy(
                                 fontWeight = FontWeight.SemiBold,
-                                shadow = Shadow(
-                                    color = Color.Black,
-                                    offset = Offset(1f, 1f),
-                                    blurRadius = 2f,
-                                ),
                             ),
                             color = Color.White,
                             maxLines = if (paneType == PaneType.GRID_CAPSULE) 2 else 1,
@@ -281,30 +388,87 @@ internal fun GridViewCard(
                         GridStatusIcons(appInfo = appInfo)
                     }
 
-                    GameStatsRow(
-                        stats = gameStats,
-                        tint = Color.White.copy(alpha = 0.55f),
-                        onDark = true,
-                    )
+                    if (appInfo.isRecommended && appInfo.recStoreCard && appInfo.recPrice != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            appInfo.recBasePrice?.let { base ->
+                                Text(
+                                    text = base,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        textDecoration = TextDecoration.LineThrough,
+                                    ),
+                                    color = Color.White.copy(alpha = 0.6f),
+                                )
+                            }
+                            Text(
+                                text = appInfo.recPrice,
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                color = Color.White,
+                                modifier = if (appInfo.recBasePrice != null) Modifier.padding(start = 6.dp) else Modifier,
+                            )
+                        }
+                    }
+
+                    if (!appInfo.isFeatured) {
+                        GameStatsRow(
+                            stats = gameStats,
+                            tint = Color.White.copy(alpha = 0.55f),
+                            animate = animateStats,
+                        )
+                    }
+                }
                 }
 
-                // Compatibility / Recommended badge (top left)
-                val badgeStatus = if (appInfo.isRecommended) {
-                    GameCompatibilityStatus.RECOMMENDED
-                } else {
-                    compatibilityStatus
-                }
-                badgeStatus?.let { status ->
-                    CompatibilityBadge(
-                        status = status,
-                        showLabel = true,
+                // Top-left: Featured badge, GOG rating (store rec), or Recommended/compat badge
+                if (appInfo.isFeatured) {
+                    FeaturedBadge(
                         modifier = Modifier
                             .align(Alignment.TopStart)
                             .padding(top = topOverlayPadding, start = topOverlayPadding),
                     )
+                } else if (appInfo.isRecommended && appInfo.recStoreCard) {
+                    val productId = appInfo.recommendedGameId.toLongOrNull()
+                    val rating by produceState(initialValue = appInfo.recRating, productId) {
+                        if (value == null && productId != null) {
+                            value = GogRecommendationsRepository.getRating(productId)
+                        }
+                    }
+                    rating?.let {
+                        RecRatingPill(
+                            rating = it,
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(top = topOverlayPadding, start = topOverlayPadding),
+                        )
+                    }
+                } else {
+                    val badgeStatus = if (appInfo.isRecommended) {
+                        GameCompatibilityStatus.RECOMMENDED
+                    } else {
+                        compatibilityStatus
+                    }
+                    badgeStatus?.let { status ->
+                        CompatibilityBadge(
+                            status = status,
+                            showLabel = true,
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(top = topOverlayPadding, start = topOverlayPadding),
+                        )
+                    }
                 }
 
-                if (!appInfo.isRecommended) {
+                // Top-right: seed-game badge (store rec), source icon for normal cards
+                if (appInfo.isRecommended && appInfo.recStoreCard) {
+                    if (!appInfo.recSeedIconUrl.isNullOrBlank() || appInfo.recSeedCount >= 2) {
+                        RecSimilarBadge(
+                            iconUrl = appInfo.recSeedIconUrl,
+                            extraCount = (appInfo.recSeedCount - 1).coerceAtLeast(0),
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(top = topOverlayPadding, end = topOverlayPadding),
+                        )
+                    }
+                } else if (!appInfo.isRecommended) {
                     GameSourceIcon(
                         gameSource = appInfo.gameSource,
                         modifier = Modifier
@@ -354,6 +518,95 @@ private fun CapsuleFallbackBackdrop(
                     ),
                 ),
         )
+    }
+}
+
+@Composable
+private fun FeaturedBadge(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFFFFC107))
+            .padding(horizontal = 8.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Star,
+            contentDescription = null,
+            tint = Color.Black,
+            modifier = Modifier.size(12.dp),
+        )
+        Text(
+            text = stringResource(R.string.featured_badge),
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+            color = Color.Black,
+            modifier = Modifier.padding(start = 3.dp),
+        )
+    }
+}
+
+@Composable
+private fun RecRatingPill(rating: Int, modifier: Modifier = Modifier) {
+    val color = when {
+        rating >= 70 -> Color(0xFF4CAF50)
+        rating >= 40 -> Color(0xFFB9A074)
+        else -> Color(0xFFE57373)
+    }
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color.Black.copy(alpha = 0.55f))
+            .padding(horizontal = 6.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Star,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(12.dp),
+        )
+        Text(
+            text = "$rating%",
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+            color = Color.White,
+            modifier = Modifier.padding(start = 3.dp),
+        )
+    }
+}
+
+@Composable
+private fun RecSimilarBadge(iconUrl: String?, extraCount: Int, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color.Black.copy(alpha = 0.55f))
+            .padding(horizontal = 4.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (!iconUrl.isNullOrBlank()) {
+            CoilImage(
+                imageModel = { iconUrl },
+                imageOptions = ImageOptions(contentScale = ContentScale.Crop),
+                modifier = Modifier
+                    .size(20.dp)
+                    .clip(RoundedCornerShape(4.dp)),
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Rounded.ArrowUpward,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(12.dp),
+            )
+        }
+        if (extraCount > 0) {
+            Text(
+                text = "+$extraCount",
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                color = Color.White,
+                modifier = Modifier.padding(start = 3.dp, end = 2.dp),
+            )
+        }
     }
 }
 
@@ -409,10 +662,12 @@ private fun GridStatusIcons(appInfo: LibraryItem) {
 internal data class GridImageUrls(val primary: String, val fallback: String = "")
 
 private fun getGridContentScale(paneType: PaneType): ContentScale {
-    return if (paneType == PaneType.GRID_HERO) {
-        ContentScale.Crop
-    } else {
-        ContentScale.Fit
+    return when (paneType) {
+        // Hero and capsule both show cover art that should fill the slot. Capsule art is
+        // close to but not always exactly 2:3 (e.g. GOG covers are ~0.71), so cropping the
+        // overflow looks better than letterboxing it against the blurred backdrop.
+        PaneType.GRID_HERO, PaneType.GRID_CAPSULE -> ContentScale.Crop
+        else -> ContentScale.Fit
     }
 }
 
@@ -448,10 +703,18 @@ internal fun getGridImageUrl(
         GameSource.CUSTOM_GAME -> {
             val primary = when (paneType) {
                 PaneType.GRID_CAPSULE ->
-                    findSteamGridDBImage("grid_capsule") ?: appInfo.capsuleImageUrl
+                    // Capsule (vertical): user "coverv"/"cover" wins over SteamGridDB capsule.
+                    CustomGameScanner.findCapsuleCoverForCustomGame(appInfo.appId)
+                        ?: findSteamGridDBImage("grid_capsule")
+                        ?: appInfo.capsuleImageUrl
                 PaneType.GRID_HERO ->
-                    findSteamGridDBImage("grid_hero") ?: appInfo.headerImageUrl
+                    // Hero (horizontal): user "coverh"/"cover" wins over SteamGridDB hero.
+                    CustomGameScanner.findHeroCoverForCustomGame(appInfo.appId)
+                        ?: findSteamGridDBImage("grid_hero")
+                        ?: appInfo.headerImageUrl
                 else -> {
+                    // Default/carousel banner is also a horizontal hero view.
+                    val heroCover = CustomGameScanner.findHeroCoverForCustomGame(appInfo.appId)
                     val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appInfo.appId)
                     val heroUrl = gameFolderPath?.let { path ->
                         val folder = File(path)
@@ -466,7 +729,7 @@ internal fun getGridImageUrl(
                         }
                         heroFile?.let { android.net.Uri.fromFile(it).toString() }
                     }
-                    heroUrl ?: appInfo.headerImageUrl
+                    heroCover ?: heroUrl ?: appInfo.headerImageUrl
                 }
             }
             GridImageUrls(primary = primary)

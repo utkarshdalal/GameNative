@@ -23,6 +23,7 @@ public class ContentProfile {
         CONTENT_TYPE_PROTON("Proton"),
         CONTENT_TYPE_TURNIP("Turnip"),
         CONTENT_TYPE_VORTEK("Vortek"),
+        CONTENT_TYPE_WRAPPER("Wrapper"),
         CONTENT_TYPE_VIRGL("VirGL"),
         CONTENT_TYPE_DXVK("DXVK"),
         CONTENT_TYPE_VKD3D("VKD3D"),

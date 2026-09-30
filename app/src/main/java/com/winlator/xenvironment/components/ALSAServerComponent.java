@@ -41,6 +41,12 @@ public class ALSAServerComponent extends EnvironmentComponent {
     public void stop() {
         XConnectorEpoll xConnectorEpoll = this.connector;
         if (xConnectorEpoll != null) {
+            for (int i = 0; i < xConnectorEpoll.getConnectedClientsCount(); i++) {
+                com.winlator.xconnector.Client client = xConnectorEpoll.getConnectedClientAt(i);
+                if (client != null && client.getTag() instanceof ALSAClient) {
+                    ((ALSAClient) client.getTag()).stop();
+                }
+            }
             xConnectorEpoll.stop();
             this.connector = null;
         }

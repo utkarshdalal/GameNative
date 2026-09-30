@@ -13,6 +13,8 @@ import com.winlator.xenvironment.XEnvironment;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import timber.log.Timber;
@@ -40,15 +42,46 @@ public class PulseAudioComponent extends EnvironmentComponent {
     private final UnixSocketConfig socketConfig;
     private final String SINK_NAME = "AAudioSink";
 
-    private final Object lock = new Object();
+    /** Name of the microphone source exposed to Wine/Proton. */
+    public static final String MIC_SOURCE_NAME = "GameNativeMic";
+    /** Stock PulseAudio module used to publish the Android microphone as a capture device. */
+    private static final String PIPE_SOURCE_MODULE = "module-pipe-source.so";
+    private static final String MIC_FIFO_NAME = "mic.fifo";
+
     private float volume = 1.0f;
     private byte performanceMode = 1;
+    private final AtomicBoolean isPauseResumeRunning = new AtomicBoolean(false);
     private final AtomicBoolean isPaused = new AtomicBoolean(false);
     private boolean lowLatency = false;
+    private final boolean enableAudioOutput;
+    private final boolean enableAudioInput;
 
-    public PulseAudioComponent(UnixSocketConfig socketConfig, boolean lowLatency) {
+    private final ExecutorService singleThreadExecutor = Executors.newSingleThreadExecutor();
+
+    public PulseAudioComponent(UnixSocketConfig socketConfig, boolean lowLatency, boolean enableAudioInput, boolean enableAudioOutput) {
         this.socketConfig = socketConfig;
         this.lowLatency = lowLatency;
+        this.enableAudioInput = enableAudioInput;
+        this.enableAudioOutput = enableAudioOutput;
+    }
+
+    /** Working directory the bundled PulseAudio server runs from. */
+    public static File getWorkingDir(Context context) {
+        return new File(context.getFilesDir(), "/pulseaudio");
+    }
+
+    /** Path of the FIFO that {@code module-pipe-source} reads the microphone PCM from. */
+    public static File getMicFifoFile(Context context) {
+        return new File(getWorkingDir(context), MIC_FIFO_NAME);
+    }
+
+    /**
+     * Microphone support needs PulseAudio's stock {@code module-pipe-source}, which is shipped inside
+     * the bundled pulseaudio asset. Older assets do not contain it, so check before referencing it -
+     * a missing module would make the whole server fail to start and kill audio output entirely.
+     */
+    public static boolean isMicModuleAvailable(Context context) {
+        return new File(getWorkingDir(context), "modules/" + PIPE_SOURCE_MODULE).isFile();
     }
 
     private void killAllPulseAudioProcesses() {
@@ -79,66 +112,63 @@ public class PulseAudioComponent extends EnvironmentComponent {
 
     @Override
     public void start() {
-        Timber.tag("PulseAudioComponent").d("Starting...");
-        synchronized (lock) {
-            if (!isServerRunning()) {
-                killAllPulseAudioProcesses();
-                startPulseAudio();
-                isPaused.set(false);
-            }
-        }
+        singleThreadExecutor.execute(() -> {
+            Timber.tag("PulseAudioComponent").d("Starting...");
+            killAllPulseAudioProcesses();
+            startPulseAudio();
+            isPaused.set(false);
+        });
     }
 
     @Override
     public void stop() {
-        Timber.tag("PulseAudioComponent").d("Stopping...");
-        synchronized (lock) {
-            // Stop sink here
-            updateSink(true);
-
-            isPaused.set(false);
-
+        singleThreadExecutor.execute(() -> {
+            Timber.tag("PulseAudioComponent").d("Stopping...");
             killAllPulseAudioProcesses();
-
+            isPaused.set(false);
             Timber.tag("PulseAudioComponent").d("Stopped PulseAudio server");
-        }
+        });
+        singleThreadExecutor.shutdown();
     }
 
     public void pause() {
-        synchronized (lock) {
-            if (!isPaused.get() && isServerRunning()) {
-                Timber.tag("PulseAudioComponent").d("Pausing...");
+        singleThreadExecutor.execute(() -> {
+            if (!isPaused.get()) {
+                if (!isPauseResumeRunning.get()) {
+                    isPauseResumeRunning.set(true);
+                    Timber.tag("PulseAudioComponent").d("Pausing...");
 
-                // Suspend sink and set isPaused together immediately
-                isPaused.set(true);
-                updateSink(true);
+                    if (updateSink(true)) {
+                        isPaused.set(true);
+                        Timber.tag("PulseAudioComponent").d("Audio paused");
+                    } else {
+                        Timber.tag("PulseAudioComponent").d("Failed to pause Audio");
+                    }
 
-                Timber.tag("PulseAudioComponent").d("Audio paused");
+                    isPauseResumeRunning.set(false);
+                }
             }
-        }
+        });
     }
 
     public void resume() {
-        synchronized (lock) {
+        singleThreadExecutor.execute(() -> {
             if (isPaused.get()) {
-                Timber.tag("PulseAudioComponent").d("Resuming...");
+                if (!isPauseResumeRunning.get()) {
+                    isPauseResumeRunning.set(true);
+                    Timber.tag("PulseAudioComponent").d("Resuming...");
 
-                if (isServerRunning()) {
-                    // Set isPaused immediately
-                    isPaused.set(false);
-                    updateSink(false);
+                    if (updateSink(false)) {
+                        isPaused.set(false);
+                        Timber.tag("PulseAudioComponent").d("Audio resumed");
+                    } else {
+                        Timber.tag("PulseAudioComponent").d("Failed to resume Audio");
+                    }
 
-                    Timber.tag("PulseAudioComponent").d("Audio resumed");
-                } else {
-                    start();
+                    isPauseResumeRunning.set(false);
                 }
             }
-        }
-    }
-
-    public boolean isServerRunning() {
-        final String info = execPactlCommand("info").toLowerCase(java.util.Locale.ROOT);
-        return info.contains("server name:") && !info.contains("connection failure");
+        });
     }
 
     public void setVolume(float volume) {
@@ -153,7 +183,7 @@ public class PulseAudioComponent extends EnvironmentComponent {
         Context context = environment.getContext();
         String nativeLibraryDir = context.getApplicationInfo().nativeLibraryDir;
         // nativeLibraryDir = nativeLibraryDir.replace("arm64", "arm64-v8a");
-        File workingDir = new File(context.getFilesDir(), "/pulseaudio");
+        File workingDir = getWorkingDir(context);
         if (!workingDir.isDirectory()) {
             workingDir.mkdirs();
             FileUtils.chmod(workingDir, 0771);
@@ -166,23 +196,34 @@ public class PulseAudioComponent extends EnvironmentComponent {
         }
 
         File configFile = new File(workingDir, "default.pa");
-        String sinkParams = "volume=" + this.volume + " performance_mode=" + ((int) this.performanceMode);
-        if (lowLatency) {
-            sinkParams += " low_latency=true";
-        }
-        FileUtils.writeString(configFile, String.join("\n",
-                "load-module module-native-protocol-unix auth-anonymous=1 auth-cookie-enabled=false socket=\""+socketConfig.path+"\"",
-                "load-module module-aaudio-sink " + sinkParams
-        ));
 
-        String archName = AppUtils.getArchName();
+        List<String> configLines = new ArrayList<>();
+        configLines.add("load-module module-native-protocol-unix auth-anonymous=1 auth-cookie-enabled=false socket=\""+socketConfig.path+"\"");
+
+        // Add config for audio input
+        if (enableAudioInput) {
+            configLines.addAll(buildMicConfigLines(context, workingDir));
+        }
+
+        // Add config for audio output
+        if (enableAudioOutput) {
+            String sinkParams = "volume=" + this.volume + " performance_mode=" + ((int) this.performanceMode);
+
+            if (lowLatency) {
+                sinkParams += " low_latency=true";
+            }
+
+            configLines.add("load-module module-aaudio-sink " + sinkParams);
+        }
+
+        FileUtils.writeString(configFile, String.join("\n", configLines));
+
         File modulesDir = new File(workingDir, "modules");
 
         EnvVars envVars = new EnvVars();
         envVars.put("LD_LIBRARY_PATH", "/system/lib64:"+nativeLibraryDir+":"+modulesDir);
         envVars.put("HOME", workingDir);
         envVars.put("TMPDIR", XEnvironment.getTmpDir(context));
-
 
         String command = nativeLibraryDir+"/libpulseaudio.so";
         command += " --system=false";
@@ -200,8 +241,49 @@ public class PulseAudioComponent extends EnvironmentComponent {
         Timber.tag("PulseAudioComponent").d("Started PulseAudio server %s", output);
     }
 
-    private String execPactlCommand(String command) {
-        Context context = environment.getContext();
+    /**
+     * Builds the {@code default.pa} lines that publish the Android microphone as a PulseAudio source.
+     *
+     * Wine/Proton's {@code winepulse.drv} enumerates every source reported by the server, so this is
+     * all that is required for the microphone to appear as a Windows recording device inside the
+     * container. No Wine-side patch and no registry change is needed.
+     *
+     * Returns an empty list (i.e. audio output behaves exactly as before) when the microphone is
+     * disabled for this container or when the bundled PulseAudio build does not ship
+     * {@code module-pipe-source.so}.
+     */
+    private List<String> buildMicConfigLines(Context context, File workingDir) {
+        List<String> lines = new ArrayList<>();
+
+        if (!isMicModuleAvailable(context)) {
+            Timber.tag("PulseAudioComponent").w(
+                "Microphone requested but %s is missing from the bundled pulseaudio asset; skipping",
+                PIPE_SOURCE_MODULE);
+            return lines;
+        }
+
+        // module-pipe-source does mkfifo() itself and fails on EEXIST, so clear any stale FIFO left
+        // behind by a server that was killed instead of shut down.
+        File fifoFile = new File(workingDir, MIC_FIFO_NAME);
+        //noinspection ResultOfMethodCallIgnored
+        fifoFile.delete();
+
+        lines.add("load-module module-pipe-source"
+            + " source_name=" + MIC_SOURCE_NAME
+            + " file=\"" + fifoFile.getAbsolutePath() + "\""
+            + " format=s16le"
+            + " rate=" + MicrophoneComponent.SAMPLE_RATE
+            + " channels=" + MicrophoneComponent.CHANNEL_COUNT
+            + " source_properties=device.description=Microphone");
+        // Make it the default so apps that just ask for "the" capture device get the mic instead of
+        // the sink's monitor source.
+        lines.add("set-default-source " + MIC_SOURCE_NAME);
+
+        Timber.tag("PulseAudioComponent").d("Microphone source '%s' enabled (%s)", MIC_SOURCE_NAME, fifoFile);
+        return lines;
+    }
+
+    private String execPactlCommand(String command) {        Context context = environment.getContext();
         String nativeLibraryDir = context.getApplicationInfo().nativeLibraryDir;
         File workingDir = new File(context.getFilesDir(), "/pulseaudio");
 
@@ -217,14 +299,14 @@ public class PulseAudioComponent extends EnvironmentComponent {
         envVars.put("TMPDIR", XEnvironment.getTmpDir(context));
         envVars.put("PULSE_SERVER", socketConfig.path);
 
-        return ProcessHelper.execWithOutput(workingDir + "/pactl " + command, envVars.toStringArray(), workingDir, true);
+        return ProcessHelper.execWithOutput(workingDir + "/pactl " + command, envVars.toStringArray(), workingDir, true, 5);
     }
 
-    private void updateSink(boolean suspend) {
+    private boolean updateSink(boolean suspend) {
         if (!suspend) {
-            execPactlCommand("suspend-sink " + SINK_NAME + " false");
+            return !execPactlCommand("suspend-sink " + SINK_NAME + " false").toLowerCase().contains("process timeout");
         } else {
-            execPactlCommand("suspend-sink " + SINK_NAME + " true");
+            return !execPactlCommand("suspend-sink " + SINK_NAME + " true").toLowerCase().contains("process timeout");
         }
     }
 

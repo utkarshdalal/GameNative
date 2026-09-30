@@ -5,6 +5,8 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PointF;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffColorFilter;
 import android.graphics.Rect;
 
 import androidx.core.graphics.ColorUtils;
@@ -19,6 +21,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
 
 public class ControlElement {
     public static final float STICK_DEAD_ZONE = 0.15f;
@@ -28,6 +32,11 @@ public class ControlElement {
     public static final float TRACKPAD_MAX_SPEED = 20.0f;
     public static final byte TRACKPAD_ACCELERATION_THRESHOLD = 4;
     public static final short BUTTON_MIN_TIME_TO_KEEP_PRESSED = 300;
+    public static final int DEFAULT_BUTTON_COLOR = 0x00ffffff;
+    public static final int DEFAULT_BUTTON_ACTIVE_COLOR = 0x00ffffff;
+    public static final float INHERIT_BUTTON_OPACITY = -1.0f;
+    public static final float DEFAULT_BUTTON_STROKE_SCALE = 1.0f;
+    public static final boolean DEFAULT_LOOK_THROUGH = false;
     public enum Type {
         BUTTON, D_PAD, RANGE_BUTTON, STICK, TRACKPAD, SHOOTER_MODE;
 
@@ -66,7 +75,8 @@ public class ControlElement {
     private final InputControlsView inputControlsView;
     private Type type = Type.BUTTON;
     private Shape shape = Shape.CIRCLE;
-    private Binding[] bindings = {Binding.NONE, Binding.NONE, Binding.NONE, Binding.NONE};
+    private BindingCombo[] bindings = {BindingCombo.none(), BindingCombo.none(), BindingCombo.none(), BindingCombo.none()};
+    private Object[] bindingSources = createBindingSources(bindings.length);
     private float scale = 1.0f;
     private short x;
     private short y;
@@ -74,8 +84,11 @@ public class ControlElement {
     private boolean toggleSwitch = false;
     private boolean scrollLocked = false;
     private int currentPointerId = -1;
+    private boolean currentPointerActivatedButtonBindings = false;
     private final Rect boundingBox = new Rect();
     private boolean[] states = new boolean[4];
+    private boolean[] gamepadAxisActive = new boolean[4];
+    private boolean radialMenuTouchActive = false;
     private boolean boundingBoxNeedsUpdate = true;
     private String text = "";
     private byte iconId;
@@ -89,32 +102,48 @@ public class ControlElement {
     private String shooterLookType = "mouse";
     private float shooterLookSensitivity = 1.0f;
     private float shooterJoystickSize = 1.0f;
+    private int buttonColor = DEFAULT_BUTTON_COLOR;
+    private int buttonActiveColor = DEFAULT_BUTTON_ACTIVE_COLOR;
+    private boolean buttonActiveColorCustom = false;
+    private float buttonOpacity = INHERIT_BUTTON_OPACITY;
+    private float buttonStrokeScale = DEFAULT_BUTTON_STROKE_SCALE;
+    // Null is reserved for buttons loaded from profiles that predate general
+    // look-through. Those buttons retain their legacy shooter-only setting.
+    private Boolean lookThrough = DEFAULT_LOOK_THROUGH;
+    private boolean shooterLookThrough = true;
 
     public ControlElement(InputControlsView inputControlsView) {
         this.inputControlsView = inputControlsView;
     }
 
+    private static Object[] createBindingSources(int count) {
+        Object[] sources = new Object[count];
+        for (int i = 0; i < count; i++) sources[i] = new Object();
+        return sources;
+    }
+
     private void reset() {
         setBinding(Binding.NONE);
         scroller = null;
+        lookThrough = DEFAULT_LOOK_THROUGH;
 
         if (type == Type.STICK) {
-            bindings[0] = Binding.GAMEPAD_LEFT_THUMB_UP;
-            bindings[1] = Binding.GAMEPAD_LEFT_THUMB_RIGHT;
-            bindings[2] = Binding.GAMEPAD_LEFT_THUMB_DOWN;
-            bindings[3] = Binding.GAMEPAD_LEFT_THUMB_LEFT;
+            bindings[0] = BindingCombo.of(Binding.GAMEPAD_LEFT_THUMB_UP);
+            bindings[1] = BindingCombo.of(Binding.GAMEPAD_LEFT_THUMB_RIGHT);
+            bindings[2] = BindingCombo.of(Binding.GAMEPAD_LEFT_THUMB_DOWN);
+            bindings[3] = BindingCombo.of(Binding.GAMEPAD_LEFT_THUMB_LEFT);
         }
         else if (type == Type.D_PAD) {
-            bindings[0] = Binding.GAMEPAD_DPAD_UP;
-            bindings[1] = Binding.GAMEPAD_DPAD_RIGHT;
-            bindings[2] = Binding.GAMEPAD_DPAD_DOWN;
-            bindings[3] = Binding.GAMEPAD_DPAD_LEFT;
+            bindings[0] = BindingCombo.of(Binding.GAMEPAD_DPAD_UP);
+            bindings[1] = BindingCombo.of(Binding.GAMEPAD_DPAD_RIGHT);
+            bindings[2] = BindingCombo.of(Binding.GAMEPAD_DPAD_DOWN);
+            bindings[3] = BindingCombo.of(Binding.GAMEPAD_DPAD_LEFT);
         }
         else if (type == Type.TRACKPAD) {
-            bindings[0] = Binding.MOUSE_MOVE_UP;
-            bindings[1] = Binding.MOUSE_MOVE_RIGHT;
-            bindings[2] = Binding.MOUSE_MOVE_DOWN;
-            bindings[3] = Binding.MOUSE_MOVE_LEFT;
+            bindings[0] = BindingCombo.of(Binding.MOUSE_MOVE_UP);
+            bindings[1] = BindingCombo.of(Binding.MOUSE_MOVE_RIGHT);
+            bindings[2] = BindingCombo.of(Binding.MOUSE_MOVE_DOWN);
+            bindings[3] = BindingCombo.of(Binding.MOUSE_MOVE_LEFT);
         }
         else if (type == Type.RANGE_BUTTON) {
             scroller = new RangeScroller(inputControlsView, this);
@@ -156,9 +185,11 @@ public class ControlElement {
     }
 
     public void setBindingCount(int bindingCount) {
-        bindings = new Binding[bindingCount];
+        bindings = new BindingCombo[bindingCount];
+        bindingSources = createBindingSources(bindingCount);
         setBinding(Binding.NONE);
         states = new boolean[bindingCount];
+        gamepadAxisActive = new boolean[bindingCount];
         boundingBoxNeedsUpdate = true;
     }
 
@@ -205,22 +236,107 @@ public class ControlElement {
     }
 
     public Binding getBindingAt(int index) {
-        return index < bindings.length ? bindings[index] : Binding.NONE;
+        return getBindingComboAt(index).getPrimaryBinding();
+    }
+
+    public BindingCombo getBindingComboAt(int index) {
+        return index < bindings.length ? bindings[index] : BindingCombo.none();
     }
 
     public void setBindingAt(int index, Binding binding) {
+        setBindingComboAt(index, BindingCombo.of(binding));
+    }
+
+    public void setBindingComboAt(int index, BindingCombo binding) {
         if (index >= bindings.length) {
             int oldLength = bindings.length;
             bindings = Arrays.copyOf(bindings, index+1);
-            Arrays.fill(bindings, oldLength, bindings.length, Binding.NONE);
+            Arrays.fill(bindings, oldLength, bindings.length, BindingCombo.none());
+            bindingSources = Arrays.copyOf(bindingSources, bindings.length);
+            for (int i = oldLength; i < bindingSources.length; i++) bindingSources[i] = new Object();
             states = new boolean[bindings.length];
+            gamepadAxisActive = new boolean[bindings.length];
             boundingBoxNeedsUpdate = true;
         }
-        bindings[index] = binding;
+        bindings[index] = binding != null ? binding : BindingCombo.none();
     }
 
     public void setBinding(Binding binding) {
-        Arrays.fill(bindings, binding);
+        Arrays.fill(bindings, BindingCombo.of(binding));
+    }
+
+    private void handleBindingInputEvent(int index, boolean isActionDown) {
+        BindingCombo bindingCombo = getBindingComboAt(index);
+        if (bindingCombo.isSingleBinding()) {
+            Binding binding = bindingCombo.getPrimaryBinding();
+            if (binding == Binding.GYRO_MODIFIER) {
+                inputControlsView.handleInputEvent(binding, isActionDown, 0f, bindingSources[index]);
+            }
+            else inputControlsView.handleInputEvent(binding, isActionDown);
+        }
+        else if (bindingCombo.contains(Binding.GYRO_MODIFIER)) {
+            inputControlsView.handleInputEvent(bindingCombo, isActionDown, 0f, bindingSources[index]);
+        }
+        else inputControlsView.handleInputEvent(bindingCombo, isActionDown);
+    }
+
+    private void handleBindingInputEvent(int index, boolean isActionDown, float offset) {
+        BindingCombo bindingCombo = getBindingComboAt(index);
+        if (bindingCombo.isSingleBinding()) {
+            Binding binding = bindingCombo.getPrimaryBinding();
+            if (binding == Binding.GYRO_MODIFIER) {
+                inputControlsView.handleInputEvent(binding, isActionDown, offset, bindingSources[index]);
+            }
+            else inputControlsView.handleInputEvent(binding, isActionDown, offset);
+        }
+        else if (bindingCombo.contains(Binding.GYRO_MODIFIER)) {
+            inputControlsView.handleInputEvent(bindingCombo, isActionDown, offset, bindingSources[index]);
+        }
+        else inputControlsView.handleInputEvent(bindingCombo, isActionDown, offset);
+    }
+
+    private void handleSimultaneousBindingMembers(
+            int bindingIndex,
+            Binding excludedBinding,
+            boolean isActionDown,
+            float offset) {
+        BindingCombo bindingCombo = getBindingComboAt(bindingIndex);
+        List<Binding> comboBindings = bindingCombo.getBindings();
+        if (isActionDown) {
+            for (Binding binding : comboBindings) {
+                if (binding != excludedBinding) {
+                    if (binding == Binding.GYRO_MODIFIER) {
+                        inputControlsView.handleInputEvent(binding, true, offset, bindingSources[bindingIndex]);
+                    }
+                    else inputControlsView.handleInputEvent(binding, true, offset);
+                }
+            }
+        }
+        else {
+            for (int i = comboBindings.size() - 1; i >= 0; i--) {
+                Binding binding = comboBindings.get(i);
+                if (binding != excludedBinding) {
+                    if (binding == Binding.GYRO_MODIFIER) {
+                        inputControlsView.handleInputEvent(binding, false, offset, bindingSources[bindingIndex]);
+                    }
+                    else inputControlsView.handleInputEvent(binding, false, offset);
+                }
+            }
+        }
+    }
+
+    private Binding findMouseMoveBinding(BindingCombo bindingCombo) {
+        for (Binding binding : bindingCombo.getBindings()) {
+            if (binding.isMouseMove()) return binding;
+        }
+        return Binding.NONE;
+    }
+
+    private Binding findGamepadAxisBinding(BindingCombo bindingCombo) {
+        for (Binding binding : bindingCombo.getBindings()) {
+            if (binding.isGamepadAxis()) return binding;
+        }
+        return Binding.NONE;
     }
 
     public String getShooterMovementType() {
@@ -253,6 +369,111 @@ public class ControlElement {
 
     public void setShooterJoystickSize(float shooterJoystickSize) {
         this.shooterJoystickSize = shooterJoystickSize;
+    }
+
+    public int getButtonColor() {
+        return buttonColor;
+    }
+
+    public void setButtonColor(int buttonColor) {
+        this.buttonColor = buttonColor & 0x00ffffff;
+    }
+
+    public int getButtonActiveColor() {
+        return buttonActiveColor;
+    }
+
+    public void setButtonActiveColor(int buttonActiveColor) {
+        setButtonActiveColor(buttonActiveColor, true);
+    }
+
+    public void setButtonActiveColor(int buttonActiveColor, boolean custom) {
+        this.buttonActiveColor = buttonActiveColor & 0x00ffffff;
+        this.buttonActiveColorCustom = custom;
+    }
+
+    public boolean hasCustomButtonActiveColor() {
+        return buttonActiveColorCustom;
+    }
+
+    public float getButtonOpacity() {
+        return buttonOpacity;
+    }
+
+    public void setButtonOpacity(float buttonOpacity) {
+        if (buttonOpacity < 0) {
+            this.buttonOpacity = INHERIT_BUTTON_OPACITY;
+        }
+        else {
+            this.buttonOpacity = Mathf.clamp(buttonOpacity, 0.0f, 1.0f);
+        }
+    }
+
+    public float getButtonStrokeScale() {
+        return buttonStrokeScale;
+    }
+
+    public void setButtonStrokeScale(float buttonStrokeScale) {
+        this.buttonStrokeScale = Mathf.clamp(buttonStrokeScale, 0.5f, 2.0f);
+    }
+
+    public boolean isLookThrough() {
+        return Boolean.TRUE.equals(lookThrough) && !isRadialMenuButton();
+    }
+
+    public Boolean getLookThroughSetting() {
+        return lookThrough;
+    }
+
+    public void setLookThroughSetting(Boolean lookThrough) {
+        this.lookThrough = lookThrough;
+    }
+
+    public boolean isShooterLookThrough() {
+        return !isRadialMenuButton() && (lookThrough != null ? lookThrough : shooterLookThrough);
+    }
+
+    public void setShooterLookThrough(boolean shooterLookThrough) {
+        this.shooterLookThrough = shooterLookThrough;
+    }
+
+    public boolean getShooterLookThroughSetting() {
+        return shooterLookThrough;
+    }
+
+    public void copyButtonAppearanceFrom(ControlElement element) {
+        buttonColor = element.buttonColor;
+        buttonActiveColor = element.buttonActiveColor;
+        buttonActiveColorCustom = element.buttonActiveColorCustom;
+        buttonOpacity = element.buttonOpacity;
+        buttonStrokeScale = element.buttonStrokeScale;
+        lookThrough = element.lookThrough;
+        shooterLookThrough = element.shooterLookThrough;
+    }
+
+    public float getEffectiveButtonOpacity(float fallbackOpacity) {
+        return buttonOpacity >= 0 ? buttonOpacity : fallbackOpacity;
+    }
+
+    public static int parseRgbColor(Object value, int fallbackColor) {
+        if (value instanceof Number) return ((Number)value).intValue() & 0x00ffffff;
+        if (value instanceof String) {
+            String hex = ((String)value).trim();
+            if (hex.startsWith("#")) hex = hex.substring(1);
+            if (hex.length() == 8) hex = hex.substring(2);
+            if (hex.length() == 6) {
+                try {
+                    return (int)Long.parseLong(hex, 16) & 0x00ffffff;
+                }
+                catch (NumberFormatException ignored) {
+                }
+            }
+        }
+        return fallbackColor;
+    }
+
+    public static String formatRgbColor(int color) {
+        return String.format(Locale.US, "#%06X", color & 0x00ffffff);
     }
 
     public float getScale() {
@@ -375,12 +596,16 @@ public class ControlElement {
             return text;
         }
         else {
-            Binding binding = getBindingAt(0);
-            String text = binding.toString().replace("NUMPAD ", "NP").replace("BUTTON ", "").replace("SHOW KEYBOARD", "KEY");
+            BindingCombo bindingCombo = getBindingComboAt(0);
+            Binding binding = bindingCombo.getPrimaryBinding();
+            String text = bindingCombo.toString().replace("NUMPAD ", "NP").replace("BUTTON ", "").replace("SHOW KEYBOARD", "KEY");
             if (text.length() > 7) {
                 String[] parts = text.split(" ");
                 StringBuilder sb = new StringBuilder();
-                for (String part : parts) sb.append(part.charAt(0));
+                for (String part : parts) {
+                    if (part.isEmpty() || part.equals("+") || part.equals("->")) continue;
+                    sb.append(part.charAt(0));
+                }
                 return (binding.isMouse() ? "M" : "")+ sb;
             }
             else return text;
@@ -412,14 +637,209 @@ public class ControlElement {
         return text;
     }
 
+    private int getAppearanceDrawColor(boolean active) {
+        int rgb = active ? buttonActiveColor : buttonColor;
+        int alpha = (int)(getEffectiveButtonOpacity(inputControlsView.getOverlayOpacity()) * 255);
+        return ColorUtils.setAlphaComponent(0xff000000 | rgb, alpha);
+    }
+
+    private int getEditorSelectionDrawColor() {
+        int rgb = buttonActiveColorCustom ? buttonActiveColor : inputControlsView.getSecondaryColor();
+        int alpha = (int)(getEffectiveButtonOpacity(inputControlsView.getOverlayOpacity()) * 255);
+        return ColorUtils.setAlphaComponent(0xff000000 | (rgb & 0x00ffffff), alpha);
+    }
+
+    private int getRuntimeSelectedDrawColor() {
+        if (buttonActiveColorCustom) return getAppearanceDrawColor(true);
+        int alpha = (int)(getEffectiveButtonOpacity(inputControlsView.getOverlayOpacity()) * 255);
+        return ColorUtils.setAlphaComponent(inputControlsView.getSecondaryColor(), alpha);
+    }
+
+    private static void setDPadDirectionPath(Path path, byte direction, Rect boundingBox, float cx, float cy, float offsetX, float offsetY, float start) {
+        path.reset();
+        switch (direction) {
+            case 0:
+                path.moveTo(cx, cy - start);
+                path.lineTo(cx - offsetX, cy - offsetY);
+                path.lineTo(cx - offsetX, boundingBox.top);
+                path.lineTo(cx + offsetX, boundingBox.top);
+                path.lineTo(cx + offsetX, cy - offsetY);
+                break;
+            case 1:
+                path.moveTo(cx + start, cy);
+                path.lineTo(cx + offsetY, cy - offsetX);
+                path.lineTo(boundingBox.right, cy - offsetX);
+                path.lineTo(boundingBox.right, cy + offsetX);
+                path.lineTo(cx + offsetY, cy + offsetX);
+                break;
+            case 2:
+                path.moveTo(cx, cy + start);
+                path.lineTo(cx - offsetX, cy + offsetY);
+                path.lineTo(cx - offsetX, boundingBox.bottom);
+                path.lineTo(cx + offsetX, boundingBox.bottom);
+                path.lineTo(cx + offsetX, cy + offsetY);
+                break;
+            case 3:
+                path.moveTo(cx - start, cy);
+                path.lineTo(cx - offsetY, cy - offsetX);
+                path.lineTo(boundingBox.left, cy - offsetX);
+                path.lineTo(boundingBox.left, cy + offsetX);
+                path.lineTo(cx - offsetY, cy + offsetX);
+                break;
+        }
+        path.close();
+    }
+
+    private static void setHorizontalRangeSegmentPath(Path path, Rect boundingBox, float segmentLeft, float segmentRight, float radius) {
+        float left = Math.max(segmentLeft, boundingBox.left);
+        float right = Math.min(segmentRight, boundingBox.right);
+        float top = boundingBox.top;
+        float bottom = boundingBox.bottom;
+        float width = Math.max(0.0f, right - left);
+        float leftRadius = segmentLeft <= boundingBox.left ? Math.min(radius, width * 0.5f) : 0.0f;
+        float rightRadius = segmentRight >= boundingBox.right ? Math.min(radius, width * 0.5f) : 0.0f;
+
+        path.reset();
+        path.moveTo(left + leftRadius, top);
+        path.lineTo(right - rightRadius, top);
+        if (rightRadius > 0.0f) {
+            path.quadTo(right, top, right, top + rightRadius);
+            path.lineTo(right, bottom - rightRadius);
+            path.quadTo(right, bottom, right - rightRadius, bottom);
+        }
+        else {
+            path.lineTo(right, bottom);
+        }
+        path.lineTo(left + leftRadius, bottom);
+        if (leftRadius > 0.0f) {
+            path.quadTo(left, bottom, left, bottom - leftRadius);
+            path.lineTo(left, top + leftRadius);
+            path.quadTo(left, top, left + leftRadius, top);
+        }
+        else {
+            path.lineTo(left, top);
+        }
+        path.close();
+    }
+
+    private static void setVerticalRangeSegmentPath(Path path, Rect boundingBox, float segmentTop, float segmentBottom, float radius) {
+        float left = boundingBox.left;
+        float right = boundingBox.right;
+        float top = Math.max(segmentTop, boundingBox.top);
+        float bottom = Math.min(segmentBottom, boundingBox.bottom);
+        float height = Math.max(0.0f, bottom - top);
+        float topRadius = segmentTop <= boundingBox.top ? Math.min(radius, height * 0.5f) : 0.0f;
+        float bottomRadius = segmentBottom >= boundingBox.bottom ? Math.min(radius, height * 0.5f) : 0.0f;
+
+        path.reset();
+        path.moveTo(left + topRadius, top);
+        path.lineTo(right - topRadius, top);
+        if (topRadius > 0.0f) {
+            path.quadTo(right, top, right, top + topRadius);
+        }
+        else {
+            path.lineTo(right, top);
+        }
+        path.lineTo(right, bottom - bottomRadius);
+        if (bottomRadius > 0.0f) {
+            path.quadTo(right, bottom, right - bottomRadius, bottom);
+            path.lineTo(left + bottomRadius, bottom);
+            path.quadTo(left, bottom, left, bottom - bottomRadius);
+        }
+        else {
+            path.lineTo(right, bottom);
+            path.lineTo(left, bottom);
+        }
+        path.lineTo(left, top + topRadius);
+        if (topRadius > 0.0f) {
+            path.quadTo(left, top, left + topRadius, top);
+        }
+        else {
+            path.lineTo(left, top);
+        }
+        path.close();
+    }
+
+    private static void setHorizontalRangeOutlinePath(Path path, Rect boundingBox, float radius, float skipLeft, float skipRight) {
+        float left = boundingBox.left;
+        float top = boundingBox.top;
+        float right = boundingBox.right;
+        float bottom = boundingBox.bottom;
+
+        path.reset();
+        if (skipLeft > left) {
+            float stop = Math.min(skipLeft, right);
+            path.moveTo(left + radius, top);
+            path.lineTo(Math.max(left + radius, stop), top);
+            path.moveTo(left + radius, bottom);
+            path.lineTo(Math.max(left + radius, stop), bottom);
+            path.moveTo(left + radius, top);
+            path.quadTo(left, top, left, top + radius);
+            path.lineTo(left, bottom - radius);
+            path.quadTo(left, bottom, left + radius, bottom);
+        }
+
+        if (skipRight < right) {
+            float start = Math.max(skipRight, left);
+            path.moveTo(Math.min(right - radius, start), top);
+            path.lineTo(right - radius, top);
+            path.quadTo(right, top, right, top + radius);
+            path.lineTo(right, bottom - radius);
+            path.quadTo(right, bottom, right - radius, bottom);
+            path.moveTo(Math.min(right - radius, start), bottom);
+            path.lineTo(right - radius, bottom);
+        }
+    }
+
+    private static void setVerticalRangeOutlinePath(Path path, Rect boundingBox, float radius, float skipTop, float skipBottom) {
+        float left = boundingBox.left;
+        float top = boundingBox.top;
+        float right = boundingBox.right;
+        float bottom = boundingBox.bottom;
+
+        path.reset();
+        if (skipTop > top) {
+            float stop = Math.min(skipTop, bottom);
+            path.moveTo(left + radius, top);
+            path.lineTo(right - radius, top);
+            path.quadTo(right, top, right, top + radius);
+            path.moveTo(left + radius, top);
+            path.quadTo(left, top, left, top + radius);
+            path.lineTo(left, Math.max(top + radius, stop));
+            path.moveTo(right, top + radius);
+            path.lineTo(right, Math.max(top + radius, stop));
+        }
+
+        if (skipBottom < bottom) {
+            float start = Math.max(skipBottom, top);
+            path.moveTo(left, Math.min(bottom - radius, start));
+            path.lineTo(left, bottom - radius);
+            path.quadTo(left, bottom, left + radius, bottom);
+            path.lineTo(right - radius, bottom);
+            path.quadTo(right, bottom, right, bottom - radius);
+            path.moveTo(right, Math.min(bottom - radius, start));
+            path.lineTo(right, bottom - radius);
+        }
+    }
+
     public void draw(Canvas canvas) {
         int snappingSize = inputControlsView.getSnappingSize();
         Paint paint = inputControlsView.getPaint();
-        int primaryColor = inputControlsView.getPrimaryColor();
+        boolean showGyroState = !inputControlsView.isEditMode()
+                && inputControlsView.isGyroEnabled() && isGyroModifierControl();
+        boolean gyroActive = showGyroState && inputControlsView.isGyroActive();
+        boolean active = selected || (showGyroState ? (gyroActive || currentPointerId != -1) : currentPointerId != -1);
+        boolean editSelected = selected && inputControlsView.isEditMode();
+        int normalColor = getAppearanceDrawColor(false);
+        int activeColor = editSelected ? getEditorSelectionDrawColor() : getAppearanceDrawColor(true);
+        boolean runtimeSelected = (selected || gyroActive) && !editSelected;
+        if (runtimeSelected) activeColor = getRuntimeSelectedDrawColor();
+        int primaryColor = active ? activeColor : normalColor;
+        int contentColor = runtimeSelected && !buttonActiveColorCustom ? normalColor : primaryColor;
 
-        paint.setColor(selected ? inputControlsView.getSecondaryColor() : primaryColor);
+        paint.setColor(primaryColor);
         paint.setStyle(Paint.Style.STROKE);
-        float strokeWidth = snappingSize * 0.25f;
+        float strokeWidth = snappingSize * 0.25f * buttonStrokeScale;
         paint.setStrokeWidth(strokeWidth);
         Rect boundingBox = getBoundingBox();
 
@@ -448,14 +868,14 @@ public class ControlElement {
                 }
 
                 if (iconId > 0) {
-                    drawIcon(canvas, cx, cy, boundingBox.width(), boundingBox.height(), iconId);
+                    drawIcon(canvas, cx, cy, boundingBox.width(), boundingBox.height(), iconId, contentColor);
                 }
                 else {
                     String text = getDisplayText();
                     paint.setTextSize(Math.min(getTextSizeForWidth(paint, text, boundingBox.width() - strokeWidth * 2), snappingSize * 2 * scale));
                     paint.setTextAlign(Paint.Align.CENTER);
                     paint.setStyle(Paint.Style.FILL);
-                    paint.setColor(primaryColor);
+                    paint.setColor(contentColor);
                     canvas.drawText(text, x, (y - ((paint.descent() + paint.ascent()) * 0.5f)), paint);
                 }
                 break;
@@ -467,55 +887,41 @@ public class ControlElement {
                 float offsetY = snappingSize * 3 * scale;
                 float start = snappingSize * scale;
                 Path path = inputControlsView.getPath();
-                path.reset();
 
-                path.moveTo(cx, cy - start);
-                path.lineTo(cx - offsetX, cy - offsetY);
-                path.lineTo(cx - offsetX, boundingBox.top);
-                path.lineTo(cx + offsetX, boundingBox.top);
-                path.lineTo(cx + offsetX, cy - offsetY);
-                path.close();
+                for (byte i = 0; i < 4; i++) {
+                    setDPadDirectionPath(path, i, boundingBox, cx, cy, offsetX, offsetY, start);
+                    boolean directionActive = editSelected || states[i];
 
-                path.moveTo(cx - start, cy);
-                path.lineTo(cx - offsetY, cy - offsetX);
-                path.lineTo(boundingBox.left, cy - offsetX);
-                path.lineTo(boundingBox.left, cy + offsetX);
-                path.lineTo(cx - offsetY, cy + offsetX);
-                path.close();
-
-                path.moveTo(cx, cy + start);
-                path.lineTo(cx - offsetX, cy + offsetY);
-                path.lineTo(cx - offsetX, boundingBox.bottom);
-                path.lineTo(cx + offsetX, boundingBox.bottom);
-                path.lineTo(cx + offsetX, cy + offsetY);
-                path.close();
-
-                path.moveTo(cx + start, cy);
-                path.lineTo(cx + offsetY, cy - offsetX);
-                path.lineTo(boundingBox.right, cy - offsetX);
-                path.lineTo(boundingBox.right, cy + offsetX);
-                path.lineTo(cx + offsetY, cy + offsetX);
-                path.close();
-
-                canvas.drawPath(path, paint);
+                    paint.setStyle(Paint.Style.STROKE);
+                    paint.setStrokeWidth(strokeWidth);
+                    paint.setColor(directionActive ? activeColor : normalColor);
+                    canvas.drawPath(path, paint);
+                }
                 break;
             }
             case RANGE_BUTTON: {
                 Range range = getRange();
-                int oldColor = paint.getColor();
+                int oldColor = editSelected ? activeColor : normalColor;
+                int activeRangeIndex = editSelected ? -1 : scroller.getActiveIndex();
                 float radius = snappingSize * 0.75f * scale;
+                float activeStrokeWidth = strokeWidth * 1.5f;
+                float activeRadius = radius + (activeStrokeWidth - strokeWidth) * 0.5f;
                 float elementSize = scroller.getElementSize();
                 float minTextSize = snappingSize * 2 * scale;
                 float scrollOffset = scroller.getScrollOffset();
                 byte[] rangeIndex = scroller.getRangeIndex();
                 Path path = inputControlsView.getPath();
                 path.reset();
+                paint.setColor(oldColor);
+                paint.setStrokeWidth(strokeWidth);
 
                 if (orientation == 0) {
                     float lineTop = boundingBox.top + strokeWidth * 0.5f;
                     float lineBottom = boundingBox.bottom - strokeWidth * 0.5f;
                     float startX = boundingBox.left;
-                    canvas.drawRoundRect(startX, boundingBox.top, boundingBox.right, boundingBox.bottom, radius, radius, paint);
+                    boolean drawActiveSegmentOutline = false;
+                    float activeSegmentLeft = 0;
+                    float activeSegmentRight = 0;
 
                     canvas.save();
                     path.addRoundRect(startX, boundingBox.top, boundingBox.right, boundingBox.bottom, radius, radius, Path.Direction.CW);
@@ -524,15 +930,29 @@ public class ControlElement {
 
                     for (byte i = rangeIndex[0]; i < rangeIndex[1]; i++) {
                         int index = i % range.max;
-                        paint.setStyle(Paint.Style.STROKE);
-                        paint.setColor(oldColor);
+                        float segmentLeft = startX;
+                        float segmentRight = startX + elementSize;
+                        boolean segmentActive = index == activeRangeIndex;
+                        boolean segmentVisible = segmentLeft < boundingBox.right && segmentRight > boundingBox.left;
 
-                        if (startX > boundingBox.left && startX  < boundingBox.right) canvas.drawLine(startX, lineTop, startX, lineBottom, paint);
+                        paint.setStyle(Paint.Style.STROKE);
+                        int previousIndex = (index - 1 + range.max) % range.max;
+                        boolean activeBoundary = index == activeRangeIndex || previousIndex == activeRangeIndex;
+                        paint.setColor(activeBoundary ? activeColor : oldColor);
+                        paint.setStrokeWidth(activeBoundary ? activeStrokeWidth : strokeWidth);
+
+                        if (!activeBoundary && startX > boundingBox.left && startX < boundingBox.right) canvas.drawLine(startX, lineTop, startX, lineBottom, paint);
+                        if (segmentActive && segmentVisible) {
+                            drawActiveSegmentOutline = true;
+                            activeSegmentLeft = segmentLeft;
+                            activeSegmentRight = segmentRight;
+                        }
+                        paint.setStrokeWidth(strokeWidth);
                         String text = getRangeTextForIndex(range, index);
 
                         if (startX < boundingBox.right && startX + elementSize > boundingBox.left) {
                             paint.setStyle(Paint.Style.FILL);
-                            paint.setColor(primaryColor);
+                            paint.setColor(segmentActive ? activeColor : oldColor);
                             paint.setTextSize(Math.min(getTextSizeForWidth(paint, text, elementSize - strokeWidth * 2), minTextSize));
                             paint.setTextAlign(Paint.Align.CENTER);
                             canvas.drawText(text, startX + elementSize * 0.5f, (y - ((paint.descent() + paint.ascent()) * 0.5f)), paint);
@@ -543,28 +963,65 @@ public class ControlElement {
                     paint.setStyle(Paint.Style.STROKE);
                     paint.setColor(oldColor);
                     canvas.restore();
+
+                    paint.setStyle(Paint.Style.STROKE);
+                    paint.setColor(oldColor);
+                    paint.setStrokeWidth(strokeWidth);
+                    if (drawActiveSegmentOutline) {
+                        setHorizontalRangeOutlinePath(path, boundingBox, radius, activeSegmentLeft, activeSegmentRight);
+                        canvas.drawPath(path, paint);
+                    }
+                    else {
+                        canvas.drawRoundRect(boundingBox.left, boundingBox.top, boundingBox.right, boundingBox.bottom, radius, radius, paint);
+                    }
+
+                    if (drawActiveSegmentOutline) {
+                        setHorizontalRangeSegmentPath(path, boundingBox, activeSegmentLeft, activeSegmentRight, activeRadius);
+                        paint.setStyle(Paint.Style.STROKE);
+                        paint.setColor(activeColor);
+                        paint.setStrokeWidth(activeStrokeWidth);
+                        canvas.drawPath(path, paint);
+                        paint.setStrokeWidth(strokeWidth);
+                    }
                 }
                 else {
                     float lineLeft = boundingBox.left + strokeWidth * 0.5f;
                     float lineRight = boundingBox.right - strokeWidth * 0.5f;
                     float startY = boundingBox.top;
-                    canvas.drawRoundRect(boundingBox.left, startY, boundingBox.right, boundingBox.bottom, radius, radius, paint);
+                    boolean drawActiveSegmentOutline = false;
+                    float activeSegmentTop = 0;
+                    float activeSegmentBottom = 0;
 
                     canvas.save();
                     path.addRoundRect(boundingBox.left, startY, boundingBox.right, boundingBox.bottom, radius, radius, Path.Direction.CW);
-                    canvas.clipPath(inputControlsView.getPath());
+                    canvas.clipPath(path);
                     startY -= scrollOffset % elementSize;
 
                     for (byte i = rangeIndex[0]; i < rangeIndex[1]; i++) {
-                        paint.setStyle(Paint.Style.STROKE);
-                        paint.setColor(oldColor);
+                        int index = i % range.max;
+                        float segmentTop = startY;
+                        float segmentBottom = startY + elementSize;
+                        boolean segmentActive = index == activeRangeIndex;
+                        boolean segmentVisible = segmentTop < boundingBox.bottom && segmentBottom > boundingBox.top;
 
-                        if (startY > boundingBox.top && startY < boundingBox.bottom) canvas.drawLine(lineLeft, startY, lineRight, startY, paint);
-                        String text = getRangeTextForIndex(range, i);
+                        paint.setStyle(Paint.Style.STROKE);
+                        int previousIndex = (index - 1 + range.max) % range.max;
+                        boolean activeBoundary = index == activeRangeIndex || previousIndex == activeRangeIndex;
+                        paint.setColor(activeBoundary ? activeColor : oldColor);
+                        paint.setStrokeWidth(activeBoundary ? activeStrokeWidth : strokeWidth);
+
+                        if (!activeBoundary && startY > boundingBox.top && startY < boundingBox.bottom) canvas.drawLine(lineLeft, startY, lineRight, startY, paint);
+                        if (segmentActive && segmentVisible) {
+                            drawActiveSegmentOutline = true;
+                            activeSegmentTop = segmentTop;
+                            activeSegmentBottom = segmentBottom;
+                        }
+                        paint.setStrokeWidth(strokeWidth);
+                        String text = getRangeTextForIndex(range, index);
 
                         if (startY < boundingBox.bottom && startY + elementSize > boundingBox.top) {
                             paint.setStyle(Paint.Style.FILL);
-                            paint.setColor(primaryColor);
+                            paint.setColor(segmentActive ? activeColor : oldColor);
                             paint.setTextSize(Math.min(getTextSizeForWidth(paint, text, boundingBox.width() - strokeWidth * 2), minTextSize));
                             paint.setTextAlign(Paint.Align.CENTER);
                             canvas.drawText(text, x, startY + elementSize * 0.5f - ((paint.descent() + paint.ascent()) * 0.5f), paint);
@@ -575,6 +1032,34 @@ public class ControlElement {
                     paint.setStyle(Paint.Style.STROKE);
                     paint.setColor(oldColor);
                     canvas.restore();
+
+                    paint.setStyle(Paint.Style.STROKE);
+                    paint.setColor(oldColor);
+                    paint.setStrokeWidth(strokeWidth);
+                    if (drawActiveSegmentOutline) {
+                        setVerticalRangeOutlinePath(path, boundingBox, radius, activeSegmentTop, activeSegmentBottom);
+                        canvas.drawPath(path, paint);
+                    }
+                    else {
+                        canvas.drawRoundRect(boundingBox.left, boundingBox.top, boundingBox.right, boundingBox.bottom, radius, radius, paint);
+                    }
+
+                    if (drawActiveSegmentOutline) {
+                        setVerticalRangeSegmentPath(path, boundingBox, activeSegmentTop, activeSegmentBottom, activeRadius);
+                        paint.setStyle(Paint.Style.STROKE);
+                        paint.setColor(activeColor);
+                        paint.setStrokeWidth(activeStrokeWidth);
+                        canvas.drawPath(path, paint);
+                        paint.setStrokeWidth(strokeWidth);
+                    }
+                }
+
+                if (editSelected) {
+                    paint.setStyle(Paint.Style.STROKE);
+                    paint.setColor(activeColor);
+                    paint.setStrokeWidth(activeStrokeWidth);
+                    canvas.drawRoundRect(boundingBox.left, boundingBox.top, boundingBox.right, boundingBox.bottom, activeRadius, activeRadius, paint);
+                    paint.setStrokeWidth(strokeWidth);
                 }
                 break;
             }
@@ -589,7 +1074,7 @@ public class ControlElement {
 
                 short thumbRadius = (short) (snappingSize * 3.5f * scale);
                 paint.setStyle(Paint.Style.FILL);
-                paint.setColor(ColorUtils.setAlphaComponent(primaryColor, 50));
+                paint.setColor(ColorUtils.setAlphaComponent(contentColor, Math.min(50, contentColor >>> 24)));
                 canvas.drawCircle(thumbstickX, thumbstickY, thumbRadius, paint);
 
                 paint.setStyle(Paint.Style.STROKE);
@@ -614,27 +1099,26 @@ public class ControlElement {
                 float halfW = boundingBox.width() * 0.5f;
 
                 if (selected) {
-                    // Fill with semi-transparent blue when active
                     paint.setStyle(Paint.Style.FILL);
-                    paint.setColor(ColorUtils.setAlphaComponent(inputControlsView.getSecondaryColor(), 80));
+                    paint.setColor(ColorUtils.setAlphaComponent(primaryColor, Math.min(80, primaryColor >>> 24)));
                     canvas.drawCircle(cx, cy, halfW, paint);
                 }
 
                 // Draw outline
                 paint.setStyle(Paint.Style.STROKE);
-                paint.setColor(selected ? inputControlsView.getSecondaryColor() : primaryColor);
+                paint.setColor(primaryColor);
                 paint.setStrokeWidth(strokeWidth);
                 canvas.drawCircle(cx, cy, halfW, paint);
 
                 // Draw icon or fallback text
                 if (iconId > 0) {
-                    drawIcon(canvas, cx, cy, boundingBox.width(), boundingBox.height(), iconId);
+                    drawIcon(canvas, cx, cy, boundingBox.width(), boundingBox.height(), iconId, contentColor);
                 } else {
                     String displayText = (text != null && !text.isEmpty()) ? text : "DJ";
                     paint.setTextSize(Math.min(getTextSizeForWidth(paint, displayText, boundingBox.width() - strokeWidth * 2), snappingSize * 2 * scale));
                     paint.setTextAlign(Paint.Align.CENTER);
                     paint.setStyle(Paint.Style.FILL);
-                    paint.setColor(primaryColor);
+                    paint.setColor(contentColor);
                     canvas.drawText(displayText, cx, (cy - ((paint.descent() + paint.ascent()) * 0.5f)), paint);
                 }
                 break;
@@ -642,10 +1126,10 @@ public class ControlElement {
         }
     }
 
-    private void drawIcon(Canvas canvas, float cx, float cy, float width, float height, int iconId) {
+    private void drawIcon(Canvas canvas, float cx, float cy, float width, float height, int iconId, int tintColor) {
         Paint paint = inputControlsView.getPaint();
         Bitmap icon = inputControlsView.getIcon((byte)iconId);
-        paint.setColorFilter(inputControlsView.getColorFilter());
+        paint.setColorFilter(new PorterDuffColorFilter(tintColor, PorterDuff.Mode.SRC_IN));
         int margin = (int)(inputControlsView.getSnappingSize() * (shape == Shape.CIRCLE || shape == Shape.SQUARE ? 2.0f : 1.0f) * scale);
         int halfSize = (int)((Math.min(width, height) - margin) * 0.5f);
 
@@ -662,7 +1146,7 @@ public class ControlElement {
             elementJSONObject.put("shape", shape.name());
 
             JSONArray bindingsJSONArray = new JSONArray();
-            for (Binding binding : bindings) bindingsJSONArray.put(binding.name());
+            for (BindingCombo binding : bindings) bindingsJSONArray.put(binding.toJsonValue());
 
             elementJSONObject.put("bindings", bindingsJSONArray);
             elementJSONObject.put("scale", Float.valueOf(scale));
@@ -685,6 +1169,13 @@ public class ControlElement {
                 elementJSONObject.put("shooterJoystickSize", (double) shooterJoystickSize);
             }
 
+            if (buttonColor != DEFAULT_BUTTON_COLOR) elementJSONObject.put("buttonColor", formatRgbColor(buttonColor));
+            if (buttonActiveColorCustom || buttonActiveColor != DEFAULT_BUTTON_ACTIVE_COLOR) elementJSONObject.put("buttonActiveColor", formatRgbColor(buttonActiveColor));
+            if (buttonOpacity >= 0) elementJSONObject.put("buttonOpacity", (double)buttonOpacity);
+            if (buttonStrokeScale != DEFAULT_BUTTON_STROKE_SCALE) elementJSONObject.put("buttonStrokeScale", (double)buttonStrokeScale);
+            if (type == Type.BUTTON && lookThrough != null) elementJSONObject.put("lookThrough", lookThrough);
+            if (type == Type.BUTTON && !shooterLookThrough) elementJSONObject.put("shooterLookThrough", false);
+
             return elementJSONObject;
         }
         catch (JSONException e) {
@@ -697,19 +1188,94 @@ public class ControlElement {
     }
 
     private boolean isKeepButtonPressedAfterMinTime() {
-        Binding binding = getBindingAt(0);
-        return !toggleSwitch && (binding == Binding.GAMEPAD_BUTTON_L3 || binding == Binding.GAMEPAD_BUTTON_R3);
+        BindingCombo bindingCombo = getBindingComboAt(0);
+        return !usesToggleSwitch() &&
+                (bindingCombo.contains(Binding.GAMEPAD_BUTTON_L3) || bindingCombo.contains(Binding.GAMEPAD_BUTTON_R3));
+    }
+
+    private boolean isGyroModifierControl() {
+        int dispatchableBindingCount;
+        switch (type) {
+            case BUTTON:
+                dispatchableBindingCount = Math.min(2, bindings.length);
+                break;
+            case D_PAD:
+            case STICK:
+            case TRACKPAD:
+                dispatchableBindingCount = bindings.length;
+                break;
+            default:
+                dispatchableBindingCount = 0;
+                break;
+        }
+        for (int i = 0; i < dispatchableBindingCount; i++) {
+            if (bindings[i].contains(Binding.GYRO_MODIFIER)) return true;
+        }
+        return false;
+    }
+
+    private boolean usesToggleSwitch() {
+        return toggleSwitch && !isGyroModifierControl();
+    }
+
+    private boolean isRadialMenuButton() {
+        return type == Type.BUTTON &&
+                (getBindingComboAt(0).contains(Binding.OPEN_RADIAL_MENU) ||
+                        getBindingComboAt(1).contains(Binding.OPEN_RADIAL_MENU));
+    }
+
+    private boolean handleRadialMenuDirectionalMove(int pointerId, boolean[] directionalStates, float x, float y) {
+        if (radialMenuTouchActive) {
+            inputControlsView.handleRadialMenuTouchMove(pointerId, x, y);
+            inputControlsView.invalidate();
+            return true;
+        }
+
+        for (byte i = 0; i < directionalStates.length && i < bindings.length; i++) {
+            if (getBindingComboAt(i).contains(Binding.OPEN_RADIAL_MENU) && directionalStates[i]) {
+                releaseActiveDirectionalStates();
+                radialMenuTouchActive = true;
+                inputControlsView.handleRadialMenuTouchDown(pointerId, x, y);
+                inputControlsView.invalidate();
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void releaseActiveDirectionalStates() {
+        for (byte i = 0; i < states.length && i < bindings.length; i++) {
+            if (states[i]) handleBindingInputEvent(i, false);
+            else if (gamepadAxisActive[i]) {
+                Binding gamepadAxisBinding = findGamepadAxisBinding(getBindingComboAt(i));
+                if (gamepadAxisBinding != Binding.NONE) {
+                    inputControlsView.handleInputEvent(gamepadAxisBinding, false, 0);
+                }
+            }
+            states[i] = false;
+            gamepadAxisActive[i] = false;
+        }
     }
 
     public boolean handleTouchDown(int pointerId, float x, float y) {
         if (currentPointerId == -1 && containsPoint(x, y)) {
             currentPointerId = pointerId;
+            currentPointerActivatedButtonBindings = false;
+            inputControlsView.invalidate();
             if (type == Type.BUTTON) {
-                if (isKeepButtonPressedAfterMinTime()) touchTime = System.currentTimeMillis();
-                if (!toggleSwitch || !selected) {
-                    inputControlsView.handleInputEvent(getBindingAt(0), true);
-                    inputControlsView.handleInputEvent(getBindingAt(1), true);
+                if (isRadialMenuButton()) {
+                    inputControlsView.handleRadialMenuTouchDown(pointerId, x, y);
+                    inputControlsView.invalidate();
+                    return true;
                 }
+                if (isKeepButtonPressedAfterMinTime()) touchTime = System.currentTimeMillis();
+                if (!usesToggleSwitch() || !selected) {
+                    currentPointerActivatedButtonBindings = true;
+                    handleBindingInputEvent(0, true);
+                    handleBindingInputEvent(1, true);
+                }
+                inputControlsView.invalidate();
                 return true;
             }
             else if (type == Type.SHOOTER_MODE) {
@@ -732,6 +1298,15 @@ public class ControlElement {
     }
 
     public boolean handleTouchMove(int pointerId, float x, float y) {
+        if (pointerId == currentPointerId && isRadialMenuButton()) {
+            inputControlsView.handleRadialMenuTouchMove(pointerId, x, y);
+            return true;
+        }
+
+        if (pointerId == currentPointerId && (type == Type.BUTTON || type == Type.SHOOTER_MODE)) {
+            return true;
+        }
+
         if (pointerId == currentPointerId && (type == Type.D_PAD || type == Type.STICK || type == Type.TRACKPAD)) {
             float deltaX, deltaY;
             Rect boundingBox = getBoundingBox();
@@ -767,18 +1342,32 @@ public class ControlElement {
                 currentPosition.x = boundingBox.left + deltaX * radius + radius;
                 currentPosition.y = boundingBox.top + deltaY * radius + radius;
                 final boolean[] states = {deltaY <= -STICK_DEAD_ZONE, deltaX >= STICK_DEAD_ZONE, deltaY >= STICK_DEAD_ZONE, deltaX <= -STICK_DEAD_ZONE};
+                if (handleRadialMenuDirectionalMove(pointerId, states, x, y)) return true;
 
                 for (byte i = 0; i < 4; i++) {
                     float value = i == 1 || i == 3 ? deltaX : deltaY;
-                    Binding binding = getBindingAt(i);
-                    if (binding.isGamepad()) {
+                    BindingCombo bindingCombo = getBindingComboAt(i);
+                    Binding binding = bindingCombo.getPrimaryBinding();
+                    Binding gamepadAxisBinding = findGamepadAxisBinding(bindingCombo);
+                    if (gamepadAxisBinding != Binding.NONE && !bindingCombo.isSequence()) {
                         value = Mathf.clamp(Math.max(0, Math.abs(value) - 0.01f) * Mathf.sign(value) * STICK_SENSITIVITY, -1, 1);
-                        inputControlsView.handleInputEvent(binding, true, value);
-                        this.states[i] = true;
+                        inputControlsView.handleInputEvent(gamepadAxisBinding, true, value);
+                        gamepadAxisActive[i] = value != 0;
+                        boolean nextState = states[i];
+                        if (!bindingCombo.isSingleBinding() && this.states[i] != nextState) {
+                            handleSimultaneousBindingMembers(
+                                    i,
+                                    gamepadAxisBinding,
+                                    nextState,
+                                    value);
+                        }
+                        this.states[i] = bindingCombo.isSingleBinding() || nextState;
                     }
                     else {
                         boolean state = binding.isMouseMove() ? (states[i] || states[(i+2)%4]) : states[i];
-                        inputControlsView.handleInputEvent(binding, state, value);
+                        if (binding.isMouseMove() || this.states[i] != state) {
+                            handleBindingInputEvent(i, state, value);
+                        }
                         this.states[i] = state;
                     }
                 }
@@ -787,30 +1376,66 @@ public class ControlElement {
             }
             else if (type == Type.TRACKPAD) {
                 final boolean[] states = {deltaY <= -TRACKPAD_MIN_SPEED, deltaX >= TRACKPAD_MIN_SPEED, deltaY >= TRACKPAD_MIN_SPEED, deltaX <= -TRACKPAD_MIN_SPEED};
+                if (handleRadialMenuDirectionalMove(pointerId, states, x, y)) return true;
                 int cursorDx = 0;
                 int cursorDy = 0;
 
                 for (byte i = 0; i < 4; i++) {
                     float value = (i == 1 || i == 3 ? deltaX : deltaY);
-                    Binding binding = getBindingAt(i);
-                    if (binding.isGamepad()) {
-                        if (interpolator == null) interpolator = new CubicBezierInterpolator();
-                        if (Math.abs(value) > TRACKPAD_ACCELERATION_THRESHOLD) value *= STICK_SENSITIVITY;
-                        interpolator.set(0.075f, 0.95f, 0.45f, 0.95f);
-                        float interpolatedValue = interpolator.getInterpolation(Math.min(1.0f, Math.abs(value / TRACKPAD_MAX_SPEED)));
-                        inputControlsView.handleInputEvent(binding, true, Mathf.clamp(interpolatedValue * Mathf.sign(value), -1, 1));
-                        this.states[i] = true;
-                    }
-                    else {
-                        if (Math.abs(value) > TouchpadView.CURSOR_ACCELERATION_THRESHOLD) value *= TouchpadView.CURSOR_ACCELERATION;
-                        if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_RIGHT) {
+                    BindingCombo bindingCombo = getBindingComboAt(i);
+                    Binding binding = bindingCombo.getPrimaryBinding();
+                    Binding mouseMoveBinding = findMouseMoveBinding(bindingCombo);
+                    if (mouseMoveBinding != Binding.NONE && !bindingCombo.isSequence()) {
+                        if (Math.abs(value) > TouchpadView.CURSOR_ACCELERATION_THRESHOLD) {
+                            value *= TouchpadView.CURSOR_ACCELERATION;
+                        }
+                        if (mouseMoveBinding == Binding.MOUSE_MOVE_LEFT || mouseMoveBinding == Binding.MOUSE_MOVE_RIGHT) {
                             cursorDx = Mathf.roundPoint(value);
                         }
-                        else if (binding == Binding.MOUSE_MOVE_UP || binding == Binding.MOUSE_MOVE_DOWN) {
+                        else {
                             cursorDy = Mathf.roundPoint(value);
                         }
-                        else {
-                            inputControlsView.handleInputEvent(binding, states[i], value);
+                        boolean nextState = states[i];
+                        if (!bindingCombo.isSingleBinding() && this.states[i] != nextState) {
+                            handleSimultaneousBindingMembers(
+                                    i,
+                                    mouseMoveBinding,
+                                    nextState,
+                                    Mathf.clamp(value, -1, 1));
+                        }
+                        this.states[i] = nextState;
+                    }
+                    else {
+                        Binding gamepadAxisBinding = findGamepadAxisBinding(bindingCombo);
+                        if (gamepadAxisBinding != Binding.NONE && !bindingCombo.isSequence()) {
+                            if (interpolator == null) interpolator = new CubicBezierInterpolator();
+                            if (Math.abs(value) > TRACKPAD_ACCELERATION_THRESHOLD) value *= STICK_SENSITIVITY;
+                            interpolator.set(0.075f, 0.95f, 0.45f, 0.95f);
+                            float interpolatedValue = interpolator.getInterpolation(Math.min(1.0f, Math.abs(value / TRACKPAD_MAX_SPEED)));
+                            float gamepadOffset = Mathf.clamp(interpolatedValue * Mathf.sign(value), -1, 1);
+                            inputControlsView.handleInputEvent(gamepadAxisBinding, true, gamepadOffset);
+                            gamepadAxisActive[i] = gamepadOffset != 0;
+                            boolean nextState = states[i];
+                            if (!bindingCombo.isSingleBinding() && this.states[i] != nextState) {
+                                handleSimultaneousBindingMembers(
+                                        i,
+                                        gamepadAxisBinding,
+                                        nextState,
+                                        gamepadOffset);
+                            }
+                            this.states[i] = bindingCombo.isSingleBinding() || nextState;
+                        }
+                        else if (bindingCombo.isSingleBinding() &&
+                                (binding == Binding.MOUSE_SCROLL_UP || binding == Binding.MOUSE_SCROLL_DOWN)) {
+                            // Wheel ticks are pulses, not held buttons. Repeat for each active movement sample.
+                            if (states[i]) {
+                                handleBindingInputEvent(i, true, value);
+                                handleBindingInputEvent(i, false, value);
+                            }
+                            this.states[i] = false;
+                        }
+                        else if (this.states[i] != states[i]) {
+                            handleBindingInputEvent(i, states[i], value);
                             this.states[i] = states[i];
                         }
                     }
@@ -820,14 +1445,25 @@ public class ControlElement {
             }
             else {
                 final boolean[] states = {deltaY <= -DPAD_DEAD_ZONE, deltaX >= DPAD_DEAD_ZONE, deltaY >= DPAD_DEAD_ZONE, deltaX <= -DPAD_DEAD_ZONE};
+                if (handleRadialMenuDirectionalMove(pointerId, states, x, y)) return true;
+
+                // Release transitions first because opposing stick and mouse-move
+                // bindings share an axis. An inactive direction must not clear an
+                // active direction later in the same update.
+                for (byte i = 0; i < 4; i++) {
+                    float value = i == 1 || i == 3 ? deltaX : deltaY;
+                    if (this.states[i] && !states[i]) {
+                        handleBindingInputEvent(i, false, value);
+                    }
+                }
 
                 for (byte i = 0; i < 4; i++) {
                     float value = i == 1 || i == 3 ? deltaX : deltaY;
-                    Binding binding = getBindingAt(i);
-                    boolean state = binding.isMouseMove() ? (states[i] || states[(i+2)%4]) : states[i];
-                    inputControlsView.handleInputEvent(binding, state, value);
-                    this.states[i] = state;
+                    if (states[i]) handleBindingInputEvent(i, true, value);
+                    this.states[i] = states[i];
                 }
+
+                inputControlsView.invalidate();
             }
 
             return true;
@@ -841,31 +1477,48 @@ public class ControlElement {
 
     public boolean handleTouchUp(int pointerId) {
         if (pointerId == currentPointerId) {
+            if (radialMenuTouchActive) {
+                radialMenuTouchActive = false;
+                releaseActiveDirectionalStates();
+                inputControlsView.handleRadialMenuTouchUp(pointerId, true);
+                if (currentPosition != null) currentPosition = null;
+                currentPointerId = -1;
+                inputControlsView.invalidate();
+                return true;
+            }
+
             if (type == Type.BUTTON) {
-                if (isKeepButtonPressedAfterMinTime() && touchTime != null) {
+                if (isRadialMenuButton()) {
+                    inputControlsView.handleRadialMenuTouchUp(pointerId, true);
+                    currentPointerId = -1;
+                    inputControlsView.invalidate();
+                    return true;
+                }
+                else if (isKeepButtonPressedAfterMinTime() && touchTime != null) {
                     selected = (System.currentTimeMillis() - (long)touchTime) > BUTTON_MIN_TIME_TO_KEEP_PRESSED;
                     if (!selected) {
-                        inputControlsView.handleInputEvent(getBindingAt(0), false);
-                        inputControlsView.handleInputEvent(getBindingAt(1), false);
+                        handleBindingInputEvent(0, false);
+                        handleBindingInputEvent(1, false);
                     }
                     touchTime = null;
                     inputControlsView.invalidate();
                 }
-                else if (!toggleSwitch || selected) {
-                    inputControlsView.handleInputEvent(getBindingAt(0), false);
-                    inputControlsView.handleInputEvent(getBindingAt(1), false);
+                else if (!usesToggleSwitch() || selected) {
+                    handleBindingInputEvent(0, false);
+                    handleBindingInputEvent(1, false);
                 }
 
-                if (toggleSwitch) {
+                if (usesToggleSwitch()) {
                     selected = !selected;
                     inputControlsView.invalidate();
                 }
+                else {
+                    inputControlsView.invalidate();
+                }
+                currentPointerActivatedButtonBindings = false;
             }
             else if (type == Type.RANGE_BUTTON || type == Type.D_PAD || type == Type.STICK || type == Type.TRACKPAD) {
-                for (byte i = 0; i < states.length; i++) {
-                    if (states[i]) inputControlsView.handleInputEvent(getBindingAt(i), false);
-                    states[i] = false;
-                }
+                releaseActiveDirectionalStates();
 
                 if (type == Type.RANGE_BUTTON) {
                     scroller.handleTouchUp();
@@ -882,8 +1535,37 @@ public class ControlElement {
                 inputControlsView.invalidate();
             }
             currentPointerId = -1;
+            inputControlsView.invalidate();
             return true;
         }
         return false;
+    }
+
+    public boolean cancelTouch() {
+        if (currentPointerId == -1) return false;
+
+        if (radialMenuTouchActive || isRadialMenuButton()) {
+            if (radialMenuTouchActive) releaseActiveDirectionalStates();
+            radialMenuTouchActive = false;
+            inputControlsView.handleRadialMenuTouchUp(currentPointerId, false);
+            if (currentPosition != null) currentPosition = null;
+        }
+        else if (type == Type.BUTTON) {
+            if (currentPointerActivatedButtonBindings) {
+                handleBindingInputEvent(0, false);
+                handleBindingInputEvent(1, false);
+            }
+            currentPointerActivatedButtonBindings = false;
+            touchTime = null;
+        }
+        else if (type == Type.RANGE_BUTTON || type == Type.D_PAD || type == Type.STICK || type == Type.TRACKPAD) {
+            releaseActiveDirectionalStates();
+            if (type == Type.RANGE_BUTTON) scroller.cancelTouch();
+            currentPosition = null;
+        }
+
+        currentPointerId = -1;
+        inputControlsView.invalidate();
+        return true;
     }
 }

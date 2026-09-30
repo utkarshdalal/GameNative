@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
@@ -121,6 +122,7 @@ internal fun LibraryListPane(
     onNavigate: (String) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
+    onFocusedIndexChanged: (Int) -> Unit = {},
 ) {
     val context = LocalContext.current
     val snackBarHost = remember { SnackbarHostState() }
@@ -154,7 +156,7 @@ internal fun LibraryListPane(
 
             PaneType.GRID_CAPSULE -> {
                 val minSize = when (windowWidthClass) {
-                    WindowWidthClass.COMPACT -> 110.dp
+                    WindowWidthClass.COMPACT -> 130.dp
                     WindowWidthClass.MEDIUM -> 130.dp
                     WindowWidthClass.EXPANDED -> 150.dp
                 }
@@ -253,10 +255,14 @@ internal fun LibraryListPane(
                         ) {
                             items(
                                 count = state.appInfoList.size,
-                                key = { listIndex -> state.appInfoList[listIndex].appId },
+                                key = { listIndex ->
+                                    val item = state.appInfoList[listIndex]
+                                    if (item.recSource == "hero") "HERO_SLOT" else item.appId
+                                },
                             ) { listIndex ->
                                 val item = state.appInfoList[listIndex]
-                                var isVisible by remember(item.index) { mutableStateOf(false) }
+                                val animateFade = remember(item.index) { !listState.isScrollInProgress }
+                                var isVisible by remember(item.index) { mutableStateOf(!animateFade) }
                                 val alpha by animateFloatAsState(
                                     targetValue = if (isVisible) 1f else 0f,
                                     animationSpec = spring(
@@ -266,12 +272,14 @@ internal fun LibraryListPane(
                                     label = "fadeIn",
                                 )
 
-                                LaunchedEffect(item.index) {
-                                    delay((item.index % 8) * 30L)
-                                    isVisible = true
+                                if (animateFade) {
+                                    LaunchedEffect(item.index) {
+                                        delay((item.index % 8) * 30L)
+                                        isVisible = true
+                                    }
                                 }
 
-                                Box(modifier = Modifier.alpha(alpha)) {
+                                Box(modifier = Modifier.graphicsLayer { this.alpha = alpha }) {
                                     val appItemModifier = if (firstGridItemFocusRequester != null &&
                                         focusTargetListIndex != null &&
                                         listIndex == focusTargetListIndex
@@ -289,7 +297,10 @@ internal fun LibraryListPane(
                                         appInfo = item,
                                         onClick = { onNavigate(item.appId) },
                                         paneType = currentLayout,
-                                        onFocus = { targetOfScroll = item.index },
+                                        onFocus = {
+                                            targetOfScroll = item.index
+                                            onFocusedIndexChanged(listIndex)
+                                        },
                                         imageRefreshCounter = state.imageRefreshCounter,
                                         compatibilityStatus = state.compatibilityMap[item.name],
                                         gameStats = state.statsFor(item),
