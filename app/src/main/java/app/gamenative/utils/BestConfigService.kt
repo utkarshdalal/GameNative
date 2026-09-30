@@ -294,8 +294,19 @@ object BestConfigService {
         return if (preserveConfigValues) {
             filteredJson
         } else {
-            applyGpuFamilyOverrides(context, filteredJson, matchedGpu)
+            preferWrapperGamenative(context, applyGpuFamilyOverrides(context, filteredJson, matchedGpu))
         }
+    }
+
+    private fun preferWrapperGamenative(context: Context, filteredJson: JSONObject): JSONObject {
+        if (GPUInformation.isAdrenoGPU(context)) return filteredJson
+        val driver = filteredJson.optString("graphicsDriver", "")
+        if (driver.startsWith("wrapper", ignoreCase = true) &&
+            !driver.equals("wrapper-gamenative", ignoreCase = true)
+        ) {
+            filteredJson.put("graphicsDriver", "Wrapper-gamenative")
+        }
+        return filteredJson
     }
 
     /**
