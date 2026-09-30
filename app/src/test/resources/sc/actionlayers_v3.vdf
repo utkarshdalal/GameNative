@@ -1,0 +1,32 @@
+// Synthetic action-LAYER config for step-3 layer tests.
+// Base set "Default" (preset id 0): A -> Q, and three layer ops on the bumpers/menu (1-based -> layer id 1):
+//   right_bumper = hold_layer 2  (push while held)
+//   left_bumper  = add_layer 2   (push, persistent)
+//   button_menu  = remove_layer 2 (pop)
+// Layer "Overlay" (preset id 1, action_layers): rebinds ONLY button_diamond so A -> M. Everything else (incl.
+// the bumper layer-op bindings) falls through to the base set -> proves the partial per-source overlay merge.
+"controller_mappings"
+{
+	"version"		"3"
+	"title"		"Action Layer (synthetic)"
+	"controller_type"		"controller_neptune"
+
+	"actions" { "Default" { "title" "Main" "legacy_set" "1" } }
+	"action_layers" { "Overlay" { "title" "Overlay" "legacy_set" "1" "set_layer" "1" "parent_set_name" "Default" } }
+
+	"group" { "id" "0" "mode" "four_buttons"
+		"inputs" { "button_a" { "activators" { "Full_Press" { "bindings" { "binding" "key_press Q" } } } } } }
+	"group" { "id" "1" "mode" "four_buttons"
+		"inputs" { "button_a" { "activators" { "Full_Press" { "bindings" { "binding" "key_press M" } } } } } }
+	"group" { "id" "2" "mode" "switches"
+		"inputs" {
+			"right_bumper" { "activators" { "Full_Press" { "bindings" { "binding" "controller_action hold_layer 2 0 0" } } } }
+			"left_bumper"  { "activators" { "Full_Press" { "bindings" { "binding" "controller_action add_layer 2 0 0" } } } }
+			"button_menu"  { "activators" { "Full_Press" { "bindings" { "binding" "controller_action remove_layer 2 0 0" } } } }
+		} }
+
+	"preset" { "id" "0" "name" "Default"
+		"group_source_bindings" { "0" "button_diamond active" "2" "switch active" } }
+	"preset" { "id" "1" "name" "Overlay"
+		"group_source_bindings" { "1" "button_diamond active" } }
+}
