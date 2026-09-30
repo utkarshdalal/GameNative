@@ -793,6 +793,13 @@ object PrefManager {
             setPref(PORTRAIT_MODE, value)
         }
 
+    private val PORTRAIT_BELOW_CUTOUT = booleanPreferencesKey("portrait_below_cutout")
+    var portraitBelowCutout: Boolean
+        get() = getPref(PORTRAIT_BELOW_CUTOUT, false)
+        set(value) {
+            setPref(PORTRAIT_BELOW_CUTOUT, value)
+        }
+
     private val BOX_86_VERSION = stringPreferencesKey("box86_version")
     var box86Version: String
         get() = getPref(BOX_86_VERSION, DefaultVersion.BOX86)

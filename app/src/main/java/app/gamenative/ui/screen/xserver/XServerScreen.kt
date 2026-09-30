@@ -374,17 +374,37 @@ internal fun portraitGameHostHeight(
     return if (availableHeight > 0) minOf(aspectHeight, availableHeight) else aspectHeight
 }
 
+internal fun portraitCutoutTopInset(belowCutout: Boolean, cutoutTop: Int, hostTopInWindow: Int): Int {
+    if (!belowCutout) return 0
+    return (cutoutTop - hostTopInWindow).coerceAtLeast(0)
+}
+
+private fun portraitCutoutTopInset(host: View, belowCutout: Boolean): Int {
+    if (!belowCutout) return 0
+    val cutoutTop = ViewCompat.getRootWindowInsets(host)
+        ?.getInsets(WindowInsetsCompat.Type.displayCutout())?.top ?: return 0
+    val location = IntArray(2)
+    host.getLocationInWindow(location)
+    return portraitCutoutTopInset(belowCutout, cutoutTop, location[1])
+}
+
 private fun updatePortraitGameHostHeight(
     gameHost: View,
     isPortrait: Boolean,
+    belowCutout: Boolean,
     screenWidth: Int,
     screenSize: String,
 ) {
     val params = gameHost.layoutParams ?: return
+    val host = gameHost.parent as? View
+    val topInset = if (isPortrait && host != null) portraitCutoutTopInset(host, belowCutout) else 0
+    if (host != null && host.paddingTop != topInset) {
+        host.setPadding(host.paddingLeft, topInset, host.paddingRight, host.paddingBottom)
+    }
     val height = portraitGameHostHeight(
         isPortrait,
         screenWidth,
-        (gameHost.parent as? View)?.height ?: 0,
+        ((host?.height ?: 0) - topInset).coerceAtLeast(0),
         screenSize,
     )
     if (params.height != height) {
@@ -2494,6 +2514,7 @@ fun XServerScreen(
                     updatePortraitGameHostHeight(
                         gameHost,
                         isPortrait,
+                        container.isPortraitBelowCutout,
                         screenWidth,
                         container.screenSize,
                     )
@@ -2504,6 +2525,7 @@ fun XServerScreen(
                     updatePortraitGameHostHeight(
                         gameHost,
                         isPortrait,
+                        container.isPortraitBelowCutout,
                         screenWidth,
                         container.screenSize,
                     )
@@ -2773,6 +2795,7 @@ fun XServerScreen(
                 updatePortraitGameHostHeight(
                     gameHost,
                     isPortrait,
+                    container.isPortraitBelowCutout,
                     binding.screenWidth,
                     container.screenSize,
                 )
