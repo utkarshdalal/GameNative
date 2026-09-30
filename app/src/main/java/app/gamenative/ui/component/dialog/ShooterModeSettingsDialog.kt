@@ -422,10 +422,6 @@ private fun joystickBehaviorLabels(): List<String> = listOf(
     stringResource(R.string.joystick_behavior_floating),
 )
 
-private fun multiplierText(value: Float, locale: Locale): String {
-    return String.format(locale, "%.1fx", value)
-}
-
 private fun pixelText(value: Float, locale: Locale): String {
     return String.format(locale, "%.1f px", value)
 }

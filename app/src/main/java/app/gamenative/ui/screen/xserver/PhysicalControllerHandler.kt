@@ -354,7 +354,7 @@ class PhysicalControllerHandler(
                     if (magnitude < 0.08) return
 
                     // Look up cursor speed dynamically so it updates when profile changes
-                    val cursorSpeed = profile?.cursorSpeed ?: 1f
+                    val cursorSpeed = profile?.cursorSpeed ?: ControlsProfile.DEFAULT_CURSOR_SPEED
                     val deltaX = (mouseMoveOffset.x * 10 * cursorSpeed).toInt()
                     val deltaY = (mouseMoveOffset.y * 10 * cursorSpeed).toInt()
                     xServer?.injectPointerMoveDelta(deltaX, deltaY)

@@ -57,6 +57,7 @@ import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.alorma.compose.settings.ui.SettingsSwitch
 import com.winlator.inputcontrols.Binding
+import java.util.Locale
 import kotlin.math.ceil
 import kotlin.math.floor
 
@@ -250,6 +251,10 @@ fun SettingsSliderBlock(
     }
 
     if (compact) content() else GestureBlock { content() }
+}
+
+internal fun multiplierText(value: Float, locale: Locale): String {
+    return String.format(locale, "%.1fx", value)
 }
 
 @Composable
