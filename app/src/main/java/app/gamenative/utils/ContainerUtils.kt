@@ -452,6 +452,8 @@ object ContainerUtils {
                 "wincomponents" -> value?.let { updatedData.copy(wincomponents = it as? String ?: updatedData.wincomponents) } ?: updatedData
                 "videoMemorySize" -> value?.let { updatedData.copy(videoMemorySize = it as? String ?: updatedData.videoMemorySize) } ?: updatedData
                 "launchBionicSteam" -> value?.let { updatedData.copy(launchBionicSteam = it as? Boolean ?: updatedData.launchBionicSteam) } ?: updatedData
+                "launchRealSteam" -> value?.let { updatedData.copy(launchRealSteam = it as? Boolean ?: updatedData.launchRealSteam) } ?: updatedData
+                "steamType" -> value?.let { updatedData.copy(steamType = (it as? String)?.takeIf { s -> s.isNotBlank() } ?: updatedData.steamType) } ?: updatedData
                 else -> updatedData
             }
         }

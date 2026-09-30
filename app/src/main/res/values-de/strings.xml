@@ -674,7 +674,7 @@
     <string name="force_dlc_description">Nur aktivieren, falls DLCs nicht erkannt werden oder Spielstände mit DLC nicht funktionieren</string>
     <string name="local_saves_only">Nur lokale Spielstände</string>
     <string name="local_saves_only_description">Cloud-Synchronisierung der Spielstände für dieses Spiel deaktivieren und Spielstände nur auf dem Gerät behalten</string>
-    <string name="launch_steam_client_beta">Steam-Client starten (Beta)</string>
+    <string name="launch_steam_client_beta">Steam-Client starten</string>
     <string name="steam_offline_mode">Steam Offline-Modus</string>
     <string name="steam_offline_mode_description">Steam-Spiele im Offlinemodus starten</string>
     <string name="epic_offline_mode">Epic Offline-Modus</string>

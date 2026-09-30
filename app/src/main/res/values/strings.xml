@@ -871,7 +871,7 @@
     <string name="force_dlc_description">Only enable if DLCs are not detected or saves with DLC are not working</string>
     <string name="local_saves_only">Local saves only</string>
     <string name="local_saves_only_description">Disable cloud save sync for this game and keep saves on device only</string>
-    <string name="launch_steam_client_beta">Launch Steam Client (Beta)</string>
+    <string name="launch_steam_client_beta">Launch Steam Client</string>
     <string name="launch_steam_client_description">Headless is recommended\nRequired for EA, Rockstar, Ubisoft and other launchers\nEnables multiplayer and fixes DRM and controller issues</string>
     <string name="launch_bionic_steam">Enable Experimental Bionic Steam</string>
     <string name="launch_bionic_steam_description">Enables online play, improves compatibility\nDoes not always work\nBack up your saves before trying this</string>

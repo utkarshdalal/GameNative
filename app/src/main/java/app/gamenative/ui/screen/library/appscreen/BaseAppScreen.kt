@@ -1074,6 +1074,7 @@ abstract class BaseAppScreen {
         configJson: kotlinx.serialization.json.JsonObject,
         matchType: String,
         matchedGpu: String,
+        storeMatch: Boolean,
         applyLaunchArguments: Boolean,
         applyEnvironmentVariables: Boolean,
     ): Boolean {
@@ -1107,7 +1108,7 @@ abstract class BaseAppScreen {
                 configJson = safeConfig,
                 matchType = matchType,
                 applyKnownConfig = true,
-                storeMatch = false,
+                storeMatch = storeMatch,
                 matchedGpu = matchedGpu,
                 preserveConfigValues = true,
             )
@@ -1124,7 +1125,7 @@ abstract class BaseAppScreen {
                                     configJson = safeConfig,
                                     matchType = matchType,
                                     applyKnownConfig = true,
-                                    storeMatch = false,
+                                    storeMatch = storeMatch,
                                     forceApply = true,
                                     matchedGpu = matchedGpu,
                                     preserveConfigValues = true,
@@ -1883,6 +1884,7 @@ abstract class BaseAppScreen {
                                 configJson = run.config,
                                 matchType = matchType,
                                 matchedGpu = run.device.gpu,
+                                storeMatch = run.gameStore.equals(libraryItem.gameSource.name, ignoreCase = true),
                                 applyLaunchArguments = options.applyLaunchArguments,
                                 applyEnvironmentVariables = options.applyEnvironmentVariables,
                             )
