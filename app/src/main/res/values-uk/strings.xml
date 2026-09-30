@@ -692,7 +692,7 @@
     <string name="force_dlc_description">Увімкнути лише тоді, якщо не виявлено DLC або не працюють збереження з DLC</string>
     <string name="local_saves_only">Лише локальні збереження</string>
     <string name="local_saves_only_description">Вимкнути синхронізацію хмарних збережень для цієї гри та зберігати збереження лише на пристрої</string>
-    <string name="launch_steam_client_beta">Запустити клієнт Steam (Бета)</string>
+    <string name="launch_steam_client_beta">Запустити клієнт Steam</string>
     <string name="steam_offline_mode">Режим Офлайн Steam</string>
     <string name="steam_offline_mode_description">Запускати ігри Steam в офлайн режимі</string>
     <string name="epic_offline_mode">Режим Офлайн Epic</string>

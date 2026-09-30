@@ -697,7 +697,7 @@
     <string name="force_dlc_description">Abilita solo se i DLC non vengono rilevati o i salvataggi con DLC non funzionano</string>
     <string name="local_saves_only">Solo salvataggi locali</string>
     <string name="local_saves_only_description">Disabilita la sincronizzazione dei salvataggi cloud per questo gioco e mantieni i salvataggi solo sul dispositivo</string>
-    <string name="launch_steam_client_beta">Avvia Client Steam (Beta)</string>
+    <string name="launch_steam_client_beta">Avvia Client Steam</string>
     <string name="steam_offline_mode">Modalità Offline Steam</string>
     <string name="steam_offline_mode_description">Avvia i giochi Steam in modalità offline</string>
     <string name="epic_offline_mode">Modalità Offline Epic</string>

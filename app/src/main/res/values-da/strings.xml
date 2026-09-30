@@ -528,7 +528,7 @@
     <string name="force_dlc_description">Kun aktiver hvis DLC\'er ikke opdages, eller gemfiler med DLC ikke virker</string>
     <string name="local_saves_only">Kun lokale gemfiler</string>
     <string name="local_saves_only_description">Deaktiver synkronisering af cloud-gemfiler for dette spil, og behold gemfiler kun på enheden</string>
-    <string name="launch_steam_client_beta">Start Steam-klient (Beta)</string>
+    <string name="launch_steam_client_beta">Start Steam-klient</string>
     <string name="steam_offline_mode">Steam Offline-tilstand</string>
     <string name="steam_offline_mode_description">Start Steam-spil i offline-tilstand</string>
     <string name="epic_offline_mode">Epic Offline-tilstand</string>

@@ -715,7 +715,7 @@
     <string name="force_dlc_description">N\'activer que si les DLC ne sont pas détectés ou si les sauvegardes avec DLC ne fonctionnent pas</string>
     <string name="local_saves_only">Sauvegardes locales uniquement</string>
     <string name="local_saves_only_description">Désactiver la synchronisation des sauvegardes dans le cloud pour ce jeu et conserver les sauvegardes uniquement sur l\'appareil</string>
-    <string name="launch_steam_client_beta">Lancer le client Steam (Bêta)</string>
+    <string name="launch_steam_client_beta">Lancer le client Steam</string>
     <string name="steam_offline_mode">Mode Hors Ligne Steam</string>
     <string name="steam_offline_mode_description">Lancer les jeux Steam en mode hors ligne</string>
     <string name="epic_offline_mode">Mode Hors Ligne Epic</string>
