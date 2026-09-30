@@ -379,6 +379,11 @@ object PowerManager {
         saveProfile()
         AdaptiveFpsCapController.pause()
         PerformanceMetricsCollector.pause()
+        synchronized(affinityLock) {
+            gamePinGeneration++
+            gamePinActive = false
+            backgroundPinGeneration++
+        }
         stopPowerControl()
     }
 
@@ -390,6 +395,8 @@ object PowerManager {
         if (isProfilePowerControlEnabled()) {
             driver.start()
             applyCurrentProfile()
+            pinnedGameProcessName?.let { startGamePin(it, "resume") }
+            pinBackgroundProcesses(initialDelayMs = 0L)
         }
         if (currentProfile.adaptiveFpsCapEnabled) {
             AdaptiveFpsCapController.start(containerDir, tunerLogDirectory())
