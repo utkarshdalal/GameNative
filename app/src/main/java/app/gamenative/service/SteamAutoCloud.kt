@@ -1172,7 +1172,7 @@ object SteamAutoCloud {
 
                             SaveLocation.Remote -> {
                                 downloadUserFiles(parentScope).await()?.let {
-                                    return@async it
+                                    return@asyncIsolated it
                                 }
                             }
 
