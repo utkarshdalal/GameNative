@@ -23,10 +23,10 @@ class MouseLookStepper(
         // At full deflection and cursor speed 1: the former 10 px per 60 Hz timer tick.
         private const val PX_PER_SECOND = 600f
 
-        // Caps the step after a stall (GC pause, app switch).
+        // Caps one frame gap after a stall (GC pause, app switch).
         private const val MAX_STEP_SECONDS = 0.1f
 
-        // The first step after idle has no previous frame to measure from.
+        // The first frame after idle has no previous one to measure from.
         private const val FIRST_STEP_SECONDS = 1f / 60f
 
         private const val NANOS_PER_SECOND = 1_000_000_000f
@@ -41,6 +41,11 @@ class MouseLookStepper(
 
     // Frame time of the last step; 0 while idle, so idle time never becomes a step.
     private var lastStepNanos = 0L
+
+    // Frame time of the last frame, and the time since the last step: with throttling, a step covers several
+    // frames. Each frame gap is capped, not the step, so a low rate doesn't slow the pointer down.
+    private var lastFrameNanos = 0L
+    private var unsteppedSeconds = 0f
     private val frameLoop = FrameCallbackLoop(::onFrame)
 
     /** Summed horizontal deflection of all held sources, before cursor speed. */
@@ -113,6 +118,8 @@ class MouseLookStepper(
         remainderX = 0f
         remainderY = 0f
         lastStepNanos = 0L
+        lastFrameNanos = 0L
+        unsteppedSeconds = 0f
         frameLoop.cancel()
     }
 
@@ -128,9 +135,18 @@ class MouseLookStepper(
     private fun onFrame(frameTimeNanos: Long) {
         if (contributions.isEmpty()) return
         if (PluviaApp.isOverlayPaused) {
-            lastStepNanos = 0L // resume() restarts; the pause is not a step
+            // resume() restarts; the pause is not a step
+            lastStepNanos = 0L
+            lastFrameNanos = 0L
+            unsteppedSeconds = 0f
             return
         }
+        unsteppedSeconds += if (lastFrameNanos == 0L) {
+            FIRST_STEP_SECONDS
+        } else {
+            ((frameTimeNanos - lastFrameNanos) / NANOS_PER_SECOND).coerceIn(0f, MAX_STEP_SECONDS)
+        }
+        lastFrameNanos = frameTimeNanos
         if (throttling.isDue(lastStepNanos, frameTimeNanos)) step(frameTimeNanos)
         frameLoop.schedule()
     }
@@ -153,14 +169,12 @@ class MouseLookStepper(
         // No noise floor: every source is past its own dead zone already (a tuned stick's is the user's).
         if (deflectionX == 0f && deflectionY == 0f) {
             lastStepNanos = 0L
+            unsteppedSeconds = 0f
             return
         }
 
-        val dtSeconds = if (lastStepNanos == 0L) {
-            FIRST_STEP_SECONDS
-        } else {
-            ((frameTimeNanos - lastStepNanos) / NANOS_PER_SECOND).coerceIn(0f, MAX_STEP_SECONDS)
-        }
+        val dtSeconds = unsteppedSeconds
+        unsteppedSeconds = 0f
         lastStepNanos = frameTimeNanos
 
         val rawDeltaX = speedX * PX_PER_SECOND * dtSeconds + remainderX
