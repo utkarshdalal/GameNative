@@ -179,11 +179,6 @@ class AmazonAppScreen : BaseAppScreen() {
         }
 
         val gameNameForCompatibility = g?.title ?: libraryItem.name
-        val (compatibilityMessage, compatibilityColor) = rememberCompatibilityInfo(
-            context = context,
-            gameName = gameNameForCompatibility,
-        )
-
         return GameDisplayInfo(
             name = g?.title ?: libraryItem.name,
             iconUrl = iconUrl,
@@ -201,8 +196,6 @@ class AmazonAppScreen : BaseAppScreen() {
             sizeFromStore = sizeFromStore,
             lastPlayedText = null,
             playtimeText = null,
-            compatibilityMessage = compatibilityMessage,
-            compatibilityColor = compatibilityColor,
             storeDetails = parseAmazonStoreDetails(g?.productJson).mergedWith(
                 StoreGameDetails(
                     screenshots = listOfNotNull(heroImageUrl, iconUrl).distinct(),

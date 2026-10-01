@@ -58,6 +58,7 @@ import app.gamenative.R
 import app.gamenative.data.LibraryItem
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.data.statsFor
+import app.gamenative.ui.data.communityCompatibilityFor
 import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.util.AdaptivePadding
 import app.gamenative.ui.util.shouldShowGamepadUI
@@ -314,14 +315,12 @@ internal fun LibraryCarouselPane(
         }
     }
 
-    LaunchedEffect(listState, state.appInfoList.size, state.totalAppsInFilter) {
+    LaunchedEffect(listState, state.appInfoList.size, state.currentPaginationPage, state.lastPaginationPage, state.isLoading) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
             .filterNotNull()
             .distinctUntilChanged()
             .collect { lastVisibleIndex ->
-                if (lastVisibleIndex >= state.appInfoList.lastIndex &&
-                    state.appInfoList.size < state.totalAppsInFilter
-                ) {
+                if (app.gamenative.ui.model.shouldPrefetchLibraryPage(lastVisibleIndex, state.appInfoList.size, state.currentPaginationPage, state.lastPaginationPage, state.isLoading)) {
                     onPageChange(1)
                 }
             }
@@ -532,6 +531,7 @@ internal fun LibraryCarouselPane(
                                             paneType = PaneType.GRID_CAPSULE,
                                             imageRefreshCounter = state.imageRefreshCounter,
                                             compatibilityStatus = state.compatibilityMap[item.name],
+                                            communityCompatibility = state.communityCompatibilityFor(item),
                                             gameStats = state.statsFor(item),
                                             showFocusGlow = false,
                                             enableFocusScale = false,

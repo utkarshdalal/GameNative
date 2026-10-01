@@ -61,10 +61,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
+import app.gamenative.data.CommunityCompatibilitySummary
 import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.gog.GogRecommendationsRepository
+import app.gamenative.ui.component.CommunityCompatibilityBadge
 import app.gamenative.ui.component.CompatibilityBadge
 import app.gamenative.ui.component.GameStatsRow
 import app.gamenative.ui.component.focusRing
@@ -98,6 +100,7 @@ internal fun GridViewCard(
     onImageLoadFailed: () -> Unit,
     onImageLoaded: () -> Unit = {},
     compatibilityStatus: GameCompatibilityStatus?,
+    communityCompatibility: CommunityCompatibilitySummary?,
     gameStats: GameCardStats?,
     showFocusGlow: Boolean,
     context: Context,
@@ -441,19 +444,32 @@ internal fun GridViewCard(
                         )
                     }
                 } else {
-                    val badgeStatus = if (appInfo.isRecommended) {
-                        GameCompatibilityStatus.RECOMMENDED
-                    } else {
-                        compatibilityStatus
-                    }
-                    badgeStatus?.let { status ->
-                        CompatibilityBadge(
-                            status = status,
+                    if (!appInfo.isRecommended && communityCompatibility != null) {
+                        CommunityCompatibilityBadge(
+                            verdict = communityCompatibility.verdict,
+                            verdictLoaded = communityCompatibility.verdictLoaded,
+                            loadFailed = communityCompatibility.loadFailed,
+                            checking = communityCompatibility.isChecking,
                             showLabel = true,
                             modifier = Modifier
                                 .align(Alignment.TopStart)
-                                .padding(top = topOverlayPadding, start = topOverlayPadding),
+                                .padding(top = topOverlayPadding, start = topOverlayPadding, end = topIconPadding + 24.dp),
                         )
+                    } else {
+                        val badgeStatus = if (appInfo.isRecommended) {
+                            GameCompatibilityStatus.RECOMMENDED
+                        } else {
+                            compatibilityStatus
+                        }
+                        badgeStatus?.let { status ->
+                            CompatibilityBadge(
+                                status = status,
+                                showLabel = true,
+                                modifier = Modifier
+                                    .align(Alignment.TopStart)
+                                    .padding(top = topOverlayPadding, start = topOverlayPadding),
+                            )
+                        }
                     }
                 }
 

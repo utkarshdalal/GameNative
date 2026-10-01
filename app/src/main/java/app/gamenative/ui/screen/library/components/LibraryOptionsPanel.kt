@@ -49,6 +49,7 @@ import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Stars
+import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -558,4 +559,5 @@ private fun SortOption.icon(): ImageVector = when (this) {
     SortOption.RUNS_HIGH -> Icons.Rounded.SportsEsports
     SortOption.REVIEWS_HIGH -> Icons.Rounded.Star
     SortOption.REVIEWS_GPU_HIGH -> Icons.Rounded.Stars
+    SortOption.COMPATIBILITY -> Icons.Rounded.Verified
 }

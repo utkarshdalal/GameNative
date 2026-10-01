@@ -175,11 +175,6 @@ class GOGAppScreen : BaseAppScreen() {
         }
 
         val gameNameForCompatibility = game?.title ?: libraryItem.name
-        val (compatibilityMessage, compatibilityColor) = rememberCompatibilityInfo(
-            context = context,
-            gameName = gameNameForCompatibility,
-        )
-
         val displayInfo = GameDisplayInfo(
             name = game?.title ?: libraryItem.name,
             iconUrl = game?.iconUrl ?: libraryItem.iconHash,
@@ -194,8 +189,6 @@ class GOGAppScreen : BaseAppScreen() {
             installLocation = game?.installPath?.takeIf { it.isNotEmpty() },
             sizeOnDisk = sizeOnDisk,
             sizeFromStore = sizeFromStore,
-            compatibilityMessage = compatibilityMessage,
-            compatibilityColor = compatibilityColor,
             storeDetails = StoreGameDetails(
                 description = sanitizeGogDescription(game?.description.orEmpty()),
                 tags = game?.genres.orEmpty(),
