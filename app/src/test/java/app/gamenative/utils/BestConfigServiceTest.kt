@@ -11,6 +11,7 @@ import java.io.File
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.*
 import org.junit.Assume.assumeFalse
@@ -105,7 +106,7 @@ class BestConfigServiceTest {
 
     @Test
     fun testExactGpuMatch_parsesAllFields() {
-        val bestConfig = parseBestConfig(cs2MaliExactMatchResponse)
+        val bestConfig = JsonObject(parseBestConfig(cs2MaliExactMatchResponse).toMutableMap().apply { put("loadMods", JsonPrimitive(true)) })
         val matchType = getMatchType(cs2MaliExactMatchResponse)
 
         assertEquals("exact_gpu_match", matchType)
@@ -129,6 +130,7 @@ class BestConfigServiceTest {
         assertEquals("Box64", result["emulator"])
         assertEquals(1, (result["startupSelection"] as? Byte)?.toInt() ?: (result["startupSelection"] as? Int))
         assertEquals("2507", result["fexcoreVersion"])
+        assertEquals(true, result["loadMods"])
     }
 
     @Test
@@ -157,11 +159,12 @@ class BestConfigServiceTest {
         assertEquals("FEXCore", result["emulator"])
         assertEquals("COMPATIBILITY", result["box64Preset"])
         assertEquals("2507", result["fexcoreVersion"])
+        assertFalse("loadMods should not be added when absent", result.containsKey("loadMods"))
     }
 
     @Test
     fun testFallbackMatch_filtersExcludedFields() {
-        val bestConfig = parseBestConfig(cs2Adreno735Response)
+        val bestConfig = JsonObject(parseBestConfig(cs2Adreno735Response).toMutableMap().apply { put("loadMods", JsonPrimitive(true)) })
         val matchType = getMatchType(cs2Adreno735Response)
 
         assertEquals("fallback_match", matchType)
@@ -179,6 +182,7 @@ class BestConfigServiceTest {
         assertFalse("graphicsDriver should NOT be in map for fallback_match", result.containsKey("graphicsDriver"))
         assertFalse("dxwrapper should NOT be in map for fallback_match", result.containsKey("dxwrapper"))
         assertFalse("dxwrapperConfig should NOT be in map for fallback_match", result.containsKey("dxwrapperConfig"))
+        assertFalse("loadMods should NOT be in map for fallback_match", result.containsKey("loadMods"))
     }
 
     @Test

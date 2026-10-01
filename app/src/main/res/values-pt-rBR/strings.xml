@@ -1275,6 +1275,8 @@
     <string name="use_legacy_drm">Usar DRM legado</string>
     <string name="unpack_files">Descompactar arquivos</string>
     <string name="unpack_files_description">Use apenas se receber \'Application Load Error 3:0000065432\'.</string>
+    <string name="load_mods">Ativar carregadores de mods</string>
+    <string name="load_mods_description">Ativa carregadores de mods &lt;b&gt;baseados em DLL&lt;/b&gt; colocados ao lado do executável do jogo, como BepInEx, MelonLoader, REFramework, Ultimate ASI Loader e UE4SS</string>
 
     <!-- TODO: Revisão manual - Library Status -->
     <string name="library_status_ready">Pronto</string>

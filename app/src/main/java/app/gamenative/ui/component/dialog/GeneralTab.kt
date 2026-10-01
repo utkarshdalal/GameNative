@@ -29,7 +29,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -401,6 +403,13 @@ fun GeneralTabContent(
                 onCheckedChange = { state.config.value = config.copy(unpackFiles = it) },
             )
         }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.load_mods)) },
+            subtitle = { Text(text = AnnotatedString.fromHtml(stringResource(R.string.load_mods_description))) },
+            state = config.loadMods,
+            onCheckedChange = { state.config.value = config.copy(loadMods = it) },
+        )
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.steam_offline_mode)) },
