@@ -32,10 +32,12 @@ class ModDllOverridesTest {
     }
 
     @Test fun userValuesWin() {
-        for (separator in listOf(",", " ", "\t", ", \t")) {
-            val original = "DINPUT8.dll${separator}winhttp=b;version="
-            assertEquals(original, ModDllOverrides.merge(original, listOf("dinput8", "winhttp", "version")))
-            assertEquals(listOf("dsound"), ModDllOverrides.missing(original, listOf("winhttp", "dsound")))
+        for (name in listOf("winhttp", "*winhttp", "C:\\Game\\winhttp.dll")) {
+            for (separator in listOf(",", " ", "\t", ", \t")) {
+                val original = "DINPUT8.dll$separator$name=b;version="
+                assertEquals(original, ModDllOverrides.merge(original, listOf("dinput8", "winhttp", "version")))
+                assertEquals(listOf("dsound"), ModDllOverrides.missing(original, listOf("winhttp", "dsound")))
+            }
         }
     }
 
