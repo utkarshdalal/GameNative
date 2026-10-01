@@ -590,6 +590,13 @@ object PrefManager {
             setPref(STEAM_OFFLINE_MODE, value)
         }
 
+    private val LOAD_MODS = booleanPreferencesKey("load_mods")
+    var loadMods: Boolean
+        get() = getPref(LOAD_MODS, false)
+        set(value) {
+            setPref(LOAD_MODS, value)
+        }
+
     private val EPIC_OFFLINE_MODE = booleanPreferencesKey("epic_offline_mode")
     var epicOfflineMode: Boolean
         get() = getPref(EPIC_OFFLINE_MODE, false)

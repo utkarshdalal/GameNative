@@ -350,11 +350,12 @@ object SteamUtils {
         // Restore original steamclient.dll files if they exist
         restoreSteamclientFiles(context, steamAppId)
 
+        val container = ContainerUtils.getOrCreateContainer(context, appId)
+
         // Create Steam ACF manifest for real Steam compatibility
-        createAppManifest(context, steamAppId)
+        createAppManifest(context, steamAppId, container.language)
 
         // Game-specific Handling
-        val container = ContainerUtils.getOrCreateContainer(context, appId)
         ensureSaveLocationsForGames(context, steamAppId, container)
 
         // Generate achievements.json
@@ -754,7 +755,7 @@ object SteamUtils {
         return customExecutables(SteamService.getDownloadableDepots(steamAppId), installedBranch, downloaderCacheDir).isNotEmpty()
     }
 
-    private fun createAppManifest(context: Context, steamAppId: Int) {
+    private fun createAppManifest(context: Context, steamAppId: Int, language: String) {
         try {
             Timber.i("Attempting to createAppManifest for appId: $steamAppId")
             val appInfo = SteamService.getAppInfoOf(steamAppId)
@@ -859,8 +860,8 @@ object SteamUtils {
                     appendLine("\t}")
                 }
 
-                appendLine("\t\"UserConfig\" { \"language\" \"english\" }")
-                appendLine("\t\"MountedConfig\" { \"language\" \"english\" }")
+                appendLine("\t\"UserConfig\" { \"language\" \"${escapeString(language)}\" }")
+                appendLine("\t\"MountedConfig\" { \"language\" \"${escapeString(language)}\" }")
 
                 appendLine("}")
             }
@@ -962,7 +963,7 @@ object SteamUtils {
         skipFirstTimeSteamSetup(imageFs.rootDir)
         val appDirPath = SteamService.getAppDirPath(steamAppId)
         if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_DLL_RESTORED)) {
-            createAppManifest(context, steamAppId)
+            createAppManifest(context, steamAppId, container.language)
             return
         }
         MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
@@ -983,7 +984,7 @@ object SteamUtils {
         restoreSteamclientFiles(context, steamAppId)
 
         // Create Steam ACF manifest for real Steam compatibility
-        createAppManifest(context, steamAppId)
+        createAppManifest(context, steamAppId, container.language)
 
         // Game-specific Handling
         ensureSaveLocationsForGames(context, steamAppId, container)
