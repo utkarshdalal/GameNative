@@ -70,11 +70,11 @@ class GamepadStateOutput(
     }
 
     private fun transmit(state: GamepadState?) {
-        // Not sent, so not a duplicate later: the first state once Wine is reachable goes out.
-        if (!sender.canSend()) return
         // Whatever is sent now is newer than held-back motion, even another instance (a switched profile).
         pendingMotion = null
         frameLoop.cancel()
+        // Not sent, so not a duplicate later: the first state once Wine is reachable goes out.
+        if (!sender.canSend()) return
         if (state != null) {
             lastSent.copy(state)
             hasSent = true
