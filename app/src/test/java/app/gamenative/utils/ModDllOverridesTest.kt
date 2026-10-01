@@ -32,9 +32,11 @@ class ModDllOverridesTest {
     }
 
     @Test fun userValuesWin() {
-        val original = "DINPUT8.dll,winhttp=b;version="
-        assertEquals(original, ModDllOverrides.merge(original, listOf("dinput8", "winhttp", "version")))
-        assertEquals(listOf("dsound"), ModDllOverrides.missing(original, listOf("winhttp", "dsound")))
+        for (separator in listOf(",", " ", "\t", ", \t")) {
+            val original = "DINPUT8.dll${separator}winhttp=b;version="
+            assertEquals(original, ModDllOverrides.merge(original, listOf("dinput8", "winhttp", "version")))
+            assertEquals(listOf("dsound"), ModDllOverrides.missing(original, listOf("winhttp", "dsound")))
+        }
     }
 
     @Test fun resolvesRelativeAndDrivePathsWithWindowsCase() {

@@ -45,7 +45,7 @@ object ModDllOverrides {
 
     fun missing(value: String, detected: List<String>): List<String> {
         val mentioned = value.split(';')
-            .flatMap { it.substringBefore('=').split(',') }
+            .flatMap { it.substringBefore('=').split(',', ' ', '\t') }
             .map { it.trim().lowercase(Locale.ROOT).removeSuffix(".dll") }
             .toSet()
         return detected.distinct().filter { it !in mentioned }
