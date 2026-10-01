@@ -295,6 +295,7 @@
     <string name="right_stick">Prawy drążek</string>
     <string name="dpad_category">D-Pad</string>
     <string name="physical_controller_settings_title">Ustawienia kontrolera fizycznego</string>
+    <string name="physical_controller_settings_save_failed">Nie udało się zapisać ustawień kontrolera. Spróbuj ponownie.</string>
     <string name="left_stick_deadzone">Martwa strefa lewego drążka</string>
     <string name="right_stick_deadzone">Martwa strefa prawego drążka</string>
     <string name="left_stick_sensitivity">Czułość lewego drążka</string>

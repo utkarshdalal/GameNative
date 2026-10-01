@@ -29,6 +29,7 @@ import com.winlator.inputcontrols.BindingCombo
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.ExternalControllerBinding
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 /**
  * Data classes for controller configuration
@@ -695,6 +696,9 @@ internal fun PhysicalControllerSettingsDialog(
     onSave: () -> Boolean,
 ) {
     var tuning by remember(profile) { mutableStateOf(PhysicalStickTuningState.from(profile)) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val saveFailedMessage = stringResource(R.string.physical_controller_settings_save_failed)
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -707,6 +711,7 @@ internal fun PhysicalControllerSettingsDialog(
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             containerColor = PluviaBackground,
+            snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 CenterAlignedTopAppBar(
                     title = {
@@ -726,11 +731,15 @@ internal fun PhysicalControllerSettingsDialog(
                             Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.reset))
                         }
                         IconButton(onClick = {
-                            applyAndSavePhysicalControllerTuning(
+                            val saved = applyAndSavePhysicalControllerTuning(
                                 profile = profile,
                                 applyTuning = { tuning.applyTo(profile) },
                                 onSave = onSave,
                             )
+                            if (!saved) {
+                                tuning = PhysicalStickTuningState.from(profile)
+                                scope.launch { snackbarHostState.showSnackbar(saveFailedMessage) }
+                            }
                         }) {
                             Icon(Icons.Default.Check, contentDescription = stringResource(R.string.save))
                         }

@@ -287,6 +287,7 @@
     <string name="right_stick">Levetta Destra</string>
     <string name="dpad_category">D-Pad</string>
     <string name="physical_controller_settings_title">Impostazioni controller fisico</string>
+    <string name="physical_controller_settings_save_failed">Impossibile salvare le impostazioni del controller. Riprova.</string>
     <string name="left_stick_deadzone">Zona morta levetta sinistra</string>
     <string name="right_stick_deadzone">Zona morta levetta destra</string>
     <string name="left_stick_sensitivity">Sensibilità levetta sinistra</string>

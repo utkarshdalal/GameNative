@@ -400,6 +400,7 @@
     <string name="downloading">Загрузка...</string>
     <string name="dpad_category">D-Pad</string>
     <string name="physical_controller_settings_title">Настройки физического контроллера</string>
+    <string name="physical_controller_settings_save_failed">Не удалось сохранить настройки контроллера. Повторите попытку.</string>
     <string name="left_stick_deadzone">Мёртвая зона левого джойстика</string>
     <string name="right_stick_deadzone">Мёртвая зона правого джойстика</string>
     <string name="left_stick_sensitivity">Чувствительность левого джойстика</string>

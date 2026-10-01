@@ -280,6 +280,7 @@
     <string name="right_stick">Rechter Stick</string>
     <string name="dpad_category">D-Pad</string>
     <string name="physical_controller_settings_title">Einstellungen für physischen Controller</string>
+    <string name="physical_controller_settings_save_failed">Die Controller-Einstellungen konnten nicht gespeichert werden. Versuche es erneut.</string>
     <string name="left_stick_deadzone">Totzone des linken Sticks</string>
     <string name="right_stick_deadzone">Totzone des rechten Sticks</string>
     <string name="left_stick_sensitivity">Empfindlichkeit des linken Sticks</string>

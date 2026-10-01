@@ -295,6 +295,7 @@
     <string name="right_stick">오른쪽 스틱</string>
     <string name="dpad_category">십자 버튼</string>
     <string name="physical_controller_settings_title">물리 컨트롤러 설정</string>
+    <string name="physical_controller_settings_save_failed">컨트롤러 설정을 저장하지 못했습니다. 다시 시도하세요.</string>
     <string name="left_stick_deadzone">왼쪽 스틱 데드존</string>
     <string name="right_stick_deadzone">오른쪽 스틱 데드존</string>
     <string name="left_stick_sensitivity">왼쪽 스틱 감도</string>

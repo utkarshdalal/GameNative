@@ -288,6 +288,7 @@
     <string name="right_stick">Joystick droit</string>
     <string name="dpad_category">Croix directionnelle</string>
     <string name="physical_controller_settings_title">Paramètres du contrôleur physique</string>
+    <string name="physical_controller_settings_save_failed">Impossible d’enregistrer les paramètres de la manette. Réessayez.</string>
     <string name="left_stick_deadzone">Zone morte du joystick gauche</string>
     <string name="right_stick_deadzone">Zone morte du joystick droit</string>
     <string name="left_stick_sensitivity">Sensibilité du joystick gauche</string>
