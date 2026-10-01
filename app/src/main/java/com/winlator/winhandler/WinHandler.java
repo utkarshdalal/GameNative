@@ -544,7 +544,12 @@ public class WinHandler {
                     action = this.actions.poll();
                 }
                 // Outside the lock: addAction() (main thread) must not wait on socket.send().
-                action.run();
+                try {
+                    action.run();
+                } catch (RuntimeException e) {
+                    // One failed packet must not end this thread, and with it all input to the game.
+                    Log.e(TAG, "WinHandler action failed", e);
+                }
             }
         });
     }
@@ -636,7 +641,9 @@ public class WinHandler {
                 if (!useVirtualGamepad && ((externalController = this.currentController) == null || !externalController.isConnected())) {
                     this.currentController = ExternalController.getController(0);
                 }
-                boolean enabled2 = this.currentController != null || useVirtualGamepad;
+                // Read once, now: actions run outside the lock, after the receive thread may have nulled it.
+                final ExternalController replyController = this.currentController;
+                boolean enabled2 = replyController != null || useVirtualGamepad;
                 if (enabled2) {
                     switch (this.preferredInputApi) {
                         case DINPUT:
@@ -676,9 +683,9 @@ public class WinHandler {
                         this.sendData.rewind();
                         this.sendData.put((byte) RequestCodes.GET_GAMEPAD);
                         if (finalEnabled) {
-                            this.sendData.putInt(!useVirtualGamepad ? this.currentController.getDeviceId() : profile.id);
+                            this.sendData.putInt(!useVirtualGamepad ? replyController.getDeviceId() : profile.id);
                             this.sendData.put(this.dinputMapperType);
-                            String originalName = (useVirtualGamepad ? profile.getName() : currentController.getName());
+                            String originalName = (useVirtualGamepad ? profile.getName() : replyController.getName());
                             byte[] originalBytes = originalName.getBytes();
                             final int MAX_NAME_LENGTH = 54;
                             byte[] bytesToWrite;
@@ -709,9 +716,9 @@ public class WinHandler {
                     this.sendData.rewind();
                     this.sendData.put((byte) 8);
                     if (finalEnabled2) {
-                        this.sendData.putInt(!useVirtualGamepad ? this.currentController.getDeviceId() : profile.id);
+                        this.sendData.putInt(!useVirtualGamepad ? replyController.getDeviceId() : profile.id);
                         this.sendData.put(this.dinputMapperType);
-                        byte[] bytes2 = (useVirtualGamepad ? profile.getName() : this.currentController.getName()).getBytes();
+                        byte[] bytes2 = (useVirtualGamepad ? profile.getName() : replyController.getName()).getBytes();
                         this.sendData.putInt(bytes2.length);
                         this.sendData.put(bytes2);
                     } else {

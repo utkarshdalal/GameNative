@@ -281,7 +281,7 @@
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
     <string name="performance_hud_fps_limiter_lsfg_base">Begrænser basisframeraten. Skærmraten er grænsen gange LSFG-multiplikatoren.</string>
     <string name="performance_hud_input_throttling">Inputdrosling</string>
-    <string name="performance_hud_input_throttling_description">Begrænser, hvor ofte bevægelser fra sticks og triggere sendes til spillet. Knapper forsinkes ikke.</string>
+    <string name="performance_hud_input_throttling_description">Begrænser, hvor ofte bevægelser fra sticks og triggere sendes til spillet. Knapper på fysiske controllere forsinkes ikke.</string>
     <string name="performance_hud_input_throttling_rate">Droslingsfrekvens</string>
     <string name="performance_hud_presets">Forudindstillinger</string>
     <string name="performance_hud_presets_description">Skift hurtigt mellem almindelige HUD-layouts.</string>

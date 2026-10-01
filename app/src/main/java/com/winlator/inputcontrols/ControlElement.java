@@ -26,7 +26,7 @@ import java.util.Locale;
 
 public class ControlElement {
     public static final float STICK_DEAD_ZONE = 0.15f;
-    // Keys bound to a stick direction press past STICK_DEAD_ZONE and release only below this.
+    // Keys bound to a stick direction press past STICK_DEAD_ZONE and release once back at or below this.
     public static final float STICK_RELEASE_THRESHOLD = 0.10f;
     // Tuned physical sticks already have the user's dead zone removed: keys bound to a direction press past
     // this small margin, so a stick resting on the dead zone edge doesn't chatter, and release only at 0.
@@ -337,7 +337,7 @@ public class ControlElement {
 
     /**
      * Whether a stick direction is active, value being the deflection towards it. Digital bindings release
-     * only below STICK_RELEASE_THRESHOLD, so a stick resting at the dead zone edge doesn't chatter.
+     * only at or below STICK_RELEASE_THRESHOLD, so a stick resting at the dead zone edge doesn't chatter.
      * Shared by on-screen sticks and physical controllers.
      */
     public static boolean isStickDirectionActive(float value, boolean wasActive, boolean digital) {

@@ -363,7 +363,7 @@
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
     <string name="performance_hud_fps_limiter_lsfg_base">Limita la tasa base. La tasa en pantalla es el límite multiplicado por el multiplicador de LSFG.</string>
     <string name="performance_hud_input_throttling">Limitación de entrada</string>
-    <string name="performance_hud_input_throttling_description">Limita la frecuencia con la que se envía al juego el movimiento de sticks y gatillos. Los botones no se retrasan.</string>
+    <string name="performance_hud_input_throttling_description">Limita la frecuencia con la que se envía al juego el movimiento de sticks y gatillos. Los botones de los mandos físicos no se retrasan.</string>
     <string name="performance_hud_input_throttling_rate">Tasa de limitación</string>
     <string name="performance_hud_presets">Preajustes</string>
     <string name="performance_hud_presets_description">Cambia rápidamente entre diseños de HUD comunes.</string>

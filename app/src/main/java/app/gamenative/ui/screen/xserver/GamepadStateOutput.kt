@@ -15,16 +15,23 @@ class GamepadStateOutput(
 ) {
     fun interface Sender {
         fun send(state: GamepadState?)
+
+        /** Whether [send] would reach Wine now; until then, nothing counts as sent. */
+        fun canSend(): Boolean = true
     }
 
     companion object {
         /** Sends through the X server's WinHandler: UDP gamepad clients and the shared-memory gamepad. */
         @JvmStatic
-        fun winHandlerSender(xServer: () -> XServer?): Sender = Sender { state ->
-            xServer()?.winHandler?.let { winHandler ->
-                winHandler.sendGamepadState()
-                winHandler.sendVirtualGamepadState(state)
+        fun winHandlerSender(xServer: () -> XServer?): Sender = object : Sender {
+            override fun send(state: GamepadState?) {
+                xServer()?.winHandler?.let { winHandler ->
+                    winHandler.sendGamepadState()
+                    winHandler.sendVirtualGamepadState(state)
+                }
             }
+
+            override fun canSend(): Boolean = xServer()?.winHandler != null
         }
 
         // WinHandler's shared-memory encoding (sqrt curve, 16 bits), the finer of the two.
@@ -63,11 +70,12 @@ class GamepadStateOutput(
     }
 
     private fun transmit(state: GamepadState?) {
+        // Not sent, so not a duplicate later: the first state once Wine is reachable goes out.
+        if (!sender.canSend()) return
+        // Whatever is sent now is newer than held-back motion, even another instance (a switched profile).
+        pendingMotion = null
+        frameLoop.cancel()
         if (state != null) {
-            if (pendingMotion === state) {
-                pendingMotion = null
-                frameLoop.cancel()
-            }
             lastSent.copy(state)
             hasSent = true
             lastSendNanos = SystemClock.elapsedRealtimeNanos()

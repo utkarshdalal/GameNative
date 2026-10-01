@@ -722,6 +722,77 @@ class PhysicalControllerHandlerTest {
         }
     }
 
+    @Test
+    fun `motion overwritten on a shared controller while paused is not replayed for its device`() {
+        val firstDevice = 41
+        val secondDevice = 42
+        val axisKeyCode = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_X, 1.toByte())
+        // Both devices fall back to the same ("*") controller and its state.
+        val controller = motionController(axisKeyCode, Binding.MOUSE_MOVE_RIGHT)
+        val profile = mock<ControlsProfile>()
+        whenever(profile.getController(firstDevice)).thenReturn(controller)
+        whenever(profile.getController(secondDevice)).thenReturn(controller)
+        whenever(profile.cursorSpeed).thenReturn(1f)
+        val handler = PhysicalControllerHandler(profile, mock<XServer>())
+
+        try {
+            PluviaApp.isOverlayPaused = true
+            controller.state.thumbLX = 0f
+            assertTrue(handler.onGenericMotionEvent(motionEvent(firstDevice)))
+            controller.state.thumbLX = 1f
+            assertTrue(handler.onGenericMotionEvent(motionEvent(secondDevice)))
+
+            PluviaApp.isOverlayPaused = false
+            handler.onOverlayResumed()
+            runInputTicks()
+            assertEquals(1f, mouseMoveOffset(handler).x, 0f)
+
+            // Only the second device holds the stick: centering it releases everything.
+            controller.state.thumbLX = 0f
+            assertTrue(handler.onGenericMotionEvent(motionEvent(secondDevice)))
+            runInputTicks()
+            assertEquals(0f, mouseMoveOffset(handler).x, 0f)
+        } finally {
+            PluviaApp.isOverlayPaused = false
+            handler.cleanup()
+        }
+    }
+
+    @Test
+    fun `a binding edit that keeps the binding count is picked up without a profile switch`() {
+        val deviceId = 42
+        val axisKeyCode = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_X, 1.toByte())
+        val controller = motionController(axisKeyCode, Binding.KEY_E)
+        val profile = mock<ControlsProfile>()
+        whenever(profile.getController(deviceId)).thenReturn(controller)
+        val xServer = mock<XServer>()
+        val handler = PhysicalControllerHandler(profile, xServer)
+        val event = motionEvent(deviceId)
+
+        try {
+            controller.state.thumbLX = 1f
+            assertTrue(handler.onGenericMotionEvent(event))
+            controller.state.thumbLX = 0f
+            assertTrue(handler.onGenericMotionEvent(event))
+            verify(xServer, times(1)).injectKeyPress(XKeycode.KEY_E)
+
+            // Remove and re-add: same count, another key.
+            controller.removeControllerBinding(controller.getControllerBindingAt(0))
+            controller.addControllerBinding(
+                ExternalControllerBinding().apply {
+                    setKeyCode(axisKeyCode)
+                    setBinding(Binding.KEY_Q)
+                },
+            )
+            controller.state.thumbLX = 1f
+            assertTrue(handler.onGenericMotionEvent(event))
+            verify(xServer, times(1)).injectKeyPress(XKeycode.KEY_Q)
+            verify(xServer, times(1)).injectKeyPress(XKeycode.KEY_E)
+        } finally {
+            handler.cleanup()
+        }
+    }
+
     private fun runInputTicks() {
         shadowOf(Looper.getMainLooper()).idleFor(50, MILLISECONDS)
     }

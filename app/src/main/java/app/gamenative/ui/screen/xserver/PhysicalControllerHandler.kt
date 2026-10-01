@@ -52,7 +52,7 @@ class PhysicalControllerHandler(
 
     private class BindingCacheEntry(
         val controller: ExternalController,
-        val bindingCount: Int,
+        val bindingsVersion: Int,
         val bindings: Map<Int, ExternalControllerBinding>,
     )
 
@@ -119,18 +119,18 @@ class PhysicalControllerHandler(
     private var radialMenuOpenerKeyCode = KeyEvent.KEYCODE_UNKNOWN
     private var radialMenuOpenerDeviceId = UNKNOWN_DEVICE_ID
 
-    // Same result as controller.getControllerBinding(keyCode). Edits that keep the binding count replace
-    // the profile, and setProfile() clears the cache.
+    // Same result as controller.getControllerBinding(keyCode): rebuilt when the controller or its bindings change.
     private fun cachedBinding(controller: ExternalController, deviceId: Int, keyCode: Int): ExternalControllerBinding? {
-        val count = controller.controllerBindingCount
+        val version = controller.controllerBindingsVersion
         var entry = bindingCache[deviceId]
-        if (entry == null || entry.controller !== controller || entry.bindingCount != count) {
+        if (entry == null || entry.controller !== controller || entry.bindingsVersion != version) {
+            val count = controller.controllerBindingCount
             val bindings = HashMap<Int, ExternalControllerBinding>(count)
             for (i in 0 until count) {
                 val binding = controller.getControllerBindingAt(i)
                 bindings.putIfAbsent(binding.keyCodeForAxis, binding)
             }
-            entry = BindingCacheEntry(controller, count, bindings)
+            entry = BindingCacheEntry(controller, version, bindings)
             bindingCache[deviceId] = entry
         }
         return entry.bindings[keyCode]
@@ -369,9 +369,11 @@ class PhysicalControllerHandler(
 
         trackedDeviceIds.add(event.deviceId)
         dirtyDeviceIds.add(event.deviceId)
-        // The shared state is this device's now; re-evaluating the others from it would misapply it.
+        // The shared state is this device's now; re-evaluating the others from it would misapply it. That includes
+        // their undispatched motion: while paused, flushInput() above can't dispatch it first.
         if (trackedDeviceIds.size > 1) {
             trackedDeviceIds.removeAll { it != event.deviceId && currentProfile.getController(it) === controller }
+            dirtyDeviceIds.retainAll(trackedDeviceIds)
         }
         val nowNanos = SystemClock.elapsedRealtimeNanos()
         if (throttling.isDue(lastInputFlushNanos, nowNanos)) flushInput(nowNanos) else ensureFrameScheduled()

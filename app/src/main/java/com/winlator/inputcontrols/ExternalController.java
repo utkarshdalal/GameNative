@@ -94,6 +94,8 @@ public class ExternalController {
     private int deviceId = -1;
     private byte triggerType = TRIGGER_IS_AXIS;
     private final ArrayList<ExternalControllerBinding> controllerBindings = new ArrayList<>();
+    // Bumped on every add and remove, so a cache of the bindings sees edits that keep their count.
+    private int controllerBindingsVersion;
     public final GamepadState state = new GamepadState();
     private boolean processTriggerButtonOnMotionEvent = true;
     private float rawThumbLX;
@@ -202,6 +204,7 @@ public class ExternalController {
     public void addControllerBinding(ExternalControllerBinding controllerBinding) {
         if (getControllerBinding(controllerBinding.getKeyCodeForAxis()) == null) {
             this.controllerBindings.add(controllerBinding);
+            this.controllerBindingsVersion++;
         }
     }
 
@@ -210,11 +213,15 @@ public class ExternalController {
     }
 
     public void removeControllerBinding(ExternalControllerBinding controllerBinding) {
-        this.controllerBindings.remove(controllerBinding);
+        if (this.controllerBindings.remove(controllerBinding)) this.controllerBindingsVersion++;
     }
 
     public int getControllerBindingCount() {
         return this.controllerBindings.size();
+    }
+
+    public int getControllerBindingsVersion() {
+        return this.controllerBindingsVersion;
     }
 
     public ArrayList<ExternalControllerBinding> getControllerBindings() {
@@ -524,6 +531,11 @@ public class ExternalController {
     }
 
     private static final ConcurrentHashMap<Integer, GameControllerCheck> gameControllerChecks = new ConcurrentHashMap<>();
+
+    /** Drops what is cached for a disconnected device: a reconnect comes back under a new id. */
+    public static void forgetDevice(int deviceId) {
+        gameControllerChecks.remove(deviceId);
+    }
 
     public static boolean isGameController(InputDevice device) {
         if (device == null) return false;
