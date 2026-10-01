@@ -144,6 +144,7 @@ object ContainerUtils {
             forceDlc = PrefManager.forceDlc,
             localSavesOnly = PrefManager.localSavesOnly,
             steamOfflineMode = PrefManager.steamOfflineMode,
+            loadMods = PrefManager.loadMods,
             epicOfflineMode = PrefManager.epicOfflineMode,
             useLegacyDRM = PrefManager.useLegacyDRM,
             unpackFiles = PrefManager.unpackFiles,
@@ -235,6 +236,7 @@ object ContainerUtils {
         PrefManager.forceDlc = containerData.forceDlc
         PrefManager.localSavesOnly = containerData.localSavesOnly
         PrefManager.steamOfflineMode = containerData.steamOfflineMode
+        PrefManager.loadMods = containerData.loadMods
         PrefManager.epicOfflineMode = containerData.epicOfflineMode
         PrefManager.useLegacyDRM = containerData.useLegacyDRM
         PrefManager.unpackFiles = containerData.unpackFiles
@@ -346,6 +348,7 @@ object ContainerUtils {
             forceDlc = container.isForceDlc,
             localSavesOnly = container.isLocalSavesOnly,
             steamOfflineMode = container.isSteamOfflineMode(),
+            loadMods = container.isLoadMods(),
             epicOfflineMode = container.isEpicOfflineMode(),
             disableEpicOverlay = container.isDisableEpicOverlay,
             useLegacyDRM = container.isUseLegacyDRM(),
@@ -439,6 +442,7 @@ object ContainerUtils {
                     ?: updatedData
                 "useLegacyDRM" -> value?.let { updatedData.copy(useLegacyDRM = it as? Boolean ?: updatedData.useLegacyDRM) } ?: updatedData
                 "steamOfflineMode" -> value?.let { updatedData.copy(steamOfflineMode = it as? Boolean ?: updatedData.steamOfflineMode) } ?: updatedData
+                "loadMods" -> value?.let { updatedData.copy(loadMods = it as? Boolean ?: updatedData.loadMods) } ?: updatedData
                 "epicOfflineMode" -> value?.let { updatedData.copy(epicOfflineMode = it as? Boolean ?: updatedData.epicOfflineMode) } ?: updatedData
                 "unpackFiles" -> value?.let { updatedData.copy(unpackFiles = it as? Boolean ?: updatedData.unpackFiles) } ?: updatedData
                 "suspendPolicy" -> value?.let { updatedData.copy(suspendPolicy = it as? String ?: updatedData.suspendPolicy) } ?: updatedData
@@ -551,6 +555,7 @@ object ContainerUtils {
         container.setForceDlc(containerData.forceDlc)
         container.setLocalSavesOnly(containerData.localSavesOnly)
         container.setSteamOfflineMode(containerData.steamOfflineMode)
+        container.setLoadMods(containerData.loadMods)
         container.setEpicOfflineMode(containerData.epicOfflineMode)
         container.setDisableEpicOverlay(containerData.disableEpicOverlay)
         container.setUseLegacyDRM(containerData.useLegacyDRM)
@@ -936,6 +941,7 @@ object ContainerUtils {
                 disableMouseInput = PrefManager.disableMouseInput,
                 forceDlc = PrefManager.forceDlc,
                 steamOfflineMode = PrefManager.steamOfflineMode,
+                loadMods = PrefManager.loadMods,
                 epicOfflineMode = PrefManager.epicOfflineMode,
                 useLegacyDRM = PrefManager.useLegacyDRM,
                 unpackFiles = PrefManager.unpackFiles,
