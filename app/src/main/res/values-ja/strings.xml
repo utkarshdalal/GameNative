@@ -2665,4 +2665,70 @@
     <string name="control_profile_failed">コントロールプロファイルの操作に失敗しました: %1$s</string>
     <string name="control_profile_delete_title">コントロールプロファイルを削除しますか？</string>
     <string name="control_profile_delete_message">ライブラリから「%1$s」を削除しますか？すでにこのプロファイルで設定されたゲームのコントロールは維持されます。</string>
+    <string name="sort_compatibility">互換性</string>
+    <string name="community_compatibility_title">コミュニティの互換性情報</string>
+    <string name="community_compatibility_details">詳細</string>
+    <string name="community_compatibility_expanded">展開済み</string>
+    <string name="community_compatibility_collapsed">折りたたみ済み</string>
+    <string name="community_compatibility_short_disclaimer">コミュニティの結果は動作を保証するものではありません。</string>
+    <string name="community_compatibility_unreliable_short">結果が不安定で、プレイできることは確認されていません。</string>
+    <string name="community_compatibility_rating_caution_short">評価のあるデバイスからの報告は、大半が肯定的ではありません。インストール前に詳細を確認してください。</string>
+    <string name="community_compatibility_limited_rating_feedback">評価が少なく、肯定的な報告はまだありません。</string>
+    <string name="community_compatibility_limited_evidence">対応するハードウェアの情報が不足しているため、プレイできるか確認できません。</string>
+    <string name="community_compatibility_mixed_feedback">コミュニティの報告は分かれています。一部の構成では動作しない可能性があります。</string>
+    <string name="community_compatibility_model_unconfirmed">お使いのデバイスモデルでの動作はまだ確認されていません。</string>
+    <string name="community_compatibility_negative_feedback">対応するハードウェアからは、一貫して悪い結果が報告されています。</string>
+    <string name="community_compatibility_older_activity">対応するハードウェアの古い利用記録しかありません。</string>
+    <string name="community_compatibility_performance_caution">報告されたパフォーマンスは限定的な可能性があります。</string>
+    <string name="community_compatibility_checking_short">確認中…</string>
+    <string name="community_compatibility_unavailable_short">利用不可</string>
+    <string name="community_compatibility_unavailable">互換性を読み込めませんでした</string>
+    <string name="community_compatibility_family_negative">お使いの GPU ファミリーで問題が報告されています。ただし、この広いグループの情報だけでは、お使いの GPU やデバイスでの動作不良は確認できません。</string>
+    <string name="community_compatibility_missing_tier">応答には、結果をお使いのデバイスに適用するためのハードウェア情報が含まれていません。</string>
+    <string name="community_compatibility_cached_result">更新が成功するまで、前回の結果を表示しています。</string>
+    <string name="community_compatibility_works">良好</string>
+    <string name="community_compatibility_should">動作</string>
+    <string name="community_compatibility_may">動作の可能性あり</string>
+    <string name="community_compatibility_mixed">不安定</string>
+    <string name="community_compatibility_wont">動作不可</string>
+    <string name="community_compatibility_unknown">未検証</string>
+    <string name="community_compatibility_checking">互換性を確認中…</string>
+    <string name="community_compatibility_no_reports">お使いのハードウェア向けの共有設定が見つかりません</string>
+    <string name="community_compatibility_configs_unavailable">一部の互換性データを読み込めませんでした。利用可能な情報を表示しています。</string>
+    <string name="community_compatibility_retry">再試行</string>
+    <string name="community_compatibility_refresh">コミュニティの互換性情報を更新</string>
+    <string name="community_compatibility_fps_median">報告された中央値: %1$d FPS</string>
+    <string name="community_compatibility_fps_device">%1$s（お使いのデバイスモデル）。</string>
+    <string name="community_compatibility_fps_soc">%1$s（同じチップセット）。</string>
+    <string name="community_compatibility_fps_gpu">%1$s（お使いの GPU）。</string>
+    <string name="community_compatibility_fps_family">%1$s（互換性のある GPU）。</string>
+    <string name="community_compatibility_view_reports">設定を参照</string>
+    <string name="community_config_install_before_apply">コミュニティ設定を適用する前に、このゲームをインストールしてください。</string>
+    <string name="community_compatibility_works_short">良好</string>
+    <string name="community_compatibility_should_short">動作</string>
+    <string name="community_compatibility_may_short">動作の可能性あり</string>
+    <string name="community_compatibility_mixed_short">不安定</string>
+    <string name="community_compatibility_wont_short">動作不可</string>
+    <string name="community_compatibility_unknown_short">未検証</string>
+    <plurals name="community_compatibility_model_sessions">
+        <item quantity="other">お使いのデバイスモデルで記録された %1$d 回のセッションに基づきます。</item>
+    </plurals>
+    <plurals name="community_compatibility_soc_sessions">
+        <item quantity="other">同じチップセットで記録された %1$d 回のセッションに基づきます。</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_sessions">
+        <item quantity="other">お使いの GPU で記録された %1$d 回のセッションに基づきます。</item>
+    </plurals>
+    <plurals name="community_compatibility_family_sessions">
+        <item quantity="other">お使いの GPU ファミリーで記録された %1$d 回のセッションに基づきます。</item>
+    </plurals>
+    <plurals name="community_compatibility_device_evidence">
+        <item quantity="other">このデバイスモデルの評価済み共有設定: %1$d 件</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_evidence">
+        <item quantity="other">お使いの GPU の評価済み共有設定: %1$d 件</item>
+    </plurals>
+    <plurals name="community_compatibility_family_evidence">
+        <item quantity="other">互換性のある GPU の評価済み共有設定: %1$d 件</item>
+    </plurals>
 </resources>

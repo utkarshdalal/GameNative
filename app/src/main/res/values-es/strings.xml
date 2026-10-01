@@ -2702,4 +2702,77 @@
     <string name="control_profile_failed">Error en la operación del perfil de controles: %1$s</string>
     <string name="control_profile_delete_title">¿Eliminar perfil de controles?</string>
     <string name="control_profile_delete_message">¿Quitar “%1$s” de la biblioteca? Los juegos ya configurados con este perfil conservarán sus controles.</string>
+    <string name="sort_compatibility">Compatibilidad</string>
+    <string name="community_compatibility_title">Compatibilidad de la comunidad</string>
+    <string name="community_compatibility_details">Detalles</string>
+    <string name="community_compatibility_expanded">Expandido</string>
+    <string name="community_compatibility_collapsed">Contraído</string>
+    <string name="community_compatibility_short_disclaimer">Los resultados de la comunidad no son una garantía.</string>
+    <string name="community_compatibility_unreliable_short">Resultados poco fiables; no se ha confirmado que sea jugable.</string>
+    <string name="community_compatibility_rating_caution_short">La mayoría de las opiniones de dispositivos con valoración no son positivas. Revisa los detalles antes de instalar.</string>
+    <string name="community_compatibility_limited_rating_feedback">Pocas valoraciones; ninguna positiva por ahora.</string>
+    <string name="community_compatibility_limited_evidence">No hay suficientes datos de hardware coincidente para confirmar que sea jugable.</string>
+    <string name="community_compatibility_mixed_feedback">Las opiniones son variadas. Algunas configuraciones podrían no funcionar.</string>
+    <string name="community_compatibility_model_unconfirmed">Aún no se ha confirmado en tu modelo de dispositivo.</string>
+    <string name="community_compatibility_negative_feedback">Las opiniones de hardware coincidente indican malos resultados de forma constante.</string>
+    <string name="community_compatibility_older_activity">Solo hay actividad antigua de hardware coincidente.</string>
+    <string name="community_compatibility_performance_caution">El rendimiento indicado puede ser limitado.</string>
+    <string name="community_compatibility_checking_short">Comprobando…</string>
+    <string name="community_compatibility_unavailable_short">No disponible</string>
+    <string name="community_compatibility_unavailable">No se pudo cargar la compatibilidad</string>
+    <string name="community_compatibility_family_negative">Se han indicado problemas en tu familia de GPU. Este grupo amplio por sí solo no confirma fallos en tu GPU o dispositivo concretos.</string>
+    <string name="community_compatibility_missing_tier">La respuesta no incluye los datos de hardware necesarios para aplicar el resultado a tu dispositivo.</string>
+    <string name="community_compatibility_cached_result">Se muestra el último resultado conocido hasta que se complete una actualización.</string>
+    <string name="community_compatibility_works">Excelente</string>
+    <string name="community_compatibility_should">Funciona</string>
+    <string name="community_compatibility_may">Podría funcionar</string>
+    <string name="community_compatibility_mixed">Poco fiable</string>
+    <string name="community_compatibility_wont">No funciona</string>
+    <string name="community_compatibility_unknown">Sin probar</string>
+    <string name="community_compatibility_checking">Comprobando compatibilidad…</string>
+    <string name="community_compatibility_no_reports">No se encontraron configuraciones compartidas para tu hardware</string>
+    <string name="community_compatibility_configs_unavailable">No se pudieron cargar algunos datos de compatibilidad. Se muestran los datos disponibles.</string>
+    <string name="community_compatibility_retry">Reintentar</string>
+    <string name="community_compatibility_refresh">Actualizar compatibilidad de la comunidad</string>
+    <string name="community_compatibility_fps_median">Mediana indicada: %1$d FPS</string>
+    <string name="community_compatibility_fps_device">%1$s en tu modelo de dispositivo.</string>
+    <string name="community_compatibility_fps_soc">%1$s con el mismo chipset.</string>
+    <string name="community_compatibility_fps_gpu">%1$s con tu GPU.</string>
+    <string name="community_compatibility_fps_family">%1$s con GPU compatibles.</string>
+    <string name="community_compatibility_view_reports">Ver configuraciones</string>
+    <string name="community_config_install_before_apply">Instala este juego antes de aplicar una configuración de la comunidad.</string>
+    <string name="community_compatibility_works_short">Excelente</string>
+    <string name="community_compatibility_should_short">Funciona</string>
+    <string name="community_compatibility_may_short">Podría funcionar</string>
+    <string name="community_compatibility_mixed_short">Poco fiable</string>
+    <string name="community_compatibility_wont_short">No funciona</string>
+    <string name="community_compatibility_unknown_short">Sin probar</string>
+    <plurals name="community_compatibility_model_sessions">
+        <item quantity="one">Según %1$d sesión registrada en tu modelo de dispositivo.</item>
+        <item quantity="other">Según %1$d sesiones registradas en tu modelo de dispositivo.</item>
+    </plurals>
+    <plurals name="community_compatibility_soc_sessions">
+        <item quantity="one">Según %1$d sesión registrada con el mismo chipset.</item>
+        <item quantity="other">Según %1$d sesiones registradas con el mismo chipset.</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_sessions">
+        <item quantity="one">Según %1$d sesión registrada con tu GPU.</item>
+        <item quantity="other">Según %1$d sesiones registradas con tu GPU.</item>
+    </plurals>
+    <plurals name="community_compatibility_family_sessions">
+        <item quantity="one">Según %1$d sesión registrada en tu familia de GPU.</item>
+        <item quantity="other">Según %1$d sesiones registradas en tu familia de GPU.</item>
+    </plurals>
+    <plurals name="community_compatibility_device_evidence">
+        <item quantity="one">%1$d configuración compartida valorada de este modelo de dispositivo</item>
+        <item quantity="other">%1$d configuraciones compartidas valoradas de este modelo de dispositivo</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_evidence">
+        <item quantity="one">%1$d configuración compartida valorada con tu GPU</item>
+        <item quantity="other">%1$d configuraciones compartidas valoradas con tu GPU</item>
+    </plurals>
+    <plurals name="community_compatibility_family_evidence">
+        <item quantity="one">%1$d configuración compartida valorada con una GPU compatible</item>
+        <item quantity="other">%1$d configuraciones compartidas valoradas con una GPU compatible</item>
+    </plurals>
 </resources>

@@ -2718,4 +2718,70 @@
     <string name="control_profile_failed">控制配置操作失败：%1$s</string>
     <string name="control_profile_delete_title">删除控制配置？</string>
     <string name="control_profile_delete_message">要从库中移除“%1$s”吗？已使用此配置的游戏将保留其控制设置。</string>
+    <string name="sort_compatibility">兼容性</string>
+    <string name="community_compatibility_title">社区兼容性</string>
+    <string name="community_compatibility_details">详情</string>
+    <string name="community_compatibility_expanded">已展开</string>
+    <string name="community_compatibility_collapsed">已收起</string>
+    <string name="community_compatibility_short_disclaimer">社区结果并不保证实际表现。</string>
+    <string name="community_compatibility_unreliable_short">结果不稳定；尚未确认能够正常游玩。</string>
+    <string name="community_compatibility_rating_caution_short">来自已评分设备的反馈大多不佳。安装前请查看详情。</string>
+    <string name="community_compatibility_limited_rating_feedback">评分反馈较少，目前尚无正面反馈。</string>
+    <string name="community_compatibility_limited_evidence">缺乏足够的匹配硬件数据，无法确认能够正常游玩。</string>
+    <string name="community_compatibility_mixed_feedback">社区反馈不一。部分配置可能无法运行。</string>
+    <string name="community_compatibility_model_unconfirmed">尚未在您的设备型号上确认。</string>
+    <string name="community_compatibility_negative_feedback">匹配硬件的反馈持续报告较差结果。</string>
+    <string name="community_compatibility_older_activity">只有较早的匹配硬件活动记录。</string>
+    <string name="community_compatibility_performance_caution">报告的性能可能有限。</string>
+    <string name="community_compatibility_checking_short">检查中…</string>
+    <string name="community_compatibility_unavailable_short">不可用</string>
+    <string name="community_compatibility_unavailable">无法加载兼容性信息</string>
+    <string name="community_compatibility_family_negative">您的 GPU 系列中有问题报告。但仅凭这一较大范围的数据，无法确认您的具体 GPU 或设备不能运行。</string>
+    <string name="community_compatibility_missing_tier">响应缺少必要的硬件数据，无法将结果应用于您的设备。</string>
+    <string name="community_compatibility_cached_result">等待刷新成功期间，显示上次已知结果。</string>
+    <string name="community_compatibility_works">极佳</string>
+    <string name="community_compatibility_should">可运行</string>
+    <string name="community_compatibility_may">可能运行</string>
+    <string name="community_compatibility_mixed">不稳定</string>
+    <string name="community_compatibility_wont">无法运行</string>
+    <string name="community_compatibility_unknown">未测试</string>
+    <string name="community_compatibility_checking">正在检查兼容性…</string>
+    <string name="community_compatibility_no_reports">未找到适用于您硬件的共享配置</string>
+    <string name="community_compatibility_configs_unavailable">部分兼容性数据无法加载，正在显示可用信息。</string>
+    <string name="community_compatibility_retry">重试</string>
+    <string name="community_compatibility_refresh">刷新社区兼容性</string>
+    <string name="community_compatibility_fps_median">报告的帧率中位数：%1$d FPS</string>
+    <string name="community_compatibility_fps_device">%1$s（您的设备型号）。</string>
+    <string name="community_compatibility_fps_soc">%1$s（相同芯片组）。</string>
+    <string name="community_compatibility_fps_gpu">%1$s（您的 GPU）。</string>
+    <string name="community_compatibility_fps_family">%1$s（兼容的 GPU）。</string>
+    <string name="community_compatibility_view_reports">浏览配置</string>
+    <string name="community_config_install_before_apply">请先安装此游戏，再应用社区配置。</string>
+    <string name="community_compatibility_works_short">极佳</string>
+    <string name="community_compatibility_should_short">可运行</string>
+    <string name="community_compatibility_may_short">可能运行</string>
+    <string name="community_compatibility_mixed_short">不稳定</string>
+    <string name="community_compatibility_wont_short">无法运行</string>
+    <string name="community_compatibility_unknown_short">未测试</string>
+    <plurals name="community_compatibility_model_sessions">
+        <item quantity="other">基于在您的设备型号上记录的 %1$d 次会话。</item>
+    </plurals>
+    <plurals name="community_compatibility_soc_sessions">
+        <item quantity="other">基于使用相同芯片组记录的 %1$d 次会话。</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_sessions">
+        <item quantity="other">基于使用您的 GPU 记录的 %1$d 次会话。</item>
+    </plurals>
+    <plurals name="community_compatibility_family_sessions">
+        <item quantity="other">基于您的 GPU 系列中记录的 %1$d 次会话。</item>
+    </plurals>
+    <plurals name="community_compatibility_device_evidence">
+        <item quantity="other">来自此设备型号的 %1$d 个已评分共享配置</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_evidence">
+        <item quantity="other">使用您的 GPU 的 %1$d 个已评分共享配置</item>
+    </plurals>
+    <plurals name="community_compatibility_family_evidence">
+        <item quantity="other">使用兼容 GPU 的 %1$d 个已评分共享配置</item>
+    </plurals>
 </resources>

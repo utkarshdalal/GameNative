@@ -2574,4 +2574,77 @@
     <string name="control_profile_failed">Handlingen for styringsprofilen mislykkedes: %1$s</string>
     <string name="control_profile_delete_title">Slet styringsprofil?</string>
     <string name="control_profile_delete_message">Fjern “%1$s” fra biblioteket? Spil, der allerede er konfigureret med profilen, beholder deres styring.</string>
+    <string name="sort_compatibility">Kompatibilitet</string>
+    <string name="community_compatibility_title">Fællesskabets kompatibilitet</string>
+    <string name="community_compatibility_details">Detaljer</string>
+    <string name="community_compatibility_expanded">Udvidet</string>
+    <string name="community_compatibility_collapsed">Sammenfoldet</string>
+    <string name="community_compatibility_short_disclaimer">Fællesskabets resultater er ingen garanti.</string>
+    <string name="community_compatibility_unreliable_short">Upålidelige resultater; det er ikke bekræftet, at spillet kan spilles.</string>
+    <string name="community_compatibility_rating_caution_short">De fleste tilbagemeldinger fra bedømte enheder er ikke positive. Tjek detaljerne før installation.</string>
+    <string name="community_compatibility_limited_rating_feedback">Få bedømmelser; ingen positive indtil videre.</string>
+    <string name="community_compatibility_limited_evidence">Ikke nok data fra tilsvarende hardware til at bekræfte, at spillet kan spilles.</string>
+    <string name="community_compatibility_mixed_feedback">Fællesskabets tilbagemeldinger er blandede. Nogle opsætninger virker muligvis ikke.</string>
+    <string name="community_compatibility_model_unconfirmed">Endnu ikke bekræftet på din enhedsmodel.</string>
+    <string name="community_compatibility_negative_feedback">Tilbagemeldinger fra tilsvarende hardware viser konsekvent dårlige resultater.</string>
+    <string name="community_compatibility_older_activity">Der findes kun ældre aktivitet fra tilsvarende hardware.</string>
+    <string name="community_compatibility_performance_caution">Den rapporterede ydeevne kan være begrænset.</string>
+    <string name="community_compatibility_checking_short">Tjekker…</string>
+    <string name="community_compatibility_unavailable_short">Utilgængelig</string>
+    <string name="community_compatibility_unavailable">Kompatibilitet kunne ikke indlæses</string>
+    <string name="community_compatibility_family_negative">Der er rapporteret problemer i din GPU-familie. Denne brede gruppe alene beviser ikke, at spillet fejler på netop din GPU eller enhed.</string>
+    <string name="community_compatibility_missing_tier">Svaret mangler de hardwaredata, der er nødvendige for at anvende resultatet på din enhed.</string>
+    <string name="community_compatibility_cached_result">Viser det senest kendte resultat, indtil opdateringen lykkes.</string>
+    <string name="community_compatibility_works">Fremragende</string>
+    <string name="community_compatibility_should">Virker</string>
+    <string name="community_compatibility_may">Virker måske</string>
+    <string name="community_compatibility_mixed">Upålidelig</string>
+    <string name="community_compatibility_wont">Virker ikke</string>
+    <string name="community_compatibility_unknown">Ikke testet</string>
+    <string name="community_compatibility_checking">Tjekker kompatibilitet…</string>
+    <string name="community_compatibility_no_reports">Ingen delte konfigurationer fundet til din hardware</string>
+    <string name="community_compatibility_configs_unavailable">Nogle kompatibilitetsdata kunne ikke indlæses. Viser tilgængelige data.</string>
+    <string name="community_compatibility_retry">Prøv igen</string>
+    <string name="community_compatibility_refresh">Opdater fællesskabets kompatibilitet</string>
+    <string name="community_compatibility_fps_median">Rapporteret median: %1$d FPS</string>
+    <string name="community_compatibility_fps_device">%1$s på din enhedsmodel.</string>
+    <string name="community_compatibility_fps_soc">%1$s med samme chipsæt.</string>
+    <string name="community_compatibility_fps_gpu">%1$s med din GPU.</string>
+    <string name="community_compatibility_fps_family">%1$s med kompatible GPU’er.</string>
+    <string name="community_compatibility_view_reports">Konfigurationer</string>
+    <string name="community_config_install_before_apply">Installer dette spil, før du anvender en fællesskabskonfiguration.</string>
+    <string name="community_compatibility_works_short">Fremragende</string>
+    <string name="community_compatibility_should_short">Virker</string>
+    <string name="community_compatibility_may_short">Virker måske</string>
+    <string name="community_compatibility_mixed_short">Upålidelig</string>
+    <string name="community_compatibility_wont_short">Virker ikke</string>
+    <string name="community_compatibility_unknown_short">Ikke testet</string>
+    <plurals name="community_compatibility_model_sessions">
+        <item quantity="one">Baseret på %1$d registreret session på din enhedsmodel.</item>
+        <item quantity="other">Baseret på %1$d registrerede sessioner på din enhedsmodel.</item>
+    </plurals>
+    <plurals name="community_compatibility_soc_sessions">
+        <item quantity="one">Baseret på %1$d registreret session med samme chipsæt.</item>
+        <item quantity="other">Baseret på %1$d registrerede sessioner med samme chipsæt.</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_sessions">
+        <item quantity="one">Baseret på %1$d registreret session med din GPU.</item>
+        <item quantity="other">Baseret på %1$d registrerede sessioner med din GPU.</item>
+    </plurals>
+    <plurals name="community_compatibility_family_sessions">
+        <item quantity="one">Baseret på %1$d registreret session i din GPU-familie.</item>
+        <item quantity="other">Baseret på %1$d registrerede sessioner i din GPU-familie.</item>
+    </plurals>
+    <plurals name="community_compatibility_device_evidence">
+        <item quantity="one">%1$d bedømt delt konfiguration fra denne enhedsmodel</item>
+        <item quantity="other">%1$d bedømte delte konfigurationer fra denne enhedsmodel</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_evidence">
+        <item quantity="one">%1$d bedømt delt konfiguration med din GPU</item>
+        <item quantity="other">%1$d bedømte delte konfigurationer med din GPU</item>
+    </plurals>
+    <plurals name="community_compatibility_family_evidence">
+        <item quantity="one">%1$d bedømt delt konfiguration med en kompatibel GPU</item>
+        <item quantity="other">%1$d bedømte delte konfigurationer med en kompatibel GPU</item>
+    </plurals>
 </resources>
