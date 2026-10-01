@@ -703,8 +703,8 @@
     <string name="use_legacy_drm">Użyj Legacy DRM</string>
     <string name="unpack_files">Rozpakuj pliki</string>
     <string name="unpack_files_description">Używaj tylko w przypadku błędu \'Application Load Error\'. Może zmniejszyć FPS.</string>
-    <string name="load_mods">Wczytuj mody</string>
-    <string name="load_mods_description">Wczytuje loadery modów umieszczone obok pliku wykonywalnego gry, takie jak BepInEx, MelonLoader, REFramework, Ultimate ASI Loader i UE4SS</string>
+    <string name="load_mods">Włącz loadery modów</string>
+    <string name="load_mods_description">Włącza loadery modów &lt;b&gt;oparte na bibliotekach DLL&lt;/b&gt; umieszczone obok pliku wykonywalnego gry, takie jak BepInEx, MelonLoader, REFramework, Ultimate ASI Loader i UE4SS</string>
     <string name="force_dlc">Wymuś DLC</string>
     <string name="force_dlc_description">Włącz tylko jeśli DLC nie są wykrywane lub zapisy z DLC nie działają</string>
     <string name="local_saves_only">Tylko zapisy lokalne</string>

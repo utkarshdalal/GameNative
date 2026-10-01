@@ -683,8 +683,8 @@
     <string name="use_legacy_drm">使用旧版 DRM</string>
     <string name="unpack_files">解压文件</string>
     <string name="unpack_files_description">仅在出现\'应用程序加载错误\'时使用。可能会降低帧率。</string>
-    <string name="load_mods">加载模组</string>
-    <string name="load_mods_description">加载放在游戏可执行文件旁边的模组加载器，例如 BepInEx, MelonLoader, REFramework, Ultimate ASI Loader 和 UE4SS</string>
+    <string name="load_mods">启用模组加载器</string>
+    <string name="load_mods_description">启用放在游戏可执行文件旁边的&lt;b&gt;基于 DLL 的&lt;/b&gt;模组加载器，例如 BepInEx, MelonLoader, REFramework, Ultimate ASI Loader 和 UE4SS</string>
     <string name="force_dlc">强制开启DLC</string>
     <string name="force_dlc_description">仅在未检测到 DLC 或包含 DLC 的存档无法运作时启用</string>
     <string name="launch_steam_client_beta">启动 Steam 客户端</string>

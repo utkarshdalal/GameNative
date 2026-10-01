@@ -1253,8 +1253,8 @@
     <string name="use_legacy_drm">Brug ældre DRM</string>
     <string name="unpack_files">Udpak filer</string>
     <string name="unpack_files_description">Brug kun, hvis du får \'Application Load Error 3:0000065432\'.</string>
-    <string name="load_mods">Indlæs mods</string>
-    <string name="load_mods_description">Indlæser mod-loadere, der ligger ved siden af spillets eksekverbare fil, såsom BepInEx, MelonLoader, REFramework, Ultimate ASI Loader og UE4SS</string>
+    <string name="load_mods">Aktivér mod-loadere</string>
+    <string name="load_mods_description">Aktiverer &lt;b&gt;DLL-baserede&lt;/b&gt; mod-loadere, der ligger ved siden af spillets eksekverbare fil, såsom BepInEx, MelonLoader, REFramework, Ultimate ASI Loader og UE4SS</string>
 
     <!-- TODO: Manual review - Library Status -->
     <string name="library_status_ready">Klar</string>

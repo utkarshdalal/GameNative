@@ -705,8 +705,8 @@
     <string name="use_legacy_drm">レガシー DRM を使用する</string>
     <string name="unpack_files">ファイルを解凍する</string>
     <string name="unpack_files_description">\'Application Load Error 3:0000065432\' が発生した場合にのみ使用してください。</string>
-    <string name="load_mods">MODを読み込む</string>
-    <string name="load_mods_description">ゲームの実行ファイルと同じ場所に置かれたMODローダー（BepInEx, MelonLoader, REFramework, Ultimate ASI Loader、UE4SSなど）を読み込みます</string>
+    <string name="load_mods">MODローダーを有効にする</string>
+    <string name="load_mods_description">ゲームの実行ファイルと同じ場所に置かれた&lt;b&gt;DLLベース&lt;/b&gt;のMODローダー（BepInEx, MelonLoader, REFramework, Ultimate ASI Loader、UE4SSなど）を有効にします</string>
     <string name="force_dlc">強制DLC</string>
     <string name="force_dlc_description">DLC が検出されない場合、または DLC を含む保存が機能しない場合にのみ有効にします</string>
     <string name="local_saves_only">ローカル保存のみ</string>

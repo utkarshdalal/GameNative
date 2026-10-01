@@ -1398,8 +1398,8 @@ https://gamenative.app
     <string name="unknown_app">Неизвестное приложение</string>
     <string name="unpack_files">Распаковать файлы</string>
     <string name="unpack_files_description">Используйте только если вы получаете \'Application Load Error 3:0000065432\'.</string>
-    <string name="load_mods">Загружать моды</string>
-    <string name="load_mods_description">Загружает загрузчики модов, расположенные рядом с исполняемым файлом игры, например BepInEx, MelonLoader, REFramework, Ultimate ASI Loader и UE4SS</string>
+    <string name="load_mods">Включить загрузчики модов</string>
+    <string name="load_mods_description">Включает загрузчики модов &lt;b&gt;на основе DLL&lt;/b&gt;, расположенные рядом с исполняемым файлом игры, например BepInEx, MelonLoader, REFramework, Ultimate ASI Loader и UE4SS</string>
     <string name="unsaved_changes">Несохранённые изменения</string>
     <string name="unsaved_changes_message">У вас есть несохранённые изменения. Вы хотите их сохранить или отменить?</string>
     <string name="untrusted_files_detected">Обнаружены недоверенные файлы</string>
