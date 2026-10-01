@@ -1,5 +1,6 @@
 package app.gamenative.ui.screen.xserver
 
+import androidx.annotation.VisibleForTesting
 import app.gamenative.PluviaApp
 import com.winlator.inputcontrols.Binding
 
@@ -39,8 +40,8 @@ class MouseLookStepper(
     private var remainderX = 0f
     private var remainderY = 0f
 
-    // Frame time of the last step; 0 while idle, so idle time never becomes a step.
-    private var lastStepNanos = 0L
+    // Paces steps at the throttling rate.
+    private val pacer = throttling.Pacer()
 
     // Frame time of the last frame, and the time since the last step: with throttling, a step covers several
     // frames. Each frame gap is capped, not the step, so a low rate doesn't slow the pointer down.
@@ -49,12 +50,15 @@ class MouseLookStepper(
     private val frameLoop = FrameCallbackLoop(::onFrame)
 
     /** Summed horizontal deflection of all held sources, before cursor speed. */
-    val offsetX: Float get() = sum(horizontal = true)
+    @VisibleForTesting
+    internal val offsetX: Float get() = sum(horizontal = true)
 
     /** Summed vertical deflection of all held sources, before cursor speed. */
-    val offsetY: Float get() = sum(horizontal = false)
+    @VisibleForTesting
+    internal val offsetY: Float get() = sum(horizontal = false)
 
-    val isRunning: Boolean get() = frameLoop.isScheduled
+    @VisibleForTesting
+    internal val isRunning: Boolean get() = frameLoop.isScheduled
 
     /**
      * Holds a MOUSE_MOVE_* [binding] for [key] until changed or removed. [offset] is the deflection
@@ -117,7 +121,7 @@ class MouseLookStepper(
         if (contributions.isNotEmpty()) return
         remainderX = 0f
         remainderY = 0f
-        lastStepNanos = 0L
+        pacer.reset()
         lastFrameNanos = 0L
         unsteppedSeconds = 0f
         frameLoop.cancel()
@@ -136,7 +140,7 @@ class MouseLookStepper(
         if (contributions.isEmpty()) return
         if (PluviaApp.isOverlayPaused) {
             // resume() restarts; the pause is not a step
-            lastStepNanos = 0L
+            pacer.reset()
             lastFrameNanos = 0L
             unsteppedSeconds = 0f
             return
@@ -147,11 +151,14 @@ class MouseLookStepper(
             ((frameTimeNanos - lastFrameNanos) / NANOS_PER_SECOND).coerceIn(0f, MAX_STEP_SECONDS)
         }
         lastFrameNanos = frameTimeNanos
-        if (throttling.isDue(lastStepNanos, frameTimeNanos)) step(frameTimeNanos)
+        if (pacer.isDue(frameTimeNanos)) {
+            pacer.onSent(frameTimeNanos)
+            step()
+        }
         frameLoop.schedule()
     }
 
-    private fun step(frameTimeNanos: Long) {
+    private fun step() {
         var deflectionX = 0f
         var deflectionY = 0f
         var speedX = 0f
@@ -168,14 +175,12 @@ class MouseLookStepper(
         }
         // No noise floor: every source is past its own dead zone already (a tuned stick's is the user's).
         if (deflectionX == 0f && deflectionY == 0f) {
-            lastStepNanos = 0L
             unsteppedSeconds = 0f
             return
         }
 
         val dtSeconds = unsteppedSeconds
         unsteppedSeconds = 0f
-        lastStepNanos = frameTimeNanos
 
         val rawDeltaX = speedX * PX_PER_SECOND * dtSeconds + remainderX
         val rawDeltaY = speedY * PX_PER_SECOND * dtSeconds + remainderY

@@ -1,6 +1,5 @@
 package app.gamenative.ui.screen.xserver
 
-import android.os.SystemClock
 import com.winlator.inputcontrols.GamepadState
 import com.winlator.xserver.XServer
 
@@ -41,12 +40,12 @@ class GamepadStateOutput(
     private val lastSent = GamepadState()
     private var hasSent = false
 
-    // SystemClock.elapsedRealtimeNanos() of the last send.
-    private var lastSendNanos = 0L
+    // Paces sends at the throttling rate, on the display frame clock.
+    private val pacer = throttling.Pacer()
 
     // Motion held back by throttling, sent as it is by the first frame on which it is due.
     private var pendingMotion: GamepadState? = null
-    private val frameLoop = FrameCallbackLoop { flushPendingMotion() }
+    private val frameLoop = FrameCallbackLoop(::flushPendingMotion)
 
     /** Sends a discrete change (button, release) right away, if it changes what Wine gets. */
     fun send(state: GamepadState?) {
@@ -56,7 +55,7 @@ class GamepadStateOutput(
     /** Sends stick, trigger or gyro motion if it changed, at most as often as throttling allows. */
     fun sendMotion(state: GamepadState?) {
         if (state == null) return
-        if (!throttling.isDue(lastSendNanos, SystemClock.elapsedRealtimeNanos())) {
+        if (!pacer.isDue(InputThrottling.nowNanos())) {
             pendingMotion = state
             frameLoop.schedule()
             return
@@ -78,14 +77,14 @@ class GamepadStateOutput(
         if (state != null) {
             lastSent.copy(state)
             hasSent = true
-            lastSendNanos = SystemClock.elapsedRealtimeNanos()
+            pacer.onSent(InputThrottling.nowNanos())
         }
         sender.send(state)
     }
 
-    private fun flushPendingMotion() {
+    private fun flushPendingMotion(frameTimeNanos: Long) {
         val state = pendingMotion ?: return
-        if (!throttling.isDue(lastSendNanos, SystemClock.elapsedRealtimeNanos())) {
+        if (!pacer.isDue(frameTimeNanos)) {
             frameLoop.schedule()
             return
         }

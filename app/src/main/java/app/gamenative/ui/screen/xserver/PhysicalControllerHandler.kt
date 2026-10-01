@@ -2,7 +2,6 @@ package app.gamenative.ui.screen.xserver
 
 import android.os.Handler
 import android.os.Looper
-import android.os.SystemClock
 import android.util.Log
 import android.view.InputDevice
 import android.view.KeyEvent
@@ -94,8 +93,8 @@ class PhysicalControllerHandler(
 
     private val joystickValues = FloatArray(JOYSTICK_AXES.size)
 
-    // keyCode -> binding per device: getControllerBinding() is a linear scan, and every motion dispatch
-    // looks up all stick and trigger directions.
+    // Per device: keyCode -> binding (getControllerBinding() is a linear scan, and every motion dispatch looks up
+    // all stick and trigger directions) and the input sources of those directions.
     private val bindingCache = mutableMapOf<Int, BindingCacheEntry>()
 
     // Devices with motion since the last releaseAllActiveInput().
@@ -108,11 +107,11 @@ class PhysicalControllerHandler(
     // Re-evaluate every tracked device on the next frame, throttling aside (radial menu open/close).
     private var fullReevaluationPending = false
 
-    // SystemClock.elapsedRealtimeNanos() of the last dispatch.
-    private var lastInputFlushNanos = 0L
+    // Paces dispatches at the throttling rate, on the display frame clock.
+    private val pacer = throttling.Pacer()
 
     // Runs only while motion waits for a frame: throttling, or a re-evaluation (radial menu).
-    private val frameLoop = FrameCallbackLoop { onFrame() }
+    private val frameLoop = FrameCallbackLoop(::onFrame)
 
     // track which axis keycodes are currently "pressed" so we only release on actual transitions.
     // accessed only from main thread (MotionEvent dispatch + Compose lifecycle), no sync needed.
@@ -373,7 +372,7 @@ class PhysicalControllerHandler(
         // Devices without a controller of their own share the "*" one and its state: dispatch another
         // device's pending motion before this event overwrites it.
         if (dirtyDeviceIds.isNotEmpty() && sharesController(dirtyDeviceIds, controller, event.deviceId)) {
-            flushInput(SystemClock.elapsedRealtimeNanos())
+            flushInput(InputThrottling.nowNanos())
         }
         if (!controller.updateStateFromMotionEvent(event)) return false
 
@@ -385,8 +384,9 @@ class PhysicalControllerHandler(
             trackedDeviceIds.removeAll { it != event.deviceId && currentProfile.getController(it) === controller }
             dirtyDeviceIds.retainAll(trackedDeviceIds)
         }
-        val nowNanos = SystemClock.elapsedRealtimeNanos()
-        if (throttling.isDue(lastInputFlushNanos, nowNanos)) flushInput(nowNanos) else ensureFrameScheduled()
+        // Batched motion arrives during a frame: nowNanos() is that frame's time.
+        val nowNanos = InputThrottling.nowNanos()
+        if (pacer.isDue(nowNanos)) flushInput(nowNanos) else ensureFrameScheduled()
         return true
     }
 
@@ -410,17 +410,16 @@ class PhysicalControllerHandler(
         }
         dirtyDeviceIds.clear()
         fullReevaluationPending = false
-        lastInputFlushNanos = nowNanos
+        pacer.onSent(nowNanos)
         processDevices(currentProfile, deviceIds)
         // Already paced by throttling: sendMotion() would pace it twice.
         gamepadOutput.send(currentProfile.gamepadState)
     }
 
     /** Dispatches throttled motion once due; stops when nothing is waiting. */
-    private fun onFrame() {
+    private fun onFrame(frameTimeNanos: Long) {
         if (PluviaApp.isOverlayPaused || profile == null) return
-        val nowNanos = SystemClock.elapsedRealtimeNanos()
-        if (fullReevaluationPending || throttling.isDue(lastInputFlushNanos, nowNanos)) flushInput(nowNanos)
+        if (fullReevaluationPending || pacer.isDue(frameTimeNanos)) flushInput(frameTimeNanos)
         if (fullReevaluationPending || dirtyDeviceIds.isNotEmpty()) ensureFrameScheduled()
     }
 
