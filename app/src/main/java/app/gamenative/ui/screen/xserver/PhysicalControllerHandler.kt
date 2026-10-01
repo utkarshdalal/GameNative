@@ -54,7 +54,18 @@ class PhysicalControllerHandler(
         val controller: ExternalController,
         val bindingsVersion: Int,
         val bindings: Map<Int, ExternalControllerBinding>,
-    )
+        deviceId: Int,
+    ) {
+        // This device's stick, d-pad and trigger sources, built once instead of on every motion dispatch.
+        val positiveAxisSources = Array(JOYSTICK_AXES.size) {
+            PhysicalInputSource(deviceId, ExternalControllerBinding.getKeyCodeForAxis(JOYSTICK_AXES[it], 1.toByte()))
+        }
+        val negativeAxisSources = Array(JOYSTICK_AXES.size) {
+            PhysicalInputSource(deviceId, ExternalControllerBinding.getKeyCodeForAxis(JOYSTICK_AXES[it], (-1).toByte()))
+        }
+        val leftTriggerSource = PhysicalInputSource(deviceId, KeyEvent.KEYCODE_BUTTON_L2)
+        val rightTriggerSource = PhysicalInputSource(deviceId, KeyEvent.KEYCODE_BUTTON_R2)
+    }
 
     companion object {
         private const val SCROLL_REPEAT_INTERVAL_MS = 90L
@@ -64,6 +75,15 @@ class PhysicalControllerHandler(
         // Hysteresis for triggers bound to keys/buttons; analog bindings follow any pull.
         private const val TRIGGER_PRESS_THRESHOLD = 0.05f
         private const val TRIGGER_RELEASE_THRESHOLD = 0.03f
+
+        private val JOYSTICK_AXES = intArrayOf(
+            MotionEvent.AXIS_X,
+            MotionEvent.AXIS_Y,
+            MotionEvent.AXIS_Z,
+            MotionEvent.AXIS_RZ,
+            MotionEvent.AXIS_HAT_X,
+            MotionEvent.AXIS_HAT_Y,
+        )
     }
 
     private val TAG = "gncontrol"
@@ -72,15 +92,7 @@ class PhysicalControllerHandler(
     private val scrollRepeatLock = Any()
     private val activeScrollBindings = mutableSetOf<Binding>()
 
-    private val joystickAxes = intArrayOf(
-        MotionEvent.AXIS_X,
-        MotionEvent.AXIS_Y,
-        MotionEvent.AXIS_Z,
-        MotionEvent.AXIS_RZ,
-        MotionEvent.AXIS_HAT_X,
-        MotionEvent.AXIS_HAT_Y,
-    )
-    private val joystickValues = FloatArray(joystickAxes.size)
+    private val joystickValues = FloatArray(JOYSTICK_AXES.size)
 
     // keyCode -> binding per device: getControllerBinding() is a linear scan, and every motion dispatch
     // looks up all stick and trigger directions.
@@ -119,21 +131,19 @@ class PhysicalControllerHandler(
     private var radialMenuOpenerKeyCode = KeyEvent.KEYCODE_UNKNOWN
     private var radialMenuOpenerDeviceId = UNKNOWN_DEVICE_ID
 
-    // Same result as controller.getControllerBinding(keyCode): rebuilt when the controller or its bindings change.
-    private fun cachedBinding(controller: ExternalController, deviceId: Int, keyCode: Int): ExternalControllerBinding? {
+    // Its bindings give the same result as controller.getControllerBinding(keyCode). Rebuilt when the controller or
+    // its bindings change; looked up once per device and dispatch.
+    private fun bindingCacheEntry(controller: ExternalController, deviceId: Int): BindingCacheEntry {
         val version = controller.controllerBindingsVersion
-        var entry = bindingCache[deviceId]
-        if (entry == null || entry.controller !== controller || entry.bindingsVersion != version) {
-            val count = controller.controllerBindingCount
-            val bindings = HashMap<Int, ExternalControllerBinding>(count)
-            for (i in 0 until count) {
-                val binding = controller.getControllerBindingAt(i)
-                bindings.putIfAbsent(binding.keyCodeForAxis, binding)
-            }
-            entry = BindingCacheEntry(controller, version, bindings)
-            bindingCache[deviceId] = entry
+        val entry = bindingCache[deviceId]
+        if (entry != null && entry.controller === controller && entry.bindingsVersion == version) return entry
+        val count = controller.controllerBindingCount
+        val bindings = HashMap<Int, ExternalControllerBinding>(count)
+        for (i in 0 until count) {
+            val binding = controller.getControllerBindingAt(i)
+            bindings.putIfAbsent(binding.keyCodeForAxis, binding)
         }
-        return entry.bindings[keyCode]
+        return BindingCacheEntry(controller, version, bindings, deviceId).also { bindingCache[deviceId] = it }
     }
 
     /** Re-evaluates every tracked device on the next frame, without waiting for new motion. */
@@ -434,21 +444,23 @@ class PhysicalControllerHandler(
                 }
             }
         } else {
-            for (deviceId in deviceIds) {
+            for (i in deviceIds.indices) { // indexed: an iterator would allocate on every dispatch
+                val deviceId = deviceIds[i]
                 val controller = currentProfile.getController(deviceId) ?: continue
-                processTriggers(controller, deviceId)
+                val cache = bindingCacheEntry(controller, deviceId)
+                processTriggers(controller, deviceId, cache)
                 if (radialMenuPressed) break // a trigger binding may have just opened the menu
-                processJoystickInput(controller, deviceId)
+                processJoystickInput(controller, cache)
                 if (radialMenuPressed) break
             }
         }
     }
 
-    private fun processTriggers(controller: ExternalController, deviceId: Int) {
-        var controllerBinding = cachedBinding(controller, deviceId, KeyEvent.KEYCODE_BUTTON_L2)
+    private fun processTriggers(controller: ExternalController, deviceId: Int, cache: BindingCacheEntry) {
+        var controllerBinding = cache.bindings[KeyEvent.KEYCODE_BUTTON_L2]
         if (controllerBinding != null) {
             handleTriggerBinding(
-                KeyEvent.KEYCODE_BUTTON_L2,
+                cache.leftTriggerSource,
                 controllerBinding.binding,
                 controllerBinding.bindingCombo,
                 controller.state.triggerL,
@@ -460,10 +472,10 @@ class PhysicalControllerHandler(
             if (radialMenuPressed) return
         }
 
-        controllerBinding = cachedBinding(controller, deviceId, KeyEvent.KEYCODE_BUTTON_R2)
+        controllerBinding = cache.bindings[KeyEvent.KEYCODE_BUTTON_R2]
         if (controllerBinding != null) {
             handleTriggerBinding(
-                KeyEvent.KEYCODE_BUTTON_R2,
+                cache.rightTriggerSource,
                 controllerBinding.binding,
                 controllerBinding.bindingCombo,
                 controller.state.triggerR,
@@ -560,7 +572,7 @@ class PhysicalControllerHandler(
      * thresholds ([ControlElement.isStickDirectionActive]).
      * Extracted from InputControlsView.processJoystickInput()
      */
-    private fun processJoystickInput(controller: ExternalController, deviceId: Int) {
+    private fun processJoystickInput(controller: ExternalController, cache: BindingCacheEntry) {
         joystickValues[0] = controller.state.thumbLX
         joystickValues[1] = controller.state.thumbLY
         joystickValues[2] = controller.state.thumbRX
@@ -568,13 +580,13 @@ class PhysicalControllerHandler(
         joystickValues[4] = controller.state.dPadX.toFloat()
         joystickValues[5] = controller.state.dPadY.toFloat()
 
-        for (i in joystickAxes.indices) {
-            val axis = joystickAxes[i]
+        for (i in JOYSTICK_AXES.indices) {
+            val axis = JOYSTICK_AXES[i]
             val value = joystickValues[i]
-            val positiveSource = PhysicalInputSource(deviceId, ExternalControllerBinding.getKeyCodeForAxis(axis, 1.toByte()))
-            val negativeSource = PhysicalInputSource(deviceId, ExternalControllerBinding.getKeyCodeForAxis(axis, (-1).toByte()))
-            val positiveBinding = cachedBinding(controller, deviceId, positiveSource.keyCode)
-            val negativeBinding = cachedBinding(controller, deviceId, negativeSource.keyCode)
+            val positiveSource = cache.positiveAxisSources[i]
+            val negativeSource = cache.negativeAxisSources[i]
+            val positiveBinding = cache.bindings[positiveSource.keyCode]
+            val negativeBinding = cache.bindings[negativeSource.keyCode]
             val tuned = isTunedStickAxis(axis)
             val positiveActive = isAxisDirectionActive(value, positiveSource, positiveBinding, tuned)
             val negativeActive = isAxisDirectionActive(-value, negativeSource, negativeBinding, tuned)
@@ -644,7 +656,7 @@ class PhysicalControllerHandler(
     }
 
     private fun handleTriggerBinding(
-        keyCode: Int,
+        triggerSource: PhysicalInputSource,
         legacyBinding: Binding,
         bindingCombo: BindingCombo,
         rawValue: Float,
@@ -653,7 +665,6 @@ class PhysicalControllerHandler(
         sourceDeviceId: Int = UNKNOWN_DEVICE_ID,
         sourceController: ExternalController? = null,
     ) {
-        val triggerSource = physicalInputSource(sourceDeviceId, keyCode, sourceController)
         if (bindingCombo.isSequence) {
             val wasActive = triggerSource in activeSequenceTriggerBindings
             val isPressed = rawValue >= if (wasActive) TRIGGER_RELEASE_THRESHOLD else TRIGGER_PRESS_THRESHOLD
