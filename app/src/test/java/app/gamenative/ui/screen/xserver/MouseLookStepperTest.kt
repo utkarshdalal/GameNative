@@ -34,4 +34,27 @@ class MouseLookStepperTest {
         // each frame gap moved about half of this.
         assertTrue("moved $movedX px", movedX in 450..620)
     }
+
+    @Test
+    fun `opposing sources cancelling out don't hold back the next move`() {
+        var movedX = 0
+        val throttling = InputThrottling().apply {
+            enabled = true
+            setRateHz(InputThrottling.MIN_RATE_HZ)
+        }
+        val stepper = MouseLookStepper(throttling) { dx, _ -> movedX += dx }
+        val right = Any()
+        val left = Any()
+
+        stepper.hold(right, Binding.MOUSE_MOVE_RIGHT, 1f, 1f)
+        stepper.hold(left, Binding.MOUSE_MOVE_LEFT, -1f, 1f)
+        shadowOf(Looper.getMainLooper()).idleFor(50, MILLISECONDS)
+        assertTrue("moved $movedX px", movedX == 0)
+
+        // Well inside the 200 ms interval at 5 Hz: the cancelled frames were not steps.
+        stepper.remove(left)
+        shadowOf(Looper.getMainLooper()).idleFor(50, MILLISECONDS)
+        stepper.removeIf { true }
+        assertTrue("moved $movedX px", movedX > 0)
+    }
 }

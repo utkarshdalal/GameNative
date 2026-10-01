@@ -48,17 +48,6 @@ class InputThrottlingTest {
     }
 
     @Test
-    fun `after idle the next send goes out right away, without a catch-up burst`() {
-        val pacer = throttling(30).Pacer()
-        pacer.onSent(0L)
-        val afterIdle = 1_000_000_000L
-        assertTrue(pacer.isDue(afterIdle))
-        pacer.onSent(afterIdle)
-        assertFalse(pacer.isDue(afterIdle + frame60Hz))
-        assertTrue(pacer.isDue(afterIdle + 2 * frame60Hz))
-    }
-
-    @Test
     fun `a forced send ahead of schedule doesn't move it`() {
         val pacer = throttling(30).Pacer()
         pacer.onSent(0L)
@@ -81,5 +70,22 @@ class InputThrottlingTest {
         assertTrue(pacer.isDue(frame60Hz))
         throttling.enabled = true
         assertTrue(pacer.isDue(frame60Hz))
+    }
+
+    @Test
+    fun `a send a whole interval or more late restarts the schedule instead of bursting`() {
+        val interval = 1_000_000_000L / 30
+        val pacer = throttling(30).Pacer()
+        pacer.onSent(interval) // due next at 2 intervals
+        pacer.onSent(3 * interval) // exactly one interval late
+        assertFalse(pacer.isDue(3 * interval + frame60Hz))
+        assertTrue(pacer.isDue(4 * interval))
+
+        // After idle: goes out right away, then the regular interval again.
+        val afterIdle = 10 * interval
+        assertTrue(pacer.isDue(afterIdle))
+        pacer.onSent(afterIdle)
+        assertFalse(pacer.isDue(afterIdle + frame60Hz))
+        assertTrue(pacer.isDue(afterIdle + interval))
     }
 }

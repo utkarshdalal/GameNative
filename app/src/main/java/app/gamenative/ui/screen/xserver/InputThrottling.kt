@@ -66,10 +66,13 @@ class InputThrottling {
             return nextDueNanos == 0L || nowNanos >= nextDueNanos - earlyToleranceNanos()
         }
 
-        /** Records a send at [nowNanos]. One ahead of its due time (forced) leaves the schedule as it is. */
+        /**
+         * Records a send at [nowNanos]. One ahead of its due time (forced) leaves the schedule as it is; one a whole
+         * interval or more late restarts it, rather than sending again on the next frame to catch up.
+         */
         fun onSent(nowNanos: Long) {
             syncSettings()
-            if (nextDueNanos == 0L || nowNanos - nextDueNanos > intervalNanos) {
+            if (nextDueNanos == 0L || nowNanos - nextDueNanos >= intervalNanos) {
                 nextDueNanos = nowNanos + intervalNanos
             } else if (nowNanos >= nextDueNanos - earlyToleranceNanos()) {
                 nextDueNanos += intervalNanos
