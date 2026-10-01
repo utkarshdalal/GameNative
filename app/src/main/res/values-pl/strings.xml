@@ -209,6 +209,7 @@
 
     <!--Winlator-->
     <string name="disabled">Wyłączone</string>
+    <string name="enabled">Włączone</string>
     <string name="copy">Kopiuj</string>
     <string name="stability">Stabilność</string>
     <string name="compatibility">Kompatybilność</string>
@@ -237,7 +238,6 @@
     <string name="remove">Usuń</string>
     <string name="add">Dodaj</string>
     <string name="delete">Usuń</string>
-    <string name="copy_from">Kopiuj z</string>
     <string name="ok">Ok</string>
     <string name="container_config_custom_resolution_title">Ustaw własną rozdzielczość</string>
     <string name="container_config_custom_resolution_separator">x</string>
@@ -478,7 +478,6 @@
     <string name="not_set">Nie ustawiono</string>
 
     <!-- Toast -->
-    <string name="toast_controls_reset">Kontroler zresetowany</string>
     <string name="toast_failed_log_save">Nie udało się zapisać logcat do miejsca docelowego</string>
 
     <!-- Settings -->
@@ -691,9 +690,13 @@
     <string name="pulseaudio_suspend_behavior_thread">Zawieszenie przez wątek (Domyślne)</string>
     <string name="pulseaudio_suspend_behavior_pactl">Zawieszenie przez Pactl (Oszczędzanie energii)</string>
     <string name="pulseaudio_low_latency">Tryb niskiego opóźnienia PulseAudio</string>
+    <string name="microphone_input">Wejście mikrofonu</string>
+    <string name="microphone_input_description">Udostępnia mikrofon urządzenia Wine/Proton jako urządzenie nagrywające. Wymaga uprawnienia do mikrofonu.</string>
     <string name="show_fps">Pokaż FPS</string>
     <string name="portrait_mode">Tryb pionowy</string>
     <string name="portrait_mode_description">Dla kontrolerów typu 8BitDo FlipPad/GameSir Pocket Taco</string>
+    <string name="portrait_below_cutout">Trzymaj pod otworem aparatu</string>
+    <string name="portrait_below_cutout_description">Wyświetla grę pod otworem aparatu w trybie pionowym</string>
     <string name="remove_driver_confirmation">Czy na pewno chcesz usunąć sterownik "%s"? Tej operacji nie można cofnąć</string>
 
     <!-- Container Configuration: Steam Integration -->
@@ -706,7 +709,7 @@
     <string name="force_dlc_description">Włącz tylko jeśli DLC nie są wykrywane lub zapisy z DLC nie działają</string>
     <string name="local_saves_only">Tylko zapisy lokalne</string>
     <string name="local_saves_only_description">Wyłącz synchronizację zapisów w chmurze dla tej gry i przechowuj zapisy tylko na urządzeniu</string>
-    <string name="launch_steam_client_beta">Uruchom Klienta Steam (Beta)</string>
+    <string name="launch_steam_client_beta">Uruchom Klienta Steam</string>
     <string name="steam_offline_mode">Tryb Offline Steam</string>
     <string name="steam_offline_mode_description">Uruchamiaj gry Steam w trybie offline</string>
     <string name="epic_offline_mode">Tryb Offline Epic</string>
@@ -1591,6 +1594,13 @@
     <string name="recommended_support_message">Otrzymujemy prowizję od zakupów dokonanych przez ten link.</string>
     <string name="recommended_about_heading">O tej grze</string>
     <string name="recommended_review_count">Na podstawie %1$s recenzji</string>
+    <string name="library_store_media_page">%1$d z %2$d</string>
+    <string name="library_store_media_fullscreen">Wyświetl multimedia na pełnym ekranie</string>
+    <string name="library_store_media_close">Zamknij multimedia pełnoekranowe</string>
+    <string name="library_store_media_previous">Poprzednie multimedia</string>
+    <string name="library_store_media_next">Następne multimedia</string>
+    <string name="library_store_about_expand">Rozwiń sekcję „O tej grze”</string>
+    <string name="library_store_about_collapse">Zwiń sekcję „O tej grze”</string>
     <string name="review_overwhelmingly_positive">Przytłaczająco pozytywne</string>
     <string name="review_very_positive">Bardzo pozytywne</string>
     <string name="review_mostly_positive">W większości pozytywne</string>
@@ -1628,6 +1638,7 @@
     <string name="hltb_all_styles">Wszystkie style</string>
     <string name="hltb_hours_value">%sh</string>
     <string name="hltb_section_title">HLTB</string>
+    <string name="hltb_show_spoilers">Pokaż spoilery</string>
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
@@ -1741,6 +1752,7 @@
     <string name="filter_five_star_device">Recenzje 5-gwiazdkowe na urządzeniu</string>
     <string name="filter_five_star_gpu">Recenzje 5-gwiazdkowe na GPU</string>
     <string name="filter_proven_gpu">Sprawdzone na twoim GPU</string>
+    <string name="vibration_intensity">Intensywność wibracji</string>
     <string name="option_import_files">Importuj pliki</string>
     <string name="option_export_files">Eksportuj pliki</string>
     <string name="container_files_up">W górę</string>
@@ -1783,6 +1795,7 @@
     <string name="export_files_cancelled">Eksport anulowany</string>
     <string name="export_files_no_container">Uruchom grę raz, aby utworzyć jej kontener, a następnie wyeksportuj pliki.</string>
     <string name="export_files_failed_header">Nie udało się wyeksportować tych plików:</string>
+    <string name="app_filter_vr">Gra VR</string>
     <string name="option_manage_mods">Zarządzaj modami Nexus</string>
     <string name="nexus_search_clear">Wyczyść wyszukiwanie</string>
     <string name="nexus_filter_all">Wszystkie</string>
@@ -2671,4 +2684,32 @@
     <string name="nexus_apply_failure_title">Ostatnia instalacja moda nie powiodła się</string>
     <string name="nexus_apply_failure_description">Mod nie został oznaczony jako zainstalowany. Zmiany cofnięto tam, gdzie można było to bezpiecznie zweryfikować. Sprawdź poniższe błędy plików, a następnie wróć do Rozmieszczenia, aby poprawić lub ponowić instalację moda.</string>
     <string name="nexus_apply_failure_details">Błędy plików: %1$d</string>
+    <string name="control_profiles">Profile sterowania</string>
+    <string name="more_options">Więcej opcji</string>
+    <string name="control_profiles_empty">Brak dostępnych profili sterowania.</string>
+    <string name="control_profile_applied_sections">Zastosowano · %1$d z %2$d ustawień</string>
+    <string name="control_profile_apply">Zastosuj</string>
+    <string name="control_profile_applied">Zastosowano profil sterowania</string>
+    <string name="control_profile_export">Eksportuj</string>
+    <string name="control_profile_create_blank">Pusty profil</string>
+    <string name="control_profile_create_current">Z bieżącego sterowania</string>
+    <string name="control_profile_start_with">Rozpocznij od</string>
+    <string name="control_profile_create_current_hint">Wybierz ustawienia, które mają zostać zapisane z tej gry.</string>
+    <string name="control_profile_create_blank_hint">Rozpocznij z pustym układem elementów sterowania na ekranie.</string>
+    <string name="control_profile_create_applies_hint">Nowy profil zostanie zapisany w bibliotece i natychmiast zastosowany do tej gry.</string>
+    <string name="control_profile_create_and_apply">Utwórz i zastosuj</string>
+    <string name="control_profile_created_applied">Utworzono i zastosowano profil sterowania</string>
+    <string name="control_profile_save_current">Zapisz bieżące sterowanie</string>
+    <string name="control_profile_update_current">Zaktualizuj z bieżącego sterowania</string>
+    <string name="control_profile_sections">Dołączone ustawienia</string>
+    <string name="control_profile_section_on_screen">Elementy sterowania na ekranie</string>
+    <string name="control_profile_section_physical">Kontroler fizyczny</string>
+    <string name="control_profile_controls_count">Elementy sterowania na ekranie: %1$d</string>
+    <string name="control_profile_bindings_count">Przypisania kontrolera fizycznego: %1$d</string>
+    <string name="control_profile_radial_count">Pola menu radialnego: %1$d</string>
+    <string name="control_profile_import_confirm">Dodaj do biblioteki</string>
+    <string name="control_profile_saved">Zapisano profil sterowania</string>
+    <string name="control_profile_failed">Operacja na profilu sterowania nie powiodła się: %1$s</string>
+    <string name="control_profile_delete_title">Usunąć profil sterowania?</string>
+    <string name="control_profile_delete_message">Usunąć „%1$s” z biblioteki? Gry już skonfigurowane z tym profilem zachowają swoje sterowanie.</string>
 </resources>

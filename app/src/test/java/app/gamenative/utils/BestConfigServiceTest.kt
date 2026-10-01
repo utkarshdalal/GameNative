@@ -5,6 +5,8 @@ import android.content.res.Resources
 import androidx.test.core.app.ApplicationProvider
 import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
+import com.winlator.container.Container
+import com.winlator.container.ContainerData
 import java.io.File
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
@@ -328,6 +330,35 @@ class BestConfigServiceTest {
         assertNotNull("Result should not be null", result)
         assertTrue("Result should not be empty", result!!.isNotEmpty())
         assertEquals("0.3.6", result["box64Version"])
+    }
+
+    @Test
+    fun testKnownConfigAppliesSteamClientAndSteamType() {
+        val configJson = """
+            {
+                "dxwrapper": "dxvk",
+                "dxwrapperConfig": "version=1.10.3",
+                "containerVariant": "bionic",
+                "box64Version": "0.3.6",
+                "wineVersion": "proton-9.0-x86_64",
+                "launchRealSteam": true,
+                "steamType": "headless"
+            }
+        """.trimIndent()
+
+        val bestConfig = Json.parseToJsonElement(configJson).jsonObject
+        val parsed = runBlocking { BestConfigService.parseConfigResult(context, bestConfig, "exact_gpu_match", true) }
+
+        assertEquals(true, parsed.config["launchRealSteam"])
+        assertEquals("headless", parsed.config["steamType"])
+
+        val updated = ContainerUtils.applyBestConfigMapToContainerData(
+            containerData = ContainerData(launchRealSteam = false, steamType = Container.STEAM_TYPE_NORMAL),
+            bestConfigMap = parsed.config,
+        )
+
+        assertTrue(updated.launchRealSteam)
+        assertEquals(Container.STEAM_TYPE_HEADLESS, updated.steamType)
     }
 
     @Test

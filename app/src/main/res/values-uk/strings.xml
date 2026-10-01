@@ -195,6 +195,7 @@
 
     <!--Winlator-->
     <string name="disabled">Вимкнено</string>
+    <string name="enabled">Увімкнено</string>
     <string name="copy">Копіювати</string>
     <string name="stability">Стабільність</string>
     <string name="compatibility">Сумісність</string>
@@ -224,7 +225,6 @@
     <string name="remove">Видалити</string>
     <string name="add">Додати</string>
     <string name="delete">Видалити</string>
-    <string name="copy_from">Копіювати з</string>
     <string name="ok">ОК</string>
     <string name="container_config_custom_resolution_title">Встановити власну роздільну здатність</string>
     <string name="container_config_custom_resolution_separator">x</string>
@@ -465,7 +465,6 @@
     <string name="not_set">Не задано</string>
 
     <!-- Toast -->
-    <string name="toast_controls_reset">Елементи керування скинуто</string>
     <string name="toast_failed_log_save">Не вдалося зберегти logcat у місце призначення</string>
 
     <!-- Settings -->
@@ -677,9 +676,13 @@
     <string name="pulseaudio_suspend_behavior_thread">Призупинення через потік (За замовчуванням)</string>
     <string name="pulseaudio_suspend_behavior_pactl">Призупинення через Pactl (Енергозбереження)</string>
     <string name="pulseaudio_low_latency">Режим низької затримки PulseAudio</string>
+    <string name="microphone_input">Мікрофонний вхід</string>
+    <string name="microphone_input_description">Надає мікрофон пристрою Wine/Proton як пристрій запису. Потрібен дозвіл на мікрофон.</string>
     <string name="show_fps">Показати FPS</string>
     <string name="portrait_mode">Портретний режим</string>
     <string name="portrait_mode_description">Для контролерів типу 8BitDo FlipPad/GameSir Pocket Taco</string>
+    <string name="portrait_below_cutout">Тримати під вирізом камери</string>
+    <string name="portrait_below_cutout_description">Показувати гру під вирізом камери в портретному режимі</string>
     <string name="remove_driver_confirmation">Ви впевнені, що хочете видалити драйвер «%s»? Цю дію не можна скасувати.</string>
 
     <!-- Container Configuration: Steam Integration -->
@@ -692,7 +695,7 @@
     <string name="force_dlc_description">Увімкнути лише тоді, якщо не виявлено DLC або не працюють збереження з DLC</string>
     <string name="local_saves_only">Лише локальні збереження</string>
     <string name="local_saves_only_description">Вимкнути синхронізацію хмарних збережень для цієї гри та зберігати збереження лише на пристрої</string>
-    <string name="launch_steam_client_beta">Запустити клієнт Steam (Бета)</string>
+    <string name="launch_steam_client_beta">Запустити клієнт Steam</string>
     <string name="steam_offline_mode">Режим Офлайн Steam</string>
     <string name="steam_offline_mode_description">Запускати ігри Steam в офлайн режимі</string>
     <string name="epic_offline_mode">Режим Офлайн Epic</string>
@@ -1587,6 +1590,13 @@
     <string name="recommended_support_message">Ми отримуємо комісію з покупок, здійснених за цим посиланням.</string>
     <string name="recommended_about_heading">Про цю гру</string>
     <string name="recommended_review_count">На основі %1$s відгуків</string>
+    <string name="library_store_media_page">%1$d з %2$d</string>
+    <string name="library_store_media_fullscreen">Переглянути медіа на весь екран</string>
+    <string name="library_store_media_close">Закрити повноекранний перегляд</string>
+    <string name="library_store_media_previous">Попередній медіафайл</string>
+    <string name="library_store_media_next">Наступний медіафайл</string>
+    <string name="library_store_about_expand">Розгорнути розділ «Про цю гру»</string>
+    <string name="library_store_about_collapse">Згорнути розділ «Про цю гру»</string>
     <string name="review_overwhelmingly_positive">Надзвичайно позитивні</string>
     <string name="review_very_positive">Дуже позитивні</string>
     <string name="review_mostly_positive">Переважно позитивні</string>
@@ -1624,6 +1634,7 @@
     <string name="hltb_all_styles">Усі стилі</string>
     <string name="hltb_hours_value">%sh</string>
     <string name="hltb_section_title">HLTB</string>
+    <string name="hltb_show_spoilers">Показати спойлери</string>
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
@@ -1737,6 +1748,7 @@
     <string name="filter_five_star_device">5-зіркові відгуки на пристрої</string>
     <string name="filter_five_star_gpu">5-зіркові відгуки на GPU</string>
     <string name="filter_proven_gpu">Перевірено на вашому GPU</string>
+    <string name="vibration_intensity">Інтенсивність вібрації</string>
     <string name="option_import_files">Імпорт файлів</string>
     <string name="option_export_files">Експорт файлів</string>
     <string name="container_files_up">Угору</string>
@@ -1779,6 +1791,7 @@
     <string name="export_files_cancelled">Експорт скасовано</string>
     <string name="export_files_no_container">Запустіть гру один раз, щоб створити її контейнер, а потім експортуйте файли.</string>
     <string name="export_files_failed_header">Не вдалося експортувати ці файли:</string>
+    <string name="app_filter_vr">VR-гра</string>
     <string name="option_manage_mods">Керування модами Nexus</string>
     <string name="nexus_search_clear">Очистити пошук</string>
     <string name="nexus_filter_all">Усі</string>
@@ -2667,4 +2680,32 @@
     <string name="nexus_apply_failure_title">Останнє встановлення мода не вдалося</string>
     <string name="nexus_apply_failure_description">Мод не позначено як встановлений. Зміни скасовано там, де це вдалося безпечно перевірити. Перегляньте помилки файлів нижче, а потім поверніться до розміщення, щоб виправити або повторити встановлення.</string>
     <string name="nexus_apply_failure_details">Помилки файлів: %1$d</string>
+    <string name="control_profiles">Профілі керування</string>
+    <string name="more_options">Додаткові параметри</string>
+    <string name="control_profiles_empty">Немає доступних профілів керування.</string>
+    <string name="control_profile_applied_sections">Застосовано · %1$d з %2$d налаштувань</string>
+    <string name="control_profile_apply">Застосувати</string>
+    <string name="control_profile_applied">Профіль керування застосовано</string>
+    <string name="control_profile_export">Експортувати</string>
+    <string name="control_profile_create_blank">Порожній профіль</string>
+    <string name="control_profile_create_current">З поточного керування</string>
+    <string name="control_profile_start_with">Почати з</string>
+    <string name="control_profile_create_current_hint">Виберіть налаштування цієї гри, які слід зберегти.</string>
+    <string name="control_profile_create_blank_hint">Почати з порожньої схеми екранного керування.</string>
+    <string name="control_profile_create_applies_hint">Новий профіль буде збережено в бібліотеці й одразу застосовано до цієї гри.</string>
+    <string name="control_profile_create_and_apply">Створити й застосувати</string>
+    <string name="control_profile_created_applied">Профіль керування створено й застосовано</string>
+    <string name="control_profile_save_current">Зберегти поточне керування</string>
+    <string name="control_profile_update_current">Оновити з поточного керування</string>
+    <string name="control_profile_sections">Включені налаштування</string>
+    <string name="control_profile_section_on_screen">Екранне керування</string>
+    <string name="control_profile_section_physical">Фізичний контролер</string>
+    <string name="control_profile_controls_count">Елементів екранного керування: %1$d</string>
+    <string name="control_profile_bindings_count">Призначень фізичного контролера: %1$d</string>
+    <string name="control_profile_radial_count">Секторів радіального меню: %1$d</string>
+    <string name="control_profile_import_confirm">Додати до бібліотеки</string>
+    <string name="control_profile_saved">Профіль керування збережено</string>
+    <string name="control_profile_failed">Не вдалося виконати операцію з профілем керування: %1$s</string>
+    <string name="control_profile_delete_title">Видалити профіль керування?</string>
+    <string name="control_profile_delete_message">Видалити «%1$s» з бібліотеки? Ігри, уже налаштовані з ним, збережуть своє керування.</string>
 </resources>

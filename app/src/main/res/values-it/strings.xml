@@ -200,6 +200,7 @@
 
     <!--Winlator-->
     <string name="disabled">Disabilitato</string>
+    <string name="enabled">Attivato</string>
     <string name="copy">Copia</string>
     <string name="stability">Stabilità</string>
     <string name="compatibility">Compatibilità</string>
@@ -229,7 +230,6 @@
     <string name="remove">Rimuovi</string>
     <string name="add">Aggiungi</string>
     <string name="delete">Elimina</string>
-    <string name="copy_from">Copia Da</string>
     <string name="ok">Ok</string>
     <string name="container_config_custom_resolution_title">Imposta Risoluzione Personalizzata</string>
     <string name="container_config_custom_resolution_separator">x</string>
@@ -470,7 +470,6 @@
     <string name="not_set">Non Impostato</string>
 
     <!-- Toast -->
-    <string name="toast_controls_reset">Controlli reimpostati</string>
     <string name="toast_failed_log_save">Impossibile salvare logcat nella destinazione</string>
 
     <!-- Settings -->
@@ -682,9 +681,13 @@
     <string name="pulseaudio_suspend_behavior_thread">Sospendi tramite Thread (Predefinito)</string>
     <string name="pulseaudio_suspend_behavior_pactl">Sospendi tramite Pactl (Risparmio energetico)</string>
     <string name="pulseaudio_low_latency">Modalità a bassa latenza PulseAudio</string>
+    <string name="microphone_input">Ingresso microfono</string>
+    <string name="microphone_input_description">Espone il microfono del dispositivo a Wine/Proton come dispositivo di registrazione. Richiede l\'autorizzazione del microfono.</string>
     <string name="show_fps">Mostra FPS</string>
     <string name="portrait_mode">Modalità verticale</string>
     <string name="portrait_mode_description">Per controller tipo 8BitDo FlipPad/GameSir Pocket Taco</string>
+    <string name="portrait_below_cutout">Mantieni sotto il foro della fotocamera</string>
+    <string name="portrait_below_cutout_description">Mostra il gioco sotto il foro della fotocamera in modalità verticale</string>
     <string name="remove_driver_confirmation">Sei sicuro di voler rimuovere il driver "%s"? Questo non può essere annullato</string>
 
     <!-- Container Configuration: Steam Integration -->
@@ -697,7 +700,7 @@
     <string name="force_dlc_description">Abilita solo se i DLC non vengono rilevati o i salvataggi con DLC non funzionano</string>
     <string name="local_saves_only">Solo salvataggi locali</string>
     <string name="local_saves_only_description">Disabilita la sincronizzazione dei salvataggi cloud per questo gioco e mantieni i salvataggi solo sul dispositivo</string>
-    <string name="launch_steam_client_beta">Avvia Client Steam (Beta)</string>
+    <string name="launch_steam_client_beta">Avvia Client Steam</string>
     <string name="steam_offline_mode">Modalità Offline Steam</string>
     <string name="steam_offline_mode_description">Avvia i giochi Steam in modalità offline</string>
     <string name="epic_offline_mode">Modalità Offline Epic</string>
@@ -1582,6 +1585,13 @@
     <string name="recommended_support_message">Riceviamo una commissione sugli acquisti effettuati tramite questo link.</string>
     <string name="recommended_about_heading">Informazioni sul gioco</string>
     <string name="recommended_review_count">Basato su %1$s recensioni</string>
+    <string name="library_store_media_page">%1$d di %2$d</string>
+    <string name="library_store_media_fullscreen">Visualizza contenuti multimediali a schermo intero</string>
+    <string name="library_store_media_close">Chiudi i contenuti multimediali a schermo intero</string>
+    <string name="library_store_media_previous">Contenuto multimediale precedente</string>
+    <string name="library_store_media_next">Contenuto multimediale successivo</string>
+    <string name="library_store_about_expand">Espandi Informazioni sul gioco</string>
+    <string name="library_store_about_collapse">Comprimi Informazioni sul gioco</string>
     <string name="review_overwhelmingly_positive">Estremamente positivo</string>
     <string name="review_very_positive">Molto positivo</string>
     <string name="review_mostly_positive">Perlopiù positivo</string>
@@ -1619,6 +1629,7 @@
     <string name="hltb_all_styles">Tutti gli stili</string>
     <string name="hltb_hours_value">%sh</string>
     <string name="hltb_section_title">HLTB</string>
+    <string name="hltb_show_spoilers">Mostra spoiler</string>
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
@@ -1732,6 +1743,7 @@
     <string name="filter_five_star_device">Recensioni a 5 stelle sul dispositivo</string>
     <string name="filter_five_star_gpu">Recensioni a 5 stelle sulla GPU</string>
     <string name="filter_proven_gpu">Collaudato sulla tua GPU</string>
+    <string name="vibration_intensity">Intensità della vibrazione</string>
     <string name="option_import_files">Importa file</string>
     <string name="option_export_files">Esporta file</string>
     <string name="container_files_up">Su</string>
@@ -1774,6 +1786,7 @@
     <string name="export_files_cancelled">Esportazione annullata</string>
     <string name="export_files_no_container">Avvia il gioco una volta per creare il suo container, poi esporta i file.</string>
     <string name="export_files_failed_header">Impossibile esportare questi file:</string>
+    <string name="app_filter_vr">Gioco VR</string>
     <string name="option_manage_mods">Gestisci mod Nexus</string>
     <string name="nexus_search_clear">Cancella ricerca</string>
     <string name="nexus_filter_all">Tutti</string>
@@ -2656,4 +2669,32 @@
     <string name="nexus_apply_failure_title">Ultima installazione del mod non riuscita</string>
     <string name="nexus_apply_failure_description">Il mod non è stato contrassegnato come installato. Le modifiche sono state annullate dove era possibile verificarle in sicurezza. Controlla gli errori dei file qui sotto, poi torna a Posizionamento per correggere o riprovare questo mod.</string>
     <string name="nexus_apply_failure_details">Errori dei file: %1$d</string>
+    <string name="control_profiles">Profili di controllo</string>
+    <string name="more_options">Altre opzioni</string>
+    <string name="control_profiles_empty">Nessun profilo di controllo disponibile.</string>
+    <string name="control_profile_applied_sections">Applicate · %1$d di %2$d impostazioni</string>
+    <string name="control_profile_apply">Applica</string>
+    <string name="control_profile_applied">Profilo di controllo applicato</string>
+    <string name="control_profile_export">Esporta</string>
+    <string name="control_profile_create_blank">Profilo vuoto</string>
+    <string name="control_profile_create_current">Dai controlli attuali</string>
+    <string name="control_profile_start_with">Inizia con</string>
+    <string name="control_profile_create_current_hint">Scegli quali impostazioni acquisire da questo gioco.</string>
+    <string name="control_profile_create_blank_hint">Inizia con una disposizione vuota dei controlli su schermo.</string>
+    <string name="control_profile_create_applies_hint">Il nuovo profilo verrà salvato nella raccolta e applicato subito a questo gioco.</string>
+    <string name="control_profile_create_and_apply">Crea e applica</string>
+    <string name="control_profile_created_applied">Profilo di controllo creato e applicato</string>
+    <string name="control_profile_save_current">Salva controlli attuali</string>
+    <string name="control_profile_update_current">Aggiorna dai controlli attuali</string>
+    <string name="control_profile_sections">Impostazioni incluse</string>
+    <string name="control_profile_section_on_screen">Controlli su schermo</string>
+    <string name="control_profile_section_physical">Controller fisico</string>
+    <string name="control_profile_controls_count">%1$d controlli su schermo</string>
+    <string name="control_profile_bindings_count">%1$d associazioni del controller fisico</string>
+    <string name="control_profile_radial_count">%1$d spazi del menu radiale</string>
+    <string name="control_profile_import_confirm">Aggiungi alla raccolta</string>
+    <string name="control_profile_saved">Profilo di controllo salvato</string>
+    <string name="control_profile_failed">Operazione del profilo di controllo non riuscita: %1$s</string>
+    <string name="control_profile_delete_title">Eliminare il profilo di controllo?</string>
+    <string name="control_profile_delete_message">Rimuovere “%1$s” dalla raccolta? I giochi già configurati con questo profilo manterranno i propri controlli.</string>
 </resources>

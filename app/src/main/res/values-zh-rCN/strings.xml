@@ -198,6 +198,7 @@
 
     <!-- Winlator -->
     <string name="disabled">已禁用</string>
+    <string name="enabled">已启用</string>
     <string name="copy">复制</string>
     <string name="stability">稳定</string>
     <string name="compatibility">兼容性</string>
@@ -227,7 +228,6 @@
     <string name="remove">移除</string>
     <string name="add">添加</string>
     <string name="delete">删除</string>
-    <string name="copy_from">从…复制</string>
     <string name="ok">确认</string>
     <string name="storage_info">存储信息</string>
     <string name="duplicate">复制</string>
@@ -462,7 +462,6 @@
     <string name="not_set">未设置</string>
 
     <!-- 提示消息 -->
-    <string name="toast_controls_reset">控制器已重置</string>
     <string name="toast_failed_log_save">无法将 logcat 保存到目标</string>
 
     <!-- 设置 -->
@@ -671,9 +670,13 @@
     <string name="pulseaudio_suspend_behavior_thread">通过线程暂停（默认）</string>
     <string name="pulseaudio_suspend_behavior_pactl">通过 Pactl 暂停（省电）</string>
     <string name="pulseaudio_low_latency">PulseAudio 低延迟模式</string>
+    <string name="microphone_input">麦克风输入</string>
+    <string name="microphone_input_description">将设备麦克风作为录音设备提供给 Wine/Proton。需要麦克风权限。</string>
     <string name="show_fps">显示帧率</string>
     <string name="portrait_mode">竖屏模式</string>
     <string name="portrait_mode_description">适用于 8BitDo FlipPad/GameSir Pocket Taco 类型控制器</string>
+    <string name="portrait_below_cutout">显示在摄像头挖孔下方</string>
+    <string name="portrait_below_cutout_description">在竖屏模式下将游戏画面显示在摄像头挖孔下方</string>
     <string name="remove_driver_confirmation">确定要移除驱动程序“%s”？此操作无法撤销</string>
 
     <!-- 容器配置：Steam 集成 -->
@@ -684,7 +687,7 @@
     <string name="load_mods_description">加载放在游戏可执行文件旁边的模组加载器，例如 BepInEx, MelonLoader, REFramework, Ultimate ASI Loader 和 UE4SS</string>
     <string name="force_dlc">强制开启DLC</string>
     <string name="force_dlc_description">仅在未检测到 DLC 或包含 DLC 的存档无法运作时启用</string>
-    <string name="launch_steam_client_beta">启动 Steam 客户端（Beta）</string>
+    <string name="launch_steam_client_beta">启动 Steam 客户端</string>
     <string name="steam_offline_mode">Steam 离线模式</string>
     <string name="steam_offline_mode_description">以离线模式启动 Steam 游戏</string>
     <string name="epic_offline_mode">Epic 离线模式</string>
@@ -1558,6 +1561,13 @@
     <string name="recommended_support_message">通过此链接购买，我们会获得佣金。</string>
     <string name="recommended_about_heading">关于本游戏</string>
     <string name="recommended_review_count">基于 %1$s 条评价</string>
+    <string name="library_store_media_page">第 %1$d 项，共 %2$d 项</string>
+    <string name="library_store_media_fullscreen">全屏查看媒体</string>
+    <string name="library_store_media_close">关闭全屏媒体</string>
+    <string name="library_store_media_previous">上一个媒体</string>
+    <string name="library_store_media_next">下一个媒体</string>
+    <string name="library_store_about_expand">展开“关于本游戏”</string>
+    <string name="library_store_about_collapse">收起“关于本游戏”</string>
     <string name="review_overwhelmingly_positive">好评如潮</string>
     <string name="review_very_positive">特别好评</string>
     <string name="review_mostly_positive">多半好评</string>
@@ -1677,6 +1687,7 @@
     <string name="hltb_all_styles">所有风格</string>
     <string name="hltb_hours_value">%sh</string>
     <string name="hltb_section_title">HLTB</string>
+    <string name="hltb_show_spoilers">显示剧透</string>
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
@@ -1758,6 +1769,7 @@
     <string name="filter_five_star_device">设备上的五星好评</string>
     <string name="filter_five_star_gpu">GPU上的五星好评</string>
     <string name="filter_proven_gpu">已在您的GPU上验证</string>
+    <string name="vibration_intensity">振动强度</string>
     <string name="option_import_files">导入文件</string>
     <string name="option_export_files">导出文件</string>
     <string name="container_files_up">上一级</string>
@@ -1800,6 +1812,7 @@
     <string name="export_files_cancelled">导出已取消</string>
     <string name="export_files_no_container">请先启动一次游戏以创建其容器，然后再导出文件。</string>
     <string name="export_files_failed_header">以下文件无法导出：</string>
+    <string name="app_filter_vr">VR 游戏</string>
     <string name="option_manage_mods">管理 Nexus 模组</string>
     <string name="nexus_search_clear">清除搜索</string>
     <string name="nexus_filter_all">全部</string>
@@ -2679,4 +2692,32 @@
     <string name="nexus_apply_failure_title">上次模组安装失败</string>
     <string name="nexus_apply_failure_description">该模组未被标记为已安装。对于能够安全核实的更改，已尝试回滚。请查看下方的文件错误，然后返回放置页面进行修正或重试。</string>
     <string name="nexus_apply_failure_details">文件错误：%1$d</string>
+    <string name="control_profiles">控制配置</string>
+    <string name="more_options">更多选项</string>
+    <string name="control_profiles_empty">没有可用的控制配置。</string>
+    <string name="control_profile_applied_sections">已应用 · %2$d 项设置中的 %1$d 项</string>
+    <string name="control_profile_apply">应用</string>
+    <string name="control_profile_applied">已应用控制配置</string>
+    <string name="control_profile_export">导出</string>
+    <string name="control_profile_create_blank">空白配置</string>
+    <string name="control_profile_create_current">从当前控制设置创建</string>
+    <string name="control_profile_start_with">开始方式</string>
+    <string name="control_profile_create_current_hint">选择要从此游戏保存的设置。</string>
+    <string name="control_profile_create_blank_hint">从空白的屏幕控制布局开始。</string>
+    <string name="control_profile_create_applies_hint">新配置将保存到库中并立即应用到此游戏。</string>
+    <string name="control_profile_create_and_apply">创建并应用</string>
+    <string name="control_profile_created_applied">已创建并应用控制配置</string>
+    <string name="control_profile_save_current">保存当前控制设置</string>
+    <string name="control_profile_update_current">从当前控制设置更新</string>
+    <string name="control_profile_sections">包含的设置</string>
+    <string name="control_profile_section_on_screen">屏幕控制</string>
+    <string name="control_profile_section_physical">实体控制器</string>
+    <string name="control_profile_controls_count">%1$d 个屏幕控制</string>
+    <string name="control_profile_bindings_count">%1$d 个实体控制器绑定</string>
+    <string name="control_profile_radial_count">%1$d 个径向菜单槽位</string>
+    <string name="control_profile_import_confirm">添加到库</string>
+    <string name="control_profile_saved">已保存控制配置</string>
+    <string name="control_profile_failed">控制配置操作失败：%1$s</string>
+    <string name="control_profile_delete_title">删除控制配置？</string>
+    <string name="control_profile_delete_message">要从库中移除“%1$s”吗？已使用此配置的游戏将保留其控制设置。</string>
 </resources>

@@ -269,6 +269,13 @@ object PrefManager {
             setPref(SHARPNESS_DENOISE, value.coerceIn(0, 100))
         }
 
+    private val VIBRATION_INTENSITY = intPreferencesKey("vibration_intensity")
+    var vibrationIntensity: Int
+        get() = getPref(VIBRATION_INTENSITY, 100).coerceIn(0, 100)
+        set(value) {
+            setPref(VIBRATION_INTENSITY, value.coerceIn(0, 100))
+        }
+
     private val CONTAINER_VARIANT = stringPreferencesKey("container_variant")
     var containerVariant: String
         get() = getPref(CONTAINER_VARIANT, Container.DEFAULT_VARIANT)
@@ -344,6 +351,13 @@ object PrefManager {
         get() = getPref(PULSEAUDIO_LOW_LATENCY, false)
         set(value) {
             setPref(PULSEAUDIO_LOW_LATENCY, value)
+        }
+
+    private val MIC_ENABLED = booleanPreferencesKey("mic_enabled")
+    var micEnabled: Boolean
+        get() = getPref(MIC_ENABLED, false)
+        set(value) {
+            setPref(MIC_ENABLED, value)
         }
 
     private val WIN_COMPONENTS = stringPreferencesKey("wincomponents")
@@ -793,6 +807,13 @@ object PrefManager {
             setPref(PORTRAIT_MODE, value)
         }
 
+    private val PORTRAIT_BELOW_CUTOUT = booleanPreferencesKey("portrait_below_cutout")
+    var portraitBelowCutout: Boolean
+        get() = getPref(PORTRAIT_BELOW_CUTOUT, false)
+        set(value) {
+            setPref(PORTRAIT_BELOW_CUTOUT, value)
+        }
+
     private val BOX_86_VERSION = stringPreferencesKey("box86_version")
     var box86Version: String
         get() = getPref(BOX_86_VERSION, DefaultVersion.BOX86)
@@ -911,7 +932,9 @@ object PrefManager {
     private val LIBRARY_FILTER = intPreferencesKey("library_filter")
     var libraryFilter: EnumSet<AppFilter>
         get() {
-            val value = getPref(LIBRARY_FILTER, AppFilter.toFlags(EnumSet.of(AppFilter.GAME, AppFilter.SHARED)))
+            val defaultFilter = EnumSet.of(AppFilter.GAME, AppFilter.SHARED)
+            if (BuildConfig.XR_BUILD) defaultFilter.add(AppFilter.VR)
+            val value = getPref(LIBRARY_FILTER, AppFilter.toFlags(defaultFilter))
             return AppFilter.fromFlags(value)
         }
         set(value) {

@@ -3,6 +3,7 @@ package app.gamenative.gamefixes
 import android.content.Context
 import app.gamenative.data.GameSource
 import com.winlator.container.Container
+import com.winlator.container.ContainerFiles
 import java.io.File
 import java.nio.charset.StandardCharsets
 import timber.log.Timber
@@ -28,7 +29,8 @@ class PrefixFileFix(
     ): Boolean {
         val target = File(container.rootDir, ".wine/drive_c/$driveCRelativePath")
         return runCatching {
-            val existing = if (target.isFile) target.readText(StandardCharsets.UTF_8) else null
+            val current = ContainerFiles.resolve(container, "drive_c/$driveCRelativePath")
+            val existing = if (current?.isFile == true) current.readText(StandardCharsets.UTF_8) else null
             if (existing == content) {
                 return false
             }

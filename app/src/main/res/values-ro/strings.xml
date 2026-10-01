@@ -199,6 +199,7 @@
     <string name="custom_game_unknown_developer">Necunoscut</string>
     <!--Winlator-->
     <string name="disabled">Dezactivat</string>
+    <string name="enabled">Activat</string>
     <string name="copy">Copiază</string>
     <string name="stability">Stabilitate</string>
     <string name="compatibility">Compatibilitate</string>
@@ -227,7 +228,6 @@
     <string name="remove">Elimină</string>
     <string name="add">Adaugă</string>
     <string name="delete">Șterge</string>
-    <string name="copy_from">Copiază din</string>
     <string name="ok">OK</string>
     <string name="container_config_custom_resolution_title">Setează rezoluție personalizată</string>
     <string name="container_config_custom_resolution_separator">x</string>
@@ -468,7 +468,6 @@
     <string name="not_set">Nesetat</string>
 
     <!-- Toast -->
-    <string name="toast_controls_reset">Controalele au fost resetate</string>
     <string name="toast_failed_log_save">Nu s-a putut salva logcat la destinație</string>
 
     <!-- Settings -->
@@ -683,9 +682,13 @@
 	<string name="pulseaudio_suspend_behavior_thread">Suspendare prin Thread (Implicit)</string>
 	<string name="pulseaudio_suspend_behavior_pactl">Suspendare prin Pactl (Economisire energie)</string>
 	<string name="pulseaudio_low_latency">Mod latență redusă PulseAudio</string>
+	<string name="microphone_input">Intrare microfon</string>
+	<string name="microphone_input_description">Expune microfonul dispozitivului către Wine/Proton ca dispozitiv de înregistrare. Necesită permisiunea pentru microfon.</string>
 	<string name="show_fps">Afișează FPS</string>
 	<string name="portrait_mode">Mod portret</string>
 	<string name="portrait_mode_description">Pentru controlere de tip 8BitDo FlipPad/GameSir Pocket Taco</string>
+	<string name="portrait_below_cutout">Păstrează sub decupajul camerei</string>
+	<string name="portrait_below_cutout_description">Afișează jocul sub decupajul camerei în modul portret</string>
 	<string name="remove_driver_confirmation">Sigur vrei să elimini driverul „%s”? Această acțiune nu poate fi anulată</string>
 
     <!-- Container Configuration: Steam Integration -->
@@ -698,7 +701,7 @@
 	<string name="force_dlc_description">Activează doar dacă DLC‑urile nu sunt detectate sau salvările cu DLC nu funcționează</string>
 	<string name="local_saves_only">Doar salvări locale</string>
 	<string name="local_saves_only_description">Dezactivează sincronizarea salvărilor în cloud pentru acest joc și păstrează salvările doar pe dispozitiv</string>
-	<string name="launch_steam_client_beta">Pornește Steam Client (Beta)</string>
+	<string name="launch_steam_client_beta">Pornește Steam Client</string>
 	<string name="steam_offline_mode">Mod Offline Steam</string>
 	<string name="steam_offline_mode_description">Pornește jocurile Steam în mod offline</string>
 	<string name="epic_offline_mode">Mod Offline Epic</string>
@@ -1582,6 +1585,13 @@
     <string name="recommended_support_message">Primim un comision pentru achizițiile efectuate prin acest link.</string>
     <string name="recommended_about_heading">Despre acest joc</string>
     <string name="recommended_review_count">Pe baza a %1$s recenzii</string>
+    <string name="library_store_media_page">%1$d din %2$d</string>
+    <string name="library_store_media_fullscreen">Vizualizează conținutul media pe ecran complet</string>
+    <string name="library_store_media_close">Închide conținutul media pe ecran complet</string>
+    <string name="library_store_media_previous">Element media anterior</string>
+    <string name="library_store_media_next">Element media următor</string>
+    <string name="library_store_about_expand">Extinde Despre acest joc</string>
+    <string name="library_store_about_collapse">Restrânge Despre acest joc</string>
     <string name="review_overwhelmingly_positive">Copleșitor de pozitiv</string>
     <string name="review_very_positive">Foarte pozitiv</string>
     <string name="review_mostly_positive">Majoritar pozitiv</string>
@@ -1619,6 +1629,7 @@
     <string name="hltb_all_styles">Toate stilurile</string>
     <string name="hltb_hours_value">%sh</string>
     <string name="hltb_section_title">HLTB</string>
+    <string name="hltb_show_spoilers">Afișează spoilere</string>
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
@@ -1732,6 +1743,7 @@
     <string name="filter_five_star_device">Recenzii de 5 stele pe dispozitiv</string>
     <string name="filter_five_star_gpu">Recenzii de 5 stele pe GPU</string>
     <string name="filter_proven_gpu">Testat pe GPU-ul tău</string>
+    <string name="vibration_intensity">Intensitatea vibrațiilor</string>
     <string name="option_import_files">Importă fișiere</string>
     <string name="option_export_files">Exportă fișiere</string>
     <string name="container_files_up">Sus</string>
@@ -1774,6 +1786,7 @@
     <string name="export_files_cancelled">Export anulat</string>
     <string name="export_files_no_container">Pornește jocul o dată pentru a-i crea containerul, apoi exportă fișierele.</string>
     <string name="export_files_failed_header">Aceste fișiere nu au putut fi exportate:</string>
+    <string name="app_filter_vr">Joc VR</string>
     <string name="option_manage_mods">Gestionează modurile Nexus</string>
     <string name="nexus_search_clear">Șterge căutarea</string>
     <string name="nexus_filter_all">Toate</string>
@@ -2670,4 +2683,32 @@
     <string name="nexus_apply_failure_title">Ultima instalare a modului a eșuat</string>
     <string name="nexus_apply_failure_description">Modul nu a fost marcat ca instalat. Modificările au fost anulate acolo unde acest lucru a putut fi verificat în siguranță. Verifică erorile de fișier de mai jos, apoi revino la Plasare pentru a corecta sau reîncerca instalarea.</string>
     <string name="nexus_apply_failure_details">Erori de fișier: %1$d</string>
+    <string name="control_profiles">Profiluri de control</string>
+    <string name="more_options">Mai multe opțiuni</string>
+    <string name="control_profiles_empty">Nu sunt disponibile profiluri de control.</string>
+    <string name="control_profile_applied_sections">Aplicat · %1$d din %2$d setări</string>
+    <string name="control_profile_apply">Aplică</string>
+    <string name="control_profile_applied">Profil de control aplicat</string>
+    <string name="control_profile_export">Exportă</string>
+    <string name="control_profile_create_blank">Profil gol</string>
+    <string name="control_profile_create_current">Din controalele curente</string>
+    <string name="control_profile_start_with">Începe cu</string>
+    <string name="control_profile_create_current_hint">Alege setările care vor fi preluate din acest joc.</string>
+    <string name="control_profile_create_blank_hint">Începe cu un aspect gol al comenzilor de pe ecran.</string>
+    <string name="control_profile_create_applies_hint">Noul profil va fi salvat în bibliotecă și aplicat imediat acestui joc.</string>
+    <string name="control_profile_create_and_apply">Creează și aplică</string>
+    <string name="control_profile_created_applied">Profil de control creat și aplicat</string>
+    <string name="control_profile_save_current">Salvează controalele curente</string>
+    <string name="control_profile_update_current">Actualizează din controalele curente</string>
+    <string name="control_profile_sections">Setări incluse</string>
+    <string name="control_profile_section_on_screen">Comenzi pe ecran</string>
+    <string name="control_profile_section_physical">Controler fizic</string>
+    <string name="control_profile_controls_count">%1$d comenzi pe ecran</string>
+    <string name="control_profile_bindings_count">%1$d asocieri ale controlerului fizic</string>
+    <string name="control_profile_radial_count">%1$d sloturi ale meniului radial</string>
+    <string name="control_profile_import_confirm">Adaugă în bibliotecă</string>
+    <string name="control_profile_saved">Profil de control salvat</string>
+    <string name="control_profile_failed">Operațiunea profilului de control a eșuat: %1$s</string>
+    <string name="control_profile_delete_title">Ștergi profilul de control?</string>
+    <string name="control_profile_delete_message">Elimini „%1$s” din bibliotecă? Jocurile deja configurate cu acest profil își vor păstra controalele.</string>
 </resources>

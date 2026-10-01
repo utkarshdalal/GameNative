@@ -14,6 +14,7 @@ import android.view.Display
 import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import app.gamenative.filedetect.GameFileDetection
+import app.gamenative.powercontrol.metrics.PowerTelemetry
 import com.winlator.container.Container
 import java.io.File
 import org.json.JSONObject
@@ -40,6 +41,14 @@ object DeviceInfo {
             registerAll(gpuProperties(context))
         } catch (e: Exception) {
             Timber.w(e, "DeviceInfo: gpu properties failed")
+        }
+    }
+
+    fun registerPowerSuperProperties() {
+        try {
+            registerAll(PowerTelemetry.capabilityProperties())
+        } catch (e: Exception) {
+            Timber.w(e, "DeviceInfo: power properties failed")
         }
     }
 
@@ -131,6 +140,21 @@ object SessionReport {
 
     private fun appliedConfigFile(container: Container) = File(container.rootDir, "applied_config.json")
 
+    fun recordRun(container: Container, properties: Map<String, Any>) {
+        try {
+            val dir = File(container.rootDir, ".gamenative/runs").also { it.mkdirs() }
+            val file = File(dir, "${System.currentTimeMillis()}.json")
+            val tmp = File(dir, "${file.name}.tmp")
+            tmp.writeText(JSONObject(properties).toString())
+            if (!tmp.renameTo(file)) tmp.delete()
+            dir.listFiles { f -> f.name.endsWith(".json") }?.sortedBy { it.name }?.dropLast(MAX_RUN_FILES)?.forEach { it.delete() }
+        } catch (e: Exception) {
+            Timber.w(e, "SessionReport: record run failed")
+        }
+    }
+
+    private const val MAX_RUN_FILES = 30
+
     fun configProperties(container: Container): Map<String, Any> = buildMap {
         try {
             put("config_source", container.configSource.ifEmpty { if (PrefManager.autoApplyKnownConfig) "none" else "disabled" })
@@ -173,6 +197,8 @@ object SessionReport {
             putAll(configProperties(container))
             putAll(GameFileDetection.properties(container))
             putAll(windowActivity.snapshot(context, frameRating?.totalFrames ?: 0L))
+            runCatching { putAll(PowerTelemetry.sessionProperties()) }
+                .onFailure { Timber.w(it, "SessionReport: power properties failed") }
             if (frameRating != null) {
                 put("total_frames", frameRating.totalFrames)
                 frameRating.fpsBy5Min.takeIf { it.isNotEmpty() }?.let { put("fps_by_5min", it) }
@@ -222,6 +248,8 @@ class WindowActivity {
     private val windows = LinkedHashMap<String, Entry>()
     private val classByWindowId = HashMap<Int, String>()
     private var batteryStartPct = -1
+    private var batteryStartTempC = 0
+    private var chargingStart: Boolean? = null
     private val thermalTransitions = ArrayList<Pair<Long, Int>>()
     private var powerManager: PowerManager? = null
     private val thermalListener = PowerManager.OnThermalStatusChangedListener { status ->
@@ -254,6 +282,12 @@ class WindowActivity {
             trackedClass = null
             trackedStartFrames = 0L
             batteryStartPct = readBatteryPct(context)
+            batteryStartTempC = 0
+            chargingStart = null
+            context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))?.let { intent ->
+                batteryStartTempC = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0)
+                chargingStart = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0
+            }
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             powerManager = (context.getSystemService(Context.POWER_SERVICE) as? PowerManager)?.also {
@@ -346,6 +380,8 @@ class WindowActivity {
                 put("battery_start_pct", batteryStartPct)
                 put("battery_end_pct", batteryEnd)
             }
+            if (batteryStartTempC > 0) put("battery_temp_start_c", (batteryStartTempC / 10f).roundToInt())
+            chargingStart?.let { put("charging_start", it) }
             if (thermalTransitions.isNotEmpty()) {
                 put("thermal_peak", thermalTransitions.maxOf { it.second })
                 thermalTransitions.firstOrNull { it.second >= PowerManager.THERMAL_STATUS_MODERATE }

@@ -129,6 +129,7 @@
 
     <!-- Winlator -->
     <string name="disabled">Deaktiveret</string>
+    <string name="enabled">Aktiveret</string>
     <string name="copy">Kopiér</string>
     <string name="stability">Stabilitet</string>
     <string name="compatibility">Kompatibilitet</string>
@@ -158,7 +159,6 @@
     <string name="remove">Fjern</string>
     <string name="add">Tilføj</string>
     <string name="delete">Slet</string>
-    <string name="copy_from">Kopiér fra</string>
     <string name="ok">Ok</string>
     <string name="container_config_custom_resolution_title">Angiv brugerdefineret opløsning</string>
     <string name="container_config_custom_resolution_separator">x</string>
@@ -516,9 +516,13 @@
     <string name="pulseaudio_suspend_behavior_thread">Suspender via tråd (Standard)</string>
     <string name="pulseaudio_suspend_behavior_pactl">Suspender via Pactl (Strømbesparelse)</string>
     <string name="pulseaudio_low_latency">PulseAudio lav latenstilstand</string>
+    <string name="microphone_input">Mikrofoninput</string>
+    <string name="microphone_input_description">Gør enhedens mikrofon tilgængelig for Wine/Proton som en optageenhed. Kræver mikrofontilladelse.</string>
     <string name="show_fps">Vis FPS</string>
     <string name="portrait_mode">Portrættilstand</string>
     <string name="portrait_mode_description">Til 8BitDo FlipPad/GameSir Pocket Taco-type controllere</string>
+    <string name="portrait_below_cutout">Hold under kamerahullet</string>
+    <string name="portrait_below_cutout_description">Vis spillet under kamerahullet i portrættilstand</string>
     <string name="remove_driver_confirmation">Er du sikker på, at du vil fjerne driveren "%s"? Dette kan ikke fortrydes</string>
 
     <!-- Container Configuration: Steam Integration -->
@@ -526,7 +530,7 @@
     <string name="force_dlc_description">Kun aktiver hvis DLC\'er ikke opdages, eller gemfiler med DLC ikke virker</string>
     <string name="local_saves_only">Kun lokale gemfiler</string>
     <string name="local_saves_only_description">Deaktiver synkronisering af cloud-gemfiler for dette spil, og behold gemfiler kun på enheden</string>
-    <string name="launch_steam_client_beta">Start Steam-klient (Beta)</string>
+    <string name="launch_steam_client_beta">Start Steam-klient</string>
     <string name="steam_offline_mode">Steam Offline-tilstand</string>
     <string name="steam_offline_mode_description">Start Steam-spil i offline-tilstand</string>
     <string name="epic_offline_mode">Epic Offline-tilstand</string>
@@ -1318,7 +1322,6 @@
     <string name="custom_game_delete_message">Er du sikker på, at du vil slette dette spil? Dette vil fjerne spilfiler og alle tilhørende data.</string>
 
     <!-- Toast -->
-    <string name="toast_controls_reset">Kontroller nulstillet</string>
     <string name="toast_failed_log_save">Kunne ikke gemme logcat til destination</string>
 
     <!-- Settings additions -->
@@ -1461,6 +1464,13 @@
     <string name="recommended_support_message">Vi modtager en provision af køb foretaget via dette link.</string>
     <string name="recommended_about_heading">Om dette spil</string>
     <string name="recommended_review_count">Baseret på %1$s anmeldelser</string>
+    <string name="library_store_media_page">%1$d af %2$d</string>
+    <string name="library_store_media_fullscreen">Vis medier i fuld skærm</string>
+    <string name="library_store_media_close">Luk fuldskærmsmedier</string>
+    <string name="library_store_media_previous">Forrige medie</string>
+    <string name="library_store_media_next">Næste medie</string>
+    <string name="library_store_about_expand">Udvid Om dette spil</string>
+    <string name="library_store_about_collapse">Skjul Om dette spil</string>
     <string name="review_overwhelmingly_positive">Overvældende positiv</string>
     <string name="review_very_positive">Meget positiv</string>
     <string name="review_mostly_positive">Overvejende positiv</string>
@@ -1498,6 +1508,7 @@
     <string name="hltb_all_styles">Alle stilarter</string>
     <string name="hltb_hours_value">%sh</string>
     <string name="hltb_section_title">HLTB</string>
+    <string name="hltb_show_spoilers">Vis spoilere</string>
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
@@ -1611,6 +1622,7 @@
     <string name="filter_five_star_device">5-stjernede anmeldelser på enhed</string>
     <string name="filter_five_star_gpu">5-stjernede anmeldelser på GPU</string>
     <string name="filter_proven_gpu">Afprøvet på din GPU</string>
+    <string name="vibration_intensity">Vibrationsintensitet</string>
     <string name="option_import_files">Importér filer</string>
     <string name="option_export_files">Eksportér filer</string>
     <string name="container_files_up">Op</string>
@@ -1653,6 +1665,7 @@
     <string name="export_files_cancelled">Eksport annulleret</string>
     <string name="export_files_no_container">Start spillet én gang for at oprette dets container, og eksportér derefter filer.</string>
     <string name="export_files_failed_header">Disse filer kunne ikke eksporteres:</string>
+    <string name="app_filter_vr">VR-spil</string>
     <string name="option_manage_mods">Administrer Nexus-mods</string>
     <string name="nexus_search_clear">Ryd søgning</string>
     <string name="nexus_filter_all">Alle</string>
@@ -2535,4 +2548,32 @@
     <string name="nexus_apply_failure_title">Sidste modinstallation mislykkedes</string>
     <string name="nexus_apply_failure_description">Moddet blev ikke markeret som installeret. Ændringer blev rullet tilbage, hvor det kunne bekræftes sikkert. Gennemgå filfejlene nedenfor, og gå tilbage til Placering for at rette eller prøve installationen igen.</string>
     <string name="nexus_apply_failure_details">Filfejl: %1$d</string>
+    <string name="control_profiles">Styringsprofiler</string>
+    <string name="more_options">Flere muligheder</string>
+    <string name="control_profiles_empty">Der er ingen tilgængelige styringsprofiler.</string>
+    <string name="control_profile_applied_sections">Anvendt · %1$d af %2$d indstillinger</string>
+    <string name="control_profile_apply">Anvend</string>
+    <string name="control_profile_applied">Styringsprofil anvendt</string>
+    <string name="control_profile_export">Eksportér</string>
+    <string name="control_profile_create_blank">Tom profil</string>
+    <string name="control_profile_create_current">Fra aktuelle styringer</string>
+    <string name="control_profile_start_with">Start med</string>
+    <string name="control_profile_create_current_hint">Vælg, hvilke indstillinger der skal gemmes fra dette spil.</string>
+    <string name="control_profile_create_blank_hint">Start med et tomt layout til skærmstyring.</string>
+    <string name="control_profile_create_applies_hint">Din nye profil gemmes i biblioteket og anvendes straks på dette spil.</string>
+    <string name="control_profile_create_and_apply">Opret og anvend</string>
+    <string name="control_profile_created_applied">Styringsprofil oprettet og anvendt</string>
+    <string name="control_profile_save_current">Gem aktuelle styringer</string>
+    <string name="control_profile_update_current">Opdater fra aktuelle styringer</string>
+    <string name="control_profile_sections">Inkluderede indstillinger</string>
+    <string name="control_profile_section_on_screen">Skærmstyring</string>
+    <string name="control_profile_section_physical">Fysisk controller</string>
+    <string name="control_profile_controls_count">%1$d skærmstyringer</string>
+    <string name="control_profile_bindings_count">%1$d fysiske knaptilknytninger</string>
+    <string name="control_profile_radial_count">%1$d pladser i radialmenuen</string>
+    <string name="control_profile_import_confirm">Føj til bibliotek</string>
+    <string name="control_profile_saved">Styringsprofil gemt</string>
+    <string name="control_profile_failed">Handlingen for styringsprofilen mislykkedes: %1$s</string>
+    <string name="control_profile_delete_title">Slet styringsprofil?</string>
+    <string name="control_profile_delete_message">Fjern “%1$s” fra biblioteket? Spil, der allerede er konfigureret med profilen, beholder deres styring.</string>
 </resources>

@@ -17,6 +17,8 @@ import app.gamenative.enums.PathType
 import app.gamenative.enums.ReleaseState
 import app.gamenative.enums.SaveLocation
 import app.gamenative.utils.Net
+import java.nio.file.Paths
+import kotlin.io.path.pathString
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import com.winlator.container.Container
@@ -3204,4 +3206,139 @@ class SteamAutoCloudTest {
         )
     }
 
+
+    // ---- embedded %Root% token decoding (UFS filenames with prefix="") ----
+
+    // uploadPath="" with the root inlined in the filename. decoding only %GameInstall% resolved
+    // this to a literal-named file under the userdata/remote staging dir: the game never saw its
+    // save, and the next diff deleted the correctly-placed local copy as an orphan.
+    @Test
+    fun resolveEmbeddedRootPath_decodes_non_gameinstall_root() {
+        val resolved = SteamAutoCloud.resolveEmbeddedRootPath(
+            filename = "%WinAppDataLocal%cc.save",
+            cloudPrefixToLocalPath = emptyMap(),
+            prefixToPath = { root -> "/local/$root" },
+        )
+
+        assertEquals(Paths.get("/local/WinAppDataLocal", "cc.save"), resolved)
+    }
+
+    @Test
+    fun resolveEmbeddedRootPath_still_decodes_gameinstall() {
+        val resolved = SteamAutoCloud.resolveEmbeddedRootPath(
+            filename = "%GameInstall%save0.dat",
+            cloudPrefixToLocalPath = emptyMap(),
+            prefixToPath = { root -> "/local/$root" },
+        )
+
+        assertEquals(Paths.get("/local/GameInstall", "save0.dat"), resolved)
+    }
+
+    // a Windows rootoverride remaps the root (e.g. GameInstall -> WinMyDocuments/...).
+    // the game's own map wins over the raw root path.
+    @Test
+    fun resolveEmbeddedRootPath_prefers_the_games_rootoverride_map() {
+        val resolved = SteamAutoCloud.resolveEmbeddedRootPath(
+            filename = "%GameInstall%save0.dat",
+            cloudPrefixToLocalPath = mapOf("%GameInstall%" to "/docs/My Games/Danganronpa2"),
+            prefixToPath = { root -> "/local/$root" },
+        )
+
+        assertEquals(Paths.get("/docs/My Games/Danganronpa2", "save0.dat"), resolved)
+    }
+
+    @Test
+    fun resolveEmbeddedRootPath_strips_a_leading_slash_after_the_token() {
+        val resolved = SteamAutoCloud.resolveEmbeddedRootPath(
+            filename = "%WinAppDataLocal%/nested/cc.save",
+            cloudPrefixToLocalPath = emptyMap(),
+            prefixToPath = { root -> "/local/$root" },
+        )
+
+        assertEquals(Paths.get("/local/WinAppDataLocal", "nested/cc.save"), resolved)
+    }
+
+    @Test
+    fun resolveEmbeddedRootPath_returns_null_when_there_is_no_token() {
+        val resolved = SteamAutoCloud.resolveEmbeddedRootPath(
+            filename = "cc.save",
+            cloudPrefixToLocalPath = emptyMap(),
+            prefixToPath = { root -> "/local/$root" },
+        )
+
+        assertNull(resolved)
+    }
+
+    // unknown root -> null so the caller falls through to its prefix-index / DEFAULT handling
+    // rather than inventing a path from a token we can't resolve.
+    @Test
+    fun resolveEmbeddedRootPath_returns_null_for_an_unrecognized_root() {
+        val resolved = SteamAutoCloud.resolveEmbeddedRootPath(
+            filename = "%NotARealRoot%cc.save",
+            cloudPrefixToLocalPath = emptyMap(),
+            prefixToPath = { root -> "/local/$root" },
+        )
+
+        assertNull(resolved)
+    }
+
+    // ---- cloud-prefix -> local-dir mapping ----
+
+    // bare root-token key: the cloud path is delimited by the token's own trailing '%', with no
+    // separator before the addpath subfolder. getting this wrong lands saves in AppData/Local/Default
+    // instead of AppData/Local/<Game>/Saves/Default.
+    @Test
+    fun resolveCloudPrefixToLocal_matches_a_bare_root_token_key() {
+        val resolved = SteamAutoCloud.resolveCloudPrefixToLocal(
+            cloudPrefix = "%WinAppDataLocal%Default",
+            cloudPrefixToLocalPath = mapOf("%WinAppDataLocal%" to "/local/AppData/Local/Alabaster Dawn/Saves"),
+        )
+
+        assertEquals(Paths.get("/local/AppData/Local/Alabaster Dawn/Saves", "Default").pathString, resolved)
+    }
+
+    @Test
+    fun resolveCloudPrefixToLocal_matches_an_exact_key() {
+        val resolved = SteamAutoCloud.resolveCloudPrefixToLocal(
+            cloudPrefix = "%GameInstall%saves",
+            cloudPrefixToLocalPath = mapOf("%GameInstall%saves" to "/game/saves"),
+        )
+
+        assertEquals(Paths.get("/game/saves").pathString, resolved)
+    }
+
+    @Test
+    fun resolveCloudPrefixToLocal_matches_a_separator_delimited_key() {
+        val resolved = SteamAutoCloud.resolveCloudPrefixToLocal(
+            cloudPrefix = "%GameInstall%saves/slot1",
+            cloudPrefixToLocalPath = mapOf("%GameInstall%saves" to "/game/saves"),
+        )
+
+        assertEquals(Paths.get("/game/saves", "slot1").pathString, resolved)
+    }
+
+    // longest key wins so the more specific mapping isn't shadowed by its own parent
+    @Test
+    fun resolveCloudPrefixToLocal_prefers_the_longest_matching_key() {
+        val resolved = SteamAutoCloud.resolveCloudPrefixToLocal(
+            cloudPrefix = "%GameInstall%saves/slot1",
+            cloudPrefixToLocalPath = mapOf(
+                "%GameInstall%" to "/game",
+                "%GameInstall%saves" to "/elsewhere/saves",
+            ),
+        )
+
+        assertEquals(Paths.get("/elsewhere/saves", "slot1").pathString, resolved)
+    }
+
+    // a token key must not swallow a different root that happens to share a leading substring
+    @Test
+    fun resolveCloudPrefixToLocal_returns_null_when_no_key_matches() {
+        val resolved = SteamAutoCloud.resolveCloudPrefixToLocal(
+            cloudPrefix = "%WinAppDataLocalLow%Default",
+            cloudPrefixToLocalPath = mapOf("%WinMyDocuments%" to "/docs"),
+        )
+
+        assertNull(resolved)
+    }
 }
