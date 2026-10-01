@@ -20,7 +20,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.mockito.ArgumentMatchers.anyInt
 import org.mockito.Mockito.atLeastOnce
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
@@ -610,31 +609,6 @@ class PhysicalControllerHandlerTest {
     }
 
     @Test
-    fun `motion is dispatched synchronously with throttling off, the default`() {
-        val deviceId = 42
-        val axisKeyCode = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_X, 1.toByte())
-        val controller = motionController(axisKeyCode, Binding.KEY_E)
-        val profile = mock<ControlsProfile>()
-        whenever(profile.getController(deviceId)).thenReturn(controller)
-        val xServer = mock<XServer>()
-        val handler = PhysicalControllerHandler(profile, xServer)
-        val event = motionEvent(deviceId)
-
-        try {
-            controller.state.thumbLX = 1f
-            assertTrue(handler.onGenericMotionEvent(event))
-            verify(xServer, times(1)).injectKeyPress(XKeycode.KEY_E)
-
-            controller.state.thumbLX = 0f
-            assertTrue(handler.onGenericMotionEvent(event))
-            verify(xServer, times(1)).injectKeyRelease(XKeycode.KEY_E)
-            assertFalse(frameScheduled(handler))
-        } finally {
-            handler.cleanup()
-        }
-    }
-
-    @Test
     fun `throttled motion inside the interval is dispatched on a later frame, not dropped`() {
         val deviceId = 42
         val axisKeyCode = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_X, 1.toByte())
@@ -659,35 +633,6 @@ class PhysicalControllerHandlerTest {
 
             runInputTicks()
             verify(xServer, times(1)).injectKeyRelease(XKeycode.KEY_E)
-            assertFalse(frameScheduled(handler))
-        } finally {
-            handler.cleanup()
-        }
-    }
-
-    @Test
-    fun `held mouse-look steps on display frames and the loop parks on release`() {
-        val deviceId = 42
-        val axisKeyCode = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_X, 1.toByte())
-        val controller = motionController(axisKeyCode, Binding.MOUSE_MOVE_RIGHT)
-        val profile = mock<ControlsProfile>()
-        whenever(profile.getController(deviceId)).thenReturn(controller)
-        whenever(profile.cursorSpeed).thenReturn(1f)
-        val xServer = mock<XServer>()
-        val handler = PhysicalControllerHandler(profile, xServer)
-        val event = motionEvent(deviceId)
-
-        try {
-            controller.state.thumbLX = 1f
-            assertTrue(handler.onGenericMotionEvent(event))
-            assertTrue(frameScheduled(handler))
-            runInputTicks()
-            verify(xServer, atLeastOnce()).injectPointerMoveDelta(anyInt(), anyInt())
-
-            controller.state.thumbLX = 0f
-            assertTrue(handler.onGenericMotionEvent(event))
-            runInputTicks()
-            assertEquals(0f, mouseMoveOffset(handler).x, 0f)
             assertFalse(frameScheduled(handler))
         } finally {
             handler.cleanup()

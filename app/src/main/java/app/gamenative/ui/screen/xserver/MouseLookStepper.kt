@@ -152,13 +152,14 @@ class MouseLookStepper(
         }
         lastFrameNanos = frameTimeNanos
         if (pacer.isDue(frameTimeNanos)) {
-            pacer.onSent(frameTimeNanos)
-            step()
+            // Opposing sources cancelling out is not a step: whatever moves next goes out right away.
+            if (step()) pacer.onSent(frameTimeNanos) else pacer.reset()
         }
         frameLoop.schedule()
     }
 
-    private fun step() {
+    /** Moves the pointer by the time since the last step; false if the held sources cancel out. */
+    private fun step(): Boolean {
         var deflectionX = 0f
         var deflectionY = 0f
         var speedX = 0f
@@ -176,7 +177,7 @@ class MouseLookStepper(
         // No noise floor: every source is past its own dead zone already (a tuned stick's is the user's).
         if (deflectionX == 0f && deflectionY == 0f) {
             unsteppedSeconds = 0f
-            return
+            return false
         }
 
         val dtSeconds = unsteppedSeconds
@@ -190,5 +191,6 @@ class MouseLookStepper(
         remainderY = rawDeltaY - moveY
 
         if (moveX != 0 || moveY != 0) pointerMover.move(moveX, moveY)
+        return true
     }
 }
