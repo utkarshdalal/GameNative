@@ -868,6 +868,16 @@ class MainViewModel @Inject constructor(
             } catch (t: Throwable) {
                 Timber.tag("Steam").e(t, "[Cloud Saves] Exception during close app sync for $gameId")
             }
+            try {
+                withContext(Dispatchers.IO) {
+                    val container = ContainerUtils.getContainer(context, appId)
+                    app.gamenative.service.ea.EaCloudSavesManager.syncAfterExit(context, container, gameId)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                Timber.tag("EA").w("Cloud save push failed for $gameId: ${t.javaClass.simpleName}")
+            }
         }
     }
 
