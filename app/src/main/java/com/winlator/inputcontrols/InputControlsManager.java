@@ -350,6 +350,14 @@ public class InputControlsManager {
             boolean hasProfileId = false;
             String profileName = null;
             float cursorSpeed = ControlsProfile.DEFAULT_CURSOR_SPEED;
+            float leftStickDeadzone = Float.NaN;
+            float rightStickDeadzone = Float.NaN;
+            float leftStickSensitivity = Float.NaN;
+            float rightStickSensitivity = Float.NaN;
+            ControlsProfile.StickDeadzoneMode leftStickDeadzoneMode = null;
+            ControlsProfile.StickDeadzoneMode rightStickDeadzoneMode = null;
+            ControlsProfile.StickDigitalMode leftStickDigitalMode = null;
+            ControlsProfile.StickDigitalMode rightStickDigitalMode = null;
             boolean listed = true;
             int libraryProfileId = -1;
             int maxReferencedProfileId = -1;
@@ -368,6 +376,30 @@ public class InputControlsManager {
                 }
                 else if (name.equals("cursorSpeed")) {
                     cursorSpeed = (float) reader.nextDouble();
+                }
+                else if (name.equals(ControlsProfile.KEY_LEFT_STICK_DEADZONE)) {
+                    leftStickDeadzone = (float) reader.nextDouble();
+                }
+                else if (name.equals(ControlsProfile.KEY_RIGHT_STICK_DEADZONE)) {
+                    rightStickDeadzone = (float) reader.nextDouble();
+                }
+                else if (name.equals(ControlsProfile.KEY_LEFT_STICK_SENSITIVITY)) {
+                    leftStickSensitivity = (float) reader.nextDouble();
+                }
+                else if (name.equals(ControlsProfile.KEY_RIGHT_STICK_SENSITIVITY)) {
+                    rightStickSensitivity = (float) reader.nextDouble();
+                }
+                else if (name.equals(ControlsProfile.KEY_LEFT_STICK_DEADZONE_MODE)) {
+                    leftStickDeadzoneMode = ControlsProfile.StickDeadzoneMode.fromJsonName(reader.nextString());
+                }
+                else if (name.equals(ControlsProfile.KEY_RIGHT_STICK_DEADZONE_MODE)) {
+                    rightStickDeadzoneMode = ControlsProfile.StickDeadzoneMode.fromJsonName(reader.nextString());
+                }
+                else if (name.equals(ControlsProfile.KEY_LEFT_STICK_DIGITAL_MODE)) {
+                    leftStickDigitalMode = ControlsProfile.StickDigitalMode.fromJsonName(reader.nextString());
+                }
+                else if (name.equals(ControlsProfile.KEY_RIGHT_STICK_DIGITAL_MODE)) {
+                    rightStickDigitalMode = ControlsProfile.StickDigitalMode.fromJsonName(reader.nextString());
                 }
                 else if (name.equals("listed")) {
                     listed = reader.nextBoolean();
@@ -405,6 +437,14 @@ public class InputControlsManager {
             profile.setLibraryProfileId(libraryProfileId);
             profile.setMaxReferencedProfileId(maxReferencedProfileId);
             profile.setGameOwnerId(gameOwnerId);
+            if (!Float.isNaN(leftStickDeadzone)) profile.setLeftStickDeadzone(leftStickDeadzone);
+            if (!Float.isNaN(rightStickDeadzone)) profile.setRightStickDeadzone(rightStickDeadzone);
+            if (!Float.isNaN(leftStickSensitivity)) profile.setLeftStickSensitivity(leftStickSensitivity);
+            if (!Float.isNaN(rightStickSensitivity)) profile.setRightStickSensitivity(rightStickSensitivity);
+            if (leftStickDeadzoneMode != null) profile.setLeftStickDeadzoneMode(leftStickDeadzoneMode);
+            if (rightStickDeadzoneMode != null) profile.setRightStickDeadzoneMode(rightStickDeadzoneMode);
+            if (leftStickDigitalMode != null) profile.setLeftStickDigitalMode(leftStickDigitalMode);
+            if (rightStickDigitalMode != null) profile.setRightStickDigitalMode(rightStickDigitalMode);
             return profile;
         }
         catch (Exception e) {

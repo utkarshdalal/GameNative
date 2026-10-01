@@ -109,6 +109,109 @@ class ControlProfileServiceTest {
     }
 
     @Test
+    fun physicalStickTuning_roundTripsThroughLibraryAndLegacyApplyClearsIt() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val manager = InputControlsManager(context)
+        val root = Files.createTempDirectory("profile-stick-tuning").toFile()
+        val container = Container("stick-tuning-game").apply { rootDir = root }
+        val ids = mutableSetOf<Int>()
+
+        try {
+            var library = ControlProfileService.createBlank(context, manager, "Tuned controller").also { ids += it.id }
+            var working = ControlProfileService.applyProfile(context, container, manager, library).also { ids += it.id }
+            working.leftStickDeadzone = 0.2f
+            working.rightStickDeadzone = 0.3f
+            working.leftStickSensitivity = 1.5f
+            working.rightStickSensitivity = 2.25f
+            working.leftStickDeadzoneMode = ControlsProfile.StickDeadzoneMode.CIRCULAR
+            working.rightStickDeadzoneMode = ControlsProfile.StickDeadzoneMode.HYBRID
+            working.leftStickDigitalMode = ControlsProfile.StickDigitalMode.FOUR_WAY
+            working.rightStickDigitalMode = ControlsProfile.StickDigitalMode.EIGHT_WAY
+            assertTrue(working.save())
+
+            library = ControlProfileService.updateFromCurrent(
+                context,
+                container,
+                manager,
+                library,
+                setOf(ControlProfileSection.PHYSICAL_CONTROLLER),
+            )
+            assertEquals(
+                library.id,
+                ControlProfileService.appliedSectionSources(context, container, manager)[ControlProfileSection.PHYSICAL_CONTROLLER],
+            )
+
+            working = manager.getProfile(working.id)!!
+            working.rightStickSensitivity = 2.5f
+            assertTrue(working.save())
+            assertFalse(
+                ControlProfileService.appliedSectionSources(context, container, manager)
+                    .containsKey(ControlProfileSection.PHYSICAL_CONTROLLER),
+            )
+            library = ControlProfileService.updateFromCurrent(
+                context,
+                container,
+                manager,
+                library,
+                setOf(ControlProfileSection.PHYSICAL_CONTROLLER),
+            )
+
+            val exportUri = Uri.fromFile(root.resolve("tuned-controller.icp"))
+            ControlProfileService.exportProfile(
+                context,
+                library,
+                setOf(ControlProfileSection.PHYSICAL_CONTROLLER),
+                exportUri,
+            )
+            val importedPreview = ControlProfileService.importProfile(context, exportUri)
+            assertEquals(0.2, importedPreview.json.getDouble(ControlsProfile.KEY_LEFT_STICK_DEADZONE), 0.0001)
+            assertEquals(2.5, importedPreview.json.getDouble(ControlsProfile.KEY_RIGHT_STICK_SENSITIVITY), 0.0001)
+            assertEquals("four_way", importedPreview.json.getString(ControlsProfile.KEY_LEFT_STICK_DIGITAL_MODE))
+
+            val imported = ControlProfileService.installImported(manager, importedPreview).also { ids += it.id }
+            assertEquals(0.2f, imported.leftStickDeadzone, 0.0001f)
+            assertEquals(2.5f, imported.rightStickSensitivity, 0.0001f)
+            assertEquals(ControlsProfile.StickDeadzoneMode.HYBRID, imported.rightStickDeadzoneMode)
+            assertEquals(ControlsProfile.StickDigitalMode.EIGHT_WAY, imported.rightStickDigitalMode)
+
+            val duplicate = manager.duplicateProfile(library).also { ids += it.id }
+            assertEquals(0.2f, duplicate.leftStickDeadzone, 0.0001f)
+            assertEquals(2.5f, duplicate.rightStickSensitivity, 0.0001f)
+
+            val legacyId = manager.nextProfileId()
+            ids += legacyId
+            assertTrue(
+                FileUtils.writeString(
+                    ControlsProfile.getProfileFile(context, legacyId),
+                    JSONObject().apply {
+                        put("id", legacyId)
+                        put("name", "Untuned controller")
+                        put("schemaVersion", ControlProfileService.SCHEMA_VERSION)
+                        put("includedSections", JSONArray().put("physicalController"))
+                        put("controllers", JSONArray())
+                        put("listed", true)
+                    }.toString(),
+                ),
+            )
+            manager.reloadProfiles()
+            val cleared = ControlProfileService.applyProfile(
+                context,
+                container,
+                manager,
+                manager.getProfile(legacyId)!!,
+                setOf(ControlProfileSection.PHYSICAL_CONTROLLER),
+            )
+            val clearedJson = ControlProfileService.readProfileJson(context, cleared)
+            assertFalse(cleared.isStickTuningConfigured)
+            assertFalse(clearedJson.has(ControlsProfile.KEY_LEFT_STICK_DEADZONE))
+            assertFalse(clearedJson.has(ControlsProfile.KEY_RIGHT_STICK_SENSITIVITY))
+        } finally {
+            ids.forEach { ControlsProfile.getProfileFile(context, it).delete() }
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
     fun runtimeSaveKeepsExplicitEmptyCategoriesValid() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val file = ControlsProfile.getProfileFile(context, 900_007)
@@ -302,10 +405,13 @@ class ControlProfileServiceTest {
         val json = """{
             "id":42,
             "name":"Working copy",
+            "leftStickSensitivity":1.5,
+            "elements":[],
             "listed":false,
             "libraryProfileId":7,
+            "sectionSources":{"physicalController":9},
             "gameOwnerId":"game-123",
-            "elements":[]
+            "rightStickDigitalMode":"eight_way"
         }""".trimIndent()
 
         val profile = InputControlsManager.loadProfile(
@@ -318,6 +424,9 @@ class ControlProfileServiceTest {
         assertFalse(profile.isListed)
         assertEquals(7, profile.libraryProfileId)
         assertEquals("game-123", profile.gameOwnerId)
+        assertEquals(1.5f, profile.leftStickSensitivity, 0.0001f)
+        assertEquals(ControlsProfile.StickDigitalMode.EIGHT_WAY, profile.rightStickDigitalMode)
+        assertTrue(profile.isStickTuningConfigured)
     }
 
     @Test

@@ -60,6 +60,16 @@ object ControlProfileService {
     private const val KEY_LIBRARY_PROFILE_ID = "libraryProfileId"
     private const val KEY_GAME_OWNER_ID = "gameOwnerId"
     private const val KEY_SECTION_SOURCES = "sectionSources"
+    private val STICK_TUNING_KEYS = arrayOf(
+        ControlsProfile.KEY_LEFT_STICK_DEADZONE,
+        ControlsProfile.KEY_RIGHT_STICK_DEADZONE,
+        ControlsProfile.KEY_LEFT_STICK_SENSITIVITY,
+        ControlsProfile.KEY_RIGHT_STICK_SENSITIVITY,
+        ControlsProfile.KEY_LEFT_STICK_DEADZONE_MODE,
+        ControlsProfile.KEY_RIGHT_STICK_DEADZONE_MODE,
+        ControlsProfile.KEY_LEFT_STICK_DIGITAL_MODE,
+        ControlsProfile.KEY_RIGHT_STICK_DIGITAL_MODE,
+    )
 
     fun preview(context: Context, profile: ControlsProfile): ControlProfilePreview =
         preview(readProfileJson(context, profile))
@@ -100,7 +110,7 @@ object ControlProfileService {
         // arrays are included only when present.
         return buildSet {
             add(ControlProfileSection.ON_SCREEN)
-            if (json.has("controllers")) add(ControlProfileSection.PHYSICAL_CONTROLLER)
+            if (json.has("controllers") || hasStickTuning(json)) add(ControlProfileSection.PHYSICAL_CONTROLLER)
             if (json.has("radialMenus")) add(ControlProfileSection.RADIAL_MENU)
             if (json.has(KEY_GYRO_SETTINGS)) add(ControlProfileSection.GYRO)
             if (json.has(KEY_TOUCHSCREEN_SETTINGS)) add(ControlProfileSection.TOUCHSCREEN)
@@ -605,6 +615,10 @@ object ControlProfileService {
         }
         if (ControlProfileSection.PHYSICAL_CONTROLLER in sections) {
             destination.put("controllers", deepCopyArray(source.optJSONArray("controllers")))
+            STICK_TUNING_KEYS.forEach { key ->
+                if (source.has(key)) destination.put(key, source.opt(key))
+                else destination.remove(key)
+            }
         }
         if (ControlProfileSection.RADIAL_MENU in sections) {
             destination.put("radialMenus", deepCopyArray(source.optJSONArray("radialMenus")))
@@ -622,7 +636,7 @@ object ControlProfileService {
 
     private fun allStoredSections(json: JSONObject): Set<ControlProfileSection> = buildSet {
         if (json.has("elements")) add(ControlProfileSection.ON_SCREEN)
-        if (json.has("controllers")) add(ControlProfileSection.PHYSICAL_CONTROLLER)
+        if (json.has("controllers") || hasStickTuning(json)) add(ControlProfileSection.PHYSICAL_CONTROLLER)
         if (json.has("radialMenus")) add(ControlProfileSection.RADIAL_MENU)
         if (json.has(KEY_GYRO_SETTINGS)) add(ControlProfileSection.GYRO)
         if (json.has(KEY_TOUCHSCREEN_SETTINGS)) add(ControlProfileSection.TOUCHSCREEN)
@@ -696,14 +710,17 @@ object ControlProfileService {
         val sections = sectionsOf(json)
         if (sections.isEmpty()) throw IllegalArgumentException("Profile contains no settings")
         requireArrayPayload(json, sections, ControlProfileSection.ON_SCREEN, "elements")
-        requireArrayPayload(json, sections, ControlProfileSection.PHYSICAL_CONTROLLER, "controllers")
         requireArrayPayload(json, sections, ControlProfileSection.RADIAL_MENU, "radialMenus")
         requireObjectPayload(json, sections, ControlProfileSection.GYRO, KEY_GYRO_SETTINGS)
         requireObjectPayload(json, sections, ControlProfileSection.TOUCHSCREEN, KEY_TOUCHSCREEN_SETTINGS)
         requireObjectPayload(json, sections, ControlProfileSection.SHOOTER, KEY_SHOOTER_SETTINGS)
 
         if (ControlProfileSection.ON_SCREEN in sections) validateElements(json)
-        if (ControlProfileSection.PHYSICAL_CONTROLLER in sections) validateControllers(json)
+        if (ControlProfileSection.PHYSICAL_CONTROLLER in sections) {
+            if (json.has("controllers")) validateControllers(json)
+            else if (!hasStickTuning(json)) throw IllegalArgumentException("Profile has invalid physical controller settings")
+            validateStickTuning(json)
+        }
         if (ControlProfileSection.RADIAL_MENU in sections) validateRadialMenus(json)
         if (ControlProfileSection.GYRO in sections) {
             validatePrimitiveSettings(requireNotNull(json.optJSONObject(KEY_GYRO_SETTINGS)), "gyro")
@@ -787,6 +804,48 @@ object ControlProfileService {
             }
         }
     }
+
+    private fun validateStickTuning(json: JSONObject) {
+        optionalFiniteNumber(
+            json,
+            ControlsProfile.KEY_LEFT_STICK_DEADZONE,
+            ControlsProfile.MIN_STICK_DEADZONE.toDouble(),
+            ControlsProfile.MAX_STICK_DEADZONE.toDouble(),
+        )
+        optionalFiniteNumber(
+            json,
+            ControlsProfile.KEY_RIGHT_STICK_DEADZONE,
+            ControlsProfile.MIN_STICK_DEADZONE.toDouble(),
+            ControlsProfile.MAX_STICK_DEADZONE.toDouble(),
+        )
+        optionalFiniteNumber(
+            json,
+            ControlsProfile.KEY_LEFT_STICK_SENSITIVITY,
+            ControlsProfile.MIN_STICK_SENSITIVITY.toDouble(),
+            ControlsProfile.MAX_STICK_SENSITIVITY.toDouble(),
+        )
+        optionalFiniteNumber(
+            json,
+            ControlsProfile.KEY_RIGHT_STICK_SENSITIVITY,
+            ControlsProfile.MIN_STICK_SENSITIVITY.toDouble(),
+            ControlsProfile.MAX_STICK_SENSITIVITY.toDouble(),
+        )
+
+        val deadzoneModes = ControlsProfile.StickDeadzoneMode.values().mapTo(mutableSetOf()) { it.jsonName }
+        val digitalModes = ControlsProfile.StickDigitalMode.values().mapTo(mutableSetOf()) { it.jsonName }
+        validateOptionalEnum(json, ControlsProfile.KEY_LEFT_STICK_DEADZONE_MODE, deadzoneModes)
+        validateOptionalEnum(json, ControlsProfile.KEY_RIGHT_STICK_DEADZONE_MODE, deadzoneModes)
+        validateOptionalEnum(json, ControlsProfile.KEY_LEFT_STICK_DIGITAL_MODE, digitalModes)
+        validateOptionalEnum(json, ControlsProfile.KEY_RIGHT_STICK_DIGITAL_MODE, digitalModes)
+    }
+
+    private fun validateOptionalEnum(json: JSONObject, key: String, allowed: Set<String>) {
+        json.optStringOrNull(key)?.let { value ->
+            if (value !in allowed) throw IllegalArgumentException("Profile has an unsupported $key value: $value")
+        }
+    }
+
+    private fun hasStickTuning(json: JSONObject): Boolean = STICK_TUNING_KEYS.any(json::has)
 
     private fun validateRadialMenus(json: JSONObject) {
         val menus = requireNotNull(json.optJSONArray("radialMenus"))
