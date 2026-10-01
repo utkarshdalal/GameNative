@@ -159,11 +159,12 @@ class BestConfigServiceTest {
         assertEquals("FEXCore", result["emulator"])
         assertEquals("COMPATIBILITY", result["box64Preset"])
         assertEquals("2507", result["fexcoreVersion"])
+        assertFalse("loadMods should not be added when absent", result.containsKey("loadMods"))
     }
 
     @Test
     fun testFallbackMatch_filtersExcludedFields() {
-        val bestConfig = parseBestConfig(cs2Adreno735Response)
+        val bestConfig = JsonObject(parseBestConfig(cs2Adreno735Response).toMutableMap().apply { put("loadMods", JsonPrimitive(true)) })
         val matchType = getMatchType(cs2Adreno735Response)
 
         assertEquals("fallback_match", matchType)
@@ -181,6 +182,7 @@ class BestConfigServiceTest {
         assertFalse("graphicsDriver should NOT be in map for fallback_match", result.containsKey("graphicsDriver"))
         assertFalse("dxwrapper should NOT be in map for fallback_match", result.containsKey("dxwrapper"))
         assertFalse("dxwrapperConfig should NOT be in map for fallback_match", result.containsKey("dxwrapperConfig"))
+        assertFalse("loadMods should NOT be in map for fallback_match", result.containsKey("loadMods"))
     }
 
     @Test
