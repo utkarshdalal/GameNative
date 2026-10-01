@@ -671,13 +671,28 @@ private data class PhysicalStickTuningState(
     }
 }
 
+internal fun applyAndSavePhysicalControllerTuning(
+    profile: ControlsProfile,
+    applyTuning: () -> Unit,
+    onSave: () -> Boolean,
+): Boolean {
+    val previousTuning = PhysicalStickTuningState.from(profile)
+    val wasConfigured = profile.isStickTuningConfigured
+    applyTuning()
+    if (onSave()) return true
+
+    previousTuning.applyTo(profile)
+    profile.restoreStickTuningConfigured(wasConfigured)
+    return false
+}
+
 /** Full-screen stick tuning page opened from the Physical Controller quick-menu gear. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun PhysicalControllerSettingsDialog(
     profile: ControlsProfile,
     onDismiss: () -> Unit,
-    onSave: () -> Unit,
+    onSave: () -> Boolean,
 ) {
     var tuning by remember(profile) { mutableStateOf(PhysicalStickTuningState.from(profile)) }
 
@@ -711,8 +726,11 @@ internal fun PhysicalControllerSettingsDialog(
                             Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.reset))
                         }
                         IconButton(onClick = {
-                            tuning.applyTo(profile)
-                            onSave()
+                            applyAndSavePhysicalControllerTuning(
+                                profile = profile,
+                                applyTuning = { tuning.applyTo(profile) },
+                                onSave = onSave,
+                            )
                         }) {
                             Icon(Icons.Default.Check, contentDescription = stringResource(R.string.save))
                         }

@@ -1,6 +1,7 @@
 package com.winlator.inputcontrols
 
 import android.content.Context
+import app.gamenative.ui.component.dialog.applyAndSavePhysicalControllerTuning
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -318,6 +319,48 @@ class PhysicalControllerStickTuningTest {
         assertEquals(ControlsProfile.StickDigitalMode.FOUR_WAY, loaded.leftStickDigitalMode)
         assertEquals(ControlsProfile.StickDigitalMode.EIGHT_WAY, loaded.rightStickDigitalMode)
         assertTrue(loaded.isStickTuningConfigured)
+    }
+
+    @Test
+    fun `settings save restores tuning and opt-in state only on failure`() {
+        val configured = ControlsProfile(context, 10).apply {
+            leftStickDeadzone = 0.2f
+            rightStickDigitalMode = ControlsProfile.StickDigitalMode.EIGHT_WAY
+        }
+        assertFalse(
+            applyAndSavePhysicalControllerTuning(
+                profile = configured,
+                applyTuning = {
+                    configured.leftStickDeadzone = 0.7f
+                    configured.rightStickDigitalMode = ControlsProfile.StickDigitalMode.FOUR_WAY
+                },
+                onSave = { false },
+            ),
+        )
+        assertEquals(0.2f, configured.leftStickDeadzone, 0f)
+        assertEquals(ControlsProfile.StickDigitalMode.EIGHT_WAY, configured.rightStickDigitalMode)
+        assertTrue(configured.isStickTuningConfigured)
+
+        val legacy = ControlsProfile(context, 11)
+        assertFalse(
+            applyAndSavePhysicalControllerTuning(
+                profile = legacy,
+                applyTuning = { legacy.leftStickSensitivity = 2f },
+                onSave = { false },
+            ),
+        )
+        assertEquals(ControlsProfile.DEFAULT_STICK_SENSITIVITY, legacy.leftStickSensitivity, 0f)
+        assertFalse(legacy.isStickTuningConfigured)
+
+        assertTrue(
+            applyAndSavePhysicalControllerTuning(
+                profile = legacy,
+                applyTuning = { legacy.leftStickSensitivity = 2f },
+                onSave = { true },
+            ),
+        )
+        assertEquals(2f, legacy.leftStickSensitivity, 0f)
+        assertTrue(legacy.isStickTuningConfigured)
     }
 
     private fun load(json: String): ControlsProfile {

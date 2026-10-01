@@ -251,6 +251,11 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
         return stickTuningConfigured;
     }
 
+    /** Restores whether stick tuning was explicitly configured after a failed transactional edit. */
+    public void restoreStickTuningConfigured(boolean configured) {
+        stickTuningConfigured = configured;
+    }
+
     /**
      * Rescales an axis value across the remaining travel so the first output past the deadzone is
      * near zero instead of jumping straight to the deadzone magnitude.

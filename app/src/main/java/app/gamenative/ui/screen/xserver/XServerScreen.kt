@@ -3185,11 +3185,12 @@ fun XServerScreen(
                         onSave = saveSettings@{
                             if (!profile.save()) {
                                 Timber.e("Failed to save physical controller stick settings for ${profile.name}")
-                                return@saveSettings
+                                return@saveSettings false
                             }
                             PluviaApp.inputControlsView?.setProfilePreservingOverlayVisibility(profile)
                             PluviaApp.radialMenuCoordinator?.setProfile(profile)
                             physicalControllerDialogMode = PHYSICAL_CONTROLLER_DIALOG_NONE
+                            true
                         },
                     )
                 }
