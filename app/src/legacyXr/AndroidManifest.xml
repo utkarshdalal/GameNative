@@ -75,6 +75,9 @@
             <meta-data
                 android:name="com.oculus.vrshell.supports_free_resizing"
                 android:value="true" />
+            <meta-data
+                android:name="pvr.app.type"
+                android:value="vr" />
         </activity>
     </application>
 

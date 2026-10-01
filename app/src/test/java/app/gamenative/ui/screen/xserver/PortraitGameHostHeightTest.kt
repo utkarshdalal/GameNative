@@ -57,4 +57,17 @@ class PortraitGameHostHeightTest {
             screenSize = "bad",
         ))
     }
+
+    @Test
+    fun portraitCutoutTopInset_isZeroWhenOptionIsOff() {
+        assertEquals(0, portraitCutoutTopInset(belowCutout = false, cutoutTop = 120, hostTopInWindow = 0))
+    }
+
+    @Test
+    fun portraitCutoutTopInset_usesCutoutHeightBelowHostTop() {
+        assertEquals(120, portraitCutoutTopInset(belowCutout = true, cutoutTop = 120, hostTopInWindow = 0))
+        assertEquals(80, portraitCutoutTopInset(belowCutout = true, cutoutTop = 120, hostTopInWindow = 40))
+        assertEquals(0, portraitCutoutTopInset(belowCutout = true, cutoutTop = 120, hostTopInWindow = 200))
+        assertEquals(0, portraitCutoutTopInset(belowCutout = true, cutoutTop = 0, hostTopInWindow = 0))
+    }
 }

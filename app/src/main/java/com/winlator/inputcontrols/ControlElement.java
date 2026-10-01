@@ -1129,6 +1129,7 @@ public class ControlElement {
     private void drawIcon(Canvas canvas, float cx, float cy, float width, float height, int iconId, int tintColor) {
         Paint paint = inputControlsView.getPaint();
         Bitmap icon = inputControlsView.getIcon((byte)iconId);
+        if (icon == null) return;
         paint.setColorFilter(new PorterDuffColorFilter(tintColor, PorterDuff.Mode.SRC_IN));
         int margin = (int)(inputControlsView.getSnappingSize() * (shape == Shape.CIRCLE || shape == Shape.SQUARE ? 2.0f : 1.0f) * scale);
         int halfSize = (int)((Math.min(width, height) - margin) * 0.5f);
@@ -1140,6 +1141,10 @@ public class ControlElement {
     }
 
     public JSONObject toJSONObject() {
+        return toJSONObject(inputControlsView.getMaxWidth(), inputControlsView.getMaxHeight());
+    }
+
+    JSONObject toJSONObject(int maxWidth, int maxHeight) {
         try {
             JSONObject elementJSONObject = new JSONObject();
             elementJSONObject.put("type", type.name());
@@ -1150,11 +1155,11 @@ public class ControlElement {
 
             elementJSONObject.put("bindings", bindingsJSONArray);
             elementJSONObject.put("scale", Float.valueOf(scale));
-            elementJSONObject.put("x", (float)x / inputControlsView.getMaxWidth());
-            elementJSONObject.put("y", (float)y / inputControlsView.getMaxHeight());
+            elementJSONObject.put("x", (float)x / Math.max(1, maxWidth));
+            elementJSONObject.put("y", (float)y / Math.max(1, maxHeight));
             elementJSONObject.put("toggleSwitch", toggleSwitch);
             elementJSONObject.put("text", text);
-            elementJSONObject.put("iconId", iconId);
+            elementJSONObject.put("iconId", Byte.toUnsignedInt(iconId));
 
             if (type == Type.RANGE_BUTTON && range != null) {
                 elementJSONObject.put("range", range.name());
@@ -1424,6 +1429,15 @@ public class ControlElement {
                                         gamepadOffset);
                             }
                             this.states[i] = bindingCombo.isSingleBinding() || nextState;
+                        }
+                        else if (bindingCombo.isSingleBinding() &&
+                                (binding == Binding.MOUSE_SCROLL_UP || binding == Binding.MOUSE_SCROLL_DOWN)) {
+                            // Wheel ticks are pulses, not held buttons. Repeat for each active movement sample.
+                            if (states[i]) {
+                                handleBindingInputEvent(i, true, value);
+                                handleBindingInputEvent(i, false, value);
+                            }
+                            this.states[i] = false;
                         }
                         else if (this.states[i] != states[i]) {
                             handleBindingInputEvent(i, states[i], value);

@@ -62,6 +62,16 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     private final EffectComposer effectComposer;
     private FrameRating frameRating;
     private volatile XrFrameBridge xrFrameBridge = null;
+    private volatile boolean flatPresentationEnabled = true;
+
+    public void setFlatPresentationEnabled(boolean enabled) {
+        if (flatPresentationEnabled == enabled) return;
+        flatPresentationEnabled = enabled;
+        if (enabled) {
+            xServerView.queueEvent(this::updateScene);
+            xServerView.requestRender();
+        }
+    }
 
     public GLRenderer(XServerViewGL xServerView, XServer xServer) {
         this.xServerView = xServerView;
@@ -127,6 +137,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
     @Override
     public void onDrawFrame(GL10 gl) {
+        if (!flatPresentationEnabled) return;
         if (toggleFullscreen) {
             fullscreen = !fullscreen;
             toggleFullscreen = false;
@@ -239,29 +250,34 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
     @Override
     public void onMapWindow(Window window) {
+        if (!flatPresentationEnabled) return;
         xServerView.queueEvent(this::updateScene);
         xServerView.requestRender();
     }
 
     @Override
     public void onUnmapWindow(Window window) {
+        if (!flatPresentationEnabled) return;
         xServerView.queueEvent(this::updateScene);
         xServerView.requestRender();
     }
 
     @Override
     public void onChangeWindowZOrder(Window window) {
+        if (!flatPresentationEnabled) return;
         xServerView.queueEvent(this::updateScene);
         xServerView.requestRender();
     }
 
     @Override
     public void onUpdateWindowContent(Window window) {
+        if (!flatPresentationEnabled) return;
         xServerView.requestRender();
     }
 
     @Override
     public void onUpdateWindowGeometry(final Window window, boolean resized) {
+        if (!flatPresentationEnabled) return;
         if (resized) {
             xServerView.queueEvent(this::updateScene);
         }
@@ -271,11 +287,13 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
     @Override
     public void onUpdateWindowAttributes(Window window, Bitmask mask) {
+        if (!flatPresentationEnabled) return;
         if (mask.isSet(WindowAttributes.FLAG_CURSOR)) xServerView.requestRender();
     }
 
     @Override
     public void onPointerMove(short x, short y) {
+        if (!flatPresentationEnabled) return;
         xServerView.requestRender();
     }
 
@@ -355,7 +373,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         this.xrFrameBridge = xrFrameBridge;
         if (xrFrameBridge == null) clearRenderTargetSizeOverride();
         viewportNeedsUpdate = true;
-        xServerView.requestRender();
+        if (flatPresentationEnabled) xServerView.requestRender();
     }
 
     /** Whether active screen effects are forcing the composer path, which blocks the XR direct
@@ -373,6 +391,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     }
 
     private void updateScene() {
+        if (!flatPresentationEnabled) return;
         try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.DRAWABLE_MANAGER)) {
             renderableWindows.clear();
             collectRenderableWindows(xServer.windowManager.rootWindow, xServer.windowManager.rootWindow.getX(), xServer.windowManager.rootWindow.getY());

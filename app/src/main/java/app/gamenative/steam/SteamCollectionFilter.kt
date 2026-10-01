@@ -28,6 +28,21 @@ object SteamCollectionFilter {
         return buildSet { selected.forEach { addAll(it.appIds) } }
     }
 
+    /**
+     * Per-collection counts for the options panel: the Hidden collection uses [preHiddenAppIds] so
+     * it keeps its full count (and stays discoverable), while every other collection counts only
+     * [visibleAppIds] so badges match the games actually rendered.
+     */
+    fun visibleCollectionCounts(
+        collections: List<SteamCollection>?,
+        visibleAppIds: Collection<Int>,
+        preHiddenAppIds: Collection<Int>,
+        hiddenCollectionId: String = SteamCollection.ID_HIDDEN,
+    ): Map<String, Int> = collections?.associate { collection ->
+        val appIds = if (collection.id == hiddenCollectionId) preHiddenAppIds else visibleAppIds
+        collection.id to appIds.count { it in collection.appIds }
+    } ?: emptyMap()
+
     data class Reconciliation(val cleaned: Set<String>, val removedAny: Boolean)
 
     /** Drop selected ids no longer present. No-op while collections are not loaded (null). */

@@ -17,6 +17,8 @@ project(xrimmersive)
 add_library(xrimmersive SHARED
     xr_immersive.cpp
     jni_bridge.cpp
+    xr_windows_projection.cpp
+    xr_windows_transport.cpp
 )
 
 find_package(OpenXR REQUIRED CONFIG)
@@ -28,6 +30,13 @@ target_link_libraries(xrimmersive
     android
     jnigraphics
     log
+)
+
+target_compile_definitions(xrimmersive PRIVATE
+    XR_USE_PLATFORM_ANDROID=1
+    XR_USE_GRAPHICS_API_OPENGL_ES=1
+    EGL_EGLEXT_PROTOTYPES=1
+    GL_GLEXT_PROTOTYPES=1
 )
 
 target_compile_options(xrimmersive PRIVATE -Wall -Wextra -Werror=return-type -Wno-missing-field-initializers)

@@ -6,6 +6,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 
 import com.winlator.core.FileUtils;
+import com.winlator.math.Mathf;
 import com.winlator.widget.InputControlsView;
 
 import org.json.JSONArray;
@@ -15,13 +16,90 @@ import org.json.JSONObject;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 
 public class ControlsProfile implements Comparable<ControlsProfile> {
+    public static final float DEFAULT_CURSOR_SPEED = 1.0f;
+    public static final String KEY_AUTO_FIT_LAYOUT = "autoFitLayout";
+    public static final String KEY_LEFT_STICK_DEADZONE = "leftStickDeadzone";
+    public static final String KEY_RIGHT_STICK_DEADZONE = "rightStickDeadzone";
+    public static final String KEY_LEFT_STICK_SENSITIVITY = "leftStickSensitivity";
+    public static final String KEY_RIGHT_STICK_SENSITIVITY = "rightStickSensitivity";
+    public static final String KEY_LEFT_STICK_DEADZONE_MODE = "leftStickDeadzoneMode";
+    public static final String KEY_RIGHT_STICK_DEADZONE_MODE = "rightStickDeadzoneMode";
+    public static final String KEY_LEFT_STICK_DIGITAL_MODE = "leftStickDigitalMode";
+    public static final String KEY_RIGHT_STICK_DIGITAL_MODE = "rightStickDigitalMode";
+
+    public enum StickDeadzoneMode {
+        AXIAL("axial"),
+        CIRCULAR("circular"),
+        HYBRID("hybrid");
+
+        private final String jsonName;
+
+        StickDeadzoneMode(String jsonName) {
+            this.jsonName = jsonName;
+        }
+
+        public String getJsonName() {
+            return jsonName;
+        }
+
+        public static StickDeadzoneMode fromJsonName(String value) {
+            for (StickDeadzoneMode mode : values()) {
+                if (mode.jsonName.equals(value)) return mode;
+            }
+            return DEFAULT_STICK_DEADZONE_MODE;
+        }
+    }
+
+    public enum StickDigitalMode {
+        UNRESTRICTED("unrestricted"),
+        FOUR_WAY("four_way"),
+        EIGHT_WAY("eight_way");
+
+        private final String jsonName;
+
+        StickDigitalMode(String jsonName) {
+            this.jsonName = jsonName;
+        }
+
+        public String getJsonName() {
+            return jsonName;
+        }
+
+        public static StickDigitalMode fromJsonName(String value) {
+            for (StickDigitalMode mode : values()) {
+                if (mode.jsonName.equals(value)) return mode;
+            }
+            return DEFAULT_STICK_DIGITAL_MODE;
+        }
+    }
+
+    /** Bounds for the user-configurable physical stick deadzone and sensitivity. */
+    public static final float MIN_STICK_DEADZONE = 0.0f;
+    public static final float MAX_STICK_DEADZONE = 1.0f;
+    public static final float MIN_STICK_SENSITIVITY = 0.1f;
+    public static final float MAX_STICK_SENSITIVITY = 3.0f;
+    public static final float DEFAULT_STICK_DEADZONE = ControlElement.STICK_DEAD_ZONE;
+    public static final float DEFAULT_STICK_SENSITIVITY = 1.0f;
+    public static final StickDeadzoneMode DEFAULT_STICK_DEADZONE_MODE = StickDeadzoneMode.AXIAL;
+    public static final StickDigitalMode DEFAULT_STICK_DIGITAL_MODE = StickDigitalMode.UNRESTRICTED;
+
     public final int id;
     private String name;
-    private float cursorSpeed = 1.0f;
+    private float cursorSpeed = DEFAULT_CURSOR_SPEED;
+    private float leftStickDeadzone = DEFAULT_STICK_DEADZONE;
+    private float rightStickDeadzone = DEFAULT_STICK_DEADZONE;
+    private float leftStickSensitivity = DEFAULT_STICK_SENSITIVITY;
+    private float rightStickSensitivity = DEFAULT_STICK_SENSITIVITY;
+    private StickDeadzoneMode leftStickDeadzoneMode = DEFAULT_STICK_DEADZONE_MODE;
+    private StickDeadzoneMode rightStickDeadzoneMode = DEFAULT_STICK_DEADZONE_MODE;
+    private StickDigitalMode leftStickDigitalMode = DEFAULT_STICK_DIGITAL_MODE;
+    private StickDigitalMode rightStickDigitalMode = DEFAULT_STICK_DIGITAL_MODE;
+    private boolean stickTuningConfigured = false;
     private final ArrayList<ControlElement> elements = new ArrayList<>();
     private final ArrayList<ExternalController> controllers = new ArrayList<>();
     private final ArrayList<RadialMenu> radialMenus = new ArrayList<>();
@@ -30,8 +108,40 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
     private boolean controllersLoaded = false;
     private boolean radialMenusLoaded = false;
     private boolean virtualGamepad = false;
+    private boolean listed = true;
+    private int libraryProfileId = -1;
+    private int maxReferencedProfileId = -1;
+    private String gameOwnerId = "";
+    private JSONObject elementSourceOverride;
     private final Context context;
     private GamepadState gamepadState;
+    private final IdentityHashMap<ControlElement, AutoFitLayout> autoFitLayouts = new IdentityHashMap<>();
+
+    private static final class AutoFitLayout {
+        final double sourceX;
+        final double sourceY;
+        final float sourceScale;
+        int fittedX;
+        int fittedY;
+        float fittedScale;
+
+        AutoFitLayout(double sourceX, double sourceY, float sourceScale) {
+            this.sourceX = sourceX;
+            this.sourceY = sourceY;
+            this.sourceScale = sourceScale;
+        }
+
+        void captureFitted(ControlElement element) {
+            fittedX = element.getX();
+            fittedY = element.getY();
+            fittedScale = element.getScale();
+        }
+
+        boolean matchesFitted(ControlElement element) {
+            return element.getX() == fittedX && element.getY() == fittedY &&
+                    Float.compare(element.getScale(), fittedScale) == 0;
+        }
+    }
 
     public ControlsProfile(Context context, int id) {
         this.context = context;
@@ -54,12 +164,144 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
         this.cursorSpeed = cursorSpeed;
     }
 
+    private static float clampDeadzone(float value) {
+        if (Float.isNaN(value)) return DEFAULT_STICK_DEADZONE;
+        return Mathf.clamp(value, MIN_STICK_DEADZONE, MAX_STICK_DEADZONE);
+    }
+
+    private static float clampSensitivity(float value) {
+        if (Float.isNaN(value)) return DEFAULT_STICK_SENSITIVITY;
+        return Mathf.clamp(value, MIN_STICK_SENSITIVITY, MAX_STICK_SENSITIVITY);
+    }
+
+    public float getLeftStickDeadzone() {
+        return leftStickDeadzone;
+    }
+
+    public void setLeftStickDeadzone(float deadzone) {
+        this.leftStickDeadzone = clampDeadzone(deadzone);
+        stickTuningConfigured = true;
+    }
+
+    public float getRightStickDeadzone() {
+        return rightStickDeadzone;
+    }
+
+    public void setRightStickDeadzone(float deadzone) {
+        this.rightStickDeadzone = clampDeadzone(deadzone);
+        stickTuningConfigured = true;
+    }
+
+    public float getLeftStickSensitivity() {
+        return leftStickSensitivity;
+    }
+
+    public void setLeftStickSensitivity(float sensitivity) {
+        this.leftStickSensitivity = clampSensitivity(sensitivity);
+        stickTuningConfigured = true;
+    }
+
+    public float getRightStickSensitivity() {
+        return rightStickSensitivity;
+    }
+
+    public void setRightStickSensitivity(float sensitivity) {
+        this.rightStickSensitivity = clampSensitivity(sensitivity);
+        stickTuningConfigured = true;
+    }
+
+    public StickDeadzoneMode getLeftStickDeadzoneMode() {
+        return leftStickDeadzoneMode;
+    }
+
+    public void setLeftStickDeadzoneMode(StickDeadzoneMode mode) {
+        leftStickDeadzoneMode = mode != null ? mode : DEFAULT_STICK_DEADZONE_MODE;
+        stickTuningConfigured = true;
+    }
+
+    public StickDeadzoneMode getRightStickDeadzoneMode() {
+        return rightStickDeadzoneMode;
+    }
+
+    public void setRightStickDeadzoneMode(StickDeadzoneMode mode) {
+        rightStickDeadzoneMode = mode != null ? mode : DEFAULT_STICK_DEADZONE_MODE;
+        stickTuningConfigured = true;
+    }
+
+    public StickDigitalMode getLeftStickDigitalMode() {
+        return leftStickDigitalMode;
+    }
+
+    public void setLeftStickDigitalMode(StickDigitalMode mode) {
+        leftStickDigitalMode = mode != null ? mode : DEFAULT_STICK_DIGITAL_MODE;
+        stickTuningConfigured = true;
+    }
+
+    public StickDigitalMode getRightStickDigitalMode() {
+        return rightStickDigitalMode;
+    }
+
+    public void setRightStickDigitalMode(StickDigitalMode mode) {
+        rightStickDigitalMode = mode != null ? mode : DEFAULT_STICK_DIGITAL_MODE;
+        stickTuningConfigured = true;
+    }
+
+    /** Whether this profile explicitly opted into physical-stick tuning. */
+    public boolean isStickTuningConfigured() {
+        return stickTuningConfigured;
+    }
+
+    /** Restores whether stick tuning was explicitly configured after a failed transactional edit. */
+    public void restoreStickTuningConfigured(boolean configured) {
+        stickTuningConfigured = configured;
+    }
+
+    /**
+     * Rescales an axis value across the remaining travel so the first output past the deadzone is
+     * near zero instead of jumping straight to the deadzone magnitude.
+     */
+    public static float applyStickDeadzone(float value, float deadzone) {
+        if (!Float.isFinite(value)) return 0;
+        deadzone = clampDeadzone(deadzone);
+        float magnitude = Math.abs(value);
+        if (magnitude <= deadzone || deadzone >= 1.0f) return 0;
+        return ((magnitude - deadzone) / (1.0f - deadzone)) * Mathf.sign(value);
+    }
+
     public boolean isVirtualGamepad() {
         return virtualGamepad;
     }
 
-    public void setVirtualGamepad(boolean isVirtualGamepad) {
-        virtualGamepad = isVirtualGamepad;
+    public boolean isListed() {
+        return listed;
+    }
+
+    public void setListed(boolean listed) {
+        this.listed = listed;
+    }
+
+    public int getLibraryProfileId() {
+        return libraryProfileId;
+    }
+
+    public void setLibraryProfileId(int libraryProfileId) {
+        this.libraryProfileId = libraryProfileId;
+    }
+
+    public int getMaxReferencedProfileId() {
+        return maxReferencedProfileId;
+    }
+
+    public void setMaxReferencedProfileId(int maxReferencedProfileId) {
+        this.maxReferencedProfileId = maxReferencedProfileId;
+    }
+
+    public String getGameOwnerId() {
+        return gameOwnerId;
+    }
+
+    public void setGameOwnerId(String gameOwnerId) {
+        this.gameOwnerId = gameOwnerId != null ? gameOwnerId : "";
     }
 
     public GamepadState getGamepadState() {
@@ -126,28 +368,75 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
         return elementsLoaded;
     }
 
-    public void save() {
+    public boolean save() {
+        return saveElementsForLayoutSize(0, 0);
+    }
+
+    public boolean saveElementsForLayoutSize(int layoutWidth, int layoutHeight) {
+        if (elementSourceOverride != null) return false;
         File file = getProfileFile(context, id);
         Log.d("ControlsProfile", "Saving profile: " + name + " (ID: " + id + ") to " + file.getAbsolutePath());
 
         try {
-            JSONObject data = new JSONObject();
+            // Preserve profile sections and metadata managed outside this runtime model.
+            // Rebuilding from an empty object would silently discard them whenever the
+            // on-screen editor saves a profile.
+            JSONObject data = file.isFile()
+                    ? new JSONObject(FileUtils.readString(file))
+                    : new JSONObject();
             data.put("id", id);
             data.put("name", name);
             data.put("cursorSpeed", Float.valueOf(cursorSpeed));
+            data.put("listed", listed);
+            if (libraryProfileId >= 0) data.put("libraryProfileId", libraryProfileId);
+            else data.remove("libraryProfileId");
+            if (!gameOwnerId.isEmpty()) data.put("gameOwnerId", gameOwnerId);
+            else data.remove("gameOwnerId");
+
+            // Profiles created before stick tuning existed retain their original input behavior.
+            // Opening this feature and saving any values opts the profile in from then on.
+            if (stickTuningConfigured) {
+                data.put(KEY_LEFT_STICK_DEADZONE, (double) leftStickDeadzone);
+                data.put(KEY_RIGHT_STICK_DEADZONE, (double) rightStickDeadzone);
+                data.put(KEY_LEFT_STICK_SENSITIVITY, (double) leftStickSensitivity);
+                data.put(KEY_RIGHT_STICK_SENSITIVITY, (double) rightStickSensitivity);
+                data.put(KEY_LEFT_STICK_DEADZONE_MODE, leftStickDeadzoneMode.getJsonName());
+                data.put(KEY_RIGHT_STICK_DEADZONE_MODE, rightStickDeadzoneMode.getJsonName());
+                data.put(KEY_LEFT_STICK_DIGITAL_MODE, leftStickDigitalMode.getJsonName());
+                data.put(KEY_RIGHT_STICK_DIGITAL_MODE, rightStickDigitalMode.getJsonName());
+                includeSectionIfDeclared(data, "physicalController");
+            }
 
             JSONArray elementsJSONArray = new JSONArray();
             if (!elementsLoaded && file.isFile()) {
-                JSONObject profileJSONObject = new JSONObject(FileUtils.readString(file));
-                elementsJSONArray = profileJSONObject.getJSONArray("elements");
+                JSONArray storedElements = data.optJSONArray("elements");
+                if (storedElements != null) elementsJSONArray = storedElements;
             }
-            else for (ControlElement element : elements) elementsJSONArray.put(element.toJSONObject());
+            else for (ControlElement element : elements) {
+                JSONObject elementJson = layoutWidth > 0 && layoutHeight > 0
+                        ? element.toJSONObject(layoutWidth, layoutHeight)
+                        : element.toJSONObject();
+                AutoFitLayout fitted = autoFitLayouts.get(element);
+                if (fitted != null) {
+                    if (fitted.matchesFitted(element)) {
+                        elementJson.put("x", fitted.sourceX);
+                        elementJson.put("y", fitted.sourceY);
+                        elementJson.put("scale", fitted.sourceScale);
+                    }
+                    else {
+                        // The user deliberately edited the fitted layout, so its current
+                        // geometry becomes the new authored layout from this point on.
+                        autoFitLayouts.remove(element);
+                    }
+                }
+                elementsJSONArray.put(elementJson);
+            }
             data.put("elements", elementsJSONArray);
 
             JSONArray controllersJSONArray = new JSONArray();
             if (!controllersLoaded && file.isFile()) {
-                JSONObject profileJSONObject = new JSONObject(FileUtils.readString(file));
-                if (profileJSONObject.has("controllers")) controllersJSONArray = profileJSONObject.getJSONArray("controllers");
+                JSONArray storedControllers = data.optJSONArray("controllers");
+                if (storedControllers != null) controllersJSONArray = storedControllers;
             }
             else {
                 for (ExternalController controller : controllers) {
@@ -155,12 +444,14 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                     if (controllerJSONObject != null) controllersJSONArray.put(controllerJSONObject);
                 }
             }
-            if (controllersJSONArray.length() > 0) data.put("controllers", controllersJSONArray);
+            if (controllersJSONArray.length() > 0 || includesSection(data, "physicalController")) {
+                data.put("controllers", controllersJSONArray);
+            }
+            else if (controllersLoaded) data.remove("controllers");
 
             JSONArray radialMenusJSONArray = new JSONArray();
             if (!radialMenusLoaded && file.isFile()) {
-                JSONObject profileJSONObject = new JSONObject(FileUtils.readString(file));
-                JSONArray storedRadialMenus = profileJSONObject.optJSONArray("radialMenus");
+                JSONArray storedRadialMenus = data.optJSONArray("radialMenus");
                 if (storedRadialMenus != null) radialMenusJSONArray = storedRadialMenus;
             }
             else {
@@ -169,14 +460,36 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                     if (menuJSONObject != null) radialMenusJSONArray.put(menuJSONObject);
                 }
             }
-            if (radialMenusJSONArray.length() > 0) data.put("radialMenus", radialMenusJSONArray);
+            if (radialMenusJSONArray.length() > 0 || includesSection(data, "radialMenu")) {
+                data.put("radialMenus", radialMenusJSONArray);
+            }
+            else if (radialMenusLoaded) data.remove("radialMenus");
 
-            FileUtils.writeString(file, data.toString());
+            if (!FileUtils.writeString(file, data.toString())) {
+                Log.e("ControlsProfile", "Failed to write profile: " + name + " (ID: " + id + ")");
+                return false;
+            }
             Log.d("ControlsProfile", "Profile saved successfully: " + name + " (controllers: " + controllersJSONArray.length() + ", elements: " + elementsJSONArray.length() + ")");
+            return true;
         }
-        catch (JSONException e) {
+        catch (Exception e) {
             Log.e("ControlsProfile", "Failed to save profile: " + name + " (ID: " + id + ")", e);
+            return false;
         }
+    }
+
+    private static boolean includesSection(JSONObject data, String section) {
+        JSONArray included = data.optJSONArray("includedSections");
+        if (included == null) return false;
+        for (int i = 0; i < included.length(); i++) {
+            if (section.equals(included.optString(i))) return true;
+        }
+        return false;
+    }
+
+    private static void includeSectionIfDeclared(JSONObject data, String section) {
+        JSONArray included = data.optJSONArray("includedSections");
+        if (included != null && !includesSection(data, section)) included.put(section);
     }
 
     public static File getProfileFile(Context context, int id) {
@@ -243,7 +556,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
             }
             radialMenusLoaded = true;
         }
-        catch (JSONException e) {
+        catch (Exception e) {
             Log.e("ControlsProfile", "Failed to load radial menus for profile: " + name + " (ID: " + id + ")", e);
             radialMenus.add(RadialMenu.createDefault());
             radialMenusLoaded = true;
@@ -268,6 +581,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
             JSONObject profileJSONObject = new JSONObject(FileUtils.readString(file));
             if (!profileJSONObject.has("controllers")) {
                 Log.d("ControlsProfile", "No controllers section in profile: " + name);
+                controllersLoaded = true;
                 return controllers;
             }
             JSONArray controllersJSONArray = profileJSONObject.getJSONArray("controllers");
@@ -296,7 +610,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
             controllersLoaded = true;
             Log.d("ControlsProfile", "Loaded " + controllers.size() + " controllers for profile: " + name);
         }
-        catch (JSONException e) {
+        catch (Exception e) {
             Log.e("ControlsProfile", "Failed to load controllers for profile: " + name + " (ID: " + id + ")", e);
             e.printStackTrace();
         }
@@ -304,9 +618,44 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
     }
 
     public void loadElements(InputControlsView inputControlsView) {
+        if (elementSourceOverride != null) {
+            loadElementsFromJsonInternal(inputControlsView, elementSourceOverride);
+            return;
+        }
+
+        File file = getProfileFile(context, id);
+        Log.d("ControlsProfile", "Loading elements for profile: " + name + " (ID: " + id + ") from " + file.getAbsolutePath());
+
+        if (!file.isFile()) {
+            resetElements();
+            Log.d("ControlsProfile", "Profile file does not exist: " + name);
+            return;
+        }
+
+        try {
+            loadElementsFromJsonInternal(inputControlsView, new JSONObject(FileUtils.readString(file)));
+        }
+        catch (Exception e) {
+            resetElements();
+            Log.e("ControlsProfile", "Failed to load profile JSON: " + name + " (ID: " + id + ")", e);
+        }
+    }
+
+    /** Retains and loads an in-memory profile so previews can resize without temporary files. */
+    public void loadElementsFromJson(InputControlsView inputControlsView, JSONObject profileJSONObject) {
+        elementSourceOverride = profileJSONObject;
+        loadElementsFromJsonInternal(inputControlsView, profileJSONObject);
+    }
+
+    private void resetElements() {
         elements.clear();
         elementsLoaded = false;
         virtualGamepad = false;
+        autoFitLayouts.clear();
+    }
+
+    private void loadElementsFromJsonInternal(InputControlsView inputControlsView, JSONObject profileJSONObject) {
+        resetElements();
 
         // Check if view has valid dimensions before loading
         if (inputControlsView.getMaxWidth() == 0 || inputControlsView.getMaxHeight() == 0) {
@@ -315,17 +664,13 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
             return;
         }
 
-        File file = getProfileFile(context, id);
-        Log.d("ControlsProfile", "Loading elements for profile: " + name + " (ID: " + id + ") from " + file.getAbsolutePath());
-
-        if (!file.isFile()) {
-            Log.d("ControlsProfile", "Profile file does not exist: " + name);
-            return;
-        }
-
         try {
-            JSONObject profileJSONObject = new JSONObject(FileUtils.readString(file));
-            JSONArray elementsJSONArray = profileJSONObject.getJSONArray("elements");
+            JSONArray elementsJSONArray = profileJSONObject.optJSONArray("elements");
+            if (elementsJSONArray == null) elementsJSONArray = new JSONArray();
+            // Existing layouts, including migrated working copies, keep their
+            // authored geometry until the user explicitly imports/applies a layout.
+            boolean autoFitLayout = profileJSONObject.optBoolean(KEY_AUTO_FIT_LAYOUT, false);
+            IdentityHashMap<ControlElement, AutoFitLayout> sourceLayouts = new IdentityHashMap<>();
             for (int i = 0; i < elementsJSONArray.length(); i++) {
                 JSONObject elementJSONObject = elementsJSONArray.getJSONObject(i);
                 ControlElement element = new ControlElement(inputControlsView);
@@ -343,9 +688,12 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                 }
                 element.setShape(ControlElement.Shape.valueOf(elementJSONObject.getString("shape")));
                 element.setToggleSwitch(elementJSONObject.getBoolean("toggleSwitch"));
-                element.setX((int)(elementJSONObject.getDouble("x") * inputControlsView.getMaxWidth()));
-                element.setY((int)(elementJSONObject.getDouble("y") * inputControlsView.getMaxHeight()));
-                element.setScale((float)elementJSONObject.getDouble("scale"));
+                double sourceX = elementJSONObject.getDouble("x");
+                double sourceY = elementJSONObject.getDouble("y");
+                float sourceScale = (float)elementJSONObject.getDouble("scale");
+                element.setX((int)(sourceX * inputControlsView.getMaxWidth()));
+                element.setY((int)(sourceY * inputControlsView.getMaxHeight()));
+                element.setScale(sourceScale);
                 element.setText(elementJSONObject.getString("text"));
                 element.setIconId(elementJSONObject.getInt("iconId"));
                 if (elementJSONObject.has("range")) element.setRange(ControlElement.Range.valueOf(elementJSONObject.getString("range")));
@@ -377,13 +725,54 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
 
                 if (!virtualGamepad && hasGamepadBinding) virtualGamepad = true;
                 elements.add(element);
+                if (autoFitLayout) sourceLayouts.put(element, new AutoFitLayout(sourceX, sourceY, sourceScale));
             }
+            if (autoFitLayout) fitElementsToBounds(inputControlsView, sourceLayouts);
             elementsLoaded = true;
             Log.d("ControlsProfile", "Loaded " + elements.size() + " elements for profile: " + name + " (virtualGamepad: " + virtualGamepad + ")");
         }
-        catch (JSONException e) {
+        catch (Exception e) {
             Log.e("ControlsProfile", "Failed to load elements for profile: " + name + " (ID: " + id + ")", e);
             e.printStackTrace();
+        }
+    }
+
+    private void fitElementsToBounds(
+            InputControlsView inputControlsView,
+            IdentityHashMap<ControlElement, AutoFitLayout> sourceLayouts
+    ) {
+        int maxWidth = inputControlsView.getMaxWidth();
+        int maxHeight = inputControlsView.getMaxHeight();
+        if (maxWidth <= 0 || maxHeight <= 0) return;
+
+        for (ControlElement element : elements) {
+            int originalX = element.getX();
+            int originalY = element.getY();
+            float originalScale = element.getScale();
+            android.graphics.Rect bounds = element.getBoundingBox();
+            if (bounds.width() > maxWidth || bounds.height() > maxHeight) {
+                float fitScale = Math.min(
+                        (float)maxWidth / Math.max(1, bounds.width()),
+                        (float)maxHeight / Math.max(1, bounds.height())
+                );
+                element.setScale(Math.max(0.1f, element.getScale() * fitScale));
+                bounds = element.getBoundingBox();
+            }
+
+            int dx = bounds.left < 0 ? -bounds.left :
+                    (bounds.right > maxWidth ? maxWidth - bounds.right : 0);
+            int dy = bounds.top < 0 ? -bounds.top :
+                    (bounds.bottom > maxHeight ? maxHeight - bounds.bottom : 0);
+            if (dx != 0) element.setX(element.getX() + dx);
+            if (dy != 0) element.setY(element.getY() + dy);
+            if (element.getX() != originalX || element.getY() != originalY ||
+                    Float.compare(element.getScale(), originalScale) != 0) {
+                AutoFitLayout layout = sourceLayouts.get(element);
+                if (layout != null) {
+                    layout.captureFitted(element);
+                    autoFitLayouts.put(element, layout);
+                }
+            }
         }
     }
 }

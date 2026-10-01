@@ -60,6 +60,27 @@ class SteamCollectionFilterTest {
         assertEquals(setOf(440, 570, 730), SteamCollectionFilter.allowedAppIds(setOf("fav", "sht"), all))
     }
 
+    @Test fun visibleCollectionCountsKeepHiddenCollectionFullButExcludeHiddenElsewhere() {
+        val hidden = SteamCollection(SteamCollection.ID_HIDDEN, "Hidden", setOf(440, 570))
+        val favorites = SteamCollection("fav", "Favorites", setOf(440, 570, 730))
+
+        val counts = SteamCollectionFilter.visibleCollectionCounts(
+            collections = listOf(hidden, favorites),
+            visibleAppIds = listOf(440, 730), // 570 is hidden and filtered out by default
+            preHiddenAppIds = listOf(440, 570, 730),
+        )
+
+        assertEquals(2, counts[SteamCollection.ID_HIDDEN]) // full count, includes the hidden game
+        assertEquals(2, counts["fav"]) // excludes the hidden game, so the badge matches the list
+    }
+
+    @Test fun visibleCollectionCountsAreEmptyWhenCollectionsNotLoaded() {
+        assertEquals(
+            emptyMap<String, Int>(),
+            SteamCollectionFilter.visibleCollectionCounts(null, listOf(440), listOf(440)),
+        )
+    }
+
     @Test fun passesAllRequiresMembershipInEveryActiveGroup() {
         assertTrue(SteamCollectionFilter.passesAll(570, setOf(440, 570), setOf(570, 730)))
         assertFalse(SteamCollectionFilter.passesAll(440, setOf(440, 570), setOf(570, 730)))

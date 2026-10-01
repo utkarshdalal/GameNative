@@ -45,6 +45,28 @@ object XrNative {
         outFlags: BooleanArray,
     ): Boolean
 
+    external fun nativeWaitWindowsFrame(
+        handle: Long,
+        afterSerial: Long,
+        timeoutMs: Int,
+        outTiming: LongArray,
+        outViews: FloatArray,
+        outInput: FloatArray,
+        outFlags: IntArray,
+    ): Boolean
+
+    external fun nativeIsWindowsStereoActive(handle: Long): Boolean
+
+    external fun nativeApplyWindowsHaptic(
+        handle: Long,
+        hand: Int,
+        amplitude: Float,
+        duration: Long,
+        frequency: Float,
+    ): Boolean
+
+    external fun nativeSetWindowsOverlayVisible(handle: Long, visible: Boolean)
+
     /**
      * Hands off one PixelCopy'd frame of the game's actual rendered output (ARGB_8888) to be
      * drawn into the immersive quad layer. See ImmersiveXrActivity's capture loop.
