@@ -14,10 +14,21 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import android.os.SystemClock
 import androidx.compose.foundation.BorderStroke
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import app.gamenative.ui.component.focusRing
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,6 +43,7 @@ import app.gamenative.data.localizedPrompt
 import app.gamenative.data.localizedWinBody
 import app.gamenative.data.localizedLoseBody
 import app.gamenative.data.isPlayable
+import app.gamenative.utils.BootAdView
 import com.posthog.PostHog
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.Composable
@@ -62,6 +74,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -98,6 +111,8 @@ fun BootingSplash(
     progress: Float = -1f, // -1 for indeterminate, 0-1 for determinate
     heroImageUrl: String = "",
     bootAd: BootAdItem? = null,
+    onAbort: (() -> Unit)? = null,
+    onDismissAd: ((optOut: Boolean) -> Unit)? = null,
 ) {
     // Tips rotation (no animation cost, safe outside visibility check)
     val context = LocalContext.current
@@ -248,6 +263,7 @@ fun BootingSplash(
                     BootAdVideo(
                         uri = adVideoUri,
                         fallbackImageUrl = activeAd.imageUrl,
+                        controlsStartPadding = if (onAbort != null) 60.dp else 0.dp,
                     )
                 } else Crossfade(
                     targetState = adImageIndex,
@@ -267,6 +283,7 @@ fun BootingSplash(
                             // Only the primary art disables the card; a bad screenshot just skips
                             if (url == activeAd.imageUrl) {
                                 adImageFailed = true
+                                BootAdView.imageFailed(activeAd.campaignId)
                             } else if (adImages.size > 1) {
                                 adImageIndex = (adImageIndex + 1) % adImages.size
                             }
@@ -336,6 +353,12 @@ fun BootingSplash(
             if (activeAd != null) {
                 BootAdContent(
                     ad = activeAd,
+                    onDismiss = onDismissAd,
+                    backdrop = when {
+                        adVideoUri != null -> "video"
+                        activeAd.imageUrl.isNotEmpty() -> "image"
+                        else -> "none"
+                    },
                     statusText = text,
                     progress = progress,
                     shimmerPosition = shimmerPosition,
@@ -458,6 +481,22 @@ fun BootingSplash(
                     }
                 }
             }
+
+            if (onAbort != null) {
+                IconButton(
+                    onClick = onAbort,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(12.dp)
+                        .background(Color.Black.copy(alpha = 0.45f), CircleShape),
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = stringResource(R.string.back),
+                        tint = Color.White,
+                    )
+                }
+            }
         }
     }
 }
@@ -467,6 +506,7 @@ fun BootingSplash(
 private fun BootAdVideo(
     uri: Uri,
     fallbackImageUrl: String,
+    controlsStartPadding: Dp = 0.dp,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -491,6 +531,19 @@ private fun BootAdVideo(
         val listener = object : Player.Listener {
             override fun onRenderedFirstFrame() {
                 showFallback = false
+                BootAdView.videoFirstFrame()
+            }
+
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                BootAdView.videoPlaying(isPlaying)
+            }
+
+            override fun onPositionDiscontinuity(
+                oldPosition: Player.PositionInfo,
+                newPosition: Player.PositionInfo,
+                reason: Int,
+            ) {
+                if (reason == Player.DISCONTINUITY_REASON_AUTO_TRANSITION) BootAdView.videoLooped()
             }
         }
         exoPlayer.addListener(listener)
@@ -506,6 +559,7 @@ private fun BootAdVideo(
 
         onDispose {
             timber.log.Timber.tag("BootAdTrace").i("video disposed")
+            BootAdView.videoPlaying(false)
             exoPlayer.removeListener(listener)
             lifecycleOwner.lifecycle.removeObserver(observer)
             exoPlayer.release()
@@ -543,10 +597,11 @@ private fun BootAdVideo(
             onClick = {
                 soundOn = !soundOn
                 exoPlayer.volume = if (soundOn) 1f else 0f
+                BootAdView.videoSound(soundOn)
             },
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(12.dp)
+                .padding(start = 12.dp + controlsStartPadding, top = 12.dp)
                 .background(Color.Black.copy(alpha = 0.45f), CircleShape),
         ) {
             Icon(
@@ -561,6 +616,8 @@ private fun BootAdVideo(
 @Composable
 private fun BootAdContent(
     ad: BootAdItem,
+    onDismiss: ((optOut: Boolean) -> Unit)?,
+    backdrop: String,
     statusText: String,
     progress: Float,
     shimmerPosition: Float,
@@ -573,17 +630,64 @@ private fun BootAdContent(
         blurRadius = 6f,
     )
 
+    var showDismissSheet by remember(ad.campaignId) { mutableStateOf(false) }
+
     Box(modifier = Modifier.fillMaxSize()) {
-        Text(
-            text = stringResource(if (ad.sponsored) R.string.featured_badge else R.string.boot_rec_badge),
-            style = MaterialTheme.typography.labelSmall,
-            color = Color.White.copy(alpha = 0.85f),
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(16.dp)
-                .background(scrimColor.copy(alpha = 0.55f), RoundedCornerShape(8.dp))
-                .padding(horizontal = 10.dp, vertical = 4.dp),
-        )
+                .padding(12.dp),
+        ) {
+            if (ad.sponsored) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(0xFFFFC107))
+                        .padding(horizontal = 10.dp, vertical = 5.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Star,
+                        contentDescription = null,
+                        tint = Color.Black,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Text(
+                        text = stringResource(R.string.featured_badge),
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = Color.Black,
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
+            } else {
+                Text(
+                    text = stringResource(R.string.boot_rec_badge),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White.copy(alpha = 0.85f),
+                    modifier = Modifier
+                        .background(scrimColor.copy(alpha = 0.55f), RoundedCornerShape(10.dp))
+                        .padding(horizontal = 10.dp, vertical = 5.dp),
+                )
+            }
+            if (onDismiss != null) {
+                val closeInteraction = remember { MutableInteractionSource() }
+                IconButton(
+                    onClick = { showDismissSheet = true },
+                    interactionSource = closeInteraction,
+                    modifier = Modifier
+                        .background(Color.Black.copy(alpha = 0.45f), CircleShape)
+                        .focusRing(closeInteraction, CircleShape, width = 2.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = stringResource(R.string.boot_ad_close_cd),
+                        tint = Color.White,
+                    )
+                }
+            }
+        }
 
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -614,6 +718,10 @@ private fun BootAdContent(
                 } else {
                     null
                 }
+            }
+
+            LaunchedEffect(ad.campaignId, backdrop) {
+                BootAdView.cardRendered(ad, backdrop, cta?.type, quizQuestion != null)
             }
 
             if (quizQuestion != null) {
@@ -680,6 +788,121 @@ private fun BootAdContent(
                 textAlign = TextAlign.Center,
             )
         }
+
+        if (showDismissSheet && onDismiss != null) {
+            BootAdDismissSheet(
+                sponsored = ad.sponsored,
+                scrimColor = scrimColor,
+                onCloseOne = {
+                    showDismissSheet = false
+                    onDismiss(false)
+                },
+                onTurnOff = {
+                    showDismissSheet = false
+                    onDismiss(true)
+                },
+                onKeep = { showDismissSheet = false },
+            )
+        }
+    }
+}
+
+@Composable
+private fun BootAdDismissSheet(
+    sponsored: Boolean,
+    scrimColor: Color,
+    onCloseOne: () -> Unit,
+    onTurnOff: () -> Unit,
+    onKeep: () -> Unit,
+) {
+    val closeFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        runCatching { closeFocus.requestFocus() }
+    }
+    BackHandler(onBack = onKeep)
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(scrimColor.copy(alpha = 0.6f))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onKeep,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .widthIn(max = 360.dp)
+                .padding(horizontal = 32.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(PluviaTheme.colors.surfacePanel)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {},
+                )
+                .padding(horizontal = 24.dp, vertical = 20.dp),
+        ) {
+            Text(
+                text = stringResource(if (sponsored) R.string.boot_ad_sheet_title_sponsored else R.string.boot_ad_sheet_title_rec),
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(if (sponsored) R.string.boot_ad_sheet_body_sponsored else R.string.boot_ad_sheet_body_rec),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
+                textAlign = TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(20.dp))
+
+            val closeInteraction = remember { MutableInteractionSource() }
+            Button(
+                onClick = onCloseOne,
+                interactionSource = closeInteraction,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(closeFocus)
+                    .focusRing(closeInteraction, RoundedCornerShape(12.dp), width = 2.dp),
+            ) {
+                Text(text = stringResource(R.string.boot_ad_close_one), fontWeight = FontWeight.SemiBold)
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+
+            val offInteraction = remember { MutableInteractionSource() }
+            OutlinedButton(
+                onClick = onTurnOff,
+                interactionSource = offInteraction,
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRing(offInteraction, RoundedCornerShape(12.dp), width = 2.dp),
+            ) {
+                Text(text = stringResource(if (sponsored) R.string.boot_ad_turn_off_sponsored else R.string.boot_ad_turn_off_rec))
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+
+            val keepInteraction = remember { MutableInteractionSource() }
+            TextButton(
+                onClick = onKeep,
+                interactionSource = keepInteraction,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.focusRing(keepInteraction, RoundedCornerShape(12.dp), width = 2.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.boot_ad_not_now),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                )
+            }
+        }
     }
 }
 
@@ -717,6 +940,7 @@ private fun BootQuizCard(
     }
 
     LaunchedEffect(resolved) {
+        if (resolved) BootAdView.quizResolved(correct = won, timedOut = timedOut)
         if (resolved && PrefManager.usageAnalyticsEnabled) {
             PostHog.capture(
                 event = "boot_quiz_answered",

@@ -263,10 +263,10 @@ internal fun PhysicalControllerConfigSection(
                         }
 
                         // Save button
-                        IconButton(onClick = {
+                        IconButton(onClick = saveBindings@{
                             Log.d("gncontrol", "=== Save: Applying ${workingBindings.size} bindings ===")
 
-                            controller?.let { ctrl ->
+                            val saved = controller?.let { ctrl ->
                                 val existingBindings = ctrl.getControllerBindings().toList()
                                 for (binding in existingBindings) {
                                     ctrl.removeControllerBinding(binding)
@@ -288,8 +288,12 @@ internal fun PhysicalControllerConfigSection(
                                 }
 
                                 profile.save()
-                                Log.d("gncontrol", "Saved profile ${profile.name}")
+                            } ?: false
+                            if (!saved) {
+                                Log.e("gncontrol", "Failed to save profile ${profile.name}")
+                                return@saveBindings
                             }
+                            Log.d("gncontrol", "Saved profile ${profile.name}")
                             onSave()
                         }) {
                             Icon(Icons.Default.Save, null)

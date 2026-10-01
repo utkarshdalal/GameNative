@@ -126,7 +126,7 @@ fun ShooterModeSettingsDialog(
 
                         SettingsDialogSectionHeader(stringResource(R.string.shooter_section_runtime))
 
-                        SliderSettingBlock(
+                        SettingsSliderBlock(
                             title = stringResource(R.string.shooter_movement_zone_width),
                             subtitle = stringResource(R.string.shooter_movement_zone_width_subtitle),
                             value = config.movementZoneSplit,
@@ -172,7 +172,7 @@ fun ShooterModeSettingsDialog(
                                 )
                             }
 
-                            SliderSettingBlock(
+                            SettingsSliderBlock(
                                 title = stringResource(R.string.look_sensitivity_x),
                                 subtitle = stringResource(R.string.look_sensitivity_x_subtitle),
                                 value = config.lookSensitivityX,
@@ -181,7 +181,7 @@ fun ShooterModeSettingsDialog(
                                 onValueChange = { config = config.copy(lookSensitivityX = it) },
                             )
 
-                            SliderSettingBlock(
+                            SettingsSliderBlock(
                                 title = stringResource(R.string.look_sensitivity_y),
                                 subtitle = stringResource(R.string.look_sensitivity_y_subtitle),
                                 value = config.lookSensitivityY,
@@ -200,7 +200,7 @@ fun ShooterModeSettingsDialog(
                                 )
                             }
 
-                            SliderSettingBlock(
+                            SettingsSliderBlock(
                                 title = stringResource(R.string.look_smoothing),
                                 subtitle = stringResource(R.string.look_smoothing_subtitle),
                                 value = config.lookSmoothing,
@@ -209,7 +209,7 @@ fun ShooterModeSettingsDialog(
                                 onValueChange = { config = config.copy(lookSmoothing = it) },
                             )
 
-                            SliderSettingBlock(
+                            SettingsSliderBlock(
                                 title = stringResource(R.string.look_deadzone),
                                 subtitle = stringResource(R.string.look_deadzone_subtitle),
                                 value = config.lookDeadzone,
@@ -224,7 +224,7 @@ fun ShooterModeSettingsDialog(
                                 enabled = config.mouseAccelerationEnabled,
                                 onEnabledChange = { config = config.copy(mouseAccelerationEnabled = it) },
                             ) {
-                                SliderSettingBlock(
+                                SettingsSliderBlock(
                                     title = stringResource(R.string.mouse_acceleration_strength),
                                     subtitle = stringResource(R.string.mouse_acceleration_strength_subtitle),
                                     value = config.mouseAccelerationStrength,
@@ -233,7 +233,7 @@ fun ShooterModeSettingsDialog(
                                     onValueChange = { config = config.copy(mouseAccelerationStrength = it) },
                                     compact = true,
                                 )
-                                SliderSettingBlock(
+                                SettingsSliderBlock(
                                     title = stringResource(R.string.mouse_acceleration_max),
                                     subtitle = stringResource(R.string.mouse_acceleration_max_subtitle),
                                     value = config.mouseAccelerationMaxMultiplier,
@@ -247,7 +247,7 @@ fun ShooterModeSettingsDialog(
 
                         SettingsDialogSectionHeader(stringResource(R.string.shooter_section_joysticks))
 
-                        SliderSettingBlock(
+                        SettingsSliderBlock(
                             title = stringResource(R.string.joystick_opacity),
                             subtitle = stringResource(R.string.joystick_opacity_subtitle),
                             value = config.resolvedJoystickOpacity(defaultJoystickOpacity),
@@ -258,7 +258,7 @@ fun ShooterModeSettingsDialog(
 
                         SettingsDialogSectionHeader(stringResource(R.string.shooter_section_movement_joystick))
 
-                        SliderSettingBlock(
+                        SettingsSliderBlock(
                             title = stringResource(R.string.movement_joystick_size),
                             subtitle = stringResource(R.string.movement_joystick_size_subtitle),
                             value = config.movementJoystickSize,
@@ -277,7 +277,7 @@ fun ShooterModeSettingsDialog(
                         )
 
                         if (showAnalogMovementOptions) {
-                            SliderSettingBlock(
+                            SettingsSliderBlock(
                                 title = stringResource(R.string.movement_joystick_deadzone),
                                 subtitle = stringResource(R.string.movement_joystick_deadzone_subtitle),
                                 value = config.movementJoystickDeadzone,
@@ -286,7 +286,7 @@ fun ShooterModeSettingsDialog(
                                 onValueChange = { config = config.copy(movementJoystickDeadzone = it) },
                             )
 
-                            SliderSettingBlock(
+                            SettingsSliderBlock(
                                 title = stringResource(R.string.movement_stick_sensitivity),
                                 subtitle = stringResource(R.string.movement_stick_sensitivity_subtitle),
                                 value = config.movementStickSensitivity,
@@ -299,7 +299,7 @@ fun ShooterModeSettingsDialog(
                         if (showRightStickOptions) {
                             SettingsDialogSectionHeader(stringResource(R.string.shooter_section_right_joystick))
 
-                            SliderSettingBlock(
+                            SettingsSliderBlock(
                                 title = stringResource(R.string.look_joystick_size),
                                 subtitle = stringResource(R.string.look_joystick_size_subtitle),
                                 value = config.lookJoystickSize,
@@ -317,7 +317,7 @@ fun ShooterModeSettingsDialog(
                                 onValueChange = { config = config.copy(lookJoystickBehavior = it) },
                             )
 
-                            SliderSettingBlock(
+                            SettingsSliderBlock(
                                 title = stringResource(R.string.look_joystick_deadzone),
                                 subtitle = stringResource(R.string.look_joystick_deadzone_subtitle),
                                 value = config.lookJoystickDeadzone,
@@ -326,7 +326,7 @@ fun ShooterModeSettingsDialog(
                                 onValueChange = { config = config.copy(lookJoystickDeadzone = it) },
                             )
 
-                            SliderSettingBlock(
+                            SettingsSliderBlock(
                                 title = stringResource(R.string.look_stick_sensitivity),
                                 subtitle = stringResource(R.string.look_stick_sensitivity_subtitle),
                                 value = config.lookStickSensitivity,
@@ -344,7 +344,7 @@ fun ShooterModeSettingsDialog(
                             enabled = config.outerRingSprintEnabled,
                             onEnabledChange = { config = config.copy(outerRingSprintEnabled = it) },
                         ) {
-                            SliderSettingBlock(
+                            SettingsSliderBlock(
                                 title = stringResource(R.string.outer_ring_sprint_threshold),
                                 subtitle = stringResource(R.string.outer_ring_sprint_threshold_subtitle),
                                 value = config.outerRingSprintThreshold,
@@ -388,19 +388,6 @@ private fun ShooterDropdownBlock(
     compact: Boolean = false,
 ) {
     SettingsDropdownBlock(title, subtitle, value, values, labels, onValueChange, compact)
-}
-
-@Composable
-private fun SliderSettingBlock(
-    title: String,
-    subtitle: String,
-    value: Float,
-    valueRange: ClosedFloatingPointRange<Float>,
-    valueText: String,
-    onValueChange: (Float) -> Unit,
-    compact: Boolean = false,
-) {
-    SettingsSliderBlock(title, subtitle, value, valueRange, valueText, onValueChange, compact = compact)
 }
 
 @Composable

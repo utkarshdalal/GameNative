@@ -24,8 +24,8 @@ private fun normalizedKey(input: String) =
  * Fetches HowLongToBeat completion time stats for a game.
  *
  * Flow (ported from https://github.com/morwy/hltb-for-deck):
- *  1. GET /api/bleed/init → auth tokens (token, hpKey, hpVal)
- *  2. POST /api/bleed with auth headers + body → search results contain all comp times
+ *  1. GET /api/search/site/init → auth tokens (token, hpKey, hpVal)
+ *  2. POST /api/search/site with auth headers + body → search results contain all comp times
  *
  * HLTB's CDN rejects HTTP/2 for this endpoint, so requests use the shared app client forced to HTTP/1.1.
  * Stats are cached for 12 hours.
@@ -33,7 +33,7 @@ private fun normalizedKey(input: String) =
 object HltbService {
 
     private const val DEFAULT_API_BASE_URL = "https://howlongtobeat.com"
-    private const val SEARCH_PATH = "/api/bleed"
+    private const val SEARCH_PATH = "/api/search/site"
     private const val INIT_PATH = "$SEARCH_PATH/init"
     private const val UA =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36"

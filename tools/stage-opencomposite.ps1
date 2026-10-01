@@ -2,8 +2,8 @@ $ErrorActionPreference = "Stop"
 $repository = Split-Path -Parent $PSScriptRoot
 $payload = Join-Path $repository "app\src\modernXr\assets"
 $destination = Join-Path $payload "opencomposite_x64.dll"
-$uri = "https://opencomposite.znix.xyz/builds/download_build?artefact_id=JjRFMXaxas695QK-&build_id=52366409&commit=a27e7e6a64bdcd1eff6b7fba1ea2ea34bcf1273d"
-$expected = "827ad85f3606a4dc4a8f5561a8ca69e4c6c1b5d2b9cd3315a461b9270b08242c"
+$uri = "https://github.com/GameNative/opencomposite/releases/download/v2/opencomposite_x64.dll"
+$expected = "55dc09c465ab2bf2787b47fec74cb9787b05aa19e1951df207ffc9dd3926af2f"
 New-Item -ItemType Directory -Force -Path $payload | Out-Null
 if ((Test-Path -LiteralPath $destination -PathType Leaf) -and (Get-FileHash -Algorithm SHA256 -LiteralPath $destination).Hash.ToLowerInvariant() -eq $expected) { exit 0 }
 $temporary = "$destination.download"

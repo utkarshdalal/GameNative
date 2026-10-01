@@ -80,6 +80,18 @@
     <string name="branch">Rama</string>
     <string name="change_branch">Cambiar de rama</string>
     <string name="change_branch_message">Descarga versiones alternativas del juego desde Steam usando ramas proporcionadas por los desarrolladores. Introduce códigos de acceso para desbloquear ramas privadas.</string>
+    <string name="change_preferred_copy">Cambiar copia preferida</string>
+    <string name="change_preferred_copy_message">Elige qué copia de un miembro de la Familia de Steam quieres jugar. Usa la copia de un miembro de la familia para acceder a sus DLC.</string>
+    <string name="loading_preferred_copy">Comprobando copias de la biblioteca familiar…</string>
+    <string name="using_your_copy">Usando tu copia</string>
+    <string name="shared_from_name">Compartido por %1$s</string>
+    <string name="preferred_copy_your_label">Tu copia (%1$s)</string>
+    <string name="preferred_copy_family_label">%1$s</string>
+    <string name="preferred_copy_family_member">Miembro de la familia</string>
+    <string name="preferred_copy_dlc_count">%1$d DLC</string>
+    <string name="preferred_copy_label_with_dlc">%1$s · %2$s</string>
+    <string name="preferred_copy_failed">No se pudo cambiar la copia preferida. Inténtalo de nuevo mientras estés conectado a Steam.</string>
+    <string name="preferred_copy_confirm">Usar esta copia</string>
     <string name="private_branch_password_hint">Introduce el código de acceso</string>
     <string name="private_branch_password_check">Comprobar código</string>
     <string name="private_branch_password_success">¡Rama desbloqueada!</string>
@@ -199,6 +211,7 @@
 
     <!--Winlator-->
     <string name="disabled">Desactivado</string>
+    <string name="enabled">Activado</string>
     <string name="copy">Copiar</string>
     <string name="stability">Estabilidad</string>
     <string name="compatibility">Compatibilidad</string>
@@ -228,12 +241,10 @@
     <string name="remove">Eliminar</string>
     <string name="add">Añadir</string>
     <string name="delete">Borrar</string>
-    <string name="copy_from">Copiar de</string>
     <string name="ok">Aceptar</string>
     <string name="container_config_custom_resolution_title">Establecer resolución personalizada</string>
     <string name="container_config_custom_resolution_separator">x</string>
     <string name="container_config_custom_resolution_error_nonzero">El ancho y el alto deben ser mayores que 0.</string>
-    <string name="container_config_custom_resolution_error_aspect">El ancho debe ser mayor que el alto.</string>
     <string name="storage_info">Información de almacenamiento</string>
     <string name="duplicate">Duplicar</string>
     <string name="reconfigure">Reconfigurar</string>
@@ -524,7 +535,6 @@
     <string name="not_set">No asignado</string>
 
     <!-- Toast -->
-    <string name="toast_controls_reset">Controles restablecidos.</string>
     <string name="toast_failed_log_save">Error al guardar el logcat en el destino.</string>
 
     <!-- Settings -->
@@ -630,6 +640,12 @@
     <string name="calculating_time">Calculando…</string>
     <string name="download_failed_try_again">Descarga fallida, inténtalo de nuevo.</string>
     <string name="download_preparing">Preparando la descarga…</string>
+    <string name="download_verifying_files_progress">Verificando archivos (%1$d/%2$d)</string>
+    <string name="download_verifying_files">Verificando archivos...</string>
+    <string name="download_assembling_files">Ensamblando archivos...</string>
+    <string name="download_progress_chunks">Descargando (%1$d/%2$d fragmentos)</string>
+    <string name="download_progress_files">Descargando (%1$d/%2$d archivos)…</string>
+    <string name="download_unpacking">Descomprimiendo...</string>
     <string name="download_preparing_depots">Preparando depósitos (%1$d/%2$d)</string>
     <string name="update_available">Actualización disponible</string>
     <string name="game_information">Información del juego</string>
@@ -731,9 +747,13 @@
     <string name="pulseaudio_suspend_behavior_thread">Suspender vía Thread (Predeterminado)</string>
     <string name="pulseaudio_suspend_behavior_pactl">Suspender vía Pactl (Ahorro de energía)</string>
     <string name="pulseaudio_low_latency">Modo de baja latencia PulseAudio</string>
+    <string name="microphone_input">Entrada de micrófono</string>
+    <string name="microphone_input_description">Expone el micrófono del dispositivo a Wine/Proton como dispositivo de grabación. Requiere el permiso de micrófono.</string>
     <string name="show_fps">Mostrar FPS</string>
     <string name="portrait_mode">Modo vertical</string>
     <string name="portrait_mode_description">Para controles tipo 8BitDo FlipPad/GameSir Pocket Taco</string>
+    <string name="portrait_below_cutout">Mantener debajo de la cámara</string>
+    <string name="portrait_below_cutout_description">Muestra el juego debajo del orificio de la cámara en modo vertical</string>
     <string name="remove_driver_confirmation">¿Deseas eliminar el controlador "%s"? Esta acción no se puede deshacer.</string>
 
     <!-- Container Configuration: Steam Integration -->
@@ -744,8 +764,8 @@
     <string name="force_dlc_description">Actívalo solo si los DLC no se detectan o los archivos de guardados con DLC no funcionan.</string>
     <string name="local_saves_only">Solo guardados locales</string>
     <string name="local_saves_only_description">Desactiva la sincronización de guardados en la nube para este juego y mantén las partidas solo en el dispositivo</string>
-    <string name="launch_steam_client_beta">Iniciar cliente de Steam (Beta)</string>
-    <string name="launch_steam_client_description">Reduce el rendimiento y ralentiza el inicio.\nPermite el juego en línea y soluciona problemas de DRM y de mando.\nNo todos los juegos funcionan.</string>
+    <string name="launch_steam_client_beta">Iniciar cliente de Steam</string>
+    <string name="launch_steam_client_description">Se recomienda Headless\nNecesario para EA, Rockstar, Ubisoft y otros lanzadores\nActiva el multijugador y corrige problemas de DRM y de mando</string>
     <string name="launch_bionic_steam">Habilitar Bionic Steam experimental</string>
     <string name="steam_offline_mode">Modo sin conexión de Steam</string>
     <string name="steam_offline_mode_description">Inicia juegos de Steam en modo sin conexión.</string>
@@ -970,6 +990,10 @@
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulación</string>
+    <string name="settings_accounts_title">Cuentas de lanzadores de juegos</string>
+    <string name="settings_accounts_signed_out">No has iniciado sesión</string>
+    <string name="settings_accounts_ea_title">Cuenta de EA</string>
+    <string name="settings_accounts_rockstar_title">Cuenta de Rockstar</string>
     <string name="settings_emulation_orientations_title">Orientaciones de pantalla permitidas</string>
     <string name="settings_emulation_orientations_subtitle">Elige las orientaciones a las que puede rotar la pantalla durante el juego.</string>
     <string name="settings_emulation_default_config_title">Configuración por defecto</string>
@@ -1010,7 +1034,7 @@
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Información</string>
     <string name="settings_info_send_tip_title">Hazte miembro</string>
-    <string name="settings_info_send_tip_subtitle">Acceso anticipado a versiones, ayuda prioritaria y más</string>
+    <string name="settings_info_send_tip_subtitle">Ayuda con IA para tus juegos, acceso anticipado a versiones y más</string>
     <string name="settings_info_ask_tip_title">Ofertas de membresía</string>
     <string name="settings_info_ask_tip_subtitle">Mostrar ofertas ocasionales para hacerte miembro de GameNative</string>
     <string name="settings_info_source_title">Código fuente</string>
@@ -1129,7 +1153,7 @@
     <string name="main_recent_crash_title">Fallo reciente</string>
     <string name="main_recent_crash_message">¡Lo sentimos!\nSería de gran ayuda conocer el problema reciente que has tenido.\nPuedes ver y exportar el registro del fallo más reciente en los ajustes de la aplicación y adjuntarlo como un \'issue\' de GitHub en el repositorio del proyecto.\n¡El enlace al repositorio de GitHub también está en los ajustes!</string>
     <string name="main_thank_you_title">¿Disfrutas de GameNative?</string>
-    <string name="main_thank_you_message">Hazte miembro hoy. Los miembros obtienen:\n\n• Acceso anticipado a nuevas versiones\n• Ayuda prioritaria para hacer funcionar tus juegos\n• Roles premium y canales exclusivos en Discord\n• …y más\n\nDesde $5/mes</string>
+    <string name="main_thank_you_message">Hazte miembro hoy. Los miembros obtienen:\n\n• Ayuda con IA para hacer funcionar tus juegos\n• Acceso anticipado a nuevas versiones\n• Roles premium y canales exclusivos en Discord\n• …y más\n\nDesde $5/mes</string>
     <string name="main_join_kofi">Hazte miembro</string>
     <string name="pitch_session_title">¿Disfrutando de %1$s?</string>
     <string name="pitch_five_star_title">¡Genial que %1$s haya funcionado de maravilla!</string>
@@ -1142,6 +1166,8 @@
     <!-- PluviaMain: Game Launch -->
     <string name="main_downloading_entry">Descargando %s…</string>
     <string name="main_downloading_steam">Descargando Steam…</string>
+    <string name="steam_update_required_title">Actualización necesaria</string>
+    <string name="steam_update_required_message">Este juego tiene una actualización. El cliente de Steam no puede iniciarlo hasta que se instale. Actualiza ahora y vuelve a iniciarlo.</string>
 
     <string name="main_installing_glibc">Instalando componentes de glibc…</string>
     <string name="main_installing_bionic">Instalando componentes de Bionic…</string>
@@ -1195,6 +1221,8 @@
     <string name="container_config_vkd3d_version">Versión de VKD3D</string>
     <string name="container_config_executable_path">Ruta del ejecutable</string>
     <string name="container_config_executable_path_placeholder">p. ej., ruta\\al\\exe</string>
+    <string name="container_config_executable_path_custom">Ruta personalizada…</string>
+    <string name="container_config_executable_path_custom_placeholder">p. ej., C:\\Juegos\\juego.exe</string>
 
     <!-- Libraries Dialog -->
     <string name="libraries_title">Librerías utilizadas</string>
@@ -1485,6 +1513,15 @@
     <string name="gog_settings_login_title">Iniciar sesión en GOG</string>
     <string name="gog_settings_login_subtitle">Inicia sesión en tu cuenta de GOG.</string>
     <string name="gog_login_success_title">Inicio de sesión exitoso</string>
+    <string name="rockstar_login_required_title">Se requiere iniciar sesión en Rockstar</string>
+    <string name="rockstar_login_failed">Error al iniciar sesión en Rockstar: %1$s</string>
+    <string name="ea_login_required_title">Se requiere iniciar sesión en EA</string>
+    <string name="ea_login_success">Sesión iniciada en EA como %1$s</string>
+    <string name="ea_login_failed">Error al iniciar sesión en EA: %1$s</string>
+    <string name="ea_preparing">Preparando la compatibilidad con el launcher de EA</string>
+    <string name="rockstar_preparing">Preparando la compatibilidad con el launcher de Rockstar</string>
+    <string name="rockstar_runtime_installing">Instalando el entorno de Social Club</string>
+    <string name="rockstar_installer_missing">Falta el instalador de Social Club en los archivos del juego. Verifica los archivos del juego en Steam e inténtalo de nuevo.</string>
     <string name="gog_login_cancel">Cancelar</string>
     <string name="gog_settings_logout_title">Cerrar sesión de GOG</string>
     <string name="gog_settings_logout_subtitle">Cierra la sesión de tu cuenta de GOG.</string>
@@ -1574,6 +1611,13 @@
     <string name="recommended_support_message">Recibimos una comisión por las compras realizadas a través de este enlace.</string>
     <string name="recommended_about_heading">Sobre este juego</string>
     <string name="recommended_review_count">Basado en %1$s reseñas</string>
+    <string name="library_store_media_page">%1$d de %2$d</string>
+    <string name="library_store_media_fullscreen">Ver contenido multimedia en pantalla completa</string>
+    <string name="library_store_media_close">Cerrar contenido multimedia en pantalla completa</string>
+    <string name="library_store_media_previous">Contenido multimedia anterior</string>
+    <string name="library_store_media_next">Siguiente contenido multimedia</string>
+    <string name="library_store_about_expand">Expandir Sobre este juego</string>
+    <string name="library_store_about_collapse">Contraer Sobre este juego</string>
     <string name="review_overwhelmingly_positive">Abrumadoramente positivo</string>
     <string name="review_very_positive">Muy positivo</string>
     <string name="review_mostly_positive">Mayormente positivo</string>
@@ -1611,6 +1655,7 @@
     <string name="hltb_all_styles">Todos los estilos</string>
     <string name="hltb_hours_value">%sh</string>
     <string name="hltb_section_title">HLTB</string>
+    <string name="hltb_show_spoilers">Mostrar spoilers</string>
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
@@ -1622,6 +1667,10 @@
     <string name="lsfg_performance_mode">Modo de rendimiento</string>
     <string name="lsfg_present_mode">Modo de presentación</string>
     <string name="lsfg_present_mode_desc">Se recomienda Mailbox. FIFO también funciona cuando la tasa de fotogramas de salida (límite de fps × multiplicador) coincide con la tasa de refresco de la pantalla; por debajo de ella, FIFO puede verse inestable.</string>
+    <string name="lsfg_backend">Backend</string>
+    <string name="lsfg_backend_desc">Legacy ejecuta la capa lsfg-vk dentro del juego; Nativo ejecuta la generación de fotogramas en el renderizador de GameNative</string>
+    <string name="lsfg_backend_legacy">Legacy (capa)</string>
+    <string name="lsfg_backend_native">Nativo (renderizador)</string>
     <string name="lsfg_not_supported">La generación de fotogramas requiere un contenedor Bionic</string>
     <string name="lsfg_install_prompt">Lossless Scaling no está instalado. Toca para instalar. Solo se sabe que funciona en Adreno 6xx y posteriores.</string>
     <string name="lsfg_not_in_library">Lossless Scaling no está en tu biblioteca de Steam</string>
@@ -1720,6 +1769,50 @@
     <string name="filter_five_star_device">Reseñas de 5 estrellas en el dispositivo</string>
     <string name="filter_five_star_gpu">Reseñas de 5 estrellas en la GPU</string>
     <string name="filter_proven_gpu">Probado en tu GPU</string>
+    <string name="vibration_intensity">Intensidad de vibración</string>
+    <string name="option_import_files">Importar archivos</string>
+    <string name="option_export_files">Exportar archivos</string>
+    <string name="container_files_up">Subir</string>
+    <string name="container_files_new_folder">Nueva carpeta</string>
+    <string name="container_files_folder_name_hint">Nombre de la carpeta</string>
+    <string name="container_files_create">Crear</string>
+    <string name="container_files_create_folder_failed">No se pudo crear la carpeta.</string>
+    <string name="container_files_no_subfolders">No hay subcarpetas</string>
+    <string name="container_files_empty_folder">Esta carpeta está vacía</string>
+    <string name="container_files_none_selected">No hay archivos seleccionados</string>
+    <string name="container_files_result_failed">%1$d archivos fallaron</string>
+    <string name="import_files_title">Importar archivos</string>
+    <string name="import_files_step_choose_files">1. Elige los archivos</string>
+    <string name="import_files_pick_hint">Elige archivos de este dispositivo.</string>
+    <string name="import_files_step_choose_destination">2. Elige dónde colocarlos</string>
+    <string name="import_files_destination_hint">Elige una carpeta dentro del contenedor del juego.</string>
+    <string name="import_files_select">Seleccionar archivos</string>
+    <string name="import_files_remove">Eliminar</string>
+    <string name="import_files_selection_summary">%1$d archivos, %2$s</string>
+    <string name="import_files_replace_existing">Reemplazar archivos existentes</string>
+    <string name="import_files_copy_summary">Se copiarán %1$d archivos a %2$s</string>
+    <string name="import_files_copy_button">Copiar %1$d archivos</string>
+    <string name="import_files_progress">Importando %1$d/%2$d</string>
+    <string name="import_files_result">Se importaron %1$d archivos a %2$s</string>
+    <string name="import_files_result_skipped">Se omitieron %1$d archivos existentes</string>
+    <string name="import_files_cancelled">Importación cancelada</string>
+    <string name="import_files_no_container">Inicia el juego una vez para crear su contenedor y luego importa los archivos.</string>
+    <string name="import_files_not_enough_space">No hay suficiente espacio libre: se necesitan %1$s, hay %2$s disponibles.</string>
+    <string name="import_files_failed_header">No se pudieron importar estos archivos:</string>
+    <string name="export_files_title">Exportar archivos</string>
+    <string name="export_files_source">Elige los archivos que quieres exportar</string>
+    <string name="export_files_source_hint">Marca los archivos que quieres copiar fuera del contenedor del juego.</string>
+    <string name="export_files_selection_summary">%1$d archivos seleccionados · %2$s</string>
+    <string name="export_files_clear">Borrar</string>
+    <string name="export_files_export_button">Exportar %1$d archivos</string>
+    <string name="export_files_saved_to">Los archivos se guardan en %1$s</string>
+    <string name="export_files_permission_needed">Se necesita el permiso de almacenamiento para guardar archivos en Descargas.</string>
+    <string name="export_files_progress">Exportando %1$d/%2$d</string>
+    <string name="export_files_saved_result">Se guardaron %1$d archivos en %2$s</string>
+    <string name="export_files_cancelled">Exportación cancelada</string>
+    <string name="export_files_no_container">Inicia el juego una vez para crear su contenedor y luego exporta los archivos.</string>
+    <string name="export_files_failed_header">No se pudieron exportar estos archivos:</string>
+    <string name="app_filter_vr">Juego de RV</string>
     <string name="option_manage_mods">Administrar mods de Nexus</string>
     <string name="nexus_search_clear">Borrar búsqueda</string>
     <string name="nexus_filter_all">Todo</string>
@@ -1832,6 +1925,7 @@
     <string name="debug_prerun_title">Obtén ayuda de la AI</string>
     <string name="debug_prerun_message_1">Ejecuta el juego con registro de depuración y comparte el registro con nuestra AI en Discord al salir. Juega hasta que aparezca el problema.</string>
     <string name="debug_prerun_message_2">Las respuestas de la AI son solo para suscriptores.</string>
+    <string name="debug_trial_note">Prueba gratuita disponible.</string>
     <string name="debug_prerun_message_3">Cualquiera puede compartir el informe para recibir ayuda humana.</string>
     <string name="debug_paywall_title">Consigue soporte de depuración con AI</string>
     <string name="debug_paywall_pitch">Nuestra AI lee tu registro y tu configuración exactos y te dice qué cambiar, normalmente en menos de 5 minutos.</string>
@@ -1981,8 +2075,6 @@
     <string name="nexus_source_folder_label">Carpeta/archivo del mod</string>
     <string name="nexus_destination_folder">Carpeta de destino</string>
     <string name="nexus_install_method">Método de instalación</string>
-    <string name="nexus_create_folder_for_selection">Crear una carpeta para la selección</string>
-    <string name="nexus_create_folder_for_selection_description">Activado: La carpeta seleccionada se instala en el destino. Apagado: Sólo se coloca allí su contenido.</string>
     <string name="nexus_hide_manual_paths">Ocultar rutas manuales</string>
     <string name="nexus_manual_paths">Rutas manuales</string>
     <string name="nexus_source_folders_files_label">Carpetas/archivos del mod</string>
@@ -2118,7 +2210,6 @@
     <string name="nexus_applying_mod_files">Aplicar archivos mod</string>
     <string name="nexus_applied_items_backups">Elementos aplicados: %1$d, copias de seguridad: %2$d%3$s</string>
     <string name="nexus_old_files_left_in_place_suffix">; archivos antiguos dejados en su lugar: %1$d</string>
-    <string name="nexus_applied_with_errors">Aplicado con errores: %1$d</string>
     <string name="nexus_mod_apply_already_running">Los archivos Mod ya se están aplicando.</string>
     <string name="nexus_failed_to_apply_mod">No se pudo aplicar el mod</string>
     <string name="nexus_fomod_or_custom_required">Configure el instalador FOMOD o elija Ubicación personalizada antes de realizar la solicitud.</string>
@@ -2440,6 +2531,83 @@
     <string name="favorite_added">Añadido a favoritos</string>
     <string name="favorite_added_named">%1$s añadido a favoritos</string>
     <string name="xr_refresh_rate">Frecuencia de actualización de RV</string>
+    <string name="nexus_plan_review_title">Revisión de ubicación</string>
+    <string name="nexus_plan_coverage">%1$d de %2$d archivos planificados • %3$d ignorados • %4$d por revisar</string>
+    <string name="nexus_plan_ranked">Sugerencias clasificadas</string>
+    <string name="nexus_plan_score">%1$d. %2$s — %3$d%% de cobertura</string>
+    <string name="nexus_plan_case_merge">Unificación de mayúsculas: %1$s</string>
+    <string name="nexus_plan_ambiguous_case">ya existen variantes ambiguas de mayúsculas y minúsculas</string>
+    <string name="nexus_plan_blocked">La aplicación automática está bloqueada hasta que cada archivo instalable tenga un destino comprobado.</string>
+    <string name="nexus_plan_export">Compartir diagnóstico</string>
+    <string name="nexus_reconfiguration_preview">Vista previa de la reconfiguración</string>
+    <string name="nexus_reconfiguration_summary">%1$d añadidos • %2$d cambiados • %3$d movidos • %4$d obsoletos</string>
+    <string name="nexus_choose_package_variant">Elige una variante del paquete</string>
+    <string name="nexus_confirm_risky_game_root_files">He revisado estos archivos de la carpeta del juego</string>
+    <string name="nexus_confirm_risky_game_root_files_description">Los archivos DLL, EXE y de carga pueden cambiar el inicio del juego. Confirma solo si confías en el archivo y la vista previa coincide con sus instrucciones de instalación.</string>
+    <string name="nexus_building_install_plan">Creando el plan de ubicación de archivos…</string>
+    <string name="nexus_reapply_missing_files">Reaplicar archivos que faltan</string>
+    <string name="nexus_adopt_ownership">Verificar y registrar archivos</string>
+    <string name="nexus_ownership_adopted">Los archivos se verificaron y registraron sin modificarlos.</string>
+    <string name="nexus_file_tracking_setup_failed">No se pudieron verificar y registrar los archivos instalados (%1$d problema(s))</string>
+    <string name="nexus_stale_placement_reason">Esta colocación ya no genera este archivo</string>
+    <string name="nexus_restore_previous_deployment">Restaurar despliegue anterior</string>
+    <string name="nexus_restore_previous_deployment_description">Sustituye el plan de ubicación actual por el último plan funcional de este mod.</string>
+    <string name="nexus_restoring_previous_deployment">Restaurando el despliegue anterior…</string>
+    <string name="nexus_previous_deployment_restored">Se restauró el despliegue anterior.</string>
+    <string name="nexus_previous_deployment_restore_failed">No se pudo restaurar el despliegue anterior (%1$d problema(s))</string>
+    <string name="nexus_search_destination">Buscar en esta carpeta</string>
+    <string name="nexus_show_hidden_files">Mostrar archivos y carpetas ocultos</string>
+    <string name="nexus_new_destination_folder">Nueva carpeta</string>
+    <string name="nexus_new_destination_folder_description">Elige un nombre de carpeta dentro del destino actual.</string>
+    <string name="nexus_folder_name">Nombre de carpeta</string>
+    <string name="nexus_folder_created_when_applied">Aún no se cambia nada. La carpeta se creará al aplicar el plan revisado.</string>
+    <string name="nexus_use_folder">Usar carpeta</string>
+    <string name="nexus_will_be_created">Se creará</string>
+    <string name="nexus_destination_folder_empty">No hay archivos ni carpetas coincidentes</string>
+    <string name="nexus_impact_will_add">Se añadirá</string>
+    <string name="nexus_impact_will_replace">Se reemplazará</string>
+    <string name="nexus_impact_will_backup">Se respaldará</string>
+    <string name="nexus_impact_plan_conflict">Conflicto del plan</string>
+    <string name="nexus_impact_managed_by_this_mod">Gestionado por este mod</string>
+    <string name="nexus_impact_managed_by_mod">Gestionado por %1$s</string>
+    <string name="nexus_impact_modified">Cambiado desde el despliegue</string>
+    <string name="nexus_impact_game_or_unmanaged">Archivo del juego o no gestionado</string>
+    <string name="nexus_impact_will_receive_files">Recibirá archivos</string>
+    <string name="nexus_advanced_placement">Colocación avanzada</string>
+    <string name="nexus_hide_advanced_placement">Ocultar colocación avanzada</string>
+    <string name="nexus_advanced_placement_description">La colocación automática es una estimación. Comprueba que los archivos y destinos previstos coincidan con las instrucciones del mod. Si no es así, abre Colocación avanzada y elige Personalizada para asignarlos tú mismo.</string>
+    <string name="nexus_folder_layout">En el destino, instalar</string>
+    <string name="nexus_install_contents_of">Contenido de %1$s</string>
+    <string name="nexus_install_folder_and_contents">Carpeta %1$s y su contenido</string>
+    <string name="nexus_merge_selected_folder_contents">Combinar el contenido de las carpetas seleccionadas</string>
+    <string name="nexus_keep_selected_folder_names">Conservar el nombre de cada carpeta seleccionada</string>
+    <string name="nexus_recommended_suffix">\u0020(Recomendado)</string>
+    <string name="nexus_folder_layout_result">Resultado: %1$s</string>
+    <string name="nexus_duplicate_folder_warning">Esto crea un nombre de carpeta repetido, como Data/Data. Elige el contenido salvo que el mod requiera la carpeta adicional.</string>
+    <string name="nexus_why_this_placement">¿Por qué esta colocación?</string>
+    <string name="nexus_hide_placement_reason">Ocultar detalles de colocación</string>
+    <string name="nexus_use_this_placement">Usar esta colocación</string>
+    <string name="nexus_resolve_files">Resolver %1$d archivos</string>
+    <string name="nexus_resolve_files_description">Cambia a colocación personalizada y conserva las asignaciones recomendadas para asignar con seguridad los archivos sin resolver.</string>
+    <string name="nexus_review_all_files">Revisar todos los archivos (%1$d)</string>
+    <string name="nexus_all_planned_files">Todos los archivos planificados</string>
+    <string name="nexus_search_planned_files">Buscar origen, destino o motivo</string>
+    <string name="nexus_all_files_count">Todos (%1$d)</string>
+    <string name="nexus_no_matching_planned_files">Ningún archivo planificado coincide con el filtro</string>
+    <string name="nexus_previous_destination_value">Anterior: %1$s</string>
+    <string name="nexus_destination_value">Destino: %1$s</string>
+    <string name="nexus_browse_destination">Explorar destino</string>
+    <string name="nexus_destination_contents">Contenido del destino</string>
+    <string name="nexus_plan_group_added">Añadidos</string>
+    <string name="nexus_plan_group_replaced">Reemplazados</string>
+    <string name="nexus_plan_group_moved">Movidos</string>
+    <string name="nexus_plan_group_removed">Eliminados</string>
+    <string name="nexus_plan_group_ignored">Ignorados</string>
+    <string name="nexus_plan_group_blocked">Bloqueados</string>
+    <string name="nexus_plan_group_unchanged">Sin cambios</string>
+    <string name="nexus_previous_rule_page">Página anterior de reglas de ubicación</string>
+    <string name="nexus_next_rule_page">Página siguiente de reglas de ubicación</string>
+    <string name="nexus_placement_rule_range">Reglas de ubicación %1$d–%2$d de %3$d</string>
     <string name="faster_external_loading_title">Carga más rápida desde almacenamiento externo</string>
     <string name="faster_external_loading_subtitle">Puede acelerar considerablemente el inicio de juegos desde almacenamiento externo, pero puede causar problemas en algunos juegos</string>
     <string name="disable_libredirect_title">Desactivar libredirect</string>
@@ -2461,11 +2629,22 @@
     <string name="xr_open_composite_toggle">Compatibilidad con SteamVR (OpenVR)</string>
     <string name="xr_open_composite_toggle_desc">Redirige los juegos creados para SteamVR a través de OpenComposite. Actívalo si el juego dice que SteamVR no está en ejecución o se queda en plano con el modo VR activado.</string>
     <string name="xr_render_scale">Escala de renderizado de RV</string>
+    <string name="settings_hide_ai_title">Ocultar funciones de IA</string>
+    <string name="settings_hide_ai_subtitle">Oculta la ayuda de depuración con IA opcional</string>
     <string name="settings_info_boot_ads_title">Pantallas de carga patrocinadas</string>
     <string name="settings_info_boot_ads_subtitle">Mantener esto activado ayuda a apoyar el desarrollo de GameNative. Nunca ralentiza el inicio de los juegos ni te afecta de ninguna manera.</string>
     <string name="settings_info_boot_recs_title">Recomendaciones de juegos en pantallas de carga</string>
     <string name="settings_info_boot_recs_subtitle">Mostrar un juego que podría gustarte mientras arranca un juego, cuando no hay tarjeta de patrocinador.</string>
     <string name="boot_rec_badge">Recomendado para ti</string>
+    <string name="boot_ad_close_cd">Cerrar esta tarjeta</string>
+    <string name="boot_ad_sheet_title_sponsored">Sobre las tarjetas de patrocinio</string>
+    <string name="boot_ad_sheet_title_rec">Sobre las recomendaciones</string>
+    <string name="boot_ad_sheet_body_sponsored">Las tarjetas de patrocinio ayudan a financiar el trabajo a tiempo completo en GameNative. Puedes cambiarlo en cualquier momento en Ajustes.</string>
+    <string name="boot_ad_sheet_body_rec">Las recomendaciones se eligen según los juegos que juegas. Puedes cambiarlo en cualquier momento en Ajustes.</string>
+    <string name="boot_ad_close_one">Cerrar esta</string>
+    <string name="boot_ad_turn_off_sponsored">Desactivar tarjetas de patrocinio</string>
+    <string name="boot_ad_turn_off_rec">Desactivar recomendaciones</string>
+    <string name="boot_ad_not_now">Ahora no</string>
     <string name="boot_quiz_win_default">¡Correcto!</string>
     <string name="boot_quiz_lose_default">La respuesta era %1$s</string>
     <string name="gyro_aiming">Apuntado con giroscopio</string>
@@ -2507,4 +2686,41 @@
     <string name="gyro_degrees_per_second_value">%1$.1f°/s</string>
     <string name="gyro_milliseconds_value">%1$d ms</string>
     <string name="reset_gyro_settings">Restablecer ajustes del giroscopio</string>
+    <string name="nexus_review_placement">Revisar colocación</string>
+    <string name="nexus_everything_folder_layout">Las carpetas de nivel superior conservan sus nombres; los archivos raíz se colocan directamente en el destino</string>
+    <string name="nexus_fomod_defaults_replaced">%1$d archivo(s) predeterminado(s) reemplazado(s) por tus opciones de FOMOD</string>
+    <string name="nexus_mod_order_blocked_managed_files">No se cambió el orden de los mods. Archivos gestionados ausentes o modificados: %1$d. Comprueba primero el estado de la instalación y resuelve esos problemas.</string>
+    <string name="nexus_placement_complete_summary">Colocación completada. Total: %1$d; actualizados: %2$d; ya al día: %3$d; con copia de seguridad: %4$d%5$s</string>
+    <string name="nexus_apply_failed_rolled_back">La instalación falló; se intentó una reversión segura. Errores: %1$d</string>
+    <string name="nexus_apply_failure_title">Falló la última instalación del mod</string>
+    <string name="nexus_apply_failure_description">El mod no se marcó como instalado. Los cambios se revirtieron cuando pudieron verificarse de forma segura. Revisa los errores de archivo de abajo y vuelve a Colocación para corregir o reintentar este mod.</string>
+    <string name="nexus_apply_failure_details">Errores de archivo: %1$d</string>
+    <string name="control_profiles">Perfiles de controles</string>
+    <string name="more_options">Más opciones</string>
+    <string name="control_profiles_empty">No hay perfiles de controles disponibles.</string>
+    <string name="control_profile_applied_sections">Aplicado · %1$d de %2$d ajustes</string>
+    <string name="control_profile_apply">Aplicar</string>
+    <string name="control_profile_applied">Perfil de controles aplicado</string>
+    <string name="control_profile_export">Exportar</string>
+    <string name="control_profile_create_blank">Perfil vacío</string>
+    <string name="control_profile_create_current">Desde los controles actuales</string>
+    <string name="control_profile_start_with">Empezar con</string>
+    <string name="control_profile_create_current_hint">Elige qué ajustes guardar de este juego.</string>
+    <string name="control_profile_create_blank_hint">Empezar con un diseño de controles en pantalla vacío.</string>
+    <string name="control_profile_create_applies_hint">El perfil nuevo se guardará en la biblioteca y se aplicará de inmediato a este juego.</string>
+    <string name="control_profile_create_and_apply">Crear y aplicar</string>
+    <string name="control_profile_created_applied">Perfil de controles creado y aplicado</string>
+    <string name="control_profile_save_current">Guardar controles actuales</string>
+    <string name="control_profile_update_current">Actualizar desde los controles actuales</string>
+    <string name="control_profile_sections">Ajustes incluidos</string>
+    <string name="control_profile_section_on_screen">Controles en pantalla</string>
+    <string name="control_profile_section_physical">Mando físico</string>
+    <string name="control_profile_controls_count">%1$d controles en pantalla</string>
+    <string name="control_profile_bindings_count">%1$d asignaciones del mando físico</string>
+    <string name="control_profile_radial_count">%1$d ranuras del menú radial</string>
+    <string name="control_profile_import_confirm">Añadir a la biblioteca</string>
+    <string name="control_profile_saved">Perfil de controles guardado</string>
+    <string name="control_profile_failed">Error en la operación del perfil de controles: %1$s</string>
+    <string name="control_profile_delete_title">¿Eliminar perfil de controles?</string>
+    <string name="control_profile_delete_message">¿Quitar “%1$s” de la biblioteca? Los juegos ya configurados con este perfil conservarán sus controles.</string>
 </resources>

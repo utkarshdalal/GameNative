@@ -22,6 +22,20 @@ object GogRecommendationsRepository {
 
     private const val REC_BASE = "https://recommendations-api.gog.com/v1/recommendations"
     private const val CJ_CLICK = "https://www.anrdoezrs.net/click-101723120-15554897?url="
+    private const val CJ_SID_MAX = 64
+
+    fun isAffiliateLink(url: String): Boolean = url.startsWith(CJ_CLICK)
+
+    /** CJ sub-ID for a click: placement + rank, plus a per-click token when usage analytics is on. */
+    fun affiliateSubId(source: String, rank: Int, clickId: String?): String =
+        listOfNotNull("gn", source.ifBlank { "unknown" }, "r$rank", clickId)
+            .joinToString("_")
+            .replace(Regex("[^A-Za-z0-9_-]"), "-")
+            .take(CJ_SID_MAX)
+
+    /** Insert the sub-ID into a CJ click link so the sale shows up against it in the commission report. */
+    fun withAffiliateSubId(url: String, sid: String): String =
+        if (isAffiliateLink(url)) url.replaceFirst("?url=", "?sid=${URLEncoder.encode(sid, "UTF-8")}&url=") else url
     private const val FIXED_SEEDS = 12
     private const val ROTATING_SEEDS = 6
     private const val ROTATING_WEIGHT = 6.0

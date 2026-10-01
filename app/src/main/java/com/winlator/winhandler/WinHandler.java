@@ -86,6 +86,11 @@ public class WinHandler {
     private final short[] lastHighFreq = new short[MAX_PLAYERS];
     private final boolean[] isRumbling = new boolean[MAX_PLAYERS];
     private final int[] rumbleDeviceIds = new int[MAX_PLAYERS];
+    private final long[] controllerRumbleAppliedMs = new long[MAX_PLAYERS];
+    private final int[] controllerRumbleAmplitude = new int[MAX_PLAYERS];
+    private final Object rumbleLock = new Object();
+    private Thread rumbleKeepaliveThread;
+    private volatile int vibrationIntensity = 100;
     private long lastStandalonePhoneRumbleMs = 0;
     private boolean isShowingAssignDialog = false;
     private Context activity;
@@ -114,7 +119,8 @@ public class WinHandler {
     private static final int OFF_RUMBLE_LOW = 32;
     private static final int OFF_RUMBLE_HIGH = 34;
     private static final int OFF_CONNECTED = 40;
-    private static final int CONTROLLER_RUMBLE_DURATION_MS = 1000;
+    private static final int CONTROLLER_RUMBLE_DURATION_MS = 10000;
+    private static final int CONTROLLER_RUMBLE_REARM_MS = 9000;
     private static final int PHONE_RUMBLE_FALLBACK_DURATION_MS = 40;
     private static final int STANDALONE_PHONE_RUMBLE_DURATION_MS = 70;
     private static final int STANDALONE_PHONE_RUMBLE_THROTTLE_MS = 120;
@@ -519,6 +525,10 @@ public class WinHandler {
         for (int slot = 0; slot < MAX_PLAYERS; slot++) {
             rumbleTeardown(slot);
         }
+        Thread keepaliveThread = rumbleKeepaliveThread;
+        if (keepaliveThread != null) {
+            keepaliveThread.interrupt();
+        }
         try {
             if (rumblePollerThreads != null && rumblePollerThreads.length > 0) {
                 for (Thread t : rumblePollerThreads) {
@@ -527,7 +537,13 @@ public class WinHandler {
                     }
                 }
             }
+            if (keepaliveThread != null) {
+                keepaliveThread.join();
+            }
         } catch (InterruptedException ignored) {
+        }
+        for (int slot = 0; slot < MAX_PLAYERS; slot++) {
+            stopVibration(slot);
         }
         DatagramSocket datagramSocket = this.socket;
         if (datagramSocket != null) {
@@ -781,6 +797,7 @@ public class WinHandler {
             }
         });
         startRumblePoller();
+        startRumbleKeepalive();
     }
 
     private void startRumblePoller() {
@@ -838,12 +855,65 @@ public class WinHandler {
         }
     }
 
+    private void startRumbleKeepalive() {
+        rumbleKeepaliveThread = new Thread(() -> {
+            synchronized (rumbleLock) {
+                while (running) {
+                    try {
+                        long nextDeadline = Long.MAX_VALUE;
+                        for (int slot = 0; slot < MAX_PLAYERS; slot++) {
+                            if (controllerRumbleAppliedMs[slot] == 0) continue;
+                            if (SystemClock.uptimeMillis() - controllerRumbleAppliedMs[slot] >= CONTROLLER_RUMBLE_REARM_MS) {
+                                rearmControllerVibration(slot);
+                                if (controllerRumbleAppliedMs[slot] == 0) continue;
+                            }
+                            nextDeadline = Math.min(nextDeadline, controllerRumbleAppliedMs[slot] + CONTROLLER_RUMBLE_REARM_MS);
+                        }
+                        if (nextDeadline == Long.MAX_VALUE) {
+                            rumbleLock.wait();
+                        } else {
+                            rumbleLock.wait(Math.max(1, nextDeadline - SystemClock.uptimeMillis()));
+                        }
+                    } catch (InterruptedException e) {
+                        return;
+                    } catch (Throwable t) {
+                        Log.e(TAG, "Rumble keepalive failed", t);
+                    }
+                }
+            }
+        }, "rumble-keepalive");
+        rumbleKeepaliveThread.start();
+    }
+
+    private void rearmControllerVibration(int slot) {
+        controllerRumbleAppliedMs[slot] = 0;
+        InputDevice device = InputDevice.getDevice(rumbleDeviceIds[slot]);
+        Vibrator controllerVibrator = device != null ? device.getVibrator() : null;
+        if (controllerVibrator != null && controllerVibrator.hasVibrator()) {
+            controllerVibrator.vibrate(VibrationEffect.createOneShot(CONTROLLER_RUMBLE_DURATION_MS, controllerRumbleAmplitude[slot]));
+            controllerRumbleAppliedMs[slot] = SystemClock.uptimeMillis();
+        }
+    }
+
+    public void setVibrationIntensity(int intensity) {
+        vibrationIntensity = Math.max(0, Math.min(100, intensity));
+    }
+
     private void startVibration(int slot, short lowFreq, short highFreq) {
         if (slot < 0 || slot >= MAX_PLAYERS) {
             return;
         }
-        if (startDeviceVibration(rumbleDeviceIds[slot], lowFreq, highFreq)) {
-            isRumbling[slot] = true;
+        synchronized (rumbleLock) {
+            boolean controllerWasRumbling = controllerRumbleAppliedMs[slot] != 0;
+            controllerRumbleAppliedMs[slot] = 0;
+            if (startDeviceVibration(slot, rumbleDeviceIds[slot], lowFreq, highFreq)) {
+                isRumbling[slot] = true;
+            } else if (controllerWasRumbling) {
+                stopVibration(slot);
+            }
+            if (!controllerWasRumbling && controllerRumbleAppliedMs[slot] != 0) {
+                rumbleLock.notifyAll();
+            }
         }
     }
 
@@ -861,7 +931,7 @@ public class WinHandler {
         return phoneAmplitude;
     }
 
-    private boolean startDeviceVibration(int deviceId, short lowFreq, short highFreq) {
+    private boolean startDeviceVibration(int slot, int deviceId, short lowFreq, short highFreq) {
         // --- Step 1: Calculate the base amplitude once at the top ---
         int unsignedLowFreq = lowFreq & 0xFFFF;
         int unsignedHighFreq = highFreq & 0xFFFF;
@@ -869,6 +939,7 @@ public class WinHandler {
         // This is the raw amplitude for a physical X-Input device
         int amplitude = Math.round((float) dominantRumble / 65535.0f * 254.0f) + 1;
         if (amplitude > 255) amplitude = 255;
+        amplitude = amplitude * vibrationIntensity / 100;
         // If amplitude is negligible, just stop and exit.
         if (amplitude <= 1) {
             return false;
@@ -881,6 +952,8 @@ public class WinHandler {
             Vibrator controllerVibrator = device.getVibrator();
             if (controllerVibrator != null && controllerVibrator.hasVibrator()) {
                 controllerVibrator.vibrate(VibrationEffect.createOneShot(CONTROLLER_RUMBLE_DURATION_MS, amplitude));
+                controllerRumbleAmplitude[slot] = amplitude;
+                controllerRumbleAppliedMs[slot] = SystemClock.uptimeMillis();
                 controllerVibrated = true;
             }
         }
@@ -917,9 +990,12 @@ public class WinHandler {
         if (slot < 0 || slot >= MAX_PLAYERS) {
             return;
         }
-        if (!isRumbling[slot]) return;
-        stopDeviceVibration(rumbleDeviceIds[slot]);
-        isRumbling[slot] = false;
+        synchronized (rumbleLock) {
+            controllerRumbleAppliedMs[slot] = 0;
+            if (!isRumbling[slot]) return;
+            stopDeviceVibration(rumbleDeviceIds[slot]);
+            isRumbling[slot] = false;
+        }
     }
 
     private void stopDeviceVibration(int deviceId) {

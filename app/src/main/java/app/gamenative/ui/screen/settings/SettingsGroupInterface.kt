@@ -361,11 +361,6 @@ fun SettingsGroupInterface(
             onCheckedChange = { enabled ->
                 showRecommendations = enabled
                 PrefManager.showRecommendations = enabled
-                PluviaApp.events.emit(
-                    AndroidEvent.LibraryTabsChanged(
-                        libraryTabs.filter { tab -> tab != LibraryTab.RECOMMENDED || enabled },
-                    ),
-                )
                 PluviaApp.events.emit(AndroidEvent.RecommendationToggleChanged)
                 if (PrefManager.usageAnalyticsEnabled) {
                     com.posthog.PostHog.capture(
@@ -389,6 +384,18 @@ fun SettingsGroupInterface(
                 showHiddenGamesByDefault = it
                 PrefManager.showHiddenGamesByDefault = it
                 PluviaApp.events.emit(AndroidEvent.HiddenGamesSettingChanged(showHiddenGamesByDefault = it))
+            },
+        )
+
+        var hideAiFeatures by rememberSaveable { mutableStateOf(PrefManager.hideAiFeatures) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_hide_ai_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_hide_ai_subtitle)) },
+            state = hideAiFeatures,
+            onCheckedChange = {
+                hideAiFeatures = it
+                PrefManager.hideAiFeatures = it
             },
         )
 
@@ -433,11 +440,7 @@ fun SettingsGroupInterface(
                     it !in LibraryTab.configurableEntries || it in selectedTabs
                 }
                 PrefManager.libraryTabs = libraryTabs
-                PluviaApp.events.emit(
-                    AndroidEvent.LibraryTabsChanged(
-                        libraryTabs.filter { it != LibraryTab.RECOMMENDED || showRecommendations },
-                    ),
-                )
+                PluviaApp.events.emit(AndroidEvent.LibraryTabsChanged(libraryTabs))
             },
             title = { Text(text = stringResource(R.string.settings_interface_library_tabs_title)) },
             subtitle = { Text(text = stringResource(R.string.settings_interface_library_tabs_subtitle)) },

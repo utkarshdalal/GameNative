@@ -2,10 +2,9 @@ package app.gamenative.ui.enums
 
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Explore
+import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.ui.graphics.vector.ImageVector
-import app.gamenative.PrefManager
 import app.gamenative.R
 
 enum class LibraryTab(
@@ -26,7 +25,7 @@ enum class LibraryTab(
         showEpic = false,
         showAmazon = false,
         installedOnly = false,
-        icon = Icons.Rounded.Explore,
+        icon = Icons.Outlined.Explore,
     ),
     ALL(
         labelResId = R.string.tab_all,
@@ -95,18 +94,14 @@ enum class LibraryTab(
     ;
 
     companion object {
-        val configurableEntries = listOf(STEAM, GOG, EPIC, AMAZON)
+        val configurableEntries = listOf(RECOMMENDED, STEAM, GOG, EPIC, AMAZON)
 
         /**
          * Tabs shown in the UI. Custom (LOCAL) games work on all flavors: legacy maps folders
          * in place via all-files access, modern imports them into app-owned storage.
          */
         val visibleEntries: List<LibraryTab>
-            get() {
-                var result = entries.toList()
-                if (!PrefManager.showRecommendations) result = result.filter { it != RECOMMENDED }
-                return result
-            }
+            get() = entries.toList()
 
         fun normalizeVisibleTabs(
             serialized: String,

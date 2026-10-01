@@ -70,6 +70,18 @@
     <string name="branch">分支</string>
     <string name="change_branch">變更分支</string>
     <string name="change_branch_message">透過開發者提供的分支從 Steam 下載遊戲的替代版本。輸入存取代碼以解鎖私人分支。</string>
+    <string name="change_preferred_copy">變更偏好副本</string>
+    <string name="change_preferred_copy_message">選擇要使用哪位 Steam 家庭成員的副本進行遊戲。使用家庭成員的副本可存取其 DLC。</string>
+    <string name="loading_preferred_copy">正在檢查家庭收藏庫副本…</string>
+    <string name="using_your_copy">正在使用您的副本</string>
+    <string name="shared_from_name">由 %1$s 分享</string>
+    <string name="preferred_copy_your_label">您的副本（%1$s）</string>
+    <string name="preferred_copy_family_label">%1$s</string>
+    <string name="preferred_copy_family_member">家庭成員</string>
+    <string name="preferred_copy_dlc_count">%1$d 個 DLC</string>
+    <string name="preferred_copy_label_with_dlc">%1$s · %2$s</string>
+    <string name="preferred_copy_failed">無法變更偏好副本。請在連線至 Steam 時再試一次。</string>
+    <string name="preferred_copy_confirm">使用此副本</string>
     <string name="private_branch_password_hint">輸入存取代碼</string>
     <string name="private_branch_password_check">驗證代碼</string>
     <string name="private_branch_password_success">分支已解鎖！</string>
@@ -186,6 +198,7 @@
 
     <!--Winlator-->
     <string name="disabled">已禁用</string>
+    <string name="enabled">已啟用</string>
     <string name="copy">複製</string>
     <string name="stability">穩定</string>
     <string name="compatibility">相容性</string>
@@ -215,7 +228,6 @@
     <string name="remove">刪除</string>
     <string name="add">添加</string>
     <string name="delete">刪除</string>
-    <string name="copy_from">從...複製</string>
     <string name="ok">確認</string>
     <string name="storage_info">存儲信息</string>
     <string name="duplicate">複製</string>
@@ -471,7 +483,6 @@
     <string name="not_set">未設定</string>
 
     <!-- Toast -->
-    <string name="toast_controls_reset">控制器已重置</string>
     <string name="toast_failed_log_save">無法將 logcat 保存到目標</string>
 
     <!-- Settings -->
@@ -576,6 +587,12 @@
     <string name="calculating_time">計算中...</string>
     <string name="download_failed_try_again">下載失敗, 請再試一次</string>
     <string name="download_preparing">正在準備下載...</string>
+    <string name="download_verifying_files_progress">正在驗證文件 (%1$d/%2$d)</string>
+    <string name="download_verifying_files">正在驗證檔案...</string>
+    <string name="download_assembling_files">正在合併檔案...</string>
+    <string name="download_progress_chunks">正在下載 (%1$d/%2$d 區塊)</string>
+    <string name="download_progress_files">正在下載 (%1$d/%2$d 個檔案)…</string>
+    <string name="download_unpacking">正在解壓縮...</string>
     <string name="download_preparing_depots">正在準備儲存庫 (%1$d/%2$d)</string>
     <string name="update_available">可用更新</string>
     <string name="game_information">遊戲資訊</string>
@@ -676,9 +693,13 @@
     <string name="pulseaudio_suspend_behavior_thread">透過執行緒暫停（預設）</string>
     <string name="pulseaudio_suspend_behavior_pactl">透過 Pactl 暫停（省電）</string>
     <string name="pulseaudio_low_latency">PulseAudio 低延遲模式</string>
+    <string name="microphone_input">麥克風輸入</string>
+    <string name="microphone_input_description">將裝置麥克風作為錄音裝置提供給 Wine/Proton。需要麥克風權限。</string>
     <string name="show_fps">顯示幀率</string>
     <string name="portrait_mode">直向模式</string>
     <string name="portrait_mode_description">適用於 8BitDo FlipPad/GameSir Pocket Taco 類型控制器</string>
+    <string name="portrait_below_cutout">顯示在相機孔下方</string>
+    <string name="portrait_below_cutout_description">在直向模式下將遊戲畫面顯示在相機孔下方</string>
     <string name="remove_driver_confirmation">您確定要移除驅動程式 "%s"? 此操作無法復原</string>
 
     <!-- Container Configuration: Steam Integration -->
@@ -687,7 +708,7 @@
     <string name="unpack_files_description">僅在出現\'應用程式載入錯誤\'時使用。可能會降低幀率。</string>
     <string name="force_dlc">強制開啟DLC</string>
     <string name="force_dlc_description">僅在未偵測到 DLC 或包含 DLC 的存檔無法運作時啟用</string>
-    <string name="launch_steam_client_beta">啟動 Steam 用戶端 (Beta)</string>
+    <string name="launch_steam_client_beta">啟動 Steam 用戶端</string>
     <string name="steam_offline_mode">Steam 離線模式</string>
     <string name="steam_offline_mode_description">以離線模式啟動 Steam 遊戲</string>
     <string name="epic_offline_mode">Epic 離線模式</string>
@@ -698,7 +719,7 @@
     <string name="achievement_position_top_right">右上</string>
     <string name="achievement_position_bottom_left">左下</string>
     <string name="achievement_position_bottom_right">右下</string>
-    <string name="launch_steam_client_description">降低效能並減慢啟動速度\n允許線上遊玩並修復 DRM 和控制器問題\n並非所有遊戲都適用</string>
+    <string name="launch_steam_client_description">建議使用 Headless\nEA、Rockstar、Ubisoft 等啟動器必需\n啟用多人遊戲並修復 DRM 和控制器問題</string>
     <string name="launch_bionic_steam">啟用實驗性 Bionic Steam</string>
     <string name="allow_steam_updates">允許 Steam 更新</string>
     <string name="allow_steam_updates_description">將 Steam 更新至最新版本, 會顯著降低效能</string>
@@ -949,6 +970,10 @@
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">模擬設定</string>
+    <string name="settings_accounts_title">遊戲啟動器帳戶</string>
+    <string name="settings_accounts_signed_out">未登入</string>
+    <string name="settings_accounts_ea_title">EA 帳戶</string>
+    <string name="settings_accounts_rockstar_title">Rockstar 帳戶</string>
     <string name="settings_emulation_orientations_title">允許的螢幕方向</string>
     <string name="settings_emulation_orientations_subtitle">選擇遊戲中可使用的螢幕方向</string>
     <string name="settings_emulation_default_config_title">修改預設配置</string>
@@ -989,7 +1014,7 @@
     <!-- Settings: Info Group -->
     <string name="settings_info_title">資訊</string>
     <string name="settings_info_send_tip_title">成為會員</string>
-    <string name="settings_info_send_tip_subtitle">版本搶先體驗、優先支援等</string>
+    <string name="settings_info_send_tip_subtitle">AI 遊戲執行協助、版本搶先體驗等</string>
     <string name="settings_info_ask_tip_title">會員優惠</string>
     <string name="settings_info_ask_tip_subtitle">偶爾顯示成為 GameNative 會員的優惠資訊</string>
     <string name="settings_info_source_title">原始碼</string>
@@ -1103,7 +1128,7 @@
     <string name="main_recent_crash_title">最近應用程式當機</string>
     <string name="main_recent_crash_message">若能了解您最近遇到的問題, 將有助於我們改善應用程式.\n您可在應用程式設定中檢視並匯出最近的崩潰日誌, 將其附加至專案原始碼儲存庫的 Github Issue中\nGithub 原始碼儲存庫的連結亦位於設定頁面內</string>
     <string name="main_thank_you_title">喜歡 GameNative 嗎？</string>
-    <string name="main_thank_you_message">立即成為會員。會員可享有：\n\n• 新版本搶先體驗\n• 遊戲執行問題優先支援\n• Discord 進階身分組與專屬頻道\n• …還有更多\n\n每月 $5 起</string>
+    <string name="main_thank_you_message">立即成為會員。會員可享有：\n\n• AI 幫你解決遊戲執行問題\n• 新版本搶先體驗\n• Discord 進階身分組與專屬頻道\n• …還有更多\n\n每月 $5 起</string>
     <string name="main_join_kofi">成為會員</string>
     <string name="pitch_session_title">喜歡《%1$s》嗎？</string>
     <string name="pitch_five_star_title">很高興《%1$s》執行順暢！</string>
@@ -1115,6 +1140,8 @@
 
     <!-- PluviaMain: Game Launch -->
     <string name="main_downloading_steam">正在下載 Steam...</string>
+    <string name="steam_update_required_title">需要更新</string>
+    <string name="steam_update_required_message">此遊戲有可用的更新。在安裝更新之前，Steam 用戶端無法啟動它。請立即更新，然後重新啟動。</string>
     <string name="main_installing_glibc">安裝 glibc 組件...</string>
     <string name="main_installing_bionic">安裝Bionic元件中...</string>
     <string name="main_loading">載入中...</string>
@@ -1167,6 +1194,8 @@
     <string name="container_config_vkd3d_version">VKD3D 版本</string>
     <string name="container_config_executable_path">可執行檔路徑</string>
     <string name="container_config_executable_path_placeholder">e.g., path\\to\\exe</string>
+    <string name="container_config_executable_path_custom">自訂路徑…</string>
+    <string name="container_config_executable_path_custom_placeholder">e.g., C:\\Games\\game.exe</string>
 
     <!-- Libraries Dialog -->
     <string name="libraries_title">使用的函式庫</string>
@@ -1456,6 +1485,15 @@
     <string name="gog_settings_login_title">登入 GOG</string>
     <string name="gog_settings_login_subtitle">登入您的 GOG 帳戶</string>
     <string name="gog_login_success_title">登入成功</string>
+    <string name="rockstar_login_required_title">需要登入 Rockstar</string>
+    <string name="rockstar_login_failed">Rockstar 登入失敗：%1$s</string>
+    <string name="ea_login_required_title">需要登入 EA</string>
+    <string name="ea_login_success">已以 %1$s 身分登入 EA</string>
+    <string name="ea_login_failed">EA 登入失敗：%1$s</string>
+    <string name="ea_preparing">正在準備 EA 啟動器支援</string>
+    <string name="rockstar_preparing">正在準備 Rockstar 啟動器支援</string>
+    <string name="rockstar_runtime_installing">正在安裝 Social Club 執行環境</string>
+    <string name="rockstar_installer_missing">遊戲檔案中缺少 Social Club 安裝程式。請在 Steam 中驗證遊戲檔案後再試一次。</string>
     <string name="gog_login_cancel">取消</string>
     <string name="gog_settings_logout_title">登出 GOG</string>
     <string name="gog_settings_logout_subtitle">從您的 GOG 帳戶登出</string>
@@ -1544,6 +1582,13 @@
     <string name="recommended_support_message">透過此連結購買，我們會獲得佣金。</string>
     <string name="recommended_about_heading">關於本遊戲</string>
     <string name="recommended_review_count">基於 %1$s 則評價</string>
+    <string name="library_store_media_page">第 %1$d 項，共 %2$d 項</string>
+    <string name="library_store_media_fullscreen">以全螢幕檢視媒體</string>
+    <string name="library_store_media_close">關閉全螢幕媒體</string>
+    <string name="library_store_media_previous">上一個媒體</string>
+    <string name="library_store_media_next">下一個媒體</string>
+    <string name="library_store_about_expand">展開「關於本遊戲」</string>
+    <string name="library_store_about_collapse">收合「關於本遊戲」</string>
     <string name="review_overwhelmingly_positive">壓倒性好評</string>
     <string name="review_very_positive">極度好評</string>
     <string name="review_mostly_positive">大多好評</string>
@@ -1575,7 +1620,6 @@
     <string name="container_config_custom_resolution_title">設定自訂解析度</string>
     <string name="container_config_custom_resolution_separator">x</string>
     <string name="container_config_custom_resolution_error_nonzero">寬度和高度必須大於 0</string>
-    <string name="container_config_custom_resolution_error_aspect">寬度必須大於高度</string>
 
     <string name="steam_not_logged_in">您必須登入 Steam 才能使用此功能</string>
 
@@ -1653,6 +1697,7 @@
     <string name="hltb_all_styles">所有風格</string>
     <string name="hltb_hours_value">%sh</string>
     <string name="hltb_section_title">HLTB</string>
+    <string name="hltb_show_spoilers">顯示劇透</string>
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
@@ -1664,6 +1709,10 @@
     <string name="lsfg_performance_mode">效能模式</string>
     <string name="lsfg_present_mode">呈現模式</string>
     <string name="lsfg_present_mode_desc">建議使用 Mailbox。當輸出幀率（fps 上限 × 倍數）與螢幕更新率一致時也可使用 FIFO；低於更新率時 FIFO 可能出現晃動。</string>
+    <string name="lsfg_backend">後端</string>
+    <string name="lsfg_backend_desc">Legacy 在遊戲內執行 lsfg-vk 層；Native 在 GameNative 算繪器中執行影格生成。</string>
+    <string name="lsfg_backend_legacy">Legacy（層）</string>
+    <string name="lsfg_backend_native">Native（算繪器）</string>
     <string name="lsfg_not_supported">幀生成需要 Bionic 容器</string>
     <string name="lsfg_install_prompt">Lossless Scaling 未安裝。點擊安裝。已知僅在 Adreno 6xx 及更高版本上可用。</string>
     <string name="lsfg_not_in_library">Lossless Scaling 不在你的 Steam 庫中</string>
@@ -1730,6 +1779,50 @@
     <string name="filter_five_star_device">裝置上的五星評論</string>
     <string name="filter_five_star_gpu">GPU上的五星評論</string>
     <string name="filter_proven_gpu">已在您的GPU上驗證</string>
+    <string name="vibration_intensity">震動強度</string>
+    <string name="option_import_files">匯入檔案</string>
+    <string name="option_export_files">匯出檔案</string>
+    <string name="container_files_up">上一層</string>
+    <string name="container_files_new_folder">新增資料夾</string>
+    <string name="container_files_folder_name_hint">資料夾名稱</string>
+    <string name="container_files_create">建立</string>
+    <string name="container_files_create_folder_failed">無法建立資料夾。</string>
+    <string name="container_files_no_subfolders">沒有子資料夾</string>
+    <string name="container_files_empty_folder">此資料夾是空的</string>
+    <string name="container_files_none_selected">未選取檔案</string>
+    <string name="container_files_result_failed">%1$d 個檔案失敗</string>
+    <string name="import_files_title">匯入檔案</string>
+    <string name="import_files_step_choose_files">1. 選擇檔案</string>
+    <string name="import_files_pick_hint">從此裝置選擇檔案。</string>
+    <string name="import_files_step_choose_destination">2. 選擇存放位置</string>
+    <string name="import_files_destination_hint">在遊戲容器中選擇一個資料夾。</string>
+    <string name="import_files_select">選取檔案</string>
+    <string name="import_files_remove">移除</string>
+    <string name="import_files_selection_summary">%1$d 個檔案，%2$s</string>
+    <string name="import_files_replace_existing">取代現有檔案</string>
+    <string name="import_files_copy_summary">將把 %1$d 個檔案複製到 %2$s</string>
+    <string name="import_files_copy_button">複製 %1$d 個檔案</string>
+    <string name="import_files_progress">正在匯入 %1$d/%2$d</string>
+    <string name="import_files_result">已將 %1$d 個檔案匯入至 %2$s</string>
+    <string name="import_files_result_skipped">已略過 %1$d 個現有檔案</string>
+    <string name="import_files_cancelled">已取消匯入</string>
+    <string name="import_files_no_container">請先啟動一次遊戲以建立其容器，然後再匯入檔案。</string>
+    <string name="import_files_not_enough_space">可用空間不足：需要 %1$s，可用 %2$s。</string>
+    <string name="import_files_failed_header">以下檔案無法匯入：</string>
+    <string name="export_files_title">匯出檔案</string>
+    <string name="export_files_source">選擇要匯出的檔案</string>
+    <string name="export_files_source_hint">勾選要從遊戲容器中複製出來的檔案。</string>
+    <string name="export_files_selection_summary">已選取 %1$d 個檔案 · %2$s</string>
+    <string name="export_files_clear">清除</string>
+    <string name="export_files_export_button">匯出 %1$d 個檔案</string>
+    <string name="export_files_saved_to">檔案會儲存到 %1$s</string>
+    <string name="export_files_permission_needed">需要儲存空間權限才能將檔案儲存到「下載」。</string>
+    <string name="export_files_progress">正在匯出 %1$d/%2$d</string>
+    <string name="export_files_saved_result">已將 %1$d 個檔案儲存到 %2$s</string>
+    <string name="export_files_cancelled">已取消匯出</string>
+    <string name="export_files_no_container">請先啟動一次遊戲以建立其容器，然後再匯出檔案。</string>
+    <string name="export_files_failed_header">以下檔案無法匯出：</string>
+    <string name="app_filter_vr">VR 遊戲</string>
     <string name="option_manage_mods">管理 Nexus 模組</string>
     <string name="nexus_search_clear">清除搜尋</string>
     <string name="nexus_filter_all">全部</string>
@@ -1842,6 +1935,7 @@
     <string name="debug_prerun_title">取得 AI 協助</string>
     <string name="debug_prerun_message_1">以除錯日誌執行遊戲，退出後將日誌分享給我們在 Discord 上的 AI。請持續執行遊戲，直到問題出現。</string>
     <string name="debug_prerun_message_2">AI 回覆僅限訂閱者。</string>
+    <string name="debug_trial_note">提供免費試用。</string>
     <string name="debug_prerun_message_3">任何人都可以分享報告以獲得人工協助。</string>
     <string name="debug_paywall_title">取得 AI 除錯支援</string>
     <string name="debug_paywall_pitch">我們的 AI 會閱讀你的完整記錄與設定，並告訴你需要更改什麼，通常不到 5 分鐘。</string>
@@ -1991,8 +2085,6 @@
     <string name="nexus_source_folder_label">模組中的資料夾/檔案</string>
     <string name="nexus_destination_folder">目標資料夾</string>
     <string name="nexus_install_method">安裝方法</string>
-    <string name="nexus_create_folder_for_selection">為選擇建立一個資料夾</string>
-    <string name="nexus_create_folder_for_selection_description">開：所選資料夾安裝到目標位置。關：僅放置其內容。</string>
     <string name="nexus_hide_manual_paths">隱藏手動路徑</string>
     <string name="nexus_manual_paths">手動路徑</string>
     <string name="nexus_source_folders_files_label">模組中的資料夾/檔案</string>
@@ -2128,7 +2220,6 @@
     <string name="nexus_applying_mod_files">正在套用模組檔案</string>
     <string name="nexus_applied_items_backups">已套用 %1$d 個項目，備份 %2$d%3$s</string>
     <string name="nexus_old_files_left_in_place_suffix">; %1$d 個舊檔案保留在原處</string>
-    <string name="nexus_applied_with_errors">套用時出現 %1$d 個錯誤</string>
     <string name="nexus_mod_apply_already_running">模組檔案已在套用中。</string>
     <string name="nexus_failed_to_apply_mod">套用模組失敗</string>
     <string name="nexus_fomod_or_custom_required">設定 FOMOD 安裝程式或在套用之前選擇自訂放置。</string>
@@ -2447,6 +2538,83 @@
     <string name="favorite_added">已加入收藏</string>
     <string name="favorite_added_named">已將 %1$s 加入收藏</string>
     <string name="xr_refresh_rate">VR 重新整理頻率</string>
+    <string name="nexus_plan_review_title">放置檢查</string>
+    <string name="nexus_plan_coverage">已規劃 %1$d/%2$d 個檔案 • 已忽略 %3$d 個 • %4$d 個需要檢查</string>
+    <string name="nexus_plan_ranked">建議排名</string>
+    <string name="nexus_plan_score">%1$d. %2$s — 涵蓋率 %3$d%%</string>
+    <string name="nexus_plan_case_merge">大小寫合併：%1$s</string>
+    <string name="nexus_plan_ambiguous_case">已存在大小寫不明確的變體</string>
+    <string name="nexus_plan_blocked">在每個可安裝檔案都有明確目的地之前，自動套用將被封鎖。</string>
+    <string name="nexus_plan_export">分享診斷資訊</string>
+    <string name="nexus_reconfiguration_preview">重新設定預覽</string>
+    <string name="nexus_reconfiguration_summary">新增 %1$d • 變更 %2$d • 移動 %3$d • 過期 %4$d</string>
+    <string name="nexus_choose_package_variant">選擇軟體包變體</string>
+    <string name="nexus_confirm_risky_game_root_files">我已檢查這些遊戲目錄檔案</string>
+    <string name="nexus_confirm_risky_game_root_files_description">DLL、EXE 和載入器檔案可能改變遊戲的啟動方式。僅在壓縮檔可信且預覽與安裝說明一致時確認。</string>
+    <string name="nexus_building_install_plan">正在建立檔案放置計畫…</string>
+    <string name="nexus_reapply_missing_files">重新套用遺失檔案</string>
+    <string name="nexus_adopt_ownership">驗證並追蹤檔案</string>
+    <string name="nexus_ownership_adopted">已驗證並追蹤檔案，未進行任何變更。</string>
+    <string name="nexus_file_tracking_setup_failed">無法驗證並追蹤已安裝的檔案（%1$d 個問題）</string>
+    <string name="nexus_stale_placement_reason">此放置方案不再產生此檔案</string>
+    <string name="nexus_restore_previous_deployment">還原上一次部署</string>
+    <string name="nexus_restore_previous_deployment_description">將目前檔案放置計畫替換為此模組上一次正常運作的計畫。</string>
+    <string name="nexus_restoring_previous_deployment">正在還原上一次部署…</string>
+    <string name="nexus_previous_deployment_restored">已還原上一次部署。</string>
+    <string name="nexus_previous_deployment_restore_failed">無法還原上一次部署（%1$d 個問題）</string>
+    <string name="nexus_search_destination">搜尋此資料夾</string>
+    <string name="nexus_show_hidden_files">顯示隱藏檔案和資料夾</string>
+    <string name="nexus_new_destination_folder">新增資料夾</string>
+    <string name="nexus_new_destination_folder_description">在目前目標位置中選擇資料夾名稱。</string>
+    <string name="nexus_folder_name">資料夾名稱</string>
+    <string name="nexus_folder_created_when_applied">目前不會變更任何內容。只有套用已檢閱的計畫時才會建立資料夾。</string>
+    <string name="nexus_use_folder">使用資料夾</string>
+    <string name="nexus_will_be_created">將建立</string>
+    <string name="nexus_destination_folder_empty">沒有相符的檔案或資料夾</string>
+    <string name="nexus_impact_will_add">將新增</string>
+    <string name="nexus_impact_will_replace">將取代</string>
+    <string name="nexus_impact_will_backup">將備份</string>
+    <string name="nexus_impact_plan_conflict">計畫衝突</string>
+    <string name="nexus_impact_managed_by_this_mod">由此模組管理</string>
+    <string name="nexus_impact_managed_by_mod">由 %1$s 管理</string>
+    <string name="nexus_impact_modified">部署後已變更</string>
+    <string name="nexus_impact_game_or_unmanaged">遊戲檔案或未管理檔案</string>
+    <string name="nexus_impact_will_receive_files">將接收檔案</string>
+    <string name="nexus_advanced_placement">進階放置</string>
+    <string name="nexus_hide_advanced_placement">隱藏進階放置</string>
+    <string name="nexus_advanced_placement_description">自動放置只是估計結果。請核對預計安裝的檔案與目標位置是否符合模組的安裝說明。若不符合，請開啟進階放置並選擇自訂，手動指定位置。</string>
+    <string name="nexus_folder_layout">在目標位置安裝</string>
+    <string name="nexus_install_contents_of">%1$s 的內容</string>
+    <string name="nexus_install_folder_and_contents">%1$s 資料夾及其內容</string>
+    <string name="nexus_merge_selected_folder_contents">合併所選資料夾的內容</string>
+    <string name="nexus_keep_selected_folder_names">保留每個所選資料夾的名稱</string>
+    <string name="nexus_recommended_suffix">（建議）</string>
+    <string name="nexus_folder_layout_result">結果：%1$s</string>
+    <string name="nexus_duplicate_folder_warning">這會產生 Data/Data 之類的重複資料夾名稱。除非模組明確需要額外資料夾，否則請選擇內容。</string>
+    <string name="nexus_why_this_placement">為何選擇此放置方式？</string>
+    <string name="nexus_hide_placement_reason">隱藏放置詳細資料</string>
+    <string name="nexus_use_this_placement">使用此放置方式</string>
+    <string name="nexus_resolve_files">解決 %1$d 個檔案</string>
+    <string name="nexus_resolve_files_description">切換到自訂放置並保留建議對應，以便安全指派未解決的檔案。</string>
+    <string name="nexus_review_all_files">檢閱所有檔案（%1$d）</string>
+    <string name="nexus_all_planned_files">所有計畫檔案</string>
+    <string name="nexus_search_planned_files">搜尋來源、目標或原因</string>
+    <string name="nexus_all_files_count">全部（%1$d）</string>
+    <string name="nexus_no_matching_planned_files">沒有計畫檔案符合此篩選條件</string>
+    <string name="nexus_previous_destination_value">先前：%1$s</string>
+    <string name="nexus_destination_value">目標：%1$s</string>
+    <string name="nexus_browse_destination">瀏覽目標</string>
+    <string name="nexus_destination_contents">目標內容</string>
+    <string name="nexus_plan_group_added">已新增</string>
+    <string name="nexus_plan_group_replaced">已取代</string>
+    <string name="nexus_plan_group_moved">已移動</string>
+    <string name="nexus_plan_group_removed">已移除</string>
+    <string name="nexus_plan_group_ignored">已忽略</string>
+    <string name="nexus_plan_group_blocked">已阻止</string>
+    <string name="nexus_plan_group_unchanged">未變更</string>
+    <string name="nexus_previous_rule_page">上一頁放置規則</string>
+    <string name="nexus_next_rule_page">下一頁放置規則</string>
+    <string name="nexus_placement_rule_range">放置規則 %1$d–%2$d，共 %3$d 條</string>
     <string name="faster_external_loading_title">從外部儲存空間更快載入</string>
     <string name="faster_external_loading_subtitle">可顯著加快從外部儲存空間啟動遊戲的速度，但可能導致部分遊戲出現問題</string>
     <string name="disable_libredirect_title">停用 libredirect</string>
@@ -2468,11 +2636,22 @@
     <string name="xr_open_composite_toggle">SteamVR (OpenVR) 相容</string>
     <string name="xr_open_composite_toggle_desc">透過 OpenComposite 執行為 SteamVR 開發的遊戲。若遊戲提示 SteamVR 未執行，或開啟 VR 模式後仍為平面顯示，請開啟此項。</string>
     <string name="xr_render_scale">VR 算繪比例</string>
+    <string name="settings_hide_ai_title">隱藏 AI 功能</string>
+    <string name="settings_hide_ai_subtitle">隱藏可選的 AI 偵錯協助</string>
     <string name="settings_info_boot_ads_title">贊助載入畫面</string>
     <string name="settings_info_boot_ads_subtitle">保持開啟有助於支持 GameNative 的開發。它絕不會拖慢遊戲啟動，也不會以任何方式影響你。</string>
     <string name="settings_info_boot_recs_title">在載入畫面顯示遊戲推薦</string>
     <string name="settings_info_boot_recs_subtitle">沒有贊助商卡片時，在遊戲啟動期間顯示你可能喜歡的遊戲。</string>
     <string name="boot_rec_badge">為你推薦</string>
+    <string name="boot_ad_close_cd">關閉此卡片</string>
+    <string name="boot_ad_sheet_title_sponsored">關於贊助卡片</string>
+    <string name="boot_ad_sheet_title_rec">關於推薦</string>
+    <string name="boot_ad_sheet_body_sponsored">贊助卡片有助於支持 GameNative 的全職開發。你可以隨時在設定中更改。</string>
+    <string name="boot_ad_sheet_body_rec">推薦內容依你玩過的遊戲挑選。你可以隨時在設定中更改。</string>
+    <string name="boot_ad_close_one">關閉這一個</string>
+    <string name="boot_ad_turn_off_sponsored">關閉贊助卡片</string>
+    <string name="boot_ad_turn_off_rec">關閉推薦</string>
+    <string name="boot_ad_not_now">暫不</string>
     <string name="boot_quiz_win_default">答對了！</string>
     <string name="boot_quiz_lose_default">正確答案是 %1$s</string>
     <string name="gyro_aiming">陀螺儀瞄準</string>
@@ -2514,4 +2693,41 @@
     <string name="gyro_degrees_per_second_value">%1$.1f°/秒</string>
     <string name="gyro_milliseconds_value">%1$d 毫秒</string>
     <string name="reset_gyro_settings">重設陀螺儀設定</string>
+    <string name="nexus_review_placement">檢查放置方式</string>
+    <string name="nexus_everything_folder_layout">頂層資料夾保留其名稱；根目錄檔案直接放入目標位置</string>
+    <string name="nexus_fomod_defaults_replaced">FOMOD 選項取代了 %1$d 個預設檔案</string>
+    <string name="nexus_mod_order_blocked_managed_files">模組順序未變更。遺失或遭修改的受管理檔案：%1$d。請先檢查安裝狀態並解決這些問題。</string>
+    <string name="nexus_placement_complete_summary">放置完成。總計：%1$d；已更新：%2$d；已是最新：%3$d；已備份：%4$d%5$s</string>
+    <string name="nexus_apply_failed_rolled_back">安裝失敗；已嘗試安全回復。錯誤：%1$d</string>
+    <string name="nexus_apply_failure_title">上次模組安裝失敗</string>
+    <string name="nexus_apply_failure_description">此模組未標記為已安裝。對於能安全確認的變更，已嘗試回復。請查看下方的檔案錯誤，然後返回放置頁面修正或重試。</string>
+    <string name="nexus_apply_failure_details">檔案錯誤：%1$d</string>
+    <string name="control_profiles">控制設定檔</string>
+    <string name="more_options">更多選項</string>
+    <string name="control_profiles_empty">沒有可用的控制設定檔。</string>
+    <string name="control_profile_applied_sections">已套用 · %2$d 項設定中的 %1$d 項</string>
+    <string name="control_profile_apply">套用</string>
+    <string name="control_profile_applied">已套用控制設定檔</string>
+    <string name="control_profile_export">匯出</string>
+    <string name="control_profile_create_blank">空白設定檔</string>
+    <string name="control_profile_create_current">從目前控制設定建立</string>
+    <string name="control_profile_start_with">開始方式</string>
+    <string name="control_profile_create_current_hint">選擇要從此遊戲儲存的設定。</string>
+    <string name="control_profile_create_blank_hint">從空白的螢幕控制版面開始。</string>
+    <string name="control_profile_create_applies_hint">新設定檔將儲存到媒體庫並立即套用至此遊戲。</string>
+    <string name="control_profile_create_and_apply">建立並套用</string>
+    <string name="control_profile_created_applied">已建立並套用控制設定檔</string>
+    <string name="control_profile_save_current">儲存目前控制設定</string>
+    <string name="control_profile_update_current">從目前控制設定更新</string>
+    <string name="control_profile_sections">包含的設定</string>
+    <string name="control_profile_section_on_screen">螢幕控制</string>
+    <string name="control_profile_section_physical">實體控制器</string>
+    <string name="control_profile_controls_count">%1$d 個螢幕控制</string>
+    <string name="control_profile_bindings_count">%1$d 個實體控制器綁定</string>
+    <string name="control_profile_radial_count">%1$d 個徑向選單槽位</string>
+    <string name="control_profile_import_confirm">新增至媒體庫</string>
+    <string name="control_profile_saved">已儲存控制設定檔</string>
+    <string name="control_profile_failed">控制設定檔操作失敗：%1$s</string>
+    <string name="control_profile_delete_title">刪除控制設定檔？</string>
+    <string name="control_profile_delete_message">要從媒體庫移除「%1$s」嗎？已使用此設定檔的遊戲將保留其控制設定。</string>
 </resources>

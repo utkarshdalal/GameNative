@@ -1,6 +1,7 @@
 package app.gamenative.data
 
 import com.winlator.container.Container
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -86,6 +87,26 @@ class GyroSettingsTest {
         assertEquals(GyroSettings.MODE_DISABLED, normalized.mode)
         assertEquals(GyroSettings.MODE_RIGHT_STICK, normalized.lastTarget)
         assertEquals(GyroSettings.ACTIVATION_ALWAYS, normalized.activationMode)
+    }
+
+    @Test
+    fun jsonRoundTrip_preservesProfileSettings() {
+        val original = GyroSettings(
+            mode = GyroSettings.MODE_MOUSE,
+            lastTarget = GyroSettings.MODE_MOUSE,
+            activationMode = GyroSettings.ACTIVATION_TOGGLE,
+            sensitivity = 2.5f,
+            verticalScale = 0.75f,
+            steadyingDegreesPerSecond = 3f,
+            smoothingMilliseconds = 14f,
+            stickAntiDeadzone = 0.2f,
+            invertX = true,
+            invertY = true,
+        ).normalized()
+
+        val restored = GyroSettings.fromJsonObject(JSONObject(original.toJsonObject().toString()))
+
+        assertEquals(original, restored)
     }
 
     private fun containerWithExtras(extras: MutableMap<String, String>): Container {

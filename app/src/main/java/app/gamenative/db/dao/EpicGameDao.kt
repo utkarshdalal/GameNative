@@ -104,6 +104,7 @@ interface EpicGameDao {
                     isInstalled = existingGame.isInstalled,
                     installPath = existingGame.installPath,
                     installSize = existingGame.installSize,
+                    version = newGame.version.ifEmpty { existingGame.version },
                     lastPlayed = existingGame.lastPlayed,
                     playTime = existingGame.playTime,
                 )

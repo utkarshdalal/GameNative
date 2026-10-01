@@ -133,6 +133,21 @@ object FileUtils {
         }
     }
 
+    /**
+     * Same as [String.indexOf], except `?` in [part] stands for any single character.
+     * Steam UFS patterns use it (e.g. FFXII_???), and it cannot appear in a file name.
+     */
+    private fun indexOfPart(fileName: String, part: String, startIndex: Int): Int {
+        if (!part.contains('?')) return fileName.indexOf(part, startIndex, ignoreCase = true)
+        for (offset in startIndex..(fileName.length - part.length)) {
+            val found = part.indices.all { i ->
+                part[i] == '?' || part[i].equals(fileName[offset + i], ignoreCase = true)
+            }
+            if (found) return offset
+        }
+        return -1
+    }
+
     fun findFiles(rootPath: Path, pattern: String, includeDirectories: Boolean = false): Stream<Path> {
         val patternParts = pattern.split("*").filter { it.isNotEmpty() }
         Timber.i("$pattern -> $patternParts")
@@ -145,7 +160,7 @@ object FileUtils {
                 Timber.i("Checking $fileName for pattern $pattern")
                 var startIndex = 0
                 !patternParts.map {
-                    val index = fileName.indexOf(it, startIndex, ignoreCase = true)
+                    val index = indexOfPart(fileName, it, startIndex)
                     if (index >= 0) {
                         startIndex = index + it.length
                     }
@@ -170,7 +185,7 @@ object FileUtils {
         fun matches(fileName: String): Boolean {
             var startIndex = 0
             for (part in patternParts) {
-                val index = fileName.indexOf(part, startIndex, ignoreCase = true)
+                val index = indexOfPart(fileName, part, startIndex)
                 if (index < 0) return false
                 startIndex = index + part.length
             }

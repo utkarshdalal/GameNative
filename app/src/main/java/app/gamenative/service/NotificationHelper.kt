@@ -13,10 +13,16 @@ import app.gamenative.MainActivity
 import app.gamenative.data.DownloadInfo
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.utils.LocaleHelper
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
-class NotificationHelper @Inject constructor(@ApplicationContext private val context: Context) {
+class NotificationHelper @Inject constructor(@ApplicationContext appContext: Context) {
+
+    // Resolve strings in the app's configured language: the application context follows the OS
+    // locale (the Application can't rebase itself — DataStore isn't readable that early), so
+    // wrap it here. PrefManager is initialized by the time any service constructs this.
+    private val context: Context = LocaleHelper.applyLanguage(appContext, PrefManager.appLanguage)
 
     companion object {
         private const val CHANNEL_ID = "pluvia_foreground_service"
