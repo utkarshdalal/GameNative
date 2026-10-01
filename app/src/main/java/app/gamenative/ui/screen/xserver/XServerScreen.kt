@@ -1124,14 +1124,17 @@ fun XServerScreen(
     // thread Handler, not the view, so a detached view can't leave the flag set.
     val pointerCaptureHandler = remember { Handler(Looper.getMainLooper()) }
     val pointerCaptureRequestPending = remember { AtomicBoolean(false) }
+    val canCapturePointer: () -> Boolean = {
+        !showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode && !container.isTouchscreenMode
+    }
     val tryCapturePointer: () -> Boolean = {
-        if (!showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode &&
-            !container.isTouchscreenMode) {
+        if (canCapturePointer()) {
             if (pointerCaptureRequestPending.compareAndSet(false, true)) {
                 pointerCaptureHandler.postDelayed({
                     pointerCaptureRequestPending.set(false)
+                    // Checked again: a menu or editor may have opened meanwhile.
                     val view = PluviaApp.touchpadView
-                    if (view != null) {
+                    if (view != null && canCapturePointer()) {
                         view.requestFocus()
                         view.requestPointerCapture()
                     }
@@ -1140,6 +1143,13 @@ fun XServerScreen(
             true
         } else {
             false
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            // A request still pending must not capture the touchpad of a later session.
+            pointerCaptureHandler.removeCallbacksAndMessages(null)
+            pointerCaptureRequestPending.set(false)
         }
     }
 

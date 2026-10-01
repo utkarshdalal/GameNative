@@ -345,7 +345,7 @@
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
     <string name="performance_hud_fps_limiter_lsfg_base">限制基础帧率。屏幕帧率为上限乘以 LSFG 倍数。</string>
     <string name="performance_hud_input_throttling">输入节流</string>
-    <string name="performance_hud_input_throttling_description">限制摇杆和扳机动作发送到游戏的频率。按键不会被延迟。</string>
+    <string name="performance_hud_input_throttling_description">限制摇杆和扳机动作发送到游戏的频率。实体手柄的按键不会被延迟。</string>
     <string name="performance_hud_input_throttling_rate">节流频率</string>
     <string name="performance_hud_presets">预设</string>
     <string name="performance_hud_presets_description">快速切换常用 HUD 布局。</string>

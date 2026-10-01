@@ -10,7 +10,7 @@ import android.view.Choreographer
 class InputThrottling {
     companion object {
         const val DEFAULT_RATE_HZ = 60
-        const val MIN_RATE_HZ = 15
+        const val MIN_RATE_HZ = 5
         const val MAX_RATE_HZ = 240
 
         private const val NANOS_PER_SECOND = 1_000_000_000L

@@ -68,4 +68,49 @@ class GamepadStateOutputTest {
 
         assertEquals(2, sent.size)
     }
+
+    @Test
+    fun `a newer state sent meanwhile drops held-back motion of another instance`() {
+        val sent = mutableListOf<Float>()
+        val throttling = InputThrottling().apply {
+            enabled = true
+            setRateHz(15)
+        }
+        val output = GamepadStateOutput(throttling) { state -> sent += state!!.thumbLX }
+        val oldProfileState = GamepadState()
+        val newProfileState = GamepadState()
+
+        oldProfileState.thumbLX = 0.5f
+        output.sendMotion(oldProfileState)
+        oldProfileState.thumbLX = 0.9f
+        output.sendMotion(oldProfileState) // held back
+        output.sendForced(newProfileState) // e.g. the profile switched
+        shadowOf(Looper.getMainLooper()).idleFor(200, MILLISECONDS)
+
+        assertEquals(listOf(0.5f, 0f), sent)
+    }
+
+    @Test
+    fun `nothing counts as sent while the sender can't deliver`() {
+        val sent = mutableListOf<Short>()
+        var available = false
+        val output = GamepadStateOutput(
+            InputThrottling(),
+            object : GamepadStateOutput.Sender {
+                override fun send(state: GamepadState?) {
+                    sent += state!!.buttons
+                }
+
+                override fun canSend(): Boolean = available
+            },
+        )
+        val state = GamepadState()
+        state.setPressed(0, true)
+
+        output.send(state)
+        available = true
+        output.send(state)
+
+        assertEquals(1, sent.size)
+    }
 }
