@@ -486,6 +486,8 @@ class PhysicalControllerHandlerTest {
             assertTrue(handler.onGenericMotionEvent(event))
             verify(xServer).injectKeyRelease(XKeycode.KEY_D)
             verify(xServer, times(0)).injectKeyPress(XKeycode.KEY_A)
+            // Throttling is off by default: dispatched right away, no frame loop left running.
+            assertFalse(frameScheduled(handler))
         } finally {
             handler.cleanup()
         }
