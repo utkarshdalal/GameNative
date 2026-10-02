@@ -86,7 +86,10 @@ import app.gamenative.ui.component.ConnectionStatusBanner
 import app.gamenative.ui.component.GameInviteOverlay
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
+import app.gamenative.api.AccountApi
 import app.gamenative.api.DebugReportApi
+import app.gamenative.api.SupportApi
+import app.gamenative.ui.component.dialog.AccountSignInDialog
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.component.dialog.DebugPreRunDialog
 import app.gamenative.ui.component.dialog.DebugReportDialog
@@ -108,7 +111,10 @@ import app.gamenative.ui.screen.HomeScreen
 import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.ui.screen.login.UserLoginScreen
 import app.gamenative.ui.screen.settings.SettingsScreen
+import app.gamenative.ui.screen.support.SupportReportSubmitter
 import app.gamenative.ui.screen.support.SupportScreen
+import app.gamenative.ui.screen.support.SupportSession
+import app.gamenative.ui.screen.support.SupportUpgradeDialog
 import app.gamenative.ui.screen.xserver.XServerScreen
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.LocalSnackbarHostController
@@ -300,6 +306,8 @@ private fun trackMembershipPrompt(event: String, trigger: String) {
     }
 }
 
+private const val SUPPORT_PROMPT_SIGN_IN = "sign_in"
+
 private fun trackAiDebugOffer(event: String, appId: String, trigger: String) {
     if (PrefManager.usageAnalyticsEnabled) {
         PostHog.capture(
@@ -365,6 +373,7 @@ fun PluviaMain(
         mutableStateOf(DebugReportDialogState(false))
     }
     var debugPaywallReason by rememberSaveable { mutableStateOf<String?>(null) }
+    var debugAccountPrompt by rememberSaveable { mutableStateOf<String?>(null) }
     var aiDebugOfferAppId by rememberSaveable { mutableStateOf("") }
     var aiDebugOfferTrigger by rememberSaveable { mutableStateOf("") }
     var debugPreRunVisible by rememberSaveable { mutableStateOf(false) }
@@ -747,6 +756,10 @@ fun PluviaMain(
                         deviceName = header?.optString("deviceName") ?: "",
                         logSizeBytes = withContext(Dispatchers.IO) { DebugReportUtils.logFile(dir).length() },
                     )
+                    scope.launch {
+                        AccountApi.loadSignedInState()
+                        SupportApi.checkAvailability()
+                    }
                     trackAiDebug(
                         "ai_debug_report_shown",
                         mapOf("discord_linked" to PrefManager.discordRelayTokenPresent.value),
@@ -1521,7 +1534,7 @@ fun PluviaMain(
                 }
             }
 
-            val submitDebugReport: () -> Unit = submit@{
+            val submitViaDiscord: () -> Unit = submit@{
                 val current = debugReportState
                 if (current.reportDir.isEmpty()) return@submit
                 debugReportState = current.copy(visible = true, phase = DebugReportDialogState.PHASE_SENDING)
@@ -1543,7 +1556,7 @@ fun PluviaMain(
                     val logcatFile = DebugReportUtils.logcatFile(dir)
                     when (val result = DebugReportApi.submit(header, logFile, PrefManager.discordRelayToken, perfFile, logcatFile)) {
                         is DebugReportApi.SubmitResult.Success -> {
-                            trackAiDebug("ai_debug_report_result", mapOf("result" to "success"))
+                            trackAiDebug("ai_debug_report_result", mapOf("result" to "success", "path" to "discord"))
                             withContext(Dispatchers.IO) { DebugReportUtils.deleteReport(dir) }
                             debugReportState = debugReportState.copy(
                                 phase = DebugReportDialogState.PHASE_SUCCESS,
@@ -1555,11 +1568,79 @@ fun PluviaMain(
                             debugReportState = debugReportState.copy(visible = false)
                             val reason = result.reason.ifEmpty { "no_subscription" }
                             debugPaywallReason = reason
-                            trackAiDebug("ai_debug_report_result", mapOf("result" to "forbidden", "reason" to reason))
+                            trackAiDebug(
+                                "ai_debug_report_result",
+                                mapOf("result" to "forbidden", "reason" to reason, "path" to "discord"),
+                            )
                         }
 
                         is DebugReportApi.SubmitResult.Failure -> {
-                            trackAiDebug("ai_debug_report_result", mapOf("result" to "failure", "reason" to result.message))
+                            trackAiDebug(
+                                "ai_debug_report_result",
+                                mapOf("result" to "failure", "reason" to result.message, "path" to "discord"),
+                            )
+                            debugReportState = debugReportState.copy(phase = DebugReportDialogState.PHASE_ERROR)
+                        }
+                    }
+                }
+            }
+
+            val submitDebugReport: () -> Unit = submit@{
+                val current = debugReportState
+                if (current.reportDir.isEmpty()) return@submit
+                if (SupportApi.available.value == false) {
+                    submitViaDiscord()
+                    return@submit
+                }
+                if (!PrefManager.gameNativeSignedIn.value) {
+                    debugAccountPrompt = SUPPORT_PROMPT_SIGN_IN
+                    return@submit
+                }
+                debugReportState = current.copy(visible = true, phase = DebugReportDialogState.PHASE_SENDING)
+                scope.launch {
+                    val outcome = SupportReportSubmitter.submit(current)
+                    val composeAgain = { debugReportState = debugReportState.copy(visible = true, phase = DebugReportDialogState.PHASE_COMPOSE) }
+                    when (outcome) {
+                        is SupportReportSubmitter.Outcome.Sent -> {
+                            trackAiDebug("ai_debug_report_result", mapOf("result" to "success", "path" to "app"))
+                            withContext(Dispatchers.IO) { DebugReportUtils.deleteReport(File(current.reportDir)) }
+                            debugReportState = debugReportState.copy(visible = false)
+                            SteamService.keepAlive = false
+                            SupportSession.pendingConversationId.value = outcome.conversationId
+                            navController.navigate(PluviaScreen.Support.route) { launchSingleTop = true }
+                        }
+                        SupportReportSubmitter.Outcome.Unavailable -> {
+                            if (PrefManager.discordRelayTokenPresent.value) submitViaDiscord() else composeAgain()
+                        }
+                        SupportReportSubmitter.Outcome.SignedOut -> {
+                            composeAgain()
+                            debugAccountPrompt = SUPPORT_PROMPT_SIGN_IN
+                        }
+                        is SupportReportSubmitter.Outcome.Forbidden -> {
+                            trackAiDebug(
+                                "ai_debug_report_result",
+                                mapOf("result" to "forbidden", "reason" to outcome.reason, "path" to "app"),
+                            )
+                            composeAgain()
+                            debugAccountPrompt = outcome.reason
+                        }
+                        SupportReportSubmitter.Outcome.PlanPending -> {
+                            composeAgain()
+                            SnackbarManager.show(context.getString(R.string.support_plan_pending))
+                        }
+                        SupportReportSubmitter.Outcome.RateLimited -> {
+                            trackAiDebug(
+                                "ai_debug_report_result",
+                                mapOf("result" to "failure", "reason" to SupportApi.REASON_RATE_LIMITED, "path" to "app"),
+                            )
+                            debugReportState = debugReportState.copy(phase = DebugReportDialogState.PHASE_ERROR)
+                            SnackbarManager.show(context.getString(R.string.support_problem_rate_limited))
+                        }
+                        is SupportReportSubmitter.Outcome.Failed -> {
+                            trackAiDebug(
+                                "ai_debug_report_result",
+                                mapOf("result" to "failure", "reason" to outcome.reason, "path" to "app"),
+                            )
                             debugReportState = debugReportState.copy(phase = DebugReportDialogState.PHASE_ERROR)
                         }
                     }
@@ -1608,10 +1689,14 @@ fun PluviaMain(
             DebugReportDialog(
                 state = debugReportState,
                 hasDiscordToken = discordTokenPresent,
+                appChatEnabled = SupportApi.available.value != false,
+                accountSignedIn = PrefManager.gameNativeSignedIn.value,
+                sendProgress = SupportReportSubmitter.progress.value,
                 onStateChange = { debugReportState = it },
                 onSend = submitDebugReport,
                 onShare = shareDebugLog,
                 onConnectDiscord = openDiscordConnect,
+                onUseDiscord = submitViaDiscord,
                 onOpenThread = {
                     if (debugReportState.threadUrl.isNotEmpty()) {
                         uriHandler.openUri(debugReportState.threadUrl)
@@ -1623,6 +1708,22 @@ fun PluviaMain(
                         SteamService.keepAlive = false
                     }
                 },
+            )
+
+            AccountSignInDialog(
+                visible = debugAccountPrompt == SUPPORT_PROMPT_SIGN_IN,
+                onSignedIn = {
+                    debugAccountPrompt = null
+                    submitDebugReport()
+                },
+                onDismiss = { debugAccountPrompt = null },
+            )
+
+            SupportUpgradeDialog(
+                visible = debugAccountPrompt != null && debugAccountPrompt != SUPPORT_PROMPT_SIGN_IN,
+                reason = debugAccountPrompt,
+                onPlanChanged = { debugAccountPrompt = null },
+                onDismiss = { debugAccountPrompt = null },
             )
 
             debugPaywallReason?.let { reason ->
@@ -1644,7 +1745,7 @@ fun PluviaMain(
                         onConnectDiscord = openDiscordConnect,
                         onRetry = {
                             debugPaywallReason = null
-                            submitDebugReport()
+                            submitViaDiscord()
                         },
                         onDismiss = {
                             debugPaywallReason = null

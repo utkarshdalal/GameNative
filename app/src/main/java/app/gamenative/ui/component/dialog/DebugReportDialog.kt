@@ -1,5 +1,6 @@
 package app.gamenative.ui.component.dialog
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -15,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -40,6 +42,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.component.dialog.state.DebugReportDialogState
 import app.gamenative.ui.theme.PluviaTheme
 import java.util.Locale
@@ -49,10 +52,14 @@ import java.util.Locale
 fun DebugReportDialog(
     state: DebugReportDialogState,
     hasDiscordToken: Boolean,
+    appChatEnabled: Boolean,
+    accountSignedIn: Boolean,
+    sendProgress: Float?,
     onStateChange: (DebugReportDialogState) -> Unit,
     onSend: () -> Unit,
     onShare: () -> Unit,
     onConnectDiscord: () -> Unit,
+    onUseDiscord: () -> Unit,
     onOpenThread: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -86,7 +93,16 @@ fun DebugReportDialog(
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.padding(bottom = 16.dp),
                             )
-                            CircularProgressIndicator(modifier = Modifier.padding(bottom = 16.dp))
+                            if (sendProgress != null && sendProgress > 0f) {
+                                LinearProgressIndicator(
+                                    progress = { sendProgress },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 16.dp),
+                                )
+                            } else {
+                                CircularProgressIndicator(modifier = Modifier.padding(bottom = 16.dp))
+                            }
                             Text(
                                 text = stringResource(R.string.debug_report_sending),
                                 style = MaterialTheme.typography.bodyMedium,
@@ -220,7 +236,29 @@ fun DebugReportDialog(
                                     maxLines = 5,
                                 )
 
-                                if (!hasDiscordToken) {
+                                if (appChatEnabled) {
+                                    if (!accountSignedIn) {
+                                        Text(
+                                            text = stringResource(R.string.debug_report_sign_in_hint),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            textAlign = TextAlign.Center,
+                                            modifier = Modifier.padding(bottom = 16.dp),
+                                        )
+                                    }
+                                    if (hasDiscordToken) {
+                                        val discordInteraction = remember { MutableInteractionSource() }
+                                        TextButton(
+                                            onClick = onUseDiscord,
+                                            enabled = state.issueText.isNotBlank(),
+                                            interactionSource = discordInteraction,
+                                            modifier = Modifier
+                                                .padding(bottom = 8.dp)
+                                                .focusRing(discordInteraction, RoundedCornerShape(12.dp), width = 2.dp),
+                                        ) {
+                                            Text(stringResource(R.string.debug_report_use_discord))
+                                        }
+                                    }
+                                } else if (!hasDiscordToken) {
                                     Text(
                                         text = stringResource(R.string.debug_report_connect_hint),
                                         style = MaterialTheme.typography.bodySmall,
@@ -253,7 +291,7 @@ fun DebugReportDialog(
                                 Button(
                                     onClick = onSend,
                                     modifier = Modifier.padding(start = 8.dp),
-                                    enabled = state.issueText.isNotBlank() && hasDiscordToken,
+                                    enabled = state.issueText.isNotBlank() && (appChatEnabled || hasDiscordToken),
                                 ) {
                                     Text(stringResource(R.string.debug_report_send))
                                 }
