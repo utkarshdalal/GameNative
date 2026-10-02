@@ -99,7 +99,7 @@ class SafIntegrationAndroidTest {
 
         // Export through the SAME production writer used by DefaultSaveBackupEngine.exportRawTree.
         val written = RawTreeCodec.export(
-            roots = listOf(RawTreeCodec.ExportRoot(sourceRoot)),
+            roots = listOf(RawTreeCodec.ExportRoot(sourceRoot, "", allRegularFiles(sourceRoot))),
             gameName = "Test Game",
             dest = DocumentTreeWriter(context, externalTree),
         )
@@ -151,7 +151,7 @@ class SafIntegrationAndroidTest {
         val externalTree = requireNotNull(DocumentFile.fromFile(externalDir))
 
         val written = RawTreeCodec.export(
-            roots = listOf(RawTreeCodec.ExportRoot(sourceRoot)),
+            roots = listOf(RawTreeCodec.ExportRoot(sourceRoot, "", allRegularFiles(sourceRoot))),
             gameName = "Streams",
             dest = DocumentTreeWriter(context, externalTree),
         )
@@ -269,6 +269,13 @@ class SafIntegrationAndroidTest {
     }
 
     // -- helpers ---------------------------------------------------------------
+
+    /** Every regular file under [root] (the engine supplies an explicit, pre-filtered file list). */
+    private fun allRegularFiles(root: Path): List<Path> =
+        Files.walk(root).use { s ->
+            s.filter { Files.isRegularFile(it, LinkOption.NOFOLLOW_LINKS) }
+                .collect(java.util.stream.Collectors.toList())
+        }
 
     /** Write [files] (relativePath -> bytes) under [root]; returns the same map for assertions. */
     private fun writeSaveSet(root: Path, files: Map<String, ByteArray>): Map<String, ByteArray> {
