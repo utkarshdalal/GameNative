@@ -130,52 +130,6 @@ object SteamAutoCloud {
     private fun findPlaceholderWithin(aString: String): Sequence<MatchResult> =
         Regex("%\\w+%").findAll(aString)
 
-    private fun mergeCaseDuplicateSaveDirs(cloudShas: Map<String, ByteArray>, cachedShas: Map<String, ByteArray>) {
-        val visited = mutableSetOf<String>()
-        cloudShas.keys.forEach { cloudPath ->
-            var current = File("/")
-            for (segment in cloudPath.split('/').filter { it.isNotEmpty() }) {
-                val exact = File(current, segment)
-                val variants = current.listFiles()
-                    ?.filter { it.isDirectory && it.name != segment && it.name.equals(segment, ignoreCase = true) }
-                    .orEmpty()
-                if (exact.isDirectory && variants.size == 1 && visited.add(exact.path)) {
-                    val target = variants[0]
-                    if (cloudShas.keys.none { it.startsWith(target.path + "/") }) {
-                        mergeDirInto(exact, target, cloudShas, cachedShas)
-                    }
-                }
-                current = if (exact.exists()) exact else variants.firstOrNull() ?: exact
-            }
-        }
-    }
-
-    private fun mergeDirInto(src: File, dst: File, cloudShas: Map<String, ByteArray>, cachedShas: Map<String, ByteArray>) {
-        Timber.i("Merging case-duplicate save dir $src into $dst")
-        src.walkBottomUp().forEach { file ->
-            if (file.isDirectory) {
-                file.delete()
-                return@forEach
-            }
-            val target = FileUtils.resolveCaseInsensitive(dst, file.relativeTo(src).path)
-            if (!target.exists()) {
-                target.parentFile?.mkdirs()
-                if (!file.renameTo(target)) Timber.w("Could not move $file to $target")
-                return@forEach
-            }
-            if (!target.isFile) return@forEach
-            val sha = streamingShaHash(file.toPath())
-            val isCopy = sha.contentEquals(streamingShaHash(target.toPath())) ||
-                sha.contentEquals(cloudShas[file.path]) ||
-                sha.contentEquals(cachedShas[file.path])
-            if (isCopy) {
-                file.delete()
-            } else {
-                Timber.w("Keeping $file: differs from $target, the cloud and the sync cache")
-            }
-        }
-    }
-
     private inline fun InputStream.copyTo(
         out: OutputStream,
         bufferSize: Int = 8 * 1024,
@@ -359,6 +313,10 @@ object SteamAutoCloud {
                 // if the file does not reference any prefix then we need to set it to the default path
                 Paths.get(prefixToPath(PathType.DEFAULT.name), file.filename)
             }
+        }
+
+        val resolveAbsPath: (UserFileInfo) -> Path = {
+            FileUtils.resolveCaseInsensitive(File("/"), it.getAbsPath(prefixToPath).toString().trimStart('/')).toPath()
         }
 
         val getFilesDiff: (List<UserFileInfo>, List<UserFileInfo>) -> Pair<Boolean, FileChanges> = { currentFiles, oldFiles ->
@@ -583,6 +541,25 @@ object SteamAutoCloud {
                     )
                 }
 
+                val targetPaths = java.util.IdentityHashMap<AppFileInfo, Path>()
+                val saveDirs = appInfo.ufs.saveFilePatterns.filter { it.root.isWindows }.map {
+                    FileUtils.resolveCaseInsensitive(
+                        File("/"),
+                        Paths.get(prefixToPath(it.root.toString()), it.substitutedPath).toString().trimStart('/'),
+                    )
+                }
+                filesToDownload.forEach { file ->
+                    val fullPath = getFullFilePath(file, fileList).toString()
+                    val saveDir = saveDirs.firstOrNull { fullPath.startsWith(it.path + "/", ignoreCase = true) }
+                    val target = if (saveDir != null) {
+                        FileUtils.resolveCaseInsensitive(saveDir, fullPath.substring(saveDir.path.length))
+                    } else {
+                        FileUtils.resolveCaseInsensitive(File("/"), fullPath.trimStart('/'))
+                    }.toPath()
+                    runCatching { Files.createDirectories(target.parent) }
+                    targetPaths[file] = target
+                }
+
                 try {
                     coroutineScope {
                         filesToDownload.map { file ->
@@ -595,7 +572,7 @@ object SteamAutoCloud {
                                         file = file,
                                         fileList = fileList,
                                         getFilePrefixPath = getFilePrefixPath,
-                                        getFullFilePath = getFullFilePath,
+                                        getFullFilePath = { cloudFile, list -> targetPaths[cloudFile] ?: getFullFilePath(cloudFile, list) },
                                         buildUrl = buildUrl,
                                         httpClient = downloadHttpClient,
                                         totalRawBytes = totalRawBytes,
@@ -631,18 +608,21 @@ object SteamAutoCloud {
             }
         }
 
+        var cloudKeysByLowercase: Map<String, String> = emptyMap()
+        val cloudKey: (UserFileInfo) -> String = { cloudKeysByLowercase[it.prefixPath.lowercase()] ?: it.prefixPath }
+
         val uploadFiles: (FileChanges, CoroutineScope) -> Deferred<UserFilesUploadResult> = { fileChanges, parentScope ->
             parentScope.asyncIsolated {
                 var filesUploaded = 0
                 var bytesUploaded = 0L
 
-                val filesToDelete = fileChanges.filesDeleted.map { it.prefixPath }
+                val filesToDelete = fileChanges.filesDeleted.map { cloudKey(it) }
 
                 val filesToUpload = fileChanges.filesCreated
                     .union(fileChanges.filesModified)
-                    .map { it.prefixPath to it }
+                    .map { cloudKey(it) to it }
                     // Filter out entries whose files no longer exist at upload time
-                    .filter { Files.exists(it.second.getAbsPath(prefixToPath)) }
+                    .filter { Files.exists(resolveAbsPath(it.second)) }
 
                 val totalFiles = filesToUpload.size
 
@@ -663,7 +643,7 @@ object SteamAutoCloud {
                 var uploadBatchSuccess = true
 
                 filesToUpload.map { it.second }.forEachIndexed { index, file ->
-                    val absFilePath = file.getAbsPath(prefixToPath)
+                    val absFilePath = resolveAbsPath(file)
 
                     val fileSize = try {
                         Files.size(absFilePath).toInt()
@@ -673,7 +653,7 @@ object SteamAutoCloud {
                         return@forEachIndexed
                     }
 
-                    Timber.i("Beginning upload of ${file.prefixPath} whose timestamp is ${file.timestamp}")
+                    Timber.i("Beginning upload of ${cloudKey(file)} whose timestamp is ${file.timestamp}")
 
                     // Report start of upload
                     onProgress?.invoke("Uploading ${file.filename}", 0f)
@@ -692,7 +672,7 @@ object SteamAutoCloud {
                             if (file.root == PathType.SteamUserData) {
                                 file.filename
                             } else {
-                                file.prefixPath
+                                cloudKey(file)
                             }
                         },
                         fileSize = fileSize,
@@ -821,7 +801,7 @@ object SteamAutoCloud {
                             if (file.root == PathType.SteamUserData) {
                                 file.filename
                             } else {
-                                file.prefixPath
+                                cloudKey(file)
                             }
                         },
                     ).await()
@@ -883,17 +863,8 @@ object SteamAutoCloud {
 
             appFileListChange.printFileChangeList(appInfo)
 
-            try {
-                mergeCaseDuplicateSaveDirs(
-                    cloudShas = appFileListChange.files.associate {
-                        getFullFilePath(it, appFileListChange).toString() to it.shaFile
-                    },
-                    cachedShas = cachedFileList?.userFileInfo.orEmpty().associate {
-                        it.getAbsPath(prefixToPath).toString() to it.sha
-                    },
-                )
-            } catch (e: Exception) {
-                Timber.w(e, "Failed to merge case-duplicate save dirs for ${appInfo.id}")
+            cloudKeysByLowercase = appFileListChange.files.associate {
+                getFilePrefixPath(it, appFileListChange).let { key -> key.lowercase() to key }
             }
 
             // retrieve existing user files from local storage
@@ -922,7 +893,7 @@ object SteamAutoCloud {
                         var totalFilesDeleted = 0
 
                         filesDiff.filesDeleted.forEach {
-                            val deleted = Files.deleteIfExists(it.getAbsPath(prefixToPath))
+                            val deleted = Files.deleteIfExists(resolveAbsPath(it))
                             if (deleted) totalFilesDeleted++
                         }
 
