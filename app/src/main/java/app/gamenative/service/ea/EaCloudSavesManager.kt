@@ -73,7 +73,7 @@ object EaCloudSavesManager {
     private const val REMEMBER_MS = 10L * 60 * 1000
     private const val LOCK_LIMIT_MS = 4L * 60 * 1000
 
-    private val EMPTY_SLOT_FORMAT: Md5Format? = null
+    private val EMPTY_SLOT_FORMAT: Md5Format? = Md5Format.MAXIMA
 
     private val SHAPE_HEX_LOWER = Regex("[0-9a-f]{32}")
     private val SHAPE_HEX_UPPER = Regex("[0-9A-F]{32}")
@@ -255,6 +255,11 @@ object EaCloudSavesManager {
                     synced[name] = StateEntry(mine.key, identity(entry), entry.localName)
                 }
             }
+            if (base != null) {
+                for ((name, old) in state?.entries.orEmpty()) {
+                    if (name !in synced && view.entries[name]?.let { identity(it) } == old.cloudIdentity) synced[name] = old
+                }
+            }
             saveState(container, State(probe.format ?: state?.format, synced))
 
             val format = when {
@@ -433,8 +438,12 @@ object EaCloudSavesManager {
         var duplicates = false
         for (entry in manifest.files) {
             val name = EaCloudSaveConfig.normalizeName(entry.localName)
-            if (!EaCloudSaveConfig.isAllowed(target, entry.localName) || EaCloudSaveConfig.toFile(entry.localName, driveC) == null) {
+            val dest = EaCloudSaveConfig.toFile(entry.localName, driveC)
+            if (!EaCloudSaveConfig.isAllowed(target, entry.localName) || dest == null) {
                 Timber.tag(TAG).w("Cloud save entry ignored (outside save criteria): ${entry.localName}")
+                ignored++
+            } else if (dest.isDirectory || generateSequence(dest.parentFile) { it.parentFile }.takeWhile { it != driveC }.any { it.isFile }) {
+                Timber.tag(TAG).w("Cloud save entry ignored (path blocked locally): ${entry.localName}")
                 ignored++
             } else if (name in entries) {
                 Timber.tag(TAG).w("Cloud save entry ignored (duplicate name): ${entry.localName}")

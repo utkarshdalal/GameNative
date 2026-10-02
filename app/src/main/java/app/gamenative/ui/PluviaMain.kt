@@ -2502,45 +2502,6 @@ fun preLaunchApp(
             return@launch
         }
 
-        if (container.isLaunchHeadlessSteam && gameSource == GameSource.STEAM) {
-            try {
-                val eaGameDir = File(SteamService.getAppDirPath(gameId))
-                if (EaLaunchSupport.isEaTitle(gameId, eaGameDir)) {
-                    setLoadingMessage(context.getString(R.string.library_cloud_sync_starting))
-                    setLoadingProgress(-1f)
-                    val eaPreference = when (eaPreferredSave) {
-                        SaveLocation.Local -> EaCloudPreference.LOCAL
-                        SaveLocation.Remote -> EaCloudPreference.REMOTE
-                        SaveLocation.None -> EaCloudPreference.NONE
-                    }
-                    val eaPull = EaCloudSavesManager.syncBeforeLaunch(context, container, gameId, eaGameDir, eaPreference)
-                    if (eaPull is EaCloudSavesManager.PullResult.Conflict) {
-                        Timber.tag("EA").i("Cloud save conflict for $appId, prompting user")
-                        val localDate = Date(eaPull.localMillis).toString()
-                        val remoteDate = eaPull.remoteMillis?.let { Date(it).toString() }
-                            ?: context.getString(R.string.container_storage_source_unknown)
-                        setLoadingDialogVisible(false)
-                        setMessageDialogState(
-                            MessageDialogState(
-                                visible = true,
-                                type = DialogType.EA_SYNC_CONFLICT,
-                                title = context.getString(R.string.main_save_conflict_title),
-                                message = context.getString(R.string.main_save_conflict_message, localDate, remoteDate),
-                                dismissBtnText = context.getString(R.string.main_keep_local),
-                                confirmBtnText = context.getString(R.string.main_keep_remote),
-                            ),
-                        )
-                        return@launch
-                    }
-                    Timber.tag("EA").i("Cloud save pull for $appId: $eaPull")
-                }
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (e: Throwable) {
-                Timber.tag("EA").w("Cloud save pull failed for $appId: ${e.javaClass.simpleName}")
-            }
-        }
-
         // For Steam games, sync save files and check no pending remote operations are running
         val prefixToPath: (String) -> String = { prefix ->
             PathType.from(prefix).toAbsPath(container, gameId, SteamService.userSteamId!!.accountID)
@@ -2712,6 +2673,43 @@ fun preLaunchApp(
 
         setLoadingMessage("Syncing cloud saves")
         setLoadingProgress(-1f)
+        if (container.isLaunchHeadlessSteam && gameSource == GameSource.STEAM) {
+            try {
+                val eaGameDir = File(SteamService.getAppDirPath(gameId))
+                if (EaLaunchSupport.isEaTitle(gameId, eaGameDir)) {
+                    val eaPreference = when (eaPreferredSave) {
+                        SaveLocation.Local -> EaCloudPreference.LOCAL
+                        SaveLocation.Remote -> EaCloudPreference.REMOTE
+                        SaveLocation.None -> EaCloudPreference.NONE
+                    }
+                    val eaPull = EaCloudSavesManager.syncBeforeLaunch(context, container, gameId, eaGameDir, eaPreference)
+                    if (eaPull is EaCloudSavesManager.PullResult.Conflict) {
+                        Timber.tag("EA").i("Cloud save conflict for $appId, prompting user")
+                        val localDate = Date(eaPull.localMillis).toString()
+                        val remoteDate = eaPull.remoteMillis?.let { Date(it).toString() }
+                            ?: context.getString(R.string.container_storage_source_unknown)
+                        setLoadingDialogVisible(false)
+                        setMessageDialogState(
+                            MessageDialogState(
+                                visible = true,
+                                type = DialogType.EA_SYNC_CONFLICT,
+                                title = context.getString(R.string.main_save_conflict_title),
+                                message = context.getString(R.string.main_save_conflict_message, localDate, remoteDate),
+                                dismissBtnText = context.getString(R.string.main_keep_local),
+                                confirmBtnText = context.getString(R.string.main_keep_remote),
+                            ),
+                        )
+                        return@launch
+                    }
+                    Timber.tag("EA").i("Cloud save pull for $appId: $eaPull")
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                Timber.tag("EA").w("Cloud save pull failed for $appId: ${e.javaClass.simpleName}")
+            }
+        }
+
         val postSyncInfo = SteamService.beginLaunchApp(
             appId = gameId,
             prefixToPath = prefixToPath,

@@ -389,16 +389,58 @@ class EaCloudSavesManagerTest {
     }
 
     @Test
-    fun `no upload to an empty slot without a known format`() {
+    fun `local save uploads to an empty slot in the maxima format`() {
         File(saveDir, "a.sav").writeText("local")
         manifests(noCloud)
 
         assertEquals(PullResult.Synced, pull(20))
 
-        assertFalse(EaCloudSavesManager.uploadAllowed(20))
-        assertFalse(push(20))
-        assertTrue(events.isEmpty())
-        coVerify(exactly = 1) { EaCloudSyncApi.acquire(any(), any(), any()) }
+        assertTrue(EaCloudSavesManager.uploadAllowed(20))
+        assertTrue(push(20))
+        val mine = "local".toByteArray()
+        assertEquals(listOf("file:${href(mine)}", "manifest"), events)
+        assertEquals(
+            listOf(EaCloudFile(href(mine), mine.size.toLong(), EaCloudSavesManager.encodeMd5(EaCloudSavesManager.Md5Format.MAXIMA, md5(mine)), "%Documents%/Game/a.sav")),
+            EaCloudSyncApi.parseManifest(uploadedManifest!!),
+        )
+    }
+
+    @Test
+    fun `a renamed local save replaces its old cloud entry`() {
+        File(saveDir, "a.sav").writeText("local")
+        manifests(noCloud)
+        assertEquals(PullResult.Synced, pull(40))
+        assertTrue(push(40))
+        val first = EaCloudSyncApi.parseManifest(uploadedManifest!!)
+
+        File(saveDir, "a.sav").renameTo(File(saveDir, "b.sav"))
+        events.clear()
+        manifests(cloud(*first.toTypedArray()))
+        assertEquals(PullResult.Synced, pull(40))
+        assertTrue(push(40))
+
+        val mine = "local".toByteArray()
+        assertEquals(listOf("file:${href(mine)}", "manifest"), events)
+        assertEquals(listOf("%Documents%/Game/b.sav"), EaCloudSyncApi.parseManifest(uploadedManifest!!).map { it.localName })
+    }
+
+    @Test
+    fun `a cloud entry under a local file is ignored and kept`() {
+        val mine = "local".toByteArray()
+        File(saveDir, "a.sav").writeBytes(mine)
+        seedFormat(Md5Format.BASE64)
+        val nested = EaCloudFile(href(mine), mine.size.toLong(), base64(mine), "%Documents%/Game/a.sav/a.sav")
+        remote[href(mine)] = mine
+        manifests(cloud(nested))
+
+        assertEquals(PullResult.Synced, pull(41))
+        assertEquals("local", File(saveDir, "a.sav").readText())
+        assertTrue(push(41))
+
+        assertEquals(
+            listOf("%Documents%/Game/a.sav/a.sav", "%Documents%/Game/a.sav"),
+            EaCloudSyncApi.parseManifest(uploadedManifest!!).map { it.localName },
+        )
     }
 
     @Test

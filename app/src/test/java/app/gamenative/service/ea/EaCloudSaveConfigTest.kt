@@ -124,6 +124,18 @@ class EaCloudSaveConfigTest {
     }
 
     @Test
+    fun `trailing separator matches the whole folder`() {
+        val nfs = EaCloudSaveTarget("OFB-EAST:46851", "185235_71530", listOf("%Documents%/Criterion Games/Need For Speed(TM) Most Wanted/Save/"), emptyList())
+        write(documents, "Criterion Games/Need For Speed(TM) Most Wanted/Save/1000933177888/MUD.29.NFS13Save")
+        write(documents, "Criterion Games/Need For Speed(TM) Most Wanted/config.NFS13Save")
+
+        val files = EaCloudSaveConfig.localFiles(nfs, driveC)
+
+        assertEquals(setOf("%Documents%/Criterion Games/Need For Speed(TM) Most Wanted/Save/1000933177888/MUD.29.NFS13Save"), files.keys)
+        assertTrue(EaCloudSaveConfig.isAllowed(nfs, "%Documents%\\Criterion Games\\Need For Speed(TM) Most Wanted\\Save\\1000933177888\\MUD.29.NFS13Save"))
+    }
+
+    @Test
     fun `directories match ignoring case and keys keep the names on disk`() {
         write(documents, "electronic arts/the sims 4/Saves/Slot.save")
 

@@ -802,8 +802,10 @@ class MainViewModel @Inject constructor(
         val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
         // isOffline is derived from Steam's login state (see PluviaMain's startDestination / onClickPlay)
         // and is meaningless for GOG/Epic, which check their own auth internally — only gate Steam on it.
-        if (ContainerUtils.isLocalSavesOnly(context, appId) || (gameSource == GameSource.STEAM && isOffline.value)) {
+        val isLocalSavesOnly = ContainerUtils.isLocalSavesOnly(context, appId)
+        if (isLocalSavesOnly || (gameSource == GameSource.STEAM && isOffline.value)) {
             Timber.tag("Exit").i("Local saves only or offline mode enabled for $appId — skipping cloud sync on exit")
+            if (!isLocalSavesOnly && gameSource == GameSource.STEAM) pushEaCloudSaves(context, appId, gameId)
             return
         }
 
@@ -868,16 +870,20 @@ class MainViewModel @Inject constructor(
             } catch (t: Throwable) {
                 Timber.tag("Steam").e(t, "[Cloud Saves] Exception during close app sync for $gameId")
             }
-            try {
-                withContext(Dispatchers.IO) {
-                    val container = ContainerUtils.getContainer(context, appId)
-                    app.gamenative.service.ea.EaCloudSavesManager.syncAfterExit(context, container, gameId)
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (t: Throwable) {
-                Timber.tag("EA").w("Cloud save push failed for $gameId: ${t.javaClass.simpleName}")
+            pushEaCloudSaves(context, appId, gameId)
+        }
+    }
+
+    private suspend fun pushEaCloudSaves(context: Context, appId: String, gameId: Int) {
+        try {
+            withContext(Dispatchers.IO) {
+                val container = ContainerUtils.getContainer(context, appId)
+                app.gamenative.service.ea.EaCloudSavesManager.syncAfterExit(context, container, gameId)
             }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (t: Throwable) {
+            Timber.tag("EA").w("Cloud save push failed for $gameId: ${t.javaClass.simpleName}")
         }
     }
 

@@ -287,6 +287,7 @@ object EaCloudSaveConfig {
             return null
         }
         val segments = m.groupValues[2].split('/', '\\').filter { it.isNotEmpty() }
+            .let { if (text.endsWith('/') || text.endsWith('\\')) it + "*" else it }
         return Parsed("%${m.groupValues[1]}%", root, segments, if ('\\' in text) '\\' else '/')
     }
 
@@ -357,7 +358,7 @@ object EaCloudSaveConfig {
             if (!enter(file, rootPath, visited)) return
             for (child in file.listFiles()?.sortedBy { it.name }.orEmpty()) walk(child, names + child.name, rootPath, visited, emit)
         } else if (file.isFile && inside(file, rootPath)) {
-            emit(names + file.name, file)
+            emit(names, file)
         }
     }
 
