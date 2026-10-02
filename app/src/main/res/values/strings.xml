@@ -1176,6 +1176,8 @@
     <string name="gamenative_account_manage_subscription_subtitle">Opens the billing page in your browser.</string>
     <string name="gamenative_account_manage_subscription_opening">Opening the billing page.</string>
     <string name="gamenative_account_manage_subscription_none">There is no subscription on this account to manage.</string>
+    <string name="gamenative_account_managed_discord">Your plan comes from Discord. Manage it on Discord.</string>
+    <string name="gamenative_account_managed_kofi">Your plan comes from Ko-fi. Manage it on Ko-fi.</string>
     <string name="gamenative_account_manage_subscription_failed">The billing page could not be opened. Please try again later.</string>
     <string name="gamenative_account_sign_out">Sign out</string>
     <string name="gamenative_account_sign_out_subtitle">Sign out of your GameNative account on this device.</string>

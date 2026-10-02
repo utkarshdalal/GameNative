@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -18,6 +19,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.api.AccountApi
@@ -32,6 +36,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun SettingsGroupGameNativeAccount() {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
     val signedIn by PrefManager.gameNativeSignedIn
     val account by AccountApi.account
@@ -45,8 +50,16 @@ fun SettingsGroupGameNativeAccount() {
         AccountApi.loadSignedInState()
     }
 
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) loadAttempt++
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     LaunchedEffect(signedIn, loadAttempt) {
-        if (signedIn && account == null) {
+        if (signedIn) {
             loadFailed = false
             loadFailed = AccountApi.fetchAccount() !is ApiResult.Success
         }
@@ -69,9 +82,10 @@ fun SettingsGroupGameNativeAccount() {
             )
         } else {
             val current = account
+            val managedElsewhere = managedElsewhereMessage(current?.tierSource)
             SettingsMenuLink(
                 colors = settingsTileColors(),
-                title = { Text(current?.email ?: stringResource(R.string.gamenative_account_title)) },
+                title = { Text(current?.email?.ifBlank { null } ?: stringResource(R.string.gamenative_account_title)) },
                 subtitle = {
                     Text(
                         when {
@@ -91,7 +105,11 @@ fun SettingsGroupGameNativeAccount() {
                 colors = settingsTileColors(),
                 title = { Text(stringResource(R.string.gamenative_account_manage_subscription)) },
                 subtitle = {
-                    Text(stringResource(portalMessage ?: R.string.gamenative_account_manage_subscription_subtitle))
+                    Text(
+                        stringResource(
+                            portalMessage ?: managedElsewhere ?: R.string.gamenative_account_manage_subscription_subtitle,
+                        ),
+                    )
                 },
                 icon = { Icon(Icons.Filled.CreditCard, contentDescription = null) },
                 enabled = !portalBusy,
@@ -107,10 +125,10 @@ fun SettingsGroupGameNativeAccount() {
                                     R.string.gamenative_account_manage_subscription_failed
                                 }
                             }
-                            is ApiResult.HttpError -> if (result.code == 409) {
-                                R.string.gamenative_account_manage_subscription_none
-                            } else {
-                                R.string.gamenative_account_manage_subscription_failed
+                            is ApiResult.HttpError -> when {
+                                result.code != 409 -> R.string.gamenative_account_manage_subscription_failed
+                                managedElsewhere != null -> managedElsewhere
+                                else -> R.string.gamenative_account_manage_subscription_none
                             }
                             is ApiResult.NetworkError -> R.string.gamenative_account_manage_subscription_failed
                         }
@@ -133,6 +151,13 @@ fun SettingsGroupGameNativeAccount() {
         }
     }
 }
+
+private fun managedElsewhereMessage(tierSource: String?): Int? =
+    when (tierSource) {
+        "discord" -> R.string.gamenative_account_managed_discord
+        "kofi" -> R.string.gamenative_account_managed_kofi
+        else -> null
+    }
 
 @Composable
 private fun tierLabel(tier: String): String =
