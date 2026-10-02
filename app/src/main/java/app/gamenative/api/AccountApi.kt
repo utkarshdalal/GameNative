@@ -64,7 +64,7 @@ object AccountApi {
 
     private var session = 0L
 
-    private fun url(path: String) = "${GameNativeApi.BASE_URL}$path"
+    private fun url(path: String) = "https://api.gamenative.app$path"
 
     private fun jsonBody(json: JSONObject) =
         json.toString().toRequestBody("application/json".toMediaType())
