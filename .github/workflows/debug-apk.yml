@@ -57,7 +57,8 @@ jobs:
 
       - name: Build debug APKs
         run: |
-          ./gradlew -Pkotlin.daemon.jvmargs=-Xmx3g :app:assembleLegacyDebug :app:assembleModernDebug
+          ./gradlew -Pkotlin.daemon.jvmargs=-Xmx6g :app:assembleLegacyDebug
+          ./gradlew -Pkotlin.daemon.jvmargs=-Xmx6g :app:assembleModernDebug
           free -m
 
       - name: Upload Legacy debug APK
