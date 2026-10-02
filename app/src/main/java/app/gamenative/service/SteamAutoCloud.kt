@@ -542,20 +542,11 @@ object SteamAutoCloud {
                 }
 
                 val targetPaths = java.util.IdentityHashMap<AppFileInfo, Path>()
-                val saveDirs = appInfo.ufs.saveFilePatterns.filter { it.root.isWindows }.map {
-                    FileUtils.resolveCaseInsensitive(
-                        File("/"),
-                        Paths.get(prefixToPath(it.root.toString()), it.substitutedPath).toString().trimStart('/'),
-                    )
-                }
                 filesToDownload.forEach { file ->
-                    val fullPath = getFullFilePath(file, fileList).toString()
-                    val saveDir = saveDirs.firstOrNull { fullPath.startsWith(it.path + "/", ignoreCase = true) }
-                    val target = if (saveDir != null) {
-                        FileUtils.resolveCaseInsensitive(saveDir, fullPath.substring(saveDir.path.length))
-                    } else {
-                        FileUtils.resolveCaseInsensitive(File("/"), fullPath.trimStart('/'))
-                    }.toPath()
+                    val target = FileUtils.resolveCaseInsensitive(
+                        File("/"),
+                        getFullFilePath(file, fileList).toString().trimStart('/'),
+                    ).toPath()
                     runCatching { Files.createDirectories(target.parent) }
                     targetPaths[file] = target
                 }
