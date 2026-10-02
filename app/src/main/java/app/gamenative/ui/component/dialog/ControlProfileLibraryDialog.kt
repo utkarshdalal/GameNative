@@ -428,11 +428,11 @@ fun ControlProfileLibraryDialog(
                                         }
                                     }
                                 },
-                                onSaveCurrent = if (appliedSections.isNotEmpty() && !entry.builtIn) ({
+                                onSaveCurrent = if (!entry.builtIn) ({
                                     sectionAction = SectionAction(
                                         title = context.getString(R.string.control_profile_update_current),
                                         available = ControlProfileSection.entries.toSet(),
-                                        selected = appliedSections,
+                                        selected = appliedSections.ifEmpty { profilePreview.sections },
                                         confirmLabel = context.getString(R.string.save),
                                     ) { sections ->
                                         runIo({
