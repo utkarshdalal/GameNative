@@ -10,6 +10,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONException
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.IOException
@@ -35,7 +36,7 @@ object AccountApi {
 
     sealed class PollResult {
         data object Pending : PollResult()
-        data object SlowDown : PollResult()
+        data class SlowDown(val retryAfterSeconds: Long?) : PollResult()
         data object Expired : PollResult()
         data class SignedIn(val account: Account?) : PollResult()
         data class Failure(val code: Int?, val message: String) : PollResult()
@@ -43,7 +44,13 @@ object AccountApi {
 
     private data class Tokens(val accessToken: String, val refreshToken: String)
 
-    private data class RawResponse(val code: Int, val body: String)
+    private data class RawResponse(val code: Int, val body: String, val retryAfterSeconds: Long? = null)
+
+    private sealed class TokenState {
+        data object NotLoaded : TokenState()
+        data object SignedOut : TokenState()
+        data class Present(val tokens: Tokens) : TokenState()
+    }
 
     private const val TAG = "AccountApi"
 
@@ -51,8 +58,11 @@ object AccountApi {
 
     private val refreshMutex = Mutex()
 
-    @Volatile
-    private var cachedTokens: Tokens? = null
+    private val tokenMutex = Mutex()
+
+    private var tokenState: TokenState = TokenState.NotLoaded
+
+    private var session = 0L
 
     private fun url(path: String) = "${GameNativeApi.BASE_URL}$path"
 
@@ -61,7 +71,11 @@ object AccountApi {
 
     private fun execute(request: Request): RawResponse {
         GameNativeApi.httpClient.newCall(request).execute().use { response ->
-            return RawResponse(response.code, response.body?.string() ?: "")
+            return RawResponse(
+                code = response.code,
+                body = response.body?.string() ?: "",
+                retryAfterSeconds = response.header("Retry-After")?.trim()?.toLongOrNull(),
+            )
         }
     }
 
@@ -82,36 +96,71 @@ object AccountApi {
             trialAvailable = json.optBoolean("trial_available", false),
         )
 
-    private fun loadTokens(): Tokens? {
-        cachedTokens?.let { return it }
+    private fun logFailure(name: String, e: Exception) {
+        if (e is JSONException) {
+            Timber.tag(TAG).e("$name returned an unreadable body")
+        } else {
+            Timber.tag(TAG).e(e, "$name failed")
+        }
+    }
+
+    private fun loadTokensLocked(): Tokens? {
+        when (val state = tokenState) {
+            is TokenState.Present -> return state.tokens
+            TokenState.SignedOut -> return null
+            TokenState.NotLoaded -> Unit
+        }
         val tokens = try {
             Tokens(PrefManager.gameNativeAccessToken, PrefManager.gameNativeRefreshToken)
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Failed to read stored tokens")
             return null
         }
-        if (tokens.refreshToken.isEmpty()) return null
-        cachedTokens = tokens
+        if (tokens.refreshToken.isEmpty()) {
+            tokenState = TokenState.SignedOut
+            return null
+        }
+        tokenState = TokenState.Present(tokens)
         return tokens
     }
 
-    private fun saveTokens(accessToken: String, refreshToken: String) {
-        cachedTokens = Tokens(accessToken, refreshToken)
-        PrefManager.gameNativeAccessToken = accessToken
-        PrefManager.gameNativeRefreshToken = refreshToken
+    private suspend fun loadTokens(): Tokens? = tokenMutex.withLock { loadTokensLocked() }
+
+    private suspend fun startSession(tokens: Tokens, signedInAccount: Account?) {
+        tokenMutex.withLock {
+            session++
+            account.value = null
+            tokenState = TokenState.Present(tokens)
+            PrefManager.saveGameNativeTokens(tokens.accessToken, tokens.refreshToken)
+            account.value = signedInAccount
+        }
     }
 
-    private fun clearTokens() {
-        cachedTokens = null
-        account.value = null
-        PrefManager.gameNativeAccessToken = ""
-        PrefManager.gameNativeRefreshToken = ""
-    }
+    private suspend fun replaceTokens(expected: Tokens, tokens: Tokens): Boolean =
+        tokenMutex.withLock {
+            if (loadTokensLocked() != expected) return@withLock false
+            tokenState = TokenState.Present(tokens)
+            PrefManager.saveGameNativeTokens(tokens.accessToken, tokens.refreshToken)
+            true
+        }
+
+    private suspend fun clearTokens(expected: Tokens? = null): Tokens? =
+        tokenMutex.withLock {
+            val previous = loadTokensLocked()
+            if (expected != null && previous != expected) return@withLock null
+            session++
+            tokenState = TokenState.SignedOut
+            account.value = null
+            PrefManager.clearGameNativeTokens()
+            previous
+        }
 
     suspend fun loadSignedInState(): Boolean = withContext(Dispatchers.IO) {
-        val signedIn = loadTokens() != null
-        PrefManager.gameNativeSignedIn.value = signedIn
-        signedIn
+        tokenMutex.withLock {
+            val signedIn = loadTokensLocked() != null
+            PrefManager.gameNativeSignedIn.value = signedIn
+            signedIn
+        }
     }
 
     suspend fun startDeviceSignIn(): ApiResult<DeviceStart> = withContext(Dispatchers.IO) {
@@ -137,7 +186,7 @@ object AccountApi {
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Timber.tag(TAG).e(e, "device/start failed")
+            logFailure("device/start", e)
             ApiResult.NetworkError(e)
         }
     }
@@ -152,16 +201,14 @@ object AccountApi {
             when (response.code) {
                 200 -> {
                     val json = JSONObject(response.body)
-                    val accessToken = json.getString("access_token")
-                    val refreshToken = json.getString("refresh_token")
-                    saveTokens(accessToken, refreshToken)
+                    val tokens = Tokens(json.getString("access_token"), json.getString("refresh_token"))
                     val signedInAccount = json.optJSONObject("account")?.let { parseAccount(it) }
-                    account.value = signedInAccount
+                    startSession(tokens, signedInAccount)
                     PollResult.SignedIn(signedInAccount)
                 }
                 202 -> PollResult.Pending
                 410 -> PollResult.Expired
-                429 -> PollResult.SlowDown
+                429 -> PollResult.SlowDown(response.retryAfterSeconds)
                 else -> {
                     Timber.tag(TAG).w("device/poll HTTP ${response.code}: ${response.body}")
                     PollResult.Failure(response.code, errorCode(response.body))
@@ -170,8 +217,8 @@ object AccountApi {
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Timber.tag(TAG).e(e, "device/poll failed")
-            PollResult.Failure(null, e.message ?: "Network error")
+            logFailure("device/poll", e)
+            PollResult.Failure(null, if (e is JSONException) "invalid_response" else e.message ?: "Network error")
         }
     }
 
@@ -185,13 +232,17 @@ object AccountApi {
         val response = execute(request)
         when (response.code) {
             200 -> {
-                val json = JSONObject(response.body)
-                saveTokens(json.getString("access_token"), json.getString("refresh_token"))
-                true
+                val refreshed = try {
+                    val json = JSONObject(response.body)
+                    Tokens(json.getString("access_token"), json.getString("refresh_token"))
+                } catch (_: JSONException) {
+                    throw IOException("Refresh returned an unreadable body")
+                }
+                replaceTokens(current, refreshed)
             }
             401 -> {
                 Timber.tag(TAG).i("Refresh token rejected, signing out")
-                clearTokens()
+                clearTokens(expected = current)
                 false
             }
             else -> throw IOException("Refresh failed with HTTP ${response.code}")
@@ -222,19 +273,24 @@ object AccountApi {
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Timber.tag(TAG).e(e, "$name failed")
+            logFailure(name, e)
             ApiResult.NetworkError(e)
         }
     }
 
     suspend fun fetchAccount(): ApiResult<Account> {
+        val expectedSession = tokenMutex.withLock { session }
         val result = authorizedCall(
             name = "account",
             build = { it.url(url("/api/account")).get() },
             parse = { parseAccount(JSONObject(it)) },
         )
         if (result is ApiResult.Success) {
-            account.value = result.data
+            tokenMutex.withLock {
+                if (session == expectedSession && tokenState is TokenState.Present) {
+                    account.value = result.data
+                }
+            }
         }
         return result
     }
@@ -253,9 +309,8 @@ object AccountApi {
             parse = { JSONObject(it).getString("url") },
         )
 
-    suspend fun signOut() = withContext(Dispatchers.IO) {
-        val refreshToken = loadTokens()?.refreshToken
-        clearTokens()
+    suspend fun signOut(): Unit = withContext(Dispatchers.IO) {
+        val refreshToken = clearTokens()?.refreshToken
         if (refreshToken.isNullOrEmpty()) return@withContext
         try {
             val request = Request.Builder()

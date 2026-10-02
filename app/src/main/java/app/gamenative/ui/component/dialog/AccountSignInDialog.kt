@@ -35,7 +35,10 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -67,6 +70,48 @@ private sealed class SignInState {
     data object Failed : SignInState()
 }
 
+private data class PendingSignIn(
+    val start: AccountApi.DeviceStart,
+    val deadline: Long,
+    val intervalMs: Long,
+)
+
+private val PendingSignInSaver = Saver<PendingSignIn?, ArrayList<Any>>(
+    save = { pending ->
+        pending?.let {
+            arrayListOf<Any>(
+                it.start.deviceCode,
+                it.start.userCode,
+                it.start.verificationUrl,
+                it.start.expiresIn,
+                it.start.interval,
+                it.deadline,
+                it.intervalMs,
+            )
+        }
+    },
+    restore = { saved ->
+        PendingSignIn(
+            start = AccountApi.DeviceStart(
+                deviceCode = saved[0] as String,
+                userCode = saved[1] as String,
+                verificationUrl = saved[2] as String,
+                expiresIn = saved[3] as Int,
+                interval = saved[4] as Int,
+            ),
+            deadline = saved[5] as Long,
+            intervalMs = saved[6] as Long,
+        )
+    },
+)
+
+private fun FocusRequester.tryRequestFocus(): Boolean =
+    try {
+        requestFocus()
+    } catch (_: IllegalStateException) {
+        false
+    }
+
 fun openAccountUrl(context: Context, url: String): Boolean =
     try {
         CustomTabsIntent.Builder()
@@ -74,8 +119,8 @@ fun openAccountUrl(context: Context, url: String): Boolean =
             .build()
             .launchUrl(context, Uri.parse(url))
         true
-    } catch (e: ActivityNotFoundException) {
-        Timber.w(e, "No browser available for $url")
+    } catch (_: ActivityNotFoundException) {
+        Timber.w("No browser available to open an account page")
         false
     }
 
@@ -90,45 +135,65 @@ fun AccountSignInDialog(
     val context = LocalContext.current
     val currentOnSignedIn by rememberUpdatedState(onSignedIn)
     var attempt by remember { mutableIntStateOf(0) }
-    var state by remember { mutableStateOf<SignInState>(SignInState.Starting) }
+    var pending by rememberSaveable(stateSaver = PendingSignInSaver) { mutableStateOf<PendingSignIn?>(null) }
+    var state by remember {
+        mutableStateOf<SignInState>(pending?.let { SignInState.Waiting(it.start) } ?: SignInState.Starting)
+    }
     var noBrowser by remember { mutableStateOf(false) }
 
     LaunchedEffect(attempt) {
-        state = SignInState.Starting
         noBrowser = false
-        val start = when (val result = AccountApi.startDeviceSignIn()) {
-            is ApiResult.Success -> result.data
-            else -> {
-                state = SignInState.Failed
-                return@LaunchedEffect
+        val current = pending?.takeIf { SystemClock.elapsedRealtime() < it.deadline } ?: run {
+            pending = null
+            state = SignInState.Starting
+            val start = when (val result = AccountApi.startDeviceSignIn()) {
+                is ApiResult.Success -> result.data
+                else -> {
+                    state = SignInState.Failed
+                    return@LaunchedEffect
+                }
             }
+            PendingSignIn(
+                start = start,
+                deadline = SystemClock.elapsedRealtime() + start.expiresIn.coerceAtLeast(1) * 1000L,
+                intervalMs = start.interval.coerceAtLeast(1) * 1000L,
+            ).also { pending = it }
         }
-        state = SignInState.Waiting(start)
-        var intervalMs = start.interval.coerceAtLeast(1) * 1000L
-        val deadline = SystemClock.elapsedRealtime() + start.expiresIn.coerceAtLeast(1) * 1000L
-        while (SystemClock.elapsedRealtime() < deadline) {
+        state = SignInState.Waiting(current.start)
+        var intervalMs = current.intervalMs
+        while (SystemClock.elapsedRealtime() < current.deadline) {
             delay(intervalMs)
-            when (val poll = AccountApi.pollDeviceSignIn(start.deviceCode)) {
+            when (val poll = AccountApi.pollDeviceSignIn(current.start.deviceCode)) {
                 is AccountApi.PollResult.SignedIn -> {
+                    pending = null
                     SnackbarManager.show(context.getString(R.string.gamenative_sign_in_success))
                     currentOnSignedIn()
                     return@LaunchedEffect
                 }
                 AccountApi.PollResult.Pending -> Unit
-                AccountApi.PollResult.SlowDown -> intervalMs += 2000L
+                is AccountApi.PollResult.SlowDown -> {
+                    intervalMs = poll.retryAfterSeconds
+                        ?.coerceIn(1L, 60L)
+                        ?.let { maxOf(intervalMs, it * 1000L) }
+                        ?: (intervalMs + 2000L)
+                    pending = current.copy(intervalMs = intervalMs)
+                }
                 AccountApi.PollResult.Expired -> {
+                    pending = null
                     state = SignInState.Expired
                     return@LaunchedEffect
                 }
                 is AccountApi.PollResult.Failure -> {
                     val code = poll.code
                     if (code != null && code in 400..499) {
+                        pending = null
                         state = SignInState.Failed
                         return@LaunchedEffect
                     }
                 }
             }
         }
+        pending = null
         state = SignInState.Expired
     }
 
@@ -136,12 +201,6 @@ fun AccountSignInDialog(
     val primaryFocus = remember { FocusRequester() }
     val cancelFocus = remember { FocusRequester() }
     val hasPrimary = state !is SignInState.Starting
-
-    LaunchedEffect(state::class) {
-        runCatching {
-            if (hasPrimary) primaryFocus.requestFocus() else cancelFocus.requestFocus()
-        }
-    }
 
     val onPrimary: () -> Unit = {
         when (val current = state) {
@@ -155,6 +214,13 @@ fun AccountSignInDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = !landscape),
     ) {
+        LaunchedEffect(state::class) {
+            val target = if (hasPrimary) primaryFocus else cancelFocus
+            if (target.tryRequestFocus()) return@LaunchedEffect
+            withFrameNanos { }
+            if (!target.tryRequestFocus()) Timber.w("Sign-in dialog could not focus its first button")
+        }
+
         Surface(
             modifier = Modifier
                 .then(if (landscape) Modifier.widthIn(max = 640.dp).padding(16.dp) else Modifier.fillMaxWidth())

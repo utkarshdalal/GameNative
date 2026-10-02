@@ -1136,34 +1136,41 @@ object PrefManager {
         }
 
     private val GAMENATIVE_ACCESS_TOKEN_ENC = byteArrayPreferencesKey("gamenative_access_token_enc")
-    var gameNativeAccessToken: String
+    val gameNativeAccessToken: String
         get() {
             val encryptedBytes = getPref(GAMENATIVE_ACCESS_TOKEN_ENC, ByteArray(0))
             return if (encryptedBytes.isEmpty()) "" else String(Crypto.decrypt(encryptedBytes))
         }
-        set(value) {
-            if (value.isEmpty()) {
-                removePref(GAMENATIVE_ACCESS_TOKEN_ENC)
-            } else {
-                setPref(GAMENATIVE_ACCESS_TOKEN_ENC, Crypto.encrypt(value.toByteArray()))
-            }
-        }
 
     private val GAMENATIVE_REFRESH_TOKEN_ENC = byteArrayPreferencesKey("gamenative_refresh_token_enc")
     val gameNativeSignedIn = mutableStateOf(false)
-    var gameNativeRefreshToken: String
+    val gameNativeRefreshToken: String
         get() {
             val encryptedBytes = getPref(GAMENATIVE_REFRESH_TOKEN_ENC, ByteArray(0))
             return if (encryptedBytes.isEmpty()) "" else String(Crypto.decrypt(encryptedBytes))
         }
-        set(value) {
-            if (value.isEmpty()) {
-                removePref(GAMENATIVE_REFRESH_TOKEN_ENC)
+
+    suspend fun saveGameNativeTokens(accessToken: String, refreshToken: String) {
+        val encryptedAccess = if (accessToken.isEmpty()) null else Crypto.encrypt(accessToken.toByteArray())
+        val encryptedRefresh = Crypto.encrypt(refreshToken.toByteArray())
+        gameNativeSignedIn.value = true
+        dataStore.edit { pref ->
+            if (encryptedAccess == null) {
+                pref.remove(GAMENATIVE_ACCESS_TOKEN_ENC)
             } else {
-                setPref(GAMENATIVE_REFRESH_TOKEN_ENC, Crypto.encrypt(value.toByteArray()))
+                pref[GAMENATIVE_ACCESS_TOKEN_ENC] = encryptedAccess
             }
-            gameNativeSignedIn.value = value.isNotEmpty()
+            pref[GAMENATIVE_REFRESH_TOKEN_ENC] = encryptedRefresh
         }
+    }
+
+    suspend fun clearGameNativeTokens() {
+        gameNativeSignedIn.value = false
+        dataStore.edit { pref ->
+            pref.remove(GAMENATIVE_ACCESS_TOKEN_ENC)
+            pref.remove(GAMENATIVE_REFRESH_TOKEN_ENC)
+        }
+    }
 
     private val APP_THEME = intPreferencesKey("app_theme")
     var appTheme: AppTheme
