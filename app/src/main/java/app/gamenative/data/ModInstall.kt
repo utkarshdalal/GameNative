@@ -52,6 +52,11 @@ enum class ModTargetRoot {
     APPDATA_ROAMING,
     APPDATA_LOCAL,
     APPDATA_LOCALLOW,
+    // Added for the save-backup container browser so it covers every supported save root
+    // (game-save-backup Req 16). Persisted as strings in mod_placement_recipe; appending new
+    // values is schema-safe (existing recipes never reference them).
+    SAVED_GAMES,
+    PROGRAM_DATA,
     CUSTOM_ABSOLUTE,
 }
 

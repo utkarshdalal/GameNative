@@ -86,14 +86,13 @@ class ContainerBrowserConfirmPropertyTest {
         val subSegments = segments.map { safeSegment(it) }
         val confirmedDir = subSegments.fold(generatedRoot) { acc, seg -> acc.resolve(seg) }.normalize()
 
-        val result = ContainerBrowserConfirm.map(candidateRoots, confirmedDir)
+        val selected = SaveRootMatcher.match(candidateRoots, confirmedDir)
 
         assertTrue(
-            "Expected Selected for a directory under supported root $generatedFrom, got $result",
-            result is ConfirmResult.Selected,
+            "Expected a mapped SaveRoot for a directory under supported root $generatedFrom, got null",
+            selected != null,
         )
-        // Confirm yields a single-root SaveLocation; inspect that one root (Req 3.8).
-        val selected = (result as ConfirmResult.Selected).saveLocation.roots.single()
+        selected!!
 
         // Independently compute the expected longest-prefix root: among all candidate roots that
         // are a segment-aware prefix of the confirmed dir, the one with the longest path. Ties are
@@ -166,9 +165,9 @@ class ContainerBrowserConfirmPropertyTest {
             .fold(deeperRoot.normalize()) { acc, seg -> acc.resolve(seg) }
             .normalize()
 
-        val result = ContainerBrowserConfirm.map(candidateRoots, confirmedDir)
-        assertTrue("Expected Selected, got $result", result is ConfirmResult.Selected)
-        val selected = (result as ConfirmResult.Selected).saveLocation.roots.single()
+        val selected = SaveRootMatcher.match(candidateRoots, confirmedDir)
+        assertTrue("Expected a mapped SaveRoot, got null", selected != null)
+        selected!!
 
         // The longest-prefix rule must pick the deeper root, not Root — even though the directory is
         // legitimately under Root as well.
@@ -224,28 +223,16 @@ class ContainerBrowserConfirmPropertyTest {
         // driveC itself with zero segments it equals driveC, which is above every root.)
         val underAnyRoot = candidateRoots.values.any { confirmedDir.startsWith(it.normalize()) }
 
-        val result = ContainerBrowserConfirm.map(candidateRoots, confirmedDir)
+        val result = SaveRootMatcher.match(candidateRoots, confirmedDir)
 
         if (underAnyRoot) {
-            // Defensive: if a segment somehow reconstructed a supported root, it must be Selected —
+            // Defensive: if a segment somehow reconstructed a supported root, it must map —
             // never a false rejection. In practice safeSegment avoids the reserved names so this
             // branch is not hit, but the assertion keeps the property honest.
-            assertTrue(result is ConfirmResult.Selected)
+            assertTrue(result != null)
         } else {
-            assertTrue(
-                "Expected Rejected for a directory under no supported root, got $result",
-                result is ConfirmResult.Rejected,
-            )
-            assertEquals(
-                ContainerBrowserConfirm.NOT_SUPPORTED_ROOT_REASON,
-                (result as ConfirmResult.Rejected).reason,
-            )
-            // No SaveLocation is produced (isConfirmable agrees).
-            assertNull(
-                "a rejected directory yields no SaveLocation",
-                (result as? ConfirmResult.Selected)?.saveLocation,
-            )
-            assertFalse(ContainerBrowserConfirm.isConfirmable(candidateRoots, confirmedDir))
+            // A directory under no supported root yields no SaveRoot (confirm is rejected — Req 3.9).
+            assertNull("a directory under no supported root must not map", result)
         }
     }
 

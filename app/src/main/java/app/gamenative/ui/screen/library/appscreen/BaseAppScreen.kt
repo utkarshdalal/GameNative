@@ -104,8 +104,8 @@ data class KnownConfigInstallState(
  *   the same key the resolver reads so it resolves as Resolved next time.
  */
 data class BrowserRequest(
-    val openResult: app.gamenative.savebackup.OpenResult,
-    val driveCPath: java.nio.file.Path,
+    val container: com.winlator.container.Container,
+    val gameId: Int,
     val storeAppId: String,
     val deferred: kotlinx.coroutines.CompletableDeferred<app.gamenative.savebackup.SaveLocation?>,
 )
@@ -1926,25 +1926,19 @@ abstract class BaseAppScreen {
             browserAppId: String,
             gameId: Int,
         ): app.gamenative.savebackup.SaveLocation? {
-            val openResult = try {
-                app.gamenative.savebackup.ContainerBrowser.open(container, gameId, 0L)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                throw app.gamenative.savebackup.PickerOpenException(
-                    app.gamenative.savebackup.PickerOpenException.Picker.CONTAINER_BROWSER, e,
-                )
-            }
-            if (openResult is app.gamenative.savebackup.OpenResult.Unavailable) {
+            // The shared ContainerFolderBrowser browses drive_c; if it is missing the browser
+            // cannot open (a failure, not a cancel — Req 3.2).
+            val driveC = java.io.File(java.io.File(container.rootDir, ".wine"), "drive_c")
+            if (!driveC.isDirectory) {
                 throw app.gamenative.savebackup.PickerOpenException(
                     app.gamenative.savebackup.PickerOpenException.Picker.CONTAINER_BROWSER,
-                    message = openResult.reason,
+                    message = "The container filesystem is unavailable.",
                 )
             }
             val deferred = kotlinx.coroutines.CompletableDeferred<app.gamenative.savebackup.SaveLocation?>()
             pendingBrowserRequest = BrowserRequest(
-                openResult = openResult,
-                driveCPath = app.gamenative.savebackup.ContainerBrowser.driveCOf(container),
+                container = container,
+                gameId = gameId,
                 storeAppId = browserAppId,
                 deferred = deferred,
             )
@@ -2295,9 +2289,10 @@ abstract class BaseAppScreen {
         // confirm we persist the mapped SaveLocation (so it resolves as Resolved next time — Req
         // 3.10) then complete the deferred; cancel completes with null (orchestrator → Cancelled).
         pendingBrowserRequest?.let { request ->
-            app.gamenative.ui.screen.savebackup.ContainerBrowserScreen(
-                openResult = request.openResult,
-                driveCPath = request.driveCPath,
+            app.gamenative.ui.screen.savebackup.SaveLocationBrowserScreen(
+                container = request.container,
+                gameId = request.gameId,
+                gameName = libraryItem.name,
                 onConfirmed = { saveLocation ->
                     pendingBrowserRequest = null
                     uiScope.launch {
@@ -2316,7 +2311,6 @@ abstract class BaseAppScreen {
                     pendingBrowserRequest = null
                     request.deferred.complete(null)
                 },
-                onError = { message -> SnackbarManager.show(message) },
             )
             // While the browser is up, don't render the rest of the screen underneath it.
             return

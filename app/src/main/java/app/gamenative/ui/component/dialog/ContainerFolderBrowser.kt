@@ -70,7 +70,8 @@ import timber.log.Timber
 
 private data class FolderListing(val folders: List<File>, val files: List<Pair<File, Long>>)
 
-private val BROWSABLE_ROOTS = listOf(
+/** The default roots the mods file browser lists. */
+private val MODS_BROWSABLE_ROOTS = listOf(
     ModTargetRoot.GAME_DIR,
     ModTargetRoot.WINE_C,
     ModTargetRoot.DOCUMENTS,
@@ -79,13 +80,35 @@ private val BROWSABLE_ROOTS = listOf(
     ModTargetRoot.APPDATA_LOCAL,
 )
 
-private fun buildContainerRoots(gameRootDir: File?, winePrefix: String): List<ResolvedModTargetRoot> {
+/**
+ * The roots the save-backup container browser lists — every supported save root reachable under
+ * `drive_c` (game-save-backup Req 16). `SteamUserData` is intentionally excluded: its path needs a
+ * resolvable Steam account id and is not a `drive_c/users` subdir, so the Steam strategy resolves it
+ * automatically rather than the browser.
+ */
+val SAVE_BACKUP_BROWSABLE_ROOTS = listOf(
+    ModTargetRoot.GAME_DIR,
+    ModTargetRoot.WINE_C,
+    ModTargetRoot.DOCUMENTS,
+    ModTargetRoot.MY_GAMES,
+    ModTargetRoot.APPDATA_ROAMING,
+    ModTargetRoot.APPDATA_LOCAL,
+    ModTargetRoot.APPDATA_LOCALLOW,
+    ModTargetRoot.SAVED_GAMES,
+    ModTargetRoot.PROGRAM_DATA,
+)
+
+private fun buildContainerRoots(
+    gameRootDir: File?,
+    winePrefix: String,
+    browsableRoots: List<ModTargetRoot>,
+): List<ResolvedModTargetRoot> {
     val resolved = runCatching { ModTargetResolver.roots(gameRootDir, winePrefix) }
         .onFailure { Timber.w(it, "Failed to resolve container roots for %s", winePrefix) }
         .getOrElse { runCatching { ModTargetResolver.roots(gameRootDir, "") }.getOrDefault(emptyList()) }
     return resolved
-        .filter { it.type in BROWSABLE_ROOTS && it.dir.isDirectory }
-        .sortedBy { BROWSABLE_ROOTS.indexOf(it.type) }
+        .filter { it.type in browsableRoots && it.dir.isDirectory }
+        .sortedBy { browsableRoots.indexOf(it.type) }
 }
 
 private fun iconFor(type: ModTargetRoot): ImageVector = when (type) {
@@ -122,11 +145,12 @@ private fun listFolder(dir: File, includeFiles: Boolean): FolderListing {
 internal class ContainerFolderBrowserState(
     val gameRootDir: File?,
     val winePrefix: String,
+    private val browsableRoots: List<ModTargetRoot> = MODS_BROWSABLE_ROOTS,
 ) {
     val driveC = File(winePrefix, "drive_c")
     var refreshKey by mutableIntStateOf(0)
         private set
-    var roots by mutableStateOf(buildContainerRoots(gameRootDir, winePrefix))
+    var roots by mutableStateOf(buildContainerRoots(gameRootDir, winePrefix, browsableRoots))
         private set
     var selectedRoot by mutableStateOf<ResolvedModTargetRoot?>(null)
     var currentDir by mutableStateOf<File?>(null)
@@ -145,7 +169,7 @@ internal class ContainerFolderBrowserState(
         }
 
     fun refresh() {
-        roots = buildContainerRoots(gameRootDir, winePrefix)
+        roots = buildContainerRoots(gameRootDir, winePrefix, browsableRoots)
         refreshKey++
     }
 
@@ -163,8 +187,14 @@ internal class ContainerFolderBrowserState(
 }
 
 @Composable
-internal fun rememberContainerFolderBrowserState(gameRootDir: File?, winePrefix: String): ContainerFolderBrowserState =
-    remember(gameRootDir, winePrefix) { ContainerFolderBrowserState(gameRootDir, winePrefix) }
+internal fun rememberContainerFolderBrowserState(
+    gameRootDir: File?,
+    winePrefix: String,
+    browsableRoots: List<ModTargetRoot> = MODS_BROWSABLE_ROOTS,
+): ContainerFolderBrowserState =
+    remember(gameRootDir, winePrefix, browsableRoots) {
+        ContainerFolderBrowserState(gameRootDir, winePrefix, browsableRoots)
+    }
 
 
 @Composable
