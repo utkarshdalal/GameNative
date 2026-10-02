@@ -1135,6 +1135,36 @@ object PrefManager {
             setPref(DISCORD_OAUTH_NONCE, value)
         }
 
+    private val GAMENATIVE_ACCESS_TOKEN_ENC = byteArrayPreferencesKey("gamenative_access_token_enc")
+    var gameNativeAccessToken: String
+        get() {
+            val encryptedBytes = getPref(GAMENATIVE_ACCESS_TOKEN_ENC, ByteArray(0))
+            return if (encryptedBytes.isEmpty()) "" else String(Crypto.decrypt(encryptedBytes))
+        }
+        set(value) {
+            if (value.isEmpty()) {
+                removePref(GAMENATIVE_ACCESS_TOKEN_ENC)
+            } else {
+                setPref(GAMENATIVE_ACCESS_TOKEN_ENC, Crypto.encrypt(value.toByteArray()))
+            }
+        }
+
+    private val GAMENATIVE_REFRESH_TOKEN_ENC = byteArrayPreferencesKey("gamenative_refresh_token_enc")
+    val gameNativeSignedIn = mutableStateOf(false)
+    var gameNativeRefreshToken: String
+        get() {
+            val encryptedBytes = getPref(GAMENATIVE_REFRESH_TOKEN_ENC, ByteArray(0))
+            return if (encryptedBytes.isEmpty()) "" else String(Crypto.decrypt(encryptedBytes))
+        }
+        set(value) {
+            if (value.isEmpty()) {
+                removePref(GAMENATIVE_REFRESH_TOKEN_ENC)
+            } else {
+                setPref(GAMENATIVE_REFRESH_TOKEN_ENC, Crypto.encrypt(value.toByteArray()))
+            }
+            gameNativeSignedIn.value = value.isNotEmpty()
+        }
+
     private val APP_THEME = intPreferencesKey("app_theme")
     var appTheme: AppTheme
         get() {
