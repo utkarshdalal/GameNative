@@ -1024,6 +1024,7 @@
     <string name="support_state_waiting">Очікує відповіді</string>
     <string name="support_state_answered">Є відповідь</string>
     <string name="support_state_solved">Вирішено</string>
+    <string name="support_state_not_solved">Не вирішено</string>
     <string name="support_started">Розпочато %1$s</string>
     <string name="support_last_activity">Остання активність %1$s</string>
     <string name="support_problem_network">Не вдалося підключитися. Перевірте з\'єднання та спробуйте ще раз.</string>
@@ -1051,7 +1052,7 @@
     <string name="support_outcome_recorded_broken">Ви повідомили, що проблему ще не вирішено. Напишіть нижче, що відбувається зараз, або надішліть нові журнали.</string>
     <string name="support_notice_moved">Ця розмова тепер триває в підтримці Pro.</string>
     <string name="support_upgrade_title">Щоб продовжити, потрібен план</string>
-    <string name="support_upgrade_reason_trial_used">Безкоштовний аналіз уже використано. Щоб продовжити розмову з AI про цю проблему, виберіть план.</string>
+    <string name="support_upgrade_reason_trial_used">Перший аналіз був безкоштовним. Щоб відповісти й продовжити розмову з AI про цю проблему, виберіть план.</string>
     <string name="support_upgrade_reason_reply_cap">У цій розмові використано три відповіді AI, які входять до Basic. У Pro немає обмеження на відповіді.</string>
     <string name="support_upgrade_reason_required">Для відповідей AI потрібна підписка GameNative.</string>
     <string name="support_see_plans">Переглянути плани</string>
@@ -1067,6 +1068,7 @@
     <string name="support_plan_active">Ваш план активний.</string>
     <string name="support_plan_pending">Ваш план ще налаштовується. Спробуйте ще раз за хвилину.</string>
     <string name="support_composer_hint">Напишіть відповідь</string>
+    <string name="support_composer_analysing">Зачекайте. AI ще читає ваші журнали. Відповісти можна після того, як надійде його відповідь.</string>
     <string name="support_send_logs">Надіслати журнали</string>
     <string name="support_new_debug_run">Новий налагоджувальний запуск</string>
     <string name="support_uploading">Завантаження журналів</string>
@@ -2015,6 +2017,9 @@
     <string name="debug_prerun_title">Отримати допомогу AI</string>
     <string name="debug_prerun_message_1">Запускає гру з журналом налагодження і після виходу надсилає журнал нашому AI в Discord. Грайте, доки не виникне проблема.</string>
     <string name="debug_prerun_message_2">Відповіді AI доступні лише підписникам.</string>
+    <string name="debug_prerun_message_1_app">Гра запускається з журналом налагодження. Після виходу журнал надсилається нашому AI, а відповідь з’явиться в застосунку в розділі «Підтримка». Грайте, доки не виникне проблема.</string>
+    <string name="debug_prerun_message_2_app">Перший аналіз безкоштовний. Для подальших відповідей потрібен план.</string>
+    <string name="debug_prerun_message_1_neutral">Гра запускається з журналом налагодження. Після виходу журнал надсилається нашому AI. Грайте, доки не виникне проблема.</string>
     <string name="debug_trial_note">Доступний безкоштовний пробний період.</string>
     <string name="debug_prerun_message_3">Будь-хто може поділитися звітом, щоб отримати допомогу людей.</string>
     <string name="debug_paywall_title">Отримайте AI-підтримку з налагодження</string>

@@ -1037,6 +1037,7 @@
     <string name="support_state_waiting">Esperando respuesta</string>
     <string name="support_state_answered">Respondida</string>
     <string name="support_state_solved">Resuelta</string>
+    <string name="support_state_not_solved">Sin resolver</string>
     <string name="support_started">Iniciada el %1$s</string>
     <string name="support_last_activity">Última actividad %1$s</string>
     <string name="support_problem_network">No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.</string>
@@ -1064,7 +1065,7 @@
     <string name="support_outcome_recorded_broken">Dijiste que el problema aún no está resuelto. Responde abajo con lo que pasa ahora o envía registros nuevos.</string>
     <string name="support_notice_moved">Esta conversación continúa ahora con el soporte Pro.</string>
     <string name="support_upgrade_title">Se necesita un plan para continuar</string>
-    <string name="support_upgrade_reason_trial_used">Ya usaste tu análisis gratuito. Para seguir hablando con la AI sobre este problema, elige un plan.</string>
+    <string name="support_upgrade_reason_trial_used">Tu primer análisis fue gratuito. Para responder y seguir hablando con la AI sobre este problema, elige un plan.</string>
     <string name="support_upgrade_reason_reply_cap">Esta conversación ya usó las tres respuestas de la AI que incluye Basic. Pro no tiene límite de respuestas.</string>
     <string name="support_upgrade_reason_required">Las respuestas de la AI requieren una suscripción a GameNative.</string>
     <string name="support_see_plans">Ver planes</string>
@@ -1080,6 +1081,7 @@
     <string name="support_plan_active">Tu plan está activo.</string>
     <string name="support_plan_pending">Tu plan aún se está configurando. Inténtalo de nuevo en un minuto.</string>
     <string name="support_composer_hint">Escribe una respuesta</string>
+    <string name="support_composer_analysing">Espera, por favor. La AI todavía está leyendo tus registros. Podrás responder cuando llegue su respuesta.</string>
     <string name="support_send_logs">Enviar registros</string>
     <string name="support_new_debug_run">Nueva ejecución de depuración</string>
     <string name="support_uploading">Subiendo tus registros</string>
@@ -2017,6 +2019,9 @@
     <string name="debug_prerun_title">Obtén ayuda de la AI</string>
     <string name="debug_prerun_message_1">Ejecuta el juego con registro de depuración y comparte el registro con nuestra AI en Discord al salir. Juega hasta que aparezca el problema.</string>
     <string name="debug_prerun_message_2">Las respuestas de la AI son solo para suscriptores.</string>
+    <string name="debug_prerun_message_1_app">El juego se ejecuta con registro de depuración. Al salir, el registro se envía a nuestra AI y la respuesta aparece en la app, en Soporte. Juega hasta que aparezca el problema.</string>
+    <string name="debug_prerun_message_2_app">El primer análisis es gratuito. Las respuestas de seguimiento requieren un plan.</string>
+    <string name="debug_prerun_message_1_neutral">El juego se ejecuta con registro de depuración. Al salir, el registro se envía a nuestra AI. Juega hasta que aparezca el problema.</string>
     <string name="debug_trial_note">Prueba gratuita disponible.</string>
     <string name="debug_prerun_message_3">Cualquiera puede compartir el informe para recibir ayuda humana.</string>
     <string name="debug_paywall_title">Consigue soporte de depuración con AI</string>

@@ -237,20 +237,20 @@ internal fun problemText(problem: SupportViewModel.Problem): String =
     )
 
 @Composable
-internal fun stateLabel(state: String): String =
+internal fun stateLabel(state: String, outcome: Boolean? = null): String =
     stringResource(
         when (state) {
             SupportApi.STATE_SOLVED -> R.string.support_state_solved
-            SupportApi.STATE_ANSWERED -> R.string.support_state_answered
+            SupportApi.STATE_ANSWERED -> if (outcome == false) R.string.support_state_not_solved else R.string.support_state_answered
             else -> R.string.support_state_waiting
         },
     )
 
 @Composable
-internal fun stateColor(state: String): Color =
+internal fun stateColor(state: String, outcome: Boolean? = null): Color =
     when (state) {
         SupportApi.STATE_SOLVED -> PluviaTheme.colors.accentSuccess
-        SupportApi.STATE_ANSWERED -> PluviaTheme.colors.accentCyan
+        SupportApi.STATE_ANSWERED -> if (outcome == false) PluviaTheme.colors.accentDanger else PluviaTheme.colors.accentCyan
         else -> PluviaTheme.colors.accentWarning
     }
 
@@ -481,14 +481,14 @@ private fun ConversationRow(
                     )
                 }
             }
-            StateChip(state = conversation.state)
+            StateChip(state = conversation.state, outcome = conversation.outcome)
         }
     }
 }
 
 @Composable
-internal fun StateChip(state: String) {
-    val color = stateColor(state)
+internal fun StateChip(state: String, outcome: Boolean? = null) {
+    val color = stateColor(state, outcome)
     Row(
         modifier = Modifier
             .background(color.copy(alpha = 0.15f), RoundedCornerShape(50))
@@ -502,7 +502,7 @@ internal fun StateChip(state: String) {
                 .background(color, CircleShape),
         )
         Text(
-            text = stateLabel(state),
+            text = stateLabel(state, outcome),
             style = MaterialTheme.typography.labelMedium,
             color = color,
         )

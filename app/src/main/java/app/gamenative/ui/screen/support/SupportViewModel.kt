@@ -197,13 +197,13 @@ class SupportViewModel @Inject constructor(
         conversation?.let { updateListEntry(it) }
     }
 
-    private fun actionProblem(result: ApiResult<*>): Problem {
+    private fun actionProblem(result: ApiResult<*>): Problem? {
         if (result is ApiResult.HttpError && result.code == 403) {
             val reason = result.message.ifBlank { SupportApi.REASON_UPGRADE_REQUIRED }
             chat.conversation?.let { current ->
                 chat = chat.copy(conversation = current.copy(composer = SupportApi.Composer(false, reason)))
             }
-            return Problem.LOCKED
+            return if (reason == SupportApi.REASON_ANALYSING) null else Problem.LOCKED
         }
         return problemOf(result)
     }
@@ -305,11 +305,21 @@ class SupportViewModel @Inject constructor(
                 refreshList()
                 return@launch
             }
-            val result = SupportApi.getConversation(id)
-            if (result is ApiResult.Success && chat.conversationId == id) {
-                chat = chat.copy(conversation = result.data)
-                updateListEntry(result.data)
-            }
+            fetchConversation(id)
+        }
+    }
+
+    fun refreshConversation() {
+        val id = chat.conversationId
+        if (id.isEmpty()) return
+        viewModelScope.launch { fetchConversation(id) }
+    }
+
+    private suspend fun fetchConversation(id: String) {
+        val result = SupportApi.getConversation(id)
+        if (result is ApiResult.Success && chat.conversationId == id) {
+            chat = chat.copy(conversation = result.data)
+            updateListEntry(result.data)
         }
     }
 

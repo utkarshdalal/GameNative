@@ -999,6 +999,7 @@
     <string name="support_state_waiting">返信待ち</string>
     <string name="support_state_answered">回答済み</string>
     <string name="support_state_solved">解決済み</string>
+    <string name="support_state_not_solved">未解決</string>
     <string name="support_started">開始日 %1$s</string>
     <string name="support_last_activity">最終アクティビティ %1$s</string>
     <string name="support_problem_network">接続できませんでした。接続を確認して、もう一度お試しください。</string>
@@ -1026,7 +1027,7 @@
     <string name="support_outcome_recorded_broken">まだ解決していないとお知らせいただきました。現在の状況を下に返信するか、新しいログを送信してください。</string>
     <string name="support_notice_moved">この会話は Pro サポートで続きます。</string>
     <string name="support_upgrade_title">続けるにはプランが必要です</string>
-    <string name="support_upgrade_reason_trial_used">無料の分析はすでに使用されています。この問題について AI と話し続けるには、プランを選んでください。</string>
+    <string name="support_upgrade_reason_trial_used">最初の分析は無料でした。返信してこの問題について AI と話し続けるには、プランを選んでください。</string>
     <string name="support_upgrade_reason_reply_cap">この会話では、Basic に含まれる 3 回の AI 返信を使い切りました。Pro には返信回数の制限はありません。</string>
     <string name="support_upgrade_reason_required">AI の返信には GameNative のサブスクリプションが必要です。</string>
     <string name="support_see_plans">プランを見る</string>
@@ -1042,6 +1043,7 @@
     <string name="support_plan_active">プランが有効になりました。</string>
     <string name="support_plan_pending">プランはまだ準備中です。1 分後にもう一度お試しください。</string>
     <string name="support_composer_hint">返信を入力</string>
+    <string name="support_composer_analysing">しばらくお待ちください。AI がまだログを読んでいます。回答が届いたら返信できます。</string>
     <string name="support_send_logs">ログを送信</string>
     <string name="support_new_debug_run">新しいデバッグ実行</string>
     <string name="support_uploading">ログをアップロードしています</string>
@@ -1983,6 +1985,9 @@
     <string name="debug_prerun_title">AI のサポートを受ける</string>
     <string name="debug_prerun_message_1">デバッグログ付きでゲームを起動し、終了時にログを Discord の AI に共有します。問題が発生するまでゲームをプレイしてください。</string>
     <string name="debug_prerun_message_2">AI の返信はサブスク会員限定です。</string>
+    <string name="debug_prerun_message_1_app">デバッグログ付きでゲームを実行します。終了するとログが AI に送られ、回答はアプリの「サポート」に表示されます。問題が発生するまでプレイしてください。</string>
+    <string name="debug_prerun_message_2_app">最初の分析は無料です。追加の返信にはプランが必要です。</string>
+    <string name="debug_prerun_message_1_neutral">デバッグログ付きでゲームを実行します。終了するとログが AI に送られます。問題が発生するまでプレイしてください。</string>
     <string name="debug_trial_note">無料トライアルあり。</string>
     <string name="debug_prerun_message_3">レポートは誰でも共有でき、人間のサポートを受けられます。</string>
     <string name="debug_paywall_title">AI デバッグサポートを利用</string>

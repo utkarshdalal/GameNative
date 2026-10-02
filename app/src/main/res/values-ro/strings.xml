@@ -1030,6 +1030,7 @@
     <string name="support_state_waiting">Se așteaptă un răspuns</string>
     <string name="support_state_answered">Răspuns primit</string>
     <string name="support_state_solved">Rezolvat</string>
+    <string name="support_state_not_solved">Nerezolvat</string>
     <string name="support_started">Începută pe %1$s</string>
     <string name="support_last_activity">Ultima activitate %1$s</string>
     <string name="support_problem_network">Nu s-a putut realiza conexiunea. Verifică-ți conexiunea și încearcă din nou.</string>
@@ -1057,7 +1058,7 @@
     <string name="support_outcome_recorded_broken">Ai spus că problema nu este încă rezolvată. Răspunde mai jos cu ce se întâmplă acum sau trimite jurnale noi.</string>
     <string name="support_notice_moved">Această conversație continuă acum cu asistența Pro.</string>
     <string name="support_upgrade_title">Este nevoie de un plan pentru a continua</string>
-    <string name="support_upgrade_reason_trial_used">Analiza ta gratuită a fost folosită. Pentru a continua discuția cu AI-ul despre această problemă, alege un plan.</string>
+    <string name="support_upgrade_reason_trial_used">Prima analiză a fost gratuită. Pentru a răspunde și a continua discuția cu AI-ul despre această problemă, alege un plan.</string>
     <string name="support_upgrade_reason_reply_cap">Această conversație a folosit cele trei răspunsuri AI incluse în Basic. Pro nu are limită de răspunsuri.</string>
     <string name="support_upgrade_reason_required">Răspunsurile AI necesită un abonament GameNative.</string>
     <string name="support_see_plans">Vezi planurile</string>
@@ -1073,6 +1074,7 @@
     <string name="support_plan_active">Planul tău este activ.</string>
     <string name="support_plan_pending">Planul tău încă este configurat. Încearcă din nou peste un minut.</string>
     <string name="support_composer_hint">Scrie un răspuns</string>
+    <string name="support_composer_analysing">Te rugăm să aștepți. AI-ul încă citește jurnalele tale. Poți răspunde după ce sosește răspunsul lui.</string>
     <string name="support_send_logs">Trimite jurnalele</string>
     <string name="support_new_debug_run">Rulare nouă de depanare</string>
     <string name="support_uploading">Se încarcă jurnalele</string>
@@ -2010,6 +2012,9 @@
     <string name="debug_prerun_title">Primește ajutor de la AI</string>
     <string name="debug_prerun_message_1">Rulează jocul cu jurnal de depanare și partajează jurnalul cu AI-ul nostru pe Discord la ieșire. Joacă până când apare problema.</string>
     <string name="debug_prerun_message_2">Răspunsurile AI sunt doar pentru abonați.</string>
+    <string name="debug_prerun_message_1_app">Jocul rulează cu jurnal de depanare. Când ieși, jurnalul ajunge la AI-ul nostru, iar răspunsul apare în aplicație, la Asistență. Joacă până când apare problema.</string>
+    <string name="debug_prerun_message_2_app">Prima analiză este gratuită. Răspunsurile ulterioare necesită un plan.</string>
+    <string name="debug_prerun_message_1_neutral">Jocul rulează cu jurnal de depanare. Când ieși, jurnalul ajunge la AI-ul nostru. Joacă până când apare problema.</string>
     <string name="debug_trial_note">Perioadă de probă gratuită disponibilă.</string>
     <string name="debug_prerun_message_3">Oricine poate partaja raportul pentru ajutor uman.</string>
     <string name="debug_paywall_title">Obține suport de depanare AI</string>

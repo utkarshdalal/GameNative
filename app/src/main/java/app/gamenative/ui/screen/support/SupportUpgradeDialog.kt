@@ -88,8 +88,9 @@ private fun hasPaidTier(tier: String?): Boolean = tier == "basic" || tier == "pr
 fun SupportUpgradeDialog(
     visible: Boolean,
     reason: String?,
-    onPlanChanged: () -> Unit,
     onDismiss: () -> Unit,
+    onPlanChanged: () -> Unit = {},
+    onCheckoutReturn: () -> Unit = {},
 ) {
     if (!visible) return
 
@@ -97,6 +98,7 @@ fun SupportUpgradeDialog(
     val scope = rememberCoroutineScope()
     val lifecycleOwner = LocalLifecycleOwner.current
     val currentOnPlanChanged by rememberUpdatedState(onPlanChanged)
+    val currentOnCheckoutReturn by rememberUpdatedState(onCheckoutReturn)
     val currentOnDismiss by rememberUpdatedState(onDismiss)
     val account by AccountApi.account
     var phase by rememberSaveable { mutableStateOf(PHASE_CHOOSE) }
@@ -117,6 +119,7 @@ fun SupportUpgradeDialog(
             if (event == Lifecycle.Event.ON_RESUME && (phase == PHASE_CHECKOUT || phase == PHASE_SUBSCRIBED)) {
                 scope.launch {
                     val result = AccountApi.fetchAccount()
+                    currentOnCheckoutReturn()
                     if (result is ApiResult.Success && result.data.tier != startTier && hasPaidTier(result.data.tier)) {
                         SnackbarManager.show(context.getString(R.string.support_plan_active))
                         currentOnPlanChanged()

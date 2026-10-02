@@ -1017,6 +1017,7 @@
     <string name="support_state_waiting">等待回覆</string>
     <string name="support_state_answered">已回覆</string>
     <string name="support_state_solved">已解決</string>
+    <string name="support_state_not_solved">未解決</string>
     <string name="support_started">開始於 %1$s</string>
     <string name="support_last_activity">最近活動 %1$s</string>
     <string name="support_problem_network">無法連線。請檢查網路連線後再試一次。</string>
@@ -1044,7 +1045,7 @@
     <string name="support_outcome_recorded_broken">你表示問題尚未解決。請在下方回覆現在的情況，或傳送新的記錄檔。</string>
     <string name="support_notice_moved">此對話現在由 Pro 支援繼續。</string>
     <string name="support_upgrade_title">需要訂閱方案才能繼續</string>
-    <string name="support_upgrade_reason_trial_used">你的免費分析已用完。若要繼續與 AI 討論此問題，請選擇一個方案。</string>
+    <string name="support_upgrade_reason_trial_used">你的首次分析是免費的。若要回覆並繼續與 AI 討論此問題，請選擇一個方案。</string>
     <string name="support_upgrade_reason_reply_cap">此對話已用完 Basic 包含的三次 AI 回覆。Pro 沒有回覆次數限制。</string>
     <string name="support_upgrade_reason_required">AI 回覆需要 GameNative 訂閱。</string>
     <string name="support_see_plans">查看方案</string>
@@ -1060,6 +1061,7 @@
     <string name="support_plan_active">你的方案已生效。</string>
     <string name="support_plan_pending">你的方案仍在設定中。請一分鐘後再試一次。</string>
     <string name="support_composer_hint">輸入回覆</string>
+    <string name="support_composer_analysing">請稍候。AI 仍在讀取你的日誌。收到它的回答後即可回覆。</string>
     <string name="support_send_logs">傳送記錄檔</string>
     <string name="support_new_debug_run">新的偵錯執行</string>
     <string name="support_uploading">正在上傳記錄檔</string>
@@ -2027,6 +2029,9 @@
     <string name="debug_prerun_title">取得 AI 協助</string>
     <string name="debug_prerun_message_1">以除錯日誌執行遊戲，退出後將日誌分享給我們在 Discord 上的 AI。請持續執行遊戲，直到問題出現。</string>
     <string name="debug_prerun_message_2">AI 回覆僅限訂閱者。</string>
+    <string name="debug_prerun_message_1_app">遊戲將以除錯日誌執行。退出後，日誌會傳送給我們的 AI，回答會顯示在應用程式的「支援」中。請持續執行遊戲，直到問題出現。</string>
+    <string name="debug_prerun_message_2_app">首次分析免費。後續回覆需要方案。</string>
+    <string name="debug_prerun_message_1_neutral">遊戲將以除錯日誌執行。退出後，日誌會傳送給我們的 AI。請持續執行遊戲，直到問題出現。</string>
     <string name="debug_trial_note">提供免費試用。</string>
     <string name="debug_prerun_message_3">任何人都可以分享報告以獲得人工協助。</string>
     <string name="debug_paywall_title">取得 AI 除錯支援</string>

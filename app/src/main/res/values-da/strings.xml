@@ -846,6 +846,7 @@
     <string name="support_state_waiting">Venter på svar</string>
     <string name="support_state_answered">Besvaret</string>
     <string name="support_state_solved">Løst</string>
+    <string name="support_state_not_solved">Ikke løst</string>
     <string name="support_started">Startet %1$s</string>
     <string name="support_last_activity">Seneste aktivitet %1$s</string>
     <string name="support_problem_network">Der kunne ikke oprettes forbindelse. Tjek din forbindelse, og prøv igen.</string>
@@ -873,7 +874,7 @@
     <string name="support_outcome_recorded_broken">Du sagde, at problemet ikke er løst endnu. Svar nedenfor med, hvad der sker nu, eller send nye logfiler.</string>
     <string name="support_notice_moved">Denne samtale fortsætter nu med Pro-support.</string>
     <string name="support_upgrade_title">Der kræves en plan for at fortsætte</string>
-    <string name="support_upgrade_reason_trial_used">Din gratis analyse er brugt. Vælg en plan for at fortsætte samtalen med AI om dette problem.</string>
+    <string name="support_upgrade_reason_trial_used">Din første analyse var gratis. Vælg en plan for at svare og fortsætte samtalen med AI om dette problem.</string>
     <string name="support_upgrade_reason_reply_cap">Denne samtale har brugt de tre AI-svar, som Basic omfatter. Pro har ingen grænse for svar.</string>
     <string name="support_upgrade_reason_required">AI-svar kræver et GameNative-abonnement.</string>
     <string name="support_see_plans">Se planer</string>
@@ -889,6 +890,7 @@
     <string name="support_plan_active">Din plan er aktiv.</string>
     <string name="support_plan_pending">Din plan er stadig ved at blive oprettet. Prøv igen om et minut.</string>
     <string name="support_composer_hint">Skriv et svar</string>
+    <string name="support_composer_analysing">Vent venligst. AI læser stadig dine logs. Du kan svare, når svaret er kommet.</string>
     <string name="support_send_logs">Send logfiler</string>
     <string name="support_new_debug_run">Ny fejlsøgningskørsel</string>
     <string name="support_uploading">Uploader dine logfiler</string>
@@ -1889,6 +1891,9 @@
     <string name="debug_prerun_title">Få AI-hjælp</string>
     <string name="debug_prerun_message_1">Kører spillet med debug-logning og deler loggen med vores AI på Discord, når du afslutter. Spil, indtil du oplever problemet.</string>
     <string name="debug_prerun_message_2">AI-svar er kun for abonnenter.</string>
+    <string name="debug_prerun_message_1_app">Spillet kører med debug-logning. Når du afslutter, sendes loggen til vores AI, og svaret vises i appen under Support. Spil, indtil problemet opstår.</string>
+    <string name="debug_prerun_message_2_app">Den første analyse er gratis. Opfølgende svar kræver en plan.</string>
+    <string name="debug_prerun_message_1_neutral">Spillet kører med debug-logning. Når du afslutter, sendes loggen til vores AI. Spil, indtil problemet opstår.</string>
     <string name="debug_trial_note">Gratis prøveperiode tilgængelig.</string>
     <string name="debug_prerun_message_3">Alle kan dele rapporten for at få menneskelig hjælp.</string>
     <string name="debug_paywall_title">Få AI-fejlfindingshjælp</string>

@@ -1047,6 +1047,7 @@
     <string name="support_state_waiting">En attente de réponse</string>
     <string name="support_state_answered">Répondu</string>
     <string name="support_state_solved">Résolu</string>
+    <string name="support_state_not_solved">Non résolu</string>
     <string name="support_started">Commencée le %1$s</string>
     <string name="support_last_activity">Dernière activité %1$s</string>
     <string name="support_problem_network">Connexion impossible. Vérifiez votre connexion et réessayez.</string>
@@ -1074,7 +1075,7 @@
     <string name="support_outcome_recorded_broken">Vous avez indiqué que le problème n\'est pas encore résolu. Répondez ci-dessous avec ce qui se passe maintenant, ou envoyez de nouveaux journaux.</string>
     <string name="support_notice_moved">Cette conversation continue maintenant avec l\'assistance Pro.</string>
     <string name="support_upgrade_title">Un abonnement est nécessaire pour continuer</string>
-    <string name="support_upgrade_reason_trial_used">Votre analyse gratuite a été utilisée. Pour continuer à parler de ce problème avec l\'AI, choisissez un abonnement.</string>
+    <string name="support_upgrade_reason_trial_used">Votre première analyse était gratuite. Pour répondre et continuer à parler de ce problème avec l\'AI, choisissez un abonnement.</string>
     <string name="support_upgrade_reason_reply_cap">Cette conversation a utilisé les trois réponses de l\'AI incluses dans Basic. Pro n\'a pas de limite de réponses.</string>
     <string name="support_upgrade_reason_required">Les réponses de l\'AI nécessitent un abonnement GameNative.</string>
     <string name="support_see_plans">Voir les abonnements</string>
@@ -1090,6 +1091,7 @@
     <string name="support_plan_active">Votre abonnement est actif.</string>
     <string name="support_plan_pending">Votre abonnement est en cours de mise en place. Réessayez dans une minute.</string>
     <string name="support_composer_hint">Écrire une réponse</string>
+    <string name="support_composer_analysing">Veuillez patienter. L\'AI lit encore vos journaux. Vous pourrez répondre après sa réponse.</string>
     <string name="support_send_logs">Envoyer les journaux</string>
     <string name="support_new_debug_run">Nouvelle session de débogage</string>
     <string name="support_uploading">Envoi de vos journaux</string>
@@ -2037,6 +2039,9 @@
     <string name="debug_prerun_title">Obtenez l\'aide de l\'AI</string>
     <string name="debug_prerun_message_1">Lance le jeu avec les journaux de débogage et les partage avec notre AI sur Discord quand vous quittez. Jouez jusqu\'à ce que le problème se produise.</string>
     <string name="debug_prerun_message_2">Les réponses de l\'AI sont réservées aux abonnés.</string>
+    <string name="debug_prerun_message_1_app">Le jeu se lance avec les journaux de débogage. Quand vous quittez, le journal est envoyé à notre AI, et la réponse apparaît dans l\'application, sous Assistance. Jouez jusqu\'à ce que le problème se produise.</string>
+    <string name="debug_prerun_message_2_app">La première analyse est gratuite. Les réponses suivantes nécessitent un abonnement.</string>
+    <string name="debug_prerun_message_1_neutral">Le jeu se lance avec les journaux de débogage. Quand vous quittez, le journal est envoyé à notre AI. Jouez jusqu\'à ce que le problème se produise.</string>
     <string name="debug_trial_note">Essai gratuit disponible.</string>
     <string name="debug_prerun_message_3">Tout le monde peut partager le rapport pour obtenir de l\'aide humaine.</string>
     <string name="debug_paywall_title">Obtenez une assistance de débogage AI</string>

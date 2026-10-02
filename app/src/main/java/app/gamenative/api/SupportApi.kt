@@ -40,6 +40,7 @@ object SupportApi {
     const val REASON_UPGRADE_REQUIRED = "upgrade_required"
     const val REASON_REPLY_CAP = "reply_cap"
     const val REASON_TRIAL_USED = "trial_used"
+    const val REASON_ANALYSING = "analysing"
     const val REASON_NO_SUBSCRIPTION = "no_subscription"
     const val REASON_RATE_LIMITED = "rate_limited"
     const val REASON_ALREADY_ANSWERED = "already_answered"
@@ -56,6 +57,7 @@ object SupportApi {
         val appId: String?,
         val tier: String,
         val state: String,
+        val outcome: Boolean?,
         val createdAt: Long,
         val lastMessageAt: Long,
         val composer: Composer,
@@ -114,7 +116,7 @@ object SupportApi {
     private fun errorReason(body: String): String =
         try {
             val json = JSONObject(body)
-            json.str("reason") ?: json.str("error") ?: ""
+            json.str("error") ?: json.str("reason") ?: ""
         } catch (_: JSONException) {
             ""
         }
@@ -135,6 +137,7 @@ object SupportApi {
             appId = json.str("app_id"),
             tier = json.str("tier") ?: "",
             state = json.str("state") ?: STATE_WAITING,
+            outcome = if (json.isNull("outcome")) null else json.optBoolean("outcome"),
             createdAt = parseTime(json.str("created_at")),
             lastMessageAt = parseTime(json.str("last_message_at")),
             composer = Composer(
@@ -220,12 +223,11 @@ object SupportApi {
             null -> Unit
         }
         try {
-            val request = Request.Builder().url("$BASE_URL/conversations").get().build()
+            val request = Request.Builder().url("$BASE_URL/status").get().build()
             val result = GameNativeApi.httpClient.newCall(request).execute().use { response ->
                 when (response.code) {
                     404 -> false
-                    401 -> true
-                    in 200..299 -> true
+                    in 200..299 -> runCatching { JSONObject(response.body.string()).optBoolean("enabled", false) }.getOrNull()
                     else -> null
                 }
             }

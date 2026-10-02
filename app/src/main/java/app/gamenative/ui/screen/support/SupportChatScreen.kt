@@ -59,6 +59,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -110,10 +111,9 @@ private fun chatItems(state: SupportViewModel.ChatState): List<ChatItem> {
     messages.forEach { items.add(ChatItem.Entry(it)) }
     val conversation = state.conversation ?: return items
     val replied = messages.any { it.kind == SupportApi.KIND_AGENT || it.kind == SupportApi.KIND_STAFF }
-    val outcomeGiven = messages.any { it.notice is SupportApi.Notice.Outcome }
     when (conversation.state) {
         SupportApi.STATE_WAITING -> items.add(ChatItem.Analysing(first = !replied))
-        SupportApi.STATE_ANSWERED -> if (replied && !outcomeGiven) items.add(ChatItem.OutcomePrompt)
+        SupportApi.STATE_ANSWERED -> if (conversation.outcome == null) items.add(ChatItem.OutcomePrompt)
     }
     return items
 }
@@ -162,6 +162,7 @@ internal fun ColumnScope.SupportChat(
     var initialFocusDone by rememberSaveable(conversationId) { mutableStateOf(false) }
     val uploadProgress = viewModel.uploadProgress
     val items = chatItems(chat)
+    val upgradeOpen by rememberUpdatedState(upgradeReason != null)
 
     LaunchedEffect(conversationId, lifecycleOwner) {
         if (conversationId.isEmpty()) return@LaunchedEffect
@@ -176,7 +177,7 @@ internal fun ColumnScope.SupportChat(
             if (event == Lifecycle.Event.ON_PAUSE) paused = true
             if (event == Lifecycle.Event.ON_RESUME && paused) {
                 paused = false
-                viewModel.refreshAfterResume()
+                if (!upgradeOpen) viewModel.refreshAfterResume()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -206,13 +207,13 @@ internal fun ColumnScope.SupportChat(
     SupportUpgradeDialog(
         visible = upgradeReason != null,
         reason = upgradeReason,
-        onPlanChanged = { viewModel.refreshAfterResume() },
+        onCheckoutReturn = { viewModel.refreshConversation() },
         onDismiss = { upgradeReason = null },
     )
 
     SupportHeader(
         title = conversation?.game?.ifEmpty { null } ?: stringResource(R.string.support_title),
-        subtitle = conversation?.let { stateLabel(it.state) },
+        subtitle = conversation?.let { stateLabel(it.state, it.outcome) },
         onBack = onBack,
         backFocus = backFocus,
     )
@@ -693,6 +694,17 @@ private fun OutcomePromptCard(
 
 @Composable
 private fun LockedComposer(reason: String?, onUpgrade: () -> Unit) {
+    if (reason == SupportApi.REASON_ANALYSING) {
+        Text(
+            text = stringResource(R.string.support_composer_analysing),
+            style = MaterialTheme.typography.bodyMedium,
+            color = PluviaTheme.colors.textMuted,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+        )
+        return
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()

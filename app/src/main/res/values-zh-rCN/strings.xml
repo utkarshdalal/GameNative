@@ -1015,6 +1015,7 @@
     <string name="support_state_waiting">等待回复</string>
     <string name="support_state_answered">已回复</string>
     <string name="support_state_solved">已解决</string>
+    <string name="support_state_not_solved">未解决</string>
     <string name="support_started">开始于 %1$s</string>
     <string name="support_last_activity">最近活动 %1$s</string>
     <string name="support_problem_network">无法连接。请检查网络连接后重试。</string>
@@ -1042,7 +1043,7 @@
     <string name="support_outcome_recorded_broken">你表示问题尚未解决。请在下方回复现在的情况，或发送新的日志。</string>
     <string name="support_notice_moved">此对话现在由 Pro 支持继续。</string>
     <string name="support_upgrade_title">需要订阅方案才能继续</string>
-    <string name="support_upgrade_reason_trial_used">你的免费分析已用完。要继续与 AI 讨论此问题，请选择一个方案。</string>
+    <string name="support_upgrade_reason_trial_used">你的首次分析是免费的。要回复并继续与 AI 讨论此问题，请选择一个方案。</string>
     <string name="support_upgrade_reason_reply_cap">此对话已用完 Basic 包含的三次 AI 回复。Pro 没有回复次数限制。</string>
     <string name="support_upgrade_reason_required">AI 回复需要 GameNative 订阅。</string>
     <string name="support_see_plans">查看方案</string>
@@ -1058,6 +1059,7 @@
     <string name="support_plan_active">你的方案已生效。</string>
     <string name="support_plan_pending">你的方案仍在设置中。请一分钟后重试。</string>
     <string name="support_composer_hint">输入回复</string>
+    <string name="support_composer_analysing">请稍候。AI 仍在读取你的日志。收到它的回答后即可回复。</string>
     <string name="support_send_logs">发送日志</string>
     <string name="support_new_debug_run">新的调试运行</string>
     <string name="support_uploading">正在上传日志</string>
@@ -2036,6 +2038,9 @@
     <string name="debug_prerun_title">获取 AI 帮助</string>
     <string name="debug_prerun_message_1">以调试日志运行游戏，退出后将日志分享给我们在 Discord 上的 AI。请一直运行游戏，直到出现问题。</string>
     <string name="debug_prerun_message_2">AI 回复仅限订阅者。</string>
+    <string name="debug_prerun_message_1_app">游戏将以调试日志运行。退出后，日志会发送给我们的 AI，回答会显示在应用的“支持”中。请一直运行游戏，直到出现问题。</string>
+    <string name="debug_prerun_message_2_app">首次分析免费。后续回复需要方案。</string>
+    <string name="debug_prerun_message_1_neutral">游戏将以调试日志运行。退出后，日志会发送给我们的 AI。请一直运行游戏，直到出现问题。</string>
     <string name="debug_trial_note">提供免费试用。</string>
     <string name="debug_prerun_message_3">任何人都可以分享报告以获得人工帮助。</string>
     <string name="debug_paywall_title">获取 AI 调试支持</string>

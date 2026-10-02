@@ -1202,6 +1202,7 @@
     <string name="support_state_waiting">Waiting for a reply</string>
     <string name="support_state_answered">Answered</string>
     <string name="support_state_solved">Solved</string>
+    <string name="support_state_not_solved">Not solved</string>
     <string name="support_started">Started %1$s</string>
     <string name="support_last_activity">Last activity %1$s</string>
     <string name="support_problem_network">Could not connect. Check your connection and try again.</string>
@@ -1229,7 +1230,7 @@
     <string name="support_outcome_recorded_broken">You said the problem is not fixed yet. Reply below with what happens now, or send new logs.</string>
     <string name="support_notice_moved">This conversation now continues with Pro support.</string>
     <string name="support_upgrade_title">A plan is needed to continue</string>
-    <string name="support_upgrade_reason_trial_used">Your free analysis has been used. To keep talking with the AI about this problem, choose a plan.</string>
+    <string name="support_upgrade_reason_trial_used">Your first analysis was free. To reply and keep talking with the AI about this problem, choose a plan.</string>
     <string name="support_upgrade_reason_reply_cap">This conversation has used the three AI replies that Basic includes. Pro has no reply limit.</string>
     <string name="support_upgrade_reason_required">AI replies need a GameNative subscription.</string>
     <string name="support_see_plans">See plans</string>
@@ -1245,6 +1246,7 @@
     <string name="support_plan_active">Your plan is active.</string>
     <string name="support_plan_pending">Your plan is still being set up. Please try again in a minute.</string>
     <string name="support_composer_hint">Write a reply</string>
+    <string name="support_composer_analysing">Please wait. The AI is still reading your logs. You can reply after its answer arrives.</string>
     <string name="support_send_logs">Send logs</string>
     <string name="support_new_debug_run">New debug run</string>
     <string name="support_uploading">Uploading your logs</string>
@@ -1995,6 +1997,9 @@
     <string name="debug_prerun_title">Get AI help</string>
     <string name="debug_prerun_message_1">Runs the game with debug logging and shares the log with our AI on Discord when you quit. Run the game until you experience the issue.</string>
     <string name="debug_prerun_message_2">AI replies are for subscribers only.</string>
+    <string name="debug_prerun_message_1_app">The game runs with debug logging. When you quit, the log goes to our AI, and the answer appears in the app under Support. Play until the problem happens.</string>
+    <string name="debug_prerun_message_2_app">The first analysis is free. Follow-up replies need a plan.</string>
+    <string name="debug_prerun_message_1_neutral">The game runs with debug logging. When you quit, the log goes to our AI. Play until the problem happens.</string>
     <string name="debug_trial_note">Free trial available.</string>
     <string name="debug_prerun_message_3">Anyone can share the report for human help.</string>
     <string name="diagnostics_share_title">Share diagnostics log</string>
