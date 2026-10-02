@@ -1265,6 +1265,7 @@
     <string name="app_filter_application">Aplicação</string>
     <string name="app_filter_tool">Ferramenta</string>
     <string name="app_filter_demo">Demo</string>
+    <string name="app_filter_playtest">Playtest</string>
     <string name="app_filter_family">Família</string>
 
     <!-- TODO: Revisão manual - Diálogo de feedback do jogo -->

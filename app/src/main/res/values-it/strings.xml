@@ -650,6 +650,7 @@
     <string name="app_filter_application">Applicazione</string>
     <string name="app_filter_tool">Strumento</string>
     <string name="app_filter_demo">Demo</string>
+    <string name="app_filter_playtest">Playtest</string>
     <string name="app_filter_family">Famiglia</string>
 
     <!-- Login & Connection -->

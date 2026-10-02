@@ -845,6 +845,7 @@
     <string name="app_filter_application">Application</string>
     <string name="app_filter_tool">Tool</string>
     <string name="app_filter_demo">Demo</string>
+    <string name="app_filter_playtest">Playtest</string>
     <string name="app_filter_family">Family</string>
     <string name="filter_expired">Expired</string>
     <string name="filter_playable">Playable (30+ FPS)</string>
