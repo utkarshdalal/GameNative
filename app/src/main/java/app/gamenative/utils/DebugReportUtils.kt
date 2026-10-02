@@ -90,6 +90,18 @@ object DebugReportUtils {
         }
     }
 
+    fun newestReport(context: Context, appId: String): File? {
+        val prefix = "${appId}_"
+        return reportsDir(context).listFiles()
+            ?.filter { dir ->
+                dir.isDirectory &&
+                    dir.name.startsWith(prefix) &&
+                    dir.name.removePrefix(prefix).toLongOrNull() != null &&
+                    logFile(dir).exists()
+            }
+            ?.maxByOrNull { it.name.removePrefix(prefix).toLong() }
+    }
+
     fun deleteReport(reportDir: File) {
         reportDir.deleteRecursively()
     }

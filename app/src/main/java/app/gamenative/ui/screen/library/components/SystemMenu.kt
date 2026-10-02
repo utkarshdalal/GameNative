@@ -48,6 +48,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -577,6 +578,15 @@ fun SystemMenu(
                                 onDismiss()
                             },
                             focusRequester = firstItemFocusRequester,
+                        )
+
+                        SystemMenuItem(
+                            text = stringResource(R.string.support_title),
+                            icon = Icons.Default.SupportAgent,
+                            onClick = {
+                                onNavigateRoute(PluviaScreen.Support.route)
+                                onDismiss()
+                            },
                         )
 
                         SystemMenuItem(

@@ -291,6 +291,7 @@ class MainViewModel @Inject constructor(
             PluviaScreen.Home.route -> PluviaScreen.Home
             PluviaScreen.XServer.route -> PluviaScreen.XServer
             PluviaScreen.Settings.route -> PluviaScreen.Settings
+            PluviaScreen.Support.route -> PluviaScreen.Support
             PluviaScreen.Chat.route -> PluviaScreen.Chat
             else -> null
         }
@@ -506,6 +507,7 @@ class MainViewModel @Inject constructor(
             currentScreen.startsWith(PluviaScreen.Home.route) -> PluviaScreen.Home
             currentScreen == PluviaScreen.XServer.route -> PluviaScreen.XServer
             currentScreen == PluviaScreen.Settings.route -> PluviaScreen.Settings
+            currentScreen == PluviaScreen.Support.route -> PluviaScreen.Support
             currentScreen.startsWith("chat") -> PluviaScreen.Chat
             else -> PluviaScreen.LoginUser
         }

@@ -108,6 +108,7 @@ import app.gamenative.ui.screen.HomeScreen
 import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.ui.screen.login.UserLoginScreen
 import app.gamenative.ui.screen.settings.SettingsScreen
+import app.gamenative.ui.screen.support.SupportScreen
 import app.gamenative.ui.screen.xserver.XServerScreen
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.LocalSnackbarHostController
@@ -1965,6 +1966,17 @@ fun PluviaMain(
                         onAppTheme = viewModel::setTheme,
                         onPaletteStyle = viewModel::setPalette,
                         onBack = { navController.navigateUp() },
+                    )
+                }
+
+                composable(route = PluviaScreen.Support.route) {
+                    SupportScreen(
+                        onBack = { navController.navigateUp() },
+                        onStartDebugRun = { appId ->
+                            debugPreRunAppId = appId
+                            debugPreRunOffline = viewModel.isOffline.value
+                            debugPreRunVisible = true
+                        },
                     )
                 }
             }
