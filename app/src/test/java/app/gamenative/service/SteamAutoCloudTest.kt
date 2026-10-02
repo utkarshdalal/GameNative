@@ -3536,4 +3536,32 @@ class SteamAutoCloudTest {
         assertTrue("nothing should be uploaded or deleted, got $uploaded", uploaded.isEmpty())
         assertEquals("same save", File(gameDir, "portal2/SAVE/slot.sav").readText())
     }
+
+    @Test
+    fun downloadedFileWithWrongHash_underDifferentlyCasedKey_isDownloadFail() = runBlocking {
+        val cloudContent = "new save".toByteArray()
+        val corruptContent = "bad save".toByteArray()
+        val changeList = makeCloudFileChangeList(
+            cloudChangeNumber = 5,
+            files = listOf(cloudFile("slot.sav", cloudContent)),
+            pathPrefixes = listOf("%GameInstall%portal2/save/"),
+        )
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(changeList)
+        stubDownloads(mapOf("slot.sav" to corruptContent))
+
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = gameApp("portal2/SAVE"),
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.None,
+            prefixToPath = gamePrefixToPath,
+        ).await()
+
+        assertNotNull(result)
+        assertEquals(SyncResult.DownloadFail, result!!.syncResult)
+        assertEquals("bad save", File(gameDir, "portal2/SAVE/slot.sav").readText())
+        assertEquals(0L, db.appChangeNumbersDao().getByAppId(steamAppId)!!.changeNumber)
+    }
 }

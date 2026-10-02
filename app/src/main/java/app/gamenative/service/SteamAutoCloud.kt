@@ -353,11 +353,12 @@ object SteamAutoCloud {
                 fileList.files.any { file ->
                     Timber.i("Checking for " + "${getFilePrefix(file, fileList)} in ${localUserFiles.keys}")
 
-                    localUserFiles[getFilePrefix(file, fileList)]?.let { localUserFile ->
+                    val cloudPrefix = getFilePrefix(file, fileList)
+                    localUserFiles.entries.firstOrNull { it.key.equals(cloudPrefix, ignoreCase = true) }?.value?.let { localUserFile ->
                         localUserFile.firstOrNull {
                             Timber.i("Comparing ${file.filename} and ${it.filename}")
 
-                            it.filename == file.filename
+                            it.filename.equals(file.filename, ignoreCase = true)
                         }?.let {
                             Timber.i("Comparing SHA of ${getFilePrefixPath(file, fileList)} and ${it.prefixPath}")
                             Timber.i("[${file.shaFile.joinToString(", ")}]\n[${it.sha.joinToString(", ")}]")
