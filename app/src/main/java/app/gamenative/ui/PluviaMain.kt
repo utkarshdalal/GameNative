@@ -69,6 +69,8 @@ import app.gamenative.events.AndroidEvent
 import app.gamenative.gamefixes.GameFixesRegistry
 import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.SteamService
+import app.gamenative.service.ea.EaCloudPreference
+import app.gamenative.service.ea.EaCloudSavesManager
 import app.gamenative.service.ea.EaLaunchSupport
 import app.gamenative.service.ea.EaLoginGate
 import app.gamenative.service.rockstar.RockstarLaunchSupport
@@ -964,6 +966,42 @@ fun PluviaMain(
                     setLoadingMessage = viewModel::setLoadingDialogMessage,
                     setMessageDialogState = setMessageDialogState,
                     onSuccess = viewModel::launchApp,
+                )
+                msgDialogState = MessageDialogState(false)
+            }
+            onDismissRequest = {
+                msgDialogState = MessageDialogState(false)
+            }
+        }
+
+        DialogType.EA_SYNC_CONFLICT -> {
+            onConfirmClick = {
+                preLaunchApp(
+                    context = context,
+                    appId = state.launchedAppId,
+                    eaPreferredSave = SaveLocation.Remote,
+                    setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                    setLoadingProgress = viewModel::setLoadingDialogProgress,
+                    setLoadingMessage = viewModel::setLoadingDialogMessage,
+                    setMessageDialogState = setMessageDialogState,
+                    onSuccess = viewModel::launchApp,
+                    isOffline = viewModel.isOffline.value,
+                    bootToContainer = state.bootToContainer,
+                )
+                msgDialogState = MessageDialogState(false)
+            }
+            onDismissClick = {
+                preLaunchApp(
+                    context = context,
+                    appId = state.launchedAppId,
+                    eaPreferredSave = SaveLocation.Local,
+                    setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                    setLoadingProgress = viewModel::setLoadingDialogProgress,
+                    setLoadingMessage = viewModel::setLoadingDialogMessage,
+                    setMessageDialogState = setMessageDialogState,
+                    onSuccess = viewModel::launchApp,
+                    isOffline = viewModel.isOffline.value,
+                    bootToContainer = state.bootToContainer,
                 )
                 msgDialogState = MessageDialogState(false)
             }
@@ -1950,6 +1988,7 @@ fun preLaunchApp(
     appId: String,
     ignorePendingOperations: Boolean = false,
     preferredSave: SaveLocation = SaveLocation.None,
+    eaPreferredSave: SaveLocation = SaveLocation.None,
     useTemporaryOverride: Boolean = false,
     skipCloudSync: Boolean = false,
     setLoadingDialogVisible: (Boolean) -> Unit,
@@ -2638,6 +2677,43 @@ fun preLaunchApp(
 
         setLoadingMessage("Syncing cloud saves")
         setLoadingProgress(-1f)
+        if (container.isLaunchHeadlessSteam && gameSource == GameSource.STEAM) {
+            try {
+                val eaGameDir = File(SteamService.getAppDirPath(gameId))
+                if (EaLaunchSupport.isEaTitle(gameId, eaGameDir)) {
+                    val eaPreference = when (eaPreferredSave) {
+                        SaveLocation.Local -> EaCloudPreference.LOCAL
+                        SaveLocation.Remote -> EaCloudPreference.REMOTE
+                        SaveLocation.None -> EaCloudPreference.NONE
+                    }
+                    val eaPull = EaCloudSavesManager.syncBeforeLaunch(context, container, gameId, eaGameDir, eaPreference)
+                    if (eaPull is EaCloudSavesManager.PullResult.Conflict) {
+                        Timber.tag("EA").i("Cloud save conflict for $appId, prompting user")
+                        val localDate = Date(eaPull.localMillis).toString()
+                        val remoteDate = eaPull.remoteMillis?.let { Date(it).toString() }
+                            ?: context.getString(R.string.container_storage_source_unknown)
+                        setLoadingDialogVisible(false)
+                        setMessageDialogState(
+                            MessageDialogState(
+                                visible = true,
+                                type = DialogType.EA_SYNC_CONFLICT,
+                                title = context.getString(R.string.main_save_conflict_title),
+                                message = context.getString(R.string.main_save_conflict_message, localDate, remoteDate),
+                                dismissBtnText = context.getString(R.string.main_keep_local),
+                                confirmBtnText = context.getString(R.string.main_keep_remote),
+                            ),
+                        )
+                        return@launch
+                    }
+                    Timber.tag("EA").i("Cloud save pull for $appId: $eaPull")
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                Timber.tag("EA").w("Cloud save pull failed for $appId: ${e.javaClass.simpleName}")
+            }
+        }
+
         val postSyncInfo = SteamService.beginLaunchApp(
             appId = gameId,
             prefixToPath = prefixToPath,
@@ -2697,6 +2773,7 @@ fun preLaunchApp(
                         appId = appId,
                         ignorePendingOperations = ignorePendingOperations,
                         preferredSave = preferredSave,
+                        eaPreferredSave = eaPreferredSave,
                         useTemporaryOverride = useTemporaryOverride,
                         setLoadingDialogVisible = setLoadingDialogVisible,
                         setLoadingProgress = setLoadingProgress,

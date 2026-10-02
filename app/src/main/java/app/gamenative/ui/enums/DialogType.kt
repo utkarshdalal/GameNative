@@ -11,6 +11,7 @@ enum class DialogType(val icon: ImageVector? = null) {
     SUPPORT,
     DISCORD,
     SYNC_CONFLICT,
+    EA_SYNC_CONFLICT,
     SYNC_FAIL,
     SYNC_IN_PROGRESS,
     MULTIPLE_PENDING_OPERATIONS,
