@@ -10,6 +10,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 import org.json.JSONException
 import org.json.JSONObject
 import timber.log.Timber
@@ -69,15 +70,15 @@ object AccountApi {
     private fun jsonBody(json: JSONObject) =
         json.toString().toRequestBody("application/json".toMediaType())
 
-    private fun execute(request: Request): RawResponse {
-        GameNativeApi.httpClient.newCall(request).execute().use { response ->
-            return RawResponse(
-                code = response.code,
-                body = response.body?.string() ?: "",
-                retryAfterSeconds = response.header("Retry-After")?.trim()?.toLongOrNull(),
-            )
-        }
-    }
+    private fun execute(request: Request): RawResponse =
+        GameNativeApi.httpClient.newCall(request).execute().use { rawResponse(it) }
+
+    private fun rawResponse(response: Response): RawResponse =
+        RawResponse(
+            code = response.code,
+            body = response.body?.string() ?: "",
+            retryAfterSeconds = response.header("Retry-After")?.trim()?.toLongOrNull(),
+        )
 
     private fun errorCode(body: String): String =
         try {
@@ -249,14 +250,37 @@ object AccountApi {
         }
     }
 
-    private suspend fun authorized(build: (Request.Builder) -> Request.Builder): RawResponse? {
+    private fun <T : Any> send(
+        build: (Request.Builder) -> Request.Builder,
+        accessToken: String,
+        read: (Response) -> T?,
+    ): T? {
+        val request = build(Request.Builder()).header("Authorization", "Bearer $accessToken").build()
+        return GameNativeApi.httpClient.newCall(request).execute().use(read)
+    }
+
+    internal suspend fun <T : Any> sendAuthorized(
+        build: (Request.Builder) -> Request.Builder,
+        read: (Response) -> T,
+    ): T? {
         val tokens = loadTokens() ?: return null
-        val first = execute(build(Request.Builder()).header("Authorization", "Bearer ${tokens.accessToken}").build())
-        if (first.code != 401) return first
+        var unauthorized = false
+        val first = send(build, tokens.accessToken) { response ->
+            if (response.code == 401) {
+                unauthorized = true
+                null
+            } else {
+                read(response)
+            }
+        }
+        if (!unauthorized) return first
         if (!refreshTokens(tokens.accessToken)) return null
         val refreshed = loadTokens() ?: return null
-        return execute(build(Request.Builder()).header("Authorization", "Bearer ${refreshed.accessToken}").build())
+        return send(build, refreshed.accessToken, read)
     }
+
+    private suspend fun authorized(build: (Request.Builder) -> Request.Builder): RawResponse? =
+        sendAuthorized(build) { rawResponse(it) }
 
     private suspend fun <T> authorizedCall(
         name: String,
