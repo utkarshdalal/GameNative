@@ -242,10 +242,8 @@ object FileUtils {
         val segments = relativePath.replace('\\', '/').split('/').filter { it.isNotEmpty() }
         var current = baseDir
         for (segment in segments) {
-            val exact = File(current, segment)
-            current = exact.takeIf { it.exists() }
-                ?: current.listFiles()?.firstOrNull { it.name.equals(segment, ignoreCase = true) }
-                ?: exact
+            val match = current.listFiles()?.firstOrNull { it.name.equals(segment, ignoreCase = true) }
+            current = match ?: File(current, segment)
         }
         return current
     }
