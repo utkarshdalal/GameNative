@@ -3471,13 +3471,17 @@ class SteamAutoCloudTest {
             listOf(app.gamenative.data.UserFileInfo(PathType.GameInstall, "portal2/SAVE", "slot.sav", 0L, sha1(oldContent))),
         )
 
-        val changeList = makeCloudFileChangeList(
+        val deltaList = makeCloudFileChangeList(cloudChangeNumber = 5)
+        val fullList = makeCloudFileChangeList(
             cloudChangeNumber = 5,
             files = listOf(cloudFile("slot.sav", oldContent)),
             pathPrefixes = listOf("%GameInstall%portal2/save/"),
         )
-        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
-            CompletableFuture.completedFuture(changeList)
+        val requestedChangeNumbers = mutableListOf<Long>()
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } answers {
+            requestedChangeNumbers.add(secondArg())
+            CompletableFuture.completedFuture(if (secondArg<Long>() == 0L) fullList else deltaList)
+        }
         stubSingleFileDownload(oldContent)
         val uploaded = captureUploadBatchFiles()
 
@@ -3494,6 +3498,7 @@ class SteamAutoCloudTest {
         assertEquals(SyncResult.Success, result!!.syncResult)
         assertEquals(1, result.filesUploaded)
         assertEquals(listOf(listOf("%GameInstall%portal2/save/slot.sav")), uploaded)
+        assertEquals(listOf(5L, 0L), requestedChangeNumbers)
     }
 
     @Test
@@ -3530,41 +3535,5 @@ class SteamAutoCloudTest {
         assertEquals(0, result.filesDownloaded)
         assertTrue("nothing should be uploaded or deleted, got $uploaded", uploaded.isEmpty())
         assertEquals("same save", File(gameDir, "portal2/SAVE/slot.sav").readText())
-    }
-
-    @Test
-    fun equalCn_neverSyncedLocalFileDiffersFromCloud_returnsConflictWithoutUpload() = runBlocking {
-        val cloudContent = "cloud save".toByteArray()
-        File(gameDir, "portal2/SAVE").mkdirs()
-        File(gameDir, "portal2/SAVE/slot.sav").writeText("local save")
-        setCache(
-            5,
-            listOf(app.gamenative.data.UserFileInfo(PathType.GameInstall, "__stale__", "__placeholder__", 0L, ByteArray(20))),
-        )
-
-        val changeList = makeCloudFileChangeList(
-            cloudChangeNumber = 5,
-            files = listOf(cloudFile("slot.sav", cloudContent)),
-            pathPrefixes = listOf("%GameInstall%portal2/save/"),
-        )
-        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
-            CompletableFuture.completedFuture(changeList)
-        stubSingleFileDownload(cloudContent)
-        val uploaded = captureUploadBatchFiles()
-
-        val result = SteamAutoCloud.syncUserFiles(
-            appInfo = gameApp("portal2/SAVE"),
-            clientId = clientId,
-            steamInstance = mockSteamService,
-            steamCloud = mockSteamCloud,
-            preferredSave = SaveLocation.None,
-            prefixToPath = gamePrefixToPath,
-        ).await()
-
-        assertNotNull(result)
-        assertEquals(SyncResult.Conflict, result!!.syncResult)
-        assertTrue("must not upload over the cloud save, got $uploaded", uploaded.isEmpty())
-        assertEquals(0, result.filesDownloaded)
-        assertEquals("local save", File(gameDir, "portal2/SAVE/slot.sav").readText())
     }
 }
