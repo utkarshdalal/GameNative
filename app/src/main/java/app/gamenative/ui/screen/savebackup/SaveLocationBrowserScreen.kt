@@ -99,7 +99,10 @@ fun SaveLocationBrowserScreen(
                     state = state,
                     enabled = true,
                     noContainerText = "The container filesystem is unavailable.",
-                    showFiles = false,
+                    // Show files read-only so the user can confirm they're selecting the right save
+                    // folder; they still select the folder, not individual files.
+                    showFiles = true,
+                    filesSelectable = false,
                 )
 
                 if (currentFolder != null && confirmable == null) {

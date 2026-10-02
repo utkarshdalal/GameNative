@@ -286,11 +286,15 @@ class DefaultSaveBackupEngine : SaveBackupEngine {
 
         return try {
             // The codec creates its own fresh `<gameName>_saves_<ts>/` subdir under the tree (Req 13.2).
-            // Each resolved root is written under its own rootId subdirectory so multiple roots do
-            // not collide in the raw tree.
+            // A SINGLE root writes its files directly under that subdir (blank rootId) so the raw
+            // tree mirrors the save folder's own layout — best for interop and the common case.
+            // Only when a game has MULTIPLE roots that could collide by relative path do we nest
+            // each under its own rootId subdirectory.
+            val multiRoot = exportRoots.size > 1
             RawTreeCodec.export(
                 roots = exportRoots.map { r ->
-                    RawTreeCodec.ExportRoot(r.absolutePath, patternRootId(r.root), r.files)
+                    val rootId = if (multiRoot) patternRootId(r.root) else ""
+                    RawTreeCodec.ExportRoot(r.absolutePath, rootId, r.files)
                 },
                 gameName = gameName,
                 dest = DocumentTreeWriter(ctx, tree),

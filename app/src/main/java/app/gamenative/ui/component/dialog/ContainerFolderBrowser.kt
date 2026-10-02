@@ -310,6 +310,13 @@ internal fun ContainerFolderBrowser(
     enabled: Boolean,
     noContainerText: String,
     showFiles: Boolean = false,
+    /**
+     * Whether listed files are selectable (checkbox + toggle). The mods file-import flow sets this
+     * true. The save-backup folder picker sets it false: files are shown **read-only**, purely so
+     * the user can confirm they are pointing at the right save folder (they select the folder, not
+     * individual files).
+     */
+    filesSelectable: Boolean = true,
     selectedFiles: Set<File> = emptySet(),
     onToggleFile: (file: File, size: Long) -> Unit = { _, _ -> },
     showNewFolderControl: Boolean = false,
@@ -517,14 +524,23 @@ internal fun ContainerFolderBrowser(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     },
-                    trailingContent = {
-                        Checkbox(
-                            checked = checked,
-                            onCheckedChange = { onToggleFile(file, size) },
-                            enabled = enabled,
-                        )
+                    // Read-only when files are not selectable (save-backup): no checkbox, no toggle.
+                    trailingContent = if (filesSelectable) {
+                        {
+                            Checkbox(
+                                checked = checked,
+                                onCheckedChange = { onToggleFile(file, size) },
+                                enabled = enabled,
+                            )
+                        }
+                    } else {
+                        null
                     },
-                    modifier = Modifier.clickable(enabled = enabled) { onToggleFile(file, size) },
+                    modifier = if (filesSelectable) {
+                        Modifier.clickable(enabled = enabled) { onToggleFile(file, size) }
+                    } else {
+                        Modifier
+                    },
                 )
                 if (listing.folders.size + index < lastIndex) ContainerFilesDivider()
             }
