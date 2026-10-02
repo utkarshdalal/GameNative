@@ -43,41 +43,66 @@ object SaveLocationResolver {
         appId: Int,
         saveLocation: SaveLocation,
     ): SaveLocationResult {
-        // (a) A PathType outside the supported set can never be resolved (Req 1.7).
-        if (saveLocation.pathType !in SaveLocation.SUPPORTED_PATH_TYPES) {
-            return SaveLocationResult.Unresolved(
-                "PathType ${saveLocation.pathType} is not a supported save root",
-            )
+        // Resolve each root independently (Req 1.3a). SteamUserData's account id is resolved at
+        // most once and shared across SteamUserData roots.
+        var steamAccountId: Long? = null
+        var steamAccountResolved = false
+        val reasons = mutableListOf<String>()
+        val resolved = mutableListOf<Pair<SaveRoot, java.nio.file.Path>>()
+
+        for (root in saveLocation.roots) {
+            // (a) A PathType outside the supported set can never be resolved (Req 1.7).
+            if (root.pathType !in SaveRoot.SUPPORTED_PATH_TYPES) {
+                reasons += "PathType ${root.pathType} is not a supported save root"
+                continue
+            }
+
+            // (b) SteamUserData requires a resolvable Steam account id (Req 1.7).
+            val accountId: Long
+            if (root.pathType == PathType.SteamUserData) {
+                if (!steamAccountResolved) {
+                    steamAccountId = resolveSteamAccountId(container, appId)
+                    steamAccountResolved = true
+                }
+                val resolvedAccountId = steamAccountId
+                if (resolvedAccountId == null) {
+                    reasons += "No Steam account id could be resolved for SteamUserData root (appId=$appId)"
+                    continue
+                }
+                accountId = resolvedAccountId
+            } else {
+                accountId = 0L
+            }
+
+            // toAbsPath returns a trailing-slash path (Req 1.3). Join with the relative subpath.
+            val rootAbs = root.pathType.toAbsPath(container, appId, accountId)
+            val rootPath = Paths.get(rootAbs).normalize()
+            val absolutePath = if (root.relativeSubpath.isEmpty()) {
+                rootPath
+            } else {
+                rootPath.resolve(root.relativeSubpath).normalize()
+            }
+
+            // Defense-in-depth containment check (Req 1.7). SaveRoot.normalizeSubpath already
+            // rejects '..' at construction, so a resolved path should never escape its root; if it
+            // somehow does, drop this root rather than read/write outside the save root.
+            if (!absolutePath.startsWith(rootPath)) {
+                reasons += "Resolved save path escapes its ${root.pathType} root"
+                continue
+            }
+
+            resolved += root to absolutePath
         }
 
-        // (b) SteamUserData requires a resolvable Steam account id (Req 1.7).
-        val accountId = when (saveLocation.pathType) {
-            PathType.SteamUserData -> resolveSteamAccountId(container, appId)
-                ?: return SaveLocationResult.Unresolved(
-                    "No Steam account id could be resolved for SteamUserData root (appId=$appId)",
-                )
-            else -> 0L
-        }
-
-        // toAbsPath returns a trailing-slash path (Req 1.3). Join with the relative subpath.
-        val rootAbs = saveLocation.pathType.toAbsPath(container, appId, accountId)
-        val root = Paths.get(rootAbs).normalize()
-        val absolutePath = if (saveLocation.relativeSubpath.isEmpty()) {
-            root
+        // A location resolves if at least one root resolved (Req 1.3a); otherwise Unresolved with
+        // the collected reasons (Req 1.7). The persisted value is never mutated here.
+        return if (resolved.isNotEmpty()) {
+            SaveLocationResult.Resolved(resolved, saveLocation)
         } else {
-            root.resolve(saveLocation.relativeSubpath).normalize()
-        }
-
-        // Defense-in-depth containment check (Req 1.7). SaveLocation.normalizeSubpath already
-        // rejects '..' at construction, so a resolved path should never escape its root; if it
-        // somehow does, refuse to resolve rather than read/write outside the save root.
-        if (!absolutePath.startsWith(root)) {
-            return SaveLocationResult.Unresolved(
-                "Resolved save path escapes its ${saveLocation.pathType} root",
+            SaveLocationResult.Unresolved(
+                reasons.distinct().joinToString("; ").ifEmpty { "No save root could be resolved" },
             )
         }
-
-        return SaveLocationResult.Resolved(absolutePath, saveLocation)
     }
 
     /**

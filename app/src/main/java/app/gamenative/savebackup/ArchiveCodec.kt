@@ -98,6 +98,12 @@ object ArchiveCodec {
     data class ExportRoot(
         val rootId: String,
         val absolutePath: Path,
+        /**
+         * The explicit set of regular files to archive from this root (already pattern-filtered by
+         * the engine — Req 2.7). Each must reside under [absolutePath]; its archive path is its
+         * path relative to [absolutePath]. Symlinks are excluded by the caller.
+         */
+        val files: List<Path>,
     )
 
     /**
@@ -148,19 +154,20 @@ object ArchiveCodec {
                 zip.closeEntry()
 
                 roots.forEach { root ->
-                    if (!Files.isDirectory(root.absolutePath)) return@forEach
-                    Files.walk(root.absolutePath).use { stream ->
-                        stream
-                            .filter { Files.isRegularFile(it, LinkOption.NOFOLLOW_LINKS) }
-                            .forEach { file ->
-                                val relativePath =
-                                    normalizeRelativePath(root.absolutePath.relativize(file).pathString)
-                                if (relativePath.isEmpty()) return@forEach
-                                zip.putNextEntry(ZipEntry("$FILES_PREFIX${root.rootId}/$relativePath"))
-                                file.inputStream().use { it.copyTo(zip) }
-                                zip.closeEntry()
-                                fileCount += 1
-                            }
+                    val normalizedRoot = root.absolutePath.normalize()
+                    root.files.forEach { file ->
+                        // Only archive regular, non-symlink files that live under this root.
+                        if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)) return@forEach
+                        if (Files.isSymbolicLink(file)) return@forEach
+                        val normalizedFile = file.normalize()
+                        if (!normalizedFile.startsWith(normalizedRoot)) return@forEach
+                        val relativePath =
+                            normalizeRelativePath(normalizedRoot.relativize(normalizedFile).pathString)
+                        if (relativePath.isEmpty()) return@forEach
+                        zip.putNextEntry(ZipEntry("$FILES_PREFIX${root.rootId}/$relativePath"))
+                        file.inputStream().use { it.copyTo(zip) }
+                        zip.closeEntry()
+                        fileCount += 1
                     }
                 }
             }
@@ -322,15 +329,25 @@ object ArchiveCodec {
         staging: Path,
     ): Pair<Path, Path>? {
         val relativeEntry = entryName.removePrefix(FILES_PREFIX).replace('\\', '/')
-        val slashIndex = relativeEntry.indexOf('/')
-        if (slashIndex <= 0) return null
+        if (relativeEntry.isEmpty() || !relativeEntry.contains('/')) return null
 
-        val rootId = relativeEntry.substring(0, slashIndex)
-        val relativePath = normalizeRelativePath(relativeEntry.substring(slashIndex + 1))
+        // Match the entry to its root by LONGEST matching rootId prefix (Req 8.3/8.3a), not by the
+        // first path segment. Manifest rootIds may be multi-segment (e.g. `winappdatalocal/mygame`),
+        // so a first-segment split would fail to resolve them (the PR #1914 UnknownRoot regression).
+        // Ports #1935's slash-tolerant matching.
+        val match = destinationRoots.entries
+            .filter { (rootId, _) -> relativeEntry.startsWith("$rootId/") }
+            .maxByOrNull { it.key.length }
+            ?: run {
+                // No recorded rootId is a prefix. Report the leading segment as the unknown root.
+                val leading = relativeEntry.substringBefore('/')
+                throw ImportException.UnknownRoot(leading)
+            }
+
+        val rootId = match.key
+        val destinationRoot = match.value
+        val relativePath = normalizeRelativePath(relativeEntry.removePrefix("$rootId/"))
         if (relativePath.isEmpty()) return null
-
-        val destinationRoot = destinationRoots[rootId]
-            ?: throw ImportException.UnknownRoot(rootId)
 
         // Path-escape guard against the REAL destination root (Req 8.5) — same check as the engine.
         val normalizedRoot = destinationRoot.normalize()

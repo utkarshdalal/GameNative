@@ -173,7 +173,7 @@ class NonInterferenceTest {
 
         // Export ONLY the save root into ONLY the external location.
         val exported = RawTreeCodec.export(
-            roots = listOf(RawTreeCodec.ExportRoot(saveRoot)),
+            roots = listOf(RawTreeCodec.ExportRoot(saveRoot, "", allRegularFiles(saveRoot))),
             gameName = "ConfinementGame",
             dest = TempDirTreeWriter(externalRoot),
             timestampMillis = 1_700_000_000_000L,
@@ -322,6 +322,11 @@ class NonInterferenceTest {
             return entries
         }
     }
+
+    private fun allRegularFiles(root: Path): List<Path> =
+        Files.walk(root).use { s ->
+            s.filter { Files.isRegularFile(it) }.collect(java.util.stream.Collectors.toList())
+        }
 
     private fun singleSubdir(dir: Path): Path {
         val subdirs = Files.list(dir).use { stream ->

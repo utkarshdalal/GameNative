@@ -4,7 +4,9 @@ import android.content.Context
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import app.gamenative.data.LibraryItem
+import app.gamenative.data.SaveFilePattern
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.FileUtils
 import com.winlator.container.Container
 import java.io.OutputStream
 import java.nio.file.Files
@@ -166,21 +168,25 @@ class DefaultSaveBackupEngine : SaveBackupEngine {
         try {
             val resolved = resolveAbsolute(ctx, item, loc)
                 ?: return@withContext BackupResult.Failed(
-                    "Could not resolve save location ${loc.pathType} for ${item.appId}",
+                    "Could not resolve any save root for ${item.appId}",
                 )
-            val (_, savePath) = resolved
+            val (_, resolvedRoots) = resolved
 
-            // Determine the save set: regular (non-symlink) files under the resolved location.
-            val saveFiles = regularFilesUnder(savePath)
-            if (saveFiles.isEmpty()) {
+            // Build the per-root export set: pattern-matched regular (non-symlink) files under each
+            // resolved root (Req 2.7). Roots that contain no matching files are dropped.
+            val exportRoots = resolvedRoots.mapNotNull { (root, absPath) ->
+                val files = saveFilesUnder(absPath, root.pattern)
+                if (files.isEmpty()) null else ResolvedExportRoot(root, absPath, files)
+            }
+            if (exportRoots.isEmpty()) {
                 // Empty set → NoSavesFound with NO external changes (Req 4.5).
                 return@withContext BackupResult.NoSavesFound
             }
 
             val gameName = item.name.ifBlank { item.appId }
             when (layout) {
-                ExportLayout.ARCHIVE -> exportArchive(ctx, dest, item, loc, savePath, gameName)
-                ExportLayout.RAW_TREE -> exportRawTree(ctx, dest, savePath, gameName)
+                ExportLayout.ARCHIVE -> exportArchive(ctx, dest, item, exportRoots, gameName)
+                ExportLayout.RAW_TREE -> exportRawTree(ctx, dest, exportRoots, gameName)
             }
         } catch (e: CancellationException) {
             throw e
@@ -199,14 +205,17 @@ class DefaultSaveBackupEngine : SaveBackupEngine {
         try {
             val resolved = resolveAbsolute(ctx, item, loc)
                 ?: return@withContext BackupResult.Failed(
-                    "Could not resolve save location ${loc.pathType} for ${item.appId}",
+                    "Could not resolve any save root for ${item.appId}",
                 )
-            val (container, savePath) = resolved
+            val (container, resolvedRoots) = resolved
             val staging = stagingDir(container)
 
             when (val detected = detectImportSource(ctx, source)) {
-                is ImportSource.Archive -> importArchive(ctx, item, detected.zipUri, loc, savePath, staging)
-                is ImportSource.RawTree -> importRawTree(ctx, detected.tree, savePath, staging)
+                is ImportSource.Archive -> importArchive(ctx, item, detected.zipUri, resolvedRoots, staging)
+                // Raw-tree import has no manifest/rootId, so it restores into the FIRST resolved
+                // root (the primary save location) — matching the pre-revision single-destination
+                // behaviour for folder imports.
+                is ImportSource.RawTree -> importRawTree(ctx, detected.tree, resolvedRoots.first().second, staging)
                 ImportSource.Empty -> BackupResult.NoSavesFound
             }
         } catch (e: CancellationException) {
@@ -223,26 +232,32 @@ class DefaultSaveBackupEngine : SaveBackupEngine {
         ctx: Context,
         dest: Uri,
         item: LibraryItem,
-        loc: SaveLocation,
-        savePath: Path,
+        exportRoots: List<ResolvedExportRoot>,
         gameName: String,
     ): BackupResult {
         // [dest] is a DOCUMENT URI from CreateDocument (the .zip the user named), not a tree URI.
         // Write to it directly via ContentResolver — never DocumentFile.fromTreeUri, which is only
         // valid for OpenDocumentTree results and misbehaves on a document URI.
-        val rootId = rootIdFor(loc)
+        //
+        // One manifest root + one files/<rootId>/ subtree per resolved save root (multi-root). The
+        // rootId uses the retired engine's multi-segment patternRootId scheme so archives round-trip
+        // with the old format and resolve by longest prefix on import (Req 8.1/8.2/8.3).
         val manifest = SaveArchiveManifest(
             version = 5,
             gameId = item.gameId,
             gameName = gameName,
             exportedAt = System.currentTimeMillis(),
-            roots = listOf(SaveRoot(rootId = rootId, path = savePath.pathString)),
+            roots = exportRoots.map { r ->
+                SaveRootManifest(rootId = patternRootId(r.root), path = r.absolutePath.pathString)
+            },
         )
 
         return try {
             ArchiveCodec.export(
                 manifest = manifest,
-                roots = listOf(ArchiveCodec.ExportRoot(rootId, savePath)),
+                roots = exportRoots.map { r ->
+                    ArchiveCodec.ExportRoot(patternRootId(r.root), r.absolutePath, r.files)
+                },
                 openDest = {
                     ctx.contentResolver.openOutputStream(dest, "wt")
                         ?: throw java.io.IOException("Could not open destination stream")
@@ -263,7 +278,7 @@ class DefaultSaveBackupEngine : SaveBackupEngine {
     private suspend fun exportRawTree(
         ctx: Context,
         dest: Uri,
-        savePath: Path,
+        exportRoots: List<ResolvedExportRoot>,
         gameName: String,
     ): BackupResult {
         val tree = DocumentFile.fromTreeUri(ctx, dest)
@@ -271,8 +286,12 @@ class DefaultSaveBackupEngine : SaveBackupEngine {
 
         return try {
             // The codec creates its own fresh `<gameName>_saves_<ts>/` subdir under the tree (Req 13.2).
+            // Each resolved root is written under its own rootId subdirectory so multiple roots do
+            // not collide in the raw tree.
             RawTreeCodec.export(
-                roots = listOf(RawTreeCodec.ExportRoot(savePath)),
+                roots = exportRoots.map { r ->
+                    RawTreeCodec.ExportRoot(r.absolutePath, patternRootId(r.root), r.files)
+                },
                 gameName = gameName,
                 dest = DocumentTreeWriter(ctx, tree),
             )
@@ -291,8 +310,7 @@ class DefaultSaveBackupEngine : SaveBackupEngine {
         ctx: Context,
         item: LibraryItem,
         zipUri: Uri,
-        loc: SaveLocation,
-        savePath: Path,
+        resolvedRoots: List<Pair<SaveRoot, Path>>,
         staging: Path,
     ): BackupResult {
         val openSource = {
@@ -312,12 +330,23 @@ class DefaultSaveBackupEngine : SaveBackupEngine {
                 )
             }
 
+            // Build the destination map: each resolved save root keyed by its patternRootId. The
+            // codec matches each archive rootId to a destination by LONGEST PREFIX (Req 8.3/8.3a),
+            // so multi-segment rootIds written by the retired engine resolve, and distinct archive
+            // roots map to distinct destinations rather than collapsing onto one folder.
+            val destinationsByRootId: Map<String, Path> =
+                resolvedRoots.associate { (root, absPath) -> patternRootId(root) to absPath }
+
+            // Back-compat fallback: if the archive has exactly one root and we have exactly one
+            // destination, map any rootId to it (older archives may record a rootId that no longer
+            // matches the current PathType-derived scheme).
+            val singleFallback = resolvedRoots.singleOrNull()?.second
+
             ArchiveCodec.import(
                 openSource = openSource,
-                // Single-root export: any manifest rootId resolves to this save location. Falling
-                // back for the exact rootId keeps back-compat with archives whose recorded rootId
-                // differs from the current PathType-derived one.
-                resolveRoot = { savePath },
+                resolveRoot = { rootId ->
+                    longestPrefixMatch(rootId, destinationsByRootId) ?: singleFallback
+                },
                 stagingDir = staging,
             )
             BackupResult.Success
@@ -327,6 +356,20 @@ class DefaultSaveBackupEngine : SaveBackupEngine {
             Timber.w(e, "Archive import failed")
             BackupResult.Failed(e.message ?: "Archive import failed")
         }
+    }
+
+    /**
+     * Resolve an archive [rootId] to a destination by longest-prefix match against the recorded
+     * [destinations] (Req 8.3/8.3a). An exact match wins; otherwise the destination whose key is
+     * the longest prefix of [rootId] (on a `/` boundary) is used. Ports #1935's slash-tolerant
+     * matching. Returns null if no key matches.
+     */
+    private fun longestPrefixMatch(rootId: String, destinations: Map<String, Path>): Path? {
+        destinations[rootId]?.let { return it }
+        return destinations.entries
+            .filter { (key, _) -> rootId == key || rootId.startsWith("$key/") }
+            .maxByOrNull { it.key.length }
+            ?.value
     }
 
     private suspend fun importRawTree(
@@ -363,7 +406,7 @@ class DefaultSaveBackupEngine : SaveBackupEngine {
         ctx: Context,
         item: LibraryItem,
         loc: SaveLocation,
-    ): Pair<Container, Path>? {
+    ): Pair<Container, List<Pair<SaveRoot, Path>>>? {
         val container = try {
             ContainerUtils.getOrCreateContainer(ctx, item.appId)
         } catch (e: Exception) {
@@ -371,7 +414,7 @@ class DefaultSaveBackupEngine : SaveBackupEngine {
             return null
         }
         return when (val result = SaveLocationResolver.resolve(container, item.gameId, loc)) {
-            is SaveLocationResult.Resolved -> container to result.absolutePath
+            is SaveLocationResult.Resolved -> container to result.resolvedRoots
             is SaveLocationResult.Unresolved -> {
                 Timber.w("Save location unresolved for ${item.appId}: ${result.reason}")
                 null
@@ -380,13 +423,27 @@ class DefaultSaveBackupEngine : SaveBackupEngine {
         }
     }
 
-    /** The set of regular (non-directory, non-symlink) files under [root], or empty when absent. */
-    private fun regularFilesUnder(root: Path): List<Path> {
+    /**
+     * The save files under [root]: regular (non-directory, non-symlink) files, filtered by
+     * [pattern] when present (Req 2.7). A null [pattern] (e.g. a browser-confirmed root) selects
+     * every regular file under the root (whole subtree). Empty when the root is absent.
+     */
+    private fun saveFilesUnder(root: Path, pattern: SaveFilePattern?): List<Path> {
         if (!Files.isDirectory(root, LinkOption.NOFOLLOW_LINKS)) return emptyList()
-        return Files.walk(root).use { stream ->
-            stream.filter { Files.isRegularFile(it, LinkOption.NOFOLLOW_LINKS) }
-                .collect(java.util.stream.Collectors.toList())
+        if (pattern == null) {
+            return Files.walk(root).use { stream ->
+                stream.filter { Files.isRegularFile(it, LinkOption.NOFOLLOW_LINKS) }
+                    .collect(java.util.stream.Collectors.toList())
+            }
         }
+        val depth = if (pattern.recursive > 0) pattern.recursive else 5
+        return FileUtils.findFilesRecursive(
+            rootPath = root,
+            pattern = pattern.pattern,
+            maxDepth = depth,
+        )
+            .filter { Files.isRegularFile(it, LinkOption.NOFOLLOW_LINKS) && !Files.isSymbolicLink(it) }
+            .collect(java.util.stream.Collectors.toList())
     }
 
     /**
@@ -428,10 +485,31 @@ class DefaultSaveBackupEngine : SaveBackupEngine {
         data object Empty : ImportSource
     }
 
+    /** A resolved save root plus the pattern-matched save files to export from it. */
+    private data class ResolvedExportRoot(
+        val root: SaveRoot,
+        val absolutePath: Path,
+        val files: List<Path>,
+    )
+
     // -- Misc helpers ----------------------------------------------------------
 
-    /** Single-segment rootId for [loc] (the codec splits at the first `/`). */
-    private fun rootIdFor(loc: SaveLocation): String = loc.pathType.name.lowercase()
+    /**
+     * Multi-segment rootId for [root], matching the retired `SteamSaveTransfer.patternRootId`
+     * (`<pathtype>/<normalized-subpath-or-"root">`) so archives round-trip with the old format and
+     * resolve by longest prefix on import (Req 8.1/8.3). The subpath is taken from the root's
+     * pattern path when present (the UFS-declared path), else from the relative subpath.
+     */
+    private fun patternRootId(root: SaveRoot): String {
+        val type = root.pathType.name.lowercase()
+        val rawPath = root.pattern?.path?.takeIf { it.isNotBlank() } ?: root.relativeSubpath
+        val normalizedPath = rawPath
+            .replace('\\', '/')
+            .trim('/')
+            .ifBlank { "root" }
+            .lowercase()
+        return "$type/$normalizedPath"
+    }
 
     /**
      * A staging dir on the SAME filesystem as the container destinations, so the codecs'

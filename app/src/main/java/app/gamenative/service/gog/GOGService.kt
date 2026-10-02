@@ -292,6 +292,24 @@ class GOGService : Service() {
             getInstance()?.gogManager?.updateGame(game)
         }
 
+        /**
+         * Resolve the known GOG save-folder absolute path(s) for the manual save-backup feature
+         * (not cloud sync). Returns the resolved absolute locations for [appId] (source-prefixed,
+         * e.g. `GOG_<id>`), or an empty list when the game is unknown, not installed, or has no
+         * cloud save locations. Mirrors the lookup the cloud sync path uses.
+         */
+        fun getSaveDirectoryPathsForBackup(context: Context, appId: String): List<String> {
+            return runBlocking(Dispatchers.IO) {
+                val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
+                val game = getInstance()?.gogManager?.getGameFromDbById(gameId.toString())
+                    ?: return@runBlocking emptyList()
+                getInstance()?.gogManager
+                    ?.getSaveDirectoryPath(context, appId, game.title)
+                    ?.map { it.location }
+                    .orEmpty()
+            }
+        }
+
         fun isGameInstalled(gameId: String): Boolean {
             return runBlocking(Dispatchers.IO) {
                 val game = getInstance()?.gogManager?.getGameFromDbById(gameId)

@@ -63,7 +63,7 @@ class RawTreeCodecRoundTripPropertyTest {
         // Distinct timestampMillis per trial avoids same-second subdir collisions.
         val tsA = 1_700_000_000_000L + Math.floorMod(timestampSeed, 10_000_000).toLong()
         val exportedCount = RawTreeCodec.export(
-            roots = listOf(RawTreeCodec.ExportRoot(containerA)),
+            roots = listOf(RawTreeCodec.ExportRoot(containerA, "", allRegularFiles(containerA))),
             gameName = "RoundTripGame",
             dest = TempDirTreeWriter(externalA),
             timestampMillis = tsA,
@@ -94,7 +94,7 @@ class RawTreeCodecRoundTripPropertyTest {
         val externalB = newTempDir("rawtree-ext-B")
         val tsB = tsA + 1L
         RawTreeCodec.export(
-            roots = listOf(RawTreeCodec.ExportRoot(containerB)),
+            roots = listOf(RawTreeCodec.ExportRoot(containerB, "", allRegularFiles(containerB))),
             gameName = "RoundTripGame",
             dest = TempDirTreeWriter(externalB),
             timestampMillis = tsB,
@@ -106,6 +106,12 @@ class RawTreeCodecRoundTripPropertyTest {
             readSaveSet(reExportedSubdir),
         )
     }
+
+    /** Every regular file under [root] (the engine supplies an explicit, pre-filtered file list). */
+    private fun allRegularFiles(root: Path): List<Path> =
+        java.nio.file.Files.walk(root).use { s ->
+            s.filter { java.nio.file.Files.isRegularFile(it) }.collect(java.util.stream.Collectors.toList())
+        }
 
     // ---- temp-dir-backed TreeWriter / TreeReader doubles -------------------
 

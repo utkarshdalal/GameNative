@@ -134,6 +134,18 @@ object RawTreeCodec {
      */
     data class ExportRoot(
         val absolutePath: Path,
+        /**
+         * Identifier used as this root's subdirectory under the export tree, so multiple roots do
+         * not collide by relative path. Multi-segment ids (e.g. `winappdatalocal/mygame`) create
+         * nested subdirectories.
+         */
+        val rootId: String,
+        /**
+         * The explicit set of regular files to export from this root (already pattern-filtered by
+         * the engine — Req 2.7). Each must reside under [absolutePath]; symlinks are excluded by
+         * the caller.
+         */
+        val files: List<Path>,
     )
 
     /**
@@ -188,19 +200,22 @@ object RawTreeCodec {
 
         var fileCount = 0
         roots.forEach { root ->
-            if (!Files.isDirectory(root.absolutePath)) return@forEach
-            Files.walk(root.absolutePath).use { stream ->
-                stream
-                    .filter { Files.isRegularFile(it, LinkOption.NOFOLLOW_LINKS) }
-                    .forEach { file ->
-                        val relativePath =
-                            normalizeRelativePath(root.absolutePath.relativize(file).pathString)
-                        if (relativePath.isEmpty()) return@forEach
-                        writeFile(exportRoot, relativePath) { out ->
-                            file.inputStream().use { it.copyTo(out) }
-                        }
-                        fileCount += 1
-                    }
+            val normalizedRoot = root.absolutePath.normalize()
+            // Each root is written under its own rootId subdirectory so roots don't collide. A
+            // blank rootId writes directly under the export root (single-root case).
+            val rootDir = if (root.rootId.isBlank()) exportRoot else exportRoot.createDir(root.rootId)
+            root.files.forEach { file ->
+                if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)) return@forEach
+                if (Files.isSymbolicLink(file)) return@forEach
+                val normalizedFile = file.normalize()
+                if (!normalizedFile.startsWith(normalizedRoot)) return@forEach
+                val relativePath =
+                    normalizeRelativePath(normalizedRoot.relativize(normalizedFile).pathString)
+                if (relativePath.isEmpty()) return@forEach
+                writeFile(rootDir, relativePath) { out ->
+                    file.inputStream().use { it.copyTo(out) }
+                }
+                fileCount += 1
             }
         }
         return fileCount

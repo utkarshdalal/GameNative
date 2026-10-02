@@ -81,7 +81,9 @@ class SaveLocationResolutionPropertyTest {
      * requires a resolvable Steam account id and is covered by the Property 3 tests below.
      */
     private val pureJoinRoots: List<PathType> =
-        (SaveLocation.SUPPORTED_PATH_TYPES - PathType.SteamUserData).toList()
+        // GameInstall resolves via SteamService.getAppDirPath (not a fixed container-root suffix),
+        // so it is not a pure container-root-relative join; exclude it from this arithmetic property.
+        (SaveRoot.SUPPORTED_PATH_TYPES - PathType.SteamUserData - PathType.GameInstall).toList()
 
     private fun pickPureJoinRoot(selector: Int): PathType {
         val idx = Math.floorMod(selector, pureJoinRoots.size)
@@ -99,10 +101,10 @@ class SaveLocationResolutionPropertyTest {
         appId: Int,
     ) {
         val pathType = pickPureJoinRoot(rootTypeSelector)
-        val saveLocation = SaveLocation(pathType, safeSubpath(rawSubpath))
+        val saveLocation = SaveLocation.single(pathType, safeSubpath(rawSubpath))
 
         // (1.4) The stored value is never absolute: no leading separator, no drive prefix.
-        assertSubpathIsRelative(saveLocation.relativeSubpath)
+        assertSubpathIsRelative(saveLocation.roots.first().relativeSubpath)
 
         val root = newTempDir("resolve-join")
         val container = containerWithRoot(root)
@@ -118,15 +120,15 @@ class SaveLocationResolutionPropertyTest {
         // an empty subpath yields the unmodified root.
         val rootAbs = pathType.toAbsPath(container, appId, 0L)
         val expected: Path =
-            if (saveLocation.relativeSubpath.isEmpty()) {
+            if (saveLocation.roots.first().relativeSubpath.isEmpty()) {
                 Paths.get(rootAbs)
             } else {
-                Paths.get(rootAbs).resolve(saveLocation.relativeSubpath)
+                Paths.get(rootAbs).resolve(saveLocation.roots.first().relativeSubpath)
             }
         assertEquals(expected, resolved.absolutePath)
 
         // The result must not smuggle an absolute subpath back into the SaveLocation.
-        assertSubpathIsRelative(resolved.saveLocation.relativeSubpath)
+        assertSubpathIsRelative(resolved.saveLocation.roots.first().relativeSubpath)
     }
 
     // Feature: game-save-backup, Property 2: SaveLocation resolution is root-relative and
@@ -139,7 +141,7 @@ class SaveLocationResolutionPropertyTest {
         appId: Int,
     ) {
         val pathType = pickPureJoinRoot(rootTypeSelector)
-        val saveLocation = SaveLocation(pathType, safeSubpath(rawSubpath))
+        val saveLocation = SaveLocation.single(pathType, safeSubpath(rawSubpath))
 
         // Two distinct base directories; each container root is <base>/container-shared so the two
         // roots differ ONLY in their base directory.
@@ -175,8 +177,8 @@ class SaveLocationResolutionPropertyTest {
         rootTypeSelector: Int,
     ) {
         val pathType = pickPureJoinRoot(rootTypeSelector)
-        val saveLocation = SaveLocation(pathType, rawSubpath)
-        assertSubpathIsRelative(saveLocation.relativeSubpath)
+        val saveLocation = SaveLocation.single(pathType, rawSubpath)
+        assertSubpathIsRelative(saveLocation.roots.first().relativeSubpath)
     }
 
     // Feature: game-save-backup, Property 3: Unresolvable Save_Location preserves stored state —
@@ -189,11 +191,11 @@ class SaveLocationResolutionPropertyTest {
         appId: Int,
     ) {
         val unsupported = pickUnsupportedPathType(unsupportedSelector)
-        val saveLocation = SaveLocation(unsupported, rawSubpath)
+        val saveLocation = SaveLocation.single(unsupported, rawSubpath)
 
         // Snapshot the persisted value before resolution.
-        val beforeType = saveLocation.pathType
-        val beforeSubpath = saveLocation.relativeSubpath
+        val beforeType = saveLocation.roots.first().pathType
+        val beforeSubpath = saveLocation.roots.first().relativeSubpath
 
         val root = newTempDir("unsupported")
         val result = SaveLocationResolver.resolve(containerWithRoot(root), appId, saveLocation)
@@ -205,8 +207,8 @@ class SaveLocationResolutionPropertyTest {
         )
 
         // Persisted value left byte-for-byte unchanged.
-        assertEquals(beforeType, saveLocation.pathType)
-        assertEquals(beforeSubpath, saveLocation.relativeSubpath)
+        assertEquals(beforeType, saveLocation.roots.first().pathType)
+        assertEquals(beforeSubpath, saveLocation.roots.first().relativeSubpath)
     }
 
     // Feature: game-save-backup, Property 3: Unresolvable Save_Location preserves stored state —
@@ -227,9 +229,9 @@ class SaveLocationResolutionPropertyTest {
         // A container root with NO userdata directory guarantees no userdata/<id>/<appId> match.
         val root = newTempDir("steam-nouserdata")
 
-        val saveLocation = SaveLocation(PathType.SteamUserData, rawSubpath)
-        val beforeType = saveLocation.pathType
-        val beforeSubpath = saveLocation.relativeSubpath
+        val saveLocation = SaveLocation.single(PathType.SteamUserData, rawSubpath)
+        val beforeType = saveLocation.roots.first().pathType
+        val beforeSubpath = saveLocation.roots.first().relativeSubpath
 
         val result = SaveLocationResolver.resolve(containerWithRoot(root), appId, saveLocation)
 
@@ -237,8 +239,8 @@ class SaveLocationResolutionPropertyTest {
             "Expected Unresolved for SteamUserData with no account id, got $result",
             result is SaveLocationResult.Unresolved,
         )
-        assertEquals(beforeType, saveLocation.pathType)
-        assertEquals(beforeSubpath, saveLocation.relativeSubpath)
+        assertEquals(beforeType, saveLocation.roots.first().pathType)
+        assertEquals(beforeSubpath, saveLocation.roots.first().relativeSubpath)
     }
 
     /**
@@ -254,7 +256,7 @@ class SaveLocationResolutionPropertyTest {
             raw.filter { it.code >= 0x20 && it != '\u007F' && it !in "\u0000<>:\"|?*\\" && !it.isSurrogate() }
         // These properties test path arithmetic on a RELATIVE, non-escaping subpath. Parent-
         // traversal ('..') is a separate security concern with its own dedicated tests below and is
-        // rejected by SaveLocation.normalizeSubpath, so drop '..' segments from generated input to
+        // rejected by SaveRoot.normalizeSubpath, so drop '..' segments from generated input to
         // keep this property focused on the join arithmetic.
         return filtered.split('/').filter { it != ".." }.joinToString("/")
     }
@@ -268,7 +270,7 @@ class SaveLocationResolutionPropertyTest {
     }
 
     private val unsupportedPathTypes: List<PathType> =
-        PathType.values().filter { it !in SaveLocation.SUPPORTED_PATH_TYPES }
+        PathType.values().filter { it !in SaveRoot.SUPPORTED_PATH_TYPES }
 
     private fun pickUnsupportedPathType(selector: Int): PathType {
         val idx = Math.floorMod(selector, unsupportedPathTypes.size)

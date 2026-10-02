@@ -64,7 +64,7 @@ class ArchiveCodecRoundTripPropertyTest {
         val manifest = manifestFor(containerA)
         val exportedCount = ArchiveCodec.export(
             manifest = manifest,
-            roots = listOf(ArchiveCodec.ExportRoot(rootId, containerA)),
+            roots = listOf(ArchiveCodec.ExportRoot(rootId, containerA, allRegularFiles(containerA))),
             openDest = { zipA },
         )
         assertEquals("export must write every save file", saveSet.size, exportedCount)
@@ -91,7 +91,7 @@ class ArchiveCodecRoundTripPropertyTest {
         val zipB = ByteArrayOutputStream()
         ArchiveCodec.export(
             manifest = manifestFor(containerB),
-            roots = listOf(ArchiveCodec.ExportRoot(rootId, containerB)),
+            roots = listOf(ArchiveCodec.ExportRoot(rootId, containerB, allRegularFiles(containerB))),
             openDest = { zipB },
         )
 
@@ -116,8 +116,14 @@ class ArchiveCodecRoundTripPropertyTest {
         gameId = 440,
         gameName = "Round Trip Game",
         exportedAt = 1_700_000_000_000L,
-        roots = listOf(SaveRoot(rootId = rootId, path = root.toString())),
+        roots = listOf(SaveRootManifest(rootId = rootId, path = root.toString())),
     )
+
+    /** Every regular file under [root] (the engine supplies an explicit, pre-filtered file list). */
+    private fun allRegularFiles(root: Path): List<Path> =
+        java.nio.file.Files.walk(root).use { s ->
+            s.filter { java.nio.file.Files.isRegularFile(it) }.collect(java.util.stream.Collectors.toList())
+        }
 
     /**
      * Generate a deterministic set of save files: relative forward-slash paths (nested dirs, safe

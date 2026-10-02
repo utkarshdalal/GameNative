@@ -88,7 +88,7 @@ class CodecFileSetFidelityAndRollbackPropertyTest {
         val zip = ByteArrayOutputStream()
         val written = ArchiveCodec.export(
             manifest = manifestFor(container),
-            roots = listOf(ArchiveCodec.ExportRoot(rootId, container)),
+            roots = listOf(ArchiveCodec.ExportRoot(rootId, container, allRegularFiles(container))),
             openDest = { zip },
         )
         assertEquals("export must write every save file", saveSet.size, written)
@@ -123,7 +123,7 @@ class CodecFileSetFidelityAndRollbackPropertyTest {
         val external = newTempDir("p7-raw-ext")
         val ts = 1_700_000_000_000L + Math.floorMod(timestampSeed, 10_000_000).toLong()
         val written = RawTreeCodec.export(
-            roots = listOf(RawTreeCodec.ExportRoot(container)),
+            roots = listOf(RawTreeCodec.ExportRoot(container, "", allRegularFiles(container))),
             gameName = "P7Game",
             dest = TempDirTreeWriter(external),
             timestampMillis = ts,
@@ -161,7 +161,7 @@ class CodecFileSetFidelityAndRollbackPropertyTest {
         val zip = ByteArrayOutputStream()
         val archiveWritten = ArchiveCodec.export(
             manifest = manifestFor(container),
-            roots = listOf(ArchiveCodec.ExportRoot(rootId, container)),
+            roots = listOf(ArchiveCodec.ExportRoot(rootId, container, allRegularFiles(container))),
             openDest = { zip },
         )
         assertEquals("no save files written for an empty root", 0, archiveWritten)
@@ -174,7 +174,7 @@ class CodecFileSetFidelityAndRollbackPropertyTest {
         val external = newTempDir("p7-empty-ext")
         val ts = 1_700_000_000_000L + Math.floorMod(contentSeed, 10_000_000).toLong()
         val rawWritten = RawTreeCodec.export(
-            roots = listOf(RawTreeCodec.ExportRoot(container)),
+            roots = listOf(RawTreeCodec.ExportRoot(container, "", allRegularFiles(container))),
             gameName = "P7Empty",
             dest = TempDirTreeWriter(external),
             timestampMillis = ts,
@@ -212,7 +212,7 @@ class CodecFileSetFidelityAndRollbackPropertyTest {
         writeFile(container, collidingRel, staleBytes)
 
         val zip = buildArchive(
-            roots = listOf(SaveRoot(rootId, container.toString())),
+            roots = listOf(SaveRootManifest(rootId, container.toString())),
             entries = saveSet.entries.map { "files/$rootId/${it.key}" to it.value },
         )
 
@@ -277,7 +277,7 @@ class CodecFileSetFidelityAndRollbackPropertyTest {
         val archiveStaging = newTempDir("p8-empty-arc-staging")
         val archivePre = prePopulate(archiveContainer, preExistingSeed)
         val emptyZip = buildArchive(
-            roots = listOf(SaveRoot(rootId, archiveContainer.toString())),
+            roots = listOf(SaveRootManifest(rootId, archiveContainer.toString())),
             entries = emptyList(),
         )
         val importedArchive = ArchiveCodec.import(
@@ -500,11 +500,11 @@ class CodecFileSetFidelityAndRollbackPropertyTest {
         gameId = 440,
         gameName = "Fidelity Game",
         exportedAt = 1_700_000_000_000L,
-        roots = listOf(SaveRoot(rootId = rootId, path = root.toString())),
+        roots = listOf(SaveRootManifest(rootId = rootId, path = root.toString())),
     )
 
     /** Build a zip by hand with a manifest declaring [roots] plus the given `files/` entries. */
-    private fun buildArchive(roots: List<SaveRoot>, entries: List<Pair<String, ByteArray>>): ByteArray {
+    private fun buildArchive(roots: List<SaveRootManifest>, entries: List<Pair<String, ByteArray>>): ByteArray {
         val manifest = SaveArchiveManifest(
             version = 5,
             gameId = 440,
@@ -579,6 +579,12 @@ class CodecFileSetFidelityAndRollbackPropertyTest {
     private fun materialize(root: Path, saveSet: Map<String, ByteArray>) {
         saveSet.forEach { (rel, bytes) -> writeFile(root, rel, bytes) }
     }
+
+    /** Every regular file under [root] (the engine supplies an explicit, pre-filtered file list). */
+    private fun allRegularFiles(root: Path): List<Path> =
+        Files.walk(root).use { s ->
+            s.filter { Files.isRegularFile(it) }.collect(java.util.stream.Collectors.toList())
+        }
 
     private fun writeFile(root: Path, rel: String, bytes: ByteArray) {
         val file = root.resolve(rel)

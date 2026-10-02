@@ -32,7 +32,7 @@ class SaveLocationStorePersistencePropertyTest {
      * The supported PathType set is the input space for persisted locations. All members round-trip
      * cleanly through the DTO (serialized by enum name), so we generate only from this set.
      */
-    private val supportedPathTypes: List<PathType> = SaveLocation.SUPPORTED_PATH_TYPES.toList()
+    private val supportedPathTypes: List<PathType> = SaveRoot.SUPPORTED_PATH_TYPES.toList()
 
     private fun pickPathType(selector: Int): PathType {
         val idx = Math.floorMod(selector, supportedPathTypes.size)
@@ -41,7 +41,7 @@ class SaveLocationStorePersistencePropertyTest {
 
     /** Build a SaveLocation from a PathType selector and a raw subpath (normalized by the model). */
     private fun locationFrom(pathTypeSelector: Int, rawSubpath: String): SaveLocation =
-        SaveLocation(pickPathType(pathTypeSelector), rawSubpath)
+        SaveLocation.single(pickPathType(pathTypeSelector), rawSubpath)
 
     // Feature: game-save-backup, Property 1: SaveLocation persistence is single-valued per game —
     // for any game key and any non-empty sequence of persisted values, get returns exactly the most

@@ -18,5 +18,6 @@ class GenericSaveSourceStrategy : SaveSourceStrategy {
         context: Context,
         container: Container,
         gameId: Int,
+        intent: ResolveIntent,
     ): AutoResolveResult = AutoResolveResult.NoAutomaticResolution
 }

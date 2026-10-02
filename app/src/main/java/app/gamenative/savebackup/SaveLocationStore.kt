@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import app.gamenative.PrefManager
+import app.gamenative.data.SaveFilePattern
 import app.gamenative.enums.PathType
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
@@ -105,25 +106,55 @@ class DataStoreSaveLocationStore(
 }
 
 /**
- * Serialization DTO for [SaveLocation]. [SaveLocation] is a hand-written class (not `@Serializable`),
- * so this DTO carries the wire shape `{ "pathType": ..., "relativeSubpath": ... }` and maps to/from
- * the model. [pathType] is serialized by its [PathType] enum name.
+ * Serialization DTO for a persisted [SaveLocation] (a set of [SaveRoot]s).
+ *
+ * **Wire shape and back-compat.** The current shape carries an ordered `roots` array. The
+ * pre-revision model persisted a single root inline as `{ "pathType", "relativeSubpath" }` with no
+ * `roots` field. Both fields are optional here so either shape deserializes: a value with `roots`
+ * uses it; a legacy value with no `roots` but a top-level `pathType` is read as a one-element set.
+ * New writes always emit `roots`.
  */
 @Serializable
 private data class SaveLocationDto(
+    val roots: List<SaveRootDto>? = null,
+    // Legacy single-root fields (pre-multi-root model). Read-only back-compat; never written.
+    val pathType: String? = null,
+    val relativeSubpath: String? = null,
+) {
+    /** Map back to a [SaveLocation]; throws if any `pathType` is not a known [PathType] name. */
+    fun toSaveLocation(): SaveLocation {
+        val rootDtos = when {
+            !roots.isNullOrEmpty() -> roots
+            pathType != null -> listOf(SaveRootDto(pathType, relativeSubpath ?: ""))
+            else -> throw IllegalArgumentException("Persisted SaveLocation has no roots")
+        }
+        return SaveLocation.of(rootDtos.map { it.toSaveRoot() })
+    }
+
+    companion object {
+        fun from(location: SaveLocation): SaveLocationDto =
+            SaveLocationDto(roots = location.roots.map { SaveRootDto.from(it) })
+    }
+}
+
+/** Serialization DTO for a single [SaveRoot]. [pattern] is `@Serializable` and persisted as-is. */
+@Serializable
+private data class SaveRootDto(
     val pathType: String,
     val relativeSubpath: String,
+    val pattern: SaveFilePattern? = null,
 ) {
-    /** Map back to a [SaveLocation]; throws if [pathType] is not a known [PathType] name. */
-    fun toSaveLocation(): SaveLocation = SaveLocation(
+    fun toSaveRoot(): SaveRoot = SaveRoot(
         pathType = PathType.valueOf(pathType),
         relativeSubpath = relativeSubpath,
+        pattern = pattern,
     )
 
     companion object {
-        fun from(location: SaveLocation): SaveLocationDto = SaveLocationDto(
-            pathType = location.pathType.name,
-            relativeSubpath = location.relativeSubpath,
+        fun from(root: SaveRoot): SaveRootDto = SaveRootDto(
+            pathType = root.pathType.name,
+            relativeSubpath = root.relativeSubpath,
+            pattern = root.pattern,
         )
     }
 }

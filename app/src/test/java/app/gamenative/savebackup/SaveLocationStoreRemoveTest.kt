@@ -25,8 +25,8 @@ class SaveLocationStoreRemoveTest {
     fun removeClearsPersistedLocation() = runBlocking {
         val store = DataStoreSaveLocationStore(FakeDataStore())
         val appId = "STEAM_440"
-        store.put(appId, SaveLocation(PathType.WinSavedGames, "MyGame/Slot1"))
-        assertEquals(SaveLocation(PathType.WinSavedGames, "MyGame/Slot1"), store.get(appId))
+        store.put(appId, SaveLocation.single(PathType.WinSavedGames, "MyGame/Slot1"))
+        assertEquals(SaveLocation.single(PathType.WinSavedGames, "MyGame/Slot1"), store.get(appId))
 
         store.remove(appId)
 
@@ -37,11 +37,11 @@ class SaveLocationStoreRemoveTest {
     fun removeOnAbsentKeyIsNoOpAndScopedToKey() = runBlocking {
         val store = DataStoreSaveLocationStore(FakeDataStore())
         val kept = "GOG_1207658924"
-        store.put(kept, SaveLocation(PathType.WinMyDocuments, "Saves/A"))
+        store.put(kept, SaveLocation.single(PathType.WinMyDocuments, "Saves/A"))
 
         // Removing a key that was never set does nothing and leaves other keys intact.
         store.remove("EPIC_absent")
         assertNull(store.get("EPIC_absent"))
-        assertEquals(SaveLocation(PathType.WinMyDocuments, "Saves/A"), store.get(kept))
+        assertEquals(SaveLocation.single(PathType.WinMyDocuments, "Saves/A"), store.get(kept))
     }
 }

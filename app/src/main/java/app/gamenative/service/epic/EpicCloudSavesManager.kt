@@ -1302,6 +1302,25 @@ object EpicCloudSavesManager {
         return manifest
     }
 
+    /**
+     * Resolve the local save folder for the manual save-backup feature (not cloud sync).
+     *
+     * Looks up the [EpicGame] by numeric [gameId] and resolves its known `saveFolder` to an
+     * absolute path via the same [resolveSaveDirectory] substitution used by cloud sync. Returns
+     * `null` when the game is unknown, has no cloud save folder, or the folder cannot be resolved.
+     *
+     * The account id is only used for the `{epicid}` path variable (uncommon in save-folder
+     * templates); it is passed empty here because the backup flow has no authenticated session, so
+     * folders that embed `{epicid}` fall back to the container browser rather than resolving wrong.
+     */
+    fun resolveSaveFolderForBackup(context: Context, gameId: Int): File? {
+        val game = app.gamenative.service.epic.EpicService.getEpicGameOf(gameId) ?: return null
+        if (!game.cloudSaveEnabled || game.saveFolder.isBlank()) return null
+        // A template that needs the authenticated account id can't be resolved offline; defer.
+        if (game.saveFolder.contains("{epicid}", ignoreCase = true)) return null
+        return resolveSaveDirectory(context, game, accountId = "")
+    }
+
     // Resolve save directory path
     private fun resolveSaveDirectory(context: Context, game: EpicGame, accountId: String): File? {
         val cloudSaveFolder = game.saveFolder.ifEmpty { return null }

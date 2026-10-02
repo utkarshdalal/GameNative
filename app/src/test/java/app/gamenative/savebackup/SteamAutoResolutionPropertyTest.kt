@@ -175,18 +175,23 @@ class SteamAutoResolutionPropertyTest {
             expectedFound = false
         }
 
-        val result = strategy.resolveAutomatic(mockk<Context>(relaxed = true), container, gameId)
+        val result = strategy.resolveAutomatic(
+            mockk<Context>(relaxed = true),
+            container,
+            gameId,
+            ResolveIntent.EXPORT,
+        )
 
         if (expectedFound) {
             assertTrue(
                 "Expected Found because a regular file exists under a candidate root, got $result",
                 result is AutoResolveResult.Found,
             )
-            // The resolved SaveLocation must use a supported PathType.
+            // Every resolved SaveRoot must use a supported PathType.
             val found = result as AutoResolveResult.Found
             assertTrue(
-                "Found SaveLocation must use a supported PathType, got ${found.location.pathType}",
-                found.location.pathType in SaveLocation.SUPPORTED_PATH_TYPES,
+                "Found SaveLocation roots must all use supported PathTypes, got ${found.location.roots}",
+                found.location.roots.all { it.pathType in SaveRoot.SUPPORTED_PATH_TYPES },
             )
         } else {
             assertTrue(
@@ -225,7 +230,12 @@ class SteamAutoResolutionPropertyTest {
         Files.createDirectories(base)
         Files.write(base.resolve("save.dat"), byteArrayOf(1, 2, 3))
 
-        val result = strategy.resolveAutomatic(mockk<Context>(relaxed = true), container, gameId)
+        val result = strategy.resolveAutomatic(
+            mockk<Context>(relaxed = true),
+            container,
+            gameId,
+            ResolveIntent.EXPORT,
+        )
 
         assertTrue(
             "an escaping UFS pattern must be skipped, yielding NoSavesFound, got $result",

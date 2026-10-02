@@ -307,7 +307,7 @@ class SaveBackupOrchestrator(
 
         // --- Step 2: determine the container-side SaveLocation -----------------------------
         val location: SaveLocation = when (
-            val outcome = resolutionService.resolve(context, container, item)
+            val outcome = resolutionService.resolve(context, container, item, ResolveIntent.EXPORT)
         ) {
             // Known location → skip the browser, go straight to SAF (Req 4.2).
             is ResolveOutcome.Resolved -> outcome.saveLocation
@@ -426,7 +426,7 @@ class SaveBackupOrchestrator(
 
         // --- Step 3: determine the destination SaveLocation (browser only if unset) --------------
         val location: SaveLocation = when (
-            val outcome = resolutionService.resolve(context, container, item)
+            val outcome = resolutionService.resolve(context, container, item, ResolveIntent.IMPORT)
         ) {
             // Known location → import directly, skip the browser (Req 5.3).
             is ResolveOutcome.Resolved -> outcome.saveLocation

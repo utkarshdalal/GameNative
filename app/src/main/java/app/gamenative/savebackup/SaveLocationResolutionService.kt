@@ -22,7 +22,7 @@ sealed interface ResolveOutcome {
      * previously persisted location, or from a freshly discovered-and-persisted one.
      */
     data class Resolved(
-        val absolutePath: java.nio.file.Path,
+        val resolvedRoots: List<Pair<SaveRoot, java.nio.file.Path>>,
         val saveLocation: SaveLocation,
     ) : ResolveOutcome
 
@@ -86,12 +86,14 @@ class SaveLocationResolutionService(
         context: Context,
         container: Container,
         item: app.gamenative.data.LibraryItem,
+        intent: ResolveIntent,
     ): ResolveOutcome = resolve(
         context = context,
         container = container,
         gameSource = item.gameSource,
         appId = item.appId,
         gameId = item.gameId,
+        intent = intent,
     )
 
     /**
@@ -108,6 +110,7 @@ class SaveLocationResolutionService(
         gameSource: GameSource,
         appId: String,
         gameId: Int,
+        intent: ResolveIntent,
     ): ResolveOutcome = withContext(Dispatchers.IO) {
         // Runs on Dispatchers.IO: store reads and the strategy's directory listings / recursive
         // searches are blocking filesystem work, and this is called from a UI-scoped coroutine.
@@ -120,12 +123,19 @@ class SaveLocationResolutionService(
 
         // 2. Store miss → run the source strategy for this GameSource (Requirement 6.6).
         val strategy = strategySelector(gameSource)
-        when (val auto = strategy.resolveAutomatic(context, container, gameId)) {
+        when (val auto = strategy.resolveAutomatic(context, container, gameId, intent)) {
             is AutoResolveResult.Found -> {
-                // Persist first (Requirement 2.3), then delegate to the pure resolver and use it
-                // (Requirement 2.2).
-                store.put(appId, auto.location)
-                mapPureResult(SaveLocationResolver.resolve(container, gameId, auto.location))
+                // Persist-only-if-resolvable (Req 14.3): resolve the discovered location FIRST, and
+                // persist only if at least one root resolves. Persisting an unresolvable discovered
+                // location (e.g. a root the resolver would reject) would block every later
+                // Export/Import until the user reset — the exact PR #1914 GameInstall regression.
+                val result = SaveLocationResolver.resolve(container, gameId, auto.location)
+                if (result is SaveLocationResult.Resolved) {
+                    // Persist only the roots that actually resolved, in order (Req 2.3, 14.3).
+                    val resolvableLocation = SaveLocation.of(result.resolvedRoots.map { it.first })
+                    store.put(appId, resolvableLocation)
+                }
+                mapPureResult(result)
             }
             // Ran but found nothing / no automatic step for this source → prompt browser.
             AutoResolveResult.NoSavesFound,
@@ -143,7 +153,7 @@ class SaveLocationResolutionService(
     /** Map the pure resolver's [SaveLocationResult] onto a combined [ResolveOutcome]. */
     private fun mapPureResult(result: SaveLocationResult): ResolveOutcome = when (result) {
         is SaveLocationResult.Resolved ->
-            ResolveOutcome.Resolved(result.absolutePath, result.saveLocation)
+            ResolveOutcome.Resolved(result.resolvedRoots, result.saveLocation)
         is SaveLocationResult.Unresolved -> ResolveOutcome.Unresolved(result.reason)
         // The pure resolver only returns Unset when handed a null location; we only ever call it
         // with a concrete location, so this branch is defensive. Treat it as "needs browser".
@@ -158,6 +168,9 @@ class SaveLocationResolutionService(
         val defaultStrategySelector: (GameSource) -> SaveSourceStrategy = { source ->
             when (source) {
                 GameSource.STEAM -> SteamSaveSourceStrategy()
+                GameSource.EPIC -> EpicSaveSourceStrategy()
+                GameSource.GOG -> GogSaveSourceStrategy()
+                // Amazon/CustomGame have no known-folder metadata → always defer to the browser.
                 else -> GenericSaveSourceStrategy()
             }
         }

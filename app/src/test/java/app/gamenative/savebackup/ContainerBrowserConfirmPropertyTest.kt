@@ -92,7 +92,8 @@ class ContainerBrowserConfirmPropertyTest {
             "Expected Selected for a directory under supported root $generatedFrom, got $result",
             result is ConfirmResult.Selected,
         )
-        val selected = (result as ConfirmResult.Selected).saveLocation
+        // Confirm yields a single-root SaveLocation; inspect that one root (Req 3.8).
+        val selected = (result as ConfirmResult.Selected).saveLocation.roots.single()
 
         // Independently compute the expected longest-prefix root: among all candidate roots that
         // are a segment-aware prefix of the confirmed dir, the one with the longest path. Ties are
@@ -167,7 +168,7 @@ class ContainerBrowserConfirmPropertyTest {
 
         val result = ContainerBrowserConfirm.map(candidateRoots, confirmedDir)
         assertTrue("Expected Selected, got $result", result is ConfirmResult.Selected)
-        val selected = (result as ConfirmResult.Selected).saveLocation
+        val selected = (result as ConfirmResult.Selected).saveLocation.roots.single()
 
         // The longest-prefix rule must pick the deeper root, not Root — even though the directory is
         // legitimately under Root as well.

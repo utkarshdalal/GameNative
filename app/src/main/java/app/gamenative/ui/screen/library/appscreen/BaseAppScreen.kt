@@ -2104,11 +2104,17 @@ abstract class BaseAppScreen {
                     uiScope.launch {
                         val hint = try {
                             val container = ContainerUtils.getOrCreateContainer(context, appId)
-                            val resolved = saveLocationResolution.resolve(context, container, libraryItem)
-                                as? app.gamenative.savebackup.ResolveOutcome.Resolved
-                            resolved?.let {
+                            val resolved = saveLocationResolution.resolve(
+                                context,
+                                container,
+                                libraryItem,
+                                app.gamenative.savebackup.ResolveIntent.EXPORT,
+                            ) as? app.gamenative.savebackup.ResolveOutcome.Resolved
+                            // Multi-root: classify the interop hint from the primary (first) resolved
+                            // root's PathType (Req 12).
+                            resolved?.resolvedRoots?.firstOrNull()?.let { (root, _) ->
                                 app.gamenative.savebackup.InteroperabilityHintClassifier.classify(
-                                    it.saveLocation.pathType,
+                                    root.pathType,
                                 )
                             }
                         } catch (e: CancellationException) {

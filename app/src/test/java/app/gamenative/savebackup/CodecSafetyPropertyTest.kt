@@ -73,7 +73,7 @@ class CodecSafetyPropertyTest {
         val siblingEntry = "files/$rootId/valid_${Math.floorMod(siblingSeed, 1000)}.dat"
 
         val zip = buildArchive(
-            roots = listOf(SaveRoot(rootId, containerB.toString())),
+            roots = listOf(SaveRootManifest(rootId, containerB.toString())),
             entries = listOf(
                 siblingEntry to byteArrayOf(1, 2, 3), // a valid sibling that must NOT commit
                 escapeEntry to byteArrayOf(9),
@@ -116,7 +116,7 @@ class CodecSafetyPropertyTest {
         val siblingEntry = "files/$rootId/valid_${Math.floorMod(siblingSeed, 1000)}.dat"
 
         val zip = buildArchive(
-            roots = listOf(SaveRoot(rootId, containerB.toString())),
+            roots = listOf(SaveRootManifest(rootId, containerB.toString())),
             entries = listOf(
                 siblingEntry to byteArrayOf(4, 5),
                 symlinkEntry to byteArrayOf(6),
@@ -218,7 +218,7 @@ class CodecSafetyPropertyTest {
     // ---- helpers -----------------------------------------------------------
 
     /** Build a zip by hand with a manifest declaring [roots] plus the given `files/` entries. */
-    private fun buildArchive(roots: List<SaveRoot>, entries: List<Pair<String, ByteArray>>): ByteArray {
+    private fun buildArchive(roots: List<SaveRootManifest>, entries: List<Pair<String, ByteArray>>): ByteArray {
         val manifest = SaveArchiveManifest(
             version = 5,
             gameId = 440,

@@ -19,10 +19,25 @@ interface SaveSourceStrategy {
      * @param context the Android context used to read UFS/save metadata.
      * @param container the resolved Wine container for the game.
      * @param gameId the numeric game identifier (source-independent).
+     * @param intent whether this resolution is for an [ResolveIntent.EXPORT] (candidate roots must
+     *   actually contain save files) or an [ResolveIntent.IMPORT] (resolve restore targets from
+     *   metadata whether or not files are present — Requirement 2.6).
      * @return an [AutoResolveResult] describing the outcome.
      */
-    fun resolveAutomatic(context: Context, container: Container, gameId: Int): AutoResolveResult
+    fun resolveAutomatic(
+        context: Context,
+        container: Container,
+        gameId: Int,
+        intent: ResolveIntent,
+    ): AutoResolveResult
 }
+
+/**
+ * Whether an automatic resolution is for an export (files must exist at a candidate root for it to
+ * be included) or an import (resolve restore targets from source metadata regardless of whether
+ * files are present yet — Requirement 2.6, the fresh-install restore case).
+ */
+enum class ResolveIntent { EXPORT, IMPORT }
 
 /**
  * The outcome of an attempt to resolve a [SaveLocation] automatically via a [SaveSourceStrategy].

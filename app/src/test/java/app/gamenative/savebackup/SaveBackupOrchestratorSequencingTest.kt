@@ -99,10 +99,15 @@ class SaveBackupOrchestratorSequencingTest {
         resolveContainer: (Context, String) -> Container = { _, _ -> container },
     ) = SaveBackupOrchestrator(engine, resolutionService, safLocationManager, resolveContainer)
 
-    private fun saveLocation(): SaveLocation = SaveLocation(PathType.WinSavedGames, "MyGame/Slot1")
+    private fun saveLocation(): SaveLocation = SaveLocation.single(PathType.WinSavedGames, "MyGame/Slot1")
 
-    private fun resolvedOutcome(): ResolveOutcome =
-        ResolveOutcome.Resolved(Paths.get("/tmp/container/saves"), saveLocation())
+    private fun resolvedOutcome(): ResolveOutcome {
+        val loc = saveLocation()
+        return ResolveOutcome.Resolved(
+            resolvedRoots = listOf(loc.roots.first() to Paths.get("/tmp/container/saves")),
+            saveLocation = loc,
+        )
+    }
 
     // ========================================================================
     // EXPORT
@@ -116,7 +121,7 @@ class SaveBackupOrchestratorSequencingTest {
      */
     @Test
     fun exportUnsetLocationOpensBrowserThenSaf() = runBlocking {
-        coEvery { resolutionService.resolve(any(), any(), any<LibraryItem>()) } returns
+        coEvery { resolutionService.resolve(any(), any(), any<LibraryItem>(), any<ResolveIntent>()) } returns
             ResolveOutcome.NeedsBrowser(automaticUnavailable = false)
         coEvery { safLocationManager.rememberedLocation(any(), any()) } returns null
         coEvery { safLocationManager.tryPersist(any(), any()) } returns true
@@ -148,7 +153,7 @@ class SaveBackupOrchestratorSequencingTest {
      */
     @Test
     fun exportKnownLocationOpensSafOnlyNoBrowser() = runBlocking {
-        coEvery { resolutionService.resolve(any(), any(), any<LibraryItem>()) } returns resolvedOutcome()
+        coEvery { resolutionService.resolve(any(), any(), any<LibraryItem>(), any<ResolveIntent>()) } returns resolvedOutcome()
         coEvery { safLocationManager.rememberedLocation(any(), any()) } returns null
         coEvery { safLocationManager.tryPersist(any(), any()) } returns true
 
@@ -178,7 +183,7 @@ class SaveBackupOrchestratorSequencingTest {
      */
     @Test
     fun exportAbortsWhenContainerBrowserFailsToOpen() = runBlocking {
-        coEvery { resolutionService.resolve(any(), any(), any<LibraryItem>()) } returns
+        coEvery { resolutionService.resolve(any(), any(), any<LibraryItem>(), any<ResolveIntent>()) } returns
             ResolveOutcome.NeedsBrowser(automaticUnavailable = false)
         coEvery { safLocationManager.rememberedLocation(any(), any()) } returns null
 
@@ -206,7 +211,7 @@ class SaveBackupOrchestratorSequencingTest {
      */
     @Test
     fun exportAbortsWhenSafPickerFailsToOpen() = runBlocking {
-        coEvery { resolutionService.resolve(any(), any(), any<LibraryItem>()) } returns resolvedOutcome()
+        coEvery { resolutionService.resolve(any(), any(), any<LibraryItem>(), any<ResolveIntent>()) } returns resolvedOutcome()
         coEvery { safLocationManager.rememberedLocation(any(), any()) } returns null
 
         val pickers = object : ExportPickers {
@@ -232,7 +237,7 @@ class SaveBackupOrchestratorSequencingTest {
      */
     @Test
     fun exportBrowserCancelYieldsCancelledNeverSuccessOrFailure() = runBlocking {
-        coEvery { resolutionService.resolve(any(), any(), any<LibraryItem>()) } returns
+        coEvery { resolutionService.resolve(any(), any(), any<LibraryItem>(), any<ResolveIntent>()) } returns
             ResolveOutcome.NeedsBrowser(automaticUnavailable = false)
         coEvery { safLocationManager.rememberedLocation(any(), any()) } returns null
 
@@ -260,7 +265,7 @@ class SaveBackupOrchestratorSequencingTest {
      */
     @Test
     fun exportSafCancelYieldsCancelledNeverSuccessOrFailure() = runBlocking {
-        coEvery { resolutionService.resolve(any(), any(), any<LibraryItem>()) } returns resolvedOutcome()
+        coEvery { resolutionService.resolve(any(), any(), any<LibraryItem>(), any<ResolveIntent>()) } returns resolvedOutcome()
         coEvery { safLocationManager.rememberedLocation(any(), any()) } returns null
 
         val pickers = object : ExportPickers {
@@ -303,7 +308,7 @@ class SaveBackupOrchestratorSequencingTest {
 
         assertTrue("unresolvable container must abort the export, got $outcome", outcome is ExportOutcome.Aborted)
         assertTrue("no pickers should run when the container is unresolvable", callOrder.isEmpty())
-        coVerify(exactly = 0) { resolutionService.resolve(any(), any(), any<LibraryItem>()) }
+        coVerify(exactly = 0) { resolutionService.resolve(any(), any(), any<LibraryItem>(), any<ResolveIntent>()) }
         coVerify(exactly = 0) { engine.export(any(), any(), any(), any(), any()) }
     }
 
@@ -314,7 +319,7 @@ class SaveBackupOrchestratorSequencingTest {
      */
     @Test
     fun exportRawTreeReusesRememberedGrantWithoutSafPicker() = runBlocking {
-        coEvery { resolutionService.resolve(any(), any(), any<LibraryItem>()) } returns resolvedOutcome()
+        coEvery { resolutionService.resolve(any(), any(), any<LibraryItem>(), any<ResolveIntent>()) } returns resolvedOutcome()
         val remembered = mockk<Uri>()
         coEvery { safLocationManager.rememberedLocation(any(), any()) } returns remembered
 
@@ -342,7 +347,7 @@ class SaveBackupOrchestratorSequencingTest {
      */
     @Test
     fun exportArchiveDoesNotReuseOrPersistRememberedGrant() = runBlocking {
-        coEvery { resolutionService.resolve(any(), any(), any<LibraryItem>()) } returns resolvedOutcome()
+        coEvery { resolutionService.resolve(any(), any(), any<LibraryItem>(), any<ResolveIntent>()) } returns resolvedOutcome()
         // Even if a remembered grant exists, archive export must ignore it.
         coEvery { safLocationManager.rememberedLocation(any(), any()) } returns mockk<Uri>()
 
@@ -381,7 +386,7 @@ class SaveBackupOrchestratorSequencingTest {
     fun importUnsetLocationOpensSafThenBrowser() = runBlocking {
         coEvery { safLocationManager.rememberedLocation(any(), any()) } returns null
         coEvery { safLocationManager.tryPersist(any(), any()) } returns true
-        coEvery { resolutionService.resolve(any(), any(), any<LibraryItem>()) } returns
+        coEvery { resolutionService.resolve(any(), any(), any<LibraryItem>(), any<ResolveIntent>()) } returns
             ResolveOutcome.NeedsBrowser(automaticUnavailable = false)
 
         val source = mockk<Uri>()
@@ -413,7 +418,7 @@ class SaveBackupOrchestratorSequencingTest {
     fun importKnownLocationImportsDirectlyNoBrowser() = runBlocking {
         coEvery { safLocationManager.rememberedLocation(any(), any()) } returns null
         coEvery { safLocationManager.tryPersist(any(), any()) } returns true
-        coEvery { resolutionService.resolve(any(), any(), any<LibraryItem>()) } returns resolvedOutcome()
+        coEvery { resolutionService.resolve(any(), any(), any<LibraryItem>(), any<ResolveIntent>()) } returns resolvedOutcome()
 
         val source = mockk<Uri>()
         val pickers = object : ImportPickers {
@@ -496,7 +501,7 @@ class SaveBackupOrchestratorSequencingTest {
     fun importBrowserCancelYieldsCancelledNeverSuccessOrFailure() = runBlocking {
         coEvery { safLocationManager.rememberedLocation(any(), any()) } returns null
         coEvery { safLocationManager.tryPersist(any(), any()) } returns true
-        coEvery { resolutionService.resolve(any(), any(), any<LibraryItem>()) } returns
+        coEvery { resolutionService.resolve(any(), any(), any<LibraryItem>(), any<ResolveIntent>()) } returns
             ResolveOutcome.NeedsBrowser(automaticUnavailable = false)
 
         val pickers = object : ImportPickers {
@@ -527,7 +532,7 @@ class SaveBackupOrchestratorSequencingTest {
     fun importEngineRunsOnlyAfterBothEndpointsDetermined() = runBlocking {
         coEvery { safLocationManager.rememberedLocation(any(), any()) } returns null
         coEvery { safLocationManager.tryPersist(any(), any()) } returns true
-        coEvery { resolutionService.resolve(any(), any(), any<LibraryItem>()) } returns
+        coEvery { resolutionService.resolve(any(), any(), any<LibraryItem>(), any<ResolveIntent>()) } returns
             ResolveOutcome.NeedsBrowser(automaticUnavailable = false)
 
         val pickers = object : ImportPickers {

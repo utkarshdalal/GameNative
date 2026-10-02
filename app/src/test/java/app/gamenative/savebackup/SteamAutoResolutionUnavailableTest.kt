@@ -80,7 +80,12 @@ class SteamAutoResolutionUnavailableTest {
         // No app info => no UFS Windows saveFilePatterns.
         every { SteamService.getAppInfoOf(gameId) } returns null
 
-        val result = strategy.resolveAutomatic(mockk<Context>(relaxed = true), container, gameId)
+        val result = strategy.resolveAutomatic(
+            mockk<Context>(relaxed = true),
+            container,
+            gameId,
+            ResolveIntent.EXPORT,
+        )
 
         assertTrue(
             "Expected Unavailable when UFS patterns and SteamUserData root cannot be retrieved, got $result",

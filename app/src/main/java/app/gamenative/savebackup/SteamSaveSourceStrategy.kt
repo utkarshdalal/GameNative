@@ -17,24 +17,33 @@ import kotlin.io.path.pathString
 import timber.log.Timber
 
 /**
- * Steam-specific automatic save-location discovery.
+ * Steam-specific automatic save-location discovery/resolution — a faithful port of the retired
+ * `SteamSaveTransfer.resolveExportRoots` / `resolveImportRoots` (PR #1914 review parity).
  *
- * Ports the discovery half of the existing `SteamSaveTransfer.resolveExportRoots`: it walks the
- * game's UFS `saveFilePatterns` (the Windows roots, excluding `SteamUserData`) and always also
- * scans the `SteamUserData` root recursively. A candidate root "contains save files" iff it holds
- * at least one **regular** file (non-directory, non-symbolic-link), checked with
- * `java.nio.file` + [LinkOption.NOFOLLOW_LINKS], exactly as the existing engine does.
+ * The game's saves may span several container roots: every Windows UFS `saveFilePattern` (other
+ * than `SteamUserData`, which is scanned separately) plus the `SteamUserData` root. This strategy
+ * returns the **complete set** of applicable roots as a multi-root [SaveLocation], each carrying its
+ * UFS [SaveFilePattern] so export can filter to pattern-matched files (Requirement 2.7).
  *
- * Discovery only — persistence is the resolver's job (task 5.1). This strategy never writes.
+ * Intent (Requirement 2.6):
+ * - [ResolveIntent.EXPORT] (mirrors `resolveExportRoots`): a root is included only if it holds at
+ *   least one **regular** (non-directory, non-symlink) file matched by its pattern.
+ * - [ResolveIntent.IMPORT] (mirrors `resolveImportRoots`): every applicable root is included
+ *   **regardless of whether files are present**, so a restore onto a freshly installed game resolves
+ *   without prompting.
  *
- * Result mapping (Requirements 2.1, 2.2, 2.4, 2.5):
- * - [AutoResolveResult.Unavailable] when neither the UFS `saveFilePatterns` nor the
- *   `SteamUserData` root can be retrieved (e.g. the Steam app info is not available, or no Steam
- *   account id can be resolved and the game declares no other Windows save patterns).
- * - [AutoResolveResult.NoSavesFound] when discovery ran but no candidate root holds a regular file.
- * - [AutoResolveResult.Found] when at least one candidate root holds a regular file. The returned
- *   [SaveLocation] is the first such root in the existing engine's discovery order (UFS patterns
- *   first, then `SteamUserData`), expressed as a supported [PathType] plus a relative subpath.
+ * Only roots whose [PathType] is in [SaveRoot.SUPPORTED_PATH_TYPES] are produced (Requirement 2.8);
+ * `GameInstall` is in that set (Requirement 14), so install-dir patterns are kept.
+ *
+ * Discovery only — persistence is the resolver's job. This strategy never writes.
+ *
+ * Result mapping:
+ * - [AutoResolveResult.Unavailable] when neither the UFS `saveFilePatterns` nor the `SteamUserData`
+ *   root can be retrieved (Requirement 2.5).
+ * - [AutoResolveResult.NoSavesFound] when, for EXPORT, discovery ran but no candidate root holds a
+ *   pattern-matched regular file (Requirement 2.4). (IMPORT never returns NoSavesFound as long as
+ *   any applicable root exists.)
+ * - [AutoResolveResult.Found] with the complete set of applicable roots (Requirement 2.2).
  */
 class SteamSaveSourceStrategy : SaveSourceStrategy {
 
@@ -42,23 +51,20 @@ class SteamSaveSourceStrategy : SaveSourceStrategy {
         context: Context,
         container: Container,
         gameId: Int,
+        intent: ResolveIntent,
     ): AutoResolveResult {
-        // If the Steam app info (which carries the UFS saveFilePatterns) is not available, we
-        // cannot discover from patterns. We may still be able to scan SteamUserData, but the
-        // existing engine keys all discovery off the app info, so treat a missing app as the
-        // "UFS unavailable" branch and fall back to the SteamUserData-only probe below.
         val app: SteamApp? = SteamService.getAppInfoOf(gameId)
 
         val prefixToPath = makePrefixToPath(container, gameId)
 
-        // Windows UFS patterns other than SteamUserData (SteamUserData is scanned separately).
+        // Windows UFS patterns other than SteamUserData, restricted to supported roots (Req 2.8).
+        // SteamUserData is handled separately below.
         val windowsPatterns: List<SaveFilePattern> = app?.ufs?.saveFilePatterns
             ?.filter { it.root.isWindows && it.root != PathType.SteamUserData }
+            ?.filter { it.root in SaveRoot.SUPPORTED_PATH_TYPES }
             ?: emptyList()
 
-        // Can we resolve the SteamUserData root at all? Null means no Steam account id could be
-        // found for this game — the same null-return condition the existing resolveRootBasePath
-        // uses.
+        // Can we resolve the SteamUserData root at all? Null means no Steam account id could be found.
         val steamUserDataRoot: String? = prefixToPath(PathType.SteamUserData.name)
 
         // Req 2.5: if neither UFS saveFilePatterns nor the SteamUserData root can be retrieved,
@@ -67,57 +73,63 @@ class SteamSaveSourceStrategy : SaveSourceStrategy {
             return AutoResolveResult.Unavailable
         }
 
+        val roots = mutableListOf<SaveRoot>()
+
         // 1) UFS patterns (skip SteamUserData — handled below), in declared order.
         windowsPatterns.forEach { pattern ->
             val rootPath = prefixToPath(pattern.root.name) ?: return@forEach
             val basePath = Paths.get(rootPath, pattern.substitutedPath)
-            if (rootContainsSaveFiles(basePath, pattern)) {
-                // The pattern's root is a supported PathType (isWindows && != SteamUserData maps to
-                // WinMyDocuments/WinAppData*/WinSavedGames/WinProgramData/Root — all in
-                // SaveLocation.SUPPORTED_PATH_TYPES). The relative subpath is the pattern's
-                // substituted path under that root; SaveLocation normalizes it.
-                //
-                // Build defensively: UFS `path` comes from Steam server metadata, so a pattern
-                // whose substituted path escapes its root via '..' makes SaveLocation's constructor
-                // throw. Such a pattern is not a usable candidate — skip it rather than aborting all
-                // resolution (and rather than resolving to a location outside the save root).
-                val candidate = try {
-                    SaveLocation(pattern.root, pattern.substitutedPath)
-                } catch (e: IllegalArgumentException) {
-                    Timber.w(e, "Skipping Steam UFS pattern with unsafe subpath: %s", pattern.substitutedPath)
-                    return@forEach
-                }
-                return AutoResolveResult.Found(candidate)
+
+            // EXPORT: include only if the root holds a pattern-matched regular file (Req 2.1).
+            // IMPORT: include regardless of file presence (Req 2.6).
+            if (intent == ResolveIntent.EXPORT && !rootContainsSaveFiles(basePath, pattern)) {
+                return@forEach
             }
+
+            // Build defensively: UFS `path` comes from Steam server metadata, so a pattern whose
+            // substituted path escapes its root via '..' makes SaveRoot's constructor throw. Such a
+            // pattern is not a usable candidate — skip it rather than aborting all resolution.
+            val candidate = try {
+                SaveRoot(pattern.root, pattern.substitutedPath, pattern)
+            } catch (e: IllegalArgumentException) {
+                Timber.w(e, "Skipping Steam UFS pattern with unsafe subpath: %s", pattern.substitutedPath)
+                return@forEach
+            }
+            roots += candidate
         }
 
-        // 2) SteamUserData — always scanned recursively (matches SteamSaveTransfer behavior).
+        // 2) SteamUserData — always applicable (matches SteamSaveTransfer behavior).
         if (steamUserDataRoot != null) {
-            val userDataPath = Paths.get(steamUserDataRoot)
             val userDataPattern = SaveFilePattern(
                 root = PathType.SteamUserData,
                 path = "",
                 pattern = "*",
                 recursive = 5,
             )
-            if (rootContainsSaveFiles(userDataPath, userDataPattern)) {
-                // SteamUserData root maps directly; the resolved base path is the root itself, so
-                // the relative subpath is empty.
-                return AutoResolveResult.Found(
-                    SaveLocation(PathType.SteamUserData, ""),
-                )
+            val include = when (intent) {
+                ResolveIntent.IMPORT -> true
+                ResolveIntent.EXPORT ->
+                    rootContainsSaveFiles(Paths.get(steamUserDataRoot), userDataPattern)
+            }
+            if (include) {
+                roots += SaveRoot(PathType.SteamUserData, "", userDataPattern)
             }
         }
 
-        // Discovery ran but no candidate root held a regular file (Req 2.4).
-        return AutoResolveResult.NoSavesFound
+        return if (roots.isNotEmpty()) {
+            AutoResolveResult.Found(SaveLocation.of(roots))
+        } else {
+            // EXPORT discovery ran but no candidate root held a regular file (Req 2.4). (IMPORT
+            // only reaches here if there were no applicable roots at all.)
+            AutoResolveResult.NoSavesFound
+        }
     }
 
     /**
      * A candidate root "contains save files" iff it holds at least one **regular** file
      * (non-directory, non-symlink) matched by [pattern], mirroring the existing engine's
-     * `findPatternFiles` filter (`Files.isRegularFile`) combined with the symlink exclusion used
-     * throughout `SteamSaveTransfer` (`LinkOption.NOFOLLOW_LINKS`).
+     * `findPatternFiles` filter combined with the symlink exclusion used throughout
+     * `SteamSaveTransfer` (`LinkOption.NOFOLLOW_LINKS`).
      */
     private fun rootContainsSaveFiles(basePath: Path, pattern: SaveFilePattern): Boolean {
         if (!Files.exists(basePath)) return false

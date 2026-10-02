@@ -82,25 +82,12 @@ object ContainerBrowserConfirm {
      * @param confirmedDir the absolute directory the user confirmed.
      */
     fun map(candidateRoots: Map<PathType, Path>, confirmedDir: Path): ConfirmResult {
-        val target = confirmedDir.normalize()
-
-        // Among all supported roots that are a (segment-aware) prefix of the confirmed directory,
-        // pick the one with the longest path — the most specific root (Design "longest matching
-        // root"). Ties cannot occur: two distinct roots that are both prefixes of the same path
-        // are themselves nested, so one is strictly longer.
-        val best = candidateRoots.entries
-            .asSequence()
-            .filter { (pathType, _) -> pathType in SaveLocation.SUPPORTED_PATH_TYPES }
-            .map { (pathType, root) -> pathType to root.normalize() }
-            .filter { (_, root) -> target.startsWith(root) }
-            .maxByOrNull { (_, root) -> root.nameCount }
+        // Delegate to the single shared longest-prefix matcher (Design "one longest-prefix
+        // implementation"). A browser-confirmed root carries no pattern — its whole subtree is
+        // treated as saves.
+        val root = SaveRootMatcher.match(candidateRoots, confirmedDir)
             ?: return ConfirmResult.Rejected(NOT_SUPPORTED_ROOT_REASON)
-
-        val (pathType, root) = best
-        // Remainder from the root to the confirmed directory. When the directory IS the root the
-        // relativized path is empty, which SaveLocation normalizes to the root itself.
-        val remainder = root.relativize(target).toString()
-        return ConfirmResult.Selected(SaveLocation(pathType, remainder))
+        return ConfirmResult.Selected(SaveLocation.of(root))
     }
 
     /**
@@ -127,12 +114,8 @@ object ContainerBrowserConfirm {
      * @param appId the numeric game id (passed through to [PathType.toAbsPath]).
      * @param accountId the Steam account id (unused by the included roots; accepted for symmetry).
      */
-    fun candidateRoots(container: Container, appId: Int, accountId: Long): Map<PathType, Path> {
-        val roots = SaveLocation.SUPPORTED_PATH_TYPES - PathType.SteamUserData
-        return roots.associateWith { pathType ->
-            Paths.get(pathType.toAbsPath(container, appId, accountId)).normalize()
-        }
-    }
+    fun candidateRoots(container: Container, appId: Int, accountId: Long): Map<PathType, Path> =
+        SaveRootMatcher.candidateRoots(container, appId, accountId, includeSteamUserData = false)
 
     /**
      * Container-aware confirm: derive the candidate roots from [container] (via [candidateRoots])

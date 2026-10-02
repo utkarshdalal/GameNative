@@ -29,7 +29,7 @@ data class SaveArchiveManifest(
     @JsonNames("steamAppId") val gameId: Int,
     val gameName: String,
     val exportedAt: Long,
-    val roots: List<SaveRoot>,
+    val roots: List<SaveRootManifest>,
 )
 
 /**
@@ -41,7 +41,7 @@ data class SaveArchiveManifest(
  * - [path]: the container-absolute path the root resolved to at export time.
  */
 @Serializable
-data class SaveRoot(
+data class SaveRootManifest(
     val rootId: String,
     val path: String,
 )

@@ -6,7 +6,7 @@ import org.junit.Assert.assertThrows
 import org.junit.Test
 
 /**
- * Example tests for path-traversal safety in [SaveLocation.normalizeSubpath] (CWE-22).
+ * Example tests for path-traversal safety in [SaveRoot.normalizeSubpath] (CWE-22).
  *
  * A persisted or auto-discovered subpath must stay within its [PathType] root. `normalizeSubpath`
  * resolves internal `..` segments and rejects any `..` that would escape above the subpath root,
@@ -17,23 +17,23 @@ class SaveLocationTraversalTest {
 
     @Test
     fun resolvesInternalParentSegments() {
-        assertEquals("a/c", SaveLocation.normalizeSubpath("a/b/../c"))
-        assertEquals("a", SaveLocation.normalizeSubpath("a/b/.."))
-        assertEquals("x/y", SaveLocation.normalizeSubpath("x/./y"))
-        assertEquals("", SaveLocation.normalizeSubpath("a/.."))
+        assertEquals("a/c", SaveRoot.normalizeSubpath("a/b/../c"))
+        assertEquals("a", SaveRoot.normalizeSubpath("a/b/.."))
+        assertEquals("x/y", SaveRoot.normalizeSubpath("x/./y"))
+        assertEquals("", SaveRoot.normalizeSubpath("a/.."))
     }
 
     @Test
     fun rejectsEscapingParentAtStart() {
         assertThrows(IllegalArgumentException::class.java) {
-            SaveLocation.normalizeSubpath("../x")
+            SaveRoot.normalizeSubpath("../x")
         }
     }
 
     @Test
     fun rejectsEscapingParentMidPath() {
         assertThrows(IllegalArgumentException::class.java) {
-            SaveLocation.normalizeSubpath("a/../../b")
+            SaveRoot.normalizeSubpath("a/../../b")
         }
     }
 
@@ -41,14 +41,14 @@ class SaveLocationTraversalTest {
     fun rejectsEscapingParentAfterDrivePrefix() {
         // Drive prefix is stripped first, then the leading '..' escapes the root.
         assertThrows(IllegalArgumentException::class.java) {
-            SaveLocation.normalizeSubpath("C:/../../etc")
+            SaveRoot.normalizeSubpath("C:/../../etc")
         }
     }
 
     @Test
     fun constructorRejectsEscapingSubpath() {
         assertThrows(IllegalArgumentException::class.java) {
-            SaveLocation(PathType.WinSavedGames, "../../outside")
+            SaveRoot(PathType.WinSavedGames, "../../outside")
         }
     }
 
@@ -56,7 +56,7 @@ class SaveLocationTraversalTest {
     fun backslashesTreatedAsSeparatorsForTraversal() {
         // '\' is normalized to '/', so a backslash '..' still escapes and is rejected.
         assertThrows(IllegalArgumentException::class.java) {
-            SaveLocation.normalizeSubpath("..\\..\\x")
+            SaveRoot.normalizeSubpath("..\\..\\x")
         }
     }
 }

@@ -43,7 +43,7 @@ class SaveLocationStoreWriteFailureTest {
         }
     }
 
-    private val sampleLocation = SaveLocation(PathType.WinSavedGames, "MyGame/Slot1")
+    private val sampleLocation = SaveLocation.single(PathType.WinSavedGames, "MyGame/Slot1")
 
     // Requirement 3.11: a failing put surfaces the error to the caller (it is not swallowed).
     @Test
@@ -60,8 +60,8 @@ class SaveLocationStoreWriteFailureTest {
     @Test
     fun failedPutLeavesPreviousValueUnchanged() = runBlocking {
         val appId = "GOG_1207658924"
-        val previous = SaveLocation(PathType.WinMyDocuments, "Saves/A")
-        val attempted = SaveLocation(PathType.WinAppDataRoaming, "Saves/B")
+        val previous = SaveLocation.single(PathType.WinMyDocuments, "Saves/A")
+        val attempted = SaveLocation.single(PathType.WinAppDataRoaming, "Saves/B")
 
         // A shared backing store that accepts the first (good) write but is then wrapped by a
         // failing layer for the second write. The failing layer reads through to the same backing
