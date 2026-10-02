@@ -505,5 +505,7 @@ internal fun targetRootIcon(root: ModTargetRoot): ImageVector = when (root) {
     ModTargetRoot.APPDATA_ROAMING -> Icons.Default.Settings
     ModTargetRoot.APPDATA_LOCAL -> Icons.Default.SnippetFolder
     ModTargetRoot.APPDATA_LOCALLOW -> Icons.Default.Inventory2
+    ModTargetRoot.SAVED_GAMES -> Icons.Default.Gamepad
+    ModTargetRoot.PROGRAM_DATA -> Icons.Default.Settings
     ModTargetRoot.CUSTOM_ABSOLUTE -> Icons.Default.Folder
 }

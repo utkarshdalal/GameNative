@@ -66,6 +66,14 @@ object PrefManager {
 
     private lateinit var dataStore: DataStore<Preferences>
 
+    /**
+     * The same [DataStore] instance [PrefManager] owns, exposed for components that must perform
+     * their own suspend-aware, failure-observable writes (e.g. `SaveLocationStore`) against the
+     * app's single preference store rather than going through the fire-and-forget [setPref].
+     * Must only be accessed after [init].
+     */
+    fun getDataStore(): DataStore<Preferences> = dataStore
+
     fun init(context: Context) {
         dataStore = context.datastore
 

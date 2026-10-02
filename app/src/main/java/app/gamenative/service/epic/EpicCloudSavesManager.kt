@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -1300,6 +1301,29 @@ object EpicCloudSavesManager {
         manifest.fileManifestList!!.elements.addAll(fileManifests)
 
         return manifest
+    }
+
+    /**
+     * Resolve the local save folder for the manual save-backup feature (not cloud sync).
+     *
+     * Looks up the [EpicGame] by numeric [gameId] and resolves its known `saveFolder` to an
+     * absolute path via the same [resolveSaveDirectory] substitution used by cloud sync — including
+     * the `{epicid}` variable, which is resolved from the stored Epic credentials exactly as the
+     * sync path does. Returns `null` when the game is unknown, has no cloud save folder, or the
+     * folder cannot be resolved.
+     */
+    fun resolveSaveFolderForBackup(context: Context, gameId: Int): File? {
+        val game = app.gamenative.service.epic.EpicService.getEpicGameOf(gameId) ?: return null
+        if (!game.cloudSaveEnabled || game.saveFolder.isBlank()) return null
+        // Resolve the account id the same way cloud sync does so `{epicid}` templates resolve. If
+        // the user is not logged in, pass empty — a template that genuinely needs the id then
+        // resolves to a non-existent folder and the flow falls back to the browser.
+        // getStoredCredentials is suspend (it may refresh tokens); bridge to blocking here, matching
+        // how EpicService exposes other suspend Epic lookups synchronously.
+        val accountId = runBlocking(Dispatchers.IO) {
+            EpicAuthManager.getStoredCredentials(context).getOrNull()?.accountId
+        }.orEmpty()
+        return resolveSaveDirectory(context, game, accountId = accountId)
     }
 
     // Resolve save directory path

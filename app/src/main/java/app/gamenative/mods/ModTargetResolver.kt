@@ -40,6 +40,8 @@ object ModTargetResolver {
                 result += ResolvedModTargetRoot(ModTargetRoot.APPDATA_ROAMING, "AppData / Roaming", File(userHome, "AppData/Roaming"))
                 result += ResolvedModTargetRoot(ModTargetRoot.APPDATA_LOCAL, "AppData / Local", File(userHome, "AppData/Local"))
                 result += ResolvedModTargetRoot(ModTargetRoot.APPDATA_LOCALLOW, "AppData / LocalLow", File(userHome, "AppData/LocalLow"))
+                result += ResolvedModTargetRoot(ModTargetRoot.SAVED_GAMES, "Saved Games", File(userHome, "Saved Games"))
+                result += ResolvedModTargetRoot(ModTargetRoot.PROGRAM_DATA, "ProgramData", File(driveC, "ProgramData"))
             }
         }
         return result

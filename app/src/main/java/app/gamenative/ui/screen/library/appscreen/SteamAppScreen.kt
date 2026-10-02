@@ -97,7 +97,6 @@ import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.screen.library.GameMigrationDialog
 import app.gamenative.ui.component.dialog.state.GameManagerDialogState
 import app.gamenative.ui.util.SnackbarManager
-import app.gamenative.ui.util.SteamSaveTransfer
 import app.gamenative.utils.ContainerUtils.getContainer
 import app.gamenative.utils.CustomGameScanner
 import kotlinx.serialization.json.Json
@@ -773,10 +772,6 @@ class SteamAppScreen : BaseAppScreen() {
         )
     }
 
-    override fun supportsSaveTransfer(libraryItem: LibraryItem): Boolean {
-        return libraryItem.gameSource == app.gamenative.data.GameSource.STEAM
-    }
-
     override val supportsAchievements: Boolean = true
 
     override suspend fun fetchAchievements(libraryItem: LibraryItem): List<Achievement>? =
@@ -798,24 +793,6 @@ class SteamAppScreen : BaseAppScreen() {
             }
         }
         return logons
-    }
-
-    override suspend fun exportSaves(
-        context: Context,
-        libraryItem: LibraryItem,
-        uri: Uri,
-    ): Boolean {
-        val container = withContext(Dispatchers.IO) { ContainerUtils.getOrCreateContainer(context, libraryItem.appId) }
-        return SteamSaveTransfer.exportSaves(context, container, libraryItem.gameId, uri)
-    }
-
-    override suspend fun importSaves(
-        context: Context,
-        libraryItem: LibraryItem,
-        uri: Uri,
-    ): Boolean {
-        val container = withContext(Dispatchers.IO) { ContainerUtils.getOrCreateContainer(context, libraryItem.appId) }
-        return SteamSaveTransfer.importSaves(context, container, libraryItem.gameId, uri)
     }
 
     @Composable
