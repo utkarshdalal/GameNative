@@ -65,7 +65,7 @@ object SupportReportSubmitter {
                     SupportSession.clearRun(state.appId)
                     return Outcome.Sent(target)
                 }
-                if (result !is ApiResult.HttpError || result.code != 404) return outcomeOf(result)
+                if (result !is ApiResult.HttpError || (result.code != 403 && result.code != 404)) return outcomeOf(result)
                 SupportSession.clearRun(state.appId)
                 progress.value = 0f
             }
