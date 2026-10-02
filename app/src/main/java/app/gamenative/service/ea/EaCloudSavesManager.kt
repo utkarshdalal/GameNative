@@ -36,7 +36,9 @@ object EaCloudSavesManager {
 
     private class State(val format: Md5Format?, val entries: Map<String, StateEntry>)
 
-    private class CloudView(val entries: Map<String, EaCloudFile>, val ignored: Int, val duplicates: Boolean)
+    private class CloudView(val entries: Map<String, EaCloudFile>, val ignored: Int, val ambiguous: Set<String>) {
+        val duplicates: Boolean get() = ambiguous.isNotEmpty()
+    }
 
     private class Download(val temp: File, val dest: File, val key: String)
 
@@ -165,6 +167,7 @@ object EaCloudSavesManager {
     internal fun guessFormat(md5s: List<String?>): Md5Format? {
         val shapes = md5s.filterNotNull().map { md5 ->
             when {
+                md5.length == 32 && md5.all { it in '0'..'9' } -> null
                 SHAPE_HEX_LOWER.matches(md5) -> Md5Format.HEX
                 SHAPE_HEX_UPPER.matches(md5) -> Md5Format.HEX_UPPER
                 SHAPE_MAXIMA_PADDED.matches(md5) && md5.length == 24 -> Md5Format.MAXIMA
@@ -198,10 +201,10 @@ object EaCloudSavesManager {
         try {
             val manifest = EaCloudSyncApi.fetchManifest(lock)
             if (!manifest.exists && state?.entries?.isNotEmpty() == true) return PullResult.Failed("manifest_missing")
-            val local = scanLocal(target, driveC)
             val view = viewCloud(target, driveC, manifest)
+            val local = scanLocal(target, driveC).filterKeys { it !in view.ambiguous }
             val cloud = cloudKeys(view.entries, local, state)
-            val base = state?.entries?.mapValues { it.value.key }?.takeIf { local.isNotEmpty() }
+            val base = state?.entries?.filterKeys { it !in view.ambiguous }?.mapValues { it.value.key }?.takeIf { local.isNotEmpty() }
             val plan = EaCloudSyncPlanner.planPull(local.mapValues { it.value.key }, cloud, base, preference)
             if (plan.conflict) {
                 Timber.tag(TAG).i("Cloud save conflict for $steamAppId (${local.size} local, ${cloud.size} cloud)")
@@ -260,6 +263,7 @@ object EaCloudSavesManager {
                     if (name !in synced && view.entries[name]?.let { identity(it) } == old.cloudIdentity) synced[name] = old
                 }
             }
+            for (name in view.ambiguous) state?.entries?.get(name)?.let { synced[name] = it }
             saveState(container, State(probe.format ?: state?.format, synced))
 
             val format = when {
@@ -363,8 +367,7 @@ object EaCloudSavesManager {
                 EaCloudSyncApi.uploadFile(url, local.getValue(name).file)
             }
             for (name in created.keys) {
-                val mine = local.getValue(name)
-                if (!mine.file.isFile || mine.file.length() != mine.size || mine.file.lastModified() != mine.modified) {
+                if (!unchangedSince(local.getValue(name))) {
                     Timber.tag(TAG).w("Cloud save push aborted for $steamAppId: a save file changed during upload")
                     return false
                 }
@@ -416,26 +419,37 @@ object EaCloudSavesManager {
         val out = LinkedHashMap<String, LocalFile>()
         for ((localName, file) in EaCloudSaveConfig.localFiles(target, driveC)) {
             val modified = file.lastModified()
-            val md5 = MessageDigest.getInstance("MD5")
-            var size = 0L
-            file.inputStream().use { input ->
-                val buf = ByteArray(64 * 1024)
-                while (true) {
-                    val n = input.read(buf)
-                    if (n < 0) break
-                    md5.update(buf, 0, n)
-                    size += n
-                }
-            }
-            out[EaCloudSaveConfig.normalizeName(localName)] = LocalFile(localName, file, size, modified, md5.digest())
+            val (size, digest) = hashFile(file)
+            out[EaCloudSaveConfig.normalizeName(localName)] = LocalFile(localName, file, size, modified, digest)
         }
         return out
+    }
+
+    private fun hashFile(file: File): Pair<Long, ByteArray> {
+        val md5 = MessageDigest.getInstance("MD5")
+        var size = 0L
+        file.inputStream().use { input ->
+            val buf = ByteArray(64 * 1024)
+            while (true) {
+                val n = input.read(buf)
+                if (n < 0) break
+                md5.update(buf, 0, n)
+                size += n
+            }
+        }
+        return size to md5.digest()
+    }
+
+    private fun unchangedSince(mine: LocalFile): Boolean {
+        if (!mine.file.isFile || mine.file.length() != mine.size || mine.file.lastModified() != mine.modified) return false
+        val (size, digest) = hashFile(mine.file)
+        return size == mine.size && digest.contentEquals(mine.digest)
     }
 
     private fun viewCloud(target: EaCloudSaveTarget, driveC: File, manifest: EaCloudManifest): CloudView {
         val entries = LinkedHashMap<String, EaCloudFile>()
         var ignored = 0
-        var duplicates = false
+        val ambiguous = LinkedHashSet<String>()
         for (entry in manifest.files) {
             val name = EaCloudSaveConfig.normalizeName(entry.localName)
             val dest = EaCloudSaveConfig.toFile(entry.localName, driveC)
@@ -445,15 +459,16 @@ object EaCloudSavesManager {
             } else if (dest.isDirectory || generateSequence(dest.parentFile) { it.parentFile }.takeWhile { it != driveC }.any { it.isFile }) {
                 Timber.tag(TAG).w("Cloud save entry ignored (path blocked locally): ${entry.localName}")
                 ignored++
-            } else if (name in entries) {
+            } else if (name in entries || name in ambiguous) {
                 Timber.tag(TAG).w("Cloud save entry ignored (duplicate name): ${entry.localName}")
                 ignored++
-                duplicates = true
+                if (entries.remove(name) != null) ignored++
+                ambiguous += name
             } else {
                 entries[name] = entry
             }
         }
-        return CloudView(entries, ignored, duplicates)
+        return CloudView(entries, ignored, ambiguous)
     }
 
     private fun cloudKeys(entries: Map<String, EaCloudFile>, local: Map<String, LocalFile>, state: State?): Map<String, String> =

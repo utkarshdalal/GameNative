@@ -18,6 +18,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -75,10 +76,12 @@ class EaCloudSaveConfigTest {
         .put("cloudSaveConfigurationOverride", config ?: JSONObject.NULL)
         .toString()
 
-    private fun ownedJson(vararg offerIds: String) = "{\"data\":{\"me\":{\"ownedGameProducts\":{\"next\":null,\"totalCount\":${offerIds.size}," +
+    private fun ownedJson(vararg offerIds: String) =
+        "{\"data\":{\"me\":{\"ownedGameProducts\":{\"next\":null,\"totalCount\":${offerIds.size}," +
         "\"items\":[${offerIds.joinToString(",") { "{\"originOfferId\":\"$it\"}" }}]}}}}"
 
-    private val criteria = "<saveFileCriteria><include order=\"0\">%Documents%/Electronic Arts/The Sims 4/saves/*</include></saveFileCriteria>"
+    private val criteria = "<saveFileCriteria><include order=\"0\">%Documents%/Electronic Arts/The Sims 4/saves/*</include>" +
+        "</saveFileCriteria>"
 
     @Test
     fun `criteria parse orders entries and unescapes text`() {
@@ -125,14 +128,24 @@ class EaCloudSaveConfigTest {
 
     @Test
     fun `trailing separator matches the whole folder`() {
-        val nfs = EaCloudSaveTarget("OFB-EAST:46851", "185235_71530", listOf("%Documents%/Criterion Games/Need For Speed(TM) Most Wanted/Save/"), emptyList())
+        val nfs = EaCloudSaveTarget(
+            "OFB-EAST:46851",
+            "185235_71530",
+            listOf("%Documents%/Criterion Games/Need For Speed(TM) Most Wanted/Save/"),
+            emptyList(),
+        )
         write(documents, "Criterion Games/Need For Speed(TM) Most Wanted/Save/1000933177888/MUD.29.NFS13Save")
         write(documents, "Criterion Games/Need For Speed(TM) Most Wanted/config.NFS13Save")
 
         val files = EaCloudSaveConfig.localFiles(nfs, driveC)
 
         assertEquals(setOf("%Documents%/Criterion Games/Need For Speed(TM) Most Wanted/Save/1000933177888/MUD.29.NFS13Save"), files.keys)
-        assertTrue(EaCloudSaveConfig.isAllowed(nfs, "%Documents%\\Criterion Games\\Need For Speed(TM) Most Wanted\\Save\\1000933177888\\MUD.29.NFS13Save"))
+        assertTrue(
+            EaCloudSaveConfig.isAllowed(
+                nfs,
+                "%Documents%\\Criterion Games\\Need For Speed(TM) Most Wanted\\Save\\1000933177888\\MUD.29.NFS13Save",
+            ),
+        )
     }
 
     @Test
@@ -227,12 +240,37 @@ class EaCloudSaveConfigTest {
     fun `toFile maps both separators into the prefix`() {
         val expected = File(documents, "Electronic Arts/The Sims 4/saves/Slot.save").canonicalPath
 
-        assertEquals(expected, EaCloudSaveConfig.toFile("%Documents%\\Electronic Arts\\The Sims 4\\saves\\Slot.save", driveC)?.canonicalPath)
+        assertEquals(
+            expected,
+            EaCloudSaveConfig.toFile("%Documents%\\Electronic Arts\\The Sims 4\\saves\\Slot.save", driveC)?.canonicalPath,
+        )
         assertEquals(expected, EaCloudSaveConfig.toFile("%Documents%/Electronic Arts/The Sims 4/saves/Slot.save", driveC)?.canonicalPath)
         assertEquals(
             File(driveC, "users/${ImageFs.USER}/AppData/Roaming/Game/a.bin").canonicalPath,
             EaCloudSaveConfig.toFile("%AppData%/Game/a.bin", driveC)?.canonicalPath,
         )
+    }
+
+    @Test
+    fun `folders that resolve outside drive c are skipped`() {
+        val outside = Files.createTempDirectory("ea_cloud_outside").toFile()
+        try {
+            write(outside, "Electronic Arts/The Sims 4/saves/Slot.save")
+            documents.parentFile!!.mkdirs()
+            Files.createSymbolicLink(documents.toPath(), outside.toPath())
+            val savedGames = File(driveC, "users/${ImageFs.USER}/Saved Games")
+            write(savedGames, "Respawn/profile.sav")
+
+            val files = EaCloudSaveConfig.localFiles(sims, driveC)
+
+            assertEquals(setOf("%SavedGames%\\Respawn\\profile.sav"), files.keys)
+            assertNull(EaCloudSaveConfig.toFile("%Documents%/Electronic Arts/The Sims 4/saves/Slot.save", driveC))
+            assertNull(EaCloudSaveConfig.toFile("%Documents%/Electronic Arts/The Sims 4/saves/New.save", driveC))
+            assertNull(EaCloudSaveConfig.toLocalName(sims, File(documents, "Electronic Arts/The Sims 4/saves/Slot.save"), driveC))
+            assertNotNull(EaCloudSaveConfig.toFile("%SavedGames%\\Respawn\\profile.sav", driveC))
+        } finally {
+            outside.deleteRecursively()
+        }
     }
 
     @Test
@@ -281,7 +319,11 @@ class EaCloudSaveConfigTest {
     @Test
     fun `resolve queries the catalog once then serves the cache`() = runBlocking {
         server.enqueue(MockResponse().setBody(ownedJson("OFB-DLC", "OFB-BASE")))
-        server.enqueue(MockResponse().setBody(offersJson(offerJson("OFB-DLC", "71111", null, null), offerJson("OFB-BASE", "70000", "1014885", criteria))))
+        server.enqueue(
+            MockResponse().setBody(
+                offersJson(offerJson("OFB-DLC", "71111", null, null), offerJson("OFB-BASE", "70000", "1014885", criteria)),
+            ),
+        )
 
         val target = EaCloudSaveConfig.resolve(context, listOf("70000", "71111"))
 
@@ -309,6 +351,26 @@ class EaCloudSaveConfigTest {
 
         assertEquals(target, EaCloudSaveConfig.resolve(context, listOf("70000")))
         assertEquals(3, server.requestCount)
+    }
+
+    @Test
+    fun `resolve drops the stale cache when the account no longer owns the game`() = runBlocking {
+        server.enqueue(MockResponse().setBody(ownedJson("OFB-BASE")))
+        server.enqueue(MockResponse().setBody(offersJson(offerJson("OFB-BASE", "70000", "1014885", criteria))))
+        assertNotNull(EaCloudSaveConfig.resolve(context, listOf("70000")))
+
+        EaCloudSaveConfig.cacheMaxAgeMs = 0
+        server.enqueue(MockResponse().setBody(ownedJson("OFB-OTHER")))
+        server.enqueue(MockResponse().setBody(offersJson(offerJson("OFB-OTHER", "99999", "5", criteria))))
+        assertNull(EaCloudSaveConfig.resolve(context, listOf("70000")))
+
+        server.enqueue(MockResponse().setResponseCode(500))
+        try {
+            EaCloudSaveConfig.resolve(context, listOf("70000"))
+            fail("expected the lookup failure to propagate without a cache entry")
+        } catch (e: IllegalStateException) {
+            assertEquals(5, server.requestCount)
+        }
     }
 
     @Test

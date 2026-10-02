@@ -985,6 +985,8 @@ fun PluviaMain(
                     setLoadingMessage = viewModel::setLoadingDialogMessage,
                     setMessageDialogState = setMessageDialogState,
                     onSuccess = viewModel::launchApp,
+                    isOffline = viewModel.isOffline.value,
+                    bootToContainer = state.bootToContainer,
                 )
                 msgDialogState = MessageDialogState(false)
             }
@@ -998,6 +1000,8 @@ fun PluviaMain(
                     setLoadingMessage = viewModel::setLoadingDialogMessage,
                     setMessageDialogState = setMessageDialogState,
                     onSuccess = viewModel::launchApp,
+                    isOffline = viewModel.isOffline.value,
+                    bootToContainer = state.bootToContainer,
                 )
                 msgDialogState = MessageDialogState(false)
             }

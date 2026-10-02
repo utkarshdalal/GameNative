@@ -127,7 +127,37 @@ class EaCloudSyncApiTest {
     @Test
     fun `acquire without manifest url throws`() {
         server.enqueue(MockResponse().setHeader("X-Origin-Sync-Lock", "l").setBody("<sync><host/><root/></sync>"))
+        server.enqueue(MockResponse().setResponseCode(200))
         failure { EaCloudSyncApi.acquire(context, "id", EaCloudLockMode.READ) }
+        server.takeRequest()
+        val release = server.takeRequest()
+        assertEquals("DELETE", release.method)
+        assertEquals("/lock/delete/1000123", release.path)
+        assertEquals("l", release.getHeader("X-Origin-Sync-Lock"))
+    }
+
+    @Test
+    fun `acquire with garbage body releases the acquired lock`() {
+        server.enqueue(MockResponse().setHeader("X-Origin-Sync-Lock", "held-lock").setBody("not <xml"))
+        server.enqueue(MockResponse().setResponseCode(200))
+
+        failure { EaCloudSyncApi.acquire(context, "id", EaCloudLockMode.WRITE) }
+
+        assertEquals("/lock/write/1000123/id", server.takeRequest().path)
+        val release = server.takeRequest()
+        assertEquals("DELETE", release.method)
+        assertEquals("/lock/delete/1000123", release.path)
+        assertEquals("test-token", release.getHeader("X-Origin-AuthToken"))
+        assertEquals("held-lock", release.getHeader("X-Origin-Sync-Lock"))
+    }
+
+    @Test
+    fun `acquire still throws the original error when the release fails`() {
+        server.enqueue(MockResponse().setHeader("X-Origin-Sync-Lock", "l").setBody("<sync/>"))
+        server.enqueue(MockResponse().setResponseCode(500))
+        val e = failure { EaCloudSyncApi.acquire(context, "id", EaCloudLockMode.READ) }
+        assertTrue(e.message!!.contains("no manifest URL"))
+        assertEquals(2, server.requestCount)
     }
 
     @Test
@@ -383,6 +413,27 @@ class EaCloudSyncApiTest {
             fail("expected EaCloudSyncException")
         } catch (_: EaCloudSyncException) {
         }
+    }
+
+    @Test
+    fun `parseManifest rejects a DOCTYPE with an external entity`() {
+        val secret = File.createTempFile("ea-xxe", ".txt").apply { writeText("SECRET") }
+        val xml = """
+            <?xml version="1.0"?>
+            <!DOCTYPE manifest [<!ENTITY xxe SYSTEM "${secret.toURI()}">]>
+            <manifest xmlns="http://origin.com/cloudsaves/manifest">
+              <file href="1-a" size="1"><localName>&xxe;</localName></file>
+            </manifest>
+        """.trimIndent()
+        try {
+            EaCloudSyncApi.parseManifest(xml)
+            fail("expected EaCloudSyncException")
+        } catch (e: EaCloudSyncException) {
+            assertFalse(e.message!!.contains("SECRET"))
+        } finally {
+            secret.delete()
+        }
+        assertEquals(2, EaCloudSyncApi.parseManifest(sampleManifest).size)
     }
 
     @Test

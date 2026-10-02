@@ -5,6 +5,7 @@ import java.io.File
 import java.io.StringReader
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
+import javax.xml.XMLConstants
 import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -57,6 +58,14 @@ object EaCloudSyncApi {
     private const val AUTH_HEADER = "X-Origin-AuthToken"
     private const val LOCK_HEADER = "X-Origin-Sync-Lock"
 
+    private val XML_FEATURES = listOf(
+        XMLConstants.FEATURE_SECURE_PROCESSING to true,
+        "http://apache.org/xml/features/disallow-doctype-decl" to true,
+        "http://xml.org/sax/features/external-general-entities" to false,
+        "http://xml.org/sax/features/external-parameter-entities" to false,
+        "http://apache.org/xml/features/nonvalidating/load-external-dtd" to false,
+    )
+
     @Volatile
     internal var baseUrl: String = BASE_URL
 
@@ -84,9 +93,13 @@ object EaCloudSyncApi {
             if (!resp.isSuccessful) throw EaCloudSyncException("EA cloud lock $path HTTP ${resp.code}${errorCode(text)}")
             val lock = resp.header(LOCK_HEADER)?.takeIf { it.isNotBlank() }
                 ?: throw EaCloudSyncException("EA cloud lock $path HTTP ${resp.code}: no lock header in response")
-            val manifestUrl = children(parseXml(text, "lock response")).firstOrNull { name(it) == "manifest" }?.textContent?.trim()
-            if (manifestUrl.isNullOrEmpty() || manifestUrl.toHttpUrlOrNullSafe() == null) {
-                throw EaCloudSyncException("EA cloud lock $path: no manifest URL in response")
+            val manifestUrl = try {
+                children(parseXml(text, "lock response")).firstOrNull { name(it) == "manifest" }?.textContent?.trim()
+                    ?.takeIf { it.isNotEmpty() && it.toHttpUrlOrNullSafe() != null }
+                    ?: throw EaCloudSyncException("EA cloud lock $path: no manifest URL in response")
+            } catch (e: EaCloudSyncException) {
+                release(context, EaCloudLock(mode, userId, cloudId, lock, ""))
+                throw e
             }
             Timber.i("EA cloud sync: acquired $path for $cloudId")
             EaCloudLock(mode, userId, cloudId, lock, manifestUrl)
@@ -304,11 +317,15 @@ object EaCloudSyncApi {
     }
 
     private fun parseXml(xml: String, what: String): Element {
+        if (xml.contains("<!DOCTYPE", ignoreCase = true) || xml.contains("<!ENTITY", ignoreCase = true)) {
+            throw EaCloudSyncException("EA cloud $what: DTD declarations are not allowed")
+        }
         try {
             val factory = DocumentBuilderFactory.newInstance()
-            runCatching { factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true) }
-            runCatching { factory.isExpandEntityReferences = false }
+            factory.isExpandEntityReferences = false
+            for ((feature, value) in XML_FEATURES) runCatching { factory.setFeature(feature, value) }
             val builder = factory.newDocumentBuilder()
+            builder.setEntityResolver { _, _ -> throw EaCloudSyncException("EA cloud $what: external entities are not allowed") }
             builder.setErrorHandler(null)
             return builder.parse(InputSource(StringReader(xml))).documentElement
                 ?: throw EaCloudSyncException("EA cloud $what: empty XML document")

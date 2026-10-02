@@ -389,6 +389,76 @@ class EaCloudSavesManagerTest {
     }
 
     @Test
+    fun `an all digit 32 character md5 is ambiguous by shape`() {
+        val digits = "12345678901234567890123456789012"
+        val hex = "0cc175b9c0f1b6a831c399e269772661"
+        assertNull(EaCloudSavesManager.guessFormat(listOf(digits)))
+        assertNull(EaCloudSavesManager.guessFormat(listOf(digits, digits)))
+        assertNull(EaCloudSavesManager.guessFormat(listOf(hex, digits)))
+        assertNull(EaCloudSavesManager.guessFormat(listOf(hex.uppercase(), digits)))
+        assertEquals(Md5Format.MAXIMA, EaCloudSavesManager.guessFormat(listOf("1234567890123456789012345678901")))
+        assertEquals(Md5Format.MAXIMA, EaCloudSavesManager.guessFormat(listOf("123456789012345678901234567890123")))
+        val digest = ByteArray(16) { 0x11 }
+        assertEquals(Md5Format.HEX, EaCloudSavesManager.recognise(EaCrypto.hex(digest), digest))
+    }
+
+    @Test
+    fun `cloud names that differ only by case are not pulled and block the push`() {
+        val one = entry("a.sav", "cloud one".toByteArray())
+        val two = entry("A.SAV", "cloud two".toByteArray())
+        manifests(cloud(one, two))
+        File(saveDir, "a.sav").writeText("local")
+
+        assertEquals(PullResult.Synced, pull(42, EaCloudPreference.REMOTE))
+
+        assertEquals("local", File(saveDir, "a.sav").readText())
+        assertEquals(listOf("a.sav"), saveDir.list()!!.toList())
+        assertTrue(backups().isEmpty())
+        coVerify(exactly = 0) { EaCloudSyncApi.download(any(), any()) }
+        assertFalse(EaCloudSavesManager.uploadAllowed(42))
+    }
+
+    @Test
+    fun `a synced save is kept when its cloud name becomes ambiguous`() {
+        manifests(cloud(entry("a.sav", "alpha".toByteArray())))
+        assertEquals(PullResult.Synced, pull(43))
+        assertEquals("alpha", File(saveDir, "a.sav").readText())
+        val one = entry("A.sav", "one".toByteArray())
+        val two = EaCloudFile(href("two".toByteArray()), 3, base64("two".toByteArray()), "%Documents%/Game/a.SAV")
+        remote[two.href] = "two".toByteArray()
+        manifests(cloud(one, two), cloud(one, two))
+
+        assertEquals(PullResult.Synced, pull(43))
+
+        assertEquals("alpha", File(saveDir, "a.sav").readText())
+        assertTrue(backups().isEmpty())
+        assertFalse(EaCloudSavesManager.uploadAllowed(43))
+        assertFalse(push(43))
+        assertTrue(events.isEmpty())
+    }
+
+    @Test
+    fun `push does not publish the manifest when a save is rewritten with the same size during upload`() {
+        val save = File(saveDir, "a.sav")
+        save.writeText("local")
+        seedFormat(Md5Format.BASE64)
+        manifests(noCloud, noCloud)
+        assertEquals(PullResult.Synced, pull(44))
+        coEvery { EaCloudSyncApi.uploadFile(any(), any()) } answers {
+            val modified = save.lastModified()
+            save.writeText("LOCAL")
+            save.setLastModified(modified)
+            events += "file"
+        }
+
+        assertFalse(push(44))
+
+        assertEquals(listOf("file"), events)
+        assertNull(uploadedManifest)
+        coVerify(exactly = 0) { EaCloudSyncApi.uploadBytes(any(), any()) }
+    }
+
+    @Test
     fun `local save uploads to an empty slot in the maxima format`() {
         File(saveDir, "a.sav").writeText("local")
         manifests(noCloud)
