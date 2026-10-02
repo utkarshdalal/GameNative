@@ -46,6 +46,7 @@ import app.gamenative.service.SteamService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.ui.PluviaMain
+import app.gamenative.ui.trackAiDebug
 import app.gamenative.ui.enums.Orientation
 import app.gamenative.ui.util.LocalSnackbarHostController
 import app.gamenative.ui.util.SnackbarHostController
@@ -324,6 +325,7 @@ class MainActivity : ComponentActivity() {
             if (token.isNotEmpty() && expectedNonce.isNotEmpty() && state == expectedNonce) {
                 PrefManager.discordOauthNonce = ""
                 PrefManager.discordRelayToken = token
+                trackAiDebug("ai_debug_discord_linked")
                 SnackbarManager.show(getString(R.string.debug_report_discord_linked))
             } else if (token.isNotEmpty()) {
                 Timber.w("[IntentLaunch]: Rejecting discord-linked token with mismatched state")

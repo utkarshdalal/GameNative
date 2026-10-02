@@ -310,6 +310,12 @@ private fun trackAiDebugOffer(event: String, appId: String, trigger: String) {
     }
 }
 
+fun trackAiDebug(event: String, properties: Map<String, Any> = emptyMap()) {
+    if (PrefManager.usageAnalyticsEnabled) {
+        PostHog.capture(event = event, properties = properties)
+    }
+}
+
 private fun trackGameLaunched(appId: String) {
     val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
     val gameName = ContainerUtils.resolveGameName(appId)
@@ -737,6 +743,10 @@ fun PluviaMain(
                             ?: ContainerUtils.resolveGameName(event.appId),
                         deviceName = header?.optString("deviceName") ?: "",
                         logSizeBytes = withContext(Dispatchers.IO) { DebugReportUtils.logFile(dir).length() },
+                    )
+                    trackAiDebug(
+                        "ai_debug_report_shown",
+                        mapOf("discord_linked" to PrefManager.discordRelayTokenPresent.value),
                     )
                 }
 
@@ -1438,6 +1448,10 @@ fun PluviaMain(
                 val nonce = ByteArray(16).also { SecureRandom().nextBytes(it) }
                     .joinToString("") { "%02x".format(it) }
                 PrefManager.discordOauthNonce = nonce
+                trackAiDebug(
+                    "ai_debug_discord_connect_clicked",
+                    mapOf("surface" to if (debugPaywallReason != null) "paywall" else "report"),
+                )
                 CustomTabsIntent.Builder()
                     .setShowTitle(true)
                     .build()
@@ -1490,6 +1504,7 @@ fun PluviaMain(
                     val logcatFile = DebugReportUtils.logcatFile(dir)
                     when (val result = DebugReportApi.submit(header, logFile, PrefManager.discordRelayToken, perfFile, logcatFile)) {
                         is DebugReportApi.SubmitResult.Success -> {
+                            trackAiDebug("ai_debug_report_result", mapOf("result" to "success"))
                             withContext(Dispatchers.IO) { DebugReportUtils.deleteReport(dir) }
                             debugReportState = debugReportState.copy(
                                 phase = DebugReportDialogState.PHASE_SUCCESS,
@@ -1499,10 +1514,13 @@ fun PluviaMain(
 
                         is DebugReportApi.SubmitResult.Forbidden -> {
                             debugReportState = debugReportState.copy(visible = false)
-                            debugPaywallReason = result.reason.ifEmpty { "no_subscription" }
+                            val reason = result.reason.ifEmpty { "no_subscription" }
+                            debugPaywallReason = reason
+                            trackAiDebug("ai_debug_report_result", mapOf("result" to "forbidden", "reason" to reason))
                         }
 
                         is DebugReportApi.SubmitResult.Failure -> {
+                            trackAiDebug("ai_debug_report_result", mapOf("result" to "failure", "reason" to result.message))
                             debugReportState = debugReportState.copy(phase = DebugReportDialogState.PHASE_ERROR)
                         }
                     }
@@ -1577,9 +1595,11 @@ fun PluviaMain(
                         reason = reason,
                         hasDiscordToken = discordTokenPresent,
                         onSubscribe = {
+                            trackAiDebug("ai_debug_paywall_subscribe_clicked", mapOf("store" to "discord", "reason" to reason))
                             uriHandler.openUri(Constants.Misc.DISCORD_SHOP_LINK)
                         },
                         onSubscribeKofi = {
+                            trackAiDebug("ai_debug_paywall_subscribe_clicked", mapOf("store" to "kofi", "reason" to reason))
                             uriHandler.openUri(Constants.Misc.KO_FI_LINK)
                         },
                         onConnectDiscord = openDiscordConnect,
