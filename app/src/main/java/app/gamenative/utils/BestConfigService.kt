@@ -9,7 +9,6 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import com.winlator.box86_64.Box86_64PresetManager
 import com.winlator.container.Container
-import com.winlator.contents.AdrenotoolsManager
 import com.winlator.contents.ContentProfile
 import com.winlator.core.DefaultVersion
 import com.winlator.core.GPUInformation
@@ -303,11 +302,7 @@ object BestConfigService {
      * Validates component versions in the filtered JSON.
      * Returns list of human-readable descriptions of missing/unavailable components.
      */
-    private suspend fun validateComponentVersions(
-        context: Context,
-        filteredJson: JSONObject,
-        includeImportKeys: Boolean = false,
-    ): List<String> {
+    private suspend fun validateComponentVersions(context: Context, filteredJson: JSONObject): List<String> {
         val missing = mutableListOf<String>()
         // Get resource arrays (same as ContainerConfigDialog)
         val dxvkVersions = context.resources.getStringArray(R.array.dxvk_version_entries).toList()
@@ -502,14 +497,6 @@ object BestConfigService {
             }
         }
 
-        if (includeImportKeys && containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
-            val topLevelDriver = filteredJson.optString("graphicsDriverVersion", "")
-            val entry = ManifestComponentHelper.findManifestEntryForVersion(topLevelDriver, manifestDrivers)
-            if (entry != null && entry.id != topLevelDriver) {
-                filteredJson.put("graphicsDriverVersion", entry.id)
-            }
-        }
-
         // Validate Box64 preset
         if (box64Preset.isNotEmpty()) {
             val preset = Box86_64PresetManager.getPreset("box64", context, box64Preset)
@@ -530,32 +517,6 @@ object BestConfigService {
         }
 
         return missing
-    }
-
-    suspend fun resolveGraphicsDriverId(context: Context, value: String, containerVariant: String): String? =
-        withContext(Dispatchers.IO) {
-            val trimmed = value.trim()
-            if (trimmed.isEmpty()) return@withContext null
-            AdrenotoolsManager(context).enumarateInstalledDrivers()
-                .firstOrNull { it.equals(trimmed, ignoreCase = true) }
-                ?.let { return@withContext it }
-            ManifestComponentHelper.bundledGraphicsDriverBase(
-                context.resources.getStringArray(R.array.wrapper_graphics_driver_version_entries).toList(),
-            ).firstOrNull { it.equals(trimmed, ignoreCase = true) }?.let { return@withContext it }
-            val manifestDrivers = ManifestComponentHelper.filterManifestByVariant(
-                ManifestRepository.loadManifest(context).items[ManifestContentTypes.DRIVER].orEmpty(),
-                containerVariant,
-            )
-            ManifestComponentHelper.findManifestEntryForVersion(trimmed, manifestDrivers)?.id
-        }
-
-    fun isGraphicsDriverPresent(context: Context, id: String): Boolean {
-        val launchId = if (DefaultVersion.WRAPPER.isNotEmpty() && id.contains(DefaultVersion.WRAPPER)) {
-            DefaultVersion.WRAPPER
-        } else {
-            id
-        }
-        return AdrenotoolsManager(context).isDriverAvailable(launchId)
     }
 
     suspend fun resolveMissingManifestInstallRequests(

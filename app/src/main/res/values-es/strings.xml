@@ -2842,7 +2842,6 @@
     </plurals>
     <string name="support_suggestion_title">Ajustes sugeridos</string>
     <string name="support_suggestion_not_applicable">Esta versión de la app no puede aplicar estos cambios. Puedes cambiarlos a mano en los ajustes del juego.</string>
-    <string name="support_suggestion_unknown_driver">Esta sugerencia indica un driver que no está instalado en este dispositivo.</string>
     <string name="support_suggestion_no_game">Instala el juego en este dispositivo para aplicar estos cambios.</string>
     <string name="support_suggestion_change">%1$s: %2$s → %3$s</string>
     <string name="support_suggestion_changed_since">Tu valor actual es %1$s. El informe tenía %2$s.</string>

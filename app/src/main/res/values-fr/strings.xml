@@ -2844,7 +2844,6 @@
     </plurals>
     <string name="support_suggestion_title">Paramètres suggérés</string>
     <string name="support_suggestion_not_applicable">Cette version de l\'application ne peut pas appliquer ces changements. Vous pouvez les modifier à la main dans les paramètres du jeu.</string>
-    <string name="support_suggestion_unknown_driver">Cette suggestion indique un pilote qui n\'est pas installé sur cet appareil.</string>
     <string name="support_suggestion_no_game">Installez le jeu sur cet appareil pour appliquer ces changements.</string>
     <string name="support_suggestion_change">%1$s : %2$s → %3$s</string>
     <string name="support_suggestion_changed_since">Votre valeur actuelle est %1$s. Le rapport indiquait %2$s.</string>

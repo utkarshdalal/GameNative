@@ -26,7 +26,6 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import org.json.JSONException;
 import org.json.JSONObject;
-import timber.log.Timber;
 
 public class AdrenotoolsManager {
 
@@ -109,13 +108,6 @@ public class AdrenotoolsManager {
                 driversList.add(f.getName());
         }
         return driversList;
-    }
-
-    public boolean isDriverAvailable(String adrenotoolsDriverId) {
-        if (adrenotoolsDriverId == null || adrenotoolsDriverId.isEmpty()) return false;
-        if (adrenotoolsDriverId.equalsIgnoreCase("System")) return true;
-        return isFromResources("graphics_driver/adrenotools-" + adrenotoolsDriverId + ".tzst")
-            || enumarateInstalledDrivers().contains(adrenotoolsDriverId);
     }
 
     private boolean isFromResources(String driver) {
@@ -210,8 +202,8 @@ public class AdrenotoolsManager {
             }
         } else if (adrenotoolsDriverId != null && !adrenotoolsDriverId.isEmpty()
                 && !adrenotoolsDriverId.equalsIgnoreCase("System")) {
-            Timber.tag("AdrenotoolsManager").w("Driver id '%s' is not installed, installed ids: %s - falling back to System driver",
-                adrenotoolsDriverId, enumarateInstalledDrivers());
+            Log.w("AdrenotoolsManager", "Driver not found: " + adrenotoolsDriverId
+                + " - Falling back to System driver");
         }
     }
 }

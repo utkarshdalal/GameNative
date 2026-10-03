@@ -2778,7 +2778,6 @@ https://gamenative.app
     </plurals>
     <string name="support_suggestion_title">Предлагаемые настройки</string>
     <string name="support_suggestion_not_applicable">Эта версия приложения не может применить эти изменения. Вы можете изменить их вручную в настройках игры.</string>
-    <string name="support_suggestion_unknown_driver">Это предложение указывает драйвер, который не установлен на этом устройстве.</string>
     <string name="support_suggestion_no_game">Установите игру на это устройство, чтобы применить эти изменения.</string>
     <string name="support_suggestion_change">%1$s: %2$s → %3$s</string>
     <string name="support_suggestion_changed_since">Ваше текущее значение — %1$s. В отчёте было %2$s.</string>

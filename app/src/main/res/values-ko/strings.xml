@@ -2836,7 +2836,6 @@
     </plurals>
     <string name="support_suggestion_title">추천 설정</string>
     <string name="support_suggestion_not_applicable">이 버전의 앱은 이 변경 사항을 적용할 수 없습니다. 게임 설정에서 직접 변경할 수 있습니다.</string>
-    <string name="support_suggestion_unknown_driver">이 제안은 이 기기에 설치되지 않은 드라이버를 지정합니다.</string>
     <string name="support_suggestion_no_game">이 변경 사항을 적용하려면 이 기기에 게임을 설치하세요.</string>
     <string name="support_suggestion_change">%1$s: %2$s → %3$s</string>
     <string name="support_suggestion_changed_since">현재 값은 %1$s입니다. 보고서에는 %2$s였습니다.</string>

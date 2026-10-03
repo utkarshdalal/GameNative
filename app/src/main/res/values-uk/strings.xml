@@ -2850,7 +2850,6 @@
     </plurals>
     <string name="support_suggestion_title">Запропоновані налаштування</string>
     <string name="support_suggestion_not_applicable">Ця версія застосунку не може застосувати ці зміни. Ви можете змінити їх вручну в налаштуваннях гри.</string>
-    <string name="support_suggestion_unknown_driver">Ця пропозиція вказує драйвер, який не встановлено на цьому пристрої.</string>
     <string name="support_suggestion_no_game">Установіть гру на цей пристрій, щоб застосувати ці зміни.</string>
     <string name="support_suggestion_change">%1$s: %2$s → %3$s</string>
     <string name="support_suggestion_changed_since">Ваше поточне значення — %1$s. У звіті було %2$s.</string>
