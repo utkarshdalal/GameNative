@@ -911,7 +911,7 @@
     <string name="support_share_file">Åbn fil</string>
     <string name="debug_report_no_discord_sign_in">Ingen Discord? Log ind med en GameNative-konto, og få svaret i appen.</string>
     <string name="debug_report_use_discord">Brug Discord i stedet</string>
-    <string name="debug_report_use_app">Brug appen i stedet</string>
+    <string name="debug_report_use_app">Brug chatten i appen i stedet</string>
     <string name="settings_emulation_orientations_title">Tilladte orienteringer</string>
     <string name="settings_emulation_orientations_subtitle">Vælg hvilke orienteringer der kan roteres til i spillet</string>
     <string name="settings_emulation_default_config_title">Redigér standardkonfiguration</string>

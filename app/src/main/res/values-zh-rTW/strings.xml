@@ -1081,7 +1081,7 @@
     <string name="support_share_file">開啟檔案</string>
     <string name="debug_report_no_discord_sign_in">沒有 Discord？使用 GameNative 帳戶登入，即可在應用程式內收到回答。</string>
     <string name="debug_report_use_discord">改用 Discord</string>
-    <string name="debug_report_use_app">改用應用程式</string>
+    <string name="debug_report_use_app">改用應用程式內聊天</string>
     <string name="settings_emulation_orientations_title">允許的螢幕方向</string>
     <string name="settings_emulation_orientations_subtitle">選擇遊戲中可使用的螢幕方向</string>
     <string name="settings_emulation_default_config_title">修改預設配置</string>

@@ -1105,7 +1105,7 @@
     <string name="support_share_file">Otwórz plik</string>
     <string name="debug_report_no_discord_sign_in">Nie masz Discorda? Zaloguj się na konto GameNative i otrzymaj odpowiedź w aplikacji.</string>
     <string name="debug_report_use_discord">Użyj Discorda</string>
-    <string name="debug_report_use_app">Użyj aplikacji</string>
+    <string name="debug_report_use_app">Użyj czatu w aplikacji</string>
     <string name="settings_emulation_orientations_title">Dozwolone orientacje</string>
     <string name="settings_emulation_orientations_subtitle">Wybierz, które orientacje ekranu mogą być używane w grze</string>
     <string name="settings_emulation_default_config_title">Zmodyfikuj domyślną konfigurację</string>

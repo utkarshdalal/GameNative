@@ -1096,7 +1096,7 @@
     <string name="support_share_file">Deschide fișierul</string>
     <string name="debug_report_no_discord_sign_in">Nu ai Discord? Conectează-te cu un cont GameNative și primește răspunsul în aplicație.</string>
     <string name="debug_report_use_discord">Folosește Discord</string>
-    <string name="debug_report_use_app">Folosește aplicația</string>
+    <string name="debug_report_use_app">Folosește chatul din aplicație</string>
 	<string name="settings_emulation_orientations_title">Orientări permise</string>
 	<string name="settings_emulation_orientations_subtitle">Alege orientările în care se poate roti în timpul jocului</string>
 	<string name="settings_emulation_default_config_title">Modifică configurația implicită</string>

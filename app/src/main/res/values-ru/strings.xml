@@ -1267,7 +1267,7 @@ https://gamenative.app
     <string name="support_share_file">Открыть файл</string>
     <string name="debug_report_no_discord_sign_in">Нет Discord? Войдите в аккаунт GameNative и получите ответ в приложении.</string>
     <string name="debug_report_use_discord">Использовать Discord</string>
-    <string name="debug_report_use_app">Использовать приложение</string>
+    <string name="debug_report_use_app">Использовать чат в приложении</string>
     <string name="settings_emulation_wine_proton_manager_subtitle">Импортировать пользовательские версии Wine/Proton (только Bionic)</string>
     <string name="settings_emulation_wine_proton_manager_title">Менеджер Wine/Proton</string>
     <string name="settings_info_libraries_subtitle">Узнайте, какие технологии делают GameNative возможным</string>
