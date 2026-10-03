@@ -2124,9 +2124,7 @@ fun PluviaMain(
                     SupportScreen(
                         onBack = { navController.navigateUp() },
                         onStartDebugRun = { appId ->
-                            debugPreRunAppId = appId
-                            debugPreRunOffline = viewModel.isOffline.value
-                            debugPreRunVisible = true
+                            startDebugRun(context, viewModel, appId, viewModel.isOffline.value, setMessageDialogState)
                         },
                     )
                 }

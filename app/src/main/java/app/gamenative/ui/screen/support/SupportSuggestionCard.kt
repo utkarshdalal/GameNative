@@ -222,6 +222,7 @@ private fun OutlinedFocusButton(
 private fun SuggestionConfirmDialog(
     kind: SuggestionConfirm,
     showWarning: Boolean,
+    run: DebugRunParams?,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -263,6 +264,22 @@ private fun SuggestionConfirmDialog(
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(bottom = 8.dp),
                     )
+                    run?.instruction?.let {
+                        Text(
+                            text = stringResource(R.string.debug_prerun_instruction, it),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(bottom = 8.dp),
+                        )
+                    }
+                    run?.minSeconds?.let { seconds ->
+                        val minutes = (seconds + 59) / 60
+                        Text(
+                            text = pluralStringResource(R.plurals.debug_prerun_min_minutes, minutes, minutes),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(bottom = 8.dp),
+                        )
+                    }
                 }
                 if (showWarning && kind != SuggestionConfirm.RESTORE) {
                     Text(
@@ -374,6 +391,7 @@ internal fun SuggestionCard(
         SuggestionConfirmDialog(
             kind = kind,
             showWarning = suggestion.changes.any { it.parent in SupportSuggestionApplier.WARNING_KEYS },
+            run = run,
             onConfirm = {
                 confirm = null
                 perform(kind)
