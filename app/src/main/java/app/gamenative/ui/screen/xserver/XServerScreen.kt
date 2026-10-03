@@ -276,6 +276,8 @@ private const val DEFAULT_FPS_LIMITER_MAX_HZ = 60
 private const val DEFAULT_FPS_LIMITER_TARGET_HZ = 60
 private const val FPS_LIMITER_ENABLED_EXTRA = "fpsLimiterEnabled"
 private const val FPS_LIMITER_TARGET_EXTRA = "fpsLimiterTarget"
+private const val INPUT_THROTTLING_ENABLED_EXTRA = "inputThrottlingEnabled"
+private const val INPUT_THROTTLING_RATE_EXTRA = "inputThrottlingRateHz"
 private const val PHYSICAL_CONTROLLER_DIALOG_NONE = 0
 private const val PHYSICAL_CONTROLLER_DIALOG_BINDINGS = 1
 private const val PHYSICAL_CONTROLLER_DIALOG_SETTINGS = 2
@@ -286,6 +288,14 @@ private fun initialFpsLimiterEnabled(container: Container): Boolean =
 private fun initialFpsLimiterTarget(container: Container): Int =
     parsePositiveFpsLimit(container.getExtra(FPS_LIMITER_TARGET_EXTRA))
         ?: DEFAULT_FPS_LIMITER_TARGET_HZ
+
+private fun initialInputThrottlingEnabled(container: Container): Boolean =
+    parseBooleanExtra(container.getExtra(INPUT_THROTTLING_ENABLED_EXTRA)) ?: false
+
+private fun initialInputThrottlingRateHz(container: Container): Int =
+    parsePositiveFpsLimit(container.getExtra(INPUT_THROTTLING_RATE_EXTRA))
+        ?.coerceIn(InputThrottling.MIN_RATE_HZ, InputThrottling.MAX_RATE_HZ)
+        ?: InputThrottling.DEFAULT_RATE_HZ
 
 private fun detectMaxRefreshRateHz(context: Context, attachedView: View?): Int {
     val display = attachedView?.display
@@ -669,6 +679,15 @@ fun XServerScreen(
     var detectedMaxRefreshRateHz by remember { mutableIntStateOf(detectMaxRefreshRateHz(context, null)) }
     var fpsLimiterEnabled by rememberSaveable(container.id) { mutableStateOf(initialFpsLimiterEnabled(container)) }
     var fpsLimiterTarget by rememberSaveable(container.id) { mutableIntStateOf(initialFpsLimiterTarget(container)) }
+    var inputThrottlingEnabled by rememberSaveable(container.id) { mutableStateOf(initialInputThrottlingEnabled(container)) }
+    var inputThrottlingRateHz by rememberSaveable(container.id) { mutableIntStateOf(initialInputThrottlingRateHz(container)) }
+    // Shared by physical controllers and on-screen controls.
+    val inputThrottling = remember(container.id) {
+        InputThrottling().apply {
+            enabled = inputThrottlingEnabled
+            setRateHz(inputThrottlingRateHz)
+        }
+    }
 
     val gyroOverlaySuppressed = showQuickMenu || keepPausedForEditor || showElementEditor ||
         physicalControllerDialogMode != PHYSICAL_CONTROLLER_DIALOG_NONE ||
@@ -818,6 +837,25 @@ fun XServerScreen(
         }
     }
 
+    fun persistInputThrottlingState() {
+        container.putExtra(INPUT_THROTTLING_ENABLED_EXTRA, inputThrottlingEnabled)
+        container.putExtra(INPUT_THROTTLING_RATE_EXTRA, inputThrottlingRateHz)
+        container.saveData()
+    }
+
+    fun applyInputThrottlingRateHz(hz: Int) {
+        val sanitized = hz.coerceIn(InputThrottling.MIN_RATE_HZ, InputThrottling.MAX_RATE_HZ)
+        inputThrottlingRateHz = sanitized
+        inputThrottling.setRateHz(sanitized)
+        persistInputThrottlingState()
+    }
+
+    fun applyInputThrottlingEnabled(enabled: Boolean) {
+        inputThrottlingEnabled = enabled
+        inputThrottling.enabled = enabled
+        persistInputThrottlingState()
+    }
+
     fun applyLsfgMultiplier(mult: Int) {
         lsfgMultiplier = LsfgQuickMenuHelper.sanitizeMultiplier(mult)
         applyLsfgSettings()
@@ -958,9 +996,11 @@ fun XServerScreen(
     fun clearOverlayPauseState() {
         PluviaApp.isOverlayPaused = false
         PluviaApp.inputControlsView?.setGyroGameplayActive(true)
+        physicalControllerHandler?.onOverlayResumed()
     }
 
     fun pauseForOverlayIfAllowed() {
+        physicalControllerHandler?.releaseAllActiveInput()
         if (neverSuspend) {
             Timber.d("Skipping overlay suspend due to suspend policy=never")
             return
@@ -1081,19 +1121,36 @@ fun XServerScreen(
         }
     }
 
+    // Called on every gamepad event while capture is off: keep one request in flight. Posted on a main
+    // thread Handler, not the view, so a detached view can't leave the flag set.
+    val pointerCaptureHandler = remember { Handler(Looper.getMainLooper()) }
+    val pointerCaptureRequestPending = remember { AtomicBoolean(false) }
+    val canCapturePointer: () -> Boolean = {
+        !showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode && !container.isTouchscreenMode
+    }
     val tryCapturePointer: () -> Boolean = {
-        if (!showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode &&
-            !container.isTouchscreenMode) {
-            PluviaApp.touchpadView?.postDelayed({
-                val view = PluviaApp.touchpadView
-                if (view != null) {
-                    view.requestFocus()
-                    view.requestPointerCapture()
-                }
-            }, 100)
+        if (canCapturePointer()) {
+            if (pointerCaptureRequestPending.compareAndSet(false, true)) {
+                pointerCaptureHandler.postDelayed({
+                    pointerCaptureRequestPending.set(false)
+                    // Checked again: a menu or editor may have opened meanwhile.
+                    val view = PluviaApp.touchpadView
+                    if (view != null && canCapturePointer()) {
+                        view.requestFocus()
+                        view.requestPointerCapture()
+                    }
+                }, 100)
+            }
             true
         } else {
             false
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            // A request still pending must not capture the touchpad of a later session.
+            pointerCaptureHandler.removeCallbacksAndMessages(null)
+            pointerCaptureRequestPending.set(false)
         }
     }
 
@@ -2581,10 +2638,15 @@ fun XServerScreen(
             // Store the loaded profile for auto-show logic later (declared outside apply block)
             var loadedProfile: ControlsProfile? = null
 
+            // Shared by the on-screen controls and physical controllers.
+            val sessionGamepadOutput = GamepadStateOutput(inputThrottling, GamepadStateOutput.winHandlerSender { xServerView.getxServer() })
+            val sessionMouseLook = MouseLookStepper(inputThrottling) { dx, dy -> xServerView.getxServer().injectPointerMoveDelta(dx, dy) }
+
             // Create InputControlsView and add to FrameLayout
             val icView = InputControlsView(context).apply {
                 // Configure InputControlsView
                 setXServer(xServerView.getxServer())
+                setInputPipeline(sessionGamepadOutput, sessionMouseLook)
                 setTouchpadView(PluviaApp.touchpadView)
                 setGyroSettings(GyroSettings.fromContainer(container))
                 setGyroOverlaySuppressed(gyroOverlaySuppressed)
@@ -2627,6 +2689,8 @@ fun XServerScreen(
                     PluviaApp.radialMenuCoordinator?.setProfile(targetProfile)
 
                     val radialMenuCoordinator = PluviaApp.radialMenuCoordinator
+                    // Release what a previous handler still holds.
+                    physicalControllerHandler?.cleanup()
                     physicalControllerHandler = PhysicalControllerHandler(
                         targetProfile,
                         xServerView.getxServer(),
@@ -2644,6 +2708,9 @@ fun XServerScreen(
                         gyroStickMixer = { binding, isDown, offset, sourceKeyCode ->
                             updatePhysicalStickAndGetMixedValue(binding, isDown, offset, sourceKeyCode)
                         },
+                        throttling = inputThrottling,
+                        gamepadOutput = sessionGamepadOutput,
+                        mouseLook = sessionMouseLook,
                     )
                     radialMenuCoordinator?.bindPhysicalControllerHandler(physicalControllerHandler)
 
@@ -2972,9 +3039,13 @@ fun XServerScreen(
                 fpsLimiterEnabled = fpsLimiterEnabled,
                 fpsLimiterTarget = fpsLimiterTarget,
                 fpsLimiterMax = detectedMaxRefreshRateHz,
+                inputThrottlingEnabled = inputThrottlingEnabled,
+                inputThrottlingRateHz = inputThrottlingRateHz,
                 onHudConfigChanged = ::applyPerformanceHudConfig,
                 onFpsLimiterEnabledChanged = ::applyFpsLimiterEnabled,
                 onFpsLimiterChanged = ::applyFpsLimiterTarget,
+                onInputThrottlingEnabledChanged = ::applyInputThrottlingEnabled,
+                onInputThrottlingRateHzChanged = ::applyInputThrottlingRateHz,
             ),
             hasPhysicalController = hasPhysicalController,
             isTouchscreenModeActive = isTouchscreenModeActive,

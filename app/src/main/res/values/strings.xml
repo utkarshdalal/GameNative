@@ -428,6 +428,9 @@
     <string name="performance_hud_fps_limiter_off">Unlimited</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
     <string name="performance_hud_fps_limiter_lsfg_base">Caps the base rate. On-screen rate is the cap times the LSFG multiplier.</string>
+    <string name="performance_hud_input_throttling">Input throttling</string>
+    <string name="performance_hud_input_throttling_description">Limits how often stick and trigger motion is sent to the game. Physical controller buttons aren\'t delayed.</string>
+    <string name="performance_hud_input_throttling_rate">Throttling rate</string>
     <string name="performance_hud_presets">Presets</string>
     <string name="performance_hud_presets_description">Quickly switch between common HUD layouts.</string>
     <string name="performance_hud_preset_fps_only">1</string>
