@@ -2890,4 +2890,5 @@
     <string name="support_wait_text">Raportul tău a fost trimis. Te anunțăm când răspunsul este gata.</string>
     <string name="support_wait_stop">Oprește</string>
     <string name="support_reply_ready_tap">Atinge pentru a-l citi.</string>
+    <string name="support_notify_me">Anunță-mă când sosește răspunsul</string>
 </resources>

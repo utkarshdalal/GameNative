@@ -2882,4 +2882,5 @@
     <string name="support_wait_text">Votre rapport a été envoyé. Nous vous préviendrons quand la réponse sera prête.</string>
     <string name="support_wait_stop">Arrêter</string>
     <string name="support_reply_ready_tap">Touchez pour la lire.</string>
+    <string name="support_notify_me">Me prévenir quand la réponse arrive</string>
 </resources>

@@ -2840,4 +2840,5 @@
     <string name="support_wait_text">レポートを送信しました。返信が届いたらお知らせします。</string>
     <string name="support_wait_stop">停止</string>
     <string name="support_reply_ready_tap">タップして読む。</string>
+    <string name="support_notify_me">返信が届いたら通知する</string>
 </resources>

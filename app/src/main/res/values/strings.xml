@@ -2898,4 +2898,5 @@
     <string name="support_wait_text">Your report was sent. We will tell you when the reply is ready.</string>
     <string name="support_wait_stop">Stop</string>
     <string name="support_reply_ready_tap">Tap to read it.</string>
+    <string name="support_notify_me">Notify me when the reply arrives</string>
 </resources>

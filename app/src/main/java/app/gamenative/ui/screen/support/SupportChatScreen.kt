@@ -165,6 +165,7 @@ internal fun ColumnScope.SupportChat(
     val items = chatItems(chat)
     val upgradeOpen by rememberUpdatedState(upgradeReason != null)
     val clock = rememberSupportClock(conversation?.progress?.active == true)
+    val notifyOffer = rememberNotifyOffer(conversation)
 
     LaunchedEffect(conversationId, lifecycleOwner) {
         if (conversationId.isEmpty()) return@LaunchedEffect
@@ -339,6 +340,7 @@ internal fun ColumnScope.SupportChat(
                                 clock = clock,
                                 retryEnabled = appId != null && uploadProgress == null && !chat.sending,
                                 onRetry = { viewModel.sendLogs(context) },
+                                onNotify = notifyOffer,
                             )
                             ChatItem.OutcomePrompt -> OutcomePromptCard(
                                 busy = chat.outcomeBusy,
@@ -681,6 +683,7 @@ private fun AnalysingCard(
     clock: Pair<Long, Long>,
     retryEnabled: Boolean,
     onRetry: () -> Unit,
+    onNotify: (() -> Unit)?,
 ) {
     val resources = LocalContext.current.resources
     if (progress?.stage == SupportApi.STAGE_FAILED) {
@@ -707,7 +710,7 @@ private fun AnalysingCard(
         else -> stringResource(if (first) R.string.support_analysing_first else R.string.support_analysing_followup)
     }
     val detail = progress?.detail?.takeIf { progress.stage == SupportApi.STAGE_ANALYSING }
-    FocusableCard(modifier = Modifier.fillMaxWidth()) {
+    FocusableCard(modifier = Modifier.fillMaxWidth(), isFocusable = onNotify == null) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
             Spacer(modifier = Modifier.size(12.dp))
@@ -723,6 +726,13 @@ private fun AnalysingCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = PluviaTheme.colors.textMuted,
                         modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+                if (onNotify != null) {
+                    FocusableButton(
+                        text = stringResource(R.string.support_notify_me),
+                        onClick = onNotify,
+                        modifier = Modifier.padding(top = 10.dp),
                     )
                 }
             }

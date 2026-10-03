@@ -2893,4 +2893,5 @@
     <string name="support_wait_text">你的报告已发送。回复就绪时我们会通知你。</string>
     <string name="support_wait_stop">停止</string>
     <string name="support_reply_ready_tap">点按即可阅读。</string>
+    <string name="support_notify_me">回复到达时通知我</string>
 </resources>

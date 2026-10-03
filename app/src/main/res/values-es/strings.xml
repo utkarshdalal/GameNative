@@ -2880,4 +2880,5 @@
     <string name="support_wait_text">Tu informe se envió. Te avisaremos cuando la respuesta esté lista.</string>
     <string name="support_wait_stop">Detener</string>
     <string name="support_reply_ready_tap">Toca para leerla.</string>
+    <string name="support_notify_me">Avisarme cuando llegue la respuesta</string>
 </resources>

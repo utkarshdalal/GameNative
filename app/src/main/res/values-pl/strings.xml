@@ -2894,4 +2894,5 @@
     <string name="support_wait_text">Raport został wysłany. Powiadomimy Cię, gdy odpowiedź będzie gotowa.</string>
     <string name="support_wait_stop">Zatrzymaj</string>
     <string name="support_reply_ready_tap">Dotknij, aby przeczytać.</string>
+    <string name="support_notify_me">Powiadom mnie, gdy przyjdzie odpowiedź</string>
 </resources>
