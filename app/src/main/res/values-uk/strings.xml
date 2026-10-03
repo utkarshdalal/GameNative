@@ -1053,7 +1053,9 @@
     <string name="support_notice_moved">Ця розмова тепер триває в підтримці Pro.</string>
     <string name="support_upgrade_title">Щоб продовжити, потрібен план</string>
     <string name="support_upgrade_reason_trial_used">Перший аналіз був безкоштовним. Щоб відповісти й продовжити розмову з AI про цю проблему, виберіть план.</string>
-    <string name="support_upgrade_reason_reply_cap">Ви досягли сьогоднішнього ліміту чесного використання. Він скинеться за кілька годин. У Pro немає ліміту.</string>
+    <string name="support_upgrade_reason_reply_cap">Ви досягли сьогоднішнього ліміту чесного використання. Він скинеться за кілька годин.</string>
+    <string name="support_upgrade_reply_cap_pro_hint">Звіти Pro проходять без черги.</string>
+    <string name="support_limit_title">Денний ліміт чесного використання вичерпано</string>
     <string name="support_upgrade_reason_required">Для відповідей AI потрібна підписка GameNative.</string>
     <string name="support_see_plans">Переглянути плани</string>
     <string name="support_plan_basic_title">$5/місяць · Basic</string>
@@ -2035,7 +2037,7 @@
     <string name="debug_paywall_tier5_title">$5/місяць · Basic</string>
     <string name="debug_paywall_tier5_body">Необмежені відповіді AI в межах ліміту чесного використання: 40 відповідей і 10 звітів на день. Ваші звіти чекають у звичайній черзі.</string>
     <string name="debug_paywall_tier10_title">$10/місяць · Pro</string>
-    <string name="debug_paywall_tier10_body">Необмежені відповіді AI без денного ліміту. Ваші звіти обробляються першими й не чекають за іншими звітами. AI проводить найретельніший аналіз кожного звіту.</string>
+    <string name="debug_paywall_tier10_body">Той самий ліміт чесного використання: 40 відповідей і 10 звітів на день. Ваші звіти обробляються першими й ніколи не чекають за іншими звітами.</string>
     <string name="debug_paywall_cancel_anytime">Скасувати можна будь-коли.</string>
     <string name="debug_paywall_costs_note">Підписки покривають витрати на сервіс AI, завдяки якому працює ця функція.</string>
     <string name="debug_paywall_subscribe">Підпишіться в Discord</string>

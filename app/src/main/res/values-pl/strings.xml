@@ -1067,7 +1067,9 @@
     <string name="support_notice_moved">Ta rozmowa jest teraz kontynuowana w ramach pomocy Pro.</string>
     <string name="support_upgrade_title">Aby kontynuować, potrzebny jest plan</string>
     <string name="support_upgrade_reason_trial_used">Pierwsza analiza była darmowa. Aby odpowiedzieć i dalej rozmawiać z AI o tym problemie, wybierz plan.</string>
-    <string name="support_upgrade_reason_reply_cap">Osiągnięto dzisiejszy limit uczciwego użytkowania. Zresetuje się za kilka godzin. Plan Pro nie ma limitu.</string>
+    <string name="support_upgrade_reason_reply_cap">Osiągnięto dzisiejszy limit uczciwego użytkowania. Zresetuje się za kilka godzin.</string>
+    <string name="support_upgrade_reply_cap_pro_hint">Raporty Pro omijają kolejkę.</string>
+    <string name="support_limit_title">Osiągnięto dzienny limit uczciwego użytkowania</string>
     <string name="support_upgrade_reason_required">Odpowiedzi AI wymagają subskrypcji GameNative.</string>
     <string name="support_see_plans">Zobacz plany</string>
     <string name="support_plan_basic_title">$5/miesiąc · Basic</string>
@@ -2039,7 +2041,7 @@
     <string name="debug_paywall_tier5_title">$5/miesiąc · Basic</string>
     <string name="debug_paywall_tier5_body">Nieograniczone odpowiedzi AI w ramach limitu uczciwego użytkowania: 40 odpowiedzi i 10 raportów dziennie. Twoje raporty czekają w zwykłej kolejce.</string>
     <string name="debug_paywall_tier10_title">$10/miesiąc · Pro</string>
-    <string name="debug_paywall_tier10_body">Nieograniczone odpowiedzi AI bez dziennego limitu. Twoje raporty są obsługiwane jako pierwsze i nie czekają za innymi raportami. AI analizuje każdy raport najdokładniej, jak potrafi.</string>
+    <string name="debug_paywall_tier10_body">Ten sam limit uczciwego użytkowania: 40 odpowiedzi i 10 raportów dziennie. Twoje raporty są obsługiwane jako pierwsze i nigdy nie czekają za innymi raportami.</string>
     <string name="debug_paywall_cancel_anytime">Anuluj w dowolnym momencie.</string>
     <string name="debug_paywall_costs_note">Subskrypcje pokrywają koszty usługi AI, dzięki której ta funkcja działa.</string>
     <string name="debug_paywall_subscribe">Subskrybuj przez Discord</string>

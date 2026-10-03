@@ -875,7 +875,9 @@
     <string name="support_notice_moved">Denne samtale fortsætter nu med Pro-support.</string>
     <string name="support_upgrade_title">Der kræves en plan for at fortsætte</string>
     <string name="support_upgrade_reason_trial_used">Din første analyse var gratis. Vælg en plan for at svare og fortsætte samtalen med AI om dette problem.</string>
-    <string name="support_upgrade_reason_reply_cap">Du har nået dagens fair-use-grænse. Den nulstilles om nogle timer. Pro har ingen grænse.</string>
+    <string name="support_upgrade_reason_reply_cap">Du har nået dagens fair-use-grænse. Den nulstilles om nogle timer.</string>
+    <string name="support_upgrade_reply_cap_pro_hint">Pro-rapporter springer køen over.</string>
+    <string name="support_limit_title">Dagens fair-use-grænse er nået</string>
     <string name="support_upgrade_reason_required">AI-svar kræver et GameNative-abonnement.</string>
     <string name="support_see_plans">Se planer</string>
     <string name="support_plan_basic_title">$5/måned · Basic</string>
@@ -1909,7 +1911,7 @@
     <string name="debug_paywall_tier5_title">$5/måned · Basic</string>
     <string name="debug_paywall_tier5_body">Ubegrænsede AI-svar inden for en fair-use-grænse på 40 svar og 10 rapporter om dagen. Dine rapporter venter i den normale kø.</string>
     <string name="debug_paywall_tier10_title">$10/måned · Pro</string>
-    <string name="debug_paywall_tier10_body">Ubegrænsede AI-svar uden daglig grænse. Dine rapporter kommer først og venter ikke bag andre rapporter. Vores AI laver sin mest grundige analyse af hver rapport.</string>
+    <string name="debug_paywall_tier10_body">Den samme fair-use-grænse på 40 svar og 10 rapporter om dagen. Dine rapporter kommer først og venter aldrig bag andre rapporter.</string>
     <string name="debug_paywall_cancel_anytime">Opsig når som helst.</string>
     <string name="debug_paywall_costs_note">Abonnementer dækker AI-tjenesteomkostningerne, der gør denne funktion mulig.</string>
     <string name="debug_paywall_subscribe">Abonnér på Discord</string>

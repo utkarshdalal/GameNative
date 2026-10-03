@@ -1050,7 +1050,9 @@
     <string name="support_notice_moved">Questa conversazione ora continua con l\'assistenza Pro.</string>
     <string name="support_upgrade_title">Serve un piano per continuare</string>
     <string name="support_upgrade_reason_trial_used">La tua prima analisi era gratuita. Per rispondere e continuare a parlare con l\'AI di questo problema, scegli un piano.</string>
-    <string name="support_upgrade_reason_reply_cap">Hai raggiunto il limite di uso corretto di oggi. Si azzera tra qualche ora. Pro non ha limiti.</string>
+    <string name="support_upgrade_reason_reply_cap">Hai raggiunto il limite di uso corretto di oggi. Si azzera tra qualche ora.</string>
+    <string name="support_upgrade_reply_cap_pro_hint">I report Pro saltano la coda.</string>
+    <string name="support_limit_title">Limite giornaliero di uso corretto raggiunto</string>
     <string name="support_upgrade_reason_required">Le risposte dell\'AI richiedono un abbonamento GameNative.</string>
     <string name="support_see_plans">Vedi i piani</string>
     <string name="support_plan_basic_title">$5/mese · Basic</string>
@@ -2030,7 +2032,7 @@
     <string name="debug_paywall_tier5_title">$5/mese · Basic</string>
     <string name="debug_paywall_tier5_body">Risposte dell\'AI illimitate entro un limite di uso corretto di 40 risposte e 10 report al giorno. I tuoi report attendono nella coda normale.</string>
     <string name="debug_paywall_tier10_title">$10/mese · Pro</string>
-    <string name="debug_paywall_tier10_body">Risposte dell\'AI illimitate, senza limite giornaliero. I tuoi report passano per primi e non aspettano dietro altri report. L\'AI fa la sua analisi più approfondita di ogni report.</string>
+    <string name="debug_paywall_tier10_body">Lo stesso limite di uso corretto di 40 risposte e 10 report al giorno. I tuoi report passano per primi e non aspettano mai dietro altri report.</string>
     <string name="debug_paywall_cancel_anytime">Annulla quando vuoi.</string>
     <string name="debug_paywall_costs_note">Gli abbonamenti coprono i costi del servizio AI che rende possibile questa funzione.</string>
     <string name="debug_paywall_subscribe">Abbonati su Discord</string>

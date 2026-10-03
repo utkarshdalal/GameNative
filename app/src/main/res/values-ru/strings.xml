@@ -1229,7 +1229,9 @@ https://gamenative.app
     <string name="support_notice_moved">Этот разговор теперь продолжается в поддержке Pro.</string>
     <string name="support_upgrade_title">Чтобы продолжить, нужен план</string>
     <string name="support_upgrade_reason_trial_used">Первый анализ был бесплатным. Чтобы ответить и продолжить разговор с AI об этой проблеме, выберите план.</string>
-    <string name="support_upgrade_reason_reply_cap">Вы достигли сегодняшнего лимита честного использования. Он сбросится через несколько часов. В Pro нет лимита.</string>
+    <string name="support_upgrade_reason_reply_cap">Вы достигли сегодняшнего лимита честного использования. Он сбросится через несколько часов.</string>
+    <string name="support_upgrade_reply_cap_pro_hint">Отчёты Pro проходят без очереди.</string>
+    <string name="support_limit_title">Дневной лимит честного использования исчерпан</string>
     <string name="support_upgrade_reason_required">Для ответов AI нужна подписка GameNative.</string>
     <string name="support_see_plans">Посмотреть планы</string>
     <string name="support_plan_basic_title">$5/месяц · Basic</string>
@@ -1963,7 +1965,7 @@ https://gamenative.app
     <string name="debug_paywall_tier5_title">$5/месяц · Basic</string>
     <string name="debug_paywall_tier5_body">Неограниченные ответы AI в пределах лимита честного использования: 40 ответов и 10 отчётов в день. Ваши отчёты ждут в обычной очереди.</string>
     <string name="debug_paywall_tier10_title">$10/месяц · Pro</string>
-    <string name="debug_paywall_tier10_body">Неограниченные ответы AI без дневного лимита. Ваши отчёты обрабатываются первыми и не ждут за другими отчётами. AI проводит самый тщательный анализ каждого отчёта.</string>
+    <string name="debug_paywall_tier10_body">Тот же лимит честного использования: 40 ответов и 10 отчётов в день. Ваши отчёты обрабатываются первыми и никогда не ждут за другими отчётами.</string>
     <string name="debug_paywall_cancel_anytime">Отмена в любой момент.</string>
     <string name="debug_paywall_costs_note">Подписки покрывают расходы на сервис AI, благодаря которому работает эта функция.</string>
     <string name="debug_paywall_subscribe">Подпишитесь в Discord</string>

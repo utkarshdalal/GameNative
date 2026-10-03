@@ -1231,7 +1231,9 @@
     <string name="support_notice_moved">This conversation now continues with Pro support.</string>
     <string name="support_upgrade_title">A plan is needed to continue</string>
     <string name="support_upgrade_reason_trial_used">Your first analysis was free. To reply and keep talking with the AI about this problem, choose a plan.</string>
-    <string name="support_upgrade_reason_reply_cap">You have reached today\'s fair-use limit. It resets in a few hours. Pro has no limit.</string>
+    <string name="support_upgrade_reason_reply_cap">You have reached today\'s fair-use limit. It resets in a few hours.</string>
+    <string name="support_upgrade_reply_cap_pro_hint">Pro reports skip the queue.</string>
+    <string name="support_limit_title">Daily fair-use limit reached</string>
     <string name="support_upgrade_reason_required">AI replies need a GameNative subscription.</string>
     <string name="support_see_plans">See plans</string>
     <string name="support_plan_basic_title">$5/month · Basic</string>
@@ -1991,7 +1993,7 @@
     <string name="debug_paywall_tier5_title">$5/month · Basic</string>
     <string name="debug_paywall_tier5_body">You get unlimited AI replies within a fair-use limit of 40 replies and 10 reports per day. Your reports wait in the normal queue.</string>
     <string name="debug_paywall_tier10_title">$10/month · Pro</string>
-    <string name="debug_paywall_tier10_body">You get unlimited AI replies with no daily limit. Your reports go first and do not wait behind other reports. The AI does its most thorough analysis of each report.</string>
+    <string name="debug_paywall_tier10_body">You get the same fair-use limit of 40 replies and 10 reports per day. Your reports go first and never wait behind other reports.</string>
     <string name="debug_paywall_cancel_anytime">Cancel anytime.</string>
     <string name="debug_paywall_costs_note">Subscriptions cover the AI service costs that make this feature possible.</string>
     <string name="debug_paywall_subscribe">Subscribe on Discord</string>

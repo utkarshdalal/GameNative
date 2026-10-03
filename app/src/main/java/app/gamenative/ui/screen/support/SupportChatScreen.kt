@@ -692,7 +692,9 @@ private fun NoticeCard(
                     )
                     Spacer(modifier = Modifier.size(8.dp))
                     Text(
-                        text = stringResource(R.string.support_upgrade_title),
+                        text = stringResource(
+                            if (upgradeOffered(notice.reason)) R.string.support_upgrade_title else R.string.support_limit_title,
+                        ),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -702,10 +704,12 @@ private fun NoticeCard(
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(top = 6.dp, bottom = 10.dp),
                 )
-                FocusableButton(
-                    text = stringResource(R.string.support_see_plans),
-                    onClick = { onUpgrade(notice.reason) },
-                )
+                if (upgradeOffered(notice.reason)) {
+                    FocusableButton(
+                        text = stringResource(R.string.support_see_plans),
+                        onClick = { onUpgrade(notice.reason) },
+                    )
+                }
             }
         }
         is SupportApi.Notice.Moved -> FocusableCard(modifier = Modifier.fillMaxWidth()) {
@@ -1023,11 +1027,13 @@ private fun LockedComposer(reason: String?, onUpgrade: () -> Unit) {
             color = PluviaTheme.colors.textMuted,
             modifier = Modifier.padding(bottom = 8.dp),
         )
-        FocusableButton(
-            text = stringResource(R.string.support_see_plans),
-            onClick = onUpgrade,
-            leading = { Icon(Icons.Filled.WorkspacePremium, contentDescription = null, modifier = Modifier.size(18.dp)) },
-        )
+        if (upgradeOffered(reason)) {
+            FocusableButton(
+                text = stringResource(R.string.support_see_plans),
+                onClick = onUpgrade,
+                leading = { Icon(Icons.Filled.WorkspacePremium, contentDescription = null, modifier = Modifier.size(18.dp)) },
+            )
+        }
     }
 }
 

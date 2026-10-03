@@ -93,6 +93,10 @@ fun SupportUpgradeDialog(
     onCheckoutReturn: () -> Unit = {},
 ) {
     if (!visible) return
+    if (!upgradeOffered(reason)) {
+        LaunchedEffect(Unit) { onDismiss() }
+        return
+    }
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -273,14 +277,26 @@ private fun CheckoutQr(url: String, size: Dp) {
 }
 
 @Composable
-internal fun upgradeReasonText(reason: String?): String =
-    stringResource(
+internal fun upgradeOffered(reason: String?): Boolean {
+    val account by AccountApi.account
+    return reason != SupportApi.REASON_REPLY_CAP || account?.tier == "basic"
+}
+
+@Composable
+internal fun upgradeReasonText(reason: String?): String {
+    val text = stringResource(
         when (reason) {
             SupportApi.REASON_TRIAL_USED -> R.string.support_upgrade_reason_trial_used
             SupportApi.REASON_REPLY_CAP -> R.string.support_upgrade_reason_reply_cap
             else -> R.string.support_upgrade_reason_required
         },
     )
+    return if (reason == SupportApi.REASON_REPLY_CAP && upgradeOffered(reason)) {
+        text + " " + stringResource(R.string.support_upgrade_reply_cap_pro_hint)
+    } else {
+        text
+    }
+}
 
 @Composable
 private fun DialogButton(

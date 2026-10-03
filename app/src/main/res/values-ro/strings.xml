@@ -1059,7 +1059,9 @@
     <string name="support_notice_moved">Această conversație continuă acum cu asistența Pro.</string>
     <string name="support_upgrade_title">Este nevoie de un plan pentru a continua</string>
     <string name="support_upgrade_reason_trial_used">Prima analiză a fost gratuită. Pentru a răspunde și a continua discuția cu AI-ul despre această problemă, alege un plan.</string>
-    <string name="support_upgrade_reason_reply_cap">Ai atins limita de utilizare corectă pentru azi. Se resetează în câteva ore. Pro nu are limită.</string>
+    <string name="support_upgrade_reason_reply_cap">Ai atins limita de utilizare corectă pentru azi. Se resetează în câteva ore.</string>
+    <string name="support_upgrade_reply_cap_pro_hint">Rapoartele Pro sar peste coadă.</string>
+    <string name="support_limit_title">Limita zilnică de utilizare corectă a fost atinsă</string>
     <string name="support_upgrade_reason_required">Răspunsurile AI necesită un abonament GameNative.</string>
     <string name="support_see_plans">Vezi planurile</string>
     <string name="support_plan_basic_title">$5/lună · Basic</string>
@@ -2030,7 +2032,7 @@
     <string name="debug_paywall_tier5_title">$5/lună · Basic</string>
     <string name="debug_paywall_tier5_body">Răspunsuri AI nelimitate, în limita de utilizare corectă de 40 de răspunsuri și 10 rapoarte pe zi. Rapoartele tale așteaptă în coada normală.</string>
     <string name="debug_paywall_tier10_title">$10/lună · Pro</string>
-    <string name="debug_paywall_tier10_body">Răspunsuri AI nelimitate, fără limită zilnică. Rapoartele tale sunt procesate primele și nu așteaptă după alte rapoarte. AI-ul face cea mai amănunțită analiză a fiecărui raport.</string>
+    <string name="debug_paywall_tier10_body">Aceeași limită de utilizare corectă de 40 de răspunsuri și 10 rapoarte pe zi. Rapoartele tale sunt procesate primele și nu așteaptă niciodată după alte rapoarte.</string>
     <string name="debug_paywall_cancel_anytime">Anulează oricând.</string>
     <string name="debug_paywall_costs_note">Abonamentele acoperă costurile serviciului AI care face posibilă această funcție.</string>
     <string name="debug_paywall_subscribe">Abonează-te pe Discord</string>

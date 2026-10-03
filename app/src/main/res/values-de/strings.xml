@@ -1025,7 +1025,9 @@
     <string name="support_notice_moved">Diese Unterhaltung wird jetzt mit dem Pro-Support fortgesetzt.</string>
     <string name="support_upgrade_title">Zum Fortfahren ist ein Plan nötig</string>
     <string name="support_upgrade_reason_trial_used">Deine erste Analyse war kostenlos. Wähle einen Plan, um zu antworten und weiter mit der AI über dieses Problem zu sprechen.</string>
-    <string name="support_upgrade_reason_reply_cap">Du hast die heutige Fair-Use-Grenze erreicht. Sie wird in einigen Stunden zurückgesetzt. Pro hat kein Limit.</string>
+    <string name="support_upgrade_reason_reply_cap">Du hast die heutige Fair-Use-Grenze erreicht. Sie wird in einigen Stunden zurückgesetzt.</string>
+    <string name="support_upgrade_reply_cap_pro_hint">Pro-Berichte überspringen die Warteschlange.</string>
+    <string name="support_limit_title">Tägliche Fair-Use-Grenze erreicht</string>
     <string name="support_upgrade_reason_required">AI-Antworten erfordern ein GameNative-Abo.</string>
     <string name="support_see_plans">Pläne ansehen</string>
     <string name="support_plan_basic_title">$5/Monat · Basic</string>
@@ -1979,7 +1981,7 @@
     <string name="debug_paywall_tier5_title">$5/Monat · Basic</string>
     <string name="debug_paywall_tier5_body">Unbegrenzte AI-Antworten im Rahmen einer Fair-Use-Grenze von 40 Antworten und 10 Berichten pro Tag. Deine Berichte warten in der normalen Warteschlange.</string>
     <string name="debug_paywall_tier10_title">$10/Monat · Pro</string>
-    <string name="debug_paywall_tier10_body">Unbegrenzte AI-Antworten ohne Tageslimit. Deine Berichte kommen zuerst dran und warten nicht hinter anderen Berichten. Die AI analysiert jeden Bericht so gründlich wie möglich.</string>
+    <string name="debug_paywall_tier10_body">Dieselbe Fair-Use-Grenze von 40 Antworten und 10 Berichten pro Tag. Deine Berichte kommen zuerst dran und warten nie hinter anderen Berichten.</string>
     <string name="debug_paywall_cancel_anytime">Jederzeit kündbar.</string>
     <string name="debug_paywall_costs_note">Abos decken die AI-Servicekosten, die diese Funktion möglich machen.</string>
     <string name="debug_paywall_subscribe">Auf Discord abonnieren</string>
