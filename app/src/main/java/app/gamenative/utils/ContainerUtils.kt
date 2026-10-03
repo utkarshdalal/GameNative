@@ -435,16 +435,7 @@ object ContainerUtils {
         "steamType" to ConfigValueType.STRING,
     )
 
-    val IMPORT_ONLY_CONFIG_KEYS: Map<String, ConfigValueType> = linkedMapOf(
-        "rendererPresentMode" to ConfigValueType.STRING,
-        "displayRendererMode" to ConfigValueType.STRING,
-        "sdlControllerAPI" to ConfigValueType.BOOLEAN,
-        "useSteamInput" to ConfigValueType.BOOLEAN,
-        "forceDlc" to ConfigValueType.BOOLEAN,
-        "inputType" to ConfigValueType.INT,
-    )
-
-    val APPLICABLE_CONFIG_KEYS: Map<String, ConfigValueType> = BEST_CONFIG_KEYS + IMPORT_ONLY_CONFIG_KEYS
+    val APPLICABLE_CONFIG_KEYS: Map<String, ConfigValueType> = BEST_CONFIG_KEYS
 
     fun configValueOf(data: ContainerData, key: String): String? = when (key) {
         "executablePath" -> data.executablePath
@@ -480,17 +471,6 @@ object ContainerUtils {
         "launchBionicSteam" -> data.launchBionicSteam.toString()
         "launchRealSteam" -> data.launchRealSteam.toString()
         "steamType" -> data.steamType
-        "rendererPresentMode" -> data.rendererPresentMode
-        "displayRendererMode" -> data.displayRenderer
-        "sdlControllerAPI" -> data.sdlControllerAPI.toString()
-        "useSteamInput" -> data.useSteamInput.toString()
-        "forceDlc" -> data.forceDlc.toString()
-        "inputType" -> when {
-            data.enableXInput && data.enableDInput -> PreferredInputApi.BOTH
-            data.enableXInput -> PreferredInputApi.XINPUT
-            data.enableDInput -> PreferredInputApi.DINPUT
-            else -> PreferredInputApi.AUTO
-        }.ordinal.toString()
         else -> null
     }
 
@@ -591,19 +571,6 @@ object ContainerUtils {
                 "launchBionicSteam" -> value?.let { updatedData.copy(launchBionicSteam = it as? Boolean ?: updatedData.launchBionicSteam) } ?: updatedData
                 "launchRealSteam" -> value?.let { updatedData.copy(launchRealSteam = it as? Boolean ?: updatedData.launchRealSteam) } ?: updatedData
                 "steamType" -> value?.let { updatedData.copy(steamType = (it as? String)?.takeIf { s -> s.isNotBlank() } ?: updatedData.steamType) } ?: updatedData
-                "rendererPresentMode" -> configString(value)?.let { updatedData.copy(rendererPresentMode = it) } ?: updatedData
-                "displayRendererMode" -> configString(value)?.let { updatedData.copy(displayRenderer = it) } ?: updatedData
-                "sdlControllerAPI" -> configBoolean(value)?.let { updatedData.copy(sdlControllerAPI = it) } ?: updatedData
-                "useSteamInput" -> configBoolean(value)?.let { updatedData.copy(useSteamInput = it) } ?: updatedData
-                "forceDlc" -> configBoolean(value)?.let { updatedData.copy(forceDlc = it) } ?: updatedData
-                "inputType" -> configInt(value)?.let { ordinal ->
-                    PreferredInputApi.values().getOrNull(ordinal)?.let { api ->
-                        updatedData.copy(
-                            enableXInput = api == PreferredInputApi.XINPUT || api == PreferredInputApi.BOTH,
-                            enableDInput = api == PreferredInputApi.DINPUT || api == PreferredInputApi.BOTH,
-                        )
-                    }
-                } ?: updatedData
                 else -> updatedData
             }
         }

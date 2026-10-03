@@ -99,7 +99,6 @@ object ContainerConfigTransfer {
                 configJson = configJson,
                 matchType = matchType,
                 applyKnownConfig = true,
-                includeImportKeys = true,
             )
             val bestConfigMap = parsedResult.config
 
@@ -111,7 +110,7 @@ object ContainerConfigTransfer {
                         CoroutineScope(Dispatchers.IO).launch {
                             try {
                                 val forced = BestConfigService.parseConfigToContainerData(
-                                    context, configJson, matchType, true, forceApply = true, includeImportKeys = true,
+                                    context, configJson, matchType, true, forceApply = true,
                                 )
                                 if (forced.isNullOrEmpty()) {
                                     SnackbarManager.show(context.getString(R.string.best_config_known_config_invalid))

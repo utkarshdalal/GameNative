@@ -834,7 +834,6 @@ object BestConfigService {
         forceApply: Boolean = false,
         matchedGpu: String = "",
         preserveConfigValues: Boolean = false,
-        includeImportKeys: Boolean = false,
     ): Map<String, Any?>? = parseConfigResult(
         context = context,
         configJson = configJson,
@@ -844,7 +843,6 @@ object BestConfigService {
         forceApply = forceApply,
         matchedGpu = matchedGpu,
         preserveConfigValues = preserveConfigValues,
-        includeImportKeys = includeImportKeys,
     ).config
 
     suspend fun parseConfigResult(
@@ -856,7 +854,6 @@ object BestConfigService {
         forceApply: Boolean = false,
         matchedGpu: String = "",
         preserveConfigValues: Boolean = false,
-        includeImportKeys: Boolean = false,
     ): ParsedConfigResult {
         try {
             val originalJson = JSONObject(configJson.toString())
@@ -939,7 +936,7 @@ object BestConfigService {
                 )
 
                 // Step 2: check for unavailable component versions
-                val missingComponents = validateComponentVersions(context, filteredJson, includeImportKeys)
+                val missingComponents = validateComponentVersions(context, filteredJson)
                 if (missingComponents.isNotEmpty()) {
                     if (!forceApply) {
                         Timber.tag("BestConfigService").w("Config rejected: missing components: ${missingComponents.joinToString(", ")}")
@@ -1058,19 +1055,6 @@ object BestConfigService {
                 }
                 if (filteredJson.has("videoMemorySize") && !filteredJson.isNull("videoMemorySize")) {
                     resultMap["videoMemorySize"] = filteredJson.optString("videoMemorySize", PrefManager.videoMemorySize)
-                }
-                if (includeImportKeys) {
-                    val extraData = filteredJson.optJSONObject("extraData")
-                    ContainerUtils.IMPORT_ONLY_CONFIG_KEYS.forEach { (key, type) ->
-                        val source = when {
-                            filteredJson.has(key) && !filteredJson.isNull(key) -> filteredJson
-                            extraData != null && extraData.has(key) && !extraData.isNull(key) -> extraData
-                            else -> return@forEach
-                        }
-                        ContainerUtils.coerceConfigValue(type, source.opt(key))
-                            ?.takeUnless { it is String && it.isEmpty() }
-                            ?.let { resultMap[key] = it }
-                    }
                 }
 
                 return ParsedConfigResult(resultMap, missingComponents)
