@@ -7,6 +7,8 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Context.NOTIFICATION_SERVICE
 import android.content.Intent
+import android.media.AudioAttributes
+import android.media.RingtoneManager
 import androidx.core.app.NotificationCompat
 import androidx.core.net.toUri
 import app.gamenative.MainActivity
@@ -39,7 +41,8 @@ class NotificationHelper @Inject constructor(@ApplicationContext appContext: Con
         const val ACTION_SUPPORT_STOP = "app.gamenative.SUPPORT_WAIT_STOP"
 
         const val CHANNEL_SUPPORT_WAIT = "support_wait"
-        const val CHANNEL_SUPPORT_REPLIES = "support_replies"
+        const val CHANNEL_SUPPORT_REPLIES = "support_replies_v2"
+        private const val CHANNEL_SUPPORT_REPLIES_LEGACY = "support_replies"
         const val NOTIFICATION_ID_SUPPORT_WAIT = 61
         const val NOTIFICATION_ID_SUPPORT_REPLY = 62
 
@@ -59,10 +62,22 @@ class NotificationHelper @Inject constructor(@ApplicationContext appContext: Con
             val replies = NotificationChannel(
                 CHANNEL_SUPPORT_REPLIES,
                 localized.getString(R.string.support_replies_channel_name),
-                NotificationManager.IMPORTANCE_DEFAULT,
+                NotificationManager.IMPORTANCE_HIGH,
             ).apply {
                 description = localized.getString(R.string.support_replies_channel_description)
+                setSound(
+                    RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build(),
+                )
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 250, 150, 250)
+                enableLights(true)
+                setShowBadge(true)
             }
+            manager.deleteNotificationChannel(CHANNEL_SUPPORT_REPLIES_LEGACY)
             manager.createNotificationChannels(listOf(wait, replies))
         }
     }
