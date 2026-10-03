@@ -2773,7 +2773,6 @@
     <string name="community_compatibility_no_reports">未找到适用于您硬件的共享配置</string>
     <string name="community_compatibility_configs_unavailable">部分兼容性数据无法加载，正在显示可用信息。</string>
     <string name="community_compatibility_retry">重试</string>
-    <string name="community_compatibility_refresh">刷新兼容性</string>
     <string name="community_compatibility_fps_median">报告的帧率中位数：%1$d FPS</string>
     <string name="community_compatibility_fps_device">%1$s（您的设备型号）。</string>
     <string name="community_compatibility_fps_soc">%1$s（相同芯片组）。</string>

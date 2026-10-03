@@ -2764,7 +2764,6 @@
     <string name="community_compatibility_no_reports">找不到適用於您硬體的共享設定</string>
     <string name="community_compatibility_configs_unavailable">部分相容性資料無法載入，正在顯示可用資訊。</string>
     <string name="community_compatibility_retry">重試</string>
-    <string name="community_compatibility_refresh">重新整理相容性</string>
     <string name="community_compatibility_fps_median">回報的影格率中位數：%1$d FPS</string>
     <string name="community_compatibility_fps_device">%1$s（您的裝置型號）。</string>
     <string name="community_compatibility_fps_soc">%1$s（相同晶片組）。</string>

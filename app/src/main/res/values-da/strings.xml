@@ -2629,7 +2629,6 @@
     <string name="community_compatibility_no_reports">Ingen delte konfigurationer fundet til din hardware</string>
     <string name="community_compatibility_configs_unavailable">Nogle kompatibilitetsdata kunne ikke indlæses. Viser tilgængelige data.</string>
     <string name="community_compatibility_retry">Prøv igen</string>
-    <string name="community_compatibility_refresh">Opdater kompatibilitet</string>
     <string name="community_compatibility_fps_median">Rapporteret median: %1$d FPS</string>
     <string name="community_compatibility_fps_device">%1$s på din enhedsmodel.</string>
     <string name="community_compatibility_fps_soc">%1$s med samme chipsæt.</string>

@@ -2765,7 +2765,6 @@
     <string name="community_compatibility_no_reports">Nie znaleziono udostępnionych konfiguracji dla Twojego sprzętu</string>
     <string name="community_compatibility_configs_unavailable">Nie udało się wczytać części danych o zgodności. Wyświetlane są dostępne dane.</string>
     <string name="community_compatibility_retry">Ponów</string>
-    <string name="community_compatibility_refresh">Odśwież zgodność</string>
     <string name="community_compatibility_fps_median">Zgłoszona mediana: %1$d FPS</string>
     <string name="community_compatibility_fps_device">%1$s na Twoim modelu urządzenia.</string>
     <string name="community_compatibility_fps_soc">%1$s z tym samym chipsetem.</string>

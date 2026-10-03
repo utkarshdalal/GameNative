@@ -2759,7 +2759,6 @@
     <string name="community_compatibility_no_reports">Aucune configuration partagée trouvée pour ton matériel</string>
     <string name="community_compatibility_configs_unavailable">Certaines données de compatibilité n’ont pas pu être chargées. Affichage des données disponibles.</string>
     <string name="community_compatibility_retry">Réessayer</string>
-    <string name="community_compatibility_refresh">Actualiser la compatibilité</string>
     <string name="community_compatibility_fps_median">Médiane signalée : %1$d FPS</string>
     <string name="community_compatibility_fps_device">%1$s sur ton modèle d’appareil.</string>
     <string name="community_compatibility_fps_soc">%1$s avec le même chipset.</string>

@@ -11,6 +11,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -63,6 +64,28 @@ class CommunityCompatibilitySectionTest {
         compose.onNodeWithText("Median 47 FPS reported using your GPU.").assertDoesNotExist()
     }
 
+    @Test fun manualRefreshIsAbsentAndRetryIsOnlyAvailableAfterFailure() {
+        var requests = 0
+        val loading = mutableStateOf(false)
+        val loadError = mutableStateOf(false)
+        render(loading = loading, loadError = loadError, onAction = {
+            requests++
+            loading.value = true
+        })
+        compose.onNodeWithContentDescription("Refresh compatibility").assertDoesNotExist()
+        compose.onNodeWithText("Retry").assertDoesNotExist()
+        compose.runOnIdle { loadError.value = true }
+        compose.onNodeWithText("Retry").performScrollTo().performClick()
+        assertEquals(1, requests)
+        compose.onNodeWithText("Retry").assertDoesNotExist()
+        compose.runOnIdle {
+            loadError.value = false
+            loading.value = false
+        }
+        compose.onNodeWithText("Retry").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Refresh compatibility").assertDoesNotExist()
+    }
+
     @Test fun conflictReasonStaysVisibleWithoutClaimingGameplayIsUnconfirmedOrDuplicatingIt() {
         render(
             summary.copy(
@@ -107,11 +130,13 @@ class CommunityCompatibilitySectionTest {
         value: CommunityCompatibilitySummary = summary,
         game: State<String> = mutableStateOf("Game"),
         onAction: () -> Unit = {},
+        loading: State<Boolean> = mutableStateOf(false),
+        loadError: State<Boolean> = mutableStateOf(false),
     ) {
         compose.setContent {
             MaterialTheme {
                 CommunityCompatibilitySection(
-                    gameKey = game.value, summary = value, loading = false, loadError = false,
+                    gameKey = game.value, summary = value, loading = loading.value, loadError = loadError.value,
                     onRetry = onAction, onViewReports = onAction, modifier = Modifier.verticalScroll(rememberScrollState()),
                 )
             }

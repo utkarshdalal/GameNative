@@ -2753,7 +2753,6 @@
     <string name="community_compatibility_no_reports">사용 중인 하드웨어에 맞는 공유 구성을 찾지 못했습니다</string>
     <string name="community_compatibility_configs_unavailable">일부 호환성 데이터를 불러오지 못했습니다. 이용 가능한 정보를 표시합니다.</string>
     <string name="community_compatibility_retry">다시 시도</string>
-    <string name="community_compatibility_refresh">호환성 새로고침</string>
     <string name="community_compatibility_fps_median">보고된 중앙값: %1$d FPS</string>
     <string name="community_compatibility_fps_device">%1$s — 사용 중인 기기 모델.</string>
     <string name="community_compatibility_fps_soc">%1$s — 동일한 칩셋.</string>

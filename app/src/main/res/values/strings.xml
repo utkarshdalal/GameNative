@@ -2803,7 +2803,6 @@
     <string name="community_compatibility_no_reports">No shared configs found for your hardware</string>
     <string name="community_compatibility_configs_unavailable">Some compatibility data could not be loaded. Showing available evidence.</string>
     <string name="community_compatibility_retry">Retry</string>
-    <string name="community_compatibility_refresh">Refresh compatibility</string>
     <string name="community_compatibility_fps_median">Median %1$d FPS reported</string>
     <string name="community_compatibility_fps_device">%1$s on your device model.</string>
     <string name="community_compatibility_fps_soc">%1$s using the same chipset.</string>

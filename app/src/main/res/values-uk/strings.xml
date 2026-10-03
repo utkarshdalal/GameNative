@@ -2761,7 +2761,6 @@
     <string name="community_compatibility_no_reports">Не знайдено спільних конфігурацій для вашого обладнання</string>
     <string name="community_compatibility_configs_unavailable">Не вдалося завантажити частину даних про сумісність. Показано доступні дані.</string>
     <string name="community_compatibility_retry">Повторити</string>
-    <string name="community_compatibility_refresh">Оновити сумісність</string>
     <string name="community_compatibility_fps_median">Медіанна частота: %1$d FPS</string>
     <string name="community_compatibility_fps_device">%1$s на вашій моделі пристрою.</string>
     <string name="community_compatibility_fps_soc">%1$s із тим самим чипсетом.</string>

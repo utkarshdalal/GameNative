@@ -2764,7 +2764,6 @@
     <string name="community_compatibility_no_reports">Nu s-au găsit configurații partajate pentru hardware-ul tău</string>
     <string name="community_compatibility_configs_unavailable">Unele date de compatibilitate nu au putut fi încărcate. Se afișează datele disponibile.</string>
     <string name="community_compatibility_retry">Reîncearcă</string>
-    <string name="community_compatibility_refresh">Actualizează compatibilitatea</string>
     <string name="community_compatibility_fps_median">Mediană raportată: %1$d FPS</string>
     <string name="community_compatibility_fps_device">%1$s pe modelul tău de dispozitiv.</string>
     <string name="community_compatibility_fps_soc">%1$s cu același chipset.</string>

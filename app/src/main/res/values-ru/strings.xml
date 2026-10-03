@@ -2689,7 +2689,6 @@ https://gamenative.app
     <string name="community_compatibility_no_reports">Общие конфигурации для вашего оборудования не найдены</string>
     <string name="community_compatibility_configs_unavailable">Не удалось загрузить часть данных о совместимости. Показаны доступные данные.</string>
     <string name="community_compatibility_retry">Повторить</string>
-    <string name="community_compatibility_refresh">Обновить совместимость</string>
     <string name="community_compatibility_fps_median">Медианная частота: %1$d FPS</string>
     <string name="community_compatibility_fps_device">%1$s на вашей модели устройства.</string>
     <string name="community_compatibility_fps_soc">%1$s с тем же чипсетом.</string>
