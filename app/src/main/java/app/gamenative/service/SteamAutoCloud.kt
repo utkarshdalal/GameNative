@@ -28,6 +28,7 @@ import `in`.dragonbra.javasteam.steam.handlers.steamcloud.AppFileInfo
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.SteamCloud
 import `in`.dragonbra.javasteam.types.KeyValue
 import java.io.BufferedInputStream
+import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.RandomAccessFile
@@ -314,22 +315,26 @@ object SteamAutoCloud {
             }
         }
 
+        val resolveAbsPath: (UserFileInfo) -> Path = {
+            FileUtils.resolveCaseInsensitive(File("/"), it.getAbsPath(prefixToPath).toString().trimStart('/')).toPath()
+        }
+
         val getFilesDiff: (List<UserFileInfo>, List<UserFileInfo>) -> Pair<Boolean, FileChanges> = { currentFiles, oldFiles ->
             val overlappingFiles = currentFiles.filter { currentFile ->
-                oldFiles.any { currentFile.prefixPath == it.prefixPath }
+                oldFiles.any { currentFile.prefixPath.equals(it.prefixPath, ignoreCase = true) }
             }
 
             val newFiles = currentFiles.filter { currentFile ->
-                !oldFiles.any { currentFile.prefixPath == it.prefixPath }
+                !oldFiles.any { currentFile.prefixPath.equals(it.prefixPath, ignoreCase = true) }
             }
 
             val deletedFiles = oldFiles.filter { oldFile ->
-                !currentFiles.any { oldFile.prefixPath == it.prefixPath }
+                !currentFiles.any { oldFile.prefixPath.equals(it.prefixPath, ignoreCase = true) }
             }
 
             val modifiedFiles = overlappingFiles.filter { file ->
                 oldFiles.first {
-                    it.prefixPath == file.prefixPath
+                    it.prefixPath.equals(file.prefixPath, ignoreCase = true)
                 }.let {
                     Timber.i("Comparing SHA of ${it.prefixPath} and ${file.prefixPath}")
                     Timber.i("[${it.sha.joinToString(", ")}]\n[${file.sha.joinToString(", ")}]")
@@ -348,11 +353,12 @@ object SteamAutoCloud {
                 fileList.files.any { file ->
                     Timber.i("Checking for " + "${getFilePrefix(file, fileList)} in ${localUserFiles.keys}")
 
-                    localUserFiles[getFilePrefix(file, fileList)]?.let { localUserFile ->
+                    val cloudPrefix = getFilePrefix(file, fileList)
+                    localUserFiles.entries.firstOrNull { it.key.equals(cloudPrefix, ignoreCase = true) }?.value?.let { localUserFile ->
                         localUserFile.firstOrNull {
                             Timber.i("Comparing ${file.filename} and ${it.filename}")
 
-                            it.filename == file.filename
+                            it.filename.equals(file.filename, ignoreCase = true)
                         }?.let {
                             Timber.i("Comparing SHA of ${getFilePrefixPath(file, fileList)} and ${it.prefixPath}")
                             Timber.i("[${file.shaFile.joinToString(", ")}]\n[${it.sha.joinToString(", ")}]")
@@ -375,7 +381,10 @@ object SteamAutoCloud {
                         return@forEach
                     }
 
-                    val basePath = Paths.get(prefixToPath(userFile.root.toString()), userFile.substitutedPath)
+                    val basePath = FileUtils.resolveCaseInsensitive(
+                        File("/"),
+                        Paths.get(prefixToPath(userFile.root.toString()), userFile.substitutedPath).toString().trimStart('/'),
+                    ).toPath()
 
                     Timber.i("Looking for saves in $basePath with pattern ${userFile.pattern} (prefix ${userFile.prefix})")
 
@@ -531,6 +540,16 @@ object SteamAutoCloud {
                     )
                 }
 
+                val targetPaths = java.util.IdentityHashMap<AppFileInfo, Path>()
+                filesToDownload.forEach { file ->
+                    val target = FileUtils.resolveCaseInsensitive(
+                        File("/"),
+                        getFullFilePath(file, fileList).toString().trimStart('/'),
+                    ).toPath()
+                    runCatching { Files.createDirectories(target.parent) }
+                    targetPaths[file] = target
+                }
+
                 try {
                     coroutineScope {
                         filesToDownload.map { file ->
@@ -543,7 +562,7 @@ object SteamAutoCloud {
                                         file = file,
                                         fileList = fileList,
                                         getFilePrefixPath = getFilePrefixPath,
-                                        getFullFilePath = getFullFilePath,
+                                        getFullFilePath = { cloudFile, list -> targetPaths[cloudFile] ?: getFullFilePath(cloudFile, list) },
                                         buildUrl = buildUrl,
                                         httpClient = downloadHttpClient,
                                         totalRawBytes = totalRawBytes,
@@ -584,13 +603,19 @@ object SteamAutoCloud {
                 var filesUploaded = 0
                 var bytesUploaded = 0L
 
-                val filesToDelete = fileChanges.filesDeleted.map { it.prefixPath }
+                val fullFileList = steamCloud.getAppFileListChange(appInfo.id, 0L).await()
+                val cloudKeysByLowercase = fullFileList.files.associate {
+                    getFilePrefixPath(it, fullFileList).let { key -> key.lowercase() to key }
+                }
+                val cloudKey: (UserFileInfo) -> String = { cloudKeysByLowercase[it.prefixPath.lowercase()] ?: it.prefixPath }
+
+                val filesToDelete = fileChanges.filesDeleted.map { cloudKey(it) }
 
                 val filesToUpload = fileChanges.filesCreated
                     .union(fileChanges.filesModified)
-                    .map { it.prefixPath to it }
+                    .map { cloudKey(it) to it }
                     // Filter out entries whose files no longer exist at upload time
-                    .filter { Files.exists(it.second.getAbsPath(prefixToPath)) }
+                    .filter { Files.exists(resolveAbsPath(it.second)) }
 
                 val totalFiles = filesToUpload.size
 
@@ -611,7 +636,7 @@ object SteamAutoCloud {
                 var uploadBatchSuccess = true
 
                 filesToUpload.map { it.second }.forEachIndexed { index, file ->
-                    val absFilePath = file.getAbsPath(prefixToPath)
+                    val absFilePath = resolveAbsPath(file)
 
                     val fileSize = try {
                         Files.size(absFilePath).toInt()
@@ -640,7 +665,7 @@ object SteamAutoCloud {
                             if (file.root == PathType.SteamUserData) {
                                 file.filename
                             } else {
-                                file.prefixPath
+                                cloudKey(file)
                             }
                         },
                         fileSize = fileSize,
@@ -769,7 +794,7 @@ object SteamAutoCloud {
                             if (file.root == PathType.SteamUserData) {
                                 file.filename
                             } else {
-                                file.prefixPath
+                                cloudKey(file)
                             }
                         },
                     ).await()
@@ -858,7 +883,7 @@ object SteamAutoCloud {
                         var totalFilesDeleted = 0
 
                         filesDiff.filesDeleted.forEach {
-                            val deleted = Files.deleteIfExists(it.getAbsPath(prefixToPath))
+                            val deleted = Files.deleteIfExists(resolveAbsPath(it))
                             if (deleted) totalFilesDeleted++
                         }
 
