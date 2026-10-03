@@ -83,12 +83,11 @@ class GyroSpaceMapperTest {
     @Test
     fun worldPitchFadesSmoothlyAtSidewaysSingularity() {
         for (side in listOf(-1f, 1f)) {
-            for (y in listOf(0f, 0.01f, 0.125f, 0.2f, 0.25f)) {
+            for ((y, pitch) in listOf(0f to 0f, 0.01f to 0f, 0.125f to 0f, 0.2f to 0.5878775f, 0.25f to 0.9682458f)) {
                 val up = floatArrayOf(side * kotlin.math.sqrt(1f - y * y), y, 0f)
                 val rates = map(GyroSettings.CONVERSION_WORLD_SPACE, floatArrayOf(0f, 1f, 0f), up)
                 assertTrue(rates.all { it.isFinite() })
-                if (y <= 0.125f) assertEquals(0f, rates[1], 0f)
-                assertTrue(kotlin.math.abs(rates[1]) <= 1f)
+                assertEquals(side * pitch, rates[1], 0.0001f)
             }
         }
     }

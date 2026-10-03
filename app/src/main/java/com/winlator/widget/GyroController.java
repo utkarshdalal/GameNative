@@ -235,12 +235,8 @@ class GyroController implements SensorEventListener {
         if (event.sensor.getType() != Sensor.TYPE_GYROSCOPE || event.values.length < 3
                 || !Float.isFinite(event.values[0]) || !Float.isFinite(event.values[1])
                 || !Float.isFinite(event.values[2])) return;
-        if (orientationRegistered && (lastOrientationTimestampNs == 0L
-                || Math.abs(event.timestamp - lastOrientationTimestampNs) > MAX_ORIENTATION_AGE_NS)) {
-            if (hasDispatchedStick || lastTimestampNs != 0L) clearOutput();
-            return;
-        }
-        float[] rates = mapAndFilterRates(event.values[0], event.values[1], event.values[2], rotation);
+        float[] rates = mapAndFilterRates(
+                event.values[0], event.values[1], event.values[2], rotation, event.timestamp);
         if (settings.getMode() == GyroSettings.MODE_MOUSE) {
             if (settings.getSmoothingMilliseconds() > 0f) {
                 rates = smoothRates(rates[0], rates[1], event.timestamp);
@@ -387,8 +383,10 @@ class GyroController implements SensorEventListener {
         // No action required. Android's calibrated gyroscope already compensates sensor bias.
     }
 
-    float[] mapAndFilterRates(float gyroX, float gyroY, float gyroZ, int rotation) {
-        int style = needsGravity() && !orientationRegistered
+    float[] mapAndFilterRates(float gyroX, float gyroY, float gyroZ, int rotation, long timestampNs) {
+        boolean orientationFresh = orientationRegistered && lastOrientationTimestampNs != 0L
+                && Math.abs(timestampNs - lastOrientationTimestampNs) <= MAX_ORIENTATION_AGE_NS;
+        int style = needsGravity() && !orientationFresh
                 ? GyroSettings.CONVERSION_LOCAL_YAW : settings.getConversionStyle();
         float[] rates = GyroSpaceMapper.map(gyroX, gyroY, gyroZ, rotation,
                 style, deviceUp[0], deviceUp[1], deviceUp[2]);

@@ -95,7 +95,7 @@ class GyroControllerTest {
             ),
         )
 
-        val mapped = controller.mapAndFilterRates(-0.2f, -0.4f, 0f, Surface.ROTATION_90)
+        val mapped = controller.mapAndFilterRates(-0.2f, -0.4f, 0f, Surface.ROTATION_90, 0L)
 
         assertEquals(-0.2f, mapped[0], 0.0001f)
         assertEquals(0.4f, mapped[1], 0.0001f)
@@ -111,12 +111,14 @@ class GyroControllerTest {
             -Math.toRadians(4.0).toFloat(),
             0f,
             Surface.ROTATION_0,
+            0L,
         )
         val aboveThreshold = controller.mapAndFilterRates(
             0f,
             -Math.toRadians(7.0).toFloat(),
             0f,
             Surface.ROTATION_0,
+            0L,
         )
 
         assertArrayEquals(floatArrayOf(0f, 0f), belowThreshold, 0.0001f)
@@ -305,16 +307,36 @@ class GyroControllerTest {
     }
 
     @Test
-    fun gravityConversion_registersAndReleasesBothSensors() {
+    fun gravityConversion_registersSensorsAndFallsBackWhileOrientationIsStale() {
         for (style in GyroSettings.CONVERSION_PLAYER_SPACE..GyroSettings.CONVERSION_WORLD_SPACE) {
             val (controller, manager, sensors) = controllerWithTiltSensors()
             val (gyro, orientation) = sensors
-            controller.setSettings(GyroSettings(mode = GyroSettings.MODE_RIGHT_STICK, conversionStyle = style))
+            controller.setSettings(
+                GyroSettings(mode = GyroSettings.MODE_RIGHT_STICK, conversionStyle = style, steadyingDegreesPerSecond = 0f),
+            )
             controller.setHasProfile(true)
             controller.onAttachedToWindow()
 
             verify(manager).registerListener(controller, gyro, GyroController.SENSOR_PERIOD_US)
             verify(manager).registerListener(controller, orientation, GyroController.SENSOR_PERIOD_US)
+            assertArrayEquals(floatArrayOf(-1f, -0.5f), controller.mapAndFilterRates(0.5f, 1f, 0f, Surface.ROTATION_0, 1_000_000_000L), 0f)
+            val up = GyroController::class.java.getDeclaredField("deviceUp").apply { isAccessible = true }.get(controller) as FloatArray
+            up[2] = 1f // A fresh orientation sample with the screen facing up.
+            val orientationTimestamp = GyroController::class.java.getDeclaredField("lastOrientationTimestampNs").apply {
+                isAccessible = true
+            }
+            orientationTimestamp.setLong(controller, 1_000_000_000L)
+            val samples = listOf(
+                1_000_000_000L to 0f, 1_250_000_000L to 0f, 1_250_000_001L to -1f, 1_500_000_000L to -1f,
+            )
+            for ((timestamp, horizontal) in samples) {
+                assertArrayEquals(
+                    "style $style, timestamp $timestamp", floatArrayOf(horizontal, -0.5f),
+                    controller.mapAndFilterRates(0.5f, 1f, 0f, Surface.ROTATION_0, timestamp), 0f,
+                )
+            }
+            orientationTimestamp.setLong(controller, 1_500_000_000L)
+            assertArrayEquals(floatArrayOf(0f, -0.5f), controller.mapAndFilterRates(0.5f, 1f, 0f, Surface.ROTATION_0, 1_500_000_000L), 0f)
             controller.setOverlaySuppressed(true)
             verify(manager).unregisterListener(controller, gyro)
             verify(manager).unregisterListener(controller, orientation)
@@ -335,9 +357,10 @@ class GyroControllerTest {
                 controller.onAttachedToWindow()
 
                 verify(manager).registerListener(controller, gyro, GyroController.SENSOR_PERIOD_US)
+                if (available) verify(manager).registerListener(controller, orientation, GyroController.SENSOR_PERIOD_US)
                 assertArrayEquals(
                     "style $style, orientation available $available", floatArrayOf(-1f, -0.5f),
-                    controller.mapAndFilterRates(0.5f, 1f, 4f, Surface.ROTATION_0), 0f,
+                    controller.mapAndFilterRates(0.5f, 1f, 4f, Surface.ROTATION_0, 0L), 0f,
                 )
                 controller.onDetachedFromWindow()
                 verify(manager, never()).unregisterListener(controller, orientation)
