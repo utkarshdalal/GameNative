@@ -1066,11 +1066,11 @@
     <string name="support_notice_moved">Esta conversación continúa ahora con el soporte Pro.</string>
     <string name="support_upgrade_title">Se necesita un plan para continuar</string>
     <string name="support_upgrade_reason_trial_used">Tu primer análisis fue gratuito. Para responder y seguir hablando con la AI sobre este problema, elige un plan.</string>
-    <string name="support_upgrade_reason_reply_cap">Esta conversación ya usó las tres respuestas de la AI que incluye Basic. Pro no tiene límite de respuestas.</string>
+    <string name="support_upgrade_reason_reply_cap">Llegaste al límite de uso razonable de hoy. Se restablece en unas horas. Pro no tiene límite.</string>
     <string name="support_upgrade_reason_required">Las respuestas de la AI requieren una suscripción a GameNative.</string>
     <string name="support_see_plans">Ver planes</string>
     <string name="support_plan_basic_title">$5/mes · Basic</string>
-    <string name="support_plan_basic_body">Nuestra AI base lee tu informe y responde aquí con una solución para probar, además de hasta dos respuestas de seguimiento.</string>
+    <string name="support_plan_basic_body">Respuestas de la AI ilimitadas dentro de un límite de uso razonable de 40 respuestas y 10 informes al día. Tus informes esperan en la cola normal.</string>
     <string name="support_checkout_scan">Escanea este código con tu teléfono para completar el pago. También puedes completarlo en este dispositivo.</string>
     <string name="support_checkout_waiting">Cuando termines, vuelve aquí. Tu plan se actualiza solo.</string>
     <string name="support_checkout_open">Abrir en este dispositivo</string>
@@ -2034,10 +2034,10 @@
     <string name="debug_prerun_message_3">Cualquiera puede compartir el informe para recibir ayuda humana.</string>
     <string name="debug_paywall_title">Consigue soporte de depuración con AI</string>
     <string name="debug_paywall_pitch">Nuestra AI lee tu registro y tu configuración exactos y te dice qué cambiar, normalmente en menos de 5 minutos.</string>
-    <string name="debug_paywall_tier5_title">$5/mes · Supporter</string>
-    <string name="debug_paywall_tier5_body">Nuestra AI básica lee tu informe de depuración y responde en Discord con una solución para probar, más hasta dos respuestas de seguimiento.</string>
+    <string name="debug_paywall_tier5_title">$5/mes · Basic</string>
+    <string name="debug_paywall_tier5_body">Respuestas de la AI ilimitadas dentro de un límite de uso razonable de 40 respuestas y 10 informes al día. Tus informes esperan en la cola normal.</string>
     <string name="debug_paywall_tier10_title">$10/mes · Pro</string>
-    <string name="debug_paywall_tier10_body">Nuestro modelo de AI más inteligente, con conversación ilimitada en tu hilo de soporte.</string>
+    <string name="debug_paywall_tier10_body">Respuestas de la AI ilimitadas, sin límite diario. Tus informes van primero y no esperan detrás de otros informes. La AI hace su análisis más detallado de cada informe.</string>
     <string name="debug_paywall_cancel_anytime">Cancela cuando quieras.</string>
     <string name="debug_paywall_costs_note">Las suscripciones cubren los costes del servicio de AI que hace posible esta función.</string>
     <string name="debug_paywall_subscribe">Suscríbete en Discord</string>

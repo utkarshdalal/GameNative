@@ -875,11 +875,11 @@
     <string name="support_notice_moved">Denne samtale fortsætter nu med Pro-support.</string>
     <string name="support_upgrade_title">Der kræves en plan for at fortsætte</string>
     <string name="support_upgrade_reason_trial_used">Din første analyse var gratis. Vælg en plan for at svare og fortsætte samtalen med AI om dette problem.</string>
-    <string name="support_upgrade_reason_reply_cap">Denne samtale har brugt de tre AI-svar, som Basic omfatter. Pro har ingen grænse for svar.</string>
+    <string name="support_upgrade_reason_reply_cap">Du har nået dagens fair-use-grænse. Den nulstilles om nogle timer. Pro har ingen grænse.</string>
     <string name="support_upgrade_reason_required">AI-svar kræver et GameNative-abonnement.</string>
     <string name="support_see_plans">Se planer</string>
     <string name="support_plan_basic_title">$5/måned · Basic</string>
-    <string name="support_plan_basic_body">Vores basis-AI læser din rapport og svarer her med en løsning, du kan prøve, plus op til to opfølgende svar.</string>
+    <string name="support_plan_basic_body">Ubegrænsede AI-svar inden for en fair-use-grænse på 40 svar og 10 rapporter om dagen. Dine rapporter venter i den normale kø.</string>
     <string name="support_checkout_scan">Scan denne kode med din telefon for at gennemføre betalingen. Du kan også gennemføre den på denne enhed.</string>
     <string name="support_checkout_waiting">Kom tilbage hertil, når du er færdig. Din plan opdateres automatisk.</string>
     <string name="support_checkout_open">Åbn på denne enhed</string>
@@ -1906,10 +1906,10 @@
     <string name="debug_prerun_message_3">Alle kan dele rapporten for at få menneskelig hjælp.</string>
     <string name="debug_paywall_title">Få AI-fejlfindingshjælp</string>
     <string name="debug_paywall_pitch">Vores AI læser din nøjagtige log og konfiguration og fortæller dig, hvad du skal ændre, som regel på under 5 minutter.</string>
-    <string name="debug_paywall_tier5_title">$5/måned · Supporter</string>
-    <string name="debug_paywall_tier5_body">Vores basis-AI læser din fejlrapport og svarer i Discord med en løsning, du kan prøve, plus op til to opfølgende svar.</string>
+    <string name="debug_paywall_tier5_title">$5/måned · Basic</string>
+    <string name="debug_paywall_tier5_body">Ubegrænsede AI-svar inden for en fair-use-grænse på 40 svar og 10 rapporter om dagen. Dine rapporter venter i den normale kø.</string>
     <string name="debug_paywall_tier10_title">$10/måned · Pro</string>
-    <string name="debug_paywall_tier10_body">Vores klogeste AI-model med ubegrænset dialog i din supporttråd.</string>
+    <string name="debug_paywall_tier10_body">Ubegrænsede AI-svar uden daglig grænse. Dine rapporter kommer først og venter ikke bag andre rapporter. Vores AI laver sin mest grundige analyse af hver rapport.</string>
     <string name="debug_paywall_cancel_anytime">Opsig når som helst.</string>
     <string name="debug_paywall_costs_note">Abonnementer dækker AI-tjenesteomkostningerne, der gør denne funktion mulig.</string>
     <string name="debug_paywall_subscribe">Abonnér på Discord</string>

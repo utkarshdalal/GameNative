@@ -1044,11 +1044,11 @@
     <string name="support_notice_moved">此对话现在由 Pro 支持继续。</string>
     <string name="support_upgrade_title">需要订阅方案才能继续</string>
     <string name="support_upgrade_reason_trial_used">你的首次分析是免费的。要回复并继续与 AI 讨论此问题，请选择一个方案。</string>
-    <string name="support_upgrade_reason_reply_cap">此对话已用完 Basic 包含的三次 AI 回复。Pro 没有回复次数限制。</string>
+    <string name="support_upgrade_reason_reply_cap">你已达到今天的合理使用限额。几小时后会重置。Pro 没有限额。</string>
     <string name="support_upgrade_reason_required">AI 回复需要 GameNative 订阅。</string>
     <string name="support_see_plans">查看方案</string>
     <string name="support_plan_basic_title">$5/月 · Basic</string>
-    <string name="support_plan_basic_body">我们的基础 AI 会阅读你的报告，并在这里回复可尝试的修复方法，另含最多两次后续回答。</string>
+    <string name="support_plan_basic_body">在合理使用限额（每天 40 次回复和 10 份报告）内，AI 回复不限次数。你的报告在普通队列中排队。</string>
     <string name="support_checkout_scan">用手机扫描此二维码以完成付款。你也可以在此设备上完成。</string>
     <string name="support_checkout_waiting">完成后请回到这里。你的方案会自动更新。</string>
     <string name="support_checkout_open">在此设备上打开</string>
@@ -2053,10 +2053,10 @@
     <string name="debug_prerun_message_3">任何人都可以分享报告以获得人工帮助。</string>
     <string name="debug_paywall_title">获取 AI 调试支持</string>
     <string name="debug_paywall_pitch">我们的 AI 会阅读你的完整日志和配置，并告诉你需要更改什么，通常不到 5 分钟。</string>
-    <string name="debug_paywall_tier5_title">$5/月 · Supporter</string>
-    <string name="debug_paywall_tier5_body">我们的基础 AI 会阅读你的调试报告，并在 Discord 中回复一个可尝试的解决方案，另加最多两次后续解答。</string>
+    <string name="debug_paywall_tier5_title">$5/月 · Basic</string>
+    <string name="debug_paywall_tier5_body">在合理使用限额（每天 40 次回复和 10 份报告）内，AI 回复不限次数。你的报告在普通队列中排队。</string>
     <string name="debug_paywall_tier10_title">$10/月 · Pro</string>
-    <string name="debug_paywall_tier10_body">我们最聪明的 AI 模型，在你的支持帖子中不限次数地交流。</string>
+    <string name="debug_paywall_tier10_body">AI 回复不限次数，也没有每日限额。你的报告优先处理，无需排在其他报告之后。AI 会对每份报告进行最深入的分析。</string>
     <string name="debug_paywall_cancel_anytime">随时可取消。</string>
     <string name="debug_paywall_costs_note">订阅费用用于支付支持此功能的 AI 服务成本。</string>
     <string name="debug_paywall_subscribe">在 Discord 上订阅</string>

@@ -1028,11 +1028,11 @@
     <string name="support_notice_moved">この会話は Pro サポートで続きます。</string>
     <string name="support_upgrade_title">続けるにはプランが必要です</string>
     <string name="support_upgrade_reason_trial_used">最初の分析は無料でした。返信してこの問題について AI と話し続けるには、プランを選んでください。</string>
-    <string name="support_upgrade_reason_reply_cap">この会話では、Basic に含まれる 3 回の AI 返信を使い切りました。Pro には返信回数の制限はありません。</string>
+    <string name="support_upgrade_reason_reply_cap">本日の公正利用の上限に達しました。数時間後にリセットされます。Pro には上限がありません。</string>
     <string name="support_upgrade_reason_required">AI の返信には GameNative のサブスクリプションが必要です。</string>
     <string name="support_see_plans">プランを見る</string>
     <string name="support_plan_basic_title">$5/月 · Basic</string>
-    <string name="support_plan_basic_body">基本の AI がレポートを読み、試せる修正方法をここで返信します。さらに最大 2 回のフォローアップ回答が含まれます。</string>
+    <string name="support_plan_basic_body">公正利用の上限（1 日あたり返信 40 回、レポート 10 件）の範囲内で、AI の返信は無制限です。レポートは通常のキューで順番を待ちます。</string>
     <string name="support_checkout_scan">このコードをスマートフォンでスキャンして、購入手続きを完了してください。このデバイスで完了することもできます。</string>
     <string name="support_checkout_waiting">完了したら、ここに戻ってください。プランは自動的に更新されます。</string>
     <string name="support_checkout_open">このデバイスで開く</string>
@@ -2000,10 +2000,10 @@
     <string name="debug_prerun_message_3">レポートは誰でも共有でき、人間のサポートを受けられます。</string>
     <string name="debug_paywall_title">AI デバッグサポートを利用</string>
     <string name="debug_paywall_pitch">AI があなたのログと設定をそのまま読み取り、変更すべき点を教えます。通常 5 分以内です。</string>
-    <string name="debug_paywall_tier5_title">$5/月 · Supporter</string>
-    <string name="debug_paywall_tier5_body">ベーシック AI がデバッグレポートを読み、試すべき解決策を Discord で返信します。さらに最大 2 回のフォローアップに回答します。</string>
+    <string name="debug_paywall_tier5_title">$5/月 · Basic</string>
+    <string name="debug_paywall_tier5_body">公正利用の上限（1 日あたり返信 40 回、レポート 10 件）の範囲内で、AI の返信は無制限です。レポートは通常のキューで順番を待ちます。</string>
     <string name="debug_paywall_tier10_title">$10/月 · Pro</string>
-    <string name="debug_paywall_tier10_body">最も賢い AI モデルで、サポートスレッドでのやり取りは無制限です。</string>
+    <string name="debug_paywall_tier10_body">AI の返信は無制限で、1 日の上限もありません。レポートは他のレポートを待たずに優先して処理されます。AI は各レポートを最も丁寧に分析します。</string>
     <string name="debug_paywall_cancel_anytime">いつでも解約できます。</string>
     <string name="debug_paywall_costs_note">サブスクリプションは、この機能を支える AI サービスの費用に充てられます。</string>
     <string name="debug_paywall_subscribe">Discord で登録する</string>

@@ -1025,11 +1025,11 @@
     <string name="support_notice_moved">Diese Unterhaltung wird jetzt mit dem Pro-Support fortgesetzt.</string>
     <string name="support_upgrade_title">Zum Fortfahren ist ein Plan nötig</string>
     <string name="support_upgrade_reason_trial_used">Deine erste Analyse war kostenlos. Wähle einen Plan, um zu antworten und weiter mit der AI über dieses Problem zu sprechen.</string>
-    <string name="support_upgrade_reason_reply_cap">Diese Unterhaltung hat die drei AI-Antworten verbraucht, die Basic enthält. Pro hat kein Antwortlimit.</string>
+    <string name="support_upgrade_reason_reply_cap">Du hast die heutige Fair-Use-Grenze erreicht. Sie wird in einigen Stunden zurückgesetzt. Pro hat kein Limit.</string>
     <string name="support_upgrade_reason_required">AI-Antworten erfordern ein GameNative-Abo.</string>
     <string name="support_see_plans">Pläne ansehen</string>
     <string name="support_plan_basic_title">$5/Monat · Basic</string>
-    <string name="support_plan_basic_body">Unsere Basis-AI liest deinen Bericht und antwortet hier mit einer Lösung zum Ausprobieren, dazu bis zu zwei Folgeantworten.</string>
+    <string name="support_plan_basic_body">Unbegrenzte AI-Antworten im Rahmen einer Fair-Use-Grenze von 40 Antworten und 10 Berichten pro Tag. Deine Berichte warten in der normalen Warteschlange.</string>
     <string name="support_checkout_scan">Scanne diesen Code mit deinem Handy, um den Kauf abzuschließen. Du kannst ihn auch auf diesem Gerät abschließen.</string>
     <string name="support_checkout_waiting">Komm danach hierher zurück. Dein Plan wird automatisch aktualisiert.</string>
     <string name="support_checkout_open">Auf diesem Gerät öffnen</string>
@@ -1976,10 +1976,10 @@
     <string name="debug_prerun_message_3">Jeder kann den Bericht teilen, um menschliche Hilfe zu erhalten.</string>
     <string name="debug_paywall_title">AI-Debug-Support erhalten</string>
     <string name="debug_paywall_pitch">Unsere AI liest dein genaues Log und deine Konfiguration und sagt dir, was du ändern musst, meist in unter 5 Minuten.</string>
-    <string name="debug_paywall_tier5_title">$5/Monat · Supporter</string>
-    <string name="debug_paywall_tier5_body">Unsere Basis-AI liest deinen Debug-Bericht und antwortet in Discord mit einem Lösungsvorschlag sowie bis zu zwei weiteren Antworten.</string>
+    <string name="debug_paywall_tier5_title">$5/Monat · Basic</string>
+    <string name="debug_paywall_tier5_body">Unbegrenzte AI-Antworten im Rahmen einer Fair-Use-Grenze von 40 Antworten und 10 Berichten pro Tag. Deine Berichte warten in der normalen Warteschlange.</string>
     <string name="debug_paywall_tier10_title">$10/Monat · Pro</string>
-    <string name="debug_paywall_tier10_body">Unser klügstes AI-Modell, mit unbegrenztem Austausch in deinem Support-Thread.</string>
+    <string name="debug_paywall_tier10_body">Unbegrenzte AI-Antworten ohne Tageslimit. Deine Berichte kommen zuerst dran und warten nicht hinter anderen Berichten. Die AI analysiert jeden Bericht so gründlich wie möglich.</string>
     <string name="debug_paywall_cancel_anytime">Jederzeit kündbar.</string>
     <string name="debug_paywall_costs_note">Abos decken die AI-Servicekosten, die diese Funktion möglich machen.</string>
     <string name="debug_paywall_subscribe">Auf Discord abonnieren</string>

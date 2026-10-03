@@ -1229,11 +1229,11 @@ https://gamenative.app
     <string name="support_notice_moved">Этот разговор теперь продолжается в поддержке Pro.</string>
     <string name="support_upgrade_title">Чтобы продолжить, нужен план</string>
     <string name="support_upgrade_reason_trial_used">Первый анализ был бесплатным. Чтобы ответить и продолжить разговор с AI об этой проблеме, выберите план.</string>
-    <string name="support_upgrade_reason_reply_cap">В этом разговоре использованы три ответа AI, которые входят в Basic. В Pro нет ограничения на ответы.</string>
+    <string name="support_upgrade_reason_reply_cap">Вы достигли сегодняшнего лимита честного использования. Он сбросится через несколько часов. В Pro нет лимита.</string>
     <string name="support_upgrade_reason_required">Для ответов AI нужна подписка GameNative.</string>
     <string name="support_see_plans">Посмотреть планы</string>
     <string name="support_plan_basic_title">$5/месяц · Basic</string>
-    <string name="support_plan_basic_body">Наш базовый AI читает ваш отчёт и отвечает здесь, предлагая решение, а также даёт до двух дополнительных ответов.</string>
+    <string name="support_plan_basic_body">Неограниченные ответы AI в пределах лимита честного использования: 40 ответов и 10 отчётов в день. Ваши отчёты ждут в обычной очереди.</string>
     <string name="support_checkout_scan">Отсканируйте этот код телефоном, чтобы завершить оплату. Также можно завершить её на этом устройстве.</string>
     <string name="support_checkout_waiting">Когда закончите, вернитесь сюда. План обновится автоматически.</string>
     <string name="support_checkout_open">Открыть на этом устройстве</string>
@@ -1960,10 +1960,10 @@ https://gamenative.app
     <string name="debug_prerun_message_3">Любой может поделиться отчётом, чтобы получить помощь людей.</string>
     <string name="debug_paywall_title">Получите AI-поддержку по отладке</string>
     <string name="debug_paywall_pitch">Наш AI читает именно ваш лог и конфигурацию и говорит, что изменить, обычно меньше чем за 5 минут.</string>
-    <string name="debug_paywall_tier5_title">$5/месяц · Supporter</string>
-    <string name="debug_paywall_tier5_body">Наш базовый AI читает ваш отчёт об отладке и отвечает в Discord с решением, которое стоит попробовать, плюс до двух дополнительных ответов.</string>
+    <string name="debug_paywall_tier5_title">$5/месяц · Basic</string>
+    <string name="debug_paywall_tier5_body">Неограниченные ответы AI в пределах лимита честного использования: 40 ответов и 10 отчётов в день. Ваши отчёты ждут в обычной очереди.</string>
     <string name="debug_paywall_tier10_title">$10/месяц · Pro</string>
-    <string name="debug_paywall_tier10_body">Наша самая умная модель AI с неограниченной перепиской в вашей ветке поддержки.</string>
+    <string name="debug_paywall_tier10_body">Неограниченные ответы AI без дневного лимита. Ваши отчёты обрабатываются первыми и не ждут за другими отчётами. AI проводит самый тщательный анализ каждого отчёта.</string>
     <string name="debug_paywall_cancel_anytime">Отмена в любой момент.</string>
     <string name="debug_paywall_costs_note">Подписки покрывают расходы на сервис AI, благодаря которому работает эта функция.</string>
     <string name="debug_paywall_subscribe">Подпишитесь в Discord</string>
