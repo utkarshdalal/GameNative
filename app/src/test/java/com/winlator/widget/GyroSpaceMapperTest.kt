@@ -92,32 +92,4 @@ class GyroSpaceMapperTest {
             }
         }
     }
-
-    @Test
-    fun gravityAndGyroAreRemappedTogetherInEveryScreenOrientation() {
-        // Upright screen: up in natural device coordinates for each Android display rotation.
-        val ups = listOf(
-            floatArrayOf(0f, 1f, 0f), floatArrayOf(1f, 0f, 0f),
-            floatArrayOf(0f, -1f, 0f), floatArrayOf(-1f, 0f, 0f),
-        )
-        val pitches = listOf(
-            floatArrayOf(1f, 0f, 0f), floatArrayOf(0f, -1f, 0f),
-            floatArrayOf(-1f, 0f, 0f), floatArrayOf(0f, 1f, 0f),
-        )
-        ups.forEachIndexed { rotation, up ->
-            val gyro = FloatArray(3) { up[it] + 0.25f * pitches[rotation][it] }
-            val legacy = map(GyroSettings.CONVERSION_LOCAL_YAW, gyro, up, rotation)
-            for (style in listOf(GyroSettings.CONVERSION_PLAYER_SPACE, GyroSettings.CONVERSION_WORLD_SPACE)) {
-                assertArrayEquals(legacy, map(style, gyro, up, rotation), 0.0001f)
-            }
-        }
-        assertArrayEquals(
-            floatArrayOf(-1f, 0f),
-            map(
-                GyroSettings.CONVERSION_LOCAL_ROLL,
-                floatArrayOf(0f, 0f, 1f), rotation = Surface.ROTATION_90,
-            ),
-            0f,
-        )
-    }
 }

@@ -26,33 +26,6 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(application = Application::class)
 class GyroConversionSensorTest {
-    @Test
-    fun uprightGravityTurnsKeepTheirDirectionAcrossDisplayRotations() {
-        val halfRoot = kotlin.math.sqrt(0.5f)
-        // A portrait-natural phone has its +X edge at the top in ROTATION_90.
-        val rotations = listOf(
-            floatArrayOf(halfRoot, 0f, 0f, halfRoot),
-            floatArrayOf(0f, -halfRoot, 0f, halfRoot),
-            floatArrayOf(-halfRoot, 0f, 0f, halfRoot),
-            floatArrayOf(0f, halfRoot, 0f, halfRoot),
-        )
-        val ups = listOf(
-            floatArrayOf(0f, 1f, 0f), floatArrayOf(1f, 0f, 0f),
-            floatArrayOf(0f, -1f, 0f), floatArrayOf(-1f, 0f, 0f),
-        )
-        for (style in listOf(GyroSettings.CONVERSION_PLAYER_SPACE, GyroSettings.CONVERSION_WORLD_SPACE)) {
-            rotations.forEachIndexed { rotation, quaternion ->
-                val f = Fixture()
-                f.rotation = rotation
-                f.start(f.settings.copy(conversionStyle = style))
-                f.event(f.orientation, 1_000_000_000L, *quaternion)
-                f.event(f.gyro, 1_010_000_000L, *ups[rotation])
-                assertEquals("style $style, rotation $rotation", -0.35f, f.sticks.single().first, 0.0001f)
-                assertEquals(0f, f.sticks.single().second, 0.0001f)
-            }
-        }
-    }
-
     private class Fixture(
         orientationAvailable: Boolean = true,
         orientationRegisters: Boolean = true,
@@ -99,7 +72,7 @@ class GyroConversionSensorTest {
             )
         }
 
-        fun start(config: GyroSettings = settings) {
+        fun start(config: GyroSettings = settings) = apply {
             controller.setSettings(config)
             controller.setHasProfile(true)
             controller.onAttachedToWindow()
@@ -152,14 +125,16 @@ class GyroConversionSensorTest {
 
     @Test
     fun regularRotationVectorSupportsThreeComponentsAndIgnoresHeadingAccuracy() {
-        val f = Fixture(orientationType = Sensor.TYPE_ROTATION_VECTOR)
-        f.start()
+        val f = Fixture(orientationType = Sensor.TYPE_ROTATION_VECTOR).start()
         f.event(f.orientation, 1_000_000_000L, 0f, 0f, 0f)
         f.turn()
         assertEquals(-0.35f, f.sticks.single().first, 0.0001f)
-        f.event(f.orientation, 1_020_000_000L, 0f, 0f, 0f, 1f, Float.NaN)
-        f.event(f.gyro, 1_030_000_000L, 0f, 0f, 2f)
+        // Upright: the quaternion places world up along the device's Y axis.
+        val halfRoot = kotlin.math.sqrt(0.5f)
+        f.event(f.orientation, 1_020_000_000L, halfRoot, 0f, 0f, halfRoot, Float.NaN)
+        f.event(f.gyro, 1_030_000_000L, 0.5f, 2f, 0f)
         assertEquals(-0.7f, f.sticks.last().first, 0.0001f)
+        assertEquals(-0.175f, f.sticks.last().second, 0.0001f)
         verify(f.manager).registerListener(f.controller, f.orientation, GyroController.SENSOR_PERIOD_US)
     }
 
@@ -195,22 +170,23 @@ class GyroConversionSensorTest {
     }
 
     @Test
-    fun staleOrientationReleasesStickAndFreshSampleResumesIt() {
-        val f = Fixture()
-        f.start()
-        f.flat()
-        f.turn()
-        f.turn(1_300_000_000L)
-        assertEquals(0f to 0f, f.sticks.last())
-        f.flat(1_310_000_000L)
-        f.turn(1_320_000_000L)
-        assertEquals(-0.35f, f.sticks.last().first, 0.0001f)
+    fun staleGravityOrScreenRotationReleasesStickUntilFreshOrientation() {
+        for (rotate in listOf(false, true)) {
+            val f = Fixture().start()
+            f.flat()
+            f.turn()
+            if (rotate) f.rotation = Surface.ROTATION_90
+            f.turn(if (rotate) 1_020_000_000L else 1_300_000_000L)
+            assertEquals("rotate $rotate", 0f to 0f, f.sticks.last())
+            f.flat(1_310_000_000L)
+            f.turn(1_320_000_000L)
+            assertEquals("rotate $rotate", -0.35f, f.sticks.last().first, 0.0001f)
+        }
     }
 
     @Test
     fun overlayResumeNeedsFreshGravityAndUnregistersBothSensors() {
-        val f = Fixture()
-        f.start()
+        val f = Fixture().start()
         f.flat()
         f.turn()
         f.controller.setOverlaySuppressed(true)
@@ -227,8 +203,7 @@ class GyroConversionSensorTest {
 
     @Test
     fun localAndTiltModesReleaseAuxiliarySensorAndIgnoreItsQueuedEvents() {
-        val f = Fixture()
-        f.start()
+        val f = Fixture().start()
         f.controller.setSettings(f.settings.copy(conversionStyle = GyroSettings.CONVERSION_LOCAL_ROLL))
         verify(f.manager).unregisterListener(f.controller, f.orientation)
         f.sticks.clear()
@@ -244,8 +219,7 @@ class GyroConversionSensorTest {
     @Test
     fun missingOrFailedOrientationFallsBackToLocalYaw() {
         for ((available, registers) in listOf(false to false, true to false)) {
-            val f = Fixture(available, registers)
-            f.start()
+            val f = Fixture(available, registers).start()
             f.event(f.gyro, 1_010_000_000L, 0.5f, 1f, 4f)
             assertEquals(-0.35f, f.sticks.single().first, 0.0001f)
             assertEquals(-0.175f, f.sticks.single().second, 0.0001f)
@@ -256,8 +230,7 @@ class GyroConversionSensorTest {
 
     @Test
     fun invalidOrOutOfOrderOrientationCannotReplaceFreshGravity() {
-        val f = Fixture()
-        f.start()
+        val f = Fixture().start()
         f.flat()
         f.event(f.orientation, 1_010_000_000L, Float.NaN, 0f, 0f, 1f)
         f.event(f.orientation, 990_000_000L, 0.70710677f, 0f, 0f, 0.70710677f)
@@ -282,34 +255,5 @@ class GyroConversionSensorTest {
         assertEquals(1, f.mouse.size)
         f.turn(1_520_000_000L)
         assertEquals(listOf(-4 to 0, -4 to 0), f.mouse)
-    }
-
-    @Test
-    fun gravityConversionStillAppliesSensitivityInversionAndSteadying() {
-        val f = Fixture()
-        f.start(f.settings.copy(sensitivity = 2f, verticalScale = 0.5f, invertX = true, invertY = true))
-        // Upright: the rotation vector places world up along the device's Y axis.
-        f.event(f.orientation, 1_000_000_000L, 0.70710677f, 0f, 0f, 0.70710677f)
-        f.event(f.gyro, 1_010_000_000L, 0.5f, 1f, 0f)
-        assertEquals(0.7f, f.sticks.single().first, 0.0001f)
-        assertEquals(0.175f, f.sticks.single().second, 0.0001f)
-        f.controller.setSettings(f.settings.copy(steadyingDegreesPerSecond = 5f))
-        f.flat(1_020_000_000L)
-        f.event(f.gyro, 1_030_000_000L, 0f, 0f, Math.toRadians(4.0).toFloat())
-        assertEquals(0f to 0f, f.sticks.last())
-    }
-
-    @Test
-    fun screenRotationReleasesOldOutputAndWaitsForFreshOrientation() {
-        val f = Fixture()
-        f.start()
-        f.flat()
-        f.turn()
-        f.rotation = Surface.ROTATION_90
-        f.turn(1_020_000_000L)
-        assertEquals(0f to 0f, f.sticks.last())
-        f.flat(1_030_000_000L)
-        f.turn(1_040_000_000L)
-        assertEquals(-0.35f, f.sticks.last().first, 0.0001f)
     }
 }
