@@ -1,191 +1,132 @@
 package app.gamenative.utils
 
+import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
+import app.gamenative.utils.GameCompatibilityService.GameCompatibilityResponse
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import timber.log.Timber
 
-/**
- * Persistent cache for game compatibility responses with 7-day TTL.
- * Uses lazy expiration - checks expiration on access, not on load (optimizes performance).
- */
+/** Six hours fresh, at most 24 hours last-known. UI reads never decode the disk cache. */
 object GameCompatibilityCache {
-    private const val CACHE_TTL_MS = 6 * 60 * 60 * 1000L // 6 hours
-
-    private val inMemoryCache = mutableMapOf<String, GameCompatibilityService.GameCompatibilityResponse>()
+    private const val CACHE_SCHEMA_VERSION = 3
+    internal val json = Json { ignoreUnknownKeys = true }
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val loadMutex = Mutex()
+    private val inMemoryCache = mutableMapOf<String, GameCompatibilityResponse>()
     private val timestamps = mutableMapOf<String, Long>()
     private var cacheLoaded = false
+    private var initializationRequested = false
+    private val changes = MutableStateFlow(0L)
+    val revision = changes.asStateFlow()
+    private val persistence: CoalescingCacheWriter<Map<String, CachedCompatibilityResponse>> = CoalescingCacheWriter(
+        scope = scope,
+        snapshot = {
+            initialize()
+            synchronized(this) {
+                CompatibilityCachePolicy.pruneExpired(inMemoryCache, timestamps, System.currentTimeMillis())
+                inMemoryCache.mapValues { (name, response) ->
+                    CachedCompatibilityResponse(response, timestamps.getValue(name), CACHE_SCHEMA_VERSION, BuildConfig.MODERN_ANDROID)
+                }
+            }
+        },
+        write = { snapshot -> PrefManager.persistGameCompatibilityCache(json.encodeToString(snapshot)) },
+        onError = { Timber.tag("GameCompatibilityCache").e(it, "Failed to persist compatibility") },
+    )
 
     @Serializable
     data class CachedCompatibilityResponse(
-        val response: GameCompatibilityResponseData,
-        val timestamp: Long
+        val response: GameCompatibilityResponse,
+        val timestamp: Long,
+        val schemaVersion: Int = 1,
+        val modernBuild: Boolean = false,
     )
 
-    @Serializable
-    data class GameCompatibilityResponseData(
-        val gameName: String,
-        val totalPlayableCount: Int,
-        val gpuPlayableCount: Int,
-        val avgRating: Float,
-        val hasBeenTried: Boolean,
-        val isNotWorking: Boolean,
-        val state: String? = null,
-    )
-
-    /**
-     * Converts GameCompatibilityService.GameCompatibilityResponse to serializable format
-     */
-    private fun GameCompatibilityService.GameCompatibilityResponse.toData(): GameCompatibilityResponseData {
-        return GameCompatibilityResponseData(
-            gameName = this.gameName,
-            totalPlayableCount = this.totalPlayableCount,
-            gpuPlayableCount = this.gpuPlayableCount,
-            avgRating = this.avgRating,
-            hasBeenTried = this.hasBeenTried,
-            isNotWorking = this.isNotWorking,
-            state = this.state,
-        )
-    }
-
-    /**
-     * Converts serializable format back to GameCompatibilityService.GameCompatibilityResponse
-     */
-    private fun GameCompatibilityResponseData.toResponse(): GameCompatibilityService.GameCompatibilityResponse {
-        return GameCompatibilityService.GameCompatibilityResponse(
-            gameName = this.gameName,
-            totalPlayableCount = this.totalPlayableCount,
-            gpuPlayableCount = this.gpuPlayableCount,
-            avgRating = this.avgRating,
-            hasBeenTried = this.hasBeenTried,
-            isNotWorking = this.isNotWorking,
-            state = this.state,
-        )
-    }
-
-    /**
-     * Loads cache from persistent storage into memory.
-     * Only parses JSON, no expiration filtering (lazy expiration).
-     */
-    private fun loadCache() {
-        if (cacheLoaded) return
-
-        try {
-            val cacheJson = PrefManager.gameCompatibilityCache
-            if (cacheJson.isEmpty() || cacheJson == "{}") {
-                cacheLoaded = true
-                return
+    /** Decode off the reader lock, then briefly publish immutable responses without duplicate DTOs. */
+    suspend fun initialize() = withContext(Dispatchers.IO) {
+        loadMutex.withLock {
+            if (synchronized(this@GameCompatibilityCache) { cacheLoaded }) return@withLock
+            val entries = runCatching {
+                json.decodeFromString<Map<String, CachedCompatibilityResponse>>(PrefManager.gameCompatibilityCache)
+            }.getOrElse {
+                Timber.tag("GameCompatibilityCache").w(it, "Failed to load compatibility cache")
+                emptyMap()
             }
-
-            val cacheMap = Json.decodeFromString<Map<String, CachedCompatibilityResponse>>(cacheJson)
-
-            // Load all entries into memory (no expiration check here - lazy expiration)
-            // Store both response and timestamp for expiration checking
-            cacheMap.forEach { (gameName, cached) ->
-                inMemoryCache[gameName] = cached.response.toResponse()
-                timestamps[gameName] = cached.timestamp
-            }
-
-            Timber.tag("GameCompatibilityCache").d("Loaded ${inMemoryCache.size} cached entries from persistent storage")
-            cacheLoaded = true
-        } catch (e: Exception) {
-            Timber.tag("GameCompatibilityCache").e(e, "Failed to load cache from persistent storage")
-            cacheLoaded = true // Mark as loaded to avoid retrying
-        }
-    }
-
-    /**
-     * Saves cache to persistent storage.
-     */
-    private fun saveCache() {
-        try {
             val now = System.currentTimeMillis()
-            val cacheMap = inMemoryCache.mapValues { (gameName, response) ->
-                val timestamp = timestamps[gameName] ?: now
-                CachedCompatibilityResponse(response.toData(), timestamp)
+            val usable = entries.filterValues {
+                it.schemaVersion == CACHE_SCHEMA_VERSION &&
+                    it.modernBuild == BuildConfig.MODERN_ANDROID &&
+                    CompatibilityCachePolicy.canDisplay(it.timestamp, now)
             }
-            val cacheJson = Json.encodeToString(cacheMap)
-            PrefManager.gameCompatibilityCache = cacheJson
-            Timber.tag("GameCompatibilityCache").d("Saved ${cacheMap.size} entries to persistent storage")
-        } catch (e: Exception) {
-            Timber.tag("GameCompatibilityCache").e(e, "Failed to save cache to persistent storage")
+            synchronized(this@GameCompatibilityCache) {
+                if (!cacheLoaded) {
+                    usable.forEach { (name, cached) ->
+                        // A newer in-memory result always wins over an in-flight disk load.
+                        if (name !in inMemoryCache) {
+                            inMemoryCache[name] = cached.response
+                            timestamps[name] = cached.timestamp
+                        }
+                    }
+                    cacheLoaded = true
+                    changes.value++
+                    if (usable.size != entries.size) persistence.schedule()
+                }
+            }
         }
     }
 
-    /**
-     * Gets cached compatibility response for a game, if available and not expired.
-     * Uses lazy expiration - checks expiration on access.
-     */
-    fun getCached(gameName: String): GameCompatibilityService.GameCompatibilityResponse? {
-        loadCache()
+    /** Caller holds the cache monitor. Initialization never blocks that caller. */
+    private fun requestInitialization() {
+        if (!cacheLoaded && !initializationRequested) {
+            initializationRequested = true
+            scope.launch { initialize() }
+        }
+    }
 
-        val cached = inMemoryCache[gameName] ?: return null
+    @Synchronized
+    fun getCached(gameName: String): GameCompatibilityResponse? {
+        requestInitialization()
         val timestamp = timestamps[gameName] ?: return null
-
-        // Lazy expiration check - only check when accessing
         val now = System.currentTimeMillis()
-        if (now - timestamp >= CACHE_TTL_MS) {
-            // Expired - remove from cache
-            inMemoryCache.remove(gameName)
-            timestamps.remove(gameName)
-            Timber.tag("GameCompatibilityCache").d("Removed expired cache entry for: $gameName")
-            return null
-        }
-
-        return cached
+        if (discardIfExpired(gameName, timestamp, now)) return null
+        if (!CompatibilityCachePolicy.isFresh(timestamp, now)) return null
+        return inMemoryCache[gameName]
     }
 
-    /**
-     * Caches a compatibility response for a game.
-     */
-    fun cache(gameName: String, response: GameCompatibilityService.GameCompatibilityResponse) {
-        loadCache()
-        val now = System.currentTimeMillis()
-        inMemoryCache[gameName] = response
-        timestamps[gameName] = now
-        saveCache()
-        Timber.tag("GameCompatibilityCache").d("Cached compatibility for: $gameName")
+    @Synchronized
+    fun getLastKnown(gameName: String): GameCompatibilityResponse? {
+        requestInitialization()
+        val timestamp = timestamps[gameName] ?: return null
+        if (discardIfExpired(gameName, timestamp, System.currentTimeMillis())) return null
+        return inMemoryCache[gameName]
     }
 
-    /**
-     * Caches multiple compatibility responses at once.
-     */
-    fun cacheAll(responses: Map<String, GameCompatibilityService.GameCompatibilityResponse>) {
-        loadCache()
+    private fun discardIfExpired(gameName: String, timestamp: Long, now: Long): Boolean {
+        if (CompatibilityCachePolicy.canDisplay(timestamp, now)) return false
+        inMemoryCache.remove(gameName)
+        timestamps.remove(gameName)
+        persistence.schedule()
+        return true
+    }
+
+    @Synchronized
+    fun cacheAll(responses: Map<String, GameCompatibilityResponse>) {
         val now = System.currentTimeMillis()
         inMemoryCache.putAll(responses)
-        responses.keys.forEach { gameName ->
-            timestamps[gameName] = now
+        responses.keys.forEach { name ->
+            timestamps[name] = now
         }
-        saveCache()
-        Timber.tag("GameCompatibilityCache").d("Cached ${responses.size} compatibility entries")
-    }
-
-    /**
-     * Checks if a game's compatibility is cached and not expired.
-     */
-    fun isCached(gameName: String): Boolean {
-        loadCache()
-        return getCached(gameName) != null
-    }
-
-    /**
-     * Clears the entire cache (both memory and persistent storage).
-     */
-    fun clear() {
-        inMemoryCache.clear()
-        timestamps.clear()
-        PrefManager.gameCompatibilityCache = "{}"
-        Timber.tag("GameCompatibilityCache").d("Cache cleared")
-    }
-
-    /**
-     * Gets the current cache size.
-     */
-    fun size(): Int {
-        loadCache()
-        return inMemoryCache.size
+        persistence.schedule()
+        changes.value++
     }
 }

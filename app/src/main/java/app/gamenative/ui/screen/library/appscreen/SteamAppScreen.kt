@@ -399,11 +399,6 @@ class SteamAppScreen : BaseAppScreen() {
             }
         }
 
-        val (compatibilityMessage, compatibilityColor) = rememberCompatibilityInfo(
-            context = context,
-            gameName = appInfo.name,
-        )
-
         // Read companion Snapshot map so status recomposes when the change-copy dialog updates it.
         val preferredCopyUi = preferredCopyUiByAppId[gameId]
         // familyGroupId flips early on LoggedOn; dataVersion bumps after shared-library refresh.
@@ -447,8 +442,6 @@ class SteamAppScreen : BaseAppScreen() {
             sizeFromStore = sizeFromStore,
             lastPlayedText = lastPlayedText,
             playtimeText = playtimeText,
-            compatibilityMessage = compatibilityMessage,
-            compatibilityColor = compatibilityColor,
             preferredCopyStatusText = preferredCopyUi?.statusText,
             showChangePreferredCopy = preferredCopyUi?.showChange == true,
             onChangePreferredCopy = { showPreferredCopyDialog(gameId) },

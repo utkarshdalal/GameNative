@@ -2842,6 +2842,56 @@
     <string name="control_profile_failed">控制設定檔操作失敗：%1$s</string>
     <string name="control_profile_delete_title">刪除控制設定檔？</string>
     <string name="control_profile_delete_message">要從媒體庫移除「%1$s」嗎？已使用此設定檔的遊戲將保留其控制設定。</string>
+    <string name="sort_compatibility">相容性</string>
+    <string name="community_compatibility_details">詳細資訊</string>
+    <string name="community_compatibility_expanded">已展開</string>
+    <string name="community_compatibility_collapsed">已收合</string>
+    <string name="community_compatibility_short_disclaimer">社群結果並不保證實際表現。</string>
+    <string name="community_compatibility_unreliable_short">結果不穩定；尚未確認能正常遊玩。</string>
+    <string name="community_compatibility_performance_caution">回報的效能可能有限。</string>
+    <string name="community_compatibility_checking_short">檢查中…</string>
+    <string name="community_compatibility_unavailable_short">無法使用</string>
+    <string name="community_compatibility_unavailable">無法載入相容性資訊</string>
+    <string name="community_compatibility_missing_tier">回應缺少必要的硬體資料，無法將結果套用至您的裝置。</string>
+    <string name="community_compatibility_cached_result">等待重新整理成功期間，顯示上次已知結果。</string>
+    <string name="community_compatibility_works">極佳</string>
+    <string name="community_compatibility_should">可執行</string>
+    <string name="community_compatibility_may">可能可執行</string>
+    <string name="community_compatibility_mixed">不穩定</string>
+    <string name="community_compatibility_wont">無法執行</string>
+    <string name="community_compatibility_unknown">未測試</string>
+    <string name="community_compatibility_checking">正在檢查相容性…</string>
+    <string name="community_compatibility_no_reports">找不到適用於您硬體的共享設定</string>
+    <string name="community_compatibility_configs_unavailable">部分相容性資料無法載入，正在顯示可用資訊。</string>
+    <string name="community_compatibility_retry">重試</string>
+    <string name="community_compatibility_fps_median">回報的影格率中位數：%1$d FPS</string>
+    <string name="community_compatibility_fps_device">%1$s（您的裝置型號）。</string>
+    <string name="community_compatibility_fps_soc">%1$s（相同晶片組）。</string>
+    <string name="community_compatibility_fps_gpu">%1$s（您的 GPU）。</string>
+    <string name="community_compatibility_fps_family">%1$s（相容的 GPU）。</string>
+    <string name="community_compatibility_view_reports">瀏覽設定</string>
+    <string name="community_config_install_before_apply">請先安裝此遊戲，再套用社群設定。</string>
+    <plurals name="community_compatibility_model_sessions">
+        <item quantity="other">根據在您的裝置型號上記錄的 %1$d 次工作階段。</item>
+    </plurals>
+    <plurals name="community_compatibility_soc_sessions">
+        <item quantity="other">根據使用相同晶片組記錄的 %1$d 次工作階段。</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_sessions">
+        <item quantity="other">根據使用您的 GPU 記錄的 %1$d 次工作階段。</item>
+    </plurals>
+    <plurals name="community_compatibility_family_sessions">
+        <item quantity="other">根據您的 GPU 系列中記錄的 %1$d 次工作階段。</item>
+    </plurals>
+    <plurals name="community_compatibility_device_evidence">
+        <item quantity="other">來自此裝置型號的 %1$d 個已評分共享設定</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_evidence">
+        <item quantity="other">使用您的 GPU 的 %1$d 個已評分共享設定</item>
+    </plurals>
+    <plurals name="community_compatibility_family_evidence">
+        <item quantity="other">使用相容 GPU 的 %1$d 個已評分共享設定</item>
+    </plurals>
     <string name="debug_prerun_instruction">本次執行要做的事：%1$s</string>
     <plurals name="debug_prerun_min_minutes">
         <item quantity="other">結束前請讓遊戲至少執行 %1$d 分鐘。</item>
