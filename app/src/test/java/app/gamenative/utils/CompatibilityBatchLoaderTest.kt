@@ -12,16 +12,26 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class CompatibilityBatchLoaderTest {
+    private val cache = mutableMapOf<String, GameCompatibilityResponse>()
+    private var requests = 0
+    private var now = 100L
+
+    private fun loader(
+        fetch: suspend (List<String>, String) -> Map<String, GameCompatibilityResponse>?,
+        clock: () -> Long = System::currentTimeMillis,
+        wait: suspend (Long) -> Unit = { delay(it) },
+        timeoutMillis: Long = 45_000L,
+        retryDelay: (Long) -> Long = { CompatibilityRetryPolicy.withJitter(it) },
+    ) = CompatibilityBatchLoader(
+        cache::get, cache::putAll, { names, gpu -> requests++; fetch(names, gpu) }, {}, clock, wait, timeoutMillis, retryDelay,
+    )
     private fun response(name: String, state: String = "Works") =
         GameCompatibilityResponse(name, state, "gpu")
 
     @Test fun twentyThousandGamesUseBoundedBatchesAndCachedRevisitsMakeNoRequests() = runBlocking {
-        val cache = mutableMapOf<String, GameCompatibilityResponse>()
-        var calls = 0
         var active = 0
         var maximumActive = 0
-        val loader = CompatibilityBatchLoader(cache::get, cache::putAll, { names, _ ->
-            calls++
+        val loader = loader({ names, _ ->
             active++
             maximumActive = maxOf(maximumActive, active)
             assertTrue(names.size <= 100)
@@ -29,38 +39,31 @@ class CompatibilityBatchLoaderTest {
             val results = names.associateWith(::response)
             active--
             results
-        }, {})
+        })
         val names = (0 until 20_001).map { "Game $it" }
         assertTrue(loader.refresh(names, "GPU"))
-        assertEquals(201, calls)
+        assertEquals(201, requests)
         assertEquals(1, maximumActive)
         assertEquals(names.size, cache.size)
         assertTrue(loader.refresh(names.reversed(), "GPU"))
         assertTrue(loader.refresh(names.takeLast(50), "GPU"))
-        assertEquals(201, calls)
+        assertEquals(201, requests)
         assertFalse(loader.isRefreshing())
     }
 
     @Test fun concurrentDetailAndLibraryRequestsReuseTheSameCache() = runBlocking {
-        val cache = mutableMapOf<String, GameCompatibilityResponse>()
-        var requests = 0
-        val loader = CompatibilityBatchLoader(cache::get, cache::putAll, { names, _ ->
-            requests++
+        val loader = loader({ names, _ ->
             kotlinx.coroutines.yield()
             names.associateWith(::response)
-        }, {})
+        })
         listOf(async { loader.refresh(listOf("A", "B"), "GPU") }, async { loader.refresh(listOf("A"), "GPU") }).awaitAll()
         assertEquals(1, requests)
     }
 
     @Test fun failuresAreNotUnknownAndDoNotHammerTheRemainingBatches() = runBlocking {
-        val cache = mutableMapOf<String, GameCompatibilityResponse>()
-        var requests = 0
-        var now = 100L
-        val loader = CompatibilityBatchLoader(cache::get, cache::putAll, { _, _ ->
-            requests++
+        val loader = loader({ _, _ ->
             null
-        }, {}, { now })
+        }, clock = { now })
         val names = (1..251).map { "Game $it" }
         assertFalse(loader.refresh(names, "GPU"))
         assertTrue(cache.isEmpty())
@@ -73,10 +76,9 @@ class CompatibilityBatchLoaderTest {
     }
 
     @Test fun missingEntriesAreNotInventedButExplicitUntestedIsCached() = runBlocking {
-        val cache = mutableMapOf<String, GameCompatibilityResponse>()
-        val loader = CompatibilityBatchLoader(cache::get, cache::putAll, { _, _ ->
+        val loader = loader({ _, _ ->
             mapOf("Untested" to response("Untested", "Untested"))
-        }, {})
+        })
         assertFalse(loader.refresh(listOf("Missing", "Untested"), "GPU"))
         assertFalse(cache.containsKey("Missing"))
         assertTrue(loader.hasFailed("Missing"))
@@ -84,28 +86,25 @@ class CompatibilityBatchLoaderTest {
     }
 
     @Test fun honorsRateLimitThenRetriesWithoutPublishingAnInterimVerdict() = runBlocking {
-        val cache = mutableMapOf<String, GameCompatibilityResponse>()
-        var requests = 0
         val waits = mutableListOf<Long>()
-        val loader = CompatibilityBatchLoader(cache::get, cache::putAll, { names, _ ->
-            if (requests++ < 2) throw GameCompatibilityService.RateLimited(10_000L)
+        val loader = loader({ names, _ ->
+            if (requests <= 2) throw GameCompatibilityService.RateLimited(10_000L)
             names.associateWith(::response)
-        }, {}, wait = { waits += it }, retryDelay = { it + 123L })
+        }, wait = { waits += it }, retryDelay = { it + 123L })
         assertTrue(loader.refresh(listOf("Game"), "GPU"))
         assertEquals(listOf(10_123L, 10_123L), waits)
         assertEquals(3, requests)
     }
 
     @Test fun failedManualRefreshPreservesCachedVerdictButReportsFailure() = runBlocking {
-        val cache = mutableMapOf("Game" to response("Game", "Broken"))
-        val loader = CompatibilityBatchLoader(cache::get, cache::putAll, { _, _ -> null }, {})
+        cache["Game"] = response("Game", "Broken")
+        val loader = loader({ _, _ -> null })
         assertFalse(loader.refresh(listOf("Game"), "GPU", force = true))
         assertEquals("Broken", cache["Game"]?.state)
     }
 
     @Test fun cancellationPropagatesWithoutMarkingUntested() = runBlocking {
-        val cache = mutableMapOf<String, GameCompatibilityResponse>()
-        val loader = CompatibilityBatchLoader(cache::get, cache::putAll, { _, _ -> throw CancellationException() }, {})
+        val loader = loader({ _, _ -> throw CancellationException() })
         try {
             loader.refresh(listOf("Game"), "GPU")
             fail("Expected cancellation")
@@ -117,18 +116,17 @@ class CompatibilityBatchLoaderTest {
     }
 
     @Test fun aDetailRequestDoesNotWaitForTheWholeLibrary() = runBlocking {
-        val cache = mutableMapOf<String, GameCompatibilityResponse>()
         val started = CompletableDeferred<Unit>()
         val release = CompletableDeferred<Unit>()
-        val calls = mutableListOf<List<String>>()
-        val loader = CompatibilityBatchLoader(cache::get, cache::putAll, { names, _ ->
-            calls += names
-            if (calls.size == 1) {
+        val batches = mutableListOf<List<String>>()
+        val loader = loader({ names, _ ->
+            batches += names
+            if (batches.size == 1) {
                 started.complete(Unit)
                 release.await()
             }
             names.associateWith(::response)
-        }, {})
+        })
         val library = async { loader.refresh((1..250).map { "Game $it" }, "GPU") }
         started.await()
         assertTrue(loader.isLoading("Game 250"))
@@ -137,17 +135,15 @@ class CompatibilityBatchLoaderTest {
         release.complete(Unit)
         assertTrue(detail.await())
         assertTrue(library.await())
-        assertEquals(listOf("Detail"), calls[1])
+        assertEquals(listOf("Detail"), batches[1])
         assertFalse(loader.isRefreshing())
     }
 
     @Test fun timeoutStopsCheckingAndKeepsAlreadyPublishedBatches() = runBlocking {
-        val cache = mutableMapOf<String, GameCompatibilityResponse>()
-        var calls = 0
-        val loader = CompatibilityBatchLoader(cache::get, cache::putAll, { names, _ ->
-            if (++calls > 1) delay(10_000)
+        val loader = loader({ names, _ ->
+            if (requests > 1) delay(10_000)
             names.associateWith(::response)
-        }, {}, timeoutMillis = 30L)
+        }, timeoutMillis = 30L)
         assertFalse(loader.refresh((1..250).map { "Game $it" }, "GPU"))
         assertEquals(100, cache.size)
         assertTrue(loader.hasFailed("Game 250"))
@@ -156,12 +152,11 @@ class CompatibilityBatchLoaderTest {
     }
 
     @Test fun unexpectedFetchErrorDoesNotKillSubsequentRefreshes() = runBlocking {
-        val cache = mutableMapOf<String, GameCompatibilityResponse>()
         var fail = true
-        val loader = CompatibilityBatchLoader(cache::get, cache::putAll, { names, _ ->
+        val loader = loader({ names, _ ->
             if (fail) error("Bad response")
             names.associateWith(::response)
-        }, {})
+        })
         assertFalse(loader.refresh(listOf("Game"), "GPU"))
         assertFalse(loader.isRefreshing())
         fail = false
@@ -170,34 +165,29 @@ class CompatibilityBatchLoaderTest {
     }
 
     @Test fun longRateLimitSurvivesNewPassesOtherConsumersAndForcedRefresh() = runBlocking {
-        val cache = mutableMapOf<String, GameCompatibilityResponse>()
-        var now = 100L
-        var calls = 0
-        val loader = CompatibilityBatchLoader(cache::get, cache::putAll, { names, _ ->
-            if (++calls == 1) throw GameCompatibilityService.RateLimited(600_000L)
+        val loader = loader({ names, _ ->
+            if (requests == 1) throw GameCompatibilityService.RateLimited(600_000L)
             names.associateWith(::response)
-        }, {}, clock = { now }, retryDelay = { it }, wait = { fail("Long cooldown must not hold the loader mutex") })
+        }, clock = { now }, retryDelay = { it }, wait = { fail("Long cooldown must not hold the loader mutex") })
         assertFalse(loader.refresh(listOf("A"), "GPU"))
         assertFalse(loader.isRefreshing())
         now += 60_000L
         assertFalse(loader.refresh(listOf("A"), "GPU"))
         assertFalse(loader.refresh(listOf("B"), "GPU", force = true))
-        assertEquals(1, calls)
+        assertEquals(1, requests)
         now = 600_101L
         assertTrue(loader.refresh(listOf("A", "B"), "GPU"))
-        assertEquals(2, calls)
+        assertEquals(2, requests)
     }
 
     @Test fun queuedConsumerRechecksRateLimitAfterAcquiringTheBatchLock() = runBlocking {
-        var calls = 0
         val started = CompletableDeferred<Unit>()
         val release = CompletableDeferred<Unit>()
-        val loader = CompatibilityBatchLoader({ null }, {}, { _, _ ->
-            calls++
+        val loader = loader({ _, _ ->
             started.complete(Unit)
             release.await()
             throw GameCompatibilityService.RateLimited(600_000L)
-        }, {}, retryDelay = { it })
+        }, retryDelay = { it })
         val first = async { loader.refresh(listOf("A"), "GPU") }
         started.await()
         val queued = async { loader.refresh(listOf("B"), "GPU", force = true) }
@@ -205,43 +195,39 @@ class CompatibilityBatchLoaderTest {
         release.complete(Unit)
         assertFalse(first.await())
         assertFalse(queued.await())
-        assertEquals(1, calls)
+        assertEquals(1, requests)
     }
 
     @Test fun retryBudgetCoversAllAttemptsRatherThanRestartingEachTime() = runBlocking {
-        var now = 100L
-        var calls = 0
         val waits = mutableListOf<Long>()
-        val loader = CompatibilityBatchLoader({ null }, {}, { _, _ ->
-            calls++
+        val loader = loader({ _, _ ->
             throw GameCompatibilityService.RateLimited(30_000L)
-        }, {}, clock = { now }, wait = {
+        }, clock = { now }, wait = {
             waits += it
             now += it
         }, retryDelay = { it })
         assertFalse(loader.refresh(listOf("A"), "GPU"))
-        assertEquals(2, calls)
+        assertEquals(2, requests)
         assertEquals(listOf(30_000L), waits)
         now += 1_000L
         assertFalse(loader.refresh(listOf("B"), "GPU", force = true))
-        assertEquals(2, calls)
+        assertEquals(2, requests)
     }
 
     @Test fun queuedConsumersReuseFailureCooldownWithoutBlockingOtherNames() = runBlocking {
-        val cache = mutableMapOf<String, GameCompatibilityResponse>()
         val started = CompletableDeferred<Unit>()
         val release = CompletableDeferred<Unit>()
-        val calls = mutableListOf<List<String>>()
-        val loader = CompatibilityBatchLoader(cache::get, cache::putAll, { names, _ ->
-            calls += names
-            if (calls.size == 1) {
+        val batches = mutableListOf<List<String>>()
+        val loader = loader({ names, _ ->
+            batches += names
+            if (batches.size == 1) {
                 started.complete(Unit)
                 release.await()
                 null
             } else {
                 names.associateWith(::response)
             }
-        }, {})
+        })
         val first = async { loader.refresh(listOf("A"), "GPU") }
         started.await()
         val queued = async { loader.refresh(listOf("A", "B"), "GPU") }
@@ -249,26 +235,24 @@ class CompatibilityBatchLoaderTest {
         release.complete(Unit)
         assertFalse(first.await())
         assertFalse(queued.await())
-        assertEquals(listOf(listOf("A"), listOf("B")), calls)
+        assertEquals(listOf(listOf("A"), listOf("B")), batches)
         assertTrue(loader.hasFailed("A"))
         assertEquals("Works", cache["B"]?.state)
         assertFalse(loader.isRefreshing())
     }
 
     @Test fun explicitRetryCanRecoverAQueuedFailureWithoutLeavingAFailureFlag() = runBlocking {
-        val cache = mutableMapOf<String, GameCompatibilityResponse>()
         val started = CompletableDeferred<Unit>()
         val release = CompletableDeferred<Unit>()
-        var calls = 0
-        val loader = CompatibilityBatchLoader(cache::get, cache::putAll, { names, _ ->
-            if (++calls == 1) {
+        val loader = loader({ names, _ ->
+            if (requests == 1) {
                 started.complete(Unit)
                 release.await()
                 null
             } else {
                 names.associateWith(::response)
             }
-        }, {})
+        })
         val first = async { loader.refresh(listOf("A"), "GPU") }
         started.await()
         val forced = async { loader.refresh(listOf("A"), "GPU", force = true) }
@@ -276,15 +260,15 @@ class CompatibilityBatchLoaderTest {
         release.complete(Unit)
         assertFalse(first.await())
         assertTrue(forced.await())
-        assertEquals(2, calls)
+        assertEquals(2, requests)
         assertFalse(loader.hasFailed("A"))
     }
 
     @Test fun oldRunOnlyPayloadCannotOverwriteAKnownVerdict() = runBlocking {
-        val cache = mutableMapOf("Game" to response("Game", "Broken"))
-        val loader = CompatibilityBatchLoader(cache::get, cache::putAll, { _, _ ->
+        cache["Game"] = response("Game", "Broken")
+        val loader = loader({ _, _ ->
             GameCompatibilityService.parseCompatibilityResponse("""{"Game":{"total":42,"gpu":42}}""", listOf("Game"))
-        }, {})
+        })
         assertFalse(loader.refresh(listOf("Game"), "GPU", force = true))
         assertEquals("Broken", cache["Game"]?.state)
     }

@@ -31,7 +31,7 @@ class CommunityCompatibilitySocTest {
                 val gpu = classify("gpu", state, mapOf("gpu" to row))
                 val soc = classify("soc", state, mapOf("soc" to row))
                 assertEquals(
-                    "$state: $row", gpu.copy(evidenceTier = CommunityEvidenceTier.SAME_SOC, serverTier = "soc"), soc,
+                    "$state: $row", gpu.copy(evidenceTier = CommunityEvidenceTier.SAME_SOC), soc,
                 )
             }
         }

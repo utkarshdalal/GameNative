@@ -34,4 +34,24 @@ class CompatibilityAndroidParsingTest {
         val result = GameCompatibilityService.parseCompatibilityResponse("""{"Game":{"state":null}}""", listOf("Game"))
         assertTrue(result.isEmpty())
     }
+
+    @Test fun malformedCountersAreNotReclassifiedAsMissingRatings() {
+        val cases = listOf(
+            """ "ratedDevices":-1,"okDevices":-1 """ to CommunityCompatibilityVerdict.MAY_WORK,
+            """ "ratedDevices":"bad","okDevices":"bad" """ to CommunityCompatibilityVerdict.MAY_WORK,
+            """ "ratedDevices":1,"okDevices":2 """ to CommunityCompatibilityVerdict.MAY_WORK,
+            """ "ratedDevices":1,"okDevices":0 """ to CommunityCompatibilityVerdict.MAY_WORK,
+            """ "ratedDevices":null,"okDevices":null """ to CommunityCompatibilityVerdict.SHOULD_WORK,
+            """ "ratedDevices":0,"okDevices":0 """ to CommunityCompatibilityVerdict.SHOULD_WORK,
+        )
+        for ((counts, expected) in cases) {
+            val response = GameCompatibilityService.parseCompatibilityResponse(
+                """{"Game":{"state":"Great","tier":"gpu","tiers":{"gpu":{
+                    "key":"GPU","sessions":10,"playable":8,"playableRate":0.8,$counts
+                }}}}""",
+                listOf("Game"),
+            ).getValue("Game")
+            assertEquals(expected, CommunityCompatibilityClassifier.fromCompatibilityResponse(response).verdict)
+        }
+    }
 }

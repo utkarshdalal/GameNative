@@ -2721,7 +2721,6 @@
     <string name="gyro_milliseconds_value">%1$d ms</string>
     <string name="reset_gyro_settings">Reset gyro settings</string>
     <string name="sort_compatibility">Compatibility</string>
-    <string name="community_compatibility_title">Community Compatibility</string>
     <string name="community_compatibility_details">Details</string>
     <string name="community_compatibility_expanded">Expanded</string>
     <string name="community_compatibility_collapsed">Collapsed</string>
@@ -2763,12 +2762,6 @@
     <string name="community_compatibility_mixed">Unreliable</string>
     <string name="community_compatibility_wont">Broken</string>
     <string name="community_compatibility_unknown">Untested</string>
-    <string name="community_compatibility_works_short">Great</string>
-    <string name="community_compatibility_should_short">Works</string>
-    <string name="community_compatibility_may_short">May Work</string>
-    <string name="community_compatibility_mixed_short">Unreliable</string>
-    <string name="community_compatibility_wont_short">Broken</string>
-    <string name="community_compatibility_unknown_short">Untested</string>
     <string name="community_compatibility_checking">Checking compatibility…</string>
     <plurals name="community_compatibility_device_evidence">
         <item quantity="one">%1$d rated shared config from this device model</item>
@@ -2785,7 +2778,7 @@
     <string name="community_compatibility_no_reports">No shared configs found for your hardware</string>
     <string name="community_compatibility_configs_unavailable">Some compatibility data could not be loaded. Showing available evidence.</string>
     <string name="community_compatibility_retry">Retry</string>
-    <string name="community_compatibility_refresh">Refresh community compatibility</string>
+    <string name="community_compatibility_refresh">Refresh compatibility</string>
     <string name="community_compatibility_fps_median">Median %1$d FPS reported</string>
     <string name="community_compatibility_fps_device">%1$s on your device model.</string>
     <string name="community_compatibility_fps_soc">%1$s using the same chipset.</string>

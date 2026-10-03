@@ -38,19 +38,7 @@ data class CommunityRatingDistribution(
     val fourStar: Int = 0,
     val fiveStar: Int = 0,
 ) {
-    val positive: Int get() = fourStar + fiveStar
-    val neutral: Int get() = threeStar
-    val negative: Int get() = oneStar + twoStar
-    val ratedTotal: Int get() = positive + neutral + negative
-
-    fun countFor(rating: Int): Int = when (rating) {
-        1 -> oneStar
-        2 -> twoStar
-        3 -> threeStar
-        4 -> fourStar
-        5 -> fiveStar
-        else -> 0
-    }
+    val ratedTotal: Int get() = oneStar + twoStar + threeStar + fourStar + fiveStar
 }
 
 @Serializable
@@ -62,21 +50,14 @@ data class CommunityCompatibilitySummary(
     /** Historical rated config uploads; not independent people or recent-only evidence. */
     val reportCount: Int = 0,
     val reportEvidenceTier: CommunityEvidenceTier = CommunityEvidenceTier.NONE,
-    val ratings: CommunityRatingDistribution = CommunityRatingDistribution(),
     val medianFps: Int? = null,
     val hasDetailedReports: Boolean = false,
     val detailsLoaded: Boolean = false,
     /** Server-owned compatibility result from /api/game-compat. */
     val serverState: String? = null,
-    val serverTier: String? = null,
-    val serverTierKey: String = "",
-    val playableCount: Int? = null,
-    val playableRate: Double? = null,
     val verdictSource: CommunityVerdictSource = CommunityVerdictSource.UNKNOWN,
     val verdictLoaded: Boolean = false,
     val loadFailed: Boolean = false,
-    val ratedDevices: Int? = null,
-    val okDevices: Int? = null,
     val isChecking: Boolean = false,
     val isCachedResultStale: Boolean = false,
     val scopeCaution: CommunityVerdictCaution = CommunityVerdictCaution.NONE,
@@ -85,20 +66,11 @@ data class CommunityCompatibilitySummary(
     val limitedRatingFeedback: Boolean = false,
     val confidenceCaution: CommunityConfidenceCaution = CommunityConfidenceCaution.NONE,
     val performanceCaution: Boolean = false,
-    /** Sample-aware rating support, NOT the probability of playable gameplay. */
-    val ratingSupport: Double? = null,
 ) {
     companion object {
-        fun unknown(
-            evidenceTier: CommunityEvidenceTier = CommunityEvidenceTier.NONE,
-            reportCount: Int = 0,
-            detailsLoaded: Boolean = false,
-        ) = CommunityCompatibilitySummary(
+        fun unknown() = CommunityCompatibilitySummary(
             verdict = CommunityCompatibilityVerdict.UNKNOWN,
-            evidenceTier = evidenceTier,
-            reportCount = reportCount,
-            reportEvidenceTier = evidenceTier.takeIf { reportCount > 0 } ?: CommunityEvidenceTier.NONE,
-            detailsLoaded = detailsLoaded,
+            evidenceTier = CommunityEvidenceTier.NONE,
         )
     }
 }
@@ -162,11 +134,12 @@ object CommunityCompatibilityClassifier {
             CommunityCompatibilityVerdict.UNKNOWN
         } else {
             when (state) {
-                "great", "works" -> when (evidenceTier) {
-                    CommunityEvidenceTier.SAME_DEVICE -> CommunityCompatibilityVerdict.WORKS
-                    CommunityEvidenceTier.SAME_SOC, CommunityEvidenceTier.SAME_GPU -> CommunityCompatibilityVerdict.SHOULD_WORK
-                    CommunityEvidenceTier.COMPATIBLE_GPU_FAMILY -> CommunityCompatibilityVerdict.MAY_WORK
-                    CommunityEvidenceTier.NONE -> CommunityCompatibilityVerdict.UNKNOWN
+                // Great/Works express quality; the evidence tier separately describes hardware matching.
+                "great", "works" -> when {
+                    exactScope && state == "great" -> CommunityCompatibilityVerdict.WORKS
+                    exactScope -> CommunityCompatibilityVerdict.SHOULD_WORK
+                    knownScope -> CommunityCompatibilityVerdict.MAY_WORK
+                    else -> CommunityCompatibilityVerdict.UNKNOWN
                 }
                 "may work" -> if (knownScope) CommunityCompatibilityVerdict.MAY_WORK else CommunityCompatibilityVerdict.UNKNOWN
                 // Unreliable describes inconsistent reliability, not necessarily polarized star ratings.
@@ -195,7 +168,14 @@ object CommunityCompatibilityClassifier {
                     verdict = CommunityCompatibilityVerdict.MIXED
                     confidence = CommunityConfidenceCaution.CONFLICTING_FEEDBACK
                 }
-                state == "unreliable" || !isCorroborated(metrics, nowMillis) -> {
+                state == "unreliable" -> {
+                    if (oldActivity) confidence = CommunityConfidenceCaution.OLDER_EVIDENCE
+                }
+                exactScope && hasSessionSupport(metrics, nowMillis) && hasNoRatedFeedback(metrics) -> {
+                    // Successful performance checks without ratings support Works, but not Great.
+                    verdict = CommunityCompatibilityVerdict.SHOULD_WORK
+                }
+                !isCorroborated(metrics, nowMillis) -> {
                     verdict = CommunityCompatibilityVerdict.MAY_WORK
                     confidence = if (oldActivity) CommunityConfidenceCaution.OLDER_EVIDENCE else CommunityConfidenceCaution.LIMITED_EVIDENCE
                 }
@@ -211,16 +191,9 @@ object CommunityCompatibilityClassifier {
             sessionCount = metrics?.sessions ?: 0,
             medianFps = metrics?.medianFps?.takeIf { it.isFinite() && it > 0 }?.roundToInt(),
             serverState = response.state,
-            serverTier = serverTierName,
-            serverTierKey = metrics?.key.orEmpty(),
-            playableCount = metrics?.playable,
-            playableRate = metrics?.playableRate,
-            ratedDevices = metrics?.ratedDevices,
-            okDevices = metrics?.okDevices,
             verdictLoaded = true,
             verdictSource = CommunityVerdictSource.SERVER,
             scopeCaution = caution,
-            ratingSupport = support?.first.takeIf { positive },
             ratingCaution = ratingCaution,
             limitedRatingFeedback = positive && support != null && metrics?.okDevices == 0 && !ratingCaution,
             confidenceCaution = confidence,
@@ -229,6 +202,14 @@ object CommunityCompatibilityClassifier {
     }
 
     private fun isCorroborated(metrics: CompatibilityTierMetrics?, nowMillis: Long): Boolean {
+        // Keep model-to-GPU fallback dependent on positive ratings, even when unrated sessions
+        // are sufficient for a Works verdict at the selected tier.
+        if (!hasSessionSupport(metrics, nowMillis)) return false
+        if (ratingInterval(metrics?.okDevices, metrics?.ratedDevices) == null) return false
+        return metrics!!.okDevices!! > 0 && metrics.okDevices.toDouble() / metrics.ratedDevices!! >= POSITIVE_SHARE
+    }
+
+    private fun hasSessionSupport(metrics: CompatibilityTierMetrics?, nowMillis: Long): Boolean {
         if (metrics == null ||
             !metrics.hasHardwareKey ||
             metrics.sessions < MIN_CORROBORATED_SESSIONS ||
@@ -238,10 +219,15 @@ object CommunityCompatibilityClassifier {
         }
         if (metrics.playable !in 1..metrics.sessions) return false
         val rate = metrics.playableRate
-        if (rate == null || !rate.isFinite() || rate !in 0.0..1.0 || rate < POSITIVE_SHARE) return false
-        if (ratingInterval(metrics.okDevices, metrics.ratedDevices) == null) return false
-        return metrics.okDevices!! > 0 && metrics.okDevices.toDouble() / metrics.ratedDevices!! >= POSITIVE_SHARE
+        return rate != null && rate.isFinite() && rate in POSITIVE_SHARE..1.0
     }
+
+    private fun hasNoRatedFeedback(metrics: CompatibilityTierMetrics?): Boolean =
+        metrics != null &&
+            (
+                (metrics.ratedDevices == null && metrics.okDevices == null) ||
+                    (metrics.ratedDevices == 0 && (metrics.okDevices == null || metrics.okDevices == 0))
+                )
 
     private fun hasUnfavorableFeedback(metrics: CompatibilityTierMetrics?): Boolean =
         ratingInterval(metrics?.okDevices, metrics?.ratedDevices) != null &&
@@ -278,7 +264,6 @@ object CommunityCompatibilityClassifier {
         return summary.copy(
             reportEvidenceTier = selected?.first ?: CommunityEvidenceTier.NONE,
             reportCount = distribution.ratedTotal,
-            ratings = distribution,
             hasDetailedReports = selected != null,
             detailsLoaded = statsAvailable,
         )

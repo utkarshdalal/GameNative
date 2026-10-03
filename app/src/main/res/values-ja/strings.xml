@@ -2666,7 +2666,6 @@
     <string name="control_profile_delete_title">コントロールプロファイルを削除しますか？</string>
     <string name="control_profile_delete_message">ライブラリから「%1$s」を削除しますか？すでにこのプロファイルで設定されたゲームのコントロールは維持されます。</string>
     <string name="sort_compatibility">互換性</string>
-    <string name="community_compatibility_title">コミュニティの互換性情報</string>
     <string name="community_compatibility_details">詳細</string>
     <string name="community_compatibility_expanded">展開済み</string>
     <string name="community_compatibility_collapsed">折りたたみ済み</string>
@@ -2696,7 +2695,7 @@
     <string name="community_compatibility_no_reports">お使いのハードウェア向けの共有設定が見つかりません</string>
     <string name="community_compatibility_configs_unavailable">一部の互換性データを読み込めませんでした。利用可能な情報を表示しています。</string>
     <string name="community_compatibility_retry">再試行</string>
-    <string name="community_compatibility_refresh">コミュニティの互換性情報を更新</string>
+    <string name="community_compatibility_refresh">互換性情報を更新</string>
     <string name="community_compatibility_fps_median">報告された中央値: %1$d FPS</string>
     <string name="community_compatibility_fps_device">%1$s（お使いのデバイスモデル）。</string>
     <string name="community_compatibility_fps_soc">%1$s（同じチップセット）。</string>
@@ -2704,12 +2703,6 @@
     <string name="community_compatibility_fps_family">%1$s（互換性のある GPU）。</string>
     <string name="community_compatibility_view_reports">設定を参照</string>
     <string name="community_config_install_before_apply">コミュニティ設定を適用する前に、このゲームをインストールしてください。</string>
-    <string name="community_compatibility_works_short">良好</string>
-    <string name="community_compatibility_should_short">動作</string>
-    <string name="community_compatibility_may_short">動作の可能性あり</string>
-    <string name="community_compatibility_mixed_short">不安定</string>
-    <string name="community_compatibility_wont_short">動作不可</string>
-    <string name="community_compatibility_unknown_short">未検証</string>
     <plurals name="community_compatibility_model_sessions">
         <item quantity="other">お使いのデバイスモデルで記録された %1$d 回のセッションに基づきます。</item>
     </plurals>

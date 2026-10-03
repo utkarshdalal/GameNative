@@ -106,7 +106,6 @@ fun CommunityCompatibilityBadge(
             backgroundColor = style.backgroundColor,
             iconTint = style.iconTint,
             label = style.labelResId,
-            description = if (verdictLoaded) communityVerdictLabel(verdict, short = false) else style.labelResId,
         )
     } else {
         IconBadge(
@@ -114,42 +113,18 @@ fun CommunityCompatibilityBadge(
             icon = style.icon,
             backgroundColor = style.backgroundColor,
             iconTint = style.iconTint,
-            contentDescription = if (verdictLoaded) communityVerdictLabel(verdict, short = false) else style.labelResId,
+            contentDescription = style.labelResId,
         )
     }
 }
 
-internal fun communityVerdictLabel(verdict: CommunityCompatibilityVerdict, short: Boolean): Int = when (verdict) {
-    CommunityCompatibilityVerdict.WORKS -> if (short) {
-        R.string.community_compatibility_works_short
-    } else {
-        R.string.community_compatibility_works
-    }
-    CommunityCompatibilityVerdict.SHOULD_WORK -> if (short) {
-        R.string.community_compatibility_should_short
-    } else {
-        R.string.community_compatibility_should
-    }
-    CommunityCompatibilityVerdict.MAY_WORK -> if (short) {
-        R.string.community_compatibility_may_short
-    } else {
-        R.string.community_compatibility_may
-    }
-    CommunityCompatibilityVerdict.MIXED -> if (short) {
-        R.string.community_compatibility_mixed_short
-    } else {
-        R.string.community_compatibility_mixed
-    }
-    CommunityCompatibilityVerdict.WONT_WORK -> if (short) {
-        R.string.community_compatibility_wont_short
-    } else {
-        R.string.community_compatibility_wont
-    }
-    CommunityCompatibilityVerdict.UNKNOWN -> if (short) {
-        R.string.community_compatibility_unknown_short
-    } else {
-        R.string.community_compatibility_unknown
-    }
+internal fun communityVerdictLabel(verdict: CommunityCompatibilityVerdict): Int = when (verdict) {
+    CommunityCompatibilityVerdict.WORKS -> R.string.community_compatibility_works
+    CommunityCompatibilityVerdict.SHOULD_WORK -> R.string.community_compatibility_should
+    CommunityCompatibilityVerdict.MAY_WORK -> R.string.community_compatibility_may
+    CommunityCompatibilityVerdict.MIXED -> R.string.community_compatibility_mixed
+    CommunityCompatibilityVerdict.WONT_WORK -> R.string.community_compatibility_wont
+    CommunityCompatibilityVerdict.UNKNOWN -> R.string.community_compatibility_unknown
 }
 
 /**
@@ -215,37 +190,37 @@ internal fun getCommunityBadgeStyle(verdict: CommunityCompatibilityVerdict, comp
             icon = Icons.Rounded.Verified,
             backgroundColor = if (lightDetailSurface) Color(0xFFE8F5E9) else Color(0xFF174527).copy(alpha = 0.94f),
             iconTint = if (lightDetailSurface) Color(0xFF256029) else Color(0xFF81C784),
-            labelResId = communityVerdictLabel(verdict, short = true),
+            labelResId = communityVerdictLabel(verdict),
         )
         CommunityCompatibilityVerdict.SHOULD_WORK -> BadgeStyle(
             icon = Icons.Rounded.CheckCircle,
             backgroundColor = if (lightDetailSurface) Color(0xFFF1F8E9) else Color(0xFF29462B).copy(alpha = 0.9f),
             iconTint = if (lightDetailSurface) Color(0xFF44651C) else Color(0xFFC5E1A5),
-            labelResId = communityVerdictLabel(verdict, short = true),
+            labelResId = communityVerdictLabel(verdict),
         )
         CommunityCompatibilityVerdict.MAY_WORK -> BadgeStyle(
             icon = Icons.Rounded.HelpOutline,
             backgroundColor = if (lightDetailSurface) Color(0xFFFFF8E1) else Color(0xFF584500).copy(alpha = 0.9f),
             iconTint = if (lightDetailSurface) Color(0xFF795C00) else Color(0xFFFFE082),
-            labelResId = communityVerdictLabel(verdict, short = true),
+            labelResId = communityVerdictLabel(verdict),
         )
         CommunityCompatibilityVerdict.MIXED -> BadgeStyle(
             icon = Icons.Rounded.Warning,
             backgroundColor = if (lightDetailSurface) Color(0xFFFFF3E0) else Color(0xFF5A310C).copy(alpha = 0.9f),
             iconTint = if (lightDetailSurface) Color(0xFF8D4300) else Color(0xFFFFB74D),
-            labelResId = communityVerdictLabel(verdict, short = true),
+            labelResId = communityVerdictLabel(verdict),
         )
         CommunityCompatibilityVerdict.WONT_WORK -> BadgeStyle(
             icon = Icons.Rounded.Close,
             backgroundColor = if (lightDetailSurface) Color(0xFFFFEBEE) else colors.compatibilityBadBackground.copy(alpha = 0.94f),
             iconTint = Color.White,
-            labelResId = communityVerdictLabel(verdict, short = true),
+            labelResId = communityVerdictLabel(verdict),
         )
         CommunityCompatibilityVerdict.UNKNOWN -> BadgeStyle(
             icon = Icons.Rounded.QuestionMark,
             backgroundColor = if (lightDetailSurface) Color(0xFFEEEEEE) else Color(0xFF1B1B1B).copy(alpha = 0.9f),
             iconTint = if (lightDetailSurface) Color(0xFF616161) else colors.compatibilityUnknown,
-            labelResId = communityVerdictLabel(verdict, short = true),
+            labelResId = communityVerdictLabel(verdict),
         )
     }.let { style ->
         if (compact) {
@@ -264,7 +239,6 @@ internal fun getCommunityBadgeStyle(verdict: CommunityCompatibilityVerdict, comp
                 } else {
                     style.iconTint
                 },
-                labelResId = communityVerdictLabel(verdict, short = false),
             )
         }
     }
@@ -280,9 +254,8 @@ private fun PillBadge(
     backgroundColor: Color,
     iconTint: Color,
     label: Int,
-    description: Int = label,
 ) {
-    val descriptionText = stringResource(description)
+    val descriptionText = stringResource(label)
     Layout(
         modifier = modifier
             .clearAndSetSemantics { contentDescription = descriptionText }

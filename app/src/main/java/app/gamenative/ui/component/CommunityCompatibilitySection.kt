@@ -82,7 +82,7 @@ fun CommunityCompatibilitySection(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = stringResource(R.string.community_compatibility_title),
+                text = stringResource(R.string.compatibility),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f),

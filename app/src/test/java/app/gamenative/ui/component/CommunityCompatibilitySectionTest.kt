@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertCountEquals
@@ -33,22 +34,14 @@ class CommunityCompatibilitySectionTest {
     private val summary = CommunityCompatibilitySummary(
         CommunityCompatibilityVerdict.SHOULD_WORK, CommunityEvidenceTier.SAME_GPU,
         sessionCount = 101, medianFps = 47, verdictLoaded = true,
-        serverState = "Works", serverTier = "gpu", serverTierKey = "Adreno (TM) 830",
+        serverState = "Works",
         verdictSource = CommunityVerdictSource.SERVER,
     )
 
     @Test fun startsCompactAndDetailsToggleDoesNotRefreshOrBrowse() {
         var requests = 0
         val game = mutableStateOf("First")
-        compose.setContent {
-            MaterialTheme {
-                CommunityCompatibilitySection(
-                    gameKey = game.value, summary = summary, loading = false, loadError = false,
-                    onRetry = { requests++ }, onViewReports = { requests++ },
-                    modifier = Modifier.verticalScroll(rememberScrollState()),
-                )
-            }
-        }
+        render(game = game, onAction = { requests++ })
         compose.onNodeWithText("Works").assertIsDisplayed()
         compose.onNodeWithText("Based on 101 recorded sessions using your GPU.").assertIsDisplayed()
         compose.onNodeWithText("Median 47 FPS reported using your GPU.").assertDoesNotExist()
@@ -63,16 +56,7 @@ class CommunityCompatibilitySectionTest {
     }
 
     @Test fun cautionsRemainVisibleWhenDetailsAreCollapsed() {
-        compose.setContent {
-            MaterialTheme {
-                CommunityCompatibilitySection(
-                    gameKey = "Game",
-                    summary = summary.copy(verdict = CommunityCompatibilityVerdict.MIXED, ratingCaution = true, isCachedResultStale = true),
-                    loading = false, loadError = false, onRetry = {}, onViewReports = {},
-                    modifier = Modifier.verticalScroll(rememberScrollState()),
-                )
-            }
-        }
+        render(summary.copy(verdict = CommunityCompatibilityVerdict.MIXED, ratingCaution = true, isCachedResultStale = true))
         compose.onNodeWithText("Unreliable results; working gameplay isn’t confirmed.").assertIsDisplayed()
         compose.onNodeWithText("Showing the last known result while awaiting a successful refresh.").assertIsDisplayed()
         compose.onNodeWithText("Most rated-device feedback is not positive. Check the details before installing.").assertIsDisplayed()
@@ -106,7 +90,7 @@ class CommunityCompatibilitySectionTest {
     @Test fun chipsetSessionsAndFpsDoNotRelabelGpuConfigEvidence() {
         render(
             summary.copy(
-                evidenceTier = CommunityEvidenceTier.SAME_SOC, serverTier = "soc", serverTierKey = "Chipset",
+                evidenceTier = CommunityEvidenceTier.SAME_SOC,
                 reportCount = 3, reportEvidenceTier = CommunityEvidenceTier.SAME_GPU,
                 hasDetailedReports = true, detailsLoaded = true,
             ),
@@ -119,12 +103,16 @@ class CommunityCompatibilitySectionTest {
         compose.onNodeWithText("Median 47 FPS reported using your GPU.").assertDoesNotExist()
     }
 
-    private fun render(value: CommunityCompatibilitySummary) {
+    private fun render(
+        value: CommunityCompatibilitySummary = summary,
+        game: State<String> = mutableStateOf("Game"),
+        onAction: () -> Unit = {},
+    ) {
         compose.setContent {
             MaterialTheme {
                 CommunityCompatibilitySection(
-                    gameKey = "Game", summary = value, loading = false, loadError = false,
-                    onRetry = {}, onViewReports = {}, modifier = Modifier.verticalScroll(rememberScrollState()),
+                    gameKey = game.value, summary = value, loading = false, loadError = false,
+                    onRetry = onAction, onViewReports = onAction, modifier = Modifier.verticalScroll(rememberScrollState()),
                 )
             }
         }

@@ -2703,7 +2703,6 @@
     <string name="control_profile_delete_title">¿Eliminar perfil de controles?</string>
     <string name="control_profile_delete_message">¿Quitar “%1$s” de la biblioteca? Los juegos ya configurados con este perfil conservarán sus controles.</string>
     <string name="sort_compatibility">Compatibilidad</string>
-    <string name="community_compatibility_title">Compatibilidad de la comunidad</string>
     <string name="community_compatibility_details">Detalles</string>
     <string name="community_compatibility_expanded">Expandido</string>
     <string name="community_compatibility_collapsed">Contraído</string>
@@ -2733,7 +2732,7 @@
     <string name="community_compatibility_no_reports">No se encontraron configuraciones compartidas para tu hardware</string>
     <string name="community_compatibility_configs_unavailable">No se pudieron cargar algunos datos de compatibilidad. Se muestran los datos disponibles.</string>
     <string name="community_compatibility_retry">Reintentar</string>
-    <string name="community_compatibility_refresh">Actualizar compatibilidad de la comunidad</string>
+    <string name="community_compatibility_refresh">Actualizar compatibilidad</string>
     <string name="community_compatibility_fps_median">Mediana indicada: %1$d FPS</string>
     <string name="community_compatibility_fps_device">%1$s en tu modelo de dispositivo.</string>
     <string name="community_compatibility_fps_soc">%1$s con el mismo chipset.</string>
@@ -2741,12 +2740,6 @@
     <string name="community_compatibility_fps_family">%1$s con GPU compatibles.</string>
     <string name="community_compatibility_view_reports">Ver configuraciones</string>
     <string name="community_config_install_before_apply">Instala este juego antes de aplicar una configuración de la comunidad.</string>
-    <string name="community_compatibility_works_short">Excelente</string>
-    <string name="community_compatibility_should_short">Funciona</string>
-    <string name="community_compatibility_may_short">Podría funcionar</string>
-    <string name="community_compatibility_mixed_short">Poco fiable</string>
-    <string name="community_compatibility_wont_short">No funciona</string>
-    <string name="community_compatibility_unknown_short">Sin probar</string>
     <plurals name="community_compatibility_model_sessions">
         <item quantity="one">Según %1$d sesión registrada en tu modelo de dispositivo.</item>
         <item quantity="other">Según %1$d sesiones registradas en tu modelo de dispositivo.</item>

@@ -101,18 +101,19 @@ class CommunityCompatibilityClassifierTest {
     }
 
     @Test fun sampleAwareSupportDoesNotAddOtherTiers() {
+        fun support(n: Int, ok: Int) = CommunityCompatibilityClassifier.ratingInterval(ok, n)?.first
         fun checked(n: Int, ok: Int) = CommunityCompatibilityClassifier.fromCompatibilityResponse(
             response("Great").copy(tiers = mapOf("gpu" to metrics(n, ok), "family" to metrics(10000, 10000))),
         )
-        assertTrue(checked(20, 20).ratingSupport!! > checked(1, 1).ratingSupport!!)
-        assertTrue(checked(20, 18).ratingSupport!! > checked(1, 1).ratingSupport!!)
+        assertTrue(support(20, 20)!! > support(1, 1)!!)
+        assertTrue(support(20, 18)!! > support(1, 1)!!)
         assertTrue(checked(8, 0).ratingCaution)
         assertFalse(checked(1, 0).ratingCaution)
         assertEquals(CommunityCompatibilityVerdict.MAY_WORK, checked(8, 0).verdict)
-        assertNull(checked(0, 0).ratingSupport)
-        assertNull(checked(1, 2).ratingSupport)
+        assertNull(support(0, 0))
+        assertNull(support(1, 2))
         assertFalse(checked(1, 2).ratingCaution)
-        assertEquals(CommunityCompatibilityVerdict.MAY_WORK, checked(0, 0).verdict)
+        assertEquals(CommunityCompatibilityVerdict.SHOULD_WORK, checked(0, 0).verdict)
     }
 
     @Test fun zeroPositiveSamplesLimitConfidenceWithoutClaimingConfirmedFailure() {
@@ -154,7 +155,6 @@ class CommunityCompatibilityClassifierTest {
         )
         assertTrue(detailed.limitedRatingFeedback)
         assertFalse(detailed.ratingCaution)
-        assertEquals(1, detailed.ratedDevices)
         assertEquals(29, detailed.reportCount)
         assertEquals(result.verdict, detailed.verdict)
         val otherTierOnly = CommunityCompatibilityClassifier.fromCompatibilityResponse(

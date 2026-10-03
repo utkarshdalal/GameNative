@@ -19,7 +19,7 @@ class DeviceGameStatsServiceTest {
         assertEquals(1, door.ratings.twoStar)
         assertEquals(33, door.ratings.ratedTotal)
         val broforce = stats.getValue("Broforce").ratings!!
-        assertEquals(listOf(16, 9, 7, 9, 69), (1..5).map(broforce::countFor))
+        assertEquals(listOf(16, 9, 7, 9, 69), listOf(broforce.oneStar, broforce.twoStar, broforce.threeStar, broforce.fourStar, broforce.fiveStar))
     }
 
     @Test fun acceptsOldRowsWithoutInventingMissingCountsAndHonorsModernPayload() {

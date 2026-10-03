@@ -2699,7 +2699,6 @@
     <string name="control_profile_delete_title">컨트롤 프로필을 삭제할까요?</string>
     <string name="control_profile_delete_message">라이브러리에서 “%1$s”을(를) 제거할까요? 이미 이 프로필로 설정된 게임의 컨트롤은 유지됩니다.</string>
     <string name="sort_compatibility">호환성</string>
-    <string name="community_compatibility_title">커뮤니티 호환성</string>
     <string name="community_compatibility_details">자세히</string>
     <string name="community_compatibility_expanded">펼쳐짐</string>
     <string name="community_compatibility_collapsed">접힘</string>
@@ -2729,7 +2728,7 @@
     <string name="community_compatibility_no_reports">사용 중인 하드웨어에 맞는 공유 구성을 찾지 못했습니다</string>
     <string name="community_compatibility_configs_unavailable">일부 호환성 데이터를 불러오지 못했습니다. 이용 가능한 정보를 표시합니다.</string>
     <string name="community_compatibility_retry">다시 시도</string>
-    <string name="community_compatibility_refresh">커뮤니티 호환성 새로고침</string>
+    <string name="community_compatibility_refresh">호환성 새로고침</string>
     <string name="community_compatibility_fps_median">보고된 중앙값: %1$d FPS</string>
     <string name="community_compatibility_fps_device">%1$s — 사용 중인 기기 모델.</string>
     <string name="community_compatibility_fps_soc">%1$s — 동일한 칩셋.</string>
@@ -2737,12 +2736,6 @@
     <string name="community_compatibility_fps_family">%1$s — 호환되는 GPU.</string>
     <string name="community_compatibility_view_reports">구성 찾아보기</string>
     <string name="community_config_install_before_apply">커뮤니티 구성을 적용하기 전에 이 게임을 설치하세요.</string>
-    <string name="community_compatibility_works_short">매우 좋음</string>
-    <string name="community_compatibility_should_short">작동함</string>
-    <string name="community_compatibility_may_short">작동 가능성 있음</string>
-    <string name="community_compatibility_mixed_short">불안정</string>
-    <string name="community_compatibility_wont_short">작동 안 함</string>
-    <string name="community_compatibility_unknown_short">미확인</string>
     <plurals name="community_compatibility_model_sessions">
         <item quantity="other">사용 중인 기기 모델에서 기록된 세션 %1$d개를 기준으로 합니다.</item>
     </plurals>

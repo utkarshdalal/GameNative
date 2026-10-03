@@ -2711,7 +2711,6 @@
     <string name="control_profile_delete_title">Usunąć profil sterowania?</string>
     <string name="control_profile_delete_message">Usunąć „%1$s” z biblioteki? Gry już skonfigurowane z tym profilem zachowają swoje sterowanie.</string>
     <string name="sort_compatibility">Zgodność</string>
-    <string name="community_compatibility_title">Zgodność według społeczności</string>
     <string name="community_compatibility_details">Szczegóły</string>
     <string name="community_compatibility_expanded">Rozwinięte</string>
     <string name="community_compatibility_collapsed">Zwinięte</string>
@@ -2741,7 +2740,7 @@
     <string name="community_compatibility_no_reports">Nie znaleziono udostępnionych konfiguracji dla Twojego sprzętu</string>
     <string name="community_compatibility_configs_unavailable">Nie udało się wczytać części danych o zgodności. Wyświetlane są dostępne dane.</string>
     <string name="community_compatibility_retry">Ponów</string>
-    <string name="community_compatibility_refresh">Odśwież zgodność według społeczności</string>
+    <string name="community_compatibility_refresh">Odśwież zgodność</string>
     <string name="community_compatibility_fps_median">Zgłoszona mediana: %1$d FPS</string>
     <string name="community_compatibility_fps_device">%1$s na Twoim modelu urządzenia.</string>
     <string name="community_compatibility_fps_soc">%1$s z tym samym chipsetem.</string>
@@ -2749,12 +2748,6 @@
     <string name="community_compatibility_fps_family">%1$s ze zgodnymi GPU.</string>
     <string name="community_compatibility_view_reports">Konfiguracje</string>
     <string name="community_config_install_before_apply">Zainstaluj tę grę przed zastosowaniem konfiguracji społeczności.</string>
-    <string name="community_compatibility_works_short">Świetnie</string>
-    <string name="community_compatibility_should_short">Działa</string>
-    <string name="community_compatibility_may_short">Może działać</string>
-    <string name="community_compatibility_mixed_short">Niestabilne</string>
-    <string name="community_compatibility_wont_short">Nie działa</string>
-    <string name="community_compatibility_unknown_short">Nietestowane</string>
     <plurals name="community_compatibility_model_sessions">
         <item quantity="one">Na podstawie %1$d zarejestrowanej sesji na Twoim modelu urządzenia.</item>
         <item quantity="few">Na podstawie %1$d zarejestrowanych sesji na Twoim modelu urządzenia.</item>

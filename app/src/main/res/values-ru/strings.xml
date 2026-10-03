@@ -2635,7 +2635,6 @@ https://gamenative.app
     <string name="control_profile_delete_title">Удалить профиль управления?</string>
     <string name="control_profile_delete_message">Удалить «%1$s» из библиотеки? Игры, уже настроенные с ним, сохранят свои элементы управления.</string>
     <string name="sort_compatibility">Совместимость</string>
-    <string name="community_compatibility_title">Совместимость по данным сообщества</string>
     <string name="community_compatibility_details">Подробности</string>
     <string name="community_compatibility_expanded">Развёрнуто</string>
     <string name="community_compatibility_collapsed">Свёрнуто</string>
@@ -2665,7 +2664,7 @@ https://gamenative.app
     <string name="community_compatibility_no_reports">Общие конфигурации для вашего оборудования не найдены</string>
     <string name="community_compatibility_configs_unavailable">Не удалось загрузить часть данных о совместимости. Показаны доступные данные.</string>
     <string name="community_compatibility_retry">Повторить</string>
-    <string name="community_compatibility_refresh">Обновить совместимость по данным сообщества</string>
+    <string name="community_compatibility_refresh">Обновить совместимость</string>
     <string name="community_compatibility_fps_median">Медианная частота: %1$d FPS</string>
     <string name="community_compatibility_fps_device">%1$s на вашей модели устройства.</string>
     <string name="community_compatibility_fps_soc">%1$s с тем же чипсетом.</string>
@@ -2673,12 +2672,6 @@ https://gamenative.app
     <string name="community_compatibility_fps_family">%1$s с совместимыми GPU.</string>
     <string name="community_compatibility_view_reports">Конфигурации</string>
     <string name="community_config_install_before_apply">Установите игру перед применением конфигурации сообщества.</string>
-    <string name="community_compatibility_works_short">Отлично</string>
-    <string name="community_compatibility_should_short">Работает</string>
-    <string name="community_compatibility_may_short">Может работать</string>
-    <string name="community_compatibility_mixed_short">Нестабильно</string>
-    <string name="community_compatibility_wont_short">Не работает</string>
-    <string name="community_compatibility_unknown_short">Не проверено</string>
     <plurals name="community_compatibility_model_sessions">
         <item quantity="one">На основе %1$d записанного сеанса на вашей модели устройства.</item>
         <item quantity="few">На основе %1$d записанных сеансов на вашей модели устройства.</item>

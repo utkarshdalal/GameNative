@@ -2575,7 +2575,6 @@
     <string name="control_profile_delete_title">Slet styringsprofil?</string>
     <string name="control_profile_delete_message">Fjern “%1$s” fra biblioteket? Spil, der allerede er konfigureret med profilen, beholder deres styring.</string>
     <string name="sort_compatibility">Kompatibilitet</string>
-    <string name="community_compatibility_title">Fællesskabets kompatibilitet</string>
     <string name="community_compatibility_details">Detaljer</string>
     <string name="community_compatibility_expanded">Udvidet</string>
     <string name="community_compatibility_collapsed">Sammenfoldet</string>
@@ -2605,7 +2604,7 @@
     <string name="community_compatibility_no_reports">Ingen delte konfigurationer fundet til din hardware</string>
     <string name="community_compatibility_configs_unavailable">Nogle kompatibilitetsdata kunne ikke indlæses. Viser tilgængelige data.</string>
     <string name="community_compatibility_retry">Prøv igen</string>
-    <string name="community_compatibility_refresh">Opdater fællesskabets kompatibilitet</string>
+    <string name="community_compatibility_refresh">Opdater kompatibilitet</string>
     <string name="community_compatibility_fps_median">Rapporteret median: %1$d FPS</string>
     <string name="community_compatibility_fps_device">%1$s på din enhedsmodel.</string>
     <string name="community_compatibility_fps_soc">%1$s med samme chipsæt.</string>
@@ -2613,12 +2612,6 @@
     <string name="community_compatibility_fps_family">%1$s med kompatible GPU’er.</string>
     <string name="community_compatibility_view_reports">Konfigurationer</string>
     <string name="community_config_install_before_apply">Installer dette spil, før du anvender en fællesskabskonfiguration.</string>
-    <string name="community_compatibility_works_short">Fremragende</string>
-    <string name="community_compatibility_should_short">Virker</string>
-    <string name="community_compatibility_may_short">Virker måske</string>
-    <string name="community_compatibility_mixed_short">Upålidelig</string>
-    <string name="community_compatibility_wont_short">Virker ikke</string>
-    <string name="community_compatibility_unknown_short">Ikke testet</string>
     <plurals name="community_compatibility_model_sessions">
         <item quantity="one">Baseret på %1$d registreret session på din enhedsmodel.</item>
         <item quantity="other">Baseret på %1$d registrerede sessioner på din enhedsmodel.</item>

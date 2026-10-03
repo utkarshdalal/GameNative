@@ -26,7 +26,7 @@ class GameCompatibilityServiceTest {
         val restored = GameCompatibilityCache.json.decodeFromString<CachedCompatibilityResponse>(encoded)
         assertEquals(cached, restored)
         val summary = CommunityCompatibilityClassifier.fromCompatibilityResponse(restored.response)
-        assertEquals(CommunityCompatibilityVerdict.SHOULD_WORK, summary.verdict)
+        assertEquals(CommunityCompatibilityVerdict.WORKS, summary.verdict)
         assertEquals(app.gamenative.data.CommunityEvidenceTier.SAME_SOC, summary.evidenceTier)
         assertEquals(10, summary.sessionCount)
         assertEquals("SAME_SOC", GameCompatibilityService.badgeProperties(restored.response)["compat_evidence_tier"])

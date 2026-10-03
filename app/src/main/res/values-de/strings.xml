@@ -2645,7 +2645,6 @@
     <string name="control_profile_delete_title">Steuerungsprofil löschen?</string>
     <string name="control_profile_delete_message">„%1$s“ aus der Bibliothek entfernen? Bereits damit konfigurierte Spiele behalten ihre Steuerung.</string>
     <string name="sort_compatibility">Kompatibilität</string>
-    <string name="community_compatibility_title">Community-Kompatibilität</string>
     <string name="community_compatibility_details">Details</string>
     <string name="community_compatibility_expanded">Ausgeklappt</string>
     <string name="community_compatibility_collapsed">Eingeklappt</string>
@@ -2675,7 +2674,7 @@
     <string name="community_compatibility_no_reports">Keine geteilten Konfigurationen für deine Hardware gefunden</string>
     <string name="community_compatibility_configs_unavailable">Einige Kompatibilitätsdaten konnten nicht geladen werden. Verfügbare Daten werden angezeigt.</string>
     <string name="community_compatibility_retry">Erneut versuchen</string>
-    <string name="community_compatibility_refresh">Community-Kompatibilität aktualisieren</string>
+    <string name="community_compatibility_refresh">Kompatibilität aktualisieren</string>
     <string name="community_compatibility_fps_median">Gemeldeter Median: %1$d FPS</string>
     <string name="community_compatibility_fps_device">%1$s auf deinem Gerätemodell.</string>
     <string name="community_compatibility_fps_soc">%1$s mit demselben Chipsatz.</string>
@@ -2683,12 +2682,6 @@
     <string name="community_compatibility_fps_family">%1$s mit kompatiblen GPUs.</string>
     <string name="community_compatibility_view_reports">Konfigurationen</string>
     <string name="community_config_install_before_apply">Installiere dieses Spiel, bevor du eine Community-Konfiguration anwendest.</string>
-    <string name="community_compatibility_works_short">Sehr gut</string>
-    <string name="community_compatibility_should_short">Läuft</string>
-    <string name="community_compatibility_may_short">Läuft vielleicht</string>
-    <string name="community_compatibility_mixed_short">Unzuverlässig</string>
-    <string name="community_compatibility_wont_short">Läuft nicht</string>
-    <string name="community_compatibility_unknown_short">Ungetestet</string>
     <plurals name="community_compatibility_model_sessions">
         <item quantity="one">Basierend auf %1$d aufgezeichneten Sitzung auf deinem Gerätemodell.</item>
         <item quantity="other">Basierend auf %1$d aufgezeichneten Sitzungen auf deinem Gerätemodell.</item>

@@ -170,7 +170,8 @@ object GameCompatibilityService {
         (opt(name) as? String)?.trim()?.takeIf { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }
 
     private fun JSONObject.optNullableInt(name: String): Int? =
-        if (!has(name) || isNull(name)) null else optInt(name, -1).takeIf { it >= 0 }
+        // Preserve invalid counters so they cannot be mistaken for absent rating feedback.
+        if (!has(name) || isNull(name)) null else optInt(name, -1)
 
     private fun JSONObject.optNullableDouble(name: String): Double? =
         if (!has(name) || isNull(name)) null else optDouble(name).takeIf { it.isFinite() }

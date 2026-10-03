@@ -21,7 +21,7 @@ class LibrarySortUtilsTest {
                     game.verdict?.let {
                         app.gamenative.data.CommunityCompatibilitySummary(
                             it, app.gamenative.data.CommunityEvidenceTier.SAME_GPU, verdictLoaded = true,
-                            ratingSupport = if (game.name.startsWith("z")) 0.99 else 0.01,
+                            sessionCount = if (game.name.startsWith("z")) 1000 else 1,
                         )
                     }
                 },
