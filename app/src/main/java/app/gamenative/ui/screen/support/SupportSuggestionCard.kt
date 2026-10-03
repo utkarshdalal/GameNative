@@ -87,18 +87,9 @@ private val TOP_LEVEL_LABELS: Map<String, Int> = mapOf(
     "steamType" to R.string.steam_type,
     "rendererPresentMode" to R.string.renderer_present_modes,
     "displayRendererMode" to R.string.display_renderer,
-    "screenSize" to R.string.screen_size,
-    "language" to R.string.language,
-    "pulseaudioLowLatency" to R.string.pulseaudio_low_latency,
-    "sfCompatMode" to R.string.sf_compat_mode,
-    "useDRI3" to R.string.use_dri3,
     "sdlControllerAPI" to R.string.use_sdl_api,
+    "useSteamInput" to R.string.use_steam_input,
     "forceDlc" to R.string.force_dlc,
-    "touchscreenMode" to R.string.touchscreen_mode,
-    "disableMouseInput" to R.string.disable_mouse_input,
-    "disableLibredirect" to R.string.disable_libredirect_title,
-    "fasterExternalLoading" to R.string.faster_external_loading_title,
-    "dinputMapperType" to R.string.directinput_mapper_type,
 )
 
 private val DXWRAPPER_LABELS: Map<String, Int> = mapOf(

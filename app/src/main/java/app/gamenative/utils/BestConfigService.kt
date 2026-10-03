@@ -1060,9 +1060,14 @@ object BestConfigService {
                     resultMap["videoMemorySize"] = filteredJson.optString("videoMemorySize", PrefManager.videoMemorySize)
                 }
                 if (includeImportKeys) {
+                    val extraData = filteredJson.optJSONObject("extraData")
                     ContainerUtils.IMPORT_ONLY_CONFIG_KEYS.forEach { (key, type) ->
-                        if (!filteredJson.has(key) || filteredJson.isNull(key)) return@forEach
-                        ContainerUtils.coerceConfigValue(type, filteredJson.opt(key))
+                        val source = when {
+                            filteredJson.has(key) && !filteredJson.isNull(key) -> filteredJson
+                            extraData != null && extraData.has(key) && !extraData.isNull(key) -> extraData
+                            else -> return@forEach
+                        }
+                        ContainerUtils.coerceConfigValue(type, source.opt(key))
                             ?.takeUnless { it is String && it.isEmpty() }
                             ?.let { resultMap[key] = it }
                     }
