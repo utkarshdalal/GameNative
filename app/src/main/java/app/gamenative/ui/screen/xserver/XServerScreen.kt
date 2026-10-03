@@ -2231,7 +2231,7 @@ fun XServerScreen(
                                     )
                                 }
                                 frameRatingWindowId = -1
-                                runCatching { windowActivity.onTrackedWindow(null, rating.totalFrames) }
+                                runCatching { windowActivity.onTrackedWindow(null, rating.totalFrames, rating.activeMs) }
                                 (context as? Activity)?.runOnUiThread {
                                     rating.visibility = View.GONE
                                 }
@@ -2239,7 +2239,7 @@ fun XServerScreen(
                             }
 
                             frameRatingWindowId = nextId
-                            runCatching { windowActivity.onTrackedWindow(topmost, rating.totalFrames) }
+                            runCatching { windowActivity.onTrackedWindow(topmost, rating.totalFrames, rating.activeMs) }
                             Timber.i(
                                 "FrameRating tracking attached (%s) to topmost app window %s",
                                 reason,
