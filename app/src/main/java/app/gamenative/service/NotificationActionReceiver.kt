@@ -28,6 +28,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 Timber.d("NotificationActionReceiver: Exit tapped, broadcasting EndProcess")
                 PluviaApp.events.emit(AndroidEvent.EndProcess)
             }
+            NotificationHelper.ACTION_SUPPORT_STOP -> SupportReplyWatchService.stop(context)
         }
     }
 }

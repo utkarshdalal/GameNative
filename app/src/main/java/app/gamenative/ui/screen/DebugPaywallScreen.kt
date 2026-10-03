@@ -58,13 +58,11 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.ui.theme.PluviaTheme
-import java.util.Locale
 
 @Composable
 fun DebugPaywallScreen(
     gameName: String,
     deviceName: String,
-    logSizeBytes: Long,
     reason: String,
     hasDiscordToken: Boolean,
     onSubscribe: () -> Unit,
@@ -117,9 +115,8 @@ fun DebugPaywallScreen(
                         ),
                         color = MaterialTheme.colorScheme.onSurface,
                     )
-                    val logSizeMb = String.format(Locale.US, "%.1f", logSizeBytes / (1024f * 1024f))
                     Text(
-                        text = stringResource(R.string.debug_report_summary, gameName, deviceName, logSizeMb),
+                        text = stringResource(R.string.debug_report_summary, gameName, deviceName),
                         style = MaterialTheme.typography.bodySmall,
                         color = PluviaTheme.colors.textMuted,
                     )

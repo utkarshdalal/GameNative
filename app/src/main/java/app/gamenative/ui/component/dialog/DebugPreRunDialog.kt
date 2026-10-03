@@ -14,26 +14,32 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import app.gamenative.R
+import app.gamenative.api.SupportApi
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.utils.DebugRunParams
 
 @Composable
 fun DebugPreRunDialog(
     visible: Boolean,
+    runParams: DebugRunParams? = null,
     onStart: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     if (visible) {
+        val appChat by SupportApi.available
         Dialog(onDismissRequest = onDismiss) {
             Surface(
                 modifier = Modifier
@@ -56,14 +62,24 @@ fun DebugPreRunDialog(
                         modifier = Modifier.padding(bottom = 16.dp),
                     )
                     Text(
-                        text = stringResource(R.string.debug_prerun_message_1),
+                        text = stringResource(
+                            when (appChat) {
+                                true -> R.string.debug_prerun_message_1_app
+                                false -> R.string.debug_prerun_message_1
+                                null -> R.string.debug_prerun_message_1_neutral
+                            },
+                        ),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier
                             .align(Alignment.Start)
                             .padding(bottom = 8.dp),
                     )
                     Text(
-                        text = stringResource(R.string.debug_prerun_message_2) + " " + stringResource(R.string.debug_trial_note),
+                        text = if (appChat == true) {
+                            stringResource(R.string.debug_prerun_message_2_app)
+                        } else {
+                            stringResource(R.string.debug_prerun_message_2) + " " + stringResource(R.string.debug_trial_note)
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier
@@ -77,6 +93,26 @@ fun DebugPreRunDialog(
                             .align(Alignment.Start)
                             .padding(bottom = 16.dp),
                     )
+                    runParams?.instruction?.let { instruction ->
+                        Text(
+                            text = stringResource(R.string.debug_prerun_instruction, instruction),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .align(Alignment.Start)
+                                .padding(bottom = 8.dp),
+                        )
+                    }
+                    runParams?.minSeconds?.let { seconds ->
+                        val minutes = (seconds + 59) / 60
+                        Text(
+                            text = pluralStringResource(R.plurals.debug_prerun_min_minutes, minutes, minutes),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier
+                                .align(Alignment.Start)
+                                .padding(bottom = 16.dp),
+                        )
+                    }
 
                     val startFocusRequester = remember { FocusRequester() }
                     LaunchedEffect(Unit) { runCatching { startFocusRequester.requestFocus() } }
