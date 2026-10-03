@@ -1338,6 +1338,7 @@ fun PluviaMain(
                 setMessageDialogState(MessageDialogState(false))
                 if (aiDebugOfferAppId.isNotEmpty()) {
                     trackAiDebugOffer("ai_debug_offer_accepted", aiDebugOfferAppId, aiDebugOfferTrigger)
+                    SupportSession.clearRun(aiDebugOfferAppId)
                     debugPreRunAppId = aiDebugOfferAppId
                     debugPreRunOffline = viewModel.isOffline.value
                     debugPreRunVisible = true
@@ -2026,6 +2027,7 @@ fun PluviaMain(
                             )
                         },
                         onAiDebugRun = { appId ->
+                            SupportSession.clearRun(appId)
                             debugPreRunAppId = appId
                             debugPreRunOffline = isOffline
                             debugPreRunVisible = true
