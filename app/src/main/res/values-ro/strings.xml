@@ -1020,7 +1020,7 @@
     <string name="gamenative_sign_in_try_again">Încearcă din nou</string>
     <string name="gamenative_sign_in_success">Te-ai conectat la GameNative.</string>
     <string name="gamenative_sign_in_no_browser">Nu a fost găsit niciun browser pentru a deschide pagina de conectare. Scanează codul cu alt dispozitiv.</string>
-    <string name="support_title">Asistență</string>
+    <string name="support_title">Ajutor AI</string>
     <string name="support_subtitle">Conversațiile tale cu asistența AI GameNative</string>
     <string name="support_refresh">Reîmprospătează</string>
     <string name="support_signed_out_title">Primește ajutor pentru jocurile tale</string>
@@ -2020,7 +2020,7 @@
     <string name="debug_prerun_title">Primește ajutor de la AI</string>
     <string name="debug_prerun_message_1">Rulează jocul cu jurnal de depanare și partajează jurnalul cu AI-ul nostru pe Discord la ieșire. Joacă până când apare problema.</string>
     <string name="debug_prerun_message_2">Răspunsurile AI sunt doar pentru abonați.</string>
-    <string name="debug_prerun_message_1_app">Jocul rulează cu jurnal de depanare. Când ieși, jurnalul ajunge la AI-ul nostru, iar răspunsul apare în aplicație, la Asistență. Joacă până când apare problema.</string>
+    <string name="debug_prerun_message_1_app">Jocul rulează cu jurnal de depanare. Când ieși, jurnalul ajunge la AI-ul nostru, iar răspunsul apare în aplicație, la Ajutor AI. Joacă până când apare problema.</string>
     <string name="debug_prerun_message_2_app">Prima analiză este gratuită. Răspunsurile ulterioare necesită un plan.</string>
     <string name="debug_prerun_message_1_neutral">Jocul rulează cu jurnal de depanare. Când ieși, jurnalul ajunge la AI-ul nostru. Joacă până când apare problema.</string>
     <string name="debug_trial_note">Perioadă de probă gratuită disponibilă.</string>
@@ -2888,13 +2888,13 @@
         <item quantity="few">Răspuns așteptat în aproximativ %1$d minute.</item>
         <item quantity="other">Răspuns așteptat în aproximativ %1$d de minute.</item>
     </plurals>
-    <string name="support_reply_ready">Răspunsul de la suport este gata</string>
+    <string name="support_reply_ready">Răspunsul de la Ajutor AI este gata</string>
     <string name="support_reply_open">Deschide</string>
-    <string name="support_wait_channel_name">Starea răspunsului de la suport</string>
+    <string name="support_wait_channel_name">Starea răspunsului de la Ajutor AI</string>
     <string name="support_wait_channel_description">Apare cât timp GameNative așteaptă un răspuns la raportul tău.</string>
-    <string name="support_replies_channel_name">Răspunsuri de la suport</string>
+    <string name="support_replies_channel_name">Răspunsuri de la Ajutor AI</string>
     <string name="support_replies_channel_description">Te anunță când răspunsul la raportul tău este gata.</string>
-    <string name="support_wait_title">Se așteaptă răspunsul de la suport</string>
+    <string name="support_wait_title">Se așteaptă răspunsul de la Ajutor AI</string>
     <string name="support_wait_text">Raportul tău a fost trimis. Te anunțăm când răspunsul este gata.</string>
     <string name="support_wait_stop">Oprește</string>
     <string name="support_reply_ready_tap">Atinge pentru a-l citi.</string>

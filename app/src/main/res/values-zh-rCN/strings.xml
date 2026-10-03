@@ -1005,7 +1005,7 @@
     <string name="gamenative_sign_in_try_again">重试</string>
     <string name="gamenative_sign_in_success">你已登录 GameNative。</string>
     <string name="gamenative_sign_in_no_browser">未找到可打开登录页面的浏览器。请改用其他设备扫描二维码。</string>
-    <string name="support_title">支持</string>
+    <string name="support_title">AI 帮助</string>
     <string name="support_subtitle">你与 GameNative AI 支持的对话</string>
     <string name="support_refresh">刷新</string>
     <string name="support_signed_out_title">获取游戏问题帮助</string>
@@ -2046,7 +2046,7 @@
     <string name="debug_prerun_title">获取 AI 帮助</string>
     <string name="debug_prerun_message_1">以调试日志运行游戏，退出后将日志分享给我们在 Discord 上的 AI。请一直运行游戏，直到出现问题。</string>
     <string name="debug_prerun_message_2">AI 回复仅限订阅者。</string>
-    <string name="debug_prerun_message_1_app">游戏将以调试日志运行。退出后，日志会发送给我们的 AI，回答会显示在应用的“支持”中。请一直运行游戏，直到出现问题。</string>
+    <string name="debug_prerun_message_1_app">游戏将以调试日志运行。退出后，日志会发送给我们的 AI，回答会显示在应用的“AI 帮助”中。请一直运行游戏，直到出现问题。</string>
     <string name="debug_prerun_message_2_app">首次分析免费。后续回复需要方案。</string>
     <string name="debug_prerun_message_1_neutral">游戏将以调试日志运行。退出后，日志会发送给我们的 AI。请一直运行游戏，直到出现问题。</string>
     <string name="debug_trial_note">提供免费试用。</string>
@@ -2891,13 +2891,13 @@
     <plurals name="support_progress_eta_minutes">
         <item quantity="other">预计约 %1$d 分钟后回复。</item>
     </plurals>
-    <string name="support_reply_ready">你的支持回复已就绪</string>
+    <string name="support_reply_ready">你的 AI 帮助回复已就绪</string>
     <string name="support_reply_open">打开</string>
-    <string name="support_wait_channel_name">支持回复状态</string>
+    <string name="support_wait_channel_name">AI 帮助回复状态</string>
     <string name="support_wait_channel_description">在 GameNative 等待你的报告回复时显示。</string>
-    <string name="support_replies_channel_name">支持回复</string>
+    <string name="support_replies_channel_name">AI 帮助回复</string>
     <string name="support_replies_channel_description">当你的报告回复就绪时通知你。</string>
-    <string name="support_wait_title">正在等待支持回复</string>
+    <string name="support_wait_title">正在等待 AI 帮助回复</string>
     <string name="support_wait_text">你的报告已发送。回复就绪时我们会通知你。</string>
     <string name="support_wait_stop">停止</string>
     <string name="support_reply_ready_tap">点按即可阅读。</string>

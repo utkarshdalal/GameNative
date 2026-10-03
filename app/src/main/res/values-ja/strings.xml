@@ -989,7 +989,7 @@
     <string name="gamenative_sign_in_try_again">再試行</string>
     <string name="gamenative_sign_in_success">GameNative にサインインしました。</string>
     <string name="gamenative_sign_in_no_browser">サインインページを開くブラウザーが見つかりませんでした。代わりに別のデバイスでコードをスキャンしてください。</string>
-    <string name="support_title">サポート</string>
+    <string name="support_title">AI ヘルプ</string>
     <string name="support_subtitle">GameNative AI サポートとの会話</string>
     <string name="support_refresh">更新</string>
     <string name="support_signed_out_title">ゲームについてサポートを受ける</string>
@@ -1993,7 +1993,7 @@
     <string name="debug_prerun_title">AI のサポートを受ける</string>
     <string name="debug_prerun_message_1">デバッグログ付きでゲームを起動し、終了時にログを Discord の AI に共有します。問題が発生するまでゲームをプレイしてください。</string>
     <string name="debug_prerun_message_2">AI の返信はサブスク会員限定です。</string>
-    <string name="debug_prerun_message_1_app">デバッグログ付きでゲームを実行します。終了するとログが AI に送られ、回答はアプリの「サポート」に表示されます。問題が発生するまでプレイしてください。</string>
+    <string name="debug_prerun_message_1_app">デバッグログ付きでゲームを実行します。終了するとログが AI に送られ、回答はアプリの「AI ヘルプ」に表示されます。問題が発生するまでプレイしてください。</string>
     <string name="debug_prerun_message_2_app">最初の分析は無料です。追加の返信にはプランが必要です。</string>
     <string name="debug_prerun_message_1_neutral">デバッグログ付きでゲームを実行します。終了するとログが AI に送られます。問題が発生するまでプレイしてください。</string>
     <string name="debug_trial_note">無料トライアルあり。</string>
@@ -2838,13 +2838,13 @@
     <plurals name="support_progress_eta_minutes">
         <item quantity="other">約%1$d分で返信が届く見込みです。</item>
     </plurals>
-    <string name="support_reply_ready">サポートからの返信が届きました</string>
+    <string name="support_reply_ready">AI ヘルプからの返信が届きました</string>
     <string name="support_reply_open">開く</string>
-    <string name="support_wait_channel_name">サポート返信の状況</string>
+    <string name="support_wait_channel_name">AI ヘルプ返信の状況</string>
     <string name="support_wait_channel_description">GameNativeがレポートへの返信を待っている間に表示されます。</string>
-    <string name="support_replies_channel_name">サポートの返信</string>
+    <string name="support_replies_channel_name">AI ヘルプの返信</string>
     <string name="support_replies_channel_description">レポートへの返信が届いたときにお知らせします。</string>
-    <string name="support_wait_title">サポートの返信を待っています</string>
+    <string name="support_wait_title">AI ヘルプの返信を待っています</string>
     <string name="support_wait_text">レポートを送信しました。返信が届いたらお知らせします。</string>
     <string name="support_wait_stop">停止</string>
     <string name="support_reply_ready_tap">タップして読む。</string>

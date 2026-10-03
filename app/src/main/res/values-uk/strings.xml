@@ -1014,7 +1014,7 @@
     <string name="gamenative_sign_in_try_again">Спробувати ще раз</string>
     <string name="gamenative_sign_in_success">Ви увійшли в GameNative.</string>
     <string name="gamenative_sign_in_no_browser">Не знайдено браузер для відкриття сторінки входу. Відскануйте код іншим пристроєм.</string>
-    <string name="support_title">Підтримка</string>
+    <string name="support_title">Допомога AI</string>
     <string name="support_subtitle">Ваші розмови з AI-підтримкою GameNative</string>
     <string name="support_refresh">Оновити</string>
     <string name="support_signed_out_title">Допомога з вашими іграми</string>
@@ -2025,7 +2025,7 @@
     <string name="debug_prerun_title">Отримати допомогу AI</string>
     <string name="debug_prerun_message_1">Запускає гру з журналом налагодження і після виходу надсилає журнал нашому AI в Discord. Грайте, доки не виникне проблема.</string>
     <string name="debug_prerun_message_2">Відповіді AI доступні лише підписникам.</string>
-    <string name="debug_prerun_message_1_app">Гра запускається з журналом налагодження. Після виходу журнал надсилається нашому AI, а відповідь з’явиться в застосунку в розділі «Підтримка». Грайте, доки не виникне проблема.</string>
+    <string name="debug_prerun_message_1_app">Гра запускається з журналом налагодження. Після виходу журнал надсилається нашому AI, а відповідь з’явиться в застосунку в розділі «Допомога AI». Грайте, доки не виникне проблема.</string>
     <string name="debug_prerun_message_2_app">Перший аналіз безкоштовний. Для подальших відповідей потрібен план.</string>
     <string name="debug_prerun_message_1_neutral">Гра запускається з журналом налагодження. Після виходу журнал надсилається нашому AI. Грайте, доки не виникне проблема.</string>
     <string name="debug_trial_note">Доступний безкоштовний пробний період.</string>
@@ -2888,13 +2888,13 @@
         <item quantity="many">Відповідь очікується приблизно за %1$d хвилин.</item>
         <item quantity="other">Відповідь очікується приблизно за %1$d хвилини.</item>
     </plurals>
-    <string name="support_reply_ready">Відповідь підтримки готова</string>
+    <string name="support_reply_ready">Відповідь у розділі «Допомога AI» готова</string>
     <string name="support_reply_open">Відкрити</string>
-    <string name="support_wait_channel_name">Статус відповіді підтримки</string>
+    <string name="support_wait_channel_name">Статус відповіді «Допомога AI»</string>
     <string name="support_wait_channel_description">Показується, поки GameNative чекає на відповідь на ваш звіт.</string>
-    <string name="support_replies_channel_name">Відповіді підтримки</string>
+    <string name="support_replies_channel_name">Відповіді «Допомога AI»</string>
     <string name="support_replies_channel_description">Повідомляє, коли відповідь на ваш звіт готова.</string>
-    <string name="support_wait_title">Очікування відповіді підтримки</string>
+    <string name="support_wait_title">Очікування відповіді «Допомога AI»</string>
     <string name="support_wait_text">Звіт надіслано. Ми повідомимо, коли відповідь буде готова.</string>
     <string name="support_wait_stop">Зупинити</string>
     <string name="support_reply_ready_tap">Торкніться, щоб прочитати.</string>

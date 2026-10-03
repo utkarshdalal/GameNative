@@ -836,7 +836,7 @@
     <string name="gamenative_sign_in_try_again">Tentar novamente</string>
     <string name="gamenative_sign_in_success">Você entrou no GameNative.</string>
     <string name="gamenative_sign_in_no_browser">Nenhum navegador foi encontrado para abrir a página de login. Escaneie o código com outro dispositivo.</string>
-    <string name="support_title">Suporte</string>
+    <string name="support_title">Ajuda de AI</string>
     <string name="support_subtitle">Suas conversas com o suporte de AI do GameNative</string>
     <string name="support_refresh">Atualizar</string>
     <string name="support_signed_out_title">Receba ajuda com seus jogos</string>
@@ -1899,7 +1899,7 @@
     <string name="debug_prerun_title">Receba ajuda da AI</string>
     <string name="debug_prerun_message_1">Executa o jogo com registro de depuração e compartilha o log com nossa AI no Discord ao sair. Jogue até que o problema aconteça.</string>
     <string name="debug_prerun_message_2">As respostas da AI são apenas para assinantes.</string>
-    <string name="debug_prerun_message_1_app">O jogo roda com registro de depuração. Ao sair, o log vai para nossa AI, e a resposta aparece no app, em Suporte. Jogue até que o problema aconteça.</string>
+    <string name="debug_prerun_message_1_app">O jogo roda com registro de depuração. Ao sair, o log vai para nossa AI, e a resposta aparece no app, em Ajuda de AI. Jogue até que o problema aconteça.</string>
     <string name="debug_prerun_message_2_app">A primeira análise é gratuita. Respostas seguintes exigem um plano.</string>
     <string name="debug_prerun_message_1_neutral">O jogo roda com registro de depuração. Ao sair, o log vai para nossa AI. Jogue até que o problema aconteça.</string>
     <string name="debug_trial_note">Teste gratuito disponível.</string>
@@ -2750,13 +2750,13 @@
         <item quantity="one">Resposta esperada em cerca de %1$d minuto.</item>
         <item quantity="other">Resposta esperada em cerca de %1$d minutos.</item>
     </plurals>
-    <string name="support_reply_ready">Sua resposta do suporte está pronta</string>
+    <string name="support_reply_ready">Sua resposta da Ajuda de AI está pronta</string>
     <string name="support_reply_open">Abrir</string>
-    <string name="support_wait_channel_name">Status da resposta do suporte</string>
+    <string name="support_wait_channel_name">Status da resposta da Ajuda de AI</string>
     <string name="support_wait_channel_description">Aparece enquanto o GameNative aguarda uma resposta ao seu relatório.</string>
-    <string name="support_replies_channel_name">Respostas do suporte</string>
+    <string name="support_replies_channel_name">Respostas da Ajuda de AI</string>
     <string name="support_replies_channel_description">Avisa quando a resposta ao seu relatório estiver pronta.</string>
-    <string name="support_wait_title">Aguardando a resposta do suporte</string>
+    <string name="support_wait_title">Aguardando a resposta da Ajuda de AI</string>
     <string name="support_wait_text">Seu relatório foi enviado. Avisaremos quando a resposta estiver pronta.</string>
     <string name="support_wait_stop">Parar</string>
     <string name="support_reply_ready_tap">Toque para ler.</string>

@@ -1192,7 +1192,7 @@
     <string name="gamenative_sign_in_try_again">Try again</string>
     <string name="gamenative_sign_in_success">You are signed in to GameNative.</string>
     <string name="gamenative_sign_in_no_browser">No browser was found to open the sign-in page. Scan the code with another device instead.</string>
-    <string name="support_title">Support</string>
+    <string name="support_title">AI Help</string>
     <string name="support_subtitle">Your conversations with GameNative AI support</string>
     <string name="support_refresh">Refresh</string>
     <string name="support_signed_out_title">Get help with your games</string>
@@ -2005,7 +2005,7 @@
     <string name="debug_prerun_title">Get AI help</string>
     <string name="debug_prerun_message_1">Runs the game with debug logging and shares the log with our AI on Discord when you quit. Run the game until you experience the issue.</string>
     <string name="debug_prerun_message_2">AI replies are for subscribers only.</string>
-    <string name="debug_prerun_message_1_app">The game runs with debug logging. When you quit, the log goes to our AI, and the answer appears in the app under Support. Play until the problem happens.</string>
+    <string name="debug_prerun_message_1_app">The game runs with debug logging. When you quit, the log goes to our AI, and the answer appears in the app under AI Help. Play until the problem happens.</string>
     <string name="debug_prerun_message_2_app">The first analysis is free. Follow-up replies need a plan.</string>
     <string name="debug_prerun_message_1_neutral">The game runs with debug logging. When you quit, the log goes to our AI. Play until the problem happens.</string>
     <string name="debug_trial_note">Free trial available.</string>
@@ -2896,13 +2896,13 @@
         <item quantity="one">Expected reply in about %1$d minute.</item>
         <item quantity="other">Expected reply in about %1$d minutes.</item>
     </plurals>
-    <string name="support_reply_ready">Your support reply is ready</string>
+    <string name="support_reply_ready">Your AI Help reply is ready</string>
     <string name="support_reply_open">Open</string>
-    <string name="support_wait_channel_name">Support reply status</string>
+    <string name="support_wait_channel_name">AI Help reply status</string>
     <string name="support_wait_channel_description">Shows while GameNative waits for a reply to your report.</string>
-    <string name="support_replies_channel_name">Support replies</string>
+    <string name="support_replies_channel_name">AI Help replies</string>
     <string name="support_replies_channel_description">Tells you when a reply to your report is ready.</string>
-    <string name="support_wait_title">Waiting for the support reply</string>
+    <string name="support_wait_title">Waiting for the AI Help reply</string>
     <string name="support_wait_text">Your report was sent. We will tell you when the reply is ready.</string>
     <string name="support_wait_stop">Stop</string>
     <string name="support_reply_ready_tap">Tap to read it.</string>
