@@ -128,15 +128,8 @@ object SessionReport {
 
     private fun isIgnoredExtra(key: String) = key in CONFIG_DIFF_IGNORED_EXTRA || key.startsWith("screenEffects")
 
-    private val SUGGESTION_SOURCES = setOf("ai_suggestion", "ai_suggestion_restored")
-
-    fun markConfigApplied(container: Container, source: String) = markConfigApplied(container, source, settingsChanged = true)
-
-    private fun markConfigApplied(container: Container, source: String, settingsChanged: Boolean) {
+    fun markConfigApplied(container: Container, source: String) {
         try {
-            if (settingsChanged && source !in SUGGESTION_SOURCES) {
-                container.putExtra(APPLIED_SUGGESTION_EXTRA, null)
-            }
             val snapshot = JSONObject(container.containerJson)
             CONFIG_DIFF_IGNORED.forEach { snapshot.remove(it) }
             container.setConfigSource(source)
@@ -169,7 +162,7 @@ object SessionReport {
             put("config_source", container.configSource.ifEmpty { if (PrefManager.autoApplyKnownConfig) "none" else "disabled" })
             val applied = appliedConfigFile(container).takeIf { it.exists() }?.readText().orEmpty()
             if (applied.isEmpty()) {
-                markConfigApplied(container, container.configSource.ifEmpty { "existing" }, settingsChanged = false)
+                markConfigApplied(container, container.configSource.ifEmpty { "existing" })
                 return@buildMap
             }
             val before = JSONObject(applied)

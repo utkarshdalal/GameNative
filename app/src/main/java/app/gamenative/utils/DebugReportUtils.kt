@@ -135,12 +135,7 @@ object DebugReportUtils {
             }
 
             compressLog(claimedLog, logFile(dir))
-            val header = buildHeader(
-                context,
-                appId,
-                DebugRunParamsHolder.get(appId),
-                DebugRunParamsHolder.getOrigin(appId) ?: DebugRunOrigin.MANUAL,
-            )
+            val header = buildHeader(context, appId, DebugRunParamsHolder.get(appId))
             if (perf != null) {
                 perfFile(dir).writeText(perf.perf.toString())
                 header.put("perf", perf.verdict)
@@ -179,12 +174,7 @@ object DebugReportUtils {
         }
     }
 
-    private fun buildHeader(
-        context: Context,
-        appId: String,
-        runParams: DebugRunParams?,
-        origin: DebugRunOrigin,
-    ): JSONObject {
+    private fun buildHeader(context: Context, appId: String, runParams: DebugRunParams?): JSONObject {
         val container = ContainerUtils.getContainer(context, appId)
 
         val gpu = try {
@@ -218,18 +208,10 @@ object DebugReportUtils {
             put("installedDrivers", JSONArray(installedDrivers))
             if (avgFps != null) put("avgFps", avgFps.toDouble()) else put("avgFps", JSONObject.NULL)
             if (sessionLengthSec != null) put("sessionLengthSec", sessionLengthSec) else put("sessionLengthSec", JSONObject.NULL)
-            put("run", origin.toJson())
             put("runParams", (runParams ?: DebugRunParams()).toJson())
             val applied = container.getExtra(SessionReport.APPLIED_SUGGESTION_EXTRA, "")
             if (applied.isNotEmpty()) {
-                runCatching { JSONObject(applied) }.getOrNull()?.let { record ->
-                    val inThisRun = origin.kind == DebugRunOrigin.KIND_APPLY_AND_RUN &&
-                        !record.optBoolean("restored", false) &&
-                        origin.suggestionMessageId != null &&
-                        record.optLong("messageId", -1L) == origin.suggestionMessageId
-                    record.put("appliedInThisRun", inThisRun)
-                    put("appliedSuggestion", record)
-                }
+                runCatching { JSONObject(applied) }.getOrNull()?.let { put("appliedSuggestion", it) }
             }
         }
     }

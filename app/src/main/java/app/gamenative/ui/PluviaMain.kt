@@ -127,7 +127,6 @@ import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.BestConfigService
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.DebugReportUtils
-import app.gamenative.utils.DebugRunOrigin
 import app.gamenative.utils.DebugRunParamsHolder
 import app.gamenative.utils.HardwareUtils
 import app.gamenative.utils.PlatformAuthUtils
@@ -1339,7 +1338,6 @@ fun PluviaMain(
                 setMessageDialogState(MessageDialogState(false))
                 if (aiDebugOfferAppId.isNotEmpty()) {
                     trackAiDebugOffer("ai_debug_offer_accepted", aiDebugOfferAppId, aiDebugOfferTrigger)
-                    DebugRunParamsHolder.setOrigin(aiDebugOfferAppId, DebugRunOrigin.MANUAL)
                     debugPreRunAppId = aiDebugOfferAppId
                     debugPreRunOffline = viewModel.isOffline.value
                     debugPreRunVisible = true
@@ -2028,7 +2026,6 @@ fun PluviaMain(
                             )
                         },
                         onAiDebugRun = { appId ->
-                            DebugRunParamsHolder.setOrigin(appId, DebugRunOrigin.MANUAL)
                             debugPreRunAppId = appId
                             debugPreRunOffline = isOffline
                             debugPreRunVisible = true
