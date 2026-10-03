@@ -1110,7 +1110,6 @@
     <string name="support_run_check_send_last">Envoyer la dernière session</string>
     <string name="support_uploading">Envoi de vos journaux</string>
     <string name="support_share_file">Ouvrir le fichier</string>
-    <string name="debug_report_no_discord_sign_in">Pas de Discord ? Connectez-vous avec un compte GameNative et recevez la réponse dans l\'app.</string>
     <string name="debug_report_use_discord">Utiliser Discord à la place</string>
     <string name="debug_report_use_app">Utiliser le chat dans l\'app à la place</string>
     <string name="settings_emulation_orientations_title">Orientations autorisées</string>

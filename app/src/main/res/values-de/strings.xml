@@ -1059,7 +1059,6 @@
     <string name="support_run_check_send_last">Letzten Lauf senden</string>
     <string name="support_uploading">Deine Logs werden hochgeladen</string>
     <string name="support_share_file">Datei öffnen</string>
-    <string name="debug_report_no_discord_sign_in">Kein Discord? Melde dich mit einem GameNative-Konto an und erhalte die Antwort in der App.</string>
     <string name="debug_report_use_discord">Stattdessen Discord verwenden</string>
     <string name="debug_report_use_app">Stattdessen den Chat in der App verwenden</string>
     <string name="settings_emulation_orientations_title">Erlaubte Ausrichtungen</string>

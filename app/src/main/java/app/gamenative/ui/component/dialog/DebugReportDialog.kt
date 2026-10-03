@@ -353,11 +353,7 @@ fun DebugReportDialog(
                                 ) {
                                     Text(
                                         text = stringResource(
-                                            when {
-                                                usesApp -> R.string.debug_report_use_discord
-                                                accountSignedIn -> R.string.debug_report_use_app
-                                                else -> R.string.debug_report_no_discord_sign_in
-                                            },
+                                            if (usesApp) R.string.debug_report_use_discord else R.string.debug_report_use_app,
                                         ),
                                         textAlign = TextAlign.Center,
                                     )

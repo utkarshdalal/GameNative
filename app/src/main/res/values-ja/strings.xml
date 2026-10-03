@@ -1061,7 +1061,6 @@
     <string name="support_run_check_send_last">前回の実行を送信</string>
     <string name="support_uploading">ログをアップロードしています</string>
     <string name="support_share_file">ファイルを開く</string>
-    <string name="debug_report_no_discord_sign_in">Discord をお持ちでない場合は、GameNative アカウントでサインインすると、回答をアプリで受け取れます。</string>
     <string name="debug_report_use_discord">代わりに Discord を使う</string>
     <string name="debug_report_use_app">代わりにアプリ内チャットを使う</string>
     <string name="settings_emulation_orientations_title">許可される向き</string>

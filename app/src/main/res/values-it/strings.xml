@@ -1084,7 +1084,6 @@
     <string name="support_run_check_send_last">Invia l\'ultima esecuzione</string>
     <string name="support_uploading">Caricamento dei log</string>
     <string name="support_share_file">Apri file</string>
-    <string name="debug_report_no_discord_sign_in">Non hai Discord? Accedi con un account GameNative e ricevi la risposta nell\'app.</string>
     <string name="debug_report_use_discord">Usa Discord</string>
     <string name="debug_report_use_app">Usa la chat nell\'app</string>
     <string name="settings_emulation_orientations_title">Orientamenti Consentiti</string>

@@ -1077,7 +1077,6 @@
     <string name="support_run_check_send_last">发送上次运行</string>
     <string name="support_uploading">正在上传日志</string>
     <string name="support_share_file">打开文件</string>
-    <string name="debug_report_no_discord_sign_in">没有 Discord？使用 GameNative 账户登录，即可在应用内收到回答。</string>
     <string name="debug_report_use_discord">改用 Discord</string>
     <string name="debug_report_use_app">改用应用内聊天</string>
     <string name="settings_emulation_orientations_title">允许的屏幕方向</string>
