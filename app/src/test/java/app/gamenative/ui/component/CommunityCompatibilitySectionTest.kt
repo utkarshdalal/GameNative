@@ -7,17 +7,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import app.gamenative.data.CommunityCompatibilitySummary
 import app.gamenative.data.CommunityCompatibilityVerdict
-import app.gamenative.data.CommunityConfidenceCaution
 import app.gamenative.data.CommunityEvidenceTier
 import app.gamenative.data.CommunityVerdictSource
 import org.junit.Assert.assertEquals
@@ -57,10 +54,9 @@ class CommunityCompatibilitySectionTest {
     }
 
     @Test fun cautionsRemainVisibleWhenDetailsAreCollapsed() {
-        render(summary.copy(verdict = CommunityCompatibilityVerdict.MIXED, ratingCaution = true, isCachedResultStale = true))
+        render(summary.copy(verdict = CommunityCompatibilityVerdict.MIXED, isCachedResultStale = true))
         compose.onNodeWithText("Unreliable results; working gameplay isn’t confirmed.").assertIsDisplayed()
         compose.onNodeWithText("Showing the last known result while awaiting a successful refresh.").assertIsDisplayed()
-        compose.onNodeWithText("Most rated-device feedback is not positive. Check the details before installing.").assertIsDisplayed()
         compose.onNodeWithText("Median 47 FPS reported using your GPU.").assertDoesNotExist()
     }
 
@@ -84,30 +80,6 @@ class CommunityCompatibilitySectionTest {
         }
         compose.onNodeWithText("Retry").assertDoesNotExist()
         compose.onNodeWithContentDescription("Refresh compatibility").assertDoesNotExist()
-    }
-
-    @Test fun conflictReasonStaysVisibleWithoutClaimingGameplayIsUnconfirmedOrDuplicatingIt() {
-        render(
-            summary.copy(
-                verdict = CommunityCompatibilityVerdict.MIXED,
-                confidenceCaution = CommunityConfidenceCaution.CONFLICTING_FEEDBACK,
-            ),
-        )
-        compose.onNodeWithText("Community feedback is mixed. Some setups may not work.").assertIsDisplayed()
-        compose.onNodeWithText("Unreliable results", substring = true).assertDoesNotExist()
-        compose.onNodeWithText("Details").performScrollTo().performClick()
-        compose.onAllNodesWithText("Community feedback is mixed.", substring = true).assertCountEquals(1)
-    }
-
-    @Test fun limitedEvidenceDoesNotDuplicateTheZeroPositiveFeedbackWarning() {
-        render(
-            summary.copy(
-                verdict = CommunityCompatibilityVerdict.MAY_WORK, confidenceCaution = CommunityConfidenceCaution.LIMITED_EVIDENCE,
-                limitedRatingFeedback = true,
-            ),
-        )
-        compose.onNodeWithText("Limited rating feedback; none positive so far.").assertIsDisplayed()
-        compose.onNodeWithText("Not enough matching evidence", substring = true).assertDoesNotExist()
     }
 
     @Test fun chipsetSessionsAndFpsDoNotRelabelGpuConfigEvidence() {

@@ -37,7 +37,6 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.data.CommunityCompatibilitySummary
 import app.gamenative.data.CommunityCompatibilityVerdict
-import app.gamenative.data.CommunityConfidenceCaution
 import app.gamenative.data.CommunityEvidenceTier
 import app.gamenative.data.CommunityVerdictCaution
 import app.gamenative.data.CommunityVerdictSource
@@ -131,39 +130,17 @@ fun CommunityCompatibilitySection(
                 if (summary.verdictSource == CommunityVerdictSource.SERVER) {
                     when (summary.scopeCaution) {
                         CommunityVerdictCaution.NO_MATCHING_SCOPE -> Unit
-                        CommunityVerdictCaution.BROAD_NEGATIVE ->
-                            SupportingText(stringResource(R.string.community_compatibility_family_negative))
                         CommunityVerdictCaution.MISSING_TIER ->
                             SupportingText(stringResource(R.string.community_compatibility_missing_tier))
                         CommunityVerdictCaution.NONE -> Unit
                     }
-                    if (summary.verdict == CommunityCompatibilityVerdict.MIXED &&
-                        summary.confidenceCaution == CommunityConfidenceCaution.NONE
-                    ) {
+                    if (summary.verdict == CommunityCompatibilityVerdict.MIXED) {
                         SupportingText(stringResource(R.string.community_compatibility_unreliable_short))
                     }
                 }
                 if (summary.isCachedResultStale) {
                     SupportingText(stringResource(R.string.community_compatibility_cached_result))
                 }
-                if (summary.ratingCaution) {
-                    SupportingText(stringResource(R.string.community_compatibility_rating_caution_short))
-                } else if (summary.limitedRatingFeedback) {
-                    SupportingText(stringResource(R.string.community_compatibility_limited_rating_feedback))
-                }
-                val confidenceMessage = when (summary.confidenceCaution) {
-                    CommunityConfidenceCaution.NONE -> null
-                    CommunityConfidenceCaution.LIMITED_EVIDENCE ->
-                        R.string.community_compatibility_limited_evidence.takeUnless {
-                            summary.ratingCaution ||
-                                summary.limitedRatingFeedback
-                        }
-                    CommunityConfidenceCaution.CONFLICTING_FEEDBACK -> R.string.community_compatibility_mixed_feedback
-                    CommunityConfidenceCaution.MODEL_UNCONFIRMED -> R.string.community_compatibility_model_unconfirmed
-                    CommunityConfidenceCaution.NEGATIVE_FEEDBACK -> R.string.community_compatibility_negative_feedback
-                    CommunityConfidenceCaution.OLDER_EVIDENCE -> R.string.community_compatibility_older_activity
-                }
-                confidenceMessage?.let { SupportingText(stringResource(it)) }
                 if (summary.performanceCaution) {
                     SupportingText(stringResource(R.string.community_compatibility_performance_caution))
                 }

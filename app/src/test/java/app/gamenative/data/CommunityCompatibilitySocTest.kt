@@ -3,19 +3,17 @@ package app.gamenative.data
 import app.gamenative.utils.DeviceGameStatsService.DeviceGameStats
 import app.gamenative.utils.GameCompatibilityService.CompatibilityTierMetrics
 import app.gamenative.utils.GameCompatibilityService.GameCompatibilityResponse
-import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class CommunityCompatibilitySocTest {
-    private val now = Instant.parse("2026-09-30T00:00:00Z").toEpochMilli()
     private val strong = CompatibilityTierMetrics("Chipset", 10, 8, 0.8, 45.0, ratedDevices = 5, okDevices = 4)
     private val weak = strong.copy(sessions = 1, playable = 1, ratedDevices = null, okDevices = null)
 
     private fun classify(tier: String?, state: String = "Great", rows: Map<String, CompatibilityTierMetrics>) =
-        CommunityCompatibilityClassifier.fromCompatibilityResponse(GameCompatibilityResponse("Game", state, tier, rows), now)
+        CommunityCompatibilityClassifier.fromCompatibilityResponse(GameCompatibilityResponse("Game", state, tier, rows))
 
-    @Test fun selectedChipsetUsesExactlyTheGpuConfidenceGuards() {
+    @Test fun selectedChipsetMapsLikeGpu() {
         val rows = listOf(
             strong, weak, strong.copy(sessions = 4), strong.copy(playableRate = 0.599),
             strong.copy(playableRate = 0.6), strong.copy(playableRate = Double.NaN),
@@ -43,7 +41,7 @@ class CommunityCompatibilitySocTest {
         assertEquals(CommunityVerdictCaution.MISSING_TIER, result.scopeCaution)
     }
 
-    @Test fun unselectedChipsetCannotChangeExistingDecisionsOrModelFallback() {
+    @Test fun unselectedChipsetCannotChangeExistingDecisions() {
         for (tier in listOf("model", "gpu", "family", "all", "future", null)) {
             for (state in listOf("Great", "Works", "Unreliable", "Broken", "May Work", "Untested")) {
                 for (model in listOf(strong, weak, strong.copy(ratedDevices = 4, okDevices = 2))) {
@@ -55,18 +53,6 @@ class CommunityCompatibilitySocTest {
                 }
             }
         }
-        val fallback = classify("model", rows = mapOf("model" to weak, "gpu" to strong, "soc" to strong))
-        assertEquals(CommunityEvidenceTier.SAME_GPU, fallback.evidenceTier)
-        assertEquals(CommunityConfidenceCaution.MODEL_UNCONFIRMED, fallback.confidenceCaution)
-    }
-
-    @Test fun selectedChipsetCannotEscapeConflictingFeedbackUsingABroaderRow() {
-        val result = classify(
-            "soc", rows = mapOf("soc" to strong.copy(ratedDevices = 4, okDevices = 2), "gpu" to strong),
-        )
-        assertEquals(CommunityCompatibilityVerdict.MIXED, result.verdict)
-        assertEquals(CommunityEvidenceTier.SAME_SOC, result.evidenceTier)
-        assertEquals(CommunityConfidenceCaution.CONFLICTING_FEEDBACK, result.confidenceCaution)
     }
 
     @Test fun sharedConfigsKeepTheirOwnScopeAndDoNotReplaceChipsetEvidence() {
