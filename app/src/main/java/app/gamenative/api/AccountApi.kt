@@ -1,5 +1,6 @@
 package app.gamenative.api
 
+import android.util.Base64
 import androidx.compose.runtime.mutableStateOf
 import app.gamenative.PrefManager
 import kotlinx.coroutines.CancellationException
@@ -54,6 +55,7 @@ object AccountApi {
     }
 
     private const val TAG = "AccountApi"
+    private const val TOKEN_EXPIRY_MARGIN_MS = 30_000L
 
     val account = mutableStateOf<Account?>(null)
 
@@ -249,6 +251,41 @@ object AccountApi {
             else -> throw IOException("Refresh failed with HTTP ${response.code}")
         }
     }
+
+    private fun accessTokenExpiresAt(accessToken: String): Long? =
+        try {
+            val parts = accessToken.split('.')
+            if (parts.size != 3) {
+                null
+            } else {
+                val payload = String(
+                    Base64.decode(parts[1], Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING),
+                    Charsets.UTF_8,
+                )
+                val json = JSONObject(payload)
+                if (json.has("exp")) json.getLong("exp") * 1000L else null
+            }
+        } catch (_: Exception) {
+            null
+        }
+
+    internal suspend fun currentAccessTokenOrNull(): String? =
+        try {
+            withContext(Dispatchers.IO) {
+                val tokens = loadTokens() ?: return@withContext null
+                val expiresAt = accessTokenExpiresAt(tokens.accessToken)
+                val expired = tokens.accessToken.isEmpty() ||
+                    (expiresAt != null && expiresAt - TOKEN_EXPIRY_MARGIN_MS <= System.currentTimeMillis())
+                if (!expired) return@withContext tokens.accessToken
+                if (!refreshTokens(tokens.accessToken)) return@withContext null
+                loadTokens()?.accessToken?.ifEmpty { null }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.tag(TAG).w("Access token unavailable: ${e.javaClass.simpleName}")
+            null
+        }
 
     private fun <T : Any> send(
         build: (Request.Builder) -> Request.Builder,
