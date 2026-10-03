@@ -42,10 +42,10 @@ import androidx.compose.ui.window.Dialog
 import app.gamenative.R
 import app.gamenative.api.SupportApi
 import app.gamenative.api.SupportSuggestion
+import app.gamenative.api.SuggestionConfigKeys
 import app.gamenative.ui.component.dialog.winComponentsItemTitleRes
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.theme.PluviaTheme
-import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.DebugRunParams
 import app.gamenative.utils.DebugRunParamsHolder
 import kotlinx.coroutines.launch
@@ -141,7 +141,7 @@ private fun booleanOf(value: String): Boolean? = when (value.trim().lowercase())
 private fun sameValue(change: SupportSuggestion.Change, a: String?, b: String?): Boolean {
     if (a == null || b == null) return a == b
     if (change.subKey == null && !change.isEnv &&
-        ContainerUtils.APPLICABLE_CONFIG_KEYS[change.key] == ContainerUtils.ConfigValueType.BOOLEAN
+        SuggestionConfigKeys.APPLICABLE_CONFIG_KEYS[change.key] == SuggestionConfigKeys.ConfigValueType.BOOLEAN
     ) {
         return booleanOf(a) == booleanOf(b)
     }
@@ -160,7 +160,7 @@ private fun displayValue(change: SupportSuggestion.Change, value: String?): Stri
             val entries = stringArrayResource(R.array.startup_selection_entries)
             value.toIntOrNull()?.let { entries.getOrNull(it) }?.let { return it }
         }
-        if (ContainerUtils.APPLICABLE_CONFIG_KEYS[change.key] == ContainerUtils.ConfigValueType.BOOLEAN) {
+        if (SuggestionConfigKeys.APPLICABLE_CONFIG_KEYS[change.key] == SuggestionConfigKeys.ConfigValueType.BOOLEAN) {
             booleanOf(value)?.let { return stringResource(if (it) R.string.enabled else R.string.disabled) }
         }
     }

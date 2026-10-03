@@ -2,6 +2,7 @@ package app.gamenative.ui.screen.support
 
 import android.content.Context
 import app.gamenative.api.SupportSuggestion
+import app.gamenative.api.SuggestionConfigKeys
 import app.gamenative.utils.BestConfigService
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.ManifestInstaller
@@ -73,9 +74,9 @@ object SupportSuggestionApplier {
         }
         val subKey = change.subKey
         if (subKey != null) {
-            return kvGet(ContainerUtils.configValueOf(data, change.parent).orEmpty(), subKey)
+            return kvGet(SuggestionConfigKeys.configValueOf(data, change.parent).orEmpty(), subKey)
         }
-        return ContainerUtils.configValueOf(data, change.key)
+        return SuggestionConfigKeys.configValueOf(data, change.key)
     }
 
     fun editFor(change: SupportSuggestion.Change): Edit =
@@ -95,7 +96,7 @@ object SupportSuggestionApplier {
                 edit.key.contains('.') -> {
                     val parent = edit.key.substringBefore('.')
                     val subKey = edit.key.substringAfter('.')
-                    val current = kv[parent] ?: ContainerUtils.configValueOf(live, parent).orEmpty()
+                    val current = kv[parent] ?: SuggestionConfigKeys.configValueOf(live, parent).orEmpty()
                     kv[parent] = if (edit.value == null) {
                         kvRemove(current, subKey)
                     } else {
@@ -103,8 +104,8 @@ object SupportSuggestionApplier {
                     }
                 }
                 else -> {
-                    val type = ContainerUtils.APPLICABLE_CONFIG_KEYS[edit.key] ?: continue
-                    ContainerUtils.coerceConfigValue(type, edit.value)?.let { updates[edit.key] = it }
+                    val type = SuggestionConfigKeys.APPLICABLE_CONFIG_KEYS[edit.key] ?: continue
+                    SuggestionConfigKeys.coerceConfigValue(type, edit.value)?.let { updates[edit.key] = it }
                 }
             }
         }

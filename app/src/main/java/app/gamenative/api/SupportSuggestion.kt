@@ -1,6 +1,5 @@
 package app.gamenative.api
 
-import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.DebugRunParams
 import com.winlator.container.Container
 import org.json.JSONObject
@@ -37,7 +36,7 @@ data class SupportSuggestion(
             ENV_KEY, "dxwrapperConfig", "wincomponents", "graphicsDriverConfig",
         )
 
-        val TOP_LEVEL_KEYS: Set<String> = ContainerUtils.APPLICABLE_CONFIG_KEYS.keys - EXCLUDED_KEYS
+        val TOP_LEVEL_KEYS: Set<String> = SuggestionConfigKeys.APPLICABLE_CONFIG_KEYS.keys - EXCLUDED_KEYS
 
         val WIN_COMPONENTS = setOf(
             "direct3d", "directsound", "directinput8", "directinput", "directmusic", "directplay",
@@ -102,10 +101,10 @@ data class SupportSuggestion(
             }
             if (change.key !in TOP_LEVEL_KEYS) return false
             ENUM_VALUES[change.key]?.let { return to in it }
-            return when (ContainerUtils.APPLICABLE_CONFIG_KEYS[change.key]) {
-                ContainerUtils.ConfigValueType.BOOLEAN -> to.lowercase() in setOf("true", "false", "1", "0")
-                ContainerUtils.ConfigValueType.INT -> to.toIntOrNull() != null
-                ContainerUtils.ConfigValueType.STRING -> plain(to, MAX_VALUE)
+            return when (SuggestionConfigKeys.APPLICABLE_CONFIG_KEYS[change.key]) {
+                SuggestionConfigKeys.ConfigValueType.BOOLEAN -> to.lowercase() in setOf("true", "false", "1", "0")
+                SuggestionConfigKeys.ConfigValueType.INT -> to.toIntOrNull() != null
+                SuggestionConfigKeys.ConfigValueType.STRING -> plain(to, MAX_VALUE)
                 null -> false
             }
         }
