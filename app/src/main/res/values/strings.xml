@@ -1222,7 +1222,7 @@
     <string name="support_label_ai">GameNative AI</string>
     <string name="support_label_staff">%1$s · GameNative team</string>
     <string name="support_label_team">GameNative team</string>
-    <string name="support_analysing_first">Our AI is analysing your logs. This usually takes a few minutes. You can leave this screen, and the reply will be here when you come back.</string>
+    <string name="support_analysing_first">Our AI is analyzing your logs. This usually takes a few minutes. You can leave this screen, and the reply will be here when you come back.</string>
     <string name="support_analysing_followup">Waiting for a reply. This usually takes a few minutes.</string>
     <string name="support_outcome_question">Did this fix the problem?</string>
     <string name="support_outcome_worked">It worked</string>
@@ -1242,7 +1242,7 @@
     <string name="support_upgrade_reason_required">AI replies need a GameNative subscription.</string>
     <string name="support_see_plans">See plans</string>
     <string name="support_plan_basic_title">$5/month · Basic</string>
-    <string name="support_plan_basic_body">Unlimited AI replies within a daily fair-use limit, answered in the normal queue.</string>
+    <string name="support_plan_basic_body">Get your games running, or running better.</string>
     <string name="support_checkout_scan">Scan this code with your phone to finish checkout. You can also finish it on this device.</string>
     <string name="support_checkout_waiting">When you are done, come back here. Your plan updates by itself.</string>
     <string name="support_checkout_open">Open on this device</string>
@@ -1996,10 +1996,10 @@
     <string name="debug_paywall_title">Get AI debug support</string>
     <string name="debug_paywall_pitch">Our AI reads your exact log and config and tells you what to change, usually in under 5 minutes.</string>
     <string name="debug_paywall_tier5_title">$5/month · Basic</string>
-    <string name="debug_paywall_tier5_body">Unlimited AI replies within a daily fair-use limit, answered in the normal queue.</string>
+    <string name="debug_paywall_tier5_body">Get your games running, or running better.</string>
     <string name="debug_paywall_tier10_title">$10/month · Pro</string>
-    <string name="debug_paywall_tier10_body">The same fair-use limit, and your reports go first: they never wait behind other members\' reports.</string>
-    <string name="debug_paywall_cancel_anytime">Cancel anytime.</string>
+    <string name="debug_paywall_tier10_body">Faster answers and deeper analysis.</string>
+    <string name="debug_paywall_cancel_anytime">Cancel anytime. Fair-use limits apply.</string>
     <string name="debug_paywall_costs_note">Subscriptions cover the AI service costs that make this feature possible.</string>
     <string name="debug_paywall_subscribe">Subscribe on Discord</string>
     <string name="debug_paywall_kofi_alt">Subscribe on Ko-fi</string>
@@ -2891,8 +2891,8 @@
     <string name="support_progress_retry">Try again</string>
     <string name="support_stage_queued">In queue</string>
     <string name="support_stage_queued_eta">In queue · about %1$d min</string>
-    <string name="support_stage_analysing">Analysing</string>
-    <string name="support_stage_analysing_elapsed">Analysing · %1$d min</string>
+    <string name="support_stage_analysing">Analyzing</string>
+    <string name="support_stage_analysing_elapsed">Analyzing · %1$d min</string>
     <string name="support_stage_failed">Analysis failed</string>
     <plurals name="support_progress_ahead">
         <item quantity="one">%1$d report is ahead of yours.</item>

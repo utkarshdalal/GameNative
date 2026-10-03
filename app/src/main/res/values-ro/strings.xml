@@ -1071,7 +1071,7 @@
     <string name="support_upgrade_reason_required">Răspunsurile AI necesită un abonament GameNative.</string>
     <string name="support_see_plans">Vezi planurile</string>
     <string name="support_plan_basic_title">$5/lună · Basic</string>
-    <string name="support_plan_basic_body">Răspunsuri AI nelimitate în cadrul unei limite zilnice de utilizare corectă, tratate în coada normală.</string>
+    <string name="support_plan_basic_body">Fă-ți jocurile să ruleze sau să ruleze mai bine.</string>
     <string name="support_checkout_scan">Scanează acest cod cu telefonul pentru a finaliza plata. O poți finaliza și pe acest dispozitiv.</string>
     <string name="support_checkout_waiting">Când ai terminat, revino aici. Planul se actualizează singur.</string>
     <string name="support_checkout_open">Deschide pe acest dispozitiv</string>
@@ -2036,10 +2036,10 @@
     <string name="debug_paywall_title">Obține suport de depanare AI</string>
     <string name="debug_paywall_pitch">AI-ul nostru îți citește exact jurnalul și configurația și îți spune ce să schimbi, de obicei în mai puțin de 5 minute.</string>
     <string name="debug_paywall_tier5_title">$5/lună · Basic</string>
-    <string name="debug_paywall_tier5_body">Răspunsuri AI nelimitate în cadrul unei limite zilnice de utilizare corectă, tratate în coada normală.</string>
+    <string name="debug_paywall_tier5_body">Fă-ți jocurile să ruleze sau să ruleze mai bine.</string>
     <string name="debug_paywall_tier10_title">$10/lună · Pro</string>
-    <string name="debug_paywall_tier10_body">Aceeași limită de utilizare corectă, iar rapoartele tale trec primele: nu așteaptă niciodată după rapoartele altor membri.</string>
-    <string name="debug_paywall_cancel_anytime">Anulează oricând.</string>
+    <string name="debug_paywall_tier10_body">Răspunsuri mai rapide și analize mai detaliate.</string>
+    <string name="debug_paywall_cancel_anytime">Anulează oricând. Se aplică limite de utilizare corectă.</string>
     <string name="debug_paywall_costs_note">Abonamentele acoperă costurile serviciului AI care face posibilă această funcție.</string>
     <string name="debug_paywall_subscribe">Abonează-te pe Discord</string>
     <string name="debug_paywall_kofi_alt">Abonează-te pe Ko-fi</string>

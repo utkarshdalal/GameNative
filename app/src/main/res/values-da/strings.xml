@@ -886,7 +886,7 @@
     <string name="support_upgrade_reason_required">AI-svar kræver et GameNative-abonnement.</string>
     <string name="support_see_plans">Se planer</string>
     <string name="support_plan_basic_title">$5/måned · Basic</string>
-    <string name="support_plan_basic_body">Ubegrænsede AI-svar inden for en daglig fair use-grænse, besvaret i den normale kø.</string>
+    <string name="support_plan_basic_body">Få dine spil til at køre, eller til at køre bedre.</string>
     <string name="support_checkout_scan">Scan denne kode med din telefon for at gennemføre betalingen. Du kan også gennemføre den på denne enhed.</string>
     <string name="support_checkout_waiting">Kom tilbage hertil, når du er færdig. Din plan opdateres automatisk.</string>
     <string name="support_checkout_open">Åbn på denne enhed</string>
@@ -1914,10 +1914,10 @@
     <string name="debug_paywall_title">Få AI-fejlfindingshjælp</string>
     <string name="debug_paywall_pitch">Vores AI læser din nøjagtige log og konfiguration og fortæller dig, hvad du skal ændre, som regel på under 5 minutter.</string>
     <string name="debug_paywall_tier5_title">$5/måned · Basic</string>
-    <string name="debug_paywall_tier5_body">Ubegrænsede AI-svar inden for en daglig fair use-grænse, besvaret i den normale kø.</string>
+    <string name="debug_paywall_tier5_body">Få dine spil til at køre, eller til at køre bedre.</string>
     <string name="debug_paywall_tier10_title">$10/måned · Pro</string>
-    <string name="debug_paywall_tier10_body">Den samme fair use-grænse, og dine rapporter kommer først: de venter aldrig bag andre medlemmers rapporter.</string>
-    <string name="debug_paywall_cancel_anytime">Opsig når som helst.</string>
+    <string name="debug_paywall_tier10_body">Hurtigere svar og dybere analyse.</string>
+    <string name="debug_paywall_cancel_anytime">Opsig når som helst. Fair use-grænser gælder.</string>
     <string name="debug_paywall_costs_note">Abonnementer dækker AI-tjenesteomkostningerne, der gør denne funktion mulig.</string>
     <string name="debug_paywall_subscribe">Abonnér på Discord</string>
     <string name="debug_paywall_kofi_alt">Abonnér på Ko-fi</string>

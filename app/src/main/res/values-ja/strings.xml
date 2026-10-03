@@ -1038,7 +1038,7 @@
     <string name="support_upgrade_reason_required">AI の返信には GameNative のサブスクリプションが必要です。</string>
     <string name="support_see_plans">プランを見る</string>
     <string name="support_plan_basic_title">$5/月 · Basic</string>
-    <string name="support_plan_basic_body">1日のフェアユース上限内でAIの返信が無制限。通常のキューで対応します。</string>
+    <string name="support_plan_basic_body">ゲームを動かす。もっと快適に動かす。</string>
     <string name="support_checkout_scan">このコードをスマートフォンでスキャンして、購入手続きを完了してください。このデバイスで完了することもできます。</string>
     <string name="support_checkout_waiting">完了したら、ここに戻ってください。プランは自動的に更新されます。</string>
     <string name="support_checkout_open">このデバイスで開く</string>
@@ -2007,10 +2007,10 @@
     <string name="debug_paywall_title">AI デバッグサポートを利用</string>
     <string name="debug_paywall_pitch">AI があなたのログと設定をそのまま読み取り、変更すべき点を教えます。通常 5 分以内です。</string>
     <string name="debug_paywall_tier5_title">$5/月 · Basic</string>
-    <string name="debug_paywall_tier5_body">1日のフェアユース上限内でAIの返信が無制限。通常のキューで対応します。</string>
+    <string name="debug_paywall_tier5_body">ゲームを動かす。もっと快適に動かす。</string>
     <string name="debug_paywall_tier10_title">$10/月 · Pro</string>
-    <string name="debug_paywall_tier10_body">同じフェアユース上限で、あなたのレポートが優先されます。他のメンバーのレポートの後ろで待つことはありません。</string>
-    <string name="debug_paywall_cancel_anytime">いつでも解約できます。</string>
+    <string name="debug_paywall_tier10_body">より速い返信と、より深い分析。</string>
+    <string name="debug_paywall_cancel_anytime">いつでも解約できます。フェアユース上限が適用されます。</string>
     <string name="debug_paywall_costs_note">サブスクリプションは、この機能を支える AI サービスの費用に充てられます。</string>
     <string name="debug_paywall_subscribe">Discord で登録する</string>
     <string name="debug_paywall_kofi_alt">Ko-fi で登録する</string>

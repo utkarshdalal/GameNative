@@ -1054,7 +1054,7 @@
     <string name="support_upgrade_reason_required">AI 回复需要 GameNative 订阅。</string>
     <string name="support_see_plans">查看方案</string>
     <string name="support_plan_basic_title">$5/月 · Basic</string>
-    <string name="support_plan_basic_body">在每日合理使用上限内无限次 AI 回复，在普通队列中处理。</string>
+    <string name="support_plan_basic_body">让你的游戏运行起来，或运行得更好。</string>
     <string name="support_checkout_scan">用手机扫描此二维码以完成付款。你也可以在此设备上完成。</string>
     <string name="support_checkout_waiting">完成后请回到这里。你的方案会自动更新。</string>
     <string name="support_checkout_open">在此设备上打开</string>
@@ -2060,10 +2060,10 @@
     <string name="debug_paywall_title">获取 AI 调试支持</string>
     <string name="debug_paywall_pitch">我们的 AI 会阅读你的完整日志和配置，并告诉你需要更改什么，通常不到 5 分钟。</string>
     <string name="debug_paywall_tier5_title">$5/月 · Basic</string>
-    <string name="debug_paywall_tier5_body">在每日合理使用上限内无限次 AI 回复，在普通队列中处理。</string>
+    <string name="debug_paywall_tier5_body">让你的游戏运行起来，或运行得更好。</string>
     <string name="debug_paywall_tier10_title">$10/月 · Pro</string>
-    <string name="debug_paywall_tier10_body">同样的合理使用上限，且你的报告优先处理：绝不会排在其他会员的报告之后。</string>
-    <string name="debug_paywall_cancel_anytime">随时可取消。</string>
+    <string name="debug_paywall_tier10_body">更快的回复，更深入的分析。</string>
+    <string name="debug_paywall_cancel_anytime">随时可取消。适用合理使用上限。</string>
     <string name="debug_paywall_costs_note">订阅费用用于支付支持此功能的 AI 服务成本。</string>
     <string name="debug_paywall_subscribe">在 Discord 上订阅</string>
     <string name="debug_paywall_kofi_alt">在 Ko-fi 上订阅</string>

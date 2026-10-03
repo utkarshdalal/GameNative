@@ -1066,7 +1066,7 @@
     <string name="support_upgrade_reason_required">Для відповідей AI потрібна підписка GameNative.</string>
     <string name="support_see_plans">Переглянути плани</string>
     <string name="support_plan_basic_title">$5/місяць · Basic</string>
-    <string name="support_plan_basic_body">Необмежені відповіді AI в межах щоденного ліміту чесного використання, у звичайній черзі.</string>
+    <string name="support_plan_basic_body">Запустіть свої ігри або змусьте їх працювати краще.</string>
     <string name="support_checkout_scan">Відскануйте цей код телефоном, щоб завершити оплату. Також її можна завершити на цьому пристрої.</string>
     <string name="support_checkout_waiting">Коли закінчите, поверніться сюди. План оновиться автоматично.</string>
     <string name="support_checkout_open">Відкрити на цьому пристрої</string>
@@ -2042,10 +2042,10 @@
     <string name="debug_paywall_title">Отримайте AI-підтримку з налагодження</string>
     <string name="debug_paywall_pitch">Наш AI читає саме ваш лог і конфігурацію та каже, що змінити, зазвичай менше ніж за 5 хвилин.</string>
     <string name="debug_paywall_tier5_title">$5/місяць · Basic</string>
-    <string name="debug_paywall_tier5_body">Необмежені відповіді AI в межах щоденного ліміту чесного використання, у звичайній черзі.</string>
+    <string name="debug_paywall_tier5_body">Запустіть свої ігри або змусьте їх працювати краще.</string>
     <string name="debug_paywall_tier10_title">$10/місяць · Pro</string>
-    <string name="debug_paywall_tier10_body">Той самий ліміт чесного використання, і ваші звіти йдуть першими: вони ніколи не чекають за звітами інших учасників.</string>
-    <string name="debug_paywall_cancel_anytime">Скасувати можна будь-коли.</string>
+    <string name="debug_paywall_tier10_body">Швидші відповіді та глибший аналіз.</string>
+    <string name="debug_paywall_cancel_anytime">Скасувати можна будь-коли. Діють ліміти чесного використання.</string>
     <string name="debug_paywall_costs_note">Підписки покривають витрати на сервіс AI, завдяки якому працює ця функція.</string>
     <string name="debug_paywall_subscribe">Підпишіться в Discord</string>
     <string name="debug_paywall_kofi_alt">Підпишіться в Ko-fi</string>

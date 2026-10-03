@@ -1080,7 +1080,7 @@
     <string name="support_upgrade_reason_required">Odpowiedzi AI wymagają subskrypcji GameNative.</string>
     <string name="support_see_plans">Zobacz plany</string>
     <string name="support_plan_basic_title">$5/miesiąc · Basic</string>
-    <string name="support_plan_basic_body">Nielimitowane odpowiedzi AI w ramach dziennego limitu uczciwego użytkowania, obsługiwane w zwykłej kolejce.</string>
+    <string name="support_plan_basic_body">Uruchom swoje gry albo spraw, by działały lepiej.</string>
     <string name="support_checkout_scan">Zeskanuj ten kod telefonem, aby dokończyć płatność. Możesz też dokończyć ją na tym urządzeniu.</string>
     <string name="support_checkout_waiting">Po zakończeniu wróć tutaj. Plan zaktualizuje się automatycznie.</string>
     <string name="support_checkout_open">Otwórz na tym urządzeniu</string>
@@ -2046,10 +2046,10 @@
     <string name="debug_paywall_title">Uzyskaj pomoc AI w debugowaniu</string>
     <string name="debug_paywall_pitch">Nasza AI czyta dokładnie Twój log i konfigurację i mówi, co zmienić, zwykle w niecałe 5 minut.</string>
     <string name="debug_paywall_tier5_title">$5/miesiąc · Basic</string>
-    <string name="debug_paywall_tier5_body">Nielimitowane odpowiedzi AI w ramach dziennego limitu uczciwego użytkowania, obsługiwane w zwykłej kolejce.</string>
+    <string name="debug_paywall_tier5_body">Uruchom swoje gry albo spraw, by działały lepiej.</string>
     <string name="debug_paywall_tier10_title">$10/miesiąc · Pro</string>
-    <string name="debug_paywall_tier10_body">Ten sam limit uczciwego użytkowania, a Twoje raporty idą pierwsze: nigdy nie czekają za raportami innych członków.</string>
-    <string name="debug_paywall_cancel_anytime">Anuluj w dowolnym momencie.</string>
+    <string name="debug_paywall_tier10_body">Szybsze odpowiedzi i głębsza analiza.</string>
+    <string name="debug_paywall_cancel_anytime">Anuluj w dowolnym momencie. Obowiązują limity uczciwego użytkowania.</string>
     <string name="debug_paywall_costs_note">Subskrypcje pokrywają koszty usługi AI, dzięki której ta funkcja działa.</string>
     <string name="debug_paywall_subscribe">Subskrybuj przez Discord</string>
     <string name="debug_paywall_kofi_alt">Subskrybuj przez Ko-fi</string>

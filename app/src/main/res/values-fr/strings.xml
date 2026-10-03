@@ -1087,7 +1087,7 @@
     <string name="support_upgrade_reason_required">Les réponses de l\'AI nécessitent un abonnement GameNative.</string>
     <string name="support_see_plans">Voir les abonnements</string>
     <string name="support_plan_basic_title">$5/mois · Basic</string>
-    <string name="support_plan_basic_body">Réponses de l\'AI illimitées dans une limite d\'usage raisonnable quotidienne, traitées dans la file normale.</string>
+    <string name="support_plan_basic_body">Faites fonctionner vos jeux, ou faites-les mieux tourner.</string>
     <string name="support_checkout_scan">Scannez ce code avec votre téléphone pour finaliser le paiement. Vous pouvez aussi le finaliser sur cet appareil.</string>
     <string name="support_checkout_waiting">Une fois terminé, revenez ici. Votre abonnement se met à jour tout seul.</string>
     <string name="support_checkout_open">Ouvrir sur cet appareil</string>
@@ -2062,10 +2062,10 @@
     <string name="debug_paywall_title">Obtenez une assistance de débogage AI</string>
     <string name="debug_paywall_pitch">Notre AI lit votre journal et votre configuration exacts et vous dit quoi changer, généralement en moins de 5 minutes.</string>
     <string name="debug_paywall_tier5_title">$5/mois · Basic</string>
-    <string name="debug_paywall_tier5_body">Réponses de l\'AI illimitées dans une limite d\'usage raisonnable quotidienne, traitées dans la file normale.</string>
+    <string name="debug_paywall_tier5_body">Faites fonctionner vos jeux, ou faites-les mieux tourner.</string>
     <string name="debug_paywall_tier10_title">$10/mois · Pro</string>
-    <string name="debug_paywall_tier10_body">La même limite d\'usage raisonnable, et vos rapports passent en premier : ils n\'attendent jamais derrière ceux des autres membres.</string>
-    <string name="debug_paywall_cancel_anytime">Annulable à tout moment.</string>
+    <string name="debug_paywall_tier10_body">Des réponses plus rapides et des analyses plus approfondies.</string>
+    <string name="debug_paywall_cancel_anytime">Annulable à tout moment. Des limites d\'usage raisonnable s\'appliquent.</string>
     <string name="debug_paywall_costs_note">Les abonnements couvrent les coûts du service AI qui rend cette fonction possible.</string>
     <string name="debug_paywall_subscribe">Abonnez-vous sur Discord</string>
     <string name="debug_paywall_kofi_alt">Abonnez-vous sur Ko-fi</string>
