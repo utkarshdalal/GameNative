@@ -155,8 +155,30 @@ data class DebugRunParams(
     }
 }
 
+data class DebugRunOrigin(
+    val kind: String,
+    val suggestionMessageId: Long? = null,
+    val conversationId: String? = null,
+) {
+    fun toJson(): JSONObject = JSONObject().apply {
+        put("suggestionMessageId", suggestionMessageId ?: JSONObject.NULL)
+        put("conversationId", conversationId ?: JSONObject.NULL)
+        put("kind", kind)
+    }
+
+    companion object {
+        const val KIND_APPLY_AND_RUN = "apply_and_run"
+        const val KIND_DIAGNOSTIC = "diagnostic"
+        const val KIND_NEW_RUN = "new_run"
+        const val KIND_MANUAL = "manual"
+
+        val MANUAL = DebugRunOrigin(KIND_MANUAL)
+    }
+}
+
 object DebugRunParamsHolder {
     private val params = ConcurrentHashMap<String, DebugRunParams>()
+    private val origins = ConcurrentHashMap<String, DebugRunOrigin>()
 
     fun set(appId: String, value: DebugRunParams?) {
         if (value == null) params.remove(appId) else params[appId] = value
@@ -164,7 +186,14 @@ object DebugRunParamsHolder {
 
     fun get(appId: String): DebugRunParams? = params[appId]
 
+    fun setOrigin(appId: String, origin: DebugRunOrigin) {
+        origins[appId] = origin
+    }
+
+    fun getOrigin(appId: String): DebugRunOrigin? = origins[appId]
+
     fun clear(appId: String) {
         params.remove(appId)
+        origins.remove(appId)
     }
 }

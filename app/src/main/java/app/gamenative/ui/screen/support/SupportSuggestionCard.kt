@@ -46,6 +46,7 @@ import app.gamenative.ui.component.dialog.winComponentsItemTitleRes
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.DebugRunOrigin
 import app.gamenative.utils.DebugRunParams
 import app.gamenative.utils.DebugRunParamsHolder
 import kotlinx.coroutines.launch
@@ -358,8 +359,9 @@ internal fun SuggestionCard(
     val run = suggestion.run
     val offersRun = suggestion.rerun || run != null
 
-    fun startRun(targetAppId: String) {
+    fun startRun(targetAppId: String, kind: String) {
         DebugRunParamsHolder.set(targetAppId, run)
+        DebugRunParamsHolder.setOrigin(targetAppId, DebugRunOrigin(kind, message.id, conversationId))
         SupportSession.startedRunFrom(targetAppId, conversationId)
         onStartDebugRun(targetAppId)
     }
@@ -380,7 +382,7 @@ internal fun SuggestionCard(
             refresh++
             if (result == SupportSuggestionApplier.Result.Done) {
                 status = if (kind == SuggestionConfirm.RESTORE) SuggestionStatus.Restored else SuggestionStatus.Applied
-                if (kind == SuggestionConfirm.APPLY_AND_RUN) startRun(targetAppId)
+                if (kind == SuggestionConfirm.APPLY_AND_RUN) startRun(targetAppId, DebugRunOrigin.KIND_APPLY_AND_RUN)
             } else {
                 status = SuggestionStatus.Problem(result)
             }
@@ -565,7 +567,7 @@ internal fun SuggestionCard(
                 } else if (offersRun) {
                     FocusableButton(
                         text = stringResource(R.string.support_new_debug_run),
-                        onClick = { appId?.let { startRun(it) } },
+                        onClick = { appId?.let { startRun(it, DebugRunOrigin.KIND_DIAGNOSTIC) } },
                         enabled = canAct,
                     )
                 }

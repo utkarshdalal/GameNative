@@ -92,6 +92,8 @@ import app.gamenative.api.SupportApi
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.utils.DebugRunOrigin
+import app.gamenative.utils.DebugRunParamsHolder
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -279,6 +281,7 @@ internal fun ColumnScope.SupportChat(
             enabled = appId != null,
             onClick = {
                 if (appId != null) {
+                    DebugRunParamsHolder.setOrigin(appId, DebugRunOrigin(DebugRunOrigin.KIND_NEW_RUN, null, conversationId))
                     SupportSession.startedRunFrom(appId, conversationId)
                     onStartDebugRun(appId)
                 }
@@ -399,6 +402,10 @@ internal fun ColumnScope.SupportChat(
                                     onNewRun = {
                                         val targetAppId = appId ?: run.appId
                                         SupportRunFollowUp.clear(conversationId)
+                                        DebugRunParamsHolder.setOrigin(
+                                            targetAppId,
+                                            DebugRunOrigin(DebugRunOrigin.KIND_NEW_RUN, null, conversationId),
+                                        )
                                         SupportSession.startedRunFrom(targetAppId, conversationId)
                                         onStartDebugRun(targetAppId)
                                     },
