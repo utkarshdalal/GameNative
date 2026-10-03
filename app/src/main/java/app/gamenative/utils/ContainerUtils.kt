@@ -579,7 +579,12 @@ object ContainerUtils {
                 "dxwrapperConfig" -> value?.let { updatedData.copy(dxwrapperConfig = it as? String ?: updatedData.dxwrapperConfig) }
                     ?: updatedData
                 "execArgs" -> value?.let { updatedData.copy(execArgs = it as? String ?: updatedData.execArgs) } ?: updatedData
-                "startupSelection" -> configInt(value)?.takeIf { it in 0..2 }?.let { updatedData.copy(startupSelection = it.toByte()) }
+                "startupSelection" -> value?.let {
+                    updatedData.copy(
+                        startupSelection =
+                            (it as? Int)?.toByte() ?: updatedData.startupSelection,
+                    )
+                }
                     ?: updatedData
                 "box64Version" -> value?.let { updatedData.copy(box64Version = it as? String ?: updatedData.box64Version) } ?: updatedData
                 "box64Preset" -> value?.let { updatedData.copy(box64Preset = it as? String ?: updatedData.box64Preset) } ?: updatedData
