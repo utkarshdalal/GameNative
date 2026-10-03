@@ -183,9 +183,10 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
                 GLES20.glViewport(0, 0, targetWidth, targetHeight);
             }
             else if (magnifierEnabled) {
+                // viewOffsetY is top-left based; glViewport wants bottom-left.
                 GLES20.glViewport(
                     Math.round(viewTransformation.viewOffsetX * viewportScaleX),
-                    Math.round(viewTransformation.viewOffsetY * viewportScaleY),
+                    Math.round((surfaceHeight - viewTransformation.viewOffsetY - viewTransformation.viewHeight) * viewportScaleY),
                     Math.round(viewTransformation.viewWidth * viewportScaleX),
                     Math.round(viewTransformation.viewHeight * viewportScaleY)
                 );
@@ -227,9 +228,10 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
                 XForm.makeTransform(tmpXForm2, viewTransformation.sceneOffsetX, viewTransformation.sceneOffsetY - pointerY, viewTransformation.sceneScaleX, viewTransformation.sceneScaleY, 0);
 
                 GLES20.glEnable(GLES20.GL_SCISSOR_TEST);
+                // viewOffsetY is top-left based; glScissor wants bottom-left.
                 GLES20.glScissor(
                     Math.round(viewTransformation.viewOffsetX * viewportScaleX),
-                    Math.round(viewTransformation.viewOffsetY * viewportScaleY),
+                    Math.round((surfaceHeight - viewTransformation.viewOffsetY - viewTransformation.viewHeight) * viewportScaleY),
                     Math.round(viewTransformation.viewWidth * viewportScaleX),
                     Math.round(viewTransformation.viewHeight * viewportScaleY)
                 );
@@ -361,6 +363,16 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
     public void toggleFullscreen() {
         toggleFullscreen = true;
+        xServerView.requestRender();
+    }
+
+    public void updateViewTransformation() {
+        xServerView.queueEvent(() -> {
+            if (surfaceWidth > 0 && surfaceHeight > 0) {
+                viewTransformation.update(surfaceWidth, surfaceHeight, xServer.screenInfo.width, xServer.screenInfo.height);
+                viewportNeedsUpdate = true;
+            }
+        });
         xServerView.requestRender();
     }
 

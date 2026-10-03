@@ -317,6 +317,12 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
                 viewTransformation.viewHeight);
     }
 
+    public void updateViewTransformation() {
+        if (surfaceWidth <= 0 || surfaceHeight <= 0) return;
+        viewTransformation.update(surfaceWidth, surfaceHeight, xServer.screenInfo.width, xServer.screenInfo.height);
+        updateTransform();
+    }
+
     public void updateScene() {
         renderListSize = 0;
         try (XLock xl = xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.DRAWABLE_MANAGER)) {
