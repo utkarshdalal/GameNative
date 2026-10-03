@@ -15,9 +15,11 @@ class CompatibilityRetryPolicyTest {
     @Test fun parsesLongRetryAfterSecondsDatesAndMissingValuesWithoutOverflow() {
         assertEquals(600_000L, CompatibilityRetryPolicy.retryAfterMillis("600", 0L))
         assertEquals(7_200_000L, CompatibilityRetryPolicy.retryAfterMillis("7200", 0L))
+        assertEquals(0L, CompatibilityRetryPolicy.retryAfterMillis("0", 0L))
         val now = java.time.Instant.parse("2026-09-27T10:00:00Z").toEpochMilli()
         assertEquals(600_000L, CompatibilityRetryPolicy.retryAfterMillis("Sun, 27 Sep 2026 10:10:00 GMT", now))
-        assertEquals(0L, CompatibilityRetryPolicy.retryAfterMillis("Sun, 27 Sep 2026 09:00:00 GMT", now))
+        assertEquals(10_000L, CompatibilityRetryPolicy.retryAfterMillis("Sun, 27 Sep 2026 09:00:00 GMT", now))
+        assertEquals(10_000L, CompatibilityRetryPolicy.retryAfterMillis("Sun, 27 Sep 2026 10:00:00 GMT", now))
         for (value in listOf(null, "", "invalid", "-1")) {
             assertEquals(10_000L, CompatibilityRetryPolicy.retryAfterMillis(value, now))
         }

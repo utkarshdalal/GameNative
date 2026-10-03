@@ -98,7 +98,13 @@ class GogRecommendationsViewModel @Inject constructor(
     private suspend fun loadStats(names: List<String>) {
         if (names.isEmpty()) return
 
-        CommunityCompatibilityRepository.refreshGames(names, gpuName)
+        try {
+            CommunityCompatibilityRepository.refreshGames(names, gpuName)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.tag("GogRec").w(e, "Failed to refresh GOG recommendation compatibility; using cached results")
+        }
         DeviceGameStatsCache.initialize()
         GpuGameStatsCache.initialize()
         val compatibilityMap = names.distinct().associateWith { name ->

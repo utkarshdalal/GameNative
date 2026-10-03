@@ -14,7 +14,7 @@ internal object CompatibilityRetryPolicy {
         }
         return runCatching {
             ZonedDateTime.parse(header, DateTimeFormatter.RFC_1123_DATE_TIME).toInstant().toEpochMilli() - now
-        }.getOrNull()?.coerceAtLeast(0L) ?: 10_000L
+        }.getOrNull()?.takeIf { it > 0L } ?: 10_000L
     }
 
     /** Spread recovery traffic without shortening the server's minimum wait. */

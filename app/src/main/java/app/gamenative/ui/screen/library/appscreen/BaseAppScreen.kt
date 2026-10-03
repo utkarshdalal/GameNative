@@ -1888,7 +1888,7 @@ abstract class BaseAppScreen {
                         loadContainerData(context, libraryItem)
                     }
                 } else {
-                    ContainerData()
+                    ContainerData(envVars = "", execArgs = "")
                 }
             } else {
                 null

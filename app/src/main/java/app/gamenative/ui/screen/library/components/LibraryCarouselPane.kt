@@ -542,7 +542,7 @@ internal fun LibraryCarouselPane(
                             }
                         }
 
-                        if (state.appInfoList.size < state.totalAppsInFilter) {
+                        if (state.currentPaginationPage < state.lastPaginationPage) {
                             item {
                                 Box(
                                     modifier = Modifier

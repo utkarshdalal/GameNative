@@ -2707,19 +2707,19 @@
     <string name="community_compatibility_view_reports">Konfigurationen</string>
     <string name="community_config_install_before_apply">Installiere dieses Spiel, bevor du eine Community-Konfiguration anwendest.</string>
     <plurals name="community_compatibility_model_sessions">
-        <item quantity="one">Basierend auf %1$d aufgezeichneten Sitzung auf deinem Gerätemodell.</item>
+        <item quantity="one">Basierend auf %1$d aufgezeichneter Sitzung auf deinem Gerätemodell.</item>
         <item quantity="other">Basierend auf %1$d aufgezeichneten Sitzungen auf deinem Gerätemodell.</item>
     </plurals>
     <plurals name="community_compatibility_soc_sessions">
-        <item quantity="one">Basierend auf %1$d aufgezeichneten Sitzung mit demselben Chipsatz.</item>
+        <item quantity="one">Basierend auf %1$d aufgezeichneter Sitzung mit demselben Chipsatz.</item>
         <item quantity="other">Basierend auf %1$d aufgezeichneten Sitzungen mit demselben Chipsatz.</item>
     </plurals>
     <plurals name="community_compatibility_gpu_sessions">
-        <item quantity="one">Basierend auf %1$d aufgezeichneten Sitzung mit deiner GPU.</item>
+        <item quantity="one">Basierend auf %1$d aufgezeichneter Sitzung mit deiner GPU.</item>
         <item quantity="other">Basierend auf %1$d aufgezeichneten Sitzungen mit deiner GPU.</item>
     </plurals>
     <plurals name="community_compatibility_family_sessions">
-        <item quantity="one">Basierend auf %1$d aufgezeichneten Sitzung in deiner GPU-Familie.</item>
+        <item quantity="one">Basierend auf %1$d aufgezeichneter Sitzung in deiner GPU-Familie.</item>
         <item quantity="other">Basierend auf %1$d aufgezeichneten Sitzungen in deiner GPU-Familie.</item>
     </plurals>
     <plurals name="community_compatibility_device_evidence">
