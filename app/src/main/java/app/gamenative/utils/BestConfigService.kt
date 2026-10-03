@@ -303,7 +303,11 @@ object BestConfigService {
      * Validates component versions in the filtered JSON.
      * Returns list of human-readable descriptions of missing/unavailable components.
      */
-    private suspend fun validateComponentVersions(context: Context, filteredJson: JSONObject): List<String> {
+    private suspend fun validateComponentVersions(
+        context: Context,
+        filteredJson: JSONObject,
+        includeImportKeys: Boolean = false,
+    ): List<String> {
         val missing = mutableListOf<String>()
         // Get resource arrays (same as ContainerConfigDialog)
         val dxvkVersions = context.resources.getStringArray(R.array.dxvk_version_entries).toList()
@@ -498,7 +502,7 @@ object BestConfigService {
             }
         }
 
-        if (containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
+        if (includeImportKeys && containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
             val topLevelDriver = filteredJson.optString("graphicsDriverVersion", "")
             val entry = ManifestComponentHelper.findManifestEntryForVersion(topLevelDriver, manifestDrivers)
             if (entry != null && entry.id != topLevelDriver) {
@@ -935,7 +939,7 @@ object BestConfigService {
                 )
 
                 // Step 2: check for unavailable component versions
-                val missingComponents = validateComponentVersions(context, filteredJson)
+                val missingComponents = validateComponentVersions(context, filteredJson, includeImportKeys)
                 if (missingComponents.isNotEmpty()) {
                     if (!forceApply) {
                         Timber.tag("BestConfigService").w("Config rejected: missing components: ${missingComponents.joinToString(", ")}")
