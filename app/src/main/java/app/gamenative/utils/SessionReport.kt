@@ -196,7 +196,7 @@ object SessionReport {
         try {
             putAll(configProperties(container))
             putAll(GameFileDetection.properties(container))
-            putAll(windowActivity.snapshot(context, frameRating?.totalFrames ?: 0L))
+            putAll(windowActivity.snapshot(context, frameRating?.totalFrames ?: 0L, frameRating?.activeMs ?: 0L))
             runCatching { putAll(PowerTelemetry.sessionProperties()) }
                 .onFailure { Timber.w(it, "SessionReport: power properties failed") }
             if (frameRating != null) {
@@ -237,11 +237,13 @@ class WindowActivity {
     private class Entry(val className: String, val firstMs: Long) {
         var lastMs: Long = firstMs
         var frames: Long = 0
+        var activeMs: Long = 0
         var mapped: Boolean = false
     }
 
     private var trackedClass: String? = null
     private var trackedStartFrames = 0L
+    private var trackedStartActiveMs = 0L
 
     private val lock = Any()
     private var startMs = 0L
@@ -281,6 +283,7 @@ class WindowActivity {
             thermalTransitions.clear()
             trackedClass = null
             trackedStartFrames = 0L
+            trackedStartActiveMs = 0L
             batteryStartPct = readBatteryPct(context)
             batteryStartTempC = 0
             chargingStart = null
@@ -320,24 +323,28 @@ class WindowActivity {
         }
     }
 
-    fun onTrackedWindow(window: Window?, totalFrames: Long) {
+    fun onTrackedWindow(window: Window?, totalFrames: Long, activeMs: Long) {
         try {
             val next = window?.let { entryFor(it) }
             synchronized(lock) {
-                closeTrackedSegment(totalFrames)
+                closeTrackedSegment(totalFrames, activeMs)
                 trackedClass = next?.className
                 trackedStartFrames = totalFrames
+                trackedStartActiveMs = activeMs
             }
         } catch (e: Exception) {
             Timber.w(e, "WindowActivity: tracked window failed")
         }
     }
 
-    private fun closeTrackedSegment(totalFrames: Long) {
+    private fun closeTrackedSegment(totalFrames: Long, activeMs: Long) {
         val cls = trackedClass ?: return
         val delta = totalFrames - trackedStartFrames
         if (delta > 0) windows[cls]?.let { it.frames += delta }
+        val activeDelta = activeMs - trackedStartActiveMs
+        if (activeDelta > 0) windows[cls]?.let { it.activeMs += activeDelta }
         trackedStartFrames = totalFrames
+        trackedStartActiveMs = activeMs
     }
 
     fun onWindowMapped(window: Window) {
@@ -365,15 +372,15 @@ class WindowActivity {
         windows.getOrPut(className) { Entry(className, now) }
     }
 
-    fun snapshot(context: Context?, totalFrames: Long): Map<String, Any> = try {
-        buildSnapshot(context, totalFrames)
+    fun snapshot(context: Context?, totalFrames: Long, activeMs: Long): Map<String, Any> = try {
+        buildSnapshot(context, totalFrames, activeMs)
     } catch (e: Exception) {
         Timber.w(e, "WindowActivity: snapshot failed")
         emptyMap()
     }
 
-    private fun buildSnapshot(context: Context?, totalFrames: Long): Map<String, Any> = synchronized(lock) {
-        closeTrackedSegment(totalFrames)
+    private fun buildSnapshot(context: Context?, totalFrames: Long, activeMs: Long): Map<String, Any> = synchronized(lock) {
+        closeTrackedSegment(totalFrames, activeMs)
         buildMap {
             val batteryEnd = context?.let { readBatteryPct(it) } ?: -1
             if (batteryStartPct >= 0 && batteryEnd >= 0) {
@@ -396,6 +403,7 @@ class WindowActivity {
                 windows.values.maxByOrNull { it.frames }?.takeIf { it.frames > 0 }?.let { main ->
                     put("main_window_class", main.className)
                     put("main_window_seconds", (endMs(main) - main.firstMs) / 1000)
+                    put("main_window_active_seconds", main.activeMs / 1000)
                     put("main_window_frames", main.frames)
                 }
                 put(
@@ -406,6 +414,7 @@ class WindowActivity {
                             "first_s" to ((e.firstMs - startMs) / 1000),
                             "last_s" to ((endMs(e) - startMs) / 1000),
                             "frames" to e.frames,
+                            "active_s" to (e.activeMs / 1000),
                         )
                     },
                 )

@@ -8,7 +8,6 @@ import androidx.lifecycle.viewModelScope
 import app.gamenative.BuildConfig
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
-import app.gamenative.R
 import app.gamenative.data.BootAdRepository
 import app.gamenative.data.GameProcessInfo
 import app.gamenative.data.GameSource
@@ -34,7 +33,6 @@ import app.gamenative.utils.CustomGameScanner
 import app.gamenative.ui.data.MainState
 import app.gamenative.ui.enums.ConnectionState
 import app.gamenative.ui.screen.PluviaScreen
-import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.DebugReportUtils
 import app.gamenative.utils.IntentLaunchManager
@@ -45,10 +43,12 @@ import com.materialkolor.PaletteStyle
 import com.winlator.xserver.Window
 import dagger.hilt.android.lifecycle.HiltViewModel
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.AppProcessInfo
+import java.io.File
 import java.nio.file.Paths
 import javax.inject.Inject
 import kotlin.io.path.name
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -127,7 +127,7 @@ class MainViewModel @Inject constructor(
         data object ShowDiscordSupportDialog : MainUiEvent()
         data class ShowGameFeedbackDialog(val appId: String) : MainUiEvent()
         data class ShowMembershipPitch(val appId: String, val trigger: String) : MainUiEvent()
-        data class ShowDebugReportDialog(val appId: String, val reportDir: String) : MainUiEvent()
+        data class ShowDebugReportDialog(val appId: String) : MainUiEvent()
         data class ShowAiDebugOffer(val appId: String, val trigger: String) : MainUiEvent()
         data object ServiceReady : MainUiEvent()
     }
@@ -137,6 +137,10 @@ class MainViewModel @Inject constructor(
 
     private val _uiEvent = Channel<MainUiEvent>()
     val uiEvent = _uiEvent.receiveAsFlow()
+
+    private val pendingDebugReports = mutableMapOf<String, Deferred<File?>>()
+
+    fun pendingDebugReport(appId: String): Deferred<File?>? = pendingDebugReports[appId]
 
     private val _offline = MutableStateFlow(false)
     val isOffline: StateFlow<Boolean> get() = _offline
@@ -291,6 +295,7 @@ class MainViewModel @Inject constructor(
             PluviaScreen.Home.route -> PluviaScreen.Home
             PluviaScreen.XServer.route -> PluviaScreen.XServer
             PluviaScreen.Settings.route -> PluviaScreen.Settings
+            PluviaScreen.Support.route -> PluviaScreen.Support
             PluviaScreen.Chat.route -> PluviaScreen.Chat
             else -> null
         }
@@ -506,6 +511,7 @@ class MainViewModel @Inject constructor(
             currentScreen.startsWith(PluviaScreen.Home.route) -> PluviaScreen.Home
             currentScreen == PluviaScreen.XServer.route -> PluviaScreen.XServer
             currentScreen == PluviaScreen.Settings.route -> PluviaScreen.Settings
+            currentScreen == PluviaScreen.Support.route -> PluviaScreen.Support
             currentScreen.startsWith("chat") -> PluviaScreen.Chat
             else -> PluviaScreen.LoginUser
         }
@@ -694,6 +700,16 @@ class MainViewModel @Inject constructor(
                 Timber.tag("Exit").i("Got game id: $gameId")
                 ActiveGameRegistry.clearIfMatches(gameId)
                 SteamService.notifyRunningProcesses()
+
+                val debugRun = _state.value.debugRun
+                if (debugRun) {
+                    setDebugRun(false)
+                    pendingDebugReports[appId] = viewModelScope.async {
+                        DebugReportUtils.createPendingReport(context, appId)
+                    }
+                    _uiEvent.send(MainUiEvent.ShowDebugReportDialog(appId))
+                }
+
                 handleExitCloudSync(context, appId, gameId)
 
                 // Prompt user to save temporary container configuration if one was applied
@@ -712,14 +728,7 @@ class MainViewModel @Inject constructor(
                 val sessionLongEnough = sessionLengthMs >= MIN_WARM_PITCH_SESSION_MS
                 gameSessionStartTime = 0L
 
-                if (_state.value.debugRun) {
-                    setDebugRun(false)
-                    val reportDir = DebugReportUtils.createPendingReport(context, appId)
-                    if (reportDir != null) {
-                        _uiEvent.send(MainUiEvent.ShowDebugReportDialog(appId, reportDir.absolutePath))
-                    } else {
-                        SnackbarManager.show(context.getString(R.string.debug_report_no_log))
-                    }
+                if (debugRun) {
                     return@launch
                 }
 

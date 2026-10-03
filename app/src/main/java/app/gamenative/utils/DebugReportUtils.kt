@@ -3,6 +3,7 @@ package app.gamenative.utils
 import android.content.Context
 import android.os.Build
 import app.gamenative.BuildConfig
+import app.gamenative.ui.screen.support.SupportSuggestionApplier
 import com.winlator.core.GPUInformation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -90,6 +91,18 @@ object DebugReportUtils {
         }
     }
 
+    fun newestReport(context: Context, appId: String): File? {
+        val prefix = "${appId}_"
+        return reportsDir(context).listFiles()
+            ?.filter { dir ->
+                dir.isDirectory &&
+                    dir.name.startsWith(prefix) &&
+                    dir.name.removePrefix(prefix).toLongOrNull() != null &&
+                    logFile(dir).exists()
+            }
+            ?.maxByOrNull { it.name.removePrefix(prefix).toLong() }
+    }
+
     fun deleteReport(reportDir: File) {
         reportDir.deleteRecursively()
     }
@@ -121,7 +134,7 @@ object DebugReportUtils {
             }
 
             compressLog(claimedLog, logFile(dir))
-            val header = buildHeader(context, appId)
+            val header = buildHeader(context, appId, DebugRunParamsHolder.get(appId))
             if (perf != null) {
                 perfFile(dir).writeText(perf.perf.toString())
                 header.put("perf", perf.verdict)
@@ -139,6 +152,8 @@ object DebugReportUtils {
             Timber.e(e, "DebugReportUtils: Failed to create pending report for $appId")
             reportDir?.deleteRecursively()
             null
+        } finally {
+            DebugRunParamsHolder.clear(appId)
         }
     }
 
@@ -158,7 +173,7 @@ object DebugReportUtils {
         }
     }
 
-    private fun buildHeader(context: Context, appId: String): JSONObject {
+    private fun buildHeader(context: Context, appId: String, runParams: DebugRunParams?): JSONObject {
         val container = ContainerUtils.getContainer(context, appId)
 
         val gpu = try {
@@ -184,6 +199,11 @@ object DebugReportUtils {
             put("configs", JSONObject(container.containerJson))
             if (avgFps != null) put("avgFps", avgFps.toDouble()) else put("avgFps", JSONObject.NULL)
             if (sessionLengthSec != null) put("sessionLengthSec", sessionLengthSec) else put("sessionLengthSec", JSONObject.NULL)
+            put("runParams", (runParams ?: DebugRunParams()).toJson())
+            val appliedFile = SupportSuggestionApplier.appliedRecordFile(container)
+            if (appliedFile.exists()) {
+                runCatching { JSONObject(appliedFile.readText()) }.getOrNull()?.let { put("appliedSuggestion", it) }
+            }
         }
     }
 
