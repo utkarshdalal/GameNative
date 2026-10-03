@@ -2810,4 +2810,12 @@ https://gamenative.app
     </plurals>
     <string name="support_reply_ready">Ответ поддержки готов</string>
     <string name="support_reply_open">Открыть</string>
+    <string name="support_wait_channel_name">Статус ответа поддержки</string>
+    <string name="support_wait_channel_description">Показывается, пока GameNative ждёт ответа на ваш отчёт.</string>
+    <string name="support_replies_channel_name">Ответы поддержки</string>
+    <string name="support_replies_channel_description">Сообщает, когда ответ на ваш отчёт готов.</string>
+    <string name="support_wait_title">Ожидание ответа поддержки</string>
+    <string name="support_wait_text">Отчёт отправлен. Мы сообщим, когда ответ будет готов.</string>
+    <string name="support_wait_stop">Остановить</string>
+    <string name="support_reply_ready_tap">Нажмите, чтобы прочитать.</string>
 </resources>

@@ -2874,4 +2874,12 @@
     </plurals>
     <string name="support_reply_ready">Votre réponse du support est prête</string>
     <string name="support_reply_open">Ouvrir</string>
+    <string name="support_wait_channel_name">État de la réponse du support</string>
+    <string name="support_wait_channel_description">S\'affiche pendant que GameNative attend une réponse à votre rapport.</string>
+    <string name="support_replies_channel_name">Réponses du support</string>
+    <string name="support_replies_channel_description">Vous prévient quand la réponse à votre rapport est prête.</string>
+    <string name="support_wait_title">En attente de la réponse du support</string>
+    <string name="support_wait_text">Votre rapport a été envoyé. Nous vous préviendrons quand la réponse sera prête.</string>
+    <string name="support_wait_stop">Arrêter</string>
+    <string name="support_reply_ready_tap">Touchez pour la lire.</string>
 </resources>

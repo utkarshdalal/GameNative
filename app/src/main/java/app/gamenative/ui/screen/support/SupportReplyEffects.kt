@@ -28,18 +28,25 @@ private const val GAME_EXIT_CHECK_MS = 1_000L
 @Composable
 fun SupportReplyEffects(
     gameRunning: Boolean,
+    canOpenSupport: Boolean,
     hostState: SnackbarHostState,
     onOpenConversation: (String) -> Unit,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val ready by SupportReplyWatcher.ready
+    val pending by SupportSession.pendingConversationId
     val open by rememberUpdatedState(onOpenConversation)
 
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             SupportReplyWatcher.run()
         }
+    }
+
+    LaunchedEffect(pending, canOpenSupport) {
+        val conversationId = pending ?: return@LaunchedEffect
+        if (canOpenSupport) open(conversationId)
     }
 
     LaunchedEffect(ready, gameRunning) {

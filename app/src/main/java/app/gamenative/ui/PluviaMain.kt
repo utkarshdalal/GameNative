@@ -1397,6 +1397,9 @@ fun PluviaMain(
 
     SupportReplyEffects(
         gameRunning = state.currentScreen == PluviaScreen.XServer,
+        canOpenSupport = state.currentScreen == PluviaScreen.Home ||
+            state.currentScreen == PluviaScreen.Settings ||
+            state.currentScreen == PluviaScreen.Chat,
         hostState = snackbarController.hostState,
         onOpenConversation = { conversationId ->
             SupportSession.pendingConversationId.value = conversationId
@@ -1635,7 +1638,7 @@ fun PluviaMain(
                 }
                 debugReportState = current.copy(visible = true, phase = DebugReportDialogState.PHASE_SENDING)
                 scope.launch {
-                    val outcome = SupportReportSubmitter.submit(current)
+                    val outcome = SupportReportSubmitter.submit(context, current)
                     val composeAgain = { debugReportState = debugReportState.copy(visible = true, phase = DebugReportDialogState.PHASE_COMPOSE) }
                     when (outcome) {
                         is SupportReportSubmitter.Outcome.Sent -> {

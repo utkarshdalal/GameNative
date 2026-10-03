@@ -12,6 +12,7 @@ import app.gamenative.api.ApiResult
 import app.gamenative.api.SupportApi
 import app.gamenative.utils.DebugReportUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -24,6 +25,7 @@ import javax.inject.Inject
 @HiltViewModel
 class SupportViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
+    @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
 
     enum class Problem {
@@ -208,7 +210,7 @@ class SupportViewModel @Inject constructor(
     }
 
     private fun onFollowUpPosted(conversation: SupportApi.Conversation) {
-        SupportReplyWatcher.track(conversation.id, conversation.lastMessageAt)
+        SupportReportSubmitter.watchForReply(appContext, conversation, conversation.id, conversation.game)
     }
 
     private fun actionProblem(result: ApiResult<*>): Problem? {

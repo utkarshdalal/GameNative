@@ -2814,4 +2814,12 @@
     </plurals>
     <string name="support_reply_ready">Deine Support-Antwort ist da</string>
     <string name="support_reply_open">Öffnen</string>
+    <string name="support_wait_channel_name">Status der Support-Antwort</string>
+    <string name="support_wait_channel_description">Wird angezeigt, während GameNative auf eine Antwort zu deinem Bericht wartet.</string>
+    <string name="support_replies_channel_name">Support-Antworten</string>
+    <string name="support_replies_channel_description">Meldet sich, wenn eine Antwort auf deinen Bericht da ist.</string>
+    <string name="support_wait_title">Warte auf die Support-Antwort</string>
+    <string name="support_wait_text">Dein Bericht wurde gesendet. Wir melden uns, wenn die Antwort da ist.</string>
+    <string name="support_wait_stop">Stopp</string>
+    <string name="support_reply_ready_tap">Tippe, um sie zu lesen.</string>
 </resources>

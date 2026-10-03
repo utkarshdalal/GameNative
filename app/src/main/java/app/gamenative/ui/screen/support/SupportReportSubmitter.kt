@@ -1,9 +1,11 @@
 package app.gamenative.ui.screen.support
 
+import android.content.Context
 import androidx.compose.runtime.mutableStateOf
 import app.gamenative.api.AccountApi
 import app.gamenative.api.ApiResult
 import app.gamenative.api.SupportApi
+import app.gamenative.service.SupportReplyWatchService
 import app.gamenative.ui.component.dialog.state.DebugReportDialogState
 import app.gamenative.utils.DebugReportUtils
 import kotlinx.coroutines.Dispatchers
@@ -45,7 +47,13 @@ object SupportReportSubmitter {
             }
         }
 
-    suspend fun submit(state: DebugReportDialogState): Outcome {
+    fun watchForReply(context: Context, conversation: SupportApi.Conversation?, conversationId: String, game: String) {
+        val baseline = conversation?.lastMessageAt ?: 0L
+        SupportReplyWatcher.track(conversationId, baseline)
+        SupportReplyWatchService.start(context, conversationId, conversation?.game?.ifEmpty { null } ?: game, baseline)
+    }
+
+    suspend fun submit(context: Context, state: DebugReportDialogState): Outcome {
         val dir = File(state.reportDir)
         val header: JSONObject = withContext(Dispatchers.IO) {
             if (DebugReportUtils.writeIssueText(dir, state.issueText)) DebugReportUtils.readHeader(dir) else null
@@ -63,7 +71,7 @@ object SupportReportSubmitter {
                 val result = SupportApi.uploadFiles(target, text, header, logFile, perfFile, logcatFile, onProgress)
                 if (result is ApiResult.Success) {
                     SupportSession.clearRun(state.appId)
-                    SupportReplyWatcher.track(target, result.data.conversation?.lastMessageAt ?: 0L)
+                    watchForReply(context, result.data.conversation, target, state.gameName)
                     return Outcome.Sent(target)
                 }
                 if (result !is ApiResult.HttpError || (result.code != 403 && result.code != 404)) return outcomeOf(result)
@@ -72,7 +80,7 @@ object SupportReportSubmitter {
             }
             val created = SupportApi.createConversation(header, logFile, perfFile, logcatFile, onProgress)
             if (created !is ApiResult.Success) return outcomeOf(created)
-            SupportReplyWatcher.track(created.data.id, created.data.lastMessageAt)
+            watchForReply(context, created.data, created.data.id, state.gameName)
             return Outcome.Sent(created.data.id)
         } finally {
             progress.value = null
