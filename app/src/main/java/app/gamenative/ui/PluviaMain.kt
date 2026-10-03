@@ -347,7 +347,6 @@ private fun trackGameLaunched(appId: String) {
     )
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 private fun startDebugRun(
     context: Context,
     viewModel: MainViewModel,
@@ -376,6 +375,7 @@ private fun startDebugRun(
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PluviaMain(
     viewModel: MainViewModel = hiltViewModel(),
