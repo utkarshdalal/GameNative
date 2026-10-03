@@ -2751,13 +2751,6 @@
     <string name="community_compatibility_collapsed">Collapsed</string>
     <string name="community_compatibility_short_disclaimer">Community results aren’t a guarantee.</string>
     <string name="community_compatibility_unreliable_short">Unreliable results; working gameplay isn’t confirmed.</string>
-    <string name="community_compatibility_rating_caution_short">Most rated-device feedback is not positive. Check the details before installing.</string>
-    <string name="community_compatibility_limited_rating_feedback">Limited rating feedback; none positive so far.</string>
-    <string name="community_compatibility_limited_evidence">Not enough matching evidence to confirm working gameplay.</string>
-    <string name="community_compatibility_mixed_feedback">Community feedback is mixed. Some setups may not work.</string>
-    <string name="community_compatibility_model_unconfirmed">Not yet confirmed on your device model.</string>
-    <string name="community_compatibility_negative_feedback">Matching feedback consistently reports poor results.</string>
-    <string name="community_compatibility_older_activity">Only older matching activity is available.</string>
     <string name="community_compatibility_performance_caution">Reported performance may be limited.</string>
     <plurals name="community_compatibility_model_sessions">
         <item quantity="one">Based on %1$d recorded session on your device model.</item>
@@ -2778,7 +2771,6 @@
     <string name="community_compatibility_checking_short">Checking…</string>
     <string name="community_compatibility_unavailable_short">Unavailable</string>
     <string name="community_compatibility_unavailable">Compatibility could not be loaded</string>
-    <string name="community_compatibility_family_negative">Problems are reported in your GPU family. This broad group alone does not establish failure on your exact GPU or device.</string>
     <string name="community_compatibility_missing_tier">The response lacks the hardware evidence needed to apply its verdict to your device.</string>
     <string name="community_compatibility_cached_result">Showing the last known result while awaiting a successful refresh.</string>
     <string name="community_compatibility_works">Great</string>

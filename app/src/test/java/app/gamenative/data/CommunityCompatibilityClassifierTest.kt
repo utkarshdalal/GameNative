@@ -83,12 +83,55 @@ class CommunityCompatibilityClassifierTest {
         assertEquals(CommunityCompatibilityVerdict.SHOULD_WORK, summary.verdict)
     }
 
-    @Test fun broadFailuresDoNotClaimFailureOnThisDevice() {
-        for (state in listOf("Broken", "Unreliable")) {
-            for (tier in listOf("family", "all", null)) {
+    @Test fun serverStateMapsDirectlyToVerdict() {
+        val expected = mapOf(
+            "Great" to CommunityCompatibilityVerdict.WORKS,
+            "Works" to CommunityCompatibilityVerdict.SHOULD_WORK,
+            "May Work" to CommunityCompatibilityVerdict.MAY_WORK,
+            "Unreliable" to CommunityCompatibilityVerdict.MIXED,
+            "Broken" to CommunityCompatibilityVerdict.WONT_WORK,
+            "Untested" to CommunityCompatibilityVerdict.UNKNOWN,
+        )
+        for (tier in listOf("model", "soc", "gpu", "family")) {
+            for ((state, verdict) in expected) {
+                assertEquals("$state at $tier", verdict, classify(state, tier).verdict)
+            }
+        }
+    }
+
+    @Test fun serverTierMapsToEvidenceTier() {
+        val expected = mapOf(
+            "model" to CommunityEvidenceTier.SAME_DEVICE,
+            "soc" to CommunityEvidenceTier.SAME_SOC,
+            "gpu" to CommunityEvidenceTier.SAME_GPU,
+            "family" to CommunityEvidenceTier.COMPATIBLE_GPU_FAMILY,
+        )
+        for ((tier, evidence) in expected) {
+            val result = classify("Works", tier)
+            assertEquals(evidence, result.evidenceTier)
+            assertEquals(10, result.sessionCount)
+            assertEquals(CommunityVerdictCaution.NONE, result.scopeCaution)
+        }
+        assertEquals(CommunityEvidenceTier.NONE, classify("Works", "all").evidenceTier)
+    }
+
+    @Test fun ratingCountsDoNotChangeServerVerdict() {
+        for ((rated, ok) in listOf(null to null, 0 to 0, 8 to 0, 5 to 2, 20 to 20)) {
+            for (state in listOf("Great", "Works", "Unreliable")) {
+                val result = CommunityCompatibilityClassifier.fromCompatibilityResponse(
+                    response(state).copy(tiers = mapOf("gpu" to metrics(rated, ok))),
+                )
+                assertEquals(classify(state).verdict, result.verdict)
+            }
+        }
+    }
+
+    @Test fun decisiveStateWithoutKnownTierIsUnknown() {
+        for (state in listOf("Great", "Broken", "Unreliable")) {
+            for (tier in listOf("all", null)) {
                 val result = classify(state, tier)
                 assertEquals(CommunityCompatibilityVerdict.UNKNOWN, result.verdict)
-                assertNotEquals(CommunityVerdictCaution.NONE, result.scopeCaution)
+                assertEquals(CommunityVerdictCaution.NO_MATCHING_SCOPE, result.scopeCaution)
                 assertEquals(state, result.serverState)
             }
         }
@@ -100,75 +143,26 @@ class CommunityCompatibilityClassifierTest {
         assertEquals(CommunityVerdictCaution.MISSING_TIER, result.scopeCaution)
     }
 
-    @Test fun sampleAwareSupportDoesNotAddOtherTiers() {
-        fun support(n: Int, ok: Int) = CommunityCompatibilityClassifier.ratingInterval(ok, n)?.first
-        fun checked(n: Int, ok: Int) = CommunityCompatibilityClassifier.fromCompatibilityResponse(
-            response("Great").copy(tiers = mapOf("gpu" to metrics(n, ok), "family" to metrics(10000, 10000))),
-        )
-        assertTrue(support(20, 20)!! > support(1, 1)!!)
-        assertTrue(support(20, 18)!! > support(1, 1)!!)
-        assertTrue(checked(8, 0).ratingCaution)
-        assertFalse(checked(1, 0).ratingCaution)
-        assertEquals(CommunityCompatibilityVerdict.MAY_WORK, checked(8, 0).verdict)
-        assertNull(support(0, 0))
-        assertNull(support(1, 2))
-        assertFalse(checked(1, 2).ratingCaution)
-        assertEquals(CommunityCompatibilityVerdict.SHOULD_WORK, checked(0, 0).verdict)
-    }
-
-    @Test fun zeroPositiveSamplesLimitConfidenceWithoutClaimingConfirmedFailure() {
-        for (n in 1..3) {
-            val result = CommunityCompatibilityClassifier.fromCompatibilityResponse(
-                response("Works").copy(tiers = mapOf("gpu" to metrics(n, 0))),
+    @Test fun verdictDoesNotDependOnGameName() {
+        for (state in listOf("Great", "Works", "Broken")) {
+            val value = response(state)
+            assertEquals(
+                CommunityCompatibilityClassifier.fromCompatibilityResponse(value).verdict,
+                CommunityCompatibilityClassifier.fromCompatibilityResponse(value.copy(gameName = "Different title")).verdict,
             )
-            assertTrue(result.limitedRatingFeedback)
-            assertFalse(result.ratingCaution)
-            assertEquals(CommunityCompatibilityVerdict.MAY_WORK, result.verdict)
-        }
-        val stronger = CommunityCompatibilityClassifier.fromCompatibilityResponse(
-            response("Works").copy(tiers = mapOf("gpu" to metrics(4, 0))),
-        )
-        assertTrue(stronger.ratingCaution)
-        assertFalse(stronger.limitedRatingFeedback)
-        assertEquals(CommunityCompatibilityVerdict.MAY_WORK, stronger.verdict)
-    }
-
-    @Test fun missingInvalidOrPositiveFeedbackDoesNotClaimNonePositive() {
-        for ((n, ok) in listOf(null to null, 0 to 0, -1 to 0, 1 to null, null to 0, 1 to -1, 1 to 2, 1 to 1, 3 to 1)) {
-            val result = CommunityCompatibilityClassifier.fromCompatibilityResponse(
-                response("Works").copy(tiers = mapOf("gpu" to metrics(n, ok))),
-            )
-            assertFalse("rated=$n, positive=$ok", result.limitedRatingFeedback)
         }
     }
 
-    @Test fun limitedFeedbackUsesOnlyTheDecidingTierAndNeverConfigUploadCount() {
-        val result = CommunityCompatibilityClassifier.fromCompatibilityResponse(
-            response("Works").copy(
-                tiers = mapOf("gpu" to metrics(1, 0), "model" to metrics(5, 5), "family" to metrics(100, 100)),
-            ),
+    @Test fun frameRateWarnsAboutPerformanceButDoesNotChangeVerdict() {
+        fun withFps(fps: Double?) = CommunityCompatibilityClassifier.fromCompatibilityResponse(
+            response("Works", "model").copy(tiers = mapOf("model" to metrics().copy(medianFps = fps))),
         )
-        val detailed = CommunityCompatibilityClassifier.withBulkRatings(
-            result,
-            listOf(CommunityEvidenceTier.SAME_GPU to DeviceGameStats(16, 60, 0, 100, CommunityRatingDistribution(oneStar = 29))),
-            true,
-        )
-        assertTrue(detailed.limitedRatingFeedback)
-        assertFalse(detailed.ratingCaution)
-        assertEquals(29, detailed.reportCount)
-        assertEquals(result.verdict, detailed.verdict)
-        val otherTierOnly = CommunityCompatibilityClassifier.fromCompatibilityResponse(
-            response("Works").copy(tiers = mapOf("gpu" to metrics(null, null), "family" to metrics(1, 0))),
-        )
-        assertFalse(otherTierOnly.limitedRatingFeedback)
-    }
-
-    @Test fun limitedFeedbackWarningDoesNotAppearForNonPositiveVerdicts() {
-        for (state in listOf("Broken", "Untested")) {
-            val result = CommunityCompatibilityClassifier.fromCompatibilityResponse(
-                response(state).copy(tiers = mapOf("gpu" to metrics(1, 0))),
-            )
-            assertFalse(result.limitedRatingFeedback)
+        assertTrue(withFps(29.0).performanceCaution)
+        assertEquals(CommunityCompatibilityVerdict.SHOULD_WORK, withFps(29.0).verdict)
+        for (fps in listOf(null, 0.0, Double.NaN, 30.0, 60.0)) {
+            val result = withFps(fps)
+            assertEquals(CommunityCompatibilityVerdict.SHOULD_WORK, result.verdict)
+            assertFalse(result.performanceCaution)
         }
     }
 }

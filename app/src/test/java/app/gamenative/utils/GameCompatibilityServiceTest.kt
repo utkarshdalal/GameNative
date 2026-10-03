@@ -133,7 +133,7 @@ class GameCompatibilityServiceTest {
             assertEquals(CachedCompatibilityResponse(expected, 123, 3, modernBuild), restored.getValue("Game"))
             assertEquals(
                 CommunityCompatibilityVerdict.SHOULD_WORK,
-                CommunityCompatibilityClassifier.fromCompatibilityResponse(restored.getValue("Game").response, nowMillis = 2_000).verdict,
+                CommunityCompatibilityClassifier.fromCompatibilityResponse(restored.getValue("Game").response).verdict,
             )
             val compact = GameCompatibilityCache.json.encodeToString(restored)
             val unusedFields = listOf(
