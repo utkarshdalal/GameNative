@@ -110,8 +110,6 @@ object DeviceInfo {
 
 object SessionReport {
 
-    const val APPLIED_SUGGESTION_EXTRA = "ai_suggestion_applied"
-
     private val CONFIG_DIFF_IGNORED = setOf(
         "id", "name", "sessionMetadata", "drives", "configSource", "needsUnpacking", "desktopTheme", "language", "showFPS",
         "installPath", "rcfileId",
@@ -123,7 +121,7 @@ object SessionReport {
         "dxwrapper", "wincomponents", "audioDriver", "graphicsDriver", "graphicsDriverAdreno", "desktopTheme",
         "startupSelection", "language", "profileId", "selected_menu_item_id", "discord_support_prompt_shown",
         "ai_debug_offer_last_shown", "app_id", "game_source", "workshopModPath",
-        "sharpnessLevel", "sharpnessEffect", "sharpnessDenoise", APPLIED_SUGGESTION_EXTRA,
+        "sharpnessLevel", "sharpnessEffect", "sharpnessDenoise",
     )
 
     private fun isIgnoredExtra(key: String) = key in CONFIG_DIFF_IGNORED_EXTRA || key.startsWith("screenEffects")

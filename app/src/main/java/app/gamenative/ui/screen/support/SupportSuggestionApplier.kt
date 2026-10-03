@@ -47,6 +47,9 @@ object SupportSuggestionApplier {
     fun snapshotFile(container: Container, messageId: Long): File =
         File(container.rootDir, ".gamenative/suggestions/$messageId.json")
 
+    fun appliedRecordFile(container: Container): File =
+        File(container.rootDir, ".gamenative/applied_suggestion.json")
+
     private fun kvGet(data: String, key: String): String? {
         for (pair in KeyValueSet(data)) {
             if (pair[0] == key) return pair[1]
@@ -166,9 +169,8 @@ object SupportSuggestionApplier {
         applied: JSONArray,
         restored: Boolean,
     ) {
-        val previous = runCatching {
-            JSONObject(container.getExtra(SessionReport.APPLIED_SUGGESTION_EXTRA, ""))
-        }.getOrNull()
+        val recordFile = appliedRecordFile(container)
+        val previous = runCatching { JSONObject(recordFile.readText()) }.getOrNull()
         val record = if (restored && previous != null && previous.optLong("messageId", -1L) == messageId) {
             previous
         } else {
@@ -181,7 +183,8 @@ object SupportSuggestionApplier {
         }
         record.put("restored", restored)
         if (restored) record.put("restoredAt", Instant.now().toString())
-        container.putExtra(SessionReport.APPLIED_SUGGESTION_EXTRA, record.toString())
+        recordFile.parentFile?.mkdirs()
+        recordFile.writeText(record.toString())
     }
 
     private suspend fun applyEdits(

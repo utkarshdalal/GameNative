@@ -3,6 +3,7 @@ package app.gamenative.utils
 import android.content.Context
 import android.os.Build
 import app.gamenative.BuildConfig
+import app.gamenative.ui.screen.support.SupportSuggestionApplier
 import com.winlator.contents.AdrenotoolsManager
 import com.winlator.core.GPUInformation
 import kotlinx.coroutines.Dispatchers
@@ -209,9 +210,9 @@ object DebugReportUtils {
             if (avgFps != null) put("avgFps", avgFps.toDouble()) else put("avgFps", JSONObject.NULL)
             if (sessionLengthSec != null) put("sessionLengthSec", sessionLengthSec) else put("sessionLengthSec", JSONObject.NULL)
             put("runParams", (runParams ?: DebugRunParams()).toJson())
-            val applied = container.getExtra(SessionReport.APPLIED_SUGGESTION_EXTRA, "")
-            if (applied.isNotEmpty()) {
-                runCatching { JSONObject(applied) }.getOrNull()?.let { put("appliedSuggestion", it) }
+            val appliedFile = SupportSuggestionApplier.appliedRecordFile(container)
+            if (appliedFile.exists()) {
+                runCatching { JSONObject(appliedFile.readText()) }.getOrNull()?.let { put("appliedSuggestion", it) }
             }
         }
     }
