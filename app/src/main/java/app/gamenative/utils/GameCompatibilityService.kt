@@ -100,6 +100,8 @@ object GameCompatibilityService {
                 put("modernBuild", BuildConfig.MODERN_ANDROID)
             }
 
+            PlayIntegrity.signingCertSha256?.let { requestBody.put("signingCertSha256", it) }
+
             val attestation = KeyAttestationHelper.getAttestationFields("https://api.gamenative.app")
             if (attestation != null) {
                 requestBody.put("nonce", attestation.first)
