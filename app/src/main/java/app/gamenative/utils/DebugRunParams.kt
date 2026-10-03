@@ -98,11 +98,10 @@ data class DebugRunParams(
             return DebugRunParams(channels, env, attach, minSeconds, instruction).takeUnless { it.isEmpty }
         }
 
-        fun mergeWineDebug(base: String, container: String, extra: List<String>): String {
+        fun mergeWineDebug(base: String, extra: List<String>): String {
             val items = base.split(',').map { it.trim() }.filter { it.isNotEmpty() }.toMutableList()
             val names = items.map { channelName(it) }.toMutableSet()
-            val additions = container.split(',').map { it.trim() }.filter { it.isNotEmpty() } + extra
-            for (item in additions) {
+            for (item in extra) {
                 val name = channelName(item)
                 if (name.isEmpty() || name == "all" || name in names) continue
                 items += item
@@ -131,14 +130,12 @@ data class DebugRunParams(
             return merged.entries.joinToString(";") { (dll, mode) -> if (mode.isEmpty()) dll else "$dll=$mode" }
         }
 
-        fun applyToDebugEnv(envVars: EnvVars, containerEnvVars: String, appId: String, params: DebugRunParams?) {
-            val containerWineDebug = EnvVars(containerEnvVars).get("WINEDEBUG")
+        fun applyToDebugEnv(envVars: EnvVars, appId: String, params: DebugRunParams) {
             val extraChannels = buildList {
-                params?.winedebug?.let { addAll(it) }
-                if (params?.attach?.contains(ATTACH_WRAPPER_DIAG) == true) add("+vulkan")
+                addAll(params.winedebug)
+                if (ATTACH_WRAPPER_DIAG in params.attach) add("+vulkan")
             }
-            envVars.put("WINEDEBUG", mergeWineDebug(BASE_WINEDEBUG, containerWineDebug, extraChannels))
-            if (params == null) return
+            envVars.put("WINEDEBUG", mergeWineDebug(BASE_WINEDEBUG, extraChannels))
             if (ATTACH_WRAPPER_DIAG in params.attach) {
                 envVars.put("WRAPPER_DIAG", "1")
                 envVars.put("WRAPPER_DIAG_APPID", appId)
