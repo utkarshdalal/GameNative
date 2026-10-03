@@ -114,6 +114,8 @@ class PerformanceHudView(
     private val fanMetric = createMetricViews(MetricId.FAN, 0xFF80DEEA.toInt())
     private val tuneMetric = createMetricViews(MetricId.TUNE, 0xFFCE93D8.toInt())
 
+    private var warningColor: Int? = null
+
     private val allMetrics = listOf(
         fpsMetric,
         cpuMetric,
@@ -214,6 +216,19 @@ class PerformanceHudView(
                     collectSnapshot(currentFps)
                 }
                 renderSnapshot(snapshot)
+                val temp = snapshot.batteryTempValue
+                val level = snapshot.batteryPercent
+                val newWarningColor = when {
+                    config.batteryTemperatureWarningEnabled && temp != null && temp >= config.batteryTemperatureWarningLimit ->
+                        BATTERY_TEMP_WARNING_BACKGROUND_COLOR
+                    config.batteryLevelWarningEnabled && level != null && level < config.batteryLevelWarningLimit ->
+                        BATTERY_LEVEL_WARNING_BACKGROUND_COLOR
+                    else -> null
+                }
+                if (newWarningColor != warningColor) {
+                    warningColor = newWarningColor
+                    applyAppearance()
+                }
                 delay(UPDATE_INTERVAL_MS)
             }
         }
@@ -237,7 +252,7 @@ class PerformanceHudView(
 
         backgroundDrawable.cornerRadius = appearance.cornerRadiusDp.dp.toFloat()
         backgroundDrawable.setColor(
-            Color.argb(
+            warningColor ?: Color.argb(
                 (opacity * 255f).roundToInt(),
                 0,
                 0,
@@ -319,11 +334,13 @@ class PerformanceHudView(
             gpu = gpuPercent?.let { "GPU $it%" },
             ram = "RAM ${readUsedRamText()}",
             battery = batterySnapshot.percent?.let { "BAT $it%" },
+            batteryPercent = batterySnapshot.percent,
             power = batterySnapshot.powerWatts?.let { watts ->
                 String.format(Locale.US, "PWR %.1fW", watts)
             },
             runtime = batterySnapshot.runtimeText,
             batteryTemp = batterySnapshot.temperatureC?.let { "BAT TEMP ${it}°C" },
+            batteryTempValue = batterySnapshot.temperatureC,
             clock = readClockText(),
             cpuTemp = SystemMetricsSources.readTemperatureC(SystemMetricsSources.cpuTempPaths())
                 ?.let { "CPU TEMP ${it}°C" },
@@ -918,5 +935,7 @@ class PerformanceHudView(
         const val MIN_HUD_TEXT_SHADOW_RADIUS_PX = 1.5f
         const val MAX_HUD_TEXT_SHADOW_RADIUS_PX = 4f
         val HUD_TEXT_SHADOW_COLOR: Int = Color.argb(220, 0, 0, 0)
+        val BATTERY_LEVEL_WARNING_BACKGROUND_COLOR: Int = Color.argb(102, 128, 0, 0)
+        val BATTERY_TEMP_WARNING_BACKGROUND_COLOR: Int = Color.argb(102, 128, 0, 128)
     }
 }
