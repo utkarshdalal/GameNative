@@ -983,6 +983,9 @@ object BestConfigService {
                 if (filteredJson.has("steamOfflineMode") && !filteredJson.isNull("steamOfflineMode")) {
                     resultMap["steamOfflineMode"] = filteredJson.optBoolean("steamOfflineMode", PrefManager.steamOfflineMode)
                 }
+                if (filteredJson.has("loadMods") && !filteredJson.isNull("loadMods")) {
+                    resultMap["loadMods"] = filteredJson.optBoolean("loadMods", PrefManager.loadMods)
+                }
                 if (filteredJson.has("epicOfflineMode") && !filteredJson.isNull("epicOfflineMode")) {
                     resultMap["epicOfflineMode"] = filteredJson.optBoolean("epicOfflineMode", false)
                 }

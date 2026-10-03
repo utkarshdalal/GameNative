@@ -183,6 +183,14 @@ app screen's status row as "Verifying Files (k/N)" via the JNI listeners'
   invariants — the run stops; a disk error is not CDN-curable). Run end always reports the
   first fatal error; an ERROR run deletes the unfinished files it touched, a CANCELLED run
   keeps them for the selective verified resume (see *Verify & update*).
+- **Dispatch head-of-line rescue** (Steam): the in-flight byte budget is a hard memory cap on
+  fetched-but-unwritten data, and its gate admits a chunk that sits **exactly at its file's copy
+  cursor** even over budget — that chunk frees itself on arrival and drains the data parked behind
+  its gap. Because a queue-front job is not necessarily that chunk (a mid-file chunk that failed
+  during an error burst goes to the back of the retry FIFO while chunks fetched behind it fill the
+  budget), the gate substitutes the head-of-line job whenever it refuses a non-head-of-line one.
+  Without that substitution the run deadlocks — nothing in flight, budget full, and the frontier
+  chunk never re-dispatched — until the watchdog below aborts the depot.
 - **Stall watchdog** (Steam): if `bytes_written` stops advancing while the download isn't
   done, the engine dumps a `write-stall depot=… lock=HELD` diagnostic line and aborts the
   run with a deliberate **timeout** failure — designed to be classified transient so the

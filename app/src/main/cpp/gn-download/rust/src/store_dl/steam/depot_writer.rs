@@ -345,6 +345,87 @@ pub fn budget_admits(in_flight: u64, raw_len: u64, budget: u64) -> bool {
     in_flight == 0 || in_flight.saturating_add(raw_len) <= budget
 }
 
+/// Which queue entry a dispatch decision took, so the commit step pops exactly that entry.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum JobSource {
+    /// `ready[idx]` — a fresh job (0 attempts spent).
+    Ready(usize),
+    /// `retry[idx]` — a retry whose backoff has elapsed.
+    Retry(usize),
+}
+
+/// True when `job`'s chunk sits exactly at its file's copy cursor: the one chunk that can
+/// unblock that file, and the only job the byte-budget gate admits over budget (it is copied
+/// out the moment it lands, freeing itself and draining the chunks parked behind the gap).
+fn is_head_of_line(manifest: &ContentManifest, cursors: &[AtomicU64], job: ChunkWriteJob) -> bool {
+    manifest
+        .files
+        .get(job.file_idx as usize)
+        .and_then(|f| f.chunks.get(job.chunk_idx as usize))
+        .is_some_and(|chunk| {
+            cursors
+                .get(job.file_idx as usize)
+                .is_some_and(|c| c.load(Ordering::Relaxed) == chunk.offset)
+        })
+}
+
+/// The first dispatchable head-of-line job, preferring `retry` (oldest first) over fresh `ready`
+/// jobs. Not-yet-due retries are skipped — their backoff is at most ~4 s, so waiting for one to
+/// come due costs at most a probe tick.
+fn find_head_of_line_job<F>(
+    retry: &VecDeque<PendingChunk>,
+    ready: &VecDeque<ChunkWriteJob>,
+    now: Instant,
+    head_of_line: F,
+) -> Option<(ChunkWriteJob, u32, JobSource)>
+where
+    F: Fn(ChunkWriteJob) -> bool,
+{
+    if let Some((idx, p)) = retry
+        .iter()
+        .enumerate()
+        .find(|(_, p)| p.not_before <= now && head_of_line(p.job))
+    {
+        return Some((p.job, p.attempts, JobSource::Retry(idx)));
+    }
+    ready
+        .iter()
+        .enumerate()
+        .find(|(_, job)| head_of_line(**job))
+        .map(|(idx, job)| (*job, 0u32, JobSource::Ready(idx)))
+}
+
+/// Byte-budget gate with the head-of-line rescue. `Ok(chosen)` = dispatch it; `Err(())` = the
+/// budget refused a job that is NOT head-of-line and no head-of-line job is available, so the
+/// caller records a budget stall and waits.
+///
+/// A picked job is admitted as-is when it fits the budget, or when it IS head-of-line (see the
+/// dispatch site). When a NON-head-of-line job is refused, the queue front is simply the wrong
+/// job: the budget is full of chunks parked behind some file's cursor gap, and the frontier chunk
+/// that would free them may sit anywhere in `retry`/`ready`. Waiting there deadlocks — the budget
+/// can only drain by writing past the very gap that chunk fills, and nothing is in flight to free
+/// it (device depot 292031: `in_flight=0` with `reserved=191/192MiB`, `budget_stalls` climbing,
+/// `host_stalls=0`, frontier chunk behind `retry`'s front). So substitute the head-of-line job:
+/// it bypasses the budget by design and is, by definition, the work the writer is blocked on.
+fn resolve_budget_gate<F>(
+    picked: (ChunkWriteJob, u32, JobSource),
+    reserve: u64,
+    in_flight: u64,
+    budget: u64,
+    retry: &VecDeque<PendingChunk>,
+    ready: &VecDeque<ChunkWriteJob>,
+    now: Instant,
+    head_of_line: F,
+) -> Result<(ChunkWriteJob, u32, JobSource), ()>
+where
+    F: Fn(ChunkWriteJob) -> bool + Copy,
+{
+    if head_of_line(picked.0) || budget_admits(in_flight, reserve, budget) {
+        return Ok(picked);
+    }
+    find_head_of_line_job(retry, ready, now, head_of_line).ok_or(())
+}
+
 pub fn depot_adler_hash(data: &[u8]) -> u32 {
     const BLOCK: usize = 5552;
     let mut a = 0u32;
@@ -2543,37 +2624,41 @@ async fn run_async_fetch_driver(
             }
 
             // Choose the next unit of work: a due retry first, else a fresh ready job.
-            let use_retry = retry.front().is_some_and(|p| p.not_before <= now);
-            let (job, attempts) = if use_retry {
-                let p = *retry.front().expect("retry nonempty");
-                (p.job, p.attempts)
-            } else if let Some(&job) = ready.front() {
-                (job, 0u32)
-            } else {
-                break; // nothing dispatchable now (verify yield, retry not due, or all done)
+            let picked = match retry.front() {
+                Some(p) if p.not_before <= now => (p.job, p.attempts, JobSource::Retry(0)),
+                _ => match ready.front() {
+                    Some(&job) => (job, 0u32, JobSource::Ready(0)),
+                    // nothing dispatchable now (verify yield, retry not due, or all done)
+                    None => break,
+                },
             };
 
-            // Byte-budget gate (hard memory bound): reserve the compressed size at DISPATCH.
+            // Byte-budget gate (hard memory bound): reserve the compressed size at DISPATCH. The
+            // gate also rescues the head-of-line job when the budget refuses a non-head-of-line
+            // one (see `resolve_budget_gate`: refusing it and waiting deadlocks, because the
+            // budget can only drain by writing past the gap that job fills).
+            let picked_reserve = reserve_bytes(manifest, picked.0);
+            let head_of_line = |job: ChunkWriteJob| is_head_of_line(manifest, cursors, job);
+            let (job, attempts, source) = match resolve_budget_gate(
+                picked,
+                picked_reserve,
+                in_flight.load(Ordering::Relaxed),
+                budget,
+                &retry,
+                &ready,
+                now,
+                head_of_line,
+            ) {
+                Ok(chosen) => chosen,
+                Err(()) => {
+                    // Diagnostic only: the window wanted this slot, the memory budget refused it.
+                    window.note_budget_stall();
+                    break; // wait for a completion to free budget
+                }
+            };
+            // Reserve for the job actually dispatched: a rescued head-of-line job may differ in
+            // size from the picked one, and the fetch future reconciles `done.reserve` on arrival.
             let reserve = reserve_bytes(manifest, job);
-            // A HEAD-OF-LINE chunk (its offset is exactly its file's copy cursor) is always
-            // admitted, even over budget: it is copied out immediately on arrival, freeing itself
-            // and draining whatever is queued behind it. Refusing it would deadlock against a
-            // budget full of chunks parked behind this very gap. (When nothing is in flight every
-            // dispatchable job is head-of-line, so an oversized chunk can't deadlock either.)
-            let head_of_line = manifest
-                .files
-                .get(job.file_idx as usize)
-                .and_then(|f| f.chunks.get(job.chunk_idx as usize))
-                .is_some_and(|chunk| {
-                    cursors
-                        .get(job.file_idx as usize)
-                        .is_some_and(|c| c.load(Ordering::Relaxed) == chunk.offset)
-                });
-            if !head_of_line && !budget_admits(in_flight.load(Ordering::Relaxed), reserve, budget) {
-                // Diagnostic only: the window wanted this slot, the memory budget refused it.
-                window.note_budget_stall();
-                break; // wait for a completion to free budget
-            }
 
             // Speed-ranked, per-host-capped server pick.
             let Some(server_idx) = sched.pick(now) else {
@@ -2623,11 +2708,15 @@ async fn run_async_fetch_driver(
                 }
             };
 
-            // Commit: pop the work item, reserve budget, launch the fetch future.
-            if use_retry {
-                retry.pop_front();
-            } else {
-                ready.pop_front();
+            // Commit: remove the work item (its exact queue entry — the gate may have rescued a
+            // head-of-line job from behind the front), reserve budget, launch the fetch future.
+            match source {
+                JobSource::Retry(idx) => {
+                    retry.remove(idx);
+                }
+                JobSource::Ready(idx) => {
+                    ready.remove(idx);
+                }
             }
             in_flight.fetch_add(reserve, Ordering::Relaxed);
             verify_since_yield = 0;
@@ -3273,6 +3362,230 @@ mod tests {
             "nested layout must not mkdir a duplicate `data/` either"
         );
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn budget_gate_rescues_the_head_of_line_chunk_from_behind_the_queue_front() {
+        // The device deadlock (depot 292031): the budget is full of chunks parked behind one
+        // file's cursor gap, the picked job is a non-head-of-line retry, and the frontier chunk
+        // sits BEHIND it in the retry queue. Dispatching nothing and waiting deadlocks.
+        let now = Instant::now();
+        let frontier = ChunkWriteJob {
+            file_idx: 5,
+            chunk_idx: 60,
+        };
+        let retry = VecDeque::from([
+            PendingChunk {
+                job: ChunkWriteJob {
+                    file_idx: 5,
+                    chunk_idx: 75,
+                },
+                attempts: 1,
+                not_before: now,
+            },
+            PendingChunk {
+                job: frontier,
+                attempts: 1,
+                not_before: now,
+            },
+        ]);
+        let ready = VecDeque::from([ChunkWriteJob {
+            file_idx: 6,
+            chunk_idx: 0,
+        }]);
+        let picked = (retry[0].job, 1u32, JobSource::Retry(0));
+        let chosen = resolve_budget_gate(
+            picked,
+            3 * MIB,
+            191 * MIB,
+            192 * MIB,
+            &retry,
+            &ready,
+            now,
+            |job| job == frontier,
+        )
+        .expect("the frontier chunk is dispatchable over budget");
+        assert_eq!(chosen, (frontier, 1, JobSource::Retry(1)));
+    }
+
+    #[test]
+    fn budget_gate_rescue_falls_through_to_a_fresh_ready_job() {
+        let now = Instant::now();
+        let frontier = ChunkWriteJob {
+            file_idx: 6,
+            chunk_idx: 40,
+        };
+        let retry = VecDeque::from([PendingChunk {
+            job: ChunkWriteJob {
+                file_idx: 5,
+                chunk_idx: 75,
+            },
+            attempts: 1,
+            not_before: now,
+        }]);
+        let ready = VecDeque::from([
+            ChunkWriteJob {
+                file_idx: 7,
+                chunk_idx: 0,
+            },
+            frontier,
+        ]);
+        let picked = (retry[0].job, 1u32, JobSource::Retry(0));
+        let chosen = resolve_budget_gate(
+            picked,
+            3 * MIB,
+            191 * MIB,
+            192 * MIB,
+            &retry,
+            &ready,
+            now,
+            |job| job == frontier,
+        )
+        .expect("a head-of-line job exists in ready");
+        assert_eq!(chosen, (frontier, 0, JobSource::Ready(1)));
+    }
+
+    #[test]
+    fn budget_gate_stalls_only_when_no_head_of_line_job_is_dispatchable() {
+        let now = Instant::now();
+        let retry = VecDeque::from([
+            // Head-of-line, but its backoff has NOT elapsed: not selectable yet (a probe tick
+            // later it is due, and the next pass rescues it).
+            PendingChunk {
+                job: ChunkWriteJob {
+                    file_idx: 5,
+                    chunk_idx: 60,
+                },
+                attempts: 1,
+                not_before: now + Duration::from_secs(2),
+            },
+        ]);
+        let ready = VecDeque::from([ChunkWriteJob {
+            file_idx: 6,
+            chunk_idx: 0,
+        }]);
+        let picked = (ready[0], 0u32, JobSource::Ready(0));
+        let hol = |job: ChunkWriteJob| job.chunk_idx == 60;
+        assert!(
+            resolve_budget_gate(picked, 3 * MIB, 191 * MIB, 192 * MIB, &retry, &ready, now, hol).is_err(),
+            "a not-yet-due retry must not be rescued early"
+        );
+        // Once due, the same state resolves.
+        assert_eq!(
+            resolve_budget_gate(
+                picked,
+                3 * MIB,
+                191 * MIB,
+                192 * MIB,
+                &retry,
+                &ready,
+                now + Duration::from_secs(3),
+                hol,
+            )
+            .expect("due now"),
+            (
+                ChunkWriteJob {
+                    file_idx: 5,
+                    chunk_idx: 60
+                },
+                1,
+                JobSource::Retry(0)
+            )
+        );
+    }
+
+    #[test]
+    fn budget_gate_admits_without_rescue_when_the_budget_allows_it() {
+        let now = Instant::now();
+        let job = ChunkWriteJob {
+            file_idx: 5,
+            chunk_idx: 75,
+        };
+        let ready = VecDeque::from([job]);
+        // Fits the budget: dispatch as picked (no rescue scan, no stall).
+        assert_eq!(
+            resolve_budget_gate(
+                (job, 0, JobSource::Ready(0)),
+                MIB,
+                0,
+                192 * MIB,
+                &VecDeque::new(),
+                &ready,
+                now,
+                |_| false,
+            )
+            .expect("fits"),
+            (job, 0, JobSource::Ready(0))
+        );
+        // Over budget but head-of-line: admitted as-is (it frees itself on arrival).
+        assert_eq!(
+            resolve_budget_gate(
+                (job, 0, JobSource::Ready(0)),
+                10 * MIB,
+                191 * MIB,
+                192 * MIB,
+                &VecDeque::new(),
+                &ready,
+                now,
+                |j| j == job,
+            )
+            .expect("head-of-line over budget"),
+            (job, 0, JobSource::Ready(0))
+        );
+    }
+
+    #[test]
+    fn is_head_of_line_matches_a_chunk_at_the_file_cursor() {
+        let manifest = ContentManifest {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
+                filenames_encrypted: false,
+                ..Default::default()
+            },
+            files: vec![crate::store_dl::steam::content_manifest::FileMapping {
+                filename: "Game/a.bin".into(),
+                size: 300,
+                chunks: vec![
+                    ChunkData {
+                        offset: 0,
+                        cb_original: 100,
+                        ..Default::default()
+                    },
+                    ChunkData {
+                        offset: 100,
+                        cb_original: 200,
+                        ..Default::default()
+                    },
+                ],
+                ..Default::default()
+            }],
+            signature: Vec::new(),
+        };
+        let cursors = vec![AtomicU64::new(100)];
+        assert!(!is_head_of_line(
+            &manifest,
+            &cursors,
+            ChunkWriteJob {
+                file_idx: 0,
+                chunk_idx: 0
+            }
+        ));
+        assert!(is_head_of_line(
+            &manifest,
+            &cursors,
+            ChunkWriteJob {
+                file_idx: 0,
+                chunk_idx: 1
+            }
+        ));
+        // Out-of-range indices are not head-of-line (never rescued).
+        assert!(!is_head_of_line(
+            &manifest,
+            &cursors,
+            ChunkWriteJob {
+                file_idx: 9,
+                chunk_idx: 0
+            }
+        ));
     }
 
     #[test]
