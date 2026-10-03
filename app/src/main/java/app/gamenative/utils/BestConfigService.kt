@@ -104,6 +104,8 @@ object BestConfigService {
                 GPUInformation.getVersion(context)?.takeIf { it.isNotBlank() }?.let { put("gpuDriverVersion", it) }
             }
 
+            PlayIntegrity.signingCertSha256?.let { requestBody.put("signingCertSha256", it) }
+
             val attestation = KeyAttestationHelper.getAttestationFields("https://api.gamenative.app")
             if (attestation != null) {
                 requestBody.put("nonce", attestation.first)
