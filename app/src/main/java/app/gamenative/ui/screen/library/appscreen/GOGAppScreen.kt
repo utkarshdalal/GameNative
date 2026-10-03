@@ -31,6 +31,7 @@ import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.utils.ContainerUtils.getContainer
+import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -200,6 +201,7 @@ class GOGAppScreen : BaseAppScreen() {
                 description = sanitizeGogDescription(game?.description.orEmpty()),
                 tags = game?.genres.orEmpty(),
             ),
+            runtime = app.gamenative.utils.ContainerUtils.resolveRuntime(context, libraryItem.appId),
         )
         return displayInfo
     }
@@ -457,16 +459,19 @@ class GOGAppScreen : BaseAppScreen() {
         return containerData
     }
 
-    override fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData) {
+    override suspend fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData): Boolean {
         Timber.tag(TAG).i("saveContainerConfig: appId=${libraryItem.appId}")
         val container = getContainer(context, libraryItem.appId)
         val previousLanguage = container.language
-        app.gamenative.utils.ContainerUtils.applyToContainer(context, libraryItem.appId, config)
+        if (!app.gamenative.utils.ContainerUtils.applyToContainerGated(context, libraryItem.appId, config)) return false
         Timber.tag(TAG).d("saveContainerConfig: saved container config for ${libraryItem.appId}")
 
-        if (previousLanguage != config.language) {
+        // html5 has NO per-language depot (language is a runtime setting), so the re-fetch a language
+        // change triggers would select no depots and never complete.
+        if (previousLanguage != config.language && container.runtime != Container.RUNTIME_WEBVIEW) {
             triggerGOGVerifyDownload(context, libraryItem, config.language)
         }
+        return true
     }
 
     private fun triggerGOGVerifyDownload(context: Context, libraryItem: LibraryItem, language: String) {
@@ -653,6 +658,7 @@ class GOGAppScreen : BaseAppScreen() {
         onDismiss: () -> Unit,
         onEditContainer: () -> Unit,
         onBack: () -> Unit,
+        onClickPlay: (Boolean) -> Unit,
     ) {
         Timber.tag(TAG).d("AdditionalDialogs: composing for appId=${libraryItem.appId}")
         val context = LocalContext.current

@@ -20,6 +20,7 @@ import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.service.NotificationHelper
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.LocaleHelper
+import com.winlator.container.Container
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
@@ -476,6 +477,12 @@ class GOGService : Service() {
          * Delegates to GOGManager.deleteGame
          */
         suspend fun deleteGame(context: Context, libraryItem: LibraryItem): Result<Unit> {
+            // the close-time upload reads the dir we are about to delete; see CloseSyncTracker.
+            // derive the key the same way the reserve side does -- a container id can carry a
+            // duplicate suffix ("GOG_123(1)") that keyOf strips, and a raw id would then miss the wait.
+            app.gamenative.service.cloud.CloseSyncTracker.awaitIdle(
+                app.gamenative.service.cloud.CloseSyncTracker.keyOf(GameSource.GOG, libraryItem.gameId),
+            )
             return getInstance()?.gogManager?.deleteGame(context, libraryItem)
                 ?: Result.failure(Exception("Service not available"))
         }
@@ -491,6 +498,8 @@ class GOGService : Service() {
             context: Context,
             appId: String,
             preferredAction: String = "none",
+            // false keeps wine cloud accretive; see GOGCloudSavesManager.syncSaves.
+            chromiumProfileSync: Boolean = false,
         ): Boolean = withContext(Dispatchers.IO) {
             try {
                 Timber.tag("GOG").d("[Cloud Saves] syncCloudSaves called for $appId with action: $preferredAction")
@@ -593,6 +602,7 @@ class GOGService : Service() {
                                 dirname = location.name,
                                 lastSyncTimestamp = timestamp,
                                 preferredAction = preferredAction,
+                                chromiumProfileSync = chromiumProfileSync,
                             )
 
                             if (newTimestamp != timestamp) {
@@ -705,6 +715,9 @@ class GOGService : Service() {
                     val timestamp = instance.gogManager
                         .getCloudSaveSyncTimestamp(appId, location.name).toLongOrNull() ?: 0L
                     val conflict = manager.detectConflict(
+                        // runtime check, not Html5Routing, keeps this service free of html5 imports.
+                        chromiumProfileSync = ContainerUtils.resolveRuntime(context, appId) ==
+                            Container.RUNTIME_WEBVIEW,
                         clientId = location.clientId,
                         clientSecret = location.clientSecret,
                         localPath = location.location,
