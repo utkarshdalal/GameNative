@@ -795,6 +795,7 @@ object BestConfigService {
         forceApply: Boolean = false,
         matchedGpu: String = "",
         preserveConfigValues: Boolean = false,
+        includeImportKeys: Boolean = false,
     ): Map<String, Any?>? = parseConfigResult(
         context = context,
         configJson = configJson,
@@ -804,6 +805,7 @@ object BestConfigService {
         forceApply = forceApply,
         matchedGpu = matchedGpu,
         preserveConfigValues = preserveConfigValues,
+        includeImportKeys = includeImportKeys,
     ).config
 
     suspend fun parseConfigResult(
@@ -815,6 +817,7 @@ object BestConfigService {
         forceApply: Boolean = false,
         matchedGpu: String = "",
         preserveConfigValues: Boolean = false,
+        includeImportKeys: Boolean = false,
     ): ParsedConfigResult {
         try {
             val originalJson = JSONObject(configJson.toString())
@@ -1016,6 +1019,14 @@ object BestConfigService {
                 }
                 if (filteredJson.has("videoMemorySize") && !filteredJson.isNull("videoMemorySize")) {
                     resultMap["videoMemorySize"] = filteredJson.optString("videoMemorySize", PrefManager.videoMemorySize)
+                }
+                if (includeImportKeys) {
+                    ContainerUtils.IMPORT_ONLY_CONFIG_KEYS.forEach { (key, type) ->
+                        if (!filteredJson.has(key) || filteredJson.isNull(key)) return@forEach
+                        ContainerUtils.coerceConfigValue(type, filteredJson.opt(key))
+                            ?.takeUnless { it is String && it.isEmpty() }
+                            ?.let { resultMap[key] = it }
+                    }
                 }
 
                 return ParsedConfigResult(resultMap, missingComponents)

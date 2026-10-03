@@ -397,6 +397,97 @@ object ContainerUtils {
         applyToContainer(context, container, containerData)
     }
 
+    enum class ConfigValueType { STRING, BOOLEAN, INT }
+
+    val BEST_CONFIG_KEYS: Map<String, ConfigValueType> = linkedMapOf(
+        "executablePath" to ConfigValueType.STRING,
+        "graphicsDriver" to ConfigValueType.STRING,
+        "graphicsDriverVersion" to ConfigValueType.STRING,
+        "graphicsDriverConfig" to ConfigValueType.STRING,
+        "dxwrapper" to ConfigValueType.STRING,
+        "dxwrapperConfig" to ConfigValueType.STRING,
+        "execArgs" to ConfigValueType.STRING,
+        "startupSelection" to ConfigValueType.INT,
+        "box64Version" to ConfigValueType.STRING,
+        "box64Preset" to ConfigValueType.STRING,
+        "containerVariant" to ConfigValueType.STRING,
+        "wineVersion" to ConfigValueType.STRING,
+        "emulator" to ConfigValueType.STRING,
+        "fexcoreVersion" to ConfigValueType.STRING,
+        "fexcoreTSOMode" to ConfigValueType.STRING,
+        "fexcoreX87Mode" to ConfigValueType.STRING,
+        "fexcoreMultiBlock" to ConfigValueType.STRING,
+        "fexcorePreset" to ConfigValueType.STRING,
+        "useLegacyDRM" to ConfigValueType.BOOLEAN,
+        "steamOfflineMode" to ConfigValueType.BOOLEAN,
+        "loadMods" to ConfigValueType.BOOLEAN,
+        "epicOfflineMode" to ConfigValueType.BOOLEAN,
+        "unpackFiles" to ConfigValueType.BOOLEAN,
+        "suspendPolicy" to ConfigValueType.STRING,
+        "envVars" to ConfigValueType.STRING,
+        "cpuList" to ConfigValueType.STRING,
+        "cpuListWoW64" to ConfigValueType.STRING,
+        "audioDriver" to ConfigValueType.STRING,
+        "wincomponents" to ConfigValueType.STRING,
+        "videoMemorySize" to ConfigValueType.STRING,
+        "launchBionicSteam" to ConfigValueType.BOOLEAN,
+        "launchRealSteam" to ConfigValueType.BOOLEAN,
+        "steamType" to ConfigValueType.STRING,
+    )
+
+    val IMPORT_ONLY_CONFIG_KEYS: Map<String, ConfigValueType> = linkedMapOf(
+        "box86Version" to ConfigValueType.STRING,
+        "box86Preset" to ConfigValueType.STRING,
+        "rendererPresentMode" to ConfigValueType.STRING,
+        "displayRendererMode" to ConfigValueType.STRING,
+        "screenSize" to ConfigValueType.STRING,
+        "language" to ConfigValueType.STRING,
+        "pulseaudioLowLatency" to ConfigValueType.BOOLEAN,
+        "sfCompatMode" to ConfigValueType.BOOLEAN,
+        "useDRI3" to ConfigValueType.BOOLEAN,
+        "wow64Mode" to ConfigValueType.BOOLEAN,
+        "sdlControllerAPI" to ConfigValueType.BOOLEAN,
+        "forceDlc" to ConfigValueType.BOOLEAN,
+        "touchscreenMode" to ConfigValueType.BOOLEAN,
+        "shooterMode" to ConfigValueType.BOOLEAN,
+        "disableMouseInput" to ConfigValueType.BOOLEAN,
+        "disableLibredirect" to ConfigValueType.BOOLEAN,
+        "fasterExternalLoading" to ConfigValueType.BOOLEAN,
+        "dinputMapperType" to ConfigValueType.INT,
+        "inputType" to ConfigValueType.INT,
+    )
+
+    val APPLICABLE_CONFIG_KEYS: Map<String, ConfigValueType> = BEST_CONFIG_KEYS + IMPORT_ONLY_CONFIG_KEYS
+
+    fun coerceConfigValue(type: ConfigValueType, value: Any?): Any? = when (type) {
+        ConfigValueType.STRING -> configString(value)
+        ConfigValueType.BOOLEAN -> configBoolean(value)
+        ConfigValueType.INT -> configInt(value)
+    }
+
+    private fun configString(value: Any?): String? = when (value) {
+        is String -> value
+        is Number, is Boolean -> value.toString()
+        else -> null
+    }
+
+    private fun configBoolean(value: Any?): Boolean? = when (value) {
+        is Boolean -> value
+        is Number -> value.toInt() != 0
+        is String -> when (value.trim().lowercase()) {
+            "true", "1" -> true
+            "false", "0" -> false
+            else -> null
+        }
+        else -> null
+    }
+
+    private fun configInt(value: Any?): Int? = when (value) {
+        is Number -> value.toInt()
+        is String -> value.trim().toIntOrNull()
+        else -> null
+    }
+
     /**
      * Applies best config map to containerData, handling all possible fields.
      * Used when applyKnownConfig=true returns all validated fields.
@@ -465,6 +556,33 @@ object ContainerUtils {
                 "launchBionicSteam" -> value?.let { updatedData.copy(launchBionicSteam = it as? Boolean ?: updatedData.launchBionicSteam) } ?: updatedData
                 "launchRealSteam" -> value?.let { updatedData.copy(launchRealSteam = it as? Boolean ?: updatedData.launchRealSteam) } ?: updatedData
                 "steamType" -> value?.let { updatedData.copy(steamType = (it as? String)?.takeIf { s -> s.isNotBlank() } ?: updatedData.steamType) } ?: updatedData
+                "box86Version" -> configString(value)?.let { updatedData.copy(box86Version = it) } ?: updatedData
+                "box86Preset" -> configString(value)?.let { updatedData.copy(box86Preset = it) } ?: updatedData
+                "rendererPresentMode" -> configString(value)?.let { updatedData.copy(rendererPresentMode = it) } ?: updatedData
+                "displayRendererMode" -> configString(value)?.let { updatedData.copy(displayRenderer = it) } ?: updatedData
+                "screenSize" -> configString(value)?.let { updatedData.copy(screenSize = it) } ?: updatedData
+                "language" -> configString(value)?.let { updatedData.copy(language = it) } ?: updatedData
+                "pulseaudioLowLatency" -> configBoolean(value)?.let { updatedData.copy(pulseaudioLowLatency = it) } ?: updatedData
+                "sfCompatMode" -> configBoolean(value)?.let { updatedData.copy(sfCompatMode = it) } ?: updatedData
+                "useDRI3" -> configBoolean(value)?.let { updatedData.copy(useDRI3 = it) } ?: updatedData
+                "wow64Mode" -> configBoolean(value)?.let { updatedData.copy(wow64Mode = it) } ?: updatedData
+                "sdlControllerAPI" -> configBoolean(value)?.let { updatedData.copy(sdlControllerAPI = it) } ?: updatedData
+                "forceDlc" -> configBoolean(value)?.let { updatedData.copy(forceDlc = it) } ?: updatedData
+                "touchscreenMode" -> configBoolean(value)?.let { updatedData.copy(touchscreenMode = it) } ?: updatedData
+                "shooterMode" -> configBoolean(value)?.let { updatedData.copy(shooterMode = it) } ?: updatedData
+                "disableMouseInput" -> configBoolean(value)?.let { updatedData.copy(disableMouseInput = it) } ?: updatedData
+                "disableLibredirect" -> configBoolean(value)?.let { updatedData.copy(disableLibredirect = it) } ?: updatedData
+                "fasterExternalLoading" -> configBoolean(value)?.let { updatedData.copy(fasterExternalLoading = it) } ?: updatedData
+                "dinputMapperType" -> configInt(value)?.takeIf { it in 0..255 }?.let { updatedData.copy(dinputMapperType = it.toByte()) }
+                    ?: updatedData
+                "inputType" -> configInt(value)?.let { ordinal ->
+                    PreferredInputApi.values().getOrNull(ordinal)?.let { api ->
+                        updatedData.copy(
+                            enableXInput = api == PreferredInputApi.XINPUT || api == PreferredInputApi.BOTH,
+                            enableDInput = api == PreferredInputApi.DINPUT || api == PreferredInputApi.BOTH,
+                        )
+                    }
+                } ?: updatedData
                 else -> updatedData
             }
         }
