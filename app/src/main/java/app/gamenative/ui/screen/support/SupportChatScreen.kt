@@ -845,6 +845,7 @@ private fun runFailureText(failure: SupportReportSubmitter.Outcome?): String =
         is SupportReportSubmitter.Outcome.Forbidden -> upgradeReasonText(failure.reason)
         SupportReportSubmitter.Outcome.PlanPending -> stringResource(R.string.support_plan_pending)
         SupportReportSubmitter.Outcome.RateLimited -> stringResource(R.string.support_problem_rate_limited)
+        SupportReportSubmitter.Outcome.LimitReached -> upgradeReasonText(SupportApi.REASON_REPLY_CAP)
         SupportReportSubmitter.Outcome.SignedOut -> stringResource(R.string.support_problem_unauthorized)
         SupportReportSubmitter.Outcome.Unavailable -> stringResource(R.string.support_problem_unavailable)
         else -> stringResource(R.string.support_run_check_failed)

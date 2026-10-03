@@ -1675,6 +1675,14 @@ fun PluviaMain(
                             composeAgain()
                             SnackbarManager.show(context.getString(R.string.support_plan_pending))
                         }
+                        SupportReportSubmitter.Outcome.LimitReached -> {
+                            trackAiDebug(
+                                "ai_debug_report_result",
+                                mapOf("result" to "failure", "reason" to SupportApi.REASON_REPLY_CAP, "path" to "app"),
+                            )
+                            composeAgain()
+                            SnackbarManager.show(SupportReportSubmitter.limitReachedText(context))
+                        }
                         SupportReportSubmitter.Outcome.RateLimited -> {
                             trackAiDebug(
                                 "ai_debug_report_result",

@@ -1,6 +1,7 @@
 package app.gamenative.ui.screen.support
 
 import android.content.Context
+import app.gamenative.R
 import androidx.compose.runtime.mutableStateOf
 import app.gamenative.api.AccountApi
 import app.gamenative.api.ApiResult
@@ -22,6 +23,7 @@ object SupportReportSubmitter {
         data class Forbidden(val reason: String) : Outcome()
         data object PlanPending : Outcome()
         data object RateLimited : Outcome()
+        data object LimitReached : Outcome()
         data class Failed(val reason: String) : Outcome()
     }
 
@@ -30,8 +32,23 @@ object SupportReportSubmitter {
     private fun hasPaidTier(): Boolean =
         AccountApi.account.value?.tier.let { it == "basic" || it == "pro" || it == "patron" }
 
+    fun limitReachedText(context: Context): String {
+        val text = context.getString(R.string.support_upgrade_reason_reply_cap)
+        return if (AccountApi.account.value?.tier == "basic") {
+            text + " " + context.getString(R.string.support_upgrade_reply_cap_pro_hint)
+        } else {
+            text
+        }
+    }
+
+    private fun isLimit(result: ApiResult<*>): Boolean =
+        result is ApiResult.HttpError && (
+            (result.code == 403 && result.message == SupportApi.REASON_REPLY_CAP) ||
+                (result.code == 429 && (result.message == SupportApi.REASON_REPLY_CAP || result.message == SupportApi.REASON_RATE_LIMITED))
+            )
+
     private fun outcomeOf(result: ApiResult<*>): Outcome =
-        when (result) {
+        if (isLimit(result)) Outcome.LimitReached else when (result) {
             is ApiResult.Success -> Outcome.Failed("unexpected")
             is ApiResult.NetworkError -> Outcome.Failed("network")
             is ApiResult.HttpError -> when (result.code) {
@@ -73,7 +90,7 @@ object SupportReportSubmitter {
             watchForReply(context, result.data.conversation, conversationId, gameName)
             return Outcome.Sent(conversationId) to result.data
         }
-        if (result !is ApiResult.HttpError || (result.code != 403 && result.code != 404)) return outcomeOf(result) to null
+        if (result !is ApiResult.HttpError || (result.code != 403 && result.code != 404) || isLimit(result)) return outcomeOf(result) to null
         onProgress(0f)
         val issue = answer().orEmpty()
         val createHeader = withContext(Dispatchers.IO) {
@@ -106,7 +123,7 @@ object SupportReportSubmitter {
                     watchForReply(context, result.data.conversation, target, state.gameName)
                     return Outcome.Sent(target)
                 }
-                if (result !is ApiResult.HttpError || (result.code != 403 && result.code != 404)) return outcomeOf(result)
+                if (result !is ApiResult.HttpError || (result.code != 403 && result.code != 404) || isLimit(result)) return outcomeOf(result)
                 SupportSession.clearRun(state.appId)
                 progress.value = 0f
             }
