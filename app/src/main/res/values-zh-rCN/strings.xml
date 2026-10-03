@@ -1010,6 +1010,7 @@
     <string name="support_refresh">刷新</string>
     <string name="support_signed_out_title">获取游戏问题帮助</string>
     <string name="support_signed_out_body">登录你的 GameNative 账户，即可查看支持对话，并与我们的 AI 讨论游戏中遇到的问题。</string>
+    <string name="support_signed_out_discord">你也可以在我们的 Discord 获取帮助</string>
     <string name="support_empty_title">暂无对话</string>
     <string name="support_empty_body">要开始对话，请在游戏库中的游戏上选择“获取 AI 帮助”。玩到问题出现后关闭游戏，然后描述出了什么问题。</string>
     <string name="support_state_waiting">等待回复</string>
@@ -1076,8 +1077,9 @@
     <string name="support_run_check_send_last">发送上次运行</string>
     <string name="support_uploading">正在上传日志</string>
     <string name="support_share_file">打开文件</string>
-    <string name="debug_report_sign_in_hint">发送时会要求你登录 GameNative 账户。之后与我们 AI 的对话将在应用内进行。</string>
+    <string name="debug_report_no_discord_sign_in">没有 Discord？使用 GameNative 账户登录，即可在应用内收到回答。</string>
     <string name="debug_report_use_discord">改用 Discord</string>
+    <string name="debug_report_use_app">改用应用</string>
     <string name="settings_emulation_orientations_title">允许的屏幕方向</string>
     <string name="settings_emulation_orientations_subtitle">选择游戏中可使用的屏幕方向</string>
     <string name="settings_emulation_default_config_title">修改默认配置</string>
@@ -2051,7 +2053,7 @@
     <string name="debug_prerun_title">获取 AI 帮助</string>
     <string name="debug_prerun_message_1">以调试日志运行游戏，退出后将日志分享给我们在 Discord 上的 AI。请一直运行游戏，直到出现问题。</string>
     <string name="debug_prerun_message_2">AI 回复仅限订阅者。</string>
-    <string name="debug_prerun_message_1_app">游戏将以调试日志运行。退出后，日志会发送给我们的 AI，回答会显示在应用的“AI 帮助”中。请一直运行游戏，直到出现问题。</string>
+    <string name="debug_prerun_message_1_app">以调试日志运行游戏。退出后，日志会发送给我们的 AI，回答会发到我们的 Discord；如果你使用 GameNative 账户登录，回答会显示在应用内。请一直运行游戏，直到出现问题。</string>
     <string name="debug_prerun_message_2_app">首次分析免费。后续回复需要方案。</string>
     <string name="debug_prerun_message_1_neutral">游戏将以调试日志运行。退出后，日志会发送给我们的 AI。请一直运行游戏，直到出现问题。</string>
     <string name="debug_trial_note">提供免费试用。</string>

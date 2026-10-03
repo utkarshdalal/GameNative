@@ -1025,6 +1025,7 @@
     <string name="support_refresh">Reîmprospătează</string>
     <string name="support_signed_out_title">Primește ajutor pentru jocurile tale</string>
     <string name="support_signed_out_body">Conectează-te la contul GameNative ca să vezi conversațiile de asistență și să vorbești cu AI-ul nostru despre problemele cu jocurile tale.</string>
+    <string name="support_signed_out_discord">Poți primi ajutor și pe Discordul nostru</string>
     <string name="support_empty_title">Nicio conversație încă</string>
     <string name="support_empty_body">Pentru a începe una, alege „Primește ajutor de la AI” la un joc din bibliotecă. Joacă până apare problema, închide jocul și apoi descrie ce nu a mers.</string>
     <string name="support_state_waiting">Se așteaptă un răspuns</string>
@@ -1093,8 +1094,9 @@
     <string name="support_run_check_send_last">Trimite ultima rulare</string>
     <string name="support_uploading">Se încarcă jurnalele</string>
     <string name="support_share_file">Deschide fișierul</string>
-    <string name="debug_report_sign_in_hint">Când trimiți, ți se va cere să te conectezi la contul GameNative. Conversația cu AI-ul nostru are loc apoi aici, în aplicație.</string>
+    <string name="debug_report_no_discord_sign_in">Nu ai Discord? Conectează-te cu un cont GameNative și primește răspunsul în aplicație.</string>
     <string name="debug_report_use_discord">Folosește Discord</string>
+    <string name="debug_report_use_app">Folosește aplicația</string>
 	<string name="settings_emulation_orientations_title">Orientări permise</string>
 	<string name="settings_emulation_orientations_subtitle">Alege orientările în care se poate roti în timpul jocului</string>
 	<string name="settings_emulation_default_config_title">Modifică configurația implicită</string>
@@ -2027,7 +2029,7 @@
     <string name="debug_prerun_title">Primește ajutor de la AI</string>
     <string name="debug_prerun_message_1">Rulează jocul cu jurnal de depanare și partajează jurnalul cu AI-ul nostru pe Discord la ieșire. Joacă până când apare problema.</string>
     <string name="debug_prerun_message_2">Răspunsurile AI sunt doar pentru abonați.</string>
-    <string name="debug_prerun_message_1_app">Jocul rulează cu jurnal de depanare. Când ieși, jurnalul ajunge la AI-ul nostru, iar răspunsul apare în aplicație, la Ajutor AI. Joacă până când apare problema.</string>
+    <string name="debug_prerun_message_1_app">Rulează jocul cu jurnal de depanare. Când ieși, jurnalul ajunge la AI-ul nostru, iar răspunsul vine pe Discordul nostru sau în aplicație, dacă te conectezi cu un cont GameNative. Joacă până când apare problema.</string>
     <string name="debug_prerun_message_2_app">Prima analiză este gratuită. Răspunsurile ulterioare necesită un plan.</string>
     <string name="debug_prerun_message_1_neutral">Jocul rulează cu jurnal de depanare. Când ieși, jurnalul ajunge la AI-ul nostru. Joacă până când apare problema.</string>
     <string name="debug_trial_note">Perioadă de probă gratuită disponibilă.</string>

@@ -89,10 +89,12 @@ import app.gamenative.service.gog.GOGService
 import app.gamenative.api.AccountApi
 import app.gamenative.api.DebugReportApi
 import app.gamenative.api.SupportApi
+import app.gamenative.ui.component.dialog.AI_HELP_PATH_APP
 import app.gamenative.ui.component.dialog.AccountSignInDialog
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.component.dialog.DebugPreRunDialog
 import app.gamenative.ui.component.dialog.DebugReportDialog
+import app.gamenative.ui.component.dialog.debugReportUsesApp
 import app.gamenative.ui.component.dialog.GameFeedbackDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.MessageDialog
@@ -414,6 +416,7 @@ fun PluviaMain(
     var debugPreRunAppId by rememberSaveable { mutableStateOf("") }
     var debugPreRunOffline by rememberSaveable { mutableStateOf(false) }
     val discordTokenPresent by PrefManager.discordRelayTokenPresent
+    var aiHelpPreferredPath by remember { mutableStateOf(PrefManager.aiHelpPreferredPath) }
 
     LaunchedEffect(Unit) {
         if (!PrefManager.discordRelayTokenPresent.value) {
@@ -1752,12 +1755,29 @@ fun PluviaMain(
                 hasDiscordToken = discordTokenPresent,
                 appChatEnabled = SupportApi.available.value != false,
                 accountSignedIn = PrefManager.gameNativeSignedIn.value,
+                preferredPath = aiHelpPreferredPath,
                 sendProgress = SupportReportSubmitter.progress.value,
                 onStateChange = { debugReportState = it },
-                onSend = submitDebugReport,
+                onSend = {
+                    val usesApp = debugReportUsesApp(
+                        appChatEnabled = SupportApi.available.value != false,
+                        hasDiscordToken = discordTokenPresent,
+                        accountSignedIn = PrefManager.gameNativeSignedIn.value,
+                        preferredPath = aiHelpPreferredPath,
+                    )
+                    if (usesApp) submitDebugReport() else submitViaDiscord()
+                },
                 onShare = shareDebugLog,
                 onConnectDiscord = openDiscordConnect,
-                onUseDiscord = submitViaDiscord,
+                onSignInForApp = {
+                    aiHelpPreferredPath = AI_HELP_PATH_APP
+                    PrefManager.aiHelpPreferredPath = AI_HELP_PATH_APP
+                    submitDebugReport()
+                },
+                onPreferredPathChange = { path ->
+                    aiHelpPreferredPath = path
+                    PrefManager.aiHelpPreferredPath = path
+                },
                 onOpenThread = {
                     if (debugReportState.threadUrl.isNotEmpty()) {
                         uriHandler.openUri(debugReportState.threadUrl)

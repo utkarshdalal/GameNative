@@ -47,6 +47,20 @@ import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.component.dialog.state.DebugReportDialogState
 import app.gamenative.ui.theme.PluviaTheme
 
+const val AI_HELP_PATH_APP = "app"
+const val AI_HELP_PATH_DISCORD = "discord"
+
+fun debugReportUsesApp(
+    appChatEnabled: Boolean,
+    hasDiscordToken: Boolean,
+    accountSignedIn: Boolean,
+    preferredPath: String,
+): Boolean = appChatEnabled && accountSignedIn && when (preferredPath) {
+    AI_HELP_PATH_APP -> true
+    AI_HELP_PATH_DISCORD -> false
+    else -> !hasDiscordToken
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DebugReportDialog(
@@ -54,12 +68,14 @@ fun DebugReportDialog(
     hasDiscordToken: Boolean,
     appChatEnabled: Boolean,
     accountSignedIn: Boolean,
+    preferredPath: String,
     sendProgress: Float?,
     onStateChange: (DebugReportDialogState) -> Unit,
     onSend: () -> Unit,
     onShare: () -> Unit,
     onConnectDiscord: () -> Unit,
-    onUseDiscord: () -> Unit,
+    onSignInForApp: () -> Unit,
+    onPreferredPathChange: (String) -> Unit,
     onOpenThread: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -198,6 +214,8 @@ fun DebugReportDialog(
                         }
 
                         else -> {
+                            val usesApp = debugReportUsesApp(appChatEnabled, hasDiscordToken, accountSignedIn, preferredPath)
+                            val canSend = state.issueText.isNotBlank() && !state.preparing
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -277,29 +295,7 @@ fun DebugReportDialog(
                                     maxLines = 5,
                                 )
 
-                                if (appChatEnabled) {
-                                    if (!accountSignedIn) {
-                                        Text(
-                                            text = stringResource(R.string.debug_report_sign_in_hint),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            textAlign = TextAlign.Center,
-                                            modifier = Modifier.padding(bottom = 16.dp),
-                                        )
-                                    }
-                                    if (hasDiscordToken) {
-                                        val discordInteraction = remember { MutableInteractionSource() }
-                                        TextButton(
-                                            onClick = onUseDiscord,
-                                            enabled = state.issueText.isNotBlank() && !state.preparing,
-                                            interactionSource = discordInteraction,
-                                            modifier = Modifier
-                                                .padding(bottom = 8.dp)
-                                                .focusRing(discordInteraction, RoundedCornerShape(12.dp), width = 2.dp),
-                                        ) {
-                                            Text(stringResource(R.string.debug_report_use_discord))
-                                        }
-                                    }
-                                } else if (!hasDiscordToken) {
+                                if (!usesApp && !hasDiscordToken) {
                                     Text(
                                         text = stringResource(R.string.debug_report_connect_hint),
                                         style = MaterialTheme.typography.bodySmall,
@@ -333,9 +329,38 @@ fun DebugReportDialog(
                                 Button(
                                     onClick = onSend,
                                     modifier = Modifier.padding(start = 8.dp),
-                                    enabled = state.issueText.isNotBlank() && !state.preparing && (appChatEnabled || hasDiscordToken),
+                                    enabled = canSend && (usesApp || hasDiscordToken),
                                 ) {
                                     Text(stringResource(R.string.debug_report_send))
+                                }
+                            }
+
+                            if (appChatEnabled) {
+                                val altInteraction = remember { MutableInteractionSource() }
+                                TextButton(
+                                    onClick = {
+                                        when {
+                                            usesApp -> onPreferredPathChange(AI_HELP_PATH_DISCORD)
+                                            accountSignedIn -> onPreferredPathChange(AI_HELP_PATH_APP)
+                                            else -> onSignInForApp()
+                                        }
+                                    },
+                                    enabled = usesApp || accountSignedIn || canSend,
+                                    interactionSource = altInteraction,
+                                    modifier = Modifier
+                                        .padding(top = 8.dp)
+                                        .focusRing(altInteraction, RoundedCornerShape(12.dp), width = 2.dp),
+                                ) {
+                                    Text(
+                                        text = stringResource(
+                                            when {
+                                                usesApp -> R.string.debug_report_use_discord
+                                                accountSignedIn -> R.string.debug_report_use_app
+                                                else -> R.string.debug_report_no_discord_sign_in
+                                            },
+                                        ),
+                                        textAlign = TextAlign.Center,
+                                    )
                                 }
                             }
                         }

@@ -1142,6 +1142,13 @@ object PrefManager {
             setPref(SUPPORT_LAST_SEEN, value)
         }
 
+    private val AI_HELP_PREFERRED_PATH = stringPreferencesKey("ai_help_preferred_path")
+    var aiHelpPreferredPath: String
+        get() = getPref(AI_HELP_PREFERRED_PATH, "")
+        set(value) {
+            setPref(AI_HELP_PREFERRED_PATH, value)
+        }
+
     private val GAMENATIVE_ACCESS_TOKEN_ENC = byteArrayPreferencesKey("gamenative_access_token_enc")
     val gameNativeAccessToken: String
         get() {

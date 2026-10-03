@@ -994,6 +994,7 @@
     <string name="support_refresh">更新</string>
     <string name="support_signed_out_title">ゲームについてサポートを受ける</string>
     <string name="support_signed_out_body">GameNative アカウントにサインインすると、サポートの会話を確認し、ゲームの問題について AI と話すことができます。</string>
+    <string name="support_signed_out_discord">Discord でもサポートを受けられます</string>
     <string name="support_empty_title">まだ会話はありません</string>
     <string name="support_empty_body">会話を始めるには、ライブラリのゲームで「AI のサポートを受ける」を選んでください。問題が起きるまでプレイしてからゲームを閉じ、何が起きたかを説明してください。</string>
     <string name="support_state_waiting">返信待ち</string>
@@ -1060,8 +1061,9 @@
     <string name="support_run_check_send_last">前回の実行を送信</string>
     <string name="support_uploading">ログをアップロードしています</string>
     <string name="support_share_file">ファイルを開く</string>
-    <string name="debug_report_sign_in_hint">送信するときに GameNative アカウントへのサインインを求められます。その後、AI との会話はこのアプリ内で行われます。</string>
+    <string name="debug_report_no_discord_sign_in">Discord をお持ちでない場合は、GameNative アカウントでサインインすると、回答をアプリで受け取れます。</string>
     <string name="debug_report_use_discord">代わりに Discord を使う</string>
+    <string name="debug_report_use_app">代わりにアプリを使う</string>
     <string name="settings_emulation_orientations_title">許可される向き</string>
     <string name="settings_emulation_orientations_subtitle">ゲーム内でどの方向に回転できるかを選択します</string>
     <string name="settings_emulation_default_config_title">デフォルト設定の変更</string>
@@ -1998,7 +2000,7 @@
     <string name="debug_prerun_title">AI のサポートを受ける</string>
     <string name="debug_prerun_message_1">デバッグログ付きでゲームを起動し、終了時にログを Discord の AI に共有します。問題が発生するまでゲームをプレイしてください。</string>
     <string name="debug_prerun_message_2">AI の返信はサブスク会員限定です。</string>
-    <string name="debug_prerun_message_1_app">デバッグログ付きでゲームを実行します。終了するとログが AI に送られ、回答はアプリの「AI ヘルプ」に表示されます。問題が発生するまでプレイしてください。</string>
+    <string name="debug_prerun_message_1_app">デバッグログ付きでゲームを実行します。終了するとログが AI に送られ、回答は Discord に届きます。GameNative アカウントでサインインした場合はアプリに届きます。問題が発生するまでプレイしてください。</string>
     <string name="debug_prerun_message_2_app">最初の分析は無料です。追加の返信にはプランが必要です。</string>
     <string name="debug_prerun_message_1_neutral">デバッグログ付きでゲームを実行します。終了するとログが AI に送られます。問題が発生するまでプレイしてください。</string>
     <string name="debug_trial_note">無料トライアルあり。</string>

@@ -841,6 +841,7 @@
     <string name="support_refresh">Opdater</string>
     <string name="support_signed_out_title">Få hjælp med dine spil</string>
     <string name="support_signed_out_body">Log ind på din GameNative-konto for at se dine supportsamtaler og tale med vores AI om problemer med dine spil.</string>
+    <string name="support_signed_out_discord">Du kan også få hjælp i vores Discord</string>
     <string name="support_empty_title">Ingen samtaler endnu</string>
     <string name="support_empty_body">Vælg “Få AI-hjælp” på et spil i dit bibliotek for at starte en. Spil, indtil problemet opstår, luk spillet, og beskriv derefter, hvad der gik galt.</string>
     <string name="support_state_waiting">Venter på svar</string>
@@ -908,8 +909,9 @@
     <string name="support_run_check_send_last">Send den seneste kørsel</string>
     <string name="support_uploading">Uploader dine logfiler</string>
     <string name="support_share_file">Åbn fil</string>
-    <string name="debug_report_sign_in_hint">Når du sender, bliver du bedt om at logge ind på din GameNative-konto. Samtalen med vores AI foregår derefter her i appen.</string>
+    <string name="debug_report_no_discord_sign_in">Ingen Discord? Log ind med en GameNative-konto, og få svaret i appen.</string>
     <string name="debug_report_use_discord">Brug Discord i stedet</string>
+    <string name="debug_report_use_app">Brug appen i stedet</string>
     <string name="settings_emulation_orientations_title">Tilladte orienteringer</string>
     <string name="settings_emulation_orientations_subtitle">Vælg hvilke orienteringer der kan roteres til i spillet</string>
     <string name="settings_emulation_default_config_title">Redigér standardkonfiguration</string>
@@ -1905,7 +1907,7 @@
     <string name="debug_prerun_title">Få AI-hjælp</string>
     <string name="debug_prerun_message_1">Kører spillet med debug-logning og deler loggen med vores AI på Discord, når du afslutter. Spil, indtil du oplever problemet.</string>
     <string name="debug_prerun_message_2">AI-svar er kun for abonnenter.</string>
-    <string name="debug_prerun_message_1_app">Spillet kører med debug-logning. Når du afslutter, sendes loggen til vores AI, og svaret vises i appen under AI-hjælp. Spil, indtil problemet opstår.</string>
+    <string name="debug_prerun_message_1_app">Kører spillet med debug-logning. Når du afslutter, sendes loggen til vores AI, og svaret kommer i vores Discord eller i appen, hvis du logger ind med en GameNative-konto. Kør spillet, indtil problemet opstår.</string>
     <string name="debug_prerun_message_2_app">Den første analyse er gratis. Opfølgende svar kræver en plan.</string>
     <string name="debug_prerun_message_1_neutral">Spillet kører med debug-logning. Når du afslutter, sendes loggen til vores AI. Spil, indtil problemet opstår.</string>
     <string name="debug_trial_note">Gratis prøveperiode tilgængelig.</string>

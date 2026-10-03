@@ -1042,6 +1042,7 @@
     <string name="support_refresh">Actualiser</string>
     <string name="support_signed_out_title">Obtenez de l\'aide pour vos jeux</string>
     <string name="support_signed_out_body">Connectez-vous à votre compte GameNative pour voir vos conversations d\'assistance et parler à notre AI des problèmes avec vos jeux.</string>
+    <string name="support_signed_out_discord">Vous pouvez aussi obtenir de l\'aide sur notre Discord</string>
     <string name="support_empty_title">Aucune conversation pour l\'instant</string>
     <string name="support_empty_body">Pour en commencer une, choisissez « Obtenez l\'aide de l\'AI » sur un jeu de votre bibliothèque. Jouez jusqu\'à ce que le problème se produise, fermez le jeu, puis décrivez ce qui s\'est mal passé.</string>
     <string name="support_state_waiting">En attente de réponse</string>
@@ -1109,8 +1110,9 @@
     <string name="support_run_check_send_last">Envoyer la dernière session</string>
     <string name="support_uploading">Envoi de vos journaux</string>
     <string name="support_share_file">Ouvrir le fichier</string>
-    <string name="debug_report_sign_in_hint">Lors de l\'envoi, il vous sera demandé de vous connecter à votre compte GameNative. La conversation avec notre AI se déroule ensuite ici, dans l\'app.</string>
+    <string name="debug_report_no_discord_sign_in">Pas de Discord ? Connectez-vous avec un compte GameNative et recevez la réponse dans l\'app.</string>
     <string name="debug_report_use_discord">Utiliser Discord à la place</string>
+    <string name="debug_report_use_app">Utiliser l\'app à la place</string>
     <string name="settings_emulation_orientations_title">Orientations autorisées</string>
     <string name="settings_emulation_orientations_subtitle">Choisir les orientations vers lesquelles pivoter en jeu</string>
     <string name="settings_emulation_default_config_title">Modifier la configuration par défaut</string>
@@ -2053,7 +2055,7 @@
     <string name="debug_prerun_title">Obtenez l\'aide de l\'AI</string>
     <string name="debug_prerun_message_1">Lance le jeu avec les journaux de débogage et les partage avec notre AI sur Discord quand vous quittez. Jouez jusqu\'à ce que le problème se produise.</string>
     <string name="debug_prerun_message_2">Les réponses de l\'AI sont réservées aux abonnés.</string>
-    <string name="debug_prerun_message_1_app">Le jeu se lance avec les journaux de débogage. Quand vous quittez, le journal est envoyé à notre AI, et la réponse apparaît dans l\'application, sous Aide AI. Jouez jusqu\'à ce que le problème se produise.</string>
+    <string name="debug_prerun_message_1_app">Lance le jeu avec les journaux de débogage. Quand vous quittez, le journal est envoyé à notre AI, et la réponse arrive sur notre Discord, ou dans l\'app si vous vous connectez avec un compte GameNative. Jouez jusqu\'à ce que le problème se produise.</string>
     <string name="debug_prerun_message_2_app">La première analyse est gratuite. Les réponses suivantes nécessitent un abonnement.</string>
     <string name="debug_prerun_message_1_neutral">Le jeu se lance avec les journaux de débogage. Quand vous quittez, le journal est envoyé à notre AI. Jouez jusqu\'à ce que le problème se produise.</string>
     <string name="debug_trial_note">Essai gratuit disponible.</string>

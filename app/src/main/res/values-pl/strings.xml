@@ -1033,6 +1033,7 @@
     <string name="support_refresh">Odśwież</string>
     <string name="support_signed_out_title">Uzyskaj pomoc w grach</string>
     <string name="support_signed_out_body">Zaloguj się na konto GameNative, aby zobaczyć swoje rozmowy z pomocą i porozmawiać z naszym AI o problemach z grami.</string>
+    <string name="support_signed_out_discord">Pomoc możesz też uzyskać na naszym Discordzie</string>
     <string name="support_empty_title">Brak rozmów</string>
     <string name="support_empty_body">Aby ją rozpocząć, wybierz „Uzyskaj pomoc AI” przy grze w bibliotece. Graj, aż wystąpi problem, zamknij grę, a następnie opisz, co poszło nie tak.</string>
     <string name="support_state_waiting">Oczekuje na odpowiedź</string>
@@ -1102,8 +1103,9 @@
     <string name="support_run_check_send_last">Wyślij ostatnie uruchomienie</string>
     <string name="support_uploading">Wysyłanie logów</string>
     <string name="support_share_file">Otwórz plik</string>
-    <string name="debug_report_sign_in_hint">Podczas wysyłania pojawi się prośba o zalogowanie na konto GameNative. Rozmowa z naszym AI odbędzie się wtedy tutaj, w aplikacji.</string>
+    <string name="debug_report_no_discord_sign_in">Nie masz Discorda? Zaloguj się na konto GameNative i otrzymaj odpowiedź w aplikacji.</string>
     <string name="debug_report_use_discord">Użyj Discorda</string>
+    <string name="debug_report_use_app">Użyj aplikacji</string>
     <string name="settings_emulation_orientations_title">Dozwolone orientacje</string>
     <string name="settings_emulation_orientations_subtitle">Wybierz, które orientacje ekranu mogą być używane w grze</string>
     <string name="settings_emulation_default_config_title">Zmodyfikuj domyślną konfigurację</string>
@@ -2037,7 +2039,7 @@
     <string name="debug_prerun_title">Uzyskaj pomoc AI</string>
     <string name="debug_prerun_message_1">Uruchamia grę z logowaniem debugowania i po wyjściu udostępnia log naszemu AI na Discordzie. Graj, aż wystąpi problem.</string>
     <string name="debug_prerun_message_2">Odpowiedzi AI są tylko dla subskrybentów.</string>
-    <string name="debug_prerun_message_1_app">Gra uruchamia się z logowaniem debugowania. Po wyjściu log trafia do naszego AI, a odpowiedź pojawia się w aplikacji w sekcji Pomoc AI. Graj, aż wystąpi problem.</string>
+    <string name="debug_prerun_message_1_app">Uruchamia grę z logowaniem debugowania. Po wyjściu log trafia do naszego AI, a odpowiedź przychodzi na naszym Discordzie lub w aplikacji, jeśli zalogujesz się na konto GameNative. Graj, aż wystąpi problem.</string>
     <string name="debug_prerun_message_2_app">Pierwsza analiza jest darmowa. Kolejne odpowiedzi wymagają planu.</string>
     <string name="debug_prerun_message_1_neutral">Gra uruchamia się z logowaniem debugowania. Po wyjściu log trafia do naszego AI. Graj, aż wystąpi problem.</string>
     <string name="debug_trial_note">Dostępny bezpłatny okres próbny.</string>

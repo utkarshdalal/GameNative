@@ -1032,6 +1032,7 @@
     <string name="support_refresh">Actualizar</string>
     <string name="support_signed_out_title">Obtén ayuda con tus juegos</string>
     <string name="support_signed_out_body">Inicia sesión en tu cuenta de GameNative para ver tus conversaciones de soporte y hablar con nuestra AI sobre problemas con tus juegos.</string>
+    <string name="support_signed_out_discord">También puedes obtener ayuda en nuestro Discord</string>
     <string name="support_empty_title">Aún no hay conversaciones</string>
     <string name="support_empty_body">Para empezar una, elige “Obtén ayuda de la AI” en un juego de tu biblioteca. Juega hasta que ocurra el problema, cierra el juego y luego describe qué salió mal.</string>
     <string name="support_state_waiting">Esperando respuesta</string>
@@ -1099,8 +1100,9 @@
     <string name="support_run_check_send_last">Enviar la última ejecución</string>
     <string name="support_uploading">Subiendo tus registros</string>
     <string name="support_share_file">Abrir archivo</string>
-    <string name="debug_report_sign_in_hint">Al enviar, se te pedirá que inicies sesión en tu cuenta de GameNative. La conversación con nuestra AI tendrá lugar aquí, en la app.</string>
+    <string name="debug_report_no_discord_sign_in">¿No tienes Discord? Inicia sesión con una cuenta de GameNative y recibe la respuesta en la app.</string>
     <string name="debug_report_use_discord">Usar Discord en su lugar</string>
+    <string name="debug_report_use_app">Usar la app en su lugar</string>
     <string name="settings_emulation_orientations_title">Orientaciones de pantalla permitidas</string>
     <string name="settings_emulation_orientations_subtitle">Elige las orientaciones a las que puede rotar la pantalla durante el juego.</string>
     <string name="settings_emulation_default_config_title">Configuración por defecto</string>
@@ -2033,7 +2035,7 @@
     <string name="debug_prerun_title">Obtén ayuda de la AI</string>
     <string name="debug_prerun_message_1">Ejecuta el juego con registro de depuración y comparte el registro con nuestra AI en Discord al salir. Juega hasta que aparezca el problema.</string>
     <string name="debug_prerun_message_2">Las respuestas de la AI son solo para suscriptores.</string>
-    <string name="debug_prerun_message_1_app">El juego se ejecuta con registro de depuración. Al salir, el registro se envía a nuestra AI y la respuesta aparece en la app, en Ayuda de AI. Juega hasta que aparezca el problema.</string>
+    <string name="debug_prerun_message_1_app">Ejecuta el juego con registro de depuración. Al salir, el registro se envía a nuestra AI y la respuesta llega a nuestro Discord, o a la app si inicias sesión con una cuenta de GameNative. Juega hasta que aparezca el problema.</string>
     <string name="debug_prerun_message_2_app">El primer análisis es gratuito. Las respuestas de seguimiento requieren un plan.</string>
     <string name="debug_prerun_message_1_neutral">El juego se ejecuta con registro de depuración. Al salir, el registro se envía a nuestra AI. Juega hasta que aparezca el problema.</string>
     <string name="debug_trial_note">Prueba gratuita disponible.</string>

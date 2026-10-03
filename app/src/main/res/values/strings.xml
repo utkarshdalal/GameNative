@@ -1197,6 +1197,7 @@
     <string name="support_refresh">Refresh</string>
     <string name="support_signed_out_title">Get help with your games</string>
     <string name="support_signed_out_body">Sign in to your GameNative account to see your support conversations and talk with our AI about problems with your games.</string>
+    <string name="support_signed_out_discord">You can also get help in our Discord</string>
     <string name="support_empty_title">No conversations yet</string>
     <string name="support_empty_body">To start one, choose “Get AI help” on a game in your library. Play until the problem happens, close the game, and then describe what went wrong.</string>
     <string name="support_state_waiting">Waiting for a reply</string>
@@ -1264,8 +1265,9 @@
     <string name="support_run_check_send_last">Send the last run</string>
     <string name="support_uploading">Uploading your logs</string>
     <string name="support_share_file">Open file</string>
-    <string name="debug_report_sign_in_hint">When you send, you will be asked to sign in to your GameNative account. The conversation with our AI then happens here in the app.</string>
+    <string name="debug_report_no_discord_sign_in">No Discord? Sign in with a GameNative account and get the answer in the app.</string>
     <string name="debug_report_use_discord">Use Discord instead</string>
+    <string name="debug_report_use_app">Use the app instead</string>
     <string name="settings_emulation_orientations_title">Allowed Orientations</string>
     <string name="settings_emulation_orientations_subtitle">Choose which orientations can be rotated to when in-game</string>
     <string name="settings_emulation_default_config_title">Modify Default Config</string>
@@ -2011,7 +2013,7 @@
     <string name="debug_prerun_title">Get AI help</string>
     <string name="debug_prerun_message_1">Runs the game with debug logging and shares the log with our AI on Discord when you quit. Run the game until you experience the issue.</string>
     <string name="debug_prerun_message_2">AI replies are for subscribers only.</string>
-    <string name="debug_prerun_message_1_app">The game runs with debug logging. When you quit, the log goes to our AI, and the answer appears in the app under AI Help. Play until the problem happens.</string>
+    <string name="debug_prerun_message_1_app">Runs the game with debug logging. When you quit, the log goes to our AI and the answer comes in our Discord, or in the app if you sign in with a GameNative account. Run the game until you experience the issue.</string>
     <string name="debug_prerun_message_2_app">The first analysis is free. Follow-up replies need a plan.</string>
     <string name="debug_prerun_message_1_neutral">The game runs with debug logging. When you quit, the log goes to our AI. Play until the problem happens.</string>
     <string name="debug_trial_note">Free trial available.</string>

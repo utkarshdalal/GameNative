@@ -1012,6 +1012,7 @@
     <string name="support_refresh">重新整理</string>
     <string name="support_signed_out_title">取得遊戲問題協助</string>
     <string name="support_signed_out_body">登入你的 GameNative 帳戶，即可查看支援對話，並與我們的 AI 討論遊戲中遇到的問題。</string>
+    <string name="support_signed_out_discord">你也可以在我們的 Discord 取得協助</string>
     <string name="support_empty_title">尚無對話</string>
     <string name="support_empty_body">若要開始對話，請在遊戲庫中的遊戲上選擇「取得 AI 協助」。玩到問題出現後關閉遊戲，然後描述發生了什麼問題。</string>
     <string name="support_state_waiting">等待回覆</string>
@@ -1078,8 +1079,9 @@
     <string name="support_run_check_send_last">傳送上次執行</string>
     <string name="support_uploading">正在上傳記錄檔</string>
     <string name="support_share_file">開啟檔案</string>
-    <string name="debug_report_sign_in_hint">傳送時會要求你登入 GameNative 帳戶。之後與我們 AI 的對話將在應用程式內進行。</string>
+    <string name="debug_report_no_discord_sign_in">沒有 Discord？使用 GameNative 帳戶登入，即可在應用程式內收到回答。</string>
     <string name="debug_report_use_discord">改用 Discord</string>
+    <string name="debug_report_use_app">改用應用程式</string>
     <string name="settings_emulation_orientations_title">允許的螢幕方向</string>
     <string name="settings_emulation_orientations_subtitle">選擇遊戲中可使用的螢幕方向</string>
     <string name="settings_emulation_default_config_title">修改預設配置</string>
@@ -2042,7 +2044,7 @@
     <string name="debug_prerun_title">取得 AI 協助</string>
     <string name="debug_prerun_message_1">以除錯日誌執行遊戲，退出後將日誌分享給我們在 Discord 上的 AI。請持續執行遊戲，直到問題出現。</string>
     <string name="debug_prerun_message_2">AI 回覆僅限訂閱者。</string>
-    <string name="debug_prerun_message_1_app">遊戲將以除錯日誌執行。退出後，日誌會傳送給我們的 AI，回答會顯示在應用程式的「AI 幫助」中。請持續執行遊戲，直到問題出現。</string>
+    <string name="debug_prerun_message_1_app">以除錯日誌執行遊戲。退出後，日誌會傳送給我們的 AI，回答會發送到我們的 Discord；如果你使用 GameNative 帳戶登入，回答會顯示在應用程式內。請持續執行遊戲，直到問題出現。</string>
     <string name="debug_prerun_message_2_app">首次分析免費。後續回覆需要方案。</string>
     <string name="debug_prerun_message_1_neutral">遊戲將以除錯日誌執行。退出後，日誌會傳送給我們的 AI。請持續執行遊戲，直到問題出現。</string>
     <string name="debug_trial_note">提供免費試用。</string>

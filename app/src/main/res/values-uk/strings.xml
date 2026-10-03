@@ -1019,6 +1019,7 @@
     <string name="support_refresh">Оновити</string>
     <string name="support_signed_out_title">Допомога з вашими іграми</string>
     <string name="support_signed_out_body">Увійдіть в обліковий запис GameNative, щоб бачити свої розмови з підтримкою та обговорювати з нашим AI проблеми з іграми.</string>
+    <string name="support_signed_out_discord">Допомогу також можна отримати в нашому Discord</string>
     <string name="support_empty_title">Розмов поки немає</string>
     <string name="support_empty_body">Щоб почати, виберіть «Отримати допомогу AI» у грі в бібліотеці. Грайте, доки не виникне проблема, закрийте гру, а потім опишіть, що пішло не так.</string>
     <string name="support_state_waiting">Очікує відповіді</string>
@@ -1088,8 +1089,9 @@
     <string name="support_run_check_send_last">Надіслати останній запуск</string>
     <string name="support_uploading">Завантаження журналів</string>
     <string name="support_share_file">Відкрити файл</string>
-    <string name="debug_report_sign_in_hint">Під час надсилання вас попросять увійти в обліковий запис GameNative. Після цього розмова з нашим AI відбуватиметься тут, у застосунку.</string>
+    <string name="debug_report_no_discord_sign_in">Немає Discord? Увійдіть в обліковий запис GameNative й отримайте відповідь у застосунку.</string>
     <string name="debug_report_use_discord">Використати Discord</string>
+    <string name="debug_report_use_app">Використати застосунок</string>
     <string name="settings_emulation_orientations_title">Дозволені орієнтації екрану</string>
     <string name="settings_emulation_orientations_subtitle">Виберіть можливі орієнтації екрана під час гри.</string>
     <string name="settings_emulation_default_config_title">Змінити стандартну конфігурацію</string>
@@ -2033,7 +2035,7 @@
     <string name="debug_prerun_title">Отримати допомогу AI</string>
     <string name="debug_prerun_message_1">Запускає гру з журналом налагодження і після виходу надсилає журнал нашому AI в Discord. Грайте, доки не виникне проблема.</string>
     <string name="debug_prerun_message_2">Відповіді AI доступні лише підписникам.</string>
-    <string name="debug_prerun_message_1_app">Гра запускається з журналом налагодження. Після виходу журнал надсилається нашому AI, а відповідь з’явиться в застосунку в розділі «Допомога AI». Грайте, доки не виникне проблема.</string>
+    <string name="debug_prerun_message_1_app">Запускає гру з журналом налагодження. Після виходу журнал надсилається нашому AI, а відповідь прийде в наш Discord або в застосунок, якщо ви ввійдете в обліковий запис GameNative. Грайте, доки не виникне проблема.</string>
     <string name="debug_prerun_message_2_app">Перший аналіз безкоштовний. Для подальших відповідей потрібен план.</string>
     <string name="debug_prerun_message_1_neutral">Гра запускається з журналом налагодження. Після виходу журнал надсилається нашому AI. Грайте, доки не виникне проблема.</string>
     <string name="debug_trial_note">Доступний безкоштовний пробний період.</string>

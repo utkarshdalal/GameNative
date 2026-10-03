@@ -44,6 +44,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -60,6 +61,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -342,6 +344,7 @@ private fun CenteredMessage(
 @Composable
 private fun SupportSignedOut(onBack: () -> Unit) {
     var showSignIn by rememberSaveable { mutableStateOf(false) }
+    val uriHandler = LocalUriHandler.current
     val signInFocus = remember { FocusRequester() }
 
     AccountSignInDialog(
@@ -363,6 +366,18 @@ private fun SupportSignedOut(onBack: () -> Unit) {
             onClick = { showSignIn = true },
             modifier = Modifier.focusRequester(signInFocus),
         )
+        Spacer(modifier = Modifier.height(12.dp))
+        val discordInteraction = remember { MutableInteractionSource() }
+        TextButton(
+            onClick = { uriHandler.openUri("https://discord.gg/2hKv4VfZfE") },
+            interactionSource = discordInteraction,
+            modifier = Modifier.focusRing(discordInteraction, RoundedCornerShape(12.dp), width = 2.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.support_signed_out_discord),
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
 

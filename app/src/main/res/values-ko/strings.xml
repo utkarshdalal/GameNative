@@ -1025,6 +1025,7 @@
     <string name="support_refresh">새로 고침</string>
     <string name="support_signed_out_title">게임 문제 도움 받기</string>
     <string name="support_signed_out_body">GameNative 계정에 로그인하면 지원 대화를 확인하고 게임 문제에 대해 AI와 대화할 수 있습니다.</string>
+    <string name="support_signed_out_discord">Discord에서도 도움을 받을 수 있습니다</string>
     <string name="support_empty_title">아직 대화가 없습니다</string>
     <string name="support_empty_body">대화를 시작하려면 라이브러리의 게임에서 “AI 도움 받기”를 선택하세요. 문제가 발생할 때까지 플레이한 뒤 게임을 닫고 무엇이 잘못되었는지 설명하세요.</string>
     <string name="support_state_waiting">답변 대기 중</string>
@@ -1091,8 +1092,9 @@
     <string name="support_run_check_send_last">마지막 실행 보내기</string>
     <string name="support_uploading">로그를 업로드하는 중</string>
     <string name="support_share_file">파일 열기</string>
-    <string name="debug_report_sign_in_hint">보낼 때 GameNative 계정에 로그인하라는 요청이 표시됩니다. 이후 AI와의 대화는 이 앱에서 진행됩니다.</string>
+    <string name="debug_report_no_discord_sign_in">Discord가 없나요? GameNative 계정으로 로그인하면 앱에서 답변을 받을 수 있습니다.</string>
     <string name="debug_report_use_discord">대신 Discord 사용</string>
+    <string name="debug_report_use_app">대신 앱 사용</string>
     <string name="settings_emulation_orientations_title">허용된 방향</string>
     <string name="settings_emulation_orientations_subtitle">게임 중 회전할 수 있는 방향 선택</string>
     <string name="settings_emulation_default_config_title">기본 설정 수정</string>
@@ -2031,7 +2033,7 @@
     <string name="debug_prerun_title">AI 도움 받기</string>
     <string name="debug_prerun_message_1">디버그 로깅으로 게임을 실행하고, 종료 시 로그를 Discord의 AI에 공유합니다. 문제가 발생할 때까지 게임을 플레이하세요.</string>
     <string name="debug_prerun_message_2">AI 답변은 구독자 전용입니다.</string>
-    <string name="debug_prerun_message_1_app">게임이 디버그 로깅으로 실행됩니다. 종료하면 로그가 AI에 전송되고, 답변은 앱의 AI 도움말 메뉴에 표시됩니다. 문제가 발생할 때까지 플레이하세요.</string>
+    <string name="debug_prerun_message_1_app">디버그 로깅으로 게임을 실행합니다. 종료하면 로그가 AI에 전송되고, 답변은 Discord로 전달됩니다. GameNative 계정으로 로그인하면 앱에서 받을 수 있습니다. 문제가 발생할 때까지 플레이하세요.</string>
     <string name="debug_prerun_message_2_app">첫 분석은 무료입니다. 추가 답변에는 플랜이 필요합니다.</string>
     <string name="debug_prerun_message_1_neutral">게임이 디버그 로깅으로 실행됩니다. 종료하면 로그가 AI에 전송됩니다. 문제가 발생할 때까지 플레이하세요.</string>
     <string name="debug_trial_note">무료 체험 이용 가능.</string>
