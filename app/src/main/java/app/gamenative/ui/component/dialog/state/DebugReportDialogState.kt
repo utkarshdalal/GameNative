@@ -11,12 +11,14 @@ data class DebugReportDialogState(
     val issueText: String = "",
     val phase: String = PHASE_COMPOSE,
     val threadUrl: String = "",
+    val preparing: Boolean = false,
 ) {
     companion object {
         const val PHASE_COMPOSE = "compose"
         const val PHASE_SENDING = "sending"
         const val PHASE_SUCCESS = "success"
         const val PHASE_ERROR = "error"
+        const val PHASE_NO_LOG = "no_log"
 
         val Saver = mapSaver(
             save = { state ->
@@ -29,6 +31,7 @@ data class DebugReportDialogState(
                     "issueText" to state.issueText,
                     "phase" to state.phase,
                     "threadUrl" to state.threadUrl,
+                    "preparing" to state.preparing,
                 )
             },
             restore = { savedMap ->
@@ -41,6 +44,7 @@ data class DebugReportDialogState(
                     issueText = savedMap["issueText"] as String,
                     phase = (savedMap["phase"] as String).let { if (it == PHASE_SENDING) PHASE_ERROR else it },
                     threadUrl = savedMap["threadUrl"] as String,
+                    preparing = savedMap["preparing"] as? Boolean ?: false,
                 )
             },
         )

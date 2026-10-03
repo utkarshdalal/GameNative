@@ -1940,6 +1940,7 @@
     <string name="option_ai_debug_run">AI-Hilfe erhalten</string>
     <string name="debug_report_title">AI-Debug-Bericht</string>
     <string name="debug_report_summary">%1$s · %2$s</string>
+    <string name="debug_report_preparing">Dein Log wird vorbereitet…</string>
     <string name="debug_report_what_went_wrong">Was ist schiefgelaufen?</string>
     <string name="debug_report_send">Senden</string>
     <string name="debug_report_share_instead">Stattdessen teilen</string>

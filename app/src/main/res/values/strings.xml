@@ -1963,6 +1963,7 @@
     <string name="option_ai_debug_run">Get AI help</string>
     <string name="debug_report_title">AI Debug Report</string>
     <string name="debug_report_summary">%1$s · %2$s</string>
+    <string name="debug_report_preparing">Preparing your log…</string>
     <string name="debug_report_what_went_wrong">What went wrong?</string>
     <string name="debug_report_send">Send</string>
     <string name="debug_report_share_instead">Share instead</string>

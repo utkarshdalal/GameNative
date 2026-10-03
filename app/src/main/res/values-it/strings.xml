@@ -1991,6 +1991,7 @@
     <string name="option_ai_debug_run">Ricevi aiuto AI</string>
     <string name="debug_report_title">Report di debug AI</string>
     <string name="debug_report_summary">%1$s · %2$s</string>
+    <string name="debug_report_preparing">Preparazione del log…</string>
     <string name="debug_report_what_went_wrong">Cosa è andato storto?</string>
     <string name="debug_report_send">Invia</string>
     <string name="debug_report_share_instead">Condividi invece</string>

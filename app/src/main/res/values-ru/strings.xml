@@ -1924,6 +1924,7 @@ https://gamenative.app
     <string name="option_ai_debug_run">Получить помощь AI</string>
     <string name="debug_report_title">AI-отчёт об отладке</string>
     <string name="debug_report_summary">%1$s · %2$s</string>
+    <string name="debug_report_preparing">Подготовка журнала…</string>
     <string name="debug_report_what_went_wrong">Что пошло не так?</string>
     <string name="debug_report_send">Отправить</string>
     <string name="debug_report_share_instead">Поделиться вместо этого</string>

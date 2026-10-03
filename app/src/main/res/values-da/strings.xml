@@ -1870,6 +1870,7 @@
     <string name="option_ai_debug_run">Få AI-hjælp</string>
     <string name="debug_report_title">AI-fejlrapport</string>
     <string name="debug_report_summary">%1$s · %2$s</string>
+    <string name="debug_report_preparing">Forbereder din log…</string>
     <string name="debug_report_what_went_wrong">Hvad gik galt?</string>
     <string name="debug_report_send">Send</string>
     <string name="debug_report_share_instead">Del i stedet</string>

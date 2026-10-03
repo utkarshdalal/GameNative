@@ -2018,6 +2018,7 @@
     <string name="option_ai_debug_run">Obtenir de l\'aide AI</string>
     <string name="debug_report_title">Rapport de débogage AI</string>
     <string name="debug_report_summary">%1$s · %2$s</string>
+    <string name="debug_report_preparing">Préparation de votre journal…</string>
     <string name="debug_report_what_went_wrong">Qu\'est-ce qui n\'a pas fonctionné ?</string>
     <string name="debug_report_send">Envoyer</string>
     <string name="debug_report_share_instead">Partager à la place</string>

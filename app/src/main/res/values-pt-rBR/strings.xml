@@ -1870,6 +1870,7 @@
     <string name="option_ai_debug_run">Obter ajuda de AI</string>
     <string name="debug_report_title">Relatório de depuração com AI</string>
     <string name="debug_report_summary">%1$s · %2$s</string>
+    <string name="debug_report_preparing">Preparando seu log…</string>
     <string name="debug_report_what_went_wrong">O que deu errado?</string>
     <string name="debug_report_send">Enviar</string>
     <string name="debug_report_share_instead">Compartilhar em vez disso</string>

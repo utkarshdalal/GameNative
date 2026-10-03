@@ -1997,6 +1997,7 @@
     <string name="option_ai_debug_run">AI 도움 받기</string>
     <string name="debug_report_title">AI 디버그 리포트</string>
     <string name="debug_report_summary">%1$s · %2$s</string>
+    <string name="debug_report_preparing">로그를 준비하는 중…</string>
     <string name="debug_report_what_went_wrong">무엇이 잘못되었나요?</string>
     <string name="debug_report_send">보내기</string>
     <string name="debug_report_share_instead">대신 공유</string>

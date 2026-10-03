@@ -2008,6 +2008,7 @@
     <string name="option_ai_debug_run">取得 AI 幫助</string>
     <string name="debug_report_title">AI 除錯報告</string>
     <string name="debug_report_summary">%1$s · %2$s</string>
+    <string name="debug_report_preparing">正在準備日誌…</string>
     <string name="debug_report_what_went_wrong">發生了什麼問題？</string>
     <string name="debug_report_send">傳送</string>
     <string name="debug_report_share_instead">改為分享</string>

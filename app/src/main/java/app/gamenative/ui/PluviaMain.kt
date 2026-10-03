@@ -123,6 +123,7 @@ import app.gamenative.utils.BestConfigService
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.DebugReportUtils
 import app.gamenative.utils.DebugRunParamsHolder
+import app.gamenative.utils.HardwareUtils
 import app.gamenative.utils.PlatformAuthUtils
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.ManifestInstaller
@@ -774,15 +775,12 @@ fun PluviaMain(
                 }
 
                 is MainViewModel.MainUiEvent.ShowDebugReportDialog -> {
-                    val dir = File(event.reportDir)
-                    val header = withContext(Dispatchers.IO) { DebugReportUtils.readHeader(dir) }
                     debugReportState = DebugReportDialogState(
                         visible = true,
                         appId = event.appId,
-                        reportDir = event.reportDir,
-                        gameName = header?.optString("gameName").takeUnless { it.isNullOrEmpty() }
-                            ?: ContainerUtils.resolveGameName(event.appId),
-                        deviceName = header?.optString("deviceName") ?: "",
+                        gameName = withContext(Dispatchers.IO) { ContainerUtils.resolveGameName(event.appId) },
+                        deviceName = HardwareUtils.getMachineName(),
+                        preparing = true,
                     )
                     scope.launch {
                         AccountApi.loadSignedInState()
@@ -1687,6 +1685,29 @@ fun PluviaMain(
                     DebugRunParamsHolder.clear(debugPreRunAppId)
                 },
             )
+
+            LaunchedEffect(debugReportState.preparing, debugReportState.appId) {
+                if (!debugReportState.preparing) return@LaunchedEffect
+                val appId = debugReportState.appId
+                val pending = viewModel.pendingDebugReport(appId)
+                val dir = if (pending != null) {
+                    pending.await()
+                } else {
+                    withContext(Dispatchers.IO) { DebugReportUtils.newestReport(context, appId) }
+                }
+                val header = dir?.let { withContext(Dispatchers.IO) { DebugReportUtils.readHeader(it) } }
+                if (debugReportState.appId != appId) return@LaunchedEffect
+                debugReportState = if (dir == null) {
+                    debugReportState.copy(preparing = false, phase = DebugReportDialogState.PHASE_NO_LOG)
+                } else {
+                    debugReportState.copy(
+                        preparing = false,
+                        reportDir = dir.absolutePath,
+                        gameName = header?.optString("gameName").takeUnless { it.isNullOrEmpty() } ?: debugReportState.gameName,
+                        deviceName = header?.optString("deviceName").takeUnless { it.isNullOrEmpty() } ?: debugReportState.deviceName,
+                    )
+                }
+            }
 
             val debugFlowActive = debugReportState.visible || debugPaywallReason != null
             LaunchedEffect(debugFlowActive) {

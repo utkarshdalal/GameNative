@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -138,6 +139,29 @@ fun DebugReportDialog(
                             }
                         }
 
+                        DebugReportDialogState.PHASE_NO_LOG -> {
+                            Text(
+                                text = stringResource(R.string.debug_report_title),
+                                style = MaterialTheme.typography.headlineSmall,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(bottom = 16.dp),
+                            )
+                            Text(
+                                text = stringResource(R.string.debug_report_no_log),
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(bottom = 16.dp),
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End,
+                            ) {
+                                TextButton(onClick = onDismiss) {
+                                    Text(stringResource(R.string.close))
+                                }
+                            }
+                        }
+
                         DebugReportDialogState.PHASE_ERROR -> {
                             Text(
                                 text = stringResource(R.string.debug_report_failed_title),
@@ -197,8 +221,28 @@ fun DebugReportDialog(
                                     style = MaterialTheme.typography.bodyMedium,
                                     modifier = Modifier
                                         .align(Alignment.Start)
-                                        .padding(bottom = 16.dp),
+                                        .padding(bottom = if (state.preparing) 8.dp else 16.dp),
                                 )
+
+                                if (state.preparing) {
+                                    Row(
+                                        modifier = Modifier
+                                            .align(Alignment.Start)
+                                            .padding(bottom = 16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(16.dp),
+                                            strokeWidth = 2.dp,
+                                        )
+                                        Text(
+                                            text = stringResource(R.string.debug_report_preparing),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = PluviaTheme.colors.textMuted,
+                                            modifier = Modifier.padding(start = 8.dp),
+                                        )
+                                    }
+                                }
 
                                 val issueFocusRequester = remember { FocusRequester() }
                                 val focusManager = LocalFocusManager.current
@@ -246,7 +290,7 @@ fun DebugReportDialog(
                                         val discordInteraction = remember { MutableInteractionSource() }
                                         TextButton(
                                             onClick = onUseDiscord,
-                                            enabled = state.issueText.isNotBlank(),
+                                            enabled = state.issueText.isNotBlank() && !state.preparing,
                                             interactionSource = discordInteraction,
                                             modifier = Modifier
                                                 .padding(bottom = 8.dp)
@@ -272,6 +316,7 @@ fun DebugReportDialog(
 
                                 TextButton(
                                     onClick = onShare,
+                                    enabled = !state.preparing,
                                     modifier = Modifier.padding(bottom = 16.dp),
                                 ) {
                                     Text(stringResource(R.string.debug_report_share_instead))
@@ -288,7 +333,7 @@ fun DebugReportDialog(
                                 Button(
                                     onClick = onSend,
                                     modifier = Modifier.padding(start = 8.dp),
-                                    enabled = state.issueText.isNotBlank() && (appChatEnabled || hasDiscordToken),
+                                    enabled = state.issueText.isNotBlank() && !state.preparing && (appChatEnabled || hasDiscordToken),
                                 ) {
                                     Text(stringResource(R.string.debug_report_send))
                                 }
