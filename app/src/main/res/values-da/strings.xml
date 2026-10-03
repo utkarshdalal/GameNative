@@ -2700,6 +2700,7 @@
     </plurals>
     <string name="support_suggestion_title">Foreslåede indstillinger</string>
     <string name="support_suggestion_not_applicable">Denne version af appen kan ikke anvende disse ændringer. Du kan ændre dem manuelt i spillets indstillinger.</string>
+    <string name="support_suggestion_unknown_driver">Dette forslag nævner en driver, der ikke er installeret på denne enhed.</string>
     <string name="support_suggestion_no_game">Installer spillet på denne enhed for at anvende disse ændringer.</string>
     <string name="support_suggestion_change">%1$s: %2$s → %3$s</string>
     <string name="support_suggestion_changed_since">Din nuværende værdi er %1$s. Rapporten havde %2$s.</string>

@@ -35,7 +35,13 @@ object SupportSuggestionApplier {
 
     val WARNING_KEYS = setOf("wineVersion", "graphicsDriver", "graphicsDriverVersion", "graphicsDriverConfig")
 
+    private const val DRIVER_VERSION_KEY = "graphicsDriverVersion"
+    private const val DRIVER_CONFIG_VERSION_KEY = "graphicsDriverConfig.version"
+    private val DRIVER_KEYS = setOf(DRIVER_VERSION_KEY, DRIVER_CONFIG_VERSION_KEY)
+
     data class Edit(val key: String, val name: String?, val value: String?)
+
+    data class DriverCheck(val resolved: Map<Int, String>, val unresolved: Boolean)
 
     sealed class Result {
         data object Done : Result()
@@ -125,6 +131,16 @@ object SupportSuggestionApplier {
         put("graphicsDriverConfig", data.graphicsDriverConfig)
     }
 
+    private fun requestedDriver(edits: List<Edit>): String? =
+        (edits.firstOrNull { it.key == DRIVER_CONFIG_VERSION_KEY } ?: edits.firstOrNull { it.key == DRIVER_VERSION_KEY })
+            ?.value
+            ?.trim()
+            ?.ifEmpty { null }
+
+    private fun isBionic(data: ContainerData): Boolean = data.containerVariant.equals(Container.BIONIC, ignoreCase = true)
+
+    private fun missingDriver(value: String): Result = Result.MissingComponents(listOf("Graphics driver $value"))
+
     private suspend fun ensureComponents(
         context: Context,
         data: ContainerData,
@@ -192,10 +208,15 @@ object SupportSuggestionApplier {
         onProgress: (Float, String) -> Unit,
         beforeSave: () -> Unit,
         source: String,
+        requiredDriver: String?,
     ): Result {
         val updated = ContainerUtils.applyBestConfigMapToContainerData(live, updatesFor(live, edits))
         if (edits.any { it.key.substringBefore('.') in COMPONENT_KEYS }) {
             ensureComponents(context, updated, onProgress)?.let { return it }
+        }
+        if (requiredDriver != null && !BestConfigService.isGraphicsDriverPresent(context, requiredDriver)) {
+            Timber.w("Graphics driver '%s' is not installed after the component step", requiredDriver)
+            return missingDriver(requiredDriver)
         }
         withContext(NonCancellable) {
             ContainerUtils.applyToContainer(context, container, updated)
@@ -218,24 +239,39 @@ object SupportSuggestionApplier {
             if (!ContainerUtils.hasContainer(context, appId)) return@withContext Result.NoContainer
             val container = ContainerUtils.getContainer(context, appId)
             val live = ContainerUtils.toContainerData(container)
+            var edits = suggestion.changes.map { editFor(it) }
+            val requested = if (isBionic(live)) requestedDriver(edits) else null
+            val driverId = requested?.let {
+                BestConfigService.resolveGraphicsDriverId(context, it, live.containerVariant) ?: run {
+                    Timber.w("Support suggestion names unknown graphics driver '%s'", it)
+                    return@withContext missingDriver(it)
+                }
+            }
+            if (driverId != null) {
+                edits = edits.filter { it.key !in DRIVER_KEYS } + DRIVER_KEYS.map { Edit(it, null, driverId) }
+            }
             val snapshot = JSONArray()
             val applied = JSONArray()
-            suggestion.changes.forEach { change ->
-                val before = liveValue(live, change)
+            edits.forEach { edit ->
+                val before = liveValue(live, SupportSuggestion.Change(edit.key, edit.name, null, null, edit.value, null))
                 snapshot.put(
                     JSONObject().apply {
-                        put("key", change.key)
-                        if (change.name != null) put("name", change.name)
+                        put("key", edit.key)
+                        if (edit.name != null) put("name", edit.name)
                         put("before", before ?: JSONObject.NULL)
                     },
                 )
+            }
+            suggestion.changes.forEach { change ->
+                val before = liveValue(live, change)
                 applied.put(
                     JSONObject().apply {
                         put("key", change.key)
                         if (change.name != null) put("name", change.name)
                         if (change.op != null) put("op", change.op)
                         put("from", before ?: JSONObject.NULL)
-                        put("to", if (change.isUnset) JSONObject.NULL else change.to)
+                        val to = if (driverId != null && change.key in DRIVER_KEYS) driverId else change.to
+                        put("to", if (change.isUnset) JSONObject.NULL else to)
                     },
                 )
             }
@@ -244,7 +280,7 @@ object SupportSuggestionApplier {
                 context = context,
                 container = container,
                 live = live,
-                edits = suggestion.changes.map { editFor(it) },
+                edits = edits,
                 onProgress = onProgress,
                 beforeSave = {
                     if (!file.exists()) {
@@ -261,6 +297,7 @@ object SupportSuggestionApplier {
                     writeAppliedExtra(container, messageId, conversationId, applied, restored = false)
                 },
                 source = SOURCE_APPLIED,
+                requiredDriver = driverId,
             )
             result
         } catch (e: CancellationException) {
@@ -304,6 +341,7 @@ object SupportSuggestionApplier {
                 onProgress = onProgress,
                 beforeSave = { writeAppliedExtra(container, messageId, conversationId, JSONArray(), restored = true) },
                 source = SOURCE_RESTORED,
+                requiredDriver = null,
             )
             if (result == Result.Done) file.delete()
             result
@@ -323,6 +361,25 @@ object SupportSuggestionApplier {
             false
         }
     }
+
+    suspend fun checkDrivers(context: Context, appId: String, suggestion: SupportSuggestion): DriverCheck? =
+        withContext(Dispatchers.IO) {
+            try {
+                val driverChanges = suggestion.changes.withIndex().filter { it.value.key in DRIVER_KEYS && it.value.to != null }
+                if (driverChanges.isEmpty() || !ContainerUtils.hasContainer(context, appId)) return@withContext null
+                val live = ContainerUtils.toContainerData(ContainerUtils.getContainer(context, appId))
+                if (!isBionic(live)) return@withContext null
+                val requested = requestedDriver(suggestion.changes.map { editFor(it) }) ?: return@withContext null
+                val id = BestConfigService.resolveGraphicsDriverId(context, requested, live.containerVariant)
+                    ?: return@withContext DriverCheck(emptyMap(), unresolved = true)
+                DriverCheck(driverChanges.associate { it.index to id }, unresolved = false)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.w(e, "Resolving the graphics driver of a support suggestion failed")
+                null
+            }
+        }
 
     suspend fun readLive(context: Context, appId: String, suggestion: SupportSuggestion): List<String?>? =
         withContext(Dispatchers.IO) {

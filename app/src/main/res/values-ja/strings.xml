@@ -2790,6 +2790,7 @@
     </plurals>
     <string name="support_suggestion_title">おすすめの設定</string>
     <string name="support_suggestion_not_applicable">このバージョンのアプリではこの変更を適用できません。ゲーム設定で手動で変更できます。</string>
+    <string name="support_suggestion_unknown_driver">この提案は、このデバイスにインストールされていないドライバーを指定しています。</string>
     <string name="support_suggestion_no_game">この変更を適用するには、このデバイスにゲームをインストールしてください。</string>
     <string name="support_suggestion_change">%1$s: %2$s → %3$s</string>
     <string name="support_suggestion_changed_since">現在の値は %1$s です。レポートでは %2$s でした。</string>

@@ -321,6 +321,7 @@ internal fun SuggestionCard(
     var status by remember(message.id) { mutableStateOf<SuggestionStatus?>(null) }
     var confirm by remember(message.id) { mutableStateOf<SuggestionConfirm?>(null) }
     var refresh by remember(message.id) { mutableStateOf(0) }
+    var driverCheck by remember(message.id) { mutableStateOf<SupportSuggestionApplier.DriverCheck?>(null) }
 
     LaunchedEffect(message.id, appId, refresh) {
         if (appId == null) {
@@ -331,9 +332,11 @@ internal fun SuggestionCard(
         hasContainer = values != null
         live = values
         hasSnapshot = SupportSuggestionApplier.hasSnapshot(context, appId, message.id)
+        driverCheck = SupportSuggestionApplier.checkDrivers(context, appId, suggestion)
     }
 
-    val canAct = suggestion.applicable && appId != null && hasContainer && !busy
+    val unknownDriver = driverCheck?.unresolved == true
+    val canAct = suggestion.applicable && !unknownDriver && appId != null && hasContainer && !busy
     val hasChanges = suggestion.changes.isNotEmpty()
     val run = suggestion.run
     val offersRun = suggestion.rerun || run != null
@@ -411,6 +414,13 @@ internal fun SuggestionCard(
                     color = PluviaTheme.colors.textMuted,
                     modifier = Modifier.padding(top = 6.dp),
                 )
+            } else if (unknownDriver) {
+                Text(
+                    text = stringResource(R.string.support_suggestion_unknown_driver),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = PluviaTheme.colors.textMuted,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
             } else if (appId == null || !hasContainer) {
                 Text(
                     text = stringResource(R.string.support_suggestion_no_game),
@@ -421,7 +431,7 @@ internal fun SuggestionCard(
             }
             suggestion.changes.forEachIndexed { index, change ->
                 val before = live?.getOrNull(index)
-                val after = if (change.isUnset) null else change.to
+                val after = if (change.isUnset) null else driverCheck?.resolved?.get(index) ?: change.to
                 Text(
                     text = stringResource(
                         R.string.support_suggestion_change,

@@ -2836,6 +2836,7 @@
     </plurals>
     <string name="support_suggestion_title">Setări sugerate</string>
     <string name="support_suggestion_not_applicable">Această versiune a aplicației nu poate aplica aceste modificări. Le poți schimba manual în setările jocului.</string>
+    <string name="support_suggestion_unknown_driver">Această sugestie indică un driver care nu este instalat pe acest dispozitiv.</string>
     <string name="support_suggestion_no_game">Instalează jocul pe acest dispozitiv pentru a aplica aceste modificări.</string>
     <string name="support_suggestion_change">%1$s: %2$s → %3$s</string>
     <string name="support_suggestion_changed_since">Valoarea ta actuală este %1$s. Raportul avea %2$s.</string>

@@ -2834,6 +2834,7 @@
     </plurals>
     <string name="support_suggestion_title">建議的設定</string>
     <string name="support_suggestion_not_applicable">此版本的應用程式無法套用這些變更。你可以在遊戲設定中手動變更。</string>
+    <string name="support_suggestion_unknown_driver">此建議指定的驅動程式未安裝在此裝置上。</string>
     <string name="support_suggestion_no_game">請在此裝置上安裝遊戲後再套用這些變更。</string>
     <string name="support_suggestion_change">%1$s：%2$s → %3$s</string>
     <string name="support_suggestion_changed_since">你目前的值是 %1$s。報告中是 %2$s。</string>
