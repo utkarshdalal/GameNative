@@ -42,6 +42,7 @@ class PreInstallStepsTest {
         gameDir = createTempDirectory(prefix = "preinstall-steps-test").toFile()
         every { container.drives } returns "A:${gameDir.absolutePath}"
         every { container.containerVariant } returns Container.BIONIC
+        every { container.rootDir } returns File(gameDir, "container")
     }
 
     @After
