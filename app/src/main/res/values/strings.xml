@@ -2869,4 +2869,23 @@
     <string name="support_suggestion_restored">The previous settings are back.</string>
     <string name="support_suggestion_failed">The settings could not be changed. %1$s</string>
     <string name="support_suggestion_missing">These parts are not available on this device: %1$s</string>
+    <string name="support_progress_next">Yours is next.</string>
+    <string name="support_progress_eta_soon">Expected reply very soon.</string>
+    <string name="support_progress_analysing">The AI is reading your logs</string>
+    <string name="support_progress_analysing_elapsed">The AI is reading your logs (%1$d min)</string>
+    <string name="support_progress_failed">The analysis did not finish. Send your report again to try once more.</string>
+    <string name="support_progress_retry">Try again</string>
+    <string name="support_stage_queued">In queue</string>
+    <string name="support_stage_queued_eta">In queue · about %1$d min</string>
+    <string name="support_stage_analysing">Analysing</string>
+    <string name="support_stage_analysing_elapsed">Analysing · %1$d min</string>
+    <string name="support_stage_failed">Analysis failed</string>
+    <plurals name="support_progress_ahead">
+        <item quantity="one">%1$d report is ahead of yours.</item>
+        <item quantity="other">%1$d reports are ahead of yours.</item>
+    </plurals>
+    <plurals name="support_progress_eta_minutes">
+        <item quantity="one">Expected reply in about %1$d minute.</item>
+        <item quantity="other">Expected reply in about %1$d minutes.</item>
+    </plurals>
 </resources>

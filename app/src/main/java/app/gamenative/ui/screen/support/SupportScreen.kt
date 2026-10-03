@@ -1,5 +1,6 @@
 package app.gamenative.ui.screen.support
 
+import android.os.SystemClock
 import android.text.format.DateUtils
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -58,6 +59,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -74,6 +76,7 @@ import app.gamenative.api.SupportApi
 import app.gamenative.ui.component.dialog.AccountSignInDialog
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.theme.PluviaTheme
+import kotlinx.coroutines.delay
 import java.text.DateFormat
 import java.util.Date
 
@@ -264,6 +267,26 @@ internal fun stateLabel(state: String, outcome: Boolean? = null): String =
     )
 
 @Composable
+internal fun rememberSupportClock(active: Boolean): Pair<Long, Long> {
+    var clock by remember { mutableStateOf(SystemClock.elapsedRealtime() to System.currentTimeMillis()) }
+    LaunchedEffect(active) {
+        clock = SystemClock.elapsedRealtime() to System.currentTimeMillis()
+        while (active) {
+            delay(CLOCK_TICK_MS)
+            clock = SystemClock.elapsedRealtime() to System.currentTimeMillis()
+        }
+    }
+    return clock
+}
+
+private const val CLOCK_TICK_MS = 10_000L
+
+@Composable
+internal fun conversationLabel(conversation: SupportApi.Conversation, clock: Pair<Long, Long>): String =
+    SupportProgressText.shortLabel(LocalContext.current.resources, conversation, clock.first, clock.second)
+        ?: stateLabel(conversation.state, conversation.outcome)
+
+@Composable
 internal fun stateColor(state: String, outcome: Boolean? = null): Color =
     when (state) {
         SupportApi.STATE_SOLVED -> PluviaTheme.colors.accentSuccess
@@ -452,6 +475,7 @@ private fun ConversationRow(
     val interaction = remember { MutableInteractionSource() }
     val shape = RoundedCornerShape(16.dp)
     val now = System.currentTimeMillis()
+    val clock = rememberSupportClock(conversation.progress?.active == true)
     Surface(
         onClick = onClick,
         shape = shape,
@@ -500,13 +524,17 @@ private fun ConversationRow(
                     )
                 }
             }
-            StateChip(state = conversation.state, outcome = conversation.outcome)
+            StateChip(
+                state = conversation.state,
+                outcome = conversation.outcome,
+                label = conversationLabel(conversation, clock),
+            )
         }
     }
 }
 
 @Composable
-internal fun StateChip(state: String, outcome: Boolean? = null) {
+internal fun StateChip(state: String, outcome: Boolean? = null, label: String? = null) {
     val color = stateColor(state, outcome)
     Row(
         modifier = Modifier
@@ -521,7 +549,7 @@ internal fun StateChip(state: String, outcome: Boolean? = null) {
                 .background(color, CircleShape),
         )
         Text(
-            text = stateLabel(state, outcome),
+            text = label ?: stateLabel(state, outcome),
             style = MaterialTheme.typography.labelMedium,
             color = color,
         )

@@ -2793,4 +2793,23 @@
     <string name="support_suggestion_restored">Die vorherigen Einstellungen sind wiederhergestellt.</string>
     <string name="support_suggestion_failed">Die Einstellungen konnten nicht geändert werden. %1$s</string>
     <string name="support_suggestion_missing">Diese Teile sind auf diesem Gerät nicht verfügbar: %1$s</string>
+    <string name="support_progress_next">Deiner ist als Nächstes dran.</string>
+    <string name="support_progress_eta_soon">Antwort sehr bald erwartet.</string>
+    <string name="support_progress_analysing">Die AI liest deine Logs</string>
+    <string name="support_progress_analysing_elapsed">Die AI liest deine Logs (%1$d Min.)</string>
+    <string name="support_progress_failed">Die Analyse wurde nicht abgeschlossen. Sende deinen Bericht erneut, um es noch einmal zu versuchen.</string>
+    <string name="support_progress_retry">Erneut versuchen</string>
+    <string name="support_stage_queued">In der Warteschlange</string>
+    <string name="support_stage_queued_eta">In der Warteschlange · ca. %1$d Min.</string>
+    <string name="support_stage_analysing">Wird analysiert</string>
+    <string name="support_stage_analysing_elapsed">Wird analysiert · %1$d Min.</string>
+    <string name="support_stage_failed">Analyse fehlgeschlagen</string>
+    <plurals name="support_progress_ahead">
+        <item quantity="one">%1$d Bericht ist vor deinem.</item>
+        <item quantity="other">%1$d Berichte sind vor deinem.</item>
+    </plurals>
+    <plurals name="support_progress_eta_minutes">
+        <item quantity="one">Antwort in etwa %1$d Minute erwartet.</item>
+        <item quantity="other">Antwort in etwa %1$d Minuten erwartet.</item>
+    </plurals>
 </resources>

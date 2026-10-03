@@ -2844,4 +2844,23 @@
     <string name="support_suggestion_restored">Le impostazioni precedenti sono state ripristinate.</string>
     <string name="support_suggestion_failed">Impossibile cambiare le impostazioni. %1$s</string>
     <string name="support_suggestion_missing">Queste parti non sono disponibili su questo dispositivo: %1$s</string>
+    <string name="support_progress_next">Il tuo è il prossimo.</string>
+    <string name="support_progress_eta_soon">Risposta prevista a breve.</string>
+    <string name="support_progress_analysing">L\'AI sta leggendo i tuoi log</string>
+    <string name="support_progress_analysing_elapsed">L\'AI sta leggendo i tuoi log (%1$d min)</string>
+    <string name="support_progress_failed">L\'analisi non è terminata. Invia di nuovo il report per riprovare.</string>
+    <string name="support_progress_retry">Riprova</string>
+    <string name="support_stage_queued">In coda</string>
+    <string name="support_stage_queued_eta">In coda · circa %1$d min</string>
+    <string name="support_stage_analysing">Analisi in corso</string>
+    <string name="support_stage_analysing_elapsed">Analisi in corso · %1$d min</string>
+    <string name="support_stage_failed">Analisi non riuscita</string>
+    <plurals name="support_progress_ahead">
+        <item quantity="one">C\'è %1$d report prima del tuo.</item>
+        <item quantity="other">Ci sono %1$d report prima del tuo.</item>
+    </plurals>
+    <plurals name="support_progress_eta_minutes">
+        <item quantity="one">Risposta prevista tra circa %1$d minuto.</item>
+        <item quantity="other">Risposta prevista tra circa %1$d minuti.</item>
+    </plurals>
 </resources>

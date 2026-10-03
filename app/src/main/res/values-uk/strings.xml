@@ -2857,4 +2857,27 @@
     <string name="support_suggestion_restored">Попередні налаштування повернуто.</string>
     <string name="support_suggestion_failed">Не вдалося змінити налаштування. %1$s</string>
     <string name="support_suggestion_missing">Ці компоненти недоступні на цьому пристрої: %1$s</string>
+    <string name="support_progress_next">Ваш наступний.</string>
+    <string name="support_progress_eta_soon">Відповідь очікується зовсім скоро.</string>
+    <string name="support_progress_analysing">AI читає ваші журнали</string>
+    <string name="support_progress_analysing_elapsed">AI читає ваші журнали (%1$d хв)</string>
+    <string name="support_progress_failed">Аналіз не завершився. Надішліть звіт ще раз, щоб спробувати знову.</string>
+    <string name="support_progress_retry">Спробувати знову</string>
+    <string name="support_stage_queued">У черзі</string>
+    <string name="support_stage_queued_eta">У черзі · близько %1$d хв</string>
+    <string name="support_stage_analysing">Аналіз</string>
+    <string name="support_stage_analysing_elapsed">Аналіз · %1$d хв</string>
+    <string name="support_stage_failed">Аналіз не вдався</string>
+    <plurals name="support_progress_ahead">
+        <item quantity="one">Перед вашим %1$d звіт.</item>
+        <item quantity="few">Перед вашим %1$d звіти.</item>
+        <item quantity="many">Перед вашим %1$d звітів.</item>
+        <item quantity="other">Перед вашим %1$d звіту.</item>
+    </plurals>
+    <plurals name="support_progress_eta_minutes">
+        <item quantity="one">Відповідь очікується приблизно за %1$d хвилину.</item>
+        <item quantity="few">Відповідь очікується приблизно за %1$d хвилини.</item>
+        <item quantity="many">Відповідь очікується приблизно за %1$d хвилин.</item>
+        <item quantity="other">Відповідь очікується приблизно за %1$d хвилини.</item>
+    </plurals>
 </resources>

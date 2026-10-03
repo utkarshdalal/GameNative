@@ -45,11 +45,28 @@ object SupportApi {
     const val REASON_RATE_LIMITED = "rate_limited"
     const val REASON_ALREADY_ANSWERED = "already_answered"
 
+    const val STAGE_QUEUED = "queued"
+    const val STAGE_ANALYSING = "analysing"
+    const val STAGE_ANSWERED = "answered"
+    const val STAGE_FAILED = "failed"
+
     private const val TAG = "SupportApi"
     private const val ATTACHMENT_PREFIX = "/api/app/conversations/"
     private const val UNAVAILABLE_RECHECK_MS = 10 * 60 * 1000L
 
     data class Composer(val allowed: Boolean, val reason: String?)
+
+    data class Progress(
+        val stage: String,
+        val position: Int?,
+        val etaSeconds: Long?,
+        val startedAt: Long,
+        val updatedAt: Long,
+        val detail: String?,
+        val receivedAt: Long = SystemClock.elapsedRealtime(),
+    ) {
+        val active: Boolean get() = stage == STAGE_QUEUED || stage == STAGE_ANALYSING
+    }
 
     data class Conversation(
         val id: String,
@@ -61,7 +78,11 @@ object SupportApi {
         val createdAt: Long,
         val lastMessageAt: Long,
         val composer: Composer,
-    )
+        val progress: Progress? = null,
+    ) {
+        val awaitingReply: Boolean
+            get() = progress?.active ?: (state == STATE_WAITING)
+    }
 
     data class Attachment(val filename: String, val size: Long?, val url: String?)
 
@@ -130,6 +151,28 @@ object SupportApi {
         }
     }
 
+    private fun JSONObject.time(name: String): Long =
+        when (val value = opt(name)) {
+            is Number -> value.toLong()
+            is String -> value.toLongOrNull() ?: parseTime(value)
+            else -> 0L
+        }
+
+    private fun parseProgress(json: JSONObject?): Progress? {
+        if (json == null) return null
+        val stage = json.str("stage") ?: return null
+        val position = if (json.has("position") && !json.isNull("position")) json.optInt("position", -1).takeIf { it >= 0 } else null
+        val eta = if (json.has("etaSeconds") && !json.isNull("etaSeconds")) json.optLong("etaSeconds", -1L).takeIf { it >= 0 } else null
+        return Progress(
+            stage = stage,
+            position = position,
+            etaSeconds = eta,
+            startedAt = json.time("startedAt"),
+            updatedAt = json.time("updatedAt"),
+            detail = json.str("detail")?.take(200),
+        )
+    }
+
     private fun parseConversation(json: JSONObject): Conversation {
         val composer = json.optJSONObject("composer")
         return Conversation(
@@ -145,6 +188,7 @@ object SupportApi {
                 allowed = composer?.optBoolean("allowed", false) ?: false,
                 reason = composer?.str("reason"),
             ),
+            progress = runCatching { parseProgress(json.optJSONObject("progress")) }.getOrNull(),
         )
     }
 

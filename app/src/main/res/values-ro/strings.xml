@@ -2859,4 +2859,25 @@
     <string name="support_suggestion_restored">Setările anterioare au fost restabilite.</string>
     <string name="support_suggestion_failed">Setările nu au putut fi schimbate. %1$s</string>
     <string name="support_suggestion_missing">Aceste componente nu sunt disponibile pe acest dispozitiv: %1$s</string>
+    <string name="support_progress_next">Al tău urmează.</string>
+    <string name="support_progress_eta_soon">Răspuns așteptat foarte curând.</string>
+    <string name="support_progress_analysing">AI citește jurnalele tale</string>
+    <string name="support_progress_analysing_elapsed">AI citește jurnalele tale (%1$d min)</string>
+    <string name="support_progress_failed">Analiza nu s-a terminat. Trimite raportul din nou pentru a încerca încă o dată.</string>
+    <string name="support_progress_retry">Încearcă din nou</string>
+    <string name="support_stage_queued">În coadă</string>
+    <string name="support_stage_queued_eta">În coadă · circa %1$d min</string>
+    <string name="support_stage_analysing">Se analizează</string>
+    <string name="support_stage_analysing_elapsed">Se analizează · %1$d min</string>
+    <string name="support_stage_failed">Analiza a eșuat</string>
+    <plurals name="support_progress_ahead">
+        <item quantity="one">Înaintea ta este %1$d raport.</item>
+        <item quantity="few">Înaintea ta sunt %1$d rapoarte.</item>
+        <item quantity="other">Înaintea ta sunt %1$d de rapoarte.</item>
+    </plurals>
+    <plurals name="support_progress_eta_minutes">
+        <item quantity="one">Răspuns așteptat în aproximativ %1$d minut.</item>
+        <item quantity="few">Răspuns așteptat în aproximativ %1$d minute.</item>
+        <item quantity="other">Răspuns așteptat în aproximativ %1$d de minute.</item>
+    </plurals>
 </resources>

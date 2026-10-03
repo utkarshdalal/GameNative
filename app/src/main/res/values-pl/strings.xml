@@ -2861,4 +2861,27 @@
     <string name="support_suggestion_restored">Poprzednie ustawienia zostały przywrócone.</string>
     <string name="support_suggestion_failed">Nie udało się zmienić ustawień. %1$s</string>
     <string name="support_suggestion_missing">Te elementy nie są dostępne na tym urządzeniu: %1$s</string>
+    <string name="support_progress_next">Twój jest następny.</string>
+    <string name="support_progress_eta_soon">Odpowiedź wkrótce.</string>
+    <string name="support_progress_analysing">AI czyta Twoje logi</string>
+    <string name="support_progress_analysing_elapsed">AI czyta Twoje logi (%1$d min)</string>
+    <string name="support_progress_failed">Analiza nie została ukończona. Wyślij raport ponownie, aby spróbować jeszcze raz.</string>
+    <string name="support_progress_retry">Spróbuj ponownie</string>
+    <string name="support_stage_queued">W kolejce</string>
+    <string name="support_stage_queued_eta">W kolejce · ok. %1$d min</string>
+    <string name="support_stage_analysing">Analiza</string>
+    <string name="support_stage_analysing_elapsed">Analiza · %1$d min</string>
+    <string name="support_stage_failed">Analiza nie powiodła się</string>
+    <plurals name="support_progress_ahead">
+        <item quantity="one">Przed Twoim jest %1$d raport.</item>
+        <item quantity="few">Przed Twoim są %1$d raporty.</item>
+        <item quantity="many">Przed Twoim jest %1$d raportów.</item>
+        <item quantity="other">Przed Twoim jest %1$d raportu.</item>
+    </plurals>
+    <plurals name="support_progress_eta_minutes">
+        <item quantity="one">Odpowiedź za około %1$d minutę.</item>
+        <item quantity="few">Odpowiedź za około %1$d minuty.</item>
+        <item quantity="many">Odpowiedź za około %1$d minut.</item>
+        <item quantity="other">Odpowiedź za około %1$d minuty.</item>
+    </plurals>
 </resources>

@@ -2813,4 +2813,21 @@
     <string name="support_suggestion_restored">以前の設定に戻しました。</string>
     <string name="support_suggestion_failed">設定を変更できませんでした。%1$s</string>
     <string name="support_suggestion_missing">次の項目はこのデバイスで利用できません: %1$s</string>
+    <string name="support_progress_next">次はあなたの番です。</string>
+    <string name="support_progress_eta_soon">まもなく返信が届く見込みです。</string>
+    <string name="support_progress_analysing">AIがログを読んでいます</string>
+    <string name="support_progress_analysing_elapsed">AIがログを読んでいます（%1$d分）</string>
+    <string name="support_progress_failed">分析が完了しませんでした。もう一度レポートを送信してください。</string>
+    <string name="support_progress_retry">再試行</string>
+    <string name="support_stage_queued">順番待ち</string>
+    <string name="support_stage_queued_eta">順番待ち · 約%1$d分</string>
+    <string name="support_stage_analysing">分析中</string>
+    <string name="support_stage_analysing_elapsed">分析中 · %1$d分</string>
+    <string name="support_stage_failed">分析に失敗しました</string>
+    <plurals name="support_progress_ahead">
+        <item quantity="other">あなたの前に%1$d件のレポートがあります。</item>
+    </plurals>
+    <plurals name="support_progress_eta_minutes">
+        <item quantity="other">約%1$d分で返信が届く見込みです。</item>
+    </plurals>
 </resources>

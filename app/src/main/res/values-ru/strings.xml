@@ -2785,4 +2785,27 @@ https://gamenative.app
     <string name="support_suggestion_restored">Прежние настройки возвращены.</string>
     <string name="support_suggestion_failed">Не удалось изменить настройки. %1$s</string>
     <string name="support_suggestion_missing">Эти компоненты недоступны на этом устройстве: %1$s</string>
+    <string name="support_progress_next">Ваш следующий.</string>
+    <string name="support_progress_eta_soon">Ответ ожидается совсем скоро.</string>
+    <string name="support_progress_analysing">AI читает ваши логи</string>
+    <string name="support_progress_analysing_elapsed">AI читает ваши логи (%1$d мин)</string>
+    <string name="support_progress_failed">Анализ не завершился. Отправьте отчёт ещё раз, чтобы повторить попытку.</string>
+    <string name="support_progress_retry">Повторить</string>
+    <string name="support_stage_queued">В очереди</string>
+    <string name="support_stage_queued_eta">В очереди · около %1$d мин</string>
+    <string name="support_stage_analysing">Анализ</string>
+    <string name="support_stage_analysing_elapsed">Анализ · %1$d мин</string>
+    <string name="support_stage_failed">Анализ не удался</string>
+    <plurals name="support_progress_ahead">
+        <item quantity="one">Перед вашим %1$d отчёт.</item>
+        <item quantity="few">Перед вашим %1$d отчёта.</item>
+        <item quantity="many">Перед вашим %1$d отчётов.</item>
+        <item quantity="other">Перед вашим %1$d отчёта.</item>
+    </plurals>
+    <plurals name="support_progress_eta_minutes">
+        <item quantity="one">Ответ ожидается примерно через %1$d минуту.</item>
+        <item quantity="few">Ответ ожидается примерно через %1$d минуты.</item>
+        <item quantity="many">Ответ ожидается примерно через %1$d минут.</item>
+        <item quantity="other">Ответ ожидается примерно через %1$d минуты.</item>
+    </plurals>
 </resources>

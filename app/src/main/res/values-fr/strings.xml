@@ -2853,4 +2853,23 @@
     <string name="support_suggestion_restored">Les paramètres précédents sont rétablis.</string>
     <string name="support_suggestion_failed">Impossible de modifier les paramètres. %1$s</string>
     <string name="support_suggestion_missing">Ces éléments ne sont pas disponibles sur cet appareil : %1$s</string>
+    <string name="support_progress_next">Le vôtre est le suivant.</string>
+    <string name="support_progress_eta_soon">Réponse attendue très bientôt.</string>
+    <string name="support_progress_analysing">L\'AI lit vos journaux</string>
+    <string name="support_progress_analysing_elapsed">L\'AI lit vos journaux (%1$d min)</string>
+    <string name="support_progress_failed">L\'analyse ne s\'est pas terminée. Renvoyez votre rapport pour réessayer.</string>
+    <string name="support_progress_retry">Réessayer</string>
+    <string name="support_stage_queued">En file d\'attente</string>
+    <string name="support_stage_queued_eta">En file d\'attente · environ %1$d min</string>
+    <string name="support_stage_analysing">Analyse en cours</string>
+    <string name="support_stage_analysing_elapsed">Analyse en cours · %1$d min</string>
+    <string name="support_stage_failed">Échec de l\'analyse</string>
+    <plurals name="support_progress_ahead">
+        <item quantity="one">%1$d rapport passe avant le vôtre.</item>
+        <item quantity="other">%1$d rapports passent avant le vôtre.</item>
+    </plurals>
+    <plurals name="support_progress_eta_minutes">
+        <item quantity="one">Réponse attendue dans environ %1$d minute.</item>
+        <item quantity="other">Réponse attendue dans environ %1$d minutes.</item>
+    </plurals>
 </resources>

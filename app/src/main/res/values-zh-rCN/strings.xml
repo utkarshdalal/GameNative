@@ -2866,4 +2866,21 @@
     <string name="support_suggestion_restored">已恢复之前的设置。</string>
     <string name="support_suggestion_failed">无法更改设置。%1$s</string>
     <string name="support_suggestion_missing">以下组件在此设备上不可用：%1$s</string>
+    <string name="support_progress_next">下一个就是你的。</string>
+    <string name="support_progress_eta_soon">预计很快回复。</string>
+    <string name="support_progress_analysing">AI 正在读取你的日志</string>
+    <string name="support_progress_analysing_elapsed">AI 正在读取你的日志（%1$d 分钟）</string>
+    <string name="support_progress_failed">分析未完成。请重新发送报告再试一次。</string>
+    <string name="support_progress_retry">重试</string>
+    <string name="support_stage_queued">排队中</string>
+    <string name="support_stage_queued_eta">排队中 · 约 %1$d 分钟</string>
+    <string name="support_stage_analysing">分析中</string>
+    <string name="support_stage_analysing_elapsed">分析中 · %1$d 分钟</string>
+    <string name="support_stage_failed">分析失败</string>
+    <plurals name="support_progress_ahead">
+        <item quantity="other">你前面还有 %1$d 份报告。</item>
+    </plurals>
+    <plurals name="support_progress_eta_minutes">
+        <item quantity="other">预计约 %1$d 分钟后回复。</item>
+    </plurals>
 </resources>

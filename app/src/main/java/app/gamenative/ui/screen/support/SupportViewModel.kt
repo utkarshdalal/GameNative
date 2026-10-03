@@ -143,7 +143,8 @@ class SupportViewModel @Inject constructor(
                 merge(result.data)
                 when {
                     result.data.messages.size >= PAGE_SIZE && page < MAX_PAGES -> null
-                    chat.conversation?.state == SupportApi.STATE_WAITING -> WAITING_POLL_MS
+                    chat.conversation?.progress?.active == true -> PROGRESS_POLL_MS
+                    chat.conversation?.state == SupportApi.STATE_WAITING && chat.conversation?.progress == null -> WAITING_POLL_MS
                     else -> IDLE_POLL_MS
                 }
             }
@@ -366,6 +367,7 @@ class SupportViewModel @Inject constructor(
         private const val PAGE_SIZE = 100
         private const val MAX_PAGES = 10
         private const val WAITING_POLL_MS = 5_000L
+        private const val PROGRESS_POLL_MS = 10_000L
         private const val IDLE_POLL_MS = 30_000L
         private const val ERROR_POLL_MS = 15_000L
         private const val RATE_LIMITED_POLL_MS = 60_000L

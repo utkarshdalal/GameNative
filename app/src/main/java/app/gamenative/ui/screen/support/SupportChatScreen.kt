@@ -163,6 +163,7 @@ internal fun ColumnScope.SupportChat(
     val uploadProgress = viewModel.uploadProgress
     val items = chatItems(chat)
     val upgradeOpen by rememberUpdatedState(upgradeReason != null)
+    val clock = rememberSupportClock(conversation?.progress?.active == true)
 
     LaunchedEffect(conversationId, lifecycleOwner) {
         if (conversationId.isEmpty()) return@LaunchedEffect
@@ -213,7 +214,7 @@ internal fun ColumnScope.SupportChat(
 
     SupportHeader(
         title = conversation?.game?.ifEmpty { null } ?: stringResource(R.string.support_title),
-        subtitle = conversation?.let { stateLabel(it.state, it.outcome) },
+        subtitle = conversation?.let { conversationLabel(it, clock) },
         onBack = onBack,
         backFocus = backFocus,
     )
@@ -325,7 +326,13 @@ internal fun ColumnScope.SupportChat(
                                     )
                                 }
                             }
-                            is ChatItem.Analysing -> AnalysingCard(first = item.first)
+                            is ChatItem.Analysing -> AnalysingCard(
+                                first = item.first,
+                                progress = conversation?.progress,
+                                clock = clock,
+                                retryEnabled = appId != null && uploadProgress == null && !chat.sending,
+                                onRetry = { viewModel.sendLogs(context) },
+                            )
                             ChatItem.OutcomePrompt -> OutcomePromptCard(
                                 busy = chat.outcomeBusy,
                                 onOutcome = { solved -> viewModel.setOutcome(solved) },
@@ -661,16 +668,57 @@ private fun NoticeCard(
 }
 
 @Composable
-private fun AnalysingCard(first: Boolean) {
+private fun AnalysingCard(
+    first: Boolean,
+    progress: SupportApi.Progress?,
+    clock: Pair<Long, Long>,
+    retryEnabled: Boolean,
+    onRetry: () -> Unit,
+) {
+    val resources = LocalContext.current.resources
+    if (progress?.stage == SupportApi.STAGE_FAILED) {
+        FocusableCard(modifier = Modifier.fillMaxWidth(), isFocusable = false) {
+            Column {
+                Text(
+                    text = stringResource(R.string.support_progress_failed),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(bottom = 10.dp),
+                )
+                FocusableButton(
+                    text = stringResource(R.string.support_progress_retry),
+                    onClick = onRetry,
+                    enabled = retryEnabled,
+                )
+            }
+        }
+        return
+    }
+    val text = when (progress?.stage) {
+        SupportApi.STAGE_QUEUED -> SupportProgressText.queuedLine(resources, progress, clock.first)
+        SupportApi.STAGE_ANALYSING -> SupportProgressText.analysingLine(resources, progress, clock.second)
+        else -> stringResource(if (first) R.string.support_analysing_first else R.string.support_analysing_followup)
+    }
+    val detail = progress?.detail?.takeIf { progress.stage == SupportApi.STAGE_ANALYSING }
     FocusableCard(modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
             Spacer(modifier = Modifier.size(12.dp))
-            Text(
-                text = stringResource(if (first) R.string.support_analysing_first else R.string.support_analysing_followup),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            Column {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                if (detail != null) {
+                    Text(
+                        text = detail,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = PluviaTheme.colors.textMuted,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+            }
         }
     }
 }

@@ -2851,4 +2851,23 @@
     <string name="support_suggestion_restored">Los ajustes anteriores se restauraron.</string>
     <string name="support_suggestion_failed">No se pudieron cambiar los ajustes. %1$s</string>
     <string name="support_suggestion_missing">Estas partes no están disponibles en este dispositivo: %1$s</string>
+    <string name="support_progress_next">El tuyo es el siguiente.</string>
+    <string name="support_progress_eta_soon">Respuesta prevista muy pronto.</string>
+    <string name="support_progress_analysing">La IA está leyendo tus registros</string>
+    <string name="support_progress_analysing_elapsed">La IA está leyendo tus registros (%1$d min)</string>
+    <string name="support_progress_failed">El análisis no terminó. Vuelve a enviar tu informe para intentarlo otra vez.</string>
+    <string name="support_progress_retry">Reintentar</string>
+    <string name="support_stage_queued">En cola</string>
+    <string name="support_stage_queued_eta">En cola · unos %1$d min</string>
+    <string name="support_stage_analysing">Analizando</string>
+    <string name="support_stage_analysing_elapsed">Analizando · %1$d min</string>
+    <string name="support_stage_failed">El análisis falló</string>
+    <plurals name="support_progress_ahead">
+        <item quantity="one">Hay %1$d informe antes que el tuyo.</item>
+        <item quantity="other">Hay %1$d informes antes que el tuyo.</item>
+    </plurals>
+    <plurals name="support_progress_eta_minutes">
+        <item quantity="one">Respuesta prevista en unos %1$d minuto.</item>
+        <item quantity="other">Respuesta prevista en unos %1$d minutos.</item>
+    </plurals>
 </resources>
