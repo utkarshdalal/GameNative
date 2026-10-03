@@ -1,5 +1,6 @@
 package app.gamenative.ui.component.dialog
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -9,12 +10,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -40,19 +43,39 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.component.dialog.state.DebugReportDialogState
 import app.gamenative.ui.theme.PluviaTheme
-import java.util.Locale
+
+const val AI_HELP_PATH_APP = "app"
+const val AI_HELP_PATH_DISCORD = "discord"
+
+fun debugReportUsesApp(
+    appChatEnabled: Boolean,
+    hasDiscordToken: Boolean,
+    accountSignedIn: Boolean,
+    preferredPath: String,
+): Boolean = appChatEnabled && accountSignedIn && when (preferredPath) {
+    AI_HELP_PATH_APP -> true
+    AI_HELP_PATH_DISCORD -> false
+    else -> !hasDiscordToken
+}
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DebugReportDialog(
     state: DebugReportDialogState,
     hasDiscordToken: Boolean,
+    appChatEnabled: Boolean,
+    accountSignedIn: Boolean,
+    preferredPath: String,
+    sendProgress: Float?,
     onStateChange: (DebugReportDialogState) -> Unit,
     onSend: () -> Unit,
     onShare: () -> Unit,
     onConnectDiscord: () -> Unit,
+    onSignInForApp: () -> Unit,
+    onPreferredPathChange: (String) -> Unit,
     onOpenThread: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -86,7 +109,16 @@ fun DebugReportDialog(
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.padding(bottom = 16.dp),
                             )
-                            CircularProgressIndicator(modifier = Modifier.padding(bottom = 16.dp))
+                            if (sendProgress != null && sendProgress > 0f) {
+                                LinearProgressIndicator(
+                                    progress = { sendProgress },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 16.dp),
+                                )
+                            } else {
+                                CircularProgressIndicator(modifier = Modifier.padding(bottom = 16.dp))
+                            }
                             Text(
                                 text = stringResource(R.string.debug_report_sending),
                                 style = MaterialTheme.typography.bodyMedium,
@@ -119,6 +151,29 @@ fun DebugReportDialog(
                                     modifier = Modifier.padding(start = 8.dp),
                                 ) {
                                     Text(stringResource(R.string.debug_report_open_discord))
+                                }
+                            }
+                        }
+
+                        DebugReportDialogState.PHASE_NO_LOG -> {
+                            Text(
+                                text = stringResource(R.string.debug_report_title),
+                                style = MaterialTheme.typography.headlineSmall,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(bottom = 16.dp),
+                            )
+                            Text(
+                                text = stringResource(R.string.debug_report_no_log),
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(bottom = 16.dp),
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End,
+                            ) {
+                                TextButton(onClick = onDismiss) {
+                                    Text(stringResource(R.string.close))
                                 }
                             }
                         }
@@ -159,6 +214,8 @@ fun DebugReportDialog(
                         }
 
                         else -> {
+                            val usesApp = debugReportUsesApp(appChatEnabled, hasDiscordToken, accountSignedIn, preferredPath)
+                            val canSend = state.issueText.isNotBlank() && !state.preparing
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -173,19 +230,37 @@ fun DebugReportDialog(
                                     modifier = Modifier.padding(bottom = 16.dp),
                                 )
 
-                                val logSizeMb = String.format(Locale.US, "%.1f", state.logSizeBytes / (1024f * 1024f))
                                 Text(
                                     text = stringResource(
                                         R.string.debug_report_summary,
                                         state.gameName,
                                         state.deviceName,
-                                        logSizeMb,
                                     ),
                                     style = MaterialTheme.typography.bodyMedium,
                                     modifier = Modifier
                                         .align(Alignment.Start)
-                                        .padding(bottom = 16.dp),
+                                        .padding(bottom = if (state.preparing) 8.dp else 16.dp),
                                 )
+
+                                if (state.preparing) {
+                                    Row(
+                                        modifier = Modifier
+                                            .align(Alignment.Start)
+                                            .padding(bottom = 16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(16.dp),
+                                            strokeWidth = 2.dp,
+                                        )
+                                        Text(
+                                            text = stringResource(R.string.debug_report_preparing),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = PluviaTheme.colors.textMuted,
+                                            modifier = Modifier.padding(start = 8.dp),
+                                        )
+                                    }
+                                }
 
                                 val issueFocusRequester = remember { FocusRequester() }
                                 val focusManager = LocalFocusManager.current
@@ -220,7 +295,7 @@ fun DebugReportDialog(
                                     maxLines = 5,
                                 )
 
-                                if (!hasDiscordToken) {
+                                if (!usesApp && !hasDiscordToken) {
                                     Text(
                                         text = stringResource(R.string.debug_report_connect_hint),
                                         style = MaterialTheme.typography.bodySmall,
@@ -237,6 +312,7 @@ fun DebugReportDialog(
 
                                 TextButton(
                                     onClick = onShare,
+                                    enabled = !state.preparing,
                                     modifier = Modifier.padding(bottom = 16.dp),
                                 ) {
                                     Text(stringResource(R.string.debug_report_share_instead))
@@ -253,9 +329,34 @@ fun DebugReportDialog(
                                 Button(
                                     onClick = onSend,
                                     modifier = Modifier.padding(start = 8.dp),
-                                    enabled = state.issueText.isNotBlank() && hasDiscordToken,
+                                    enabled = canSend && (usesApp || hasDiscordToken),
                                 ) {
                                     Text(stringResource(R.string.debug_report_send))
+                                }
+                            }
+
+                            if (appChatEnabled) {
+                                val altInteraction = remember { MutableInteractionSource() }
+                                TextButton(
+                                    onClick = {
+                                        when {
+                                            usesApp -> onPreferredPathChange(AI_HELP_PATH_DISCORD)
+                                            accountSignedIn -> onPreferredPathChange(AI_HELP_PATH_APP)
+                                            else -> onSignInForApp()
+                                        }
+                                    },
+                                    enabled = usesApp || accountSignedIn || canSend,
+                                    interactionSource = altInteraction,
+                                    modifier = Modifier
+                                        .padding(top = 8.dp)
+                                        .focusRing(altInteraction, RoundedCornerShape(12.dp), width = 2.dp),
+                                ) {
+                                    Text(
+                                        text = stringResource(
+                                            if (usesApp) R.string.debug_report_use_discord else R.string.debug_report_use_app,
+                                        ),
+                                        textAlign = TextAlign.Center,
+                                    )
                                 }
                             }
                         }

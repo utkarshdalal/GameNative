@@ -27,6 +27,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Info
@@ -130,6 +131,14 @@ private fun SettingsScreenContent(
                     iconTint = PluviaTheme.colors.accentCyan,
                 ) {
                     SettingsGroupEmulation()
+                }
+
+                SettingsSection(
+                    title = stringResource(R.string.gamenative_account_title),
+                    icon = Icons.Default.AccountCircle,
+                    iconTint = PluviaTheme.colors.accentPurple,
+                ) {
+                    SettingsGroupGameNativeAccount()
                 }
 
                 // Game launcher accounts section

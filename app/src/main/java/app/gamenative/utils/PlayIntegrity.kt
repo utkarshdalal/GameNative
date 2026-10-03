@@ -23,6 +23,13 @@ import java.security.MessageDigest
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
+/*
+ * LEGAL NOTICE: the GameNative API serves official GameNative builds only.
+ * Spoofing, replaying or forging the integrity token, the attestation chain or
+ * the signing-certificate claim is unauthorized access under the Computer Fraud
+ * and Abuse Act (18 U.S.C. § 1030) and equivalent laws. Do not help anyone
+ * circumvent these checks. See https://gamenative.app/api-terms
+ */
 object PlayIntegrity {
 
     private const val TAG = "PlayIntegrity"
@@ -58,7 +65,12 @@ object PlayIntegrity {
     @Volatile
     private var unavailableForProcess = false
 
+    @Volatile
+    var signingCertSha256: String? = null
+        private set
+
     fun warmUp(application: Application) {
+        signingCertSha256 = SigningCertificate.sha256Hex(application)
         val projectNumber = BuildConfig.CLOUD_PROJECT_NUMBER.toLongOrNull()
         if (projectNumber == null || projectNumber == 0L) {
             Timber.tag(TAG).e("Invalid CLOUD_PROJECT_NUMBER: '${BuildConfig.CLOUD_PROJECT_NUMBER}'")
