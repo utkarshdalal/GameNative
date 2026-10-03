@@ -4,12 +4,10 @@ import android.content.Context
 import android.os.Build
 import app.gamenative.BuildConfig
 import app.gamenative.ui.screen.support.SupportSuggestionApplier
-import com.winlator.contents.AdrenotoolsManager
 import com.winlator.core.GPUInformation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
@@ -185,13 +183,6 @@ object DebugReportUtils {
             "Unknown GPU"
         }
 
-        val installedDrivers = try {
-            AdrenotoolsManager(context).enumarateInstalledDrivers()
-        } catch (e: Exception) {
-            Timber.w(e, "DebugReportUtils: Failed to list installed drivers")
-            emptyList<String>()
-        }
-
         val avgFps = container.getSessionMetadata("avg_fps", "").toFloatOrNull()
         val sessionLengthSec = container.getSessionMetadata("session_length_sec", "").toIntOrNull()
 
@@ -206,7 +197,6 @@ object DebugReportUtils {
             put("androidVersion", Build.VERSION.RELEASE)
             put("appVersion", BuildConfig.VERSION_NAME)
             put("configs", JSONObject(container.containerJson))
-            put("installedDrivers", JSONArray(installedDrivers))
             if (avgFps != null) put("avgFps", avgFps.toDouble()) else put("avgFps", JSONObject.NULL)
             if (sessionLengthSec != null) put("sessionLengthSec", sessionLengthSec) else put("sessionLengthSec", JSONObject.NULL)
             put("runParams", (runParams ?: DebugRunParams()).toJson())
