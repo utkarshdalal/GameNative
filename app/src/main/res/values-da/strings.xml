@@ -2742,4 +2742,6 @@
         <item quantity="one">Svar ventes om ca. %1$d minut.</item>
         <item quantity="other">Svar ventes om ca. %1$d minutter.</item>
     </plurals>
+    <string name="support_reply_ready">Dit supportsvar er klar</string>
+    <string name="support_reply_open">Åbn</string>
 </resources>

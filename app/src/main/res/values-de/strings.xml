@@ -2812,4 +2812,6 @@
         <item quantity="one">Antwort in etwa %1$d Minute erwartet.</item>
         <item quantity="other">Antwort in etwa %1$d Minuten erwartet.</item>
     </plurals>
+    <string name="support_reply_ready">Deine Support-Antwort ist da</string>
+    <string name="support_reply_open">Öffnen</string>
 </resources>

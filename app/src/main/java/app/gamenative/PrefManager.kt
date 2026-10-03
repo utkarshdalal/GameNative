@@ -1135,6 +1135,13 @@ object PrefManager {
             setPref(DISCORD_OAUTH_NONCE, value)
         }
 
+    private val SUPPORT_LAST_SEEN = stringPreferencesKey("support_last_seen")
+    var supportLastSeen: String
+        get() = getPref(SUPPORT_LAST_SEEN, "")
+        set(value) {
+            setPref(SUPPORT_LAST_SEEN, value)
+        }
+
     private val GAMENATIVE_ACCESS_TOKEN_ENC = byteArrayPreferencesKey("gamenative_access_token_enc")
     val gameNativeAccessToken: String
         get() {

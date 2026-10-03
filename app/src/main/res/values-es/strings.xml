@@ -2870,4 +2870,6 @@
         <item quantity="one">Respuesta prevista en unos %1$d minuto.</item>
         <item quantity="other">Respuesta prevista en unos %1$d minutos.</item>
     </plurals>
+    <string name="support_reply_ready">Tu respuesta de soporte está lista</string>
+    <string name="support_reply_open">Abrir</string>
 </resources>

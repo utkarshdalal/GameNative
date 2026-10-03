@@ -94,7 +94,10 @@ class SupportViewModel @Inject constructor(
         list = list.copy(loading = true, problem = null)
         viewModelScope.launch {
             list = when (val result = SupportApi.listConversations()) {
-                is ApiResult.Success -> ListState(loaded = true, conversations = result.data)
+                is ApiResult.Success -> {
+                    SupportReplyWatcher.observe(result.data)
+                    ListState(loaded = true, conversations = result.data)
+                }
                 else -> list.copy(loading = false, problem = problemOf(result, notFound = Problem.UNAVAILABLE))
             }
         }
@@ -171,7 +174,10 @@ class SupportViewModel @Inject constructor(
             loaded = true,
             problem = null,
         )
-        conversation?.let { updateListEntry(it) }
+        conversation?.let {
+            updateListEntry(it)
+            SupportReplyWatcher.markSeen(it.id, it.lastMessageAt)
+        }
     }
 
     private fun updateListEntry(conversation: SupportApi.Conversation) {
@@ -195,7 +201,14 @@ class SupportViewModel @Inject constructor(
             } ?: update
         } ?: chat.conversation
         chat = chat.copy(messages = messages, conversation = conversation)
-        conversation?.let { updateListEntry(it) }
+        conversation?.let {
+            updateListEntry(it)
+            if (it.awaitingReply) onFollowUpPosted(it)
+        }
+    }
+
+    private fun onFollowUpPosted(conversation: SupportApi.Conversation) {
+        SupportReplyWatcher.track(conversation.id, conversation.lastMessageAt)
     }
 
     private fun actionProblem(result: ApiResult<*>): Problem? {

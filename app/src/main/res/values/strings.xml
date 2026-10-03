@@ -2888,4 +2888,6 @@
         <item quantity="one">Expected reply in about %1$d minute.</item>
         <item quantity="other">Expected reply in about %1$d minutes.</item>
     </plurals>
+    <string name="support_reply_ready">Your support reply is ready</string>
+    <string name="support_reply_open">Open</string>
 </resources>

@@ -2880,4 +2880,6 @@
         <item quantity="many">Відповідь очікується приблизно за %1$d хвилин.</item>
         <item quantity="other">Відповідь очікується приблизно за %1$d хвилини.</item>
     </plurals>
+    <string name="support_reply_ready">Відповідь підтримки готова</string>
+    <string name="support_reply_open">Відкрити</string>
 </resources>

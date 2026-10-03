@@ -92,6 +92,7 @@ import app.gamenative.api.SupportApi
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.theme.PluviaTheme
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.io.File
@@ -168,7 +169,13 @@ internal fun ColumnScope.SupportChat(
     LaunchedEffect(conversationId, lifecycleOwner) {
         if (conversationId.isEmpty()) return@LaunchedEffect
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            viewModel.poll(conversationId)
+            SupportReplyWatcher.chatVisible(conversationId)
+            try {
+                viewModel.poll(conversationId)
+                awaitCancellation()
+            } finally {
+                SupportReplyWatcher.chatHidden(conversationId)
+            }
         }
     }
 

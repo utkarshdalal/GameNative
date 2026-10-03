@@ -2830,4 +2830,6 @@
     <plurals name="support_progress_eta_minutes">
         <item quantity="other">約%1$d分で返信が届く見込みです。</item>
     </plurals>
+    <string name="support_reply_ready">サポートからの返信が届きました</string>
+    <string name="support_reply_open">開く</string>
 </resources>

@@ -2884,4 +2884,6 @@
         <item quantity="many">Odpowiedź za około %1$d minut.</item>
         <item quantity="other">Odpowiedź za około %1$d minuty.</item>
     </plurals>
+    <string name="support_reply_ready">Odpowiedź wsparcia jest gotowa</string>
+    <string name="support_reply_open">Otwórz</string>
 </resources>

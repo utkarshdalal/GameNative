@@ -63,6 +63,7 @@ object SupportReportSubmitter {
                 val result = SupportApi.uploadFiles(target, text, header, logFile, perfFile, logcatFile, onProgress)
                 if (result is ApiResult.Success) {
                     SupportSession.clearRun(state.appId)
+                    SupportReplyWatcher.track(target, result.data.conversation?.lastMessageAt ?: 0L)
                     return Outcome.Sent(target)
                 }
                 if (result !is ApiResult.HttpError || (result.code != 403 && result.code != 404)) return outcomeOf(result)
@@ -70,7 +71,9 @@ object SupportReportSubmitter {
                 progress.value = 0f
             }
             val created = SupportApi.createConversation(header, logFile, perfFile, logcatFile, onProgress)
-            return if (created is ApiResult.Success) Outcome.Sent(created.data.id) else outcomeOf(created)
+            if (created !is ApiResult.Success) return outcomeOf(created)
+            SupportReplyWatcher.track(created.data.id, created.data.lastMessageAt)
+            return Outcome.Sent(created.data.id)
         } finally {
             progress.value = null
         }

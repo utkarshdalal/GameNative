@@ -2883,4 +2883,6 @@
     <plurals name="support_progress_eta_minutes">
         <item quantity="other">预计约 %1$d 分钟后回复。</item>
     </plurals>
+    <string name="support_reply_ready">你的支持回复已就绪</string>
+    <string name="support_reply_open">打开</string>
 </resources>

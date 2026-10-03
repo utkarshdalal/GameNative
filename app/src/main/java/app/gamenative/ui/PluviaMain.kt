@@ -111,6 +111,8 @@ import app.gamenative.ui.screen.HomeScreen
 import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.ui.screen.login.UserLoginScreen
 import app.gamenative.ui.screen.settings.SettingsScreen
+import app.gamenative.ui.screen.support.SnackbarActionContent
+import app.gamenative.ui.screen.support.SupportReplyEffects
 import app.gamenative.ui.screen.support.SupportReportSubmitter
 import app.gamenative.ui.screen.support.SupportScreen
 import app.gamenative.ui.screen.support.SupportSession
@@ -1393,6 +1395,15 @@ fun PluviaMain(
         }
     }
 
+    SupportReplyEffects(
+        gameRunning = state.currentScreen == PluviaScreen.XServer,
+        hostState = snackbarController.hostState,
+        onOpenConversation = { conversationId ->
+            SupportSession.pendingConversationId.value = conversationId
+            navController.navigate(PluviaScreen.Support.route) { launchSingleTop = true }
+        },
+    )
+
     BackHandler(enabled = state.loadingDialogVisible && !SteamService.keepAlive) {
         // TODO: Make prelaunch/loading operations cancellable so Back can exit safely.
     }
@@ -2128,12 +2139,21 @@ fun PluviaMain(
                             color = MaterialTheme.colorScheme.surfaceContainerHigh,
                             shadowElevation = 4.dp,
                         ) {
-                            Text(
-                                text = data.visuals.message,
-                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
-                                color = MaterialTheme.colorScheme.onSurface,
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
+                            val actionLabel = data.visuals.actionLabel
+                            if (actionLabel == null) {
+                                Text(
+                                    text = data.visuals.message,
+                                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                            } else {
+                                SnackbarActionContent(
+                                    message = data.visuals.message,
+                                    actionLabel = actionLabel,
+                                    onAction = { data.performAction() },
+                                )
+                            }
                         }
                     }
                 }

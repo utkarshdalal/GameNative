@@ -2863,4 +2863,6 @@
     <plurals name="support_progress_eta_minutes">
         <item quantity="other">약 %1$d분 후 답변이 도착할 예정입니다.</item>
     </plurals>
+    <string name="support_reply_ready">지원 답변이 준비되었습니다</string>
+    <string name="support_reply_open">열기</string>
 </resources>

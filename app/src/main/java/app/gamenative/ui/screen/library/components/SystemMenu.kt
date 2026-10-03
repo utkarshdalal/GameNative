@@ -85,6 +85,7 @@ import app.gamenative.events.SteamEvent
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.dialog.SupportersDialog
 import app.gamenative.ui.screen.PluviaScreen
+import app.gamenative.ui.screen.support.SupportReplyWatcher
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.SteamIconImage
 import app.gamenative.ui.util.adaptivePanelWidth
@@ -105,6 +106,7 @@ private fun SystemMenuItem(
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester = remember { FocusRequester() },
     isDestructive: Boolean = false,
+    badge: Boolean = false,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
@@ -160,6 +162,13 @@ private fun SystemMenuItem(
                 color = contentColor,
                 fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Normal,
             )
+            if (badge) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape),
+                )
+            }
         }
     }
 }
@@ -587,6 +596,7 @@ fun SystemMenu(
                                 onNavigateRoute(PluviaScreen.Support.route)
                                 onDismiss()
                             },
+                            badge = SupportReplyWatcher.unread.value.isNotEmpty(),
                         )
 
                         SystemMenuItem(

@@ -2880,4 +2880,6 @@
         <item quantity="few">Răspuns așteptat în aproximativ %1$d minute.</item>
         <item quantity="other">Răspuns așteptat în aproximativ %1$d de minute.</item>
     </plurals>
+    <string name="support_reply_ready">Răspunsul de la suport este gata</string>
+    <string name="support_reply_open">Deschide</string>
 </resources>
