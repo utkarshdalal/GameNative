@@ -1051,12 +1051,16 @@
     <string name="support_upgrade_title">Serve un piano per continuare</string>
     <string name="support_upgrade_reason_trial_used">La tua prima analisi era gratuita. Per rispondere e continuare a parlare con l\'AI di questo problema, scegli un piano.</string>
     <string name="support_upgrade_reason_reply_cap">Hai raggiunto il limite di uso corretto di oggi. Si azzera tra qualche ora.</string>
+    <plurals name="support_fair_use_resets_in_hours">
+        <item quantity="one">Hai raggiunto il limite di uso corretto di oggi. Si azzera tra %1$d ora.</item>
+        <item quantity="other">Hai raggiunto il limite di uso corretto di oggi. Si azzera tra %1$d ore.</item>
+    </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">I report Pro saltano la coda.</string>
     <string name="support_limit_title">Limite giornaliero di uso corretto raggiunto</string>
     <string name="support_upgrade_reason_required">Le risposte dell\'AI richiedono un abbonamento GameNative.</string>
     <string name="support_see_plans">Vedi i piani</string>
     <string name="support_plan_basic_title">$5/mese · Basic</string>
-    <string name="support_plan_basic_body">Risposte dell\'AI illimitate entro un limite di uso corretto di 40 risposte e 10 report al giorno. I tuoi report attendono nella coda normale.</string>
+    <string name="support_plan_basic_body">Risposte AI illimitate entro un limite giornaliero di uso corretto, gestite nella coda normale.</string>
     <string name="support_checkout_scan">Scansiona questo codice con il telefono per completare il pagamento. Puoi anche completarlo su questo dispositivo.</string>
     <string name="support_checkout_waiting">Quando hai finito, torna qui. Il tuo piano si aggiorna da solo.</string>
     <string name="support_checkout_open">Apri su questo dispositivo</string>
@@ -2030,9 +2034,9 @@
     <string name="debug_paywall_title">Ottieni supporto di debug AI</string>
     <string name="debug_paywall_pitch">La nostra AI legge il tuo log e la tua configurazione esatti e ti dice cosa cambiare, di solito in meno di 5 minuti.</string>
     <string name="debug_paywall_tier5_title">$5/mese · Basic</string>
-    <string name="debug_paywall_tier5_body">Risposte dell\'AI illimitate entro un limite di uso corretto di 40 risposte e 10 report al giorno. I tuoi report attendono nella coda normale.</string>
+    <string name="debug_paywall_tier5_body">Risposte AI illimitate entro un limite giornaliero di uso corretto, gestite nella coda normale.</string>
     <string name="debug_paywall_tier10_title">$10/mese · Pro</string>
-    <string name="debug_paywall_tier10_body">Lo stesso limite di uso corretto di 40 risposte e 10 report al giorno. I tuoi report passano per primi e non aspettano mai dietro altri report.</string>
+    <string name="debug_paywall_tier10_body">Lo stesso limite di uso corretto, e le tue segnalazioni passano per prime: non aspettano mai dietro quelle degli altri membri.</string>
     <string name="debug_paywall_cancel_anytime">Annulla quando vuoi.</string>
     <string name="debug_paywall_costs_note">Gli abbonamenti coprono i costi del servizio AI che rende possibile questa funzione.</string>
     <string name="debug_paywall_subscribe">Abbonati su Discord</string>

@@ -32,8 +32,15 @@ object SupportReportSubmitter {
     private fun hasPaidTier(): Boolean =
         AccountApi.account.value?.tier.let { it == "basic" || it == "pro" || it == "patron" }
 
+    fun fairUseText(context: Context, hours: Int?): String =
+        if (hours != null) {
+            context.resources.getQuantityString(R.plurals.support_fair_use_resets_in_hours, hours, hours)
+        } else {
+            context.getString(R.string.support_upgrade_reason_reply_cap)
+        }
+
     fun limitReachedText(context: Context): String {
-        val text = context.getString(R.string.support_upgrade_reason_reply_cap)
+        val text = fairUseText(context, SupportApi.lastFairUse?.hoursLeft())
         return if (AccountApi.account.value?.tier == "basic") {
             text + " " + context.getString(R.string.support_upgrade_reply_cap_pro_hint)
         } else {
@@ -43,8 +50,8 @@ object SupportReportSubmitter {
 
     private fun isLimit(result: ApiResult<*>): Boolean =
         result is ApiResult.HttpError && (
-            (result.code == 403 && result.message == SupportApi.REASON_REPLY_CAP) ||
-                (result.code == 429 && (result.message == SupportApi.REASON_REPLY_CAP || result.message == SupportApi.REASON_RATE_LIMITED))
+            (result.code == 403 && SupportApi.isFairUse(result.message)) ||
+                (result.code == 429 && (SupportApi.isFairUse(result.message) || result.message == SupportApi.REASON_RATE_LIMITED))
             )
 
     private fun outcomeOf(result: ApiResult<*>): Outcome =

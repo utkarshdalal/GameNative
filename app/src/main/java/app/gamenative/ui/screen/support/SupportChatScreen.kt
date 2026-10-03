@@ -446,6 +446,7 @@ internal fun ColumnScope.SupportChat(
     if (conversation != null && !conversation.composer.allowed) {
         LockedComposer(
             reason = conversation.composer.reason,
+            resetsAt = conversation.composer.resetsAt,
             onUpgrade = { upgradeReason = conversation.composer.reason ?: SupportApi.REASON_UPGRADE_REQUIRED },
         )
     } else if (conversation != null) {
@@ -712,6 +713,13 @@ private fun NoticeCard(
                 }
             }
         }
+        is SupportApi.Notice.Limit -> FocusableCard(modifier = Modifier.fillMaxWidth()) {
+            val hours = SupportApi.FairUse(notice.resetsAt, null).hoursLeft()
+            Text(
+                text = fairUseReasonText(hours, notice.message),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
         is SupportApi.Notice.Moved -> FocusableCard(modifier = Modifier.fillMaxWidth()) {
             Text(text = stringResource(R.string.support_notice_moved), style = MaterialTheme.typography.bodyMedium)
         }
@@ -845,7 +853,7 @@ private fun runFailureText(failure: SupportReportSubmitter.Outcome?): String =
         is SupportReportSubmitter.Outcome.Forbidden -> upgradeReasonText(failure.reason)
         SupportReportSubmitter.Outcome.PlanPending -> stringResource(R.string.support_plan_pending)
         SupportReportSubmitter.Outcome.RateLimited -> stringResource(R.string.support_problem_rate_limited)
-        SupportReportSubmitter.Outcome.LimitReached -> upgradeReasonText(SupportApi.REASON_REPLY_CAP)
+        SupportReportSubmitter.Outcome.LimitReached -> fairUseReasonText(SupportApi.lastFairUse?.hoursLeft())
         SupportReportSubmitter.Outcome.SignedOut -> stringResource(R.string.support_problem_unauthorized)
         SupportReportSubmitter.Outcome.Unavailable -> stringResource(R.string.support_problem_unavailable)
         else -> stringResource(R.string.support_run_check_failed)
@@ -1005,7 +1013,7 @@ private fun RunCheckCard(
 }
 
 @Composable
-private fun LockedComposer(reason: String?, onUpgrade: () -> Unit) {
+private fun LockedComposer(reason: String?, resetsAt: Long?, onUpgrade: () -> Unit) {
     if (reason == SupportApi.REASON_ANALYSING) {
         Text(
             text = stringResource(R.string.support_composer_analysing),
@@ -1023,7 +1031,7 @@ private fun LockedComposer(reason: String?, onUpgrade: () -> Unit) {
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Text(
-            text = upgradeReasonText(reason),
+            text = upgradeReasonText(reason, resetsAt),
             style = MaterialTheme.typography.bodyMedium,
             color = PluviaTheme.colors.textMuted,
             modifier = Modifier.padding(bottom = 8.dp),

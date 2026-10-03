@@ -221,9 +221,10 @@ class SupportViewModel @Inject constructor(
         if (result is ApiResult.HttpError && result.code == 403) {
             val reason = result.message.ifBlank { SupportApi.REASON_UPGRADE_REQUIRED }
             chat.conversation?.let { current ->
-                chat = chat.copy(conversation = current.copy(composer = SupportApi.Composer(false, reason)))
+                val resetsAt = if (SupportApi.isFairUse(reason)) SupportApi.lastFairUse?.resetsAt else null
+                chat = chat.copy(conversation = current.copy(composer = SupportApi.Composer(false, reason, resetsAt)))
             }
-            return if (reason == SupportApi.REASON_ANALYSING) null else Problem.LOCKED
+            return if (reason == SupportApi.REASON_ANALYSING || SupportApi.isFairUse(reason)) null else Problem.LOCKED
         }
         return problemOf(result)
     }

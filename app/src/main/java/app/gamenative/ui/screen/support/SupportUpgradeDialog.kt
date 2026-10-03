@@ -42,6 +42,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -175,7 +176,7 @@ fun SupportUpgradeDialog(
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val firstFocus = remember { FocusRequester() }
     val cancelFocus = remember { FocusRequester() }
-    val showBasic = reason != SupportApi.REASON_REPLY_CAP && account?.tier != "basic"
+    val showBasic = !SupportApi.isFairUse(reason) && account?.tier != "basic"
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -276,26 +277,34 @@ private fun CheckoutQr(url: String, size: Dp) {
     }
 }
 
-@Composable
-internal fun upgradeOffered(reason: String?): Boolean {
-    val account by AccountApi.account
-    return reason != SupportApi.REASON_REPLY_CAP || account?.tier == "basic"
-}
+internal fun upgradeOffered(reason: String?): Boolean = !SupportApi.isFairUse(reason)
 
 @Composable
-internal fun upgradeReasonText(reason: String?): String {
-    val text = stringResource(
-        when (reason) {
-            SupportApi.REASON_TRIAL_USED -> R.string.support_upgrade_reason_trial_used
-            SupportApi.REASON_REPLY_CAP -> R.string.support_upgrade_reason_reply_cap
-            else -> R.string.support_upgrade_reason_required
-        },
-    )
-    return if (reason == SupportApi.REASON_REPLY_CAP && upgradeOffered(reason)) {
+internal fun fairUseReasonText(hours: Int?, fallback: String? = null): String {
+    val account by AccountApi.account
+    val text = when {
+        hours != null -> pluralStringResource(R.plurals.support_fair_use_resets_in_hours, hours, hours)
+        fallback != null -> fallback
+        else -> stringResource(R.string.support_upgrade_reason_reply_cap)
+    }
+    return if (account?.tier == "basic") {
         text + " " + stringResource(R.string.support_upgrade_reply_cap_pro_hint)
     } else {
         text
     }
+}
+
+@Composable
+internal fun upgradeReasonText(reason: String?, resetsAt: Long? = null): String {
+    if (SupportApi.isFairUse(reason)) {
+        return fairUseReasonText(SupportApi.FairUse(resetsAt, null).hoursLeft())
+    }
+    return stringResource(
+        when (reason) {
+            SupportApi.REASON_TRIAL_USED -> R.string.support_upgrade_reason_trial_used
+            else -> R.string.support_upgrade_reason_required
+        },
+    )
 }
 
 @Composable

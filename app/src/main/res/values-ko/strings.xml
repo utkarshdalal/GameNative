@@ -1060,12 +1060,15 @@
     <string name="support_upgrade_title">계속하려면 플랜이 필요합니다</string>
     <string name="support_upgrade_reason_trial_used">첫 분석은 무료였습니다. 답장하고 이 문제에 대해 AI와 계속 대화하려면 플랜을 선택하세요.</string>
     <string name="support_upgrade_reason_reply_cap">오늘의 공정 사용 한도에 도달했습니다. 몇 시간 후에 초기화됩니다.</string>
+    <plurals name="support_fair_use_resets_in_hours">
+        <item quantity="other">오늘의 공정 사용 한도에 도달했습니다. %1$d시간 후에 초기화됩니다.</item>
+    </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Pro 보고서는 대기열을 건너뜁니다.</string>
     <string name="support_limit_title">오늘의 공정 사용 한도 도달</string>
     <string name="support_upgrade_reason_required">AI 답변에는 GameNative 구독이 필요합니다.</string>
     <string name="support_see_plans">플랜 보기</string>
     <string name="support_plan_basic_title">$5/월 · Basic</string>
-    <string name="support_plan_basic_body">공정 사용 한도(하루 답변 40회, 보고서 10건) 안에서 AI 답변을 무제한으로 받을 수 있습니다. 보고서는 일반 대기열에서 처리됩니다.</string>
+    <string name="support_plan_basic_body">일일 공정 사용 한도 내에서 AI 답변 무제한, 일반 대기열에서 처리됩니다.</string>
     <string name="support_checkout_scan">휴대폰으로 이 코드를 스캔해 결제를 완료하세요. 이 기기에서 완료할 수도 있습니다.</string>
     <string name="support_checkout_waiting">완료되면 여기로 돌아오세요. 플랜은 자동으로 업데이트됩니다.</string>
     <string name="support_checkout_open">이 기기에서 열기</string>
@@ -2036,9 +2039,9 @@
     <string name="debug_paywall_title">AI 디버그 지원 받기</string>
     <string name="debug_paywall_pitch">AI가 로그와 설정을 그대로 읽고 무엇을 바꿔야 할지 알려드립니다. 보통 5분 이내입니다.</string>
     <string name="debug_paywall_tier5_title">$5/월 · Basic</string>
-    <string name="debug_paywall_tier5_body">공정 사용 한도(하루 답변 40회, 보고서 10건) 안에서 AI 답변을 무제한으로 받을 수 있습니다. 보고서는 일반 대기열에서 처리됩니다.</string>
+    <string name="debug_paywall_tier5_body">일일 공정 사용 한도 내에서 AI 답변 무제한, 일반 대기열에서 처리됩니다.</string>
     <string name="debug_paywall_tier10_title">$10/월 · Pro</string>
-    <string name="debug_paywall_tier10_body">공정 사용 한도(하루 답변 40회, 보고서 10건)는 동일합니다. 보고서가 먼저 처리되며 다른 보고서를 기다리지 않습니다.</string>
+    <string name="debug_paywall_tier10_body">동일한 공정 사용 한도에, 보고서가 먼저 처리됩니다. 다른 회원의 보고서 뒤에서 기다리지 않습니다.</string>
     <string name="debug_paywall_cancel_anytime">언제든지 해지할 수 있습니다.</string>
     <string name="debug_paywall_costs_note">구독료는 이 기능을 지원하는 AI 서비스 비용에 사용됩니다.</string>
     <string name="debug_paywall_subscribe">Discord에서 구독하기</string>

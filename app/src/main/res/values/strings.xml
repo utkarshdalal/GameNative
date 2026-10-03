@@ -1232,12 +1232,16 @@
     <string name="support_upgrade_title">A plan is needed to continue</string>
     <string name="support_upgrade_reason_trial_used">Your first analysis was free. To reply and keep talking with the AI about this problem, choose a plan.</string>
     <string name="support_upgrade_reason_reply_cap">You have reached today\'s fair-use limit. It resets in a few hours.</string>
+    <plurals name="support_fair_use_resets_in_hours">
+        <item quantity="one">You have reached today\'s fair-use limit. It resets in %1$d hour.</item>
+        <item quantity="other">You have reached today\'s fair-use limit. It resets in %1$d hours.</item>
+    </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Pro reports skip the queue.</string>
     <string name="support_limit_title">Daily fair-use limit reached</string>
     <string name="support_upgrade_reason_required">AI replies need a GameNative subscription.</string>
     <string name="support_see_plans">See plans</string>
     <string name="support_plan_basic_title">$5/month · Basic</string>
-    <string name="support_plan_basic_body">You get unlimited AI replies within a fair-use limit of 40 replies and 10 reports per day. Your reports wait in the normal queue.</string>
+    <string name="support_plan_basic_body">Unlimited AI replies within a daily fair-use limit, answered in the normal queue.</string>
     <string name="support_checkout_scan">Scan this code with your phone to finish checkout. You can also finish it on this device.</string>
     <string name="support_checkout_waiting">When you are done, come back here. Your plan updates by itself.</string>
     <string name="support_checkout_open">Open on this device</string>
@@ -1991,9 +1995,9 @@
     <string name="debug_paywall_title">Get AI debug support</string>
     <string name="debug_paywall_pitch">Our AI reads your exact log and config and tells you what to change, usually in under 5 minutes.</string>
     <string name="debug_paywall_tier5_title">$5/month · Basic</string>
-    <string name="debug_paywall_tier5_body">You get unlimited AI replies within a fair-use limit of 40 replies and 10 reports per day. Your reports wait in the normal queue.</string>
+    <string name="debug_paywall_tier5_body">Unlimited AI replies within a daily fair-use limit, answered in the normal queue.</string>
     <string name="debug_paywall_tier10_title">$10/month · Pro</string>
-    <string name="debug_paywall_tier10_body">You get the same fair-use limit of 40 replies and 10 reports per day. Your reports go first and never wait behind other reports.</string>
+    <string name="debug_paywall_tier10_body">The same fair-use limit, and your reports go first: they never wait behind other members\' reports.</string>
     <string name="debug_paywall_cancel_anytime">Cancel anytime.</string>
     <string name="debug_paywall_costs_note">Subscriptions cover the AI service costs that make this feature possible.</string>
     <string name="debug_paywall_subscribe">Subscribe on Discord</string>

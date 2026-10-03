@@ -1678,7 +1678,7 @@ fun PluviaMain(
                         SupportReportSubmitter.Outcome.LimitReached -> {
                             trackAiDebug(
                                 "ai_debug_report_result",
-                                mapOf("result" to "failure", "reason" to SupportApi.REASON_REPLY_CAP, "path" to "app"),
+                                mapOf("result" to "failure", "reason" to SupportApi.REASON_FAIR_USE, "path" to "app"),
                             )
                             composeAgain()
                             SnackbarManager.show(SupportReportSubmitter.limitReachedText(context))

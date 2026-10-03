@@ -39,6 +39,7 @@ object SupportApi {
 
     const val REASON_UPGRADE_REQUIRED = "upgrade_required"
     const val REASON_REPLY_CAP = "reply_cap"
+    const val REASON_FAIR_USE = "fair_use"
     const val REASON_TRIAL_USED = "trial_used"
     const val REASON_ANALYSING = "analysing"
     const val REASON_NO_SUBSCRIPTION = "no_subscription"
@@ -54,7 +55,19 @@ object SupportApi {
     private const val ATTACHMENT_PREFIX = "/api/app/conversations/"
     private const val UNAVAILABLE_RECHECK_MS = 10 * 60 * 1000L
 
-    data class Composer(val allowed: Boolean, val reason: String?)
+    data class Composer(val allowed: Boolean, val reason: String?, val resetsAt: Long? = null)
+
+    data class FairUse(val resetsAt: Long?, val resetsInHours: Int?) {
+        fun hoursLeft(now: Long = System.currentTimeMillis()): Int? =
+            resetsInHours?.takeIf { it > 0 }
+                ?: resetsAt?.let { at -> if (at > now) ((at - now + 3_599_999L) / 3_600_000L).toInt().coerceAtLeast(1) else null }
+    }
+
+    fun isFairUse(reason: String?): Boolean = reason == REASON_FAIR_USE || reason == REASON_REPLY_CAP
+
+    @Volatile
+    var lastFairUse: FairUse? = null
+        private set
 
     data class Progress(
         val stage: String,
@@ -90,6 +103,7 @@ object SupportApi {
         data class Upgrade(val reason: String) : Notice()
         data class Moved(val tier: String) : Notice()
         data class Outcome(val solved: Boolean, val note: String?) : Notice()
+        data class Limit(val reason: String, val resetsAt: Long?, val message: String?) : Notice()
         data class Other(val type: String) : Notice()
     }
 
@@ -138,7 +152,16 @@ object SupportApi {
     private fun errorReason(body: String): String =
         try {
             val json = JSONObject(body)
-            json.str("error") ?: json.str("reason") ?: ""
+            val reason = json.str("error") ?: json.str("reason") ?: ""
+            if (isFairUse(reason) || isFairUse(json.str("reason"))) {
+                lastFairUse = FairUse(
+                    resetsAt = json.time("resets_at").takeIf { it > 0 },
+                    resetsInHours = if (json.isNull("resets_in_hours")) null else json.optInt("resets_in_hours", -1).takeIf { it > 0 },
+                )
+                REASON_FAIR_USE
+            } else {
+                reason
+            }
         } catch (_: JSONException) {
             ""
         }
@@ -187,6 +210,7 @@ object SupportApi {
             composer = Composer(
                 allowed = composer?.optBoolean("allowed", false) ?: false,
                 reason = composer?.str("reason"),
+                resetsAt = composer?.time("resets_at")?.takeIf { it > 0 },
             ),
             progress = runCatching { parseProgress(json.optJSONObject("progress")) }.getOrNull(),
         )
@@ -197,6 +221,11 @@ object SupportApi {
             "upgrade" -> Notice.Upgrade(json.str("reason") ?: REASON_UPGRADE_REQUIRED)
             "moved" -> Notice.Moved(json.str("tier") ?: "pro")
             "outcome" -> Notice.Outcome(json.optBoolean("solved", false), json.str("note"))
+            "limit" -> Notice.Limit(
+                reason = json.str("reason") ?: REASON_FAIR_USE,
+                resetsAt = json.time("resets_at").takeIf { it > 0 },
+                message = json.str("message"),
+            )
             else -> Notice.Other(type)
         }
 

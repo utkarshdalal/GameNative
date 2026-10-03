@@ -1060,12 +1060,17 @@
     <string name="support_upgrade_title">Este nevoie de un plan pentru a continua</string>
     <string name="support_upgrade_reason_trial_used">Prima analiză a fost gratuită. Pentru a răspunde și a continua discuția cu AI-ul despre această problemă, alege un plan.</string>
     <string name="support_upgrade_reason_reply_cap">Ai atins limita de utilizare corectă pentru azi. Se resetează în câteva ore.</string>
+    <plurals name="support_fair_use_resets_in_hours">
+        <item quantity="one">Ai atins limita de utilizare corectă de azi. Se resetează în %1$d oră.</item>
+        <item quantity="few">Ai atins limita de utilizare corectă de azi. Se resetează în %1$d ore.</item>
+        <item quantity="other">Ai atins limita de utilizare corectă de azi. Se resetează în %1$d de ore.</item>
+    </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Rapoartele Pro sar peste coadă.</string>
     <string name="support_limit_title">Limita zilnică de utilizare corectă a fost atinsă</string>
     <string name="support_upgrade_reason_required">Răspunsurile AI necesită un abonament GameNative.</string>
     <string name="support_see_plans">Vezi planurile</string>
     <string name="support_plan_basic_title">$5/lună · Basic</string>
-    <string name="support_plan_basic_body">Răspunsuri AI nelimitate, în limita de utilizare corectă de 40 de răspunsuri și 10 rapoarte pe zi. Rapoartele tale așteaptă în coada normală.</string>
+    <string name="support_plan_basic_body">Răspunsuri AI nelimitate în cadrul unei limite zilnice de utilizare corectă, tratate în coada normală.</string>
     <string name="support_checkout_scan">Scanează acest cod cu telefonul pentru a finaliza plata. O poți finaliza și pe acest dispozitiv.</string>
     <string name="support_checkout_waiting">Când ai terminat, revino aici. Planul se actualizează singur.</string>
     <string name="support_checkout_open">Deschide pe acest dispozitiv</string>
@@ -2030,9 +2035,9 @@
     <string name="debug_paywall_title">Obține suport de depanare AI</string>
     <string name="debug_paywall_pitch">AI-ul nostru îți citește exact jurnalul și configurația și îți spune ce să schimbi, de obicei în mai puțin de 5 minute.</string>
     <string name="debug_paywall_tier5_title">$5/lună · Basic</string>
-    <string name="debug_paywall_tier5_body">Răspunsuri AI nelimitate, în limita de utilizare corectă de 40 de răspunsuri și 10 rapoarte pe zi. Rapoartele tale așteaptă în coada normală.</string>
+    <string name="debug_paywall_tier5_body">Răspunsuri AI nelimitate în cadrul unei limite zilnice de utilizare corectă, tratate în coada normală.</string>
     <string name="debug_paywall_tier10_title">$10/lună · Pro</string>
-    <string name="debug_paywall_tier10_body">Aceeași limită de utilizare corectă de 40 de răspunsuri și 10 rapoarte pe zi. Rapoartele tale sunt procesate primele și nu așteaptă niciodată după alte rapoarte.</string>
+    <string name="debug_paywall_tier10_body">Aceeași limită de utilizare corectă, iar rapoartele tale trec primele: nu așteaptă niciodată după rapoartele altor membri.</string>
     <string name="debug_paywall_cancel_anytime">Anulează oricând.</string>
     <string name="debug_paywall_costs_note">Abonamentele acoperă costurile serviciului AI care face posibilă această funcție.</string>
     <string name="debug_paywall_subscribe">Abonează-te pe Discord</string>
