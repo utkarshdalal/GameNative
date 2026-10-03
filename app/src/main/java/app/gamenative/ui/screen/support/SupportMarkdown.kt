@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import app.gamenative.ui.theme.PluviaTheme
 
 internal sealed class MarkdownBlock {
     data class Paragraph(val text: AnnotatedString) : MarkdownBlock()
@@ -266,6 +267,6 @@ internal fun MarkdownText(
 @Composable
 internal fun rememberMarkdown(text: String): MarkdownDocument {
     val codeBackground = MaterialTheme.colorScheme.surfaceContainerHighest
-    val linkColor = MaterialTheme.colorScheme.primary
+    val linkColor = PluviaTheme.colors.accentCyan
     return remember(text, codeBackground, linkColor) { parseMarkdown(text, codeBackground, linkColor) }
 }

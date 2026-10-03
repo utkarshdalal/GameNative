@@ -313,7 +313,14 @@ private fun DialogButton(
         .fillMaxWidth()
         .focusRing(interaction, shape, width = 2.dp)
     if (primary) {
-        Button(onClick = onClick, enabled = enabled, interactionSource = interaction, shape = shape, modifier = buttonModifier) {
+        Button(
+            onClick = onClick,
+            enabled = enabled,
+            interactionSource = interaction,
+            shape = shape,
+            colors = supportButtonColors(),
+            modifier = buttonModifier,
+        ) {
             content()
         }
     } else {
@@ -396,7 +403,7 @@ private fun UpgradeBody(
                     Text(
                         text = stringResource(R.string.support_checkout_no_browser),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
+                        color = PluviaTheme.colors.accentDanger,
                         modifier = Modifier.padding(bottom = 8.dp),
                     )
                 }

@@ -358,7 +358,7 @@ private fun SignInBody(
             Text(
                 text = stringResource(R.string.gamenative_sign_in_no_browser),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
+                color = PluviaTheme.colors.accentDanger,
                 modifier = Modifier.padding(top = 8.dp),
             )
         }

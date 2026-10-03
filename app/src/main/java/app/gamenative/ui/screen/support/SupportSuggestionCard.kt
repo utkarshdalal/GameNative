@@ -382,6 +382,7 @@ internal fun SuggestionCard(
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = PluviaTheme.colors.surfaceElevated,
+        contentColor = MaterialTheme.colorScheme.onSurface,
         border = BorderStroke(1.dp, PluviaTheme.colors.accentPurple),
         modifier = Modifier
             .padding(top = 6.dp)
@@ -505,7 +506,7 @@ internal fun SuggestionCard(
                 Text(
                     text = text,
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (current is SuggestionStatus.Problem) MaterialTheme.colorScheme.error else PluviaTheme.colors.accentSuccess,
+                    color = if (current is SuggestionStatus.Problem) PluviaTheme.colors.accentDanger else PluviaTheme.colors.accentSuccess,
                     modifier = Modifier.padding(top = 8.dp),
                 )
             }

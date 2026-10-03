@@ -342,7 +342,7 @@ internal fun ColumnScope.SupportChat(
         Text(
             text = problemText(chat.problem),
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.error,
+            color = PluviaTheme.colors.accentDanger,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
         )
     }
@@ -350,7 +350,7 @@ internal fun ColumnScope.SupportChat(
         Text(
             text = problemText(problem),
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.error,
+            color = PluviaTheme.colors.accentDanger,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
         )
     }
@@ -422,6 +422,7 @@ private fun FocusableCard(
     Surface(
         shape = shape,
         color = color,
+        contentColor = MaterialTheme.colorScheme.onSurface,
         border = border,
         modifier = modifier
             .focusRing(interaction, shape, width = 2.dp)
@@ -448,7 +449,12 @@ private fun MessageLabel(text: String, time: Long, icon: ImageVector?, alignEnd:
             )
             Spacer(modifier = Modifier.size(6.dp))
         }
-        Text(text = text, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
         if (time > 0) {
             Text(
                 text = " · " + DateUtils.formatDateTime(
@@ -486,15 +492,11 @@ private fun MessageItem(
                 else -> stringResource(R.string.support_label_ai)
             }
             val bubbleColor = when {
-                mine -> MaterialTheme.colorScheme.primaryContainer
-                staff -> MaterialTheme.colorScheme.tertiaryContainer
-                else -> MaterialTheme.colorScheme.surfaceContainerHigh
+                mine -> MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                staff -> PluviaTheme.colors.accentCyan.copy(alpha = 0.2f)
+                else -> PluviaTheme.colors.surfaceElevated
             }
-            val textColor = when {
-                mine -> MaterialTheme.colorScheme.onPrimaryContainer
-                staff -> MaterialTheme.colorScheme.onTertiaryContainer
-                else -> MaterialTheme.colorScheme.onSurface
-            }
+            val textColor = MaterialTheme.colorScheme.onSurface
             val document = if (mine) null else rememberMarkdown(message.text)
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -667,6 +669,7 @@ private fun AnalysingCard(first: Boolean) {
             Text(
                 text = stringResource(if (first) R.string.support_analysing_first else R.string.support_analysing_followup),
                 style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
             )
         }
     }
@@ -789,10 +792,15 @@ private fun Composer(
             enabled = text.isNotBlank() && !sending && !busy,
             interactionSource = interaction,
             shape = shape,
+            colors = supportButtonColors(),
             modifier = Modifier.focusRing(interaction, shape, width = 2.dp),
         ) {
             if (sending) {
-                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                )
             } else {
                 Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(18.dp))
             }

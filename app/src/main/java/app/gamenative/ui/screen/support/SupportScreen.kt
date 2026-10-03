@@ -34,13 +34,17 @@ import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -111,26 +115,28 @@ fun SupportScreen(
                 ),
             ),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .displayCutoutPadding()
-                .navigationBarsPadding()
-                .imePadding(),
-        ) {
-            when {
-                !signInChecked -> {
-                    SupportHeader(title = stringResource(R.string.support_title), subtitle = null, onBack = onBack)
-                    CenteredProgress()
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onBackground) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .displayCutoutPadding()
+                    .navigationBarsPadding()
+                    .imePadding(),
+            ) {
+                when {
+                    !signInChecked -> {
+                        SupportHeader(title = stringResource(R.string.support_title), subtitle = null, onBack = onBack)
+                        CenteredProgress()
+                    }
+                    !signedIn -> SupportSignedOut(onBack = onBack)
+                    openId != null -> SupportChat(
+                        viewModel = viewModel,
+                        onBack = { viewModel.close() },
+                        onStartDebugRun = onStartDebugRun,
+                    )
+                    else -> SupportList(viewModel = viewModel, onBack = onBack)
                 }
-                !signedIn -> SupportSignedOut(onBack = onBack)
-                openId != null -> SupportChat(
-                    viewModel = viewModel,
-                    onBack = { viewModel.close() },
-                    onStartDebugRun = onStartDebugRun,
-                )
-                else -> SupportList(viewModel = viewModel, onBack = onBack)
             }
         }
     }
@@ -162,6 +168,7 @@ internal fun SupportHeader(
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                 contentDescription = stringResource(R.string.back),
+                tint = MaterialTheme.colorScheme.onSurface,
             )
         }
         Column(modifier = Modifier.weight(1f)) {
@@ -194,6 +201,15 @@ internal fun CenteredProgress(modifier: Modifier = Modifier) {
 }
 
 @Composable
+internal fun supportButtonColors(): ButtonColors =
+    ButtonDefaults.buttonColors(
+        containerColor = MaterialTheme.colorScheme.primary,
+        contentColor = MaterialTheme.colorScheme.onPrimary,
+        disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+        disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
+    )
+
+@Composable
 internal fun FocusableButton(
     text: String,
     onClick: () -> Unit,
@@ -208,6 +224,7 @@ internal fun FocusableButton(
         enabled = enabled,
         interactionSource = interaction,
         shape = shape,
+        colors = supportButtonColors(),
         modifier = modifier.focusRing(interaction, shape, width = 2.dp),
     ) {
         if (leading != null) {
@@ -279,6 +296,7 @@ private fun CenteredMessage(
         Text(
             text = title,
             style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -410,7 +428,7 @@ private fun SupportList(
                     Text(
                         text = problemText(state.problem),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
+                        color = PluviaTheme.colors.accentDanger,
                     )
                 }
             }
@@ -438,6 +456,7 @@ private fun ConversationRow(
         onClick = onClick,
         shape = shape,
         color = PluviaTheme.colors.surfaceElevated,
+        contentColor = MaterialTheme.colorScheme.onSurface,
         interactionSource = interaction,
         modifier = modifier
             .fillMaxWidth()
