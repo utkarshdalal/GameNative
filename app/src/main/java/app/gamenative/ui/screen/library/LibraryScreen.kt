@@ -87,6 +87,7 @@ import app.gamenative.ui.component.GamepadAction
 import app.gamenative.ui.component.GamepadActionBar
 import app.gamenative.ui.component.GamepadButton
 import app.gamenative.ui.component.LibraryActions
+import app.gamenative.ui.component.LibraryScrollTracking
 import app.gamenative.ui.components.rememberCustomGameFolderPicker
 import app.gamenative.ui.components.requestPermissionsForPath
 import app.gamenative.ui.data.LibraryState
@@ -151,6 +152,7 @@ fun HomeLibraryScreen(
         sheetState = sheetState,
         onFilterChanged = viewModel::onFilterChanged,
         onPageChange = viewModel::onPageChange,
+        onLibraryScrollChanged = viewModel::onLibraryScrollChanged,
         onModalBottomSheet = viewModel::onModalBottomSheet,
         onIsSearching = viewModel::onIsSearching,
         onSearchQuery = viewModel::onSearchQuery,
@@ -220,6 +222,7 @@ private fun LibraryScreenContent(
     onTabChanged: (LibraryTab) -> Unit,
     onPreviousTab: () -> Unit,
     onNextTab: () -> Unit,
+    onLibraryScrollChanged: (() -> Boolean) -> Unit = {},
     isOffline: Boolean = false,
     isSteamConnected: Boolean = false,
 ) {
@@ -333,6 +336,7 @@ private fun LibraryScreenContent(
 
     var selectedAppId by remember { mutableStateOf<String?>(null) }
     val carouselListState = rememberLazyListState()
+    LibraryScrollTracking(listState, carouselListState, onLibraryScrollChanged)
     val isViewWide = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     var currentPaneType by remember { mutableStateOf(PrefManager.libraryLayout) }
     var recDisclosureShown by remember { mutableStateOf(PrefManager.recDisclosureShown) }

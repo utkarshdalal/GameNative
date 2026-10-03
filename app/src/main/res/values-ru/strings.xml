@@ -2770,6 +2770,77 @@ https://gamenative.app
     <string name="control_profile_failed">Ошибка операции с профилем управления: %1$s</string>
     <string name="control_profile_delete_title">Удалить профиль управления?</string>
     <string name="control_profile_delete_message">Удалить «%1$s» из библиотеки? Игры, уже настроенные с ним, сохранят свои элементы управления.</string>
+    <string name="sort_compatibility">Совместимость</string>
+    <string name="community_compatibility_details">Подробности</string>
+    <string name="community_compatibility_expanded">Развёрнуто</string>
+    <string name="community_compatibility_collapsed">Свёрнуто</string>
+    <string name="community_compatibility_short_disclaimer">Результаты сообщества не являются гарантией.</string>
+    <string name="community_compatibility_unreliable_short">Нестабильные результаты; возможность играть не подтверждена.</string>
+    <string name="community_compatibility_performance_caution">Заявленная производительность может быть ограничена.</string>
+    <string name="community_compatibility_checking_short">Проверка…</string>
+    <string name="community_compatibility_unavailable_short">Недоступно</string>
+    <string name="community_compatibility_unavailable">Не удалось загрузить совместимость</string>
+    <string name="community_compatibility_missing_tier">В ответе нет данных об оборудовании, необходимых для применения результата к вашему устройству.</string>
+    <string name="community_compatibility_cached_result">Показан последний известный результат до успешного обновления.</string>
+    <string name="community_compatibility_works">Отлично</string>
+    <string name="community_compatibility_should">Работает</string>
+    <string name="community_compatibility_may">Может работать</string>
+    <string name="community_compatibility_mixed">Нестабильно</string>
+    <string name="community_compatibility_wont">Не работает</string>
+    <string name="community_compatibility_unknown">Не проверено</string>
+    <string name="community_compatibility_checking">Проверка совместимости…</string>
+    <string name="community_compatibility_no_reports">Общие конфигурации для вашего оборудования не найдены</string>
+    <string name="community_compatibility_configs_unavailable">Не удалось загрузить часть данных о совместимости. Показаны доступные данные.</string>
+    <string name="community_compatibility_retry">Повторить</string>
+    <string name="community_compatibility_fps_median">Медианная частота: %1$d FPS</string>
+    <string name="community_compatibility_fps_device">%1$s на вашей модели устройства.</string>
+    <string name="community_compatibility_fps_soc">%1$s с тем же чипсетом.</string>
+    <string name="community_compatibility_fps_gpu">%1$s с вашим GPU.</string>
+    <string name="community_compatibility_fps_family">%1$s с совместимыми GPU.</string>
+    <string name="community_compatibility_view_reports">Конфигурации</string>
+    <string name="community_config_install_before_apply">Установите игру перед применением конфигурации сообщества.</string>
+    <plurals name="community_compatibility_model_sessions">
+        <item quantity="one">На основе %1$d записанного сеанса на вашей модели устройства.</item>
+        <item quantity="few">На основе %1$d записанных сеансов на вашей модели устройства.</item>
+        <item quantity="many">На основе %1$d записанных сеансов на вашей модели устройства.</item>
+        <item quantity="other">На основе %1$d записанного сеанса на вашей модели устройства.</item>
+    </plurals>
+    <plurals name="community_compatibility_soc_sessions">
+        <item quantity="one">На основе %1$d записанного сеанса с тем же чипсетом.</item>
+        <item quantity="few">На основе %1$d записанных сеансов с тем же чипсетом.</item>
+        <item quantity="many">На основе %1$d записанных сеансов с тем же чипсетом.</item>
+        <item quantity="other">На основе %1$d записанного сеанса с тем же чипсетом.</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_sessions">
+        <item quantity="one">На основе %1$d записанного сеанса с вашим GPU.</item>
+        <item quantity="few">На основе %1$d записанных сеансов с вашим GPU.</item>
+        <item quantity="many">На основе %1$d записанных сеансов с вашим GPU.</item>
+        <item quantity="other">На основе %1$d записанного сеанса с вашим GPU.</item>
+    </plurals>
+    <plurals name="community_compatibility_family_sessions">
+        <item quantity="one">На основе %1$d записанного сеанса в вашем семействе GPU.</item>
+        <item quantity="few">На основе %1$d записанных сеансов в вашем семействе GPU.</item>
+        <item quantity="many">На основе %1$d записанных сеансов в вашем семействе GPU.</item>
+        <item quantity="other">На основе %1$d записанного сеанса в вашем семействе GPU.</item>
+    </plurals>
+    <plurals name="community_compatibility_device_evidence">
+        <item quantity="one">%1$d оценённая общая конфигурация с этой модели устройства</item>
+        <item quantity="few">%1$d оценённые общие конфигурации с этой модели устройства</item>
+        <item quantity="many">%1$d оценённых общих конфигураций с этой модели устройства</item>
+        <item quantity="other">%1$d оценённой общей конфигурации с этой модели устройства</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_evidence">
+        <item quantity="one">%1$d оценённая общая конфигурация с вашим GPU</item>
+        <item quantity="few">%1$d оценённые общие конфигурации с вашим GPU</item>
+        <item quantity="many">%1$d оценённых общих конфигураций с вашим GPU</item>
+        <item quantity="other">%1$d оценённой общей конфигурации с вашим GPU</item>
+    </plurals>
+    <plurals name="community_compatibility_family_evidence">
+        <item quantity="one">%1$d оценённая общая конфигурация с совместимым GPU</item>
+        <item quantity="few">%1$d оценённые общие конфигурации с совместимым GPU</item>
+        <item quantity="many">%1$d оценённых общих конфигураций с совместимым GPU</item>
+        <item quantity="other">%1$d оценённой общей конфигурации с совместимым GPU</item>
+    </plurals>
     <string name="debug_prerun_instruction">Что сделать в этом запуске: %1$s</string>
     <plurals name="debug_prerun_min_minutes">
         <item quantity="one">Не закрывайте игру хотя бы %1$d минуту.</item>

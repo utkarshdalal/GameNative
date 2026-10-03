@@ -158,9 +158,11 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.NetworkMonitor
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.data.CommunityCompatibilitySummary
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.StoreGameDetails
 import app.gamenative.service.SteamService
+import app.gamenative.ui.component.CommunityCompatibilitySection
 import app.gamenative.ui.component.GamepadAction
 import app.gamenative.ui.component.GamepadActionBar
 import app.gamenative.ui.component.GamepadButton
@@ -917,6 +919,11 @@ internal fun AppScreenContent(
     optionsMenu: List<AppMenuOption>,
     dialogOpen: Boolean = false,
     immersiveMode: ImmersiveModeUiState = ImmersiveModeUiState(),
+    communityCompatibility: CommunityCompatibilitySummary = CommunityCompatibilitySummary.unknown(),
+    communityCompatibilityLoading: Boolean = false,
+    communityCompatibilityError: Boolean = false,
+    onRetryCommunityCompatibility: () -> Unit = {},
+    onViewCommunityReports: () -> Unit = {},
 ) {
     // Unpacked so the body below is unchanged; bundling the params avoids a Compose VerifyError.
     val isInstalled = downloadDisplayDetails.isInstalled
@@ -1571,15 +1578,6 @@ internal fun AppScreenContent(
                     }
                     }
 
-                    // Compatibility status (if applicable)
-                    if (displayInfo.compatibilityMessage != null && displayInfo.compatibilityColor != null) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = displayInfo.compatibilityMessage,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color(displayInfo.compatibilityColor),
-                        )
-                    }
                 }
             }
 
@@ -1641,6 +1639,16 @@ internal fun AppScreenContent(
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                 }
+
+                CommunityCompatibilitySection(
+                    gameKey = displayInfo.appId.toString(),
+                    summary = communityCompatibility,
+                    loading = communityCompatibilityLoading,
+                    loadError = communityCompatibilityError,
+                    onRetry = onRetryCommunityCompatibility,
+                    onViewReports = onViewCommunityReports,
+                )
+                Spacer(modifier = Modifier.height(16.dp))
 
                 if (displayInfo.storeDetails.hasOverview) {
                     StoreDetailsSection(

@@ -44,7 +44,6 @@ private const val MAX_NOTES_CHARS = 4 * 1024
 private const val MAX_TAGS = 20
 private const val MAX_TAG_CHARS = 64
 private const val CACHE_TTL_MILLIS = 2 * 60 * 1000L
-private const val MAX_REQUESTS_PER_WINDOW = 4
 private const val REQUEST_WINDOW_MILLIS = 10_000L
 private const val DEFAULT_RATE_LIMIT_COOLDOWN_MILLIS = REQUEST_WINDOW_MILLIS
 private const val MAX_RATE_LIMIT_COOLDOWN_MILLIS = 60_000L
@@ -105,6 +104,7 @@ data class CommunityConfigPage(
 class CommunityConfigApiException(
     message: String,
     val statusCode: Int? = null,
+    val retryAfterMillis: Long? = null,
     cause: Throwable? = null,
 ) : IOException(message, cause)
 
@@ -140,17 +140,19 @@ private class ExpiringCache<K, V>(
 }
 
 internal class CommunityRequestThrottle(
-    private val maxRequests: Int = MAX_REQUESTS_PER_WINDOW,
+    // The backend's fixed rolling limit was removed. Keep an optional local quota for tests and
+    // retain server-directed 429 cooldown handling as a defensive fallback.
+    private val maxRequests: Int? = null,
     windowMillis: Long = REQUEST_WINDOW_MILLIS,
     private val nanoTime: () -> Long = System::nanoTime,
     private val sleepNanos: (Long) -> Unit = { TimeUnit.NANOSECONDS.sleep(it) },
 ) {
     private val windowNanos = TimeUnit.MILLISECONDS.toNanos(windowMillis)
-    private val requestStarts = ArrayDeque<Long>(maxRequests)
+    private val requestStarts = ArrayDeque<Long>(maxRequests ?: 1)
     private var blockedUntilNanos = 0L
 
     init {
-        require(maxRequests > 0)
+        require(maxRequests == null || maxRequests > 0)
         require(windowMillis > 0)
     }
 
@@ -163,14 +165,13 @@ internal class CommunityRequestThrottle(
                     requestStarts.removeFirst()
                 }
 
-                val quotaWaitNanos = if (requestStarts.size >= maxRequests) {
-                    requestStarts.first() + windowNanos - now
-                } else {
-                    0L
-                }
+                val quotaWaitNanos = maxRequests?.let { limit ->
+                    if (requestStarts.size >= limit) requestStarts.first() + windowNanos - now
+                    else 0L
+                } ?: 0L
                 val cooldownWaitNanos = blockedUntilNanos - now
                 maxOf(quotaWaitNanos, cooldownWaitNanos).also {
-                    if (it <= 0L) requestStarts.addLast(now)
+                    if (it <= 0L && maxRequests != null) requestStarts.addLast(now)
                 }
             }
             if (waitNanos <= 0L) {
@@ -483,17 +484,17 @@ class CommunityConfigService internal constructor(
             return client.newCall(request).execute().use { response ->
                 val body = readBoundedBody(response.body)
                 if (!response.isSuccessful) {
-                    if (response.code == 429) {
-                        val retryAfterMillis = parseCommunityRetryAfterMillis(
+                    val retryAfterMillis = if (response.code == 429) {
+                        (parseCommunityRetryAfterMillis(
                             response.header("Retry-After"),
                         )
-                            ?: DEFAULT_RATE_LIMIT_COOLDOWN_MILLIS
-                        requestThrottle.postpone(retryAfterMillis)
-                    }
+                            ?: DEFAULT_RATE_LIMIT_COOLDOWN_MILLIS).also(requestThrottle::postpone)
+                    } else null
                     throw CommunityConfigApiException(
                         message = parseErrorMessage(body)
                             .ifBlank { "Compatibility service returned HTTP ${response.code}" },
                         statusCode = response.code,
+                        retryAfterMillis = retryAfterMillis,
                     )
                 }
                 body

@@ -1,17 +1,21 @@
 package app.gamenative.ui.data
 
 import app.gamenative.PrefManager
+import app.gamenative.data.CommunityCompatibilitySummary
 import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamCollection
 import app.gamenative.ui.enums.AppFilter
-import app.gamenative.utils.DeviceGameStatsService.DeviceGameStats
 import app.gamenative.ui.enums.LibraryTab
 import app.gamenative.ui.enums.SortOption
+import app.gamenative.utils.CommunityCompatibilityRepository
+import app.gamenative.utils.DeviceGameStatsService.DeviceGameStats
 import java.util.EnumSet
 
 data class LibraryState(
+    // Compare publication identity before traversing a potentially very large rebuilt list.
+    val libraryRevision: Long = 0,
     val appInfoSortType: EnumSet<AppFilter> = PrefManager.libraryFilter,
     val appInfoList: List<LibraryItem> = emptyList(),
     val isRefreshing: Boolean = false,
@@ -52,6 +56,7 @@ data class LibraryState(
 
     // Compatibility status map: game name -> compatibility status
     val compatibilityMap: Map<String, GameCompatibilityStatus> = emptyMap(),
+    val compatibilityRevision: Long = 0,
 
     // Device-specific play stats, grouped by platform then game name
     val deviceGameStats: Map<GameSource, Map<String, DeviceGameStats>> = emptyMap(),
@@ -107,3 +112,7 @@ fun LibraryState.statsFor(source: GameSource, name: String): GameCardStats? {
         sessionSec = device?.medianSessionSec,
     )
 }
+
+/** The library and detail page read the exact same bulk-backed summary. */
+fun LibraryState.communityCompatibilityFor(item: LibraryItem): CommunityCompatibilitySummary =
+    CommunityCompatibilityRepository.cachedVerdict(item.name)

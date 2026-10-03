@@ -427,6 +427,7 @@ class CommunityConfigServiceTest {
 
         assertTrue(error is CommunityConfigApiException)
         assertEquals(429, (error as CommunityConfigApiException).statusCode)
+        assertEquals(10_000L, error.retryAfterMillis)
         assertEquals(listOf(TimeUnit.SECONDS.toNanos(10)), sleeps)
     }
 
