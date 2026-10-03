@@ -704,12 +704,9 @@ private fun AnalysingCard(
         }
         return
     }
-    val text = when (progress?.stage) {
-        SupportApi.STAGE_QUEUED -> SupportProgressText.queuedLine(resources, progress, clock.first)
-        SupportApi.STAGE_ANALYSING -> SupportProgressText.analysingLine(resources, progress, clock.second)
-        else -> stringResource(if (first) R.string.support_analysing_first else R.string.support_analysing_followup)
-    }
-    val detail = progress?.detail?.takeIf { progress.stage == SupportApi.STAGE_ANALYSING }
+    val text = SupportProgressText.line(resources, progress?.takeIf { it.active }, clock.first, clock.second)
+        ?: stringResource(if (first) R.string.support_analysing_first else R.string.support_analysing_followup)
+    val detail = progress?.takeIf { it.stage == SupportApi.STAGE_ANALYSING }?.detail
     FocusableCard(modifier = Modifier.fillMaxWidth(), isFocusable = onNotify == null) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)

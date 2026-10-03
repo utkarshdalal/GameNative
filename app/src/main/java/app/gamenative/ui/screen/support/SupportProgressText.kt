@@ -44,13 +44,15 @@ object SupportProgressText {
         }
     }
 
-    fun line(res: Resources, progress: SupportApi.Progress?, nowElapsed: Long, nowWall: Long): String? =
-        when (progress?.stage) {
+    fun line(res: Resources, progress: SupportApi.Progress?, nowElapsed: Long, nowWall: Long): String? {
+        if (progress == null) return null
+        return when (progress.stage) {
             SupportApi.STAGE_QUEUED -> queuedLine(res, progress, nowElapsed)
             SupportApi.STAGE_ANALYSING -> analysingLine(res, progress, nowWall)
             SupportApi.STAGE_FAILED -> res.getString(R.string.support_progress_failed)
             else -> null
         }
+    }
 
     fun shortLabel(res: Resources, conversation: SupportApi.Conversation, nowElapsed: Long, nowWall: Long): String? {
         if (conversation.state != SupportApi.STATE_WAITING) return null
