@@ -251,7 +251,8 @@ class ControlProfilePersistenceTest {
             context, game, manager, "Incoming settings", ControlProfileSection.entries.toSet(),
         )).also { profile ->
             val json = ControlProfileService.readProfileJson(context, profile)
-            json.put("gyroSettings", GyroSettings(mode = GyroSettings.MODE_MOUSE, sensitivity = 2f).toJsonObject())
+            json.put("gyroSettings", GyroSettings(mode = GyroSettings.MODE_MOUSE, sensitivity = 2f,
+                conversionStyle = GyroSettings.CONVERSION_PLAYER_SPACE).toJsonObject())
             json.getJSONObject("touchscreenSettings").put("enabled", true)
             json.getJSONObject("shooterSettings").put("enabled", true)
             assertTrue(FileUtils.writeString(profileFile(profile), json.toString()))

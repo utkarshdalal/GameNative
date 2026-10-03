@@ -1160,6 +1160,8 @@ private fun profileSettingValue(
                 else -> R.string.gyro_activation_always
             },
         )
+        section == ControlProfileSection.GYRO && key == "conversionStyle" ->
+            stringResource(gyroConversionStyleLabel(value.toInt()))
         else -> formatDecimal(value.toDouble())
     }
     value is String -> friendlySettingValue(value)
