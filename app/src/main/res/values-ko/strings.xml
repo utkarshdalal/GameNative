@@ -1077,6 +1077,13 @@
     <string name="support_composer_analysing">잠시 기다려 주세요. AI가 아직 로그를 읽고 있습니다. 답변이 도착한 후에 답장할 수 있습니다.</string>
     <string name="support_send_logs">로그 보내기</string>
     <string name="support_new_debug_run">새 디버그 실행</string>
+    <string name="support_run_check_title">실행 결과는 어땠나요?</string>
+    <string name="support_run_check_sent">로그를 보냈습니다.</string>
+    <string name="support_run_check_failed">로그를 보낼 수 없습니다.</string>
+    <string name="support_run_check_answer_waiting">답변은 로그와 함께 전송됩니다.</string>
+    <string name="support_run_check_answer_failed">답변을 보낼 수 없습니다.</string>
+    <string name="support_run_check_offer">이 게임의 마지막 실행 로그가 전송되지 않았습니다.</string>
+    <string name="support_run_check_send_last">마지막 실행 보내기</string>
     <string name="support_uploading">로그를 업로드하는 중</string>
     <string name="support_share_file">파일 열기</string>
     <string name="debug_report_sign_in_hint">보낼 때 GameNative 계정에 로그인하라는 요청이 표시됩니다. 이후 AI와의 대화는 이 앱에서 진행됩니다.</string>

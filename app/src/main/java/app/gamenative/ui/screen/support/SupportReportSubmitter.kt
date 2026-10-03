@@ -53,6 +53,38 @@ object SupportReportSubmitter {
         SupportReplyWatchService.start(context, conversationId, conversation?.game?.ifEmpty { null } ?: game, baseline)
     }
 
+    suspend fun sendRun(
+        context: Context,
+        dir: File,
+        conversationId: String,
+        gameName: String,
+        answer: () -> String?,
+        onProgress: (Float) -> Unit,
+    ): Pair<Outcome, SupportApi.Posted?> {
+        val header: JSONObject = withContext(Dispatchers.IO) { DebugReportUtils.readHeader(dir) }
+            ?: return Outcome.Failed("missing_report") to null
+        val logFile = DebugReportUtils.logFile(dir)
+        if (!logFile.exists()) return Outcome.Failed("missing_report") to null
+        val perfFile = DebugReportUtils.perfFile(dir)
+        val logcatFile = DebugReportUtils.logcatFile(dir)
+        onProgress(0f)
+        val result = SupportApi.uploadFilesWithLateText(conversationId, header, logFile, perfFile, logcatFile, answer, onProgress)
+        if (result is ApiResult.Success) {
+            watchForReply(context, result.data.conversation, conversationId, gameName)
+            return Outcome.Sent(conversationId) to result.data
+        }
+        if (result !is ApiResult.HttpError || (result.code != 403 && result.code != 404)) return outcomeOf(result) to null
+        onProgress(0f)
+        val issue = answer().orEmpty()
+        val createHeader = withContext(Dispatchers.IO) {
+            if (DebugReportUtils.writeIssueText(dir, issue)) DebugReportUtils.readHeader(dir) else null
+        } ?: header
+        val created = SupportApi.createConversation(createHeader, logFile, perfFile, logcatFile, onProgress)
+        if (created !is ApiResult.Success) return outcomeOf(created) to null
+        watchForReply(context, created.data, created.data.id, gameName)
+        return Outcome.Sent(created.data.id) to SupportApi.Posted(null, created.data)
+    }
+
     suspend fun submit(context: Context, state: DebugReportDialogState): Outcome {
         val dir = File(state.reportDir)
         val header: JSONObject = withContext(Dispatchers.IO) {

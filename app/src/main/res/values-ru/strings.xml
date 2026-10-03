@@ -1247,6 +1247,13 @@ https://gamenative.app
     <string name="support_composer_analysing">Подождите. AI ещё читает ваши журналы. Ответить можно после того, как придёт его ответ.</string>
     <string name="support_send_logs">Отправить логи</string>
     <string name="support_new_debug_run">Новый отладочный запуск</string>
+    <string name="support_run_check_title">Как прошёл запуск?</string>
+    <string name="support_run_check_sent">Ваш лог отправлен.</string>
+    <string name="support_run_check_failed">Не удалось отправить лог.</string>
+    <string name="support_run_check_answer_waiting">Ваш ответ будет отправлен вместе с логом.</string>
+    <string name="support_run_check_answer_failed">Не удалось отправить ответ.</string>
+    <string name="support_run_check_offer">Лог последнего запуска этой игры не был отправлен.</string>
+    <string name="support_run_check_send_last">Отправить последний запуск</string>
     <string name="support_uploading">Загрузка логов</string>
     <string name="support_share_file">Открыть файл</string>
     <string name="debug_report_sign_in_hint">При отправке вас попросят войти в аккаунт GameNative. После этого разговор с нашим AI будет идти здесь, в приложении.</string>

@@ -1084,6 +1084,13 @@
     <string name="support_composer_analysing">Espera, por favor. La AI todavía está leyendo tus registros. Podrás responder cuando llegue su respuesta.</string>
     <string name="support_send_logs">Enviar registros</string>
     <string name="support_new_debug_run">Nueva ejecución de depuración</string>
+    <string name="support_run_check_title">¿Cómo funcionó?</string>
+    <string name="support_run_check_sent">Se envió tu registro.</string>
+    <string name="support_run_check_failed">No se pudo enviar tu registro.</string>
+    <string name="support_run_check_answer_waiting">Tu respuesta se enviará con el registro.</string>
+    <string name="support_run_check_answer_failed">No se pudo enviar tu respuesta.</string>
+    <string name="support_run_check_offer">El registro de tu última ejecución de este juego no se envió.</string>
+    <string name="support_run_check_send_last">Enviar la última ejecución</string>
     <string name="support_uploading">Subiendo tus registros</string>
     <string name="support_share_file">Abrir archivo</string>
     <string name="debug_report_sign_in_hint">Al enviar, se te pedirá que inicies sesión en tu cuenta de GameNative. La conversación con nuestra AI tendrá lugar aquí, en la app.</string>

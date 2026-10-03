@@ -115,6 +115,7 @@ import app.gamenative.ui.screen.support.SnackbarActionContent
 import app.gamenative.ui.screen.support.SupportReplyEffects
 import app.gamenative.ui.screen.support.SupportReportSubmitter
 import app.gamenative.ui.screen.support.SupportScreen
+import app.gamenative.ui.screen.support.SupportRunFollowUp
 import app.gamenative.ui.screen.support.SupportSession
 import app.gamenative.ui.screen.support.SupportUpgradeDialog
 import app.gamenative.ui.screen.xserver.XServerScreen
@@ -777,21 +778,27 @@ fun PluviaMain(
                 }
 
                 is MainViewModel.MainUiEvent.ShowDebugReportDialog -> {
-                    debugReportState = DebugReportDialogState(
-                        visible = true,
-                        appId = event.appId,
-                        gameName = withContext(Dispatchers.IO) { ContainerUtils.resolveGameName(event.appId) },
-                        deviceName = HardwareUtils.getMachineName(),
-                        preparing = true,
-                    )
-                    scope.launch {
-                        AccountApi.loadSignedInState()
-                        SupportApi.checkAvailability()
+                    val runConversationId = SupportSession.conversationForRun(event.appId)
+                    if (runConversationId != null) {
+                        SupportRunFollowUp.start(context, event.appId, runConversationId, viewModel.pendingDebugReport(event.appId))
+                        SupportSession.pendingConversationId.value = runConversationId
+                    } else {
+                        debugReportState = DebugReportDialogState(
+                            visible = true,
+                            appId = event.appId,
+                            gameName = withContext(Dispatchers.IO) { ContainerUtils.resolveGameName(event.appId) },
+                            deviceName = HardwareUtils.getMachineName(),
+                            preparing = true,
+                        )
+                        scope.launch {
+                            AccountApi.loadSignedInState()
+                            SupportApi.checkAvailability()
+                        }
+                        trackAiDebug(
+                            "ai_debug_report_shown",
+                            mapOf("discord_linked" to PrefManager.discordRelayTokenPresent.value),
+                        )
                     }
-                    trackAiDebug(
-                        "ai_debug_report_shown",
-                        mapOf("discord_linked" to PrefManager.discordRelayTokenPresent.value),
-                    )
                 }
 
                 is MainViewModel.MainUiEvent.ShowAiDebugOffer -> {

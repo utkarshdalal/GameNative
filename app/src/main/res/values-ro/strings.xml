@@ -1077,6 +1077,13 @@
     <string name="support_composer_analysing">Te rugăm să aștepți. AI-ul încă citește jurnalele tale. Poți răspunde după ce sosește răspunsul lui.</string>
     <string name="support_send_logs">Trimite jurnalele</string>
     <string name="support_new_debug_run">Rulare nouă de depanare</string>
+    <string name="support_run_check_title">Cum a mers?</string>
+    <string name="support_run_check_sent">Jurnalul tău a fost trimis.</string>
+    <string name="support_run_check_failed">Jurnalul tău nu a putut fi trimis.</string>
+    <string name="support_run_check_answer_waiting">Răspunsul tău va fi trimis împreună cu jurnalul.</string>
+    <string name="support_run_check_answer_failed">Răspunsul tău nu a putut fi trimis.</string>
+    <string name="support_run_check_offer">Jurnalul ultimei rulări a acestui joc nu a fost trimis.</string>
+    <string name="support_run_check_send_last">Trimite ultima rulare</string>
     <string name="support_uploading">Se încarcă jurnalele</string>
     <string name="support_share_file">Deschide fișierul</string>
     <string name="debug_report_sign_in_hint">Când trimiți, ți se va cere să te conectezi la contul GameNative. Conversația cu AI-ul nostru are loc apoi aici, în aplicație.</string>

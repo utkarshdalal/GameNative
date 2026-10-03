@@ -209,6 +209,10 @@ class SupportViewModel @Inject constructor(
         }
     }
 
+    fun ingest(conversationId: String, posted: SupportApi.Posted) {
+        if (chat.conversationId == conversationId) applyPosted(posted)
+    }
+
     private fun onFollowUpPosted(conversation: SupportApi.Conversation) {
         SupportReportSubmitter.watchForReply(appContext, conversation, conversation.id, conversation.game)
     }

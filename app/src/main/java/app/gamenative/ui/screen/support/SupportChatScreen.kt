@@ -101,21 +101,25 @@ private sealed class ChatItem(val key: String) {
     class Entry(val message: SupportApi.Message) : ChatItem("m${message.id}")
     class Analysing(val first: Boolean) : ChatItem("analysing")
     data object OutcomePrompt : ChatItem("outcome")
+    data object RunCheck : ChatItem("run_check")
 }
 
-private fun chatItems(state: SupportViewModel.ChatState): List<ChatItem> {
+private fun chatItems(state: SupportViewModel.ChatState, runCheck: Boolean, hideOutcome: Boolean): List<ChatItem> {
     val known = setOf(SupportApi.KIND_USER, SupportApi.KIND_AGENT, SupportApi.KIND_STAFF, SupportApi.KIND_NOTICE)
     val messages = state.messages.filter { message ->
         message.kind in known && (message.kind != SupportApi.KIND_NOTICE || (message.notice != null && message.notice !is SupportApi.Notice.Other))
     }
     val items = mutableListOf<ChatItem>()
     messages.forEach { items.add(ChatItem.Entry(it)) }
-    val conversation = state.conversation ?: return items
-    val replied = messages.any { it.kind == SupportApi.KIND_AGENT || it.kind == SupportApi.KIND_STAFF }
-    when (conversation.state) {
-        SupportApi.STATE_WAITING -> items.add(ChatItem.Analysing(first = !replied))
-        SupportApi.STATE_ANSWERED -> if (conversation.outcome == null) items.add(ChatItem.OutcomePrompt)
+    val conversation = state.conversation
+    if (conversation != null) {
+        val replied = messages.any { it.kind == SupportApi.KIND_AGENT || it.kind == SupportApi.KIND_STAFF }
+        when (conversation.state) {
+            SupportApi.STATE_WAITING -> items.add(ChatItem.Analysing(first = !replied))
+            SupportApi.STATE_ANSWERED -> if (conversation.outcome == null && !hideOutcome) items.add(ChatItem.OutcomePrompt)
+        }
     }
+    if (runCheck) items.add(ChatItem.RunCheck)
     return items
 }
 
@@ -162,7 +166,11 @@ internal fun ColumnScope.SupportChat(
     val backFocus = remember { FocusRequester() }
     var initialFocusDone by rememberSaveable(conversationId) { mutableStateOf(false) }
     val uploadProgress = viewModel.uploadProgress
-    val items = chatItems(chat)
+    val runState by SupportRunFollowUp.state
+    val run = runState?.takeIf { it.conversationId == conversationId }
+    val runBusy = run?.busy == true
+    val runFocus = remember { FocusRequester() }
+    val items = chatItems(chat, runCheck = run != null, hideOutcome = run?.asking == true)
     val upgradeOpen by rememberUpdatedState(upgradeReason != null)
     val clock = rememberSupportClock(conversation?.progress?.active == true)
     val notifyOffer = rememberNotifyOffer(conversation)
@@ -205,6 +213,29 @@ internal fun ColumnScope.SupportChat(
         }
     }
 
+    LaunchedEffect(viewModel) {
+        SupportRunFollowUp.updates.collect { (id, posted) -> viewModel.ingest(id, posted) }
+    }
+
+    val runShown = run != null && chat.loaded && items.lastOrNull() == ChatItem.RunCheck
+    val runMode = run?.phase?.let { if (it == SupportRunFollowUp.Phase.NO_LOG || it == SupportRunFollowUp.Phase.OFFER) it else null }
+    LaunchedEffect(runShown, runMode) {
+        if (!runShown) return@LaunchedEffect
+        initialFocusDone = true
+        listState.scrollToItem(items.size + 1)
+        runFocus.requestFocusAfterLayout()
+    }
+
+    val lastUploadAt = chat.messages
+        .filter { it.kind == SupportApi.KIND_USER && (it.isReport || it.attachments.isNotEmpty()) }
+        .maxOfOrNull { it.createdAt }
+        ?: conversation?.createdAt
+    LaunchedEffect(conversationId, chat.loaded, conversation?.appId, lastUploadAt) {
+        val targetAppId = conversation?.appId ?: return@LaunchedEffect
+        if (!chat.loaded || lastUploadAt == null) return@LaunchedEffect
+        SupportRunFollowUp.offerLastRun(context, targetAppId, conversationId, lastUploadAt)
+    }
+
     val lastKey = items.lastOrNull()?.key
     LaunchedEffect(lastKey) {
         if (!initialFocusDone || items.isEmpty()) return@LaunchedEffect
@@ -239,7 +270,7 @@ internal fun ColumnScope.SupportChat(
         ActionButton(
             text = stringResource(R.string.support_send_logs),
             icon = Icons.Filled.Upload,
-            enabled = appId != null && composerAllowed && uploadProgress == null && !chat.sending,
+            enabled = appId != null && composerAllowed && uploadProgress == null && !chat.sending && !runBusy,
             onClick = { viewModel.sendLogs(context) },
         )
         ActionButton(
@@ -338,7 +369,7 @@ internal fun ColumnScope.SupportChat(
                                 first = item.first,
                                 progress = conversation?.progress,
                                 clock = clock,
-                                retryEnabled = appId != null && uploadProgress == null && !chat.sending,
+                                retryEnabled = appId != null && uploadProgress == null && !chat.sending && !runBusy,
                                 onRetry = { viewModel.sendLogs(context) },
                                 onNotify = notifyOffer,
                             )
@@ -346,6 +377,34 @@ internal fun ColumnScope.SupportChat(
                                 busy = chat.outcomeBusy,
                                 onOutcome = { solved -> viewModel.setOutcome(solved) },
                             )
+                            ChatItem.RunCheck -> if (run != null) {
+                                RunCheckCard(
+                                    state = run,
+                                    focusRequester = runFocus,
+                                    onAnswer = { worked ->
+                                        val verdict = context.getString(
+                                            if (worked) R.string.support_outcome_worked else R.string.support_outcome_broken,
+                                        )
+                                        val details = viewModel.draft.trim()
+                                        val text = if (details.isEmpty()) verdict else "$verdict\n$details"
+                                        val recordOutcome = worked && conversation?.outcome == null &&
+                                            chat.messages.any { it.kind == SupportApi.KIND_AGENT || it.kind == SupportApi.KIND_STAFF }
+                                        SupportRunFollowUp.answer(context, text, worked, recordOutcome, details)
+                                        viewModel.updateDraft("")
+                                    },
+                                    onRetry = { SupportRunFollowUp.retry(context) },
+                                    onRetryAnswer = { SupportRunFollowUp.retryAnswer(context) },
+                                    onSendOffered = { SupportRunFollowUp.sendOffered(context) },
+                                    onDismissOffer = { SupportRunFollowUp.dismiss(conversationId) },
+                                    onNewRun = {
+                                        val targetAppId = appId ?: run.appId
+                                        SupportRunFollowUp.clear(conversationId)
+                                        SupportSession.startedRunFrom(targetAppId, conversationId)
+                                        onStartDebugRun(targetAppId)
+                                    },
+                                    onUpgrade = { upgradeReason = it },
+                                )
+                            }
                         }
                     }
                 }
@@ -390,15 +449,23 @@ internal fun ColumnScope.SupportChat(
             onUpgrade = { upgradeReason = conversation.composer.reason ?: SupportApi.REASON_UPGRADE_REQUIRED },
         )
     } else if (conversation != null) {
+        val answering = run?.takesReply == true
         Composer(
             text = viewModel.draft,
-            sending = chat.sending,
-            busy = uploadProgress != null,
+            sending = chat.sending || run?.answer == SupportRunFollowUp.Answer.SENDING,
+            busy = uploadProgress != null && !answering,
             onTextChange = { value ->
                 viewModel.updateDraft(value)
                 if (chat.actionProblem != null) viewModel.clearActionProblem()
             },
-            onSend = { viewModel.send() },
+            onSend = {
+                if (answering) {
+                    SupportRunFollowUp.answer(context, viewModel.draft, worked = null, recordOutcome = false)
+                    viewModel.updateDraft("")
+                } else {
+                    viewModel.send()
+                }
+            },
         )
     }
 }
@@ -763,6 +830,170 @@ private fun OutcomePromptCard(
                     enabled = !busy,
                     leading = { Icon(Icons.Filled.ThumbDown, contentDescription = null, modifier = Modifier.size(18.dp)) },
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun runFailureText(failure: SupportReportSubmitter.Outcome?): String =
+    when (failure) {
+        is SupportReportSubmitter.Outcome.Forbidden -> upgradeReasonText(failure.reason)
+        SupportReportSubmitter.Outcome.PlanPending -> stringResource(R.string.support_plan_pending)
+        SupportReportSubmitter.Outcome.RateLimited -> stringResource(R.string.support_problem_rate_limited)
+        SupportReportSubmitter.Outcome.SignedOut -> stringResource(R.string.support_problem_unauthorized)
+        SupportReportSubmitter.Outcome.Unavailable -> stringResource(R.string.support_problem_unavailable)
+        else -> stringResource(R.string.support_run_check_failed)
+    }
+
+@Composable
+private fun RunCheckCard(
+    state: SupportRunFollowUp.State,
+    focusRequester: FocusRequester,
+    onAnswer: (Boolean) -> Unit,
+    onRetry: () -> Unit,
+    onRetryAnswer: () -> Unit,
+    onSendOffered: () -> Unit,
+    onDismissOffer: () -> Unit,
+    onNewRun: () -> Unit,
+    onUpgrade: (String) -> Unit,
+) {
+    when (state.phase) {
+        SupportRunFollowUp.Phase.NO_LOG -> FocusableCard(modifier = Modifier.fillMaxWidth(), isFocusable = false) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = stringResource(R.string.debug_report_no_log),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f).padding(end = 8.dp),
+                )
+                FocusableButton(
+                    text = stringResource(R.string.support_new_debug_run),
+                    onClick = onNewRun,
+                    modifier = Modifier.focusRequester(focusRequester),
+                    leading = { Icon(Icons.Filled.BugReport, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                )
+            }
+        }
+        SupportRunFollowUp.Phase.OFFER -> FocusableCard(modifier = Modifier.fillMaxWidth(), isFocusable = false) {
+            Column {
+                Text(
+                    text = stringResource(R.string.support_run_check_offer),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(bottom = 10.dp),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FocusableButton(
+                        text = stringResource(R.string.support_run_check_send_last),
+                        onClick = onSendOffered,
+                        modifier = Modifier.focusRequester(focusRequester),
+                        leading = { Icon(Icons.Filled.Upload, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                    )
+                    FocusableButton(
+                        text = stringResource(R.string.close),
+                        onClick = onDismissOffer,
+                    )
+                }
+            }
+        }
+        else -> FocusableCard(modifier = Modifier.fillMaxWidth(), isFocusable = false) {
+            Column {
+                Text(
+                    text = stringResource(R.string.support_run_check_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(bottom = 6.dp),
+                )
+                when (state.phase) {
+                    SupportRunFollowUp.Phase.PREPARING -> {
+                        Text(
+                            text = stringResource(R.string.debug_report_preparing),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = PluviaTheme.colors.textMuted,
+                        )
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+                    }
+                    SupportRunFollowUp.Phase.UPLOADING -> {
+                        Text(
+                            text = stringResource(R.string.support_uploading),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = PluviaTheme.colors.textMuted,
+                        )
+                        LinearProgressIndicator(
+                            progress = { state.progress ?: 0f },
+                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                        )
+                    }
+                    SupportRunFollowUp.Phase.SENT -> Text(
+                        text = stringResource(R.string.support_run_check_sent),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = PluviaTheme.colors.textMuted,
+                    )
+                    else -> {
+                        val failure = state.failure
+                        Text(
+                            text = runFailureText(failure),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = PluviaTheme.colors.accentDanger,
+                        )
+                        Row(
+                            modifier = Modifier.padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            FocusableButton(
+                                text = stringResource(R.string.support_progress_retry),
+                                onClick = onRetry,
+                            )
+                            if (failure is SupportReportSubmitter.Outcome.Forbidden) {
+                                FocusableButton(
+                                    text = stringResource(R.string.support_see_plans),
+                                    onClick = { onUpgrade(failure.reason) },
+                                )
+                            }
+                        }
+                    }
+                }
+                when (state.answer) {
+                    SupportRunFollowUp.Answer.NONE -> Row(
+                        modifier = Modifier.padding(top = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        FocusableButton(
+                            text = stringResource(R.string.support_outcome_worked),
+                            onClick = { onAnswer(true) },
+                            modifier = Modifier.focusRequester(focusRequester),
+                            leading = { Icon(Icons.Filled.ThumbUp, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                        )
+                        FocusableButton(
+                            text = stringResource(R.string.support_outcome_broken),
+                            onClick = { onAnswer(false) },
+                            leading = { Icon(Icons.Filled.ThumbDown, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                        )
+                    }
+                    SupportRunFollowUp.Answer.WAITING -> Text(
+                        text = stringResource(R.string.support_run_check_answer_waiting),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = PluviaTheme.colors.textMuted,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                    SupportRunFollowUp.Answer.SENDING -> CircularProgressIndicator(
+                        modifier = Modifier.padding(top = 8.dp).size(16.dp),
+                        strokeWidth = 2.dp,
+                    )
+                    SupportRunFollowUp.Answer.DELIVERED -> Unit
+                    SupportRunFollowUp.Answer.FAILED -> Column(modifier = Modifier.padding(top = 8.dp)) {
+                        Text(
+                            text = stringResource(R.string.support_run_check_answer_failed),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = PluviaTheme.colors.accentDanger,
+                            modifier = Modifier.padding(bottom = 8.dp),
+                        )
+                        FocusableButton(
+                            text = stringResource(R.string.support_progress_retry),
+                            onClick = onRetryAnswer,
+                            modifier = Modifier.focusRequester(focusRequester),
+                        )
+                    }
+                }
             }
         }
     }

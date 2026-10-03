@@ -1094,6 +1094,13 @@
     <string name="support_composer_analysing">Veuillez patienter. L\'AI lit encore vos journaux. Vous pourrez répondre après sa réponse.</string>
     <string name="support_send_logs">Envoyer les journaux</string>
     <string name="support_new_debug_run">Nouvelle session de débogage</string>
+    <string name="support_run_check_title">Comment ça s\'est passé ?</string>
+    <string name="support_run_check_sent">Votre journal a été envoyé.</string>
+    <string name="support_run_check_failed">Votre journal n\'a pas pu être envoyé.</string>
+    <string name="support_run_check_answer_waiting">Votre réponse sera envoyée avec le journal.</string>
+    <string name="support_run_check_answer_failed">Votre réponse n\'a pas pu être envoyée.</string>
+    <string name="support_run_check_offer">Le journal de votre dernière session de ce jeu n\'a pas été envoyé.</string>
+    <string name="support_run_check_send_last">Envoyer la dernière session</string>
     <string name="support_uploading">Envoi de vos journaux</string>
     <string name="support_share_file">Ouvrir le fichier</string>
     <string name="debug_report_sign_in_hint">Lors de l\'envoi, il vous sera demandé de vous connecter à votre compte GameNative. La conversation avec notre AI se déroule ensuite ici, dans l\'app.</string>

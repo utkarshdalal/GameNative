@@ -1062,6 +1062,13 @@
     <string name="support_composer_analysing">请稍候。AI 仍在读取你的日志。收到它的回答后即可回复。</string>
     <string name="support_send_logs">发送日志</string>
     <string name="support_new_debug_run">新的调试运行</string>
+    <string name="support_run_check_title">运行得怎么样？</string>
+    <string name="support_run_check_sent">日志已发送。</string>
+    <string name="support_run_check_failed">无法发送日志。</string>
+    <string name="support_run_check_answer_waiting">你的回答将随日志一起发送。</string>
+    <string name="support_run_check_answer_failed">无法发送你的回答。</string>
+    <string name="support_run_check_offer">此游戏上次运行的日志尚未发送。</string>
+    <string name="support_run_check_send_last">发送上次运行</string>
     <string name="support_uploading">正在上传日志</string>
     <string name="support_share_file">打开文件</string>
     <string name="debug_report_sign_in_hint">发送时会要求你登录 GameNative 账户。之后与我们 AI 的对话将在应用内进行。</string>

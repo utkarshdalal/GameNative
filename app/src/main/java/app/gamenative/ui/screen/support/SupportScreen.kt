@@ -103,7 +103,11 @@ fun SupportScreen(
     }
 
     val openId = viewModel.openConversationId
-    BackHandler(enabled = openId != null) { viewModel.close() }
+    val closeChat = {
+        openId?.let { SupportRunFollowUp.dismiss(it) }
+        viewModel.close()
+    }
+    BackHandler(enabled = openId != null) { closeChat() }
 
     Box(
         modifier = Modifier
@@ -135,7 +139,7 @@ fun SupportScreen(
                     !signedIn -> SupportSignedOut(onBack = onBack)
                     openId != null -> SupportChat(
                         viewModel = viewModel,
-                        onBack = { viewModel.close() },
+                        onBack = closeChat,
                         onStartDebugRun = onStartDebugRun,
                     )
                     else -> SupportList(viewModel = viewModel, onBack = onBack)

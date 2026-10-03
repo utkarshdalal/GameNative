@@ -1085,6 +1085,13 @@
     <string name="support_composer_analysing">Poczekaj. AI nadal czyta Twoje logi. Możesz odpowiedzieć, gdy pojawi się jego odpowiedź.</string>
     <string name="support_send_logs">Wyślij logi</string>
     <string name="support_new_debug_run">Nowe debugowanie</string>
+    <string name="support_run_check_title">Jak działało?</string>
+    <string name="support_run_check_sent">Twój log został wysłany.</string>
+    <string name="support_run_check_failed">Nie udało się wysłać logu.</string>
+    <string name="support_run_check_answer_waiting">Twoja odpowiedź zostanie wysłana razem z logiem.</string>
+    <string name="support_run_check_answer_failed">Nie udało się wysłać odpowiedzi.</string>
+    <string name="support_run_check_offer">Log z ostatniego uruchomienia tej gry nie został wysłany.</string>
+    <string name="support_run_check_send_last">Wyślij ostatnie uruchomienie</string>
     <string name="support_uploading">Wysyłanie logów</string>
     <string name="support_share_file">Otwórz plik</string>
     <string name="debug_report_sign_in_hint">Podczas wysyłania pojawi się prośba o zalogowanie na konto GameNative. Rozmowa z naszym AI odbędzie się wtedy tutaj, w aplikacji.</string>

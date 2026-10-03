@@ -1064,6 +1064,13 @@
     <string name="support_composer_analysing">請稍候。AI 仍在讀取你的日誌。收到它的回答後即可回覆。</string>
     <string name="support_send_logs">傳送記錄檔</string>
     <string name="support_new_debug_run">新的偵錯執行</string>
+    <string name="support_run_check_title">執行得如何？</string>
+    <string name="support_run_check_sent">日誌已傳送。</string>
+    <string name="support_run_check_failed">無法傳送日誌。</string>
+    <string name="support_run_check_answer_waiting">你的回答將隨日誌一起傳送。</string>
+    <string name="support_run_check_answer_failed">無法傳送你的回答。</string>
+    <string name="support_run_check_offer">此遊戲上次執行的日誌尚未傳送。</string>
+    <string name="support_run_check_send_last">傳送上次執行</string>
     <string name="support_uploading">正在上傳記錄檔</string>
     <string name="support_share_file">開啟檔案</string>
     <string name="debug_report_sign_in_hint">傳送時會要求你登入 GameNative 帳戶。之後與我們 AI 的對話將在應用程式內進行。</string>

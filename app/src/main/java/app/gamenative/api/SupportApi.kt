@@ -298,6 +298,19 @@ object SupportApi {
         logcatFile: File?,
         text: String?,
     ): MultipartBody {
+        val builder = multipartBuilder(report, logFile, perfFile, logcatFile)
+        if (!text.isNullOrBlank()) {
+            builder.addFormDataPart("text", text)
+        }
+        return builder.build()
+    }
+
+    private fun multipartBuilder(
+        report: JSONObject?,
+        logFile: File?,
+        perfFile: File?,
+        logcatFile: File?,
+    ): MultipartBody.Builder {
         val builder = MultipartBody.Builder().setType(MultipartBody.FORM)
         if (report != null) {
             builder.addFormDataPart("report", null, report.toString().toRequestBody("application/json".toMediaType()))
@@ -311,22 +324,30 @@ object SupportApi {
         if (logcatFile != null && logcatFile.exists()) {
             builder.addFormDataPart("logcat", "logcat.gz", logcatFile.asRequestBody("application/gzip".toMediaType()))
         }
-        if (!text.isNullOrBlank()) {
-            builder.addFormDataPart("text", text)
+        return builder
+    }
+
+    private class LateTextBody(private val text: () -> String?) : RequestBody() {
+        override fun contentType(): MediaType? = "text/plain; charset=utf-8".toMediaType()
+
+        override fun contentLength(): Long = -1L
+
+        override fun writeTo(sink: BufferedSink) {
+            text()?.take(TEXT_MAX)?.let { sink.writeUtf8(it) }
         }
-        return builder.build()
     }
 
     private class ProgressBody(
         private val delegate: RequestBody,
         private val onProgress: (Float) -> Unit,
+        private val expectedLength: Long = -1L,
     ) : RequestBody() {
         override fun contentType(): MediaType? = delegate.contentType()
 
         override fun contentLength(): Long = delegate.contentLength()
 
         override fun writeTo(sink: BufferedSink) {
-            val total = contentLength()
+            val total = contentLength().takeIf { it > 0 } ?: expectedLength
             var written = 0L
             val counting = object : ForwardingSink(sink) {
                 override fun write(source: Buffer, byteCount: Long) {
@@ -426,6 +447,27 @@ object SupportApi {
         onProgress: ((Float) -> Unit)? = null,
     ): ApiResult<Posted> {
         val body = withProgress(multipart(report, logFile, perfFile, logcatFile, text), onProgress)
+        return call(
+            name = "conversations/files",
+            build = { it.url("$BASE_URL/conversations/$id/files").post(body) },
+            parse = { parsePosted(it) },
+        )
+    }
+
+    suspend fun uploadFilesWithLateText(
+        id: String,
+        report: JSONObject?,
+        logFile: File?,
+        perfFile: File?,
+        logcatFile: File?,
+        text: () -> String?,
+        onProgress: ((Float) -> Unit)? = null,
+    ): ApiResult<Posted> {
+        val builder = multipartBuilder(report, logFile, perfFile, logcatFile)
+        builder.addFormDataPart("text", null, LateTextBody(text))
+        val multipart = builder.build()
+        val expected = listOfNotNull(logFile, perfFile, logcatFile).filter { it.exists() }.sumOf { it.length() }
+        val body = if (onProgress == null) multipart else ProgressBody(multipart, onProgress, expected)
         return call(
             name = "conversations/files",
             build = { it.url("$BASE_URL/conversations/$id/files").post(body) },

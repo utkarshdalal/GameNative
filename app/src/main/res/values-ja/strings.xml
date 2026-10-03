@@ -1046,6 +1046,13 @@
     <string name="support_composer_analysing">しばらくお待ちください。AI がまだログを読んでいます。回答が届いたら返信できます。</string>
     <string name="support_send_logs">ログを送信</string>
     <string name="support_new_debug_run">新しいデバッグ実行</string>
+    <string name="support_run_check_title">動作はどうでしたか？</string>
+    <string name="support_run_check_sent">ログを送信しました。</string>
+    <string name="support_run_check_failed">ログを送信できませんでした。</string>
+    <string name="support_run_check_answer_waiting">回答はログと一緒に送信されます。</string>
+    <string name="support_run_check_answer_failed">回答を送信できませんでした。</string>
+    <string name="support_run_check_offer">このゲームの前回の実行ログは送信されていません。</string>
+    <string name="support_run_check_send_last">前回の実行を送信</string>
     <string name="support_uploading">ログをアップロードしています</string>
     <string name="support_share_file">ファイルを開く</string>
     <string name="debug_report_sign_in_hint">送信するときに GameNative アカウントへのサインインを求められます。その後、AI との会話はこのアプリ内で行われます。</string>

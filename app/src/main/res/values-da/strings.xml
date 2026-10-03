@@ -893,6 +893,13 @@
     <string name="support_composer_analysing">Vent venligst. AI læser stadig dine logs. Du kan svare, når svaret er kommet.</string>
     <string name="support_send_logs">Send logfiler</string>
     <string name="support_new_debug_run">Ny fejlsøgningskørsel</string>
+    <string name="support_run_check_title">Hvordan kørte det?</string>
+    <string name="support_run_check_sent">Din log blev sendt.</string>
+    <string name="support_run_check_failed">Din log kunne ikke sendes.</string>
+    <string name="support_run_check_answer_waiting">Dit svar bliver sendt sammen med loggen.</string>
+    <string name="support_run_check_answer_failed">Dit svar kunne ikke sendes.</string>
+    <string name="support_run_check_offer">Loggen fra din seneste kørsel af dette spil blev ikke sendt.</string>
+    <string name="support_run_check_send_last">Send den seneste kørsel</string>
     <string name="support_uploading">Uploader dine logfiler</string>
     <string name="support_share_file">Åbn fil</string>
     <string name="debug_report_sign_in_hint">Når du sender, bliver du bedt om at logge ind på din GameNative-konto. Samtalen med vores AI foregår derefter her i appen.</string>
