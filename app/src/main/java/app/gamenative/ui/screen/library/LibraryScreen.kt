@@ -1160,6 +1160,7 @@ private fun LibraryScreenContent(
                         },
                         onSearchQuery = onSearchQuery,
                         onDismiss = { onIsSearching(false) },
+                        onOptionsClick = { onOptionsPanelToggle(true) },
                         modifier = Modifier
                             .align(Alignment.TopCenter)
                             .fillMaxWidth(),

@@ -29,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -53,6 +54,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.widget.doAfterTextChanged
@@ -70,6 +72,7 @@ fun LibrarySearchBar(
     onScrollToTop: suspend () -> Unit,
     onSearchQuery: (String) -> Unit,
     onDismiss: () -> Unit,
+    onOptionsClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     AnimatedVisibility(
@@ -113,6 +116,7 @@ fun LibrarySearchBar(
                     onScrollToTop = onScrollToTop,
                     onSearchQuery = onSearchQuery,
                     onDismiss = onDismiss,
+                    onOptionsClick = onOptionsClick,
                 )
 
                 // Results count
@@ -139,6 +143,7 @@ private fun SearchBarInput(
     onScrollToTop: suspend () -> Unit,
     onSearchQuery: (String) -> Unit,
     onDismiss: () -> Unit,
+    onOptionsClick: () -> Unit, // Callback recibido
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
@@ -222,7 +227,6 @@ private fun SearchBarInput(
         // TODO: there must be a better way of doing this
         val textColor = MaterialTheme.colorScheme.onSurface
         val hintColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-        val cursorColor = MaterialTheme.colorScheme.primary
         val placeholderText = stringResource(R.string.library_search_placeholder)
 
         AndroidView(
@@ -316,6 +320,22 @@ private fun SearchBarInput(
                 )
             }
         }
+
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                .clickable { onOptionsClick() },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Default.Tune,
+                contentDescription = stringResource(R.string.options),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+        }
     }
 }
 
@@ -337,6 +357,7 @@ private fun Preview_LibrarySearchBar() {
                 onScrollToTop = { },
                 onSearchQuery = { },
                 onDismiss = { },
+                onOptionsClick = { },
             )
         }
     }
@@ -356,6 +377,7 @@ private fun Preview_LibrarySearchBar_Empty() {
                 onScrollToTop = { },
                 onSearchQuery = { },
                 onDismiss = { },
+                onOptionsClick = { },
             )
         }
     }
