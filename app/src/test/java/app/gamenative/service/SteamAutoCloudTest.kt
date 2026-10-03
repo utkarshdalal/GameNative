@@ -44,6 +44,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import io.mockk.every
+import io.mockk.verify
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
@@ -744,6 +745,126 @@ class SteamAutoCloudTest {
         // Verify database was updated with new change number
         val changeNumber = db.appChangeNumbersDao().getByAppId(steamAppId)
         assertNotNull("Change number should exist", changeNumber)
+        assertEquals("Change number should be updated", (matchingChangeNumber + 1).toLong(), changeNumber!!.changeNumber)
+    }
+
+    // Steam dedupes by SHA: an empty blockRequests list means the cloud already holds this exact
+    // blob, so there is nothing pending for commitFileUpload to commit -- it answers
+    // file_committed=false. the file is still in the batch manifest from beginAppUploadBatch and
+    // carries forward at completeAppUploadBatch, so it must still count as uploaded. a chromium
+    // User Data tree hits this for most files, since chromium leveldb blobs are CAS-deduped
+    // across sessions.
+    @Test
+    fun uploadSkipsCommitWhenSteamAlreadyHasTheBlob() = runBlocking {
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+
+        // local change number matches cloud
+        val matchingChangeNumber = 5
+        runBlocking {
+            db.appChangeNumbersDao().deleteByAppId(steamAppId)
+            db.appFileChangeListsDao().deleteByAppId(steamAppId)
+            db.appChangeNumbersDao().insert(app.gamenative.data.ChangeNumbers(steamAppId, matchingChangeNumber.toLong()))
+
+            // db file state differs from the local files written below
+            val oldFileContent = "old file content".toByteArray()
+            val oldFileSha = CryptoHelper.shaHash(oldFileContent)
+            val oldUserFile = app.gamenative.data.UserFileInfo(
+                root = PathType.WinMyDocuments,
+                path = "My Games/TestGame/Steam/76561198025127569",
+                filename = "SaveData_0.sav",
+                timestamp = System.currentTimeMillis() - 10000,
+                sha = oldFileSha
+            )
+            db.appFileChangeListsDao().insert(steamAppId, listOf(oldUserFile))
+        }
+
+        saveFilesDir.listFiles()?.forEach { it.delete() }
+        val newFile1Content = "new save data 1".toByteArray()
+        val newFile2Content = "new save data 2".toByteArray()
+        File(saveFilesDir, "SaveData_0.sav").writeBytes(newFile1Content)
+        File(saveFilesDir, "SaveData_New.sav").writeBytes(newFile2Content)
+
+        // matching change number -> no new cloud files
+        val mockAppFileChangeList = mock<AppFileChangeList>()
+        whenever(mockAppFileChangeList.currentChangeNumber).thenReturn(matchingChangeNumber.toLong())
+        whenever(mockAppFileChangeList.isOnlyDelta).thenReturn(false)
+        whenever(mockAppFileChangeList.appBuildIDHwm).thenReturn(0)
+        whenever(mockAppFileChangeList.pathPrefixes).thenReturn(listOf("%WinMyDocuments%/My Games/TestGame/Steam/76561198025127569"))
+        whenever(mockAppFileChangeList.machineNames).thenReturn(emptyList())
+        whenever(mockAppFileChangeList.files).thenReturn(emptyList())
+
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(mockAppFileChangeList)
+
+        val mockUploadBatchResponse = mock<`in`.dragonbra.javasteam.steam.handlers.steamcloud.AppUploadBatchResponse>()
+        whenever(mockUploadBatchResponse.batchID).thenReturn(1)
+        whenever(mockUploadBatchResponse.appChangeNumber).thenReturn((matchingChangeNumber + 1).toLong())
+
+        val capturedFilesToDelete = mutableListOf<List<String>>()
+        val capturedFilesToUpload = mutableListOf<List<String>>()
+        every {
+            mockSteamCloud.beginAppUploadBatch(any(), any(), any(), any(), any(), any(), any())
+        } answers {
+            for (i in args.indices) {
+                val a = args[i]
+                if (a is List<*> && a.all { it is String }) {
+                    val list = a as List<String>
+                    if (capturedFilesToUpload.isEmpty()) capturedFilesToUpload.add(list)
+                    else capturedFilesToDelete.add(list)
+                }
+            }
+            CompletableFuture.completedFuture(mockUploadBatchResponse)
+        }
+
+        val mockFileUploadInfo = mock<`in`.dragonbra.javasteam.steam.handlers.steamcloud.FileUploadInfo>()
+        whenever(mockFileUploadInfo.blockRequests).thenReturn(emptyList())
+
+        every { mockSteamCloud.beginFileUpload(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns
+            CompletableFuture.completedFuture(mockFileUploadInfo)
+
+        every { mockSteamCloud.commitFileUpload(any(), any(), any(), any(), any()) } returns
+            CompletableFuture.completedFuture(true)
+
+        every { mockSteamCloud.completeAppUploadBatch(any(), any(), any(), any()) } returns
+            CompletableFuture.completedFuture(Unit)
+
+        val prefixToPath: (String) -> String = { prefix ->
+            when {
+                prefix == "WinMyDocuments" -> {
+                    val imageFs = ImageFs.find(context)
+                    val wineprefix = File(imageFs.wineprefix)
+                    val dosDevices = File(wineprefix, "dosdevices")
+                    val cDrive = File(dosDevices, "c:")
+                    val users = File(cDrive, "users")
+                    val xuser = File(users, "xuser")
+                    val documents = File(xuser, "Documents")
+                    documents.absolutePath
+                }
+                else -> tempDir.absolutePath
+            }
+        }
+
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = testApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.None,
+            prefixToPath = prefixToPath,
+        ).await()
+
+        assertNotNull("Result should not be null", result)
+        assertTrue("Uploads should be required", result!!.uploadsRequired)
+        assertTrue("Uploads should be completed", result.uploadsCompleted)
+        assertEquals("SHA-deduped files still count as uploaded", 2, result.filesUploaded)
+        assertEquals("Sync result should be Success", SyncResult.Success, result.syncResult)
+
+        // no commit call for a blob the server already has
+        verify(exactly = 0) { mockSteamCloud.commitFileUpload(any(), any(), any(), any(), any()) }
+
+        // batch still completes, so the manifest -- and the new change number -- land
+        verify(exactly = 1) { mockSteamCloud.completeAppUploadBatch(any(), any(), any(), any()) }
+        val changeNumber = db.appChangeNumbersDao().getByAppId(steamAppId)
         assertEquals("Change number should be updated", (matchingChangeNumber + 1).toLong(), changeNumber!!.changeNumber)
     }
 
