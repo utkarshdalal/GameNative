@@ -11,6 +11,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.tooling.preview.Preview
+import app.gamenative.powercontrol.AutoTuningMode
 import app.gamenative.powercontrol.CpuDisplayInfo
 import app.gamenative.powercontrol.GpuDisplayInfo
 import app.gamenative.powercontrol.PowerControlUiState
@@ -46,9 +47,7 @@ fun PowerControlQuickMenuTab(
         firstItemFocusRequester = focusRequester,
         onAdaptiveFpsCapToggled = { enabled ->
             coroutineScope.launch(Dispatchers.IO) {
-                PowerManager.currentProfile.let { profile ->
-                    PowerManager.setPowerProfile(profile.copy(adaptiveFpsCapEnabled = enabled))
-                }
+                PowerManager.updateProfile { it.copy(adaptiveFpsCapEnabled = enabled) }
                 PowerManager.refreshUiState()
             }
         },
@@ -60,51 +59,54 @@ fun PowerControlQuickMenuTab(
         },
         onFanControlToggled = { enabled ->
             coroutineScope.launch(Dispatchers.IO) {
-                PowerManager.currentProfile.let { profile ->
-                    PowerManager.setPowerProfile(profile.copy(enableFanControl = enabled))
+                PowerManager.updateProfile { it.copy(enableFanControl = enabled) }
+                PowerManager.refreshUiState()
+            }
+        },
+        onGamePinningModeSelected = { mode ->
+            coroutineScope.launch(Dispatchers.IO) {
+                PowerManager.updateProfile { it.copy(gamePinningMode = mode) }
+                PowerManager.refreshUiState()
+            }
+        },
+        onManualGamePinCoreToggled = { core, include ->
+            coroutineScope.launch(Dispatchers.IO) {
+                PowerManager.updateProfile {
+                    it.copy(manualGamePinCores = PowerManager.toggleCoreInList(it.manualGamePinCores, core, include))
                 }
                 PowerManager.refreshUiState()
             }
         },
-        onGamePinningToggled = { enabled ->
+        onManualBackgroundPinCoreToggled = { core, include ->
             coroutineScope.launch(Dispatchers.IO) {
-                PowerManager.currentProfile.let { profile ->
-                    PowerManager.setPowerProfile(profile.copy(enableGamePinning = enabled))
+                PowerManager.updateProfile {
+                    it.copy(manualBackgroundPinCores = PowerManager.toggleCoreInList(it.manualBackgroundPinCores, core, include))
                 }
                 PowerManager.refreshUiState()
             }
         },
-        onAutoTuningToggled = { enabled ->
+        onAutoTuningModeSelected = { mode ->
             coroutineScope.launch(Dispatchers.IO) {
-                // Update current profile
-                PowerManager.currentProfile.let { profile ->
-                    val updatedProfile = profile.copy(
-                        enableAutoTuning = enabled,
-                        name = PerformancePreset.CUSTOM.displayName
-                    )
-                    PowerManager.setPowerProfile(updatedProfile)
+                PowerManager.updateProfile {
+                    if (it.autoTuningMode == mode) it else it.copy(autoTuningMode = mode, name = PerformancePreset.CUSTOM.displayName)
                 }
-
                 PowerManager.refreshUiState()
             }
         },
         onTuningModeSelected = { perCluster ->
             coroutineScope.launch(Dispatchers.IO) {
-                PowerManager.currentProfile.let { profile ->
-                    PowerManager.setPowerProfile(profile.copy(enablePerClusterTuning = perCluster))
-                }
+                PowerManager.updateProfile { it.copy(enablePerClusterTuning = perCluster) }
                 PowerManager.refreshUiState()
             }
         },
         onTuningStrategySelected = { strategy ->
             coroutineScope.launch(Dispatchers.IO) {
                 // Update current profile with new tuning strategy
-                PowerManager.currentProfile.let { profile ->
-                    val updatedProfile = profile.copy(
+                PowerManager.updateProfile {
+                    it.copy(
                         tuningStrategy = strategy,
                         name = PerformancePreset.CUSTOM.displayName
                     )
-                    PowerManager.setPowerProfile(updatedProfile)
                 }
 
                 PowerManager.refreshUiState()
@@ -113,21 +115,22 @@ fun PowerControlQuickMenuTab(
         onProfileSelected = { profile ->
             coroutineScope.launch(Dispatchers.IO) {
                 // Update PowerManager's current profile reference immediately
-                // Preserve current enableFanControl and enableGamePinning settings
-                val currentProfile = PowerManager.currentProfile.copy()
-                Timber.d("Current profile: $currentProfile")
-
-                val updatedProfile = profile.copy(
-                    enablePowerControl = currentProfile.enablePowerControl,
-                    adaptiveFpsCapEnabled = currentProfile.adaptiveFpsCapEnabled,
-                    enableAutoTuning = false,
-                    enablePerClusterTuning = false,
-                    enableFanControl = currentProfile.enableFanControl,
-                    enableGamePinning = currentProfile.enableGamePinning,
-                )
-
+                // Preserve current enableFanControl and game pinning settings
+                PowerManager.updateProfile { currentProfile ->
+                    Timber.d("Current profile: $currentProfile")
+                    profile.copy(
+                        enablePowerControl = currentProfile.enablePowerControl,
+                        adaptiveFpsCapEnabled = currentProfile.adaptiveFpsCapEnabled,
+                        autoTuningMode = AutoTuningMode.MANUAL,
+                        enablePerClusterTuning = false,
+                        enableFanControl = currentProfile.enableFanControl,
+                        gamePinningMode = currentProfile.gamePinningMode,
+                        manualGamePinCores = currentProfile.manualGamePinCores,
+                        manualBackgroundPinCores = currentProfile.manualBackgroundPinCores,
+                    )
+                }
+                val updatedProfile = PowerManager.currentProfile
                 Timber.d("Applying profile: $updatedProfile")
-                PowerManager.setPowerProfile(updatedProfile)
 
                 val success = PowerManager.update {
                     name(updatedProfile.name)
