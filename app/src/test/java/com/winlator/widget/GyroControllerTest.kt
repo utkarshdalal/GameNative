@@ -61,14 +61,16 @@ class GyroControllerTest {
         return Triple(GyroController(context, listener), sensorManager, sensor)
     }
 
-    private fun controllerWithTiltSensors(): Triple<GyroController, SensorManager, Pair<Sensor, Sensor>> {
+    private fun controllerWithTiltSensors(
+        orientationAvailable: Boolean = true,
+    ): Triple<GyroController, SensorManager, Pair<Sensor, Sensor>> {
         val sensorManager = mock<SensorManager>()
         val gyro = mock<Sensor>()
         val orientation = mock<Sensor>()
         `when`(gyro.type).thenReturn(Sensor.TYPE_GYROSCOPE)
         `when`(orientation.type).thenReturn(Sensor.TYPE_GAME_ROTATION_VECTOR)
         `when`(sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)).thenReturn(gyro)
-        `when`(sensorManager.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR)).thenReturn(orientation)
+        `when`(sensorManager.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR)).thenReturn(if (orientationAvailable) orientation else null)
         `when`(
             sensorManager.registerListener(
                 any(SensorEventListener::class.java),
@@ -300,6 +302,47 @@ class GyroControllerTest {
 
         verify(manager).unregisterListener(controller, orientation)
         verify(manager).registerListener(controller, gyro, GyroController.SENSOR_PERIOD_US)
+    }
+
+    @Test
+    fun gravityConversion_registersAndReleasesBothSensors() {
+        for (style in GyroSettings.CONVERSION_PLAYER_SPACE..GyroSettings.CONVERSION_WORLD_SPACE) {
+            val (controller, manager, sensors) = controllerWithTiltSensors()
+            val (gyro, orientation) = sensors
+            controller.setSettings(GyroSettings(mode = GyroSettings.MODE_RIGHT_STICK, conversionStyle = style))
+            controller.setHasProfile(true)
+            controller.onAttachedToWindow()
+
+            verify(manager).registerListener(controller, gyro, GyroController.SENSOR_PERIOD_US)
+            verify(manager).registerListener(controller, orientation, GyroController.SENSOR_PERIOD_US)
+            controller.setOverlaySuppressed(true)
+            verify(manager).unregisterListener(controller, gyro)
+            verify(manager).unregisterListener(controller, orientation)
+        }
+    }
+
+    @Test
+    fun gravityConversion_missingOrFailedOrientationFallsBackToLocalYaw() {
+        for (style in GyroSettings.CONVERSION_PLAYER_SPACE..GyroSettings.CONVERSION_WORLD_SPACE) {
+            for (available in listOf(false, true)) {
+                val (controller, manager, sensors) = controllerWithTiltSensors(available)
+                val (gyro, orientation) = sensors
+                `when`(manager.registerListener(controller, orientation, GyroController.SENSOR_PERIOD_US)).thenReturn(false)
+                controller.setSettings(
+                    GyroSettings(mode = GyroSettings.MODE_RIGHT_STICK, conversionStyle = style, steadyingDegreesPerSecond = 0f),
+                )
+                controller.setHasProfile(true)
+                controller.onAttachedToWindow()
+
+                verify(manager).registerListener(controller, gyro, GyroController.SENSOR_PERIOD_US)
+                assertArrayEquals(
+                    "style $style, orientation available $available", floatArrayOf(-1f, -0.5f),
+                    controller.mapAndFilterRates(0.5f, 1f, 4f, Surface.ROTATION_0), 0f,
+                )
+                controller.onDetachedFromWindow()
+                verify(manager, never()).unregisterListener(controller, orientation)
+            }
+        }
     }
 
     @Test
