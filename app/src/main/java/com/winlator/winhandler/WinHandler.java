@@ -1020,7 +1020,8 @@ public class WinHandler {
         }
         final ControlsProfile profile = inputControlsView != null ? inputControlsView.getProfile() : null;
         final boolean useVirtualGamepad = isVirtualGamepadActive();
-        final boolean enabled = this.currentController != null || useVirtualGamepad;
+        final ExternalController controller = this.currentController;
+        final boolean enabled = controller != null || useVirtualGamepad;
         Iterator<Integer> it = this.gamepadClients.iterator();
         while (it.hasNext()) {
             final int port = it.next().intValue();
@@ -1029,11 +1030,11 @@ public class WinHandler {
                 sendData.put(RequestCodes.GET_GAMEPAD_STATE);
                 sendData.put((byte)(enabled ? 1 : 0));
                 if (enabled) {
-                    this.sendData.putInt(!useVirtualGamepad ? this.currentController.getDeviceId() : inputControlsView.getProfile().id);
+                    this.sendData.putInt(!useVirtualGamepad ? controller.getDeviceId() : profile.id);
                     if (useVirtualGamepad) {
-                        inputControlsView.getProfile().getGamepadState().writeTo(sendData);
+                        profile.getGamepadState().writeTo(sendData);
                     } else {
-                        this.currentController.state.writeTo(this.sendData);
+                        controller.state.writeTo(this.sendData);
                     }
                 }
                 sendPacket(port);
