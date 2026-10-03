@@ -2827,4 +2827,10 @@
     <string name="control_profile_failed">Operațiunea profilului de control a eșuat: %1$s</string>
     <string name="control_profile_delete_title">Ștergi profilul de control?</string>
     <string name="control_profile_delete_message">Elimini „%1$s” din bibliotecă? Jocurile deja configurate cu acest profil își vor păstra controalele.</string>
+    <string name="debug_prerun_instruction">Ce trebuie să faci în această rulare: %1$s</string>
+    <plurals name="debug_prerun_min_minutes">
+        <item quantity="one">Ține jocul deschis cel puțin %1$d minut înainte să ieși.</item>
+        <item quantity="few">Ține jocul deschis cel puțin %1$d minute înainte să ieși.</item>
+        <item quantity="other">Ține jocul deschis cel puțin %1$d de minute înainte să ieși.</item>
+    </plurals>
 </resources>

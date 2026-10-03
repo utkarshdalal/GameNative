@@ -1,6 +1,7 @@
 package app.gamenative.ui.screen.support
 
 import androidx.compose.runtime.mutableStateOf
+import app.gamenative.utils.DebugRunParamsHolder
 
 object SupportSession {
 
@@ -18,5 +19,6 @@ object SupportSession {
 
     fun clearRun(appId: String) {
         if (runTarget?.first == appId) runTarget = null
+        DebugRunParamsHolder.clear(appId)
     }
 }

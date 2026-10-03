@@ -134,6 +134,8 @@ import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.downloader.CoreDriverDownloader
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.DebugReportUtils
+import app.gamenative.utils.DebugRunParams
+import app.gamenative.utils.DebugRunParamsHolder
 import app.gamenative.utils.ExecutableSelectionUtils
 import app.gamenative.utils.LsfgQuickMenuHelper
 import app.gamenative.utils.LsfgVkManager
@@ -4031,7 +4033,7 @@ private fun setupXEnvironment(
     val wineDebugChannels = PrefManager.wineDebugChannels
     // explicitly enable or disable Wine debug channels
     if (debugRun) {
-        envVars.put("WINEDEBUG", "warn+seh,+loaddll,+process,+timestamp,+pid,+tid")
+        envVars.put("WINEDEBUG", DebugRunParams.BASE_WINEDEBUG)
         envVars.put("DXVK_LOG_LEVEL", "info")
         envVars.put("DXVK_LOG_PATH", "none")
         envVars.put("VKD3D_DEBUG", "warn")
@@ -4148,6 +4150,9 @@ private fun setupXEnvironment(
         envVars.remove("DXVK_FRAME_RATE")
         envVars.remove("VKD3D_FRAME_RATE")
         if (!envVars.has("WINEESYNC")) envVars.put("WINEESYNC", "1")
+        if (debugRun) {
+            DebugRunParams.applyToDebugEnv(envVars, container.envVars, appId, DebugRunParamsHolder.get(appId))
+        }
 
         val graphicsDriverConfig = KeyValueSet(container.getGraphicsDriverConfig())
         if (graphicsDriverConfig.get("version").lowercase(Locale.getDefault()).contains("gen8")) {

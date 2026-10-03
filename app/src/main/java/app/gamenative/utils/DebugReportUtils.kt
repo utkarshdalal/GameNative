@@ -133,7 +133,7 @@ object DebugReportUtils {
             }
 
             compressLog(claimedLog, logFile(dir))
-            val header = buildHeader(context, appId)
+            val header = buildHeader(context, appId, DebugRunParamsHolder.get(appId))
             if (perf != null) {
                 perfFile(dir).writeText(perf.perf.toString())
                 header.put("perf", perf.verdict)
@@ -151,6 +151,8 @@ object DebugReportUtils {
             Timber.e(e, "DebugReportUtils: Failed to create pending report for $appId")
             reportDir?.deleteRecursively()
             null
+        } finally {
+            DebugRunParamsHolder.clear(appId)
         }
     }
 
@@ -170,7 +172,7 @@ object DebugReportUtils {
         }
     }
 
-    private fun buildHeader(context: Context, appId: String): JSONObject {
+    private fun buildHeader(context: Context, appId: String, runParams: DebugRunParams?): JSONObject {
         val container = ContainerUtils.getContainer(context, appId)
 
         val gpu = try {
@@ -196,6 +198,11 @@ object DebugReportUtils {
             put("configs", JSONObject(container.containerJson))
             if (avgFps != null) put("avgFps", avgFps.toDouble()) else put("avgFps", JSONObject.NULL)
             if (sessionLengthSec != null) put("sessionLengthSec", sessionLengthSec) else put("sessionLengthSec", JSONObject.NULL)
+            put("runParams", (runParams ?: DebugRunParams()).toJson())
+            val applied = container.getExtra(SessionReport.APPLIED_SUGGESTION_EXTRA, "")
+            if (applied.isNotEmpty()) {
+                runCatching { JSONObject(applied) }.getOrNull()?.let { put("appliedSuggestion", it) }
+            }
         }
     }
 

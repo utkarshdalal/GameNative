@@ -2827,4 +2827,8 @@
     <string name="control_profile_failed">控制設定檔操作失敗：%1$s</string>
     <string name="control_profile_delete_title">刪除控制設定檔？</string>
     <string name="control_profile_delete_message">要從媒體庫移除「%1$s」嗎？已使用此設定檔的遊戲將保留其控制設定。</string>
+    <string name="debug_prerun_instruction">本次執行要做的事：%1$s</string>
+    <plurals name="debug_prerun_min_minutes">
+        <item quantity="other">結束前請讓遊戲至少執行 %1$d 分鐘。</item>
+    </plurals>
 </resources>

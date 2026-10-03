@@ -2762,4 +2762,9 @@
     <string name="control_profile_failed">Vorgang mit Steuerungsprofil fehlgeschlagen: %1$s</string>
     <string name="control_profile_delete_title">Steuerungsprofil löschen?</string>
     <string name="control_profile_delete_message">„%1$s“ aus der Bibliothek entfernen? Bereits damit konfigurierte Spiele behalten ihre Steuerung.</string>
+    <string name="debug_prerun_instruction">Das tust du in diesem Lauf: %1$s</string>
+    <plurals name="debug_prerun_min_minutes">
+        <item quantity="one">Lass das Spiel mindestens %1$d Minute geöffnet, bevor du es beendest.</item>
+        <item quantity="other">Lass das Spiel mindestens %1$d Minuten geöffnet, bevor du es beendest.</item>
+    </plurals>
 </resources>

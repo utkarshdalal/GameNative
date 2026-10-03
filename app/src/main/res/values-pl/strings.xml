@@ -2828,4 +2828,11 @@
     <string name="control_profile_failed">Operacja na profilu sterowania nie powiodła się: %1$s</string>
     <string name="control_profile_delete_title">Usunąć profil sterowania?</string>
     <string name="control_profile_delete_message">Usunąć „%1$s” z biblioteki? Gry już skonfigurowane z tym profilem zachowają swoje sterowanie.</string>
+    <string name="debug_prerun_instruction">Co zrobić w tym uruchomieniu: %1$s</string>
+    <plurals name="debug_prerun_min_minutes">
+        <item quantity="one">Nie zamykaj gry przez co najmniej %1$d minutę.</item>
+        <item quantity="few">Nie zamykaj gry przez co najmniej %1$d minuty.</item>
+        <item quantity="many">Nie zamykaj gry przez co najmniej %1$d minut.</item>
+        <item quantity="other">Nie zamykaj gry przez co najmniej %1$d minuty.</item>
+    </plurals>
 </resources>

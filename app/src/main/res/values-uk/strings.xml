@@ -2824,4 +2824,11 @@
     <string name="control_profile_failed">Не вдалося виконати операцію з профілем керування: %1$s</string>
     <string name="control_profile_delete_title">Видалити профіль керування?</string>
     <string name="control_profile_delete_message">Видалити «%1$s» з бібліотеки? Ігри, уже налаштовані з ним, збережуть своє керування.</string>
+    <string name="debug_prerun_instruction">Що зробити в цьому запуску: %1$s</string>
+    <plurals name="debug_prerun_min_minutes">
+        <item quantity="one">Не закривайте гру щонайменше %1$d хвилину.</item>
+        <item quantity="few">Не закривайте гру щонайменше %1$d хвилини.</item>
+        <item quantity="many">Не закривайте гру щонайменше %1$d хвилин.</item>
+        <item quantity="other">Не закривайте гру щонайменше %1$d хвилини.</item>
+    </plurals>
 </resources>

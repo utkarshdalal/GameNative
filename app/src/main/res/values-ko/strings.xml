@@ -2816,4 +2816,8 @@
     <string name="control_profile_failed">컨트롤 프로필 작업 실패: %1$s</string>
     <string name="control_profile_delete_title">컨트롤 프로필을 삭제할까요?</string>
     <string name="control_profile_delete_message">라이브러리에서 “%1$s”을(를) 제거할까요? 이미 이 프로필로 설정된 게임의 컨트롤은 유지됩니다.</string>
+    <string name="debug_prerun_instruction">이번 실행에서 할 일: %1$s</string>
+    <plurals name="debug_prerun_min_minutes">
+        <item quantity="other">종료하기 전에 게임을 최소 %1$d분 동안 열어 두세요.</item>
+    </plurals>
 </resources>

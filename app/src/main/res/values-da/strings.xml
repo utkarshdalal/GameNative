@@ -2692,4 +2692,9 @@
     <string name="control_profile_failed">Handlingen for styringsprofilen mislykkedes: %1$s</string>
     <string name="control_profile_delete_title">Slet styringsprofil?</string>
     <string name="control_profile_delete_message">Fjern “%1$s” fra biblioteket? Spil, der allerede er konfigureret med profilen, beholder deres styring.</string>
+    <string name="debug_prerun_instruction">Det skal du gøre i denne kørsel: %1$s</string>
+    <plurals name="debug_prerun_min_minutes">
+        <item quantity="one">Hold spillet åbent i mindst %1$d minut, før du afslutter.</item>
+        <item quantity="other">Hold spillet åbent i mindst %1$d minutter, før du afslutter.</item>
+    </plurals>
 </resources>

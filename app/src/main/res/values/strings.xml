@@ -2838,4 +2838,9 @@
     <string name="gyro_degrees_per_second_value">%1$.1f°/s</string>
     <string name="gyro_milliseconds_value">%1$d ms</string>
     <string name="reset_gyro_settings">Reset gyro settings</string>
+    <string name="debug_prerun_instruction">What to do in this run: %1$s</string>
+    <plurals name="debug_prerun_min_minutes">
+        <item quantity="one">Keep the game open for at least %1$d minute before you quit.</item>
+        <item quantity="other">Keep the game open for at least %1$d minutes before you quit.</item>
+    </plurals>
 </resources>

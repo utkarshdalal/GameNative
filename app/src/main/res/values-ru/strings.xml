@@ -2752,4 +2752,11 @@ https://gamenative.app
     <string name="control_profile_failed">Ошибка операции с профилем управления: %1$s</string>
     <string name="control_profile_delete_title">Удалить профиль управления?</string>
     <string name="control_profile_delete_message">Удалить «%1$s» из библиотеки? Игры, уже настроенные с ним, сохранят свои элементы управления.</string>
+    <string name="debug_prerun_instruction">Что сделать в этом запуске: %1$s</string>
+    <plurals name="debug_prerun_min_minutes">
+        <item quantity="one">Не закрывайте игру хотя бы %1$d минуту.</item>
+        <item quantity="few">Не закрывайте игру хотя бы %1$d минуты.</item>
+        <item quantity="many">Не закрывайте игру хотя бы %1$d минут.</item>
+        <item quantity="other">Не закрывайте игру хотя бы %1$d минуты.</item>
+    </plurals>
 </resources>

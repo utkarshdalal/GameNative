@@ -2783,4 +2783,8 @@
     <string name="control_profile_failed">コントロールプロファイルの操作に失敗しました: %1$s</string>
     <string name="control_profile_delete_title">コントロールプロファイルを削除しますか？</string>
     <string name="control_profile_delete_message">ライブラリから「%1$s」を削除しますか？すでにこのプロファイルで設定されたゲームのコントロールは維持されます。</string>
+    <string name="debug_prerun_instruction">この実行で行うこと: %1$s</string>
+    <plurals name="debug_prerun_min_minutes">
+        <item quantity="other">終了する前に、少なくとも%1$d分間ゲームを開いたままにしてください。</item>
+    </plurals>
 </resources>

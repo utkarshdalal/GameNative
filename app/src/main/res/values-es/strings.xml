@@ -2820,4 +2820,9 @@
     <string name="control_profile_failed">Error en la operación del perfil de controles: %1$s</string>
     <string name="control_profile_delete_title">¿Eliminar perfil de controles?</string>
     <string name="control_profile_delete_message">¿Quitar “%1$s” de la biblioteca? Los juegos ya configurados con este perfil conservarán sus controles.</string>
+    <string name="debug_prerun_instruction">Qué hacer en esta ejecución: %1$s</string>
+    <plurals name="debug_prerun_min_minutes">
+        <item quantity="one">Mantén el juego abierto al menos %1$d minuto antes de salir.</item>
+        <item quantity="other">Mantén el juego abierto al menos %1$d minutos antes de salir.</item>
+    </plurals>
 </resources>

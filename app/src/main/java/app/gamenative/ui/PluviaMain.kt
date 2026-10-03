@@ -122,6 +122,7 @@ import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.BestConfigService
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.DebugReportUtils
+import app.gamenative.utils.DebugRunParamsHolder
 import app.gamenative.utils.PlatformAuthUtils
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.ManifestInstaller
@@ -347,6 +348,34 @@ private fun trackGameLaunched(appId: String) {
 }
 
 @OptIn(ExperimentalLayoutApi::class)
+private fun startDebugRun(
+    context: Context,
+    viewModel: MainViewModel,
+    appId: String,
+    isOffline: Boolean,
+    setMessageDialogState: (MessageDialogState) -> Unit,
+) {
+    if (appId.isEmpty()) return
+    trackGameLaunched(appId)
+    viewModel.setLaunchedAppId(appId)
+    viewModel.setBootToContainer(false)
+    viewModel.setTestGraphics(false)
+    viewModel.setDiagnostics(false)
+    viewModel.setDebugRun(true)
+    viewModel.setOffline(isOffline)
+    preLaunchApp(
+        context = context,
+        appId = appId,
+        setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+        setLoadingProgress = viewModel::setLoadingDialogProgress,
+        setLoadingMessage = viewModel::setLoadingDialogMessage,
+        setMessageDialogState = setMessageDialogState,
+        onSuccess = viewModel::launchApp,
+        isOffline = isOffline,
+        bootToContainer = false,
+    )
+}
+
 @Composable
 fun PluviaMain(
     viewModel: MainViewModel = hiltViewModel(),
@@ -1649,33 +1678,14 @@ fun PluviaMain(
 
             DebugPreRunDialog(
                 visible = debugPreRunVisible,
+                runParams = DebugRunParamsHolder.get(debugPreRunAppId),
                 onStart = {
                     debugPreRunVisible = false
-                    val appId = debugPreRunAppId
-                    if (appId.isNotEmpty()) {
-                        val isOffline = debugPreRunOffline
-                        trackGameLaunched(appId)
-                        viewModel.setLaunchedAppId(appId)
-                        viewModel.setBootToContainer(false)
-                        viewModel.setTestGraphics(false)
-                        viewModel.setDiagnostics(false)
-                        viewModel.setDebugRun(true)
-                        viewModel.setOffline(isOffline)
-                        preLaunchApp(
-                            context = context,
-                            appId = appId,
-                            setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
-                            setLoadingProgress = viewModel::setLoadingDialogProgress,
-                            setLoadingMessage = viewModel::setLoadingDialogMessage,
-                            setMessageDialogState = setMessageDialogState,
-                            onSuccess = viewModel::launchApp,
-                            isOffline = isOffline,
-                            bootToContainer = false,
-                        )
-                    }
+                    startDebugRun(context, viewModel, debugPreRunAppId, debugPreRunOffline, setMessageDialogState)
                 },
                 onDismiss = {
                     debugPreRunVisible = false
+                    DebugRunParamsHolder.clear(debugPreRunAppId)
                 },
             )
 

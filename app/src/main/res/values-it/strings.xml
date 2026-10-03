@@ -2813,4 +2813,9 @@
     <string name="control_profile_failed">Operazione del profilo di controllo non riuscita: %1$s</string>
     <string name="control_profile_delete_title">Eliminare il profilo di controllo?</string>
     <string name="control_profile_delete_message">Rimuovere “%1$s” dalla raccolta? I giochi già configurati con questo profilo manterranno i propri controlli.</string>
+    <string name="debug_prerun_instruction">Cosa fare in questa sessione: %1$s</string>
+    <plurals name="debug_prerun_min_minutes">
+        <item quantity="one">Tieni il gioco aperto per almeno %1$d minuto prima di uscire.</item>
+        <item quantity="other">Tieni il gioco aperto per almeno %1$d minuti prima di uscire.</item>
+    </plurals>
 </resources>

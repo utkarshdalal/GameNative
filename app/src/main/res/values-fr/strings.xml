@@ -2822,4 +2822,9 @@
     <string name="control_profile_failed">Échec de l’opération sur le profil de commandes : %1$s</string>
     <string name="control_profile_delete_title">Supprimer le profil de commandes ?</string>
     <string name="control_profile_delete_message">Retirer « %1$s » de la bibliothèque ? Les jeux déjà configurés avec ce profil conserveront leurs commandes.</string>
+    <string name="debug_prerun_instruction">À faire pendant cette session : %1$s</string>
+    <plurals name="debug_prerun_min_minutes">
+        <item quantity="one">Gardez le jeu ouvert au moins %1$d minute avant de quitter.</item>
+        <item quantity="other">Gardez le jeu ouvert au moins %1$d minutes avant de quitter.</item>
+    </plurals>
 </resources>

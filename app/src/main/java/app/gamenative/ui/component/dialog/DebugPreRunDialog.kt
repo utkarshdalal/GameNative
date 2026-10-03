@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -28,10 +29,12 @@ import androidx.compose.ui.window.Dialog
 import app.gamenative.R
 import app.gamenative.api.SupportApi
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.utils.DebugRunParams
 
 @Composable
 fun DebugPreRunDialog(
     visible: Boolean,
+    runParams: DebugRunParams? = null,
     onStart: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -90,6 +93,26 @@ fun DebugPreRunDialog(
                             .align(Alignment.Start)
                             .padding(bottom = 16.dp),
                     )
+                    runParams?.instruction?.let { instruction ->
+                        Text(
+                            text = stringResource(R.string.debug_prerun_instruction, instruction),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .align(Alignment.Start)
+                                .padding(bottom = 8.dp),
+                        )
+                    }
+                    runParams?.minSeconds?.let { seconds ->
+                        val minutes = (seconds + 59) / 60
+                        Text(
+                            text = pluralStringResource(R.plurals.debug_prerun_min_minutes, minutes, minutes),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier
+                                .align(Alignment.Start)
+                                .padding(bottom = 16.dp),
+                        )
+                    }
 
                     val startFocusRequester = remember { FocusRequester() }
                     LaunchedEffect(Unit) { runCatching { startFocusRequester.requestFocus() } }
