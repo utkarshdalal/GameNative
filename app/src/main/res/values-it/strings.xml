@@ -1990,7 +1990,7 @@
     <string name="option_share_diagnostics">Condividi diagnostica</string>
     <string name="option_ai_debug_run">Ricevi aiuto AI</string>
     <string name="debug_report_title">Report di debug AI</string>
-    <string name="debug_report_summary">%1$s · %2$s · log acquisito (%3$s MB)</string>
+    <string name="debug_report_summary">%1$s · %2$s</string>
     <string name="debug_report_what_went_wrong">Cosa è andato storto?</string>
     <string name="debug_report_send">Invia</string>
     <string name="debug_report_share_instead">Condividi invece</string>

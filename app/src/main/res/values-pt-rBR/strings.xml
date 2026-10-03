@@ -1869,7 +1869,7 @@
     <string name="option_share_diagnostics">Compartilhar diagnóstico</string>
     <string name="option_ai_debug_run">Obter ajuda de AI</string>
     <string name="debug_report_title">Relatório de depuração com AI</string>
-    <string name="debug_report_summary">%1$s · %2$s · log capturado (%3$s MB)</string>
+    <string name="debug_report_summary">%1$s · %2$s</string>
     <string name="debug_report_what_went_wrong">O que deu errado?</string>
     <string name="debug_report_send">Enviar</string>
     <string name="debug_report_share_instead">Compartilhar em vez disso</string>

@@ -1995,7 +1995,7 @@
     <string name="option_share_diagnostics">Поділитися діагностикою</string>
     <string name="option_ai_debug_run">Отримати допомогу AI</string>
     <string name="debug_report_title">AI-звіт про налагодження</string>
-    <string name="debug_report_summary">%1$s · %2$s · лог записано (%3$s MB)</string>
+    <string name="debug_report_summary">%1$s · %2$s</string>
     <string name="debug_report_what_went_wrong">Що пішло не так?</string>
     <string name="debug_report_send">Надіслати</string>
     <string name="debug_report_share_instead">Поділитися натомість</string>

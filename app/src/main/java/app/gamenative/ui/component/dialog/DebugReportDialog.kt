@@ -45,7 +45,6 @@ import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.component.dialog.state.DebugReportDialogState
 import app.gamenative.ui.theme.PluviaTheme
-import java.util.Locale
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -189,13 +188,11 @@ fun DebugReportDialog(
                                     modifier = Modifier.padding(bottom = 16.dp),
                                 )
 
-                                val logSizeMb = String.format(Locale.US, "%.1f", state.logSizeBytes / (1024f * 1024f))
                                 Text(
                                     text = stringResource(
                                         R.string.debug_report_summary,
                                         state.gameName,
                                         state.deviceName,
-                                        logSizeMb,
                                     ),
                                     style = MaterialTheme.typography.bodyMedium,
                                     modifier = Modifier

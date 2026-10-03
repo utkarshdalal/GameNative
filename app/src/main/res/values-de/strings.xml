@@ -1939,7 +1939,7 @@
     <string name="option_share_diagnostics">Diagnose teilen</string>
     <string name="option_ai_debug_run">AI-Hilfe erhalten</string>
     <string name="debug_report_title">AI-Debug-Bericht</string>
-    <string name="debug_report_summary">%1$s · %2$s · Log aufgezeichnet (%3$s MB)</string>
+    <string name="debug_report_summary">%1$s · %2$s</string>
     <string name="debug_report_what_went_wrong">Was ist schiefgelaufen?</string>
     <string name="debug_report_send">Senden</string>
     <string name="debug_report_share_instead">Stattdessen teilen</string>

@@ -1997,7 +1997,7 @@
     <string name="option_share_diagnostics">Compartir diagnóstico</string>
     <string name="option_ai_debug_run">Obtener ayuda de AI</string>
     <string name="debug_report_title">Informe de depuración con AI</string>
-    <string name="debug_report_summary">%1$s · %2$s · registro capturado (%3$s MB)</string>
+    <string name="debug_report_summary">%1$s · %2$s</string>
     <string name="debug_report_what_went_wrong">¿Qué salió mal?</string>
     <string name="debug_report_send">Enviar</string>
     <string name="debug_report_share_instead">Compartir en su lugar</string>

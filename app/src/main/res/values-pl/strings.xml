@@ -1999,7 +1999,7 @@
     <string name="option_share_diagnostics">Udostępnij diagnostykę</string>
     <string name="option_ai_debug_run">Uzyskaj pomoc AI</string>
     <string name="debug_report_title">Raport debugowania AI</string>
-    <string name="debug_report_summary">%1$s · %2$s · przechwycono log (%3$s MB)</string>
+    <string name="debug_report_summary">%1$s · %2$s</string>
     <string name="debug_report_what_went_wrong">Co poszło nie tak?</string>
     <string name="debug_report_send">Wyślij</string>
     <string name="debug_report_share_instead">Udostępnij zamiast tego</string>

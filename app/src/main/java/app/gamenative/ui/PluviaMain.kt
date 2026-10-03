@@ -783,7 +783,6 @@ fun PluviaMain(
                         gameName = header?.optString("gameName").takeUnless { it.isNullOrEmpty() }
                             ?: ContainerUtils.resolveGameName(event.appId),
                         deviceName = header?.optString("deviceName") ?: "",
-                        logSizeBytes = withContext(Dispatchers.IO) { DebugReportUtils.logFile(dir).length() },
                     )
                     scope.launch {
                         AccountApi.loadSignedInState()
@@ -1741,7 +1740,6 @@ fun PluviaMain(
                     DebugPaywallScreen(
                         gameName = debugReportState.gameName,
                         deviceName = debugReportState.deviceName,
-                        logSizeBytes = debugReportState.logSizeBytes,
                         reason = reason,
                         hasDiscordToken = discordTokenPresent,
                         onSubscribe = {
