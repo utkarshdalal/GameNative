@@ -81,6 +81,7 @@ object SupportApi {
         val isReport: Boolean,
         val attachments: List<Attachment>,
         val notice: Notice?,
+        val suggestion: SupportSuggestion? = null,
     )
 
     data class MessagePage(
@@ -183,6 +184,11 @@ object SupportApi {
             isReport = json.optBoolean("report", false),
             attachments = attachments,
             notice = json.optJSONObject("notice")?.let { parseNotice(it) },
+            suggestion = if (kind == KIND_AGENT) {
+                runCatching { SupportSuggestion.parse(json.optJSONObject("suggestion")) }.getOrNull()
+            } else {
+                null
+            },
         )
     }
 

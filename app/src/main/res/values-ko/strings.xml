@@ -2820,4 +2820,29 @@
     <plurals name="debug_prerun_min_minutes">
         <item quantity="other">종료하기 전에 게임을 최소 %1$d분 동안 열어 두세요.</item>
     </plurals>
+    <string name="support_suggestion_title">추천 설정</string>
+    <string name="support_suggestion_not_applicable">이 버전의 앱은 이 변경 사항을 적용할 수 없습니다. 게임 설정에서 직접 변경할 수 있습니다.</string>
+    <string name="support_suggestion_no_game">이 변경 사항을 적용하려면 이 기기에 게임을 설치하세요.</string>
+    <string name="support_suggestion_change">%1$s: %2$s → %3$s</string>
+    <string name="support_suggestion_changed_since">현재 값은 %1$s입니다. 보고서에는 %2$s였습니다.</string>
+    <string name="support_suggestion_run_record">다음 실행에서 추가로 기록하는 항목: %1$s</string>
+    <string name="support_suggestion_run_channels">Wine 로그 채널 %1$s</string>
+    <string name="support_suggestion_run_env">디버그 값 %1$s</string>
+    <string name="support_suggestion_run_wrapper_diag">그래픽 래퍼 진단</string>
+    <string name="support_suggestion_apply_and_run">적용 후 실행</string>
+    <string name="support_suggestion_apply_only">적용만</string>
+    <string name="support_suggestion_restore">이전 설정 복원</string>
+    <string name="support_suggestion_confirm_title">이 설정을 변경할까요?</string>
+    <string name="support_suggestion_confirm_message">앱이 먼저 현재 값을 저장합니다. 이 카드에서 복원할 수 있습니다.</string>
+    <string name="support_suggestion_confirm_run">변경 후 앱이 게임의 디버그 실행을 시작합니다.</string>
+    <string name="support_suggestion_confirm_warning">Wine 버전 또는 그래픽 드라이버가 바뀝니다. 게임이 더 나빠지면 이전 설정을 복원하세요.</string>
+    <string name="support_suggestion_confirm">적용</string>
+    <string name="support_suggestion_restore_confirm_title">이전 설정을 복원할까요?</string>
+    <string name="support_suggestion_restore_confirm_message">앱이 이 변경으로 바뀐 값을 원래대로 되돌립니다.</string>
+    <string name="support_suggestion_restore_confirm">복원</string>
+    <string name="support_suggestion_installing">%1$s 설치 중</string>
+    <string name="support_suggestion_applied">설정이 변경되었습니다.</string>
+    <string name="support_suggestion_restored">이전 설정으로 복원되었습니다.</string>
+    <string name="support_suggestion_failed">설정을 변경할 수 없습니다. %1$s</string>
+    <string name="support_suggestion_missing">이 기기에서 사용할 수 없는 항목: %1$s</string>
 </resources>

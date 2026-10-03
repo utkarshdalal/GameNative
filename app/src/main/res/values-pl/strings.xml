@@ -2835,4 +2835,29 @@
         <item quantity="many">Nie zamykaj gry przez co najmniej %1$d minut.</item>
         <item quantity="other">Nie zamykaj gry przez co najmniej %1$d minuty.</item>
     </plurals>
+    <string name="support_suggestion_title">Sugerowane ustawienia</string>
+    <string name="support_suggestion_not_applicable">Ta wersja aplikacji nie może zastosować tych zmian. Możesz zmienić je ręcznie w ustawieniach gry.</string>
+    <string name="support_suggestion_no_game">Zainstaluj grę na tym urządzeniu, aby zastosować te zmiany.</string>
+    <string name="support_suggestion_change">%1$s: %2$s → %3$s</string>
+    <string name="support_suggestion_changed_since">Twoja obecna wartość to %1$s. W raporcie było %2$s.</string>
+    <string name="support_suggestion_run_record">Następne uruchomienie zapisze też: %1$s</string>
+    <string name="support_suggestion_run_channels">kanały logu Wine %1$s</string>
+    <string name="support_suggestion_run_env">wartości debugowania %1$s</string>
+    <string name="support_suggestion_run_wrapper_diag">diagnostykę wrappera grafiki</string>
+    <string name="support_suggestion_apply_and_run">Zastosuj i uruchom</string>
+    <string name="support_suggestion_apply_only">Tylko zastosuj</string>
+    <string name="support_suggestion_restore">Przywróć poprzednie ustawienia</string>
+    <string name="support_suggestion_confirm_title">Zmienić te ustawienia?</string>
+    <string name="support_suggestion_confirm_message">Aplikacja najpierw zapisuje obecne wartości. Możesz je przywrócić z tej karty.</string>
+    <string name="support_suggestion_confirm_run">Po zmianie aplikacja uruchomi grę w trybie debugowania.</string>
+    <string name="support_suggestion_confirm_warning">To zmienia wersję Wine lub sterownik grafiki. Jeśli gra będzie działać gorzej, przywróć poprzednie ustawienia.</string>
+    <string name="support_suggestion_confirm">Zastosuj</string>
+    <string name="support_suggestion_restore_confirm_title">Przywrócić poprzednie ustawienia?</string>
+    <string name="support_suggestion_restore_confirm_message">Aplikacja przywraca wartości, które te zmiany zastąpiły.</string>
+    <string name="support_suggestion_restore_confirm">Przywróć</string>
+    <string name="support_suggestion_installing">Instalowanie %1$s</string>
+    <string name="support_suggestion_applied">Ustawienia zostały zmienione.</string>
+    <string name="support_suggestion_restored">Poprzednie ustawienia zostały przywrócone.</string>
+    <string name="support_suggestion_failed">Nie udało się zmienić ustawień. %1$s</string>
+    <string name="support_suggestion_missing">Te elementy nie są dostępne na tym urządzeniu: %1$s</string>
 </resources>

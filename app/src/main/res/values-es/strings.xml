@@ -2825,4 +2825,29 @@
         <item quantity="one">Mantén el juego abierto al menos %1$d minuto antes de salir.</item>
         <item quantity="other">Mantén el juego abierto al menos %1$d minutos antes de salir.</item>
     </plurals>
+    <string name="support_suggestion_title">Ajustes sugeridos</string>
+    <string name="support_suggestion_not_applicable">Esta versión de la app no puede aplicar estos cambios. Puedes cambiarlos a mano en los ajustes del juego.</string>
+    <string name="support_suggestion_no_game">Instala el juego en este dispositivo para aplicar estos cambios.</string>
+    <string name="support_suggestion_change">%1$s: %2$s → %3$s</string>
+    <string name="support_suggestion_changed_since">Tu valor actual es %1$s. El informe tenía %2$s.</string>
+    <string name="support_suggestion_run_record">La próxima ejecución también registrará: %1$s</string>
+    <string name="support_suggestion_run_channels">canales de registro de Wine %1$s</string>
+    <string name="support_suggestion_run_env">valores de depuración %1$s</string>
+    <string name="support_suggestion_run_wrapper_diag">diagnóstico del wrapper gráfico</string>
+    <string name="support_suggestion_apply_and_run">Aplicar y ejecutar</string>
+    <string name="support_suggestion_apply_only">Solo aplicar</string>
+    <string name="support_suggestion_restore">Restaurar ajustes anteriores</string>
+    <string name="support_suggestion_confirm_title">¿Cambiar estos ajustes?</string>
+    <string name="support_suggestion_confirm_message">La app guarda primero tus valores actuales. Puedes restaurarlos desde esta tarjeta.</string>
+    <string name="support_suggestion_confirm_run">Después del cambio, la app inicia una ejecución de depuración del juego.</string>
+    <string name="support_suggestion_confirm_warning">Esto cambia la versión de Wine o el controlador gráfico. Si el juego empeora, restaura los ajustes anteriores.</string>
+    <string name="support_suggestion_confirm">Aplicar</string>
+    <string name="support_suggestion_restore_confirm_title">¿Restaurar los ajustes anteriores?</string>
+    <string name="support_suggestion_restore_confirm_message">La app vuelve a poner los valores que estos cambios reemplazaron.</string>
+    <string name="support_suggestion_restore_confirm">Restaurar</string>
+    <string name="support_suggestion_installing">Instalando %1$s</string>
+    <string name="support_suggestion_applied">Los ajustes se cambiaron.</string>
+    <string name="support_suggestion_restored">Los ajustes anteriores se restauraron.</string>
+    <string name="support_suggestion_failed">No se pudieron cambiar los ajustes. %1$s</string>
+    <string name="support_suggestion_missing">Estas partes no están disponibles en este dispositivo: %1$s</string>
 </resources>

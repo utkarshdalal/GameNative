@@ -2833,4 +2833,29 @@
         <item quantity="few">Ține jocul deschis cel puțin %1$d minute înainte să ieși.</item>
         <item quantity="other">Ține jocul deschis cel puțin %1$d de minute înainte să ieși.</item>
     </plurals>
+    <string name="support_suggestion_title">Setări sugerate</string>
+    <string name="support_suggestion_not_applicable">Această versiune a aplicației nu poate aplica aceste modificări. Le poți schimba manual în setările jocului.</string>
+    <string name="support_suggestion_no_game">Instalează jocul pe acest dispozitiv pentru a aplica aceste modificări.</string>
+    <string name="support_suggestion_change">%1$s: %2$s → %3$s</string>
+    <string name="support_suggestion_changed_since">Valoarea ta actuală este %1$s. Raportul avea %2$s.</string>
+    <string name="support_suggestion_run_record">Următoarea rulare va înregistra și: %1$s</string>
+    <string name="support_suggestion_run_channels">canale de jurnal Wine %1$s</string>
+    <string name="support_suggestion_run_env">valori de depanare %1$s</string>
+    <string name="support_suggestion_run_wrapper_diag">diagnosticarea wrapperului grafic</string>
+    <string name="support_suggestion_apply_and_run">Aplică și rulează</string>
+    <string name="support_suggestion_apply_only">Doar aplică</string>
+    <string name="support_suggestion_restore">Restabilește setările anterioare</string>
+    <string name="support_suggestion_confirm_title">Schimbi aceste setări?</string>
+    <string name="support_suggestion_confirm_message">Aplicația salvează mai întâi valorile tale actuale. Le poți restabili din acest card.</string>
+    <string name="support_suggestion_confirm_run">După modificare, aplicația pornește o rulare de depanare a jocului.</string>
+    <string name="support_suggestion_confirm_warning">Aceasta schimbă versiunea Wine sau driverul grafic. Dacă jocul merge mai rău, restabilește setările anterioare.</string>
+    <string name="support_suggestion_confirm">Aplică</string>
+    <string name="support_suggestion_restore_confirm_title">Restabilești setările anterioare?</string>
+    <string name="support_suggestion_restore_confirm_message">Aplicația pune înapoi valorile înlocuite de aceste modificări.</string>
+    <string name="support_suggestion_restore_confirm">Restabilește</string>
+    <string name="support_suggestion_installing">Se instalează %1$s</string>
+    <string name="support_suggestion_applied">Setările au fost schimbate.</string>
+    <string name="support_suggestion_restored">Setările anterioare au fost restabilite.</string>
+    <string name="support_suggestion_failed">Setările nu au putut fi schimbate. %1$s</string>
+    <string name="support_suggestion_missing">Aceste componente nu sunt disponibile pe acest dispozitiv: %1$s</string>
 </resources>

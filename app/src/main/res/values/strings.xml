@@ -2843,4 +2843,29 @@
         <item quantity="one">Keep the game open for at least %1$d minute before you quit.</item>
         <item quantity="other">Keep the game open for at least %1$d minutes before you quit.</item>
     </plurals>
+    <string name="support_suggestion_title">Suggested settings</string>
+    <string name="support_suggestion_not_applicable">This version of the app cannot apply these changes. You can change them by hand in the game settings.</string>
+    <string name="support_suggestion_no_game">Install the game on this device to apply these changes.</string>
+    <string name="support_suggestion_change">%1$s: %2$s → %3$s</string>
+    <string name="support_suggestion_changed_since">Your current value is %1$s. The report had %2$s.</string>
+    <string name="support_suggestion_run_record">The next run will also record: %1$s</string>
+    <string name="support_suggestion_run_channels">Wine log channels %1$s</string>
+    <string name="support_suggestion_run_env">debug values %1$s</string>
+    <string name="support_suggestion_run_wrapper_diag">graphics wrapper diagnostics</string>
+    <string name="support_suggestion_apply_and_run">Apply and run</string>
+    <string name="support_suggestion_apply_only">Apply only</string>
+    <string name="support_suggestion_restore">Restore previous settings</string>
+    <string name="support_suggestion_confirm_title">Change these settings?</string>
+    <string name="support_suggestion_confirm_message">The app saves your current values first. You can restore them from this card.</string>
+    <string name="support_suggestion_confirm_run">After the change, the app starts a debug run of the game.</string>
+    <string name="support_suggestion_confirm_warning">This changes the Wine version or the graphics driver. If the game gets worse, restore the previous settings.</string>
+    <string name="support_suggestion_confirm">Apply</string>
+    <string name="support_suggestion_restore_confirm_title">Restore previous settings?</string>
+    <string name="support_suggestion_restore_confirm_message">The app puts back the values that these changes replaced.</string>
+    <string name="support_suggestion_restore_confirm">Restore</string>
+    <string name="support_suggestion_installing">Installing %1$s</string>
+    <string name="support_suggestion_applied">The settings are changed.</string>
+    <string name="support_suggestion_restored">The previous settings are back.</string>
+    <string name="support_suggestion_failed">The settings could not be changed. %1$s</string>
+    <string name="support_suggestion_missing">These parts are not available on this device: %1$s</string>
 </resources>

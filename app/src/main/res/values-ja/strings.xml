@@ -2787,4 +2787,29 @@
     <plurals name="debug_prerun_min_minutes">
         <item quantity="other">終了する前に、少なくとも%1$d分間ゲームを開いたままにしてください。</item>
     </plurals>
+    <string name="support_suggestion_title">おすすめの設定</string>
+    <string name="support_suggestion_not_applicable">このバージョンのアプリではこの変更を適用できません。ゲーム設定で手動で変更できます。</string>
+    <string name="support_suggestion_no_game">この変更を適用するには、このデバイスにゲームをインストールしてください。</string>
+    <string name="support_suggestion_change">%1$s: %2$s → %3$s</string>
+    <string name="support_suggestion_changed_since">現在の値は %1$s です。レポートでは %2$s でした。</string>
+    <string name="support_suggestion_run_record">次の実行では次の内容も記録します: %1$s</string>
+    <string name="support_suggestion_run_channels">Wine ログチャンネル %1$s</string>
+    <string name="support_suggestion_run_env">デバッグ値 %1$s</string>
+    <string name="support_suggestion_run_wrapper_diag">グラフィックラッパーの診断</string>
+    <string name="support_suggestion_apply_and_run">適用して実行</string>
+    <string name="support_suggestion_apply_only">適用のみ</string>
+    <string name="support_suggestion_restore">以前の設定に戻す</string>
+    <string name="support_suggestion_confirm_title">これらの設定を変更しますか？</string>
+    <string name="support_suggestion_confirm_message">アプリは先に現在の値を保存します。このカードから元に戻せます。</string>
+    <string name="support_suggestion_confirm_run">変更後、アプリはゲームのデバッグ実行を開始します。</string>
+    <string name="support_suggestion_confirm_warning">Wine のバージョンまたはグラフィックドライバーが変わります。ゲームの動作が悪くなった場合は、以前の設定に戻してください。</string>
+    <string name="support_suggestion_confirm">適用</string>
+    <string name="support_suggestion_restore_confirm_title">以前の設定に戻しますか？</string>
+    <string name="support_suggestion_restore_confirm_message">アプリは、この変更で置き換えた値を元に戻します。</string>
+    <string name="support_suggestion_restore_confirm">元に戻す</string>
+    <string name="support_suggestion_installing">%1$s をインストール中</string>
+    <string name="support_suggestion_applied">設定を変更しました。</string>
+    <string name="support_suggestion_restored">以前の設定に戻しました。</string>
+    <string name="support_suggestion_failed">設定を変更できませんでした。%1$s</string>
+    <string name="support_suggestion_missing">次の項目はこのデバイスで利用できません: %1$s</string>
 </resources>

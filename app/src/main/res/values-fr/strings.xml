@@ -2827,4 +2827,29 @@
         <item quantity="one">Gardez le jeu ouvert au moins %1$d minute avant de quitter.</item>
         <item quantity="other">Gardez le jeu ouvert au moins %1$d minutes avant de quitter.</item>
     </plurals>
+    <string name="support_suggestion_title">Paramètres suggérés</string>
+    <string name="support_suggestion_not_applicable">Cette version de l\'application ne peut pas appliquer ces changements. Vous pouvez les modifier à la main dans les paramètres du jeu.</string>
+    <string name="support_suggestion_no_game">Installez le jeu sur cet appareil pour appliquer ces changements.</string>
+    <string name="support_suggestion_change">%1$s : %2$s → %3$s</string>
+    <string name="support_suggestion_changed_since">Votre valeur actuelle est %1$s. Le rapport indiquait %2$s.</string>
+    <string name="support_suggestion_run_record">La prochaine session enregistrera aussi : %1$s</string>
+    <string name="support_suggestion_run_channels">canaux de journal Wine %1$s</string>
+    <string name="support_suggestion_run_env">valeurs de débogage %1$s</string>
+    <string name="support_suggestion_run_wrapper_diag">diagnostic du wrapper graphique</string>
+    <string name="support_suggestion_apply_and_run">Appliquer et lancer</string>
+    <string name="support_suggestion_apply_only">Appliquer seulement</string>
+    <string name="support_suggestion_restore">Restaurer les paramètres précédents</string>
+    <string name="support_suggestion_confirm_title">Modifier ces paramètres ?</string>
+    <string name="support_suggestion_confirm_message">L\'application enregistre d\'abord vos valeurs actuelles. Vous pouvez les restaurer depuis cette carte.</string>
+    <string name="support_suggestion_confirm_run">Après le changement, l\'application lance une session de débogage du jeu.</string>
+    <string name="support_suggestion_confirm_warning">Ceci change la version de Wine ou le pilote graphique. Si le jeu fonctionne moins bien, restaurez les paramètres précédents.</string>
+    <string name="support_suggestion_confirm">Appliquer</string>
+    <string name="support_suggestion_restore_confirm_title">Restaurer les paramètres précédents ?</string>
+    <string name="support_suggestion_restore_confirm_message">L\'application remet les valeurs que ces changements ont remplacées.</string>
+    <string name="support_suggestion_restore_confirm">Restaurer</string>
+    <string name="support_suggestion_installing">Installation de %1$s</string>
+    <string name="support_suggestion_applied">Les paramètres sont modifiés.</string>
+    <string name="support_suggestion_restored">Les paramètres précédents sont rétablis.</string>
+    <string name="support_suggestion_failed">Impossible de modifier les paramètres. %1$s</string>
+    <string name="support_suggestion_missing">Ces éléments ne sont pas disponibles sur cet appareil : %1$s</string>
 </resources>

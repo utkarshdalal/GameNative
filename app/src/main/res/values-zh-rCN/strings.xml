@@ -2840,4 +2840,29 @@
     <plurals name="debug_prerun_min_minutes">
         <item quantity="other">退出前请让游戏至少运行 %1$d 分钟。</item>
     </plurals>
+    <string name="support_suggestion_title">建议的设置</string>
+    <string name="support_suggestion_not_applicable">此版本的应用无法应用这些更改。你可以在游戏设置中手动更改。</string>
+    <string name="support_suggestion_no_game">请在此设备上安装游戏后再应用这些更改。</string>
+    <string name="support_suggestion_change">%1$s：%2$s → %3$s</string>
+    <string name="support_suggestion_changed_since">你当前的值是 %1$s。报告中是 %2$s。</string>
+    <string name="support_suggestion_run_record">下次运行还会记录：%1$s</string>
+    <string name="support_suggestion_run_channels">Wine 日志通道 %1$s</string>
+    <string name="support_suggestion_run_env">调试值 %1$s</string>
+    <string name="support_suggestion_run_wrapper_diag">图形封装层诊断</string>
+    <string name="support_suggestion_apply_and_run">应用并运行</string>
+    <string name="support_suggestion_apply_only">仅应用</string>
+    <string name="support_suggestion_restore">恢复之前的设置</string>
+    <string name="support_suggestion_confirm_title">要更改这些设置吗？</string>
+    <string name="support_suggestion_confirm_message">应用会先保存你当前的值。你可以从此卡片恢复。</string>
+    <string name="support_suggestion_confirm_run">更改后，应用会启动游戏的调试运行。</string>
+    <string name="support_suggestion_confirm_warning">这会更改 Wine 版本或图形驱动。如果游戏变差，请恢复之前的设置。</string>
+    <string name="support_suggestion_confirm">应用</string>
+    <string name="support_suggestion_restore_confirm_title">要恢复之前的设置吗？</string>
+    <string name="support_suggestion_restore_confirm_message">应用会还原被这些更改替换的值。</string>
+    <string name="support_suggestion_restore_confirm">恢复</string>
+    <string name="support_suggestion_installing">正在安装 %1$s</string>
+    <string name="support_suggestion_applied">设置已更改。</string>
+    <string name="support_suggestion_restored">已恢复之前的设置。</string>
+    <string name="support_suggestion_failed">无法更改设置。%1$s</string>
+    <string name="support_suggestion_missing">以下组件在此设备上不可用：%1$s</string>
 </resources>

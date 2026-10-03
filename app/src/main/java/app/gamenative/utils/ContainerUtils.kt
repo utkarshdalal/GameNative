@@ -459,6 +459,67 @@ object ContainerUtils {
 
     val APPLICABLE_CONFIG_KEYS: Map<String, ConfigValueType> = BEST_CONFIG_KEYS + IMPORT_ONLY_CONFIG_KEYS
 
+    fun configValueOf(data: ContainerData, key: String): String? = when (key) {
+        "executablePath" -> data.executablePath
+        "graphicsDriver" -> data.graphicsDriver
+        "graphicsDriverVersion" -> data.graphicsDriverVersion
+        "graphicsDriverConfig" -> data.graphicsDriverConfig
+        "dxwrapper" -> data.dxwrapper
+        "dxwrapperConfig" -> data.dxwrapperConfig
+        "execArgs" -> data.execArgs
+        "startupSelection" -> data.startupSelection.toString()
+        "box64Version" -> data.box64Version
+        "box64Preset" -> data.box64Preset
+        "containerVariant" -> data.containerVariant
+        "wineVersion" -> data.wineVersion
+        "emulator" -> data.emulator
+        "fexcoreVersion" -> data.fexcoreVersion
+        "fexcoreTSOMode" -> data.fexcoreTSOMode
+        "fexcoreX87Mode" -> data.fexcoreX87Mode
+        "fexcoreMultiBlock" -> data.fexcoreMultiBlock
+        "fexcorePreset" -> data.fexcorePreset
+        "useLegacyDRM" -> data.useLegacyDRM.toString()
+        "steamOfflineMode" -> data.steamOfflineMode.toString()
+        "loadMods" -> data.loadMods.toString()
+        "epicOfflineMode" -> data.epicOfflineMode.toString()
+        "unpackFiles" -> data.unpackFiles.toString()
+        "suspendPolicy" -> data.suspendPolicy
+        "envVars" -> data.envVars
+        "cpuList" -> data.cpuList
+        "cpuListWoW64" -> data.cpuListWoW64
+        "audioDriver" -> data.audioDriver
+        "wincomponents" -> data.wincomponents
+        "videoMemorySize" -> data.videoMemorySize
+        "launchBionicSteam" -> data.launchBionicSteam.toString()
+        "launchRealSteam" -> data.launchRealSteam.toString()
+        "steamType" -> data.steamType
+        "box86Version" -> data.box86Version
+        "box86Preset" -> data.box86Preset
+        "rendererPresentMode" -> data.rendererPresentMode
+        "displayRendererMode" -> data.displayRenderer
+        "screenSize" -> data.screenSize
+        "language" -> data.language
+        "pulseaudioLowLatency" -> data.pulseaudioLowLatency.toString()
+        "sfCompatMode" -> data.sfCompatMode.toString()
+        "useDRI3" -> data.useDRI3.toString()
+        "wow64Mode" -> data.wow64Mode.toString()
+        "sdlControllerAPI" -> data.sdlControllerAPI.toString()
+        "forceDlc" -> data.forceDlc.toString()
+        "touchscreenMode" -> data.touchscreenMode.toString()
+        "shooterMode" -> data.shooterMode.toString()
+        "disableMouseInput" -> data.disableMouseInput.toString()
+        "disableLibredirect" -> data.disableLibredirect.toString()
+        "fasterExternalLoading" -> data.fasterExternalLoading.toString()
+        "dinputMapperType" -> (data.dinputMapperType.toInt() and 0xFF).toString()
+        "inputType" -> when {
+            data.enableXInput && data.enableDInput -> PreferredInputApi.BOTH
+            data.enableXInput -> PreferredInputApi.XINPUT
+            data.enableDInput -> PreferredInputApi.DINPUT
+            else -> PreferredInputApi.AUTO
+        }.ordinal.toString()
+        else -> null
+    }
+
     fun coerceConfigValue(type: ConfigValueType, value: Any?): Any? = when (type) {
         ConfigValueType.STRING -> configString(value)
         ConfigValueType.BOOLEAN -> configBoolean(value)

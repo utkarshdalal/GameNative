@@ -2831,4 +2831,29 @@
         <item quantity="many">Не закривайте гру щонайменше %1$d хвилин.</item>
         <item quantity="other">Не закривайте гру щонайменше %1$d хвилини.</item>
     </plurals>
+    <string name="support_suggestion_title">Запропоновані налаштування</string>
+    <string name="support_suggestion_not_applicable">Ця версія застосунку не може застосувати ці зміни. Ви можете змінити їх вручну в налаштуваннях гри.</string>
+    <string name="support_suggestion_no_game">Установіть гру на цей пристрій, щоб застосувати ці зміни.</string>
+    <string name="support_suggestion_change">%1$s: %2$s → %3$s</string>
+    <string name="support_suggestion_changed_since">Ваше поточне значення — %1$s. У звіті було %2$s.</string>
+    <string name="support_suggestion_run_record">Наступний запуск також запише: %1$s</string>
+    <string name="support_suggestion_run_channels">канали журналу Wine %1$s</string>
+    <string name="support_suggestion_run_env">значення налагодження %1$s</string>
+    <string name="support_suggestion_run_wrapper_diag">діагностику графічної обгортки</string>
+    <string name="support_suggestion_apply_and_run">Застосувати й запустити</string>
+    <string name="support_suggestion_apply_only">Лише застосувати</string>
+    <string name="support_suggestion_restore">Повернути попередні налаштування</string>
+    <string name="support_suggestion_confirm_title">Змінити ці налаштування?</string>
+    <string name="support_suggestion_confirm_message">Спочатку застосунок збереже поточні значення. Їх можна повернути з цієї картки.</string>
+    <string name="support_suggestion_confirm_run">Після зміни застосунок запустить гру в режимі налагодження.</string>
+    <string name="support_suggestion_confirm_warning">Це змінює версію Wine або графічний драйвер. Якщо гра працюватиме гірше, поверніть попередні налаштування.</string>
+    <string name="support_suggestion_confirm">Застосувати</string>
+    <string name="support_suggestion_restore_confirm_title">Повернути попередні налаштування?</string>
+    <string name="support_suggestion_restore_confirm_message">Застосунок поверне значення, які замінили ці зміни.</string>
+    <string name="support_suggestion_restore_confirm">Повернути</string>
+    <string name="support_suggestion_installing">Установлення %1$s</string>
+    <string name="support_suggestion_applied">Налаштування змінено.</string>
+    <string name="support_suggestion_restored">Попередні налаштування повернуто.</string>
+    <string name="support_suggestion_failed">Не вдалося змінити налаштування. %1$s</string>
+    <string name="support_suggestion_missing">Ці компоненти недоступні на цьому пристрої: %1$s</string>
 </resources>

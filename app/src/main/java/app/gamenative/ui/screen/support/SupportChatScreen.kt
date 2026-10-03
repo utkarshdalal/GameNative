@@ -306,14 +306,25 @@ internal fun ColumnScope.SupportChat(
                             .then(if (index == items.lastIndex) Modifier.focusRequester(lastFocus) else Modifier),
                     ) {
                         when (item) {
-                            is ChatItem.Entry -> MessageItem(
-                                message = item.message,
-                                downloadingUrl = viewModel.downloadingUrl,
-                                onAttachment = { attachment ->
-                                    viewModel.downloadAttachment(context, attachment) { file -> shareFile(context, file) }
-                                },
-                                onUpgrade = { upgradeReason = it },
-                            )
+                            is ChatItem.Entry -> Column(modifier = Modifier.fillMaxWidth()) {
+                                MessageItem(
+                                    message = item.message,
+                                    downloadingUrl = viewModel.downloadingUrl,
+                                    onAttachment = { attachment ->
+                                        viewModel.downloadAttachment(context, attachment) { file -> shareFile(context, file) }
+                                    },
+                                    onUpgrade = { upgradeReason = it },
+                                )
+                                item.message.suggestion?.let { suggestion ->
+                                    SuggestionCard(
+                                        message = item.message,
+                                        suggestion = suggestion,
+                                        appId = appId,
+                                        conversationId = conversationId,
+                                        onStartDebugRun = onStartDebugRun,
+                                    )
+                                }
+                            }
                             is ChatItem.Analysing -> AnalysingCard(first = item.first)
                             ChatItem.OutcomePrompt -> OutcomePromptCard(
                                 busy = chat.outcomeBusy,

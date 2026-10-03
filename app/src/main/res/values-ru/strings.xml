@@ -2759,4 +2759,29 @@ https://gamenative.app
         <item quantity="many">Не закрывайте игру хотя бы %1$d минут.</item>
         <item quantity="other">Не закрывайте игру хотя бы %1$d минуты.</item>
     </plurals>
+    <string name="support_suggestion_title">Предлагаемые настройки</string>
+    <string name="support_suggestion_not_applicable">Эта версия приложения не может применить эти изменения. Вы можете изменить их вручную в настройках игры.</string>
+    <string name="support_suggestion_no_game">Установите игру на это устройство, чтобы применить эти изменения.</string>
+    <string name="support_suggestion_change">%1$s: %2$s → %3$s</string>
+    <string name="support_suggestion_changed_since">Ваше текущее значение — %1$s. В отчёте было %2$s.</string>
+    <string name="support_suggestion_run_record">Следующий запуск также запишет: %1$s</string>
+    <string name="support_suggestion_run_channels">каналы журнала Wine %1$s</string>
+    <string name="support_suggestion_run_env">отладочные значения %1$s</string>
+    <string name="support_suggestion_run_wrapper_diag">диагностику графической обёртки</string>
+    <string name="support_suggestion_apply_and_run">Применить и запустить</string>
+    <string name="support_suggestion_apply_only">Только применить</string>
+    <string name="support_suggestion_restore">Вернуть прежние настройки</string>
+    <string name="support_suggestion_confirm_title">Изменить эти настройки?</string>
+    <string name="support_suggestion_confirm_message">Сначала приложение сохранит текущие значения. Их можно вернуть с этой карточки.</string>
+    <string name="support_suggestion_confirm_run">После изменения приложение запустит отладочный запуск игры.</string>
+    <string name="support_suggestion_confirm_warning">Это меняет версию Wine или графический драйвер. Если игра станет работать хуже, верните прежние настройки.</string>
+    <string name="support_suggestion_confirm">Применить</string>
+    <string name="support_suggestion_restore_confirm_title">Вернуть прежние настройки?</string>
+    <string name="support_suggestion_restore_confirm_message">Приложение вернёт значения, которые заменили эти изменения.</string>
+    <string name="support_suggestion_restore_confirm">Вернуть</string>
+    <string name="support_suggestion_installing">Установка %1$s</string>
+    <string name="support_suggestion_applied">Настройки изменены.</string>
+    <string name="support_suggestion_restored">Прежние настройки возвращены.</string>
+    <string name="support_suggestion_failed">Не удалось изменить настройки. %1$s</string>
+    <string name="support_suggestion_missing">Эти компоненты недоступны на этом устройстве: %1$s</string>
 </resources>

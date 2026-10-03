@@ -2697,4 +2697,29 @@
         <item quantity="one">Hold spillet åbent i mindst %1$d minut, før du afslutter.</item>
         <item quantity="other">Hold spillet åbent i mindst %1$d minutter, før du afslutter.</item>
     </plurals>
+    <string name="support_suggestion_title">Foreslåede indstillinger</string>
+    <string name="support_suggestion_not_applicable">Denne version af appen kan ikke anvende disse ændringer. Du kan ændre dem manuelt i spillets indstillinger.</string>
+    <string name="support_suggestion_no_game">Installer spillet på denne enhed for at anvende disse ændringer.</string>
+    <string name="support_suggestion_change">%1$s: %2$s → %3$s</string>
+    <string name="support_suggestion_changed_since">Din nuværende værdi er %1$s. Rapporten havde %2$s.</string>
+    <string name="support_suggestion_run_record">Næste kørsel registrerer også: %1$s</string>
+    <string name="support_suggestion_run_channels">Wine-logkanaler %1$s</string>
+    <string name="support_suggestion_run_env">fejlfindingsværdier %1$s</string>
+    <string name="support_suggestion_run_wrapper_diag">diagnostik for grafikwrapperen</string>
+    <string name="support_suggestion_apply_and_run">Anvend og kør</string>
+    <string name="support_suggestion_apply_only">Anvend kun</string>
+    <string name="support_suggestion_restore">Gendan tidligere indstillinger</string>
+    <string name="support_suggestion_confirm_title">Vil du ændre disse indstillinger?</string>
+    <string name="support_suggestion_confirm_message">Appen gemmer først dine nuværende værdier. Du kan gendanne dem fra dette kort.</string>
+    <string name="support_suggestion_confirm_run">Efter ændringen starter appen en fejlfindingskørsel af spillet.</string>
+    <string name="support_suggestion_confirm_warning">Dette ændrer Wine-versionen eller grafikdriveren. Hvis spillet bliver værre, så gendan de tidligere indstillinger.</string>
+    <string name="support_suggestion_confirm">Anvend</string>
+    <string name="support_suggestion_restore_confirm_title">Vil du gendanne de tidligere indstillinger?</string>
+    <string name="support_suggestion_restore_confirm_message">Appen sætter de værdier tilbage, som disse ændringer erstattede.</string>
+    <string name="support_suggestion_restore_confirm">Gendan</string>
+    <string name="support_suggestion_installing">Installerer %1$s</string>
+    <string name="support_suggestion_applied">Indstillingerne er ændret.</string>
+    <string name="support_suggestion_restored">De tidligere indstillinger er gendannet.</string>
+    <string name="support_suggestion_failed">Indstillingerne kunne ikke ændres. %1$s</string>
+    <string name="support_suggestion_missing">Disse dele er ikke tilgængelige på denne enhed: %1$s</string>
 </resources>

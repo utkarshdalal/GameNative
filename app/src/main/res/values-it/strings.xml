@@ -2818,4 +2818,29 @@
         <item quantity="one">Tieni il gioco aperto per almeno %1$d minuto prima di uscire.</item>
         <item quantity="other">Tieni il gioco aperto per almeno %1$d minuti prima di uscire.</item>
     </plurals>
+    <string name="support_suggestion_title">Impostazioni suggerite</string>
+    <string name="support_suggestion_not_applicable">Questa versione dell\'app non può applicare queste modifiche. Puoi cambiarle a mano nelle impostazioni del gioco.</string>
+    <string name="support_suggestion_no_game">Installa il gioco su questo dispositivo per applicare queste modifiche.</string>
+    <string name="support_suggestion_change">%1$s: %2$s → %3$s</string>
+    <string name="support_suggestion_changed_since">Il tuo valore attuale è %1$s. Il report aveva %2$s.</string>
+    <string name="support_suggestion_run_record">La prossima sessione registrerà anche: %1$s</string>
+    <string name="support_suggestion_run_channels">canali di log di Wine %1$s</string>
+    <string name="support_suggestion_run_env">valori di debug %1$s</string>
+    <string name="support_suggestion_run_wrapper_diag">diagnostica del wrapper grafico</string>
+    <string name="support_suggestion_apply_and_run">Applica e avvia</string>
+    <string name="support_suggestion_apply_only">Applica soltanto</string>
+    <string name="support_suggestion_restore">Ripristina impostazioni precedenti</string>
+    <string name="support_suggestion_confirm_title">Cambiare queste impostazioni?</string>
+    <string name="support_suggestion_confirm_message">L\'app salva prima i tuoi valori attuali. Puoi ripristinarli da questa scheda.</string>
+    <string name="support_suggestion_confirm_run">Dopo la modifica, l\'app avvia una sessione di debug del gioco.</string>
+    <string name="support_suggestion_confirm_warning">Questo cambia la versione di Wine o il driver grafico. Se il gioco peggiora, ripristina le impostazioni precedenti.</string>
+    <string name="support_suggestion_confirm">Applica</string>
+    <string name="support_suggestion_restore_confirm_title">Ripristinare le impostazioni precedenti?</string>
+    <string name="support_suggestion_restore_confirm_message">L\'app rimette i valori che queste modifiche hanno sostituito.</string>
+    <string name="support_suggestion_restore_confirm">Ripristina</string>
+    <string name="support_suggestion_installing">Installazione di %1$s</string>
+    <string name="support_suggestion_applied">Le impostazioni sono cambiate.</string>
+    <string name="support_suggestion_restored">Le impostazioni precedenti sono state ripristinate.</string>
+    <string name="support_suggestion_failed">Impossibile cambiare le impostazioni. %1$s</string>
+    <string name="support_suggestion_missing">Queste parti non sono disponibili su questo dispositivo: %1$s</string>
 </resources>

@@ -2767,4 +2767,29 @@
         <item quantity="one">Lass das Spiel mindestens %1$d Minute geöffnet, bevor du es beendest.</item>
         <item quantity="other">Lass das Spiel mindestens %1$d Minuten geöffnet, bevor du es beendest.</item>
     </plurals>
+    <string name="support_suggestion_title">Vorgeschlagene Einstellungen</string>
+    <string name="support_suggestion_not_applicable">Diese App-Version kann diese Änderungen nicht übernehmen. Du kannst sie in den Spieleinstellungen von Hand ändern.</string>
+    <string name="support_suggestion_no_game">Installiere das Spiel auf diesem Gerät, um diese Änderungen zu übernehmen.</string>
+    <string name="support_suggestion_change">%1$s: %2$s → %3$s</string>
+    <string name="support_suggestion_changed_since">Dein aktueller Wert ist %1$s. Der Bericht hatte %2$s.</string>
+    <string name="support_suggestion_run_record">Der nächste Lauf zeichnet zusätzlich auf: %1$s</string>
+    <string name="support_suggestion_run_channels">Wine-Logkanäle %1$s</string>
+    <string name="support_suggestion_run_env">Debug-Werte %1$s</string>
+    <string name="support_suggestion_run_wrapper_diag">Diagnose des Grafik-Wrappers</string>
+    <string name="support_suggestion_apply_and_run">Übernehmen und starten</string>
+    <string name="support_suggestion_apply_only">Nur übernehmen</string>
+    <string name="support_suggestion_restore">Vorherige Einstellungen wiederherstellen</string>
+    <string name="support_suggestion_confirm_title">Diese Einstellungen ändern?</string>
+    <string name="support_suggestion_confirm_message">Die App speichert zuerst deine aktuellen Werte. Du kannst sie über diese Karte wiederherstellen.</string>
+    <string name="support_suggestion_confirm_run">Nach der Änderung startet die App einen Debug-Lauf des Spiels.</string>
+    <string name="support_suggestion_confirm_warning">Dies ändert die Wine-Version oder den Grafiktreiber. Wenn das Spiel schlechter läuft, stelle die vorherigen Einstellungen wieder her.</string>
+    <string name="support_suggestion_confirm">Übernehmen</string>
+    <string name="support_suggestion_restore_confirm_title">Vorherige Einstellungen wiederherstellen?</string>
+    <string name="support_suggestion_restore_confirm_message">Die App setzt die Werte zurück, die diese Änderungen ersetzt haben.</string>
+    <string name="support_suggestion_restore_confirm">Wiederherstellen</string>
+    <string name="support_suggestion_installing">%1$s wird installiert</string>
+    <string name="support_suggestion_applied">Die Einstellungen sind geändert.</string>
+    <string name="support_suggestion_restored">Die vorherigen Einstellungen sind wiederhergestellt.</string>
+    <string name="support_suggestion_failed">Die Einstellungen konnten nicht geändert werden. %1$s</string>
+    <string name="support_suggestion_missing">Diese Teile sind auf diesem Gerät nicht verfügbar: %1$s</string>
 </resources>
