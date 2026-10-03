@@ -178,7 +178,6 @@ class AmazonAppScreen : BaseAppScreen() {
             null
         }
 
-        val gameNameForCompatibility = g?.title ?: libraryItem.name
         return GameDisplayInfo(
             name = g?.title ?: libraryItem.name,
             iconUrl = iconUrl,

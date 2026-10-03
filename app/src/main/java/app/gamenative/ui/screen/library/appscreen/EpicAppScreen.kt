@@ -276,7 +276,6 @@ class EpicAppScreen : BaseAppScreen() {
             0L
         }
 
-        val gameNameForCompatibility = game?.title ?: libraryItem.name
         val displayInfo = GameDisplayInfo(
             name = game?.title ?: libraryItem.name,
             iconUrl = game?.iconUrl ?: libraryItem.iconHash,
