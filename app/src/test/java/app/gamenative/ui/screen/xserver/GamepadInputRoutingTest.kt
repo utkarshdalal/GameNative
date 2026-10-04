@@ -32,11 +32,15 @@ class GamepadInputRoutingTest {
     }
 
     @Test
-    fun `unassigned controller skips the standalone physical handler`() {
-        // Regression: an unassigned (slot < 0) controller must not be hijacked by
-        // PhysicalControllerHandler into Player 1's virtual gamepad state.
+    fun `unassigned controller keeps the profile pipeline and WinHandler fallback`() {
+        // Regression: an unassigned (slot < 0) controller must reach WinHandler's raw
+        // passthrough so buttons without a profile binding (L1/R1) are not dropped. Bound
+        // buttons keep working through the standalone physical handler, which is also what
+        // sends the translated gamepad state.
         assertEquals(
             listOf(
+                GamepadInputRoute.SET_CURRENT_CONTROLLER,
+                GamepadInputRoute.PHYSICAL_CONTROLLER,
                 GamepadInputRoute.INPUT_CONTROLS,
                 GamepadInputRoute.WIN_HANDLER,
             ),

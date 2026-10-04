@@ -1041,6 +1041,29 @@ public class WinHandler {
         }
     }
 
+    /**
+     * Resolves a physical controller to adopt for raw passthrough.
+     *
+     * The profile's wildcard entry ({@code id == "*"}) matches any device but has no concrete
+     * deviceId, so its {@code getDeviceId()} stays -1 and the later
+     * {@code externalController.getDeviceId() == event.getDeviceId()} guard rejects the event.
+     * Raw passthrough only needs the physical state, so in that case (and when the profile has no
+     * matching controller at all) fall back to a controller bound to the actual device.
+     */
+    private ExternalController adoptControllerForDevice(int deviceId) {
+        ExternalController adopted = null;
+        if (inputControlsView != null) {
+            ControlsProfile profile = inputControlsView.getProfile();
+            if (profile != null) {
+                adopted = profile.getController(deviceId);
+            }
+        }
+        if (adopted == null || "*".equals(adopted.getId())) {
+            adopted = ExternalController.getController(deviceId);
+        }
+        return adopted;
+    }
+
     public boolean onGenericMotionEvent(MotionEvent event) {
         boolean handled = false;
         int slot = controllerManager.getSlotForDevice(event.getDeviceId());
@@ -1066,19 +1089,8 @@ public class WinHandler {
         ExternalController externalController = this.currentController;
         // Adopt newly connected controller if deviceId mismatches
         if ((externalController == null || externalController.getDeviceId() != event.getDeviceId()) && ExternalController.isJoystickDevice(event)) {
-            ExternalController adopted = null;
-            // Try to get controller from profile first (has saved bindings)
-            if (inputControlsView != null) {
-                ControlsProfile profile = inputControlsView.getProfile();
-                if (profile != null) {
-                    adopted = profile.getController(event.getDeviceId());
-                }
-            }
-            // Fallback to creating new controller if profile doesn't have one
-            if (adopted == null) {
-                adopted = ExternalController.getController(event.getDeviceId());
-            }
-            if (adopted != null && "*".equals(adopted.getId())) {
+            ExternalController adopted = adoptControllerForDevice(event.getDeviceId());
+            if (adopted != null) {
                 this.currentController = adopted;
                 externalController = adopted;
                 Timber.d("WinHandler.onGenericMotionEvent: adopted controller %s(#%d)", adopted.getName(), adopted.getDeviceId());
@@ -1130,19 +1142,8 @@ public class WinHandler {
         if ((externalController == null || externalController.getDeviceId() != event.getDeviceId())
                 && device != null && ExternalController.isGameController(device)
                 && event.getRepeatCount() == 0) {
-            ExternalController adopted = null;
-            // Try to get controller from profile first (has saved bindings)
-            if (inputControlsView != null) {
-                ControlsProfile profile = inputControlsView.getProfile();
-                if (profile != null) {
-                    adopted = profile.getController(event.getDeviceId());
-                }
-            }
-            // Fallback to creating new controller if profile doesn't have one
-            if (adopted == null) {
-                adopted = ExternalController.getController(event.getDeviceId());
-            }
-            if (adopted != null && "*".equals(adopted.getId())) {
+            ExternalController adopted = adoptControllerForDevice(event.getDeviceId());
+            if (adopted != null) {
                 this.currentController = adopted;
                 externalController = adopted;
                 Timber.d("WinHandler.onKeyEvent: adopted controller %s(#%d)", adopted.getName(), adopted.getDeviceId());

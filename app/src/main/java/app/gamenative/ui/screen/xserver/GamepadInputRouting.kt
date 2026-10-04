@@ -25,22 +25,15 @@ internal enum class GamepadInputRoute {
  *
  * - `slot > 0`: an assigned Player 2-4 controller. Route straight to WinHandler, which owns
  *   per-slot raw passthrough.
- * - `slot == 0`: Player 1. Let the profile-based handlers run first so a bound profile can
- *   translate the controller into the virtual gamepad, then fall back to WinHandler.
- * - `slot < 0`: an unassigned controller. Skip the standalone physical handler because it
- *   resolves controllers through the profile's wildcard entry and would route this input into
- *   Player 1's virtual gamepad state. The on-screen controls handler remains as the legacy
- *   virtual-gamepad path, and WinHandler is the final fallback.
+ * - `slot <= 0`: Player 1 or an unassigned controller. Run the profile pipeline first so a
+ *   bound profile can translate the controller into the virtual gamepad, then fall back to
+ *   WinHandler's raw passthrough for buttons that have no profile binding (e.g. L1/R1).
  */
 internal fun gamepadInputRouteForSlot(assignedSlot: Int): List<GamepadInputRoute> = when {
     assignedSlot > 0 -> listOf(GamepadInputRoute.WIN_HANDLER)
-    assignedSlot == 0 -> listOf(
+    else -> listOf(
         GamepadInputRoute.SET_CURRENT_CONTROLLER,
         GamepadInputRoute.PHYSICAL_CONTROLLER,
-        GamepadInputRoute.INPUT_CONTROLS,
-        GamepadInputRoute.WIN_HANDLER,
-    )
-    else -> listOf(
         GamepadInputRoute.INPUT_CONTROLS,
         GamepadInputRoute.WIN_HANDLER,
     )
