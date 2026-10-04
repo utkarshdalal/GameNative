@@ -2747,7 +2747,7 @@
     <string name="community_compatibility_unavailable">Nie udało się wczytać zgodności</string>
     <string name="community_compatibility_missing_tier">W odpowiedzi brakuje danych sprzętowych potrzebnych do zastosowania wyniku do Twojego urządzenia.</string>
     <string name="community_compatibility_cached_result">Wyświetlany jest ostatni znany wynik do czasu pomyślnego odświeżenia.</string>
-    <string name="community_compatibility_works">Świetnie</string>
+    <string name="community_compatibility_works">Działa dobrze</string>
     <string name="community_compatibility_should">Działa</string>
     <string name="community_compatibility_may">Może działać</string>
     <string name="community_compatibility_mixed">Niestabilne</string>

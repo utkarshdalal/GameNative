@@ -2735,7 +2735,7 @@
     <string name="community_compatibility_unavailable">호환성을 불러올 수 없습니다</string>
     <string name="community_compatibility_missing_tier">응답에 결과를 사용 중인 기기에 적용하는 데 필요한 하드웨어 정보가 없습니다.</string>
     <string name="community_compatibility_cached_result">새로고침이 성공할 때까지 마지막으로 확인된 결과를 표시합니다.</string>
-    <string name="community_compatibility_works">매우 좋음</string>
+    <string name="community_compatibility_works">잘 실행됨</string>
     <string name="community_compatibility_should">작동함</string>
     <string name="community_compatibility_may">작동 가능성 있음</string>
     <string name="community_compatibility_mixed">불안정</string>

@@ -2611,7 +2611,7 @@
     <string name="community_compatibility_unavailable">Kompatibilitet kunne ikke indlæses</string>
     <string name="community_compatibility_missing_tier">Svaret mangler de hardwaredata, der er nødvendige for at anvende resultatet på din enhed.</string>
     <string name="community_compatibility_cached_result">Viser det senest kendte resultat, indtil opdateringen lykkes.</string>
-    <string name="community_compatibility_works">Fremragende</string>
+    <string name="community_compatibility_works">Kører godt</string>
     <string name="community_compatibility_should">Virker</string>
     <string name="community_compatibility_may">Virker måske</string>
     <string name="community_compatibility_mixed">Upålidelig</string>

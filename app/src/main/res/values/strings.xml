@@ -2773,9 +2773,9 @@
     <string name="community_compatibility_unavailable">Compatibility could not be loaded</string>
     <string name="community_compatibility_missing_tier">The response lacks the hardware evidence needed to apply its verdict to your device.</string>
     <string name="community_compatibility_cached_result">Showing the last known result while awaiting a successful refresh.</string>
-    <string name="community_compatibility_works">Great</string>
-    <string name="community_compatibility_should">Works</string>
-    <string name="community_compatibility_may">May Work</string>
+    <string name="community_compatibility_works">Plays well</string>
+    <string name="community_compatibility_should">Runs</string>
+    <string name="community_compatibility_may">May work</string>
     <string name="community_compatibility_mixed">Unreliable</string>
     <string name="community_compatibility_wont">Broken</string>
     <string name="community_compatibility_unknown">Untested</string>

@@ -2702,7 +2702,7 @@
     <string name="community_compatibility_unavailable">互換性を読み込めませんでした</string>
     <string name="community_compatibility_missing_tier">応答には、結果をお使いのデバイスに適用するためのハードウェア情報が含まれていません。</string>
     <string name="community_compatibility_cached_result">更新が成功するまで、前回の結果を表示しています。</string>
-    <string name="community_compatibility_works">良好</string>
+    <string name="community_compatibility_works">快適に動作</string>
     <string name="community_compatibility_should">動作</string>
     <string name="community_compatibility_may">動作の可能性あり</string>
     <string name="community_compatibility_mixed">不安定</string>

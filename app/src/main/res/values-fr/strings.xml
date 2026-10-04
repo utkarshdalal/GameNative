@@ -2741,7 +2741,7 @@
     <string name="community_compatibility_unavailable">Impossible de charger la compatibilité</string>
     <string name="community_compatibility_missing_tier">La réponse ne contient pas les données matérielles nécessaires pour appliquer le résultat à votre appareil.</string>
     <string name="community_compatibility_cached_result">Affichage du dernier résultat connu en attendant une actualisation réussie.</string>
-    <string name="community_compatibility_works">Excellent</string>
+    <string name="community_compatibility_works">Fonctionne bien</string>
     <string name="community_compatibility_should">Fonctionne</string>
     <string name="community_compatibility_may">Peut fonctionner</string>
     <string name="community_compatibility_mixed">Peu fiable</string>

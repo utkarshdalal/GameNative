@@ -2743,7 +2743,7 @@
     <string name="community_compatibility_unavailable">Не вдалося завантажити сумісність</string>
     <string name="community_compatibility_missing_tier">У відповіді немає даних про обладнання, потрібних для застосування результату до вашого пристрою.</string>
     <string name="community_compatibility_cached_result">Показано останній відомий результат до успішного оновлення.</string>
-    <string name="community_compatibility_works">Чудово</string>
+    <string name="community_compatibility_works">Працює добре</string>
     <string name="community_compatibility_should">Працює</string>
     <string name="community_compatibility_may">Може працювати</string>
     <string name="community_compatibility_mixed">Нестабільно</string>
