@@ -21,6 +21,8 @@ import timber.log.Timber
 object GogRecommendationsRepository {
 
     private const val REC_BASE = "https://recommendations-api.gog.com/v1/recommendations"
+    private const val CATALOG_BASE = "https://catalog.gog.com/v1/catalog"
+    private const val CATALOG_PAGE = 48
     private const val CJ_CLICK = "https://www.anrdoezrs.net/click-101723120-15554897?url="
     private const val CJ_SID_MAX = 64
 
@@ -126,10 +128,18 @@ object GogRecommendationsRepository {
             }
         }
 
-        val cards = agg.values.sortedByDescending { it.score }.map { it.toCard() }.take(MAX_CARDS)
-        cache = cards
-        cacheAt = System.currentTimeMillis()
-        cacheDay = daySeed
+        val ranked = agg.values.sortedByDescending { it.score }.map { it.toCard() }.take(MAX_CARDS)
+        val allowed = coroutineScope {
+            ranked.map { it.productId }.chunked(CATALOG_PAGE)
+                .map { ids -> async { fetchNonAdultIds(ids) } }
+                .awaitAll()
+        }
+        val cards = ranked.filter { card -> allowed.any { it?.contains(card.productId) == true } }
+        if (allowed.none { it == null }) {
+            cache = cards
+            cacheAt = System.currentTimeMillis()
+            cacheDay = daySeed
+        }
         cards
     }
 
@@ -345,6 +355,11 @@ object GogRecommendationsRepository {
             emptyList()
         }
     }
+
+    private fun fetchNonAdultIds(ids: List<Long>): Set<Long>? =
+        getJson<GogCatalogResponse>(
+            "$CATALOG_BASE?offerIds=in:${ids.joinToString(",")}&excludeTags=in:nsfw&limit=$CATALOG_PAGE",
+        )?.products?.mapNotNull { it.id.toLongOrNull() }?.toSet()
 
     private class Aggregate(private val product: GogRecProduct) {
         var score = 0.0
