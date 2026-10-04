@@ -2857,7 +2857,6 @@
     <string name="community_compatibility_unavailable_short">Niedostępne</string>
     <string name="community_compatibility_unavailable">Nie udało się wczytać zgodności</string>
     <string name="community_compatibility_missing_tier">W odpowiedzi brakuje danych sprzętowych potrzebnych do zastosowania wyniku do Twojego urządzenia.</string>
-    <string name="community_compatibility_cached_result">Wyświetlany jest ostatni znany wynik do czasu pomyślnego odświeżenia.</string>
     <string name="community_compatibility_works">Działa dobrze</string>
     <string name="community_compatibility_should">Działa</string>
     <string name="community_compatibility_may">Może działać</string>
@@ -2865,6 +2864,18 @@
     <string name="community_compatibility_wont">Nie działa</string>
     <string name="community_compatibility_unknown">Nietestowane</string>
     <string name="community_compatibility_checking">Sprawdzanie zgodności…</string>
+    <plurals name="community_compatibility_device_evidence">
+        <item quantity="one">%1$d oceniona udostępniona konfiguracja z tego modelu urządzenia</item>
+        <item quantity="few">%1$d ocenione udostępnione konfiguracje z tego modelu urządzenia</item>
+        <item quantity="many">%1$d ocenionych udostępnionych konfiguracji z tego modelu urządzenia</item>
+        <item quantity="other">%1$d ocenionej udostępnionej konfiguracji z tego modelu urządzenia</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_evidence">
+        <item quantity="one">%1$d oceniona udostępniona konfiguracja z Twoim GPU</item>
+        <item quantity="few">%1$d ocenione udostępnione konfiguracje z Twoim GPU</item>
+        <item quantity="many">%1$d ocenionych udostępnionych konfiguracji z Twoim GPU</item>
+        <item quantity="other">%1$d ocenionej udostępnionej konfiguracji z Twoim GPU</item>
+    </plurals>
     <string name="community_compatibility_no_reports">Nie znaleziono udostępnionych konfiguracji dla Twojego sprzętu</string>
     <string name="community_compatibility_configs_unavailable">Nie udało się wczytać części danych o zgodności. Wyświetlane są dostępne dane.</string>
     <string name="community_compatibility_retry">Ponów</string>
@@ -2898,24 +2909,6 @@
         <item quantity="few">Na podstawie %1$d zarejestrowanych sesji w Twojej rodzinie GPU.</item>
         <item quantity="many">Na podstawie %1$d zarejestrowanych sesji w Twojej rodzinie GPU.</item>
         <item quantity="other">Na podstawie %1$d zarejestrowanej sesji w Twojej rodzinie GPU.</item>
-    </plurals>
-    <plurals name="community_compatibility_device_evidence">
-        <item quantity="one">%1$d oceniona udostępniona konfiguracja z tego modelu urządzenia</item>
-        <item quantity="few">%1$d ocenione udostępnione konfiguracje z tego modelu urządzenia</item>
-        <item quantity="many">%1$d ocenionych udostępnionych konfiguracji z tego modelu urządzenia</item>
-        <item quantity="other">%1$d ocenionej udostępnionej konfiguracji z tego modelu urządzenia</item>
-    </plurals>
-    <plurals name="community_compatibility_gpu_evidence">
-        <item quantity="one">%1$d oceniona udostępniona konfiguracja z Twoim GPU</item>
-        <item quantity="few">%1$d ocenione udostępnione konfiguracje z Twoim GPU</item>
-        <item quantity="many">%1$d ocenionych udostępnionych konfiguracji z Twoim GPU</item>
-        <item quantity="other">%1$d ocenionej udostępnionej konfiguracji z Twoim GPU</item>
-    </plurals>
-    <plurals name="community_compatibility_family_evidence">
-        <item quantity="one">%1$d oceniona udostępniona konfiguracja ze zgodnym GPU</item>
-        <item quantity="few">%1$d ocenione udostępnione konfiguracje ze zgodnym GPU</item>
-        <item quantity="many">%1$d ocenionych udostępnionych konfiguracji ze zgodnym GPU</item>
-        <item quantity="other">%1$d ocenionej udostępnionej konfiguracji ze zgodnym GPU</item>
     </plurals>
     <string name="debug_prerun_instruction">Co zrobić w tym uruchomieniu: %1$s</string>
     <plurals name="debug_prerun_min_minutes">

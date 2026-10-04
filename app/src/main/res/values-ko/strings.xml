@@ -2842,7 +2842,6 @@
     <string name="community_compatibility_unavailable_short">사용 불가</string>
     <string name="community_compatibility_unavailable">호환성을 불러올 수 없습니다</string>
     <string name="community_compatibility_missing_tier">응답에 결과를 사용 중인 기기에 적용하는 데 필요한 하드웨어 정보가 없습니다.</string>
-    <string name="community_compatibility_cached_result">새로고침이 성공할 때까지 마지막으로 확인된 결과를 표시합니다.</string>
     <string name="community_compatibility_works">잘 실행됨</string>
     <string name="community_compatibility_should">작동함</string>
     <string name="community_compatibility_may">작동 가능성 있음</string>
@@ -2850,6 +2849,12 @@
     <string name="community_compatibility_wont">작동 안 함</string>
     <string name="community_compatibility_unknown">미확인</string>
     <string name="community_compatibility_checking">호환성 확인 중…</string>
+    <plurals name="community_compatibility_device_evidence">
+        <item quantity="other">이 기기 모델의 평가된 공유 구성 %1$d개</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_evidence">
+        <item quantity="other">사용 중인 GPU의 평가된 공유 구성 %1$d개</item>
+    </plurals>
     <string name="community_compatibility_no_reports">사용 중인 하드웨어에 맞는 공유 구성을 찾지 못했습니다</string>
     <string name="community_compatibility_configs_unavailable">일부 호환성 데이터를 불러오지 못했습니다. 이용 가능한 정보를 표시합니다.</string>
     <string name="community_compatibility_retry">다시 시도</string>
@@ -2871,15 +2876,6 @@
     </plurals>
     <plurals name="community_compatibility_family_sessions">
         <item quantity="other">사용 중인 GPU 계열에서 기록된 세션 %1$d개를 기준으로 합니다.</item>
-    </plurals>
-    <plurals name="community_compatibility_device_evidence">
-        <item quantity="other">이 기기 모델의 평가된 공유 구성 %1$d개</item>
-    </plurals>
-    <plurals name="community_compatibility_gpu_evidence">
-        <item quantity="other">사용 중인 GPU의 평가된 공유 구성 %1$d개</item>
-    </plurals>
-    <plurals name="community_compatibility_family_evidence">
-        <item quantity="other">호환되는 GPU의 평가된 공유 구성 %1$d개</item>
     </plurals>
     <string name="debug_prerun_instruction">이번 실행에서 할 일: %1$s</string>
     <plurals name="debug_prerun_min_minutes">

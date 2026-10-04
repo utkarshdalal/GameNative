@@ -54,7 +54,6 @@ data class CommunityCompatibilitySummary(
     val verdictLoaded: Boolean = false,
     val loadFailed: Boolean = false,
     val isChecking: Boolean = false,
-    val isCachedResultStale: Boolean = false,
     val scopeCaution: CommunityVerdictCaution = CommunityVerdictCaution.NONE,
     val performanceCaution: Boolean = false,
 ) {

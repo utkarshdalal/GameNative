@@ -58,9 +58,7 @@ class CommunityCompatibilitySocTest {
     @Test fun sharedConfigsKeepTheirOwnScopeAndDoNotReplaceChipsetEvidence() {
         val summary = classify("soc", rows = mapOf("soc" to strong))
         val stats = DeviceGameStats(0, 0, 0, 0, CommunityRatingDistribution(oneStar = 20))
-        for (tier in listOf(
-            CommunityEvidenceTier.SAME_DEVICE, CommunityEvidenceTier.SAME_GPU, CommunityEvidenceTier.COMPATIBLE_GPU_FAMILY,
-        )) {
+        for (tier in listOf(CommunityEvidenceTier.SAME_DEVICE, CommunityEvidenceTier.SAME_GPU)) {
             val result = CommunityCompatibilityClassifier.withBulkRatings(summary, listOf(tier to stats), true)
             assertEquals(summary.verdict, result.verdict)
             assertEquals(CommunityEvidenceTier.SAME_SOC, result.evidenceTier)

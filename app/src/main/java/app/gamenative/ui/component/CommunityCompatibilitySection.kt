@@ -138,9 +138,6 @@ fun CommunityCompatibilitySection(
                         SupportingText(stringResource(R.string.community_compatibility_unreliable_short))
                     }
                 }
-                if (summary.isCachedResultStale) {
-                    SupportingText(stringResource(R.string.community_compatibility_cached_result))
-                }
                 if (summary.performanceCaution) {
                     SupportingText(stringResource(R.string.community_compatibility_performance_caution))
                 }
@@ -187,7 +184,6 @@ fun CommunityCompatibilitySection(
     }
 }
 
-/** Expanding this section is presentation only: it never triggers another request. */
 @Composable
 private fun CompatibilityDetails(summary: CommunityCompatibilitySummary) {
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -256,13 +252,10 @@ private fun configEvidenceText(summary: CommunityCompatibilitySummary): String {
             summary.reportCount,
             summary.reportCount,
         )
-        CommunityEvidenceTier.COMPATIBLE_GPU_FAMILY -> pluralStringResource(
-            R.plurals.community_compatibility_family_evidence,
-            summary.reportCount,
-            summary.reportCount,
-        )
-        // Shared-config aggregates have no SoC bucket; session scope is kept separate.
-        CommunityEvidenceTier.SAME_SOC, CommunityEvidenceTier.NONE -> stringResource(R.string.community_compatibility_no_reports)
+        CommunityEvidenceTier.SAME_SOC,
+        CommunityEvidenceTier.COMPATIBLE_GPU_FAMILY,
+        CommunityEvidenceTier.NONE,
+        -> stringResource(R.string.community_compatibility_no_reports)
     }
 }
 

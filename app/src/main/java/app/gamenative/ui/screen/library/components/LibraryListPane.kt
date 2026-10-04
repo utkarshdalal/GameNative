@@ -55,7 +55,6 @@ import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.data.statsFor
 import app.gamenative.ui.data.communityCompatibilityFor
 import app.gamenative.ui.enums.PaneType
-import app.gamenative.ui.model.shouldPrefetchLibraryPage
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.AdaptivePadding
@@ -172,12 +171,14 @@ internal fun LibraryListPane(
     val horizontalPadding = AdaptivePadding.horizontal()
     val gridSpacing = AdaptivePadding.gridSpacing()
 
-    LaunchedEffect(listState, state.appInfoList.size, state.currentPaginationPage, state.lastPaginationPage, state.isLoading) {
+    LaunchedEffect(listState, state.appInfoList.size) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
             .filterNotNull()
             .distinctUntilChanged()
             .collect { lastVisibleIndex ->
-                if (shouldPrefetchLibraryPage(lastVisibleIndex, state.appInfoList.size, state.currentPaginationPage, state.lastPaginationPage, state.isLoading)) {
+                if (lastVisibleIndex >= state.appInfoList.lastIndex &&
+                    state.appInfoList.size < state.totalAppsInFilter
+                ) {
                     onPageChange(1)
                 }
             }
@@ -308,7 +309,7 @@ internal fun LibraryListPane(
                                     )
                                 }
                             }
-                            if (state.currentPaginationPage < state.lastPaginationPage) {
+                            if (state.appInfoList.size < state.totalAppsInFilter) {
                                 item {
                                     Box(
                                         modifier = Modifier

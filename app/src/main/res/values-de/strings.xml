@@ -2789,7 +2789,6 @@
     <string name="community_compatibility_unavailable_short">Nicht verfügbar</string>
     <string name="community_compatibility_unavailable">Kompatibilität konnte nicht geladen werden</string>
     <string name="community_compatibility_missing_tier">In der Antwort fehlen die Hardwaredaten, um das Ergebnis auf dein Gerät anzuwenden.</string>
-    <string name="community_compatibility_cached_result">Das letzte bekannte Ergebnis wird angezeigt, bis die Aktualisierung erfolgreich ist.</string>
     <string name="community_compatibility_works">Läuft gut</string>
     <string name="community_compatibility_should">Läuft</string>
     <string name="community_compatibility_may">Läuft vielleicht</string>
@@ -2797,6 +2796,14 @@
     <string name="community_compatibility_wont">Läuft nicht</string>
     <string name="community_compatibility_unknown">Ungetestet</string>
     <string name="community_compatibility_checking">Kompatibilität wird geprüft…</string>
+    <plurals name="community_compatibility_device_evidence">
+        <item quantity="one">%1$d bewertete geteilte Konfiguration von diesem Gerätemodell</item>
+        <item quantity="other">%1$d bewertete geteilte Konfigurationen von diesem Gerätemodell</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_evidence">
+        <item quantity="one">%1$d bewertete geteilte Konfiguration mit deiner GPU</item>
+        <item quantity="other">%1$d bewertete geteilte Konfigurationen mit deiner GPU</item>
+    </plurals>
     <string name="community_compatibility_no_reports">Keine geteilten Konfigurationen für deine Hardware gefunden</string>
     <string name="community_compatibility_configs_unavailable">Einige Kompatibilitätsdaten konnten nicht geladen werden. Verfügbare Daten werden angezeigt.</string>
     <string name="community_compatibility_retry">Erneut versuchen</string>
@@ -2822,18 +2829,6 @@
     <plurals name="community_compatibility_family_sessions">
         <item quantity="one">Basierend auf %1$d aufgezeichneter Sitzung in deiner GPU-Familie.</item>
         <item quantity="other">Basierend auf %1$d aufgezeichneten Sitzungen in deiner GPU-Familie.</item>
-    </plurals>
-    <plurals name="community_compatibility_device_evidence">
-        <item quantity="one">%1$d bewertete geteilte Konfiguration von diesem Gerätemodell</item>
-        <item quantity="other">%1$d bewertete geteilte Konfigurationen von diesem Gerätemodell</item>
-    </plurals>
-    <plurals name="community_compatibility_gpu_evidence">
-        <item quantity="one">%1$d bewertete geteilte Konfiguration mit deiner GPU</item>
-        <item quantity="other">%1$d bewertete geteilte Konfigurationen mit deiner GPU</item>
-    </plurals>
-    <plurals name="community_compatibility_family_evidence">
-        <item quantity="one">%1$d bewertete geteilte Konfiguration mit einer kompatiblen GPU</item>
-        <item quantity="other">%1$d bewertete geteilte Konfigurationen mit einer kompatiblen GPU</item>
     </plurals>
     <string name="debug_prerun_instruction">Das tust du in diesem Lauf: %1$s</string>
     <plurals name="debug_prerun_min_minutes">

@@ -2862,7 +2862,6 @@
     <string name="community_compatibility_unavailable_short">不可用</string>
     <string name="community_compatibility_unavailable">无法加载兼容性信息</string>
     <string name="community_compatibility_missing_tier">响应缺少必要的硬件数据，无法将结果应用于您的设备。</string>
-    <string name="community_compatibility_cached_result">等待刷新成功期间，显示上次已知结果。</string>
     <string name="community_compatibility_works">运行良好</string>
     <string name="community_compatibility_should">可运行</string>
     <string name="community_compatibility_may">可能运行</string>
@@ -2870,6 +2869,12 @@
     <string name="community_compatibility_wont">无法运行</string>
     <string name="community_compatibility_unknown">未测试</string>
     <string name="community_compatibility_checking">正在检查兼容性…</string>
+    <plurals name="community_compatibility_device_evidence">
+        <item quantity="other">来自此设备型号的 %1$d 个已评分共享配置</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_evidence">
+        <item quantity="other">使用您的 GPU 的 %1$d 个已评分共享配置</item>
+    </plurals>
     <string name="community_compatibility_no_reports">未找到适用于您硬件的共享配置</string>
     <string name="community_compatibility_configs_unavailable">部分兼容性数据无法加载，正在显示可用信息。</string>
     <string name="community_compatibility_retry">重试</string>
@@ -2891,15 +2896,6 @@
     </plurals>
     <plurals name="community_compatibility_family_sessions">
         <item quantity="other">基于您的 GPU 系列中记录的 %1$d 次会话。</item>
-    </plurals>
-    <plurals name="community_compatibility_device_evidence">
-        <item quantity="other">来自此设备型号的 %1$d 个已评分共享配置</item>
-    </plurals>
-    <plurals name="community_compatibility_gpu_evidence">
-        <item quantity="other">使用您的 GPU 的 %1$d 个已评分共享配置</item>
-    </plurals>
-    <plurals name="community_compatibility_family_evidence">
-        <item quantity="other">使用兼容 GPU 的 %1$d 个已评分共享配置</item>
     </plurals>
     <string name="debug_prerun_instruction">本次运行要做的事：%1$s</string>
     <plurals name="debug_prerun_min_minutes">

@@ -3,6 +3,8 @@ package app.gamenative.utils
 import android.os.Build
 import app.gamenative.BuildConfig
 import app.gamenative.data.CommunityCompatibilityClassifier
+import app.gamenative.data.CommunityCompatibilityVerdict
+import app.gamenative.data.GameCompatibilityStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -16,8 +18,7 @@ import timber.log.Timber
 /** Fetches per-game compatibility information from the GameNative API. */
 object GameCompatibilityService {
     private const val API_BASE_URL = "https://api.gamenative.app/api/game-compat"
-
-    class RateLimited(val retryAfterMillis: Long) : java.io.IOException("Compatibility requests are rate limited")
+    private val httpClient = Net.http
 
     @Serializable
     data class CompatibilityTierMetrics(
@@ -41,8 +42,20 @@ object GameCompatibilityService {
         val tiers: Map<String, CompatibilityTierMetrics> = emptyMap(),
     )
 
+    fun statusFor(response: GameCompatibilityResponse): GameCompatibilityStatus =
+        when (CommunityCompatibilityClassifier.fromCompatibilityResponse(response).verdict) {
+            CommunityCompatibilityVerdict.WORKS,
+            CommunityCompatibilityVerdict.SHOULD_WORK,
+            -> GameCompatibilityStatus.GPU_COMPATIBLE
+            CommunityCompatibilityVerdict.MAY_WORK -> GameCompatibilityStatus.COMPATIBLE
+            CommunityCompatibilityVerdict.WONT_WORK -> GameCompatibilityStatus.NOT_COMPATIBLE
+            CommunityCompatibilityVerdict.MIXED,
+            CommunityCompatibilityVerdict.UNKNOWN,
+            -> GameCompatibilityStatus.UNKNOWN
+        }
+
     fun badgeProperties(gameName: String): Map<String, Any> {
-        val response = GameCompatibilityCache.getCached(gameName) ?: GameCompatibilityCache.getLastKnown(gameName) ?: return emptyMap()
+        val response = GameCompatibilityCache.getCached(gameName) ?: return emptyMap()
         return badgeProperties(response)
     }
 
@@ -94,24 +107,19 @@ object GameCompatibilityService {
             }
 
             Timber.tag("GameCompatibilityService").i("Requesting compatibility batch: ${gameNames.size} games")
-            CompatibilityHttp.execute(CompatibilityHttp.client.newCall(requestBuilder.build())).let { response ->
+            httpClient.newCall(requestBuilder.build()).execute().use { response ->
                 if (!response.isSuccessful) {
-                    if (response.code == 429) {
-                        throw RateLimited(CompatibilityRetryPolicy.retryAfterMillis(response.retryAfter))
-                    }
                     Timber.tag("GameCompatibilityService")
                         .w("API request failed - HTTP ${response.code}")
                     return@withContext null
                 }
-                val responseBody = response.body ?: return@withContext null
+                val responseBody = response.body?.string() ?: return@withContext null
                 val result = parseCompatibilityResponse(responseBody, gameNames)
                 Timber.tag("GameCompatibilityService")
                     .i("Fetched compatibility batch: ${result.size}/${gameNames.size} results")
                 result
             }
         } catch (error: kotlinx.coroutines.CancellationException) {
-            throw error
-        } catch (error: RateLimited) {
             throw error
         } catch (error: Exception) {
             Timber.tag("GameCompatibilityService")

@@ -34,6 +34,8 @@ import app.gamenative.R
 import app.gamenative.api.isValidCommunityConfig
 import app.gamenative.api.prepareCommunityConfigForApply
 import app.gamenative.data.GameSource
+import app.gamenative.data.CommunityCompatibilityClassifier
+import app.gamenative.data.CommunityCompatibilitySummary
 import app.gamenative.data.CommunityEvidenceTier
 import app.gamenative.data.FavoritesManager
 import app.gamenative.data.LibraryItem
@@ -57,11 +59,13 @@ import app.gamenative.ui.screen.library.components.toggleFavorite
 import app.gamenative.ui.util.ContainerConfigTransfer
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.BestConfigService
-import app.gamenative.utils.CommunityCompatibilityRepository
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.DeviceGameStatsCache
 import app.gamenative.utils.SessionReport
 import app.gamenative.utils.DiagnosticsLog
 import app.gamenative.utils.GameCompatibilityCache
+import app.gamenative.utils.GameCompatibilityService
+import app.gamenative.utils.GpuGameStatsCache
 import app.gamenative.utils.ManifestInstaller
 import app.gamenative.utils.createPinnedShortcut
 import kotlinx.coroutines.CancellationException
@@ -1314,35 +1318,57 @@ abstract class BaseAppScreen {
             storeDetails = storeDetails.mergedWith(localStoreDetails),
         )
 
-        var communityCompatibilityLoading by remember(appId) { mutableStateOf(true) }
-        val sessionRevision by GameCompatibilityCache.revision.collectAsStateWithLifecycle()
-        val configRevision by CommunityCompatibilityRepository.revision.collectAsStateWithLifecycle()
-        val communityCompatibility = remember(appId, displayInfo.name, sessionRevision, configRevision, communityCompatibilityLoading) {
-            CommunityCompatibilityRepository.cachedSummary(libraryItem.gameSource, displayInfo.name)
+        var communityCompatibility by remember(appId, displayInfo.name) {
+            mutableStateOf(
+                GameCompatibilityCache.getCached(displayInfo.name)
+                    ?.let(CommunityCompatibilityClassifier::fromCompatibilityResponse)
+                    ?: CommunityCompatibilitySummary.unknown(),
+            )
         }
-        var communityCompatibilityError by remember(appId) {
-            mutableStateOf(false)
+        val communityCompatibilityWithRatings = remember(communityCompatibility, libraryItem.gameSource, displayInfo.name) {
+            val deviceStats = DeviceGameStatsCache.getAll()
+            val gpuStats = GpuGameStatsCache.getAll()
+            CommunityCompatibilityClassifier.withBulkRatings(
+                communityCompatibility,
+                listOf(
+                    CommunityEvidenceTier.SAME_DEVICE to deviceStats[libraryItem.gameSource]?.get(displayInfo.name),
+                    CommunityEvidenceTier.SAME_GPU to gpuStats[libraryItem.gameSource]?.get(displayInfo.name),
+                ),
+                statsAvailable = listOf(deviceStats, gpuStats).any { stats ->
+                    stats.values.any { games -> games.values.any { it.ratings != null } }
+                },
+            )
         }
+        var communityCompatibilityLoading by remember(appId) { mutableStateOf(false) }
+        var communityCompatibilityError by remember(appId) { mutableStateOf(false) }
         var communityCompatibilityRetryKey by remember(appId) { mutableStateOf(0) }
 
         LaunchedEffect(appId, displayInfo.name, communityCompatibilityRetryKey) {
+            val gameName = displayInfo.name
+            if (gameName.isBlank()) return@LaunchedEffect
+            if (communityCompatibilityRetryKey == 0 && GameCompatibilityCache.getCached(gameName) != null) {
+                return@LaunchedEffect
+            }
             communityCompatibilityLoading = true
             communityCompatibilityError = false
             try {
-                val loaded = CommunityCompatibilityRepository.refreshGame(
-                    context, displayInfo.name, force = communityCompatibilityRetryKey > 0,
-                )
-                if (!loaded) {
+                val gpuName = withContext(Dispatchers.IO) {
+                    runCatching { GPUInformation.getRenderer(context) }.getOrNull().orEmpty().trim()
+                }
+                val results = if (gpuName.isEmpty()) null else GameCompatibilityService.fetchCompatibility(listOf(gameName), gpuName)
+                if (results == null) {
                     communityCompatibilityError = true
+                } else {
+                    withContext(Dispatchers.IO) { GameCompatibilityCache.cacheAll(results) }
+                    results[gameName]?.let {
+                        communityCompatibility = CommunityCompatibilityClassifier.fromCompatibilityResponse(it)
+                    }
                 }
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
                 communityCompatibilityError = true
-                Timber.tag("CommunityCompatibility").w(
-                    error,
-                    "Failed to load detailed compatibility for ${displayInfo.name}",
-                )
+                Timber.tag("CommunityCompatibility").w(error, "Failed to load compatibility for $gameName")
             } finally {
                 communityCompatibilityLoading = false
             }
@@ -1834,19 +1860,18 @@ abstract class BaseAppScreen {
             achievements = achievementsState,
             optionsMenu = optionsMenu,
             dialogOpen = showConfigDialog || communityConfigsRequested || manageModsRequested || importFilesRequested || exportFilesRequested,
-            communityCompatibility = communityCompatibility,
+            communityCompatibility = communityCompatibilityWithRatings,
             communityCompatibilityLoading = communityCompatibilityLoading,
             communityCompatibilityError = communityCompatibilityError,
             onRetryCommunityCompatibility = {
                 communityCompatibilityRetryKey += 1
             },
             onViewCommunityReports = {
-                val reportsTier = communityCompatibility.reportEvidenceTier
+                val reportsTier = communityCompatibilityWithRatings.reportEvidenceTier
                     .takeIf { it != CommunityEvidenceTier.NONE }
-                    ?: communityCompatibility.evidenceTier
+                    ?: communityCompatibilityWithRatings.evidenceTier
                 val scope = when (reportsTier) {
                     CommunityEvidenceTier.SAME_DEVICE -> CommunityHardwareScope.CURRENT_DEVICE
-                    // The config browser has no chipset scope; keep its existing GPU buckets.
                     CommunityEvidenceTier.SAME_SOC, CommunityEvidenceTier.SAME_GPU -> CommunityHardwareScope.CURRENT_GPU
                     CommunityEvidenceTier.COMPATIBLE_GPU_FAMILY -> CommunityHardwareScope.COMPATIBLE_GPUS
                     CommunityEvidenceTier.NONE -> CommunityHardwareScope.CURRENT_DEVICE

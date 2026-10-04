@@ -8,11 +8,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.gamenative.BuildConfig
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.FavoritesManager
 import app.gamenative.data.FavoritesUtils
+import app.gamenative.data.CommunityCompatibilityClassifier
+import app.gamenative.data.CommunityCompatibilitySummary
+import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
 import app.gamenative.data.HiddenGameFilter
 import app.gamenative.data.LibraryItem
@@ -57,8 +61,8 @@ import app.gamenative.data.RecommendedGame
 import app.gamenative.utils.DeviceGameStatsCache
 import app.gamenative.utils.GpuGameStatsCache
 import app.gamenative.utils.GameCompatibilityCache
-import app.gamenative.utils.CommunityCompatibilityRepository
-import app.gamenative.data.CommunityCompatibilityVerdict
+import app.gamenative.utils.GameCompatibilityService
+import app.gamenative.utils.HardwareUtils
 import app.gamenative.utils.unaccent
 import com.winlator.core.GPUInformation
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -66,23 +70,18 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.util.EnumSet
 import javax.inject.Inject
+import kotlin.math.max
+import kotlin.math.min
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
@@ -109,11 +108,6 @@ class LibraryViewModel @Inject constructor(
 
     // Keep the library scroll state. This will last longer as the VM will stay alive.
     var listState: LazyGridState by mutableStateOf(LazyGridState(0, 0))
-    private var libraryScrolling: () -> Boolean = { false }
-
-    fun onLibraryScrollChanged(scrolling: () -> Boolean) {
-        libraryScrolling = scrolling
-    }
 
     private val onInstallStatusChanged: (AndroidEvent.LibraryInstallStatusChanged) -> Unit = {
         onFilterApps(paginationCurrentPage)
@@ -159,8 +153,6 @@ class LibraryViewModel @Inject constructor(
     // How many items loaded on one page of results
     @Volatile private var paginationCurrentPage: Int = 0
     @Volatile private var lastPageInCurrentFilter: Int = 0
-    private val pagingLock = Any()
-    private var pagingSnapshot = LibraryPagingSnapshot<LibraryItem>(emptyList(), 1)
 
     // App ids across every source the Favorites tab shows, cached from the last filter pass so a
     // favorite toggle can update the badge count without rebuilding the whole library list when
@@ -196,8 +188,6 @@ class LibraryViewModel @Inject constructor(
     private val SEARCH_DEBOUNCE_MS = 500L // 500ms debounce
     private var filterJob: Job? = null
     private val filterGeneration = AtomicLong(0L)
-    private val compatibilityRequests = Channel<List<String>>(Channel.CONFLATED)
-    private var lastCompatibilityNames: List<String> = emptyList()
 
     // Cache GPU name to avoid repeated calls
     private val gpuName: String by lazy {
@@ -218,54 +208,16 @@ class LibraryViewModel @Inject constructor(
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
-            var names = compatibilityRequests.receive()
-            var retryDelay = 60_000L
-            while (isActive) {
-                val completed = try {
-                    CommunityCompatibilityRepository.refreshGames(names, gpuName)
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (error: Exception) {
-                    Timber.tag("LibraryViewModel").w(error, "Compatibility refresh failed; consumer will retry")
-                    false
-                }
-                val next = withTimeoutOrNull(
-                    if (completed) 300_000L else app.gamenative.utils.CompatibilityRetryPolicy.withJitter(retryDelay),
-                ) { compatibilityRequests.receive() }
-                if (next != null) names = next
-                retryDelay = if (completed) 60_000L else (retryDelay * 2).coerceAtMost(300_000L)
-            }
-        }
-        viewModelScope.launch {
-            combine(GameCompatibilityCache.revision, CommunityCompatibilityRepository.revision) { runs, configs ->
-                runs to configs
-            }.collect {
-                _state.update { state ->
-                    state.copy(
-                        compatibilityRevision = state.compatibilityRevision + 1,
-                        deviceGameStats = DeviceGameStatsCache.getAll(),
-                        gpuGameStats = GpuGameStatsCache.getAll(),
-                    )
-                }
-            }
-        }
-        // Badges update per batch. Ordering changes only after a pass and while not scrolling.
-        @OptIn(FlowPreview::class)
-        viewModelScope.launch {
-            combine(GameCompatibilityCache.revision, CommunityCompatibilityRepository.revision) { cache, repository -> cache to repository }
-                .debounce(400L)
-                .collectLatest {
-                    if (CommunityCompatibilityRepository.isRefreshing()) return@collectLatest
-                    while (listState.isScrollInProgress || libraryScrolling()) delay(150L)
-                    val current = _state.value
-                    if (current.currentSortOption == SortOption.COMPATIBILITY || current.appInfoSortType.contains(AppFilter.COMPATIBLE)) {
-                        onFilterApps(paginationCurrentPage, deferUntilIdle = true)
-                    }
-                }
-        }
-        viewModelScope.launch(Dispatchers.IO) {
             if (gpuName != "Unknown GPU") {
-                CommunityCompatibilityRepository.refreshStats(gpuName)
+                DeviceGameStatsCache.refreshIfStale(
+                    deviceModel = HardwareUtils.getMachineName(),
+                    gpuName = gpuName,
+                    modernBuild = BuildConfig.MODERN_ANDROID,
+                )
+                GpuGameStatsCache.refreshIfStale(
+                    gpuName = gpuName,
+                    modernBuild = BuildConfig.MODERN_ANDROID,
+                )
             } else {
                 Timber.tag("LibraryViewModel").w("Skipping device/GPU game stats fetch - GPU name is unknown")
             }
@@ -277,7 +229,7 @@ class LibraryViewModel @Inject constructor(
             }
             // Re-run filtering/sorting now that stats are available, if anything depends on them.
             if (usesStats(_state.value)) {
-                onFilterApps(paginationCurrentPage, deferUntilIdle = true)
+                onFilterApps(paginationCurrentPage)
             }
         }
 
@@ -665,27 +617,20 @@ class LibraryViewModel @Inject constructor(
     }
 
     fun onPageChange(pageIncrement: Int) {
-        synchronized(pagingLock) {
-            if (_state.value.isLoading) return
-            val toPage = (paginationCurrentPage + pageIncrement).coerceIn(0, pagingSnapshot.lastPage)
-            if (toPage == paginationCurrentPage) return
-            paginationCurrentPage = toPage
-            _state.update {
-                it.copy(
-                    libraryRevision = it.libraryRevision + 1,
-                    appInfoList = pagingSnapshot.through(toPage),
-                    currentPaginationPage = toPage + 1,
-                )
-            }
-        }
+        // Amount to change by
+        var toPage = max(0, paginationCurrentPage + pageIncrement)
+        toPage = min(toPage, lastPageInCurrentFilter)
+        onFilterApps(toPage)
     }
 
     fun onRefresh() {
         viewModelScope.launch {
             _state.update { it.copy(isRefreshing = true) }
 
-            // Library refresh reuses fresh compatibility data. The detail card has its own
-            // explicit refresh for requesting a new verdict without reloading every game.
+            // Clear compatibility cache on manual refresh to get fresh data
+            GameCompatibilityCache.clear()
+            DeviceGameStatsCache.clear()
+            GpuGameStatsCache.clear()
 
             try {
                 val newApps = SteamService.refreshOwnedGamesFromServer()
@@ -706,8 +651,21 @@ class LibraryViewModel @Inject constructor(
                 Timber.tag("LibraryViewModel").e(e, "Failed to refresh owned games from server")
             } finally {
                 onFilterApps(0).join()
+                // Fetch compatibility for current page after refresh
+                val currentPageGames = _state.value.appInfoList.map { it.name }
+                if (currentPageGames.isNotEmpty()) {
+                    fetchCompatibilityForPage(currentPageGames)
+                }
                 if (gpuName != "Unknown GPU") {
-                    CommunityCompatibilityRepository.refreshStats(gpuName)
+                    DeviceGameStatsCache.refreshIfStale(
+                        deviceModel = HardwareUtils.getMachineName(),
+                        gpuName = gpuName,
+                        modernBuild = BuildConfig.MODERN_ANDROID,
+                    )
+                    GpuGameStatsCache.refreshIfStale(
+                        gpuName = gpuName,
+                        modernBuild = BuildConfig.MODERN_ANDROID,
+                    )
                 }
                 _state.update {
                     it.copy(
@@ -781,7 +739,6 @@ class LibraryViewModel @Inject constructor(
             SortOption.RUNS_HIGH,
             SortOption.REVIEWS_HIGH,
             SortOption.REVIEWS_GPU_HIGH,
-            SortOption.COMPATIBILITY,
         )
         if (state.currentSortOption in statSorts) return true
         return state.appInfoSortType.any {
@@ -811,13 +768,13 @@ class LibraryViewModel @Inject constructor(
         return true
     }
 
-    private fun onFilterApps(paginationPage: Int = 0, deferUntilIdle: Boolean = false): Job = synchronized(pagingLock) {
+    private fun onFilterApps(paginationPage: Int = 0): Job {
         val generation = filterGeneration.incrementAndGet()
         Timber.tag("LibraryViewModel").d("onFilterApps - appList.size: ${appList.size}, isFirstLoad: $isFirstLoad")
         filterJob?.cancel()
-        if (!deferUntilIdle) _state.update { it.copy(isLoading = true) }
         val job = viewModelScope.launch(Dispatchers.IO) {
             if (generation != filterGeneration.get()) return@launch
+            _state.update { it.copy(isLoading = true) }
 
             val currentState = _state.value
             val currentFilter = AppFilter.getAppType(currentState.appInfoSortType)
@@ -826,33 +783,13 @@ class LibraryViewModel @Inject constructor(
             val downloadDirectoryApps = DownloadService.getDownloadDirectoryApps() + SteamService.getImportedAppDirs()
             val downloadDirectorySet = downloadDirectoryApps.toHashSet()
 
-            val allCustomGames = CustomGameScanner.scanAsLibraryItems()
-            val allLibraryNames = buildList {
-                addAll(allCustomGames.map { it.name })
-                addAll(appList.map { it.name })
-                addAll(gogGameList.map { it.title })
-                addAll(epicGameList.map { it.title })
-                addAll(amazonGameList.map { it.title })
-            }.distinct()
-            val needsCompatibility = currentState.currentSortOption == SortOption.COMPATIBILITY ||
-                currentState.appInfoSortType.contains(AppFilter.COMPATIBLE)
-            if (needsCompatibility) GameCompatibilityCache.initialize()
-            val compatibilitySnapshot = if (needsCompatibility) {
-                allLibraryNames.associateWith(CommunityCompatibilityRepository::cachedVerdict)
-            } else {
-                emptyMap()
-            }
-
             fun passesCompatibleFilter(gameName: String): Boolean {
                 if (!currentState.appInfoSortType.contains(AppFilter.COMPATIBLE)) {
                     return true
                 }
-                val summary = compatibilitySnapshot[gameName]?.takeIf { it.verdictLoaded } ?: return true
-                return summary.verdict in setOf(
-                    CommunityCompatibilityVerdict.WORKS,
-                    CommunityCompatibilityVerdict.SHOULD_WORK,
-                    CommunityCompatibilityVerdict.MAY_WORK,
-                )
+                val cached = GameCompatibilityCache.getCached(gameName) ?: return true
+                val status = compatibilityStatusFor(cached)
+                return status == GameCompatibilityStatus.COMPATIBLE || status == GameCompatibilityStatus.GPU_COMPATIBLE
             }
 
             val steamOwnerTypeFiltered: List<SteamApp> = appList
@@ -1018,12 +955,13 @@ class LibraryViewModel @Inject constructor(
             // Scan Custom Games roots and create UI items (filtered by search query inside scanner)
             // Only include custom games if GAME filter is selected
             val customGameItems = if (currentState.appInfoSortType.contains(AppFilter.GAME)) {
-                allCustomGames.filter { it.name.contains(currentState.searchQuery.trim(), ignoreCase = true) }
+                CustomGameScanner.scanAsLibraryItems(
+                    query = currentState.searchQuery,
+                )
             } else {
                 emptyList()
             }
             val customEntries = customGameItems
-                .filter { passesCompatibleFilter(it.name) }
                 .filter { !steamEntriesAppIds.contains(it.appId) } // Filter out imported steam appId
                 .filter { passesStatsFilters(currentState, it.gameSource, it.name) }
                 .map { LibraryEntry(it, true, lastPlayed = lastPlayedFor(it.appId)) }
@@ -1261,11 +1199,19 @@ class LibraryViewModel @Inject constructor(
                     currentState.statsFor(it.item)?.reviewsGpu ?: -1
                 }.thenBy { it.item.name.lowercase() }
 
-                SortOption.COMPATIBILITY -> LibrarySortUtils.compatibilityComparator(
-                    name = { it.item.name },
-                    isInstalled = { it.isInstalled },
-                    summary = { compatibilitySnapshot[it.item.name] },
-                )
+                SortOption.COMPATIBILITY -> {
+                    val summaries = HashMap<String, CommunityCompatibilitySummary?>()
+                    LibrarySortUtils.compatibilityComparator<LibraryEntry>(
+                        name = { it.item.name },
+                        isInstalled = { it.isInstalled },
+                        summary = { entry ->
+                            summaries.getOrPut(entry.item.name) {
+                                GameCompatibilityCache.getCached(entry.item.name)
+                                    ?.let(CommunityCompatibilityClassifier::fromCompatibilityResponse)
+                            }
+                        },
+                    )
+                }
             }
 
             // A Steam collection can only contain Steam apps, so when one is selected the non-Steam
@@ -1300,11 +1246,16 @@ class LibraryViewModel @Inject constructor(
 
             // Determine how many pages and slice the list for incremental loading
             val pageSize = PrefManager.itemsPerPage
-            val lastPage = if (totalFound == 0) 0 else (totalFound - 1) / pageSize
+            lastPageInCurrentFilter = if (totalFound == 0) 0 else (totalFound - 1) / pageSize
             // Clamp the requested page to the valid range. Removing favorites (or any other filter
             // change) can shrink the list so the previously shown page no longer exists; without
             // this the pager could report a current page past the last one.
-            var fullDisplayList = combined
+            val clampedPage = paginationPage.coerceIn(0, lastPageInCurrentFilter)
+            // Update internal pagination state
+            paginationCurrentPage = clampedPage
+            // Calculate how many items to show: (pagesLoaded * pageSize)
+            val endIndex = min((clampedPage + 1) * pageSize, totalFound)
+            var pagedList = combined.take(endIndex)
 
             // Prepend the hero (featured > recommendation) as first item on ALL tab when
             // enabled and not searching.
@@ -1346,7 +1297,7 @@ class LibraryViewModel @Inject constructor(
                     else -> null
                 }
                 if (heroItem != null) {
-                    fullDisplayList = listOf(heroItem) + combined.map { it.copy(index = it.index + 1) }
+                    pagedList = listOf(heroItem) + pagedList.map { it.copy(index = it.index + 1) }
                 }
             }
 
@@ -1358,65 +1309,49 @@ class LibraryViewModel @Inject constructor(
 
             if (generation != filterGeneration.get()) return@launch
 
-            // Also include local games and recommendation titles, never only the visible page.
-            fetchCompatibilityForLibrary(allLibraryNames + fullDisplayList.take(1).map { it.name })
+            // Fetch compatibility for current page games
+            fetchCompatibilityForPage(pagedList.map { it.name })
 
             // App ids across every source the Favorites tab shows. Cache it so a later favorite
             // toggle can recount the badge cheaply, and use it here so the badge matches the tab
             // contents even when a source is hidden from the library through user preferences.
-            val gogSignedIn = GOGService.hasStoredCredentials(context)
-            val epicSignedIn = EpicService.hasStoredCredentials(context)
-            val amazonSignedIn = AmazonService.hasStoredCredentials(context)
             val favoriteEligible = buildList {
                 addAll(steamEntries)
                 addAll(customEntries)
-                if (gogSignedIn) addAll(gogEntries)
-                if (epicSignedIn) addAll(epicEntries)
-                if (amazonSignedIn) addAll(amazonEntries)
+                if (GOGService.hasStoredCredentials(context)) addAll(gogEntries)
+                if (EpicService.hasStoredCredentials(context)) addAll(epicEntries)
+                if (AmazonService.hasStoredCredentials(context)) addAll(amazonEntries)
             }.mapTo(mutableSetOf()) { it.item.appId }
             if (generation != filterGeneration.get()) return@launch
             favoriteEligibleAppIds = favoriteEligible
 
-            val favoritesCount = FavoritesUtils.countPresent(favoriteIds, favoriteEligible)
-
-            // Build chunks on IO; an older UI prefix no longer retains the entire old library.
-            val nextSnapshot = LibraryPagingSnapshot(fullDisplayList, pageSize, fullDisplayList.firstOrNull()?.recSource == "hero")
-            publishLibraryWhenIdle(isScrolling = { deferUntilIdle && (listState.isScrollInProgress || libraryScrolling()) }) {
-                synchronized(pagingLock) {
-                    if (generation != filterGeneration.get()) return@synchronized
-                    val clampedPage = (if (deferUntilIdle) paginationCurrentPage else paginationPage).coerceIn(0, lastPage)
-                    paginationCurrentPage = clampedPage
-                    lastPageInCurrentFilter = lastPage
-                    pagingSnapshot = nextSnapshot
-                    _state.update {
-                        it.copy(
-                            libraryRevision = it.libraryRevision + 1,
-                            appInfoList = pagingSnapshot.through(clampedPage),
-                            currentPaginationPage = clampedPage + 1, // visual display is not 0 indexed
-                            lastPaginationPage = lastPageInCurrentFilter + 1,
-                            totalAppsInFilter = totalFound,
-                            isLoading = false, // Loading complete
-                            // Per-source counts use preferences/auth, not the current tab.
-                            allCount = (if (currentState.showSteamInLibrary) steamEntries.size else 0) +
-                                (if (currentState.showCustomGamesInLibrary) customEntries.size else 0) +
-                                (if (currentState.showGOGInLibrary && gogSignedIn) gogEntries.size else 0) +
-                                (if (currentState.showEpicInLibrary && epicSignedIn) epicEntries.size else 0) +
-                                (if (currentState.showAmazonInLibrary && amazonSignedIn) amazonEntries.size else 0),
-                            steamCount = if (currentState.showSteamInLibrary) steamEntries.size else 0,
-                            gogCount = if (currentState.showGOGInLibrary && gogSignedIn) gogEntries.size else 0,
-                            epicCount = if (currentState.showEpicInLibrary && epicSignedIn) epicEntries.size else 0,
-                            amazonCount = if (currentState.showAmazonInLibrary && amazonSignedIn) amazonEntries.size else 0,
-                            localCount = if (currentState.showCustomGamesInLibrary) customEntries.size else 0,
-                            steamCollectionCounts = steamCollectionCounts,
-                            curatedListCounts = curatedListCounts,
-                            favoritesCount = favoritesCount,
-                        )
-                    }
-                }
+            _state.update {
+                it.copy(
+                    appInfoList = pagedList,
+                    currentPaginationPage = clampedPage + 1, // visual display is not 0 indexed
+                    lastPaginationPage = lastPageInCurrentFilter + 1,
+                    totalAppsInFilter = totalFound,
+                    isLoading = false, // Loading complete
+                    // Per-source counts for tab badges
+                    // Use user prefs + auth state only (not current tab) so badges stay stable across tab switches
+                    allCount = (if (currentState.showSteamInLibrary) steamEntries.size else 0) +
+                        (if (currentState.showCustomGamesInLibrary) customEntries.size else 0) +
+                        (if (currentState.showGOGInLibrary && GOGService.hasStoredCredentials(context)) gogEntries.size else 0) +
+                        (if (currentState.showEpicInLibrary && EpicService.hasStoredCredentials(context)) epicEntries.size else 0) +
+                        (if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) amazonEntries.size else 0),
+                    steamCount = if (currentState.showSteamInLibrary) steamEntries.size else 0,
+                    gogCount = if (currentState.showGOGInLibrary && GOGService.hasStoredCredentials(context)) gogEntries.size else 0,
+                    epicCount = if (currentState.showEpicInLibrary && EpicService.hasStoredCredentials(context)) epicEntries.size else 0,
+                    amazonCount = if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) amazonEntries.size else 0,
+                    localCount = if (currentState.showCustomGamesInLibrary) customEntries.size else 0,
+                    steamCollectionCounts = steamCollectionCounts,
+                    curatedListCounts = curatedListCounts,
+                    favoritesCount = FavoritesUtils.countPresent(favoriteIds, favoriteEligible),
+                )
             }
         }
         filterJob = job
-        job
+        return job
     }
 
     /**
@@ -1427,12 +1362,115 @@ class LibraryViewModel @Inject constructor(
         return gameName.contains(searchQuery, ignoreCase = true) || gameName.unaccent().contains(searchQuery, ignoreCase = true)
     }
 
-    /** Conflation prevents scrolling/re-filtering from spawning duplicate library-wide passes. */
-    @Synchronized
-    private fun fetchCompatibilityForLibrary(gameNames: List<String>) {
-        val names = gameNames.filter { it.isNotBlank() }.distinct()
-        if (names == lastCompatibilityNames) return
-        lastCompatibilityNames = names
-        compatibilityRequests.trySend(names)
+    /**
+     * Fetches compatibility information for games in paginated batches.
+     * Checks cache first, then fetches uncached games in batches of 50.
+     */
+    private fun fetchCompatibilityForPage(gameNames: List<String>) {
+        if (gameNames.isEmpty()) {
+            Timber.tag("LibraryViewModel").d("fetchCompatibilityForPage: No game names provided")
+            return
+        }
+
+        Timber.tag("LibraryViewModel").d("fetchCompatibilityForPage: Fetching compatibility for ${gameNames.size} games, GPU: $gpuName")
+
+        // Don't make API calls if GPU name is unknown
+        if (gpuName == "Unknown GPU") {
+            Timber.tag("LibraryViewModel").w("Skipping compatibility fetch - GPU name is unknown")
+            return
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // Separate cached and uncached games
+                val uncachedGames = mutableListOf<String>()
+                val cachedResults = mutableMapOf<String, GameCompatibilityService.GameCompatibilityResponse>()
+
+                for (gameName in gameNames) {
+                    val cached = GameCompatibilityCache.getCached(gameName)
+                    if (cached != null) {
+                        cachedResults[gameName] = cached
+                        Timber.tag("LibraryViewModel").d("Using cached result for: $gameName")
+                    } else {
+                        uncachedGames.add(gameName)
+                    }
+                }
+
+                Timber.tag("LibraryViewModel").d("Cached: ${cachedResults.size}, Uncached: ${uncachedGames.size}")
+
+                // Update state with cached results immediately (for instant UI update)
+                if (cachedResults.isNotEmpty()) {
+                    updateCompatibilityState(cachedResults)
+                }
+
+                // Only fetch if there are uncached games
+                if (uncachedGames.isEmpty()) {
+                    Timber.tag("LibraryViewModel").d("All games in page are cached, skipping API call")
+                    return@launch
+                }
+
+                // Fetch uncached games in batches of 25
+                val batchSize = 100
+                val fetchedResults = mutableMapOf<String, GameCompatibilityService.GameCompatibilityResponse>()
+
+                for (i in uncachedGames.indices step batchSize) {
+                    val batch = uncachedGames.subList(i, min(i + batchSize, uncachedGames.size))
+                    Timber.tag("LibraryViewModel").d("Fetching batch ${i / batchSize + 1} with ${batch.size} games")
+                    val batchResults = GameCompatibilityService.fetchCompatibility(batch, gpuName)
+
+                    if (batchResults != null) {
+                        Timber.tag("LibraryViewModel").d("Received ${batchResults.size} results from API")
+                        // Cache all results using batch caching
+                        GameCompatibilityCache.cacheAll(batchResults)
+                        fetchedResults.putAll(batchResults)
+                    } else {
+                        Timber.tag("LibraryViewModel").w("API returned null for batch")
+                    }
+                }
+
+                // Update state with newly fetched results
+                if (fetchedResults.isNotEmpty()) {
+                    updateCompatibilityState(fetchedResults)
+                    // Re-apply list filtering once new compatibility data is available
+                    if (_state.value.appInfoSortType.contains(AppFilter.COMPATIBLE) ||
+                        _state.value.currentSortOption == SortOption.COMPATIBILITY
+                    ) {
+                        onFilterApps(paginationCurrentPage)
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.tag("LibraryViewModel").e(e, "Error fetching compatibility data: ${e.message}")
+                e.printStackTrace()
+            }
+        }
     }
+
+    /**
+     * Updates the state with compatibility results.
+     */
+    private fun updateCompatibilityState(
+        results: Map<String, GameCompatibilityService.GameCompatibilityResponse>
+    ) {
+        val compatibilityMap = results.mapValues { (gameName, response) ->
+            compatibilityStatusFor(response)
+        }
+        val communityMap = results.mapValues { (_, response) ->
+            CommunityCompatibilityClassifier.fromCompatibilityResponse(response)
+        }
+
+        // Update state with compatibility map (merge with existing)
+        _state.update { currentState ->
+            val mergedMap = currentState.compatibilityMap.toMutableMap()
+            mergedMap.putAll(compatibilityMap)
+            Timber.tag("LibraryViewModel").d("Updated state with ${compatibilityMap.size} compatibility entries, total: ${mergedMap.size}")
+            currentState.copy(
+                compatibilityMap = mergedMap,
+                communityCompatibilityMap = currentState.communityCompatibilityMap + communityMap,
+            )
+        }
+    }
+
+    private fun compatibilityStatusFor(
+        response: GameCompatibilityService.GameCompatibilityResponse,
+    ): GameCompatibilityStatus = GameCompatibilityService.statusFor(response)
 }

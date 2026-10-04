@@ -2781,7 +2781,6 @@ https://gamenative.app
     <string name="community_compatibility_unavailable_short">Недоступно</string>
     <string name="community_compatibility_unavailable">Не удалось загрузить совместимость</string>
     <string name="community_compatibility_missing_tier">В ответе нет данных об оборудовании, необходимых для применения результата к вашему устройству.</string>
-    <string name="community_compatibility_cached_result">Показан последний известный результат до успешного обновления.</string>
     <string name="community_compatibility_works">Работает хорошо</string>
     <string name="community_compatibility_should">Работает</string>
     <string name="community_compatibility_may">Может работать</string>
@@ -2789,6 +2788,18 @@ https://gamenative.app
     <string name="community_compatibility_wont">Не работает</string>
     <string name="community_compatibility_unknown">Не проверено</string>
     <string name="community_compatibility_checking">Проверка совместимости…</string>
+    <plurals name="community_compatibility_device_evidence">
+        <item quantity="one">%1$d оценённая общая конфигурация с этой модели устройства</item>
+        <item quantity="few">%1$d оценённые общие конфигурации с этой модели устройства</item>
+        <item quantity="many">%1$d оценённых общих конфигураций с этой модели устройства</item>
+        <item quantity="other">%1$d оценённой общей конфигурации с этой модели устройства</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_evidence">
+        <item quantity="one">%1$d оценённая общая конфигурация с вашим GPU</item>
+        <item quantity="few">%1$d оценённые общие конфигурации с вашим GPU</item>
+        <item quantity="many">%1$d оценённых общих конфигураций с вашим GPU</item>
+        <item quantity="other">%1$d оценённой общей конфигурации с вашим GPU</item>
+    </plurals>
     <string name="community_compatibility_no_reports">Общие конфигурации для вашего оборудования не найдены</string>
     <string name="community_compatibility_configs_unavailable">Не удалось загрузить часть данных о совместимости. Показаны доступные данные.</string>
     <string name="community_compatibility_retry">Повторить</string>
@@ -2822,24 +2833,6 @@ https://gamenative.app
         <item quantity="few">На основе %1$d записанных сеансов в вашем семействе GPU.</item>
         <item quantity="many">На основе %1$d записанных сеансов в вашем семействе GPU.</item>
         <item quantity="other">На основе %1$d записанного сеанса в вашем семействе GPU.</item>
-    </plurals>
-    <plurals name="community_compatibility_device_evidence">
-        <item quantity="one">%1$d оценённая общая конфигурация с этой модели устройства</item>
-        <item quantity="few">%1$d оценённые общие конфигурации с этой модели устройства</item>
-        <item quantity="many">%1$d оценённых общих конфигураций с этой модели устройства</item>
-        <item quantity="other">%1$d оценённой общей конфигурации с этой модели устройства</item>
-    </plurals>
-    <plurals name="community_compatibility_gpu_evidence">
-        <item quantity="one">%1$d оценённая общая конфигурация с вашим GPU</item>
-        <item quantity="few">%1$d оценённые общие конфигурации с вашим GPU</item>
-        <item quantity="many">%1$d оценённых общих конфигураций с вашим GPU</item>
-        <item quantity="other">%1$d оценённой общей конфигурации с вашим GPU</item>
-    </plurals>
-    <plurals name="community_compatibility_family_evidence">
-        <item quantity="one">%1$d оценённая общая конфигурация с совместимым GPU</item>
-        <item quantity="few">%1$d оценённые общие конфигурации с совместимым GPU</item>
-        <item quantity="many">%1$d оценённых общих конфигураций с совместимым GPU</item>
-        <item quantity="other">%1$d оценённой общей конфигурации с совместимым GPU</item>
     </plurals>
     <string name="debug_prerun_instruction">Что сделать в этом запуске: %1$s</string>
     <plurals name="debug_prerun_min_minutes">

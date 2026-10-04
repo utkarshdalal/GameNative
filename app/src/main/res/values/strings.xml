@@ -2881,7 +2881,6 @@
     <string name="community_compatibility_unavailable_short">Unavailable</string>
     <string name="community_compatibility_unavailable">Compatibility could not be loaded</string>
     <string name="community_compatibility_missing_tier">The response lacks the hardware evidence needed to apply its verdict to your device.</string>
-    <string name="community_compatibility_cached_result">Showing the last known result while awaiting a successful refresh.</string>
     <string name="community_compatibility_works">Plays well</string>
     <string name="community_compatibility_should">Runs</string>
     <string name="community_compatibility_may">May work</string>
@@ -2896,10 +2895,6 @@
     <plurals name="community_compatibility_gpu_evidence">
         <item quantity="one">%1$d rated shared config using your GPU</item>
         <item quantity="other">%1$d rated shared configs using your GPU</item>
-    </plurals>
-    <plurals name="community_compatibility_family_evidence">
-        <item quantity="one">%1$d rated shared config using a compatible GPU</item>
-        <item quantity="other">%1$d rated shared configs using a compatible GPU</item>
     </plurals>
     <string name="community_compatibility_no_reports">No shared configs found for your hardware</string>
     <string name="community_compatibility_configs_unavailable">Some compatibility data could not be loaded. Showing available evidence.</string>

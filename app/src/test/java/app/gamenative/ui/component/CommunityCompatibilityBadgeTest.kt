@@ -45,10 +45,10 @@ class CommunityCompatibilityBadgeTest {
                 }
             }
         }
-        compose.onNodeWithContentDescription("Works").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Runs").assertIsDisplayed()
         compose.onNodeWithTag("badge").assertWidthIsEqualTo(30.dp)
         compose.runOnIdle { availableWidth.value = 240.dp }
-        compose.onNodeWithContentDescription("Works").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Runs").assertIsDisplayed()
         assertTrue(compose.onNodeWithTag("badge").fetchSemanticsNode().boundsInRoot.width > with(compose.density) { 30.dp.toPx() })
         compose.runOnIdle { availableWidth.value = 48.dp }
         compose.onNodeWithTag("badge").assertWidthIsEqualTo(30.dp)

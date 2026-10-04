@@ -19,14 +19,13 @@ import app.gamenative.service.gog.GOGAuthManager
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.DeviceGameStatsCache
 import app.gamenative.utils.DeviceGameStatsService.DeviceGameStats
-import app.gamenative.utils.CommunityCompatibilityRepository
-import app.gamenative.data.CommunityCompatibilityVerdict
+import app.gamenative.utils.GameCompatibilityCache
+import app.gamenative.utils.GameCompatibilityService
 import app.gamenative.utils.GpuGameStatsCache
 import com.winlator.core.GPUInformation
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -86,8 +85,6 @@ class GogRecommendationsViewModel @Inject constructor(
                 )
                 _state.update { it.copy(loading = false, cards = cards) }
                 loadStats(cards.map { it.title })
-            } catch (e: CancellationException) {
-                throw e
             } catch (e: Exception) {
                 Timber.tag("GogRec").w(e, "Failed to load GOG recommendations")
                 _state.update { it.copy(loading = false, error = true) }
@@ -98,23 +95,22 @@ class GogRecommendationsViewModel @Inject constructor(
     private suspend fun loadStats(names: List<String>) {
         if (names.isEmpty()) return
 
-        try {
-            CommunityCompatibilityRepository.refreshGames(names, gpuName)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Timber.tag("GogRec").w(e, "Failed to refresh GOG recommendation compatibility; using cached results")
+        // Compatibility (keyed by name, cache-first then batched fetch)
+        val responses = mutableMapOf<String, GameCompatibilityService.GameCompatibilityResponse>()
+        val uncached = mutableListOf<String>()
+        for (name in names.toSet()) {
+            val cached = GameCompatibilityCache.getCached(name)
+            if (cached != null) responses[name] = cached else uncached.add(name)
         }
-        DeviceGameStatsCache.initialize()
-        GpuGameStatsCache.initialize()
-        val compatibilityMap = names.distinct().associateWith { name ->
-            when (CommunityCompatibilityRepository.cachedVerdict(name).verdict) {
-                CommunityCompatibilityVerdict.WORKS -> GameCompatibilityStatus.COMPATIBLE
-                CommunityCompatibilityVerdict.SHOULD_WORK -> GameCompatibilityStatus.GPU_COMPATIBLE
-                CommunityCompatibilityVerdict.WONT_WORK -> GameCompatibilityStatus.NOT_COMPATIBLE
-                else -> GameCompatibilityStatus.UNKNOWN
+        if (gpuName != "Unknown GPU") {
+            uncached.chunked(100).forEach { batch ->
+                GameCompatibilityService.fetchCompatibility(batch, gpuName)?.let {
+                    GameCompatibilityCache.cacheAll(it)
+                    responses.putAll(it)
+                }
             }
         }
+        val compatibilityMap = responses.mapValues { compatibilityStatusFor(it.value) }
 
         // Device / GPU stats are keyed by source+name; recommendations are GOG, but community
         // stats mostly live under other sources, so look each name up across every source.
@@ -146,6 +142,10 @@ class GogRecommendationsViewModel @Inject constructor(
             GameSource.entries.firstNotNullOfOrNull { source -> all[source]?.get(name) }?.let { name to it }
         }.toMap()
     }
+
+    private fun compatibilityStatusFor(
+        r: GameCompatibilityService.GameCompatibilityResponse,
+    ): GameCompatibilityStatus = GameCompatibilityService.statusFor(r)
 
     private suspend fun collectOwnedGames(): List<OwnedGameRef> =
         GogSeedCollector.collect(context, libraryPlayHistoryDao, gogGameDao, epicGameDao, amazonGameDao)
