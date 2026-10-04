@@ -1,5 +1,6 @@
 package app.gamenative.data
 
+import app.gamenative.utils.DeviceGameStatsService.DeviceGameStats
 import app.gamenative.utils.GameCompatibilityService.CompatibilityTierMetrics
 import app.gamenative.utils.GameCompatibilityService.GameCompatibilityResponse
 import org.junit.Assert.assertEquals
@@ -51,6 +52,19 @@ class CommunityCompatibilitySocTest {
                     }
                 }
             }
+        }
+    }
+
+    @Test fun sharedConfigsKeepTheirOwnScopeAndDoNotReplaceChipsetEvidence() {
+        val summary = classify("soc", rows = mapOf("soc" to strong))
+        val stats = DeviceGameStats(0, 0, 0, 0, CommunityRatingDistribution(oneStar = 20))
+        for (tier in listOf(CommunityEvidenceTier.SAME_DEVICE, CommunityEvidenceTier.SAME_GPU)) {
+            val result = CommunityCompatibilityClassifier.withBulkRatings(summary, listOf(tier to stats), true)
+            assertEquals(summary.verdict, result.verdict)
+            assertEquals(CommunityEvidenceTier.SAME_SOC, result.evidenceTier)
+            assertEquals(tier, result.reportEvidenceTier)
+            assertEquals(20, result.reportCount)
+            assertEquals(10, result.sessionCount)
         }
     }
 }

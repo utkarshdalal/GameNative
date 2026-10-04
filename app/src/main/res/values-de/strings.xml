@@ -2796,6 +2796,15 @@
     <string name="community_compatibility_wont">Läuft nicht</string>
     <string name="community_compatibility_unknown">Ungetestet</string>
     <string name="community_compatibility_checking">Kompatibilität wird geprüft…</string>
+    <plurals name="community_compatibility_device_evidence">
+        <item quantity="one">%1$d bewertete geteilte Konfiguration von diesem Gerätemodell</item>
+        <item quantity="other">%1$d bewertete geteilte Konfigurationen von diesem Gerätemodell</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_evidence">
+        <item quantity="one">%1$d bewertete geteilte Konfiguration mit deiner GPU</item>
+        <item quantity="other">%1$d bewertete geteilte Konfigurationen mit deiner GPU</item>
+    </plurals>
+    <string name="community_compatibility_no_reports">Keine geteilten Konfigurationen für deine Hardware gefunden</string>
     <string name="community_compatibility_configs_unavailable">Einige Kompatibilitätsdaten konnten nicht geladen werden. Verfügbare Daten werden angezeigt.</string>
     <string name="community_compatibility_retry">Erneut versuchen</string>
     <string name="community_compatibility_fps_median">Gemeldeter Median: %1$d FPS</string>
@@ -2804,6 +2813,7 @@
     <string name="community_compatibility_fps_gpu">%1$s mit deiner GPU.</string>
     <string name="community_compatibility_fps_family">%1$s mit kompatiblen GPUs.</string>
     <string name="community_compatibility_view_reports">Konfigurationen</string>
+    <string name="community_config_install_before_apply">Installiere dieses Spiel, bevor du eine Community-Konfiguration anwendest.</string>
     <plurals name="community_compatibility_model_sessions">
         <item quantity="one">Basierend auf %1$d aufgezeichneter Sitzung auf deinem Gerätemodell.</item>
         <item quantity="other">Basierend auf %1$d aufgezeichneten Sitzungen auf deinem Gerätemodell.</item>

@@ -2860,6 +2860,19 @@
     <string name="community_compatibility_wont">Не працює</string>
     <string name="community_compatibility_unknown">Не перевірено</string>
     <string name="community_compatibility_checking">Перевірка сумісності…</string>
+    <plurals name="community_compatibility_device_evidence">
+        <item quantity="one">%1$d оцінена спільна конфігурація з цієї моделі пристрою</item>
+        <item quantity="few">%1$d оцінені спільні конфігурації з цієї моделі пристрою</item>
+        <item quantity="many">%1$d оцінених спільних конфігурацій з цієї моделі пристрою</item>
+        <item quantity="other">%1$d оціненої спільної конфігурації з цієї моделі пристрою</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_evidence">
+        <item quantity="one">%1$d оцінена спільна конфігурація з вашим GPU</item>
+        <item quantity="few">%1$d оцінені спільні конфігурації з вашим GPU</item>
+        <item quantity="many">%1$d оцінених спільних конфігурацій з вашим GPU</item>
+        <item quantity="other">%1$d оціненої спільної конфігурації з вашим GPU</item>
+    </plurals>
+    <string name="community_compatibility_no_reports">Не знайдено спільних конфігурацій для вашого обладнання</string>
     <string name="community_compatibility_configs_unavailable">Не вдалося завантажити частину даних про сумісність. Показано доступні дані.</string>
     <string name="community_compatibility_retry">Повторити</string>
     <string name="community_compatibility_fps_median">Медіанна частота: %1$d FPS</string>
@@ -2868,6 +2881,7 @@
     <string name="community_compatibility_fps_gpu">%1$s із вашим GPU.</string>
     <string name="community_compatibility_fps_family">%1$s із сумісними GPU.</string>
     <string name="community_compatibility_view_reports">Конфігурації</string>
+    <string name="community_config_install_before_apply">Установіть цю гру перед застосуванням конфігурації спільноти.</string>
     <plurals name="community_compatibility_model_sessions">
         <item quantity="one">На основі %1$d записаного сеансу на вашій моделі пристрою.</item>
         <item quantity="few">На основі %1$d записаних сеансів на вашій моделі пристрою.</item>

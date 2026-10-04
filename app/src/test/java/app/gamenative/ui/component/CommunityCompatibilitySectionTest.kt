@@ -81,11 +81,18 @@ class CommunityCompatibilitySectionTest {
         compose.onNodeWithContentDescription("Refresh compatibility").assertDoesNotExist()
     }
 
-    @Test fun chipsetSessionsAndFpsUseChipsetScope() {
-        render(summary.copy(evidenceTier = CommunityEvidenceTier.SAME_SOC))
+    @Test fun chipsetSessionsAndFpsDoNotRelabelGpuConfigEvidence() {
+        render(
+            summary.copy(
+                evidenceTier = CommunityEvidenceTier.SAME_SOC,
+                reportCount = 3, reportEvidenceTier = CommunityEvidenceTier.SAME_GPU,
+                hasDetailedReports = true, detailsLoaded = true,
+            ),
+        )
         compose.onNodeWithText("Runs").assertIsDisplayed()
         compose.onNodeWithText("Based on 101 recorded sessions using the same chipset.").assertIsDisplayed()
         compose.onNodeWithText("Details").performScrollTo().performClick()
+        compose.onNodeWithText("3 rated shared configs using your GPU").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Median 47 FPS reported using the same chipset.").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Median 47 FPS reported using your GPU.").assertDoesNotExist()
     }

@@ -2849,6 +2849,13 @@
     <string name="community_compatibility_wont">작동 안 함</string>
     <string name="community_compatibility_unknown">미확인</string>
     <string name="community_compatibility_checking">호환성 확인 중…</string>
+    <plurals name="community_compatibility_device_evidence">
+        <item quantity="other">이 기기 모델의 평가된 공유 구성 %1$d개</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_evidence">
+        <item quantity="other">사용 중인 GPU의 평가된 공유 구성 %1$d개</item>
+    </plurals>
+    <string name="community_compatibility_no_reports">사용 중인 하드웨어에 맞는 공유 구성을 찾지 못했습니다</string>
     <string name="community_compatibility_configs_unavailable">일부 호환성 데이터를 불러오지 못했습니다. 이용 가능한 정보를 표시합니다.</string>
     <string name="community_compatibility_retry">다시 시도</string>
     <string name="community_compatibility_fps_median">보고된 중앙값: %1$d FPS</string>
@@ -2857,6 +2864,7 @@
     <string name="community_compatibility_fps_gpu">%1$s — 사용 중인 GPU.</string>
     <string name="community_compatibility_fps_family">%1$s — 호환되는 GPU.</string>
     <string name="community_compatibility_view_reports">구성 찾아보기</string>
+    <string name="community_config_install_before_apply">커뮤니티 구성을 적용하기 전에 이 게임을 설치하세요.</string>
     <plurals name="community_compatibility_model_sessions">
         <item quantity="other">사용 중인 기기 모델에서 기록된 세션 %1$d개를 기준으로 합니다.</item>
     </plurals>

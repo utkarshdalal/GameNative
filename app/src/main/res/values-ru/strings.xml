@@ -2788,6 +2788,19 @@ https://gamenative.app
     <string name="community_compatibility_wont">Не работает</string>
     <string name="community_compatibility_unknown">Не проверено</string>
     <string name="community_compatibility_checking">Проверка совместимости…</string>
+    <plurals name="community_compatibility_device_evidence">
+        <item quantity="one">%1$d оценённая общая конфигурация с этой модели устройства</item>
+        <item quantity="few">%1$d оценённые общие конфигурации с этой модели устройства</item>
+        <item quantity="many">%1$d оценённых общих конфигураций с этой модели устройства</item>
+        <item quantity="other">%1$d оценённой общей конфигурации с этой модели устройства</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_evidence">
+        <item quantity="one">%1$d оценённая общая конфигурация с вашим GPU</item>
+        <item quantity="few">%1$d оценённые общие конфигурации с вашим GPU</item>
+        <item quantity="many">%1$d оценённых общих конфигураций с вашим GPU</item>
+        <item quantity="other">%1$d оценённой общей конфигурации с вашим GPU</item>
+    </plurals>
+    <string name="community_compatibility_no_reports">Общие конфигурации для вашего оборудования не найдены</string>
     <string name="community_compatibility_configs_unavailable">Не удалось загрузить часть данных о совместимости. Показаны доступные данные.</string>
     <string name="community_compatibility_retry">Повторить</string>
     <string name="community_compatibility_fps_median">Медианная частота: %1$d FPS</string>
@@ -2796,6 +2809,7 @@ https://gamenative.app
     <string name="community_compatibility_fps_gpu">%1$s с вашим GPU.</string>
     <string name="community_compatibility_fps_family">%1$s с совместимыми GPU.</string>
     <string name="community_compatibility_view_reports">Конфигурации</string>
+    <string name="community_config_install_before_apply">Установите игру перед применением конфигурации сообщества.</string>
     <plurals name="community_compatibility_model_sessions">
         <item quantity="one">На основе %1$d записанного сеанса на вашей модели устройства.</item>
         <item quantity="few">На основе %1$d записанных сеансов на вашей модели устройства.</item>

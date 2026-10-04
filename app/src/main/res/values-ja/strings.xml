@@ -2816,6 +2816,13 @@
     <string name="community_compatibility_wont">動作不可</string>
     <string name="community_compatibility_unknown">未検証</string>
     <string name="community_compatibility_checking">互換性を確認中…</string>
+    <plurals name="community_compatibility_device_evidence">
+        <item quantity="other">このデバイスモデルの評価済み共有設定: %1$d 件</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_evidence">
+        <item quantity="other">お使いの GPU の評価済み共有設定: %1$d 件</item>
+    </plurals>
+    <string name="community_compatibility_no_reports">お使いのハードウェア向けの共有設定が見つかりません</string>
     <string name="community_compatibility_configs_unavailable">一部の互換性データを読み込めませんでした。利用可能な情報を表示しています。</string>
     <string name="community_compatibility_retry">再試行</string>
     <string name="community_compatibility_fps_median">報告された中央値: %1$d FPS</string>
@@ -2824,6 +2831,7 @@
     <string name="community_compatibility_fps_gpu">%1$s（お使いの GPU）。</string>
     <string name="community_compatibility_fps_family">%1$s（互換性のある GPU）。</string>
     <string name="community_compatibility_view_reports">設定を参照</string>
+    <string name="community_config_install_before_apply">コミュニティ設定を適用する前に、このゲームをインストールしてください。</string>
     <plurals name="community_compatibility_model_sessions">
         <item quantity="other">お使いのデバイスモデルで記録された %1$d 回のセッションに基づきます。</item>
     </plurals>

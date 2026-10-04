@@ -2726,6 +2726,15 @@
     <string name="community_compatibility_wont">Virker ikke</string>
     <string name="community_compatibility_unknown">Ikke testet</string>
     <string name="community_compatibility_checking">Tjekker kompatibilitet…</string>
+    <plurals name="community_compatibility_device_evidence">
+        <item quantity="one">%1$d bedømt delt konfiguration fra denne enhedsmodel</item>
+        <item quantity="other">%1$d bedømte delte konfigurationer fra denne enhedsmodel</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_evidence">
+        <item quantity="one">%1$d bedømt delt konfiguration med din GPU</item>
+        <item quantity="other">%1$d bedømte delte konfigurationer med din GPU</item>
+    </plurals>
+    <string name="community_compatibility_no_reports">Ingen delte konfigurationer fundet til din hardware</string>
     <string name="community_compatibility_configs_unavailable">Nogle kompatibilitetsdata kunne ikke indlæses. Viser tilgængelige data.</string>
     <string name="community_compatibility_retry">Prøv igen</string>
     <string name="community_compatibility_fps_median">Rapporteret median: %1$d FPS</string>
@@ -2734,6 +2743,7 @@
     <string name="community_compatibility_fps_gpu">%1$s med din GPU.</string>
     <string name="community_compatibility_fps_family">%1$s med kompatible GPU’er.</string>
     <string name="community_compatibility_view_reports">Konfigurationer</string>
+    <string name="community_config_install_before_apply">Installer dette spil, før du anvender en fællesskabskonfiguration.</string>
     <plurals name="community_compatibility_model_sessions">
         <item quantity="one">Baseret på %1$d registreret session på din enhedsmodel.</item>
         <item quantity="other">Baseret på %1$d registrerede sessioner på din enhedsmodel.</item>

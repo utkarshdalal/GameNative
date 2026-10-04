@@ -1,5 +1,6 @@
 package app.gamenative.data
 
+import app.gamenative.utils.DeviceGameStatsService.DeviceGameStats
 import app.gamenative.utils.GameCompatibilityService.CompatibilityTierMetrics
 import app.gamenative.utils.GameCompatibilityService.GameCompatibilityResponse
 import org.junit.Assert.*
@@ -38,6 +39,48 @@ class CommunityCompatibilityClassifierTest {
         val untested = classify("Untested", null)
         assertTrue(untested.verdictLoaded)
         assertEquals(CommunityCompatibilityVerdict.UNKNOWN, untested.verdict)
+    }
+
+    @Test fun bulkRatingsDoNotReplaceServerVerdictOrInventRecency() {
+        val stats = DeviceGameStats(44, 60, 0, 581, CommunityRatingDistribution(oneStar = 32, twoStar = 1))
+        for (state in listOf("Great", "Broken", "Unreliable", "Untested")) {
+            val server = classify(state)
+            val detailed = CommunityCompatibilityClassifier.withBulkRatings(
+                server, listOf(CommunityEvidenceTier.SAME_GPU to stats), true,
+            )
+            assertEquals(server.verdict, detailed.verdict)
+            assertEquals(server.evidenceTier, detailed.evidenceTier)
+            assertEquals(33, detailed.reportCount)
+            assertEquals(CommunityVerdictSource.SERVER, detailed.verdictSource)
+        }
+    }
+
+    @Test fun histogramPrefersVerdictScopeThenClosestAvailableWithoutChangingVerdictScope() {
+        val device = DeviceGameStats(1, 60, 1, 100, CommunityRatingDistribution(fiveStar = 1))
+        val gpu = DeviceGameStats(10, 60, 3, 100, CommunityRatingDistribution(oneStar = 2, fiveStar = 3))
+        val server = classify("Works")
+        val summary = CommunityCompatibilityClassifier.withBulkRatings(
+            server, listOf(CommunityEvidenceTier.SAME_DEVICE to device, CommunityEvidenceTier.SAME_GPU to gpu), true,
+        )
+        assertEquals(5, summary.reportCount)
+        assertEquals(CommunityEvidenceTier.SAME_GPU, summary.reportEvidenceTier)
+        val fallback = CommunityCompatibilityClassifier.withBulkRatings(
+            server, listOf(CommunityEvidenceTier.SAME_DEVICE to device), true,
+        )
+        assertEquals(CommunityEvidenceTier.SAME_GPU, fallback.evidenceTier)
+        assertEquals(CommunityEvidenceTier.SAME_DEVICE, fallback.reportEvidenceTier)
+        assertEquals(server.verdict, fallback.verdict)
+    }
+
+    @Test fun oldFourFieldStatsCannotMasqueradeAsACompleteHistogram() {
+        val summary = CommunityCompatibilityClassifier.withBulkRatings(
+            classify("Works"),
+            listOf(CommunityEvidenceTier.SAME_GPU to DeviceGameStats(100, 60, 20, 100)), false,
+        )
+        assertEquals(0, summary.reportCount)
+        assertFalse(summary.hasDetailedReports)
+        assertFalse(summary.detailsLoaded)
+        assertEquals(CommunityCompatibilityVerdict.SHOULD_WORK, summary.verdict)
     }
 
     @Test fun serverStateMapsDirectlyToVerdict() {

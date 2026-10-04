@@ -152,10 +152,8 @@ fun CommunityCompatibilitySection(
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
                 )
 
-                val fps = fpsText(summary)
-                if (detailsExpanded && fps != null) {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    SupportingText(fps)
+                if (detailsExpanded) {
+                    CompatibilityDetails(summary)
                 }
 
                 Row(
@@ -163,23 +161,19 @@ fun CommunityCompatibilitySection(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (fps != null) {
-                        val expandedDescription = stringResource(
-                            if (detailsExpanded) R.string.community_compatibility_expanded else R.string.community_compatibility_collapsed,
+                    val expandedDescription = stringResource(
+                        if (detailsExpanded) R.string.community_compatibility_expanded else R.string.community_compatibility_collapsed,
+                    )
+                    TextButton(
+                        onClick = { detailsExpanded = !detailsExpanded },
+                        modifier = Modifier.semantics { stateDescription = expandedDescription },
+                    ) {
+                        Text(stringResource(R.string.community_compatibility_details))
+                        Icon(
+                            if (detailsExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                            contentDescription = null,
+                            modifier = Modifier.padding(start = 4.dp).size(18.dp),
                         )
-                        TextButton(
-                            onClick = { detailsExpanded = !detailsExpanded },
-                            modifier = Modifier.semantics { stateDescription = expandedDescription },
-                        ) {
-                            Text(stringResource(R.string.community_compatibility_details))
-                            Icon(
-                                if (detailsExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                                contentDescription = null,
-                                modifier = Modifier.padding(start = 4.dp).size(18.dp),
-                            )
-                        }
-                    } else {
-                        Spacer(Modifier.width(0.dp))
                     }
                     TextButton(onClick = onViewReports) {
                         Text(stringResource(R.string.community_compatibility_view_reports))
@@ -188,6 +182,15 @@ fun CommunityCompatibilitySection(
             }
         }
     }
+}
+
+@Composable
+private fun CompatibilityDetails(summary: CommunityCompatibilitySummary) {
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+    if (summary.detailsLoaded || summary.hasDetailedReports) {
+        SupportingText(configEvidenceText(summary))
+    }
+    fpsText(summary)?.let { SupportingText(it) }
 }
 
 internal fun communitySessionBasisResource(summary: CommunityCompatibilitySummary): Int? {
@@ -228,6 +231,32 @@ private fun SupportingText(text: String) {
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
+}
+
+@Composable
+private fun configEvidenceText(summary: CommunityCompatibilitySummary): String {
+    if (!summary.detailsLoaded && !summary.hasDetailedReports) {
+        return stringResource(R.string.community_compatibility_configs_unavailable)
+    }
+    if (summary.reportCount <= 0 || summary.reportEvidenceTier == CommunityEvidenceTier.NONE) {
+        return stringResource(R.string.community_compatibility_no_reports)
+    }
+    return when (summary.reportEvidenceTier) {
+        CommunityEvidenceTier.SAME_DEVICE -> pluralStringResource(
+            R.plurals.community_compatibility_device_evidence,
+            summary.reportCount,
+            summary.reportCount,
+        )
+        CommunityEvidenceTier.SAME_GPU -> pluralStringResource(
+            R.plurals.community_compatibility_gpu_evidence,
+            summary.reportCount,
+            summary.reportCount,
+        )
+        CommunityEvidenceTier.SAME_SOC,
+        CommunityEvidenceTier.COMPATIBLE_GPU_FAMILY,
+        CommunityEvidenceTier.NONE,
+        -> stringResource(R.string.community_compatibility_no_reports)
+    }
 }
 
 @Composable

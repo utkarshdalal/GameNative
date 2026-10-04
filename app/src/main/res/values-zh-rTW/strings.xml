@@ -2860,6 +2860,13 @@
     <string name="community_compatibility_wont">無法執行</string>
     <string name="community_compatibility_unknown">未測試</string>
     <string name="community_compatibility_checking">正在檢查相容性…</string>
+    <plurals name="community_compatibility_device_evidence">
+        <item quantity="other">來自此裝置型號的 %1$d 個已評分共享設定</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_evidence">
+        <item quantity="other">使用您的 GPU 的 %1$d 個已評分共享設定</item>
+    </plurals>
+    <string name="community_compatibility_no_reports">找不到適用於您硬體的共享設定</string>
     <string name="community_compatibility_configs_unavailable">部分相容性資料無法載入，正在顯示可用資訊。</string>
     <string name="community_compatibility_retry">重試</string>
     <string name="community_compatibility_fps_median">回報的影格率中位數：%1$d FPS</string>
@@ -2868,6 +2875,7 @@
     <string name="community_compatibility_fps_gpu">%1$s（您的 GPU）。</string>
     <string name="community_compatibility_fps_family">%1$s（相容的 GPU）。</string>
     <string name="community_compatibility_view_reports">瀏覽設定</string>
+    <string name="community_config_install_before_apply">請先安裝此遊戲，再套用社群設定。</string>
     <plurals name="community_compatibility_model_sessions">
         <item quantity="other">根據在您的裝置型號上記錄的 %1$d 次工作階段。</item>
     </plurals>

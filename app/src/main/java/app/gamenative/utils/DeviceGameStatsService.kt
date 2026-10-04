@@ -2,6 +2,7 @@ package app.gamenative.utils
 
 import app.gamenative.api.ApiResult
 import app.gamenative.api.GameNativeApi
+import app.gamenative.data.CommunityRatingDistribution
 import app.gamenative.data.GameSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -17,6 +18,8 @@ import timber.log.Timber
  *   { "games": { "STEAM": { "Balatro": [n, mfps, s5, secs], ... }, "EPIC": {…}, ... } }
  *
  * where n = successful runs, mfps = median fps, s5 = 5-star reviews, secs = median session length.
+ * New responses append s1, s2, s3, s4 (in that order). These are historical rating counts,
+ * not a recent/version-specific sample; old four-field rows have no complete histogram.
  * The server filters modern/legacy results based on the modernBuild query param and returns them
  * under "games" (we also honor a "games_modern" key if a future response provides one).
  */
@@ -33,6 +36,7 @@ object DeviceGameStatsService {
         val medianFps: Int,
         val fiveStarReviews: Int,
         val medianSessionSec: Int,
+        val ratings: CommunityRatingDistribution? = null,
     )
 
     /** Stats for the current device + GPU. */
@@ -98,7 +102,7 @@ object DeviceGameStatsService {
         }
     }
 
-    private fun parse(json: JSONObject, modernBuild: Boolean): Map<GameSource, Map<String, DeviceGameStats>> {
+    internal fun parse(json: JSONObject, modernBuild: Boolean): Map<GameSource, Map<String, DeviceGameStats>> {
         val games = (if (modernBuild) json.optJSONObject("games_modern") else null)
             ?: json.optJSONObject("games")
             ?: return emptyMap()
@@ -116,6 +120,17 @@ object DeviceGameStatsService {
                     medianFps = arr.optInt(1, 0),
                     fiveStarReviews = arr.optInt(2, 0),
                     medianSessionSec = arr.optInt(3, 0),
+                    ratings = if (arr.length() >= 8 && listOf(2, 4, 5, 6, 7).all { !arr.isNull(it) }) {
+                        CommunityRatingDistribution(
+                            oneStar = arr.optInt(4).coerceAtLeast(0),
+                            twoStar = arr.optInt(5).coerceAtLeast(0),
+                            threeStar = arr.optInt(6).coerceAtLeast(0),
+                            fourStar = arr.optInt(7).coerceAtLeast(0),
+                            fiveStar = arr.optInt(2).coerceAtLeast(0),
+                        )
+                    } else {
+                        null
+                    },
                 )
             }
             output[source] = stats
