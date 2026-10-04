@@ -71,17 +71,19 @@ class WindowsVrPayloadManager(
             .take(20001)
             .toList()
         check(candidates.size <= 20000) { "OpenComposite scan exceeded 20000 files" }
+        val adapterAssets = mapOf(0x8664 to "opencomposite_x64.dll", 0x14c to "opencomposite_x86.dll")
         val targets = candidates.filter { it.isFile && it.name.equals("openvr_api.dll", ignoreCase = true) }
-            .filter { runCatching { peMachineOf(it) == 0x8664 }.getOrDefault(false) }
-        check(targets.isNotEmpty()) { "No x64 openvr_api.dll was found under the launched game" }
-        val adapter = context.assets.open("opencomposite_x64.dll").use { it.readBytes() }
+            .mapNotNull { file -> runCatching { peMachineOf(file) }.getOrNull()?.let { machine -> adapterAssets[machine]?.let { file to it } } }
+        check(targets.isNotEmpty()) { "No x64 or x86 openvr_api.dll was found under the launched game" }
+        val adapters = targets.map { it.second }.distinct().associateWith { name -> context.assets.open(name).use { it.readBytes() } }
         val record = File(File(container.rootDir, ".wine/drive_c/gamenative-xr"), "opencomposite.targets")
-        val encodedTargets = targets.map { checkNotNull(it.parentFile).canonicalPath }
+        val encodedTargets = targets.map { checkNotNull(it.first.parentFile).canonicalPath }
             .distinct()
             .joinToString("\n") { Base64.getUrlEncoder().withoutPadding().encodeToString(it.toByteArray()) }
         writeIfChanged(record, encodedTargets.toByteArray())
         openCompositeRecord = record
-        targets.forEach { target ->
+        targets.forEach { (target, adapterName) ->
+            val adapter = checkNotNull(adapters[adapterName])
             val directory = checkNotNull(target.parentFile).canonicalFile
             val backup = File(directory, "openvr_api.dll.gamenative-original")
             val owner = File(directory, "openvr_api.dll.gamenative-owner")
@@ -90,7 +92,7 @@ class WindowsVrPayloadManager(
             openCompositeDirectories += directory
             writeIfChanged(backup, target.readBytes())
             writeIfChanged(target, adapter)
-            diagnostics.record("opencomposite", "installed path=${target.path}")
+            diagnostics.record("opencomposite", "installed path=${target.path} adapter=$adapterName")
         }
     }
 

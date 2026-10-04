@@ -84,6 +84,12 @@ if [ ! -f "$output/opencomposite_x64.dll" ]; then
     echo "55dc09c465ab2bf2787b47fec74cb9787b05aa19e1951df207ffc9dd3926af2f  $output/opencomposite_x64.dll" \
         | shasum -a 256 -c - >/dev/null || { echo "OpenComposite checksum mismatch"; exit 1; }
 fi
+if [ ! -f "$output/opencomposite_x86.dll" ]; then
+    curl -sL "https://github.com/GameNative/opencomposite/releases/download/v3/opencomposite_x86.dll" \
+        -o "$output/opencomposite_x86.dll"
+    echo "2602f2b12bfc028b7e00f6d51c1d02be07d77abd7c9b8d2e0ba8d24d47fdc5dd  $output/opencomposite_x86.dll" \
+        | shasum -a 256 -c - >/dev/null || { echo "OpenComposite x86 checksum mismatch"; exit 1; }
+fi
 
 # The arm64x Wine builtin needs Linux; run it in Docker on request.
 # The gn-arm64x volume caches the toolchains and Wine tree, so reruns take minutes.
