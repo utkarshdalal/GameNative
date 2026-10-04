@@ -2854,6 +2854,58 @@
     <string name="gyro_degrees_per_second_value">%1$.1f°/s</string>
     <string name="gyro_milliseconds_value">%1$d ms</string>
     <string name="reset_gyro_settings">Reset gyro settings</string>
+    <string name="sort_compatibility">Compatibility</string>
+    <string name="community_compatibility_details">Details</string>
+    <string name="community_compatibility_expanded">Expanded</string>
+    <string name="community_compatibility_collapsed">Collapsed</string>
+    <string name="community_compatibility_short_disclaimer">Community results aren’t a guarantee.</string>
+    <string name="community_compatibility_unreliable_short">Unreliable results; working gameplay isn’t confirmed.</string>
+    <string name="community_compatibility_performance_caution">Reported performance may be limited.</string>
+    <plurals name="community_compatibility_model_sessions">
+        <item quantity="one">Based on %1$d recorded session on your device model.</item>
+        <item quantity="other">Based on %1$d recorded sessions on your device model.</item>
+    </plurals>
+    <plurals name="community_compatibility_soc_sessions">
+        <item quantity="one">Based on %1$d recorded session using the same chipset.</item>
+        <item quantity="other">Based on %1$d recorded sessions using the same chipset.</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_sessions">
+        <item quantity="one">Based on %1$d recorded session using your GPU.</item>
+        <item quantity="other">Based on %1$d recorded sessions using your GPU.</item>
+    </plurals>
+    <plurals name="community_compatibility_family_sessions">
+        <item quantity="one">Based on %1$d recorded session in your GPU family.</item>
+        <item quantity="other">Based on %1$d recorded sessions in your GPU family.</item>
+    </plurals>
+    <string name="community_compatibility_checking_short">Checking…</string>
+    <string name="community_compatibility_unavailable_short">Unavailable</string>
+    <string name="community_compatibility_unavailable">Compatibility could not be loaded</string>
+    <string name="community_compatibility_missing_tier">The response lacks the hardware evidence needed to apply its verdict to your device.</string>
+    <string name="community_compatibility_works">Plays well</string>
+    <string name="community_compatibility_should">Runs</string>
+    <string name="community_compatibility_may">May work</string>
+    <string name="community_compatibility_mixed">Unreliable</string>
+    <string name="community_compatibility_wont">Broken</string>
+    <string name="community_compatibility_unknown">Untested</string>
+    <string name="community_compatibility_checking">Checking compatibility…</string>
+    <plurals name="community_compatibility_device_evidence">
+        <item quantity="one">%1$d rated shared config from this device model</item>
+        <item quantity="other">%1$d rated shared configs from this device model</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_evidence">
+        <item quantity="one">%1$d rated shared config using your GPU</item>
+        <item quantity="other">%1$d rated shared configs using your GPU</item>
+    </plurals>
+    <string name="community_compatibility_no_reports">No shared configs found for your hardware</string>
+    <string name="community_compatibility_configs_unavailable">Some compatibility data could not be loaded. Showing available evidence.</string>
+    <string name="community_compatibility_retry">Retry</string>
+    <string name="community_compatibility_fps_median">Median %1$d FPS reported</string>
+    <string name="community_compatibility_fps_device">%1$s on your device model.</string>
+    <string name="community_compatibility_fps_soc">%1$s using the same chipset.</string>
+    <string name="community_compatibility_fps_gpu">%1$s using your GPU.</string>
+    <string name="community_compatibility_fps_family">%1$s using compatible GPUs.</string>
+    <string name="community_compatibility_view_reports">Browse Configs</string>
+    <string name="community_config_install_before_apply">Install this game before applying a community configuration.</string>
     <string name="debug_prerun_instruction">What to do in this run: %1$s</string>
     <plurals name="debug_prerun_min_minutes">
         <item quantity="one">Keep the game open for at least %1$d minute before you quit.</item>

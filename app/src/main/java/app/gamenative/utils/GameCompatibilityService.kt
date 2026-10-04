@@ -1,102 +1,89 @@
 package app.gamenative.utils
 
-import android.content.Context
-import androidx.compose.ui.graphics.Color
+import android.os.Build
 import app.gamenative.BuildConfig
-import app.gamenative.R
+import app.gamenative.data.CommunityCompatibilityClassifier
+import app.gamenative.data.CommunityCompatibilityVerdict
 import app.gamenative.data.GameCompatibilityStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
 
-/**
- * Service for fetching game compatibility information from GameNative API.
- */
+/** Fetches per-game compatibility information from the GameNative API. */
 object GameCompatibilityService {
-    private const val API_BASE_URL = "https://api.gamenative.app/api/game-runs"
+    private const val API_BASE_URL = "https://api.gamenative.app/api/game-compat"
     private val httpClient = Net.http
 
-    /**
-     * Data class for API request.
-     */
-    data class GameCompatibilityRequest(
-        val gameNames: List<String>,
-        val gpuName: String
-    )
+    @Serializable
+    data class CompatibilityTierMetrics(
+        val key: String,
+        val sessions: Int,
+        val playable: Int,
+        val playableRate: Double? = null,
+        val medianFps: Double? = null,
+        val lastSeen: String? = null,
+        val ratedDevices: Int? = null,
+        val okDevices: Int? = null,
+    ) {
+        val hasHardwareKey: Boolean get() = key.isNotBlank() && !key.trim().equals("null", ignoreCase = true)
+    }
 
-    /**
-     * Data class for API response per game.
-     */
+    @Serializable
     data class GameCompatibilityResponse(
         val gameName: String,
-        val totalPlayableCount: Int,
-        val gpuPlayableCount: Int,
-        val avgRating: Float,
-        val hasBeenTried: Boolean,
-        val isNotWorking: Boolean,
         val state: String? = null,
+        val tier: String? = null,
+        val tiers: Map<String, CompatibilityTierMetrics> = emptyMap(),
     )
 
-    /**
-     * Compatibility message with text and color.
-     */
-    data class CompatibilityMessage(
-        val text: String,
-        val color: Color
-    )
-
-    /**
-     * Gets user-friendly compatibility message based on compatibility response.
-     * Uses totalPlayableCount and gpuPlayableCount to determine the message.
-     */
-    fun getCompatibilityMessageFromResponse(context: Context, response: GameCompatibilityResponse): CompatibilityMessage {
-        return when {
-            response.totalPlayableCount > 0 && response.gpuPlayableCount > 0 ->
-                CompatibilityMessage(context.getString(R.string.best_config_exact_gpu_match), Color.Green)
-            response.gpuPlayableCount == 0 && response.totalPlayableCount > 0 ->
-                CompatibilityMessage(context.getString(R.string.best_config_fallback_match), Color.Yellow)
-            response.isNotWorking ->
-                CompatibilityMessage(context.getString(R.string.library_not_compatible), Color.Red)
-            else ->
-                CompatibilityMessage(context.getString(R.string.library_compatibility_unknown), Color.Gray)
+    fun statusFor(response: GameCompatibilityResponse): GameCompatibilityStatus =
+        when (CommunityCompatibilityClassifier.fromCompatibilityResponse(response).verdict) {
+            CommunityCompatibilityVerdict.WORKS,
+            CommunityCompatibilityVerdict.SHOULD_WORK,
+            -> GameCompatibilityStatus.GPU_COMPATIBLE
+            CommunityCompatibilityVerdict.MAY_WORK -> GameCompatibilityStatus.COMPATIBLE
+            CommunityCompatibilityVerdict.WONT_WORK -> GameCompatibilityStatus.NOT_COMPATIBLE
+            CommunityCompatibilityVerdict.MIXED,
+            CommunityCompatibilityVerdict.UNKNOWN,
+            -> GameCompatibilityStatus.UNKNOWN
         }
-    }
-
-    fun statusFor(response: GameCompatibilityResponse): GameCompatibilityStatus = when {
-        response.isNotWorking -> GameCompatibilityStatus.NOT_COMPATIBLE
-        !response.hasBeenTried -> GameCompatibilityStatus.UNKNOWN
-        response.gpuPlayableCount > 0 -> GameCompatibilityStatus.GPU_COMPATIBLE
-        response.totalPlayableCount > 0 -> GameCompatibilityStatus.COMPATIBLE
-        else -> GameCompatibilityStatus.UNKNOWN
-    }
 
     fun badgeProperties(gameName: String): Map<String, Any> {
-        val cached = GameCompatibilityCache.getCached(gameName) ?: return emptyMap()
-        return mapOf("compat_badge" to (cached.state ?: statusFor(cached).name))
+        val response = GameCompatibilityCache.getCached(gameName) ?: return emptyMap()
+        return badgeProperties(response)
     }
 
-    /**
-     * Fetches compatibility information for a batch of games.
-     * Returns a map of game name to compatibility response, or null on error.
-     */
+    internal fun badgeProperties(response: GameCompatibilityResponse): Map<String, Any> = buildMap {
+        val summary = CommunityCompatibilityClassifier.fromCompatibilityResponse(response)
+        put("compat_badge", summary.verdict.name)
+        response.state?.let { put("compat_server_state", it) }
+        put("compat_evidence_tier", summary.evidenceTier.name)
+    }
+
+    /** Returns valid requested entries; missing/old count-only entries remain retryable. */
     suspend fun fetchCompatibility(
         gameNames: List<String>,
-        gpuName: String
+        gpuName: String,
     ): Map<String, GameCompatibilityResponse>? = withContext(Dispatchers.IO) {
-        if (gameNames.isEmpty()) {
-            return@withContext emptyMap()
-        }
+        if (gameNames.isEmpty()) return@withContext emptyMap()
 
         try {
             val requestBody = JSONObject().apply {
-                put("gameNames", org.json.JSONArray(gameNames))
+                put("gameNames", JSONArray(gameNames))
                 put("gpuName", gpuName)
-                // Modern build can't run glibc containers — server should weight
-                // compatibility responses against bionic-only configs when true.
+                put("manufacturer", Build.MANUFACTURER)
+                put("model", Build.MODEL)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && Build.SOC_MODEL.isNotBlank()) {
+                    put("socModel", Build.SOC_MODEL)
+                }
+                // The backend does not split legacy/modern yet. Send it now so the server can
+                // add that distinction later without another client request-shape change.
                 put("modernBuild", BuildConfig.MODERN_ANDROID)
             }
 
@@ -105,15 +92,12 @@ object GameCompatibilityService {
             val attestation = KeyAttestationHelper.getAttestationFields("https://api.gamenative.app")
             if (attestation != null) {
                 requestBody.put("nonce", attestation.first)
-                requestBody.put("attestationChain", org.json.JSONArray(attestation.second))
+                requestBody.put("attestationChain", JSONArray(attestation.second))
             }
 
-            val mediaType = "application/json".toMediaType()
             val bodyString = requestBody.toString()
-            val body = bodyString.toRequestBody(mediaType)
-
+            val body = bodyString.toRequestBody("application/json".toMediaType())
             val integrityToken = PlayIntegrity.requestToken(bodyString.toByteArray())
-
             val requestBuilder = Request.Builder()
                 .url(API_BASE_URL)
                 .post(body)
@@ -121,46 +105,84 @@ object GameCompatibilityService {
             if (integrityToken != null) {
                 requestBuilder.header("X-Integrity-Token", integrityToken)
             }
-            val request = requestBuilder.build()
 
-            httpClient.newCall(request).execute().use { response ->
+            Timber.tag("GameCompatibilityService").i("Requesting compatibility batch: ${gameNames.size} games")
+            httpClient.newCall(requestBuilder.build()).execute().use { response ->
                 if (!response.isSuccessful) {
                     Timber.tag("GameCompatibilityService")
                         .w("API request failed - HTTP ${response.code}")
                     return@withContext null
                 }
-
                 val responseBody = response.body?.string() ?: return@withContext null
-                val jsonResponse = JSONObject(responseBody)
-
-                val result = mutableMapOf<String, GameCompatibilityResponse>()
-                val keys = jsonResponse.keys()
-
-                while (keys.hasNext()) {
-                    val gameName = keys.next()
-                    val gameData = jsonResponse.getJSONObject(gameName)
-
-                    val compatibilityResponse = GameCompatibilityResponse(
-                        gameName = gameName,
-                        totalPlayableCount = gameData.optInt("totalPlayableCount", 0),
-                        gpuPlayableCount = gameData.optInt("gpuPlayableCount", 0),
-                        avgRating = gameData.optDouble("avgRating", 0.0).toFloat(),
-                        hasBeenTried = gameData.optBoolean("hasBeenTried", false),
-                        isNotWorking = gameData.optBoolean("isNotWorking", false)
-                    )
-
-                    result[gameName] = compatibilityResponse
-                }
-
+                val result = parseCompatibilityResponse(responseBody, gameNames)
                 Timber.tag("GameCompatibilityService")
-                    .d("Fetched compatibility for ${result.size} games")
+                    .i("Fetched compatibility batch: ${result.size}/${gameNames.size} results")
                 result
             }
-        } catch (e: Exception) {
+        } catch (error: kotlinx.coroutines.CancellationException) {
+            throw error
+        } catch (error: Exception) {
             Timber.tag("GameCompatibilityService")
-                .e(e, "Error fetching compatibility data: ${e.message}")
+                .e(error, "Error fetching compatibility data: ${error.message}")
             null
         }
     }
-}
 
+    internal fun parseCompatibilityResponse(
+        responseBody: String,
+        requestedGameNames: List<String>,
+    ): Map<String, GameCompatibilityResponse> {
+        val root = JSONObject(responseBody)
+        val results = if (root.has("results")) {
+            requireNotNull(root.optJSONObject("results")) { "Invalid compatibility results" }
+        } else {
+            root
+        }
+        // Unwrapped state/tier responses are supported. Old run-only responses cannot establish
+        // a hardware-specific verdict: skip them and retain last-known evidence instead.
+        return requestedGameNames.mapNotNull { gameName ->
+            val gameData = results.optJSONObject(gameName) ?: return@mapNotNull null
+            val state = gameData.optNullableString("state") ?: return@mapNotNull null
+            gameName to GameCompatibilityResponse(
+                gameName = gameName,
+                state = state,
+                tier = gameData.optNullableString("tier"),
+                tiers = parseTiers(gameData.optJSONObject("tiers")),
+            )
+        }.toMap()
+    }
+
+    private fun parseTiers(tiersJson: JSONObject?): Map<String, CompatibilityTierMetrics> {
+        if (tiersJson == null) return emptyMap()
+        return buildMap {
+            val keys = tiersJson.keys()
+            while (keys.hasNext()) {
+                val tierName = keys.next()
+                val tier = tiersJson.optJSONObject(tierName) ?: continue
+                put(
+                    tierName,
+                    CompatibilityTierMetrics(
+                        key = tier.optNullableString("key").orEmpty(),
+                        sessions = tier.optInt("sessions", 0),
+                        playable = tier.optInt("playable", 0),
+                        playableRate = tier.optNullableDouble("playableRate"),
+                        medianFps = tier.optNullableDouble("medianFps"),
+                        lastSeen = tier.optNullableString("lastSeen"),
+                        ratedDevices = tier.optNullableInt("ratedDevices"),
+                        okDevices = tier.optNullableInt("okDevices"),
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun JSONObject.optNullableString(name: String): String? =
+        (opt(name) as? String)?.trim()?.takeIf { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }
+
+    private fun JSONObject.optNullableInt(name: String): Int? =
+        // Preserve invalid counters so they cannot be mistaken for absent rating feedback.
+        if (!has(name) || isNull(name)) null else optInt(name, -1)
+
+    private fun JSONObject.optNullableDouble(name: String): Double? =
+        if (!has(name) || isNull(name)) null else optDouble(name).takeIf { it.isFinite() }
+}

@@ -2831,6 +2831,52 @@
     <string name="control_profile_failed">컨트롤 프로필 작업 실패: %1$s</string>
     <string name="control_profile_delete_title">컨트롤 프로필을 삭제할까요?</string>
     <string name="control_profile_delete_message">라이브러리에서 “%1$s”을(를) 제거할까요? 이미 이 프로필로 설정된 게임의 컨트롤은 유지됩니다.</string>
+    <string name="sort_compatibility">호환성</string>
+    <string name="community_compatibility_details">자세히</string>
+    <string name="community_compatibility_expanded">펼쳐짐</string>
+    <string name="community_compatibility_collapsed">접힘</string>
+    <string name="community_compatibility_short_disclaimer">커뮤니티 결과가 동작을 보장하지는 않습니다.</string>
+    <string name="community_compatibility_unreliable_short">결과가 불안정하며, 정상적인 플레이는 확인되지 않았습니다.</string>
+    <string name="community_compatibility_performance_caution">보고된 성능이 제한적일 수 있습니다.</string>
+    <string name="community_compatibility_checking_short">확인 중…</string>
+    <string name="community_compatibility_unavailable_short">사용 불가</string>
+    <string name="community_compatibility_unavailable">호환성을 불러올 수 없습니다</string>
+    <string name="community_compatibility_missing_tier">응답에 결과를 사용 중인 기기에 적용하는 데 필요한 하드웨어 정보가 없습니다.</string>
+    <string name="community_compatibility_works">잘 실행됨</string>
+    <string name="community_compatibility_should">작동함</string>
+    <string name="community_compatibility_may">작동 가능성 있음</string>
+    <string name="community_compatibility_mixed">불안정</string>
+    <string name="community_compatibility_wont">작동 안 함</string>
+    <string name="community_compatibility_unknown">미확인</string>
+    <string name="community_compatibility_checking">호환성 확인 중…</string>
+    <plurals name="community_compatibility_device_evidence">
+        <item quantity="other">이 기기 모델의 평가된 공유 구성 %1$d개</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_evidence">
+        <item quantity="other">사용 중인 GPU의 평가된 공유 구성 %1$d개</item>
+    </plurals>
+    <string name="community_compatibility_no_reports">사용 중인 하드웨어에 맞는 공유 구성을 찾지 못했습니다</string>
+    <string name="community_compatibility_configs_unavailable">일부 호환성 데이터를 불러오지 못했습니다. 이용 가능한 정보를 표시합니다.</string>
+    <string name="community_compatibility_retry">다시 시도</string>
+    <string name="community_compatibility_fps_median">보고된 중앙값: %1$d FPS</string>
+    <string name="community_compatibility_fps_device">%1$s — 사용 중인 기기 모델.</string>
+    <string name="community_compatibility_fps_soc">%1$s — 동일한 칩셋.</string>
+    <string name="community_compatibility_fps_gpu">%1$s — 사용 중인 GPU.</string>
+    <string name="community_compatibility_fps_family">%1$s — 호환되는 GPU.</string>
+    <string name="community_compatibility_view_reports">구성 찾아보기</string>
+    <string name="community_config_install_before_apply">커뮤니티 구성을 적용하기 전에 이 게임을 설치하세요.</string>
+    <plurals name="community_compatibility_model_sessions">
+        <item quantity="other">사용 중인 기기 모델에서 기록된 세션 %1$d개를 기준으로 합니다.</item>
+    </plurals>
+    <plurals name="community_compatibility_soc_sessions">
+        <item quantity="other">동일한 칩셋에서 기록된 세션 %1$d개를 기준으로 합니다.</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_sessions">
+        <item quantity="other">사용 중인 GPU에서 기록된 세션 %1$d개를 기준으로 합니다.</item>
+    </plurals>
+    <plurals name="community_compatibility_family_sessions">
+        <item quantity="other">사용 중인 GPU 계열에서 기록된 세션 %1$d개를 기준으로 합니다.</item>
+    </plurals>
     <string name="debug_prerun_instruction">이번 실행에서 할 일: %1$s</string>
     <plurals name="debug_prerun_min_minutes">
         <item quantity="other">종료하기 전에 게임을 최소 %1$d분 동안 열어 두세요.</item>

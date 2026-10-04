@@ -46,10 +46,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.data.GameCompatibilityStatus
+import app.gamenative.data.CommunityCompatibilitySummary
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.CompatibilityBadge
+import app.gamenative.ui.component.CommunityCompatibilityBadge
 import app.gamenative.ui.component.GameStatsRow
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.data.GameCardStats
@@ -71,6 +73,7 @@ internal fun ListViewCard(
     onFocusChanged: (Boolean) -> Unit,
     isRefreshing: Boolean,
     compatibilityStatus: GameCompatibilityStatus?,
+    communityCompatibility: CommunityCompatibilitySummary?,
     gameStats: GameCardStats?,
     context: Context,
 ) {
@@ -245,16 +248,26 @@ internal fun ListViewCard(
                 )
             }
 
-            val badgeStatus = if (appInfo.isRecommended) {
-                GameCompatibilityStatus.RECOMMENDED
-            } else {
-                compatibilityStatus
-            }
-            badgeStatus?.let { status ->
-                CompatibilityBadge(
-                    status = status,
+            if (!appInfo.isRecommended && communityCompatibility != null) {
+                CommunityCompatibilityBadge(
+                    verdict = communityCompatibility.verdict,
+                    verdictLoaded = communityCompatibility.verdictLoaded,
+                    loadFailed = communityCompatibility.loadFailed,
+                    checking = communityCompatibility.isChecking,
                     showLabel = true,
                 )
+            } else {
+                val badgeStatus = if (appInfo.isRecommended) {
+                    GameCompatibilityStatus.RECOMMENDED
+                } else {
+                    compatibilityStatus
+                }
+                badgeStatus?.let { status ->
+                    CompatibilityBadge(
+                        status = status,
+                        showLabel = true,
+                    )
+                }
             }
         }
     }

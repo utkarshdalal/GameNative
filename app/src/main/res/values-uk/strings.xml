@@ -2842,6 +2842,70 @@
     <string name="control_profile_failed">Не вдалося виконати операцію з профілем керування: %1$s</string>
     <string name="control_profile_delete_title">Видалити профіль керування?</string>
     <string name="control_profile_delete_message">Видалити «%1$s» з бібліотеки? Ігри, уже налаштовані з ним, збережуть своє керування.</string>
+    <string name="sort_compatibility">Сумісність</string>
+    <string name="community_compatibility_details">Подробиці</string>
+    <string name="community_compatibility_expanded">Розгорнуто</string>
+    <string name="community_compatibility_collapsed">Згорнуто</string>
+    <string name="community_compatibility_short_disclaimer">Результати спільноти не є гарантією.</string>
+    <string name="community_compatibility_unreliable_short">Нестабільні результати; можливість грати не підтверджена.</string>
+    <string name="community_compatibility_performance_caution">Повідомлена продуктивність може бути обмеженою.</string>
+    <string name="community_compatibility_checking_short">Перевірка…</string>
+    <string name="community_compatibility_unavailable_short">Недоступно</string>
+    <string name="community_compatibility_unavailable">Не вдалося завантажити сумісність</string>
+    <string name="community_compatibility_missing_tier">У відповіді немає даних про обладнання, потрібних для застосування результату до вашого пристрою.</string>
+    <string name="community_compatibility_works">Працює добре</string>
+    <string name="community_compatibility_should">Працює</string>
+    <string name="community_compatibility_may">Може працювати</string>
+    <string name="community_compatibility_mixed">Нестабільно</string>
+    <string name="community_compatibility_wont">Не працює</string>
+    <string name="community_compatibility_unknown">Не перевірено</string>
+    <string name="community_compatibility_checking">Перевірка сумісності…</string>
+    <plurals name="community_compatibility_device_evidence">
+        <item quantity="one">%1$d оцінена спільна конфігурація з цієї моделі пристрою</item>
+        <item quantity="few">%1$d оцінені спільні конфігурації з цієї моделі пристрою</item>
+        <item quantity="many">%1$d оцінених спільних конфігурацій з цієї моделі пристрою</item>
+        <item quantity="other">%1$d оціненої спільної конфігурації з цієї моделі пристрою</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_evidence">
+        <item quantity="one">%1$d оцінена спільна конфігурація з вашим GPU</item>
+        <item quantity="few">%1$d оцінені спільні конфігурації з вашим GPU</item>
+        <item quantity="many">%1$d оцінених спільних конфігурацій з вашим GPU</item>
+        <item quantity="other">%1$d оціненої спільної конфігурації з вашим GPU</item>
+    </plurals>
+    <string name="community_compatibility_no_reports">Не знайдено спільних конфігурацій для вашого обладнання</string>
+    <string name="community_compatibility_configs_unavailable">Не вдалося завантажити частину даних про сумісність. Показано доступні дані.</string>
+    <string name="community_compatibility_retry">Повторити</string>
+    <string name="community_compatibility_fps_median">Медіанна частота: %1$d FPS</string>
+    <string name="community_compatibility_fps_device">%1$s на вашій моделі пристрою.</string>
+    <string name="community_compatibility_fps_soc">%1$s із тим самим чипсетом.</string>
+    <string name="community_compatibility_fps_gpu">%1$s із вашим GPU.</string>
+    <string name="community_compatibility_fps_family">%1$s із сумісними GPU.</string>
+    <string name="community_compatibility_view_reports">Конфігурації</string>
+    <string name="community_config_install_before_apply">Установіть цю гру перед застосуванням конфігурації спільноти.</string>
+    <plurals name="community_compatibility_model_sessions">
+        <item quantity="one">На основі %1$d записаного сеансу на вашій моделі пристрою.</item>
+        <item quantity="few">На основі %1$d записаних сеансів на вашій моделі пристрою.</item>
+        <item quantity="many">На основі %1$d записаних сеансів на вашій моделі пристрою.</item>
+        <item quantity="other">На основі %1$d записаного сеансу на вашій моделі пристрою.</item>
+    </plurals>
+    <plurals name="community_compatibility_soc_sessions">
+        <item quantity="one">На основі %1$d записаного сеансу з тим самим чипсетом.</item>
+        <item quantity="few">На основі %1$d записаних сеансів з тим самим чипсетом.</item>
+        <item quantity="many">На основі %1$d записаних сеансів з тим самим чипсетом.</item>
+        <item quantity="other">На основі %1$d записаного сеансу з тим самим чипсетом.</item>
+    </plurals>
+    <plurals name="community_compatibility_gpu_sessions">
+        <item quantity="one">На основі %1$d записаного сеансу з вашим GPU.</item>
+        <item quantity="few">На основі %1$d записаних сеансів з вашим GPU.</item>
+        <item quantity="many">На основі %1$d записаних сеансів з вашим GPU.</item>
+        <item quantity="other">На основі %1$d записаного сеансу з вашим GPU.</item>
+    </plurals>
+    <plurals name="community_compatibility_family_sessions">
+        <item quantity="one">На основі %1$d записаного сеансу у вашій родині GPU.</item>
+        <item quantity="few">На основі %1$d записаних сеансів у вашій родині GPU.</item>
+        <item quantity="many">На основі %1$d записаних сеансів у вашій родині GPU.</item>
+        <item quantity="other">На основі %1$d записаного сеансу у вашій родині GPU.</item>
+    </plurals>
     <string name="debug_prerun_instruction">Що зробити в цьому запуску: %1$s</string>
     <plurals name="debug_prerun_min_minutes">
         <item quantity="one">Не закривайте гру щонайменше %1$d хвилину.</item>
