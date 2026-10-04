@@ -169,6 +169,7 @@ public class WinHandler {
             final GamepadState state;
             synchronized (actions) {
                 queued = false;
+                if (gamepadStatePorts.get(port) != this) return;
                 enabled = this.enabled;
                 deviceId = this.deviceId;
                 state = this.state;
@@ -805,7 +806,8 @@ public class WinHandler {
                 final ControlsProfile profile2 = inputControlsView != null ? inputControlsView.getProfile() : null;
                 final boolean useVirtualGamepad2 = profile2 != null && profile2.isVirtualGamepad();
                 ExternalController externalController2 = this.currentController;
-                final boolean enabled3 = externalController2 != null || useVirtualGamepad2;
+                final boolean enabled3 = useVirtualGamepad2
+                        || (externalController2 != null && externalController2.getDeviceId() == gamepadId);
                 if (externalController2 != null && externalController2.getDeviceId() != gamepadId) {
                     this.currentController = null;
                 }
