@@ -1410,7 +1410,7 @@ class LibraryViewModel @Inject constructor(
                 }
 
                 // Fetch uncached games in batches of 25
-                val batchSize = 25
+                val batchSize = 100
                 val fetchedResults = mutableMapOf<String, GameCompatibilityService.GameCompatibilityResponse>()
 
                 for (i in uncachedGames.indices step batchSize) {

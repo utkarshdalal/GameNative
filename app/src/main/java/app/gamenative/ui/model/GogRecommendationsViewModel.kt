@@ -103,7 +103,7 @@ class GogRecommendationsViewModel @Inject constructor(
             if (cached != null) responses[name] = cached else uncached.add(name)
         }
         if (gpuName != "Unknown GPU") {
-            uncached.chunked(25).forEach { batch ->
+            uncached.chunked(100).forEach { batch ->
                 GameCompatibilityService.fetchCompatibility(batch, gpuName)?.let {
                     GameCompatibilityCache.cacheAll(it)
                     responses.putAll(it)
