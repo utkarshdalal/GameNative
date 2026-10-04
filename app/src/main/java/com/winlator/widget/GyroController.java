@@ -30,6 +30,7 @@ class GyroController implements SensorEventListener {
     static final float STICK_UNITS_PER_RADIAN_PER_SECOND = 0.35f;
     private static final float MAX_MOUSE_EVENT_DELTA_SECONDS = 0.25f;
     private static final float MAX_SMOOTHING_DELTA_SECONDS = 0.05f;
+    private static final long MAX_ORIENTATION_AGE_NS = 250_000_000L;
     private static final float RADIANS_TO_DEGREES = (float)(180.0 / Math.PI);
 
     private final SensorManager sensorManager;
@@ -57,6 +58,10 @@ class GyroController implements SensorEventListener {
     private boolean registered;
     private boolean reportedActive;
     private volatile Sensor registeredSensor;
+    private boolean orientationRegistered;
+    private final float[] deviceUp = new float[3];
+    private long lastOrientationTimestampNs;
+    private int lastDisplayRotation = -1;
     private long lastTimestampNs;
     private long lastSmoothingTimestampNs;
     private double mouseRemainderX;
@@ -100,7 +105,8 @@ class GyroController implements SensorEventListener {
         boolean settingsChanged = !settings.equals(normalized);
         boolean targetChanged = settings.getMode() != normalized.getMode();
         boolean activationChanged = settings.getActivationMode() != normalized.getActivationMode();
-        boolean motionStyleChanged = settings.getTiltSteeringEnabled() != normalized.getTiltSteeringEnabled();
+        boolean motionStyleChanged = settings.getTiltSteeringEnabled() != normalized.getTiltSteeringEnabled()
+                || settings.getConversionStyle() != normalized.getConversionStyle();
         if (settingsChanged) clearOutput();
         if (targetChanged || activationChanged || motionStyleChanged) {
             unregister();
@@ -205,22 +211,32 @@ class GyroController implements SensorEventListener {
     public synchronized void onSensorChanged(SensorEvent event) {
         Sensor activeSensor = registeredSensor;
         if (event == null || event.sensor == null || activeSensor == null
-                || event.sensor.getType() != activeSensor.getType() || event.values == null) return;
+                || event.values == null || event.timestamp <= 0L) return;
         if (!shouldRun()) return;
+
+        if (orientationRegistered && event.sensor.getType() == orientationSensor.getType()) {
+            updateDeviceUp(event.values, event.timestamp);
+            return;
+        }
+        if (event.sensor.getType() != activeSensor.getType()) return;
 
         int rotation = Surface.ROTATION_0;
         if (windowManager != null && windowManager.getDefaultDisplay() != null) {
             rotation = windowManager.getDefaultDisplay().getRotation();
         }
+        if (lastDisplayRotation != -1 && lastDisplayRotation != rotation) clearOutput();
+        lastDisplayRotation = rotation;
 
         if (isTiltSteeringActive()) {
             processTiltSteering(event, rotation);
             return;
         }
 
-        if (event.sensor.getType() != Sensor.TYPE_GYROSCOPE || event.values.length < 2
-                || !Float.isFinite(event.values[0]) || !Float.isFinite(event.values[1])) return;
-        float[] rates = mapAndFilterRates(-event.values[1], -event.values[0], rotation);
+        if (event.sensor.getType() != Sensor.TYPE_GYROSCOPE || event.values.length < 3
+                || !Float.isFinite(event.values[0]) || !Float.isFinite(event.values[1])
+                || !Float.isFinite(event.values[2])) return;
+        float[] rates = mapAndFilterRates(
+                event.values[0], event.values[1], event.values[2], rotation, event.timestamp);
         if (settings.getMode() == GyroSettings.MODE_MOUSE) {
             if (settings.getSmoothingMilliseconds() > 0f) {
                 rates = smoothRates(rates[0], rates[1], event.timestamp);
@@ -274,6 +290,20 @@ class GyroController implements SensorEventListener {
                 event.timestamp);
     }
 
+    private void updateDeviceUp(float[] rotationVector, long timestampNs) {
+        if (timestampNs <= lastOrientationTimestampNs || !readRotationMatrix(rotationVector)) return;
+        // The third row of the device-to-world matrix is world up in device coordinates.
+        float x = rotationMatrix[6];
+        float y = rotationMatrix[7];
+        float z = rotationMatrix[8];
+        float length = (float)Math.sqrt(x * x + y * y + z * z);
+        if (!Float.isFinite(length) || length < 0.0001f) return;
+        deviceUp[0] = x / length;
+        deviceUp[1] = y / length;
+        deviceUp[2] = z / length;
+        lastOrientationTimestampNs = timestampNs;
+    }
+
     void dispatchStickOutput(float x, float y, boolean rightStick, long timestampNs) {
         short encodedX = GamepadState.encodeThumbAxis(x);
         short encodedY = GamepadState.encodeThumbAxis(y);
@@ -296,16 +326,28 @@ class GyroController implements SensorEventListener {
         listener.onGyroStick(x, y, rightStick);
     }
 
-    private float getSteeringAngle(float[] rotationVector, int displayRotation) {
-        if (rotationVector.length < 3) return Float.NaN;
+    private boolean readRotationMatrix(float[] rotationVector) {
+        if (rotationVector.length < 3) return false;
         int componentCount = Math.min(rotationVector.length, 4);
+        float normSquared = 0f;
         for (int i = 0; i < componentCount; i++) {
-            if (!Float.isFinite(rotationVector[i])) return Float.NaN;
+            if (!Float.isFinite(rotationVector[i])) return false;
+            normSquared += rotationVector[i] * rotationVector[i];
         }
+        if (normSquared > 1.01f || (componentCount == 4 && normSquared < 0.99f)) return false;
         try {
             float[] boundedRotationVector = componentCount == 3 ? rotationVector3 : rotationVector4;
             System.arraycopy(rotationVector, 0, boundedRotationVector, 0, componentCount);
             SensorManager.getRotationMatrixFromVector(rotationMatrix, boundedRotationVector);
+            return true;
+        } catch (RuntimeException ignored) {
+            return false;
+        }
+    }
+
+    private float getSteeringAngle(float[] rotationVector, int displayRotation) {
+        if (!readRotationMatrix(rotationVector)) return Float.NaN;
+        try {
             int axisX = SensorManager.AXIS_X;
             int axisY = SensorManager.AXIS_Y;
             switch (displayRotation) {
@@ -341,37 +383,19 @@ class GyroController implements SensorEventListener {
         // No action required. Android's calibrated gyroscope already compensates sensor bias.
     }
 
-    float[] mapAndFilterRates(float rawX, float rawY, int rotation) {
-        float x;
-        float y;
-        switch (rotation) {
-            case Surface.ROTATION_90:
-                x = rawY;
-                y = -rawX;
-                break;
-            case Surface.ROTATION_180:
-                x = -rawX;
-                y = -rawY;
-                break;
-            case Surface.ROTATION_270:
-                x = -rawY;
-                y = rawX;
-                break;
-            case Surface.ROTATION_0:
-            default:
-                x = rawX;
-                y = rawY;
-                break;
-        }
-
-        if (settings.getInvertX()) x = -x;
-        if (settings.getInvertY()) y = -y;
-
-        float magnitude = (float)Math.hypot(x, y);
+    float[] mapAndFilterRates(float gyroX, float gyroY, float gyroZ, int rotation, long timestampNs) {
+        boolean orientationFresh = orientationRegistered && lastOrientationTimestampNs != 0L
+                && Math.abs(timestampNs - lastOrientationTimestampNs) <= MAX_ORIENTATION_AGE_NS;
+        int style = needsGravity() && !orientationFresh
+                ? GyroSettings.CONVERSION_LOCAL_YAW : settings.getConversionStyle();
+        float[] rates = GyroSpaceMapper.map(gyroX, gyroY, gyroZ, rotation,
+                style, deviceUp[0], deviceUp[1], deviceUp[2]);
+        float magnitude = (float)Math.hypot(rates[0], rates[1]);
         float threshold = settings.getSteadyingDegreesPerSecond() / RADIANS_TO_DEGREES;
-        if (magnitude <= threshold || magnitude == 0f) return new float[]{0f, 0f};
-        float scale = (magnitude - threshold) / magnitude;
-        return new float[]{x * scale, y * scale};
+        float scale = magnitude > threshold ? (magnitude - threshold) / magnitude : 0f;
+        rates[0] *= settings.getInvertX() ? -scale : scale;
+        rates[1] *= settings.getInvertY() ? -scale : scale;
+        return rates;
     }
 
     static float[] applyStickAntiDeadzone(float x, float y, float antiDeadzone) {
@@ -460,6 +484,12 @@ class GyroController implements SensorEventListener {
         return isTiltSteeringActive() ? orientationSensor : gyroscopeSensor;
     }
 
+    private boolean needsGravity() {
+        return !isTiltSteeringActive()
+                && (settings.getConversionStyle() == GyroSettings.CONVERSION_PLAYER_SPACE
+                || settings.getConversionStyle() == GyroSettings.CONVERSION_WORLD_SPACE);
+    }
+
     private boolean isActivationSatisfied() {
         switch (settings.getActivationMode()) {
             case GyroSettings.ACTIVATION_HOLD:
@@ -487,6 +517,8 @@ class GyroController implements SensorEventListener {
         Sensor sensor = desiredSensor();
         registered = sensor != null && sensorManager.registerListener(this, sensor, SENSOR_PERIOD_US);
         registeredSensor = registered ? sensor : null;
+        orientationRegistered = registered && needsGravity() && orientationSensor != null
+                && sensorManager.registerListener(this, orientationSensor, SENSOR_PERIOD_US);
         publishActiveState();
     }
 
@@ -494,6 +526,10 @@ class GyroController implements SensorEventListener {
         if (sensorManager != null && registered && registeredSensor != null) {
             sensorManager.unregisterListener(this, registeredSensor);
         }
+        if (sensorManager != null && orientationRegistered) {
+            sensorManager.unregisterListener(this, orientationSensor);
+        }
+        orientationRegistered = false;
         registered = false;
         registeredSensor = null;
         resetMotionState();
@@ -516,6 +552,8 @@ class GyroController implements SensorEventListener {
     }
 
     private void resetMotionState() {
+        lastOrientationTimestampNs = 0L;
+        lastDisplayRotation = -1;
         lastTimestampNs = 0L;
         lastSmoothingTimestampNs = 0L;
         mouseRemainderX = 0.0;

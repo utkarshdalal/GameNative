@@ -15,6 +15,31 @@ import org.robolectric.RobolectricTestRunner
 @RunWith(RobolectricTestRunner::class)
 class GyroSettingsTest {
     @Test
+    fun conversionStylesRoundTripThroughContainerAndProfileJson() {
+        for (style in GyroSettings.CONVERSION_LOCAL_YAW..GyroSettings.CONVERSION_WORLD_SPACE) {
+            val original = GyroSettings(mode = GyroSettings.MODE_MOUSE, conversionStyle = style).normalized()
+            val container = containerWithExtras(mutableMapOf())
+            original.saveTo(container)
+            assertEquals(original, GyroSettings.fromContainer(container))
+            assertEquals(original, GyroSettings.fromJsonObject(JSONObject(original.toJsonObject().toString())))
+        }
+    }
+
+    @Test
+    fun oldAndInvalidConversionSettingsUseLocalYaw() {
+        for (value in listOf(null, "unknown", "-1", "99")) {
+            val extras = mutableMapOf<String, String>()
+            val json = JSONObject()
+            if (value != null) {
+                extras["gyroConversionStyle"] = value
+                json.put("conversionStyle", value)
+            }
+            assertEquals(GyroSettings.CONVERSION_LOCAL_YAW, GyroSettings.fromContainer(containerWithExtras(extras)).conversionStyle)
+            assertEquals(GyroSettings.CONVERSION_LOCAL_YAW, GyroSettings.fromJsonObject(json).conversionStyle)
+        }
+    }
+
+    @Test
     fun missingTiltSettings_useCurrentDefaultsIndependentFromRateSensitivity() {
         val container = containerWithExtras(
             mutableMapOf(
