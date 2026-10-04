@@ -1121,12 +1121,16 @@ bool XrImmersiveSession::submitWindowsProjection(XrTime predictedDisplayTime) {
     XrCompositionLayerPassthroughFB passthroughLayer{XR_TYPE_COMPOSITION_LAYER_PASSTHROUGH_FB};
     passthroughLayer.space = XR_NULL_HANDLE;
     passthroughLayer.layerHandle = passthroughLayer_;
-    std::array<const XrCompositionLayerBaseHeader *, 3> layers{};
+    XrCompositionLayerQuad gameOverlay{XR_TYPE_COMPOSITION_LAYER_QUAD};
+    const bool gameOverlayRendered =
+        windowsProjection_.renderQuad(windowsTransport_, windowsTrackingSpace_, &gameOverlay);
+    std::array<const XrCompositionLayerBaseHeader *, 4> layers{};
     uint32_t layerCount = 0;
     if (passthroughActive_ && passthroughLayer_ != XR_NULL_HANDLE) {
         layers[layerCount++] = reinterpret_cast<const XrCompositionLayerBaseHeader *>(&passthroughLayer);
     }
     layers[layerCount++] = reinterpret_cast<const XrCompositionLayerBaseHeader *>(&projection);
+    if (gameOverlayRendered) layers[layerCount++] = reinterpret_cast<const XrCompositionLayerBaseHeader *>(&gameOverlay);
     if (overlayRendered) layers[layerCount++] = reinterpret_cast<const XrCompositionLayerBaseHeader *>(&overlay);
     XrFrameEndInfo endInfo{XR_TYPE_FRAME_END_INFO};
     endInfo.displayTime = predictedDisplayTime;

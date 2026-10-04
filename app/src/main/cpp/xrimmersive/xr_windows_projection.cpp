@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "xr_windows_projection.h"
 
 #include <EGL/eglext.h>
@@ -53,6 +54,7 @@ GLuint compileShader(GLenum type, const char *source) {
 bool WindowsProjectionPresenter::initialize(XrSession session, int64_t format, uint32_t width,
                                             uint32_t height, EGLDisplay display) {
     session_ = session;
+    format_ = format;
     width_ = width;
     height_ = height;
     display_ = display;
@@ -368,6 +370,10 @@ void WindowsProjectionPresenter::drawEye(uint32_t eye, const EyeFrame &source,
                                          uint32_t imageIndex) {
     glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, images_[imageIndex].image, 0, eye);
     glViewport(0, 0, static_cast<GLsizei>(width_), static_cast<GLsizei>(height_));
+    drawSource(eye, source);
+}
+
+void WindowsProjectionPresenter::drawSource(uint32_t eye, const EyeFrame &source) {
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, textures_[eye][source.imageIndex]);
     const float sourceWidth = source.sourceWidth > 0 ? source.sourceWidth : source.width;
@@ -401,6 +407,7 @@ bool WindowsProjectionPresenter::render(WindowsFrameTransport &transport, XrSpac
             return false;
         }
     }
+    lastLayerViews_ = frames[0].layerViews;
     XrSwapchainImageAcquireInfo acquire{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
     uint32_t imageIndex = 0;
     if (XR_FAILED(xrAcquireSwapchainImage(swapchain_, &acquire, &imageIndex))) {
@@ -475,12 +482,140 @@ bool WindowsProjectionPresenter::render(WindowsFrameTransport &transport, XrSpac
     return true;
 }
 
+bool WindowsProjectionPresenter::ensureQuadSwapchain(uint32_t width, uint32_t height) {
+    if (quadSwapchain_ != XR_NULL_HANDLE && quadWidth_ == width && quadHeight_ == height) return true;
+    if (quadSwapchain_ != XR_NULL_HANDLE) xrDestroySwapchain(quadSwapchain_);
+    quadSwapchain_ = XR_NULL_HANDLE;
+    quadImages_.clear();
+    quadHasContent_ = false;
+    XrSwapchainCreateInfo info{XR_TYPE_SWAPCHAIN_CREATE_INFO};
+    info.usageFlags = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT | XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
+    info.format = format_;
+    info.sampleCount = 1;
+    info.width = width;
+    info.height = height;
+    info.faceCount = 1;
+    info.arraySize = 1;
+    uint32_t mips = 1;
+    while ((std::max(width, height) >> mips) > 0) ++mips;
+    info.mipCount = mips;
+    quadMipCount_ = mips;
+    if (XR_FAILED(xrCreateSwapchain(session_, &info, &quadSwapchain_))) {
+        info.mipCount = 1;
+        quadMipCount_ = 1;
+        if (XR_FAILED(xrCreateSwapchain(session_, &info, &quadSwapchain_))) {
+            quadSwapchain_ = XR_NULL_HANDLE;
+            return false;
+        }
+    }
+    uint32_t count = 0;
+    if (XR_FAILED(xrEnumerateSwapchainImages(quadSwapchain_, 0, &count, nullptr)) || count == 0) {
+        xrDestroySwapchain(quadSwapchain_);
+        quadSwapchain_ = XR_NULL_HANDLE;
+        return false;
+    }
+    quadImages_.assign(count, {XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_ES_KHR});
+    if (XR_FAILED(xrEnumerateSwapchainImages(
+            quadSwapchain_, count, &count,
+            reinterpret_cast<XrSwapchainImageBaseHeader *>(quadImages_.data())))) {
+        xrDestroySwapchain(quadSwapchain_);
+        quadSwapchain_ = XR_NULL_HANDLE;
+        quadImages_.clear();
+        return false;
+    }
+    quadWidth_ = width;
+    quadHeight_ = height;
+    LOGI("windows vr overlay quad swapchain %ux%u mips=%u", width, height, quadMipCount_);
+    return true;
+}
+
+bool WindowsProjectionPresenter::renderQuad(WindowsFrameTransport &transport, XrSpace space,
+                                            XrCompositionLayerQuad *layer) {
+    constexpr uint32_t eye = WindowsFrameTransport::kQuadEye;
+    if (layer == nullptr || lastLayerViews_ <= static_cast<int32_t>(eye)) return false;
+    EyeFrame frame{};
+    bool fresh = false;
+    if (!importEyeBuffer(transport, eye, frame, fresh)) return false;
+    const uint32_t sourceWidth = static_cast<uint32_t>(frame.sourceWidth > 0 ? frame.sourceWidth : frame.width);
+    const uint32_t sourceHeight = static_cast<uint32_t>(frame.sourceHeight > 0 ? frame.sourceHeight : frame.height);
+    if (!ensureQuadSwapchain(sourceWidth, sourceHeight)) {
+        if (fresh) {
+            transport.discardFrame(static_cast<int>(eye), frame.imageIndex, frame.serial);
+            renderedSerials_[eye] = frame.serial;
+        }
+        return false;
+    }
+    if (fresh || !quadHasContent_) {
+        XrSwapchainImageAcquireInfo acquire{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
+        uint32_t imageIndex = 0;
+        if (XR_FAILED(xrAcquireSwapchainImage(quadSwapchain_, &acquire, &imageIndex))) {
+            if (fresh) {
+                transport.discardFrame(static_cast<int>(eye), frame.imageIndex, frame.serial);
+                renderedSerials_[eye] = frame.serial;
+            }
+            return false;
+        }
+        XrSwapchainImageWaitInfo wait{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};
+        wait.timeout = XR_INFINITE_DURATION;
+        const bool waited = XR_SUCCEEDED(xrWaitSwapchainImage(quadSwapchain_, &wait));
+        if (waited) {
+            glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                                   quadImages_[imageIndex].image, 0);
+            glViewport(0, 0, static_cast<GLsizei>(sourceWidth), static_cast<GLsizei>(sourceHeight));
+            glDisable(GL_DEPTH_TEST);
+            glDisable(GL_BLEND);
+            glDisable(GL_SCISSOR_TEST);
+            glUseProgram(program_);
+            glBindVertexArray(vertexArray_);
+            drawSource(eye, frame);
+            glBindVertexArray(0);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            if (quadMipCount_ > 1) {
+                glBindTexture(GL_TEXTURE_2D, quadImages_[imageIndex].image);
+                glGenerateMipmap(GL_TEXTURE_2D);
+            }
+            glBindTexture(GL_TEXTURE_2D, 0);
+        }
+        if (fresh) {
+            const int fence = waited ? createReleaseFence() : -1;
+            if (waited && fence < 0) glFinish();
+            transport.publishReleaseFence(static_cast<int>(eye), frame.imageIndex, fence);
+            renderedSerials_[eye] = frame.serial;
+        }
+        XrSwapchainImageReleaseInfo release{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
+        if (XR_FAILED(xrReleaseSwapchainImage(quadSwapchain_, &release)) || !waited) return false;
+        quadHasContent_ = true;
+    }
+    *layer = {XR_TYPE_COMPOSITION_LAYER_QUAD};
+    layer->layerFlags = 0;
+    if (frame.projectionFov[2] > 0.5f) layer->layerFlags |= XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+    if (frame.projectionFov[3] > 0.5f) layer->layerFlags |= XR_COMPOSITION_LAYER_UNPREMULTIPLIED_ALPHA_BIT;
+    layer->space = space;
+    layer->eyeVisibility = XR_EYE_VISIBILITY_BOTH;
+    layer->subImage.swapchain = quadSwapchain_;
+    layer->subImage.imageRect = {{0, 0}, {static_cast<int32_t>(quadWidth_), static_cast<int32_t>(quadHeight_)}};
+    layer->subImage.imageArrayIndex = 0;
+    layer->pose.orientation = {frame.projectionOrientation[0], frame.projectionOrientation[1],
+                               frame.projectionOrientation[2], frame.projectionOrientation[3]};
+    layer->pose.position = {frame.projectionPosition[0], frame.projectionPosition[1],
+                            frame.projectionPosition[2]};
+    layer->size = {frame.projectionFov[0], frame.projectionFov[1]};
+    return true;
+}
+
 void WindowsProjectionPresenter::shutdown() {
     if (acquireSync_ != EGL_NO_SYNC_KHR) {
         eglDestroySyncKHR(display_, acquireSync_);
         acquireSync_ = EGL_NO_SYNC_KHR;
     }
-    for (uint32_t eye = 0; eye < 2; ++eye) {
+    if (quadSwapchain_ != XR_NULL_HANDLE) xrDestroySwapchain(quadSwapchain_);
+    quadSwapchain_ = XR_NULL_HANDLE;
+    quadImages_.clear();
+    quadWidth_ = 0;
+    quadHeight_ = 0;
+    quadHasContent_ = false;
+    for (uint32_t eye = 0; eye < WindowsFrameTransport::kEyeCount; ++eye) {
         for (int image = 0; image < WindowsFrameTransport::kMaxImages; ++image) {
             if (eglImages_[eye][image] != EGL_NO_IMAGE_KHR) {
                 eglDestroyImageKHR(display_, eglImages_[eye][image]);
