@@ -3,6 +3,7 @@ package app.gamenative.utils
 import android.content.Context
 import android.os.Build
 import app.gamenative.BuildConfig
+import app.gamenative.ui.screen.support.SupportSuggestionApplier
 import com.winlator.core.GPUInformation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -18,6 +19,10 @@ object DebugReportUtils {
     private const val HEADER_FILE = "header.json"
     private const val LOG_FILE = "log.gz"
     private const val PERF_FILE = "perf.json"
+    private const val LOGCAT_FILE = "logcat.gz"
+
+    @Volatile
+    private var logcatProcess: Process? = null
     private const val LOG_HEAD_BYTES = 1L * 1024 * 1024
     private const val LOG_TAIL_BYTES = 7L * 1024 * 1024
     private const val LOG_MAX_BYTES = LOG_HEAD_BYTES + LOG_TAIL_BYTES
@@ -33,6 +38,38 @@ object DebugReportUtils {
     fun logFile(reportDir: File): File = File(reportDir, LOG_FILE)
 
     fun perfFile(reportDir: File): File = File(reportDir, PERF_FILE)
+
+    fun logcatFile(reportDir: File): File = File(reportDir, LOGCAT_FILE)
+
+    private fun rawLogcatFile(context: Context, appId: String): File =
+        File(context.getExternalFilesDir(null), "wine_logs/debug_run_$appId.logcat")
+
+    fun startLogcatCapture(context: Context, appId: String) {
+        stopLogcatCapture()
+        try {
+            val out = rawLogcatFile(context, appId)
+            out.parentFile?.mkdirs()
+            if (out.exists()) out.delete()
+            Runtime.getRuntime().exec(arrayOf("logcat", "-c")).waitFor()
+            logcatProcess = ProcessBuilder("logcat", "-v", "threadtime")
+                .redirectOutput(out)
+                .redirectErrorStream(true)
+                .start()
+        } catch (e: Exception) {
+            Timber.e(e, "DebugReportUtils: Failed to start logcat capture")
+            logcatProcess = null
+        }
+    }
+
+    fun stopLogcatCapture() {
+        logcatProcess?.let {
+            try {
+                it.destroy()
+            } catch (_: Exception) {
+            }
+        }
+        logcatProcess = null
+    }
 
     fun readHeader(reportDir: File): JSONObject? = try {
         val file = headerFile(reportDir)
@@ -54,6 +91,18 @@ object DebugReportUtils {
         }
     }
 
+    fun newestReport(context: Context, appId: String): File? {
+        val prefix = "${appId}_"
+        return reportsDir(context).listFiles()
+            ?.filter { dir ->
+                dir.isDirectory &&
+                    dir.name.startsWith(prefix) &&
+                    dir.name.removePrefix(prefix).toLongOrNull() != null &&
+                    logFile(dir).exists()
+            }
+            ?.maxByOrNull { it.name.removePrefix(prefix).toLong() }
+    }
+
     fun deleteReport(reportDir: File) {
         reportDir.deleteRecursively()
     }
@@ -61,6 +110,7 @@ object DebugReportUtils {
     suspend fun createPendingReport(context: Context, appId: String): File? = withContext(Dispatchers.IO) {
         var reportDir: File? = null
         val perf = PerfSampler.stop()
+        stopLogcatCapture()
         try {
             val wineLog = wineLogFile(context, appId)
             if (!wineLog.exists() || wineLog.length() == 0L) {
@@ -84,11 +134,16 @@ object DebugReportUtils {
             }
 
             compressLog(claimedLog, logFile(dir))
-            val header = buildHeader(context, appId)
+            val header = buildHeader(context, appId, DebugRunParamsHolder.get(appId))
             if (perf != null) {
                 perfFile(dir).writeText(perf.perf.toString())
                 header.put("perf", perf.verdict)
             }
+            val rawLogcat = rawLogcatFile(context, appId)
+            if (rawLogcat.exists() && rawLogcat.length() > 0L) {
+                compressLog(rawLogcat, logcatFile(dir))
+            }
+            rawLogcat.delete()
             headerFile(dir).writeText(header.toString())
             claimedLog.delete()
 
@@ -97,6 +152,8 @@ object DebugReportUtils {
             Timber.e(e, "DebugReportUtils: Failed to create pending report for $appId")
             reportDir?.deleteRecursively()
             null
+        } finally {
+            DebugRunParamsHolder.clear(appId)
         }
     }
 
@@ -116,7 +173,7 @@ object DebugReportUtils {
         }
     }
 
-    private fun buildHeader(context: Context, appId: String): JSONObject {
+    private fun buildHeader(context: Context, appId: String, runParams: DebugRunParams?): JSONObject {
         val container = ContainerUtils.getContainer(context, appId)
 
         val gpu = try {
@@ -142,6 +199,11 @@ object DebugReportUtils {
             put("configs", JSONObject(container.containerJson))
             if (avgFps != null) put("avgFps", avgFps.toDouble()) else put("avgFps", JSONObject.NULL)
             if (sessionLengthSec != null) put("sessionLengthSec", sessionLengthSec) else put("sessionLengthSec", JSONObject.NULL)
+            put("runParams", (runParams ?: DebugRunParams()).toJson())
+            val appliedFile = SupportSuggestionApplier.appliedRecordFile(container)
+            if (appliedFile.exists()) {
+                runCatching { JSONObject(appliedFile.readText()) }.getOrNull()?.let { put("appliedSuggestion", it) }
+            }
         }
     }
 

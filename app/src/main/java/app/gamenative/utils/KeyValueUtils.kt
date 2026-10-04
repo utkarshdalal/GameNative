@@ -26,13 +26,31 @@ import `in`.dragonbra.javasteam.types.KeyValue
 import java.util.Date
 import timber.log.Timber
 
-const val CURRENT_UFS_PARSE_VERSION = 4
+// Bumping re-parses the whole SteamApp row from PICS on next login and also triggers the root-override cloud requery.
+const val CURRENT_UFS_PARSE_VERSION = 5
 
 /**
  * Extension functions relating to [KeyValue] as the receiver type.
  */
 
+data class VrClassification(val isVrOnly: Boolean, val isVrSupported: Boolean)
+
+// category_53/54 are Valve's "VR Supported"/"VR Only" flags; tag 21978 ("VR") catches titles
+// whose developer didn't set the curated categories. Null without a common section.
+fun KeyValue.vrClassification(): VrClassification? {
+    val common = this["common"]
+    if (common.children.isEmpty()) return null
+    val categoryNames = common["category"].children.mapNotNull { it.name }
+    val storeTagIds = common["store_tags"].children.mapNotNull { it.asInteger(-1).takeIf { id -> id >= 0 } }
+    return VrClassification(
+        isVrOnly = categoryNames.contains("category_54"),
+        isVrSupported = categoryNames.contains("category_53") || storeTagIds.contains(21978),
+    )
+}
+
 fun KeyValue.generateSteamApp(): SteamApp {
+    val vr = vrClassification()
+
     return SteamApp(
         id = this["appid"].asInteger(INVALID_APP_ID),
         depots = this["depots"].children
@@ -104,14 +122,15 @@ fun KeyValue.generateSteamApp(): SteamApp {
         reviewScore = this["common"]["review_score"].asByte(),
         reviewPercentage = this["common"]["review_percentage"].asByte(),
         controllerSupport = ControllerSupport.from(this["common"]["controller_support"].value),
+        isVrOnly = vr?.isVrOnly == true,
+        isVrSupported = vr?.isVrSupported == true,
         demoOfAppId = this["common"]["extended"]["demoofappid"].asInteger(),
         developer = this["extended"]["developer"].value.orEmpty(),
         publisher = this["extended"]["publisher"].value.orEmpty(),
         homepageUrl = this["extended"]["homepage"].value.orEmpty(),
         gameManualUrl = this["common"]["extended"]["gamemanualurl"].value.orEmpty(),
         loadAllBeforeLaunch = this["common"]["extended"]["loadallbeforelaunch"].asBoolean(),
-        // dlcAppIds = (this["common"]["extended"]["listofdlc"].value).Split(",").Select(uint.Parse).ToArray(),
-        dlcAppIds = emptyList(),
+        dlcAppIds = parseListOfDlcAppIds(),
         isFreeApp = this["common"]["extended"]["isfreeapp"].asBoolean(),
         dlcForAppId = this["extended"]["dlcforappid"].asInteger(this["common"]["extended"]["dlcforappid"].asInteger()),
         mustOwnAppToPurchase = this["common"]["extended"]["mustownapptopurchase"].asInteger(),
@@ -145,6 +164,7 @@ fun KeyValue.generateSteamApp(): SteamApp {
                     type = it["type"].value.orEmpty(),
                     configOS = OS.from(it["config"]["oslist"].value),
                     configArch = OSArch.from(it["config"]["osarch"].value),
+                    arguments = it["arguments"].value.orEmpty(),
                 )
             },
             steamControllerTemplateIndex = this["config"]["steamcontrollertemplateindex"].asInteger(),
@@ -255,6 +275,16 @@ fun List<KeyValue>.generateManifest(): Map<String, ManifestInfo> = associate { m
         size = manifest["size"].asLong(),
         download = manifest["download"].asLong(),
     )
+}
+
+/** Parses Steam's comma-separated `listofdlc` extended field into app IDs. */
+private fun KeyValue.parseListOfDlcAppIds(): List<Int> {
+    val raw = this["extended"]["listofdlc"].value
+        ?: this["common"]["extended"]["listofdlc"].value
+        ?: return emptyList()
+    return raw.split(',')
+        .mapNotNull { it.trim().toIntOrNull() }
+        .filter { it > 0 && it != INVALID_APP_ID }
 }
 
 fun List<KeyValue>.toLangImgMap(): Map<Language, String> = mapNotNull { kv ->

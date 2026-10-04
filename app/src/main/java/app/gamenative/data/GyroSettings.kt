@@ -1,6 +1,7 @@
 package app.gamenative.data
 
 import com.winlator.container.Container
+import org.json.JSONObject
 
 /** Per-container gyro aiming configuration. */
 data class GyroSettings(
@@ -17,6 +18,7 @@ data class GyroSettings(
     val tiltDeadzoneDegrees: Float = DEFAULT_TILT_DEADZONE_DEGREES,
     val invertX: Boolean = false,
     val invertY: Boolean = false,
+    val conversionStyle: Int = CONVERSION_LOCAL_YAW,
 ) {
     fun normalized(): GyroSettings {
         val normalizedMode = mode.takeIf { it in MODE_DISABLED..MODE_MOUSE } ?: MODE_DISABLED
@@ -33,6 +35,8 @@ data class GyroSettings(
             lastTarget = if (normalizedMode == MODE_DISABLED) normalizedLastTarget else normalizedMode,
             activationMode = activationMode.takeIf { it in ACTIVATION_ALWAYS..ACTIVATION_RATCHET }
                 ?: ACTIVATION_ALWAYS,
+            conversionStyle = conversionStyle.takeIf { it in CONVERSION_LOCAL_YAW..CONVERSION_WORLD_SPACE }
+                ?: CONVERSION_LOCAL_YAW,
             sensitivity = sensitivity.finiteOr(1f).coerceIn(MIN_SENSITIVITY, MAX_SENSITIVITY),
             verticalScale = verticalScale.finiteOr(1f).coerceIn(MIN_VERTICAL_SCALE, MAX_VERTICAL_SCALE),
             steadyingDegreesPerSecond = steadyingDegreesPerSecond.finiteOr(1f).coerceIn(0f, MAX_STEADYING_DPS),
@@ -45,11 +49,12 @@ data class GyroSettings(
         )
     }
 
-    fun saveTo(container: Container) {
+    fun saveTo(container: Container, persist: Boolean = true) {
         val value = normalized()
         container.putExtra(EXTRA_MODE, value.mode)
         container.putExtra(EXTRA_LAST_TARGET, value.lastTarget)
         container.putExtra(EXTRA_ACTIVATION, value.activationMode)
+        container.putExtra(EXTRA_CONVERSION_STYLE, value.conversionStyle)
         container.putExtra(EXTRA_SENSITIVITY, value.sensitivity)
         container.putExtra(EXTRA_VERTICAL_SCALE, value.verticalScale)
         container.putExtra(EXTRA_STEADYING, value.steadyingDegreesPerSecond)
@@ -60,7 +65,27 @@ data class GyroSettings(
         container.putExtra(EXTRA_TILT_DEADZONE, value.tiltDeadzoneDegrees)
         container.putExtra(EXTRA_INVERT_X, value.invertX)
         container.putExtra(EXTRA_INVERT_Y, value.invertY)
-        container.saveData()
+        if (persist) container.saveData()
+    }
+
+    fun toJsonObject(): JSONObject {
+        val value = normalized()
+        return JSONObject().apply {
+            put("mode", value.mode)
+            put("lastTarget", value.lastTarget)
+            put("activationMode", value.activationMode)
+            put("conversionStyle", value.conversionStyle)
+            put("sensitivity", value.sensitivity.toDouble())
+            put("verticalScale", value.verticalScale.toDouble())
+            put("steadyingDegreesPerSecond", value.steadyingDegreesPerSecond.toDouble())
+            put("smoothingMilliseconds", value.smoothingMilliseconds.toDouble())
+            put("stickAntiDeadzone", value.stickAntiDeadzone.toDouble())
+            put("tiltSteeringEnabled", value.tiltSteeringEnabled)
+            put("tiltFullScaleDegrees", value.tiltFullScaleDegrees.toDouble())
+            put("tiltDeadzoneDegrees", value.tiltDeadzoneDegrees.toDouble())
+            put("invertX", value.invertX)
+            put("invertY", value.invertY)
+        }
     }
 
     companion object {
@@ -73,6 +98,12 @@ data class GyroSettings(
         const val ACTIVATION_HOLD = 1
         const val ACTIVATION_TOGGLE = 2
         const val ACTIVATION_RATCHET = 3
+
+        const val CONVERSION_LOCAL_YAW = 0
+        const val CONVERSION_LOCAL_ROLL = 1
+        const val CONVERSION_LOCAL_YAW_ROLL = 2
+        const val CONVERSION_PLAYER_SPACE = 3
+        const val CONVERSION_WORLD_SPACE = 4
 
         const val MIN_SENSITIVITY = 0.1f
         const val MAX_SENSITIVITY = 4f
@@ -91,6 +122,7 @@ data class GyroSettings(
         private const val EXTRA_MODE = "gyroMode"
         private const val EXTRA_LAST_TARGET = "gyroLastTarget"
         private const val EXTRA_ACTIVATION = "gyroActivation"
+        private const val EXTRA_CONVERSION_STYLE = "gyroConversionStyle"
         private const val EXTRA_SENSITIVITY = "gyroSensitivity"
         private const val EXTRA_VERTICAL_SCALE = "gyroVerticalScale"
         private const val EXTRA_STEADYING = "gyroSteadyingDps"
@@ -121,6 +153,7 @@ data class GyroSettings(
                     mode.takeIf { it in MODE_LEFT_STICK..MODE_MOUSE } ?: MODE_RIGHT_STICK,
                 ),
                 activationMode = intExtra(EXTRA_ACTIVATION, ACTIVATION_ALWAYS),
+                conversionStyle = intExtra(EXTRA_CONVERSION_STYLE, CONVERSION_LOCAL_YAW),
                 sensitivity = sensitivity,
                 verticalScale = floatExtra(EXTRA_VERTICAL_SCALE, 1f),
                 steadyingDegreesPerSecond = floatExtra(EXTRA_STEADYING, 1f),
@@ -131,6 +164,33 @@ data class GyroSettings(
                 tiltDeadzoneDegrees = floatExtra(EXTRA_TILT_DEADZONE, DEFAULT_TILT_DEADZONE_DEGREES),
                 invertX = booleanExtra(EXTRA_INVERT_X, false),
                 invertY = booleanExtra(EXTRA_INVERT_Y, false),
+            ).normalized()
+        }
+
+        @JvmStatic
+        fun fromJsonObject(obj: JSONObject?): GyroSettings {
+            if (obj == null) return GyroSettings()
+            return GyroSettings(
+                mode = obj.optInt("mode", MODE_DISABLED),
+                lastTarget = obj.optInt("lastTarget", MODE_RIGHT_STICK),
+                activationMode = obj.optInt("activationMode", ACTIVATION_ALWAYS),
+                conversionStyle = obj.optInt("conversionStyle", CONVERSION_LOCAL_YAW),
+                sensitivity = obj.optDouble("sensitivity", 1.0).toFloat(),
+                verticalScale = obj.optDouble("verticalScale", 1.0).toFloat(),
+                steadyingDegreesPerSecond = obj.optDouble("steadyingDegreesPerSecond", 1.0).toFloat(),
+                smoothingMilliseconds = obj.optDouble("smoothingMilliseconds", 0.0).toFloat(),
+                stickAntiDeadzone = obj.optDouble("stickAntiDeadzone", 0.0).toFloat(),
+                tiltSteeringEnabled = obj.optBoolean("tiltSteeringEnabled", false),
+                tiltFullScaleDegrees = obj.optDouble(
+                    "tiltFullScaleDegrees",
+                    DEFAULT_TILT_FULL_SCALE_DEGREES.toDouble(),
+                ).toFloat(),
+                tiltDeadzoneDegrees = obj.optDouble(
+                    "tiltDeadzoneDegrees",
+                    DEFAULT_TILT_DEADZONE_DEGREES.toDouble(),
+                ).toFloat(),
+                invertX = obj.optBoolean("invertX", false),
+                invertY = obj.optBoolean("invertY", false),
             ).normalized()
         }
 

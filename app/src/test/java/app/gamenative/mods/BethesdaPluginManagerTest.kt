@@ -1,5 +1,6 @@
 package app.gamenative.mods
 
+import app.gamenative.data.GameSource
 import app.gamenative.data.ModInstall
 import app.gamenative.data.ModInstallStatus
 import app.gamenative.data.ModPlacementMode
@@ -35,6 +36,100 @@ class BethesdaPluginManagerTest {
         assertEquals(BethesdaGame.SKYRIM_SPECIAL_EDITION, BethesdaPluginManager.detectGame("The Elder Scrolls V: Skyrim Special Edition"))
         assertEquals(BethesdaGame.FALLOUT_NEW_VEGAS, BethesdaPluginManager.detectGame("Fallout: New Vegas"))
         assertEquals(BethesdaGame.STARFIELD, BethesdaPluginManager.detectGame("Starfield"))
+    }
+
+    @Test
+    fun pluginFiles_resolvesOnlyGogSkyrimSpecialEditionToStoreSpecificPath() {
+        assertPluginPath(
+            game = BethesdaGame.SKYRIM_SPECIAL_EDITION,
+            gameSource = GameSource.STEAM,
+            expectedDirectory = "Skyrim Special Edition",
+        )
+        assertPluginPath(
+            game = BethesdaGame.SKYRIM_SPECIAL_EDITION,
+            gameSource = GameSource.GOG,
+            expectedDirectory = "Skyrim Special Edition GOG",
+        )
+        assertPluginPath(
+            game = BethesdaGame.FALLOUT4,
+            gameSource = GameSource.GOG,
+            expectedDirectory = "Fallout4",
+        )
+    }
+
+    @Test
+    fun pluginFiles_readsLegacyGogStateUntilCorrectPathIsWritten() {
+        val winePrefix = winePrefix()
+        val localAppData = File(winePrefix, "drive_c/users/steamuser/AppData/Local")
+        val legacyFile = File(localAppData, "Skyrim Special Edition/plugins.txt").apply {
+            parentFile?.mkdirs()
+            writeText("# legacy comment\n*SkyUI_SE.esp\n*LegacyOnly.esp\n*External.esp\n")
+        }
+        File(legacyFile.parentFile, "loadorder.txt").writeText("SkyUI_SE.esp\nLegacyOnly.esp\nExternal.esp\n")
+        val targetFile = File(localAppData, "Skyrim Special Edition GOG/plugins.txt").apply {
+            parentFile?.mkdirs()
+            writeText("SkyUI_SE.esp\nExternal.esp\n*TargetOnly.esp\n# target comment\n")
+        }
+        val legacyText = legacyFile.readText()
+
+        val pending = BethesdaPluginManager.pluginFiles(
+            winePrefix = winePrefix.absolutePath,
+            game = BethesdaGame.SKYRIM_SPECIAL_EDITION,
+            gameSource = GameSource.GOG,
+        )!!
+
+        assertEquals(targetFile.absolutePath, pending.targetFile.absolutePath)
+        assertEquals(legacyFile.absolutePath, pending.stateFile.absolutePath)
+
+        BethesdaPluginManager.updateManagedPluginsTxt(
+            file = pending.targetFile,
+            managedPlugins = listOf(
+                BethesdaPlugin("SkyUI_SE.esp", "skyui", "SkyUI", "", enabled = true, priority = 0),
+            ),
+            game = BethesdaGame.SKYRIM_SPECIAL_EDITION,
+            migrationSourceFile = pending.stateFile,
+        )
+
+        val migrated = BethesdaPluginManager.pluginFiles(
+            winePrefix = winePrefix.absolutePath,
+            game = BethesdaGame.SKYRIM_SPECIAL_EDITION,
+            gameSource = GameSource.GOG,
+        )!!
+        assertEquals(targetFile.absolutePath, migrated.stateFile.absolutePath)
+        assertEquals(
+            "External.esp\n*TargetOnly.esp\n# target comment\n*LegacyOnly.esp\n*SkyUI_SE.esp\n",
+            targetFile.readText(),
+        )
+        assertEquals(
+            "External.esp\nTargetOnly.esp\nLegacyOnly.esp\nSkyUI_SE.esp\n",
+            File(targetFile.parentFile, "loadorder.txt").readText(),
+        )
+        assertEquals(legacyText, legacyFile.readText())
+    }
+
+    @Test
+    fun pluginFiles_prefersExistingGogManagedState() {
+        val winePrefix = winePrefix()
+        val localAppData = File(winePrefix, "drive_c/users/steamuser/AppData/Local")
+        val legacyFile = File(localAppData, "Skyrim Special Edition/plugins.txt").apply {
+            parentFile?.mkdirs()
+            writeText("*Legacy.esp\n")
+        }
+        File(legacyFile.parentFile, "loadorder.txt").writeText("Legacy.esp\n")
+        val targetFile = File(localAppData, "Skyrim Special Edition GOG/plugins.txt").apply {
+            parentFile?.mkdirs()
+            writeText("*Gog.esp\n")
+        }
+        File(targetFile.parentFile, "loadorder.txt").writeText("Gog.esp\n")
+
+        val files = BethesdaPluginManager.pluginFiles(
+            winePrefix = winePrefix.absolutePath,
+            game = BethesdaGame.SKYRIM_SPECIAL_EDITION,
+            gameSource = GameSource.GOG,
+        )!!
+
+        assertEquals(targetFile.absolutePath, files.targetFile.absolutePath)
+        assertEquals(targetFile.absolutePath, files.stateFile.absolutePath)
     }
 
     @Test
@@ -84,6 +179,34 @@ class BethesdaPluginManagerTest {
     }
 
     @Test
+    fun detectPlugins_usesRenamedTargetExtension() = runBlocking {
+        val install = install()
+        File(install.extractedPath, "Choice/Plugin.bin").apply {
+            parentFile?.mkdirs()
+            writeText("plugin")
+        }
+        val renamedRecipe = ModPlacementRecipe(
+            installId = install.installId,
+            sourceSubpath = "Choice/Plugin.bin",
+            targetRoot = ModTargetRoot.GAME_DIR.name,
+            targetRelativePath = "Data",
+            targetFileName = "Renamed.esp",
+            mode = ModPlacementMode.OVERWRITE_COPY.name,
+        )
+
+        val plugins = BethesdaPluginManager.detectPlugins(
+            installs = listOf(install),
+            recipesByInstallId = mapOf(install.installId to listOf(renamedRecipe)),
+            prioritiesByInstallId = emptyMap(),
+            gameRootDir = gameDir,
+            winePrefix = "",
+            pluginsFile = null,
+        )
+
+        assertEquals(listOf("Renamed.esp"), plugins.map { it.fileName })
+    }
+
+    @Test
     fun detectPlugins_canDefaultNewPluginsToEnabled() = runBlocking {
         val install = install()
         File(install.extractedPath, "Data/Example.esp").apply {
@@ -102,6 +225,49 @@ class BethesdaPluginManagerTest {
         )
 
         assertEquals(true, plugins.single().enabled)
+    }
+
+    @Test
+    fun detectPlugins_reusesAppliedOwnershipWithoutRebuildingArchivePlan() = runBlocking {
+        val install = install()
+        val source = File(install.extractedPath, "Choices/Cloaks.esp").apply {
+            parentFile?.mkdirs()
+            writeText("esp")
+        }
+        val target = File(gameDir, "Data/Cloaks.esp")
+        val ownership = ModOwnershipManifest(
+            installId = install.installId,
+            appId = install.appId,
+            planDigest = "owned",
+            files = listOf(
+                ModOwnedFile(
+                    sourceRelativePath = source.relativeTo(File(install.extractedPath)).path,
+                    targetRoot = ModTargetRoot.GAME_DIR.name,
+                    targetRelativePath = "Data/Cloaks.esp",
+                    targetPath = target.absolutePath,
+                    normalizedTargetKey = WindowsPathIdentity.absoluteKey(target),
+                    mode = ModPlacementMode.OVERWRITE_COPY.name,
+                    installedHash = "hash",
+                    installedSize = source.length(),
+                    installedMtime = source.lastModified(),
+                    disposition = ModOwnedFileDisposition.CREATED,
+                ),
+            ),
+        )
+
+        val plugins = BethesdaPluginManager.detectPlugins(
+            installs = listOf(install),
+            recipesByInstallId = emptyMap(),
+            prioritiesByInstallId = mapOf(install.installId to 7),
+            gameRootDir = gameDir,
+            winePrefix = "",
+            pluginsFile = File(tempDir, "missing/plugins.txt"),
+            ownershipByInstallId = mapOf(install.installId to ownership),
+            defaultEnabled = true,
+        )
+
+        assertEquals("Cloaks.esp", plugins.single().fileName)
+        assertEquals(source.absolutePath, plugins.single().sourcePath)
     }
 
     @Test
@@ -494,6 +660,25 @@ class BethesdaPluginManagerTest {
             extractedPath = extracted.absolutePath,
             status = ModInstallStatus.APPLIED.name,
         )
+    }
+
+    private fun winePrefix(): File = File(tempDir, "prefix").apply {
+        File(this, "drive_c/users/steamuser").mkdirs()
+    }
+
+    private fun assertPluginPath(
+        game: BethesdaGame,
+        gameSource: GameSource,
+        expectedDirectory: String,
+    ) {
+        val winePrefix = winePrefix()
+        val files = BethesdaPluginManager.pluginFiles(winePrefix.absolutePath, game, gameSource)!!
+        val expected = File(
+            winePrefix,
+            "drive_c/users/steamuser/AppData/Local/$expectedDirectory/plugins.txt",
+        )
+        assertEquals(expected.absolutePath, files.targetFile.absolutePath)
+        assertEquals(expected.absolutePath, files.stateFile.absolutePath)
     }
 
     private fun recipe(installId: String): ModPlacementRecipe =

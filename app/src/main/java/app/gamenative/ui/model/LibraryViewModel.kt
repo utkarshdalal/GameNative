@@ -14,6 +14,8 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.FavoritesManager
 import app.gamenative.data.FavoritesUtils
+import app.gamenative.data.CommunityCompatibilityClassifier
+import app.gamenative.data.CommunityCompatibilitySummary
 import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
 import app.gamenative.data.HiddenGameFilter
@@ -109,6 +111,16 @@ class LibraryViewModel @Inject constructor(
 
     private val onInstallStatusChanged: (AndroidEvent.LibraryInstallStatusChanged) -> Unit = {
         onFilterApps(paginationCurrentPage)
+    }
+
+    private val onPreferredCopyChanged: (AndroidEvent.PreferredCopyChanged) -> Unit = { event ->
+        viewModelScope.launch(Dispatchers.IO) {
+            val updated = steamAppDao.findApp(event.appId) ?: return@launch
+            if (appList.any { it.id == updated.id }) {
+                appList = appList.map { if (it.id == updated.id) updated else it }
+                onFilterApps(paginationCurrentPage)
+            }
+        }
     }
 
     private val onCustomGameImagesFetched: (AndroidEvent.CustomGameImagesFetched) -> Unit = {
@@ -361,6 +373,7 @@ class LibraryViewModel @Inject constructor(
         }
 
         PluviaApp.events.on<AndroidEvent.LibraryInstallStatusChanged, Unit>(onInstallStatusChanged)
+        PluviaApp.events.on<AndroidEvent.PreferredCopyChanged, Unit>(onPreferredCopyChanged)
         PluviaApp.events.on<AndroidEvent.CustomGameImagesFetched, Unit>(onCustomGameImagesFetched)
         PluviaApp.events.on<AndroidEvent.RecommendationToggleChanged, Unit>(onRecommendationToggleChanged)
         PluviaApp.events.on<AndroidEvent.HiddenGamesSettingChanged, Unit>(onHiddenGamesSettingChanged)
@@ -424,6 +437,7 @@ class LibraryViewModel @Inject constructor(
     override fun onCleared() {
         searchDebounceJob?.cancel()
         PluviaApp.events.off<AndroidEvent.LibraryInstallStatusChanged, Unit>(onInstallStatusChanged)
+        PluviaApp.events.off<AndroidEvent.PreferredCopyChanged, Unit>(onPreferredCopyChanged)
         PluviaApp.events.off<AndroidEvent.CustomGameImagesFetched, Unit>(onCustomGameImagesFetched)
         PluviaApp.events.off<AndroidEvent.RecommendationToggleChanged, Unit>(onRecommendationToggleChanged)
         PluviaApp.events.off<AndroidEvent.HiddenGamesSettingChanged, Unit>(onHiddenGamesSettingChanged)
@@ -795,7 +809,9 @@ class LibraryViewModel @Inject constructor(
                     }
                 }
                 .filter { item ->
-                    currentFilter.any { item.type == it }
+                    val inTypeBucket = !item.isVrOnly && currentFilter.any { item.type == it }
+                    val inVrBucket = item.isVrGame && currentState.appInfoSortType.contains(AppFilter.VR)
+                    inTypeBucket || inVrBucket
                 }
                 .filter { item ->
                     if (currentState.appInfoSortType.contains(AppFilter.SHARED)) {
@@ -1182,6 +1198,20 @@ class LibraryViewModel @Inject constructor(
                 SortOption.REVIEWS_GPU_HIGH -> compareByDescending<LibraryEntry> {
                     currentState.statsFor(it.item)?.reviewsGpu ?: -1
                 }.thenBy { it.item.name.lowercase() }
+
+                SortOption.COMPATIBILITY -> {
+                    val summaries = HashMap<String, CommunityCompatibilitySummary?>()
+                    LibrarySortUtils.compatibilityComparator<LibraryEntry>(
+                        name = { it.item.name },
+                        isInstalled = { it.isInstalled },
+                        summary = { entry ->
+                            summaries.getOrPut(entry.item.name) {
+                                GameCompatibilityCache.getCached(entry.item.name)
+                                    ?.let(CommunityCompatibilityClassifier::fromCompatibilityResponse)
+                            }
+                        },
+                    )
+                }
             }
 
             // A Steam collection can only contain Steam apps, so when one is selected the non-Steam
@@ -1380,7 +1410,7 @@ class LibraryViewModel @Inject constructor(
                 }
 
                 // Fetch uncached games in batches of 25
-                val batchSize = 25
+                val batchSize = 100
                 val fetchedResults = mutableMapOf<String, GameCompatibilityService.GameCompatibilityResponse>()
 
                 for (i in uncachedGames.indices step batchSize) {
@@ -1402,7 +1432,9 @@ class LibraryViewModel @Inject constructor(
                 if (fetchedResults.isNotEmpty()) {
                     updateCompatibilityState(fetchedResults)
                     // Re-apply list filtering once new compatibility data is available
-                    if (_state.value.appInfoSortType.contains(AppFilter.COMPATIBLE)) {
+                    if (_state.value.appInfoSortType.contains(AppFilter.COMPATIBLE) ||
+                        _state.value.currentSortOption == SortOption.COMPATIBILITY
+                    ) {
                         onFilterApps(paginationCurrentPage)
                     }
                 }
@@ -1422,25 +1454,23 @@ class LibraryViewModel @Inject constructor(
         val compatibilityMap = results.mapValues { (gameName, response) ->
             compatibilityStatusFor(response)
         }
+        val communityMap = results.mapValues { (_, response) ->
+            CommunityCompatibilityClassifier.fromCompatibilityResponse(response)
+        }
 
         // Update state with compatibility map (merge with existing)
         _state.update { currentState ->
             val mergedMap = currentState.compatibilityMap.toMutableMap()
             mergedMap.putAll(compatibilityMap)
             Timber.tag("LibraryViewModel").d("Updated state with ${compatibilityMap.size} compatibility entries, total: ${mergedMap.size}")
-            currentState.copy(compatibilityMap = mergedMap)
+            currentState.copy(
+                compatibilityMap = mergedMap,
+                communityCompatibilityMap = currentState.communityCompatibilityMap + communityMap,
+            )
         }
     }
 
     private fun compatibilityStatusFor(
         response: GameCompatibilityService.GameCompatibilityResponse,
-    ): GameCompatibilityStatus {
-        return when {
-            response.isNotWorking -> GameCompatibilityStatus.NOT_COMPATIBLE
-            !response.hasBeenTried -> GameCompatibilityStatus.UNKNOWN
-            response.gpuPlayableCount > 0 -> GameCompatibilityStatus.GPU_COMPATIBLE
-            response.totalPlayableCount > 0 -> GameCompatibilityStatus.COMPATIBLE
-            else -> GameCompatibilityStatus.UNKNOWN
-        }
-    }
+    ): GameCompatibilityStatus = GameCompatibilityService.statusFor(response)
 }

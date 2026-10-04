@@ -361,11 +361,6 @@ fun SettingsGroupInterface(
             onCheckedChange = { enabled ->
                 showRecommendations = enabled
                 PrefManager.showRecommendations = enabled
-                PluviaApp.events.emit(
-                    AndroidEvent.LibraryTabsChanged(
-                        libraryTabs.filter { tab -> tab != LibraryTab.RECOMMENDED || enabled },
-                    ),
-                )
                 PluviaApp.events.emit(AndroidEvent.RecommendationToggleChanged)
                 if (PrefManager.usageAnalyticsEnabled) {
                     com.posthog.PostHog.capture(
@@ -389,6 +384,18 @@ fun SettingsGroupInterface(
                 showHiddenGamesByDefault = it
                 PrefManager.showHiddenGamesByDefault = it
                 PluviaApp.events.emit(AndroidEvent.HiddenGamesSettingChanged(showHiddenGamesByDefault = it))
+            },
+        )
+
+        var hideAiFeatures by rememberSaveable { mutableStateOf(PrefManager.hideAiFeatures) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_hide_ai_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_hide_ai_subtitle)) },
+            state = hideAiFeatures,
+            onCheckedChange = {
+                hideAiFeatures = it
+                PrefManager.hideAiFeatures = it
             },
         )
 
@@ -433,11 +440,7 @@ fun SettingsGroupInterface(
                     it !in LibraryTab.configurableEntries || it in selectedTabs
                 }
                 PrefManager.libraryTabs = libraryTabs
-                PluviaApp.events.emit(
-                    AndroidEvent.LibraryTabsChanged(
-                        libraryTabs.filter { it != LibraryTab.RECOMMENDED || showRecommendations },
-                    ),
-                )
+                PluviaApp.events.emit(AndroidEvent.LibraryTabsChanged(libraryTabs))
             },
             title = { Text(text = stringResource(R.string.settings_interface_library_tabs_title)) },
             subtitle = { Text(text = stringResource(R.string.settings_interface_library_tabs_subtitle)) },
@@ -597,7 +600,7 @@ fun SettingsGroupInterface(
         val ctx = LocalContext.current
         val sm = ctx.getSystemService(StorageManager::class.java)
 
-        // All writable non-primary volumes (SD / USB).
+        // All writable install target volumes (SD / USB / adopted primary storage).
         // getExternalFilesDirs misses USB OTG on most devices, so StorageUtils also
         // enumerates StorageManager.storageVolumes and synthesizes the per-app files dir.
         // Runs off the composition thread because synthesizing the USB candidate
@@ -607,7 +610,7 @@ fun SettingsGroupInterface(
             value = withContext(Dispatchers.IO) {
                 StorageUtils.getAllExternalFilesDirs(ctx)
                     .filter { Environment.getExternalStorageState(it) == Environment.MEDIA_MOUNTED }
-                    .filter { sm?.getStorageVolume(it)?.isPrimary != true }
+                    .filter { StorageUtils.isExternalInstallTarget(sm, it) }
             }
         }
 

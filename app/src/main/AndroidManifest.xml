@@ -29,6 +29,7 @@
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" tools:node="remove" />
 
     <queries>
+        <package android:name="com.android.vending" />
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:mimeType="application/vnd.android.package-archive" />
@@ -139,6 +140,19 @@
             android:exported="false"
             android:theme="@style/Theme.Pluvia" />
 
+        <!-- EA OAuth (in-app WebView; intercepts the qrc:// redirect for automatic code capture) -->
+        <activity
+            android:name=".ui.screen.auth.EaOAuthActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Pluvia" />
+
+        <!-- Rockstar / Social Club sign-in (in-app WebView; the page needs a real browser
+             because it runs reCAPTCHA Enterprise and adds its own Castle token) -->
+        <activity
+            android:name=".ui.screen.auth.RockstarOAuthActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Pluvia" />
+
         <!-- Epic OAuth (in-app WebView; intercepts redirect for automatic code capture) -->
         <activity
             android:name=".ui.screen.auth.EpicOAuthActivity"
@@ -202,6 +216,12 @@
 
         <service
             android:name=".service.NexusModImportService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <service
+            android:name=".service.SupportReplyWatchService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="dataSync" />

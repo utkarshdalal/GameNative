@@ -23,6 +23,9 @@ import app.gamenative.R
 import app.gamenative.data.AmazonGame
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
+import app.gamenative.data.StoreGameDetails
+import app.gamenative.data.parseAmazonStoreDetails
+import app.gamenative.data.withoutTitleOnlyDescription
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.DownloadService
 import app.gamenative.service.amazon.AmazonConstants
@@ -175,12 +178,6 @@ class AmazonAppScreen : BaseAppScreen() {
             null
         }
 
-        val gameNameForCompatibility = g?.title ?: libraryItem.name
-        val (compatibilityMessage, compatibilityColor) = rememberCompatibilityInfo(
-            context = context,
-            gameName = gameNameForCompatibility,
-        )
-
         return GameDisplayInfo(
             name = g?.title ?: libraryItem.name,
             iconUrl = iconUrl,
@@ -198,8 +195,11 @@ class AmazonAppScreen : BaseAppScreen() {
             sizeFromStore = sizeFromStore,
             lastPlayedText = null,
             playtimeText = null,
-            compatibilityMessage = compatibilityMessage,
-            compatibilityColor = compatibilityColor,
+            storeDetails = parseAmazonStoreDetails(g?.productJson).mergedWith(
+                StoreGameDetails(
+                    screenshots = listOfNotNull(heroImageUrl, iconUrl).distinct(),
+                ),
+            ).withoutTitleOnlyDescription(g?.title ?: libraryItem.name),
         )
     }
 

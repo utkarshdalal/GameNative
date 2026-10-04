@@ -1,6 +1,7 @@
 package app.gamenative.utils
 
 import app.gamenative.PrefManager
+import app.gamenative.data.CommunityRatingDistribution
 import app.gamenative.data.GameSource
 import app.gamenative.utils.DeviceGameStatsService.DeviceGameStats
 import kotlinx.serialization.Serializable
@@ -34,14 +35,15 @@ object DeviceGameStatsCache {
         val medianFps: Int,
         val fiveStarReviews: Int,
         val medianSessionSec: Int,
+        val ratings: CommunityRatingDistribution? = null,
     )
 
     private fun DeviceGameStats.toData() = DeviceGameStatsData(
-        successfulRuns, medianFps, fiveStarReviews, medianSessionSec,
+        successfulRuns, medianFps, fiveStarReviews, medianSessionSec, ratings,
     )
 
     private fun DeviceGameStatsData.toStats() = DeviceGameStats(
-        successfulRuns, medianFps, fiveStarReviews, medianSessionSec,
+        successfulRuns, medianFps, fiveStarReviews, medianSessionSec, ratings,
     )
 
     @Synchronized

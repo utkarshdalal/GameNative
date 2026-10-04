@@ -72,7 +72,9 @@ object CustomGameScanner {
 
     /**
      * Destination for imported custom games: CustomGames under the public install root of the
-     * configured install volume, falling back to the app sandbox.
+     * configured install volume, falling back to the app sandbox. On the primary volume app-internal
+     * storage is used: every /storage/emulated path, Android/data included on fuse-bpf devices,
+     * goes through the MediaProvider FUSE daemon, which aborts when wine walks a game folder.
      */
     val importRootPath: String
         get() {
@@ -82,15 +84,18 @@ object CustomGameScanner {
                 if (StorageUtils.ensureInstallRoot(dir)) return dir.absolutePath
             }
             val appDir = DownloadService.baseExternalAppDirPath
-            if (appDir.isNotEmpty()) {
+            if (appDir.isNotEmpty() && !isPrimaryEmulatedVolume(appDir)) {
                 val publicRoot = StorageUtils.publicInstallRoot(File(appDir))
                 if (publicRoot != null) {
                     val dir = File(publicRoot, "CustomGames")
                     if (StorageUtils.ensureInstallRoot(dir)) return dir.absolutePath
                 }
             }
-            return defaultRootPath
+            return if (isPrimaryEmulatedVolume(appDir)) internalRootPath else defaultRootPath
         }
+
+    private val internalRootPath: String
+        get() = File(DownloadService.baseDataDirPath, "CustomGames").apply { mkdirs() }.absolutePath
 
     /**
      * Roots whose immediate subfolders are treated as custom games: the public GameNative
@@ -410,8 +415,9 @@ object CustomGameScanner {
      * When container has a configured path, verifies the file exists to avoid launching stale/missing paths.
      */
     fun getLaunchExecutable(container: Container): String {
-        val gameFolderPath = ContainerUtils.getADrivePath(container.drives) ?: return ""
         val exe = container.executablePath
+        if (ContainerUtils.isAbsoluteWindowsPath(exe)) return exe
+        val gameFolderPath = ContainerUtils.getADrivePath(container.drives) ?: return ""
         if (exe.isNotEmpty()) {
             val fullPath = File(gameFolderPath, exe.replace('\\', File.separatorChar))
             if (fullPath.exists() && fullPath.isFile) return exe
@@ -574,6 +580,51 @@ object CustomGameScanner {
         }
 
         return items
+    }
+
+    private const val PRIMARY_EMULATED_PREFIX = "/storage/emulated/"
+
+    fun isPrimaryEmulatedVolume(path: String): Boolean = path.startsWith(PRIMARY_EMULATED_PREFIX)
+
+    /**
+     * Moves a custom game from the primary volume's shared CustomGames roots (public and
+     * Android/data) into app-internal storage. Only folders with a stored id in .gamenative are
+     * moved, since otherwise the id is derived from the folder path and the game would lose its
+     * container.
+     */
+    fun migrateToInternalStorage(folderPath: String?): String? {
+        if (folderPath.isNullOrBlank() || !isPrimaryEmulatedVolume(folderPath)) return folderPath
+        val appDir = DownloadService.baseExternalAppDirPath
+        if (appDir.isEmpty()) return folderPath
+        val sharedRoots = listOfNotNull(
+            StorageUtils.publicInstallRoot(File(appDir))?.let { File(it, "CustomGames") },
+            File(appDir, "CustomGames"),
+        )
+        val src = File(folderPath)
+        if (src.parentFile !in sharedRoots || !src.isDirectory) return folderPath
+        if (GameMetadataManager.getAppId(src) == null) return folderPath
+        val dst = File(internalRootPath, src.name)
+        if (dst.exists()) {
+            Timber.tag("CustomGameScanner").w("Cannot migrate $folderPath; ${dst.absolutePath} already exists")
+            return folderPath
+        }
+        val moved = src.renameTo(dst) || runCatching {
+            src.copyRecursively(dst)
+            src.deleteRecursively()
+            true
+        }.getOrElse { e ->
+            Timber.tag("CustomGameScanner").w(e, "Copy of $folderPath failed")
+            dst.deleteRecursively()
+            false
+        }
+        return if (moved) {
+            Timber.tag("CustomGameScanner").i("Migrated custom game $folderPath to ${dst.absolutePath}")
+            invalidateCache()
+            dst.absolutePath
+        } else {
+            Timber.tag("CustomGameScanner").w("Could not migrate $folderPath; leaving in place")
+            folderPath
+        }
     }
 
     /**
