@@ -2856,7 +2856,7 @@
     <string name="community_compatibility_unavailable">Compatibilitatea nu a putut fi încărcată</string>
     <string name="community_compatibility_missing_tier">Răspunsul nu include datele hardware necesare pentru a aplica rezultatul dispozitivului tău.</string>
     <string name="community_compatibility_cached_result">Se afișează ultimul rezultat cunoscut până la o actualizare reușită.</string>
-    <string name="community_compatibility_works">Excelent</string>
+    <string name="community_compatibility_works">Rulează bine</string>
     <string name="community_compatibility_should">Funcționează</string>
     <string name="community_compatibility_may">Poate funcționa</string>
     <string name="community_compatibility_mixed">Nesigur</string>

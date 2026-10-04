@@ -2854,7 +2854,7 @@
     <string name="community_compatibility_unavailable">無法載入相容性資訊</string>
     <string name="community_compatibility_missing_tier">回應缺少必要的硬體資料，無法將結果套用至您的裝置。</string>
     <string name="community_compatibility_cached_result">等待重新整理成功期間，顯示上次已知結果。</string>
-    <string name="community_compatibility_works">極佳</string>
+    <string name="community_compatibility_works">運行良好</string>
     <string name="community_compatibility_should">可執行</string>
     <string name="community_compatibility_may">可能可執行</string>
     <string name="community_compatibility_mixed">不穩定</string>

@@ -2782,7 +2782,7 @@ https://gamenative.app
     <string name="community_compatibility_unavailable">Не удалось загрузить совместимость</string>
     <string name="community_compatibility_missing_tier">В ответе нет данных об оборудовании, необходимых для применения результата к вашему устройству.</string>
     <string name="community_compatibility_cached_result">Показан последний известный результат до успешного обновления.</string>
-    <string name="community_compatibility_works">Отлично</string>
+    <string name="community_compatibility_works">Работает хорошо</string>
     <string name="community_compatibility_should">Работает</string>
     <string name="community_compatibility_may">Может работать</string>
     <string name="community_compatibility_mixed">Нестабильно</string>
