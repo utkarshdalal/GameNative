@@ -349,6 +349,9 @@ bool XrImmersiveSession::setupInstanceAndSession() {
     const char *picoControllerExtension = "XR_BD_controller_interaction";
     const bool picoControllerExtensionAvailable = IsInstanceExtensionSupported(picoControllerExtension);
     if (picoControllerExtensionAvailable) extensions.push_back(picoControllerExtension);
+    const char *picoUltraControllerExtension = "XR_BD_ultra_controller_interaction";
+    const bool picoUltraControllerExtensionAvailable = IsInstanceExtensionSupported(picoUltraControllerExtension);
+    if (picoUltraControllerExtensionAvailable) extensions.push_back(picoUltraControllerExtension);
 
     XrInstanceCreateInfoAndroidKHR androidInfo{XR_TYPE_INSTANCE_CREATE_INFO_ANDROID_KHR};
     androidInfo.applicationVM = vm_;
@@ -735,6 +738,8 @@ bool XrImmersiveSession::setupInstanceAndSession() {
         suggestBindings("/interaction_profiles/bytedance/pico_neo3_controller", bindings);
         suggestBindings("/interaction_profiles/bytedance/pico4_controller", bindings);
         suggestBindings("/interaction_profiles/bytedance/pico4s_controller", bindings);
+    }
+    if (picoUltraControllerExtensionAvailable) {
         suggestBindings("/interaction_profiles/bytedance/pico_ultra_controller_bd", bindings);
     }
 
