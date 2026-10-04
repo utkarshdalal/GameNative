@@ -2863,7 +2863,7 @@
     <string name="community_compatibility_unavailable">无法加载兼容性信息</string>
     <string name="community_compatibility_missing_tier">响应缺少必要的硬件数据，无法将结果应用于您的设备。</string>
     <string name="community_compatibility_cached_result">等待刷新成功期间，显示上次已知结果。</string>
-    <string name="community_compatibility_works">极佳</string>
+    <string name="community_compatibility_works">运行良好</string>
     <string name="community_compatibility_should">可运行</string>
     <string name="community_compatibility_may">可能运行</string>
     <string name="community_compatibility_mixed">不稳定</string>

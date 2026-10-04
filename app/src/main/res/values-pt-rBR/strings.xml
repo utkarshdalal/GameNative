@@ -2720,7 +2720,7 @@
     <string name="community_compatibility_unavailable">Não foi possível carregar a compatibilidade</string>
     <string name="community_compatibility_missing_tier">A resposta não inclui os dados de hardware necessários para aplicar o resultado ao seu dispositivo.</string>
     <string name="community_compatibility_cached_result">Exibindo o último resultado conhecido até que a atualização seja concluída.</string>
-    <string name="community_compatibility_works">Ótimo</string>
+    <string name="community_compatibility_works">Roda bem</string>
     <string name="community_compatibility_should">Funciona</string>
     <string name="community_compatibility_may">Pode funcionar</string>
     <string name="community_compatibility_mixed">Pouco confiável</string>

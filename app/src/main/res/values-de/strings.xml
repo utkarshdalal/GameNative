@@ -2790,7 +2790,7 @@
     <string name="community_compatibility_unavailable">Kompatibilität konnte nicht geladen werden</string>
     <string name="community_compatibility_missing_tier">In der Antwort fehlen die Hardwaredaten, um das Ergebnis auf dein Gerät anzuwenden.</string>
     <string name="community_compatibility_cached_result">Das letzte bekannte Ergebnis wird angezeigt, bis die Aktualisierung erfolgreich ist.</string>
-    <string name="community_compatibility_works">Sehr gut</string>
+    <string name="community_compatibility_works">Läuft gut</string>
     <string name="community_compatibility_should">Läuft</string>
     <string name="community_compatibility_may">Läuft vielleicht</string>
     <string name="community_compatibility_mixed">Unzuverlässig</string>
