@@ -3,6 +3,7 @@ package app.gamenative.utils
 import android.content.Context
 import android.os.Build
 import app.gamenative.BuildConfig
+import app.gamenative.MainActivity
 import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
@@ -979,7 +980,7 @@ object ContainerUtils {
             containerData
         }
 
-        if (BuildConfig.XR_BUILD) {
+        if (BuildConfig.XR_BUILD && MainActivity.isMetaQuest()) {
             val kvs = KeyValueSet(containerData.graphicsDriverConfig)
             kvs.put("adrenotoolsTurnip", "0")
             containerData = containerData.copy(graphicsDriverConfig = kvs.toString())

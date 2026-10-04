@@ -5,6 +5,7 @@ import android.content.Context
 import android.os.Build
 import androidx.compose.ui.graphics.Color
 import app.gamenative.BuildConfig
+import app.gamenative.MainActivity
 import app.gamenative.PrefManager
 import app.gamenative.R
 import com.winlator.box86_64.Box86_64PresetManager
@@ -269,7 +270,7 @@ object BestConfigService {
             filteredJson.put("graphicsDriverVersion", ContainerUtils.WRAPPER_ADRENO_A12)
         }
 
-        if (BuildConfig.XR_BUILD) {
+        if (BuildConfig.XR_BUILD && MainActivity.isMetaQuest()) {
             val kvs = KeyValueSet(filteredJson.optString("graphicsDriverConfig", ""))
             val isTurnip = filteredJson.optString("graphicsDriverVersion", "").contains("turnip", ignoreCase = true) ||
                 kvs.get("version").contains("turnip", ignoreCase = true)
