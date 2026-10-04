@@ -1687,11 +1687,6 @@ object PrefManager {
             setPref(GAME_COMPATIBILITY_CACHE, value)
         }
 
-    // The compatibility cache's single writer must await persistence to preserve write order.
-    internal suspend fun persistGameCompatibilityCache(value: String) {
-        dataStore.edit { it[GAME_COMPATIBILITY_CACHE] = value }
-    }
-
     // HLTB cache (JSON string)
     private val HLTB_CACHE = stringPreferencesKey("hltb_cache")
     var hltbCache: String
@@ -1715,23 +1710,6 @@ object PrefManager {
         set(value) {
             setPref(GPU_GAME_STATS_CACHE, value)
         }
-
-    private val GPU_FAMILY_GAME_STATS_CACHE = stringPreferencesKey("gpu_family_game_stats_cache")
-    var gpuFamilyGameStatsCache: String
-        get() = getPref(GPU_FAMILY_GAME_STATS_CACHE, "{}")
-        set(value) = setPref(GPU_FAMILY_GAME_STATS_CACHE, value)
-
-    internal suspend fun persistDeviceGameStatsCache(value: String) {
-        dataStore.edit { it[DEVICE_GAME_STATS_CACHE] = value }
-    }
-
-    internal suspend fun persistGpuGameStatsCache(value: String) {
-        dataStore.edit { it[GPU_GAME_STATS_CACHE] = value }
-    }
-
-    internal suspend fun persistGpuFamilyGameStatsCache(value: String) {
-        dataStore.edit { it[GPU_FAMILY_GAME_STATS_CACHE] = value }
-    }
 
     /* Security / Attestation */
     private val KEY_ATTESTATION_AVAILABLE = booleanPreferencesKey("key_attestation_available")

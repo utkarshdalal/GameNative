@@ -2881,7 +2881,6 @@
     <string name="community_compatibility_unavailable_short">Unavailable</string>
     <string name="community_compatibility_unavailable">Compatibility could not be loaded</string>
     <string name="community_compatibility_missing_tier">The response lacks the hardware evidence needed to apply its verdict to your device.</string>
-    <string name="community_compatibility_cached_result">Showing the last known result while awaiting a successful refresh.</string>
     <string name="community_compatibility_works">Plays well</string>
     <string name="community_compatibility_should">Runs</string>
     <string name="community_compatibility_may">May work</string>
@@ -2889,19 +2888,6 @@
     <string name="community_compatibility_wont">Broken</string>
     <string name="community_compatibility_unknown">Untested</string>
     <string name="community_compatibility_checking">Checking compatibility…</string>
-    <plurals name="community_compatibility_device_evidence">
-        <item quantity="one">%1$d rated shared config from this device model</item>
-        <item quantity="other">%1$d rated shared configs from this device model</item>
-    </plurals>
-    <plurals name="community_compatibility_gpu_evidence">
-        <item quantity="one">%1$d rated shared config using your GPU</item>
-        <item quantity="other">%1$d rated shared configs using your GPU</item>
-    </plurals>
-    <plurals name="community_compatibility_family_evidence">
-        <item quantity="one">%1$d rated shared config using a compatible GPU</item>
-        <item quantity="other">%1$d rated shared configs using a compatible GPU</item>
-    </plurals>
-    <string name="community_compatibility_no_reports">No shared configs found for your hardware</string>
     <string name="community_compatibility_configs_unavailable">Some compatibility data could not be loaded. Showing available evidence.</string>
     <string name="community_compatibility_retry">Retry</string>
     <string name="community_compatibility_fps_median">Median %1$d FPS reported</string>
@@ -2910,7 +2896,6 @@
     <string name="community_compatibility_fps_gpu">%1$s using your GPU.</string>
     <string name="community_compatibility_fps_family">%1$s using compatible GPUs.</string>
     <string name="community_compatibility_view_reports">Browse Configs</string>
-    <string name="community_config_install_before_apply">Install this game before applying a community configuration.</string>
     <string name="debug_prerun_instruction">What to do in this run: %1$s</string>
     <plurals name="debug_prerun_min_minutes">
         <item quantity="one">Keep the game open for at least %1$d minute before you quit.</item>

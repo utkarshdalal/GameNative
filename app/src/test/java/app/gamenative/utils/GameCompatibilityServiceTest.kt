@@ -21,7 +21,7 @@ class GameCompatibilityServiceTest {
             }}}}""",
             listOf("Game"),
         ).getValue("Game")
-        val cached = CachedCompatibilityResponse(response, 123, 3, false)
+        val cached = CachedCompatibilityResponse(response, 123)
         val encoded = GameCompatibilityCache.json.encodeToString(cached)
         val restored = GameCompatibilityCache.json.decodeFromString<CachedCompatibilityResponse>(encoded)
         assertEquals(cached, restored)
@@ -130,7 +130,7 @@ class GameCompatibilityServiceTest {
         for (modernBuild in listOf(false, true)) {
             val oldCache = """{"Game":{"response":$responseJson,"timestamp":123,"schemaVersion":3,"modernBuild":$modernBuild}}"""
             val restored = GameCompatibilityCache.json.decodeFromString<Map<String, CachedCompatibilityResponse>>(oldCache)
-            assertEquals(CachedCompatibilityResponse(expected, 123, 3, modernBuild), restored.getValue("Game"))
+            assertEquals(CachedCompatibilityResponse(expected, 123), restored.getValue("Game"))
             assertEquals(
                 CommunityCompatibilityVerdict.SHOULD_WORK,
                 CommunityCompatibilityClassifier.fromCompatibilityResponse(restored.getValue("Game").response).verdict,

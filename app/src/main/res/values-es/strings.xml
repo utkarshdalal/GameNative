@@ -2847,7 +2847,6 @@
     <string name="community_compatibility_unavailable_short">No disponible</string>
     <string name="community_compatibility_unavailable">No se pudo cargar la compatibilidad</string>
     <string name="community_compatibility_missing_tier">La respuesta no incluye los datos de hardware necesarios para aplicar el resultado a tu dispositivo.</string>
-    <string name="community_compatibility_cached_result">Se muestra el último resultado conocido hasta que se complete una actualización.</string>
     <string name="community_compatibility_works">Funciona bien</string>
     <string name="community_compatibility_should">Funciona</string>
     <string name="community_compatibility_may">Podría funcionar</string>
@@ -2855,7 +2854,6 @@
     <string name="community_compatibility_wont">No funciona</string>
     <string name="community_compatibility_unknown">Sin probar</string>
     <string name="community_compatibility_checking">Comprobando compatibilidad…</string>
-    <string name="community_compatibility_no_reports">No se encontraron configuraciones compartidas para tu hardware</string>
     <string name="community_compatibility_configs_unavailable">No se pudieron cargar algunos datos de compatibilidad. Se muestran los datos disponibles.</string>
     <string name="community_compatibility_retry">Reintentar</string>
     <string name="community_compatibility_fps_median">Mediana indicada: %1$d FPS</string>
@@ -2864,7 +2862,6 @@
     <string name="community_compatibility_fps_gpu">%1$s con tu GPU.</string>
     <string name="community_compatibility_fps_family">%1$s con GPU compatibles.</string>
     <string name="community_compatibility_view_reports">Ver configuraciones</string>
-    <string name="community_config_install_before_apply">Instala este juego antes de aplicar una configuración de la comunidad.</string>
     <plurals name="community_compatibility_model_sessions">
         <item quantity="one">Según %1$d sesión registrada en tu modelo de dispositivo.</item>
         <item quantity="other">Según %1$d sesiones registradas en tu modelo de dispositivo.</item>
@@ -2880,18 +2877,6 @@
     <plurals name="community_compatibility_family_sessions">
         <item quantity="one">Según %1$d sesión registrada en tu familia de GPU.</item>
         <item quantity="other">Según %1$d sesiones registradas en tu familia de GPU.</item>
-    </plurals>
-    <plurals name="community_compatibility_device_evidence">
-        <item quantity="one">%1$d configuración compartida valorada de este modelo de dispositivo</item>
-        <item quantity="other">%1$d configuraciones compartidas valoradas de este modelo de dispositivo</item>
-    </plurals>
-    <plurals name="community_compatibility_gpu_evidence">
-        <item quantity="one">%1$d configuración compartida valorada con tu GPU</item>
-        <item quantity="other">%1$d configuraciones compartidas valoradas con tu GPU</item>
-    </plurals>
-    <plurals name="community_compatibility_family_evidence">
-        <item quantity="one">%1$d configuración compartida valorada con una GPU compatible</item>
-        <item quantity="other">%1$d configuraciones compartidas valoradas con una GPU compatible</item>
     </plurals>
     <string name="debug_prerun_instruction">Qué hacer en esta ejecución: %1$s</string>
     <plurals name="debug_prerun_min_minutes">

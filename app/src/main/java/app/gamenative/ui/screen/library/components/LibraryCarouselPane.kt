@@ -315,12 +315,14 @@ internal fun LibraryCarouselPane(
         }
     }
 
-    LaunchedEffect(listState, state.appInfoList.size, state.currentPaginationPage, state.lastPaginationPage, state.isLoading) {
+    LaunchedEffect(listState, state.appInfoList.size, state.totalAppsInFilter) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
             .filterNotNull()
             .distinctUntilChanged()
             .collect { lastVisibleIndex ->
-                if (app.gamenative.ui.model.shouldPrefetchLibraryPage(lastVisibleIndex, state.appInfoList.size, state.currentPaginationPage, state.lastPaginationPage, state.isLoading)) {
+                if (lastVisibleIndex >= state.appInfoList.lastIndex &&
+                    state.appInfoList.size < state.totalAppsInFilter
+                ) {
                     onPageChange(1)
                 }
             }
@@ -542,7 +544,7 @@ internal fun LibraryCarouselPane(
                             }
                         }
 
-                        if (state.currentPaginationPage < state.lastPaginationPage) {
+                        if (state.appInfoList.size < state.totalAppsInFilter) {
                             item {
                                 Box(
                                     modifier = Modifier

@@ -34,7 +34,8 @@ import app.gamenative.R
 import app.gamenative.api.isValidCommunityConfig
 import app.gamenative.api.prepareCommunityConfigForApply
 import app.gamenative.data.GameSource
-import app.gamenative.data.CommunityEvidenceTier
+import app.gamenative.data.CommunityCompatibilityClassifier
+import app.gamenative.data.CommunityCompatibilitySummary
 import app.gamenative.data.FavoritesManager
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.StoreDetailsRepository
@@ -43,7 +44,6 @@ import app.gamenative.events.AndroidEvent
 import app.gamenative.mods.ModContainerResolver
 import app.gamenative.mods.NexusModManager
 import app.gamenative.ui.component.dialog.CommunityConfigsDialog
-import app.gamenative.ui.component.dialog.CommunityHardwareScope
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.component.dialog.ExportFilesDialog
 import app.gamenative.ui.component.dialog.ImportFilesDialog
@@ -57,11 +57,11 @@ import app.gamenative.ui.screen.library.components.toggleFavorite
 import app.gamenative.ui.util.ContainerConfigTransfer
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.BestConfigService
-import app.gamenative.utils.CommunityCompatibilityRepository
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.SessionReport
 import app.gamenative.utils.DiagnosticsLog
 import app.gamenative.utils.GameCompatibilityCache
+import app.gamenative.utils.GameCompatibilityService
 import app.gamenative.utils.ManifestInstaller
 import app.gamenative.utils.createPinnedShortcut
 import kotlinx.coroutines.CancellationException
@@ -178,7 +178,7 @@ abstract class BaseAppScreen {
         private val importFilesRequests = mutableStateMapOf<String, Boolean>()
         private val exportFilesRequests = mutableStateMapOf<String, Boolean>()
         private val manageModsRequests = mutableStateMapOf<String, Boolean>()
-        private val communityConfigRequests = mutableStateMapOf<String, CommunityHardwareScope>()
+        private val communityConfigRequests = mutableStateMapOf<String, Boolean>()
         private val knownConfigInstallStates = mutableStateMapOf<Int, KnownConfigInstallState>()
 
         fun showInstallDialog(appId: String, state: app.gamenative.ui.component.dialog.state.MessageDialogState) {
@@ -277,11 +277,8 @@ abstract class BaseAppScreen {
             return manageModsRequests[appId] == true
         }
 
-        fun requestCommunityConfigs(
-            appId: String,
-            hardwareScope: CommunityHardwareScope = CommunityHardwareScope.CURRENT_DEVICE,
-        ) {
-            communityConfigRequests[appId] = hardwareScope
+        fun requestCommunityConfigs(appId: String) {
+            communityConfigRequests[appId] = true
         }
 
         fun clearCommunityConfigsRequest(appId: String) {
@@ -289,11 +286,7 @@ abstract class BaseAppScreen {
         }
 
         fun shouldBrowseCommunityConfigs(appId: String): Boolean {
-            return communityConfigRequests.containsKey(appId)
-        }
-
-        fun communityConfigsHardwareScope(appId: String): CommunityHardwareScope {
-            return communityConfigRequests[appId] ?: CommunityHardwareScope.CURRENT_DEVICE
+            return communityConfigRequests[appId] == true
         }
 
         // missing components that prevent config from being applied
@@ -1314,35 +1307,43 @@ abstract class BaseAppScreen {
             storeDetails = storeDetails.mergedWith(localStoreDetails),
         )
 
-        var communityCompatibilityLoading by remember(appId) { mutableStateOf(true) }
-        val sessionRevision by GameCompatibilityCache.revision.collectAsStateWithLifecycle()
-        val configRevision by CommunityCompatibilityRepository.revision.collectAsStateWithLifecycle()
-        val communityCompatibility = remember(appId, displayInfo.name, sessionRevision, configRevision, communityCompatibilityLoading) {
-            CommunityCompatibilityRepository.cachedSummary(libraryItem.gameSource, displayInfo.name)
+        var communityCompatibility by remember(appId, displayInfo.name) {
+            mutableStateOf(
+                GameCompatibilityCache.getCached(displayInfo.name)
+                    ?.let(CommunityCompatibilityClassifier::fromCompatibilityResponse)
+                    ?: CommunityCompatibilitySummary.unknown(),
+            )
         }
-        var communityCompatibilityError by remember(appId) {
-            mutableStateOf(false)
-        }
+        var communityCompatibilityLoading by remember(appId) { mutableStateOf(false) }
+        var communityCompatibilityError by remember(appId) { mutableStateOf(false) }
         var communityCompatibilityRetryKey by remember(appId) { mutableStateOf(0) }
 
         LaunchedEffect(appId, displayInfo.name, communityCompatibilityRetryKey) {
+            val gameName = displayInfo.name
+            if (gameName.isBlank()) return@LaunchedEffect
+            if (communityCompatibilityRetryKey == 0 && GameCompatibilityCache.getCached(gameName) != null) {
+                return@LaunchedEffect
+            }
             communityCompatibilityLoading = true
             communityCompatibilityError = false
             try {
-                val loaded = CommunityCompatibilityRepository.refreshGame(
-                    context, displayInfo.name, force = communityCompatibilityRetryKey > 0,
-                )
-                if (!loaded) {
+                val gpuName = withContext(Dispatchers.IO) {
+                    runCatching { GPUInformation.getRenderer(context) }.getOrNull().orEmpty().trim()
+                }
+                val results = if (gpuName.isEmpty()) null else GameCompatibilityService.fetchCompatibility(listOf(gameName), gpuName)
+                if (results == null) {
                     communityCompatibilityError = true
+                } else {
+                    withContext(Dispatchers.IO) { GameCompatibilityCache.cacheAll(results) }
+                    results[gameName]?.let {
+                        communityCompatibility = CommunityCompatibilityClassifier.fromCompatibilityResponse(it)
+                    }
                 }
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
                 communityCompatibilityError = true
-                Timber.tag("CommunityCompatibility").w(
-                    error,
-                    "Failed to load detailed compatibility for ${displayInfo.name}",
-                )
+                Timber.tag("CommunityCompatibility").w(error, "Failed to load compatibility for $gameName")
             } finally {
                 communityCompatibilityLoading = false
             }
@@ -1840,19 +1841,7 @@ abstract class BaseAppScreen {
             onRetryCommunityCompatibility = {
                 communityCompatibilityRetryKey += 1
             },
-            onViewCommunityReports = {
-                val reportsTier = communityCompatibility.reportEvidenceTier
-                    .takeIf { it != CommunityEvidenceTier.NONE }
-                    ?: communityCompatibility.evidenceTier
-                val scope = when (reportsTier) {
-                    CommunityEvidenceTier.SAME_DEVICE -> CommunityHardwareScope.CURRENT_DEVICE
-                    // The config browser has no chipset scope; keep its existing GPU buckets.
-                    CommunityEvidenceTier.SAME_SOC, CommunityEvidenceTier.SAME_GPU -> CommunityHardwareScope.CURRENT_GPU
-                    CommunityEvidenceTier.COMPATIBLE_GPU_FAMILY -> CommunityHardwareScope.COMPATIBLE_GPUS
-                    CommunityEvidenceTier.NONE -> CommunityHardwareScope.CURRENT_DEVICE
-                }
-                requestCommunityConfigs(appId, scope)
-            },
+            onViewCommunityReports = { requestCommunityConfigs(appId) },
         )
 
         if (showReadiness && launchActivity != null) {
@@ -1881,14 +1870,10 @@ abstract class BaseAppScreen {
             )
         }
 
-        LaunchedEffect(appId, communityConfigsRequested, isInstalledState) {
+        LaunchedEffect(appId, communityConfigsRequested) {
             communityContainerData = if (communityConfigsRequested) {
-                if (isInstalledState) {
-                    withContext(Dispatchers.IO) {
-                        loadContainerData(context, libraryItem)
-                    }
-                } else {
-                    ContainerData(envVars = "", execArgs = "")
+                withContext(Dispatchers.IO) {
+                    loadContainerData(context, libraryItem)
                 }
             } else {
                 null
@@ -1910,15 +1895,9 @@ abstract class BaseAppScreen {
                     gameName = displayInfo.name,
                     currentLaunchArguments = currentContainerData.execArgs,
                     currentEnvironmentVariables = currentContainerData.envVars,
-                    initialHardwareScope = communityConfigsHardwareScope(appId),
-                    canApply = isInstalledState,
                     onDismissRequest = { clearCommunityConfigsRequest(appId) },
                     onApply = { run, matchType, options ->
                         clearCommunityConfigsRequest(appId)
-                        if (!isInstalledState) {
-                            SnackbarManager.show(context.getString(R.string.community_config_install_before_apply))
-                            return@CommunityConfigsDialog
-                        }
                         uiScope.launch(Dispatchers.IO) {
                             applyCommunityConfigForLibraryItem(
                                 context = context,

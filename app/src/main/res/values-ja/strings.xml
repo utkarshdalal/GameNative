@@ -2809,7 +2809,6 @@
     <string name="community_compatibility_unavailable_short">利用不可</string>
     <string name="community_compatibility_unavailable">互換性を読み込めませんでした</string>
     <string name="community_compatibility_missing_tier">応答には、結果をお使いのデバイスに適用するためのハードウェア情報が含まれていません。</string>
-    <string name="community_compatibility_cached_result">更新が成功するまで、前回の結果を表示しています。</string>
     <string name="community_compatibility_works">快適に動作</string>
     <string name="community_compatibility_should">動作</string>
     <string name="community_compatibility_may">動作の可能性あり</string>
@@ -2817,7 +2816,6 @@
     <string name="community_compatibility_wont">動作不可</string>
     <string name="community_compatibility_unknown">未検証</string>
     <string name="community_compatibility_checking">互換性を確認中…</string>
-    <string name="community_compatibility_no_reports">お使いのハードウェア向けの共有設定が見つかりません</string>
     <string name="community_compatibility_configs_unavailable">一部の互換性データを読み込めませんでした。利用可能な情報を表示しています。</string>
     <string name="community_compatibility_retry">再試行</string>
     <string name="community_compatibility_fps_median">報告された中央値: %1$d FPS</string>
@@ -2826,7 +2824,6 @@
     <string name="community_compatibility_fps_gpu">%1$s（お使いの GPU）。</string>
     <string name="community_compatibility_fps_family">%1$s（互換性のある GPU）。</string>
     <string name="community_compatibility_view_reports">設定を参照</string>
-    <string name="community_config_install_before_apply">コミュニティ設定を適用する前に、このゲームをインストールしてください。</string>
     <plurals name="community_compatibility_model_sessions">
         <item quantity="other">お使いのデバイスモデルで記録された %1$d 回のセッションに基づきます。</item>
     </plurals>
@@ -2838,15 +2835,6 @@
     </plurals>
     <plurals name="community_compatibility_family_sessions">
         <item quantity="other">お使いの GPU ファミリーで記録された %1$d 回のセッションに基づきます。</item>
-    </plurals>
-    <plurals name="community_compatibility_device_evidence">
-        <item quantity="other">このデバイスモデルの評価済み共有設定: %1$d 件</item>
-    </plurals>
-    <plurals name="community_compatibility_gpu_evidence">
-        <item quantity="other">お使いの GPU の評価済み共有設定: %1$d 件</item>
-    </plurals>
-    <plurals name="community_compatibility_family_evidence">
-        <item quantity="other">互換性のある GPU の評価済み共有設定: %1$d 件</item>
     </plurals>
     <string name="debug_prerun_instruction">この実行で行うこと: %1$s</string>
     <plurals name="debug_prerun_min_minutes">

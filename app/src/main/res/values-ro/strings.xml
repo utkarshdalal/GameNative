@@ -2855,7 +2855,6 @@
     <string name="community_compatibility_unavailable_short">Indisponibil</string>
     <string name="community_compatibility_unavailable">Compatibilitatea nu a putut fi încărcată</string>
     <string name="community_compatibility_missing_tier">Răspunsul nu include datele hardware necesare pentru a aplica rezultatul dispozitivului tău.</string>
-    <string name="community_compatibility_cached_result">Se afișează ultimul rezultat cunoscut până la o actualizare reușită.</string>
     <string name="community_compatibility_works">Rulează bine</string>
     <string name="community_compatibility_should">Funcționează</string>
     <string name="community_compatibility_may">Poate funcționa</string>
@@ -2863,7 +2862,6 @@
     <string name="community_compatibility_wont">Nu funcționează</string>
     <string name="community_compatibility_unknown">Netestat</string>
     <string name="community_compatibility_checking">Se verifică compatibilitatea…</string>
-    <string name="community_compatibility_no_reports">Nu s-au găsit configurații partajate pentru hardware-ul tău</string>
     <string name="community_compatibility_configs_unavailable">Unele date de compatibilitate nu au putut fi încărcate. Se afișează datele disponibile.</string>
     <string name="community_compatibility_retry">Reîncearcă</string>
     <string name="community_compatibility_fps_median">Mediană raportată: %1$d FPS</string>
@@ -2872,7 +2870,6 @@
     <string name="community_compatibility_fps_gpu">%1$s cu GPU-ul tău.</string>
     <string name="community_compatibility_fps_family">%1$s cu GPU-uri compatibile.</string>
     <string name="community_compatibility_view_reports">Vezi configurațiile</string>
-    <string name="community_config_install_before_apply">Instalează acest joc înainte de a aplica o configurație a comunității.</string>
     <plurals name="community_compatibility_model_sessions">
         <item quantity="one">Pe baza a %1$d sesiune înregistrată pe modelul tău de dispozitiv.</item>
         <item quantity="few">Pe baza a %1$d sesiuni înregistrate pe modelul tău de dispozitiv.</item>
@@ -2892,21 +2889,6 @@
         <item quantity="one">Pe baza a %1$d sesiune înregistrată în familia ta de GPU.</item>
         <item quantity="few">Pe baza a %1$d sesiuni înregistrate în familia ta de GPU.</item>
         <item quantity="other">Pe baza a %1$d de sesiuni înregistrate în familia ta de GPU.</item>
-    </plurals>
-    <plurals name="community_compatibility_device_evidence">
-        <item quantity="one">%1$d configurație partajată evaluată de pe acest model de dispozitiv</item>
-        <item quantity="few">%1$d configurații partajate evaluate de pe acest model de dispozitiv</item>
-        <item quantity="other">%1$d de configurații partajate evaluate de pe acest model de dispozitiv</item>
-    </plurals>
-    <plurals name="community_compatibility_gpu_evidence">
-        <item quantity="one">%1$d configurație partajată evaluată cu GPU-ul tău</item>
-        <item quantity="few">%1$d configurații partajate evaluate cu GPU-ul tău</item>
-        <item quantity="other">%1$d de configurații partajate evaluate cu GPU-ul tău</item>
-    </plurals>
-    <plurals name="community_compatibility_family_evidence">
-        <item quantity="one">%1$d configurație partajată evaluată cu un GPU compatibil</item>
-        <item quantity="few">%1$d configurații partajate evaluate cu un GPU compatibil</item>
-        <item quantity="other">%1$d de configurații partajate evaluate cu un GPU compatibil</item>
     </plurals>
     <string name="debug_prerun_instruction">Ce trebuie să faci în această rulare: %1$s</string>
     <plurals name="debug_prerun_min_minutes">

@@ -40,7 +40,7 @@ class CommunityCompatibilitySectionTest {
         var requests = 0
         val game = mutableStateOf("First")
         render(game = game, onAction = { requests++ })
-        compose.onNodeWithText("Works").assertIsDisplayed()
+        compose.onNodeWithText("Runs").assertIsDisplayed()
         compose.onNodeWithText("Based on 101 recorded sessions using your GPU.").assertIsDisplayed()
         compose.onNodeWithText("Median 47 FPS reported using your GPU.").assertDoesNotExist()
         compose.onNodeWithText("Details").performScrollTo().performClick()
@@ -54,9 +54,8 @@ class CommunityCompatibilitySectionTest {
     }
 
     @Test fun cautionsRemainVisibleWhenDetailsAreCollapsed() {
-        render(summary.copy(verdict = CommunityCompatibilityVerdict.MIXED, isCachedResultStale = true))
+        render(summary.copy(verdict = CommunityCompatibilityVerdict.MIXED))
         compose.onNodeWithText("Unreliable results; working gameplay isn’t confirmed.").assertIsDisplayed()
-        compose.onNodeWithText("Showing the last known result while awaiting a successful refresh.").assertIsDisplayed()
         compose.onNodeWithText("Median 47 FPS reported using your GPU.").assertDoesNotExist()
     }
 
@@ -82,18 +81,11 @@ class CommunityCompatibilitySectionTest {
         compose.onNodeWithContentDescription("Refresh compatibility").assertDoesNotExist()
     }
 
-    @Test fun chipsetSessionsAndFpsDoNotRelabelGpuConfigEvidence() {
-        render(
-            summary.copy(
-                evidenceTier = CommunityEvidenceTier.SAME_SOC,
-                reportCount = 3, reportEvidenceTier = CommunityEvidenceTier.SAME_GPU,
-                hasDetailedReports = true, detailsLoaded = true,
-            ),
-        )
-        compose.onNodeWithText("Works").assertIsDisplayed()
+    @Test fun chipsetSessionsAndFpsUseChipsetScope() {
+        render(summary.copy(evidenceTier = CommunityEvidenceTier.SAME_SOC))
+        compose.onNodeWithText("Runs").assertIsDisplayed()
         compose.onNodeWithText("Based on 101 recorded sessions using the same chipset.").assertIsDisplayed()
         compose.onNodeWithText("Details").performScrollTo().performClick()
-        compose.onNodeWithText("3 rated shared configs using your GPU").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Median 47 FPS reported using the same chipset.").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Median 47 FPS reported using your GPU.").assertDoesNotExist()
     }

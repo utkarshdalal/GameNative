@@ -26,35 +26,18 @@ enum class CommunityVerdictSource { UNKNOWN, SERVER }
 enum class CommunityVerdictCaution { NONE, NO_MATCHING_SCOPE, MISSING_TIER }
 
 @Serializable
-data class CommunityRatingDistribution(
-    val oneStar: Int = 0,
-    val twoStar: Int = 0,
-    val threeStar: Int = 0,
-    val fourStar: Int = 0,
-    val fiveStar: Int = 0,
-) {
-    val ratedTotal: Int get() = oneStar + twoStar + threeStar + fourStar + fiveStar
-}
-
-@Serializable
 data class CommunityCompatibilitySummary(
     val verdict: CommunityCompatibilityVerdict,
     val evidenceTier: CommunityEvidenceTier,
     /** Recorded sessions, not a count of confirmed successful gameplay. */
     val sessionCount: Int = 0,
-    /** Historical rated config uploads; not independent people or recent-only evidence. */
-    val reportCount: Int = 0,
-    val reportEvidenceTier: CommunityEvidenceTier = CommunityEvidenceTier.NONE,
     val medianFps: Int? = null,
-    val hasDetailedReports: Boolean = false,
-    val detailsLoaded: Boolean = false,
     /** Server-owned compatibility result from /api/game-compat. */
     val serverState: String? = null,
     val verdictSource: CommunityVerdictSource = CommunityVerdictSource.UNKNOWN,
     val verdictLoaded: Boolean = false,
     val loadFailed: Boolean = false,
     val isChecking: Boolean = false,
-    val isCachedResultStale: Boolean = false,
     val scopeCaution: CommunityVerdictCaution = CommunityVerdictCaution.NONE,
     val performanceCaution: Boolean = false,
 ) {
@@ -112,23 +95,6 @@ object CommunityCompatibilityClassifier {
             verdictSource = CommunityVerdictSource.SERVER,
             scopeCaution = caution,
             performanceCaution = positive && metrics?.medianFps?.let { it.isFinite() && it > 0 && it < 30 } == true,
-        )
-    }
-
-    /** Aggregate stars are context only. They lack the server's recency/deduplication rules. */
-    fun withBulkRatings(
-        summary: CommunityCompatibilitySummary,
-        candidates: List<Pair<CommunityEvidenceTier, app.gamenative.utils.DeviceGameStatsService.DeviceGameStats?>>,
-        statsAvailable: Boolean,
-    ): CommunityCompatibilitySummary {
-        val rated = candidates.filter { it.second?.ratings?.ratedTotal?.let { count -> count > 0 } == true }
-        val selected = rated.firstOrNull { it.first == summary.evidenceTier } ?: rated.firstOrNull()
-        val distribution = selected?.second?.ratings ?: CommunityRatingDistribution()
-        return summary.copy(
-            reportEvidenceTier = selected?.first ?: CommunityEvidenceTier.NONE,
-            reportCount = distribution.ratedTotal,
-            hasDetailedReports = selected != null,
-            detailsLoaded = statsAvailable,
         )
     }
 }
