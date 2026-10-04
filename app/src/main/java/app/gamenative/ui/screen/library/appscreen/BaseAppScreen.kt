@@ -1860,24 +1860,26 @@ abstract class BaseAppScreen {
             achievements = achievementsState,
             optionsMenu = optionsMenu,
             dialogOpen = showConfigDialog || communityConfigsRequested || manageModsRequested || importFilesRequested || exportFilesRequested,
-            communityCompatibility = communityCompatibilityWithRatings,
-            communityCompatibilityLoading = communityCompatibilityLoading,
-            communityCompatibilityError = communityCompatibilityError,
-            onRetryCommunityCompatibility = {
-                communityCompatibilityRetryKey += 1
-            },
-            onViewCommunityReports = {
-                val reportsTier = communityCompatibilityWithRatings.reportEvidenceTier
-                    .takeIf { it != CommunityEvidenceTier.NONE }
-                    ?: communityCompatibilityWithRatings.evidenceTier
-                val scope = when (reportsTier) {
-                    CommunityEvidenceTier.SAME_DEVICE -> CommunityHardwareScope.CURRENT_DEVICE
-                    CommunityEvidenceTier.SAME_SOC, CommunityEvidenceTier.SAME_GPU -> CommunityHardwareScope.CURRENT_GPU
-                    CommunityEvidenceTier.COMPATIBLE_GPU_FAMILY -> CommunityHardwareScope.COMPATIBLE_GPUS
-                    CommunityEvidenceTier.NONE -> CommunityHardwareScope.CURRENT_DEVICE
-                }
-                requestCommunityConfigs(appId, scope)
-            },
+            communityCompatibility = app.gamenative.ui.screen.library.CommunityCompatibilityUiState(
+                summary = communityCompatibilityWithRatings,
+                loading = communityCompatibilityLoading,
+                loadError = communityCompatibilityError,
+                onRetry = {
+                    communityCompatibilityRetryKey += 1
+                },
+                onViewReports = {
+                    val reportsTier = communityCompatibilityWithRatings.reportEvidenceTier
+                        .takeIf { it != CommunityEvidenceTier.NONE }
+                        ?: communityCompatibilityWithRatings.evidenceTier
+                    val scope = when (reportsTier) {
+                        CommunityEvidenceTier.SAME_DEVICE -> CommunityHardwareScope.CURRENT_DEVICE
+                        CommunityEvidenceTier.SAME_SOC, CommunityEvidenceTier.SAME_GPU -> CommunityHardwareScope.CURRENT_GPU
+                        CommunityEvidenceTier.COMPATIBLE_GPU_FAMILY -> CommunityHardwareScope.COMPATIBLE_GPUS
+                        CommunityEvidenceTier.NONE -> CommunityHardwareScope.CURRENT_DEVICE
+                    }
+                    requestCommunityConfigs(appId, scope)
+                },
+            ),
         )
 
         if (showReadiness && launchActivity != null) {

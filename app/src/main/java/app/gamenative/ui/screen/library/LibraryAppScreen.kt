@@ -903,6 +903,14 @@ internal data class ImmersiveModeUiState(
     val onVrChange: (Boolean) -> Unit = {},
 )
 
+internal data class CommunityCompatibilityUiState(
+    val summary: CommunityCompatibilitySummary = CommunityCompatibilitySummary.unknown(),
+    val loading: Boolean = false,
+    val loadError: Boolean = false,
+    val onRetry: () -> Unit = {},
+    val onViewReports: () -> Unit = {},
+)
+
 @Composable
 internal fun AppScreenContent(
     modifier: Modifier = Modifier,
@@ -919,11 +927,7 @@ internal fun AppScreenContent(
     optionsMenu: List<AppMenuOption>,
     dialogOpen: Boolean = false,
     immersiveMode: ImmersiveModeUiState = ImmersiveModeUiState(),
-    communityCompatibility: CommunityCompatibilitySummary = CommunityCompatibilitySummary.unknown(),
-    communityCompatibilityLoading: Boolean = false,
-    communityCompatibilityError: Boolean = false,
-    onRetryCommunityCompatibility: () -> Unit = {},
-    onViewCommunityReports: () -> Unit = {},
+    communityCompatibility: CommunityCompatibilityUiState = CommunityCompatibilityUiState(),
 ) {
     // Unpacked so the body below is unchanged; bundling the params avoids a Compose VerifyError.
     val isInstalled = downloadDisplayDetails.isInstalled
@@ -1642,11 +1646,11 @@ internal fun AppScreenContent(
 
                 CommunityCompatibilitySection(
                     gameKey = displayInfo.appId.toString(),
-                    summary = communityCompatibility,
-                    loading = communityCompatibilityLoading,
-                    loadError = communityCompatibilityError,
-                    onRetry = onRetryCommunityCompatibility,
-                    onViewReports = onViewCommunityReports,
+                    summary = communityCompatibility.summary,
+                    loading = communityCompatibility.loading,
+                    loadError = communityCompatibility.loadError,
+                    onRetry = communityCompatibility.onRetry,
+                    onViewReports = communityCompatibility.onViewReports,
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
