@@ -79,6 +79,7 @@ object GameCompatibilityCache {
      * Gets cached compatibility response for a game, if available and not expired.
      * Uses lazy expiration - checks expiration on access.
      */
+    @Synchronized
     fun getCached(gameName: String): GameCompatibilityService.GameCompatibilityResponse? {
         loadCache()
 
@@ -101,6 +102,7 @@ object GameCompatibilityCache {
     /**
      * Caches a compatibility response for a game.
      */
+    @Synchronized
     fun cache(gameName: String, response: GameCompatibilityService.GameCompatibilityResponse) {
         loadCache()
         val now = System.currentTimeMillis()
@@ -113,6 +115,7 @@ object GameCompatibilityCache {
     /**
      * Caches multiple compatibility responses at once.
      */
+    @Synchronized
     fun cacheAll(responses: Map<String, GameCompatibilityService.GameCompatibilityResponse>) {
         loadCache()
         val now = System.currentTimeMillis()
@@ -127,6 +130,7 @@ object GameCompatibilityCache {
     /**
      * Checks if a game's compatibility is cached and not expired.
      */
+    @Synchronized
     fun isCached(gameName: String): Boolean {
         loadCache()
         return getCached(gameName) != null
@@ -135,6 +139,7 @@ object GameCompatibilityCache {
     /**
      * Clears the entire cache (both memory and persistent storage).
      */
+    @Synchronized
     fun clear() {
         inMemoryCache.clear()
         timestamps.clear()
@@ -145,6 +150,7 @@ object GameCompatibilityCache {
     /**
      * Gets the current cache size.
      */
+    @Synchronized
     fun size(): Int {
         loadCache()
         return inMemoryCache.size
