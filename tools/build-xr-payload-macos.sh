@@ -85,9 +85,9 @@ if [ ! -f "$output/opencomposite_x64.dll" ]; then
         | shasum -a 256 -c - >/dev/null || { echo "OpenComposite checksum mismatch"; exit 1; }
 fi
 if [ ! -f "$output/opencomposite_x86.dll" ]; then
-    curl -sL "https://github.com/GameNative/opencomposite/releases/download/v3/opencomposite_x86.dll" \
+    curl -sL "https://github.com/GameNative/opencomposite/releases/download/v5/opencomposite_x86.dll" \
         -o "$output/opencomposite_x86.dll"
-    echo "2602f2b12bfc028b7e00f6d51c1d02be07d77abd7c9b8d2e0ba8d24d47fdc5dd  $output/opencomposite_x86.dll" \
+    echo "5cba39e5cd3cc2f20b3dae576ffaa84c56a750cde622e797421e01a0e680edf2  $output/opencomposite_x86.dll" \
         | shasum -a 256 -c - >/dev/null || { echo "OpenComposite x86 checksum mismatch"; exit 1; }
 fi
 
