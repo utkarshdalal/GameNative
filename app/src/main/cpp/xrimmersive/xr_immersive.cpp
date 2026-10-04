@@ -734,6 +734,8 @@ bool XrImmersiveSession::setupInstanceAndSession() {
         suggestBindings("/interaction_profiles/pico/neo3_controller", picoLegacyBindings);
         suggestBindings("/interaction_profiles/bytedance/pico_neo3_controller", bindings);
         suggestBindings("/interaction_profiles/bytedance/pico4_controller", bindings);
+        suggestBindings("/interaction_profiles/bytedance/pico4s_controller", bindings);
+        suggestBindings("/interaction_profiles/bytedance/pico_ultra_controller_bd", bindings);
     }
 
     XrSessionActionSetsAttachInfo attachInfo{XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO};
