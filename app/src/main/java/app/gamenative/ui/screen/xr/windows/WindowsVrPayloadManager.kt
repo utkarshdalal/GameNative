@@ -92,6 +92,7 @@ class WindowsVrPayloadManager(
             openCompositeDirectories += directory
             writeIfChanged(backup, target.readBytes())
             writeIfChanged(target, adapter)
+            if (adapterName == "opencomposite_x86.dll") installVulkanInitConfig(directory)
             diagnostics.record("opencomposite", "installed path=${target.path} adapter=$adapterName")
         }
     }
@@ -242,7 +243,20 @@ class WindowsVrPayloadManager(
         record.delete()
     }
 
+    private fun installVulkanInitConfig(directory: File) {
+        val config = File(directory, "opencomposite.ini")
+        val owner = File(directory, "opencomposite.ini.gamenative-owner")
+        if (config.exists() && !owner.isFile) return
+        writeIfChanged(owner, "1\n".toByteArray())
+        writeIfChanged(config, "initUsingVulkan=true\r\n".toByteArray())
+    }
+
     private fun restoreOpenCompositeDirectory(directory: File) {
+        val configOwner = File(directory, "opencomposite.ini.gamenative-owner")
+        if (configOwner.isFile) {
+            File(directory, "opencomposite.ini").delete()
+            configOwner.delete()
+        }
         val owner = File(directory, "openvr_api.dll.gamenative-owner")
         if (!owner.isFile || owner.readText().trim() != "2") return
         val target = File(directory, "openvr_api.dll")
