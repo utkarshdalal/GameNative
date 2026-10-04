@@ -11,6 +11,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/local/share/boost /usr/share/swift
+          df -h /
+
       - uses: actions/checkout@v4
 
       - name: set up Java 17
@@ -77,21 +82,30 @@ jobs:
 
       - name: Stage bundles
         run: |
-          cp app/build/outputs/bundle/legacyRelease/app-legacy-release.aab app-release.aab
-          cp app/build/outputs/bundle/legacyXrRelease/app-legacyXr-release.aab app-legacy-xr-release.aab
+          mv app/build/outputs/bundle/legacyRelease/app-legacy-release.aab app-release.aab
+          mv app/build/outputs/bundle/legacyXrRelease/app-legacyXr-release.aab app-legacy-xr-release.aab
+
+      - name: Stop Gradle daemons
+        run: |
+          ./gradlew --stop
+          df -h /
+          free -m
 
       - name: Extract APKs from Bundles
         run: |
-          java -jar tools/bundletool-all-1.17.2.jar build-apks \
+          java -Xmx3g -jar tools/bundletool-all-1.17.2.jar build-apks \
             --bundle=app-release.aab \
             --output=app-release.apks \
             --mode=universal
           unzip -o app-release.apks universal.apk
-          java -jar tools/bundletool-all-1.17.2.jar build-apks \
+          rm app-release.apks app-release.aab
+          java -Xmx3g -jar tools/bundletool-all-1.17.2.jar build-apks \
             --bundle=app-legacy-xr-release.aab \
             --output=app-legacy-xr-release.apks \
             --mode=universal
           unzip -p app-legacy-xr-release.apks universal.apk > universal-legacy-xr.apk
+          rm app-legacy-xr-release.apks app-legacy-xr-release.aab
+          df -h /
 
       - name: Copy lineage file
         run: |
