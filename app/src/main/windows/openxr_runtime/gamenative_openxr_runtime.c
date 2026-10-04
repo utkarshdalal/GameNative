@@ -8,7 +8,7 @@
 typedef void* VkInstance;
 typedef void* VkPhysicalDevice;
 typedef void* VkDevice;
-typedef void* VkImage;
+typedef unsigned long long VkImage;
 typedef void* VkQueue;
 typedef int VkResult;
 typedef struct ID3D11Device ID3D11Device;
@@ -663,11 +663,11 @@ static void gn_identity_pose(XrPosef* pose);
 static void gn_level_pose(XrPosef* pose);
 static XrQuaternionf gn_quat_multiply(XrQuaternionf a, XrQuaternionf b);
 
-static const char* GN_VULKAN_INSTANCE_EXTENSIONS = "";
+static const char* GN_VULKAN_INSTANCE_EXTENSIONS = "VK_KHR_get_physical_device_properties2 VK_KHR_external_memory_capabilities";
 
 
 
-static const char* GN_VULKAN_DEVICE_EXTENSIONS = "";
+static const char* GN_VULKAN_DEVICE_EXTENSIONS = "VK_KHR_external_memory VK_KHR_dedicated_allocation VK_KHR_get_memory_requirements2";
 
 
 
