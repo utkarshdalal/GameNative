@@ -1,6 +1,7 @@
 package app.gamenative.ui.screen.xr
 
 import android.app.Activity
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -15,8 +16,10 @@ import android.os.Bundle
 import android.window.OnBackInvokedDispatcher
 import android.view.WindowManager
 import app.gamenative.PluviaApp
+import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.service.SteamService
+import app.gamenative.utils.LocaleHelper
 import androidx.core.graphics.PathParser
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
@@ -28,6 +31,11 @@ class VrGameActivity : Activity() {
     private val polling = AtomicBoolean(false)
     private var pollThread: Thread? = null
     private val statusBitmap = Bitmap.createBitmap(1280, 720, Bitmap.Config.ARGB_8888)
+
+    override fun attachBaseContext(newBase: Context) {
+        PrefManager.init(newBase)
+        super.attachBaseContext(LocaleHelper.applyLanguage(newBase, PrefManager.appLanguage))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
