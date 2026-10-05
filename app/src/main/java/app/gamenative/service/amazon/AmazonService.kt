@@ -20,7 +20,9 @@ import app.gamenative.service.download.NativeTreeDelete
 import app.gamenative.service.NotificationHelper
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.ExecutableSelectionUtils
+import app.gamenative.utils.InstallPathOwner
 import app.gamenative.utils.MarkerUtils
+import app.gamenative.utils.hasUniqueInstallPathOwner
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.AndroidEntryPoint
@@ -221,6 +223,20 @@ class AmazonService : Service() {
                     AmazonConstants.getGameInstallPath(context, it)
                 }
                 ?: return false
+
+            val target = InstallPathOwner(GameSource.AMAZON, game.productId, installPath)
+            val candidates = runBlocking(Dispatchers.IO) {
+                instance?.amazonManager?.getAllGames().orEmpty()
+            }.map { candidate ->
+                InstallPathOwner(
+                    source = GameSource.AMAZON,
+                    stableId = candidate.productId,
+                    installPath = candidate.installPath.ifBlank {
+                        AmazonConstants.getGameInstallPath(context, candidate.title)
+                    },
+                )
+            }
+            if (!hasUniqueInstallPathOwner(target, candidates)) return false
 
             val isDownloadComplete = MarkerUtils.hasMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
             val isDownloadInProgress = MarkerUtils.hasMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
