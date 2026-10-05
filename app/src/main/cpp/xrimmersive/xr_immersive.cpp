@@ -420,8 +420,19 @@ bool XrImmersiveSession::setupInstanceAndSession() {
         return false;
     }
 
-    const EGLint contextAttribs[] = {EGL_CONTEXT_CLIENT_VERSION, 3, EGL_NONE};
+    const char *eglExtensions = eglQueryString(eglDisplay_, EGL_EXTENSIONS);
+    const bool hasPriority = eglExtensions && strstr(eglExtensions, "EGL_IMG_context_priority");
+    const EGLint contextAttribs[] = {
+        EGL_CONTEXT_CLIENT_VERSION, 3,
+        hasPriority ? EGL_CONTEXT_PRIORITY_LEVEL_IMG : EGL_NONE, EGL_CONTEXT_PRIORITY_HIGH_IMG,
+        EGL_NONE,
+    };
     eglContext_ = eglCreateContext(eglDisplay_, eglConfig_, EGL_NO_CONTEXT, contextAttribs);
+    if (hasPriority) {
+        EGLint priority = 0;
+        eglQueryContext(eglDisplay_, eglContext_, EGL_CONTEXT_PRIORITY_LEVEL_IMG, &priority);
+        LOGI("Compositor EGL context priority 0x%x", priority);
+    }
 
     const EGLint pbufferAttribs[] = {EGL_WIDTH, 16, EGL_HEIGHT, 16, EGL_NONE};
     eglPbufferSurface_ = eglCreatePbufferSurface(eglDisplay_, eglConfig_, pbufferAttribs);
