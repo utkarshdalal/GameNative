@@ -6429,9 +6429,9 @@ private fun extractSteamFiles(
     }
     if (container.isLaunchHeadlessSteam && steamhostArchive.exists()) {
         if (headlessMarker?.takeIf { it.isFile }?.readText() == steamhostArchive.name) return
-        // Current Valve client tree (build 2026-01-29) + headless host as steam.exe.
+        // Current Valve client tree (build 1788652215, 2026-09-03) + headless host as steam.exe.
         clearClientBinaries()
-        Timber.i("Extracting ${steamhostArchive.name} (Valve client 2026-01-29 + headless steam.exe)")
+        Timber.i("Extracting ${steamhostArchive.name} (Valve client 1788652215 + headless steam.exe)")
         TarCompressorUtils.extract(
             TarCompressorUtils.Type.ZSTD,
             steamhostArchive,
