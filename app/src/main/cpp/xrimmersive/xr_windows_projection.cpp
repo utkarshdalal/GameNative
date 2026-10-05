@@ -132,7 +132,19 @@ EGLImageKHR WindowsProjectionPresenter::createImageFromHardwareBuffer(AHardwareB
         EGL_GL_COLORSPACE_KHR, EGL_GL_COLORSPACE_SRGB_KHR,
         EGL_NONE,
     };
-    return eglCreateImageKHR(display_, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, client, attributes);
+    EGLImageKHR image =
+        eglCreateImageKHR(display_, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, client, attributes);
+    if (image != EGL_NO_IMAGE_KHR) return image;
+    // A driver that rejects the colorspace attribute must not stall the projection: retry without
+    // it (colors then look as they did before this tag existed) rather than dropping the frame.
+    static bool logged = false;
+    if (!logged) {
+        logged = true;
+        LOGI("EGL hardware-buffer import with sRGB colorspace failed (0x%x) — retrying untagged",
+             eglGetError());
+    }
+    const EGLint plain[] = {EGL_IMAGE_PRESERVED_KHR, EGL_TRUE, EGL_NONE};
+    return eglCreateImageKHR(display_, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, client, plain);
 }
 
 EGLImageKHR WindowsProjectionPresenter::createImageFromDmabuf(const EyeFrame &frame) {
