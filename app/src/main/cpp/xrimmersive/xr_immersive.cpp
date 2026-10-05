@@ -981,7 +981,11 @@ void XrImmersiveSession::uploadPendingGameFrameLocked() {
 
     glBindTexture(GL_TEXTURE_2D, gameTexture_);
     if (pendingFrameWidth_ != gameTextureWidth_ || pendingFrameHeight_ != gameTextureHeight_) {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, pendingFrameWidth_, pendingFrameHeight_, 0,
+        // GL_SRGB8_ALPHA8: this is captured screen content (PixelCopy), already sRGB-encoded —
+        // sampling must decode it or it gets sRGB-encoded a second time on write to our own
+        // sRGB swapchain (see setupInstanceAndSession's swapchain format selection), washing
+        // out colors for the waiting card and for the immersive flat-screen-in-VR mode alike.
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB8_ALPHA8, pendingFrameWidth_, pendingFrameHeight_, 0,
                      GL_RGBA, GL_UNSIGNED_BYTE, pendingFramePixels_.data());
         gameTextureWidth_ = pendingFrameWidth_;
         gameTextureHeight_ = pendingFrameHeight_;
