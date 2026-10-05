@@ -1,10 +1,16 @@
 package app.gamenative.ui.data
 
 import app.gamenative.data.BootAdItem
+import app.gamenative.data.LaunchInfo
 import app.gamenative.enums.AppTheme
 import app.gamenative.ui.enums.ConnectionState
 import app.gamenative.ui.screen.PluviaScreen
+import app.gamenative.utils.LaunchMode
 import com.materialkolor.PaletteStyle
+
+data class LaunchOptionPrompt(val gameName: String, val mode: LaunchMode, val options: List<LaunchInfo>)
+
+data class NonVrArgsPrompt(val gameName: String, val args: List<String>)
 
 data class MainState(
     val appTheme: AppTheme = AppTheme.NIGHT,
@@ -27,6 +33,8 @@ data class MainState(
     val bootingSplashText: String = "Booting...",
     val bootingSplashHeroImageUrl: String = "",
     val bootAd: BootAdItem? = null,
+    val launchOptionPrompt: LaunchOptionPrompt? = null,
+    val nonVrArgsPrompt: NonVrArgsPrompt? = null,
 
     // Connection state for background reconnection
     // Default to DISCONNECTED - service will start and set to CONNECTING

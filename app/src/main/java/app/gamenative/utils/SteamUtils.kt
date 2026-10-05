@@ -550,7 +550,20 @@ object SteamUtils {
                 Character.getType(char) != Character.FORMAT.toInt()
         }.trim()
 
-    internal fun writeColdClientIni(steamAppId: Int, container: Container, launchInfo: LaunchInfo? = null) {
+    // Passes the VR option's arguments (e.g. "vrmode") unless the container sets another exe.
+    internal fun vrLaunchArguments(container: Container, launchInfo: LaunchInfo?, vrLaunch: Boolean): String {
+        if (!vrLaunch || launchInfo == null || !launchInfo.isVr) return ""
+        val chosenExe = container.executablePath.replace('\\', '/').trim('/')
+        val launchExe = launchInfo.executable.replace('\\', '/').trim('/')
+        return if (chosenExe.isEmpty() || chosenExe.equals(launchExe, ignoreCase = true)) launchInfo.arguments.trim() else ""
+    }
+
+    internal fun writeColdClientIni(
+        steamAppId: Int,
+        container: Container,
+        launchInfo: LaunchInfo? = null,
+        vrLaunch: Boolean = false,
+    ) {
         val gameName = getAppDirName(getAppInfoOf(steamAppId))
         val workingDir = launchInfo?.workingDir
         val iniFile = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/ColdClientLoader.ini")
@@ -559,7 +572,7 @@ object SteamUtils {
         val launchConfig = resolveColdClientLaunchConfig(
             steamAppId = steamAppId,
             executablePath = container.executablePath,
-            exeCommandLine = container.execArgs,
+            exeCommandLine = container.execArgs.ifEmpty { vrLaunchArguments(container, launchInfo, vrLaunch) },
             gameRootDir = File(SteamService.getAppDirPath(steamAppId)),
         )
         iniFile.parentFile?.mkdirs()

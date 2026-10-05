@@ -16,4 +16,9 @@ data class LaunchInfo(
     val configOS: EnumSet<OS>,
     val configArch: OSArch,
     val arguments: String = "",
-)
+) {
+    val isVr: Boolean get() = type.equals("vr", ignoreCase = true) || type.equals("openxr", ignoreCase = true)
+
+    // "othervr" options use the Oculus SDK, which the OpenXR runtime can't run.
+    val isOculusOnly: Boolean get() = type.equals("othervr", ignoreCase = true)
+}

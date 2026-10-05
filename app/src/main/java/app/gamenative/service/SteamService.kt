@@ -2961,6 +2961,13 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
 
 
+        /** Like Steam's launch prompt: the VR option for a VR launch, otherwise a non-VR one. */
+        fun getWindowsLaunchInfo(appId: Int, vr: Boolean): LaunchInfo? {
+            val infos = getWindowsLaunchInfos(appId)
+            val preferred = if (vr) infos.firstOrNull { it.isVr } else infos.firstOrNull { !it.isVr }
+            return preferred ?: infos.firstOrNull()
+        }
+
         fun getWindowsLaunchInfos(appId: Int): List<LaunchInfo> {
             return getAppInfoOf(appId)?.let { appInfo ->
                 appInfo.config.launch.filter { launchInfo ->

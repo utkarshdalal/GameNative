@@ -570,7 +570,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onPause() {
-        if (PluviaApp.isImmersiveActivityResumed) {
+        if (PluviaApp.isImmersiveActivityResumed || PluviaApp.vrHandoffActive) {
             Timber.d("Launcher paused behind the immersive activity; game stays in the foreground")
             super.onPause()
             return

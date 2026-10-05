@@ -1407,21 +1407,43 @@ abstract class BaseAppScreen {
         }
         var isImmersiveModeEnabledState by remember(libraryItem.appId) { mutableStateOf<Boolean?>(null) }
         var isVrModeEnabledState by remember(libraryItem.appId) { mutableStateOf(false) }
+        var vrKindState by remember(libraryItem.appId) {
+            mutableStateOf(app.gamenative.ui.screen.xr.VrLaunchCoordinator.VrGameKind.NONE)
+        }
         val immersiveModeSaveRequests = remember(libraryItem.appId) { Channel<Boolean>(Channel.CONFLATED) }
         val vrModeSaveRequests = remember(libraryItem.appId) { Channel<Boolean>(Channel.CONFLATED) }
         val containerSaveMutex = remember(libraryItem.appId) { kotlinx.coroutines.sync.Mutex() }
         if (isImmersiveModeSupported) {
             LaunchedEffect(libraryItem.appId) {
-                val stored = withContext(Dispatchers.IO) {
+                suspend fun readStored() = withContext(Dispatchers.IO) {
                     runCatching {
                         val container = ContainerUtils.getContainer(context, libraryItem.appId)
-                        container.isLaunchImmersiveMode() to
-                            container.getExtra(WINDOWS_VR_ENABLED_EXTRA, "false").toBoolean()
-                    }.getOrDefault(true to false)
+                        app.gamenative.ui.screen.xr.VrLaunchCoordinator.applyVrOnlyDefault(context, container)
+                        Triple(
+                            container.isLaunchImmersiveMode(),
+                            container.getExtra(WINDOWS_VR_ENABLED_EXTRA, "false").toBoolean(),
+                            app.gamenative.ui.screen.xr.VrLaunchCoordinator.vrGameKindIfKnown(container),
+                        )
+                    }.getOrDefault(Triple(true, false, app.gamenative.ui.screen.xr.VrLaunchCoordinator.VrGameKind.NONE))
                 }
+                val stored = readStored()
                 if (isImmersiveModeEnabledState == null) {
                     isImmersiveModeEnabledState = stored.first
                     isVrModeEnabledState = stored.second
+                    vrKindState = stored.third ?: app.gamenative.ui.screen.xr.VrLaunchCoordinator.VrGameKind.NONE
+                }
+                if (stored.third == null) {
+                    // Steam sends the VR categories during or after install: pick them up live.
+                    launch {
+                        while (true) {
+                            delay(2_000)
+                            val refreshed = readStored()
+                            val kind = refreshed.third ?: continue
+                            isVrModeEnabledState = refreshed.second
+                            vrKindState = kind
+                            break
+                        }
+                    }
                 }
                 launch {
                     for (enabled in immersiveModeSaveRequests) {
@@ -1825,11 +1847,26 @@ abstract class BaseAppScreen {
                 onChange = { enabled ->
                     isImmersiveModeEnabledState = enabled
                     immersiveModeSaveRequests.trySend(enabled)
+                    // A VR supported game plays either on the immersive screen or in VR.
+                    if (enabled && isVrModeEnabledState &&
+                        vrKindState == app.gamenative.ui.screen.xr.VrLaunchCoordinator.VrGameKind.SUPPORTED
+                    ) {
+                        isVrModeEnabledState = false
+                        vrModeSaveRequests.trySend(false)
+                    }
                 },
                 isVrEnabled = isVrModeEnabledState,
+                isVrGame = vrKindState != app.gamenative.ui.screen.xr.VrLaunchCoordinator.VrGameKind.NONE,
+                isVrOnly = vrKindState == app.gamenative.ui.screen.xr.VrLaunchCoordinator.VrGameKind.ONLY,
                 onVrChange = { enabled ->
                     isVrModeEnabledState = enabled
                     vrModeSaveRequests.trySend(enabled)
+                    if (enabled && isImmersiveModeEnabledState == true &&
+                        vrKindState == app.gamenative.ui.screen.xr.VrLaunchCoordinator.VrGameKind.SUPPORTED
+                    ) {
+                        isImmersiveModeEnabledState = false
+                        immersiveModeSaveRequests.trySend(false)
+                    }
                 },
             ),
             onDownloadInstallClick = {
@@ -1900,6 +1937,7 @@ abstract class BaseAppScreen {
             ContainerConfigDialog(
                 title = "${displayInfo.name} Config",
                 initialConfig = containerData,
+                containerId = libraryItem.appId,
                 onDismissRequest = { showConfigDialog = false },
                 onSave = {
                     saveContainerConfig(context, libraryItem, it)

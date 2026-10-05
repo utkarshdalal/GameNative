@@ -101,7 +101,6 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
         private const val EXTRA_QUAD_SCALE = "immersiveQuadScale"
         private const val EXTRA_PASSTHROUGH_ENABLED = "immersivePassthroughEnabled"
         private const val EXTRA_WINDOWS_VR_ENABLED = "windowsVrEnabled"
-        private const val EXTRA_WINDOWS_VR_OPEN_COMPOSITE = "windowsVrOpenCompositeEnabled"
 
         fun start(context: Context, appId: String, isOffline: Boolean) {
             val intent = Intent(context, ImmersiveXrActivity::class.java).apply {
@@ -230,7 +229,6 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
     private var windowsVrEnabled by mutableStateOf(false)
     @Volatile
     private var immersiveSettingsLoaded = false
-    private var openCompositeEnabled by mutableStateOf(false)
     private var windowsVrStatus by mutableStateOf("Waiting for runtime")
     private var showControlsOnboarding by mutableStateOf(false)
     private var mappedWindowCount by androidx.compose.runtime.mutableIntStateOf(0)
@@ -362,27 +360,6 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                             }
                             Timber.i("Immersive: resize handles toggled %s from quick menu, pointer mode now %s", enabled, enabled)
                         },
-                        windowsVrEnabled = windowsVrEnabled,
-                        onWindowsVrToggle = { enabled ->
-                            windowsVrEnabled = enabled
-                            windowsVrStatus = if (enabled) "Restart required" else "Disabled"
-                            persistImmersiveSettings(appId)
-                        },
-                        openCompositeEnabled = openCompositeEnabled,
-                        onOpenCompositeToggle = { enabled ->
-                            openCompositeEnabled = enabled
-                            windowsVrStatus = "Restart required"
-                            persistImmersiveSettings(appId)
-                        },
-                        windowsVrStatus = windowsVrStatus,
-                        windowsVrRuntimePath = if (openCompositeEnabled) "OpenVR compatibility" else "Native OpenXR",
-                        onExportWindowsVrDiagnostics = {
-                            lifecycleScope.launch(Dispatchers.IO) {
-                                val result = runCatching { windowsVrRuntimeService?.exportDiagnostics() }
-                                val message = result.getOrNull()?.path ?: result.exceptionOrNull()?.message ?: "Windows VR is inactive"
-                                app.gamenative.ui.util.SnackbarManager.show(message)
-                            }
-                        },
                     ),
                     ),
                 )
@@ -423,7 +400,6 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                 .toFloatOrNull() ?: ImmersiveControls.DEFAULT_SCALE
             passthroughEnabled = container.getExtra(EXTRA_PASSTHROUGH_ENABLED, "false").toBoolean()
             windowsVrEnabled = container.getExtra(EXTRA_WINDOWS_VR_ENABLED, "false").toBoolean()
-            openCompositeEnabled = container.getExtra(EXTRA_WINDOWS_VR_OPEN_COMPOSITE, "false").toBoolean()
             windowsVrStatus = if (windowsVrEnabled) "Waiting for runtime" else "Disabled"
             immersiveSettingsLoaded = true
             applyQuadTransform()
@@ -444,8 +420,6 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
             container.putExtra(EXTRA_QUAD_DISTANCE, quadDistance.toString())
             container.putExtra(EXTRA_QUAD_SCALE, quadScale.toString())
             container.putExtra(EXTRA_PASSTHROUGH_ENABLED, passthroughEnabled.toString())
-            container.putExtra(EXTRA_WINDOWS_VR_ENABLED, windowsVrEnabled.toString())
-            container.putExtra(EXTRA_WINDOWS_VR_OPEN_COMPOSITE, openCompositeEnabled.toString())
             container.saveData()
         }
     }

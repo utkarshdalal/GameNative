@@ -94,6 +94,8 @@ import app.gamenative.ui.component.dialog.AccountSignInDialog
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.component.dialog.DebugPreRunDialog
 import app.gamenative.ui.component.dialog.DebugReportDialog
+import app.gamenative.ui.component.dialog.LaunchOptionDialog
+import app.gamenative.ui.component.dialog.NonVrArgsDialog
 import app.gamenative.ui.component.dialog.debugReportUsesApp
 import app.gamenative.ui.component.dialog.GameFeedbackDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
@@ -1472,6 +1474,7 @@ fun PluviaMain(
                         visible = true,
                         title = context.getString(R.string.container_config_title),
                         initialConfig = config,
+                        containerId = appId,
                         onDismissRequest = { openContainerConfigForAppId = null },
                         onSave = { newConfig ->
                             scope.launch {
@@ -1848,6 +1851,22 @@ fun PluviaMain(
                 )
             }
 
+            state.launchOptionPrompt?.let { prompt ->
+                LaunchOptionDialog(
+                    prompt = prompt,
+                    onChoose = viewModel::onLaunchOptionChosen,
+                    onDismiss = viewModel::onLaunchOptionDismissed,
+                )
+            }
+
+            state.nonVrArgsPrompt?.let { prompt ->
+                NonVrArgsDialog(
+                    prompt = prompt,
+                    onAnswer = viewModel::onNonVrArgsAnswered,
+                    onDismiss = viewModel::onNonVrArgsDismissed,
+                )
+            }
+
             // Connection status banner (overlay) - dismissible so users can access navigation
             if (state.currentScreen != PluviaScreen.LoginUser && !connectionBannerDismissed && initialConnectDone && !state.isSteamConnected &&
                 SteamUtils.hasStoredCredentials()) {
@@ -1968,24 +1987,27 @@ fun PluviaMain(
 
                     HomeScreen(
                         onClickPlay = { appId, asContainer ->
-                            trackGameLaunched(appId)
-                            viewModel.setLaunchedAppId(appId)
-                            viewModel.setBootToContainer(asContainer)
-                            viewModel.setTestGraphics(false)
-                            viewModel.setDiagnostics(false)
-                            viewModel.setDebugRun(false)
-                            viewModel.setOffline(isOffline)
-                            preLaunchApp(
-                                context = context,
-                                appId = appId,
-                                setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
-                                setLoadingProgress = viewModel::setLoadingDialogProgress,
-                                setLoadingMessage = viewModel::setLoadingDialogMessage,
-                                setMessageDialogState = { msgDialogState = it },
-                                onSuccess = viewModel::launchApp,
-                                isOffline = isOffline,
-                                bootToContainer = asContainer,
-                            )
+                            val play = {
+                                trackGameLaunched(appId)
+                                viewModel.setLaunchedAppId(appId)
+                                viewModel.setBootToContainer(asContainer)
+                                viewModel.setTestGraphics(false)
+                                viewModel.setDiagnostics(false)
+                                viewModel.setDebugRun(false)
+                                viewModel.setOffline(isOffline)
+                                preLaunchApp(
+                                    context = context,
+                                    appId = appId,
+                                    setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                                    setLoadingProgress = viewModel::setLoadingDialogProgress,
+                                    setLoadingMessage = viewModel::setLoadingDialogMessage,
+                                    setMessageDialogState = { msgDialogState = it },
+                                    onSuccess = viewModel::launchApp,
+                                    isOffline = isOffline,
+                                    bootToContainer = asContainer,
+                                )
+                            }
+                            if (asContainer) play() else viewModel.checkBeforeLaunch(context, appId, play)
                         },
                         onTestGraphics = { appId ->
                             viewModel.setLaunchedAppId(appId)

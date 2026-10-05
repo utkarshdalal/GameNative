@@ -272,6 +272,19 @@ private fun rememberContainerConfigDialogStaticData(): ContainerConfigDialogStat
     )
 }
 
+private enum class ConfigTab(@androidx.annotation.StringRes val labelRes: Int) {
+    GENERAL(R.string.container_config_tab_general),
+    GRAPHICS(R.string.container_config_tab_graphics),
+    VR(R.string.container_config_tab_vr),
+    EMULATION(R.string.container_config_tab_emulation),
+    CONTROLLER(R.string.container_config_tab_controller),
+    WINE(R.string.container_config_tab_wine),
+    WIN_COMPONENTS(R.string.container_config_tab_win_components),
+    ENVIRONMENT(R.string.container_config_tab_environment),
+    DRIVES(R.string.container_config_tab_drives),
+    ADVANCED(R.string.container_config_tab_advanced),
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContainerConfigDialog(
@@ -279,6 +292,8 @@ fun ContainerConfigDialog(
     default: Boolean = false,
     title: String,
     initialConfig: ContainerData = ContainerData(),
+    // Lets the VR tab's diagnostics include this container's runtime logs.
+    containerId: String? = null,
     onDismissRequest: () -> Unit,
     onSave: (ContainerData) -> Unit,
 ) {
@@ -1256,17 +1271,29 @@ fun ContainerConfigDialog(
                     },
                 ) { paddingValues ->
                     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
-                    val tabs = listOf(
-                        stringResource(R.string.container_config_tab_general),
-                        stringResource(R.string.container_config_tab_graphics),
-                        stringResource(R.string.container_config_tab_emulation),
-                        stringResource(R.string.container_config_tab_controller),
-                        stringResource(R.string.container_config_tab_wine),
-                        stringResource(R.string.container_config_tab_win_components),
-                        stringResource(R.string.container_config_tab_environment),
-                        stringResource(R.string.container_config_tab_drives),
-                        stringResource(R.string.container_config_tab_advanced)
-                    )
+                    // The VR tab only exists on headsets, so tabs are keyed by id, not index.
+                    val showVrTab = remember {
+                        app.gamenative.BuildConfig.XR_BUILD && !default && app.gamenative.MainActivity.isHeadset(context)
+                    }
+                    val tabIds = remember(showVrTab) {
+                        buildList {
+                            add(ConfigTab.GENERAL)
+                            add(ConfigTab.GRAPHICS)
+                            if (showVrTab) add(ConfigTab.VR)
+                            addAll(
+                                listOf(
+                                    ConfigTab.EMULATION,
+                                    ConfigTab.CONTROLLER,
+                                    ConfigTab.WINE,
+                                    ConfigTab.WIN_COMPONENTS,
+                                    ConfigTab.ENVIRONMENT,
+                                    ConfigTab.DRIVES,
+                                    ConfigTab.ADVANCED,
+                                ),
+                            )
+                        }
+                    }
+                    val tabs = tabIds.map { stringResource(it.labelRes) }
 
                     // Let controller shoulder buttons cycle through the tabs: R1/R2
                     // forward, L1/L2 back (both wrap). The handler lives on the content
@@ -1321,15 +1348,19 @@ fun ContainerConfigDialog(
                                 .verticalScroll(scrollState)
                                 .weight(1f),
                         ) {
-                            if (selectedTab == 0) GeneralTabContent(state, nonzeroResolutionError)
-                            if (selectedTab == 1) GraphicsTabContent(state, default)
-                            if (selectedTab == 2) EmulationTabContent(state)
-                            if (selectedTab == 3) ControllerTabContent(state, default)
-                            if (selectedTab == 4) WineTabContent(state)
-                            if (selectedTab == 5) WinComponentsTabContent(state)
-                            if (selectedTab == 6) EnvironmentTabContent(state)
-                            if (selectedTab == 7) DrivesTabContent(state)
-                            if (selectedTab == 8) AdvancedTabContent(state)
+                            when (tabIds.getOrNull(selectedTab)) {
+                                ConfigTab.GENERAL -> GeneralTabContent(state, nonzeroResolutionError)
+                                ConfigTab.GRAPHICS -> GraphicsTabContent(state, default)
+                                ConfigTab.VR -> VrTabContent(state, containerId)
+                                ConfigTab.EMULATION -> EmulationTabContent(state)
+                                ConfigTab.CONTROLLER -> ControllerTabContent(state, default)
+                                ConfigTab.WINE -> WineTabContent(state)
+                                ConfigTab.WIN_COMPONENTS -> WinComponentsTabContent(state)
+                                ConfigTab.ENVIRONMENT -> EnvironmentTabContent(state)
+                                ConfigTab.DRIVES -> DrivesTabContent(state)
+                                ConfigTab.ADVANCED -> AdvancedTabContent(state)
+                                null -> Unit
+                            }
                         }
                     }
                 }

@@ -87,6 +87,7 @@ public class Container {
     private String rendererPresentMode = "fifo";
     private String displayRenderer = Container.DEFAULT_DISPLAY_RENDERER;
     private int xrRefreshRate = 72;
+    private String vrLaunchOption = "";
     private int xrRenderScale = 100;
     private boolean sfCompatMode = true;
     private String wincomponents = DEFAULT_WINCOMPONENTS;
@@ -294,6 +295,10 @@ public class Container {
     public int getXrRefreshRate() { return xrRefreshRate; }
 
     public void setXrRefreshRate(int v) { this.xrRefreshRate = v; }
+
+    public String getVrLaunchOption() { return vrLaunchOption; }
+
+    public void setVrLaunchOption(String v) { this.vrLaunchOption = v; }
 
     public int getXrRenderScale() { return xrRenderScale; }
 
@@ -782,6 +787,7 @@ public class Container {
             data.put("rendererPresentMode", rendererPresentMode);
             data.put("displayRendererMode", displayRenderer);
             data.put("xrRefreshRate", xrRefreshRate);
+            if (!vrLaunchOption.isEmpty()) data.put("vrLaunchOption", vrLaunchOption);
             data.put("xrRenderScale", xrRenderScale);
             data.put("sfCompatMode", sfCompatMode);
             data.put("dxwrapper", dxwrapper);
@@ -919,6 +925,9 @@ public class Container {
                     break;
                 case "xrRefreshRate" :
                     setXrRefreshRate(data.getInt(key));
+                    break;
+                case "vrLaunchOption" :
+                    setVrLaunchOption(data.getString(key));
                     break;
                 case "xrRenderScale" :
                     setXrRenderScale(data.getInt(key));

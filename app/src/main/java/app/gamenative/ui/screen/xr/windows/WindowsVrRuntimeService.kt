@@ -14,7 +14,10 @@ class WindowsVrRuntimeService(context: Context) : Closeable {
     private val applicationContext = context.applicationContext
     private val diagnostics = WindowsVrDiagnostics(applicationContext)
     private val payloadManager = WindowsVrPayloadManager(applicationContext, diagnostics)
-    private val snapshots = WindowsVrSnapshotProvider()
+    private val snapshots = WindowsVrSnapshotProvider(applicationContext)
+
+    @Volatile
+    var sessionListener: WindowsVrSessionListener? = null
     private var config: WindowsVrRuntimeConfig? = null
     private var controlServer: WindowsVrControlServer? = null
     private var presentationState = ""
@@ -46,7 +49,8 @@ class WindowsVrRuntimeService(context: Context) : Closeable {
             val prepared = payloadManager.prepare(container)
             if (active.openCompositeEnabled) payloadManager.installOpenComposite(container)
             if (controlServer == null) {
-                val server = WindowsVrControlServer(active, diagnostics, snapshots)
+                snapshots.configure(active.refreshRateHz)
+                val server = WindowsVrControlServer(active, diagnostics, snapshots) { sessionListener }
                 try {
                     server.start()
                 } catch (e: Exception) {
@@ -125,20 +129,7 @@ class WindowsVrRuntimeService(context: Context) : Closeable {
         captureDiagnostics()
     }
 
-    fun status(): List<String> = diagnostics.snapshot()
-
-    fun exportDiagnostics(): File {
-        captureDiagnostics()
-        val directory = File(applicationContext.getExternalFilesDir(null) ?: applicationContext.filesDir, "diagnostics")
-        check(directory.exists() || directory.mkdirs())
-        val report = File(directory, "windows-vr-${System.currentTimeMillis()}.txt")
-        diagnostics.record("diagnostics", "exported path=${report.path}")
-        report.writeText(
-            runCatching { diagnostics.logFile().takeIf(File::isFile)?.readText() }.getOrNull()?.ifBlank { null }
-                ?: diagnostics.snapshot().joinToString("\n"),
-        )
-        return report
-    }
+    val isEnabled: Boolean get() = config?.enabled == true && controlServer != null
 
     fun attachSession(handle: Long) {
         snapshots.attach(handle)
@@ -152,31 +143,7 @@ class WindowsVrRuntimeService(context: Context) : Closeable {
 
     private fun captureDiagnostics() {
         diagnostics.record("android", "app log tail:\n${CrashHandler.getAppLogs(800)}")
-        val active = container
-        if (active != null) {
-            val runtime = File(active.rootDir, ".wine/drive_c/gamenative-xr")
-            diagnostics.recordFileTail("Windows OpenXR runtime log", runtime.resolve("runtime.log"))
-            diagnostics.recordFileTail("Wine OpenXR Unix bridge log", runtime.resolve("unix.log"))
-            diagnostics.recordFileTail(
-                "ColdClientLoader configuration",
-                File(active.rootDir, ".wine/drive_c/Program Files (x86)/Steam/ColdClientLoader.ini"),
-            )
-            val users = File(active.rootDir, ".wine/drive_c/users")
-            val openComposite = users.walkTopDown().maxDepth(6)
-                .filter { it.isFile && it.name.equals("opencomposite.log", ignoreCase = true) }
-                .maxByOrNull(File::lastModified)
-            diagnostics.recordFileTail(
-                "OpenComposite log",
-                openComposite ?: File(users, "<wine-user>/AppData/Local/OpenComposite/logs/opencomposite.log"),
-            )
-            val playerLog = users.walkTopDown().maxDepth(6)
-                .filter { it.isFile && it.name.equals("Player.log", ignoreCase = true) }
-                .maxByOrNull(File::lastModified)
-            diagnostics.recordFileTail(
-                "latest Unity Player log",
-                playerLog ?: File(users, "<wine-user>/AppData/LocalLow/<game>/Player.log"),
-            )
-        }
+        container?.let { recordContainerLogs(diagnostics, it) }
         val processes = runCatching {
             ProcessHelper.listSubProcesses().sortedBy { it.pid }.joinToString("\n") { process ->
                 val command = runCatching {
@@ -206,6 +173,48 @@ class WindowsVrRuntimeService(context: Context) : Closeable {
         directory.listFiles().orEmpty().sortedBy(File::getName).forEach { file ->
             append(" ${file.name}=")
             append(if (file.isFile) "file(${file.length()} bytes)" else if (file.isDirectory) "directory" else "missing")
+        }
+    }
+
+    companion object {
+        /** Report of the last VR launches, for use outside a running game. */
+        fun exportLastDiagnostics(context: Context, container: Container?): File {
+            val applicationContext = context.applicationContext
+            val diagnostics = WindowsVrDiagnostics(applicationContext)
+            if (container != null) recordContainerLogs(diagnostics, container)
+            val directory = File(applicationContext.externalCacheDir ?: applicationContext.cacheDir, "gamenativevr")
+            check(directory.exists() || directory.mkdirs())
+            val report = File(directory, "windows-vr-${System.currentTimeMillis()}.txt")
+            report.writeText(
+                runCatching { diagnostics.logFile().takeIf(File::isFile)?.readText() }.getOrNull()?.ifBlank { null }
+                    ?: diagnostics.snapshot().joinToString("\n"),
+            )
+            return report
+        }
+
+        private fun recordContainerLogs(diagnostics: WindowsVrDiagnostics, active: Container) {
+            val runtime = File(active.rootDir, ".wine/drive_c/gamenative-xr")
+            diagnostics.recordFileTail("Windows OpenXR runtime log", runtime.resolve("runtime.log"))
+            diagnostics.recordFileTail("Wine OpenXR Unix bridge log", runtime.resolve("unix.log"))
+            diagnostics.recordFileTail(
+                "ColdClientLoader configuration",
+                File(active.rootDir, ".wine/drive_c/Program Files (x86)/Steam/ColdClientLoader.ini"),
+            )
+            val users = File(active.rootDir, ".wine/drive_c/users")
+            val openComposite = users.walkTopDown().maxDepth(6)
+                .filter { it.isFile && it.name.equals("opencomposite.log", ignoreCase = true) }
+                .maxByOrNull(File::lastModified)
+            diagnostics.recordFileTail(
+                "OpenComposite log",
+                openComposite ?: File(users, "<wine-user>/AppData/Local/OpenComposite/logs/opencomposite.log"),
+            )
+            val playerLog = users.walkTopDown().maxDepth(6)
+                .filter { it.isFile && it.name.equals("Player.log", ignoreCase = true) }
+                .maxByOrNull(File::lastModified)
+            diagnostics.recordFileTail(
+                "latest Unity Player log",
+                playerLog ?: File(users, "<wine-user>/AppData/LocalLow/<game>/Player.log"),
+            )
         }
     }
 

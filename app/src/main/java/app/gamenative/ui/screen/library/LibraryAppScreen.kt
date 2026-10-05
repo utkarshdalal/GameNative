@@ -900,6 +900,8 @@ internal data class ImmersiveModeUiState(
     val isEnabled: Boolean = false,
     val onChange: (Boolean) -> Unit = {},
     val isVrEnabled: Boolean = false,
+    val isVrGame: Boolean = false,
+    val isVrOnly: Boolean = false,
     val onVrChange: (Boolean) -> Unit = {},
 )
 
@@ -1465,31 +1467,33 @@ internal fun AppScreenContent(
                     }
 
                     if (immersiveMode.isSupported && isInstalled) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 4.dp)
-                                .clickable { immersiveMode.onChange(!immersiveMode.isEnabled) },
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Checkbox(
-                                checked = immersiveMode.isEnabled,
-                                onCheckedChange = immersiveMode.onChange,
-                                colors = CheckboxDefaults.colors(
-                                    uncheckedColor = Color.White.copy(alpha = 0.7f),
-                                ),
-                            )
-                            Text(
-                                text = stringResource(R.string.launch_immersive_mode),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White,
-                            )
-                        }
-                        if (immersiveMode.isEnabled) {
+                        if (!immersiveMode.isVrOnly) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(start = 24.dp)
+                                    .padding(top = 4.dp)
+                                    .clickable { immersiveMode.onChange(!immersiveMode.isEnabled) },
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Checkbox(
+                                    checked = immersiveMode.isEnabled,
+                                    onCheckedChange = immersiveMode.onChange,
+                                    colors = CheckboxDefaults.colors(
+                                        uncheckedColor = Color.White.copy(alpha = 0.7f),
+                                    ),
+                                )
+                                Text(
+                                    text = stringResource(R.string.launch_immersive_mode),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.White,
+                                )
+                            }
+                        }
+                        // VR on a game Steam doesn't flag as VR is still possible from the VR tab.
+                        if (immersiveMode.isVrGame) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
                                     .clickable { immersiveMode.onVrChange(!immersiveMode.isVrEnabled) },
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
