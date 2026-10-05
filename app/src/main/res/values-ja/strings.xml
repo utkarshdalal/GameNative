@@ -2726,7 +2726,7 @@
     <string name="gyro_settings_title">ジャイロ設定</string>
     <string name="gyro_section_output">出力とモーション</string>
     <string name="gyro_section_activation">有効化</string>
-    <string name="gyro_section_response">レスポイ</string>
+    <string name="gyro_section_response">レスポンス</string>
     <string name="gyro_output">出力</string>
     <string name="gyro_output_subtitle">端末の動きで操作する対象を選択します。</string>
     <string name="gyro_conversion_style">変換方式</string>
