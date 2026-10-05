@@ -2,8 +2,8 @@ $ErrorActionPreference = "Stop"
 $repository = Split-Path -Parent $PSScriptRoot
 $payload = Join-Path $repository "app\src\modernXr\assets"
 $adapters = @(
-    @{ Name = "opencomposite_x64.dll"; Release = "v9"; Sha256 = "d9d542bcb11acb607c5a4714e77e9c4833b7760a61d9706379214acd2f2375c9"; Machine = 0x8664 },
-    @{ Name = "opencomposite_x86.dll"; Release = "v9"; Sha256 = "2bdf7b4e6a425af149a21f578b951f1dfe0f9e3fe2a6e8c0ff3604a25aee9911"; Machine = 0x14c }
+    @{ Name = "opencomposite_x64.dll"; Release = "v10"; Sha256 = "0d395d267734bba3efa514edb836e728ac8c94ae2228c5ea31fca51a2d2819d8"; Machine = 0x8664 },
+    @{ Name = "opencomposite_x86.dll"; Release = "v10"; Sha256 = "86a77b58c817ed0b14f4e7963c1364d47f86b53cc75fed0ba6d04e87d1040059"; Machine = 0x14c }
 )
 New-Item -ItemType Directory -Force -Path $payload | Out-Null
 foreach ($adapter in $adapters) {
