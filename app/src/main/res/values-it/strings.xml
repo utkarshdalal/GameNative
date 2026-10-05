@@ -1843,6 +1843,10 @@
     <string name="screen_effects_scaling_mode_fsr_desc">Upscaling nitido in super-risoluzione.</string>
     <string name="screen_effects_scaling_mode_fsr_aspect">FSR Fit</string>
     <string name="screen_effects_scaling_mode_fsr_aspect_desc">FSR, mantiene le proporzioni.</string>
+    <string name="screen_effects_scaling_mode_sgsr">SGSR</string>
+    <string name="screen_effects_scaling_mode_sgsr_desc">Upscaling Snapdragon in un solo passaggio.</string>
+    <string name="screen_effects_scaling_mode_sgsr_aspect">SGSR Fit</string>
+    <string name="screen_effects_scaling_mode_sgsr_aspect_desc">SGSR, mantiene le proporzioni.</string>
     <string name="screen_effects_scaling_mode_dls">DLS</string>
     <string name="screen_effects_scaling_mode_dls_desc">Passaggio di nitidezza / chiarezza.</string>
     <string name="screen_effects_scaling_mode_natural">Naturale</string>

@@ -1776,6 +1776,10 @@
     <string name="screen_effects_scaling_mode_stretch_desc">拉伸填满屏幕，忽略宽高比。</string>
     <string name="screen_effects_scaling_mode_fsr_desc">清晰的超分辨率放大。</string>
     <string name="screen_effects_scaling_mode_fsr_aspect_desc">FSR，保持宽高比。</string>
+    <string name="screen_effects_scaling_mode_sgsr">SGSR</string>
+    <string name="screen_effects_scaling_mode_sgsr_desc">Snapdragon 单通道放大。</string>
+    <string name="screen_effects_scaling_mode_sgsr_aspect">SGSR 适配</string>
+    <string name="screen_effects_scaling_mode_sgsr_aspect_desc">SGSR，保持宽高比。</string>
     <string name="screen_effects_scaling_mode_dls_desc">锐化／清晰度处理。</string>
     <string name="screen_effects_scaling_mode_natural_desc">更暖的色调。</string>
     <string name="screen_effects_scaling_mode">缩放模式</string>

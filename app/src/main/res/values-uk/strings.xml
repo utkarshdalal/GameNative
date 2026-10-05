@@ -1850,6 +1850,10 @@
     <string name="screen_effects_scaling_mode_fsr_desc">Чіткий апскейл надвисокої роздільності.</string>
     <string name="screen_effects_scaling_mode_fsr_aspect">FSR Fit</string>
     <string name="screen_effects_scaling_mode_fsr_aspect_desc">FSR, зберігає співвідношення сторін.</string>
+    <string name="screen_effects_scaling_mode_sgsr">SGSR</string>
+    <string name="screen_effects_scaling_mode_sgsr_desc">Однопрохідний апскейл Snapdragon.</string>
+    <string name="screen_effects_scaling_mode_sgsr_aspect">SGSR Fit</string>
+    <string name="screen_effects_scaling_mode_sgsr_aspect_desc">SGSR, зберігає співвідношення сторін.</string>
     <string name="screen_effects_scaling_mode_dls">DLS</string>
     <string name="screen_effects_scaling_mode_dls_desc">Прохід різкості / чіткості.</string>
     <string name="screen_effects_scaling_mode_natural">Природний</string>

@@ -1816,6 +1816,10 @@
     <string name="screen_effects_scaling_mode_fsr_desc">선명한 초해상도 업스케일.</string>
     <string name="screen_effects_scaling_mode_fsr_aspect">FSR Fit</string>
     <string name="screen_effects_scaling_mode_fsr_aspect_desc">FSR, 화면비 유지.</string>
+    <string name="screen_effects_scaling_mode_sgsr">SGSR</string>
+    <string name="screen_effects_scaling_mode_sgsr_desc">Snapdragon 단일 패스 업스케일.</string>
+    <string name="screen_effects_scaling_mode_sgsr_aspect">SGSR Fit</string>
+    <string name="screen_effects_scaling_mode_sgsr_aspect_desc">SGSR, 화면비 유지.</string>
     <string name="screen_effects_scaling_mode_dls">DLS</string>
     <string name="screen_effects_scaling_mode_dls_desc">샤픈/선명도 패스.</string>
     <string name="screen_effects_scaling_mode_natural">자연</string>

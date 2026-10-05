@@ -1792,6 +1792,10 @@
     <string name="screen_effects_scaling_mode_fsr_desc">Scharfe Super-Resolution-Hochskalierung.</string>
     <string name="screen_effects_scaling_mode_fsr_aspect">FSR Fit</string>
     <string name="screen_effects_scaling_mode_fsr_aspect_desc">FSR, behält Seitenverhältnis bei.</string>
+    <string name="screen_effects_scaling_mode_sgsr">SGSR</string>
+    <string name="screen_effects_scaling_mode_sgsr_desc">Snapdragon-Hochskalierung in einem Durchgang.</string>
+    <string name="screen_effects_scaling_mode_sgsr_aspect">SGSR Fit</string>
+    <string name="screen_effects_scaling_mode_sgsr_aspect_desc">SGSR, behält Seitenverhältnis bei.</string>
     <string name="screen_effects_scaling_mode_dls">DLS</string>
     <string name="screen_effects_scaling_mode_dls_desc">Schärfen / Klarheit.</string>
     <string name="screen_effects_scaling_mode_natural">Natürlich</string>

@@ -1854,6 +1854,10 @@
     <string name="screen_effects_scaling_mode_fsr_desc">Ostre skalowanie super-rozdzielczości.</string>
     <string name="screen_effects_scaling_mode_fsr_aspect">FSR Fit</string>
     <string name="screen_effects_scaling_mode_fsr_aspect_desc">FSR, zachowuje proporcje.</string>
+    <string name="screen_effects_scaling_mode_sgsr">SGSR</string>
+    <string name="screen_effects_scaling_mode_sgsr_desc">Jednoprzebiegowe skalowanie Snapdragon.</string>
+    <string name="screen_effects_scaling_mode_sgsr_aspect">SGSR Fit</string>
+    <string name="screen_effects_scaling_mode_sgsr_aspect_desc">SGSR, zachowuje proporcje.</string>
     <string name="screen_effects_scaling_mode_dls">DLS</string>
     <string name="screen_effects_scaling_mode_dls_desc">Wyostrzanie / klarowność.</string>
     <string name="screen_effects_scaling_mode_natural">Naturalny</string>
