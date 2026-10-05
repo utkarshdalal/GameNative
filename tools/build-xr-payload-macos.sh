@@ -79,15 +79,15 @@ cp "$source_dir/builtin/gamenative_xr_unixbridge32.dll" "$output/"
 
 # OpenComposite (GameNative build with the background-apptype patch, checksum-verified) for OpenVR titles.
 if [ ! -f "$output/opencomposite_x64.dll" ]; then
-    curl -sL "https://github.com/GameNative/opencomposite/releases/download/v2/opencomposite_x64.dll" \
+    curl -sL "https://github.com/GameNative/opencomposite/releases/download/v9/opencomposite_x64.dll" \
         -o "$output/opencomposite_x64.dll"
-    echo "55dc09c465ab2bf2787b47fec74cb9787b05aa19e1951df207ffc9dd3926af2f  $output/opencomposite_x64.dll" \
+    echo "d9d542bcb11acb607c5a4714e77e9c4833b7760a61d9706379214acd2f2375c9  $output/opencomposite_x64.dll" \
         | shasum -a 256 -c - >/dev/null || { echo "OpenComposite checksum mismatch"; exit 1; }
 fi
 if [ ! -f "$output/opencomposite_x86.dll" ]; then
-    curl -sL "https://github.com/GameNative/opencomposite/releases/download/v5/opencomposite_x86.dll" \
+    curl -sL "https://github.com/GameNative/opencomposite/releases/download/v9/opencomposite_x86.dll" \
         -o "$output/opencomposite_x86.dll"
-    echo "5cba39e5cd3cc2f20b3dae576ffaa84c56a750cde622e797421e01a0e680edf2  $output/opencomposite_x86.dll" \
+    echo "2bdf7b4e6a425af149a21f578b951f1dfe0f9e3fe2a6e8c0ff3604a25aee9911  $output/opencomposite_x86.dll" \
         | shasum -a 256 -c - >/dev/null || { echo "OpenComposite x86 checksum mismatch"; exit 1; }
 fi
 
