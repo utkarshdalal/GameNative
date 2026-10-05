@@ -1266,6 +1266,11 @@
     <string name="main_downloading_steam">Завантаження Steam...</string>
     <string name="steam_update_required_title">Потрібне оновлення</string>
     <string name="steam_update_required_message">Для цієї гри є оновлення. Клієнт Steam не зможе її запустити, доки оновлення не встановлено. Оновіть зараз, а потім запустіть знову.</string>
+    <string name="steam_agreement_ssa_title">Угода передплатника Steam</string>
+    <string name="steam_agreement_eula_title">Ліцензійна угода з кінцевим користувачем</string>
+    <string name="steam_agreement_message">Steam вимагає прийняти цю угоду перед початком гри.</string>
+    <string name="steam_agreement_accept">Прийняти</string>
+    <string name="steam_agreement_decline">Відхилити</string>
     <string name="main_installing_glibc">Інсталяція компонентів glibc...</string>
     <string name="main_installing_bionic">Інсталяція компонентів Bionic...</string>
     <string name="main_loading">Завантаження...</string>

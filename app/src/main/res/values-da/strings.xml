@@ -1086,6 +1086,11 @@
     <string name="main_downloading_steam">Downloader Steam...</string>
     <string name="steam_update_required_title">Opdatering påkrævet</string>
     <string name="steam_update_required_message">Dette spil har en opdatering. Steam-klienten kan ikke starte det, før opdateringen er installeret. Opdater nu, og start derefter igen.</string>
+    <string name="steam_agreement_ssa_title">Steam-abonnentaftale</string>
+    <string name="steam_agreement_eula_title">Slutbrugerlicensaftale</string>
+    <string name="steam_agreement_message">Steam kræver, at du accepterer denne aftale, før du spiller.</string>
+    <string name="steam_agreement_accept">Accepter</string>
+    <string name="steam_agreement_decline">Afvis</string>
     <string name="main_installing_glibc">Installerer glibc-komponenter...</string>
     <string name="main_installing_bionic">Installerer Bionic-komponenter...</string>
     <string name="main_loading">Indlæser...</string>

@@ -1250,6 +1250,11 @@
     <string name="main_downloading_steam">正在下載 Steam...</string>
     <string name="steam_update_required_title">需要更新</string>
     <string name="steam_update_required_message">此遊戲有可用的更新。在安裝更新之前，Steam 用戶端無法啟動它。請立即更新，然後重新啟動。</string>
+    <string name="steam_agreement_ssa_title">Steam 訂戶協議</string>
+    <string name="steam_agreement_eula_title">終端使用者授權合約</string>
+    <string name="steam_agreement_message">Steam 要求你在遊玩前接受此協議。</string>
+    <string name="steam_agreement_accept">接受</string>
+    <string name="steam_agreement_decline">拒絕</string>
     <string name="main_installing_glibc">安裝 glibc 組件...</string>
     <string name="main_installing_bionic">安裝Bionic元件中...</string>
     <string name="main_loading">載入中...</string>

@@ -827,6 +827,11 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="main_downloading_steam">Загрузка Steam...</string>
     <string name="steam_update_required_title">Требуется обновление</string>
     <string name="steam_update_required_message">Для этой игры есть обновление. Клиент Steam не сможет запустить её, пока обновление не установлено. Обновите сейчас, затем запустите снова.</string>
+    <string name="steam_agreement_ssa_title">Соглашение подписчика Steam</string>
+    <string name="steam_agreement_eula_title">Лицензионное соглашение с конечным пользователем</string>
+    <string name="steam_agreement_message">Steam требует принять это соглашение перед началом игры.</string>
+    <string name="steam_agreement_accept">Принять</string>
+    <string name="steam_agreement_decline">Отклонить</string>
     <string name="main_installing_bionic">Установка компонентов Bionic...</string>
     <string name="main_installing_glibc">Установка компонентов glibc...</string>
     <string name="main_keep_local">Сохранить локальное</string>

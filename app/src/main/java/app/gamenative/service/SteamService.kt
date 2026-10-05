@@ -32,6 +32,7 @@ import app.gamenative.data.LaunchInfo
 import app.gamenative.data.OwnedGames
 import app.gamenative.data.PostSyncInfo
 import app.gamenative.data.PreferredCopyOption
+import app.gamenative.data.SteamAgreementState
 import app.gamenative.data.SteamApp
 import app.gamenative.data.SteamControllerConfigDetail
 import app.gamenative.data.SteamFriend
@@ -83,10 +84,12 @@ import `in`.dragonbra.javasteam.networking.steam3.ProtocolTypes
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesClientObjects.ECloudPendingRemoteOperation
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesCloudconfigstoreSteamclient
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesFamilygroupsSteamclient
+import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesPlayerSteamclient
 import app.gamenative.data.SteamCollectionRepository
 import app.gamenative.steam.CloudConfigStoreService
 import app.gamenative.steam.SteamCollectionParser
 import `in`.dragonbra.javasteam.rpc.service.FamilyGroups
+import `in`.dragonbra.javasteam.rpc.service.Player
 import `in`.dragonbra.javasteam.steam.authentication.AuthPollResult
 import `in`.dragonbra.javasteam.steam.authentication.AuthSessionDetails
 import `in`.dragonbra.javasteam.steam.authentication.AuthenticationException
@@ -139,6 +142,7 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.Collections
 import java.util.EnumSet
+import java.util.Locale
 import java.util.concurrent.CancellationException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
@@ -269,6 +273,7 @@ class SteamService : Service(), IChallengeUrlChanged {
     private var _steamCloud: SteamCloud? = null
     private var _steamUserStats: SteamUserStats? = null
     private var _steamFamilyGroups: FamilyGroups? = null
+    private var _steamPlayer: Player? = null
 
     private var _loginResult: LoginResult = LoginResult.Failed
 
@@ -1121,6 +1126,53 @@ class SteamService : Service(), IChallengeUrlChanged {
                 PluviaApp.events.emit(AndroidEvent.PreferredCopyChanged(appId))
             }
             true
+        }
+
+        suspend fun getSteamAgreementState(): SteamAgreementState? = withContext(Dispatchers.IO) {
+            if (!isLoggedIn) return@withContext null
+            val player = instance?._steamPlayer ?: return@withContext null
+            try {
+                withTimeout(15_000) {
+                    val request = SteammessagesPlayerSteamclient.CPlayer_GetTimeSSAAccepted_Request.newBuilder().build()
+                    val response = player.getTimeSSAAccepted(request).await()
+                    if (response.result != EResult.OK) {
+                        Timber.w("getTimeSSAAccepted returned ${response.result}")
+                        return@withTimeout null
+                    }
+                    val body = response.body
+                    val state = SteamAgreementState(
+                        timeAccepted = body.timeSsaAccepted.toUInt().toLong(),
+                        timeUpdated = body.timeSsaUpdated.toUInt().toLong(),
+                    )
+                    Timber.i(
+                        "SSA state: timeSsaAccepted=${state.timeAccepted} timeSsaUpdated=${state.timeUpdated} " +
+                            "needsAcceptance=${state.needsAcceptance}",
+                    )
+                    state
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "getTimeSSAAccepted failed")
+                null
+            }
+        }
+
+        suspend fun acceptSteamAgreement(): Boolean = withContext(Dispatchers.IO) {
+            if (!isLoggedIn) return@withContext false
+            val player = instance?._steamPlayer ?: return@withContext false
+            try {
+                withTimeout(15_000) {
+                    val request = SteammessagesPlayerSteamclient.CPlayer_AcceptSSA_Request.newBuilder().apply {
+                        agreementType = SteammessagesPlayerSteamclient.EAgreementType.k_EAgreementType_GlobalSSA
+                        timeSignedUtc = (System.currentTimeMillis() / 1000L).toInt()
+                    }.build()
+                    val response = player.acceptSSA(request).await()
+                    Timber.i("acceptSSA returned ${response.result}")
+                    response.result == EResult.OK
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "acceptSSA failed")
+                false
+            }
         }
 
         private fun findLicenseForLender(
@@ -4196,6 +4248,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             _unifiedFriends = SteamUnifiedFriends(this)
             _steamFamilyGroups = steamClient!!.getHandler<SteamUnifiedMessages>()!!.createService<FamilyGroups>()
+            _steamPlayer = steamClient!!.getHandler<SteamUnifiedMessages>()!!.createService<Player>()
 
             // subscribe to the callbacks we are interested in
             with(callbackSubscriptions) {
@@ -4523,6 +4576,10 @@ class SteamService : Service(), IChallengeUrlChanged {
                 // servers from the Steam Directory.
                 if (!PrefManager.cellIdManuallySet) {
                     PrefManager.cellId = callback.cellID
+                }
+
+                callback.ipCountryCode?.takeIf { it.isNotBlank() }?.let {
+                    PrefManager.steamIpCountryCode = it.trim().uppercase(Locale.ROOT)
                 }
 
                 // retrieve persona data of logged in user
