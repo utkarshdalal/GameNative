@@ -281,7 +281,7 @@
     <string name="screen_effects_upscaling">アップスケーリング</string>
     <string name="screen_effects_basic_scaling">基本スケーリング</string>
     <string name="screen_effects_scaling_mode_none_desc">スケーリングなし。</string>
-    <string name="screen_effects_scaling_mode_nearest_desc">くっきりしたピクセル(レトロスタイル向け)。</string>
+    <string name="screen_effects_scaling_mode_nearest_desc">くっきりしたピクセル。レトロスタイル向け。</string>
     <string name="screen_effects_scaling_mode_linear_desc">滑らかなスケーリング。</string>
     <string name="screen_effects_scaling_mode_fill_desc">画面いっぱいに表示し、端を切り取ります。</string>
     <string name="screen_effects_scaling_mode_stretch_desc">縦横比を無視して画面いっぱいに引き伸ばします。</string>
@@ -832,8 +832,8 @@
     <string name="gesture_action_left_click">左クリック</string>
     <string name="gesture_action_right_click">右クリック</string>
     <string name="gesture_action_middle_click">中クリック</string>
-    <string name="gesture_pan_middle_mouse">マウス拡大縮小</string>
-    <string name="gesture_pan_inverted_middle_mouse">反転 マウス拡大縮小</string>
+    <string name="gesture_pan_middle_mouse">マウス 中ボタンパン操作</string>
+    <string name="gesture_pan_inverted_middle_mouse">マウス 中ボタンパン操作 (反転)</string>
     <string name="gesture_pan_wasd">WASD</string>
     <string name="gesture_pan_inverted_wasd">反転 WASD</string>
     <string name="gesture_pan_arrow_keys">矢印キー</string>
