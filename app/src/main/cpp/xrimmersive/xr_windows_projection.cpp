@@ -171,10 +171,6 @@ EGLImageKHR WindowsProjectionPresenter::createImageFromDmabuf(const EyeFrame &fr
     attributes[count++] = frame.height;
     attributes[count++] = EGL_LINUX_DRM_FOURCC_EXT;
     attributes[count++] = static_cast<EGLint>(frame.fourcc);
-    // See createImageFromHardwareBuffer: the source frame is sRGB-encoded, so sampling must
-    // decode it or it gets sRGB-encoded a second time on write to our sRGB swapchain.
-    attributes[count++] = EGL_GL_COLORSPACE_KHR;
-    attributes[count++] = EGL_GL_COLORSPACE_SRGB_KHR;
     for (int plane = 0; plane < frame.planeCount; ++plane) {
         attributes[count++] = planeFd[plane];
         attributes[count++] = frame.dmabufFds[plane];
@@ -189,7 +185,22 @@ EGLImageKHR WindowsProjectionPresenter::createImageFromDmabuf(const EyeFrame &fr
             attributes[count++] = static_cast<EGLint>(frame.modifier >> 32);
         }
     }
+    // Same sRGB tag as createImageFromHardwareBuffer. Last in the list so a driver that rejects
+    // it can be retried by just cutting it off, which is no worse than before the tag existed.
+    const int colorspaceAt = count;
+    attributes[count++] = EGL_GL_COLORSPACE_KHR;
+    attributes[count++] = EGL_GL_COLORSPACE_SRGB_KHR;
     attributes[count] = EGL_NONE;
+    EGLImageKHR image =
+        eglCreateImageKHR(display_, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, attributes);
+    if (image != EGL_NO_IMAGE_KHR) return image;
+    static bool logged = false;
+    if (!logged) {
+        logged = true;
+        LOGI("EGL dma-buf import with sRGB colorspace failed (0x%x) — retrying untagged",
+             eglGetError());
+    }
+    attributes[colorspaceAt] = EGL_NONE;
     return eglCreateImageKHR(display_, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, attributes);
 }
 
