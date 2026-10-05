@@ -10,6 +10,8 @@ import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.Base64
 
+private const val OPEN_COMPOSITE_SCAN_LIMIT = 200000
+
 class WindowsVrPayloadManager(
     private val context: Context,
     private val diagnostics: WindowsVrDiagnostics,
@@ -59,28 +61,21 @@ class WindowsVrPayloadManager(
     }
 
     fun installOpenComposite(container: Container) {
-        val gameRoot = Container.drivesIterator(container.drives).asSequence()
-            .firstOrNull { it[0].equals("A", ignoreCase = true) }
-            ?.get(1)
-            ?.let(::File)
-            ?.canonicalFile
-            ?: error("OpenComposite requires the launched game's A: drive")
+        val gameRoot = launchedGameRoot(container) ?: error("OpenComposite requires the launched game's A: drive")
         check(gameRoot.isDirectory)
-        val candidates = gameRoot.walkTopDown()
-            .onEnter { it.canonicalFile.path.startsWith(gameRoot.path + File.separator) || it.canonicalFile == gameRoot }
-            .take(20001)
-            .toList()
-        check(candidates.size <= 20000) { "OpenComposite scan exceeded 20000 files" }
-        val adapterAssets = mapOf(0x8664 to "opencomposite_x64.dll", 0x14c to "opencomposite_x86.dll")
-        val targets = candidates.filter { it.isFile && it.name.equals("openvr_api.dll", ignoreCase = true) }
-            .mapNotNull { file -> runCatching { peMachineOf(file) }.getOrNull()?.let { machine -> adapterAssets[machine]?.let { file to it } } }
+        val payloadDirectory = File(container.rootDir, ".wine/drive_c/gamenative-xr")
+        val cache = File(payloadDirectory, "opencomposite.cache")
+        val cachedTargets = cachedOpenCompositeFiles(cache, gameRoot)?.let { files ->
+            openCompositeTargets(files).takeIf { it.size == files.size }
+        }
+        val targets = cachedTargets ?: openCompositeTargets(scanOpenComposite(gameRoot))
+        diagnostics.record("opencomposite", "targets=${targets.size} source=${if (cachedTargets != null) "cache" else "scan"}")
         check(targets.isNotEmpty()) { "No x64 or x86 openvr_api.dll was found under the launched game" }
         val adapters = targets.map { it.second }.distinct().associateWith { name -> context.assets.open(name).use { it.readBytes() } }
-        val record = File(File(container.rootDir, ".wine/drive_c/gamenative-xr"), "opencomposite.targets")
-        val encodedTargets = targets.map { checkNotNull(it.first.parentFile).canonicalPath }
-            .distinct()
-            .joinToString("\n") { Base64.getUrlEncoder().withoutPadding().encodeToString(it.toByteArray()) }
-        writeIfChanged(record, encodedTargets.toByteArray())
+        val record = File(payloadDirectory, "opencomposite.targets")
+        val directories = targets.map { checkNotNull(it.first.parentFile).canonicalPath }.distinct()
+        writeIfChanged(record, directories.joinToString("\n", transform = ::encodePath).toByteArray())
+        writeIfChanged(cache, (listOf(gameRoot.path) + directories).joinToString("\n", transform = ::encodePath).toByteArray())
         openCompositeRecord = record
         targets.forEach { (target, adapterName) ->
             val adapter = checkNotNull(adapters[adapterName])
@@ -220,28 +215,55 @@ class WindowsVrPayloadManager(
     }
 
     private fun recoverOpenComposite(container: Container, payloadDirectory: File) {
-        val gameRoot = Container.drivesIterator(container.drives).asSequence()
-            .firstOrNull { it[0].equals("A", ignoreCase = true) }
-            ?.get(1)
-            ?.let(::File)
-            ?.canonicalFile
-            ?: return
+        val gameRoot = launchedGameRoot(container) ?: return
         if (!gameRoot.isDirectory) return
         val record = File(payloadDirectory, "opencomposite.targets")
-        val recorded = record.takeIf { it.isFile }?.readLines().orEmpty().mapNotNull { value ->
-            runCatching { File(String(Base64.getUrlDecoder().decode(value))).canonicalFile }.getOrNull()
-        }
-        val discovered = gameRoot.walkTopDown()
-            .onEnter { it.canonicalFile.path.startsWith(gameRoot.path + File.separator) || it.canonicalFile == gameRoot }
-            .take(20000)
-            .filter { it.isFile && it.name == "openvr_api.dll.gamenative-owner" }
-            .mapNotNull { it.parentFile }
-            .toList()
-        (recorded + discovered).distinctBy { it.path }.filter {
+        val recorded = record.takeIf { it.isFile }?.readLines().orEmpty().mapNotNull(::decodePath)
+        recorded.distinctBy { it.path }.filter {
             it.path.startsWith(gameRoot.path + File.separator)
         }.forEach(::restoreOpenCompositeDirectory)
         record.delete()
     }
+
+    private fun launchedGameRoot(container: Container): File? {
+        return Container.drivesIterator(container.drives).asSequence()
+            .firstOrNull { it[0].equals("A", ignoreCase = true) }
+            ?.get(1)
+            ?.let(::File)
+            ?.canonicalFile
+    }
+
+    private fun cachedOpenCompositeFiles(cache: File, gameRoot: File): List<File>? {
+        val lines = cache.takeIf { it.isFile }?.readLines()?.filter(String::isNotEmpty) ?: return null
+        val paths = lines.map { decodePath(it) ?: return null }
+        if (paths.size < 2 || paths.first() != gameRoot) return null
+        val directories = paths.drop(1)
+        val valid = directories.all {
+            it.path.startsWith(gameRoot.path + File.separator) &&
+                (File(it, "openvr_api.dll").isFile || File(it, "openvr_api.dll.gamenative-original").isFile)
+        }
+        return if (valid) directories.map { File(it, "openvr_api.dll") } else null
+    }
+
+    private fun scanOpenComposite(gameRoot: File): List<File> {
+        var scanned = 0
+        return gameRoot.walkTopDown()
+            .onEnter { it.canonicalFile.path.startsWith(gameRoot.path + File.separator) || it.canonicalFile == gameRoot }
+            .onEach { check(++scanned <= OPEN_COMPOSITE_SCAN_LIMIT) { "OpenComposite scan exceeded $OPEN_COMPOSITE_SCAN_LIMIT files" } }
+            .filter { it.isFile && it.name.equals("openvr_api.dll", ignoreCase = true) }
+            .toList()
+    }
+
+    private fun openCompositeTargets(candidates: List<File>): List<Pair<File, String>> {
+        val adapterAssets = mapOf(0x8664 to "opencomposite_x64.dll", 0x14c to "opencomposite_x86.dll")
+        return candidates.mapNotNull { file ->
+            runCatching { peMachineOf(file) }.getOrNull()?.let { machine -> adapterAssets[machine]?.let { file to it } }
+        }
+    }
+
+    private fun encodePath(path: String): String = Base64.getUrlEncoder().withoutPadding().encodeToString(path.toByteArray())
+
+    private fun decodePath(value: String): File? = runCatching { File(String(Base64.getUrlDecoder().decode(value))).canonicalFile }.getOrNull()
 
     private fun installVulkanInitConfig(directory: File) {
         val config = File(directory, "opencomposite.ini")
