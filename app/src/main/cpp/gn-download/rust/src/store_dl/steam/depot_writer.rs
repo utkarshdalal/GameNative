@@ -1543,6 +1543,7 @@ impl DepotFiles {
                     .map_err(|err| format!("write_depot: final sync '{}': {err}", slot.path))?;
             } else if !st.opened {
                 // 0-chunk regular file (never touched by a worker): ensure it exists at exact size.
+                make_parent_dirs(Path::new(&slot.path))?;
                 let file = OpenOptions::new()
                     .create(true)
                     .write(true)
@@ -4288,6 +4289,41 @@ mod tests {
         // All three chunks were verified on disk, none fetched.
         assert_eq!(verified.load(Ordering::Relaxed), 3);
         assert_eq!(fs::metadata(dir.join("data.bin")).unwrap().len(), 9);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn empty_file_in_a_folder_without_other_files_gets_its_folder() {
+        let dir = temp_dir("empty_file_parent");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("data.bin"), b"abcdefghi").unwrap();
+        let mut manifest = three_chunk_manifest();
+        manifest.files.push(crate::store_dl::steam::content_manifest::FileMapping {
+            filename: "cfg/deckard/dummy.json".into(),
+            size: 0,
+            ..Default::default()
+        });
+        let server = CContentServerDirectoryServerInfo {
+            host: "cdn.example".into(),
+            https_support: "mandatory".into(),
+            ..Default::default()
+        };
+
+        let result = write_depot_sequential(
+            &manifest,
+            &[3u8; 32],
+            &CdnClient::new(""),
+            &[server],
+            dir.to_str().unwrap(),
+            DepotWriteOptions {
+                max_workers: 4,
+                max_process_workers: 2,
+                ..Default::default()
+            },
+        );
+
+        assert!(result.ok(), "{}", result.error);
+        assert_eq!(fs::metadata(dir.join("cfg/deckard/dummy.json")).unwrap().len(), 0);
         let _ = fs::remove_dir_all(&dir);
     }
 
