@@ -1711,7 +1711,13 @@ fun XServerScreen(
                     winHandler.refreshControllerMappingsForHotplug()
                 }
                 val assignedSlot = ControllerManager.getInstance().getSlotForDevice(it.event.device.id)
-                for (stage in gamepadInputRouteForSlot(assignedSlot)) {
+                val route = gamepadInputRouteForSlot(assignedSlot)
+                Log.d("gnpad", "key deviceId=" + it.event.device.id +
+                    " keyCode=" + it.event.keyCode +
+                    " action=" + it.event.action +
+                    " slot=" + assignedSlot +
+                    " route=" + route)
+                for (stage in route) {
                     handled = when (stage) {
                         GamepadInputRoute.SET_CURRENT_CONTROLLER -> {
                             winHandler.setCurrentController(it.event.device.id)
@@ -1721,7 +1727,10 @@ fun XServerScreen(
                         GamepadInputRoute.INPUT_CONTROLS -> PluviaApp.inputControlsView?.onKeyEvent(it.event) == true
                         GamepadInputRoute.WIN_HANDLER -> winHandler.onKeyEvent(it.event)
                     }
-                    if (handled) break
+                    if (handled) {
+                        Log.d("gnpad", "key handled by " + stage + " deviceId=" + it.event.device.id + " keyCode=" + it.event.keyCode)
+                        break
+                    }
                 }
             }
             if (!handled && isKeyboard) {
@@ -1766,7 +1775,11 @@ fun XServerScreen(
                 val winHandler = xServerView!!.getxServer().winHandler
                 ControllerManager.getInstance().noteGamepadActivity(it.event)
                 val assignedSlot = ControllerManager.getInstance().getSlotForDevice(it.event.device.id)
-                for (stage in gamepadInputRouteForSlot(assignedSlot)) {
+                val route = gamepadInputRouteForSlot(assignedSlot)
+                Log.d("gnpad", "motion deviceId=" + it.event.device.id +
+                    " slot=" + assignedSlot +
+                    " route=" + route)
+                for (stage in route) {
                     handled = when (stage) {
                         GamepadInputRoute.SET_CURRENT_CONTROLLER -> {
                             winHandler.setCurrentController(it.event.device.id)
@@ -1776,7 +1789,10 @@ fun XServerScreen(
                         GamepadInputRoute.INPUT_CONTROLS -> PluviaApp.inputControlsView?.onGenericMotionEvent(it.event) == true
                         GamepadInputRoute.WIN_HANDLER -> winHandler.onGenericMotionEvent(it.event)
                     }
-                    if (handled) break
+                    if (handled) {
+                        Log.d("gnpad", "motion handled by " + stage + " deviceId=" + it.event.device.id)
+                        break
+                    }
                 }
             }
             if (PluviaApp.touchpadView?.hasPointerCapture() != true && !PluviaApp.isOverlayPaused) {

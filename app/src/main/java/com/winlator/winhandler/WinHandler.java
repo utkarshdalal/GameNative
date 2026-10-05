@@ -1150,6 +1150,12 @@ public class WinHandler {
             }
         }
 
+        Log.d(TAG, "Key fallthrough deviceId=" + event.getDeviceId()
+            + " keyCode=" + event.getKeyCode()
+            + " action=" + event.getAction()
+            + " slot=" + slot
+            + " currentController=" + (this.currentController != null ? this.currentController.getDeviceId() : -1)
+            + " externalController=" + (externalController != null ? externalController.getDeviceId() : -1));
 
         if (externalController != null && externalController.getDeviceId() == event.getDeviceId() && event.getRepeatCount() == 0) {
             int action = event.getAction();
@@ -1223,6 +1229,12 @@ public class WinHandler {
             buffer.put(OFF_BTN + i, sdlButtons[i]);
         }
         buffer.put(OFF_HAT, (byte)0);
+
+        Log.d(TAG, "sendMemoryFileState slot=" + slot
+            + " L1=" + sdlButtons[9]
+            + " R1=" + sdlButtons[10]
+            + " A=" + sdlButtons[0]
+            + " buttonsBitmask=" + state.buttons);
 
         notifyStateChanged(slot);
     }
