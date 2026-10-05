@@ -110,6 +110,8 @@ private fun scalingModeLabelRes(mode: Int): Int = when (mode) {
     ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT -> R.string.screen_effects_scaling_mode_fsr_aspect
     ScreenEffectsConfig.SCALING_MODE_DLS -> R.string.screen_effects_scaling_mode_dls
     ScreenEffectsConfig.SCALING_MODE_NATURAL -> R.string.screen_effects_scaling_mode_natural
+    ScreenEffectsConfig.SCALING_MODE_SGSR -> R.string.screen_effects_scaling_mode_sgsr
+    ScreenEffectsConfig.SCALING_MODE_SGSR_ASPECT -> R.string.screen_effects_scaling_mode_sgsr_aspect
     else -> R.string.screen_effects_scaling_mode_none
 }
 
@@ -122,6 +124,8 @@ private fun scalingModeDescRes(mode: Int): Int = when (mode) {
     ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT -> R.string.screen_effects_scaling_mode_fsr_aspect_desc
     ScreenEffectsConfig.SCALING_MODE_DLS -> R.string.screen_effects_scaling_mode_dls_desc
     ScreenEffectsConfig.SCALING_MODE_NATURAL -> R.string.screen_effects_scaling_mode_natural_desc
+    ScreenEffectsConfig.SCALING_MODE_SGSR -> R.string.screen_effects_scaling_mode_sgsr_desc
+    ScreenEffectsConfig.SCALING_MODE_SGSR_ASPECT -> R.string.screen_effects_scaling_mode_sgsr_aspect_desc
     else -> R.string.screen_effects_scaling_mode_none_desc
 }
 
@@ -146,6 +150,8 @@ private val VULKAN_BASIC_MODES = listOf(
 private val GL_UPSCALING_MODES = listOf(
     ScreenEffectsConfig.SCALING_MODE_FSR,
     ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT,
+    ScreenEffectsConfig.SCALING_MODE_SGSR,
+    ScreenEffectsConfig.SCALING_MODE_SGSR_ASPECT,
 )
 private val GL_BASIC_MODES = listOf(
     ScreenEffectsConfig.SCALING_MODE_NEAREST,

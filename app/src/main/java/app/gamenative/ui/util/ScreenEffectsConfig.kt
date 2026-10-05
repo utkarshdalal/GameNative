@@ -10,6 +10,7 @@ import com.winlator.renderer.effects.FSR1EasuEffect
 import com.winlator.renderer.effects.FSR1RcasEffect
 import com.winlator.renderer.effects.FXAAEffect
 import com.winlator.renderer.effects.NTSCCombinedEffect
+import com.winlator.renderer.effects.SGSREffect
 import com.winlator.renderer.effects.ScalingModeEffect
 import com.winlator.renderer.effects.ToonEffect
 import com.winlator.renderer.effects.VividEffect
@@ -37,6 +38,8 @@ data class ScreenEffectsConfig(
         const val SCALING_MODE_FSR_ASPECT = 6
         const val SCALING_MODE_DLS = 7
         const val SCALING_MODE_NATURAL = 8
+        const val SCALING_MODE_SGSR = 9
+        const val SCALING_MODE_SGSR_ASPECT = 10
         const val FSR_MIN_LEVEL = 1
         const val FSR_MAX_LEVEL = 5
         const val FSR_DEFAULT_LEVEL = 3
@@ -114,6 +117,12 @@ fun applyScreenEffectsConfig(renderer: GLRenderer, config: ScreenEffectsConfig) 
             val rcasEffect = composer.getEffect(FSR1RcasEffect::class.java) ?: FSR1RcasEffect()
             rcasEffect.sharpnessStops = fsrQuickMenuLevelToStops(config.fsrSharpnessLevel)
             effects += rcasEffect
+        }
+        ScreenEffectsConfig.SCALING_MODE_SGSR,
+        ScreenEffectsConfig.SCALING_MODE_SGSR_ASPECT -> {
+            val sgsrEffect = composer.getEffect(SGSREffect::class.java) ?: SGSREffect()
+            sgsrEffect.setPreserveAspect(config.scalingMode == ScreenEffectsConfig.SCALING_MODE_SGSR_ASPECT)
+            effects += sgsrEffect
         }
         ScreenEffectsConfig.SCALING_MODE_NONE -> Unit
         else -> {
