@@ -65,9 +65,9 @@ on exFAT/FUSE SD cards forces the filesystem to zero-fill the gap, which wedges 
   FUSE/sdcardfs even for many-thousand-file depots.
 
 **Pre-pass cost (verify/update start-up).** Before a depot's first chunk, Steam resolves every
-manifest path to its on-disk spelling, stats every file and creates the directory layout —
-all of it before the first `onVerifying` status can be reported, so it is the window in which a
-verify/update looks "stuck" before the UI shows anything. Path resolution is metadata-bound:
+manifest path to its on-disk spelling and stats every file — both before the first `onVerifying`
+status can be reported, so they are the window in which a verify/update looks "stuck" before the
+UI shows anything (the directory layout is created after that first `(0, N)` status). Path resolution is metadata-bound:
 `CaseResolver` (`store_dl/mod.rs`) caches one case-folded listing per directory, so a pass costs
 one `read_dir` per **directory** instead of a `stat` per path component per file (plus a full
 parent-directory scan for every not-yet-existing file), and `DepotFiles::prepare` reuses the

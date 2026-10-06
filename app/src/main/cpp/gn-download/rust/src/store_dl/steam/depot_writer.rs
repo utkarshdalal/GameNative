@@ -428,9 +428,19 @@ where
 
 /// Files whose on-disk bytes will be re-hashed (resume/verify candidates) — the denominator of
 /// the UI's `Verifying Files (n/N)` counter.
+///
+/// A candidate must also have chunks: a preexisting file whose manifest entry has none gets no
+/// chunk job, so no writer can ever report it — counting it would leave the counter stuck below
+/// its own total (visible since the total is now published before the first chunk).
 fn verify_file_total(manifest: &ContentManifest, files: &DepotFiles) -> u32 {
     (0..manifest.files.len())
-        .filter(|&i| files.needs_verify(i))
+        .filter(|&i| {
+            files.needs_verify(i)
+                && manifest
+                    .files
+                    .get(i)
+                    .is_some_and(|file| !file.chunks.is_empty())
+        })
         .count() as u32
 }
 
@@ -3626,6 +3636,56 @@ mod tests {
                 chunk_idx: 0
             }
         ));
+    }
+
+    #[test]
+    fn verify_total_counts_only_candidates_that_have_chunks() {
+        // A preexisting file whose manifest entry has no chunks gets no chunk job, so no writer can
+        // ever report it: counting it left the (now early-published) counter below its own total.
+        let dir = std::env::temp_dir().join(format!("gnverifytotal-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("data.bin"), b"abc").unwrap();
+        fs::write(dir.join("blob.bin"), b"abcd").unwrap();
+        let manifest = ContentManifest {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
+                filenames_encrypted: false,
+                ..Default::default()
+            },
+            files: vec![
+                crate::store_dl::steam::content_manifest::FileMapping {
+                    filename: "data.bin".into(),
+                    size: 3,
+                    chunks: vec![ChunkData {
+                        offset: 0,
+                        cb_original: 3,
+                        crc: depot_adler_hash(b"abc"),
+                        ..Default::default()
+                    }],
+                    ..Default::default()
+                },
+                crate::store_dl::steam::content_manifest::FileMapping {
+                    filename: "blob.bin".into(),
+                    size: 4,
+                    chunks: Vec::new(),
+                    ..Default::default()
+                },
+            ],
+            signature: Vec::new(),
+        };
+        let base = dir.to_str().unwrap();
+        let plan = plan_depot_write(&manifest, &[1u8; 32], 4, base, 4).unwrap();
+        let files = DepotFiles::prepare(&manifest, &plan, base);
+        assert!(
+            files.needs_verify(0) && files.needs_verify(1),
+            "both files have bytes on disk"
+        );
+        assert_eq!(
+            verify_file_total(&manifest, &files),
+            1,
+            "only a candidate with chunk jobs can be reported by a writer"
+        );
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
