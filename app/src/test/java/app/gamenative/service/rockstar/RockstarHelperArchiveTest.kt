@@ -54,6 +54,9 @@ class RockstarHelperArchiveTest {
         val script = RockstarSignInShim.script(files, "rdr2", "gn", "DEVICE")
         assertTrue(script.startsWith("bridge=gn title=rdr2 fp={"))
         assertTrue(script.contains("\"device_name\":\"DEVICE\""))
+        assertTrue(script.endsWith(" steam=null"))
+        val linked = RockstarSignInShim.script(files, "rdr2", "gn", "DEVICE", org.json.JSONObject().put("steamAppId", 1174180))
+        assertTrue(linked.endsWith(" steam={\"steamAppId\":1174180}"))
     }
 
     @Test fun installsDownloadedArchive() {

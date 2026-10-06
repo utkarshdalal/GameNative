@@ -29,6 +29,11 @@ import timber.log.Timber
  *   3. the user signs in; the page calls CallAuthResult{authCode}, which expires in ~60 seconds
  *   4. move to the rgl origin and exchange the code at /api/connect/gateway for the token
  *
+ * OnStartAuth carries the Steam identity (app id, Steam ID, persona, auth ticket) when the gate
+ * could mint one, the way the launcher's RockstarSteamHelper does: the page then links that
+ * Steam account to the Rockstar account being signed in to, which is what a never linked
+ * account needs before the stub's entitlement mirror can find the game.
+ *
  * Not /sdk?cid=launcher: that is what the launcher itself opens, but it runs invisible reCAPTCHA
  * Enterprise and signs its requests inside its own fetchJson, so it cannot be driven from outside.
  */
@@ -112,7 +117,17 @@ class RockstarOAuthActivity : ComponentActivity() {
 
         @JavascriptInterface
         fun onAuthFailed(detail: String) {
-            Timber.w("Rockstar sign-in: page reported no auth code: %s", detail.take(200))
+            if (detail.contains(RockstarConstants.ALREADY_LINKED_ERROR)) {
+                Timber.w("Rockstar sign-in: this Rockstar account is linked to a different Steam account: %s", detail.take(200))
+            } else {
+                Timber.w("Rockstar sign-in: page reported no auth code: %s", detail.take(200))
+            }
+        }
+
+        @JavascriptInterface
+        fun onRequest(url: String, status: Int, carriesSteam: Boolean, body: String) {
+            Timber.i("Rockstar sign-in: page %s %s -> %d%s %s", if (carriesSteam) "LINK" else "call",
+                url.substringBefore('?').take(120), status, if (carriesSteam) " (steam payload)" else "", body.take(300))
         }
 
         @JavascriptInterface
@@ -135,6 +150,9 @@ class RockstarOAuthActivity : ComponentActivity() {
             finish()
             return
         }
+
+        val steamLink = intent.getStringExtra(RockstarConstants.STEAM_LINK_EXTRA)
+            ?.let { runCatching { org.json.JSONObject(it) }.getOrNull() }
 
         RockstarAuthManager.clearHandoffCookie()
 
@@ -167,7 +185,9 @@ class RockstarOAuthActivity : ComponentActivity() {
                             !injected && isSignInOrigin -> {
                                 injected = true
                                 view.evaluateJavascript(
-                                    RockstarSignInShim.script(filesDir, activeTitle, BRIDGE, android.os.Build.MODEL ?: "GAMENATIVE"),
+                                    RockstarSignInShim.script(
+                                        filesDir, activeTitle, BRIDGE, android.os.Build.MODEL ?: "GAMENATIVE", steamLink,
+                                    ),
                                 ) { Timber.i("Rockstar sign-in: shim installed -> %s", it) }
                                 poller.postDelayed(watchCookie, 1000)
                             }

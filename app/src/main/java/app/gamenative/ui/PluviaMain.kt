@@ -2464,6 +2464,7 @@ fun preLaunchApp(
                     )
                     return@launch
                 }
+                app.gamenative.service.ea.EaSteamLinkGate.offerSteamLink(context)
             }
             /*
              * Rockstar titles sign in through Social Club, and the Windows stub needs the
@@ -2478,7 +2479,7 @@ fun preLaunchApp(
                 val rockstarGameDir = File(SteamService.getAppDirPath(gameId))
                 setLoadingMessage(context.getString(R.string.rockstar_preparing))
                 RockstarHelperArchive.downloadAndExtract(context) { setLoadingProgress(it) }
-                val signIn = RockstarLoginGate.ensureSignedIn(context, "launcher")
+                val signIn = RockstarLoginGate.ensureSignedIn(context, "launcher", gameId)
                 if (signIn.isFailure && RockstarLaunchSupport.hasUsableToken(File(SteamService.getAppDirPath(gameId)))) {
                     /* A token is already in place, so carry on rather than block a launch that works. */
                     Timber.tag("preLaunchApp").w("Rockstar sign-in did not complete; using the token already in the game directory")

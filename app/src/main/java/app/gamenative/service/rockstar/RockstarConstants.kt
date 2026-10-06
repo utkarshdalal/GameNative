@@ -28,4 +28,8 @@ object RockstarConstants {
     val TOKEN_SHAPE = Regex("^[A-Za-z0-9+/]{120,400}={0,2}$")
 
     const val ACTIVE_TITLE_EXTRA = "rockstar.activeTitle"
+    const val STEAM_LINK_EXTRA = "rockstar.steamLink"
+
+    /** Rockstar's sign-in error when the account is already linked to a different Steam account. */
+    const val ALREADY_LINKED_ERROR = "113.600"
 }
