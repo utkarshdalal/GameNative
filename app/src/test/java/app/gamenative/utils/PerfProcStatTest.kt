@@ -64,6 +64,68 @@ class PerfProcStatTest {
         assertNull(ProcStatParser.parseCtxtSwitches(sequenceOf("voluntary_ctxt_switches:\t1")))
     }
 
+    private fun cmdline(vararg args: String) = args.joinToString("\u0000", postfix = "\u0000")
+
+    @Test
+    fun namesGameLaunchedThroughLinkerAndWine() {
+        val name = ProcStatParser.processName(
+            cmdline(
+                "/system/bin/linker64",
+                "/data/user/0/app.gamenative/files/imagefs/proton/bin/wine",
+                "C:\\Games\\Hustle\\YourOnlyMoveIsHUSTLE.exe",
+                "-windowed",
+            ),
+            "linker64",
+        )
+        assertEquals("YourOnlyMoveIsHUSTLE.exe", name)
+    }
+
+    @Test
+    fun namesWineserverLaunchedThroughLinker() {
+        val name = ProcStatParser.processName(
+            cmdline("/system/bin/linker64", "/data/user/0/app.gamenative/files/imagefs/proton/bin/wineserver", "-p", "-f"),
+            "linker64",
+        )
+        assertEquals("wineserver", name)
+    }
+
+    @Test
+    fun namesSteamExeWithBackslashPath() {
+        val name = ProcStatParser.processName(
+            cmdline("/system/bin/linker", "/opt/wine/bin/wine64", "C:\\Program Files (x86)\\Steam\\steam.exe", "-silent"),
+            "linker",
+        )
+        assertEquals("steam.exe", name)
+    }
+
+    @Test
+    fun namesExplorerWithDesktopArgument() {
+        val name = ProcStatParser.processName(
+            cmdline("C:\\windows\\system32\\explorer.exe", "/desktop=shell,1280x720"),
+            "explorer.exe",
+        )
+        assertEquals("explorer.exe", name)
+        assertEquals(
+            "explorer.exe",
+            ProcStatParser.processName(
+                cmdline("/system/bin/linker64", "/imagefs/bin/wine-preloader", "/imagefs/bin/wine", "explorer.exe", "/desktop=shell"),
+                "linker64",
+            ),
+        )
+    }
+
+    @Test
+    fun namesPlainAndroidProcess() {
+        assertEquals("app.gamenative:pulse", ProcStatParser.processName(cmdline("app.gamenative:pulse"), "app.gamenative:p"))
+        assertEquals("pulseaudio", ProcStatParser.processName(cmdline("/data/app/lib/pulseaudio", "-n"), "pulseaudio"))
+    }
+
+    @Test
+    fun fallsBackToCommOnlyWhenCmdlineIsEmpty() {
+        assertEquals("kworker", ProcStatParser.processName("", "kworker"))
+        assertEquals("linker64", ProcStatParser.processName(cmdline("/system/bin/linker64"), "linker64"))
+    }
+
     @Test
     fun helperProcessSaturationReplacesNoSaturatedResource() {
         val windows = (1..6).map { i ->
@@ -88,6 +150,11 @@ class PerfProcStatTest {
             ),
         )
         assertFalse(notes.any { it.contains("no saturated resource") })
+        val avg = verdict.getJSONArray("processCpuAvg")
+        assertEquals("YourOnlyMoveIsHUSTLE.exe", avg.getJSONObject(0).getString("name"))
+        assertEquals(17, avg.getJSONObject(0).getInt("cpu"))
+        assertEquals("wineserver", avg.getJSONObject(1).getString("name"))
+        assertEquals(80, avg.getJSONObject(1).getInt("cpu"))
     }
 
     @Test

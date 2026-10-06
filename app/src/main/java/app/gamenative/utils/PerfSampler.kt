@@ -63,6 +63,24 @@ internal class ProcStatFields(
 
 internal object ProcStatParser {
 
+    private val linkerNames = setOf("linker64", "linker")
+    private val wineLaunchers = setOf("wine", "wine64", "wine-preloader", "wine64-preloader")
+
+    fun processName(cmdline: String, comm: String): String {
+        val args = cmdline.split('\u0000').map { it.trim().trim('"') }.filter { it.isNotEmpty() }
+        if (args.isEmpty()) return baseName(comm)
+        val start = if (baseName(args[0]) in linkerNames && args.size > 1) 1 else 0
+        val first = args[start]
+        val name = if (baseName(first) in wineLaunchers) {
+            args.drop(start + 1).firstOrNull { it.endsWith(".exe", ignoreCase = true) } ?: first
+        } else {
+            first
+        }
+        return baseName(name)
+    }
+
+    private fun baseName(path: String): String = path.substringAfterLast('/').substringAfterLast('\\').take(40)
+
     fun parse(stat: String): ProcStatFields? {
         val open = stat.indexOf('(')
         val close = stat.lastIndexOf(')')
@@ -441,6 +459,7 @@ object PerfSampler {
         private var prevCpuStat: Map<String, LongArray>? = null
         private var prevProcTicks = HashMap<Int, Long>()
         private val procNames = HashMap<Int, String>()
+        private val procComms = HashMap<Int, String>()
         private var prevThreadTicks = HashMap<Int, Long>()
         private var prevCtxt = HashMap<Int, LongArray>()
 
@@ -652,13 +671,14 @@ object PerfSampler {
             val elapsedMs = nowMs - windowStartMs
             if (elapsedMs < processWindowMs) return
             val dtSec = elapsedMs / 1000.0
-            val top = ticks.mapNotNull { (pid, now) ->
+            val busy = ticks.mapNotNull { (pid, now) ->
                 val name = procNames[pid] ?: return@mapNotNull null
                 Triple(pid, name, ProcStatParser.cpuPercent(now - (start[pid] ?: 0L), dtSec, clkTck))
             }
                 .filter { it.third > 0 }
                 .sortedByDescending { it.third }
-                .take(TOP_WINDOW_PROCS)
+            val top = (busy.take(TOP_WINDOW_PROCS) + busy.filter { it.second == "wineserver" })
+                .distinctBy { it.first }
                 .map { (pid, name, cpu) -> PerfProcess(name, pid, cpu, safe { readRssMb(pid) }) }
             windowStartTicks = HashMap(ticks)
             windowStartMs = nowMs
@@ -858,7 +878,11 @@ object PerfSampler {
                     val fields = parseStat(File(dir, "stat").readText()) ?: continue
                     val ticks = fields.utime + fields.stime
                     ticksNow[pid] = ticks
-                    val name = procNames.getOrPut(pid) { processName(dir, fields.comm) }
+                    val name = procNames[pid]?.takeIf { procComms[pid] == fields.comm }
+                        ?: processName(dir, fields.comm).also {
+                            procNames[pid] = it
+                            procComms[pid] = fields.comm
+                        }
                     val prev = prevProcTicks[pid]
                     if (prev != null && dtSec > 0.0) {
                         result += ProcessCpu(pid, name, percentOfCore(ticks - prev, dtSec))
@@ -868,19 +892,17 @@ object PerfSampler {
             }
             prevProcTicks = ticksNow
             procNames.keys.retainAll(ticksNow.keys)
+            procComms.keys.retainAll(ticksNow.keys)
             return result
         }
 
         private fun processName(dir: File, comm: String): String {
-            val args = try {
-                String(File(dir, "cmdline").readBytes()).split('\u0000').map { it.trim().trim('"') }.filter { it.isNotEmpty() }
+            val cmdline = try {
+                String(File(dir, "cmdline").readBytes())
             } catch (_: Exception) {
-                emptyList()
+                ""
             }
-            val exe = args.firstOrNull { it.endsWith(".exe", ignoreCase = true) }
-                ?: args.firstOrNull { it.contains(".exe", ignoreCase = true) }
-            val name = exe ?: comm
-            return name.substringAfterLast('/').substringAfterLast('\\').take(40)
+            return ProcStatParser.processName(cmdline, comm)
         }
 
         private fun readThreads(pid: Int, dtSec: Double): ThreadsReading? {
