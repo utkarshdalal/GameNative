@@ -2646,6 +2646,7 @@ fun XServerScreen(
                         gyroStickMixer = { binding, isDown, offset, sourceKeyCode ->
                             updatePhysicalStickAndGetMixedValue(binding, isDown, offset, sourceKeyCode)
                         },
+                        onMouseMovementChanged = { source, moving -> setPhysicalMouseMoving(source, moving) },
                     )
                     radialMenuCoordinator?.bindPhysicalControllerHandler(physicalControllerHandler)
 

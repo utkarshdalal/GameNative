@@ -2827,6 +2827,11 @@
     <string name="gyro_section_response">Response</string>
     <string name="gyro_output">Output</string>
     <string name="gyro_output_subtitle">Choose what device motion controls.</string>
+    <string name="gyro_input_priority">Input priority</string>
+    <string name="gyro_priority_combined">Combined (default)</string>
+    <string name="gyro_priority_stick_touch">Stick / Touchscreen priority</string>
+    <string name="gyro_priority_combined_help">Combine gyro with stick and touchscreen movement on the same output.</string>
+    <string name="gyro_priority_stick_touch_help">Pause gyro movement on the same output while a stick or touchscreen control is moving. Resume when it returns to neutral.</string>
     <string name="gyro_conversion_style">Conversion style</string>
     <string name="gyro_conversion_yaw">Local Space (Yaw)</string>
     <string name="gyro_conversion_roll">Local Space (Roll)</string>
