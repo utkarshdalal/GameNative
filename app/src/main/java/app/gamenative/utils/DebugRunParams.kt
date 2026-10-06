@@ -23,6 +23,14 @@ data class DebugRunParams(
         put("instruction", instruction ?: JSONObject.NULL)
     }
 
+    fun toRunJson(): JSONObject = JSONObject().apply {
+        put("winedebug", JSONArray(winedebug))
+        put("env", JSONObject(env))
+        put("attach", JSONArray(attach.toList()))
+        put("minSeconds", minSeconds ?: JSONObject.NULL)
+        put("instruction", instruction ?: JSONObject.NULL)
+    }
+
     companion object {
         const val ATTACH_LOGCAT = "logcat"
         const val ATTACH_PERF = "perf"

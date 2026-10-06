@@ -68,6 +68,7 @@ object SupportPatchApplier {
                 put("patchsetId", patch.patchsetId)
                 put("appliedAt", appliedAt)
                 put("ops", opsJson(patch))
+                patch.run?.let { put("run", it.toRunJson()) }
             }
         }
         record.put("restored", restored)

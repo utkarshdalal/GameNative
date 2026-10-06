@@ -115,6 +115,7 @@ import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.ui.screen.login.UserLoginScreen
 import app.gamenative.ui.screen.settings.SettingsScreen
 import app.gamenative.ui.screen.support.SnackbarActionContent
+import app.gamenative.ui.screen.support.SupportAppliedRun
 import app.gamenative.ui.screen.support.SupportReplyEffects
 import app.gamenative.ui.screen.support.SupportReportSubmitter
 import app.gamenative.ui.screen.support.SupportScreen
@@ -352,6 +353,10 @@ private fun trackGameLaunched(appId: String) {
             "play_integrity_available" to PrefManager.playIntegrityAvailable,
         ) + attribution,
     )
+}
+
+private fun CoroutineScope.markAppliedReported(context: Context, appId: String) {
+    launch(Dispatchers.IO) { SupportAppliedRun.markReported(context, appId) }
 }
 
 private fun startDebugRun(
@@ -666,6 +671,7 @@ fun PluviaMain(
                         if (debugReportState.phase != DebugReportDialogState.PHASE_SENDING) {
                             debugReportState = debugReportState.copy(visible = false)
                             SteamService.keepAlive = false
+                            scope.markAppliedReported(context, debugReportState.appId)
                         }
                     } else if (SteamService.keepAlive){
                         gameBackAction?.invoke() ?: run { navController.popBackStack() }
@@ -792,6 +798,7 @@ fun PluviaMain(
                             appId = event.appId,
                             gameName = withContext(Dispatchers.IO) { ContainerUtils.resolveGameName(event.appId) },
                             deviceName = HardwareUtils.getMachineName(),
+                            issueText = withContext(Dispatchers.IO) { SupportAppliedRun.pending(context, event.appId)?.issueText }.orEmpty(),
                             preparing = true,
                         )
                         scope.launch {
@@ -1617,6 +1624,7 @@ fun PluviaMain(
                         is DebugReportApi.SubmitResult.Success -> {
                             trackAiDebug("ai_debug_report_result", mapOf("result" to "success", "path" to "discord"))
                             withContext(Dispatchers.IO) { DebugReportUtils.deleteReport(dir) }
+                            scope.markAppliedReported(context, current.appId)
                             debugReportState = debugReportState.copy(
                                 phase = DebugReportDialogState.PHASE_SUCCESS,
                                 threadUrl = result.threadUrl,
@@ -1663,6 +1671,7 @@ fun PluviaMain(
                         is SupportReportSubmitter.Outcome.Sent -> {
                             trackAiDebug("ai_debug_report_result", mapOf("result" to "success", "path" to "app"))
                             withContext(Dispatchers.IO) { DebugReportUtils.deleteReport(File(current.reportDir)) }
+                            scope.markAppliedReported(context, current.appId)
                             debugReportState = debugReportState.copy(visible = false)
                             SteamService.keepAlive = false
                             SupportSession.pendingConversationId.value = outcome.conversationId
@@ -1792,6 +1801,7 @@ fun PluviaMain(
                 },
                 onDismiss = {
                     debugReportState = debugReportState.copy(visible = false)
+                    scope.markAppliedReported(context, debugReportState.appId)
                     if (debugPaywallReason == null) {
                         SteamService.keepAlive = false
                     }

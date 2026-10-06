@@ -157,7 +157,9 @@ object SupportComponentApplier {
                 put("key", component.applyKey)
                 put("from", from ?: JSONObject.NULL)
                 put("to", to ?: JSONObject.NULL)
+                put("version", component.versionName)
                 put("appliedAt", appliedAt)
+                component.run?.let { put("run", it.toRunJson()) }
             }
         }
         record.put("restored", restored)
