@@ -64,7 +64,7 @@ android {
         buildConfigField("boolean", "XR_BUILD", "false")
         buildConfigField("boolean", "MODERN_XR", "false")
 
-        versionCode = 24
+        versionCode = 23
         versionName = "1.3.0"
 
         buildConfigField("boolean", "GOLD", "false")
