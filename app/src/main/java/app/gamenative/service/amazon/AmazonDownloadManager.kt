@@ -182,6 +182,10 @@ class AmazonDownloadManager @Inject constructor(
 
                     override fun onLog(line: String) {
                         // INFO, not DEBUG: ReleaseTree drops Debug/Verbose (see SHOW_PIPELINE_LOGS).
+                        // This is the ONLY emitter for Amazon engine lines — its native side
+                        // forwards to the listener instead of writing to logcat itself
+                        // (amazon/jni.rs), unlike Steam/GOG/Epic, which log natively. Do not add
+                        // a native emitter, and do not drop this forward.
                         if (GameDownloadService.SHOW_PIPELINE_LOGS) Timber.tag(TAG).i(line)
                     }
 
