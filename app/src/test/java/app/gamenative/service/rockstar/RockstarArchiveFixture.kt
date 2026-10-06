@@ -16,7 +16,7 @@ internal fun rockstarTestArchive(): ByteArray {
         .associateWith { "MZ-test-$it".toByteArray() }
     val entries = binaries + mapOf(
         "NOTICE.txt" to "Test fixture".toByteArray(),
-        RockstarHelperArchive.SIGNIN_SHIM to "bridge=@BRIDGE@ title=@TITLE@ fp=@FP@".toByteArray(),
+        RockstarHelperArchive.SIGNIN_SHIM to "bridge=@BRIDGE@ title=@TITLE@ fp=@FP@ steam=@STEAM@".toByteArray(),
     )
     val output = ByteArrayOutputStream()
     ZstdCompressorOutputStream(output).use { zstd ->

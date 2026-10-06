@@ -153,6 +153,12 @@
             android:exported="false"
             android:theme="@style/Theme.Pluvia" />
 
+        <!-- EA account connections page, for linking Steam before a first launch -->
+        <activity
+            android:name=".ui.screen.auth.EaSteamLinkActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Pluvia" />
+
         <!-- Epic OAuth (in-app WebView; intercepts redirect for automatic code capture) -->
         <activity
             android:name=".ui.screen.auth.EpicOAuthActivity"
