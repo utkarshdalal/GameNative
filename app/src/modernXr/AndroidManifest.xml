@@ -74,6 +74,26 @@
                 android:name="pvr.app.type"
                 android:value="vr" />
         </activity>
+        <!-- VR launch: only the OpenXR session lives here, the game runs in MainActivity. -->
+        <activity
+            android:name="app.gamenative.ui.screen.xr.VrGameActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:resizeableActivity="false"
+            android:screenOrientation="landscape"
+            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation|uiMode|colorMode"
+            android:theme="@style/Theme.Pluvia">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="com.oculus.intent.category.VR" />
+            </intent-filter>
+            <meta-data
+                android:name="com.oculus.vrshell.supports_free_resizing"
+                android:value="true" />
+            <meta-data
+                android:name="pvr.app.type"
+                android:value="vr" />
+        </activity>
     </application>
 
 </manifest>

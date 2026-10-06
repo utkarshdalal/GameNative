@@ -29,6 +29,9 @@ import timber.log.Timber
 // Bumping re-parses the whole SteamApp row from PICS on next login and also triggers the root-override cloud requery.
 const val CURRENT_UFS_PARSE_VERSION = 5
 
+// Bump to reprocess the VR flags of cached apps.
+const val CURRENT_VR_CATEGORY_PARSE_VERSION = 1
+
 /**
  * Extension functions relating to [KeyValue] as the receiver type.
  */
@@ -124,6 +127,7 @@ fun KeyValue.generateSteamApp(): SteamApp {
         controllerSupport = ControllerSupport.from(this["common"]["controller_support"].value),
         isVrOnly = vr?.isVrOnly == true,
         isVrSupported = vr?.isVrSupported == true,
+        vrCategoryParseVersion = CURRENT_VR_CATEGORY_PARSE_VERSION,
         demoOfAppId = this["common"]["extended"]["demoofappid"].asInteger(),
         developer = this["extended"]["developer"].value.orEmpty(),
         publisher = this["extended"]["publisher"].value.orEmpty(),

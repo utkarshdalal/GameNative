@@ -27,7 +27,7 @@ private:
     EGLImageKHR createImageFromDmabuf(const EyeFrame &frame);
     bool waitForAcquireFence(int fenceFd);
     int createReleaseFence();
-    bool uploadLinearDmabufToTexture(uint32_t eye, int imageIndex, const EyeFrame &frame,
+    bool uploadDmabufToSrgbTexture(uint32_t eye, int imageIndex, const EyeFrame &frame,
                                     GLuint &texture, uint64_t &cachedRegistration);
     bool importEyeBuffer(WindowsFrameTransport &transport, uint32_t eye, EyeFrame &frame, bool &fresh);
     void drawEye(uint32_t eye, const EyeFrame &source, uint32_t imageIndex);

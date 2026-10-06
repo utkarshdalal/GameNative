@@ -98,6 +98,7 @@ static uint32_t queue_family_index;
 static VkCommandPool command_pool;
 static void *vulkan_so;
 static int transport_fd = -1;
+static uint8_t transport_ever_connected;
 static uint8_t transport_frame_announced[2];
 static uint64_t transport_frame_id;
 
@@ -374,6 +375,22 @@ static void close_transport(void)
     transport_fd = -1;
 }
 
+/* The headset forgets registered buffers when its session goes away; announce them again. */
+static void forget_transport_registrations(void)
+{
+    for (uint32_t slot = 0; slot < GN_UNIX_MAX_SWAPCHAINS; ++slot) {
+        if (!swapchains[slot].allocated) continue;
+        for (uint32_t index = 0; index < swapchains[slot].image_count; ++index) {
+            struct gn_image *image = &swapchains[slot].images[index];
+            image->registered_eye_mask = 0;
+            image->transport[0].registered = 0;
+            image->transport[1].registered = 0;
+        }
+    }
+    transport_frame_announced[0] = 0;
+    transport_frame_announced[1] = 0;
+}
+
 static int ensure_transport(void)
 {
     if (transport_fd >= 0) return 1;
@@ -410,6 +427,11 @@ static int ensure_transport(void)
         return 0;
     }
     transport_fd = fd;
+    if (transport_ever_connected) {
+        forget_transport_registrations();
+        log_line("transport reconnected; buffers will be registered again");
+    }
+    transport_ever_connected = 1;
     return 1;
 }
 
@@ -1810,6 +1832,8 @@ static int register_image(uint32_t slot, uint32_t image_index, uint32_t eye,
         image->registered_array_index[eye] == array_index) return 1;
 
     if (image->transport_kind[eye] == GN_TRANSPORT_UNKNOWN) {
+        /* Otherwise a missing headset would wrongly settle on the dma-buf path for good. */
+        if (!ensure_transport()) return 0;
         if (register_ahardwarebuffer(slot, image_index, eye)) {
             image->transport_kind[eye] = GN_TRANSPORT_AHARDWAREBUFFER;
             image->registered_eye_mask |= bit;
@@ -1829,6 +1853,8 @@ static int register_image(uint32_t slot, uint32_t image_index, uint32_t eye,
         image->transport_kind[eye] = GN_TRANSPORT_DMABUF;
     }
     if (image->transport_kind[eye] == GN_TRANSPORT_RELAY) {
+        if (!image->transport[eye].registered &&
+            !relay_register(slot, image_index, eye)) return 0;
         if (image->registered_array_index[eye] != array_index) {
             image->transport[eye].steady_recorded = 0;
         }
@@ -1836,6 +1862,8 @@ static int register_image(uint32_t slot, uint32_t image_index, uint32_t eye,
         return 1;
     }
     if (image->transport_kind[eye] == GN_TRANSPORT_AHARDWAREBUFFER) {
+        if (!image->transport[eye].registered &&
+            !register_ahardwarebuffer(slot, image_index, eye)) return 0;
         if (image->registered_array_index[eye] != array_index) {
             image->transport[eye].steady_recorded = 0;
         }

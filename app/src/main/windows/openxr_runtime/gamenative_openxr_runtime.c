@@ -573,6 +573,7 @@ static int gn_stopping_pushed = 0;
 static int gn_winsock_started = 0;
 static gn_socket gn_bridge_socket = GN_INVALID_SOCKET;
 static int gn_bridge_ever_connected = 0;
+static char gn_bridge_hello[128];
 static char gn_bridge_rxbuf[1024];
 static gn_size gn_bridge_rxlen = 0;
 static gn_size gn_bridge_rxoff = 0;
@@ -637,6 +638,11 @@ enum { GN_GFX_UNKNOWN = 0, GN_GFX_D3D11, GN_GFX_D3D12, GN_GFX_VULKAN };
 static int gn_gfx_api = GN_GFX_UNKNOWN;
 static int gn_action_sets_attached = 0;
 static int gn_exit_requested = 0;
+/* From protocol 3 the game may start before the headset session exists: VISIBLE/FOCUSED
+ * follow the frame sync and frames are only shipped while visible. */
+static int gn_bridge_protocol = 0;
+static XrSessionState gn_presence_state = XR_SESSION_STATE_IDLE;
+static int gn_presence_visible = 0;
 static gn_uint32 gn_events_lost = 0;
 static int gn_interaction_profile_event_pending = 0;
 static int gn_reference_space_event_pending = 0;
@@ -1174,13 +1180,14 @@ static int gn_bridge_call_locked(const char* command, char* response, gn_size re
                 gn_log2("bridge HELLO rejected: ", hello);
                 return 0;
             }
+            gn_copy(gn_bridge_hello, sizeof(gn_bridge_hello), hello);
             if (!gn_bridge_ever_connected) {
                 gn_bridge_ever_connected = 1;
                 gn_log2("bridge connected: ", hello);
             }
         }
         if (gn_streq(command, "HELLO")) {
-            gn_copy(out, out_size, "OK GameNativeVR");
+            gn_copy(out, out_size, gn_bridge_hello[0] ? gn_bridge_hello : "OK GameNativeVR");
             return 1;
         }
     }
@@ -1656,7 +1663,22 @@ static XrResult XRAPI_CALL gn_xrCreateInstance(const XrInstanceCreateInfo* creat
             gn_log2("  enabled extension: ", createInfo->enabledExtensionNames[i]);
         }
     }
-    gn_bridge_call("HELLO", NULL, 0);
+    {
+        char hello[128];
+        const char* version;
+        gn_bridge_protocol = 0;
+        if (gn_bridge_call("HELLO", hello, sizeof(hello))) {
+            version = hello;
+            for (const char* p = hello; *p; ++p) {
+                if (*p == ' ') version = p + 1;
+            }
+            while (*version >= '0' && *version <= '9') {
+                gn_bridge_protocol = gn_bridge_protocol * 10 + (*version - '0');
+                ++version;
+            }
+        }
+        gn_log_num("bridge protocol ", gn_bridge_protocol);
+    }
     *instance = gn_instance;
     return XR_SUCCESS;
 }
@@ -1914,6 +1936,9 @@ static XrResult XRAPI_CALL gn_xrCreateSession(XrInstance instance, const XrSessi
     gn_action_sets_attached = 0;
     gn_push_session_event(XR_SESSION_STATE_IDLE);
     gn_push_session_event(XR_SESSION_STATE_READY);
+    gn_presence_state = XR_SESSION_STATE_READY;
+    gn_presence_visible = 0;
+    if (gn_bridge_protocol >= 3) gn_bridge_call("REQUEST_VR", NULL, 0);
     gn_log_line("xrCreateSession");
     return XR_SUCCESS;
 }
@@ -1961,8 +1986,14 @@ static XrResult XRAPI_CALL gn_xrBeginSession(XrSession session, const XrSessionB
     gn_session_running = 1;
     gn_stopping_pushed = 0;
     gn_push_session_event(XR_SESSION_STATE_SYNCHRONIZED);
-    gn_push_session_event(XR_SESSION_STATE_VISIBLE);
-    gn_push_session_event(XR_SESSION_STATE_FOCUSED);
+    gn_presence_state = XR_SESSION_STATE_SYNCHRONIZED;
+    gn_presence_visible = 0;
+    if (gn_bridge_protocol < 3) {
+        gn_push_session_event(XR_SESSION_STATE_VISIBLE);
+        gn_push_session_event(XR_SESSION_STATE_FOCUSED);
+        gn_presence_state = XR_SESSION_STATE_FOCUSED;
+        gn_presence_visible = 1;
+    }
     gn_log_line("xrBeginSession");
     return XR_SUCCESS;
 }
@@ -1971,6 +2002,8 @@ static XrResult XRAPI_CALL gn_xrEndSession(XrSession session) {
     if (session != gn_session) return XR_ERROR_HANDLE_INVALID;
     gn_bridge_call("END_SESSION", NULL, 0);
     gn_session_running = 0;
+    gn_presence_state = XR_SESSION_STATE_IDLE;
+    gn_presence_visible = 0;
     gn_push_session_event(gn_exit_requested ? XR_SESSION_STATE_EXITING : XR_SESSION_STATE_IDLE);
     gn_log_line("xrEndSession");
     return XR_SUCCESS;
@@ -2340,6 +2373,23 @@ static XrResult XRAPI_CALL gn_xrLocateSpaces(
 
 
 
+/* Step through each state: the spec doesn't allow skipping one. */
+static void gn_update_presence(int visible, int focused) {
+    XrSessionState target = focused ? XR_SESSION_STATE_FOCUSED :
+        visible ? XR_SESSION_STATE_VISIBLE : XR_SESSION_STATE_SYNCHRONIZED;
+    if (!gn_session_running || gn_stopping_pushed || target == gn_presence_state) return;
+    while (gn_presence_state < target) {
+        gn_presence_state = (XrSessionState)(gn_presence_state + 1);
+        gn_push_session_event(gn_presence_state);
+    }
+    while (gn_presence_state > target) {
+        gn_presence_state = (XrSessionState)(gn_presence_state - 1);
+        gn_push_session_event(gn_presence_state);
+    }
+    gn_presence_visible = gn_presence_state >= XR_SESSION_STATE_VISIBLE;
+    gn_log_num("headset presence -> ", (long long)gn_presence_state);
+}
+
 static XrResult XRAPI_CALL gn_xrWaitFrame(XrSession session, const XrFrameWaitInfo* waitInfo, XrFrameState* frameState) {
     (void)waitInfo;
     char response[160];
@@ -2365,19 +2415,31 @@ static XrResult XRAPI_CALL gn_xrWaitFrame(XrSession session, const XrFrameWaitIn
             }
             gn_last_recenter_serial = recenter_serial;
         }
-        long long quest_state = gn_parse_i64(response, "state", 0);
-        if (quest_state == XR_SESSION_STATE_LOSS_PENDING) {
-            gn_instance_loss_event_pending = 1;
-        }
-        if (quest_state >= XR_SESSION_STATE_STOPPING && gn_session_running && !gn_stopping_pushed) {
-            gn_stopping_pushed = 1;
-            gn_push_session_event(XR_SESSION_STATE_STOPPING);
-            gn_log_num("quest session stopping, state=", quest_state);
+        if (gn_bridge_protocol >= 3) {
+            gn_update_presence(gn_parse_i64(response, "visible", 0) != 0,
+                               gn_parse_i64(response, "focused", 0) != 0);
+            if (!gn_presence_visible) frameState->shouldRender = XR_FALSE;
+            if (gn_parse_i64(response, "exit", 0) != 0 && gn_session_running && !gn_stopping_pushed) {
+                gn_stopping_pushed = 1;
+                gn_push_session_event(XR_SESSION_STATE_STOPPING);
+                gn_log_line("exit requested by the Android side");
+            }
+        } else {
+            long long quest_state = gn_parse_i64(response, "state", 0);
+            if (quest_state == XR_SESSION_STATE_LOSS_PENDING) {
+                gn_instance_loss_event_pending = 1;
+            }
+            if (quest_state >= XR_SESSION_STATE_STOPPING && gn_session_running && !gn_stopping_pushed) {
+                gn_stopping_pushed = 1;
+                gn_push_session_event(XR_SESSION_STATE_STOPPING);
+                gn_log_num("quest session stopping, state=", quest_state);
+            }
         }
     } else {
         frameState->predictedDisplayTime = gn_next_display_time;
         frameState->predictedDisplayPeriod = 11111111;
         frameState->shouldRender = gn_session_running ? XR_TRUE : XR_FALSE;
+        if (gn_bridge_protocol >= 3 && !gn_presence_visible) frameState->shouldRender = XR_FALSE;
         gn_next_display_time += frameState->predictedDisplayPeriod;
     }
     return XR_SUCCESS;
@@ -2438,6 +2500,12 @@ static XrResult XRAPI_CALL gn_xrEndFrame(XrSession session, const XrFrameEndInfo
                     return XR_ERROR_SWAPCHAIN_RECT_INVALID;
             }
         }
+    }
+
+    if (gn_bridge_protocol >= 3 && !gn_presence_visible) {
+        for (gn_uint32 i = 0; i < gn_swapchain_count; ++i)
+            gn_swapchains[i].last_released_valid = 0;
+        return XR_SUCCESS;
     }
 
     int submission_failed = 0;

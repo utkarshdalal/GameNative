@@ -11,16 +11,21 @@ import java.util.concurrent.Executors
 import java.util.concurrent.Semaphore
 import java.util.concurrent.atomic.AtomicBoolean
 
+interface WindowsVrSessionListener {
+    fun onVrRequested()
+    fun onVrSessionEnded()
+}
+
 class WindowsVrControlServer(
     private val config: WindowsVrRuntimeConfig,
     private val diagnostics: WindowsVrDiagnostics,
     private val snapshots: WindowsVrSnapshotProvider,
+    private val listener: () -> WindowsVrSessionListener?,
 ) : Closeable {
     private val running = AtomicBoolean(false)
     private val clients = Semaphore(16)
     private val executor = Executors.newFixedThreadPool(5)
     private var serverSocket: ServerSocket? = null
-    private var lastFrameSerial = 0L
     private var firstFrameRecorded = false
     private var trackingSpaceRecorded = false
 
@@ -96,7 +101,17 @@ class WindowsVrControlServer(
                 diagnostics.record("session", "began")
                 "OK"
             } else "ERROR malformed"
-            "END_SESSION", "REQUEST_EXIT", "BEGIN_FRAME" -> if (tokens.size == 1) "OK" else "ERROR malformed"
+            "REQUEST_VR" -> if (tokens.size == 1) {
+                diagnostics.record("session", "headset requested")
+                listener()?.onVrRequested()
+                "OK"
+            } else "ERROR malformed"
+            "END_SESSION" -> if (tokens.size == 1) {
+                diagnostics.record("session", "ended")
+                listener()?.onVrSessionEnded()
+                "OK"
+            } else "ERROR malformed"
+            "REQUEST_EXIT", "BEGIN_FRAME" -> if (tokens.size == 1) "OK" else "ERROR malformed"
             "END_FRAME" -> run {
                 val layers = tokens.singleOrNull { it.startsWith("layers=") }?.substringAfter('=')?.toIntOrNull()
                 if (tokens.size != 2 || layers !in 0..16) "ERROR malformed" else {
@@ -174,8 +189,7 @@ class WindowsVrControlServer(
     }
 
     private fun waitFrame(): String {
-        val snapshot = snapshots.waitFrame(lastFrameSerial, 1000) ?: return "ERROR timeout"
-        lastFrameSerial = snapshot.timing[0]
+        val snapshot = snapshots.waitFrame(1000)
         if (!trackingSpaceRecorded) {
             trackingSpaceRecorded = true
             diagnostics.record(
@@ -184,15 +198,17 @@ class WindowsVrControlServer(
                     "bounds=${if (snapshot.timing[7] != 0L) "${snapshot.timing[8]}x${snapshot.timing[9]}um" else "unavailable"}",
             )
         }
-        return "OK serial=${snapshot.timing[0]} time=${snapshot.timing[1]} period=${snapshot.timing[2]} shouldRender=${snapshot.timing[4]} state=${snapshot.timing[3]} render=${snapshot.timing[4]} recenter=${snapshot.timing[11]}"
+        // Protocol-3 runtimes follow visible/focused; older ones still read state.
+        val state = snapshot.sessionState
+        val visible = if (state == SESSION_STATE_VISIBLE || state == SESSION_STATE_FOCUSED) 1 else 0
+        val focused = if (state == SESSION_STATE_FOCUSED) 1 else 0
+        return "OK serial=${snapshot.timing[0]} time=${snapshot.timing[1]} period=${snapshot.timing[2]} shouldRender=${snapshot.timing[4]} state=$state render=${snapshot.timing[4]} recenter=${snapshot.timing[11]} visible=$visible focused=$focused"
     }
 
-    private fun currentSnapshot(): WindowsVrRuntimeSnapshot? {
-        return snapshots.latest() ?: snapshots.waitFrame(0, 1000)?.also { lastFrameSerial = it.timing[0] }
-    }
+    private fun currentSnapshot(): WindowsVrRuntimeSnapshot = snapshots.latest()
 
     private fun getViews(): String {
-        val snapshot = currentSnapshot() ?: return "ERROR unavailable"
+        val snapshot = currentSnapshot()
         val scale = config.renderScalePercent.toLong()
         val scaledWidth = (snapshot.timing[5] * scale / 100) and 1L.inv()
         val scaledHeight = (snapshot.timing[6] * scale / 100) and 1L.inv()
@@ -200,12 +216,12 @@ class WindowsVrControlServer(
     }
 
     private fun getBounds(): String {
-        val snapshot = currentSnapshot() ?: return "ERROR unavailable"
+        val snapshot = currentSnapshot()
         return "OK available=${snapshot.timing[7]} width=${snapshot.timing[8]} height=${snapshot.timing[9]} supported=${snapshot.timing[10]}"
     }
 
     private fun locateViews(): String {
-        val snapshot = snapshots.latest() ?: return "ERROR unavailable"
+        val snapshot = snapshots.latest()
         val rawValues = buildList(22) {
             for (eye in 0 until 2) {
                 for (field in 0 until 11) {
@@ -226,7 +242,7 @@ class WindowsVrControlServer(
 
     private fun getInput(tokens: List<String>): String {
         if (tokens.size != 2 || tokens[1] !in setOf("hand=0", "hand=1")) return "ERROR malformed"
-        val snapshot = snapshots.latest() ?: return "ERROR unavailable"
+        val snapshot = snapshots.latest()
         val hand = tokens[1].last().digitToInt()
         val base = hand * 18
         val rawValues = (0 until 18).joinToString(" ") { field ->
@@ -284,6 +300,8 @@ class WindowsVrControlServer(
     }
 
     private companion object {
+        const val SESSION_STATE_VISIBLE = 4L
+        const val SESSION_STATE_FOCUSED = 5L
         val viewFields = arrayOf("qx", "qy", "qz", "qw", "px", "py", "pz", "fl", "fr", "fu", "fd")
         val inputFields = arrayOf(
             "tr", "sq", "sx", "sy", "gqx", "gqy", "gqz", "gqw", "gpx", "gpy", "gpz",
