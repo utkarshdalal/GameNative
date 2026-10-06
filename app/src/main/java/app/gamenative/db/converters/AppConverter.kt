@@ -4,6 +4,7 @@ import androidx.room.TypeConverter
 import app.gamenative.data.BranchInfo
 import app.gamenative.data.ConfigInfo
 import app.gamenative.data.DepotInfo
+import app.gamenative.data.EulaInfo
 import app.gamenative.data.LibraryAssetsInfo
 import app.gamenative.data.UFS
 import app.gamenative.enums.AppType
@@ -75,4 +76,10 @@ class AppConverter {
 
     @TypeConverter
     fun fromUFS(ufs: UFS): String = Json.encodeToString(ufs)
+
+    @TypeConverter
+    fun toEulas(eulas: String): List<EulaInfo> = Json.decodeFromString<List<EulaInfo>>(eulas)
+
+    @TypeConverter
+    fun fromEulas(eulas: List<EulaInfo>): String = Json.encodeToString(eulas)
 }

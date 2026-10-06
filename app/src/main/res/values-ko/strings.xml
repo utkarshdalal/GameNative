@@ -1264,6 +1264,11 @@
     <string name="main_downloading_steam">Steam 다운로드 중...</string>
     <string name="steam_update_required_title">업데이트 필요</string>
     <string name="steam_update_required_message">이 게임에 업데이트가 있습니다. 업데이트를 설치할 때까지 Steam 클라이언트가 게임을 시작할 수 없습니다. 지금 업데이트한 다음 다시 실행하세요.</string>
+    <string name="steam_agreement_ssa_title">Steam 가입자 계약</string>
+    <string name="steam_agreement_eula_title">최종 사용자 사용권 계약</string>
+    <string name="steam_agreement_message">플레이하기 전에 Steam에서 이 계약에 동의해야 합니다.</string>
+    <string name="steam_agreement_accept">동의</string>
+    <string name="steam_agreement_decline">거부</string>
     <string name="main_installing_glibc">glibc 구성 요소 설치 중...</string>
     <string name="main_installing_bionic">Bionic 구성 요소 설치 중...</string>
     <string name="main_loading">로딩 중...</string>

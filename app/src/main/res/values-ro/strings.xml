@@ -2813,6 +2813,11 @@
     <string name="nexus_fomod_defaults_replaced">%1$d fișier(e) implicit(e) înlocuit(e) de opțiunile FOMOD</string>
     <string name="steam_update_required_title">Actualizare necesară</string>
     <string name="steam_update_required_message">Acest joc are o actualizare. Clientul Steam nu îl poate porni până când actualizarea nu este instalată. Actualizează acum, apoi pornește din nou.</string>
+    <string name="steam_agreement_ssa_title">Acordul de abonat Steam</string>
+    <string name="steam_agreement_eula_title">Acord de licență pentru utilizatorul final</string>
+    <string name="steam_agreement_message">Steam îți cere să accepți acest acord înainte să joci.</string>
+    <string name="steam_agreement_accept">Acceptă</string>
+    <string name="steam_agreement_decline">Refuză</string>
     <string name="rockstar_login_required_title">Autentificare Rockstar necesară</string>
     <string name="rockstar_login_failed">Autentificarea Rockstar a eșuat: %1$s</string>
     <string name="ea_login_required_title">Autentificare EA necesară</string>

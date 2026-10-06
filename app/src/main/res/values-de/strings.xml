@@ -1223,6 +1223,11 @@
     <string name="main_downloading_steam">Steam wird heruntergeladen…</string>
     <string name="steam_update_required_title">Update erforderlich</string>
     <string name="steam_update_required_message">Für dieses Spiel liegt ein Update vor. Der Steam-Client kann es erst starten, wenn das Update installiert ist. Jetzt aktualisieren und dann erneut starten.</string>
+    <string name="steam_agreement_ssa_title">Steam-Nutzungsvertrag</string>
+    <string name="steam_agreement_eula_title">Endbenutzer-Lizenzvertrag</string>
+    <string name="steam_agreement_message">Steam verlangt, dass du diese Vereinbarung akzeptierst, bevor du spielst.</string>
+    <string name="steam_agreement_accept">Akzeptieren</string>
+    <string name="steam_agreement_decline">Ablehnen</string>
     <string name="main_installing_glibc">GLIBC-Komponenten werden installiert…</string>
     <string name="main_installing_bionic">Bionic-Komponenten werden installiert…</string>
     <string name="main_loading">Lädt…</string>

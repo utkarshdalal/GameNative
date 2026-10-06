@@ -14,7 +14,10 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import app.gamenative.data.EulaInfo
 import app.gamenative.data.GameSource
+import app.gamenative.data.SteamApp
+import app.gamenative.data.filterForCountry
 import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.enums.AppTheme
 import app.gamenative.ui.enums.AppFilter
@@ -115,6 +118,7 @@ object PrefManager {
                 pref.remove(STEAM_USER_STEAM_ID_64)
                 pref.remove(STEAM_USER_AVATAR_HASH)
                 pref.remove(STEAM_USER_NAME)
+                pref.remove(STEAM_IP_COUNTRY_CODE)
                 pref.remove(LAST_PICS_CHANGE_NUMBER)
                 pref.remove(STEAM_GAMES_COUNT)
                 pref.remove(PREFERRED_FAMILY_LENDERS_JSON)
@@ -861,6 +865,13 @@ object PrefManager {
         get() = getPref(CELL_ID_MANUALLY_SET, false)
         set(value) {
             setPref(CELL_ID_MANUALLY_SET, value)
+        }
+
+    private val STEAM_IP_COUNTRY_CODE = stringPreferencesKey("steam_ip_country_code")
+    var steamIpCountryCode: String
+        get() = getPref(STEAM_IP_COUNTRY_CODE, "")
+        set(value) {
+            setPref(STEAM_IP_COUNTRY_CODE, value)
         }
 
     private val USER_NAME = stringPreferencesKey("user_name")
@@ -1643,6 +1654,39 @@ object PrefManager {
                 }
             }
         }
+
+    private val ACCEPTED_STEAM_EULAS = stringPreferencesKey("accepted_steam_eulas")
+    val acceptedSteamEulas: Set<String>
+        get() {
+            val value = getPref(ACCEPTED_STEAM_EULAS, "[]")
+            return try {
+                Json.decodeFromString<Set<String>>(value)
+            } catch (e: Exception) {
+                emptySet()
+            }
+        }
+
+    fun getPendingSteamEulas(app: SteamApp): List<EulaInfo> {
+        if (app.eulas.isEmpty()) return emptyList()
+        val accepted = acceptedSteamEulas
+        return app.eulas
+            .filterForCountry(steamIpCountryCode)
+            .filter { it.acceptanceKey !in accepted }
+    }
+
+    fun markSteamEulasAccepted(eulas: List<EulaInfo>) {
+        if (eulas.isEmpty()) return
+        runBlocking {
+            dataStore.edit { pref ->
+                val current = try {
+                    Json.decodeFromString<Set<String>>(pref[ACCEPTED_STEAM_EULAS] ?: "[]")
+                } catch (e: Exception) {
+                    emptySet()
+                }
+                pref[ACCEPTED_STEAM_EULAS] = Json.encodeToString(current + eulas.map { it.acceptanceKey })
+            }
+        }
+    }
 
     // Add new setting for Wine debug logging
     private val ENABLE_WINE_DEBUG = booleanPreferencesKey("enable_wine_debug")

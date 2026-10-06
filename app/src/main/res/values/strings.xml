@@ -1505,6 +1505,11 @@
     <string name="main_downloading_steam">Downloading Steam...</string>
     <string name="steam_update_required_title">Update required</string>
     <string name="steam_update_required_message">This game has an update. The Steam client cannot start it until the update is installed. Update now, then launch again.</string>
+    <string name="steam_agreement_ssa_title">Steam Subscriber Agreement</string>
+    <string name="steam_agreement_eula_title">End User License Agreement</string>
+    <string name="steam_agreement_message">Steam requires you to accept this agreement before you play.</string>
+    <string name="steam_agreement_accept">Accept</string>
+    <string name="steam_agreement_decline">Decline</string>
 
     <string name="main_installing_glibc">Installing glibc components...</string>
     <string name="main_installing_bionic">Installing Bionic components...</string>

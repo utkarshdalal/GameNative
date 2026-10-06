@@ -1288,6 +1288,11 @@
     <string name="main_downloading_steam">Téléchargement de Steam…</string>
     <string name="steam_update_required_title">Mise à jour requise</string>
     <string name="steam_update_required_message">Une mise à jour est disponible pour ce jeu. Le client Steam ne peut pas le lancer tant qu\'elle n\'est pas installée. Mettez à jour, puis relancez.</string>
+    <string name="steam_agreement_ssa_title">Accord de souscription Steam</string>
+    <string name="steam_agreement_eula_title">Contrat de licence utilisateur final</string>
+    <string name="steam_agreement_message">Steam exige que vous acceptiez cet accord avant de jouer.</string>
+    <string name="steam_agreement_accept">Accepter</string>
+    <string name="steam_agreement_decline">Refuser</string>
     <string name="main_installing_glibc">Installation des composants glibc…</string>
     <string name="main_installing_bionic">Installation des composants Bionic…</string>
     <string name="main_loading">Chargement…</string>

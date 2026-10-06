@@ -1248,6 +1248,11 @@
     <string name="main_downloading_steam">正在下载 Steam...</string>
     <string name="steam_update_required_title">需要更新</string>
     <string name="steam_update_required_message">此游戏有可用更新。在安装更新之前，Steam 客户端无法启动它。请立即更新，然后重新启动。</string>
+    <string name="steam_agreement_ssa_title">Steam 订户协议</string>
+    <string name="steam_agreement_eula_title">最终用户许可协议</string>
+    <string name="steam_agreement_message">Steam 要求你在游玩前接受此协议。</string>
+    <string name="steam_agreement_accept">接受</string>
+    <string name="steam_agreement_decline">拒绝</string>
     <string name="main_installing_glibc">安装 glibc 组件...</string>
     <string name="main_installing_bionic">安装Bionic组件中...</string>
     <string name="main_loading">加载中...</string>

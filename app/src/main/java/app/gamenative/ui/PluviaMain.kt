@@ -105,6 +105,7 @@ import app.gamenative.ui.components.BootingSplash
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.enums.ConnectionState
 import app.gamenative.launch.LaunchReadiness
+import app.gamenative.launch.SteamAgreementGate
 import app.gamenative.ui.enums.DialogType
 import app.gamenative.ui.enums.Orientation
 import app.gamenative.ui.model.MainViewModel
@@ -1453,6 +1454,8 @@ fun PluviaMain(
                 message = msgDialogState.message,
             )
 
+            SteamAgreementGate.Prompt()
+
             val scope = rememberCoroutineScope()
             var containerConfigForDialog by remember(openContainerConfigForAppId) { mutableStateOf<ContainerData?>(null) }
             LaunchedEffect(openContainerConfigForAppId) {
@@ -2230,6 +2233,13 @@ fun preLaunchApp(
         if (LaunchReadiness.pending) {
             setLoadingDialogVisible(false)
             (context as? Activity)?.let { LaunchReadiness.resolve(it) }
+            return@launch
+        }
+
+        if (!bootToContainer && ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.STEAM &&
+            !SteamAgreementGate.confirm(context, gameId, isOffline, setLoadingDialogVisible)
+        ) {
+            setLoadingDialogVisible(false)
             return@launch
         }
 

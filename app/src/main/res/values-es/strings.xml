@@ -1277,6 +1277,11 @@
     <string name="main_downloading_steam">Descargando Steam…</string>
     <string name="steam_update_required_title">Actualización necesaria</string>
     <string name="steam_update_required_message">Este juego tiene una actualización. El cliente de Steam no puede iniciarlo hasta que se instale. Actualiza ahora y vuelve a iniciarlo.</string>
+    <string name="steam_agreement_ssa_title">Acuerdo de suscriptor de Steam</string>
+    <string name="steam_agreement_eula_title">Contrato de licencia de usuario final</string>
+    <string name="steam_agreement_message">Steam requiere que aceptes este acuerdo antes de jugar.</string>
+    <string name="steam_agreement_accept">Aceptar</string>
+    <string name="steam_agreement_decline">Rechazar</string>
 
     <string name="main_installing_glibc">Instalando componentes de glibc…</string>
     <string name="main_installing_bionic">Instalando componentes de Bionic…</string>
