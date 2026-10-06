@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-09-13",
+  "updatedAt": "2026-10-06",
   "items": {
     "driver": [
       {
@@ -925,6 +925,12 @@
         "id": "3.0.1-0",
         "name": "VKD3D 3.0.1-0",
         "url": "https://downloads.gamenative.app/drivers/vkd3d-proton-3.0.1.wcp",
+        "variant": "bionic"
+      },
+      {
+        "id": "3.0.1-4559a01d",
+        "name": "VKD3D 3.0.1-4559a01d (nightly)",
+        "url": "https://downloads.gamenative.app/dxwrapper/vkd3d-3.0.1-4559a01d.tzst",
         "variant": "bionic"
       }
     ]
