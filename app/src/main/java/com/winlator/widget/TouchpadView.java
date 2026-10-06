@@ -515,10 +515,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             case MotionEvent.ACTION_MOVE:
                 if (event.isFromSource(InputDevice.SOURCE_MOUSE)) {
                     float[] transformedPoint = XForm.transformPoint(xform, event.getX(), event.getY());
-                    if (xServer.isRelativeMouseMovement())
-                        xServer.getWinHandler().mouseEvent(MouseEventFlags.MOVE, (int)transformedPoint[0], (int)transformedPoint[1], 0);
-                    else
-                        moveAbsoluteMouse((int)transformedPoint[0], (int)transformedPoint[1]);
+                    moveCursorTo((int) transformedPoint[0], (int) transformedPoint[1]);
                 } else {
                     for (byte i = 0; i < MAX_FINGERS; i++) {
                         if (fingers[i] != null) {
@@ -667,10 +664,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     // Original GameNative touchscreen handler methods
     private void handleTouchDown(MotionEvent event) {
         float[] transformedPoint = XForm.transformPoint(xform, event.getX(), event.getY());
-        if (xServer.isRelativeMouseMovement())
-            xServer.getWinHandler().mouseEvent(MouseEventFlags.MOVE, (int)transformedPoint[0], (int)transformedPoint[1], 0);
-        else
-            moveAbsoluteMouse((int) transformedPoint[0], (int) transformedPoint[1]);
+        moveCursorTo((int) transformedPoint[0], (int) transformedPoint[1]);
 
         // Handle long press for right click (or use a dedicated method to detect long press)
         if (event.getPointerCount() == 1) {
@@ -689,10 +683,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     private void handleTouchMove(MotionEvent event) {
         float[] transformedPoint = XForm.transformPoint(xform, event.getX(), event.getY());
-        if (xServer.isRelativeMouseMovement())
-            xServer.getWinHandler().mouseEvent(MouseEventFlags.MOVE, (int)transformedPoint[0], (int)transformedPoint[1], 0);
-        else
-            moveAbsoluteMouse((int) transformedPoint[0], (int) transformedPoint[1]);
+        moveCursorTo((int) transformedPoint[0], (int) transformedPoint[1]);
     }
 
     private void handleTouchUp(MotionEvent event) {
@@ -1615,6 +1606,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     private void moveCursorTo(int x, int y) {
         if (xServer.isRelativeMouseMovement()) {
+            notifyMouseMovement(x, y);
             xServer.getWinHandler().mouseEvent(MouseEventFlags.MOVE, x, y, 0);
         } else {
             moveAbsoluteMouse(x, y);

@@ -19,6 +19,7 @@ class GyroSettingsTest {
         // Include the retired value (2) to cover compatibility with previously saved settings.
         for (priority in listOf(GyroSettings.PRIORITY_COMBINED, GyroSettings.PRIORITY_STICK_TOUCH, 2)) {
             val original = GyroSettings(inputPriority = priority).normalized()
+            assertEquals(if (priority == 2) GyroSettings.PRIORITY_COMBINED else priority, original.inputPriority)
             val container = containerWithExtras(mutableMapOf("gyroInputPriority" to priority.toString()))
             assertEquals(original, GyroSettings.fromContainer(container))
             assertEquals(original, GyroSettings.fromJsonObject(JSONObject().put("inputPriority", priority)))
