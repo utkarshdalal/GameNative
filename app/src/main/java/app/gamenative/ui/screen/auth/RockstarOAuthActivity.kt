@@ -16,7 +16,6 @@ import app.gamenative.service.rockstar.RockstarAuthManager
 import app.gamenative.service.rockstar.RockstarConstants
 import app.gamenative.service.rockstar.RockstarLoginGate
 import app.gamenative.service.rockstar.RockstarSignInShim
-import app.gamenative.service.rockstar.RockstarSteamTicket
 import app.gamenative.ui.component.dialog.AuthWebViewDialog
 import app.gamenative.ui.theme.PluviaTheme
 import timber.log.Timber
@@ -30,11 +29,10 @@ import timber.log.Timber
  *   3. the user signs in; the page calls CallAuthResult{authCode}, which expires in ~60 seconds
  *   4. move to the rgl origin and exchange the code at /api/connect/gateway for the token
  *
- * OnStartAuth carries the Steam identity (app id, Steam ID, persona, auth ticket) when the app's
- * Steam session can mint one, the way the launcher's RockstarSteamHelper does: the page then
- * links that Steam account to the Rockstar account being signed in to, which is what a never
- * linked account needs before the stub's entitlement mirror can find the game. The ticket is
- * single use and minted for this window only.
+ * OnStartAuth carries the Steam identity (app id, Steam ID, persona, auth ticket) when the gate
+ * could mint one, the way the launcher's RockstarSteamHelper does: the page then links that
+ * Steam account to the Rockstar account being signed in to, which is what a never linked
+ * account needs before the stub's entitlement mirror can find the game.
  *
  * Not /sdk?cid=launcher: that is what the launcher itself opens, but it runs invisible reCAPTCHA
  * Enterprise and signs its requests inside its own fetchJson, so it cannot be driven from outside.
@@ -52,7 +50,6 @@ class RockstarOAuthActivity : ComponentActivity() {
     private var authCode: String? = null
     private var fingerprint: String = ""
     private var webView: WebView? = null
-    private var steamTicket: RockstarSteamTicket? = null
     private val poller = Handler(Looper.getMainLooper())
 
     /*
@@ -84,8 +81,6 @@ class RockstarOAuthActivity : ComponentActivity() {
         if (finished) return
         finished = true
         poller.removeCallbacksAndMessages(null)
-        steamTicket?.close()
-        steamTicket = null
         setResult(if (token != null) Activity.RESULT_OK else Activity.RESULT_CANCELED)
         RockstarLoginGate.deliver(token)
         finish()
@@ -156,7 +151,8 @@ class RockstarOAuthActivity : ComponentActivity() {
             return
         }
 
-        val steamAppId = intent.getIntExtra(RockstarConstants.STEAM_APP_ID_EXTRA, 0)
+        val steamLink = intent.getStringExtra(RockstarConstants.STEAM_LINK_EXTRA)
+            ?.let { runCatching { org.json.JSONObject(it) }.getOrNull() }
 
         RockstarAuthManager.clearHandoffCookie()
 
@@ -188,19 +184,12 @@ class RockstarOAuthActivity : ComponentActivity() {
                             }
                             !injected && isSignInOrigin -> {
                                 injected = true
-                                lifecycleScope.launch {
-                                    val ticket = if (steamAppId > 0) RockstarSteamTicket.mint(steamAppId) else null
-                                    if (finished) { ticket?.close(); return@launch }
-                                    steamTicket = ticket
-                                    Timber.i("Rockstar sign-in: Steam link %s", if (ticket != null) "offered for app $steamAppId" else "not offered")
-                                    view.evaluateJavascript(
-                                        RockstarSignInShim.script(
-                                            filesDir, activeTitle, BRIDGE, android.os.Build.MODEL ?: "GAMENATIVE",
-                                            ticket?.externalPlatformInfo(),
-                                        ),
-                                    ) { Timber.i("Rockstar sign-in: shim installed -> %s", it) }
-                                    poller.postDelayed(watchCookie, 1000)
-                                }
+                                view.evaluateJavascript(
+                                    RockstarSignInShim.script(
+                                        filesDir, activeTitle, BRIDGE, android.os.Build.MODEL ?: "GAMENATIVE", steamLink,
+                                    ),
+                                ) { Timber.i("Rockstar sign-in: shim installed -> %s", it) }
+                                poller.postDelayed(watchCookie, 1000)
                             }
                         }
                     },

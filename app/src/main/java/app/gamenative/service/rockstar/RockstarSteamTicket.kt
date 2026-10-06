@@ -42,8 +42,14 @@ class RockstarSteamTicket private constructor(
 
     companion object {
         suspend fun mint(appId: Int): RockstarSteamTicket? = withContext(Dispatchers.IO) {
-            val client = SteamService.instance?.steamClient ?: return@withContext null
-            val steamId = client.steamID?.takeIf { it.isValid }?.convertToUInt64() ?: return@withContext null
+            val client = SteamService.instance?.steamClient ?: run {
+                Timber.w("Rockstar sign-in: no Steam client, cannot mint a ticket for app %d", appId)
+                return@withContext null
+            }
+            val steamId = client.steamID?.takeIf { it.isValid }?.convertToUInt64() ?: run {
+                Timber.w("Rockstar sign-in: Steam client not logged on, cannot mint a ticket for app %d", appId)
+                return@withContext null
+            }
             runCatching {
                 val ticket = withTimeout(20_000) {
                     client.getHandler(SteamAuthTicket::class.java)!!.getAuthSessionTicket(appId).await()
