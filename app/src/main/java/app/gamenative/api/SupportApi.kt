@@ -33,6 +33,8 @@ object SupportApi {
     const val BASE_URL = "${DebugReportApi.RELAY_BASE_URL}/api/app"
     const val TEXT_MAX = 1800
     const val NOT_SIGNED_IN = "not_signed_in"
+    const val FEATURES_HEADER = "x-gn-features"
+    const val FEATURES = "patches"
 
     const val KIND_USER = "user"
     const val KIND_AGENT = "agent"
@@ -318,7 +320,7 @@ object SupportApi {
         parse: (JSONObject) -> T,
     ): ApiResult<T> = withContext(Dispatchers.IO) {
         try {
-            val raw = AccountApi.sendAuthorized(build) { Raw(it.code, it.body.string()) }
+            val raw = AccountApi.sendAuthorized({ build(it).header(FEATURES_HEADER, FEATURES) }) { Raw(it.code, it.body.string()) }
                 ?: return@withContext ApiResult.HttpError(401, NOT_SIGNED_IN)
             if (tracksAvailability) markAvailability(raw.code)
             if (raw.code !in 200..299) {
