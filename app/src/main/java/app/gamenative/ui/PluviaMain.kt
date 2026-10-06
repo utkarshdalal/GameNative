@@ -2236,7 +2236,7 @@ fun preLaunchApp(
             return@launch
         }
 
-        if (ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.STEAM &&
+        if (!bootToContainer && ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.STEAM &&
             !SteamAgreementGate.confirm(context, gameId, isOffline, setLoadingDialogVisible)
         ) {
             setLoadingDialogVisible(false)

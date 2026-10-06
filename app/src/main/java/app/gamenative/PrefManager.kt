@@ -15,9 +15,9 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import app.gamenative.data.EulaInfo
-import app.gamenative.data.filterForCountry
 import app.gamenative.data.GameSource
 import app.gamenative.data.SteamApp
+import app.gamenative.data.filterForCountry
 import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.enums.AppTheme
 import app.gamenative.ui.enums.AppFilter
@@ -118,6 +118,7 @@ object PrefManager {
                 pref.remove(STEAM_USER_STEAM_ID_64)
                 pref.remove(STEAM_USER_AVATAR_HASH)
                 pref.remove(STEAM_USER_NAME)
+                pref.remove(STEAM_IP_COUNTRY_CODE)
                 pref.remove(LAST_PICS_CHANGE_NUMBER)
                 pref.remove(STEAM_GAMES_COUNT)
                 pref.remove(PREFERRED_FAMILY_LENDERS_JSON)

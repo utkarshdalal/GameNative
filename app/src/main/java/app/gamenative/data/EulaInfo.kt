@@ -19,8 +19,6 @@ data class EulaInfo(
 }
 
 fun List<EulaInfo>.filterForCountry(country: String?): List<EulaInfo> {
-    if (!country.isNullOrBlank()) return filter { it.appliesTo(country) }
-    val unrestricted = filter { it.countries.isEmpty() }
-    if (unrestricted.isNotEmpty()) return unrestricted
-    return listOfNotNull(maxByOrNull { it.countries.size })
+    if (country.isNullOrBlank()) return this
+    return filter { it.appliesTo(country) }
 }

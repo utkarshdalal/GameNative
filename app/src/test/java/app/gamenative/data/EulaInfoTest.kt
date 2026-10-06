@@ -34,13 +34,9 @@ class EulaInfoTest {
     }
 
     @Test
-    fun unknownCountryKeepsUnrestrictedEntries() {
-        assertEquals(listOf(global), listOf(global, japan).filterForCountry(""))
-    }
-
-    @Test
-    fun unknownCountryFallsBackToWidestEntryWhenAllAreRestricted() {
-        assertEquals(listOf(worldwide), listOf(japan, worldwide).filterForCountry(null))
+    fun unknownCountryKeepsEveryEntry() {
+        assertEquals(listOf(global, japan), listOf(global, japan).filterForCountry(""))
+        assertEquals(listOf(japan, worldwide), listOf(japan, worldwide).filterForCountry(null))
     }
 
     @Test

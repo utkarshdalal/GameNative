@@ -159,6 +159,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.BufferOverflow
 import okio.Path.Companion.toPath
@@ -178,7 +179,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import timber.log.Timber
 import app.gamenative.data.DownloadingAppInfo
@@ -1150,6 +1150,11 @@ class SteamService : Service(), IChallengeUrlChanged {
                     )
                     state
                 }
+            } catch (e: TimeoutCancellationException) {
+                Timber.w("getTimeSSAAccepted timed out")
+                null
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Timber.e(e, "getTimeSSAAccepted failed")
                 null
@@ -1169,6 +1174,11 @@ class SteamService : Service(), IChallengeUrlChanged {
                     Timber.i("acceptSSA returned ${response.result}")
                     response.result == EResult.OK
                 }
+            } catch (e: TimeoutCancellationException) {
+                Timber.w("acceptSSA timed out")
+                false
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Timber.e(e, "acceptSSA failed")
                 false

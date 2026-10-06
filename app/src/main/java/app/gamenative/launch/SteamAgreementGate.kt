@@ -11,6 +11,8 @@ import app.gamenative.R
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.dialog.SteamAgreementDialog
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 
@@ -25,8 +27,10 @@ object SteamAgreementGate {
         val result: CompletableDeferred<Boolean>,
     )
 
+    private val lock = Mutex()
+
     @Volatile
-    private var ssaHandled = false
+    private var ssaHandledFor = 0L
 
     private var request by mutableStateOf<Request?>(null)
 
@@ -35,33 +39,35 @@ object SteamAgreementGate {
         appId: Int,
         isOffline: Boolean,
         setLoadingDialogVisible: (Boolean) -> Unit,
-    ): Boolean {
-        if (!ssaHandled && !isOffline && SteamService.isConnected && SteamService.isLoggedIn) {
+    ): Boolean = lock.withLock {
+        val steamId = PrefManager.steamUserSteamId64
+        if (ssaHandledFor != steamId && !isOffline && SteamService.isConnected && SteamService.isLoggedIn) {
             val state = withTimeoutOrNull(SSA_CHECK_TIMEOUT_MS) { SteamService.getSteamAgreementState() }
             if (state != null && !state.needsAcceptance) {
-                ssaHandled = true
+                ssaHandledFor = steamId
             } else if (state != null) {
                 setLoadingDialogVisible(false)
-                if (!ask(context.getString(R.string.steam_agreement_ssa_title), SSA_URL)) return false
+                if (!ask(context.getString(R.string.steam_agreement_ssa_title), SSA_URL)) return@withLock false
                 setLoadingDialogVisible(true)
-                if (!SteamService.acceptSteamAgreement()) {
+                if (SteamService.acceptSteamAgreement()) {
+                    ssaHandledFor = steamId
+                } else {
                     Timber.w("Steam Subscriber Agreement acceptance failed, continuing launch")
                 }
-                ssaHandled = true
             }
         }
 
-        val app = SteamService.getAppInfoOf(appId) ?: return true
+        val app = SteamService.getAppInfoOf(appId) ?: return@withLock true
         val pending = PrefManager.getPendingSteamEulas(app)
-        if (pending.isEmpty()) return true
+        if (pending.isEmpty()) return@withLock true
         setLoadingDialogVisible(false)
         for (eula in pending) {
             val title = eula.name.ifBlank { context.getString(R.string.steam_agreement_eula_title) }
-            if (!ask(title, eula.url)) return false
+            if (!ask(title, eula.url)) return@withLock false
             PrefManager.markSteamEulasAccepted(listOf(eula))
         }
         setLoadingDialogVisible(true)
-        return true
+        true
     }
 
     private suspend fun ask(title: String, url: String): Boolean {
