@@ -181,7 +181,8 @@ class AmazonDownloadManager @Inject constructor(
                     }
 
                     override fun onLog(line: String) {
-                        if (GameDownloadService.SHOW_PIPELINE_LOGS) Timber.tag(TAG).d(line)
+                        // INFO, not DEBUG: ReleaseTree drops Debug/Verbose (see SHOW_PIPELINE_LOGS).
+                        if (GameDownloadService.SHOW_PIPELINE_LOGS) Timber.tag(TAG).i(line)
                     }
 
                     override fun onComplete(success: Boolean, error: String, bytesWritten: Long) = Unit

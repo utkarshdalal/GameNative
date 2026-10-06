@@ -1139,7 +1139,8 @@ class EpicDownloadManager @Inject constructor(
             }
 
             override fun onLog(line: String) {
-                if (GameDownloadService.SHOW_PIPELINE_LOGS) Timber.tag("Epic").d(line)
+                // INFO, not DEBUG: ReleaseTree drops Debug/Verbose (see SHOW_PIPELINE_LOGS).
+                if (GameDownloadService.SHOW_PIPELINE_LOGS) Timber.tag("Epic").i(line)
             }
 
             override fun onComplete(success: Boolean, error: String, bytesCredited: Long) = Unit

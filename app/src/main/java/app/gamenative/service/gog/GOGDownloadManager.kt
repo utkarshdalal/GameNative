@@ -1011,7 +1011,9 @@ class GOGDownloadManager @Inject constructor(
                     }
 
                     override fun onLog(line: String) {
-                        if (GameDownloadService.SHOW_PIPELINE_LOGS) Timber.tag("GOG").d(line)
+                        // INFO, not DEBUG: ReleaseTree drops Debug/Verbose, so the flag would
+                        // have no effect on release builds (the Rust side already logs to logcat).
+                        if (GameDownloadService.SHOW_PIPELINE_LOGS) Timber.tag("GOG").i(line)
                     }
 
                     override fun onComplete(
