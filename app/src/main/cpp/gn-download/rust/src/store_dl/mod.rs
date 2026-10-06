@@ -78,43 +78,103 @@ pub(crate) fn canonicalize_case_paths(paths: &[&str]) -> CaseCanonicalization {
     }
 }
 
-/// Re-spell each EXISTING component of `base/rel` to its on-disk case (case-insensitive
-/// directory scan), returning the re-spelled RELATIVE path. Resume finds files an older
-/// manifest wrote with different casing, and a second depot writing `game/` after another
-/// wrote `Game/` lands in the existing directory. Components that don't exist yet keep the
-/// manifest's spelling (they are about to be created, already canonicalized). On a
-/// case-insensitive filesystem the exact-match fast path always hits, so this costs nothing.
+/// Re-spell each EXISTING component of `base/rel` to its on-disk case, returning the re-spelled
+/// RELATIVE path. Resume finds files an older manifest wrote with different casing, and a second
+/// depot writing `game/` after another wrote `Game/` lands in the existing directory. Components
+/// that don't exist yet keep the manifest's spelling (they are about to be created, already
+/// canonicalized). On a case-insensitive filesystem the exact-match fast path always hits, so one
+/// call costs almost nothing — but a per-file caller should use [`CaseResolver`], which caches the
+/// directory listings (see below).
 pub(crate) fn resolve_existing_case(base: &str, rel: &str) -> String {
-    let mut current = std::path::PathBuf::from(base);
-    let mut out = String::new();
-    let mut missing = false;
-    for seg in rel.replace('\\', "/").split('/') {
-        if seg.is_empty() {
-            continue;
+    CaseResolver::new().resolve(base, rel)
+}
+
+/// Case-insensitive on-disk spelling resolver with a per-directory listing cache, for the loops
+/// that re-spell every file of a manifest (depot planning/prepare, store sweeps).
+///
+/// [`resolve_existing_case`] alone costs a `stat` per path component per file, plus a `read_dir`
+/// and a linear, lowercasing scan of the parent for EVERY component that does not exist with the
+/// manifest's spelling — which on an update is every new file, re-scanning the whole (possibly
+/// thousands-of-entries) parent directory each time. The pre-passes that run before a depot's first
+/// chunk call it once per file, so on storage where metadata ops dominate the run (FUSE/sdcardfs,
+/// exFAT SD) they were the bulk of the wait before the first `Verifying Files (n/N)` status could be
+/// reported at all: measured on a 40k-file tree, plan+prepare spent 296 ms in resolution against a
+/// 48 ms plain `stat`-per-file floor — ~6 avoidable metadata ops per file, on a warm NVMe metadata
+/// cache; the same shape costs tens of seconds per 40k files on device storage.
+///
+/// One resolver per pass keeps the case-folded listing of every directory it touches, so the pass
+/// costs ONE `read_dir` per DIRECTORY instead of a `stat` per component per file, and repeated
+/// negative lookups in a large directory are answered from memory. Resolve before creating entries:
+/// a cached listing does not see files written afterwards (the plan/prepare passes run before the
+/// layout pass and before any chunk write, which is what this is for).
+pub(crate) struct CaseResolver {
+    /// Directory -> `(case-folded name, on-disk name)` for every entry, or `None` when the
+    /// directory does not exist / cannot be listed (then nothing under it resolves).
+    dirs: std::collections::HashMap<std::path::PathBuf, Option<Vec<(String, String)>>>,
+}
+
+impl CaseResolver {
+    pub(crate) fn new() -> Self {
+        Self {
+            dirs: std::collections::HashMap::new(),
         }
-        let mut chosen = seg.to_string();
-        if !missing && !current.join(seg).exists() {
-            match std::fs::read_dir(&current).ok().and_then(|rd| {
-                rd.filter_map(|e| e.ok())
-                    .map(|e| e.file_name().to_string_lossy().into_owned())
-                    .find(|name| name.to_lowercase() == seg.to_lowercase())
-            }) {
-                Some(found) => chosen = found,
-                None => missing = true,
-            }
-        }
-        if !out.is_empty() {
-            out.push('/');
-        }
-        out.push_str(&chosen);
-        current.push(&chosen);
     }
-    out
+
+    /// Re-spell each EXISTING component of `base/rel` to its on-disk case (see
+    /// [`resolve_existing_case`]). Components that don't exist keep the manifest's spelling.
+    pub(crate) fn resolve(&mut self, base: &str, rel: &str) -> String {
+        let mut current = std::path::PathBuf::from(base);
+        let mut out = String::new();
+        let mut missing = false;
+        for seg in rel.replace('\\', "/").split('/') {
+            if seg.is_empty() {
+                continue;
+            }
+            let mut chosen = seg.to_string();
+            if !missing {
+                match self.lookup(&current, seg) {
+                    Some(found) => chosen = found,
+                    None => missing = true,
+                }
+            }
+            if !out.is_empty() {
+                out.push('/');
+            }
+            out.push_str(&chosen);
+            current.push(&chosen);
+        }
+        out
+    }
+
+    /// The on-disk spelling of `name` inside `dir`: the exact match first (the case-insensitive
+    /// fast path), else the first case-insensitive match in directory order, else `None`.
+    fn lookup(&mut self, dir: &std::path::Path, name: &str) -> Option<String> {
+        if !self.dirs.contains_key(dir) {
+            let listing = std::fs::read_dir(dir).ok().map(|rd| {
+                rd.filter_map(|e| e.ok())
+                    .map(|e| {
+                        let on_disk = e.file_name().to_string_lossy().into_owned();
+                        (on_disk.to_lowercase(), on_disk)
+                    })
+                    .collect::<Vec<_>>()
+            });
+            self.dirs.insert(dir.to_path_buf(), listing);
+        }
+        let entries = self.dirs.get(dir)?.as_ref()?;
+        if let Some((_, on_disk)) = entries.iter().find(|(_, on_disk)| on_disk == name) {
+            return Some(on_disk.clone());
+        }
+        let folded = name.to_lowercase();
+        entries
+            .iter()
+            .find(|(folded_name, _)| *folded_name == folded)
+            .map(|(_, on_disk)| on_disk.clone())
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{canonicalize_case_paths, rel_path_is_safe, resolve_existing_case};
+    use super::{canonicalize_case_paths, rel_path_is_safe, resolve_existing_case, CaseResolver};
 
     #[test]
     fn rel_path_is_safe_rules() {
@@ -205,6 +265,70 @@ mod tests {
         assert_eq!(
             resolve_existing_case(&base, "game/data/sub/deep/New/leaf.bin"),
             "Game/Data/Sub/Deep/New/leaf.bin"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn case_resolver_matches_the_one_shot_resolver() {
+        let dir = std::env::temp_dir().join(format!("casekey-resolver-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("Game/data/Sub")).unwrap();
+        std::fs::write(dir.join("Game/data/Sub/Leaf.BIN"), b"x").unwrap();
+        let base = dir.to_string_lossy().into_owned();
+        let mut r = CaseResolver::new();
+        for rel in [
+            "gAmE/dAtA/sUb/leaf.bin",       // every component re-spells
+            "game/data/sub/leaf.bin",       // same, all lower
+            "Game/data/sub/deep/new.bin",   // missing middle keeps spelling below the last hit
+            "fresh/file.bin",               // missing from the root
+            "Game/data/Sub/Leaf.BIN",       // already exact
+        ] {
+            assert_eq!(
+                r.resolve(&base, rel),
+                resolve_existing_case(&base, rel),
+                "cached resolver must agree with the one-shot resolver for {rel}"
+            );
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn case_resolver_prefers_the_exact_spelling_over_a_folded_match() {
+        // Only distinguishable on a case-SENSITIVE filesystem: the old resolver's `exists()` fast
+        // path picked the exact component, so the cached version must too.
+        let dir = std::env::temp_dir().join(format!("casekey-exact-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("Data")).unwrap();
+        std::fs::create_dir_all(dir.join("data")).unwrap();
+        let base = dir.to_string_lossy().into_owned();
+        let mut r = CaseResolver::new();
+        assert_eq!(r.resolve(&base, "data/f.bin"), "data/f.bin");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn case_resolver_snapshots_directory_listings() {
+        // The listing cache is per pass, so a file created AFTER a directory was resolved is not
+        // seen — that is the contract (plan → prepare resolve before the layout pass and before any
+        // chunk write). Documented here so a future caller cannot assume fresh listings.
+        let dir = std::env::temp_dir().join(format!("casekey-snapshot-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("Game")).unwrap();
+        std::fs::write(dir.join("Game/Existing.bin"), b"x").unwrap();
+        let base = dir.to_string_lossy().into_owned();
+        let mut r = CaseResolver::new();
+        assert_eq!(r.resolve(&base, "game/existing.bin"), "Game/Existing.bin");
+        std::fs::write(dir.join("Game/Created.Later"), b"x").unwrap();
+        assert_eq!(
+            r.resolve(&base, "game/created.later"),
+            "Game/created.later",
+            "cached listing: entries written after the first resolve are not picked up"
+        );
+        // A fresh resolver (the next pass) does see it.
+        assert_eq!(
+            CaseResolver::new().resolve(&base, "game/created.later"),
+            "Game/Created.Later"
         );
         let _ = std::fs::remove_dir_all(&dir);
     }

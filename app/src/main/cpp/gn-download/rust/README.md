@@ -63,6 +63,18 @@ on exFAT/FUSE SD cards forces the filesystem to zero-fill the gap, which wedges 
   creates only directories and symlinks — regular files are created on first write (and
   0-chunk files at finalize), so download start and later deletion stay cheap on
   FUSE/sdcardfs even for many-thousand-file depots.
+
+**Pre-pass cost (verify/update start-up).** Before a depot's first chunk, Steam resolves every
+manifest path to its on-disk spelling, stats every file and creates the directory layout —
+all of it before the first `onVerifying` status can be reported, so it is the window in which a
+verify/update looks "stuck" before the UI shows anything. Path resolution is metadata-bound:
+`CaseResolver` (`store_dl/mod.rs`) caches one case-folded listing per directory, so a pass costs
+one `read_dir` per **directory** instead of a `stat` per path component per file (plus a full
+parent-directory scan for every not-yet-existing file), and `DepotFiles::prepare` reuses the
+paths `plan_depot_write` already resolved instead of walking the tree a second time. Measured on
+a 40k-file tree: plan+prepare 296 ms → 139 ms (a 48 ms pure-`stat` floor remains), with ~7 fewer
+metadata ops per file, which is what the device actually pays. The verify counter is also
+published as soon as the candidate count is known — before the layout pass — as `(0, N)`.
 - **GOG** (`store_dl/gog/engine.rs`): chunks inflate into an in-memory buffer first
   (MD5-verified), then only *verified* chunks enter the file's `OrderedDrain`
   (`store_dl/ordered_drain.rs`) — the shared component implementing the Steam model
