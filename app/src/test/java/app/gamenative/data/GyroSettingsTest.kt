@@ -16,6 +16,8 @@ import org.robolectric.RobolectricTestRunner
 class GyroSettingsTest {
     @Test
     fun inputPrioritiesRoundTripAndOldOrInvalidSettingsRemainCombined() {
+        assertEquals(GyroSettings.PRIORITY_COMBINED, GyroSettings.fromContainer(containerWithExtras(mutableMapOf())).inputPriority)
+        assertEquals(GyroSettings.PRIORITY_COMBINED, GyroSettings.fromJsonObject(JSONObject()).inputPriority)
         // Include the retired value (2) to cover compatibility with previously saved settings.
         for (priority in listOf(GyroSettings.PRIORITY_COMBINED, GyroSettings.PRIORITY_STICK_TOUCH, 2)) {
             val original = GyroSettings(inputPriority = priority).normalized()

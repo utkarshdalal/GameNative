@@ -2767,6 +2767,11 @@
     <string name="gyro_section_response">반응</string>
     <string name="gyro_output">출력</string>
     <string name="gyro_output_subtitle">기기 움직임으로 제어할 대상을 선택합니다.</string>
+    <string name="gyro_input_priority">입력 우선순위</string>
+    <string name="gyro_priority_combined">함께 사용(기본값)</string>
+    <string name="gyro_priority_stick_touch">스틱 / 터치스크린 우선</string>
+    <string name="gyro_priority_combined_help">같은 출력에 자이로 움직임과 스틱, 터치스크린, 스타일러스, 컨트롤러로 제어하는 마우스 움직임을 합칩니다.</string>
+    <string name="gyro_priority_stick_touch_help">같은 출력에서 스틱, 터치스크린, 스타일러스 또는 컨트롤러로 제어하는 마우스로 움직임을 입력하는 동안 자이로 움직임을 일시 중지합니다. 수동 움직임이 멈추면 다시 시작합니다.</string>
     <string name="gyro_conversion_style">변환 방식</string>
     <string name="gyro_conversion_yaw">로컬 공간(요)</string>
     <string name="gyro_conversion_roll">로컬 공간(롤)</string>

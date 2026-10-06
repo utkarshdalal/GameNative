@@ -2778,6 +2778,11 @@
     <string name="gyro_section_response">Відгук</string>
     <string name="gyro_output">Вивід</string>
     <string name="gyro_output_subtitle">Виберіть, чим керує рух пристрою.</string>
+    <string name="gyro_input_priority">Пріоритет введення</string>
+    <string name="gyro_priority_combined">Разом (типово)</string>
+    <string name="gyro_priority_stick_touch">Пріоритет стіка / сенсорного екрана</string>
+    <string name="gyro_priority_combined_help">Поєднує рух гіроскопа з рухами стіка, сенсорного екрана, стилуса та миші, керованої контролером, на тому самому виході.</string>
+    <string name="gyro_priority_stick_touch_help">Призупиняє рух гіроскопа на тому самому виході під час керування рухом за допомогою стіка, сенсорного екрана, стилуса або миші, керованої контролером. Відновлює його, коли ручний рух припиняється.</string>
     <string name="gyro_conversion_style">Режим перетворення</string>
     <string name="gyro_conversion_yaw">Локальні координати (рискання)</string>
     <string name="gyro_conversion_roll">Локальні координати (крен)</string>

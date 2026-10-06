@@ -2644,6 +2644,11 @@
     <string name="gyro_section_response">Resposta</string>
     <string name="gyro_output">Saída</string>
     <string name="gyro_output_subtitle">Escolha o que o movimento do dispositivo controla.</string>
+    <string name="gyro_input_priority">Prioridade de entrada</string>
+    <string name="gyro_priority_combined">Combinado (padrão)</string>
+    <string name="gyro_priority_stick_touch">Prioridade do analógico / tela sensível ao toque</string>
+    <string name="gyro_priority_combined_help">Combina o movimento do giroscópio com os movimentos do analógico, da tela sensível ao toque, da caneta e do mouse via controle na mesma saída.</string>
+    <string name="gyro_priority_stick_touch_help">Pausa o movimento do giroscópio na mesma saída durante movimentos do analógico, da tela sensível ao toque, da caneta ou do mouse via controle. Retoma quando o movimento manual para.</string>
     <string name="gyro_conversion_style">Modo de conversão</string>
     <string name="gyro_conversion_yaw">Espaço local (guinada)</string>
     <string name="gyro_conversion_roll">Espaço local (rolagem)</string>

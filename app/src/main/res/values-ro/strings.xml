@@ -2764,6 +2764,11 @@
     <string name="gyro_section_response">Răspuns</string>
     <string name="gyro_output">Ieșire</string>
     <string name="gyro_output_subtitle">Alege ce controlează mișcarea dispozitivului.</string>
+    <string name="gyro_input_priority">Prioritate intrare</string>
+    <string name="gyro_priority_combined">Combinate (implicit)</string>
+    <string name="gyro_priority_stick_touch">Prioritate stick / ecran tactil</string>
+    <string name="gyro_priority_combined_help">Combină mișcarea giroscopului cu cea a stickului, a ecranului tactil, a stiloului și a mouse-ului controlat prin controller pe aceeași ieșire.</string>
+    <string name="gyro_priority_stick_touch_help">Întrerupe mișcarea giroscopului pe aceeași ieșire în timpul mișcărilor prin stick, ecran tactil, stilou sau mouse controlat prin controller. Reia când mișcarea manuală se oprește.</string>
     <string name="gyro_conversion_style">Mod de conversie</string>
     <string name="gyro_conversion_yaw">Spațiu local (girație)</string>
     <string name="gyro_conversion_roll">Spațiu local (ruliu)</string>

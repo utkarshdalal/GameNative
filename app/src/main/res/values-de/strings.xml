@@ -2714,6 +2714,11 @@
     <string name="gyro_section_response">Reaktion</string>
     <string name="gyro_output">Ausgabe</string>
     <string name="gyro_output_subtitle">Wähle aus, was die Gerätebewegung steuert.</string>
+    <string name="gyro_input_priority">Eingabepriorität</string>
+    <string name="gyro_priority_combined">Kombiniert (Standard)</string>
+    <string name="gyro_priority_stick_touch">Stick-/Touchscreen-Priorität</string>
+    <string name="gyro_priority_combined_help">Kombiniert Gyrobewegungen mit Bewegungen von Stick, Touchscreen, Stift und controllergesteuerter Maus auf derselben Ausgabe.</string>
+    <string name="gyro_priority_stick_touch_help">Pausiert Gyrobewegungen auf derselben Ausgabe bei Bewegungen mit Stick, Touchscreen, Stift oder controllergesteuerter Maus. Setzt sie fort, sobald die manuelle Bewegung endet.</string>
     <string name="gyro_conversion_style">Umrechnungsmodus</string>
     <string name="gyro_conversion_yaw">Lokale Koordinaten (Gieren)</string>
     <string name="gyro_conversion_roll">Lokale Koordinaten (Rollen)</string>
