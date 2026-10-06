@@ -67,13 +67,23 @@ on exFAT/FUSE SD cards forces the filesystem to zero-fill the gap, which wedges 
 **Pre-pass cost (verify/update start-up).** Before a depot's first chunk, Steam resolves every
 manifest path to its on-disk spelling and stats every file — both before the first `onVerifying`
 status can be reported, so they are the window in which a verify/update looks "stuck" before the
-UI shows anything (the directory layout is created after that first `(0, N)` status). Path resolution is metadata-bound:
-`CaseResolver` (`store_dl/mod.rs`) caches one case-folded listing per directory, so a pass costs
-one `read_dir` per **directory** instead of a `stat` per path component per file (plus a full
-parent-directory scan for every not-yet-existing file), and `DepotFiles::prepare` reuses the
-paths `plan_depot_write` already resolved instead of walking the tree a second time. Measured on
-a 40k-file tree: plan+prepare 296 ms → 139 ms (a 48 ms pure-`stat` floor remains), with ~7 fewer
-metadata ops per file, which is what the device actually pays. The verify counter is also
+UI shows anything (the directory layout is created *after* that first `(0, N)` status). This is
+metadata-bound work, so it is exactly what device storage punishes.
+
+Two things keep it minimal. `DepotFiles::prepare` reuses the paths `plan_depot_write` already
+resolved instead of walking the tree a second time, and path resolution itself is cached:
+`CaseResolver` (`store_dl/mod.rs`) still checks each component with one `exists()` stat (the
+exact-spelling fast path that hits for every already-correct path), but a component that does
+**not** exist with the manifest's spelling is answered from a per-directory case-folded listing
+cached once per pass — where the old code scanned the parent directory again for every such
+component, i.e. once per new file of an update. Measured on a 40k-file tree, plan+prepare:
+
+| case | before | after |
+|---|---|---|
+| verify (every file already on disk) | 296 ms | 182 ms |
+| update (10% of the manifest is new) | 265 ms | 163 ms |
+
+…against a 48 ms floor for the one stat per file that cannot be avoided. The verify counter is
 published as soon as the candidate count is known — before the layout pass — as `(0, N)`.
 - **GOG** (`store_dl/gog/engine.rs`): chunks inflate into an in-memory buffer first
   (MD5-verified), then only *verified* chunks enter the file's `OrderedDrain`
