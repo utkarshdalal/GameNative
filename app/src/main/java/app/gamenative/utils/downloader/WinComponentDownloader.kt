@@ -62,11 +62,13 @@ object WinComponentDownloader {
 
         // Modern variant: download from server
         // Check if already downloaded and cached
-        val destFile = File(context.filesDir, "$WINCOMPONENTS_CACHE_DIR/$componentId.tzst")
+        val cacheDir = File(context.filesDir, WINCOMPONENTS_CACHE_DIR)
+        val destFile = File(cacheDir, "$componentId-v${manifest.version}.tzst")
         if (destFile.exists() && destFile.length() > 0) {
             Timber.d("Using cached wincomponent: $componentId at ${destFile.absolutePath}")
             return@withContext destFile
         }
+        cacheDir.listFiles()?.filter { it.name == "$componentId.tzst" || it.name.startsWith("$componentId-v") }?.forEach { it.delete() }
 
         // Download from server using local manifest
         Timber.i("Downloading wincomponent: $componentId from server")
