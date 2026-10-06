@@ -224,7 +224,8 @@ public abstract class WineUtils {
             registryEditor.setStringValue("System\\CurrentControlSet\\Control\\ComputerName\\ActiveComputerName", "ComputerName", computerName);
             registryEditor.setStringValue("System\\CurrentControlSet\\Services\\Tcpip\\Parameters", "Hostname", computerName);
             registryEditor.setStringValue("System\\CurrentControlSet\\Services\\Tcpip\\Parameters", "NV Hostname", computerName);
-            Timber.i("Set Wine computer name to %s for container %s", computerName, container.id);
+            // The name is derived from ANDROID_ID, so it is not logged.
+            Timber.i("Applied the stable Wine computer name for container %s", container.id);
         } catch (Exception e) {
             Timber.w(e, "Failed to set Wine computer name for container %s", container.id);
         }

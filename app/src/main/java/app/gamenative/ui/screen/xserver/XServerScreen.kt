@@ -5422,9 +5422,10 @@ private suspend fun setupWineSystemFiles(
 
     if (firstBoot || imgVersionChanged || variantChanged || wineVersionChanged) {
         applyGeneralPatches(context, container, imageFs, xServerState.value.wineInfo, containerManager, onExtractFileListener)
-        if (firstBoot) {
-            // Only on a genuinely new container — existing ones keep whatever Wine
-            // computer name they already have, even across image/variant updates.
+        // firstBoot alone is not enough: an image update clears appVersion on every container (see
+        // ImageFsInstaller.resetContainerImgVersions). A container that was already set up keeps the
+        // applied-variant/Wine markers, a genuinely new one does not.
+        if (firstBoot && markersMissing) {
             WineUtils.applyComputerName(context, container)
         }
         container.putExtra("appliedContainerVariant", container.containerVariant)
