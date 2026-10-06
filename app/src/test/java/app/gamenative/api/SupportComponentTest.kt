@@ -22,7 +22,7 @@ class SupportComponentTest {
         type: String = "turnip",
         format: String = "adrenotools-zip",
         version: String = "turnip-pr12-a1b2c3d4",
-        key: String = "graphicsDriverVersion",
+        key: String = "graphicsDriverConfig.version",
         value: String = version,
         size: Long = 2574958L,
         url: String = "https://example.com/a.zip",
@@ -46,7 +46,7 @@ class SupportComponentTest {
         assertEquals(SupportComponent.Type.TURNIP, component.type)
         assertEquals(SupportComponent.PackageFormat.ADRENOTOOLS_ZIP, component.packageFormat)
         assertEquals("turnip-pr12-a1b2c3d4", component.versionName)
-        assertEquals("graphicsDriverVersion", component.applyKey)
+        assertEquals("graphicsDriverConfig.version", component.applyKey)
         assertEquals("Fixes GMEM tiling", component.summary)
         assertEquals("GameNative/mesa-turnip", component.sourceRepo)
         assertEquals("pr12", component.sourceRef)
@@ -60,8 +60,8 @@ class SupportComponentTest {
         val cases = listOf(
             "fexcore" to "fexcoreVersion",
             "box64" to "box64Version",
-            "dxvk" to "dxwrapper",
-            "vkd3d" to "dxwrapper",
+            "dxvk" to "dxwrapperConfig.version",
+            "vkd3d" to "dxwrapperConfig.vkd3dVersion",
             "proton" to "wineVersion",
         )
         for ((type, key) in cases) {

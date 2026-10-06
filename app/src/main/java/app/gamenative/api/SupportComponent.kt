@@ -26,8 +26,8 @@ data class SupportComponent(
         WRAPPER("wrapper", PackageFormat.ADRENOTOOLS_ZIP, KEY_GRAPHICS_DRIVER_VERSION),
         FEXCORE("fexcore", PackageFormat.CONTENT_PACKAGE, KEY_FEXCORE_VERSION),
         BOX64("box64", PackageFormat.CONTENT_PACKAGE, KEY_BOX64_VERSION),
-        DXVK("dxvk", PackageFormat.CONTENT_PACKAGE, KEY_DXWRAPPER),
-        VKD3D("vkd3d", PackageFormat.CONTENT_PACKAGE, KEY_DXWRAPPER),
+        DXVK("dxvk", PackageFormat.CONTENT_PACKAGE, KEY_DXVK_VERSION),
+        VKD3D("vkd3d", PackageFormat.CONTENT_PACKAGE, KEY_VKD3D_VERSION),
         PROTON("proton", PackageFormat.CONTENT_PACKAGE, KEY_WINE_VERSION),
         ;
 
@@ -47,17 +47,19 @@ data class SupportComponent(
     }
 
     companion object {
-        const val KEY_GRAPHICS_DRIVER_VERSION = "graphicsDriverVersion"
+        const val KEY_GRAPHICS_DRIVER_VERSION = "graphicsDriverConfig.version"
         const val KEY_FEXCORE_VERSION = "fexcoreVersion"
         const val KEY_BOX64_VERSION = "box64Version"
-        const val KEY_DXWRAPPER = "dxwrapper"
+        const val KEY_DXVK_VERSION = "dxwrapperConfig.version"
+        const val KEY_VKD3D_VERSION = "dxwrapperConfig.vkd3dVersion"
         const val KEY_WINE_VERSION = "wineVersion"
 
         val APPLY_KEYS = setOf(
             KEY_GRAPHICS_DRIVER_VERSION,
             KEY_FEXCORE_VERSION,
             KEY_BOX64_VERSION,
-            KEY_DXWRAPPER,
+            KEY_DXVK_VERSION,
+            KEY_VKD3D_VERSION,
             KEY_WINE_VERSION,
         )
 
