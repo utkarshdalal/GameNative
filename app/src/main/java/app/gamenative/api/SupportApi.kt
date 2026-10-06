@@ -35,7 +35,7 @@ object SupportApi {
     const val TEXT_MAX = 1800
     const val NOT_SIGNED_IN = "not_signed_in"
     const val FEATURES_HEADER = "x-gn-features"
-    const val FEATURES = "patches"
+    const val FEATURES = "patches,components"
 
     const val KIND_USER = "user"
     const val KIND_AGENT = "agent"
@@ -133,6 +133,7 @@ object SupportApi {
         val suggestion: SupportSuggestion? = null,
         val filesRequest: SupportFilesRequest? = null,
         val patch: SupportPatch? = null,
+        val component: SupportComponent? = null,
     )
 
     data class FileSlot(val fileId: String, val key: String?, val putUrl: String, val expiresAt: Long)
@@ -299,6 +300,11 @@ object SupportApi {
             },
             patch = if (kind == KIND_AGENT) {
                 runCatching { SupportPatch.parse(cardJson(json, "patch")) }.getOrNull()
+            } else {
+                null
+            },
+            component = if (kind == KIND_AGENT) {
+                runCatching { SupportComponent.parse(cardJson(json, "component")) }.getOrNull()
             } else {
                 null
             },
@@ -646,6 +652,23 @@ object SupportApi {
                 val json = JSONObject().put("status", status)
                 if (!detail.isNullOrBlank()) json.put("detail", detail.take(500))
                 it.url("$BASE_URL/conversations/$conversationId/patches/$patchsetId/outcome")
+                    .post(json.toString().toRequestBody(JSON_TYPE))
+            },
+            parse = { },
+        )
+
+    suspend fun componentOutcome(
+        conversationId: String,
+        componentId: String,
+        status: String,
+        detail: String? = null,
+    ): ApiResult<Unit> =
+        call(
+            name = "components/outcome",
+            build = {
+                val json = JSONObject().put("status", status)
+                if (!detail.isNullOrBlank()) json.put("detail", detail.take(500))
+                it.url("$BASE_URL/conversations/$conversationId/components/$componentId/outcome")
                     .post(json.toString().toRequestBody(JSON_TYPE))
             },
             parse = { },

@@ -381,6 +381,15 @@ internal fun ColumnScope.SupportChat(
                                         onStartDebugRun = onStartDebugRun,
                                     )
                                 }
+                                item.message.component?.let { component ->
+                                    ComponentCard(
+                                        message = item.message,
+                                        component = component,
+                                        appId = appId,
+                                        conversationId = conversationId,
+                                        onStartDebugRun = onStartDebugRun,
+                                    )
+                                }
                             }
                             is ChatItem.Analysing -> AnalysingCard(
                                 first = item.first,

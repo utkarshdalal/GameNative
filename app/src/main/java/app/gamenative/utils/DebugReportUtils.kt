@@ -3,6 +3,7 @@ package app.gamenative.utils
 import android.content.Context
 import android.os.Build
 import app.gamenative.BuildConfig
+import app.gamenative.ui.screen.support.SupportComponentApplier
 import app.gamenative.ui.screen.support.SupportPatchApplier
 import app.gamenative.ui.screen.support.SupportSuggestionApplier
 import com.winlator.core.GPUInformation
@@ -221,6 +222,10 @@ object DebugReportUtils {
             val patchFile = SupportPatchApplier.appliedRecordFile(container)
             if (patchFile.exists()) {
                 runCatching { JSONObject(patchFile.readText()) }.getOrNull()?.let { put("appliedPatch", it) }
+            }
+            val componentFile = SupportComponentApplier.appliedRecordFile(container)
+            if (componentFile.exists()) {
+                runCatching { JSONObject(componentFile.readText()) }.getOrNull()?.let { put("appliedComponent", it) }
             }
         }
     }
