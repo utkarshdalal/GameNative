@@ -155,7 +155,7 @@
     <string name="custom_game_settings">カスタムゲーム設定</string>
     <string name="custom_game_delete_title">ゲームを削除</string>
     <string name="custom_game_delete_message">%1$s をアンインストールしてもよろしいですか?</string>
-    <string name="custom_game_unknown_developer">未知</string>
+    <string name="custom_game_unknown_developer">不明</string>
 
     <!--Winlator-->
     <string name="disabled">無効</string>
@@ -1065,7 +1065,7 @@
     <string name="debug_report_use_discord">代わりに Discord を使う</string>
     <string name="debug_report_use_app">代わりにアプリ内チャットを使う</string>
     <string name="settings_emulation_orientations_title">画面方向</string>
-    <string name="settings_emulation_orientations_subtitle">ゲーム内でどの方向に回転できるかを選択します</string>
+    <string name="settings_emulation_orientations_subtitle">ゲーム画面をどの方向に回転できるかを選択する</string>
     <string name="settings_emulation_default_config_title">デフォルト設定の変更</string>
     <string name="settings_emulation_default_config_subtitle">各ゲームのコンテナの初期設定 (すでにインストールされているゲームには影響しません)</string>
     <string name="settings_emulation_default_config_dialog_title">デフォルトのコンテナ構成</string>
@@ -1118,7 +1118,7 @@
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">インタフェース</string>
-    <string name="settings_interface_external_links_title">Webリンクを外部で開く</string>
+    <string name="settings_interface_external_links_title">Webリンクを外部ブラウザで開く</string>
     <string name="settings_interface_external_links_subtitle">リンクを既定のWebブラウザで開きます</string>
     <string name="settings_interface_hide_statusbar_title">ゲーム中でないときはステータスバーを非表示にする</string>
     <string name="settings_interface_hide_statusbar_subtitle">ゲームリストや設定などで Android ステータスバーを非表示にします。変更するとアプリが再起動します。</string>
@@ -1150,15 +1150,15 @@
     <string name="downloads_status_paused">一時停止中</string>
     <string name="downloads_status_complete">完了</string>
     <string name="downloads_status_cancelled">キャンセル</string>
-    <string name="downloads_status_failed">失敗した</string>
+    <string name="downloads_status_failed">失敗しました</string>
     <string name="downloads_summary">%1$d アクティブ • %2$d 再開可能 • %3$d 終了</string>
 
     <!-- Settings: Storage Manager -->
     <string name="settings_storage_title">ストレージ</string>
     <string name="settings_storage_manage_title">ストレージマネージャー</string>
-    <string name="settings_storage_manage_subtitle">ゲームとコンテナのストレージを 1 か所で確認する</string>
+    <string name="settings_storage_manage_subtitle">ゲームとコンテナのストレージを1か所で確認する</string>
     <string name="storage_internal">内部</string>
-    <string name="storage_external">外部の</string>
+    <string name="storage_external">外部</string>
     <string name="storage_free_of_total">%1$s: %2$s 空き / 合計 %3$s</string>
     <string name="storage_calculating">%1$s: 計算中…</string>
     <string name="container_storage_title">コンテナ &amp; ストレージ マネージャー</string>
@@ -1166,7 +1166,7 @@
     <string name="container_storage_summary">%1$d アイテム • %2$s</string>
     <string name="container_storage_empty">保管アイテムが見つかりません</string>
     <string name="container_storage_loading">ストレージをスキャン中…</string>
-    <string name="container_storage_source_unknown">未知</string>
+    <string name="container_storage_source_unknown">不明</string>
     <string name="container_storage_unknown_container">不明なコンテナ</string>
     <string name="container_storage_source_and_status">%1$s・%2$s</string>
     <string name="container_storage_status_ready">準備ができて</string>
