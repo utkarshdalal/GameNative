@@ -1566,7 +1566,12 @@ fun PluviaMain(
 
             val shareDebugLog: () -> Unit = {
                 val reportDir = File(debugReportState.reportDir)
-                val files = listOf(DebugReportUtils.logFile(reportDir), DebugReportUtils.perfFile(reportDir), DebugReportUtils.logcatFile(reportDir))
+                val files = listOf(
+                    DebugReportUtils.logFile(reportDir),
+                    DebugReportUtils.perfFile(reportDir),
+                    DebugReportUtils.logcatFile(reportDir),
+                    DebugReportUtils.cpuProfileFile(reportDir),
+                )
                     .filter { it.exists() }
                 if (files.isNotEmpty()) {
                     val uris = files.map { FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", it) }

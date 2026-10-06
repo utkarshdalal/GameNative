@@ -1,6 +1,7 @@
 package app.gamenative.api
 
 import android.os.SystemClock
+import app.gamenative.utils.DebugReportUtils
 import androidx.compose.runtime.mutableStateOf
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -395,6 +396,13 @@ object SupportApi {
         if (logcatFile != null && logcatFile.exists()) {
             builder.addFormDataPart("logcat", "logcat.gz", logcatFile.asRequestBody("application/gzip".toMediaType()))
         }
+        DebugReportUtils.cpuProfileBeside(perfFile)?.let { cpuProfile ->
+            builder.addFormDataPart(
+                "cpu_profile",
+                DebugReportUtils.CPU_PROFILE_FILE,
+                cpuProfile.asRequestBody("application/json".toMediaType()),
+            )
+        }
         return builder
     }
 
@@ -537,7 +545,7 @@ object SupportApi {
         val builder = multipartBuilder(report, logFile, perfFile, logcatFile)
         builder.addFormDataPart("text", null, LateTextBody(text))
         val multipart = builder.build()
-        val expected = listOfNotNull(logFile, perfFile, logcatFile).filter { it.exists() }.sumOf { it.length() }
+        val expected = listOfNotNull(logFile, perfFile, logcatFile, DebugReportUtils.cpuProfileBeside(perfFile)).filter { it.exists() }.sumOf { it.length() }
         val body = if (onProgress == null) multipart else ProgressBody(multipart, onProgress, expected)
         return call(
             name = "conversations/files",

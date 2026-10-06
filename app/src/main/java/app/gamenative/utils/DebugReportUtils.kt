@@ -21,6 +21,7 @@ object DebugReportUtils {
     private const val LOG_FILE = "log.gz"
     private const val PERF_FILE = "perf.json"
     private const val LOGCAT_FILE = "logcat.gz"
+    const val CPU_PROFILE_FILE = "cpu_profile.json"
 
     @Volatile
     private var logcatProcess: Process? = null
@@ -41,6 +42,11 @@ object DebugReportUtils {
     fun perfFile(reportDir: File): File = File(reportDir, PERF_FILE)
 
     fun logcatFile(reportDir: File): File = File(reportDir, LOGCAT_FILE)
+
+    fun cpuProfileFile(reportDir: File): File = File(reportDir, CPU_PROFILE_FILE)
+
+    fun cpuProfileBeside(perfFile: File?): File? =
+        perfFile?.parentFile?.let { cpuProfileFile(it) }?.takeIf { it.exists() }
 
     private fun rawLogcatFile(context: Context, appId: String): File =
         File(context.getExternalFilesDir(null), "wine_logs/debug_run_$appId.logcat")
@@ -139,6 +145,13 @@ object DebugReportUtils {
             if (perf != null) {
                 perfFile(dir).writeText(perf.perf.toString())
                 header.put("perf", perf.verdict)
+                perf.cpuProfile?.let { profile ->
+                    try {
+                        cpuProfileFile(dir).writeText(profile.toString())
+                    } catch (e: Exception) {
+                        Timber.w(e, "DebugReportUtils: Failed to write cpu profile")
+                    }
+                }
             }
             val rawLogcat = rawLogcatFile(context, appId)
             if (rawLogcat.exists() && rawLogcat.length() > 0L) {

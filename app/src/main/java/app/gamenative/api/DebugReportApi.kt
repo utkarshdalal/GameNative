@@ -1,5 +1,6 @@
 package app.gamenative.api
 
+import app.gamenative.utils.DebugReportUtils
 import app.gamenative.utils.PlayIntegrity
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -58,6 +59,13 @@ object DebugReportApi {
                     "logcat",
                     "logcat.gz",
                     logcatFile.asRequestBody("application/gzip".toMediaType()),
+                )
+            }
+            DebugReportUtils.cpuProfileBeside(perfFile)?.let { cpuProfile ->
+                bodyBuilder.addFormDataPart(
+                    "cpu_profile",
+                    DebugReportUtils.CPU_PROFILE_FILE,
+                    cpuProfile.asRequestBody("application/json".toMediaType()),
                 )
             }
             val body = bodyBuilder.build()
