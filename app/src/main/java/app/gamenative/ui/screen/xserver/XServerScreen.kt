@@ -5417,6 +5417,11 @@ private suspend fun setupWineSystemFiles(
 
     if (firstBoot || imgVersionChanged || variantChanged || wineVersionChanged) {
         applyGeneralPatches(context, container, imageFs, xServerState.value.wineInfo, containerManager, onExtractFileListener)
+        if (firstBoot) {
+            // Only on a genuinely new container — existing ones keep whatever Wine
+            // computer name they already have, even across image/variant updates.
+            WineUtils.applyComputerName(context, container)
+        }
         container.putExtra("appliedContainerVariant", container.containerVariant)
         container.putExtra("appliedWineVersion", container.wineVersion)
         container.putExtra("appVersion", appVersion)
