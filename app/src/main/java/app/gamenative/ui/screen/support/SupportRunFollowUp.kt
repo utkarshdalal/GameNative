@@ -146,8 +146,9 @@ object SupportRunFollowUp {
             return
         }
         withContext(Dispatchers.IO) {
+            val header = DebugReportUtils.readHeader(dir)
             DebugReportUtils.deleteReport(dir)
-            SupportAppliedRun.markReported(context, current.appId)
+            SupportAppliedRun.recordReportedRun(context, current.appId, header)
         }
         SupportSession.clearRun(current.appId)
         val target = outcome.conversationId

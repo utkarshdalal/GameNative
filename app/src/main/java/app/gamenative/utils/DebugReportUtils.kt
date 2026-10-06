@@ -200,6 +200,7 @@ object DebugReportUtils {
 
         val avgFps = container.getSessionMetadata("avg_fps", "").toFloatOrNull()
         val sessionLengthSec = container.getSessionMetadata("session_length_sec", "").toIntOrNull()
+        val totalFrames = container.getSessionMetadata("total_frames", "").toLongOrNull()
 
         return JSONObject().apply {
             put("gameName", ContainerUtils.resolveGameName(appId))
@@ -214,6 +215,7 @@ object DebugReportUtils {
             put("configs", JSONObject(container.containerJson))
             if (avgFps != null) put("avgFps", avgFps.toDouble()) else put("avgFps", JSONObject.NULL)
             if (sessionLengthSec != null) put("sessionLengthSec", sessionLengthSec) else put("sessionLengthSec", JSONObject.NULL)
+            if (totalFrames != null) put("totalFrames", totalFrames) else put("totalFrames", JSONObject.NULL)
             put("runParams", (runParams ?: DebugRunParams()).toJson())
             val appliedFile = SupportSuggestionApplier.appliedRecordFile(container)
             if (appliedFile.exists()) {

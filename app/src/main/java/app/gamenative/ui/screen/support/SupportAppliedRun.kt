@@ -11,6 +11,8 @@ import timber.log.Timber
 object SupportAppliedRun {
 
     private const val DEFAULT_MIN_SECONDS = 60
+    private const val MIN_FRAMES = 60L
+    private const val MAX_ATTEMPTS = 3
 
     data class Pending(val run: DebugRunParams, val issueText: String)
 
@@ -48,6 +50,29 @@ object SupportAppliedRun {
     } catch (e: Exception) {
         Timber.w(e, "Reading the applied support records failed")
         null
+    }
+
+    private fun headerNumber(header: JSONObject?, key: String): Long? =
+        header?.takeIf { it.has(key) && !it.isNull(key) }?.optLong(key, -1L)?.takeIf { it >= 0 }
+
+    fun recordReportedRun(context: Context, appId: String, header: JSONObject?) {
+        try {
+            val now = Instant.now().toString()
+            val frames = headerNumber(header, "totalFrames")
+            val seconds = headerNumber(header, "sessionLengthSec")
+            records(context, appId).forEach { file ->
+                val record = read(file) ?: return@forEach
+                if (record.has("reportedAt")) return@forEach
+                val minSeconds = DebugRunParams.fromJson(record.optJSONObject("run"))?.minSeconds ?: DEFAULT_MIN_SECONDS
+                val realSession = (frames != null && frames >= MIN_FRAMES) || (seconds != null && seconds >= minSeconds)
+                val attempts = record.optInt("attempts", 0) + 1
+                record.put("attempts", attempts)
+                if (realSession || attempts >= MAX_ATTEMPTS) record.put("reportedAt", now)
+                file.writeText(record.toString())
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "Recording the reported run on the applied support records failed")
+        }
     }
 
     fun markReported(context: Context, appId: String) {
