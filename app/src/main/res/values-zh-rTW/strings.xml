@@ -997,6 +997,10 @@
     <string name="gamenative_account_manage_subscription_failed">無法開啟帳單頁面。請稍後再試。</string>
     <string name="gamenative_account_sign_out">登出</string>
     <string name="gamenative_account_sign_out_subtitle">在此裝置上登出你的 GameNative 帳戶。</string>
+    <string name="gamenative_account_discord">Discord</string>
+    <string name="gamenative_account_discord_not_connected">未連接 › 連接</string>
+    <string name="gamenative_account_discord_connected">已連接 › 中斷連接</string>
+    <string name="gamenative_account_discord_connected_as">已連接為 %1$s › 中斷連接</string>
     <string name="gamenative_sign_in_title">登入 GameNative</string>
     <string name="gamenative_sign_in_scan">用手機掃描此代碼即可登入。你也可以在此裝置上登入。</string>
     <string name="gamenative_sign_in_code">代碼：%1$s</string>
@@ -1071,6 +1075,16 @@
     <string name="support_composer_analysing">請稍候。AI 仍在讀取你的日誌。收到它的回答後即可回覆。</string>
     <string name="support_send_logs">傳送記錄檔</string>
     <string name="support_new_debug_run">新的偵錯執行</string>
+    <string name="support_fix_request_action">請求客製修正</string>
+    <string name="support_fix_request_title">請求客製修正</string>
+    <string name="support_fix_request_message">AI 可以修改此遊戲的檔案，或為你的裝置建置新的驅動程式或模擬器。它會先執行一次遊戲來測量問題。如果客製修正無法解決問題，AI 會告訴你，並且不會消耗客製修正次數。</string>
+    <string name="support_fix_request_left">剩餘客製修正：%1$d / %2$d。</string>
+    <string name="support_fix_request_left_resets">剩餘客製修正：%1$d / %2$d（%3$s 重設）。</string>
+    <string name="support_fix_request_run">執行遊戲</string>
+    <string name="support_fix_request_failed">無法開始客製修正。請再試一次。</string>
+    <string name="support_fix_upgrade_reason">所有方案都包含客製修正。</string>
+    <string name="support_fix_quota">你目前已用完所有客製修正次數。</string>
+    <string name="support_fix_quota_resets">你已用完所有客製修正次數。將於 %1$s 重設。</string>
     <string name="support_run_check_title">執行得如何？</string>
     <string name="support_run_check_sent">日誌已傳送。</string>
     <string name="support_run_check_failed">無法傳送日誌。</string>

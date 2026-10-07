@@ -976,6 +976,10 @@
     <string name="gamenative_account_manage_subscription_failed">Die Abrechnungsseite konnte nicht geöffnet werden. Bitte versuche es später erneut.</string>
     <string name="gamenative_account_sign_out">Abmelden</string>
     <string name="gamenative_account_sign_out_subtitle">Melde dich auf diesem Gerät von deinem GameNative-Konto ab.</string>
+    <string name="gamenative_account_discord">Discord</string>
+    <string name="gamenative_account_discord_not_connected">Nicht verbunden › Verbinden</string>
+    <string name="gamenative_account_discord_connected">Verbunden › Trennen</string>
+    <string name="gamenative_account_discord_connected_as">Verbunden als %1$s › Trennen</string>
     <string name="gamenative_sign_in_title">Bei GameNative anmelden</string>
     <string name="gamenative_sign_in_scan">Scanne diesen Code mit deinem Handy, um dich anzumelden. Du kannst dich auch auf diesem Gerät anmelden.</string>
     <string name="gamenative_sign_in_code">Code: %1$s</string>
@@ -1051,6 +1055,16 @@
     <string name="support_composer_analysing">Bitte warte. Die AI liest deine Logs noch. Du kannst antworten, sobald ihre Antwort da ist.</string>
     <string name="support_send_logs">Logs senden</string>
     <string name="support_new_debug_run">Neuer Debug-Lauf</string>
+    <string name="support_fix_request_action">Individuellen Fix anfragen</string>
+    <string name="support_fix_request_title">Individuellen Fix anfragen</string>
+    <string name="support_fix_request_message">Die AI kann die Dateien dieses Spiels ändern oder einen neuen Treiber oder Emulator für dein Gerät bauen. Zuerst startet sie das Spiel einmal, um das Problem zu messen. Wenn ein individueller Fix nicht helfen kann, sagt dir die AI das, und es wird kein individueller Fix verbraucht.</string>
+    <string name="support_fix_request_left">Verbleibende individuelle Fixes: %1$d von %2$d.</string>
+    <string name="support_fix_request_left_resets">Verbleibende individuelle Fixes: %1$d von %2$d (Zurücksetzung am %3$s).</string>
+    <string name="support_fix_request_run">Spiel starten</string>
+    <string name="support_fix_request_failed">Der individuelle Fix konnte nicht gestartet werden. Versuche es erneut.</string>
+    <string name="support_fix_upgrade_reason">Individuelle Fixes sind in jedem Plan enthalten.</string>
+    <string name="support_fix_quota">Du hast vorerst alle deine individuellen Fixes verbraucht.</string>
+    <string name="support_fix_quota_resets">Du hast alle deine individuellen Fixes verbraucht. Sie werden am %1$s zurückgesetzt.</string>
     <string name="support_run_check_title">Wie lief es?</string>
     <string name="support_run_check_sent">Dein Log wurde gesendet.</string>
     <string name="support_run_check_failed">Dein Log konnte nicht gesendet werden.</string>

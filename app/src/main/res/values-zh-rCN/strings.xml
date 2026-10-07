@@ -995,6 +995,10 @@
     <string name="gamenative_account_manage_subscription_failed">无法打开账单页面。请稍后重试。</string>
     <string name="gamenative_account_sign_out">退出登录</string>
     <string name="gamenative_account_sign_out_subtitle">在此设备上退出你的 GameNative 账户。</string>
+    <string name="gamenative_account_discord">Discord</string>
+    <string name="gamenative_account_discord_not_connected">未连接 › 连接</string>
+    <string name="gamenative_account_discord_connected">已连接 › 断开连接</string>
+    <string name="gamenative_account_discord_connected_as">已连接为 %1$s › 断开连接</string>
     <string name="gamenative_sign_in_title">登录 GameNative</string>
     <string name="gamenative_sign_in_scan">用手机扫描此二维码进行登录。你也可以在此设备上登录。</string>
     <string name="gamenative_sign_in_code">代码：%1$s</string>
@@ -1069,6 +1073,16 @@
     <string name="support_composer_analysing">请稍候。AI 仍在读取你的日志。收到它的回答后即可回复。</string>
     <string name="support_send_logs">发送日志</string>
     <string name="support_new_debug_run">新的调试运行</string>
+    <string name="support_fix_request_action">请求定制修复</string>
+    <string name="support_fix_request_title">请求定制修复</string>
+    <string name="support_fix_request_message">AI 可以修改此游戏的文件，或为你的设备构建新的驱动或模拟器。它会先运行一次游戏来测量问题。如果定制修复无法解决问题，AI 会告诉你，并且不会消耗定制修复次数。</string>
+    <string name="support_fix_request_left">剩余定制修复：%1$d / %2$d。</string>
+    <string name="support_fix_request_left_resets">剩余定制修复：%1$d / %2$d（%3$s 重置）。</string>
+    <string name="support_fix_request_run">运行游戏</string>
+    <string name="support_fix_request_failed">无法开始定制修复。请重试。</string>
+    <string name="support_fix_upgrade_reason">所有方案都包含定制修复。</string>
+    <string name="support_fix_quota">你目前已用完所有定制修复次数。</string>
+    <string name="support_fix_quota_resets">你已用完所有定制修复次数。将于 %1$s 重置。</string>
     <string name="support_run_check_title">运行得怎么样？</string>
     <string name="support_run_check_sent">日志已发送。</string>
     <string name="support_run_check_failed">无法发送日志。</string>

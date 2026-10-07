@@ -1004,6 +1004,10 @@
     <string name="gamenative_account_manage_subscription_failed">Не вдалося відкрити сторінку оплати. Спробуйте пізніше.</string>
     <string name="gamenative_account_sign_out">Вийти</string>
     <string name="gamenative_account_sign_out_subtitle">Вийти з облікового запису GameNative на цьому пристрої.</string>
+    <string name="gamenative_account_discord">Discord</string>
+    <string name="gamenative_account_discord_not_connected">Не підключено › Підключити</string>
+    <string name="gamenative_account_discord_connected">Підключено › Відключити</string>
+    <string name="gamenative_account_discord_connected_as">Підключено як %1$s › Відключити</string>
     <string name="gamenative_sign_in_title">Вхід у GameNative</string>
     <string name="gamenative_sign_in_scan">Відскануйте цей код телефоном, щоб увійти. Також можна увійти на цьому пристрої.</string>
     <string name="gamenative_sign_in_code">Код: %1$s</string>
@@ -1081,6 +1085,16 @@
     <string name="support_composer_analysing">Зачекайте. AI ще читає ваші журнали. Відповісти можна після того, як надійде його відповідь.</string>
     <string name="support_send_logs">Надіслати журнали</string>
     <string name="support_new_debug_run">Новий налагоджувальний запуск</string>
+    <string name="support_fix_request_action">Запросити індивідуальне виправлення</string>
+    <string name="support_fix_request_title">Запросити індивідуальне виправлення</string>
+    <string name="support_fix_request_message">AI може змінити файли цієї гри або зібрати новий драйвер чи емулятор для вашого пристрою. Спочатку він один раз запускає гру, щоб виміряти проблему. Якщо індивідуальне виправлення не допоможе, AI повідомить вам про це, і виправлення не буде витрачено.</string>
+    <string name="support_fix_request_left">Залишилося індивідуальних виправлень: %1$d з %2$d.</string>
+    <string name="support_fix_request_left_resets">Залишилося індивідуальних виправлень: %1$d з %2$d (оновляться %3$s).</string>
+    <string name="support_fix_request_run">Запустити гру</string>
+    <string name="support_fix_request_failed">Не вдалося почати індивідуальне виправлення. Спробуйте ще раз.</string>
+    <string name="support_fix_upgrade_reason">Індивідуальні виправлення входять до кожного тарифу.</string>
+    <string name="support_fix_quota">Ви поки що використали всі індивідуальні виправлення.</string>
+    <string name="support_fix_quota_resets">Ви використали всі індивідуальні виправлення. Вони оновляться %1$s.</string>
     <string name="support_run_check_title">Як пройшов запуск?</string>
     <string name="support_run_check_sent">Ваш лог надіслано.</string>
     <string name="support_run_check_failed">Не вдалося надіслати лог.</string>

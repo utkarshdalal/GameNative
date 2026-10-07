@@ -1017,6 +1017,10 @@
     <string name="gamenative_account_manage_subscription_failed">No se pudo abrir la página de facturación. Vuelve a intentarlo más tarde.</string>
     <string name="gamenative_account_sign_out">Cerrar sesión</string>
     <string name="gamenative_account_sign_out_subtitle">Cierra la sesión de tu cuenta de GameNative en este dispositivo.</string>
+    <string name="gamenative_account_discord">Discord</string>
+    <string name="gamenative_account_discord_not_connected">No conectado › Conectar</string>
+    <string name="gamenative_account_discord_connected">Conectado › Desconectar</string>
+    <string name="gamenative_account_discord_connected_as">Conectado como %1$s › Desconectar</string>
     <string name="gamenative_sign_in_title">Iniciar sesión en GameNative</string>
     <string name="gamenative_sign_in_scan">Escanea este código con tu teléfono para iniciar sesión. También puedes iniciar sesión en este dispositivo.</string>
     <string name="gamenative_sign_in_code">Código: %1$s</string>
@@ -1092,6 +1096,16 @@
     <string name="support_composer_analysing">Espera, por favor. La AI todavía está leyendo tus registros. Podrás responder cuando llegue su respuesta.</string>
     <string name="support_send_logs">Enviar registros</string>
     <string name="support_new_debug_run">Nueva ejecución de depuración</string>
+    <string name="support_fix_request_action">Pedir una solución personalizada</string>
+    <string name="support_fix_request_title">Pedir una solución personalizada</string>
+    <string name="support_fix_request_message">La AI puede cambiar los archivos de este juego o compilar un nuevo driver o emulador para tu dispositivo. Primero ejecuta el juego una vez para medir el problema. Si una solución personalizada no puede ayudar, la AI te lo dirá y no se gastará ninguna solución personalizada.</string>
+    <string name="support_fix_request_left">Soluciones personalizadas restantes: %1$d de %2$d.</string>
+    <string name="support_fix_request_left_resets">Soluciones personalizadas restantes: %1$d de %2$d (se restablecen el %3$s).</string>
+    <string name="support_fix_request_run">Ejecutar el juego</string>
+    <string name="support_fix_request_failed">No se pudo iniciar una solución personalizada. Vuelve a intentarlo.</string>
+    <string name="support_fix_upgrade_reason">Las soluciones personalizadas están incluidas en todos los planes.</string>
+    <string name="support_fix_quota">Has usado todas tus soluciones personalizadas por ahora.</string>
+    <string name="support_fix_quota_resets">Has usado todas tus soluciones personalizadas. Se restablecen el %1$s.</string>
     <string name="support_run_check_title">¿Cómo funcionó?</string>
     <string name="support_run_check_sent">Se envió tu registro.</string>
     <string name="support_run_check_failed">No se pudo enviar tu registro.</string>

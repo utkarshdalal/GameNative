@@ -1018,6 +1018,10 @@
     <string name="gamenative_account_manage_subscription_failed">Nie udało się otworzyć strony płatności. Spróbuj ponownie później.</string>
     <string name="gamenative_account_sign_out">Wyloguj się</string>
     <string name="gamenative_account_sign_out_subtitle">Wyloguj się z konta GameNative na tym urządzeniu.</string>
+    <string name="gamenative_account_discord">Discord</string>
+    <string name="gamenative_account_discord_not_connected">Nie połączono › Połącz</string>
+    <string name="gamenative_account_discord_connected">Połączono › Rozłącz</string>
+    <string name="gamenative_account_discord_connected_as">Połączono jako %1$s › Rozłącz</string>
     <string name="gamenative_sign_in_title">Zaloguj się do GameNative</string>
     <string name="gamenative_sign_in_scan">Zeskanuj ten kod telefonem, aby się zalogować. Możesz też zalogować się na tym urządzeniu.</string>
     <string name="gamenative_sign_in_code">Kod: %1$s</string>
@@ -1095,6 +1099,16 @@
     <string name="support_composer_analysing">Poczekaj. AI nadal czyta Twoje logi. Możesz odpowiedzieć, gdy pojawi się jego odpowiedź.</string>
     <string name="support_send_logs">Wyślij logi</string>
     <string name="support_new_debug_run">Nowe debugowanie</string>
+    <string name="support_fix_request_action">Poproś o własną poprawkę</string>
+    <string name="support_fix_request_title">Poproś o własną poprawkę</string>
+    <string name="support_fix_request_message">AI może zmienić pliki tej gry albo zbudować nowy sterownik lub emulator dla Twojego urządzenia. Najpierw uruchamia grę raz, aby zmierzyć problem. Jeśli własna poprawka nie może pomóc, AI Ci o tym powie i nie zużyje to żadnej poprawki.</string>
+    <string name="support_fix_request_left">Pozostałe własne poprawki: %1$d z %2$d.</string>
+    <string name="support_fix_request_left_resets">Pozostałe własne poprawki: %1$d z %2$d (odnowienie %3$s).</string>
+    <string name="support_fix_request_run">Uruchom grę</string>
+    <string name="support_fix_request_failed">Nie udało się rozpocząć własnej poprawki. Spróbuj ponownie.</string>
+    <string name="support_fix_upgrade_reason">Własne poprawki są częścią każdego planu.</string>
+    <string name="support_fix_quota">Na razie wykorzystano wszystkie Twoje własne poprawki.</string>
+    <string name="support_fix_quota_resets">Wykorzystano wszystkie Twoje własne poprawki. Odnowią się %1$s.</string>
     <string name="support_run_check_title">Jak działało?</string>
     <string name="support_run_check_sent">Twój log został wysłany.</string>
     <string name="support_run_check_failed">Nie udało się wysłać logu.</string>

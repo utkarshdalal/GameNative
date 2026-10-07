@@ -825,6 +825,10 @@
     <string name="gamenative_account_manage_subscription_failed">Não foi possível abrir a página de cobrança. Tente novamente mais tarde.</string>
     <string name="gamenative_account_sign_out">Sair</string>
     <string name="gamenative_account_sign_out_subtitle">Saia da sua conta GameNative neste dispositivo.</string>
+    <string name="gamenative_account_discord">Discord</string>
+    <string name="gamenative_account_discord_not_connected">Não conectado › Conectar</string>
+    <string name="gamenative_account_discord_connected">Conectado › Desconectar</string>
+    <string name="gamenative_account_discord_connected_as">Conectado como %1$s › Desconectar</string>
     <string name="gamenative_sign_in_title">Entrar no GameNative</string>
     <string name="gamenative_sign_in_scan">Escaneie este código com seu celular para entrar. Você também pode entrar neste dispositivo.</string>
     <string name="gamenative_sign_in_code">Código: %1$s</string>
@@ -900,6 +904,16 @@
     <string name="support_composer_analysing">Aguarde. A AI ainda está lendo seus logs. Você poderá responder depois que a resposta chegar.</string>
     <string name="support_send_logs">Enviar logs</string>
     <string name="support_new_debug_run">Nova execução de depuração</string>
+    <string name="support_fix_request_action">Pedir uma correção personalizada</string>
+    <string name="support_fix_request_title">Pedir uma correção personalizada</string>
+    <string name="support_fix_request_message">A AI pode alterar os arquivos deste jogo ou compilar um novo driver ou emulador para o seu dispositivo. Primeiro ela executa o jogo uma vez para medir o problema. Se uma correção personalizada não puder ajudar, a AI avisa você, e nenhuma correção personalizada é usada.</string>
+    <string name="support_fix_request_left">Correções personalizadas restantes: %1$d de %2$d.</string>
+    <string name="support_fix_request_left_resets">Correções personalizadas restantes: %1$d de %2$d (renovam em %3$s).</string>
+    <string name="support_fix_request_run">Executar o jogo</string>
+    <string name="support_fix_request_failed">Não foi possível iniciar uma correção personalizada. Tente novamente.</string>
+    <string name="support_fix_upgrade_reason">As correções personalizadas fazem parte de todos os planos.</string>
+    <string name="support_fix_quota">Você usou todas as suas correções personalizadas por enquanto.</string>
+    <string name="support_fix_quota_resets">Você usou todas as suas correções personalizadas. Elas renovam em %1$s.</string>
     <string name="support_run_check_title">Como funcionou?</string>
     <string name="support_run_check_sent">Seu log foi enviado.</string>
     <string name="support_run_check_failed">Não foi possível enviar seu log.</string>

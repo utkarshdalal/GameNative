@@ -1010,6 +1010,10 @@
     <string name="gamenative_account_manage_subscription_failed">Pagina de facturare nu a putut fi deschisă. Încearcă din nou mai târziu.</string>
     <string name="gamenative_account_sign_out">Deconectare</string>
     <string name="gamenative_account_sign_out_subtitle">Deconectează-te de la contul GameNative pe acest dispozitiv.</string>
+    <string name="gamenative_account_discord">Discord</string>
+    <string name="gamenative_account_discord_not_connected">Neconectat › Conectează</string>
+    <string name="gamenative_account_discord_connected">Conectat › Deconectează</string>
+    <string name="gamenative_account_discord_connected_as">Conectat ca %1$s › Deconectează</string>
     <string name="gamenative_sign_in_title">Conectează-te la GameNative</string>
     <string name="gamenative_sign_in_scan">Scanează acest cod cu telefonul pentru a te conecta. Te poți conecta și pe acest dispozitiv.</string>
     <string name="gamenative_sign_in_code">Cod: %1$s</string>
@@ -1086,6 +1090,16 @@
     <string name="support_composer_analysing">Te rugăm să aștepți. AI-ul încă citește jurnalele tale. Poți răspunde după ce sosește răspunsul lui.</string>
     <string name="support_send_logs">Trimite jurnalele</string>
     <string name="support_new_debug_run">Rulare nouă de depanare</string>
+    <string name="support_fix_request_action">Cere o remediere personalizată</string>
+    <string name="support_fix_request_title">Cere o remediere personalizată</string>
+    <string name="support_fix_request_message">AI-ul poate modifica fișierele acestui joc sau poate construi un driver ori un emulator nou pentru dispozitivul tău. Mai întâi rulează jocul o dată pentru a măsura problema. Dacă o remediere personalizată nu poate ajuta, AI-ul îți spune, iar aceasta nu consumă o remediere personalizată.</string>
+    <string name="support_fix_request_left">Remedieri personalizate rămase: %1$d din %2$d.</string>
+    <string name="support_fix_request_left_resets">Remedieri personalizate rămase: %1$d din %2$d (se resetează pe %3$s).</string>
+    <string name="support_fix_request_run">Rulează jocul</string>
+    <string name="support_fix_request_failed">Nu s-a putut porni o remediere personalizată. Încearcă din nou.</string>
+    <string name="support_fix_upgrade_reason">Remedierile personalizate sunt incluse în fiecare plan.</string>
+    <string name="support_fix_quota">Ai folosit deocamdată toate remedierile personalizate.</string>
+    <string name="support_fix_quota_resets">Ai folosit toate remedierile personalizate. Se resetează pe %1$s.</string>
     <string name="support_run_check_title">Cum a mers?</string>
     <string name="support_run_check_sent">Jurnalul tău a fost trimis.</string>
     <string name="support_run_check_failed">Jurnalul tău nu a putut fi trimis.</string>
