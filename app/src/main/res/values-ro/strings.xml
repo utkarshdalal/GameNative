@@ -1014,6 +1014,14 @@
     <string name="gamenative_account_discord_not_connected">Neconectat › Conectează</string>
     <string name="gamenative_account_discord_connected">Conectat › Deconectează</string>
     <string name="gamenative_account_discord_connected_as">Conectat ca %1$s › Deconectează</string>
+    <string name="gamenative_account_discord_link_scan">Scanează acest cod cu telefonul sau deschide această adresă pe alt dispozitiv pentru a conecta Discord.</string>
+    <string name="gamenative_account_discord_link_this_device">Sau deschide pe acest dispozitiv</string>
+    <string name="gamenative_account_discord_link_waiting">Se așteaptă să termini conectarea Discord.</string>
+    <string name="gamenative_account_discord_link_starting">Se pregătește codul.</string>
+    <string name="gamenative_account_discord_link_expired">Acest cod a expirat. Selectează Încearcă din nou pentru a obține un cod nou.</string>
+    <string name="gamenative_account_discord_link_failed">Conectarea Discord nu este disponibilă acum. Verifică conexiunea și încearcă din nou.</string>
+    <string name="gamenative_account_discord_link_connected_as">Conectat ca %1$s</string>
+    <string name="gamenative_account_discord_link_no_browser">Nu a fost găsit niciun browser pentru a deschide Discord. Scanează codul cu alt dispozitiv.</string>
     <string name="gamenative_sign_in_title">Conectează-te la GameNative</string>
     <string name="gamenative_sign_in_scan">Scanează acest cod cu telefonul pentru a te conecta. Te poți conecta și pe acest dispozitiv.</string>
     <string name="gamenative_sign_in_code">Cod: %1$s</string>

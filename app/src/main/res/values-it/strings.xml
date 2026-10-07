@@ -1005,6 +1005,14 @@
     <string name="gamenative_account_discord_not_connected">Non connesso › Connetti</string>
     <string name="gamenative_account_discord_connected">Connesso › Disconnetti</string>
     <string name="gamenative_account_discord_connected_as">Connesso come %1$s › Disconnetti</string>
+    <string name="gamenative_account_discord_link_scan">Scansiona questo codice con il telefono o apri questo indirizzo su un altro dispositivo per collegare Discord.</string>
+    <string name="gamenative_account_discord_link_this_device">Oppure apri su questo dispositivo</string>
+    <string name="gamenative_account_discord_link_waiting">In attesa che tu completi il collegamento a Discord.</string>
+    <string name="gamenative_account_discord_link_starting">Preparazione del codice.</string>
+    <string name="gamenative_account_discord_link_expired">Questo codice è scaduto. Seleziona Riprova per ottenere un nuovo codice.</string>
+    <string name="gamenative_account_discord_link_failed">Il collegamento a Discord non è disponibile ora. Controlla la connessione e riprova.</string>
+    <string name="gamenative_account_discord_link_connected_as">Connesso come %1$s</string>
+    <string name="gamenative_account_discord_link_no_browser">Nessun browser trovato per aprire Discord. Scansiona il codice con un altro dispositivo.</string>
     <string name="gamenative_sign_in_title">Accedi a GameNative</string>
     <string name="gamenative_sign_in_scan">Scansiona questo codice con il telefono per accedere. Puoi anche accedere su questo dispositivo.</string>
     <string name="gamenative_sign_in_code">Codice: %1$s</string>

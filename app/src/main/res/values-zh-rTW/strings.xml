@@ -1001,6 +1001,14 @@
     <string name="gamenative_account_discord_not_connected">未連接 › 連接</string>
     <string name="gamenative_account_discord_connected">已連接 › 中斷連接</string>
     <string name="gamenative_account_discord_connected_as">已連接為 %1$s › 中斷連接</string>
+    <string name="gamenative_account_discord_link_scan">用手機掃描此代碼，或在其他裝置上開啟此網址以連接 Discord。</string>
+    <string name="gamenative_account_discord_link_this_device">或在此裝置上開啟</string>
+    <string name="gamenative_account_discord_link_waiting">正在等待你完成 Discord 連接。</string>
+    <string name="gamenative_account_discord_link_starting">正在準備代碼。</string>
+    <string name="gamenative_account_discord_link_expired">此代碼已過期。選擇重試以取得新代碼。</string>
+    <string name="gamenative_account_discord_link_failed">目前無法連接 Discord。請檢查網路連線後再試一次。</string>
+    <string name="gamenative_account_discord_link_connected_as">已連接為 %1$s</string>
+    <string name="gamenative_account_discord_link_no_browser">找不到可開啟 Discord 的瀏覽器。請改用其他裝置掃描代碼。</string>
     <string name="gamenative_sign_in_title">登入 GameNative</string>
     <string name="gamenative_sign_in_scan">用手機掃描此代碼即可登入。你也可以在此裝置上登入。</string>
     <string name="gamenative_sign_in_code">代碼：%1$s</string>

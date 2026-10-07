@@ -829,6 +829,14 @@
     <string name="gamenative_account_discord_not_connected">Ikke forbundet › Forbind</string>
     <string name="gamenative_account_discord_connected">Forbundet › Afbryd</string>
     <string name="gamenative_account_discord_connected_as">Forbundet som %1$s › Afbryd</string>
+    <string name="gamenative_account_discord_link_scan">Scan denne kode med din telefon, eller åbn denne adresse på en anden enhed for at forbinde Discord.</string>
+    <string name="gamenative_account_discord_link_this_device">Eller åbn på denne enhed</string>
+    <string name="gamenative_account_discord_link_waiting">Venter på, at du forbinder Discord.</string>
+    <string name="gamenative_account_discord_link_starting">Forbereder din kode.</string>
+    <string name="gamenative_account_discord_link_expired">Denne kode er udløbet. Vælg Prøv igen for at få en ny kode.</string>
+    <string name="gamenative_account_discord_link_failed">Forbindelse til Discord er ikke tilgængelig lige nu. Tjek din forbindelse, og prøv igen.</string>
+    <string name="gamenative_account_discord_link_connected_as">Forbundet som %1$s</string>
+    <string name="gamenative_account_discord_link_no_browser">Der blev ikke fundet en browser til at åbne Discord. Scan koden med en anden enhed i stedet.</string>
     <string name="gamenative_sign_in_title">Log ind på GameNative</string>
     <string name="gamenative_sign_in_scan">Scan denne kode med din telefon for at logge ind. Du kan også logge ind på denne enhed.</string>
     <string name="gamenative_sign_in_code">Kode: %1$s</string>

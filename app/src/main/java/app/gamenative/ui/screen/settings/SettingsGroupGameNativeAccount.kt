@@ -30,6 +30,7 @@ import app.gamenative.api.ApiResult
 import app.gamenative.api.DebugReportApi
 import app.gamenative.api.SupportApi
 import app.gamenative.ui.component.dialog.AccountSignInDialog
+import app.gamenative.ui.component.dialog.DiscordLinkDialog
 import app.gamenative.ui.component.dialog.openAccountUrl
 import app.gamenative.ui.theme.settingsTileColors
 import com.alorma.compose.settings.ui.SettingsGroup
@@ -53,7 +54,22 @@ fun SettingsGroupGameNativeAccount() {
     var portalMessage by remember { mutableStateOf<Int?>(null) }
     val discordConnected by PrefManager.discordRelayTokenPresent
     var discordLinkedName by remember { mutableStateOf("") }
-    var discordBusy by remember { mutableStateOf(false) }
+    var showDiscordLink by rememberSaveable { mutableStateOf(false) }
+
+    val openDiscordLinkHere: suspend () -> Boolean = {
+        val nonce = ByteArray(16).also { SecureRandom().nextBytes(it) }
+            .joinToString("") { "%02x".format(it) }
+        PrefManager.discordOauthNonce = nonce
+        val accountUrl = if (signedIn) {
+            when (val result = SupportApi.startDiscordLink(nonce)) {
+                is ApiResult.Success -> result.data
+                else -> null
+            }
+        } else {
+            null
+        }
+        openAccountUrl(context, accountUrl ?: "${DebugReportApi.OAUTH_START_URL}?app_state=$nonce")
+    }
 
     LaunchedEffect(Unit) {
         AccountApi.loadSignedInState()
@@ -91,6 +107,13 @@ fun SettingsGroupGameNativeAccount() {
         visible = showSignIn,
         onSignedIn = { showSignIn = false },
         onDismiss = { showSignIn = false },
+    )
+
+    DiscordLinkDialog(
+        visible = showDiscordLink,
+        signedIn = signedIn,
+        onOpenHere = openDiscordLinkHere,
+        onDismiss = { showDiscordLink = false },
     )
 
     SettingsGroup {
@@ -186,7 +209,6 @@ fun SettingsGroupGameNativeAccount() {
                 )
             },
             icon = { Icon(Icons.Filled.Link, contentDescription = null) },
-            enabled = !discordBusy,
             onClick = {
                 if (discordConnected) {
                     scope.launch {
@@ -198,25 +220,7 @@ fun SettingsGroupGameNativeAccount() {
                         discordLinkedName = ""
                     }
                 } else {
-                    discordBusy = true
-                    scope.launch {
-                        try {
-                            val nonce = ByteArray(16).also { SecureRandom().nextBytes(it) }
-                                .joinToString("") { "%02x".format(it) }
-                            PrefManager.discordOauthNonce = nonce
-                            val accountUrl = if (signedIn) {
-                                when (val result = SupportApi.startDiscordLink(nonce)) {
-                                    is ApiResult.Success -> result.data
-                                    else -> null
-                                }
-                            } else {
-                                null
-                            }
-                            openAccountUrl(context, accountUrl ?: "${DebugReportApi.OAUTH_START_URL}?app_state=$nonce")
-                        } finally {
-                            discordBusy = false
-                        }
-                    }
+                    showDiscordLink = true
                 }
             },
         )

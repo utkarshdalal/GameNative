@@ -1014,6 +1014,14 @@
     <string name="gamenative_account_discord_not_connected">연결되지 않음 › 연결</string>
     <string name="gamenative_account_discord_connected">연결됨 › 연결 해제</string>
     <string name="gamenative_account_discord_connected_as">%1$s(으)로 연결됨 › 연결 해제</string>
+    <string name="gamenative_account_discord_link_scan">휴대폰으로 이 코드를 스캔하거나 다른 기기에서 이 주소를 열어 Discord를 연결하세요.</string>
+    <string name="gamenative_account_discord_link_this_device">또는 이 기기에서 열기</string>
+    <string name="gamenative_account_discord_link_waiting">Discord 연결이 완료되기를 기다리는 중입니다.</string>
+    <string name="gamenative_account_discord_link_starting">코드를 준비하는 중입니다.</string>
+    <string name="gamenative_account_discord_link_expired">이 코드는 만료되었습니다. 새 코드를 받으려면 다시 시도를 선택하세요.</string>
+    <string name="gamenative_account_discord_link_failed">지금은 Discord에 연결할 수 없습니다. 연결을 확인하고 다시 시도하세요.</string>
+    <string name="gamenative_account_discord_link_connected_as">%1$s(으)로 연결됨</string>
+    <string name="gamenative_account_discord_link_no_browser">Discord를 열 브라우저를 찾을 수 없습니다. 다른 기기로 코드를 스캔하세요.</string>
     <string name="gamenative_sign_in_title">GameNative에 로그인</string>
     <string name="gamenative_sign_in_scan">휴대폰으로 이 코드를 스캔하여 로그인하세요. 이 기기에서 로그인할 수도 있습니다.</string>
     <string name="gamenative_sign_in_code">코드: %1$s</string>

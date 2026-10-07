@@ -999,6 +999,14 @@
     <string name="gamenative_account_discord_not_connected">未连接 › 连接</string>
     <string name="gamenative_account_discord_connected">已连接 › 断开连接</string>
     <string name="gamenative_account_discord_connected_as">已连接为 %1$s › 断开连接</string>
+    <string name="gamenative_account_discord_link_scan">用手机扫描此代码，或在其他设备上打开此地址以连接 Discord。</string>
+    <string name="gamenative_account_discord_link_this_device">或在此设备上打开</string>
+    <string name="gamenative_account_discord_link_waiting">正在等待你完成 Discord 连接。</string>
+    <string name="gamenative_account_discord_link_starting">正在准备代码。</string>
+    <string name="gamenative_account_discord_link_expired">此代码已过期。选择重试以获取新代码。</string>
+    <string name="gamenative_account_discord_link_failed">目前无法连接 Discord。请检查网络连接后重试。</string>
+    <string name="gamenative_account_discord_link_connected_as">已连接为 %1$s</string>
+    <string name="gamenative_account_discord_link_no_browser">未找到可打开 Discord 的浏览器。请改用其他设备扫描代码。</string>
     <string name="gamenative_sign_in_title">登录 GameNative</string>
     <string name="gamenative_sign_in_scan">用手机扫描此二维码进行登录。你也可以在此设备上登录。</string>
     <string name="gamenative_sign_in_code">代码：%1$s</string>

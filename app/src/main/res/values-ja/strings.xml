@@ -983,6 +983,14 @@
     <string name="gamenative_account_discord_not_connected">未接続 › 接続</string>
     <string name="gamenative_account_discord_connected">接続済み › 接続解除</string>
     <string name="gamenative_account_discord_connected_as">%1$s として接続済み › 接続解除</string>
+    <string name="gamenative_account_discord_link_scan">スマートフォンでこのコードをスキャンするか、別の端末でこのアドレスを開いて Discord を連携してください。</string>
+    <string name="gamenative_account_discord_link_this_device">またはこの端末で開く</string>
+    <string name="gamenative_account_discord_link_waiting">Discord の連携が完了するのを待っています。</string>
+    <string name="gamenative_account_discord_link_starting">コードを準備しています。</string>
+    <string name="gamenative_account_discord_link_expired">このコードは期限切れです。新しいコードを取得するには「再試行」を選択してください。</string>
+    <string name="gamenative_account_discord_link_failed">現在 Discord と連携できません。接続を確認して、もう一度お試しください。</string>
+    <string name="gamenative_account_discord_link_connected_as">%1$s として接続済み</string>
+    <string name="gamenative_account_discord_link_no_browser">Discord を開くブラウザが見つかりません。別の端末でコードをスキャンしてください。</string>
     <string name="gamenative_sign_in_title">GameNative にサインイン</string>
     <string name="gamenative_sign_in_scan">スマートフォンでこのコードをスキャンしてサインインしてください。このデバイスでサインインすることもできます。</string>
     <string name="gamenative_sign_in_code">コード: %1$s</string>

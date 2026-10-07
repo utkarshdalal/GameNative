@@ -1008,6 +1008,14 @@
     <string name="gamenative_account_discord_not_connected">Не підключено › Підключити</string>
     <string name="gamenative_account_discord_connected">Підключено › Відключити</string>
     <string name="gamenative_account_discord_connected_as">Підключено як %1$s › Відключити</string>
+    <string name="gamenative_account_discord_link_scan">Відскануйте цей код телефоном або відкрийте цю адресу на іншому пристрої, щоб підключити Discord.</string>
+    <string name="gamenative_account_discord_link_this_device">Або відкрити на цьому пристрої</string>
+    <string name="gamenative_account_discord_link_waiting">Очікування завершення підключення Discord.</string>
+    <string name="gamenative_account_discord_link_starting">Підготовка коду.</string>
+    <string name="gamenative_account_discord_link_expired">Термін дії коду минув. Виберіть «Спробувати ще раз», щоб отримати новий код.</string>
+    <string name="gamenative_account_discord_link_failed">Підключення Discord зараз недоступне. Перевірте з’єднання та спробуйте ще раз.</string>
+    <string name="gamenative_account_discord_link_connected_as">Підключено як %1$s</string>
+    <string name="gamenative_account_discord_link_no_browser">Не знайдено браузер для відкриття Discord. Відскануйте код іншим пристроєм.</string>
     <string name="gamenative_sign_in_title">Вхід у GameNative</string>
     <string name="gamenative_sign_in_scan">Відскануйте цей код телефоном, щоб увійти. Також можна увійти на цьому пристрої.</string>
     <string name="gamenative_sign_in_code">Код: %1$s</string>
