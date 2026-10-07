@@ -38,7 +38,7 @@ object SupportApi {
     const val TEXT_MAX = 1800
     const val NOT_SIGNED_IN = "not_signed_in"
     const val FEATURES_HEADER = "x-gn-features"
-    const val FEATURES = "patches,components,fixes"
+    const val FEATURES = "patches,components,fixes,registry"
 
     const val KIND_USER = "user"
     const val KIND_AGENT = "agent"

@@ -33,16 +33,17 @@ object SupportGameFiles {
         return path?.takeIf { it.isNotEmpty() }?.let { File(it) }?.takeIf { it.isDirectory }
     }
 
-    enum class UserRoot(val token: String, val subPath: String) {
+    enum class UserRoot(val token: String, val subPath: String, val inPrefix: Boolean = false) {
         APPDATA("%APPDATA%", "AppData/Roaming"),
         LOCALAPPDATA("%LOCALAPPDATA%", "AppData/Local"),
         USERPROFILE("%USERPROFILE%", ""),
         DOCUMENTS("%DOCUMENTS%", "Documents"),
+        WINEPREFIX("%WINEPREFIX%", "", inPrefix = true),
     }
 
     data class Located(val root: UserRoot?, val rest: String)
 
-    class Roots(val install: File, val userHome: File?)
+    class Roots(val install: File, val userHome: File?, val prefix: File? = null)
 
     fun locate(path: String): Located {
         val normalized = path.replace('\\', '/')
@@ -66,14 +67,25 @@ object SupportGameFiles {
 
     fun roots(context: Context, appId: String): Roots? {
         val install = installRoot(context, appId) ?: return null
-        val userHome = runCatching {
+        val prefix = runCatching {
             if (ContainerUtils.hasContainer(context, appId)) {
-                wineUserHome(File(ContainerUtils.getContainer(context, appId).rootDir, ".wine"))
+                File(ContainerUtils.getContainer(context, appId).rootDir, ".wine")
             } else {
                 null
             }
         }.getOrNull()
-        return Roots(install, userHome)
+        val userHome = prefix?.let { runCatching { wineUserHome(it) }.getOrNull() }
+        return Roots(install, userHome, prefix)
+    }
+
+    fun registryHive(roots: Roots, hive: String): File? {
+        val prefix = roots.prefix ?: return null
+        val name = when (hive) {
+            "HKCU" -> "user.reg"
+            "HKLM" -> "system.reg"
+            else -> return null
+        }
+        return File(prefix, name).takeIf { it.isFile }
     }
 
     private fun inside(root: File, file: File): Boolean {
@@ -99,8 +111,11 @@ object SupportGameFiles {
         val located = locate(path)
         val userRoot = located.root ?: return resolve(roots.install, path)
         if (located.rest.isEmpty()) return null
-        val home = roots.userHome ?: return null
-        val base = walk(home, userRoot.subPath.split('/').filter { it.isNotEmpty() })
+        val base = if (userRoot.inPrefix) {
+            roots.prefix ?: return null
+        } else {
+            walk(roots.userHome ?: return null, userRoot.subPath.split('/').filter { it.isNotEmpty() })
+        }
         val target = walk(base, located.rest.split('/'))
         return target.takeIf { inside(base, it) }
     }
