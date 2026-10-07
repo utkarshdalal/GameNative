@@ -3,6 +3,7 @@ package app.gamenative.utils
 import android.content.Context
 import android.os.Build
 import app.gamenative.BuildConfig
+import app.gamenative.filedetect.GameFileDetection
 import app.gamenative.ui.screen.support.SupportComponentApplier
 import app.gamenative.ui.screen.support.SupportPatchApplier
 import app.gamenative.ui.screen.support.SupportSuggestionApplier
@@ -10,6 +11,7 @@ import com.winlator.core.GPUInformation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
@@ -217,6 +219,9 @@ object DebugReportUtils {
             if (sessionLengthSec != null) put("sessionLengthSec", sessionLengthSec) else put("sessionLengthSec", JSONObject.NULL)
             if (totalFrames != null) put("totalFrames", totalFrames) else put("totalFrames", JSONObject.NULL)
             put("runParams", (runParams ?: DebugRunParams()).toJson())
+            runCatching { GameFileDetection.properties(container) }.getOrNull()?.forEach { (key, value) ->
+                put(key, if (value is List<*>) JSONArray(value) else value)
+            }
             val appliedFile = SupportSuggestionApplier.appliedRecordFile(container)
             if (appliedFile.exists()) {
                 runCatching { JSONObject(appliedFile.readText()) }.getOrNull()?.let { put("appliedSuggestion", it) }
