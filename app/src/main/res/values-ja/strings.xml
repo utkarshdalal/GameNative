@@ -2943,4 +2943,10 @@
     <string name="support_wait_stop">停止</string>
     <string name="support_reply_ready_tap">タップして読む。</string>
     <string name="support_notify_me">返信が届いたら通知する</string>
+    <string name="support_files_listing">フォルダー一覧: %1$s</string>
+    <string name="support_files_listing_missing">フォルダーが見つかりません: %1$s</string>
+    <string name="support_files_send_listing">一覧を送信</string>
+    <string name="support_files_listing_sending">%1$s の一覧を送信中</string>
+    <string name="support_files_listing_sent">一覧を送信しました (%1$d 件)</string>
+    <string name="support_files_listing_failed">%1$s の一覧を送信できませんでした。%2$s</string>
 </resources>

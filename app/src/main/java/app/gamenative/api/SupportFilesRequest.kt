@@ -26,10 +26,15 @@ data class SupportFilesRequest(
         val path: String,
         val why: String?,
         val maxBytes: Long,
+        val list: Boolean = false,
+        val depth: Int = 1,
     )
 
     companion object {
         const val MAX_FILES = 8
+        const val MAX_LISTINGS = 6
+        const val MAX_DEPTH = 2
+        const val INSTALL_ROOT = "."
         const val MAX_BYTES = 2L * 1024 * 1024 * 1024
         private const val MAX_NOTE = 300
         private const val MAX_WHY = 200
@@ -58,8 +63,21 @@ data class SupportFilesRequest(
             for (i in 0 until minOf(array.length(), MAX_FILES)) {
                 val item = array.optJSONObject(i)
                 val path = item?.cardText("path")
-                if (item == null || path == null || !isSafePath(path)) {
+                val list = item?.optBoolean("list", false) == true
+                if (item == null || path == null || !(isSafePath(path) || (list && path == INSTALL_ROOT))) {
                     applicable = false
+                    continue
+                }
+                if (list) {
+                    val depth = item.optInt("depth", 1)
+                    if (depth !in 1..MAX_DEPTH) applicable = false
+                    files += Item(
+                        path = path,
+                        why = cardClean(item.cardText("why"), MAX_WHY),
+                        maxBytes = 0L,
+                        list = true,
+                        depth = depth.coerceIn(1, MAX_DEPTH),
+                    )
                     continue
                 }
                 val maxBytes = if (item.has("maxBytes") && !item.isNull("maxBytes")) item.optLong("maxBytes", -1L) else MAX_BYTES
@@ -72,6 +90,7 @@ data class SupportFilesRequest(
             }
             if (files.isEmpty()) return null
             if (files.groupBy { it.path.lowercase() }.any { it.value.size > 1 }) applicable = false
+            if (files.count { it.list } > MAX_LISTINGS) applicable = false
             return SupportFilesRequest(requestId!!, cardClean(json.cardText("note"), MAX_NOTE), files, applicable)
         }
     }

@@ -2976,4 +2976,10 @@
     <string name="support_wait_stop">중지</string>
     <string name="support_reply_ready_tap">탭하여 읽기.</string>
     <string name="support_notify_me">답변이 도착하면 알림 받기</string>
+    <string name="support_files_listing">폴더 목록: %1$s</string>
+    <string name="support_files_listing_missing">폴더를 찾을 수 없음: %1$s</string>
+    <string name="support_files_send_listing">목록 보내기</string>
+    <string name="support_files_listing_sending">%1$s 목록을 보내는 중</string>
+    <string name="support_files_listing_sent">목록을 보냈습니다 (%1$d개 항목)</string>
+    <string name="support_files_listing_failed">%1$s 목록을 보낼 수 없습니다. %2$s</string>
 </resources>

@@ -21,6 +21,7 @@ import okio.Buffer
 import okio.BufferedSink
 import okio.ForwardingSink
 import okio.buffer
+import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import timber.log.Timber
@@ -38,7 +39,7 @@ object SupportApi {
     const val TEXT_MAX = 1800
     const val NOT_SIGNED_IN = "not_signed_in"
     const val FEATURES_HEADER = "x-gn-features"
-    const val FEATURES = "patches,components,fixes,registry"
+    const val FEATURES = "patches,components,fixes,registry,listing"
 
     const val KIND_USER = "user"
     const val KIND_AGENT = "agent"
@@ -784,6 +785,27 @@ object SupportApi {
             build = {
                 it.url("$BASE_URL/conversations/$conversationId/files/done")
                     .post(JSONObject().put("fileId", fileId).toString().toRequestBody(JSON_TYPE))
+            },
+            parse = { },
+        )
+
+    suspend fun filesListing(
+        conversationId: String,
+        requestId: String,
+        path: String,
+        entries: JSONArray,
+        truncated: Boolean,
+    ): ApiResult<Unit> =
+        call(
+            name = "files/listing",
+            build = {
+                val json = JSONObject()
+                    .put("requestId", requestId)
+                    .put("path", path)
+                    .put("entries", entries)
+                    .put("truncated", truncated)
+                it.url("$BASE_URL/conversations/$conversationId/files/listing")
+                    .post(json.toString().toRequestBody(JSON_TYPE))
             },
             parse = { },
         )

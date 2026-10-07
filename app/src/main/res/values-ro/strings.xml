@@ -3007,4 +3007,10 @@
     <string name="support_wait_stop">Oprește</string>
     <string name="support_reply_ready_tap">Atinge pentru a-l citi.</string>
     <string name="support_notify_me">Anunță-mă când sosește răspunsul</string>
+    <string name="support_files_listing">Lista folderului: %1$s</string>
+    <string name="support_files_listing_missing">Folderul nu a fost găsit: %1$s</string>
+    <string name="support_files_send_listing">Trimite lista</string>
+    <string name="support_files_listing_sending">Se trimite lista pentru %1$s</string>
+    <string name="support_files_listing_sent">Listă trimisă (elemente: %1$d)</string>
+    <string name="support_files_listing_failed">Lista pentru %1$s nu a putut fi trimisă. %2$s</string>
 </resources>

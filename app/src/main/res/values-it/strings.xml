@@ -2983,4 +2983,10 @@
     <string name="support_wait_stop">Interrompi</string>
     <string name="support_reply_ready_tap">Tocca per leggerla.</string>
     <string name="support_notify_me">Avvisami quando arriva la risposta</string>
+    <string name="support_files_listing">Elenco della cartella: %1$s</string>
+    <string name="support_files_listing_missing">Cartella non trovata: %1$s</string>
+    <string name="support_files_send_listing">Invia elenco</string>
+    <string name="support_files_listing_sending">Invio dell\'elenco di %1$s</string>
+    <string name="support_files_listing_sent">Elenco inviato (%1$d elementi)</string>
+    <string name="support_files_listing_failed">Impossibile inviare l\'elenco di %1$s. %2$s</string>
 </resources>

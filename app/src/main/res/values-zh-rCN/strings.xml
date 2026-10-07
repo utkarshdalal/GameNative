@@ -2996,4 +2996,10 @@
     <string name="support_wait_stop">停止</string>
     <string name="support_reply_ready_tap">点按即可阅读。</string>
     <string name="support_notify_me">回复到达时通知我</string>
+    <string name="support_files_listing">文件夹列表：%1$s</string>
+    <string name="support_files_listing_missing">未找到文件夹：%1$s</string>
+    <string name="support_files_send_listing">发送列表</string>
+    <string name="support_files_listing_sending">正在发送 %1$s 的列表</string>
+    <string name="support_files_listing_sent">列表已发送（%1$d 项）</string>
+    <string name="support_files_listing_failed">无法发送 %1$s 的列表。%2$s</string>
 </resources>

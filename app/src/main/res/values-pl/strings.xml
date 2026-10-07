@@ -3018,4 +3018,10 @@
     <string name="support_wait_stop">Zatrzymaj</string>
     <string name="support_reply_ready_tap">Dotknij, aby przeczytać.</string>
     <string name="support_notify_me">Powiadom mnie, gdy przyjdzie odpowiedź</string>
+    <string name="support_files_listing">Lista folderu: %1$s</string>
+    <string name="support_files_listing_missing">Nie znaleziono folderu: %1$s</string>
+    <string name="support_files_send_listing">Wyślij listę</string>
+    <string name="support_files_listing_sending">Wysyłanie listy %1$s</string>
+    <string name="support_files_listing_sent">Lista wysłana (elementy: %1$d)</string>
+    <string name="support_files_listing_failed">Nie udało się wysłać listy %1$s. %2$s</string>
 </resources>

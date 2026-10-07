@@ -2987,4 +2987,10 @@
     <string name="support_wait_stop">停止</string>
     <string name="support_reply_ready_tap">輕觸即可閱讀。</string>
     <string name="support_notify_me">回覆到達時通知我</string>
+    <string name="support_files_listing">資料夾清單：%1$s</string>
+    <string name="support_files_listing_missing">找不到資料夾：%1$s</string>
+    <string name="support_files_send_listing">傳送清單</string>
+    <string name="support_files_listing_sending">正在傳送 %1$s 的清單</string>
+    <string name="support_files_listing_sent">清單已傳送（%1$d 項）</string>
+    <string name="support_files_listing_failed">無法傳送 %1$s 的清單。%2$s</string>
 </resources>

@@ -45,7 +45,7 @@ data class SupportPatch(
             "qword" to Regex("^[0-9a-fA-F]{1,16}$"),
             "binary" to Regex("^(?:[0-9a-fA-F]{2}){0,2048}$"),
         )
-        private const val READ_ONLY_TOKEN = "%WINEPREFIX%"
+        private val READ_ONLY_TOKENS = listOf("%WINEPREFIX%", "%STEAM%")
 
         fun isSha256(value: String?): Boolean = value != null && SHA256.matches(value)
 
@@ -78,7 +78,7 @@ data class SupportPatch(
             if (op.isRegistry) return isValidRegistry(op)
             return op.op == OP_REPLACE &&
                 SupportFilesRequest.isSafePath(op.path) &&
-                !op.path.startsWith(READ_ONLY_TOKEN, ignoreCase = true) &&
+                READ_ONLY_TOKENS.none { op.path.startsWith(it, ignoreCase = true) } &&
                 isSha256(op.originalSha256) &&
                 isSha256(op.sha256) &&
                 op.size in 0..SupportFilesRequest.MAX_BYTES &&

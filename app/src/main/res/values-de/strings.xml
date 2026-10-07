@@ -2932,4 +2932,10 @@
     <string name="support_wait_stop">Stopp</string>
     <string name="support_reply_ready_tap">Tippe, um sie zu lesen.</string>
     <string name="support_notify_me">Benachrichtige mich, wenn die Antwort da ist</string>
+    <string name="support_files_listing">Ordnerliste: %1$s</string>
+    <string name="support_files_listing_missing">Ordner nicht gefunden: %1$s</string>
+    <string name="support_files_send_listing">Liste senden</string>
+    <string name="support_files_listing_sending">Liste von %1$s wird gesendet</string>
+    <string name="support_files_listing_sent">Liste gesendet (%1$d Einträge)</string>
+    <string name="support_files_listing_failed">Die Liste von %1$s konnte nicht gesendet werden. %2$s</string>
 </resources>

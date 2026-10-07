@@ -2862,4 +2862,10 @@
     <string name="support_wait_stop">Stop</string>
     <string name="support_reply_ready_tap">Tryk for at læse det.</string>
     <string name="support_notify_me">Giv mig besked, når svaret kommer</string>
+    <string name="support_files_listing">Mappeoversigt: %1$s</string>
+    <string name="support_files_listing_missing">Mappen blev ikke fundet: %1$s</string>
+    <string name="support_files_send_listing">Send oversigt</string>
+    <string name="support_files_listing_sending">Sender oversigten over %1$s</string>
+    <string name="support_files_listing_sent">Oversigt sendt (%1$d elementer)</string>
+    <string name="support_files_listing_failed">Oversigten over %1$s kunne ikke sendes. %2$s</string>
 </resources>

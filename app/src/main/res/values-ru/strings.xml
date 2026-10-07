@@ -2942,4 +2942,10 @@ https://gamenative.app
     <string name="support_wait_stop">Остановить</string>
     <string name="support_reply_ready_tap">Нажмите, чтобы прочитать.</string>
     <string name="support_notify_me">Уведомить, когда придёт ответ</string>
+    <string name="support_files_listing">Список папки: %1$s</string>
+    <string name="support_files_listing_missing">Папка не найдена: %1$s</string>
+    <string name="support_files_send_listing">Отправить список</string>
+    <string name="support_files_listing_sending">Отправка списка %1$s</string>
+    <string name="support_files_listing_sent">Список отправлен (элементов: %1$d)</string>
+    <string name="support_files_listing_failed">Не удалось отправить список %1$s. %2$s</string>
 </resources>

@@ -49,19 +49,24 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
 import timber.log.Timber
 
 private const val WIFI_WARNING_BYTES = 50L * 1024 * 1024
 
 private data class LocalFile(val item: SupportFilesRequest.Item, val file: File?, val size: Long?) {
-    val tooLarge: Boolean get() = size != null && size > item.maxBytes
-    val uploadable: Boolean get() = file != null && size != null && !tooLarge
+    val tooLarge: Boolean get() = !item.list && size != null && size > item.maxBytes
+    val uploadable: Boolean get() = !item.list && file != null && size != null && !tooLarge
+    val listable: Boolean get() = item.list && file != null
 }
 
 private sealed class UploadState {
     data class Hashing(val progress: Float) : UploadState()
     data class Uploading(val progress: Float) : UploadState()
     data object Uploaded : UploadState()
+    data object Listing : UploadState()
+    data class Listed(val entries: Int) : UploadState()
     data class Failed(val message: String) : UploadState()
 }
 
@@ -81,8 +86,12 @@ private suspend fun findFiles(context: android.content.Context, appId: String, r
         try {
             val roots = SupportGameFiles.roots(context, appId) ?: return@withContext null
             request.files.map { item ->
-                val file = SupportGameFiles.resolve(roots, item.path)?.takeIf { it.isFile }
-                LocalFile(item, file, file?.length())
+                if (item.list) {
+                    LocalFile(item, SupportGameFiles.resolveDir(roots, item.path), null)
+                } else {
+                    val file = SupportGameFiles.resolve(roots, item.path)?.takeIf { it.isFile }
+                    LocalFile(item, file, file?.length())
+                }
             }
         } catch (e: Exception) {
             Timber.w(e, "Reading files for a support file request failed")
@@ -123,6 +132,28 @@ private suspend fun uploadOne(
     }
 }
 
+private suspend fun sendListing(conversationId: String, requestId: String, local: LocalFile): UploadState {
+    val dir = local.file ?: return UploadState.Failed("")
+    val job: Job = currentCoroutineContext().job
+    return try {
+        val listing = withContext(Dispatchers.IO) { SupportGameFiles.list(dir, local.item.depth, job) }
+        val entries = JSONArray()
+        listing.entries.forEach {
+            entries.put(JSONObject().put("name", it.name).put("size", it.size).put("dir", it.dir).put("mtime", it.mtime))
+        }
+        when (val sent = SupportApi.filesListing(conversationId, requestId, local.item.path, entries, listing.truncated)) {
+            is ApiResult.Success -> UploadState.Listed(listing.entries.size)
+            else -> UploadState.Failed(describe(sent))
+        }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        currentCoroutineContext().ensureActive()
+        Timber.w(e, "Sending a requested support folder listing failed")
+        UploadState.Failed(e.message ?: e.javaClass.simpleName)
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun FilesRequestCard(
@@ -150,6 +181,35 @@ internal fun FilesRequestCard(
     val uploadable = files.orEmpty().withIndex().filter { it.value.uploadable && states[it.index] != UploadState.Uploaded }
     val totalBytes = uploadable.sumOf { it.value.size ?: 0L }
     val canUpload = request.applicable && files != null && uploadable.isNotEmpty() && !busy
+    val hasFiles = request.files.any { !it.list }
+    val listable = files.orEmpty().withIndex().filter { it.value.listable && states[it.index] !is UploadState.Listed }
+    val canList = request.applicable && files != null && listable.isNotEmpty() && !busy
+
+    fun track(job: Job) {
+        uploadJob = job
+        job.invokeOnCompletion { cause ->
+            uploadJob = null
+            if (cause is CancellationException) {
+                states.keys.toList().forEach { key ->
+                    val state = states[key]
+                    if (state !is UploadState.Uploaded && state !is UploadState.Listed && state !is UploadState.Failed) states.remove(key)
+                }
+                status = FilesStatus.Cancelled
+            }
+        }
+    }
+
+    fun sendListings() {
+        status = null
+        track(
+            scope.launch {
+                for ((index, local) in listable) {
+                    states[index] = UploadState.Listing
+                    states[index] = sendListing(conversationId, request.requestId, local)
+                }
+            },
+        )
+    }
 
     fun upload() {
         status = null
@@ -162,16 +222,7 @@ internal fun FilesRequestCard(
             }
             if (allDone) status = FilesStatus.Done
         }
-        uploadJob = job
-        job.invokeOnCompletion { cause ->
-            uploadJob = null
-            if (cause is CancellationException) {
-                states.keys.toList().forEach { key ->
-                    if (states[key] !is UploadState.Uploaded && states[key] !is UploadState.Failed) states.remove(key)
-                }
-                status = FilesStatus.Cancelled
-            }
-        }
+        track(job)
     }
 
     Surface(
@@ -225,6 +276,11 @@ internal fun FilesRequestCard(
                 val local = files?.getOrNull(index)
                 val size = local?.size
                 val label = when {
+                    item.list -> if (local != null && local.file == null) {
+                        stringResource(R.string.support_files_listing_missing, item.path)
+                    } else {
+                        stringResource(R.string.support_files_listing, item.path)
+                    }
                     local == null -> item.path
                     size == null -> stringResource(R.string.support_files_missing, item.path)
                     local.tooLarge -> stringResource(R.string.support_files_too_large, item.path)
@@ -233,7 +289,7 @@ internal fun FilesRequestCard(
                 Text(
                     text = label,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (local != null && !local.uploadable) PluviaTheme.colors.textMuted else MaterialTheme.colorScheme.onSurface,
+                    color = if (local != null && !local.uploadable && !local.listable) PluviaTheme.colors.textMuted else MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(top = 8.dp),
                 )
                 item.why?.let {
@@ -268,8 +324,27 @@ internal fun FilesRequestCard(
                         color = PluviaTheme.colors.accentSuccess,
                         modifier = Modifier.padding(top = 4.dp),
                     )
+                    UploadState.Listing -> {
+                        Text(
+                            text = stringResource(R.string.support_files_listing_sending, item.path),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = PluviaTheme.colors.textMuted,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+                    }
+                    is UploadState.Listed -> Text(
+                        text = stringResource(R.string.support_files_listing_sent, state.entries),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = PluviaTheme.colors.accentSuccess,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
                     is UploadState.Failed -> Text(
-                        text = stringResource(R.string.support_files_failed, item.path, state.message).trim(),
+                        text = stringResource(
+                            if (item.list) R.string.support_files_listing_failed else R.string.support_files_failed,
+                            item.path,
+                            state.message,
+                        ).trim(),
                         style = MaterialTheme.typography.bodySmall,
                         color = PluviaTheme.colors.accentDanger,
                         modifier = Modifier.padding(top = 4.dp),
@@ -306,12 +381,21 @@ internal fun FilesRequestCard(
                         enabled = true,
                         onClick = { uploadJob?.cancel() },
                     )
-                } else if (status != FilesStatus.Done) {
-                    FocusableButton(
-                        text = stringResource(R.string.support_files_upload),
-                        onClick = { upload() },
-                        enabled = canUpload && appId != null,
-                    )
+                } else {
+                    if (listable.isNotEmpty()) {
+                        FocusableButton(
+                            text = stringResource(R.string.support_files_send_listing),
+                            onClick = { sendListings() },
+                            enabled = canList && appId != null,
+                        )
+                    }
+                    if (hasFiles && status != FilesStatus.Done) {
+                        FocusableButton(
+                            text = stringResource(R.string.support_files_upload),
+                            onClick = { upload() },
+                            enabled = canUpload && appId != null,
+                        )
+                    }
                 }
             }
         }

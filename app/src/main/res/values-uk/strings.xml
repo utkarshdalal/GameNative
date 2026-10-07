@@ -3014,4 +3014,10 @@
     <string name="support_wait_stop">Зупинити</string>
     <string name="support_reply_ready_tap">Торкніться, щоб прочитати.</string>
     <string name="support_notify_me">Сповістити, коли надійде відповідь</string>
+    <string name="support_files_listing">Список папки: %1$s</string>
+    <string name="support_files_listing_missing">Папку не знайдено: %1$s</string>
+    <string name="support_files_send_listing">Надіслати список</string>
+    <string name="support_files_listing_sending">Надсилання списку %1$s</string>
+    <string name="support_files_listing_sent">Список надіслано (елементів: %1$d)</string>
+    <string name="support_files_listing_failed">Не вдалося надіслати список %1$s. %2$s</string>
 </resources>

@@ -2989,6 +2989,12 @@
     <string name="support_files_failed">%1$s could not be uploaded. %2$s</string>
     <string name="support_files_done">The files are uploaded.</string>
     <string name="support_files_cancelled">The upload stopped.</string>
+    <string name="support_files_listing">Folder listing: %1$s</string>
+    <string name="support_files_listing_missing">Folder not found: %1$s</string>
+    <string name="support_files_send_listing">Send listing</string>
+    <string name="support_files_listing_sending">Sending the listing of %1$s</string>
+    <string name="support_files_listing_sent">Listing sent (%1$d entries)</string>
+    <string name="support_files_listing_failed">The listing of %1$s could not be sent. %2$s</string>
     <string name="support_patch_title">Game file patch</string>
     <string name="support_patch_not_applicable">This version of the app cannot apply this patch.</string>
     <string name="support_patch_no_game">Install the game on this device to apply this patch.</string>

@@ -39,7 +39,15 @@ object SupportGameFiles {
         USERPROFILE("%USERPROFILE%", ""),
         DOCUMENTS("%DOCUMENTS%", "Documents"),
         WINEPREFIX("%WINEPREFIX%", "", inPrefix = true),
+        STEAM("%STEAM%", "drive_c/Program Files (x86)/Steam", inPrefix = true),
     }
+
+    data class ListingEntry(val name: String, val size: Long, val dir: Boolean, val mtime: Long)
+
+    class Listing(val entries: List<ListingEntry>, val truncated: Boolean)
+
+    const val MAX_LISTING_ENTRIES = 2000
+    private const val MAX_LISTING_NAME = 255
 
     data class Located(val root: UserRoot?, val rest: String)
 
@@ -111,13 +119,46 @@ object SupportGameFiles {
         val located = locate(path)
         val userRoot = located.root ?: return resolve(roots.install, path)
         if (located.rest.isEmpty()) return null
-        val base = if (userRoot.inPrefix) {
-            roots.prefix ?: return null
-        } else {
-            walk(roots.userHome ?: return null, userRoot.subPath.split('/').filter { it.isNotEmpty() })
-        }
+        val base = walk(
+            (if (userRoot.inPrefix) roots.prefix else roots.userHome) ?: return null,
+            userRoot.subPath.split('/').filter { it.isNotEmpty() },
+        )
+        if (userRoot == UserRoot.STEAM && !base.isDirectory) return null
         val target = walk(base, located.rest.split('/'))
         return target.takeIf { inside(base, it) }
+    }
+
+    fun resolveDir(roots: Roots, path: String): File? {
+        val dir = if (path == SupportFilesRequest.INSTALL_ROOT) roots.install else resolve(roots, path)
+        return dir?.takeIf { it.isDirectory }
+    }
+
+    fun list(dir: File, depth: Int, job: Job? = null): Listing {
+        val entries = mutableListOf<ListingEntry>()
+        var truncated = false
+        var level = listOf(dir to "")
+        for (step in 1..depth.coerceIn(1, SupportFilesRequest.MAX_DEPTH)) {
+            val next = mutableListOf<Pair<File, String>>()
+            for ((folder, prefix) in level) {
+                val children = folder.listFiles()?.sortedBy { it.name.lowercase() } ?: continue
+                for (child in children) {
+                    if (job != null && !job.isActive) throw InterruptedIOException("cancelled")
+                    val name = prefix + child.name
+                    if (name.length > MAX_LISTING_NAME || name.any { it == '\\' || it.code < 0x20 || it.code == 0x7f }) continue
+                    if (entries.size >= MAX_LISTING_ENTRIES) {
+                        truncated = true
+                        break
+                    }
+                    val isDir = child.isDirectory
+                    entries += ListingEntry(name, if (isDir) 0L else child.length(), isDir, child.lastModified().coerceAtLeast(0L))
+                    if (isDir && !Files.isSymbolicLink(child.toPath())) next += child to "$name/"
+                }
+                if (truncated) break
+            }
+            if (truncated) break
+            level = next
+        }
+        return Listing(entries.sortedBy { it.name.lowercase() }, truncated)
     }
 
     private fun resolve(root: File, path: String): File? {

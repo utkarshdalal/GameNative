@@ -2990,4 +2990,10 @@
     <string name="support_wait_stop">Detener</string>
     <string name="support_reply_ready_tap">Toca para leerla.</string>
     <string name="support_notify_me">Avisarme cuando llegue la respuesta</string>
+    <string name="support_files_listing">Lista de la carpeta: %1$s</string>
+    <string name="support_files_listing_missing">Carpeta no encontrada: %1$s</string>
+    <string name="support_files_send_listing">Enviar lista</string>
+    <string name="support_files_listing_sending">Enviando la lista de %1$s</string>
+    <string name="support_files_listing_sent">Lista enviada (%1$d elementos)</string>
+    <string name="support_files_listing_failed">No se pudo enviar la lista de %1$s. %2$s</string>
 </resources>
