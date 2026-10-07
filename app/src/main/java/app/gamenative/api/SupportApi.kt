@@ -372,10 +372,12 @@ object SupportApi {
                 build(builder).header(FEATURES_HEADER, FEATURES).also { if (relayToken != null) it.header(RELAY_TOKEN_HEADER, relayToken) }
             }) { Raw(it.code, it.body.string()) }
                 ?: return@withContext ApiResult.HttpError(401, NOT_SIGNED_IN)
-            if (relayToken != null && raw.code in 200..299) PrefManager.discordMergePending = false
+            val reason = if (raw.code !in 200..299) errorReason(raw.body) else null
+            if (relayToken != null && (raw.code in 200..499 || (raw.code == 502 && reason == "link_failed"))) {
+                PrefManager.discordMergePending = false
+            }
             if (tracksAvailability) markAvailability(raw.code)
-            if (raw.code !in 200..299) {
-                val reason = errorReason(raw.body)
+            if (reason != null) {
                 Timber.tag(TAG).w("$name HTTP ${raw.code}: $reason")
                 return@withContext ApiResult.HttpError(raw.code, reason)
             }

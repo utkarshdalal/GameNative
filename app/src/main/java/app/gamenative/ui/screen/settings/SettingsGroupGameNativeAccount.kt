@@ -200,19 +200,22 @@ fun SettingsGroupGameNativeAccount() {
                 } else {
                     discordBusy = true
                     scope.launch {
-                        val nonce = ByteArray(16).also { SecureRandom().nextBytes(it) }
-                            .joinToString("") { "%02x".format(it) }
-                        PrefManager.discordOauthNonce = nonce
-                        val accountUrl = if (signedIn) {
-                            when (val result = SupportApi.startDiscordLink(nonce)) {
-                                is ApiResult.Success -> result.data
-                                else -> null
+                        try {
+                            val nonce = ByteArray(16).also { SecureRandom().nextBytes(it) }
+                                .joinToString("") { "%02x".format(it) }
+                            PrefManager.discordOauthNonce = nonce
+                            val accountUrl = if (signedIn) {
+                                when (val result = SupportApi.startDiscordLink(nonce)) {
+                                    is ApiResult.Success -> result.data
+                                    else -> null
+                                }
+                            } else {
+                                null
                             }
-                        } else {
-                            null
+                            openAccountUrl(context, accountUrl ?: "${DebugReportApi.OAUTH_START_URL}?app_state=$nonce")
+                        } finally {
+                            discordBusy = false
                         }
-                        openAccountUrl(context, accountUrl ?: "${DebugReportApi.OAUTH_START_URL}?app_state=$nonce")
-                        discordBusy = false
                     }
                 }
             },

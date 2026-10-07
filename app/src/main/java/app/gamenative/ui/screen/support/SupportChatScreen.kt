@@ -332,7 +332,7 @@ internal fun ColumnScope.SupportChat(
                 }
             },
         )
-        if (chat.messages.any { it.kind == SupportApi.KIND_AGENT }) {
+        if (conversation?.fixes != null && chat.messages.any { it.kind == SupportApi.KIND_AGENT }) {
             ActionButton(
                 text = stringResource(R.string.support_fix_request_action),
                 icon = Icons.Filled.Build,

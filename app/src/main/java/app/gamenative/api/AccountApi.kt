@@ -97,8 +97,7 @@ object AccountApi {
             tier = json.optString("tier", "none").ifBlank { "none" },
             tierSource = if (json.isNull("tier_source")) null else json.optString("tier_source").ifBlank { null },
             discordLinked = json.optBoolean("discord_linked", false),
-            discordName = listOf("discord_username", "discord_id")
-                .firstNotNullOfOrNull { key -> json.optString(key).takeIf { !json.isNull(key) && it.isNotBlank() } },
+            discordName = json.optString("discord_username").takeIf { !json.isNull("discord_username") && it.isNotBlank() },
             trialAvailable = json.optBoolean("trial_available", false),
         )
 
