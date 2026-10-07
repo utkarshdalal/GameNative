@@ -1,5 +1,6 @@
 /* Run on a Linux CI runner with SDL2; include the production bridge so the
  * virtual joystick descriptor and button application code are exercised. */
+#include <stdbool.h>
 #include "../evshim.c"
 
 #define CHECK(condition, message) do { \
@@ -8,6 +9,8 @@
 
 int main(void)
 {
+    /* Wine's SDL bus initializes the game-controller subsystem as well. */
+    CHECK(SDL_Init(SDL_INIT_GAMECONTROLLER) == 0, "SDL game-controller subsystem initialized");
     initialize_wine(0);
     CHECK(sdl_handle != NULL, "SDL loaded");
     SDL_GameController *pads[2];
