@@ -35,7 +35,7 @@ object SupportApi {
     const val TEXT_MAX = 1800
     const val NOT_SIGNED_IN = "not_signed_in"
     const val FEATURES_HEADER = "x-gn-features"
-    const val FEATURES = "patches,components"
+    const val FEATURES = "patches,components,fixes"
 
     const val KIND_USER = "user"
     const val KIND_AGENT = "agent"
@@ -54,6 +54,8 @@ object SupportApi {
     const val REASON_NO_SUBSCRIPTION = "no_subscription"
     const val REASON_RATE_LIMITED = "rate_limited"
     const val REASON_ALREADY_ANSWERED = "already_answered"
+    const val REASON_FIX_QUOTA = "fix_quota"
+    const val REASON_FIX_UPGRADE = "fix_upgrade"
 
     const val STAGE_QUEUED = "queued"
     const val STAGE_ANALYSING = "analysing"
@@ -95,6 +97,24 @@ object SupportApi {
         val active: Boolean get() = stage == STAGE_QUEUED || stage == STAGE_ANALYSING
     }
 
+    data class Fixes(
+        val allowed: Boolean,
+        val used: Int,
+        val limit: Int,
+        val resetsAt: Long?,
+        val roundsLimit: Int?,
+        val reason: String?,
+    ) {
+        val left: Int get() = (limit - used).coerceAtLeast(0)
+    }
+
+    sealed class FixRequestResult {
+        data class Started(val fixes: Fixes?) : FixRequestResult()
+        data class Quota(val message: String?, val resetsAt: Long?) : FixRequestResult()
+        data object UpgradeRequired : FixRequestResult()
+        data class Failed(val reason: String?) : FixRequestResult()
+    }
+
     data class Conversation(
         val id: String,
         val game: String,
@@ -106,6 +126,7 @@ object SupportApi {
         val lastMessageAt: Long,
         val composer: Composer,
         val progress: Progress? = null,
+        val fixes: Fixes? = null,
     ) {
         val awaitingReply: Boolean
             get() = progress?.active ?: (state == STATE_WAITING)
@@ -114,11 +135,11 @@ object SupportApi {
     data class Attachment(val filename: String, val size: Long?, val url: String?)
 
     sealed class Notice {
-        data class Upgrade(val reason: String) : Notice()
+        data class Upgrade(val reason: String, val resetsAt: Long? = null, val message: String? = null) : Notice()
         data class Moved(val tier: String) : Notice()
         data class Outcome(val solved: Boolean, val note: String?) : Notice()
         data class Limit(val reason: String, val resetsAt: Long?, val message: String?) : Notice()
-        data class Other(val type: String) : Notice()
+        data class Other(val type: String, val reason: String? = null, val message: String? = null) : Notice()
     }
 
     data class Message(
@@ -244,12 +265,29 @@ object SupportApi {
                 resetsAt = composer?.time("resets_at")?.takeIf { it > 0 },
             ),
             progress = runCatching { parseProgress(json.optJSONObject("progress")) }.getOrNull(),
+            fixes = runCatching { parseFixes(json.optJSONObject("fixes")) }.getOrNull(),
+        )
+    }
+
+    private fun parseFixes(json: JSONObject?): Fixes? {
+        if (json == null) return null
+        return Fixes(
+            allowed = json.optBoolean("allowed", false),
+            used = json.optInt("used", 0),
+            limit = json.optInt("limit", 0),
+            resetsAt = json.time("resets_at").takeIf { it > 0 },
+            roundsLimit = if (json.isNull("rounds_limit")) null else json.optInt("rounds_limit", -1).takeIf { it >= 0 },
+            reason = json.str("reason"),
         )
     }
 
     private fun parseNotice(json: JSONObject): Notice =
         when (val type = json.str("type") ?: "") {
-            "upgrade" -> Notice.Upgrade(json.str("reason") ?: REASON_UPGRADE_REQUIRED)
+            "upgrade" -> Notice.Upgrade(
+                reason = json.str("reason") ?: REASON_UPGRADE_REQUIRED,
+                resetsAt = json.time("resets_at").takeIf { it > 0 },
+                message = json.str("message"),
+            )
             "moved" -> Notice.Moved(json.str("tier") ?: "pro")
             "outcome" -> Notice.Outcome(json.optBoolean("solved", false), json.str("note"))
             "limit" -> Notice.Limit(
@@ -257,7 +295,7 @@ object SupportApi {
                 resetsAt = json.time("resets_at").takeIf { it > 0 },
                 message = json.str("message"),
             )
-            else -> Notice.Other(type)
+            else -> Notice.Other(type, json.str("reason"), json.str("message") ?: json.str("text"))
         }
 
     private fun parseMessage(json: JSONObject): Message? {
@@ -571,6 +609,35 @@ object SupportApi {
             },
             parse = { parseConversation(it.getJSONObject("conversation")) },
         )
+
+    suspend fun fixRequest(id: String): FixRequestResult = withContext(Dispatchers.IO) {
+        try {
+            val raw = AccountApi.sendAuthorized({
+                it.url("$BASE_URL/conversations/$id/fix-request")
+                    .header(FEATURES_HEADER, FEATURES)
+                    .post("{}".toRequestBody(JSON_TYPE))
+            }) { Raw(it.code, it.body.string()) } ?: return@withContext FixRequestResult.Failed(NOT_SIGNED_IN)
+            val json = runCatching { JSONObject(raw.body) }.getOrNull()
+            if (raw.code in 200..299) {
+                return@withContext FixRequestResult.Started(json?.optJSONObject("fixes")?.let { parseFixes(it) })
+            }
+            val reason = json?.let { it.str("error") ?: it.str("reason") }
+            Timber.tag(TAG).w("fix-request HTTP ${raw.code}: $reason")
+            when {
+                reason == REASON_FIX_QUOTA -> FixRequestResult.Quota(
+                    message = json?.str("message"),
+                    resetsAt = json?.time("resets_at")?.takeIf { it > 0 },
+                )
+                reason == REASON_UPGRADE_REQUIRED || reason == REASON_NO_SUBSCRIPTION -> FixRequestResult.UpgradeRequired
+                else -> FixRequestResult.Failed(reason)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logFailure("fix-request", e)
+            FixRequestResult.Failed(null)
+        }
+    }
 
     suspend fun downloadAttachment(path: String, destination: File): ApiResult<File> = withContext(Dispatchers.IO) {
         if (!path.startsWith(ATTACHMENT_PREFIX) || path.contains("..")) {

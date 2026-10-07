@@ -36,6 +36,7 @@ import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.SupportAgent
@@ -92,6 +93,8 @@ import app.gamenative.api.SupportApi
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.utils.DebugRunParams
+import app.gamenative.utils.DebugRunParamsHolder
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -107,7 +110,7 @@ private sealed class ChatItem(val key: String) {
 private fun chatItems(state: SupportViewModel.ChatState, runCheck: Boolean, hideOutcome: Boolean): List<ChatItem> {
     val known = setOf(SupportApi.KIND_USER, SupportApi.KIND_AGENT, SupportApi.KIND_STAFF, SupportApi.KIND_NOTICE)
     val messages = state.messages.filter { message ->
-        message.kind in known && (message.kind != SupportApi.KIND_NOTICE || (message.notice != null && message.notice !is SupportApi.Notice.Other))
+        message.kind in known && (message.kind != SupportApi.KIND_NOTICE || (message.notice != null && (message.notice !is SupportApi.Notice.Other || noticeText(message) != null)))
     }
     val items = mutableListOf<ChatItem>()
     messages.forEach { items.add(ChatItem.Entry(it)) }
@@ -173,6 +176,9 @@ internal fun ColumnScope.SupportChat(
     val items = chatItems(chat, runCheck = run != null, hideOutcome = run?.asking == true)
     val upgradeOpen by rememberUpdatedState(upgradeReason != null)
     val clock = rememberSupportClock(conversation?.progress?.active == true)
+    var fixRequestOpen by rememberSaveable(conversationId) { mutableStateOf(false) }
+    var fixRequestBusy by remember(conversationId) { mutableStateOf(false) }
+    var fixRequestError by remember(conversationId) { mutableStateOf<String?>(null) }
     val notifyOffer = rememberNotifyOffer(conversation)
 
     LaunchedEffect(conversationId, lifecycleOwner) {
@@ -251,6 +257,48 @@ internal fun ColumnScope.SupportChat(
         onDismiss = { upgradeReason = null },
     )
 
+    val fixQuotaFallback = stringResource(R.string.support_fix_quota)
+    val fixFailedText = stringResource(R.string.support_fix_request_failed)
+    if (fixRequestOpen) {
+        SupportFixRequestDialog(
+            fixes = conversation?.fixes,
+            busy = fixRequestBusy,
+            error = fixRequestError,
+            onRun = {
+                val targetAppId = conversation?.appId
+                if (targetAppId != null && !fixRequestBusy) {
+                    fixRequestBusy = true
+                    scope.launch {
+                        when (val result = SupportApi.fixRequest(conversationId)) {
+                            is SupportApi.FixRequestResult.Started -> {
+                                fixRequestOpen = false
+                                DebugRunParamsHolder.set(
+                                    targetAppId,
+                                    DebugRunParams(attach = setOf(DebugRunParams.ATTACH_CPU)),
+                                )
+                                SupportSession.startedRunFrom(targetAppId, conversationId)
+                                onStartDebugRun(targetAppId)
+                            }
+                            is SupportApi.FixRequestResult.Quota -> fixRequestError = result.message
+                                ?: result.resetsAt?.let { context.getString(R.string.support_fix_quota_resets, fixResetDate(it)) }
+                                ?: fixQuotaFallback
+                            SupportApi.FixRequestResult.UpgradeRequired -> {
+                                fixRequestOpen = false
+                                upgradeReason = SupportApi.REASON_FIX_UPGRADE
+                            }
+                            is SupportApi.FixRequestResult.Failed -> fixRequestError = fixFailedText
+                        }
+                        fixRequestBusy = false
+                    }
+                }
+            },
+            onDismiss = {
+                fixRequestOpen = false
+                fixRequestError = null
+            },
+        )
+    }
+
     SupportHeader(
         title = conversation?.game?.ifEmpty { null } ?: stringResource(R.string.support_title),
         subtitle = conversation?.let { conversationLabel(it, clock) },
@@ -284,6 +332,18 @@ internal fun ColumnScope.SupportChat(
                 }
             },
         )
+        if (chat.messages.any { it.kind == SupportApi.KIND_AGENT }) {
+            ActionButton(
+                text = stringResource(R.string.support_fix_request_action),
+                icon = Icons.Filled.Build,
+                enabled = appId != null && !runBusy,
+                onClick = {
+                    fixRequestError = null
+                    fixRequestOpen = true
+                    viewModel.refreshConversation()
+                },
+            )
+        }
     }
 
     Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -590,7 +650,7 @@ private fun MessageItem(
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
     when (message.kind) {
-        SupportApi.KIND_NOTICE -> NoticeCard(notice = message.notice, onUpgrade = onUpgrade)
+        SupportApi.KIND_NOTICE -> NoticeCard(notice = message.notice, fallbackText = noticeText(message), onUpgrade = onUpgrade)
         else -> {
             val mine = message.kind == SupportApi.KIND_USER
             val staff = message.kind == SupportApi.KIND_STAFF
@@ -698,9 +758,28 @@ private fun ChipButton(
     )
 }
 
+private val knownUpgradeReasons = setOf(
+    SupportApi.REASON_UPGRADE_REQUIRED,
+    SupportApi.REASON_NO_SUBSCRIPTION,
+    SupportApi.REASON_TRIAL_USED,
+    SupportApi.REASON_FAIR_USE,
+    SupportApi.REASON_REPLY_CAP,
+    SupportApi.REASON_FIX_QUOTA,
+    SupportApi.REASON_FIX_UPGRADE,
+)
+
+private fun noticeText(message: SupportApi.Message): String? =
+    when (val notice = message.notice) {
+        is SupportApi.Notice.Other -> notice.message
+        is SupportApi.Notice.Limit -> notice.message
+        is SupportApi.Notice.Upgrade -> notice.message
+        else -> null
+    } ?: message.text.ifBlank { null }
+
 @Composable
 private fun NoticeCard(
     notice: SupportApi.Notice?,
+    fallbackText: String?,
     onUpgrade: (String) -> Unit,
 ) {
     when (notice) {
@@ -727,7 +806,11 @@ private fun NoticeCard(
                     )
                 }
                 Text(
-                    text = upgradeReasonText(notice.reason),
+                    text = if (notice.reason in knownUpgradeReasons) {
+                        upgradeReasonText(notice.reason, notice.resetsAt, notice.message)
+                    } else {
+                        notice.message ?: fallbackText ?: upgradeReasonText(notice.reason)
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(top = 6.dp, bottom = 10.dp),
                 )
@@ -740,11 +823,17 @@ private fun NoticeCard(
             }
         }
         is SupportApi.Notice.Limit -> FocusableCard(modifier = Modifier.fillMaxWidth()) {
-            val hours = SupportApi.FairUse(notice.resetsAt, null).hoursLeft()
-            Text(
-                text = fairUseReasonText(hours, notice.message),
-                style = MaterialTheme.typography.bodyMedium,
-            )
+            val text = when {
+                notice.reason == SupportApi.REASON_FIX_QUOTA -> fixQuotaText(notice.resetsAt, notice.message)
+                SupportApi.isFairUse(notice.reason) ->
+                    fairUseReasonText(SupportApi.FairUse(notice.resetsAt, null).hoursLeft(), notice.message)
+                else -> notice.message ?: fallbackText
+                    ?: fairUseReasonText(SupportApi.FairUse(notice.resetsAt, null).hoursLeft())
+            }
+            Text(text = text, style = MaterialTheme.typography.bodyMedium)
+        }
+        is SupportApi.Notice.Other -> FocusableCard(modifier = Modifier.fillMaxWidth()) {
+            Text(text = notice.message ?: fallbackText.orEmpty(), style = MaterialTheme.typography.bodyMedium)
         }
         is SupportApi.Notice.Moved -> FocusableCard(modifier = Modifier.fillMaxWidth()) {
             Text(text = stringResource(R.string.support_notice_moved), style = MaterialTheme.typography.bodyMedium)
