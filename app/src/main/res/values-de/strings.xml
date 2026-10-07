@@ -2010,11 +2010,11 @@
     <string name="debug_trial_note">Kostenlose Testphase verfügbar.</string>
     <string name="debug_prerun_message_3">Jeder kann den Bericht teilen, um menschliche Hilfe zu erhalten.</string>
     <string name="debug_paywall_title">AI-Debug-Support erhalten</string>
-    <string name="debug_paywall_pitch">Individuelle AI-Patches und Builds, die deine Spiele reparieren: 1 Spiel pro Monat mit Basic, 3 mit Pro.</string>
+    <string name="debug_paywall_pitch">Individuelle AI-Patches und Builds, die deine Spiele reparieren.</string>
     <string name="debug_paywall_tier5_title">$5/Monat · Basic</string>
-    <string name="debug_paywall_tier5_body">Bring deine Spiele zum Laufen – oder lass sie besser laufen.</string>
+    <string name="debug_paywall_tier5_body">1 individueller Fix pro Monat, bis zu 5 Versuche pro Fix.</string>
     <string name="debug_paywall_tier10_title">$10/Monat · Pro</string>
-    <string name="debug_paywall_tier10_body">Schnellere Antworten und tiefere Analysen.</string>
+    <string name="debug_paywall_tier10_body">3 individuelle Fixes pro Monat, schnellere Antworten, zuerst in der Warteschlange.</string>
     <string name="debug_paywall_cancel_anytime">Jederzeit kündbar. Es gelten Fair-Use-Grenzen.</string>
     <string name="debug_paywall_costs_note">Abos decken die AI-Servicekosten, die diese Funktion möglich machen.</string>
     <string name="debug_paywall_subscribe">Auf Discord abonnieren</string>

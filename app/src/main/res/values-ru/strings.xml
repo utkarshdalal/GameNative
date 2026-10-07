@@ -1996,11 +1996,11 @@ https://gamenative.app
     <string name="debug_trial_note">Доступен бесплатный пробный период.</string>
     <string name="debug_prerun_message_3">Любой может поделиться отчётом, чтобы получить помощь людей.</string>
     <string name="debug_paywall_title">Получите AI-поддержку по отладке</string>
-    <string name="debug_paywall_pitch">Индивидуальные AI-патчи и сборки, которые чинят ваши игры: 1 игра в месяц на Basic, 3 на Pro.</string>
+    <string name="debug_paywall_pitch">Индивидуальные AI-патчи и сборки, которые чинят ваши игры.</string>
     <string name="debug_paywall_tier5_title">$5/месяц · Basic</string>
-    <string name="debug_paywall_tier5_body">Запустите свои игры или заставьте их работать лучше.</string>
+    <string name="debug_paywall_tier5_body">1 индивидуальное исправление в месяц, до 5 попыток на каждое.</string>
     <string name="debug_paywall_tier10_title">$10/месяц · Pro</string>
-    <string name="debug_paywall_tier10_body">Более быстрые ответы и более глубокий анализ.</string>
+    <string name="debug_paywall_tier10_body">3 индивидуальных исправления в месяц, более быстрые ответы, первое место в очереди.</string>
     <string name="debug_paywall_cancel_anytime">Отмена в любой момент. Действуют лимиты добросовестного использования.</string>
     <string name="debug_paywall_costs_note">Подписки покрывают расходы на сервис AI, благодаря которому работает эта функция.</string>
     <string name="debug_paywall_subscribe">Подпишитесь в Discord</string>

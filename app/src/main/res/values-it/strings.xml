@@ -2061,11 +2061,11 @@
     <string name="debug_trial_note">Prova gratuita disponibile.</string>
     <string name="debug_prerun_message_3">Chiunque può condividere il report per ricevere aiuto umano.</string>
     <string name="debug_paywall_title">Ottieni supporto di debug AI</string>
-    <string name="debug_paywall_pitch">Patch e build AI personalizzati che sistemano i tuoi giochi: 1 gioco al mese con Basic, 3 con Pro.</string>
+    <string name="debug_paywall_pitch">Patch e build AI personalizzati che sistemano i tuoi giochi.</string>
     <string name="debug_paywall_tier5_title">$5/mese · Basic</string>
-    <string name="debug_paywall_tier5_body">Fai partire i tuoi giochi, o falli girare meglio.</string>
+    <string name="debug_paywall_tier5_body">1 correzione personalizzata al mese, fino a 5 tentativi ciascuna.</string>
     <string name="debug_paywall_tier10_title">$10/mese · Pro</string>
-    <string name="debug_paywall_tier10_body">Risposte più rapide e analisi più approfondite.</string>
+    <string name="debug_paywall_tier10_body">3 correzioni personalizzate al mese, risposte più rapide, in cima alla coda.</string>
     <string name="debug_paywall_cancel_anytime">Annulla quando vuoi. Si applicano limiti di uso corretto.</string>
     <string name="debug_paywall_costs_note">Gli abbonamenti coprono i costi del servizio AI che rende possibile questa funzione.</string>
     <string name="debug_paywall_subscribe">Abbonati su Discord</string>

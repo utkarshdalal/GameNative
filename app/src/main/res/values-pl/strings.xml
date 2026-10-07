@@ -2072,11 +2072,11 @@
     <string name="debug_trial_note">Dostępny bezpłatny okres próbny.</string>
     <string name="debug_prerun_message_3">Każdy może udostępnić raport, aby uzyskać pomoc od ludzi.</string>
     <string name="debug_paywall_title">Uzyskaj pomoc AI w debugowaniu</string>
-    <string name="debug_paywall_pitch">Własne poprawki i buildy od AI, które naprawiają Twoje gry: 1 gra miesięcznie w Basic, 3 w Pro.</string>
+    <string name="debug_paywall_pitch">Własne poprawki i buildy od AI, które naprawiają Twoje gry.</string>
     <string name="debug_paywall_tier5_title">$5/miesiąc · Basic</string>
-    <string name="debug_paywall_tier5_body">Uruchom swoje gry albo spraw, by działały lepiej.</string>
+    <string name="debug_paywall_tier5_body">1 własna poprawka miesięcznie, do 5 prób na każdą.</string>
     <string name="debug_paywall_tier10_title">$10/miesiąc · Pro</string>
-    <string name="debug_paywall_tier10_body">Szybsze odpowiedzi i głębsza analiza.</string>
+    <string name="debug_paywall_tier10_body">3 własne poprawki miesięcznie, szybsze odpowiedzi, pierwszeństwo w kolejce.</string>
     <string name="debug_paywall_cancel_anytime">Anuluj w dowolnym momencie. Obowiązują limity uczciwego użytkowania.</string>
     <string name="debug_paywall_costs_note">Subskrypcje pokrywają koszty usługi AI, dzięki której ta funkcja działa.</string>
     <string name="debug_paywall_subscribe">Subskrybuj przez Discord</string>

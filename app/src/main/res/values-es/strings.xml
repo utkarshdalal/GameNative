@@ -2068,11 +2068,11 @@
     <string name="debug_trial_note">Prueba gratuita disponible.</string>
     <string name="debug_prerun_message_3">Cualquiera puede compartir el informe para recibir ayuda humana.</string>
     <string name="debug_paywall_title">Consigue soporte de depuración con AI</string>
-    <string name="debug_paywall_pitch">Parches y compilaciones personalizados con AI que arreglan tus juegos: 1 juego al mes con Basic, 3 con Pro.</string>
+    <string name="debug_paywall_pitch">Parches y compilaciones personalizados con AI que arreglan tus juegos.</string>
     <string name="debug_paywall_tier5_title">$5/mes · Basic</string>
-    <string name="debug_paywall_tier5_body">Haz que tus juegos funcionen, o que funcionen mejor.</string>
+    <string name="debug_paywall_tier5_body">1 solución personalizada al mes, hasta 5 intentos cada una.</string>
     <string name="debug_paywall_tier10_title">$10/mes · Pro</string>
-    <string name="debug_paywall_tier10_body">Respuestas más rápidas y análisis más profundos.</string>
+    <string name="debug_paywall_tier10_body">3 soluciones personalizadas al mes, respuestas más rápidas, primero en la cola.</string>
     <string name="debug_paywall_cancel_anytime">Cancela cuando quieras. Se aplican límites de uso justo.</string>
     <string name="debug_paywall_costs_note">Las suscripciones cubren los costes del servicio de AI que hace posible esta función.</string>
     <string name="debug_paywall_subscribe">Suscríbete en Discord</string>

@@ -2057,11 +2057,11 @@
     <string name="debug_trial_note">Perioadă de probă gratuită disponibilă.</string>
     <string name="debug_prerun_message_3">Oricine poate partaja raportul pentru ajutor uman.</string>
     <string name="debug_paywall_title">Obține suport de depanare AI</string>
-    <string name="debug_paywall_pitch">Patch-uri și build-uri AI personalizate care îți repară jocurile: 1 joc pe lună cu Basic, 3 cu Pro.</string>
+    <string name="debug_paywall_pitch">Patch-uri și build-uri AI personalizate care îți repară jocurile.</string>
     <string name="debug_paywall_tier5_title">$5/lună · Basic</string>
-    <string name="debug_paywall_tier5_body">Fă-ți jocurile să ruleze sau să ruleze mai bine.</string>
+    <string name="debug_paywall_tier5_body">1 remediere personalizată pe lună, până la 5 încercări fiecare.</string>
     <string name="debug_paywall_tier10_title">$10/lună · Pro</string>
-    <string name="debug_paywall_tier10_body">Răspunsuri mai rapide și analize mai detaliate.</string>
+    <string name="debug_paywall_tier10_body">3 remedieri personalizate pe lună, răspunsuri mai rapide, primul la rând.</string>
     <string name="debug_paywall_cancel_anytime">Anulează oricând. Se aplică limite de utilizare corectă.</string>
     <string name="debug_paywall_costs_note">Abonamentele acoperă costurile serviciului AI care face posibilă această funcție.</string>
     <string name="debug_paywall_subscribe">Abonează-te pe Discord</string>

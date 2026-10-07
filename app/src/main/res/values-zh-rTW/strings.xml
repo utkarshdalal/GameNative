@@ -2077,11 +2077,11 @@
     <string name="debug_trial_note">提供免費試用。</string>
     <string name="debug_prerun_message_3">任何人都可以分享報告以獲得人工協助。</string>
     <string name="debug_paywall_title">取得 AI 除錯支援</string>
-    <string name="debug_paywall_pitch">客製 AI 修補與建置，修好你的遊戲：Basic 每月 1 款遊戲，Pro 每月 3 款。</string>
+    <string name="debug_paywall_pitch">客製 AI 修補與建置，修好你的遊戲。</string>
     <string name="debug_paywall_tier5_title">$5/月 · Basic</string>
-    <string name="debug_paywall_tier5_body">讓你的遊戲執行起來，或執行得更好。</string>
+    <string name="debug_paywall_tier5_body">每月 1 次客製修正，每次最多嘗試 5 次。</string>
     <string name="debug_paywall_tier10_title">$10/月 · Pro</string>
-    <string name="debug_paywall_tier10_body">更快的回覆，更深入的分析。</string>
+    <string name="debug_paywall_tier10_body">每月 3 次客製修正，回覆更快，優先排隊。</string>
     <string name="debug_paywall_cancel_anytime">隨時可取消。適用合理使用上限。</string>
     <string name="debug_paywall_costs_note">訂閱費用用於支付支援此功能的 AI 服務成本。</string>
     <string name="debug_paywall_subscribe">在 Discord 上訂閱</string>
