@@ -4,6 +4,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -314,50 +315,54 @@ fun DebugReportDialog(
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
+                                horizontalArrangement = Arrangement.End,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    TextButton(
-                                        onClick = onShare,
-                                        enabled = !state.preparing,
-                                    ) {
-                                        Text(stringResource(R.string.debug_report_share_instead))
-                                    }
-                                    if (appChatEnabled) {
-                                        val altInteraction = remember { MutableInteractionSource() }
-                                        TextButton(
-                                            onClick = {
-                                                when {
-                                                    usesApp -> onPreferredPathChange(AI_HELP_PATH_DISCORD)
-                                                    accountSignedIn -> onPreferredPathChange(AI_HELP_PATH_APP)
-                                                    else -> onSignInForApp()
-                                                }
-                                            },
-                                            enabled = usesApp || accountSignedIn || canSend,
-                                            interactionSource = altInteraction,
-                                            modifier = Modifier
-                                                .padding(start = 8.dp)
-                                                .focusRing(altInteraction, RoundedCornerShape(12.dp), width = 2.dp),
-                                        ) {
-                                            Text(
-                                                stringResource(
-                                                    if (usesApp) R.string.debug_report_use_discord else R.string.debug_report_use_app,
-                                                ),
-                                            )
-                                        }
-                                    }
+                                TextButton(onClick = onDismiss) {
+                                    Text(stringResource(R.string.cancel))
                                 }
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    TextButton(onClick = onDismiss) {
-                                        Text(stringResource(R.string.cancel))
-                                    }
-                                    Button(
-                                        onClick = onSend,
-                                        modifier = Modifier.padding(start = 8.dp),
-                                        enabled = canSend && (usesApp || hasDiscordToken),
+                                Button(
+                                    onClick = onSend,
+                                    modifier = Modifier.padding(start = 8.dp),
+                                    enabled = canSend && (usesApp || hasDiscordToken),
+                                ) {
+                                    Text(stringResource(R.string.debug_report_send))
+                                }
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                TextButton(
+                                    onClick = onShare,
+                                    enabled = !state.preparing,
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                                ) {
+                                    Text(stringResource(R.string.debug_report_share_instead), style = MaterialTheme.typography.labelMedium, maxLines = 1)
+                                }
+                                if (appChatEnabled) {
+                                    val altInteraction = remember { MutableInteractionSource() }
+                                    TextButton(
+                                        onClick = {
+                                            when {
+                                                usesApp -> onPreferredPathChange(AI_HELP_PATH_DISCORD)
+                                                accountSignedIn -> onPreferredPathChange(AI_HELP_PATH_APP)
+                                                else -> onSignInForApp()
+                                            }
+                                        },
+                                        enabled = usesApp || accountSignedIn || canSend,
+                                        interactionSource = altInteraction,
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                                        modifier = Modifier
+                                            .padding(start = 4.dp)
+                                            .focusRing(altInteraction, RoundedCornerShape(12.dp), width = 2.dp),
                                     ) {
-                                        Text(stringResource(R.string.debug_report_send))
+                                        Text(
+                                            stringResource(if (usesApp) R.string.debug_report_use_discord else R.string.debug_report_use_app),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            maxLines = 1,
+                                        )
                                     }
                                 }
                             }
