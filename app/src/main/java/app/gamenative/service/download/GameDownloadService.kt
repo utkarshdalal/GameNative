@@ -27,7 +27,6 @@ import org.json.JSONObject
 import timber.log.Timber
 import android.content.Context
 import android.content.Intent
-import app.gamenative.BuildConfig
 import app.gamenative.data.GameSource
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
@@ -671,12 +670,16 @@ object GameDownloadService {
     private val registeredDownloads = ConcurrentHashMap<String, DownloadEntry>()
 
     /**
-     * Hardcoded switch for native engine pipeline logs (throughput / fetch-window / staging
-     * lines). Steam emits them from Rust via android_log (tag GN_STEAM_DL) — the flag travels
-     * in the plan JSON so no JNI callback is even wired when off; Epic/GOG/Amazon forward their
-     * lines over JNI `onLog`, gated at the Timber call sites in their managers.
+     * Gate for native engine pipeline logs (throughput / fetch-window / cdn-probe / write-stall
+     * lines). Always on: these lines are the only way to diagnose a user's download after the
+     * fact, and every capture the app offers is logcat-based — the settings "Save logcat" tail
+     * (`logcat -d --pid=<app>`, so the native tags come along), the crash report, and the support
+     * bundle's unfiltered `logcat -v threadtime`. Steam emits them from Rust via android_log (tag
+     * GN_STEAM_DL); the flag travels in the plan JSON; Epic/GOG/Amazon forward their lines over
+     * JNI `onLog`, gated at the Timber call sites in their managers (INFO, because ReleaseTree
+     * drops Debug/Verbose).
      */
-    val SHOW_PIPELINE_LOGS = BuildConfig.DEBUG
+    val SHOW_PIPELINE_LOGS = true
 
     /**
      * Serializes every queue state transition (pause-all + register, remove + resume).
