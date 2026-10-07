@@ -2064,6 +2064,13 @@ fun XServerScreen(
             val appId = appId
             val usrGlibc: Boolean = container.getContainerVariant().equals(Container.GLIBC, ignoreCase = true)
             val mouseDragCompatibility = GameInputCompatibility.needsMouseDragCompatibility(appId, usrGlibc)
+            // A debug run always represents a new launch from the game page. If a previous
+            // boot was abandoned before its normal exit path completed, reusing that session
+            // skips the Wine setup block below and leaves the boot splash up indefinitely.
+            if (debugRun && PluviaApp.xEnvironment != null) {
+                Timber.w("Discarding stale XEnvironment before starting a debug run")
+                PluviaApp.shutdownEnvironment()
+            }
             val existingXServer =
                 PluviaApp.xEnvironment
                     ?.getComponent<XServerComponent>(XServerComponent::class.java)
