@@ -310,53 +310,55 @@ fun DebugReportDialog(
                                     }
                                 }
 
-                                TextButton(
-                                    onClick = onShare,
-                                    enabled = !state.preparing,
-                                    modifier = Modifier.padding(bottom = 16.dp),
-                                ) {
-                                    Text(stringResource(R.string.debug_report_share_instead))
-                                }
                             }
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                TextButton(onClick = onDismiss) {
-                                    Text(stringResource(R.string.cancel))
-                                }
-                                Button(
-                                    onClick = onSend,
-                                    modifier = Modifier.padding(start = 8.dp),
-                                    enabled = canSend && (usesApp || hasDiscordToken),
-                                ) {
-                                    Text(stringResource(R.string.debug_report_send))
-                                }
-                            }
-
-                            if (appChatEnabled) {
-                                val altInteraction = remember { MutableInteractionSource() }
-                                TextButton(
-                                    onClick = {
-                                        when {
-                                            usesApp -> onPreferredPathChange(AI_HELP_PATH_DISCORD)
-                                            accountSignedIn -> onPreferredPathChange(AI_HELP_PATH_APP)
-                                            else -> onSignInForApp()
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    TextButton(
+                                        onClick = onShare,
+                                        enabled = !state.preparing,
+                                    ) {
+                                        Text(stringResource(R.string.debug_report_share_instead))
+                                    }
+                                    if (appChatEnabled) {
+                                        val altInteraction = remember { MutableInteractionSource() }
+                                        TextButton(
+                                            onClick = {
+                                                when {
+                                                    usesApp -> onPreferredPathChange(AI_HELP_PATH_DISCORD)
+                                                    accountSignedIn -> onPreferredPathChange(AI_HELP_PATH_APP)
+                                                    else -> onSignInForApp()
+                                                }
+                                            },
+                                            enabled = usesApp || accountSignedIn || canSend,
+                                            interactionSource = altInteraction,
+                                            modifier = Modifier
+                                                .padding(start = 8.dp)
+                                                .focusRing(altInteraction, RoundedCornerShape(12.dp), width = 2.dp),
+                                        ) {
+                                            Text(
+                                                stringResource(
+                                                    if (usesApp) R.string.debug_report_use_discord else R.string.debug_report_use_app,
+                                                ),
+                                            )
                                         }
-                                    },
-                                    enabled = usesApp || accountSignedIn || canSend,
-                                    interactionSource = altInteraction,
-                                    modifier = Modifier
-                                        .padding(top = 8.dp)
-                                        .focusRing(altInteraction, RoundedCornerShape(12.dp), width = 2.dp),
-                                ) {
-                                    Text(
-                                        text = stringResource(
-                                            if (usesApp) R.string.debug_report_use_discord else R.string.debug_report_use_app,
-                                        ),
-                                        textAlign = TextAlign.Center,
-                                    )
+                                    }
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    TextButton(onClick = onDismiss) {
+                                        Text(stringResource(R.string.cancel))
+                                    }
+                                    Button(
+                                        onClick = onSend,
+                                        modifier = Modifier.padding(start = 8.dp),
+                                        enabled = canSend && (usesApp || hasDiscordToken),
+                                    ) {
+                                        Text(stringResource(R.string.debug_report_send))
+                                    }
                                 }
                             }
                         }
