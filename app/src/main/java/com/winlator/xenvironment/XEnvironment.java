@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 
 import app.gamenative.powercontrol.PowerManager;
+import app.gamenative.service.SteamService;
 
 public class XEnvironment implements Iterable<EnvironmentComponent> {
     private final Context context;
@@ -88,6 +89,8 @@ public class XEnvironment implements Iterable<EnvironmentComponent> {
     public void onPause() {
         // Pause game processes FIRST
         pauseGameProcesses();
+        // Stop Steam from counting playtime if the game stays suspended
+        SteamService.onGameProcessesSuspended();
 
         // Then pause audio components
         PulseAudioComponent pulseAudioComponent = getComponent(PulseAudioComponent.class);
@@ -110,6 +113,7 @@ public class XEnvironment implements Iterable<EnvironmentComponent> {
 
         // Then resume game processes
         resumeGameProcesses();
+        SteamService.onGameProcessesResumed();
     }
 
     public void pauseGameProcesses() {
