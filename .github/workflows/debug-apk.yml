@@ -55,6 +55,21 @@ jobs:
           fi
           yes | "$SDKMANAGER" --install "platforms;android-36" "build-tools;36.0.0"
 
+      - name: Test controller input
+        run: |
+          ./gradlew -Pkotlin.daemon.jvmargs=-Xmx6g :app:testModernDebugUnitTest \
+            --tests 'com.winlator.winhandler.WinHandlerControllerInputTest' \
+            --tests 'app.gamenative.ui.screen.xserver.GamepadInputRoutingTest'
+
+      - name: Upload controller test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: controller-test-results
+          path: |
+            app/build/reports/tests/testModernDebugUnitTest/
+            app/build/test-results/testModernDebugUnitTest/
+
       - name: Build debug APKs
         run: |
           ./gradlew -Pkotlin.daemon.jvmargs=-Xmx6g :app:assembleLegacyDebug
