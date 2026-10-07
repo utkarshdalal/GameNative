@@ -364,6 +364,23 @@ internal fun ColumnScope.SupportChat(
                                         onStartDebugRun = onStartDebugRun,
                                     )
                                 }
+                                item.message.filesRequest?.let { request ->
+                                    FilesRequestCard(
+                                        message = item.message,
+                                        request = request,
+                                        appId = appId,
+                                        conversationId = conversationId,
+                                    )
+                                }
+                                item.message.patch?.let { patch ->
+                                    PatchCard(
+                                        message = item.message,
+                                        patch = patch,
+                                        appId = appId,
+                                        conversationId = conversationId,
+                                        onStartDebugRun = onStartDebugRun,
+                                    )
+                                }
                             }
                             is ChatItem.Analysing -> AnalysingCard(
                                 first = item.first,

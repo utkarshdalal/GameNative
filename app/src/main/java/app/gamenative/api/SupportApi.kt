@@ -4,6 +4,9 @@ import android.os.SystemClock
 import androidx.compose.runtime.mutableStateOf
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.job
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaType
@@ -20,13 +23,18 @@ import org.json.JSONException
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
+import java.io.InterruptedIOException
+import java.security.MessageDigest
 import java.time.Instant
+import java.util.concurrent.TimeUnit
 
 object SupportApi {
 
     const val BASE_URL = "${DebugReportApi.RELAY_BASE_URL}/api/app"
     const val TEXT_MAX = 1800
     const val NOT_SIGNED_IN = "not_signed_in"
+    const val FEATURES_HEADER = "x-gn-features"
+    const val FEATURES = "patches"
 
     const val KIND_USER = "user"
     const val KIND_AGENT = "agent"
@@ -50,6 +58,11 @@ object SupportApi {
     const val STAGE_ANALYSING = "analysing"
     const val STAGE_ANSWERED = "answered"
     const val STAGE_FAILED = "failed"
+
+    const val PATCH_APPLIED = "applied"
+    const val PATCH_RESTORED = "restored"
+    const val PATCH_HASH_MISMATCH = "hash_mismatch"
+    const val PATCH_FAILED = "failed"
 
     private const val TAG = "SupportApi"
     private const val ATTACHMENT_PREFIX = "/api/app/conversations/"
@@ -117,7 +130,11 @@ object SupportApi {
         val attachments: List<Attachment>,
         val notice: Notice?,
         val suggestion: SupportSuggestion? = null,
+        val filesRequest: SupportFilesRequest? = null,
+        val patch: SupportPatch? = null,
     )
+
+    data class FileSlot(val fileId: String, val key: String?, val putUrl: String, val expiresAt: Long)
 
     data class MessagePage(
         val messages: List<Message>,
@@ -128,6 +145,18 @@ object SupportApi {
     data class Posted(val message: Message?, val conversation: Conversation?)
 
     private data class Raw(val code: Int, val body: String)
+
+    private val JSON_TYPE = "application/json".toMediaType()
+    private val OCTET_TYPE = "application/octet-stream".toMediaType()
+    private const val TRANSFER_BUFFER = 256 * 1024
+
+    private val transferClient by lazy {
+        GameNativeApi.httpClient.newBuilder()
+            .callTimeout(0, TimeUnit.MILLISECONDS)
+            .readTimeout(5, TimeUnit.MINUTES)
+            .writeTimeout(5, TimeUnit.MINUTES)
+            .build()
+    }
 
     val available = mutableStateOf<Boolean?>(null)
 
@@ -262,8 +291,21 @@ object SupportApi {
             } else {
                 null
             },
+            filesRequest = if (kind == KIND_AGENT) {
+                runCatching { SupportFilesRequest.parse(cardJson(json, "files_request")) }.getOrNull()
+            } else {
+                null
+            },
+            patch = if (kind == KIND_AGENT) {
+                runCatching { SupportPatch.parse(cardJson(json, "patch")) }.getOrNull()
+            } else {
+                null
+            },
         )
     }
+
+    private fun cardJson(json: JSONObject, name: String): JSONObject? =
+        json.optJSONObject(name) ?: json.optJSONObject("data")?.optJSONObject(name)
 
     private fun parsePosted(json: JSONObject): Posted =
         Posted(
@@ -278,7 +320,7 @@ object SupportApi {
         parse: (JSONObject) -> T,
     ): ApiResult<T> = withContext(Dispatchers.IO) {
         try {
-            val raw = AccountApi.sendAuthorized(build) { Raw(it.code, it.body.string()) }
+            val raw = AccountApi.sendAuthorized({ build(it).header(FEATURES_HEADER, FEATURES) }) { Raw(it.code, it.body.string()) }
                 ?: return@withContext ApiResult.HttpError(401, NOT_SIGNED_IN)
             if (tracksAvailability) markAvailability(raw.code)
             if (raw.code !in 200..299) {
@@ -542,6 +584,165 @@ object SupportApi {
         } catch (e: Exception) {
             destination.delete()
             logFailure("attachment", e)
+            ApiResult.NetworkError(e)
+        }
+    }
+
+    suspend fun filesBegin(
+        conversationId: String,
+        requestId: String,
+        path: String,
+        size: Long,
+        sha256: String,
+    ): ApiResult<FileSlot> =
+        call(
+            name = "files/begin",
+            build = {
+                val json = JSONObject()
+                    .put("requestId", requestId)
+                    .put("path", path)
+                    .put("size", size)
+                    .put("sha256", sha256)
+                it.url("$BASE_URL/conversations/$conversationId/files/begin")
+                    .post(json.toString().toRequestBody(JSON_TYPE))
+            },
+            parse = { json ->
+                FileSlot(
+                    fileId = json.getString("fileId"),
+                    key = json.str("key"),
+                    putUrl = json.getString("putUrl"),
+                    expiresAt = json.time("expiresAt"),
+                )
+            },
+        )
+
+    suspend fun filesDone(conversationId: String, fileId: String): ApiResult<Unit> =
+        call(
+            name = "files/done",
+            build = {
+                it.url("$BASE_URL/conversations/$conversationId/files/done")
+                    .post(JSONObject().put("fileId", fileId).toString().toRequestBody(JSON_TYPE))
+            },
+            parse = { },
+        )
+
+    suspend fun patchOutcome(
+        conversationId: String,
+        patchsetId: String,
+        status: String,
+        detail: String? = null,
+    ): ApiResult<Unit> =
+        call(
+            name = "patches/outcome",
+            build = {
+                val json = JSONObject().put("status", status)
+                if (!detail.isNullOrBlank()) json.put("detail", detail.take(500))
+                it.url("$BASE_URL/conversations/$conversationId/patches/$patchsetId/outcome")
+                    .post(json.toString().toRequestBody(JSON_TYPE))
+            },
+            parse = { },
+        )
+
+    private class FileStreamBody(
+        private val file: File,
+        private val length: Long,
+        private val job: Job,
+        private val onProgress: ((Float) -> Unit)?,
+    ) : RequestBody() {
+        override fun contentType(): MediaType = OCTET_TYPE
+
+        override fun contentLength(): Long = length
+
+        override fun writeTo(sink: BufferedSink) {
+            file.inputStream().use { input ->
+                val buffer = ByteArray(TRANSFER_BUFFER)
+                var written = 0L
+                while (written < length) {
+                    if (!job.isActive) throw InterruptedIOException("cancelled")
+                    val read = input.read(buffer, 0, minOf(buffer.size.toLong(), length - written).toInt())
+                    if (read < 0) break
+                    sink.write(buffer, 0, read)
+                    written += read
+                    if (length > 0) onProgress?.invoke((written.toFloat() / length).coerceIn(0f, 1f))
+                }
+            }
+        }
+    }
+
+    suspend fun uploadToSignedUrl(
+        putUrl: String,
+        file: File,
+        size: Long,
+        sha256: String,
+        onProgress: ((Float) -> Unit)? = null,
+    ): ApiResult<Unit> = withContext(Dispatchers.IO) {
+        if (!putUrl.startsWith("https://")) return@withContext ApiResult.HttpError(400, "bad_url")
+        try {
+            val request = Request.Builder()
+                .url(putUrl)
+                .header("x-sha256", sha256)
+                .put(FileStreamBody(file, size, coroutineContext.job, onProgress))
+                .build()
+            val code = transferClient.newCall(request).execute().use { it.code }
+            if (code !in 200..299) {
+                Timber.tag(TAG).w("signed upload HTTP $code")
+                return@withContext ApiResult.HttpError(code, "")
+            }
+            ApiResult.Success(Unit)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            coroutineContext.ensureActive()
+            logFailure("signed upload", e)
+            ApiResult.NetworkError(e)
+        }
+    }
+
+    suspend fun downloadSigned(
+        url: String,
+        destination: File,
+        onProgress: ((Float) -> Unit)? = null,
+    ): ApiResult<String> = withContext(Dispatchers.IO) {
+        if (!url.startsWith("https://")) return@withContext ApiResult.HttpError(400, "bad_url")
+        try {
+            destination.parentFile?.mkdirs()
+            val job = coroutineContext.job
+            val request = Request.Builder().url(url).get().build()
+            val result: Pair<String?, Int> = transferClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use null to response.code
+                val total = response.body.contentLength()
+                val digest = MessageDigest.getInstance("SHA-256")
+                response.body.byteStream().use { input ->
+                    destination.outputStream().use { output ->
+                        val buffer = ByteArray(TRANSFER_BUFFER)
+                        var read = 0L
+                        while (true) {
+                            if (!job.isActive) throw InterruptedIOException("cancelled")
+                            val count = input.read(buffer)
+                            if (count < 0) break
+                            output.write(buffer, 0, count)
+                            digest.update(buffer, 0, count)
+                            read += count
+                            if (total > 0) onProgress?.invoke((read.toFloat() / total).coerceIn(0f, 1f))
+                        }
+                    }
+                }
+                digest.digest().joinToString("") { "%02x".format(it) } to response.code
+            }
+            val hash = result.first
+            if (hash == null) {
+                destination.delete()
+                Timber.tag(TAG).w("signed download HTTP ${result.second}")
+                return@withContext ApiResult.HttpError(result.second, "")
+            }
+            ApiResult.Success(hash)
+        } catch (e: CancellationException) {
+            destination.delete()
+            throw e
+        } catch (e: Exception) {
+            destination.delete()
+            coroutineContext.ensureActive()
+            logFailure("signed download", e)
             ApiResult.NetworkError(e)
         }
     }

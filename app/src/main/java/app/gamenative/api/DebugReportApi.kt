@@ -68,6 +68,7 @@ object DebugReportApi {
                 .url("$RELAY_BASE_URL/api/debug-report")
                 .post(body)
                 .header("Authorization", "Bearer $relayToken")
+                .header(SupportApi.FEATURES_HEADER, SupportApi.FEATURES)
 
             if (integrityToken != null) {
                 builder.header("X-Integrity-Token", integrityToken)
