@@ -1182,6 +1182,10 @@
     <string name="gamenative_account_manage_subscription_failed">The billing page could not be opened. Please try again later.</string>
     <string name="gamenative_account_sign_out">Sign out</string>
     <string name="gamenative_account_sign_out_subtitle">Sign out of your GameNative account on this device.</string>
+    <string name="gamenative_account_discord">Discord</string>
+    <string name="gamenative_account_discord_not_connected">Not connected › Connect</string>
+    <string name="gamenative_account_discord_connected">Connected › Disconnect</string>
+    <string name="gamenative_account_discord_connected_as">Connected as %1$s › Disconnect</string>
     <string name="gamenative_sign_in_title">Sign in to GameNative</string>
     <string name="gamenative_sign_in_scan">Scan this code with your phone to sign in. You can also sign in on this device.</string>
     <string name="gamenative_sign_in_code">Code: %1$s</string>

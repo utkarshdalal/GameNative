@@ -329,6 +329,8 @@ class MainActivity : ComponentActivity() {
             if (token.isNotEmpty() && expectedNonce.isNotEmpty() && state == expectedNonce) {
                 PrefManager.discordOauthNonce = ""
                 PrefManager.discordRelayToken = token
+                PrefManager.discordLinkedName = intent.data?.getQueryParameter("name").orEmpty()
+                PrefManager.discordMergePending = true
                 trackAiDebug("ai_debug_discord_linked")
                 SnackbarManager.show(getString(R.string.debug_report_discord_linked))
             } else if (token.isNotEmpty()) {

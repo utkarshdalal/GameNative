@@ -25,6 +25,7 @@ object AccountApi {
         val tier: String,
         val tierSource: String?,
         val discordLinked: Boolean,
+        val discordName: String? = null,
         val trialAvailable: Boolean,
     )
 
@@ -96,6 +97,8 @@ object AccountApi {
             tier = json.optString("tier", "none").ifBlank { "none" },
             tierSource = if (json.isNull("tier_source")) null else json.optString("tier_source").ifBlank { null },
             discordLinked = json.optBoolean("discord_linked", false),
+            discordName = listOf("discord_username", "discord_id")
+                .firstNotNullOfOrNull { key -> json.optString(key).takeIf { !json.isNull(key) && it.isNotBlank() } },
             trialAvailable = json.optBoolean("trial_available", false),
         )
 

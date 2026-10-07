@@ -3,6 +3,7 @@ package app.gamenative.api
 import android.os.SystemClock
 import app.gamenative.utils.DebugReportUtils
 import androidx.compose.runtime.mutableStateOf
+import app.gamenative.PrefManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -32,6 +33,7 @@ import java.util.concurrent.TimeUnit
 object SupportApi {
 
     const val BASE_URL = "${DebugReportApi.RELAY_BASE_URL}/api/app"
+    private const val RELAY_TOKEN_HEADER = "x-gn-relay-token"
     const val TEXT_MAX = 1800
     const val NOT_SIGNED_IN = "not_signed_in"
     const val FEATURES_HEADER = "x-gn-features"
@@ -365,8 +367,12 @@ object SupportApi {
         parse: (JSONObject) -> T,
     ): ApiResult<T> = withContext(Dispatchers.IO) {
         try {
-            val raw = AccountApi.sendAuthorized({ build(it).header(FEATURES_HEADER, FEATURES) }) { Raw(it.code, it.body.string()) }
+            val relayToken = if (PrefManager.discordMergePending) PrefManager.discordRelayToken.ifEmpty { null } else null
+            val raw = AccountApi.sendAuthorized({ builder ->
+                build(builder).header(FEATURES_HEADER, FEATURES).also { if (relayToken != null) it.header(RELAY_TOKEN_HEADER, relayToken) }
+            }) { Raw(it.code, it.body.string()) }
                 ?: return@withContext ApiResult.HttpError(401, NOT_SIGNED_IN)
+            if (relayToken != null && raw.code in 200..299) PrefManager.discordMergePending = false
             if (tracksAvailability) markAvailability(raw.code)
             if (raw.code !in 200..299) {
                 val reason = errorReason(raw.body)
@@ -503,6 +509,16 @@ object SupportApi {
             parse = { parseConversation(it.getJSONObject("conversation")) },
         )
     }
+
+    suspend fun startDiscordLink(appState: String): ApiResult<String> =
+        call(
+            name = "link-discord/start",
+            build = {
+                it.url("$BASE_URL/link-discord/start")
+                    .post(JSONObject().put("app_state", appState).toString().toRequestBody("application/json".toMediaType()))
+            },
+            parse = { it.getString("url") },
+        )
 
     suspend fun listConversations(): ApiResult<List<Conversation>> =
         call(
