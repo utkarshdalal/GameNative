@@ -2981,12 +2981,15 @@
     <string name="support_progress_eta_soon">Відповідь очікується зовсім скоро.</string>
     <string name="support_progress_analysing">AI читає ваші журнали</string>
     <string name="support_progress_analysing_elapsed">AI читає ваші журнали (%1$d хв)</string>
+    <string name="support_progress_building">AI збирає індивідуальне виправлення для вашого пристрою. Це може зайняти 10 хвилин або більше.</string>
+    <string name="support_progress_building_elapsed">AI збирає індивідуальне виправлення для вашого пристрою (%1$d хв). Це може зайняти 10 хвилин або більше.</string>
     <string name="support_progress_failed">Аналіз не завершився. Надішліть звіт ще раз, щоб спробувати знову.</string>
     <string name="support_progress_retry">Спробувати знову</string>
     <string name="support_stage_queued">У черзі</string>
     <string name="support_stage_queued_eta">У черзі · близько %1$d хв</string>
     <string name="support_stage_analysing">Аналіз</string>
     <string name="support_stage_analysing_elapsed">Аналіз · %1$d хв</string>
+    <string name="support_stage_building">Збирання виправлення</string>
     <string name="support_stage_failed">Аналіз не вдався</string>
     <plurals name="support_progress_ahead">
         <item quantity="one">Перед вашим %1$d звіт.</item>

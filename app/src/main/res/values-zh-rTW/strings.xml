@@ -2960,12 +2960,15 @@
     <string name="support_progress_eta_soon">預計很快回覆。</string>
     <string name="support_progress_analysing">AI 正在讀取你的日誌</string>
     <string name="support_progress_analysing_elapsed">AI 正在讀取你的日誌（%1$d 分鐘）</string>
+    <string name="support_progress_building">AI 正在為你的裝置建置客製修正。這可能需要 10 分鐘或更長時間。</string>
+    <string name="support_progress_building_elapsed">AI 正在為你的裝置建置客製修正（%1$d 分鐘）。這可能需要 10 分鐘或更長時間。</string>
     <string name="support_progress_failed">分析未完成。請重新傳送報告再試一次。</string>
     <string name="support_progress_retry">重試</string>
     <string name="support_stage_queued">排隊中</string>
     <string name="support_stage_queued_eta">排隊中 · 約 %1$d 分鐘</string>
     <string name="support_stage_analysing">分析中</string>
     <string name="support_stage_analysing_elapsed">分析中 · %1$d 分鐘</string>
+    <string name="support_stage_building">正在建置修正</string>
     <string name="support_stage_failed">分析失敗</string>
     <plurals name="support_progress_ahead">
         <item quantity="other">你前面還有 %1$d 份報告。</item>

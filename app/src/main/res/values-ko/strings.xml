@@ -2949,12 +2949,15 @@
     <string name="support_progress_eta_soon">곧 답변이 도착할 예정입니다.</string>
     <string name="support_progress_analysing">AI가 로그를 읽고 있습니다</string>
     <string name="support_progress_analysing_elapsed">AI가 로그를 읽고 있습니다 (%1$d분)</string>
+    <string name="support_progress_building">AI가 기기에 맞는 맞춤 수정을 빌드하고 있습니다. 10분 이상 걸릴 수 있습니다.</string>
+    <string name="support_progress_building_elapsed">AI가 기기에 맞는 맞춤 수정을 빌드하고 있습니다 (%1$d분). 10분 이상 걸릴 수 있습니다.</string>
     <string name="support_progress_failed">분석이 완료되지 않았습니다. 보고서를 다시 보내 다시 시도하세요.</string>
     <string name="support_progress_retry">다시 시도</string>
     <string name="support_stage_queued">대기 중</string>
     <string name="support_stage_queued_eta">대기 중 · 약 %1$d분</string>
     <string name="support_stage_analysing">분석 중</string>
     <string name="support_stage_analysing_elapsed">분석 중 · %1$d분</string>
+    <string name="support_stage_building">수정 빌드 중</string>
     <string name="support_stage_failed">분석 실패</string>
     <plurals name="support_progress_ahead">
         <item quantity="other">앞에 %1$d개의 보고서가 있습니다.</item>

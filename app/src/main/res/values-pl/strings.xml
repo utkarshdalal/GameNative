@@ -2985,12 +2985,15 @@
     <string name="support_progress_eta_soon">Odpowiedź wkrótce.</string>
     <string name="support_progress_analysing">AI czyta Twoje logi</string>
     <string name="support_progress_analysing_elapsed">AI czyta Twoje logi (%1$d min)</string>
+    <string name="support_progress_building">AI buduje własną poprawkę dla Twojego urządzenia. Może to potrwać 10 minut lub dłużej.</string>
+    <string name="support_progress_building_elapsed">AI buduje własną poprawkę dla Twojego urządzenia (%1$d min). Może to potrwać 10 minut lub dłużej.</string>
     <string name="support_progress_failed">Analiza nie została ukończona. Wyślij raport ponownie, aby spróbować jeszcze raz.</string>
     <string name="support_progress_retry">Spróbuj ponownie</string>
     <string name="support_stage_queued">W kolejce</string>
     <string name="support_stage_queued_eta">W kolejce · ok. %1$d min</string>
     <string name="support_stage_analysing">Analiza</string>
     <string name="support_stage_analysing_elapsed">Analiza · %1$d min</string>
+    <string name="support_stage_building">Budowanie poprawki</string>
     <string name="support_stage_failed">Analiza nie powiodła się</string>
     <plurals name="support_progress_ahead">
         <item quantity="one">Przed Twoim jest %1$d raport.</item>

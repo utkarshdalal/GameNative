@@ -2833,12 +2833,15 @@
     <string name="support_progress_eta_soon">Svaret ventes meget snart.</string>
     <string name="support_progress_analysing">AI læser dine logs</string>
     <string name="support_progress_analysing_elapsed">AI læser dine logs (%1$d min.)</string>
+    <string name="support_progress_building">AI bygger en tilpasset rettelse til din enhed. Det kan tage 10 minutter eller mere.</string>
+    <string name="support_progress_building_elapsed">AI bygger en tilpasset rettelse til din enhed (%1$d min.). Det kan tage 10 minutter eller mere.</string>
     <string name="support_progress_failed">Analysen blev ikke færdig. Send din rapport igen for at prøve en gang til.</string>
     <string name="support_progress_retry">Prøv igen</string>
     <string name="support_stage_queued">I kø</string>
     <string name="support_stage_queued_eta">I kø · ca. %1$d min.</string>
     <string name="support_stage_analysing">Analyserer</string>
     <string name="support_stage_analysing_elapsed">Analyserer · %1$d min.</string>
+    <string name="support_stage_building">Bygger en rettelse</string>
     <string name="support_stage_failed">Analysen mislykkedes</string>
     <plurals name="support_progress_ahead">
         <item quantity="one">%1$d rapport er foran din.</item>

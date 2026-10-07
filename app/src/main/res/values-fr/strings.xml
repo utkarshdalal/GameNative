@@ -2963,12 +2963,15 @@
     <string name="support_progress_eta_soon">Réponse attendue très bientôt.</string>
     <string name="support_progress_analysing">L\'AI lit vos journaux</string>
     <string name="support_progress_analysing_elapsed">L\'AI lit vos journaux (%1$d min)</string>
+    <string name="support_progress_building">L\'AI compile un correctif personnalisé pour votre appareil. Cela peut prendre 10 minutes ou plus.</string>
+    <string name="support_progress_building_elapsed">L\'AI compile un correctif personnalisé pour votre appareil (%1$d min). Cela peut prendre 10 minutes ou plus.</string>
     <string name="support_progress_failed">L\'analyse ne s\'est pas terminée. Renvoyez votre rapport pour réessayer.</string>
     <string name="support_progress_retry">Réessayer</string>
     <string name="support_stage_queued">En file d\'attente</string>
     <string name="support_stage_queued_eta">En file d\'attente · environ %1$d min</string>
     <string name="support_stage_analysing">Analyse en cours</string>
     <string name="support_stage_analysing_elapsed">Analyse en cours · %1$d min</string>
+    <string name="support_stage_building">Création d\'un correctif</string>
     <string name="support_stage_failed">Échec de l\'analyse</string>
     <plurals name="support_progress_ahead">
         <item quantity="one">%1$d rapport passe avant le vôtre.</item>

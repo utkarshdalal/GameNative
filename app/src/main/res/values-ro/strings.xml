@@ -2976,12 +2976,15 @@
     <string name="support_progress_eta_soon">Răspuns așteptat foarte curând.</string>
     <string name="support_progress_analysing">AI citește jurnalele tale</string>
     <string name="support_progress_analysing_elapsed">AI citește jurnalele tale (%1$d min)</string>
+    <string name="support_progress_building">AI construiește o remediere personalizată pentru dispozitivul tău. Poate dura 10 minute sau mai mult.</string>
+    <string name="support_progress_building_elapsed">AI construiește o remediere personalizată pentru dispozitivul tău (%1$d min). Poate dura 10 minute sau mai mult.</string>
     <string name="support_progress_failed">Analiza nu s-a terminat. Trimite raportul din nou pentru a încerca încă o dată.</string>
     <string name="support_progress_retry">Încearcă din nou</string>
     <string name="support_stage_queued">În coadă</string>
     <string name="support_stage_queued_eta">În coadă · circa %1$d min</string>
     <string name="support_stage_analysing">Se analizează</string>
     <string name="support_stage_analysing_elapsed">Se analizează · %1$d min</string>
+    <string name="support_stage_building">Se construiește o remediere</string>
     <string name="support_stage_failed">Analiza a eșuat</string>
     <plurals name="support_progress_ahead">
         <item quantity="one">Înaintea ta este %1$d raport.</item>

@@ -900,7 +900,7 @@ private fun AnalysingCard(
     }
     val text = SupportProgressText.line(resources, progress?.takeIf { it.active }, clock.first, clock.second)
         ?: stringResource(if (first) R.string.support_analysing_first else R.string.support_analysing_followup)
-    val detail = progress?.takeIf { it.stage == SupportApi.STAGE_ANALYSING }?.detail
+    val detail = progress?.takeIf { it.stage == SupportApi.STAGE_ANALYSING || it.stage == SupportApi.STAGE_BUILDING }?.detail
     FocusableCard(modifier = Modifier.fillMaxWidth(), isFocusable = onNotify == null) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)

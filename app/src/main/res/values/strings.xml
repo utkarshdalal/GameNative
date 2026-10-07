@@ -3037,12 +3037,15 @@
     <string name="support_progress_eta_soon">Expected reply very soon.</string>
     <string name="support_progress_analysing">The AI is reading your logs</string>
     <string name="support_progress_analysing_elapsed">The AI is reading your logs (%1$d min)</string>
+    <string name="support_progress_building">The AI is building a custom fix for your device. This can take 10 minutes or more.</string>
+    <string name="support_progress_building_elapsed">The AI is building a custom fix for your device (%1$d min). This can take 10 minutes or more.</string>
     <string name="support_progress_failed">The analysis did not finish. Send your report again to try once more.</string>
     <string name="support_progress_retry">Try again</string>
     <string name="support_stage_queued">In queue</string>
     <string name="support_stage_queued_eta">In queue · about %1$d min</string>
     <string name="support_stage_analysing">Analyzing</string>
     <string name="support_stage_analysing_elapsed">Analyzing · %1$d min</string>
+    <string name="support_stage_building">Building a fix</string>
     <string name="support_stage_failed">Analysis failed</string>
     <plurals name="support_progress_ahead">
         <item quantity="one">%1$d report is ahead of yours.</item>

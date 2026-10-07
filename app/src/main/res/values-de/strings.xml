@@ -2903,12 +2903,15 @@
     <string name="support_progress_eta_soon">Antwort sehr bald erwartet.</string>
     <string name="support_progress_analysing">Die AI liest deine Logs</string>
     <string name="support_progress_analysing_elapsed">Die AI liest deine Logs (%1$d Min.)</string>
+    <string name="support_progress_building">Die AI baut einen individuellen Fix für dein Gerät. Das kann 10 Minuten oder länger dauern.</string>
+    <string name="support_progress_building_elapsed">Die AI baut einen individuellen Fix für dein Gerät (%1$d Min.). Das kann 10 Minuten oder länger dauern.</string>
     <string name="support_progress_failed">Die Analyse wurde nicht abgeschlossen. Sende deinen Bericht erneut, um es noch einmal zu versuchen.</string>
     <string name="support_progress_retry">Erneut versuchen</string>
     <string name="support_stage_queued">In der Warteschlange</string>
     <string name="support_stage_queued_eta">In der Warteschlange · ca. %1$d Min.</string>
     <string name="support_stage_analysing">Wird analysiert</string>
     <string name="support_stage_analysing_elapsed">Wird analysiert · %1$d Min.</string>
+    <string name="support_stage_building">Fix wird gebaut</string>
     <string name="support_stage_failed">Analyse fehlgeschlagen</string>
     <plurals name="support_progress_ahead">
         <item quantity="one">%1$d Bericht ist vor deinem.</item>

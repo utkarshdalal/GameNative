@@ -62,6 +62,7 @@ object SupportApi {
 
     const val STAGE_QUEUED = "queued"
     const val STAGE_ANALYSING = "analysing"
+    const val STAGE_BUILDING = "building"
     const val STAGE_ANSWERED = "answered"
     const val STAGE_FAILED = "failed"
 
@@ -97,7 +98,7 @@ object SupportApi {
         val detail: String?,
         val receivedAt: Long = SystemClock.elapsedRealtime(),
     ) {
-        val active: Boolean get() = stage == STAGE_QUEUED || stage == STAGE_ANALYSING
+        val active: Boolean get() = stage == STAGE_QUEUED || stage == STAGE_ANALYSING || stage == STAGE_BUILDING
     }
 
     data class Fixes(

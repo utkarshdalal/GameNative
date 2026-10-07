@@ -2954,12 +2954,15 @@
     <string name="support_progress_eta_soon">Risposta prevista a breve.</string>
     <string name="support_progress_analysing">L\'AI sta leggendo i tuoi log</string>
     <string name="support_progress_analysing_elapsed">L\'AI sta leggendo i tuoi log (%1$d min)</string>
+    <string name="support_progress_building">L\'AI sta creando una correzione personalizzata per il tuo dispositivo. Può richiedere 10 minuti o più.</string>
+    <string name="support_progress_building_elapsed">L\'AI sta creando una correzione personalizzata per il tuo dispositivo (%1$d min). Può richiedere 10 minuti o più.</string>
     <string name="support_progress_failed">L\'analisi non è terminata. Invia di nuovo il report per riprovare.</string>
     <string name="support_progress_retry">Riprova</string>
     <string name="support_stage_queued">In coda</string>
     <string name="support_stage_queued_eta">In coda · circa %1$d min</string>
     <string name="support_stage_analysing">Analisi in corso</string>
     <string name="support_stage_analysing_elapsed">Analisi in corso · %1$d min</string>
+    <string name="support_stage_building">Creazione della correzione</string>
     <string name="support_stage_failed">Analisi non riuscita</string>
     <plurals name="support_progress_ahead">
         <item quantity="one">C\'è %1$d report prima del tuo.</item>

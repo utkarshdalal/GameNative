@@ -2833,12 +2833,15 @@
     <string name="support_progress_eta_soon">Resposta esperada em breve.</string>
     <string name="support_progress_analysing">A IA está lendo seus logs</string>
     <string name="support_progress_analysing_elapsed">A IA está lendo seus logs (%1$d min)</string>
+    <string name="support_progress_building">A IA está compilando uma correção personalizada para o seu dispositivo. Isso pode levar 10 minutos ou mais.</string>
+    <string name="support_progress_building_elapsed">A IA está compilando uma correção personalizada para o seu dispositivo (%1$d min). Isso pode levar 10 minutos ou mais.</string>
     <string name="support_progress_failed">A análise não terminou. Envie seu relatório novamente para tentar outra vez.</string>
     <string name="support_progress_retry">Tentar novamente</string>
     <string name="support_stage_queued">Na fila</string>
     <string name="support_stage_queued_eta">Na fila · cerca de %1$d min</string>
     <string name="support_stage_analysing">Analisando</string>
     <string name="support_stage_analysing_elapsed">Analisando · %1$d min</string>
+    <string name="support_stage_building">Compilando uma correção</string>
     <string name="support_stage_failed">A análise falhou</string>
     <plurals name="support_progress_ahead">
         <item quantity="one">Há %1$d relatório antes do seu.</item>

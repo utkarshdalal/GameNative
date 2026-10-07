@@ -2909,12 +2909,15 @@ https://gamenative.app
     <string name="support_progress_eta_soon">Ответ ожидается совсем скоро.</string>
     <string name="support_progress_analysing">AI читает ваши логи</string>
     <string name="support_progress_analysing_elapsed">AI читает ваши логи (%1$d мин)</string>
+    <string name="support_progress_building">AI собирает индивидуальное исправление для вашего устройства. Это может занять 10 минут или больше.</string>
+    <string name="support_progress_building_elapsed">AI собирает индивидуальное исправление для вашего устройства (%1$d мин). Это может занять 10 минут или больше.</string>
     <string name="support_progress_failed">Анализ не завершился. Отправьте отчёт ещё раз, чтобы повторить попытку.</string>
     <string name="support_progress_retry">Повторить</string>
     <string name="support_stage_queued">В очереди</string>
     <string name="support_stage_queued_eta">В очереди · около %1$d мин</string>
     <string name="support_stage_analysing">Анализ</string>
     <string name="support_stage_analysing_elapsed">Анализ · %1$d мин</string>
+    <string name="support_stage_building">Сборка исправления</string>
     <string name="support_stage_failed">Анализ не удался</string>
     <plurals name="support_progress_ahead">
         <item quantity="one">Перед вашим %1$d отчёт.</item>
