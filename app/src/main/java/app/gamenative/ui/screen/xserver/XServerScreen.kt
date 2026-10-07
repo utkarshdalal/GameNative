@@ -4152,6 +4152,7 @@ private fun setupXEnvironment(
         if (!envVars.has("WINEESYNC")) envVars.put("WINEESYNC", "1")
         if (debugRun) {
             DebugRunParamsHolder.get(appId)?.let { DebugRunParams.applyToDebugEnv(envVars, appId, it) }
+            PerfSampler.armCpuProfile(DebugRunParamsHolder.get(appId)?.attach?.contains(DebugRunParams.ATTACH_CPU) == true)
         }
 
         val graphicsDriverConfig = KeyValueSet(container.getGraphicsDriverConfig())
@@ -5032,6 +5033,7 @@ private fun exit(
     frameRating?.let { rating ->
         container.putSessionMetadata("avg_fps", rating.avgFPS)
         container.putSessionMetadata("session_length_sec", rating.sessionLengthSec.toInt())
+        container.putSessionMetadata("total_frames", rating.totalFrames)
         container.saveData()
     }
 

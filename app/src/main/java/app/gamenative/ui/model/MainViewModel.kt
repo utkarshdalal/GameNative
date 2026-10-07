@@ -33,8 +33,10 @@ import app.gamenative.utils.CustomGameScanner
 import app.gamenative.ui.data.MainState
 import app.gamenative.ui.enums.ConnectionState
 import app.gamenative.ui.screen.PluviaScreen
+import app.gamenative.ui.screen.support.SupportAppliedRun
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.DebugReportUtils
+import app.gamenative.utils.DebugRunParamsHolder
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.UpdateInfo
@@ -593,6 +595,12 @@ class MainViewModel @Inject constructor(
         PrefManager.hasAttemptedGameLaunch = true
         // Show booting splash before launching the app
         viewModelScope.launch {
+            _state.value.takeIf { !it.debugRun && !it.bootToContainer && !it.testGraphics && !it.diagnostics }?.let {
+                withContext(Dispatchers.IO) { SupportAppliedRun.pending(context, appId) }?.let { pending ->
+                    DebugRunParamsHolder.set(appId, pending.run)
+                    setDebugRun(true)
+                }
+            }
             viewModelScope.launch(Dispatchers.IO) {
                 libraryPlayHistoryDao.upsert(
                     LibraryPlayHistory(

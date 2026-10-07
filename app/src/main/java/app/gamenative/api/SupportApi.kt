@@ -1,9 +1,14 @@
 package app.gamenative.api
 
 import android.os.SystemClock
+import app.gamenative.utils.DebugReportUtils
 import androidx.compose.runtime.mutableStateOf
+import app.gamenative.PrefManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.job
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaType
@@ -16,17 +21,25 @@ import okio.Buffer
 import okio.BufferedSink
 import okio.ForwardingSink
 import okio.buffer
+import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
+import java.io.InterruptedIOException
+import java.security.MessageDigest
 import java.time.Instant
+import java.util.concurrent.TimeUnit
 
 object SupportApi {
 
     const val BASE_URL = "${DebugReportApi.RELAY_BASE_URL}/api/app"
+    private const val RELAY_TOKEN_HEADER = "x-gn-relay-token"
+    private const val LINK_NONCE_HEADER = "x-gn-link-nonce"
     const val TEXT_MAX = 1800
     const val NOT_SIGNED_IN = "not_signed_in"
+    const val FEATURES_HEADER = "x-gn-features"
+    const val FEATURES = "patches,components,fixes,registry,listing"
 
     const val KIND_USER = "user"
     const val KIND_AGENT = "agent"
@@ -45,11 +58,19 @@ object SupportApi {
     const val REASON_NO_SUBSCRIPTION = "no_subscription"
     const val REASON_RATE_LIMITED = "rate_limited"
     const val REASON_ALREADY_ANSWERED = "already_answered"
+    const val REASON_FIX_QUOTA = "fix_quota"
+    const val REASON_FIX_UPGRADE = "fix_upgrade"
 
     const val STAGE_QUEUED = "queued"
     const val STAGE_ANALYSING = "analysing"
+    const val STAGE_BUILDING = "building"
     const val STAGE_ANSWERED = "answered"
     const val STAGE_FAILED = "failed"
+
+    const val PATCH_APPLIED = "applied"
+    const val PATCH_RESTORED = "restored"
+    const val PATCH_HASH_MISMATCH = "hash_mismatch"
+    const val PATCH_FAILED = "failed"
 
     private const val TAG = "SupportApi"
     private const val ATTACHMENT_PREFIX = "/api/app/conversations/"
@@ -78,7 +99,25 @@ object SupportApi {
         val detail: String?,
         val receivedAt: Long = SystemClock.elapsedRealtime(),
     ) {
-        val active: Boolean get() = stage == STAGE_QUEUED || stage == STAGE_ANALYSING
+        val active: Boolean get() = stage == STAGE_QUEUED || stage == STAGE_ANALYSING || stage == STAGE_BUILDING
+    }
+
+    data class Fixes(
+        val allowed: Boolean,
+        val used: Int,
+        val limit: Int,
+        val resetsAt: Long?,
+        val roundsLimit: Int?,
+        val reason: String?,
+    ) {
+        val left: Int get() = (limit - used).coerceAtLeast(0)
+    }
+
+    sealed class FixRequestResult {
+        data class Started(val fixes: Fixes?) : FixRequestResult()
+        data class Quota(val message: String?, val resetsAt: Long?) : FixRequestResult()
+        data object UpgradeRequired : FixRequestResult()
+        data class Failed(val reason: String?) : FixRequestResult()
     }
 
     data class Conversation(
@@ -92,6 +131,7 @@ object SupportApi {
         val lastMessageAt: Long,
         val composer: Composer,
         val progress: Progress? = null,
+        val fixes: Fixes? = null,
     ) {
         val awaitingReply: Boolean
             get() = progress?.active ?: (state == STATE_WAITING)
@@ -100,11 +140,11 @@ object SupportApi {
     data class Attachment(val filename: String, val size: Long?, val url: String?)
 
     sealed class Notice {
-        data class Upgrade(val reason: String) : Notice()
+        data class Upgrade(val reason: String, val resetsAt: Long? = null, val message: String? = null) : Notice()
         data class Moved(val tier: String) : Notice()
         data class Outcome(val solved: Boolean, val note: String?) : Notice()
         data class Limit(val reason: String, val resetsAt: Long?, val message: String?) : Notice()
-        data class Other(val type: String) : Notice()
+        data class Other(val type: String, val reason: String? = null, val message: String? = null) : Notice()
     }
 
     data class Message(
@@ -117,7 +157,12 @@ object SupportApi {
         val attachments: List<Attachment>,
         val notice: Notice?,
         val suggestion: SupportSuggestion? = null,
+        val filesRequest: SupportFilesRequest? = null,
+        val patch: SupportPatch? = null,
+        val component: SupportComponent? = null,
     )
+
+    data class FileSlot(val fileId: String, val key: String?, val putUrl: String, val expiresAt: Long)
 
     data class MessagePage(
         val messages: List<Message>,
@@ -128,6 +173,18 @@ object SupportApi {
     data class Posted(val message: Message?, val conversation: Conversation?)
 
     private data class Raw(val code: Int, val body: String)
+
+    private val JSON_TYPE = "application/json".toMediaType()
+    private val OCTET_TYPE = "application/octet-stream".toMediaType()
+    private const val TRANSFER_BUFFER = 256 * 1024
+
+    private val transferClient by lazy {
+        GameNativeApi.httpClient.newBuilder()
+            .callTimeout(0, TimeUnit.MILLISECONDS)
+            .readTimeout(5, TimeUnit.MINUTES)
+            .writeTimeout(5, TimeUnit.MINUTES)
+            .build()
+    }
 
     val available = mutableStateOf<Boolean?>(null)
 
@@ -213,12 +270,29 @@ object SupportApi {
                 resetsAt = composer?.time("resets_at")?.takeIf { it > 0 },
             ),
             progress = runCatching { parseProgress(json.optJSONObject("progress")) }.getOrNull(),
+            fixes = runCatching { parseFixes(json.optJSONObject("fixes")) }.getOrNull(),
+        )
+    }
+
+    private fun parseFixes(json: JSONObject?): Fixes? {
+        if (json == null) return null
+        return Fixes(
+            allowed = json.optBoolean("allowed", false),
+            used = json.optInt("used", 0),
+            limit = json.optInt("limit", 0),
+            resetsAt = json.time("resets_at").takeIf { it > 0 },
+            roundsLimit = if (json.isNull("rounds_limit")) null else json.optInt("rounds_limit", -1).takeIf { it >= 0 },
+            reason = json.str("reason"),
         )
     }
 
     private fun parseNotice(json: JSONObject): Notice =
         when (val type = json.str("type") ?: "") {
-            "upgrade" -> Notice.Upgrade(json.str("reason") ?: REASON_UPGRADE_REQUIRED)
+            "upgrade" -> Notice.Upgrade(
+                reason = json.str("reason") ?: REASON_UPGRADE_REQUIRED,
+                resetsAt = json.time("resets_at").takeIf { it > 0 },
+                message = json.str("message"),
+            )
             "moved" -> Notice.Moved(json.str("tier") ?: "pro")
             "outcome" -> Notice.Outcome(json.optBoolean("solved", false), json.str("note"))
             "limit" -> Notice.Limit(
@@ -226,7 +300,7 @@ object SupportApi {
                 resetsAt = json.time("resets_at").takeIf { it > 0 },
                 message = json.str("message"),
             )
-            else -> Notice.Other(type)
+            else -> Notice.Other(type, json.str("reason"), json.str("message") ?: json.str("text"))
         }
 
     private fun parseMessage(json: JSONObject): Message? {
@@ -262,8 +336,26 @@ object SupportApi {
             } else {
                 null
             },
+            filesRequest = if (kind == KIND_AGENT) {
+                runCatching { SupportFilesRequest.parse(cardJson(json, "files_request")) }.getOrNull()
+            } else {
+                null
+            },
+            patch = if (kind == KIND_AGENT) {
+                runCatching { SupportPatch.parse(cardJson(json, "patch")) }.getOrNull()
+            } else {
+                null
+            },
+            component = if (kind == KIND_AGENT) {
+                runCatching { SupportComponent.parse(cardJson(json, "component")) }.getOrNull()
+            } else {
+                null
+            },
         )
     }
+
+    private fun cardJson(json: JSONObject, name: String): JSONObject? =
+        json.optJSONObject(name) ?: json.optJSONObject("data")?.optJSONObject(name)
 
     private fun parsePosted(json: JSONObject): Posted =
         Posted(
@@ -278,11 +370,17 @@ object SupportApi {
         parse: (JSONObject) -> T,
     ): ApiResult<T> = withContext(Dispatchers.IO) {
         try {
-            val raw = AccountApi.sendAuthorized(build) { Raw(it.code, it.body.string()) }
+            val relayToken = if (PrefManager.discordMergePending) PrefManager.discordRelayToken.ifEmpty { null } else null
+            val raw = AccountApi.sendAuthorized({ builder ->
+                build(builder).header(FEATURES_HEADER, FEATURES).also { if (relayToken != null) it.header(RELAY_TOKEN_HEADER, relayToken) }
+            }) { Raw(it.code, it.body.string()) }
                 ?: return@withContext ApiResult.HttpError(401, NOT_SIGNED_IN)
+            val reason = if (raw.code !in 200..299) errorReason(raw.body) else null
+            if (relayToken != null && (raw.code in 200..499 || (raw.code == 502 && reason == "link_failed"))) {
+                PrefManager.discordMergePending = false
+            }
             if (tracksAvailability) markAvailability(raw.code)
-            if (raw.code !in 200..299) {
-                val reason = errorReason(raw.body)
+            if (reason != null) {
                 Timber.tag(TAG).w("$name HTTP ${raw.code}: $reason")
                 return@withContext ApiResult.HttpError(raw.code, reason)
             }
@@ -353,6 +451,13 @@ object SupportApi {
         if (logcatFile != null && logcatFile.exists()) {
             builder.addFormDataPart("logcat", "logcat.gz", logcatFile.asRequestBody("application/gzip".toMediaType()))
         }
+        DebugReportUtils.cpuProfileBeside(perfFile)?.let { cpuProfile ->
+            builder.addFormDataPart(
+                "cpu_profile",
+                DebugReportUtils.CPU_PROFILE_FILE,
+                cpuProfile.asRequestBody("application/json".toMediaType()),
+            )
+        }
         return builder
     }
 
@@ -408,6 +513,77 @@ object SupportApi {
             build = { it.url("$BASE_URL/conversations").post(body) },
             parse = { parseConversation(it.getJSONObject("conversation")) },
         )
+    }
+
+    suspend fun startDiscordLink(appState: String): ApiResult<String> =
+        call(
+            name = "link-discord/start",
+            build = {
+                it.url("$BASE_URL/link-discord/start")
+                    .post(JSONObject().put("app_state", appState).toString().toRequestBody("application/json".toMediaType()))
+            },
+            parse = { it.getString("url") },
+        )
+
+    data class DiscordLinkCode(
+        val code: String,
+        val nonce: String,
+        val url: String,
+        val qrUrl: String,
+        val expiresIn: Int,
+        val pollIntervalS: Int,
+    )
+
+    data class DiscordLinkStatus(val status: String, val token: String?, val name: String?)
+
+    suspend fun createDiscordLinkCode(device: String, signedIn: Boolean): ApiResult<DiscordLinkCode> {
+        val build: (Request.Builder) -> Request.Builder = {
+            it.url("$BASE_URL/link-discord/qr")
+                .post(JSONObject().put("device", device).toString().toRequestBody(JSON_TYPE))
+        }
+        val parse: (JSONObject) -> DiscordLinkCode = { json ->
+            val url = json.getString("url")
+            DiscordLinkCode(
+                code = json.getString("code"),
+                nonce = json.getString("nonce"),
+                url = url,
+                qrUrl = json.str("qr_url") ?: url,
+                expiresIn = json.optInt("expires_in", 600),
+                pollIntervalS = json.optInt("poll_interval_s", 3),
+            )
+        }
+        return if (signedIn) call("link-discord/qr", build = build, parse = parse) else anonymousCall("link-discord/qr", build, parse)
+    }
+
+    suspend fun pollDiscordLinkCode(code: String, nonce: String, signedIn: Boolean): ApiResult<DiscordLinkStatus> {
+        val build: (Request.Builder) -> Request.Builder = {
+            it.url("$BASE_URL/link-discord/qr/$code").header(LINK_NONCE_HEADER, nonce).get()
+        }
+        val parse: (JSONObject) -> DiscordLinkStatus = { json ->
+            DiscordLinkStatus(status = json.optString("status"), token = json.str("token"), name = json.str("name"))
+        }
+        return if (signedIn) call("link-discord/qr/poll", build = build, parse = parse) else anonymousCall("link-discord/qr/poll", build, parse)
+    }
+
+    private suspend fun <T> anonymousCall(
+        name: String,
+        build: (Request.Builder) -> Request.Builder,
+        parse: (JSONObject) -> T,
+    ): ApiResult<T> = withContext(Dispatchers.IO) {
+        try {
+            val raw = GameNativeApi.httpClient.newCall(build(Request.Builder()).build()).execute().use { Raw(it.code, it.body.string()) }
+            if (raw.code !in 200..299) {
+                val reason = errorReason(raw.body)
+                Timber.tag(TAG).w("$name HTTP ${raw.code}: $reason")
+                return@withContext ApiResult.HttpError(raw.code, reason)
+            }
+            ApiResult.Success(parse(JSONObject(raw.body)))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logFailure(name, e)
+            ApiResult.NetworkError(e)
+        }
     }
 
     suspend fun listConversations(): ApiResult<List<Conversation>> =
@@ -495,7 +671,7 @@ object SupportApi {
         val builder = multipartBuilder(report, logFile, perfFile, logcatFile)
         builder.addFormDataPart("text", null, LateTextBody(text))
         val multipart = builder.build()
-        val expected = listOfNotNull(logFile, perfFile, logcatFile).filter { it.exists() }.sumOf { it.length() }
+        val expected = listOfNotNull(logFile, perfFile, logcatFile, DebugReportUtils.cpuProfileBeside(perfFile)).filter { it.exists() }.sumOf { it.length() }
         val body = if (onProgress == null) multipart else ProgressBody(multipart, onProgress, expected)
         return call(
             name = "conversations/files",
@@ -515,6 +691,35 @@ object SupportApi {
             },
             parse = { parseConversation(it.getJSONObject("conversation")) },
         )
+
+    suspend fun fixRequest(id: String): FixRequestResult = withContext(Dispatchers.IO) {
+        try {
+            val raw = AccountApi.sendAuthorized({
+                it.url("$BASE_URL/conversations/$id/fix-request")
+                    .header(FEATURES_HEADER, FEATURES)
+                    .post("{}".toRequestBody(JSON_TYPE))
+            }) { Raw(it.code, it.body.string()) } ?: return@withContext FixRequestResult.Failed(NOT_SIGNED_IN)
+            val json = runCatching { JSONObject(raw.body) }.getOrNull()
+            if (raw.code in 200..299) {
+                return@withContext FixRequestResult.Started(json?.optJSONObject("fixes")?.let { parseFixes(it) })
+            }
+            val reason = json?.let { it.str("error") ?: it.str("reason") }
+            Timber.tag(TAG).w("fix-request HTTP ${raw.code}: $reason")
+            when {
+                reason == REASON_FIX_QUOTA -> FixRequestResult.Quota(
+                    message = json?.str("message"),
+                    resetsAt = json?.time("resets_at")?.takeIf { it > 0 },
+                )
+                reason == REASON_UPGRADE_REQUIRED || reason == REASON_NO_SUBSCRIPTION -> FixRequestResult.UpgradeRequired
+                else -> FixRequestResult.Failed(reason)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logFailure("fix-request", e)
+            FixRequestResult.Failed(null)
+        }
+    }
 
     suspend fun downloadAttachment(path: String, destination: File): ApiResult<File> = withContext(Dispatchers.IO) {
         if (!path.startsWith(ATTACHMENT_PREFIX) || path.contains("..")) {
@@ -542,6 +747,203 @@ object SupportApi {
         } catch (e: Exception) {
             destination.delete()
             logFailure("attachment", e)
+            ApiResult.NetworkError(e)
+        }
+    }
+
+    suspend fun filesBegin(
+        conversationId: String,
+        requestId: String,
+        path: String,
+        size: Long,
+        sha256: String,
+    ): ApiResult<FileSlot> =
+        call(
+            name = "files/begin",
+            build = {
+                val json = JSONObject()
+                    .put("requestId", requestId)
+                    .put("path", path)
+                    .put("size", size)
+                    .put("sha256", sha256)
+                it.url("$BASE_URL/conversations/$conversationId/files/begin")
+                    .post(json.toString().toRequestBody(JSON_TYPE))
+            },
+            parse = { json ->
+                FileSlot(
+                    fileId = json.getString("fileId"),
+                    key = json.str("key"),
+                    putUrl = json.getString("putUrl"),
+                    expiresAt = json.time("expiresAt"),
+                )
+            },
+        )
+
+    suspend fun filesDone(conversationId: String, fileId: String): ApiResult<Unit> =
+        call(
+            name = "files/done",
+            build = {
+                it.url("$BASE_URL/conversations/$conversationId/files/done")
+                    .post(JSONObject().put("fileId", fileId).toString().toRequestBody(JSON_TYPE))
+            },
+            parse = { },
+        )
+
+    suspend fun filesListing(
+        conversationId: String,
+        requestId: String,
+        path: String,
+        entries: JSONArray,
+        truncated: Boolean,
+    ): ApiResult<Unit> =
+        call(
+            name = "files/listing",
+            build = {
+                val json = JSONObject()
+                    .put("requestId", requestId)
+                    .put("path", path)
+                    .put("entries", entries)
+                    .put("truncated", truncated)
+                it.url("$BASE_URL/conversations/$conversationId/files/listing")
+                    .post(json.toString().toRequestBody(JSON_TYPE))
+            },
+            parse = { },
+        )
+
+    suspend fun patchOutcome(
+        conversationId: String,
+        patchsetId: String,
+        status: String,
+        detail: String? = null,
+    ): ApiResult<Unit> =
+        call(
+            name = "patches/outcome",
+            build = {
+                val json = JSONObject().put("status", status)
+                if (!detail.isNullOrBlank()) json.put("detail", detail.take(500))
+                it.url("$BASE_URL/conversations/$conversationId/patches/$patchsetId/outcome")
+                    .post(json.toString().toRequestBody(JSON_TYPE))
+            },
+            parse = { },
+        )
+
+    suspend fun componentOutcome(
+        conversationId: String,
+        componentId: String,
+        status: String,
+        detail: String? = null,
+    ): ApiResult<Unit> =
+        call(
+            name = "components/outcome",
+            build = {
+                val json = JSONObject().put("status", status)
+                if (!detail.isNullOrBlank()) json.put("detail", detail.take(500))
+                it.url("$BASE_URL/conversations/$conversationId/components/$componentId/outcome")
+                    .post(json.toString().toRequestBody(JSON_TYPE))
+            },
+            parse = { },
+        )
+
+    private class FileStreamBody(
+        private val file: File,
+        private val length: Long,
+        private val job: Job,
+        private val onProgress: ((Float) -> Unit)?,
+    ) : RequestBody() {
+        override fun contentType(): MediaType = OCTET_TYPE
+
+        override fun contentLength(): Long = length
+
+        override fun writeTo(sink: BufferedSink) {
+            file.inputStream().use { input ->
+                val buffer = ByteArray(TRANSFER_BUFFER)
+                var written = 0L
+                while (written < length) {
+                    if (!job.isActive) throw InterruptedIOException("cancelled")
+                    val read = input.read(buffer, 0, minOf(buffer.size.toLong(), length - written).toInt())
+                    if (read < 0) break
+                    sink.write(buffer, 0, read)
+                    written += read
+                    if (length > 0) onProgress?.invoke((written.toFloat() / length).coerceIn(0f, 1f))
+                }
+            }
+        }
+    }
+
+    suspend fun uploadToSignedUrl(
+        putUrl: String,
+        file: File,
+        size: Long,
+        sha256: String,
+        onProgress: ((Float) -> Unit)? = null,
+    ): ApiResult<Unit> = withContext(Dispatchers.IO) {
+        if (!putUrl.startsWith("https://")) return@withContext ApiResult.HttpError(400, "bad_url")
+        try {
+            val request = Request.Builder()
+                .url(putUrl)
+                .header("x-sha256", sha256)
+                .put(FileStreamBody(file, size, coroutineContext.job, onProgress))
+                .build()
+            val code = transferClient.newCall(request).execute().use { it.code }
+            if (code !in 200..299) {
+                Timber.tag(TAG).w("signed upload HTTP $code")
+                return@withContext ApiResult.HttpError(code, "")
+            }
+            ApiResult.Success(Unit)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            coroutineContext.ensureActive()
+            logFailure("signed upload", e)
+            ApiResult.NetworkError(e)
+        }
+    }
+
+    suspend fun downloadSigned(
+        url: String,
+        destination: File,
+        onProgress: ((Float) -> Unit)? = null,
+    ): ApiResult<String> = withContext(Dispatchers.IO) {
+        if (!url.startsWith("https://")) return@withContext ApiResult.HttpError(400, "bad_url")
+        try {
+            destination.parentFile?.mkdirs()
+            val job = coroutineContext.job
+            val request = Request.Builder().url(url).get().build()
+            val result: Pair<String?, Int> = transferClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use null to response.code
+                val total = response.body.contentLength()
+                val digest = MessageDigest.getInstance("SHA-256")
+                response.body.byteStream().use { input ->
+                    destination.outputStream().use { output ->
+                        val buffer = ByteArray(TRANSFER_BUFFER)
+                        var read = 0L
+                        while (true) {
+                            if (!job.isActive) throw InterruptedIOException("cancelled")
+                            val count = input.read(buffer)
+                            if (count < 0) break
+                            output.write(buffer, 0, count)
+                            digest.update(buffer, 0, count)
+                            read += count
+                            if (total > 0) onProgress?.invoke((read.toFloat() / total).coerceIn(0f, 1f))
+                        }
+                    }
+                }
+                digest.digest().joinToString("") { "%02x".format(it) } to response.code
+            }
+            val hash = result.first
+            if (hash == null) {
+                destination.delete()
+                Timber.tag(TAG).w("signed download HTTP ${result.second}")
+                return@withContext ApiResult.HttpError(result.second, "")
+            }
+            ApiResult.Success(hash)
+        } catch (e: CancellationException) {
+            destination.delete()
+            throw e
+        } catch (e: Exception) {
+            destination.delete()
+            coroutineContext.ensureActive()
+            logFailure("signed download", e)
             ApiResult.NetworkError(e)
         }
     }

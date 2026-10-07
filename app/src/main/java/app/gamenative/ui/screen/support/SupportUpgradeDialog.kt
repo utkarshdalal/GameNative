@@ -62,6 +62,8 @@ import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.screen.login.QrCodeImage
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.SnackbarManager
+import java.text.DateFormat
+import java.util.Date
 import kotlinx.coroutines.launch
 
 private const val PHASE_CHOOSE = "choose"
@@ -295,17 +297,30 @@ internal fun fairUseReasonText(hours: Int?, fallback: String? = null): String {
 }
 
 @Composable
-internal fun upgradeReasonText(reason: String?, resetsAt: Long? = null): String {
+internal fun upgradeReasonText(reason: String?, resetsAt: Long? = null, message: String? = null): String {
     if (SupportApi.isFairUse(reason)) {
         return fairUseReasonText(SupportApi.FairUse(resetsAt, null).hoursLeft())
     }
+    if (reason == SupportApi.REASON_FIX_QUOTA) return fixQuotaText(resetsAt, message)
     return stringResource(
         when (reason) {
             SupportApi.REASON_TRIAL_USED -> R.string.support_upgrade_reason_trial_used
+            SupportApi.REASON_FIX_UPGRADE -> R.string.support_fix_upgrade_reason
             else -> R.string.support_upgrade_reason_required
         },
     )
 }
+
+@Composable
+internal fun fixQuotaText(resetsAt: Long?, message: String? = null): String =
+    message ?: if (resetsAt != null) {
+        stringResource(R.string.support_fix_quota_resets, fixResetDate(resetsAt))
+    } else {
+        stringResource(R.string.support_fix_quota)
+    }
+
+internal fun fixResetDate(resetsAt: Long): String =
+    DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(resetsAt))
 
 @Composable
 private fun DialogButton(
