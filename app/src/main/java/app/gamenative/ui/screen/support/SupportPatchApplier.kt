@@ -87,8 +87,8 @@ object SupportPatchApplier {
         }
     }
 
-    private fun targets(root: File, patch: SupportPatch): List<File> =
-        patch.ops.map { op -> SupportGameFiles.resolve(root, op.path) ?: throw StepFailure("bad path ${op.path}") }
+    private fun targets(roots: SupportGameFiles.Roots, patch: SupportPatch): List<File> =
+        patch.ops.map { op -> SupportGameFiles.resolve(roots, op.path) ?: throw StepFailure("bad path ${op.path}") }
 
     suspend fun apply(
         context: Context,
@@ -102,12 +102,13 @@ object SupportPatchApplier {
         var outcome: Pair<String, String?>? = null
         try {
             if (!patch.applicable) return@withContext Result.Failed("")
-            val root = SupportGameFiles.installRoot(context, appId)
-            if (root == null) {
+            val roots = SupportGameFiles.roots(context, appId)
+            if (roots == null) {
                 outcome = SupportApi.PATCH_FAILED to "game folder not found"
                 return@withContext Result.NoGame
             }
-            val files = targets(root, patch)
+            val root = roots.install
+            val files = targets(roots, patch)
 
             cache.deleteRecursively()
             cache.mkdirs()
@@ -214,7 +215,8 @@ object SupportPatchApplier {
         onProgress: (Step, Float, String) -> Unit,
     ): Result = withContext(Dispatchers.IO) {
         try {
-            val root = SupportGameFiles.installRoot(context, appId) ?: return@withContext Result.NoGame
+            val roots = SupportGameFiles.roots(context, appId) ?: return@withContext Result.NoGame
+            val root = roots.install
             val record = manifestFile(root, patch.patchsetId)
             if (!record.isFile) return@withContext Result.Failed("")
             val manifest = JSONObject(record.readText())
@@ -223,7 +225,7 @@ object SupportPatchApplier {
             val dir = backupDir(root, patch.patchsetId)
             val plan = entries.map { entry ->
                 val path = entry.optString("path")
-                val target = SupportGameFiles.resolve(root, path) ?: throw StepFailure("bad path $path")
+                val target = SupportGameFiles.resolve(roots, path) ?: throw StepFailure("bad path $path")
                 val copy = File(dir, entry.optString("backup"))
                 if (!copy.canonicalPath.startsWith(dir.canonicalPath + File.separator) || !copy.isFile) {
                     throw StepFailure("backup missing for $path")
@@ -259,7 +261,8 @@ object SupportPatchApplier {
 
     suspend fun readState(context: Context, appId: String, patch: SupportPatch): State? = withContext(Dispatchers.IO) {
         try {
-            val root = SupportGameFiles.installRoot(context, appId) ?: return@withContext null
+            val roots = SupportGameFiles.roots(context, appId) ?: return@withContext null
+            val root = roots.install
             val record = manifestFile(root, patch.patchsetId)
             if (!record.isFile) return@withContext State.NONE
             val manifest = JSONObject(record.readText())
@@ -267,7 +270,7 @@ object SupportPatchApplier {
             val ops = manifest.optJSONArray("ops") ?: return@withContext State.NONE
             for (i in 0 until ops.length()) {
                 val entry = ops.optJSONObject(i) ?: continue
-                val target = SupportGameFiles.resolve(root, entry.optString("path")) ?: return@withContext State.GAME_UPDATED
+                val target = SupportGameFiles.resolve(roots, entry.optString("path")) ?: return@withContext State.GAME_UPDATED
                 if (!target.isFile) return@withContext State.GAME_UPDATED
                 val size = entry.optLong("size", -1L)
                 if (size >= 0 && target.length() != size) return@withContext State.GAME_UPDATED

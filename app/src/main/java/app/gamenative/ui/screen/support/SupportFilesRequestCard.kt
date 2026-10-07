@@ -79,9 +79,9 @@ private fun describe(result: ApiResult<*>): String = when (result) {
 private suspend fun findFiles(context: android.content.Context, appId: String, request: SupportFilesRequest): List<LocalFile>? =
     withContext(Dispatchers.IO) {
         try {
-            val root = SupportGameFiles.installRoot(context, appId) ?: return@withContext null
+            val roots = SupportGameFiles.roots(context, appId) ?: return@withContext null
             request.files.map { item ->
-                val file = SupportGameFiles.resolve(root, item.path)?.takeIf { it.isFile }
+                val file = SupportGameFiles.resolve(roots, item.path)?.takeIf { it.isFile }
                 LocalFile(item, file, file?.length())
             }
         } catch (e: Exception) {
