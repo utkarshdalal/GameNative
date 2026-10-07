@@ -24,7 +24,7 @@ import java.nio.channels.FileChannel
 
 /** Exercise real key decoding and Wine shared-memory output, not just the routing decision. */
 @RunWith(RobolectricTestRunner::class)
-@Config(application = Application::class, sdk = [28], shadows = [ShadowWinHandlerNative::class])
+@Config(application = Application::class, sdk = [34], shadows = [ShadowWinHandlerNative::class])
 class WinHandlerControllerInputTest {
     @Test
     fun `second controller face and shoulder buttons reach Wine without changing player one`() {
