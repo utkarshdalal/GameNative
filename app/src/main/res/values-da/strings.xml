@@ -1940,7 +1940,7 @@
     <string name="debug_trial_note">Gratis prøveperiode tilgængelig.</string>
     <string name="debug_prerun_message_3">Alle kan dele rapporten for at få menneskelig hjælp.</string>
     <string name="debug_paywall_title">Få AI-fejlfindingshjælp</string>
-    <string name="debug_paywall_pitch">Vores AI læser din nøjagtige log og konfiguration og fortæller dig, hvad du skal ændre, som regel på under 5 minutter.</string>
+    <string name="debug_paywall_pitch">Tilpassede AI-patches og builds, der retter dine spil: 1 spil om måneden med Basic, 3 med Pro.</string>
     <string name="debug_paywall_tier5_title">$5/måned · Basic</string>
     <string name="debug_paywall_tier5_body">Få dine spil til at køre, eller til at køre bedre.</string>
     <string name="debug_paywall_tier10_title">$10/måned · Pro</string>

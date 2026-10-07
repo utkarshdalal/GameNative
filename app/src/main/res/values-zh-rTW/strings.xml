@@ -2077,7 +2077,7 @@
     <string name="debug_trial_note">提供免費試用。</string>
     <string name="debug_prerun_message_3">任何人都可以分享報告以獲得人工協助。</string>
     <string name="debug_paywall_title">取得 AI 除錯支援</string>
-    <string name="debug_paywall_pitch">我們的 AI 會閱讀你的完整記錄與設定，並告訴你需要更改什麼，通常不到 5 分鐘。</string>
+    <string name="debug_paywall_pitch">客製 AI 修補與建置，修好你的遊戲：Basic 每月 1 款遊戲，Pro 每月 3 款。</string>
     <string name="debug_paywall_tier5_title">$5/月 · Basic</string>
     <string name="debug_paywall_tier5_body">讓你的遊戲執行起來，或執行得更好。</string>
     <string name="debug_paywall_tier10_title">$10/月 · Pro</string>

@@ -1996,7 +1996,7 @@ https://gamenative.app
     <string name="debug_trial_note">Доступен бесплатный пробный период.</string>
     <string name="debug_prerun_message_3">Любой может поделиться отчётом, чтобы получить помощь людей.</string>
     <string name="debug_paywall_title">Получите AI-поддержку по отладке</string>
-    <string name="debug_paywall_pitch">Наш AI читает именно ваш лог и конфигурацию и говорит, что изменить, обычно меньше чем за 5 минут.</string>
+    <string name="debug_paywall_pitch">Индивидуальные AI-патчи и сборки, которые чинят ваши игры: 1 игра в месяц на Basic, 3 на Pro.</string>
     <string name="debug_paywall_tier5_title">$5/месяц · Basic</string>
     <string name="debug_paywall_tier5_body">Запустите свои игры или заставьте их работать лучше.</string>
     <string name="debug_paywall_tier10_title">$10/месяц · Pro</string>

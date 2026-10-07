@@ -2068,7 +2068,7 @@
     <string name="debug_trial_note">Prueba gratuita disponible.</string>
     <string name="debug_prerun_message_3">Cualquiera puede compartir el informe para recibir ayuda humana.</string>
     <string name="debug_paywall_title">Consigue soporte de depuración con AI</string>
-    <string name="debug_paywall_pitch">Nuestra AI lee tu registro y tu configuración exactos y te dice qué cambiar, normalmente en menos de 5 minutos.</string>
+    <string name="debug_paywall_pitch">Parches y compilaciones personalizados con AI que arreglan tus juegos: 1 juego al mes con Basic, 3 con Pro.</string>
     <string name="debug_paywall_tier5_title">$5/mes · Basic</string>
     <string name="debug_paywall_tier5_body">Haz que tus juegos funcionen, o que funcionen mejor.</string>
     <string name="debug_paywall_tier10_title">$10/mes · Pro</string>

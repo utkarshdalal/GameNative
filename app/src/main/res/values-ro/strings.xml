@@ -2057,7 +2057,7 @@
     <string name="debug_trial_note">Perioadă de probă gratuită disponibilă.</string>
     <string name="debug_prerun_message_3">Oricine poate partaja raportul pentru ajutor uman.</string>
     <string name="debug_paywall_title">Obține suport de depanare AI</string>
-    <string name="debug_paywall_pitch">AI-ul nostru îți citește exact jurnalul și configurația și îți spune ce să schimbi, de obicei în mai puțin de 5 minute.</string>
+    <string name="debug_paywall_pitch">Patch-uri și build-uri AI personalizate care îți repară jocurile: 1 joc pe lună cu Basic, 3 cu Pro.</string>
     <string name="debug_paywall_tier5_title">$5/lună · Basic</string>
     <string name="debug_paywall_tier5_body">Fă-ți jocurile să ruleze sau să ruleze mai bine.</string>
     <string name="debug_paywall_tier10_title">$10/lună · Pro</string>

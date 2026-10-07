@@ -2068,7 +2068,7 @@
     <string name="debug_trial_note">Доступний безкоштовний пробний період.</string>
     <string name="debug_prerun_message_3">Будь-хто може поділитися звітом, щоб отримати допомогу людей.</string>
     <string name="debug_paywall_title">Отримайте AI-підтримку з налагодження</string>
-    <string name="debug_paywall_pitch">Наш AI читає саме ваш лог і конфігурацію та каже, що змінити, зазвичай менше ніж за 5 хвилин.</string>
+    <string name="debug_paywall_pitch">Індивідуальні AI-патчі та збірки, які виправляють ваші ігри: 1 гра на місяць у Basic, 3 у Pro.</string>
     <string name="debug_paywall_tier5_title">$5/місяць · Basic</string>
     <string name="debug_paywall_tier5_body">Запустіть свої ігри або змусьте їх працювати краще.</string>
     <string name="debug_paywall_tier10_title">$10/місяць · Pro</string>

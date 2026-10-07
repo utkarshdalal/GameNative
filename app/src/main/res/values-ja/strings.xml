@@ -2033,7 +2033,7 @@
     <string name="debug_trial_note">無料トライアルあり。</string>
     <string name="debug_prerun_message_3">レポートは誰でも共有でき、人間のサポートを受けられます。</string>
     <string name="debug_paywall_title">AI デバッグサポートを利用</string>
-    <string name="debug_paywall_pitch">AI があなたのログと設定をそのまま読み取り、変更すべき点を教えます。通常 5 分以内です。</string>
+    <string name="debug_paywall_pitch">ゲームを直すカスタム AI パッチとビルド：Basic は月 1 本、Pro は月 3 本。</string>
     <string name="debug_paywall_tier5_title">$5/月 · Basic</string>
     <string name="debug_paywall_tier5_body">ゲームを動かす。もっと快適に動かす。</string>
     <string name="debug_paywall_tier10_title">$10/月 · Pro</string>

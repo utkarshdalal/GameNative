@@ -2061,7 +2061,7 @@
     <string name="debug_trial_note">Prova gratuita disponibile.</string>
     <string name="debug_prerun_message_3">Chiunque può condividere il report per ricevere aiuto umano.</string>
     <string name="debug_paywall_title">Ottieni supporto di debug AI</string>
-    <string name="debug_paywall_pitch">La nostra AI legge il tuo log e la tua configurazione esatti e ti dice cosa cambiare, di solito in meno di 5 minuti.</string>
+    <string name="debug_paywall_pitch">Patch e build AI personalizzati che sistemano i tuoi giochi: 1 gioco al mese con Basic, 3 con Pro.</string>
     <string name="debug_paywall_tier5_title">$5/mese · Basic</string>
     <string name="debug_paywall_tier5_body">Fai partire i tuoi giochi, o falli girare meglio.</string>
     <string name="debug_paywall_tier10_title">$10/mese · Pro</string>

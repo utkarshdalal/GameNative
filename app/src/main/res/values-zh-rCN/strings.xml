@@ -2086,7 +2086,7 @@
     <string name="debug_trial_note">提供免费试用。</string>
     <string name="debug_prerun_message_3">任何人都可以分享报告以获得人工帮助。</string>
     <string name="debug_paywall_title">获取 AI 调试支持</string>
-    <string name="debug_paywall_pitch">我们的 AI 会阅读你的完整日志和配置，并告诉你需要更改什么，通常不到 5 分钟。</string>
+    <string name="debug_paywall_pitch">定制 AI 补丁和构建，修好你的游戏：Basic 每月 1 款游戏，Pro 每月 3 款。</string>
     <string name="debug_paywall_tier5_title">$5/月 · Basic</string>
     <string name="debug_paywall_tier5_body">让你的游戏运行起来，或运行得更好。</string>
     <string name="debug_paywall_tier10_title">$10/月 · Pro</string>
