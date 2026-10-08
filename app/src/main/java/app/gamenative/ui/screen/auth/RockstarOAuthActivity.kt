@@ -129,9 +129,9 @@ class RockstarOAuthActivity : ComponentActivity() {
         if (steam != null) {
             val linked = steam.optString("username").trim()
             val current = RockstarSteamTicket.persona()?.trim()
-            val same = current != null && linked.equals(current, ignoreCase = true)
-            Timber.i("Rockstar sign-in: account is linked to Steam; matches the current Steam account: %s", same)
-            if (!same) SnackbarManager.show(getString(R.string.rockstar_link_refused))
+            val same = current?.let { linked.equals(it, ignoreCase = true) }
+            Timber.i("Rockstar sign-in: account is linked to Steam; matches the current Steam account: %s", same ?: "unknown")
+            if (same == false) SnackbarManager.show(getString(R.string.rockstar_link_refused))
             if (!forceLinkStep && !java.io.File(filesDir, "rockstar_force_link").isFile) return done(token)
         }
         val guid = loginGuid ?: return done(token)
