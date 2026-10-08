@@ -1621,6 +1621,13 @@
     <string name="gog_login_success_title">登录成功</string>
     <string name="rockstar_login_required_title">需要登录 Rockstar</string>
     <string name="rockstar_login_failed">Rockstar 登录失败：%1$s</string>
+    <string name="rockstar_link_refused">此 Rockstar 账户已关联到其他 Steam 账户。</string>
+    <string name="rockstar_link_title">要关联 Steam 账户吗？</string>
+    <string name="rockstar_link_text">将你的 Steam 账户 %1$s 关联到 Rockstar 账户 %2$s，即可在此处游玩此游戏。Rockstar 不允许之后解除此关联。</string>
+    <string name="rockstar_link_confirm">关联</string>
+    <string name="rockstar_link_skip">以后再说</string>
+    <string name="rockstar_link_done">已将 Steam 账户关联到 Rockstar</string>
+    <string name="rockstar_link_failed">无法关联 Steam 账户：%1$s</string>
     <string name="ea_login_required_title">需要登录 EA</string>
     <string name="ea_login_success">已以 %1$s 身份登录 EA</string>
     <string name="ea_login_failed">EA 登录失败：%1$s</string>

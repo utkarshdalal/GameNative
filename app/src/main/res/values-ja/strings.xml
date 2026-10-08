@@ -1684,6 +1684,13 @@
     <string name="gog_login_success_title">ログイン成功</string>
     <string name="rockstar_login_required_title">Rockstar へのサインインが必要です</string>
     <string name="rockstar_login_failed">Rockstar へのサインインに失敗しました: %1$s</string>
+    <string name="rockstar_link_refused">この Rockstar アカウントは別の Steam アカウントにリンクされています。</string>
+    <string name="rockstar_link_title">Steam アカウントをリンクしますか？</string>
+    <string name="rockstar_link_text">このゲームをここでプレイできるように、Steam アカウント %1$s を Rockstar アカウント %2$s にリンクします。Rockstar では、このリンクを後で解除することはできません。</string>
+    <string name="rockstar_link_confirm">リンク</string>
+    <string name="rockstar_link_skip">後で</string>
+    <string name="rockstar_link_done">Steam アカウントを Rockstar にリンクしました</string>
+    <string name="rockstar_link_failed">Steam アカウントをリンクできませんでした: %1$s</string>
     <string name="ea_login_required_title">EA へのサインインが必要です</string>
     <string name="ea_login_success">%1$s として EA にサインインしました</string>
     <string name="ea_login_failed">EA へのサインインに失敗しました: %1$s</string>

@@ -1514,6 +1514,13 @@
     <string name="gog_login_success_title">Login bem-sucedido</string>
     <string name="rockstar_login_required_title">Login na Rockstar necessário</string>
     <string name="rockstar_login_failed">Falha no login na Rockstar: %1$s</string>
+    <string name="rockstar_link_refused">Esta conta Rockstar está vinculada a outra conta Steam.</string>
+    <string name="rockstar_link_title">Vincular conta Steam?</string>
+    <string name="rockstar_link_text">Vincule sua conta Steam %1$s à conta Rockstar %2$s para poder jogar este jogo aqui. A Rockstar não permite desfazer este vínculo depois.</string>
+    <string name="rockstar_link_confirm">Vincular</string>
+    <string name="rockstar_link_skip">Agora não</string>
+    <string name="rockstar_link_done">Conta Steam vinculada à Rockstar</string>
+    <string name="rockstar_link_failed">Não foi possível vincular a conta Steam: %1$s</string>
     <string name="ea_login_required_title">Login na EA necessário</string>
     <string name="ea_login_success">Conectado à EA como %1$s</string>
     <string name="ea_login_failed">Falha no login na EA: %1$s</string>

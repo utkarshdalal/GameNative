@@ -1635,6 +1635,13 @@
     <string name="gog_login_success_title">Login Riuscito</string>
     <string name="rockstar_login_required_title">Accesso Rockstar richiesto</string>
     <string name="rockstar_login_failed">Accesso Rockstar non riuscito: %1$s</string>
+    <string name="rockstar_link_refused">Questo account Rockstar è collegato a un altro account Steam.</string>
+    <string name="rockstar_link_title">Collegare l\'account Steam?</string>
+    <string name="rockstar_link_text">Collega il tuo account Steam %1$s all\'account Rockstar %2$s per poter giocare qui a questo gioco. Rockstar non consente di annullare questo collegamento in seguito.</string>
+    <string name="rockstar_link_confirm">Collega</string>
+    <string name="rockstar_link_skip">Non ora</string>
+    <string name="rockstar_link_done">Account Steam collegato a Rockstar</string>
+    <string name="rockstar_link_failed">Impossibile collegare l\'account Steam: %1$s</string>
     <string name="ea_login_required_title">Accesso EA richiesto</string>
     <string name="ea_login_success">Accesso a EA effettuato come %1$s</string>
     <string name="ea_login_failed">Accesso EA non riuscito: %1$s</string>

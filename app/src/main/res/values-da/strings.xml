@@ -1514,6 +1514,13 @@
     <string name="gog_login_success_title">Login lykkedes</string>
     <string name="rockstar_login_required_title">Rockstar-login påkrævet</string>
     <string name="rockstar_login_failed">Rockstar-login mislykkedes: %1$s</string>
+    <string name="rockstar_link_refused">Denne Rockstar-konto er knyttet til en anden Steam-konto.</string>
+    <string name="rockstar_link_title">Knyt Steam-konto?</string>
+    <string name="rockstar_link_text">Knyt din Steam-konto %1$s til Rockstar-kontoen %2$s, så dette spil kan spilles her. Rockstar tillader ikke, at denne tilknytning fortrydes senere.</string>
+    <string name="rockstar_link_confirm">Knyt</string>
+    <string name="rockstar_link_skip">Ikke nu</string>
+    <string name="rockstar_link_done">Steam-konto knyttet til Rockstar</string>
+    <string name="rockstar_link_failed">Kunne ikke knytte Steam-kontoen: %1$s</string>
     <string name="ea_login_required_title">EA-login påkrævet</string>
     <string name="ea_login_success">Logget ind på EA som %1$s</string>
     <string name="ea_login_failed">EA-login mislykkedes: %1$s</string>

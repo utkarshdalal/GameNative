@@ -8,16 +8,20 @@ import android.os.Looper
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
+import app.gamenative.R
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import app.gamenative.service.rockstar.RockstarAuthManager
 import app.gamenative.service.rockstar.RockstarConstants
+import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.service.rockstar.RockstarLoginGate
 import app.gamenative.service.rockstar.RockstarSignInShim
+import app.gamenative.service.rockstar.RockstarSteamTicket
 import app.gamenative.ui.component.dialog.AuthWebViewDialog
 import app.gamenative.ui.theme.PluviaTheme
+import org.json.JSONObject
 import timber.log.Timber
 
 /**
@@ -29,10 +33,10 @@ import timber.log.Timber
  *   3. the user signs in; the page calls CallAuthResult{authCode}, which expires in ~60 seconds
  *   4. move to the rgl origin and exchange the code at /api/connect/gateway for the token
  *
- * OnStartAuth carries the Steam identity (app id, Steam ID, persona, auth ticket) when the gate
- * could mint one, the way the launcher's RockstarSteamHelper does: the page then links that
- * Steam account to the Rockstar account being signed in to, which is what a never linked
- * account needs before the stub's entitlement mirror can find the game.
+ * The sign-in is always plain. After the login, when the launch is for a Steam game, the
+ * Rockstar account's linked accounts are checked with the loginGuid; if Steam is not among them
+ * the user is asked to link it, with a ticket minted for the game's app id, which is what a never
+ * linked account needs before the stub's entitlement mirror can find the game.
  *
  * Not /sdk?cid=launcher: that is what the launcher itself opens, but it runs invisible reCAPTCHA
  * Enterprise and signs its requests inside its own fetchJson, so it cannot be driven from outside.
@@ -40,6 +44,7 @@ import timber.log.Timber
 class RockstarOAuthActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
+        ticket?.close()
         if (isFinishing && !finished) { finished = true; RockstarLoginGate.deliver(null) }
     }
 
@@ -50,6 +55,11 @@ class RockstarOAuthActivity : ComponentActivity() {
     private var authCode: String? = null
     private var fingerprint: String = ""
     private var webView: WebView? = null
+    private var steamAppId = 0
+    private var token: String? = null
+    private var loginGuid: String? = null
+    private var linkChecked = false
+    private var ticket: RockstarSteamTicket? = null
     private val poller = Handler(Looper.getMainLooper())
 
     /*
@@ -77,10 +87,99 @@ class RockstarOAuthActivity : ComponentActivity() {
         }
     }
 
+    private val noLoginGuid = Runnable {
+        Timber.w("Rockstar sign-in: no loginGuid within 5 s of the token; skipping the Steam link check")
+        done(token)
+    }
+
+    private fun tokenReady(value: String) {
+        if (finished || token != null) return
+        if (steamAppId <= 0) {
+            done(value)
+            return
+        }
+        token = value
+        if (loginGuid != null) checkLink() else poller.postDelayed(noLoginGuid, 5000)
+    }
+
+    private fun checkLink() {
+        val guid = loginGuid ?: return
+        if (finished || token == null || linkChecked) return
+        linkChecked = true
+        poller.removeCallbacks(noLoginGuid)
+        val view = webView ?: return done(token)
+        Timber.i("Rockstar sign-in: checking the linked accounts")
+        view.evaluateJavascript("window.gnLinkedAccounts(${JSONObject.quote(guid)})", null)
+    }
+
+    private fun onLinkedAccounts(status: Int, body: String) {
+        if (finished) return
+        val json = if (status == 200) runCatching { JSONObject(body) }.getOrNull() else null
+        if (json == null) {
+            Timber.w("Rockstar sign-in: linked accounts check failed (%d); skipping the Steam link", status)
+            return done(token)
+        }
+        val nickname = json.optString("nickname")
+        val accounts = json.optJSONArray("linkedAccounts")
+        val steam = (0 until (accounts?.length() ?: 0))
+            .mapNotNull { accounts?.optJSONObject(it) }
+            .firstOrNull { it.optString("onlineService").equals("steam", ignoreCase = true) }
+        if (steam != null) {
+            Timber.i("Rockstar sign-in: account %s is linked to Steam as %s", nickname, steam.optString("username"))
+            if (!forceLinkStep && !java.io.File(filesDir, "rockstar_force_link").isFile) return done(token)
+        }
+        val guid = loginGuid ?: return done(token)
+        lifecycleScope.launch {
+            val minted = RockstarSteamTicket.mint(steamAppId)
+            if (minted == null || finished) {
+                minted?.close()
+                done(token)
+                return@launch
+            }
+            ticket = minted
+            android.app.AlertDialog.Builder(this@RockstarOAuthActivity)
+                .setTitle(R.string.rockstar_link_title)
+                .setMessage(getString(R.string.rockstar_link_text, minted.persona, nickname))
+                .setCancelable(false)
+                .setPositiveButton(R.string.rockstar_link_confirm) { _, _ ->
+                    Timber.i("Rockstar sign-in: linking Steam account %d for app %d", minted.steamId, steamAppId)
+                    val steamJson = minted.externalPlatformInfo().toString()
+                    val view = webView ?: return@setPositiveButton done(token)
+                    view.evaluateJavascript("window.gnLinkSteam(${JSONObject.quote(guid)}, ${JSONObject.quote(steamJson)})", null)
+                }
+                .setNegativeButton(R.string.rockstar_link_skip) { _, _ ->
+                    Timber.i("Rockstar sign-in: Steam link declined")
+                    done(token)
+                }
+                .show()
+        }
+    }
+
+    private fun onLinkResult(status: Int, body: String) {
+        try {
+            when {
+                status == 200 -> SnackbarManager.show(getString(R.string.rockstar_link_done))
+                body.contains(RockstarConstants.ALREADY_LINKED_ERROR) ->
+                    SnackbarManager.show(getString(R.string.rockstar_link_refused))
+                else -> {
+                    val message = runCatching { JSONObject(body).optString("message") }.getOrNull()
+                        ?.takeIf { it.isNotBlank() } ?: "HTTP $status"
+                    SnackbarManager.show(getString(R.string.rockstar_link_failed, message))
+                }
+            }
+        } finally {
+            ticket?.close()
+            ticket = null
+            done(token)
+        }
+    }
+
     private fun done(token: String?) {
         if (finished) return
         finished = true
         poller.removeCallbacksAndMessages(null)
+        ticket?.close()
+        ticket = null
         setResult(if (token != null) Activity.RESULT_OK else Activity.RESULT_CANCELED)
         RockstarLoginGate.deliver(token)
         finish()
@@ -106,7 +205,7 @@ class RockstarOAuthActivity : ComponentActivity() {
                  */
                 lifecycleScope.launch {
                     RockstarAuthManager.exchange(code, fp)
-                        .onSuccess { done(it) }
+                        .onSuccess { tokenReady(it) }
                         .onFailure {
                             Timber.w("Rockstar sign-in: exchange failed (%s); window stays open", it.message)
                             exchanging = false
@@ -117,11 +216,7 @@ class RockstarOAuthActivity : ComponentActivity() {
 
         @JavascriptInterface
         fun onAuthFailed(detail: String) {
-            if (detail.contains(RockstarConstants.ALREADY_LINKED_ERROR)) {
-                Timber.w("Rockstar sign-in: this Rockstar account is linked to a different Steam account: %s", detail.take(200))
-            } else {
-                Timber.w("Rockstar sign-in: page reported no auth code: %s", detail.take(200))
-            }
+            Timber.w("Rockstar sign-in: page reported no auth code: %s", detail.take(200))
         }
 
         @JavascriptInterface
@@ -131,11 +226,32 @@ class RockstarOAuthActivity : ComponentActivity() {
         }
 
         @JavascriptInterface
+        fun onLoginGuid(guid: String) {
+            Timber.i("Rockstar sign-in: loginGuid received (%d chars)", guid.length)
+            runOnUiThread {
+                loginGuid = guid
+                checkLink()
+            }
+        }
+
+        @JavascriptInterface
+        fun onLinkedAccounts(status: Int, body: String) {
+            Timber.i("Rockstar sign-in: linked accounts -> %d %s", status, body.take(300))
+            runOnUiThread { this@RockstarOAuthActivity.onLinkedAccounts(status, body) }
+        }
+
+        @JavascriptInterface
+        fun onLinkResult(status: Int, body: String) {
+            Timber.i("Rockstar sign-in: Steam link -> %d %s", status, body.take(300))
+            runOnUiThread { this@RockstarOAuthActivity.onLinkResult(status, body) }
+        }
+
+        @JavascriptInterface
         fun onExchange(status: Int, fieldNames: String, token: String) {
             Timber.i("Rockstar sign-in: gateway status=%d fields=[%s] token=%d chars",
                 status, fieldNames, token.length)
             if (token.isNotEmpty() && RockstarAuthManager.looksLikeScAuthToken(token)) {
-                runOnUiThread { done(token) }
+                runOnUiThread { tokenReady(token) }
             } else {
                 Timber.w("Rockstar sign-in: no usable token in the gateway response; leaving the window open")
             }
@@ -151,8 +267,7 @@ class RockstarOAuthActivity : ComponentActivity() {
             return
         }
 
-        val steamLink = intent.getStringExtra(RockstarConstants.STEAM_LINK_EXTRA)
-            ?.let { runCatching { org.json.JSONObject(it) }.getOrNull() }
+        steamAppId = intent.getIntExtra(RockstarConstants.STEAM_APP_ID_EXTRA, 0)
 
         RockstarAuthManager.clearHandoffCookie()
 
@@ -162,7 +277,7 @@ class RockstarOAuthActivity : ComponentActivity() {
                     isVisible = true,
                     /* a page on the signin origin that is not the app itself */
                     url = "https://${RockstarConstants.SIGNIN_HOST}/robots.txt",
-                    onDismissRequest = { done(null) },
+                    onDismissRequest = { done(token) },
                     onPageFinished = { url, view ->
                         webView = view
                         RockstarAuthManager.observe("loaded", url)
@@ -186,7 +301,7 @@ class RockstarOAuthActivity : ComponentActivity() {
                                 injected = true
                                 view.evaluateJavascript(
                                     RockstarSignInShim.script(
-                                        filesDir, activeTitle, BRIDGE, android.os.Build.MODEL ?: "GAMENATIVE", steamLink,
+                                        filesDir, activeTitle, BRIDGE, android.os.Build.MODEL ?: "GAMENATIVE",
                                     ),
                                 ) { Timber.i("Rockstar sign-in: shim installed -> %s", it) }
                                 poller.postDelayed(watchCookie, 1000)
@@ -198,7 +313,9 @@ class RockstarOAuthActivity : ComponentActivity() {
         }
     }
 
-    private companion object {
-        const val BRIDGE = "GNBridge"
+    companion object {
+        private const val BRIDGE = "GNBridge"
+
+        @Volatile var forceLinkStep = false
     }
 }
