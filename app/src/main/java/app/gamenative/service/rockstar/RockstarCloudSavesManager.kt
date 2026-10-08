@@ -168,10 +168,10 @@ object RockstarCloudSavesManager {
 
         val remote = remoteByName(names, manifest)
         val savesRoot = savesRoot(container, saveFolderName)
-        val profileDir = locateProfile(savesRoot, rockstarId)
+        val profileDir = locateProfile(savesRoot)
         if (profileDir == null) {
-            Timber.tag(TAG).w("Cloud save pull skipped for ${title.titleId}: profile directory ambiguous or unknown")
-            return PullResult.Failed("profile_unresolved")
+            Timber.tag(TAG).i("Cloud save pull skipped for ${title.titleId}: no profile directory yet and no signed-in Social Club profile to name one; syncing starts once the game has created one")
+            return PullResult.NoCloudSaves
         }
         Timber.tag(TAG).i("Cloud save profile for ${title.titleId}: ${profileDir.name} (exists=${profileDir.isDirectory})")
 
@@ -253,7 +253,7 @@ object RockstarCloudSavesManager {
             return false
         }
         val profileDir = session.profileDir.takeIf { it.isDirectory }
-            ?: locateProfile(savesRoot(container, session.saveFolderName), session.rockstarId)?.takeIf { it.isDirectory }
+            ?: locateProfile(savesRoot(container, session.saveFolderName))
         if (profileDir == null) {
             Timber.tag(TAG).i("Cloud save push for ${session.titleId}: no profile directory, nothing to upload")
             return true
@@ -370,19 +370,29 @@ object RockstarCloudSavesManager {
     private fun savesRoot(container: Container, saveFolderName: String): File =
         File(container.rootDir, ".wine/drive_c/users/${ImageFs.USER}/Documents/Rockstar Games/$saveFolderName/Profiles")
 
-    private fun locateProfile(savesRoot: File, rockstarId: String?): File? {
-        val hexId = rockstarId?.trim()?.toLongOrNull()?.takeIf { it > 0 }?.toString(16)?.uppercase()?.padStart(8, '0')
+    private fun locateProfile(savesRoot: File): File? {
         val existing = savesRoot.listFiles().orEmpty().filter { it.isDirectory && PROFILE_DIR.matches(it.name) }
-        if (hexId != null) existing.firstOrNull { it.name.equals(hexId, ignoreCase = true) }?.let { return it }
-        if (existing.size == 1) {
-            if (hexId != null) Timber.tag(TAG).w("Profile ${existing[0].name} does not match the signed-in account; using the only profile")
-            return existing[0]
+        if (existing.size == 1) return existing[0]
+        val signedIn = socialClubProfiles(savesRoot)
+        if (existing.isEmpty()) {
+            val id = signedIn.singleOrNull() ?: return null
+            return File(savesRoot, id)
         }
-        if (existing.size > 1) {
-            Timber.tag(TAG).w("${existing.size} profile directories and none match the signed-in account")
-            return null
-        }
-        return hexId?.let { File(savesRoot, it) }
+        val matching = existing.filter { dir -> signedIn.any { it.equals(dir.name, ignoreCase = true) } }
+        if (matching.size == 1) return matching[0]
+        Timber.tag(TAG).w("${existing.size} profile directories under ${savesRoot.parentFile?.name} and no unique match")
+        return null
+    }
+
+    private fun socialClubProfiles(savesRoot: File): List<String> {
+        val documents = savesRoot.parentFile?.parentFile?.parentFile ?: return emptyList()
+        val roots = documents.listFiles().orEmpty().filter { it.isDirectory && (it.name == "Rockstar Games" || it.name.startsWith("Rockstar Games ")) }
+        return roots.flatMap { root ->
+            val base = if (root.name == "Rockstar Games") root else File(root, "Rockstar Games")
+            File(base, "Social Club/Profiles").listFiles().orEmpty()
+                .filter { it.isDirectory && PROFILE_DIR.matches(it.name) && it.name != "00000000" }
+                .map { it.name.uppercase() }
+        }.distinct()
     }
 
     private fun scanLocal(profileDir: File, names: List<String>): Map<String, LocalFile> {
