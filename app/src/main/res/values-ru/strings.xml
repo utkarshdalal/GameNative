@@ -635,6 +635,14 @@
     <string name="gog_login_success_title">Вход выполнен успешно</string>
     <string name="rockstar_login_required_title">Требуется вход в Rockstar</string>
     <string name="rockstar_login_failed">Не удалось войти в Rockstar: %1$s</string>
+    <string name="rockstar_link_refused">Эта учетная запись Rockstar привязана к другой учетной записи Steam.</string>
+    <string name="rockstar_link_title">Привязать учетную запись Steam?</string>
+    <string name="rockstar_link_text">Привяжите свою учетную запись Steam %1$s к учетной записи Rockstar %2$s, чтобы играть в эту игру здесь. Rockstar не позволяет отменить эту привязку позже.</string>
+    <string name="rockstar_link_confirm">Привязать</string>
+    <string name="rockstar_link_skip">Не сейчас</string>
+    <string name="rockstar_link_done">Учетная запись Steam привязана к Rockstar</string>
+    <string name="rockstar_link_failed">Не удалось привязать учетную запись Steam: %1$s</string>
+    <string name="rockstar_link_unchecked">Не удалось проверить привязку Steam. Выйдите из Rockstar в Настройках и войдите снова, чтобы повторить попытку.</string>
     <string name="ea_login_required_title">Требуется вход в EA</string>
     <string name="ea_login_success">Выполнен вход в EA как %1$s</string>
     <string name="ea_login_failed">Не удалось войти в EA: %1$s</string>

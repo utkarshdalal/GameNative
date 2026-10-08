@@ -1623,6 +1623,14 @@
     <string name="gog_login_success_title">登入成功</string>
     <string name="rockstar_login_required_title">需要登入 Rockstar</string>
     <string name="rockstar_login_failed">Rockstar 登入失敗：%1$s</string>
+    <string name="rockstar_link_refused">此 Rockstar 帳戶已連結至其他 Steam 帳戶。</string>
+    <string name="rockstar_link_title">要連結 Steam 帳戶嗎？</string>
+    <string name="rockstar_link_text">將你的 Steam 帳戶 %1$s 連結至 Rockstar 帳戶 %2$s，即可在這裡遊玩此遊戲。Rockstar 不允許之後解除此連結。</string>
+    <string name="rockstar_link_confirm">連結</string>
+    <string name="rockstar_link_skip">稍後再說</string>
+    <string name="rockstar_link_done">已將 Steam 帳戶連結至 Rockstar</string>
+    <string name="rockstar_link_failed">無法連結 Steam 帳戶：%1$s</string>
+    <string name="rockstar_link_unchecked">無法檢查 Steam 連結。請在設定中登出 Rockstar，然後重新登入以重試。</string>
     <string name="ea_login_required_title">需要登入 EA</string>
     <string name="ea_login_success">已以 %1$s 身分登入 EA</string>
     <string name="ea_login_failed">EA 登入失敗：%1$s</string>

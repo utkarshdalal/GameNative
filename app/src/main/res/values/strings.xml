@@ -1904,6 +1904,14 @@
     <string name="gog_login_success_title">Login Successful</string>
     <string name="rockstar_login_required_title">Rockstar sign-in required</string>
     <string name="rockstar_login_failed">Rockstar sign-in failed: %1$s</string>
+    <string name="rockstar_link_refused">This Rockstar account is linked to a different Steam account.</string>
+    <string name="rockstar_link_title">Link Steam account?</string>
+    <string name="rockstar_link_text">Link your Steam account %1$s to Rockstar account %2$s so this game can be played here. Rockstar does not allow this link to be undone later.</string>
+    <string name="rockstar_link_confirm">Link</string>
+    <string name="rockstar_link_skip">Not now</string>
+    <string name="rockstar_link_done">Steam account linked to Rockstar</string>
+    <string name="rockstar_link_failed">Could not link the Steam account: %1$s</string>
+    <string name="rockstar_link_unchecked">Could not check the Steam link. Sign out of Rockstar in Settings and sign in again to retry.</string>
     <string name="ea_login_required_title">EA sign-in required</string>
     <string name="ea_login_success">Signed in to EA as %1$s</string>
     <string name="ea_login_failed">EA sign-in failed: %1$s</string>

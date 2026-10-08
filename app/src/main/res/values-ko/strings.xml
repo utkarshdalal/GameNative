@@ -1637,6 +1637,14 @@
     <string name="gog_login_success_title">로그인 성공</string>
     <string name="rockstar_login_required_title">Rockstar 로그인 필요</string>
     <string name="rockstar_login_failed">Rockstar 로그인 실패: %1$s</string>
+    <string name="rockstar_link_refused">이 Rockstar 계정은 다른 Steam 계정에 연결되어 있습니다.</string>
+    <string name="rockstar_link_title">Steam 계정을 연결할까요?</string>
+    <string name="rockstar_link_text">이 게임을 여기에서 플레이할 수 있도록 Steam 계정 %1$s을(를) Rockstar 계정 %2$s에 연결합니다. Rockstar에서는 나중에 이 연결을 해제할 수 없습니다.</string>
+    <string name="rockstar_link_confirm">연결</string>
+    <string name="rockstar_link_skip">나중에</string>
+    <string name="rockstar_link_done">Steam 계정이 Rockstar에 연결되었습니다</string>
+    <string name="rockstar_link_failed">Steam 계정을 연결할 수 없습니다: %1$s</string>
+    <string name="rockstar_link_unchecked">Steam 연결을 확인할 수 없습니다. 설정에서 Rockstar 로그아웃 후 다시 로그인하여 재시도하세요.</string>
     <string name="ea_login_required_title">EA 로그인 필요</string>
     <string name="ea_login_success">%1$s(으)로 EA에 로그인했습니다</string>
     <string name="ea_login_failed">EA 로그인 실패: %1$s</string>

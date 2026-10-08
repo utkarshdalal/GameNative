@@ -1652,6 +1652,14 @@
     <string name="gog_login_success_title">Inicio de sesión exitoso</string>
     <string name="rockstar_login_required_title">Se requiere iniciar sesión en Rockstar</string>
     <string name="rockstar_login_failed">Error al iniciar sesión en Rockstar: %1$s</string>
+    <string name="rockstar_link_refused">Esta cuenta de Rockstar está vinculada a otra cuenta de Steam.</string>
+    <string name="rockstar_link_title">¿Vincular la cuenta de Steam?</string>
+    <string name="rockstar_link_text">Vincula tu cuenta de Steam %1$s a la cuenta de Rockstar %2$s para poder jugar a este juego aquí. Rockstar no permite deshacer este vínculo más adelante.</string>
+    <string name="rockstar_link_confirm">Vincular</string>
+    <string name="rockstar_link_skip">Ahora no</string>
+    <string name="rockstar_link_done">Cuenta de Steam vinculada a Rockstar</string>
+    <string name="rockstar_link_failed">No se pudo vincular la cuenta de Steam: %1$s</string>
+    <string name="rockstar_link_unchecked">No se pudo comprobar la vinculación con Steam. Cierra sesión en Rockstar en Ajustes y vuelve a iniciarla para reintentarlo.</string>
     <string name="ea_login_required_title">Se requiere iniciar sesión en EA</string>
     <string name="ea_login_success">Sesión iniciada en EA como %1$s</string>
     <string name="ea_login_failed">Error al iniciar sesión en EA: %1$s</string>

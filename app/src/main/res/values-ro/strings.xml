@@ -2843,6 +2843,14 @@
     <string name="steam_agreement_decline">Refuză</string>
     <string name="rockstar_login_required_title">Autentificare Rockstar necesară</string>
     <string name="rockstar_login_failed">Autentificarea Rockstar a eșuat: %1$s</string>
+    <string name="rockstar_link_refused">Acest cont Rockstar este asociat cu un alt cont Steam.</string>
+    <string name="rockstar_link_title">Asociezi contul Steam?</string>
+    <string name="rockstar_link_text">Asociază contul tău Steam %1$s cu contul Rockstar %2$s pentru a putea juca acest joc aici. Rockstar nu permite anularea ulterioară a acestei asocieri.</string>
+    <string name="rockstar_link_confirm">Asociază</string>
+    <string name="rockstar_link_skip">Nu acum</string>
+    <string name="rockstar_link_done">Cont Steam asociat cu Rockstar</string>
+    <string name="rockstar_link_failed">Contul Steam nu a putut fi asociat: %1$s</string>
+    <string name="rockstar_link_unchecked">Asocierea cu Steam nu a putut fi verificată. Deconectează-te de la Rockstar din Setări și conectează-te din nou pentru a reîncerca.</string>
     <string name="ea_login_required_title">Autentificare EA necesară</string>
     <string name="ea_login_success">Autentificat la EA ca %1$s</string>
     <string name="ea_login_failed">Autentificarea EA a eșuat: %1$s</string>
