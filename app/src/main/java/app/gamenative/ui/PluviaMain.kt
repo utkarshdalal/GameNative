@@ -73,6 +73,8 @@ import app.gamenative.service.ea.EaCloudPreference
 import app.gamenative.service.ea.EaCloudSavesManager
 import app.gamenative.service.ea.EaLaunchSupport
 import app.gamenative.service.ea.EaLoginGate
+import app.gamenative.service.rockstar.RockstarCloudPreference
+import app.gamenative.service.rockstar.RockstarCloudSavesManager
 import app.gamenative.service.rockstar.RockstarLaunchSupport
 import app.gamenative.service.rockstar.RockstarHelperArchive
 import app.gamenative.service.rockstar.RockstarHelperDeployment
@@ -1066,6 +1068,42 @@ fun PluviaMain(
                     context = context,
                     appId = state.launchedAppId,
                     eaPreferredSave = SaveLocation.Local,
+                    setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                    setLoadingProgress = viewModel::setLoadingDialogProgress,
+                    setLoadingMessage = viewModel::setLoadingDialogMessage,
+                    setMessageDialogState = setMessageDialogState,
+                    onSuccess = viewModel::launchApp,
+                    isOffline = viewModel.isOffline.value,
+                    bootToContainer = state.bootToContainer,
+                )
+                msgDialogState = MessageDialogState(false)
+            }
+            onDismissRequest = {
+                msgDialogState = MessageDialogState(false)
+            }
+        }
+
+        DialogType.ROCKSTAR_SYNC_CONFLICT -> {
+            onConfirmClick = {
+                preLaunchApp(
+                    context = context,
+                    appId = state.launchedAppId,
+                    rockstarPreferredSave = SaveLocation.Remote,
+                    setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                    setLoadingProgress = viewModel::setLoadingDialogProgress,
+                    setLoadingMessage = viewModel::setLoadingDialogMessage,
+                    setMessageDialogState = setMessageDialogState,
+                    onSuccess = viewModel::launchApp,
+                    isOffline = viewModel.isOffline.value,
+                    bootToContainer = state.bootToContainer,
+                )
+                msgDialogState = MessageDialogState(false)
+            }
+            onDismissClick = {
+                preLaunchApp(
+                    context = context,
+                    appId = state.launchedAppId,
+                    rockstarPreferredSave = SaveLocation.Local,
                     setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
                     setLoadingProgress = viewModel::setLoadingDialogProgress,
                     setLoadingMessage = viewModel::setLoadingDialogMessage,
@@ -2234,6 +2272,7 @@ fun preLaunchApp(
     ignorePendingOperations: Boolean = false,
     preferredSave: SaveLocation = SaveLocation.None,
     eaPreferredSave: SaveLocation = SaveLocation.None,
+    rockstarPreferredSave: SaveLocation = SaveLocation.None,
     useTemporaryOverride: Boolean = false,
     skipCloudSync: Boolean = false,
     setLoadingDialogVisible: (Boolean) -> Unit,
@@ -2967,6 +3006,47 @@ fun preLaunchApp(
             }
         }
 
+        if (gameSource == GameSource.STEAM && (container.isLaunchHeadlessSteam || container.isLaunchBionicSteam) &&
+            !container.isLocalSavesOnly && !bootToContainer && !isOffline
+        ) {
+            try {
+                val rockstarGameDir = File(SteamService.getAppDirPath(gameId))
+                if (RockstarLaunchSupport.isRockstarTitle(rockstarGameDir)) {
+                    val rockstarPreference = when (rockstarPreferredSave) {
+                        SaveLocation.Local -> RockstarCloudPreference.LOCAL
+                        SaveLocation.Remote -> RockstarCloudPreference.REMOTE
+                        SaveLocation.None -> RockstarCloudPreference.NONE
+                    }
+                    val rockstarPull = RockstarCloudSavesManager.syncBeforeLaunch(context, container, rockstarGameDir, rockstarPreference)
+                    if (rockstarPull is RockstarCloudSavesManager.PullResult.Conflict) {
+                        Timber.tag("RockstarCloud").i("Cloud save conflict for $appId, prompting user")
+                        val localDate = Date(rockstarPull.localMillis).toString()
+                        val remoteDate = rockstarPull.remoteMillis?.let { Date(it).toString() }
+                            ?: context.getString(R.string.container_storage_source_unknown)
+                        setLoadingDialogVisible(false)
+                        setMessageDialogState(
+                            MessageDialogState(
+                                visible = true,
+                                type = DialogType.ROCKSTAR_SYNC_CONFLICT,
+                                title = context.getString(R.string.main_save_conflict_title),
+                                message = context.getString(R.string.main_save_conflict_message, localDate, remoteDate),
+                                dismissBtnText = context.getString(R.string.main_keep_local),
+                                confirmBtnText = context.getString(R.string.main_keep_remote),
+                            ),
+                        )
+                        return@launch
+                    }
+                    Timber.tag("RockstarCloud").i("Cloud save pull for $appId: $rockstarPull")
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                Timber.tag("RockstarCloud").w("Cloud save pull failed for $appId: ${e.javaClass.simpleName}")
+            }
+        } else {
+            runCatching { RockstarCloudSavesManager.forgetSession(File(SteamService.getAppDirPath(gameId))) }
+        }
+
         val postSyncInfo = SteamService.beginLaunchApp(
             appId = gameId,
             prefixToPath = prefixToPath,
@@ -3027,6 +3107,7 @@ fun preLaunchApp(
                         ignorePendingOperations = ignorePendingOperations,
                         preferredSave = preferredSave,
                         eaPreferredSave = eaPreferredSave,
+                        rockstarPreferredSave = rockstarPreferredSave,
                         useTemporaryOverride = useTemporaryOverride,
                         setLoadingDialogVisible = setLoadingDialogVisible,
                         setLoadingProgress = setLoadingProgress,
