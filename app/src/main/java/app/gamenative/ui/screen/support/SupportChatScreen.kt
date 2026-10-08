@@ -272,6 +272,10 @@ internal fun ColumnScope.SupportChat(
                         when (val result = SupportApi.fixRequest(conversationId)) {
                             is SupportApi.FixRequestResult.Started -> {
                                 fixRequestOpen = false
+                                if (result.prompted) {
+                                    fixRequestBusy = false
+                                    return@launch
+                                }
                                 DebugRunParamsHolder.set(
                                     targetAppId,
                                     DebugRunParams(attach = setOf(DebugRunParams.ATTACH_CPU)),
