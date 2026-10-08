@@ -1083,10 +1083,10 @@
     <string name="support_new_debug_run">新的调试运行</string>
     <string name="support_fix_request_action">请求定制修复</string>
     <string name="support_fix_request_title">请求定制修复</string>
-    <string name="support_fix_request_message">AI 可以修改此游戏的文件，或为你的设备构建新的驱动或模拟器。它会先运行一次游戏来测量问题。如果定制修复无法解决问题，AI 会告诉你，并且不会消耗定制修复次数。</string>
+    <string name="support_fix_request_message">AI 可以修改此游戏的文件，或为你的设备构建新的驱动或模拟器。如果你已经发送过报告，它会立即查看该报告。如果没有，它会运行一次游戏来测量问题。</string>
     <string name="support_fix_request_left">剩余定制修复：%1$d / %2$d。</string>
     <string name="support_fix_request_left_resets">剩余定制修复：%1$d / %2$d（%3$s 重置）。</string>
-    <string name="support_fix_request_run">运行游戏</string>
+    <string name="support_fix_request_run">请求修复</string>
     <string name="support_fix_request_failed">无法开始定制修复。请重试。</string>
     <string name="support_fix_upgrade_reason">所有方案都包含定制修复。</string>
     <string name="support_fix_quota">你目前已用完所有定制修复次数。</string>

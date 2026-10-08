@@ -1116,10 +1116,10 @@
     <string name="support_new_debug_run">Nouvelle session de débogage</string>
     <string name="support_fix_request_action">Demander un correctif personnalisé</string>
     <string name="support_fix_request_title">Demander un correctif personnalisé</string>
-    <string name="support_fix_request_message">L\'AI peut modifier les fichiers de ce jeu ou compiler un nouveau pilote ou émulateur pour votre appareil. Elle lance d\'abord le jeu une fois pour mesurer le problème. Si un correctif personnalisé ne peut pas aider, l\'AI vous le dit, et aucun correctif personnalisé n\'est utilisé.</string>
+    <string name="support_fix_request_message">L\'AI peut modifier les fichiers de ce jeu ou compiler un nouveau pilote ou émulateur pour votre appareil. Si vous avez déjà envoyé un rapport, elle l\'examine maintenant. Sinon, elle lance le jeu une fois pour mesurer le problème.</string>
     <string name="support_fix_request_left">Correctifs personnalisés restants : %1$d sur %2$d.</string>
     <string name="support_fix_request_left_resets">Correctifs personnalisés restants : %1$d sur %2$d (réinitialisation le %3$s).</string>
-    <string name="support_fix_request_run">Lancer le jeu</string>
+    <string name="support_fix_request_run">Demander le correctif</string>
     <string name="support_fix_request_failed">Impossible de démarrer un correctif personnalisé. Veuillez réessayer.</string>
     <string name="support_fix_upgrade_reason">Les correctifs personnalisés sont inclus dans tous les abonnements.</string>
     <string name="support_fix_quota">Vous avez utilisé tous vos correctifs personnalisés pour le moment.</string>

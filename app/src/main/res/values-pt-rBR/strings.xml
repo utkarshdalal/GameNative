@@ -914,10 +914,10 @@
     <string name="support_new_debug_run">Nova execução de depuração</string>
     <string name="support_fix_request_action">Pedir uma correção personalizada</string>
     <string name="support_fix_request_title">Pedir uma correção personalizada</string>
-    <string name="support_fix_request_message">A AI pode alterar os arquivos deste jogo ou compilar um novo driver ou emulador para o seu dispositivo. Primeiro ela executa o jogo uma vez para medir o problema. Se uma correção personalizada não puder ajudar, a AI avisa você, e nenhuma correção personalizada é usada.</string>
+    <string name="support_fix_request_message">A AI pode alterar os arquivos deste jogo ou compilar um novo driver ou emulador para o seu dispositivo. Se você já enviou um relatório, ela analisa esse relatório agora. Se não, ela executa o jogo uma vez para medir o problema.</string>
     <string name="support_fix_request_left">Correções personalizadas restantes: %1$d de %2$d.</string>
     <string name="support_fix_request_left_resets">Correções personalizadas restantes: %1$d de %2$d (renovam em %3$s).</string>
-    <string name="support_fix_request_run">Executar o jogo</string>
+    <string name="support_fix_request_run">Pedir a correção</string>
     <string name="support_fix_request_failed">Não foi possível iniciar uma correção personalizada. Tente novamente.</string>
     <string name="support_fix_upgrade_reason">As correções personalizadas fazem parte de todos os planos.</string>
     <string name="support_fix_quota">Você usou todas as suas correções personalizadas por enquanto.</string>

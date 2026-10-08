@@ -1276,10 +1276,10 @@ https://gamenative.app
     <string name="support_new_debug_run">Новый отладочный запуск</string>
     <string name="support_fix_request_action">Запросить индивидуальное исправление</string>
     <string name="support_fix_request_title">Запросить индивидуальное исправление</string>
-    <string name="support_fix_request_message">AI может изменить файлы этой игры или собрать новый драйвер или эмулятор для вашего устройства. Сначала он один раз запускает игру, чтобы измерить проблему. Если индивидуальное исправление не поможет, AI сообщит вам об этом, и исправление не будет израсходовано.</string>
+    <string name="support_fix_request_message">AI может изменить файлы этой игры или собрать новый драйвер или эмулятор для вашего устройства. Если вы уже отправили отчёт, он сейчас изучит этот отчёт. Если нет, он один раз запустит игру, чтобы измерить проблему.</string>
     <string name="support_fix_request_left">Осталось индивидуальных исправлений: %1$d из %2$d.</string>
     <string name="support_fix_request_left_resets">Осталось индивидуальных исправлений: %1$d из %2$d (обновятся %3$s).</string>
-    <string name="support_fix_request_run">Запустить игру</string>
+    <string name="support_fix_request_run">Запросить исправление</string>
     <string name="support_fix_request_failed">Не удалось начать индивидуальное исправление. Повторите попытку.</string>
     <string name="support_fix_upgrade_reason">Индивидуальные исправления входят в каждый тариф.</string>
     <string name="support_fix_quota">Вы пока израсходовали все индивидуальные исправления.</string>

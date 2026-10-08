@@ -914,10 +914,10 @@
     <string name="support_new_debug_run">Ny fejlsøgningskørsel</string>
     <string name="support_fix_request_action">Bed om en tilpasset rettelse</string>
     <string name="support_fix_request_title">Bed om en tilpasset rettelse</string>
-    <string name="support_fix_request_message">AI kan ændre dette spils filer eller bygge en ny driver eller emulator til din enhed. Først kører den spillet én gang for at måle problemet. Hvis en tilpasset rettelse ikke kan hjælpe, fortæller AI dig det, og det bruger ikke en tilpasset rettelse.</string>
+    <string name="support_fix_request_message">AI kan ændre dette spils filer eller bygge en ny driver eller emulator til din enhed. Hvis du allerede har sendt en rapport, gennemgår den rapporten nu. Hvis ikke, kører den spillet én gang for at måle problemet.</string>
     <string name="support_fix_request_left">Tilpassede rettelser tilbage: %1$d af %2$d.</string>
     <string name="support_fix_request_left_resets">Tilpassede rettelser tilbage: %1$d af %2$d (nulstilles %3$s).</string>
-    <string name="support_fix_request_run">Kør spillet</string>
+    <string name="support_fix_request_run">Bed om rettelsen</string>
     <string name="support_fix_request_failed">Kunne ikke starte en tilpasset rettelse. Prøv igen.</string>
     <string name="support_fix_upgrade_reason">Tilpassede rettelser er inkluderet i alle abonnementer.</string>
     <string name="support_fix_quota">Du har brugt alle dine tilpassede rettelser indtil videre.</string>
