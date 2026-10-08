@@ -56,7 +56,7 @@ data class RockstarTitleMetadata(
         }.getOrNull()
 
         private fun titleIn(dir: File): File? =
-            dir.listFiles().orEmpty().firstOrNull { it.isFile && it.name.equals(FILE_NAME, true) && hasMagic(it) }
+            dir.listFiles().orEmpty().firstOrNull { it.isFile && it.name.equals(FILE_NAME, true) && hasMagic(it) && parse(it) != null }
 
         private fun hasMagic(file: File): Boolean = runCatching {
             file.inputStream().use { input ->

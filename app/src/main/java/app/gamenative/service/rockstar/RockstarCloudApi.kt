@@ -44,7 +44,7 @@ data class RockstarCloudManifest(val rockstarId: String?, val bytesUsed: Long?, 
 
 data class RockstarCloudDownload(val size: Long, val md5: String, val version: Long?, val lastModified: String?)
 
-data class RockstarCloudPosted(val fileId: String?, val version: Long?, val path: String?, val serverLastModifiedUtc: String?)
+data class RockstarCloudPosted(val version: Long?, val path: String?, val serverLastModifiedUtc: String?)
 
 enum class RockstarResolveType(val wire: String) { NONE("None"), ACCEPT_REMOTE("AcceptRemote"), ACCEPT_LOCAL("AcceptLocal") }
 
@@ -120,6 +120,13 @@ object RockstarCloudApi {
         val form = "ticket=${urlenc(session.ticket)}&titleAccessToken=${urlenc(titleAccessToken)}&fileId=${urlenc(fileId)}" +
             "&resolveType=${resolveType.wire}&hardwareId=${urlenc(hardwareId(context))}"
         cloudCall("GetFile", transferClient) { formBody(form) }.use { resp ->
+            val contentType = resp.header("Content-Type")?.substringBefore(';')?.trim()?.lowercase()
+            if (contentType == "text/xml" || contentType == "application/xml" || contentType == "text/html") {
+                val text = readBounded(resp)
+                Timber.tag(TAG).w("GetFile returned $contentType instead of file bytes: ${excerpt(text)}")
+                throw runCatching { parseXml(text, "GetFile") }.map { statusError("GetFile", it) }
+                    .getOrElse { RockstarCloudException("Rockstar GetFile returned $contentType instead of file bytes") }
+            }
             val version = resp.header("SCS-File-Version")?.trim()?.toLongOrNull()
             val lastModified = resp.header("Last-Modified")
             val hash = resp.header("SCS-File-Hash")
@@ -138,12 +145,6 @@ object RockstarCloudApi {
                         out.write(buf, 0, n)
                     }
                 }
-            }
-            if (version == null && looksLikeXml(dest)) {
-                val text = dest.readText()
-                dest.delete()
-                Timber.tag(TAG).w("GetFile returned XML instead of file bytes: ${excerpt(text)}")
-                throw statusError("GetFile", parseXml(text, "GetFile"))
             }
             val digest = hex(md5.digest())
             if (hash != null) {
@@ -188,27 +189,15 @@ object RockstarCloudApi {
         }
         val results = descendants(root).filter { name(it).equals("Result", ignoreCase = true) && field(it, "FileId") != null }
         val result = results.firstOrNull { field(it, "Path")?.let { p -> sameName(p, fileName) } == true } ?: results.firstOrNull()
-        if (result == null) Timber.tag(TAG).w("PostFile: no Result element in response")
+        if (result == null) {
+            Timber.tag(TAG).w("PostFile: no Result element in response")
+            throw RockstarCloudException("Rockstar PostFile: no Result in response")
+        }
         RockstarCloudPosted(
-            fileId = result?.let { field(it, "FileId") },
-            version = result?.let { field(it, "Version")?.toLongOrNull() },
-            path = result?.let { field(it, "Path") },
-            serverLastModifiedUtc = result?.let { field(it, "ServerLastModifiedUtc") },
+            version = field(result, "Version")?.toLongOrNull(),
+            path = field(result, "Path"),
+            serverLastModifiedUtc = field(result, "ServerLastModifiedUtc"),
         )
-    }
-
-    suspend fun deleteFile(
-        context: Context,
-        session: LauncherSession,
-        titleAccessToken: String,
-        fileId: String,
-        expectedVersion: Long,
-        resolveType: RockstarResolveType = RockstarResolveType.NONE,
-    ): Unit = io("Rockstar cloud delete") {
-        val form = "ticket=${urlenc(session.ticket)}&titleAccessToken=${urlenc(titleAccessToken)}&fileId=${urlenc(fileId)}" +
-            "&expectedVersion=$expectedVersion&resolveType=${resolveType.wire}&hardwareId=${urlenc(hardwareId(context))}"
-        cloudXml("DeleteFile") { formBody(form) }
-        Unit
     }
 
     fun hardwareId(context: Context): String {
@@ -359,13 +348,6 @@ object RockstarCloudApi {
             out.toByteArray()
         }
         return String(bytes, Charsets.UTF_8)
-    }
-
-    private fun looksLikeXml(file: File): Boolean {
-        if (file.length() > MAX_XML_BYTES) return false
-        val head = file.inputStream().use { input -> ByteArray(64).let { it.copyOf(input.read(it).coerceAtLeast(0)) } }
-        val text = String(head, Charsets.UTF_8).trimStart('\uFEFF', ' ', '\r', '\n', '\t')
-        return text.startsWith("<?xml") || text.startsWith("<Response")
     }
 
     private fun excerpt(text: String): String = text.take(300).replace(Regex("\\s+"), " ")

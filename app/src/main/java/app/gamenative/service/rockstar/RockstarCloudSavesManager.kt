@@ -108,6 +108,10 @@ object RockstarCloudSavesManager {
         }
     }
 
+    fun forgetSession(gameDir: File) {
+        sessions.remove(gameDir.absolutePath)
+    }
+
     internal fun hasSession(gameDir: File): Boolean = sessions.containsKey(gameDir.absolutePath)
 
     internal fun resetForTest() {
@@ -264,6 +268,10 @@ object RockstarCloudSavesManager {
         }
 
         val ticket = RockstarCloudApi.createLauncherTicket(credentials.scAuthToken)
+        if (ticket.rockstarId != null && session.rockstarId != null && ticket.rockstarId != session.rockstarId) {
+            Timber.tag(TAG).w("Cloud save push skipped for ${session.titleId}: Rockstar account changed since launch")
+            return false
+        }
         val accessToken = RockstarCloudApi.titleAccessToken(ticket, session.rosTitleId)
         val metadataFile = profileDir.listFiles().orEmpty().firstOrNull { it.isFile && it.name.equals(METADATA_FILE, ignoreCase = true) }
         val metadata = metadataFile?.let { RockstarCloudSaveData.readMetadata(it) }.orEmpty()

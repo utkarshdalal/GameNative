@@ -68,4 +68,30 @@ class RockstarCloudSaveDataTest {
         assertTrue(RockstarCloudSaveData.readMetadata(File(temporary.root, "missing.dat")).isEmpty())
         assertTrue(RockstarCloudSaveData.readMetadata(temporary.newFolder("dir")).isEmpty())
     }
+
+    private fun single(name: String, json: String): ByteArray =
+        BitWriter().bits(3).zeros(4).record(name, json).zeros(16).toByteArray()
+
+    @Test fun acceptsUtf8Strings() {
+        val json = """{"Slot":2,"LastMission":"Négociation – 救援","PosixTime":1790535331}"""
+        assertEquals(json, RockstarCloudSaveData.parse(single("SGTA50002", json))["SGTA50002"])
+    }
+
+    @Test fun acceptsWhitespaceBetweenTokens() {
+        val json = "{\n\t\"Slot\": 4,\r\n\t\"LastMission\": \"Prologue\"\n}"
+        assertEquals(json, RockstarCloudSaveData.parse(single("SGTA50004", json))["SGTA50004"])
+    }
+
+    @Test fun rejectsRawControlByteInString() {
+        val json = "{\"Slot\":5,\"LastMission\":\"Pro\u0001logue\"}"
+        assertTrue(RockstarCloudSaveData.parse(single("SGTA50005", json)).isEmpty())
+    }
+
+    @Test fun pathologicalInputFinishesQuickly() {
+        val started = System.nanoTime()
+        val result = RockstarCloudSaveData.parse(ByteArray(100 * 1024) { '{'.code.toByte() })
+        val elapsedMs = (System.nanoTime() - started) / 1_000_000
+        assertTrue(result.isEmpty())
+        assertTrue("took ${elapsedMs}ms", elapsedMs < 2000)
+    }
 }

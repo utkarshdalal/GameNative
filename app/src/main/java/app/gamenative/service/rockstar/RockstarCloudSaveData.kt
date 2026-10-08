@@ -1,6 +1,7 @@
 package app.gamenative.service.rockstar
 
 import java.io.File
+import java.nio.ByteBuffer
 import org.json.JSONObject
 
 /**
@@ -9,8 +10,9 @@ import org.json.JSONObject
  * eight bit alignments is scanned for a NUL-terminated file name followed by a balanced JSON
  * object, and each object is paired with the nearest preceding name in that alignment.
  *
- * The format is not fully decoded; a miss only degrades the metadata shown in the cloud-save
- * conflict dialog and never affects syncing itself.
+ * The format is not fully decoded. The JSON matched to a save is sent as that file's
+ * `fileMetadata` when it is uploaded, and a miss uploads `{}`, so a wrong or missing pairing
+ * changes the metadata stored in the cloud for that save; the save bytes themselves are unaffected.
  */
 object RockstarCloudSaveData {
     private const val MAX_SIZE = 0x26FD0
@@ -42,20 +44,26 @@ object RockstarCloudSaveData {
 
     private fun scan(b: ByteArray, result: MutableMap<String, String>) {
         var name: String? = null
+        var budget = 8L * b.size + MAX_JSON
         var i = 0
-        while (i < b.size) {
+        while (i < b.size && budget > 0) {
             val c = b[i].toInt() and 0xff
             if (c == '{'.code) {
                 val end = jsonEnd(b, i)
-                if (end > 0) {
-                    val text = String(b, i, end - i, Charsets.US_ASCII)
-                    val valid = runCatching { JSONObject(text).length() > 0 }.getOrDefault(false)
-                    if (valid) {
-                        name?.let { if (it !in result) result[it] = text }
-                        name = null
-                        i = end
-                        continue
-                    }
+                if (end < 0) {
+                    val resume = maxOf(-end - 1, i + 1)
+                    budget -= resume - i
+                    i = resume
+                    continue
+                }
+                budget -= end - i
+                val text = decode(b, i, end)
+                val valid = text != null && runCatching { JSONObject(text).length() > 0 }.getOrDefault(false)
+                if (valid) {
+                    name?.let { if (it !in result) result[it] = text!! }
+                    name = null
+                    i = end
+                    continue
                 }
             }
             if (isNameChar(c) && (i == 0 || b[i - 1].toInt() == 0)) {
@@ -72,15 +80,21 @@ object RockstarCloudSaveData {
         }
     }
 
+    private fun decode(b: ByteArray, start: Int, end: Int): String? = runCatching {
+        Charsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(b, start, end - start)).toString()
+    }.getOrNull()
+
     private fun jsonEnd(b: ByteArray, start: Int): Int {
         var depth = 0
         var quoted = false
         var j = start
         while (j < b.size && j - start < MAX_JSON) {
             val c = b[j].toInt() and 0xff
-            if (c < 0x20 || c > 0x7e) return -1
             if (quoted) {
+                if (c < 0x20 || c == 0xc0 || c == 0xc1 || c >= 0xf5) return -j - 1
                 if (c == '\\'.code) j++ else if (c == '"'.code) quoted = false
+            } else if (c > 0x7e || (c < 0x20 && c != '\t'.code && c != '\n'.code && c != '\r'.code)) {
+                return -j - 1
             } else if (c == '"'.code) {
                 quoted = true
             } else if (c == '{'.code) {
@@ -90,6 +104,6 @@ object RockstarCloudSaveData {
             }
             j++
         }
-        return -1
+        return -minOf(j, b.size) - 1
     }
 }

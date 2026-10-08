@@ -3006,7 +3006,9 @@ fun preLaunchApp(
             }
         }
 
-        if (gameSource == GameSource.STEAM && (container.isLaunchHeadlessSteam || container.isLaunchBionicSteam) && !container.isLocalSavesOnly) {
+        if (gameSource == GameSource.STEAM && (container.isLaunchHeadlessSteam || container.isLaunchBionicSteam) &&
+            !container.isLocalSavesOnly && !bootToContainer && !isOffline
+        ) {
             try {
                 val rockstarGameDir = File(SteamService.getAppDirPath(gameId))
                 if (RockstarLaunchSupport.isRockstarTitle(rockstarGameDir)) {
@@ -3041,6 +3043,8 @@ fun preLaunchApp(
             } catch (e: Throwable) {
                 Timber.tag("RockstarCloud").w("Cloud save pull failed for $appId: ${e.javaClass.simpleName}")
             }
+        } else {
+            runCatching { RockstarCloudSavesManager.forgetSession(File(SteamService.getAppDirPath(gameId))) }
         }
 
         val postSyncInfo = SteamService.beginLaunchApp(

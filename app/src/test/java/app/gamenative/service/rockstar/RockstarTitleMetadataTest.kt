@@ -156,4 +156,12 @@ class RockstarTitleMetadataTest {
         assertNotNull(RockstarTitleMetadata.find(File(game, "a")))
         assertNull(RockstarTitleMetadata.find(File(game, "missing")))
     }
+
+    @Test fun skipsUnreadableTitleForValidNestedOne() {
+        val game = temporary.newFolder("game")
+        File(game, "title.rgl").writeBytes(byteArrayOf(82, 71, 76, 77) + ByteArray(200) { it.toByte() })
+        val nested = File(game, "x64").apply { mkdirs() }
+        val metadata = File(nested, "title.rgl").apply { writeBytes(rglm(gta5)) }
+        assertEquals(metadata, RockstarTitleMetadata.find(game))
+    }
 }
