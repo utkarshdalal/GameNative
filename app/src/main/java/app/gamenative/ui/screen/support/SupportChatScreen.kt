@@ -272,6 +272,11 @@ internal fun ColumnScope.SupportChat(
                         when (val result = SupportApi.fixRequest(conversationId)) {
                             is SupportApi.FixRequestResult.Started -> {
                                 fixRequestOpen = false
+                                if (result.prompted) {
+                                    fixRequestBusy = false
+                                    viewModel.refreshConversation()
+                                    return@launch
+                                }
                                 DebugRunParamsHolder.set(
                                     targetAppId,
                                     DebugRunParams(attach = setOf(DebugRunParams.ATTACH_CPU)),
@@ -282,6 +287,7 @@ internal fun ColumnScope.SupportChat(
                             is SupportApi.FixRequestResult.Quota -> fixRequestError = result.message
                                 ?: result.resetsAt?.let { context.getString(R.string.support_fix_quota_resets, fixResetDate(it)) }
                                 ?: fixQuotaFallback
+                            SupportApi.FixRequestResult.InProgress -> fixRequestError = context.getString(R.string.support_fix_request_in_progress)
                             SupportApi.FixRequestResult.UpgradeRequired -> {
                                 fixRequestOpen = false
                                 upgradeReason = SupportApi.REASON_FIX_UPGRADE
@@ -336,7 +342,7 @@ internal fun ColumnScope.SupportChat(
             ActionButton(
                 text = stringResource(R.string.support_fix_request_action),
                 icon = Icons.Filled.Build,
-                enabled = appId != null && !runBusy,
+                enabled = appId != null && !runBusy && conversation?.fixes?.reason != "fix_in_progress",
                 onClick = {
                     fixRequestError = null
                     fixRequestOpen = true

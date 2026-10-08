@@ -1090,11 +1090,12 @@
     <string name="support_new_debug_run">Nuova sessione di debug</string>
     <string name="support_fix_request_action">Chiedi una correzione personalizzata</string>
     <string name="support_fix_request_title">Chiedi una correzione personalizzata</string>
-    <string name="support_fix_request_message">L\'AI può modificare i file di questo gioco o creare un nuovo driver o emulatore per il tuo dispositivo. Prima avvia il gioco una volta per misurare il problema. Se una correzione personalizzata non può aiutare, l\'AI te lo dice e non viene usata alcuna correzione personalizzata.</string>
+    <string name="support_fix_request_message">L\'AI può modificare i file di questo gioco o creare un nuovo driver o emulatore per il tuo dispositivo. Se hai già inviato un report, lo esamina ora. Altrimenti, avvia il gioco una volta per misurare il problema.</string>
     <string name="support_fix_request_left">Correzioni personalizzate rimaste: %1$d su %2$d.</string>
     <string name="support_fix_request_left_resets">Correzioni personalizzate rimaste: %1$d su %2$d (si azzerano il %3$s).</string>
-    <string name="support_fix_request_run">Avvia il gioco</string>
+    <string name="support_fix_request_run">Chiedi la correzione</string>
     <string name="support_fix_request_failed">Impossibile avviare una correzione personalizzata. Riprova.</string>
+    <string name="support_fix_request_in_progress">Una correzione personalizzata per questo gioco è già in preparazione.</string>
     <string name="support_fix_upgrade_reason">Le correzioni personalizzate sono incluse in ogni piano.</string>
     <string name="support_fix_quota">Hai usato tutte le tue correzioni personalizzate per ora.</string>
     <string name="support_fix_quota_resets">Hai usato tutte le tue correzioni personalizzate. Si azzerano il %1$s.</string>

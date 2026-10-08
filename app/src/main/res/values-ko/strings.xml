@@ -1098,11 +1098,12 @@
     <string name="support_new_debug_run">새 디버그 실행</string>
     <string name="support_fix_request_action">맞춤 수정 요청</string>
     <string name="support_fix_request_title">맞춤 수정 요청</string>
-    <string name="support_fix_request_message">AI가 이 게임의 파일을 변경하거나 기기에 맞는 새 드라이버 또는 에뮬레이터를 빌드할 수 있습니다. 먼저 게임을 한 번 실행하여 문제를 측정합니다. 맞춤 수정으로 해결할 수 없으면 AI가 알려 드리며, 이 경우 맞춤 수정 횟수는 차감되지 않습니다.</string>
+    <string name="support_fix_request_message">AI가 이 게임의 파일을 변경하거나 기기에 맞는 새 드라이버 또는 에뮬레이터를 빌드할 수 있습니다. 이미 보고서를 보냈다면 지금 그 보고서를 검토합니다. 보내지 않았다면 게임을 한 번 실행하여 문제를 측정합니다.</string>
     <string name="support_fix_request_left">남은 맞춤 수정: %2$d회 중 %1$d회.</string>
     <string name="support_fix_request_left_resets">남은 맞춤 수정: %2$d회 중 %1$d회 (%3$s에 초기화).</string>
-    <string name="support_fix_request_run">게임 실행</string>
+    <string name="support_fix_request_run">수정 요청</string>
     <string name="support_fix_request_failed">맞춤 수정을 시작하지 못했습니다. 다시 시도하세요.</string>
+    <string name="support_fix_request_in_progress">이 게임의 맞춤 수정이 이미 준비 중입니다.</string>
     <string name="support_fix_upgrade_reason">맞춤 수정은 모든 요금제에 포함되어 있습니다.</string>
     <string name="support_fix_quota">현재 맞춤 수정을 모두 사용했습니다.</string>
     <string name="support_fix_quota_resets">맞춤 수정을 모두 사용했습니다. %1$s에 초기화됩니다.</string>

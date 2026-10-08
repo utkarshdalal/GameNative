@@ -1065,11 +1065,12 @@
     <string name="support_new_debug_run">Neuer Debug-Lauf</string>
     <string name="support_fix_request_action">Individuellen Fix anfragen</string>
     <string name="support_fix_request_title">Individuellen Fix anfragen</string>
-    <string name="support_fix_request_message">Die AI kann die Dateien dieses Spiels ändern oder einen neuen Treiber oder Emulator für dein Gerät bauen. Zuerst startet sie das Spiel einmal, um das Problem zu messen. Wenn ein individueller Fix nicht helfen kann, sagt dir die AI das, und es wird kein individueller Fix verbraucht.</string>
+    <string name="support_fix_request_message">Die AI kann die Dateien dieses Spiels ändern oder einen neuen Treiber oder Emulator für dein Gerät bauen. Wenn du schon einen Bericht gesendet hast, prüft sie diesen Bericht jetzt. Wenn nicht, startet sie das Spiel einmal, um das Problem zu messen.</string>
     <string name="support_fix_request_left">Verbleibende individuelle Fixes: %1$d von %2$d.</string>
     <string name="support_fix_request_left_resets">Verbleibende individuelle Fixes: %1$d von %2$d (Zurücksetzung am %3$s).</string>
-    <string name="support_fix_request_run">Spiel starten</string>
+    <string name="support_fix_request_run">Fix anfragen</string>
     <string name="support_fix_request_failed">Der individuelle Fix konnte nicht gestartet werden. Versuche es erneut.</string>
+    <string name="support_fix_request_in_progress">Für dieses Spiel wird bereits ein individueller Fix vorbereitet.</string>
     <string name="support_fix_upgrade_reason">Individuelle Fixes sind in jedem Plan enthalten.</string>
     <string name="support_fix_quota">Du hast vorerst alle deine individuellen Fixes verbraucht.</string>
     <string name="support_fix_quota_resets">Du hast alle deine individuellen Fixes verbraucht. Sie werden am %1$s zurückgesetzt.</string>

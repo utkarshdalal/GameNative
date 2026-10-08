@@ -114,9 +114,10 @@ object SupportApi {
     }
 
     sealed class FixRequestResult {
-        data class Started(val fixes: Fixes?) : FixRequestResult()
+        data class Started(val fixes: Fixes?, val prompted: Boolean) : FixRequestResult()
         data class Quota(val message: String?, val resetsAt: Long?) : FixRequestResult()
         data object UpgradeRequired : FixRequestResult()
+        data object InProgress : FixRequestResult()
         data class Failed(val reason: String?) : FixRequestResult()
     }
 
@@ -701,7 +702,7 @@ object SupportApi {
             }) { Raw(it.code, it.body.string()) } ?: return@withContext FixRequestResult.Failed(NOT_SIGNED_IN)
             val json = runCatching { JSONObject(raw.body) }.getOrNull()
             if (raw.code in 200..299) {
-                return@withContext FixRequestResult.Started(json?.optJSONObject("fixes")?.let { parseFixes(it) })
+                return@withContext FixRequestResult.Started(json?.optJSONObject("fixes")?.let { parseFixes(it) }, json?.optBoolean("prompted", false) == true)
             }
             val reason = json?.let { it.str("error") ?: it.str("reason") }
             Timber.tag(TAG).w("fix-request HTTP ${raw.code}: $reason")
@@ -710,6 +711,7 @@ object SupportApi {
                     message = json?.str("message"),
                     resetsAt = json?.time("resets_at")?.takeIf { it > 0 },
                 )
+                reason == "fix_in_progress" -> FixRequestResult.InProgress
                 reason == REASON_UPGRADE_REQUIRED || reason == REASON_NO_SUBSCRIPTION -> FixRequestResult.UpgradeRequired
                 else -> FixRequestResult.Failed(reason)
             }

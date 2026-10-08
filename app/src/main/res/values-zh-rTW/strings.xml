@@ -1085,11 +1085,12 @@
     <string name="support_new_debug_run">新的偵錯執行</string>
     <string name="support_fix_request_action">請求客製修正</string>
     <string name="support_fix_request_title">請求客製修正</string>
-    <string name="support_fix_request_message">AI 可以修改此遊戲的檔案，或為你的裝置建置新的驅動程式或模擬器。它會先執行一次遊戲來測量問題。如果客製修正無法解決問題，AI 會告訴你，並且不會消耗客製修正次數。</string>
+    <string name="support_fix_request_message">AI 可以修改此遊戲的檔案，或為你的裝置建置新的驅動程式或模擬器。如果你已經傳送過報告，它會立即檢視該報告。如果沒有，它會執行一次遊戲來測量問題。</string>
     <string name="support_fix_request_left">剩餘客製修正：%1$d / %2$d。</string>
     <string name="support_fix_request_left_resets">剩餘客製修正：%1$d / %2$d（%3$s 重設）。</string>
-    <string name="support_fix_request_run">執行遊戲</string>
+    <string name="support_fix_request_run">請求修正</string>
     <string name="support_fix_request_failed">無法開始客製修正。請再試一次。</string>
+    <string name="support_fix_request_in_progress">此遊戲的自訂修正已在準備中。</string>
     <string name="support_fix_upgrade_reason">所有方案都包含客製修正。</string>
     <string name="support_fix_quota">你目前已用完所有客製修正次數。</string>
     <string name="support_fix_quota_resets">你已用完所有客製修正次數。將於 %1$s 重設。</string>

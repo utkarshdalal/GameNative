@@ -1067,11 +1067,12 @@
     <string name="support_new_debug_run">新しいデバッグ実行</string>
     <string name="support_fix_request_action">カスタム修正を依頼</string>
     <string name="support_fix_request_title">カスタム修正を依頼</string>
-    <string name="support_fix_request_message">AI はこのゲームのファイルを変更したり、お使いのデバイス向けに新しいドライバーやエミュレーターをビルドしたりできます。まずゲームを一度実行して問題を計測します。カスタム修正で解決できない場合は AI がお知らせし、カスタム修正の回数は消費されません。</string>
+    <string name="support_fix_request_message">AI はこのゲームのファイルを変更したり、お使いのデバイス向けに新しいドライバーやエミュレーターをビルドしたりできます。すでにレポートを送信している場合は、そのレポートを今すぐ確認します。送信していない場合は、ゲームを一度実行して問題を計測します。</string>
     <string name="support_fix_request_left">残りのカスタム修正: %2$d 回中 %1$d 回。</string>
     <string name="support_fix_request_left_resets">残りのカスタム修正: %2$d 回中 %1$d 回（%3$s にリセット）。</string>
-    <string name="support_fix_request_run">ゲームを実行</string>
+    <string name="support_fix_request_run">修正を依頼</string>
     <string name="support_fix_request_failed">カスタム修正を開始できませんでした。もう一度お試しください。</string>
+    <string name="support_fix_request_in_progress">このゲームのカスタム修正はすでに準備中です。</string>
     <string name="support_fix_upgrade_reason">カスタム修正はすべてのプランに含まれています。</string>
     <string name="support_fix_quota">現在、カスタム修正をすべて使い切りました。</string>
     <string name="support_fix_quota_resets">カスタム修正をすべて使い切りました。%1$s にリセットされます。</string>

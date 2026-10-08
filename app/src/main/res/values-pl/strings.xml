@@ -1109,11 +1109,12 @@
     <string name="support_new_debug_run">Nowe debugowanie</string>
     <string name="support_fix_request_action">Poproś o własną poprawkę</string>
     <string name="support_fix_request_title">Poproś o własną poprawkę</string>
-    <string name="support_fix_request_message">AI może zmienić pliki tej gry albo zbudować nowy sterownik lub emulator dla Twojego urządzenia. Najpierw uruchamia grę raz, aby zmierzyć problem. Jeśli własna poprawka nie może pomóc, AI Ci o tym powie i nie zużyje to żadnej poprawki.</string>
+    <string name="support_fix_request_message">AI może zmienić pliki tej gry albo zbudować nowy sterownik lub emulator dla Twojego urządzenia. Jeśli raport został już wysłany, AI przejrzy go teraz. Jeśli nie, uruchomi grę raz, aby zmierzyć problem.</string>
     <string name="support_fix_request_left">Pozostałe własne poprawki: %1$d z %2$d.</string>
     <string name="support_fix_request_left_resets">Pozostałe własne poprawki: %1$d z %2$d (odnowienie %3$s).</string>
-    <string name="support_fix_request_run">Uruchom grę</string>
+    <string name="support_fix_request_run">Poproś o poprawkę</string>
     <string name="support_fix_request_failed">Nie udało się rozpocząć własnej poprawki. Spróbuj ponownie.</string>
+    <string name="support_fix_request_in_progress">Niestandardowa poprawka dla tej gry jest już przygotowywana.</string>
     <string name="support_fix_upgrade_reason">Własne poprawki są częścią każdego planu.</string>
     <string name="support_fix_quota">Na razie wykorzystano wszystkie Twoje własne poprawki.</string>
     <string name="support_fix_quota_resets">Wykorzystano wszystkie Twoje własne poprawki. Odnowią się %1$s.</string>
