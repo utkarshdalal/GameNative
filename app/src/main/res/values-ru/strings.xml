@@ -642,6 +642,7 @@
     <string name="rockstar_link_skip">Не сейчас</string>
     <string name="rockstar_link_done">Учетная запись Steam привязана к Rockstar</string>
     <string name="rockstar_link_failed">Не удалось привязать учетную запись Steam: %1$s</string>
+    <string name="rockstar_link_unchecked">Не удалось проверить привязку Steam. Выйдите из Rockstar в Настройках и войдите снова, чтобы повторить попытку.</string>
     <string name="ea_login_required_title">Требуется вход в EA</string>
     <string name="ea_login_success">Выполнен вход в EA как %1$s</string>
     <string name="ea_login_failed">Не удалось войти в EA: %1$s</string>

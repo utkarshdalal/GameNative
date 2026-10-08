@@ -1630,6 +1630,7 @@
     <string name="rockstar_link_skip">稍後再說</string>
     <string name="rockstar_link_done">已將 Steam 帳戶連結至 Rockstar</string>
     <string name="rockstar_link_failed">無法連結 Steam 帳戶：%1$s</string>
+    <string name="rockstar_link_unchecked">無法檢查 Steam 連結。請在設定中登出 Rockstar，然後重新登入以重試。</string>
     <string name="ea_login_required_title">需要登入 EA</string>
     <string name="ea_login_success">已以 %1$s 身分登入 EA</string>
     <string name="ea_login_failed">EA 登入失敗：%1$s</string>

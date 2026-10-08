@@ -1642,6 +1642,7 @@
     <string name="rockstar_link_skip">Non ora</string>
     <string name="rockstar_link_done">Account Steam collegato a Rockstar</string>
     <string name="rockstar_link_failed">Impossibile collegare l\'account Steam: %1$s</string>
+    <string name="rockstar_link_unchecked">Impossibile verificare il collegamento con Steam. Esci da Rockstar nelle Impostazioni e accedi di nuovo per riprovare.</string>
     <string name="ea_login_required_title">Accesso EA richiesto</string>
     <string name="ea_login_success">Accesso a EA effettuato come %1$s</string>
     <string name="ea_login_failed">Accesso EA non riuscito: %1$s</string>

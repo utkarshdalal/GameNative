@@ -1521,6 +1521,7 @@
     <string name="rockstar_link_skip">Ikke nu</string>
     <string name="rockstar_link_done">Steam-konto knyttet til Rockstar</string>
     <string name="rockstar_link_failed">Kunne ikke knytte Steam-kontoen: %1$s</string>
+    <string name="rockstar_link_unchecked">Kunne ikke kontrollere Steam-tilknytningen. Log ud af Rockstar i Indstillinger, og log ind igen for at prøve igen.</string>
     <string name="ea_login_required_title">EA-login påkrævet</string>
     <string name="ea_login_success">Logget ind på EA som %1$s</string>
     <string name="ea_login_failed">EA-login mislykkedes: %1$s</string>

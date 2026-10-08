@@ -1585,6 +1585,7 @@
     <string name="rockstar_link_skip">Nicht jetzt</string>
     <string name="rockstar_link_done">Steam-Konto mit Rockstar verknüpft</string>
     <string name="rockstar_link_failed">Steam-Konto konnte nicht verknüpft werden: %1$s</string>
+    <string name="rockstar_link_unchecked">Die Steam-Verknüpfung konnte nicht geprüft werden. Melde dich in den Einstellungen bei Rockstar ab und wieder an, um es erneut zu versuchen.</string>
     <string name="ea_login_required_title">EA-Anmeldung erforderlich</string>
     <string name="ea_login_success">Bei EA angemeldet als %1$s</string>
     <string name="ea_login_failed">EA-Anmeldung fehlgeschlagen: %1$s</string>

@@ -1911,6 +1911,7 @@
     <string name="rockstar_link_skip">Not now</string>
     <string name="rockstar_link_done">Steam account linked to Rockstar</string>
     <string name="rockstar_link_failed">Could not link the Steam account: %1$s</string>
+    <string name="rockstar_link_unchecked">Could not check the Steam link. Sign out of Rockstar in Settings and sign in again to retry.</string>
     <string name="ea_login_required_title">EA sign-in required</string>
     <string name="ea_login_success">Signed in to EA as %1$s</string>
     <string name="ea_login_failed">EA sign-in failed: %1$s</string>

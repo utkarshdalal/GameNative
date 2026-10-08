@@ -88,7 +88,8 @@ class RockstarOAuthActivity : ComponentActivity() {
     }
 
     private val noLoginGuid = Runnable {
-        Timber.w("Rockstar sign-in: no loginGuid within 5 s of the token; skipping the Steam link check")
+        Timber.w("Rockstar sign-in: no loginGuid within 10 s of the token; skipping the Steam link check")
+        SnackbarManager.show(getString(R.string.rockstar_link_unchecked))
         done(token)
     }
 
@@ -99,7 +100,7 @@ class RockstarOAuthActivity : ComponentActivity() {
             return
         }
         token = value
-        if (loginGuid != null) checkLink() else poller.postDelayed(noLoginGuid, 5000)
+        if (loginGuid != null) checkLink() else poller.postDelayed(noLoginGuid, 10000)
     }
 
     private fun checkLink() {
@@ -117,6 +118,7 @@ class RockstarOAuthActivity : ComponentActivity() {
         val json = if (status == 200) runCatching { JSONObject(body) }.getOrNull() else null
         if (json == null) {
             Timber.w("Rockstar sign-in: linked accounts check failed (%d); skipping the Steam link", status)
+            SnackbarManager.show(getString(R.string.rockstar_link_unchecked))
             return done(token)
         }
         val nickname = json.optString("nickname")
@@ -125,7 +127,11 @@ class RockstarOAuthActivity : ComponentActivity() {
             .mapNotNull { accounts?.optJSONObject(it) }
             .firstOrNull { it.optString("onlineService").equals("steam", ignoreCase = true) }
         if (steam != null) {
-            Timber.i("Rockstar sign-in: account %s is linked to Steam as %s", nickname, steam.optString("username"))
+            val linked = steam.optString("username").trim()
+            val current = RockstarSteamTicket.persona()?.trim()
+            val same = current != null && linked.equals(current, ignoreCase = true)
+            Timber.i("Rockstar sign-in: account is linked to Steam; matches the current Steam account: %s", same)
+            if (!same) SnackbarManager.show(getString(R.string.rockstar_link_refused))
             if (!forceLinkStep && !java.io.File(filesDir, "rockstar_force_link").isFile) return done(token)
         }
         val guid = loginGuid ?: return done(token)
@@ -157,10 +163,11 @@ class RockstarOAuthActivity : ComponentActivity() {
 
     private fun onLinkResult(status: Int, body: String) {
         try {
+            val error = runCatching { JSONObject(body).optJSONObject("data")?.optString("errorCode") }.getOrNull().orEmpty()
             when {
-                status == 200 -> SnackbarManager.show(getString(R.string.rockstar_link_done))
                 body.contains(RockstarConstants.ALREADY_LINKED_ERROR) ->
                     SnackbarManager.show(getString(R.string.rockstar_link_refused))
+                status == 200 && error.isEmpty() -> SnackbarManager.show(getString(R.string.rockstar_link_done))
                 else -> {
                     val message = runCatching { JSONObject(body).optString("message") }.getOrNull()
                         ?.takeIf { it.isNotBlank() } ?: "HTTP $status"
@@ -236,7 +243,7 @@ class RockstarOAuthActivity : ComponentActivity() {
 
         @JavascriptInterface
         fun onLinkedAccounts(status: Int, body: String) {
-            Timber.i("Rockstar sign-in: linked accounts -> %d %s", status, body.take(300))
+            Timber.i("Rockstar sign-in: linked accounts -> %d (%d bytes)", status, body.length)
             runOnUiThread { this@RockstarOAuthActivity.onLinkedAccounts(status, body) }
         }
 

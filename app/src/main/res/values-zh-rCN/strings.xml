@@ -1628,6 +1628,7 @@
     <string name="rockstar_link_skip">以后再说</string>
     <string name="rockstar_link_done">已将 Steam 账户关联到 Rockstar</string>
     <string name="rockstar_link_failed">无法关联 Steam 账户：%1$s</string>
+    <string name="rockstar_link_unchecked">无法检查 Steam 关联。请在设置中退出 Rockstar 登录，然后重新登录以重试。</string>
     <string name="ea_login_required_title">需要登录 EA</string>
     <string name="ea_login_success">已以 %1$s 身份登录 EA</string>
     <string name="ea_login_failed">EA 登录失败：%1$s</string>

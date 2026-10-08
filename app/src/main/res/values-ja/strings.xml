@@ -1691,6 +1691,7 @@
     <string name="rockstar_link_skip">後で</string>
     <string name="rockstar_link_done">Steam アカウントを Rockstar にリンクしました</string>
     <string name="rockstar_link_failed">Steam アカウントをリンクできませんでした: %1$s</string>
+    <string name="rockstar_link_unchecked">Steam のリンクを確認できませんでした。設定で Rockstar からサインアウトし、再度サインインしてやり直してください。</string>
     <string name="ea_login_required_title">EA へのサインインが必要です</string>
     <string name="ea_login_success">%1$s として EA にサインインしました</string>
     <string name="ea_login_failed">EA へのサインインに失敗しました: %1$s</string>
