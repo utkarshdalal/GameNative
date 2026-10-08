@@ -1100,6 +1100,7 @@
     <string name="support_fix_request_left_resets">Залишилося індивідуальних виправлень: %1$d з %2$d (оновляться %3$s).</string>
     <string name="support_fix_request_run">Запросити виправлення</string>
     <string name="support_fix_request_failed">Не вдалося почати індивідуальне виправлення. Спробуйте ще раз.</string>
+    <string name="support_fix_request_in_progress">Індивідуальне виправлення для цієї гри вже готується.</string>
     <string name="support_fix_upgrade_reason">Індивідуальні виправлення входять до кожного тарифу.</string>
     <string name="support_fix_quota">Ви поки що використали всі індивідуальні виправлення.</string>
     <string name="support_fix_quota_resets">Ви використали всі індивідуальні виправлення. Вони оновляться %1$s.</string>

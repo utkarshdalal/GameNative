@@ -1281,6 +1281,7 @@ https://gamenative.app
     <string name="support_fix_request_left_resets">Осталось индивидуальных исправлений: %1$d из %2$d (обновятся %3$s).</string>
     <string name="support_fix_request_run">Запросить исправление</string>
     <string name="support_fix_request_failed">Не удалось начать индивидуальное исправление. Повторите попытку.</string>
+    <string name="support_fix_request_in_progress">Индивидуальное исправление для этой игры уже готовится.</string>
     <string name="support_fix_upgrade_reason">Индивидуальные исправления входят в каждый тариф.</string>
     <string name="support_fix_quota">Вы пока израсходовали все индивидуальные исправления.</string>
     <string name="support_fix_quota_resets">Вы израсходовали все индивидуальные исправления. Они обновятся %1$s.</string>

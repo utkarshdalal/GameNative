@@ -1111,6 +1111,7 @@
     <string name="support_fix_request_left_resets">Soluciones personalizadas restantes: %1$d de %2$d (se restablecen el %3$s).</string>
     <string name="support_fix_request_run">Pedir la solución</string>
     <string name="support_fix_request_failed">No se pudo iniciar una solución personalizada. Vuelve a intentarlo.</string>
+    <string name="support_fix_request_in_progress">Ya se está preparando una solución personalizada para este juego.</string>
     <string name="support_fix_upgrade_reason">Las soluciones personalizadas están incluidas en todos los planes.</string>
     <string name="support_fix_quota">Has usado todas tus soluciones personalizadas por ahora.</string>
     <string name="support_fix_quota_resets">Has usado todas tus soluciones personalizadas. Se restablecen el %1$s.</string>

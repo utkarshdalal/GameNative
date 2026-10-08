@@ -919,6 +919,7 @@
     <string name="support_fix_request_left_resets">Correções personalizadas restantes: %1$d de %2$d (renovam em %3$s).</string>
     <string name="support_fix_request_run">Pedir a correção</string>
     <string name="support_fix_request_failed">Não foi possível iniciar uma correção personalizada. Tente novamente.</string>
+    <string name="support_fix_request_in_progress">Uma correção personalizada para este jogo já está sendo preparada.</string>
     <string name="support_fix_upgrade_reason">As correções personalizadas fazem parte de todos os planos.</string>
     <string name="support_fix_quota">Você usou todas as suas correções personalizadas por enquanto.</string>
     <string name="support_fix_quota_resets">Você usou todas as suas correções personalizadas. Elas renovam em %1$s.</string>

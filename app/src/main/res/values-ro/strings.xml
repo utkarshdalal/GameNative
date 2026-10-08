@@ -1105,6 +1105,7 @@
     <string name="support_fix_request_left_resets">Remedieri personalizate rămase: %1$d din %2$d (se resetează pe %3$s).</string>
     <string name="support_fix_request_run">Cere remedierea</string>
     <string name="support_fix_request_failed">Nu s-a putut porni o remediere personalizată. Încearcă din nou.</string>
+    <string name="support_fix_request_in_progress">O remediere personalizată pentru acest joc este deja în pregătire.</string>
     <string name="support_fix_upgrade_reason">Remedierile personalizate sunt incluse în fiecare plan.</string>
     <string name="support_fix_quota">Ai folosit deocamdată toate remedierile personalizate.</string>
     <string name="support_fix_quota_resets">Ai folosit toate remedierile personalizate. Se resetează pe %1$s.</string>

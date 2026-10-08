@@ -1072,6 +1072,7 @@
     <string name="support_fix_request_left_resets">残りのカスタム修正: %2$d 回中 %1$d 回（%3$s にリセット）。</string>
     <string name="support_fix_request_run">修正を依頼</string>
     <string name="support_fix_request_failed">カスタム修正を開始できませんでした。もう一度お試しください。</string>
+    <string name="support_fix_request_in_progress">このゲームのカスタム修正はすでに準備中です。</string>
     <string name="support_fix_upgrade_reason">カスタム修正はすべてのプランに含まれています。</string>
     <string name="support_fix_quota">現在、カスタム修正をすべて使い切りました。</string>
     <string name="support_fix_quota_resets">カスタム修正をすべて使い切りました。%1$s にリセットされます。</string>

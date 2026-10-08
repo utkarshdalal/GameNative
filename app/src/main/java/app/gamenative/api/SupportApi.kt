@@ -117,6 +117,7 @@ object SupportApi {
         data class Started(val fixes: Fixes?, val prompted: Boolean) : FixRequestResult()
         data class Quota(val message: String?, val resetsAt: Long?) : FixRequestResult()
         data object UpgradeRequired : FixRequestResult()
+        data object InProgress : FixRequestResult()
         data class Failed(val reason: String?) : FixRequestResult()
     }
 
@@ -710,6 +711,7 @@ object SupportApi {
                     message = json?.str("message"),
                     resetsAt = json?.time("resets_at")?.takeIf { it > 0 },
                 )
+                reason == "fix_in_progress" -> FixRequestResult.InProgress
                 reason == REASON_UPGRADE_REQUIRED || reason == REASON_NO_SUBSCRIPTION -> FixRequestResult.UpgradeRequired
                 else -> FixRequestResult.Failed(reason)
             }

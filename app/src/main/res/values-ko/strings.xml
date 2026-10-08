@@ -1103,6 +1103,7 @@
     <string name="support_fix_request_left_resets">남은 맞춤 수정: %2$d회 중 %1$d회 (%3$s에 초기화).</string>
     <string name="support_fix_request_run">수정 요청</string>
     <string name="support_fix_request_failed">맞춤 수정을 시작하지 못했습니다. 다시 시도하세요.</string>
+    <string name="support_fix_request_in_progress">이 게임의 맞춤 수정이 이미 준비 중입니다.</string>
     <string name="support_fix_upgrade_reason">맞춤 수정은 모든 요금제에 포함되어 있습니다.</string>
     <string name="support_fix_quota">현재 맞춤 수정을 모두 사용했습니다.</string>
     <string name="support_fix_quota_resets">맞춤 수정을 모두 사용했습니다. %1$s에 초기화됩니다.</string>

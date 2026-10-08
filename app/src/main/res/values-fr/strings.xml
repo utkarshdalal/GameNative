@@ -1121,6 +1121,7 @@
     <string name="support_fix_request_left_resets">Correctifs personnalisés restants : %1$d sur %2$d (réinitialisation le %3$s).</string>
     <string name="support_fix_request_run">Demander le correctif</string>
     <string name="support_fix_request_failed">Impossible de démarrer un correctif personnalisé. Veuillez réessayer.</string>
+    <string name="support_fix_request_in_progress">Un correctif personnalisé est déjà en préparation pour ce jeu.</string>
     <string name="support_fix_upgrade_reason">Les correctifs personnalisés sont inclus dans tous les abonnements.</string>
     <string name="support_fix_quota">Vous avez utilisé tous vos correctifs personnalisés pour le moment.</string>
     <string name="support_fix_quota_resets">Vous avez utilisé tous vos correctifs personnalisés. Ils seront réinitialisés le %1$s.</string>

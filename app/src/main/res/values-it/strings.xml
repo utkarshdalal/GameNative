@@ -1095,6 +1095,7 @@
     <string name="support_fix_request_left_resets">Correzioni personalizzate rimaste: %1$d su %2$d (si azzerano il %3$s).</string>
     <string name="support_fix_request_run">Chiedi la correzione</string>
     <string name="support_fix_request_failed">Impossibile avviare una correzione personalizzata. Riprova.</string>
+    <string name="support_fix_request_in_progress">Una correzione personalizzata per questo gioco è già in preparazione.</string>
     <string name="support_fix_upgrade_reason">Le correzioni personalizzate sono incluse in ogni piano.</string>
     <string name="support_fix_quota">Hai usato tutte le tue correzioni personalizzate per ora.</string>
     <string name="support_fix_quota_resets">Hai usato tutte le tue correzioni personalizzate. Si azzerano il %1$s.</string>

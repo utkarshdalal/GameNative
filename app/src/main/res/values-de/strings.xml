@@ -1070,6 +1070,7 @@
     <string name="support_fix_request_left_resets">Verbleibende individuelle Fixes: %1$d von %2$d (Zurücksetzung am %3$s).</string>
     <string name="support_fix_request_run">Fix anfragen</string>
     <string name="support_fix_request_failed">Der individuelle Fix konnte nicht gestartet werden. Versuche es erneut.</string>
+    <string name="support_fix_request_in_progress">Für dieses Spiel wird bereits ein individueller Fix vorbereitet.</string>
     <string name="support_fix_upgrade_reason">Individuelle Fixes sind in jedem Plan enthalten.</string>
     <string name="support_fix_quota">Du hast vorerst alle deine individuellen Fixes verbraucht.</string>
     <string name="support_fix_quota_resets">Du hast alle deine individuellen Fixes verbraucht. Sie werden am %1$s zurückgesetzt.</string>

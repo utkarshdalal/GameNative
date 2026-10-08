@@ -1276,6 +1276,7 @@
     <string name="support_fix_request_left_resets">Custom fixes left: %1$d of %2$d (resets on %3$s).</string>
     <string name="support_fix_request_run">Ask for the fix</string>
     <string name="support_fix_request_failed">Could not start a custom fix. Try again.</string>
+    <string name="support_fix_request_in_progress">A custom fix for this game is already being prepared.</string>
     <string name="support_fix_upgrade_reason">Custom fixes are part of every plan.</string>
     <string name="support_fix_quota">You have used all your custom fixes for now.</string>
     <string name="support_fix_quota_resets">You have used all your custom fixes. They reset on %1$s.</string>
