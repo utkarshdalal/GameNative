@@ -333,6 +333,7 @@ public class WinHandler {
             this.socket.send(this.sendPacket);
             return true;
         } catch (IOException e) {
+            Log.w(TAG, "WinHandler send failed (code " + this.sendData.get(0) + ")", e);
             return false;
         }
     }
@@ -401,6 +402,7 @@ public class WinHandler {
             if (!sendPacket(CLIENT_PORT) && (onGetProcessInfoListener = this.onGetProcessInfoListener) != null) {
                 onGetProcessInfoListener.onGetProcessInfo(0, 0, null);
             }
+            Log.d(TAG, "WinHandler listProcesses sent (initReceived=" + this.initReceived + ")");
         });
     }
 
@@ -573,6 +575,7 @@ public class WinHandler {
         ExternalController externalController;
         switch (requestCode) {
             case RequestCodes.INIT:
+                Log.i(TAG, "WinHandler INIT received from port " + port);
                 this.initReceived = true;
                 synchronized (this.actions) {
                     this.actions.notify();
@@ -776,6 +779,7 @@ public class WinHandler {
             }
         }
         refreshControllerMappings();
+        Log.i(TAG, "WinHandler start: localhost=" + this.localhost);
         this.running = true;
         activeInstance = this;
         startSendThread();
@@ -785,6 +789,7 @@ public class WinHandler {
                 this.socket = datagramSocket;
                 datagramSocket.setReuseAddress(true);
                 this.socket.bind(new InetSocketAddress((InetAddress) null, SERVER_PORT));
+                Log.i(TAG, "WinHandler bound to " + this.socket.getLocalSocketAddress());
                 while (this.running) {
                     this.socket.receive(this.receivePacket);
                     synchronized (this.actions) {
@@ -793,7 +798,8 @@ public class WinHandler {
                         handleRequest(requestCode, this.receivePacket.getPort());
                     }
                 }
-            } catch (IOException ignored) {
+            } catch (IOException e) {
+                Log.e(TAG, "WinHandler receive loop ended", e);
             }
         });
         startRumblePoller();
