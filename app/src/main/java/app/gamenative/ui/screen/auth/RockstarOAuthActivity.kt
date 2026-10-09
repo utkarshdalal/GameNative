@@ -56,6 +56,7 @@ class RockstarOAuthActivity : ComponentActivity() {
     private var fingerprint: String = ""
     private var webView: WebView? = null
     private var steamAppId = 0
+    private var activateTitle = false
     private var token: String? = null
     private var loginGuid: String? = null
     private var linkChecked = false
@@ -132,6 +133,7 @@ class RockstarOAuthActivity : ComponentActivity() {
             val same = current?.let { linked.equals(it, ignoreCase = true) }
             Timber.i("Rockstar sign-in: account is linked to Steam; matches the current Steam account: %s", same ?: "unknown")
             if (same == false) SnackbarManager.show(getString(R.string.rockstar_link_refused))
+            if (activateTitle && same != false) return validateTitle()
             if (!forceLinkStep && !java.io.File(filesDir, "rockstar_force_link").isFile) return done(token)
         }
         val guid = loginGuid ?: return done(token)
@@ -158,6 +160,56 @@ class RockstarOAuthActivity : ComponentActivity() {
                     done(token)
                 }
                 .show()
+        }
+    }
+
+    /*
+     * The page's own step for a launch from Steam on a signed-in account: the Steam block and the
+     * launched title's name go to validateExternalAndLoggedInUser, which is where Rockstar mirrors
+     * the title's ownership onto the account. The answer is only logged; sign-in is already done.
+     */
+    /*
+     * The user-form route never runs the page's own autoLogin, so when a title activation brings
+     * a signed-in user here the saved loginGuid is presented through the same call the launcher
+     * makes; on success the stored token is reused and the link check runs. Anything else leaves
+     * the form for the user, as before.
+     */
+    private fun resumeSavedSession(view: WebView) {
+        if (!activateTitle) return
+        val creds = RockstarAuthManager.load(this) ?: return
+        if (creds.loginGuid.isEmpty()) return
+        Timber.i("Rockstar sign-in: resuming the saved session for the title activation")
+        view.evaluateJavascript(
+            "window.gnAutoLogin(${JSONObject.quote(creds.loginGuid)}, ${JSONObject.quote(creds.rememberedMachineToken)})", null,
+        )
+    }
+
+    private fun onAutoLogin(status: Int, body: String) {
+        if (finished || token != null) return
+        val creds = RockstarAuthManager.load(this) ?: return
+        if (status != 200) {
+            Timber.w("Rockstar sign-in: saved session not resumed (%d); the form stays for the user", status)
+            return
+        }
+        val guid = runCatching { JSONObject(body).optString("loginGuid") }.getOrNull()?.takeIf { it.isNotEmpty() } ?: creds.loginGuid
+        loginGuid = guid
+        tokenReady(creds.scAuthToken)
+    }
+
+    private fun validateTitle() {
+        val guid = loginGuid ?: return done(token)
+        lifecycleScope.launch {
+            val minted = RockstarSteamTicket.mint(steamAppId)
+            if (minted == null || finished) {
+                minted?.close()
+                done(token)
+                return@launch
+            }
+            ticket = minted
+            Timber.i("Rockstar sign-in: validating the Steam account for the title (app %d)", steamAppId)
+            val steamJson = minted.externalPlatformInfo().toString()
+            val view = webView ?: return@launch done(token)
+            view.evaluateJavascript("window.gnValidateSteam(${JSONObject.quote(guid)}, ${JSONObject.quote(steamJson)})", null)
         }
     }
 
@@ -248,6 +300,18 @@ class RockstarOAuthActivity : ComponentActivity() {
         }
 
         @JavascriptInterface
+        fun onAutoLogin(status: Int, body: String) {
+            Timber.i("Rockstar sign-in: auto login -> %d %s", status, body.take(300))
+            runOnUiThread { this@RockstarOAuthActivity.onAutoLogin(status, body) }
+        }
+
+        @JavascriptInterface
+        fun onValidateResult(status: Int, body: String) {
+            Timber.i("Rockstar sign-in: title validation -> %d %s", status, body.take(600))
+            runOnUiThread { done(token) }
+        }
+
+        @JavascriptInterface
         fun onLinkResult(status: Int, body: String) {
             Timber.i("Rockstar sign-in: Steam link -> %d %s", status, body.take(300))
             runOnUiThread { this@RockstarOAuthActivity.onLinkResult(status, body) }
@@ -273,6 +337,7 @@ class RockstarOAuthActivity : ComponentActivity() {
             finish()
             return
         }
+        activateTitle = intent.getBooleanExtra(RockstarConstants.ACTIVATE_TITLE_EXTRA, false)
 
         steamAppId = intent.getIntExtra(RockstarConstants.STEAM_APP_ID_EXTRA, 0)
 
@@ -311,6 +376,7 @@ class RockstarOAuthActivity : ComponentActivity() {
                                         filesDir, activeTitle, BRIDGE, android.os.Build.MODEL ?: "GAMENATIVE",
                                     ),
                                 ) { Timber.i("Rockstar sign-in: shim installed -> %s", it) }
+                                resumeSavedSession(view)
                                 poller.postDelayed(watchCookie, 1000)
                             }
                         }

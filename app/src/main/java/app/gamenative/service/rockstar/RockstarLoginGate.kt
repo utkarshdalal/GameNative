@@ -20,9 +20,9 @@ import timber.log.Timber
 object RockstarLoginGate {
     @Volatile private var pending: CompletableDeferred<String?>? = null
 
-    suspend fun ensureSignedIn(context: Context, activeTitle: String, steamAppId: Int = 0): Result<Unit> {
+    suspend fun ensureSignedIn(context: Context, activeTitle: String, steamAppId: Int = 0, activateTitle: Boolean = false): Result<Unit> {
         require(activeTitle.matches(Regex("[a-z0-9_]{1,127}")))
-        if (RockstarAuthManager.isLoggedIn(context)) return Result.success(Unit)
+        if (RockstarAuthManager.isLoggedIn(context) && !activateTitle) return Result.success(Unit)
         val deferred = CompletableDeferred<String?>()
         pending = deferred
         val keepAliveBefore = SteamService.keepAlive
@@ -30,6 +30,7 @@ object RockstarLoginGate {
         val intent = Intent(context, RockstarOAuthActivity::class.java)
             .putExtra(RockstarConstants.ACTIVE_TITLE_EXTRA, activeTitle)
             .putExtra(RockstarConstants.STEAM_APP_ID_EXTRA, steamAppId)
+            .putExtra(RockstarConstants.ACTIVATE_TITLE_EXTRA, activateTitle)
         if (context !is Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(intent)
         val token = try { deferred.await() } finally {
