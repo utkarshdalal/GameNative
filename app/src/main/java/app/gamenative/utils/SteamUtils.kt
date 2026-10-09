@@ -1572,8 +1572,11 @@ object SteamUtils {
      * own Steam Input action manifest: such games hand input to Steam Input and get nothing otherwise.
      */
     fun isSteamInputEnabled(container: Container, appId: Int): Boolean =
-        container.getExtra("useSteamInput", "false").toBoolean() ||
+        if (SteamService.hasOwnSteamInputManifest(appId)) {
             SteamService.hasCompatibleSteamInputManifest(appId, container.isLaunchHeadlessSteam)
+        } else {
+            container.getExtra("useSteamInput", "false").toBoolean()
+        }
 
     /**
      * Per-app Steam Input preference the client reads from localconfig
