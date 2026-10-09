@@ -1572,7 +1572,8 @@ object SteamUtils {
      * own Steam Input action manifest: such games hand input to Steam Input and get nothing otherwise.
      */
     fun isSteamInputEnabled(container: Container, appId: Int): Boolean =
-        container.getExtra("useSteamInput", "false").toBoolean() || SteamService.hasOwnSteamInputManifest(appId)
+        container.getExtra("useSteamInput", "false").toBoolean() ||
+            SteamService.hasCompatibleSteamInputManifest(appId, container.isLaunchHeadlessSteam)
 
     /**
      * Per-app Steam Input preference the client reads from localconfig
@@ -1583,7 +1584,8 @@ object SteamUtils {
         val useSteamInput = isSteamInputEnabled(container, appId.toInt())
         for (key in listOf("SteamController_XBoxSupport", "SteamController_GenericGamepadSupport")) {
             val existing = root.children.firstOrNull { it.name == key }
-            if (existing != null) existing.value = "1" else if (useSteamInput) root.children.add(KeyValue(key, "1"))
+            val value = if (useSteamInput) "1" else "0"
+            if (existing != null) existing.value = value else root.children.add(KeyValue(key, value))
         }
         var apps = root.children.firstOrNull { it.name == "apps" }
         if (apps == null) { apps = KeyValue("apps"); root.children.add(apps) }

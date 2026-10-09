@@ -441,6 +441,9 @@ private val REAL_STEAM_PROCESSES = setOf(
     "steamerrorreporter",
     "steamerrorreporter64",
     "gameoverlayui",
+    "gameoverlayui64",
+    "steamhost32",
+    "steamhost64",
     "eastub",
 )
 
@@ -4192,6 +4195,8 @@ private fun setupXEnvironment(
             }
             if (preInstallCommands.isNotEmpty()) {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing prerequisites..."))
+            } else if (container.isLaunchHeadlessSteam && gameSource == GameSource.STEAM && !bootToContainer) {
+                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(context.getString(R.string.steam_starting)))
             } else {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Launching game..."))
             }

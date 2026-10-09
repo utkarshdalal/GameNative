@@ -676,6 +676,7 @@ class MainViewModel @Inject constructor(
             delay(100)
 
             val container = apiJob.await()
+            if (container.isLaunchHeadlessSteam) bootAwaitingGameWindow = true
 
             if (app.gamenative.BuildConfig.XR_BUILD &&
                 container.isLaunchImmersiveMode() &&

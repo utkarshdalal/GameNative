@@ -695,6 +695,7 @@
     <string name="launch_dependency_failed_title">Ошибка загрузки зависимости запуска</string>
     <string name="launch_steam_client_beta">Запустить Steam Client</string>
     <string name="launch_steam_client_description">Рекомендуется Headless\nТребуется для EA, Rockstar, Ubisoft и других лаунчеров\nВключает мультиплеер и устраняет проблемы с DRM и контроллером</string>
+    <string name="steam_starting">Запуск Steam…</string>
     <string name="launch_bionic_steam">Включить экспериментальный Bionic Steam</string>
     <string name="left_analog_stick">Левый аналоговый джойстик</string>
     <string name="left_stick">Левый джойстик</string>

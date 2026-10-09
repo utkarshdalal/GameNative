@@ -2368,6 +2368,14 @@ class SteamService : Service(), IChallengeUrlChanged {
             return resolveSteamInputManifestFile(appId, getAppDirPath(appId)) != null
         }
 
+        /** True when the game's own manifest carries a layout for the pad types we can present. */
+        fun hasCompatibleSteamInputManifest(appId: Int, headless: Boolean): Boolean {
+            if (!hasOwnSteamInputManifest(appId)) return false
+            val manifestFile = resolveSteamInputManifestFile(appId, getAppDirPath(appId)) ?: return false
+            val types = if (headless) HOST_CONTROLLER_TYPES else PREFERRED_CONTROLLER_TYPES
+            return loadConfigFromManifest(manifestFile, types) != null
+        }
+
         /** Layout the headless client activates for the pad, which identifies as an Xbox 360 controller. */
         fun resolveSteamHostControllerVdfText(appId: Int): String? {
             if (hasOwnSteamInputManifest(appId)) {
@@ -2391,7 +2399,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 Timber.e(e, "Failed to parse Steam Input manifest config at ${manifestFile.path}")
                 return null
             }
-            return configText ?: manifestText
+            return configText
         }
 
         private fun parseManifestForConfig(
