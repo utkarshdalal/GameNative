@@ -344,6 +344,9 @@
     <string name="performance_hud_fps_limiter_off">無限制</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
     <string name="performance_hud_fps_limiter_lsfg_base">限制基礎幀率。螢幕幀率為上限乘以 LSFG 倍數。</string>
+    <string name="performance_hud_input_throttling">輸入節流</string>
+    <string name="performance_hud_input_throttling_description">限制搖桿和扳機動作傳送到遊戲的頻率。實體控制器的按鍵不會被延遲。</string>
+    <string name="performance_hud_input_throttling_rate">節流頻率</string>
     <string name="performance_hud_presets">預設</string>
     <string name="performance_hud_presets_description">快速切換常用 HUD 版面配置。</string>
     <string name="performance_hud_preset_fps_only">1</string>

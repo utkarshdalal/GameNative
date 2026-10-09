@@ -10,7 +10,6 @@ import android.graphics.ColorFilter;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Point;
-import android.graphics.PointF;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 import android.os.VibrationEffect;
@@ -30,6 +29,9 @@ import androidx.core.graphics.ColorUtils;
 import app.gamenative.R;
 import app.gamenative.data.GyroSettings;
 import app.gamenative.data.ShooterModeConfig;
+import app.gamenative.ui.screen.xserver.GamepadStateOutput;
+import app.gamenative.ui.screen.xserver.InputThrottling;
+import app.gamenative.ui.screen.xserver.MouseLookStepper;
 import com.winlator.inputcontrols.Binding;
 import com.winlator.inputcontrols.BindingCombo;
 import com.winlator.inputcontrols.ControlElement;
@@ -49,10 +51,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Timer;
-import java.util.TimerTask;
 
 public class InputControlsView extends View {
     private static final long SHOOTER_SPRINT_TAP_DURATION_MS = 120;
@@ -82,9 +83,12 @@ public class InputControlsView extends View {
     private TouchpadView touchpadView;
     private XServer xServer;
     private final Bitmap[] icons = new Bitmap[40];
-    private Timer mouseMoveTimer;
-    private final PointF mouseMoveOffset = new PointF();
-    private final PointF mouseMoveRemainder = new PointF();
+    // Own instances until setInputPipeline() shares the session's with physical controllers.
+    private GamepadStateOutput gamepadOutput;
+    private MouseLookStepper mouseLook;
+    // One mouse-look source per axis: the last control to move an axis sets it.
+    private final Object touchMouseX = new Object();
+    private final Object touchMouseY = new Object();
     private boolean showTouchscreenControls = true;
 
     // Shooter mode state
@@ -94,6 +98,13 @@ public class InputControlsView extends View {
     private float joystickCenterX, joystickCenterY;
     private float joystickCurrentX, joystickCurrentY;
     private final boolean[] joystickStates = new boolean[4];
+    // Directions of the current joystick move, reused across moves.
+    private final boolean[] joystickMoveDirections = new boolean[4];
+    // Thumb positions at the last redraw request.
+    private float requestedJoystickX = Float.NaN;
+    private float requestedJoystickY = Float.NaN;
+    private float requestedRightJoystickX = Float.NaN;
+    private float requestedRightJoystickY = Float.NaN;
     // Look-around (right side or fire button look-through)
     private int lookPointerId = -1;
     private float lookLastX, lookLastY;
@@ -190,6 +201,11 @@ public class InputControlsView extends View {
             }
         });
         lookThroughTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
+        InputThrottling throttling = new InputThrottling();
+        gamepadOutput = new GamepadStateOutput(throttling, GamepadStateOutput.winHandlerSender(() -> xServer));
+        mouseLook = new MouseLookStepper(throttling, (dx, dy) -> {
+            if (xServer != null) xServer.injectPointerMoveDelta(dx, dy);
+        });
         setClickable(true);
         setFocusable(true);
         setFocusableInTouchMode(true);
@@ -281,7 +297,10 @@ public class InputControlsView extends View {
         if (profile != null) {
             if (!profile.isElementsLoaded()) profile.loadElements(this);
             if (showTouchscreenControls) {
-                for (ControlElement element : profile.getElements()) {
+                // Indexed: an iterator would allocate on every redraw.
+                List<ControlElement> elements = profile.getElements();
+                for (int i = 0, count = elements.size(); i < count; i++) {
+                    ControlElement element = elements.get(i);
                     // Hide STICK elements replaced by container shooter mode
                     if (isStickHiddenByShooterMode(element)) continue;
                     element.draw(canvas);
@@ -564,7 +583,17 @@ public class InputControlsView extends View {
     public void setXServer(XServer xServer) {
         this.xServer = xServer;
         applyShooterMouseInputMode();
-        createMouseMoveTimer();
+    }
+
+    /** Shares the session's gamepad output and mouse-look with the physical controller handler. */
+    public void setInputPipeline(GamepadStateOutput gamepadOutput, MouseLookStepper mouseLook) {
+        releaseTouchMouseLook();
+        this.gamepadOutput = gamepadOutput;
+        this.mouseLook = mouseLook;
+    }
+
+    public GamepadStateOutput getGamepadOutput() {
+        return gamepadOutput;
     }
 
     public int getMaxWidth() {
@@ -575,8 +604,7 @@ public class InputControlsView extends View {
     protected void onDetachedFromWindow() {
         cancelTouchRouting();
         gyroController.onDetachedFromWindow();
-        if (mouseMoveTimer != null)
-            mouseMoveTimer.cancel();
+        releaseTouchMouseLook();
         super.onDetachedFromWindow();
     }
 
@@ -590,28 +618,19 @@ public class InputControlsView extends View {
         return (int)Mathf.roundTo(getHeight(), snappingSize);
     }
 
-    private void createMouseMoveTimer() {
-        if (profile != null && mouseMoveTimer == null) {
-            final float cursorSpeed = profile.getCursorSpeed();
-            mouseMoveTimer = new Timer();
-            mouseMoveTimer.schedule(new TimerTask() {
-                @Override
-                public void run() {
-                    if (mouseMoveOffset.x == 0f) mouseMoveRemainder.x = 0f;
-                    if (mouseMoveOffset.y == 0f) mouseMoveRemainder.y = 0f;
-                    if (mouseMoveOffset.x == 0f && mouseMoveOffset.y == 0f) return;
-
-                    float scaledX = mouseMoveOffset.x * 10 * cursorSpeed + mouseMoveRemainder.x;
-                    float scaledY = mouseMoveOffset.y * 10 * cursorSpeed + mouseMoveRemainder.y;
-                    int deltaX = (int)scaledX;
-                    int deltaY = (int)scaledY;
-                    mouseMoveRemainder.set(scaledX - deltaX, scaledY - deltaY);
-                    if (deltaX != 0 || deltaY != 0) {
-                        xServer.injectPointerMoveDelta(deltaX, deltaY);
-                    }
-                }
-            }, 0, 1000 / 60);
+    private void updateTouchMouseLook(Binding binding, boolean isActionDown, float offset) {
+        Object key = MouseLookStepper.isHorizontal(binding) ? touchMouseX : touchMouseY;
+        if (!isActionDown) {
+            mouseLook.remove(key);
+            return;
         }
+        ControlsProfile speedProfile = profile != null ? profile : gyroProfile;
+        mouseLook.hold(key, binding, offset, speedProfile != null ? speedProfile.getCursorSpeed() : 1f);
+    }
+
+    private void releaseTouchMouseLook() {
+        mouseLook.remove(touchMouseX);
+        mouseLook.remove(touchMouseY);
     }
 
     private void processJoystickInput(ExternalController controller) {
@@ -954,12 +973,7 @@ public class InputControlsView extends View {
 
     private void commitGamepadState() {
         if (xServer == null || profile == null) return;
-        WinHandler winHandler = xServer.getWinHandler();
-        if (winHandler != null) {
-            GamepadState state = profile.getGamepadState();
-            winHandler.sendGamepadState();
-            winHandler.sendVirtualGamepadState(state);
-        }
+        if (xServer.getWinHandler() != null) gamepadOutput.sendForced(profile.getGamepadState());
     }
 
     private void releaseShooterSprint() {
@@ -1051,7 +1065,13 @@ public class InputControlsView extends View {
             handleInputEvent(bindings[i], true, value);
             rightJoystickStates[i] = true;
         }
-        invalidate();
+        // The ring only moves with the thumb (floating joystick).
+        if (ControlElement.movedVisibly(rightJoystickCurrentX, rightJoystickCurrentY,
+                requestedRightJoystickX, requestedRightJoystickY)) {
+            requestedRightJoystickX = rightJoystickCurrentX;
+            requestedRightJoystickY = rightJoystickCurrentY;
+            invalidate();
+        }
     }
 
     private void drawDynamicJoystick(Canvas canvas, float centerX, float centerY, float currentX, float currentY, float sizeMultiplier) {
@@ -1141,14 +1161,12 @@ public class InputControlsView extends View {
         Binding[] bindings = getJoystickBindings(movementType);
 
         float analogDeadzone = getMovementJoystickDeadzone();
-        float digitalDeadzone = ControlElement.STICK_DEAD_ZONE;
         float sensitivity = getMovementStickSensitivity();
-        boolean[] newStates = {
-            deltaY <= -digitalDeadzone,   // up
-            deltaX >= digitalDeadzone,    // right
-            deltaY >= digitalDeadzone,    // down
-            deltaX <= -digitalDeadzone    // left
-        };
+        boolean[] newStates = joystickMoveDirections;
+        newStates[0] = ControlElement.isStickDirectionActive(-deltaY, joystickStates[0], !bindings[0].isAnalog()); // up
+        newStates[1] = ControlElement.isStickDirectionActive(deltaX, joystickStates[1], !bindings[1].isAnalog());  // right
+        newStates[2] = ControlElement.isStickDirectionActive(deltaY, joystickStates[2], !bindings[2].isAnalog());  // down
+        newStates[3] = ControlElement.isStickDirectionActive(-deltaX, joystickStates[3], !bindings[3].isAnalog()); // left
 
         for (int i = 0; i < 4; i++) {
             float value = (i == 1 || i == 3) ? deltaX : deltaY;
@@ -1165,7 +1183,12 @@ public class InputControlsView extends View {
         }
 
         updateShooterSprint(deltaX, deltaY);
-        invalidate();
+        // The ring only moves with the thumb (floating joystick).
+        if (ControlElement.movedVisibly(joystickCurrentX, joystickCurrentY, requestedJoystickX, requestedJoystickY)) {
+            requestedJoystickX = joystickCurrentX;
+            requestedJoystickY = joystickCurrentY;
+            invalidate();
+        }
     }
 
     private void drawShooterJoystick(Canvas canvas) {
@@ -1190,6 +1213,8 @@ public class InputControlsView extends View {
         joystickCenterY = y;
         joystickCurrentX = x;
         joystickCurrentY = y;
+        requestedJoystickX = x;
+        requestedJoystickY = y;
         invalidate();
         return true;
     }
@@ -1202,6 +1227,8 @@ public class InputControlsView extends View {
         rightJoystickCenterY = y;
         rightJoystickCurrentX = x;
         rightJoystickCurrentY = y;
+        requestedRightJoystickX = x;
+        requestedRightJoystickY = y;
         invalidate();
         return true;
     }
@@ -1525,6 +1552,8 @@ public class InputControlsView extends View {
                     for (byte i = 0, count = (byte)event.getPointerCount(); i < count; i++) {
                         float x = event.getX(i);
                         float y = event.getY(i);
+                        // Indexed: an iterator would allocate per pointer on every move.
+                        List<ControlElement> elements = profile.getElements();
 
                         // Shooter mode intercept per pointer
                         if (shooterModeActive || containerShooterModeRuntime) {
@@ -1532,16 +1561,16 @@ public class InputControlsView extends View {
                             if (handleShooterTouchMovePointer(pid, x, y)) continue;
                             // Non-intercepted pointer in shooter mode: try elements with correct ID
                             handled = false;
-                            for (ControlElement element : profile.getElements()) {
-                                if (element.handleTouchMove(pid, x, y)) handled = true;
+                            for (int e = 0, elementCount = elements.size(); e < elementCount; e++) {
+                                if (elements.get(e).handleTouchMove(pid, x, y)) handled = true;
                             }
                             continue;
                         }
 
                         handled = false;
                         int pid = event.getPointerId(i);
-                        for (ControlElement element : profile.getElements()) {
-                            if (element.handleTouchMove(pid, x, y)) handled = true;
+                        for (int e = 0, elementCount = elements.size(); e < elementCount; e++) {
+                            if (elements.get(e).handleTouchMove(pid, x, y)) handled = true;
                         }
                         if (lookThroughPointerState.owns(pid)) {
                             LookThroughPointerState.Delta delta = lookThroughPointerState.move(
@@ -1594,12 +1623,12 @@ public class InputControlsView extends View {
                     break;
             }
 
-            // commit on-screen joystick state
+            // commit on-screen joystick state if it changed; finger motion follows input throttling
             WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
             if (winHandler != null) {
                 GamepadState state = profile.getGamepadState();
-                winHandler.sendGamepadState();
-                winHandler.sendVirtualGamepadState(state);
+                if (actionMasked == MotionEvent.ACTION_MOVE) gamepadOutput.sendMotion(state);
+                else gamepadOutput.send(state);
             }
         }
         return true;
@@ -1805,13 +1834,8 @@ public class InputControlsView extends View {
                 }
                 return;
             }
-            else if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_RIGHT) {
-                mouseMoveOffset.x = isActionDown ? (offset != 0 ? offset : (binding == Binding.MOUSE_MOVE_LEFT ? -1 : 1)) : 0;
-                if (isActionDown) createMouseMoveTimer();
-            }
-            else if (binding == Binding.MOUSE_MOVE_DOWN || binding == Binding.MOUSE_MOVE_UP) {
-                mouseMoveOffset.y = isActionDown ? (offset != 0 ? offset : (binding == Binding.MOUSE_MOVE_UP ? -1 : 1)) : 0;
-                if (isActionDown) createMouseMoveTimer();
+            else if (binding.isMouseMove()) {
+                updateTouchMouseLook(binding, isActionDown, offset);
             }
             else {
                 Pointer.Button pointerButton = binding.getPointerButton();
@@ -1995,8 +2019,7 @@ public class InputControlsView extends View {
         if (winHandler != null) {
             ExternalController controller = winHandler.getCurrentController();
             if (controller != null) controller.state.copyThumbstick(state, rightStick);
-            winHandler.sendGamepadState();
-            winHandler.sendVirtualGamepadState(state);
+            gamepadOutput.sendMotion(state);
         }
     }
 
@@ -2019,10 +2042,7 @@ public class InputControlsView extends View {
         state.thumbRY = 0f;
 
         WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
-        if (winHandler != null) {
-            winHandler.sendGamepadState();
-            winHandler.sendVirtualGamepadState(state);
-        }
+        if (winHandler != null) gamepadOutput.sendForced(state);
     }
 
     public Bitmap getIcon(byte id) {

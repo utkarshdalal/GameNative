@@ -63,6 +63,7 @@ import com.posthog.PostHog
 import com.skydoves.landscapist.coil.LocalCoilImageLoader
 import com.winlator.core.AppUtils
 import com.winlator.inputcontrols.ControllerManager
+import com.winlator.inputcontrols.ExternalController
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -164,6 +165,7 @@ class MainActivity : ComponentActivity() {
 
         override fun onInputDeviceRemoved(deviceId: Int) {
             ControllerManager.getInstance().onDeviceDisconnected(deviceId)
+            ExternalController.forgetDevice(deviceId)
         }
 
         override fun onInputDeviceChanged(deviceId: Int) {

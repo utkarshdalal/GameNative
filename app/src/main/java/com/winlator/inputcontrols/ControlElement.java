@@ -26,7 +26,14 @@ import java.util.Locale;
 
 public class ControlElement {
     public static final float STICK_DEAD_ZONE = 0.15f;
+    // Keys bound to a stick direction press past STICK_DEAD_ZONE and release once back at or below this.
+    public static final float STICK_RELEASE_THRESHOLD = 0.10f;
+    // Tuned physical sticks already have the user's dead zone removed: keys bound to a direction press past
+    // this small margin, so a stick resting on the dead zone edge doesn't chatter, and release only at 0.
+    public static final float TUNED_STICK_PRESS_THRESHOLD = 0.03f;
     public static final float DPAD_DEAD_ZONE = 0.3f;
+    // Thumb movement below this (finger jitter) doesn't redraw the overlay.
+    public static final float MIN_REDRAW_MOVE_PX = 0.5f;
     public static final float STICK_SENSITIVITY = 3.0f;
     public static final float TRACKPAD_MIN_SPEED = 0.8f;
     public static final float TRACKPAD_MAX_SPEED = 20.0f;
@@ -88,6 +95,30 @@ public class ControlElement {
     private final Rect boundingBox = new Rect();
     private boolean[] states = new boolean[4];
     private boolean[] gamepadAxisActive = new boolean[4];
+    // Active stick directions (up, right, down, left), for the release threshold.
+    private final boolean[] stickDirections = new boolean[4];
+    private PorterDuffColorFilter iconColorFilter;
+    private int iconColorFilterTint;
+    private final Rect iconSrcRect = new Rect();
+    private final Rect iconDstRect = new Rect();
+    // Label and its fitted text size, rebuilt only when what they depend on changes (see getLabel()).
+    private String label;
+    private Type labelType;
+    private String labelText;
+    private BindingCombo labelCombo;
+    private float labelWidth = Float.NaN;
+    private float labelMaxSize;
+    private float labelTextSize;
+    // Fitted text sizes of the range segments for rangeTextSizesRange/Width/Max.
+    private float[] rangeTextSizes;
+    private Range rangeTextSizesRange;
+    private float rangeTextSizesWidth = Float.NaN;
+    private float rangeTextSizesMax;
+    // Thumb position at the last redraw request.
+    private float requestedThumbX = Float.NaN;
+    private float requestedThumbY = Float.NaN;
+    // Directions of the current D-pad or trackpad move, reused across moves.
+    private final boolean[] moveDirections = new boolean[4];
     private boolean radialMenuTouchActive = false;
     private boolean boundingBoxNeedsUpdate = true;
     private String text = "";
@@ -293,6 +324,43 @@ public class ControlElement {
             inputControlsView.handleInputEvent(bindingCombo, isActionDown, offset, bindingSources[index]);
         }
         else inputControlsView.handleInputEvent(bindingCombo, isActionDown, offset);
+    }
+
+    /** A held direction moved: re-sends only its analog members ({@link BindingCombo#getHeldUpdateBindings()}). */
+    private void handleHeldBindingUpdate(int index, float offset) {
+        // Indexed: an iterator would allocate on every touch move.
+        List<Binding> heldBindings = getBindingComboAt(index).getHeldUpdateBindings();
+        for (int i = 0, count = heldBindings.size(); i < count; i++) {
+            inputControlsView.handleInputEvent(heldBindings.get(i), true, offset);
+        }
+    }
+
+    /**
+     * Whether a stick direction is active, value being the deflection towards it. Digital bindings release
+     * only at or below STICK_RELEASE_THRESHOLD, so a stick resting at the dead zone edge doesn't chatter.
+     * Shared by on-screen sticks and physical controllers.
+     */
+    public static boolean isStickDirectionActive(float value, boolean wasActive, boolean digital) {
+        return isStickDirectionActive(value, wasActive, digital, false);
+    }
+
+    /**
+     * As above; {@code tuned}: value comes from a tuned physical stick (see ExternalController#isStickTuningApplied),
+     * whose dead zone is the user's. Analog bindings then follow any deflection, keys use TUNED_STICK_PRESS_THRESHOLD.
+     */
+    public static boolean isStickDirectionActive(float value, boolean wasActive, boolean digital, boolean tuned) {
+        if (tuned) return value > (digital && !wasActive ? TUNED_STICK_PRESS_THRESHOLD : 0f);
+        return value > (wasActive && digital ? STICK_RELEASE_THRESHOLD : STICK_DEAD_ZONE);
+    }
+
+    /** Keys and buttons only: no analog member, not a sequence. */
+    public static boolean isDigital(BindingCombo bindingCombo) {
+        return !bindingCombo.hasAnalog() && !bindingCombo.isSequence();
+    }
+
+    /** Whether a drawn point moved MIN_REDRAW_MOVE_PX or more from the last redraw request (NaN: none yet). */
+    public static boolean movedVisibly(float x, float y, float requestedX, float requestedY) {
+        return !(Math.abs(x - requestedX) < MIN_REDRAW_MOVE_PX && Math.abs(y - requestedY) < MIN_REDRAW_MOVE_PX);
     }
 
     private void handleSimultaneousBindingMembers(
@@ -618,6 +686,53 @@ public class ControlElement {
         return testTextSize * desiredWidth / paint.measureText(text);
     }
 
+    /** Text of a BUTTON or SHOOTER_MODE element, its fitted size in labelTextSize; cached across redraws. */
+    private String getLabel(Paint paint, float width, float maxSize) {
+        BindingCombo combo = getBindingComboAt(0);
+        if (label == null || labelType != type || labelText != text || labelCombo != combo) {
+            label = type == Type.SHOOTER_MODE ? (text != null && !text.isEmpty() ? text : "DJ") : getDisplayText();
+            labelType = type;
+            labelText = text;
+            labelCombo = combo;
+            labelWidth = Float.NaN;
+        }
+        if (labelWidth != width || labelMaxSize != maxSize) {
+            labelTextSize = Math.min(getTextSizeForWidth(paint, label, width), maxSize);
+            labelWidth = width;
+            labelMaxSize = maxSize;
+        }
+        return label;
+    }
+
+    private static final String[][] RANGE_TEXTS = new String[Range.values().length][];
+
+    private static String getRangeText(Range range, int index) {
+        String[] texts = RANGE_TEXTS[range.ordinal()];
+        if (texts == null) {
+            texts = new String[range.max];
+            for (int i = 0; i < texts.length; i++) texts[i] = getRangeTextForIndex(range, i);
+            RANGE_TEXTS[range.ordinal()] = texts;
+        }
+        return texts[index];
+    }
+
+    /** Fitted text size of range segment [index], cached like getLabel(). */
+    private float getRangeTextSize(Paint paint, Range range, int index, float width, float maxSize) {
+        if (rangeTextSizesRange != range || rangeTextSizesWidth != width || rangeTextSizesMax != maxSize) {
+            rangeTextSizes = new float[range.max];
+            Arrays.fill(rangeTextSizes, Float.NaN);
+            rangeTextSizesRange = range;
+            rangeTextSizesWidth = width;
+            rangeTextSizesMax = maxSize;
+        }
+        float size = rangeTextSizes[index];
+        if (Float.isNaN(size)) {
+            size = Math.min(getTextSizeForWidth(paint, getRangeText(range, index), width), maxSize);
+            rangeTextSizes[index] = size;
+        }
+        return size;
+    }
+
     private static String getRangeTextForIndex(Range range, int index) {
         String text = "";
         switch (range) {
@@ -871,8 +986,8 @@ public class ControlElement {
                     drawIcon(canvas, cx, cy, boundingBox.width(), boundingBox.height(), iconId, contentColor);
                 }
                 else {
-                    String text = getDisplayText();
-                    paint.setTextSize(Math.min(getTextSizeForWidth(paint, text, boundingBox.width() - strokeWidth * 2), snappingSize * 2 * scale));
+                    String text = getLabel(paint, boundingBox.width() - strokeWidth * 2, snappingSize * 2 * scale);
+                    paint.setTextSize(labelTextSize);
                     paint.setTextAlign(Paint.Align.CENTER);
                     paint.setStyle(Paint.Style.FILL);
                     paint.setColor(contentColor);
@@ -948,12 +1063,12 @@ public class ControlElement {
                             activeSegmentRight = segmentRight;
                         }
                         paint.setStrokeWidth(strokeWidth);
-                        String text = getRangeTextForIndex(range, index);
+                        String text = getRangeText(range, index);
 
                         if (startX < boundingBox.right && startX + elementSize > boundingBox.left) {
                             paint.setStyle(Paint.Style.FILL);
                             paint.setColor(segmentActive ? activeColor : oldColor);
-                            paint.setTextSize(Math.min(getTextSizeForWidth(paint, text, elementSize - strokeWidth * 2), minTextSize));
+                            paint.setTextSize(getRangeTextSize(paint, range, index, elementSize - strokeWidth * 2, minTextSize));
                             paint.setTextAlign(Paint.Align.CENTER);
                             canvas.drawText(text, startX + elementSize * 0.5f, (y - ((paint.descent() + paint.ascent()) * 0.5f)), paint);
                         }
@@ -1017,12 +1132,12 @@ public class ControlElement {
                             activeSegmentBottom = segmentBottom;
                         }
                         paint.setStrokeWidth(strokeWidth);
-                        String text = getRangeTextForIndex(range, index);
+                        String text = getRangeText(range, index);
 
                         if (startY < boundingBox.bottom && startY + elementSize > boundingBox.top) {
                             paint.setStyle(Paint.Style.FILL);
                             paint.setColor(segmentActive ? activeColor : oldColor);
-                            paint.setTextSize(Math.min(getTextSizeForWidth(paint, text, boundingBox.width() - strokeWidth * 2), minTextSize));
+                            paint.setTextSize(getRangeTextSize(paint, range, index, boundingBox.width() - strokeWidth * 2, minTextSize));
                             paint.setTextAlign(Paint.Align.CENTER);
                             canvas.drawText(text, x, startY + elementSize * 0.5f - ((paint.descent() + paint.ascent()) * 0.5f), paint);
                         }
@@ -1114,8 +1229,8 @@ public class ControlElement {
                 if (iconId > 0) {
                     drawIcon(canvas, cx, cy, boundingBox.width(), boundingBox.height(), iconId, contentColor);
                 } else {
-                    String displayText = (text != null && !text.isEmpty()) ? text : "DJ";
-                    paint.setTextSize(Math.min(getTextSizeForWidth(paint, displayText, boundingBox.width() - strokeWidth * 2), snappingSize * 2 * scale));
+                    String displayText = getLabel(paint, boundingBox.width() - strokeWidth * 2, snappingSize * 2 * scale);
+                    paint.setTextSize(labelTextSize);
                     paint.setTextAlign(Paint.Align.CENTER);
                     paint.setStyle(Paint.Style.FILL);
                     paint.setColor(contentColor);
@@ -1130,13 +1245,18 @@ public class ControlElement {
         Paint paint = inputControlsView.getPaint();
         Bitmap icon = inputControlsView.getIcon((byte)iconId);
         if (icon == null) return;
-        paint.setColorFilter(new PorterDuffColorFilter(tintColor, PorterDuff.Mode.SRC_IN));
+        // Reused: icons are redrawn on every touch move.
+        if (iconColorFilter == null || iconColorFilterTint != tintColor) {
+            iconColorFilter = new PorterDuffColorFilter(tintColor, PorterDuff.Mode.SRC_IN);
+            iconColorFilterTint = tintColor;
+        }
+        paint.setColorFilter(iconColorFilter);
         int margin = (int)(inputControlsView.getSnappingSize() * (shape == Shape.CIRCLE || shape == Shape.SQUARE ? 2.0f : 1.0f) * scale);
         int halfSize = (int)((Math.min(width, height) - margin) * 0.5f);
 
-        Rect srcRect = new Rect(0, 0, icon.getWidth(), icon.getHeight());
-        Rect dstRect = new Rect((int)(cx - halfSize), (int)(cy - halfSize), (int)(cx + halfSize), (int)(cy + halfSize));
-        canvas.drawBitmap(icon, srcRect, dstRect, paint);
+        iconSrcRect.set(0, 0, icon.getWidth(), icon.getHeight());
+        iconDstRect.set((int)(cx - halfSize), (int)(cy - halfSize), (int)(cx + halfSize), (int)(cy + halfSize));
+        canvas.drawBitmap(icon, iconSrcRect, iconDstRect, paint);
         paint.setColorFilter(null);
     }
 
@@ -1261,12 +1381,16 @@ public class ControlElement {
             states[i] = false;
             gamepadAxisActive[i] = false;
         }
+        Arrays.fill(stickDirections, false);
     }
 
     public boolean handleTouchDown(int pointerId, float x, float y) {
         if (currentPointerId == -1 && containsPoint(x, y)) {
             currentPointerId = pointerId;
             currentPointerActivatedButtonBindings = false;
+            // A new touch always redraws its first thumb position.
+            requestedThumbX = Float.NaN;
+            requestedThumbY = Float.NaN;
             inputControlsView.invalidate();
             if (type == Type.BUTTON) {
                 if (isRadialMenuButton()) {
@@ -1346,7 +1470,11 @@ public class ControlElement {
                 if (currentPosition == null) currentPosition = new PointF();
                 currentPosition.x = boundingBox.left + deltaX * radius + radius;
                 currentPosition.y = boundingBox.top + deltaY * radius + radius;
-                final boolean[] states = {deltaY <= -STICK_DEAD_ZONE, deltaX >= STICK_DEAD_ZONE, deltaY >= STICK_DEAD_ZONE, deltaX <= -STICK_DEAD_ZONE};
+                final boolean[] states = stickDirections;
+                states[0] = isStickDirectionActive(-deltaY, states[0], isDigital(getBindingComboAt(0)));
+                states[1] = isStickDirectionActive(deltaX, states[1], isDigital(getBindingComboAt(1)));
+                states[2] = isStickDirectionActive(deltaY, states[2], isDigital(getBindingComboAt(2)));
+                states[3] = isStickDirectionActive(-deltaX, states[3], isDigital(getBindingComboAt(3)));
                 if (handleRadialMenuDirectionalMove(pointerId, states, x, y)) return true;
 
                 for (byte i = 0; i < 4; i++) {
@@ -1370,17 +1498,25 @@ public class ControlElement {
                     }
                     else {
                         boolean state = binding.isMouseMove() ? (states[i] || states[(i+2)%4]) : states[i];
-                        if (binding.isMouseMove() || this.states[i] != state) {
-                            handleBindingInputEvent(i, state, value);
-                        }
+                        if (this.states[i] != state) handleBindingInputEvent(i, state, value);
+                        else if (state) handleHeldBindingUpdate(i, value);
                         this.states[i] = state;
                     }
                 }
 
-                inputControlsView.invalidate();
+                // Only the thumb is drawn from the move.
+                if (movedVisibly(currentPosition.x, currentPosition.y, requestedThumbX, requestedThumbY)) {
+                    requestedThumbX = currentPosition.x;
+                    requestedThumbY = currentPosition.y;
+                    inputControlsView.invalidate();
+                }
             }
             else if (type == Type.TRACKPAD) {
-                final boolean[] states = {deltaY <= -TRACKPAD_MIN_SPEED, deltaX >= TRACKPAD_MIN_SPEED, deltaY >= TRACKPAD_MIN_SPEED, deltaX <= -TRACKPAD_MIN_SPEED};
+                final boolean[] states = moveDirections;
+                states[0] = deltaY <= -TRACKPAD_MIN_SPEED;
+                states[1] = deltaX >= TRACKPAD_MIN_SPEED;
+                states[2] = deltaY >= TRACKPAD_MIN_SPEED;
+                states[3] = deltaX <= -TRACKPAD_MIN_SPEED;
                 if (handleRadialMenuDirectionalMove(pointerId, states, x, y)) return true;
                 int cursorDx = 0;
                 int cursorDy = 0;
@@ -1449,7 +1585,11 @@ public class ControlElement {
                 if (cursorDx != 0 || cursorDy != 0) inputControlsView.getXServer().injectPointerMoveDelta(cursorDx, cursorDy);
             }
             else {
-                final boolean[] states = {deltaY <= -DPAD_DEAD_ZONE, deltaX >= DPAD_DEAD_ZONE, deltaY >= DPAD_DEAD_ZONE, deltaX <= -DPAD_DEAD_ZONE};
+                final boolean[] states = moveDirections;
+                states[0] = deltaY <= -DPAD_DEAD_ZONE;
+                states[1] = deltaX >= DPAD_DEAD_ZONE;
+                states[2] = deltaY >= DPAD_DEAD_ZONE;
+                states[3] = deltaX <= -DPAD_DEAD_ZONE;
                 if (handleRadialMenuDirectionalMove(pointerId, states, x, y)) return true;
 
                 // Release transitions first because opposing stick and mouse-move
@@ -1462,13 +1602,20 @@ public class ControlElement {
                     }
                 }
 
+                // Keys press once; stick and mouse bindings follow the finger.
+                boolean directionsChanged = false;
                 for (byte i = 0; i < 4; i++) {
                     float value = i == 1 || i == 3 ? deltaX : deltaY;
-                    if (states[i]) handleBindingInputEvent(i, true, value);
+                    if (states[i]) {
+                        if (!this.states[i]) handleBindingInputEvent(i, true, value);
+                        else handleHeldBindingUpdate(i, value);
+                    }
+                    directionsChanged |= this.states[i] != states[i];
                     this.states[i] = states[i];
                 }
 
-                inputControlsView.invalidate();
+                // Only the held directions are drawn.
+                if (directionsChanged) inputControlsView.invalidate();
             }
 
             return true;

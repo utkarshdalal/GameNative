@@ -1039,6 +1039,9 @@ https://gamenative.app
     <string name="performance_hud_fps_limiter_off">Без ограничений</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
     <string name="performance_hud_fps_limiter_lsfg_base">Ограничивает базовую частоту кадров. Частота на экране — это лимит, умноженный на множитель LSFG.</string>
+    <string name="performance_hud_input_throttling">Тротлинг ввода</string>
+    <string name="performance_hud_input_throttling_description">Ограничивает, как часто движения стиков и триггеров отправляются в игру. Кнопки физических контроллеров не задерживаются.</string>
+    <string name="performance_hud_input_throttling_rate">Частота тротлинга</string>
     <string name="performance_hud_presets">Предустановки</string>
     <string name="performance_hud_presets_description">Быстро переключаться между типовыми макетами HUD.</string>
     <string name="performance_hud_preset_fps_only">1</string>
