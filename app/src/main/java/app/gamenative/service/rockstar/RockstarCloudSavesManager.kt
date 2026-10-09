@@ -25,8 +25,15 @@ object RockstarCloudSavesManager {
         data class Failed(val reason: String) : PullResult
     }
 
-    private class LocalFile(val file: File, val size: Long, val modified: Long, val md5: String) {
-        val state get() = RockstarLocalState(md5, size)
+    private class LocalFile(
+        val file: File,
+        val size: Long,
+        val modified: Long,
+        val md5: String,
+        val upload: File? = null,
+        val uploadMd5: String? = null,
+    ) {
+        val state get() = RockstarLocalState(md5, size, uploadMd5)
     }
 
     private class State(val titleId: String, val profile: String, val entries: Map<String, RockstarSyncedState>)
@@ -43,6 +50,7 @@ object RockstarCloudSavesManager {
         val forcedLocal: Set<String>,
         val dateSample: String?,
         val rockstarId: String?,
+        val compressed: Boolean,
     )
 
     private class Remembered(val preference: RockstarCloudPreference, val at: Long)
@@ -138,10 +146,6 @@ object RockstarCloudSavesManager {
             Timber.tag(TAG).i("Cloud save pull skipped for ${gameDir.name}: no readable title.rgl")
             return PullResult.NoCloudSaves
         }
-        if (title.cloudSaveCompression) {
-            Timber.tag(TAG).i("Cloud save pull skipped for ${title.titleId}: compressed cloud saves are not supported")
-            return PullResult.NoCloudSaves
-        }
         if (!title.cloudEnabled()) {
             Timber.tag(TAG).i("Cloud save pull skipped for ${title.titleId}: cloud saves disabled for platform ${title.gamePlatform}")
             return PullResult.NoCloudSaves
@@ -173,9 +177,10 @@ object RockstarCloudSavesManager {
             Timber.tag(TAG).i("Cloud save pull skipped for ${title.titleId}: no profile directory yet and no signed-in Social Club profile to name one; syncing starts once the game has created one")
             return PullResult.NoCloudSaves
         }
-        Timber.tag(TAG).i("Cloud save profile for ${title.titleId}: ${profileDir.name} (exists=${profileDir.isDirectory})")
+        val compressed = title.cloudSaveCompression
+        Timber.tag(TAG).i("Cloud save profile for ${title.titleId}: ${profileDir.name} (exists=${profileDir.isDirectory}, compressed=$compressed)")
 
-        val local = scanLocal(profileDir, names)
+        val local = scanLocal(container, profileDir, names, compressed)
         val state = loadState(container, title.titleId, profileDir)
         val synced = state?.entries.orEmpty()
         val plan = RockstarCloudSyncPlanner.planPull(
@@ -199,13 +204,27 @@ object RockstarCloudSavesManager {
             tmpDir.deleteRecursively()
             for ((index, name) in plan.download.withIndex()) {
                 val entry = remote[name] ?: throw RockstarCloudException("Rockstar cloud pull: planned download without manifest entry")
-                val temp = File(tmpDir, "$index.part")
-                val got = RockstarCloudApi.getFile(context, session, accessToken, entry.id, temp)
-                if (entry.size >= 0 && got.size != entry.size) {
-                    throw RockstarCloudException("Rockstar cloud pull: downloaded size ${got.size} differs from manifest ${entry.size}")
-                }
-                if (entry.md5 != null && entry.md5 != got.md5) {
-                    throw RockstarCloudException("Rockstar cloud pull: downloaded content does not match the manifest MD5Hash")
+                var temp = File(tmpDir, "$index.part")
+                val blob = RockstarCloudApi.getFile(context, session, accessToken, entry.id, temp)
+                val sizeMismatch = entry.size >= 0 && blob.size != entry.size
+                val hashMismatch = entry.md5 != null && entry.md5 != blob.md5
+                val got = if (compressed) {
+                    if (sizeMismatch || hashMismatch) {
+                        Timber.tag(TAG).w("GetFile $name: manifest Size/MD5Hash do not describe the downloaded blob (${blob.size} vs ${entry.size} bytes)")
+                    }
+                    val plain = File(tmpDir, "$index.plain")
+                    val unpacked = RockstarCloudCompression.decompress(temp, plain)
+                    temp.delete()
+                    temp = plain
+                    RockstarCloudDownload(unpacked.size, unpacked.md5, blob.version, blob.lastModified)
+                } else {
+                    if (sizeMismatch) {
+                        throw RockstarCloudException("Rockstar cloud pull: downloaded size ${blob.size} differs from manifest ${entry.size}")
+                    }
+                    if (hashMismatch) {
+                        throw RockstarCloudException("Rockstar cloud pull: downloaded content does not match the manifest MD5Hash")
+                    }
+                    blob
                 }
                 downloads[name] = Download(temp, File(profileDir, local[name]?.file?.name ?: name))
                 fetched[name] = got
@@ -213,6 +232,7 @@ object RockstarCloudSavesManager {
             applyPull(container, savesRoot, downloads.values)
         } finally {
             tmpDir.deleteRecursively()
+            uploadDir(container).deleteRecursively()
         }
 
         val next = LinkedHashMap(synced)
@@ -222,7 +242,7 @@ object RockstarCloudSavesManager {
             val mine = local[name]
             when {
                 got != null -> next[name] = RockstarSyncedState(entry.version, got.md5, got.size, entry.serverLastModifiedUtc)
-                mine != null && entry.md5 != null && entry.md5 == mine.md5 ->
+                mine != null && mine.state.matches(entry.md5) ->
                     next[name] = RockstarSyncedState(entry.version, mine.md5, mine.size, entry.serverLastModifiedUtc)
             }
         }
@@ -238,6 +258,7 @@ object RockstarCloudSavesManager {
             forcedLocal = plan.forcedLocal,
             dateSample = manifest.files.firstNotNullOfOrNull { it.serverLastModifiedUtc },
             rockstarId = rockstarId,
+            compressed = compressed,
         )
         Timber.tag(TAG).i(
             "Cloud save pull for ${title.titleId}: ${downloads.size} downloaded, ${plan.upload.size} pending upload, " +
@@ -258,12 +279,13 @@ object RockstarCloudSavesManager {
             Timber.tag(TAG).i("Cloud save push for ${session.titleId}: no profile directory, nothing to upload")
             return true
         }
-        val local = scanLocal(profileDir, session.names)
+        val local = scanLocal(container, profileDir, session.names, session.compressed)
         val state = loadState(container, session.titleId, profileDir)
         val synced = LinkedHashMap(state?.entries.orEmpty())
         val uploads = RockstarCloudSyncPlanner.planPush(session.names, local.mapValues { it.value.state }, synced)
         if (uploads.isEmpty()) {
             Timber.tag(TAG).i("Cloud save push for ${session.titleId}: no changes")
+            uploadDir(container).deleteRecursively()
             return true
         }
 
@@ -286,10 +308,10 @@ object RockstarCloudSavesManager {
             val lastModified = RockstarCloudSyncPlanner.formatTimestamp(session.dateSample, mine.modified)
             val fileMetadata = metadata.entries.firstOrNull { it.key.equals(name, ignoreCase = true) }?.value ?: "{}"
             if (fileMetadata == "{}") Timber.tag(TAG).w("No cloudsavedata.dat metadata for $name, uploading with {}")
-            var expected = remote[name]?.nextVersion ?: 1L
+            var expected = remote[name]?.nextVersion ?: 0L
             Timber.tag(TAG).i("PostFile $name: expectedVersion=$expected resolveType=${resolve.wire} lastModified=$lastModified")
             val posted = try {
-                RockstarCloudApi.postFile(context, ticket, accessToken, mine.file, name, expected, lastModified, fileMetadata, resolve)
+                RockstarCloudApi.postFile(context, ticket, accessToken, mine.upload ?: mine.file, name, expected, lastModified, fileMetadata, resolve)
             } catch (e: RockstarCloudException) {
                 if (e.code?.startsWith("InvalidVersion", ignoreCase = true) != true) {
                     Timber.tag(TAG).w("PostFile $name failed: ${e.message}")
@@ -311,7 +333,7 @@ object RockstarCloudSavesManager {
                 expected = now.nextVersion
                 Timber.tag(TAG).i("PostFile $name retry with expectedVersion=$expected")
                 try {
-                    RockstarCloudApi.postFile(context, ticket, accessToken, mine.file, name, expected, lastModified, fileMetadata, resolve)
+                    RockstarCloudApi.postFile(context, ticket, accessToken, mine.upload ?: mine.file, name, expected, lastModified, fileMetadata, resolve)
                 } catch (retry: RockstarCloudException) {
                     Timber.tag(TAG).w("PostFile $name retry failed: ${retry.message}")
                     ok = false
@@ -329,6 +351,7 @@ object RockstarCloudSavesManager {
             uploaded++
         }
         Timber.tag(TAG).i("Cloud save push for ${session.titleId}: $uploaded of ${uploads.size} file(s) uploaded")
+        uploadDir(container).deleteRecursively()
         return ok
     }
 
@@ -395,17 +418,33 @@ object RockstarCloudSavesManager {
         }.distinct()
     }
 
-    private fun scanLocal(profileDir: File, names: List<String>): Map<String, LocalFile> {
+    private fun scanLocal(container: Container, profileDir: File, names: List<String>, compressed: Boolean): Map<String, LocalFile> {
         val files = profileDir.listFiles().orEmpty().filter { it.isFile }.associateBy { it.name.lowercase() }
+        val uploadDir = uploadDir(container).also { it.deleteRecursively() }
+        if (compressed) uploadDir.mkdirs()
         val out = LinkedHashMap<String, LocalFile>()
-        for (name in names) {
+        for ((index, name) in names.withIndex()) {
             val file = files[name.lowercase()] ?: continue
             val modified = file.lastModified()
             val (size, md5) = hashFile(file)
-            out[name] = LocalFile(file, size, modified, md5)
+            if (!compressed) {
+                out[name] = LocalFile(file, size, modified, md5)
+                continue
+            }
+            val blob = File(uploadDir, "$index.z")
+            try {
+                RockstarCloudCompression.compress(file, blob)
+            } catch (e: RockstarCloudException) {
+                Timber.tag(TAG).w("Cloud save $name skipped: ${e.message}")
+                blob.delete()
+                continue
+            }
+            out[name] = LocalFile(file, size, modified, md5, blob, hashFile(blob).second)
         }
         return out
     }
+
+    private fun uploadDir(container: Container): File = File(container.rootDir, ".rockstar_cloud/upload")
 
     private fun hashFile(file: File): Pair<Long, String> {
         val md5 = MessageDigest.getInstance("MD5")
