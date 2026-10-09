@@ -4412,6 +4412,9 @@ private fun setupXEnvironment(
         }
     }
 
+    CoroutineScope(Dispatchers.IO).launch {
+        xServer.winHandler.start()
+    }
     try {
         immersiveHooks?.windowsVr?.beforeGuestProcessStart()
         environment.startEnvironmentComponents()
@@ -4475,10 +4478,6 @@ private fun setupXEnvironment(
         }
     }
 
-    // put in separate scope since winhandler start method does some network stuff
-    CoroutineScope(Dispatchers.IO).launch {
-        xServer.winHandler.start()
-    }
     envVars.clear()
     xServerState.value = xServerState.value.copy(
         dxwrapperConfig = null,

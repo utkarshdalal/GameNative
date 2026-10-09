@@ -61,6 +61,7 @@ public class WinHandler {
     private MappedByteBuffer gamepadBuffer;
     private static final short SERVER_PORT = 7947;
     private static final short CLIENT_PORT = 7946;
+    private static final long INIT_TIMEOUT_MS = 15000;
     private final ArrayDeque<Runnable> actions;
     private ExternalController currentController;
     private volatile int currentControllerId;
@@ -507,6 +508,19 @@ public class WinHandler {
 
     private void startSendThread() {
         Executors.newSingleThreadExecutor().execute(() -> {
+            try {
+                Thread.sleep(INIT_TIMEOUT_MS);
+            } catch (InterruptedException ignored) {
+            }
+            synchronized (this.actions) {
+                if (!this.initReceived && this.running) {
+                    Log.w(TAG, "WinHandler INIT not received within " + INIT_TIMEOUT_MS + " ms; sending anyway");
+                    this.initReceived = true;
+                    this.actions.notify();
+                }
+            }
+        });
+        Executors.newSingleThreadExecutor().execute(() -> {
             while (this.running) {
                 synchronized (this.actions) {
                     while (this.initReceived && !this.actions.isEmpty()) {
@@ -783,14 +797,18 @@ public class WinHandler {
         this.running = true;
         activeInstance = this;
         startSendThread();
+        try {
+            DatagramSocket datagramSocket = new DatagramSocket((SocketAddress) null);
+            this.socket = datagramSocket;
+            datagramSocket.setReuseAddress(true);
+            this.socket.bind(new InetSocketAddress((InetAddress) null, SERVER_PORT));
+            Log.i(TAG, "WinHandler bound to " + this.socket.getLocalSocketAddress());
+        } catch (IOException e) {
+            Log.e(TAG, "WinHandler bind failed", e);
+        }
         Executors.newSingleThreadExecutor().execute(() -> {
             try {
-                DatagramSocket datagramSocket = new DatagramSocket((SocketAddress) null);
-                this.socket = datagramSocket;
-                datagramSocket.setReuseAddress(true);
-                this.socket.bind(new InetSocketAddress((InetAddress) null, SERVER_PORT));
-                Log.i(TAG, "WinHandler bound to " + this.socket.getLocalSocketAddress());
-                while (this.running) {
+                while (this.running && this.socket != null) {
                     this.socket.receive(this.receivePacket);
                     synchronized (this.actions) {
                         this.receiveData.rewind();
