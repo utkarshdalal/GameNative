@@ -22,6 +22,14 @@ class RockstarCloudSyncPlannerTest {
     }
 
     @Test
+    fun remoteMatchingUploadMd5IsNone() {
+        val local = RockstarLocalState("plain", 10, uploadMd5 = "blob")
+        assertEquals(RockstarCloudAction.NONE, decide(local, RockstarRemoteState(1, "BLOB"), null))
+        assertEquals(RockstarCloudAction.NONE, decide(local, RockstarRemoteState(1, "plain"), null))
+        assertEquals(RockstarCloudAction.CONFLICT, decide(local, RockstarRemoteState(1, "other"), null))
+    }
+
+    @Test
     fun cloudOnlyDownloads() {
         assertEquals(RockstarCloudAction.DOWNLOAD, decide(null, RockstarRemoteState(1, "aaaa"), null))
         assertEquals(RockstarCloudAction.DOWNLOAD, decide(null, RockstarRemoteState(3, "aaaa"), synced))

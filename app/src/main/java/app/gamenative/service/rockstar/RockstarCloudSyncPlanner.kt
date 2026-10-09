@@ -7,11 +7,14 @@ import java.util.TimeZone
 
 enum class RockstarCloudPreference { NONE, LOCAL, REMOTE }
 
-data class RockstarLocalState(val md5: String, val size: Long)
+data class RockstarLocalState(val md5: String, val size: Long, val uploadMd5: String? = null) {
+    fun matches(remoteMd5: String?): Boolean =
+        remoteMd5 != null && (remoteMd5.equals(md5, ignoreCase = true) || remoteMd5.equals(uploadMd5, ignoreCase = true))
+}
 
 data class RockstarRemoteState(val version: Long, val md5: String?)
 
-data class RockstarSyncedState(val version: Long, val md5: String, val size: Long, val serverModified: String?)
+data class RockstarSyncedState(val version: Long, val md5: String, val size: Long, val serverModified: String?, val cloudMd5: String? = null)
 
 enum class RockstarCloudAction { NONE, DOWNLOAD, UPLOAD, CONFLICT }
 
@@ -32,7 +35,7 @@ object RockstarCloudSyncPlanner {
         if (local == null && remote == null) return RockstarCloudAction.NONE
         if (local == null) return RockstarCloudAction.DOWNLOAD
         if (remote == null) return RockstarCloudAction.UPLOAD
-        if (remote.md5 != null && remote.md5.equals(local.md5, ignoreCase = true)) return RockstarCloudAction.NONE
+        if (local.matches(remote.md5)) return RockstarCloudAction.NONE
         if (synced == null) return RockstarCloudAction.CONFLICT
         val localChanged = !local.md5.equals(synced.md5, ignoreCase = true) || local.size != synced.size
         val remoteChanged = remote.version != synced.version

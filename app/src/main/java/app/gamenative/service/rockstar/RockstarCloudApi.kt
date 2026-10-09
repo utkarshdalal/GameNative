@@ -42,7 +42,7 @@ data class RockstarCloudFile(
 
 data class RockstarCloudManifest(val rockstarId: String?, val bytesUsed: Long?, val files: List<RockstarCloudFile>)
 
-data class RockstarCloudDownload(val size: Long, val md5: String, val version: Long?, val lastModified: String?)
+data class RockstarCloudDownload(val size: Long, val md5: String, val version: Long?, val lastModified: String?, val cloudMd5: String? = null)
 
 data class RockstarCloudPosted(val version: Long?, val path: String?, val serverLastModifiedUtc: String?)
 
