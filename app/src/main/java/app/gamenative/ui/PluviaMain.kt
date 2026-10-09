@@ -78,7 +78,9 @@ import app.gamenative.service.rockstar.RockstarCloudSavesManager
 import app.gamenative.service.rockstar.RockstarLaunchSupport
 import app.gamenative.service.rockstar.RockstarHelperArchive
 import app.gamenative.service.rockstar.RockstarHelperDeployment
+import app.gamenative.service.rockstar.RockstarConstants
 import app.gamenative.service.rockstar.RockstarLoginGate
+import app.gamenative.service.rockstar.RockstarTitleMetadata
 import app.gamenative.service.rockstar.RockstarRuntime
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.utils.ConversionTracker
@@ -2540,7 +2542,14 @@ fun preLaunchApp(
                 val rockstarGameDir = File(SteamService.getAppDirPath(gameId))
                 setLoadingMessage(context.getString(R.string.rockstar_preparing))
                 RockstarHelperArchive.downloadAndExtract(context) { setLoadingProgress(it) }
-                val signIn = RockstarLoginGate.ensureSignedIn(context, "launcher", gameId)
+                val activeTitle = RockstarTitleMetadata.find(rockstarGameDir)?.let { RockstarTitleMetadata.parse(it) }?.titleId
+                    ?.takeIf { it.matches(Regex("[a-z0-9_]{1,127}")) } ?: "launcher"
+                val activationMarker = File(
+                    RockstarHelperArchive.titleDir(rockstarGameDir),
+                    "${RockstarHelperDeployment.DIRECTORY}/${RockstarConstants.ACTIVATION_MARKER}",
+                )
+                val signIn = RockstarLoginGate.ensureSignedIn(context, activeTitle, gameId, activationMarker.isFile)
+                if (signIn.isSuccess && RockstarLoginGate.titleValidated) activationMarker.delete()
                 if (signIn.isFailure && RockstarLaunchSupport.hasUsableToken(File(SteamService.getAppDirPath(gameId)))) {
                     /* A token is already in place, so carry on rather than block a launch that works. */
                     Timber.tag("preLaunchApp").w("Rockstar sign-in did not complete; using the token already in the game directory")

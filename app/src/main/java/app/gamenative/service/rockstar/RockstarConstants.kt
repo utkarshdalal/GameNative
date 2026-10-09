@@ -29,6 +29,10 @@ object RockstarConstants {
 
     const val ACTIVE_TITLE_EXTRA = "rockstar.activeTitle"
     const val STEAM_APP_ID_EXTRA = "rockstar.steamAppId"
+    const val ACTIVATE_TITLE_EXTRA = "rockstar.activateTitle"
+
+    /** Written by the Windows stub beside itself when the account lacks the title's base entitlement. */
+    const val ACTIVATION_MARKER = "needs-title-activation"
 
     /** Rockstar's sign-in error when the account is already linked to a different Steam account. */
     const val ALREADY_LINKED_ERROR = "113.600"

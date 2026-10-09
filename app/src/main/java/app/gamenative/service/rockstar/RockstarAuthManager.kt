@@ -182,9 +182,12 @@ object RockstarAuthManager {
     fun looksLikeScAuthToken(value: String) = RockstarConstants.TOKEN_SHAPE.matches(value)
 
     fun store(context: Context, token: String, nickname: String = "", rockstarId: String = "") {
+        val kept = if (lastExtras.first.isEmpty() && lastExtras.second.isEmpty()) load(context) else null
         val creds = RockstarCredentials(
             token, System.currentTimeMillis(), nickname, rockstarId,
-            lastExtras.first, lastExtras.second, lastExtras.third,
+            kept?.loginGuid ?: lastExtras.first,
+            kept?.rememberedMachineToken ?: lastExtras.second,
+            kept?.launcherTicket ?: lastExtras.third,
         )
         val json = JSONObject()
             .put("sc_auth_token", creds.scAuthToken)
