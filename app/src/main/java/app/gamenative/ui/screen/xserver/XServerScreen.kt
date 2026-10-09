@@ -4923,7 +4923,7 @@ private fun getWineStartCommand(
             }
             envVars.put("PROTON_DISABLE_LSTEAMCLIENT", "1")
             envVars.put("PROTON_LIMIT_ADDRESS_SPACE", "1")
-            if (offline || container.isSteamOfflineMode) envVars.put("STEAMHOST_OFFLINE", "1")
+            if (offline) envVars.put("STEAMHOST_OFFLINE", "1")
             envVars.put("STEAMHOST_ACCOUNT", PrefManager.username)
             envVars.put("STEAMHOST_TOKEN", SteamHostAuth.seal(context.packageName, PrefManager.refreshToken))
             envVars.put("STEAMHOST_STEAMID64", PrefManager.steamUserSteamId64.toString())
