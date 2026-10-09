@@ -191,9 +191,14 @@ class RockstarOAuthActivity : ComponentActivity() {
             Timber.w("Rockstar sign-in: saved session not resumed (%d); the form stays for the user", status)
             return
         }
-        val guid = runCatching { JSONObject(body).optString("loginGuid") }.getOrNull()?.takeIf { it.isNotEmpty() } ?: creds.loginGuid
-        loginGuid = guid
-        tokenReady(creds.scAuthToken)
+        val json = runCatching { JSONObject(body) }.getOrNull()
+        loginGuid = json?.optString("loginGuid")?.takeIf { it.isNotEmpty() } ?: creds.loginGuid
+        val code = json?.optString("authCode").orEmpty()
+        if (code.isEmpty()) {
+            Timber.w("Rockstar sign-in: auto login carried no auth code; the form stays for the user")
+            return
+        }
+        Bridge().onAuthCode(code, RockstarSignInShim.fingerprint(android.os.Build.MODEL ?: "GAMENATIVE").toString())
     }
 
     private fun validateTitle() {
@@ -308,6 +313,7 @@ class RockstarOAuthActivity : ComponentActivity() {
         @JavascriptInterface
         fun onValidateResult(status: Int, body: String) {
             Timber.i("Rockstar sign-in: title validation -> %d %s", status, body.take(600))
+            RockstarLoginGate.titleValidated = status == 200
             runOnUiThread { done(token) }
         }
 

@@ -20,11 +20,15 @@ import timber.log.Timber
 object RockstarLoginGate {
     @Volatile private var pending: CompletableDeferred<String?>? = null
 
+    /** Set by the sign-in activity when the page's title validation answered 200. */
+    @Volatile var titleValidated = false
+
     suspend fun ensureSignedIn(context: Context, activeTitle: String, steamAppId: Int = 0, activateTitle: Boolean = false): Result<Unit> {
         require(activeTitle.matches(Regex("[a-z0-9_]{1,127}")))
         if (RockstarAuthManager.isLoggedIn(context) && !activateTitle) return Result.success(Unit)
         val deferred = CompletableDeferred<String?>()
         pending = deferred
+        titleValidated = false
         val keepAliveBefore = SteamService.keepAlive
         SteamService.keepAlive = true
         val intent = Intent(context, RockstarOAuthActivity::class.java)
