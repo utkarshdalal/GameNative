@@ -585,9 +585,43 @@ pub fn download_resolved_depots_with_cancel_progress(
 
         let depot_id = depot.depot_id;
         // The manifest recorded for this depot BEFORE this run: on an update it is the version the
-        // user currently has, and its cached manifest is what the removed-content sweep diffs
-        // against. Read here, before `finish_depot` overwrites it below.
+        // user currently has. Its cached manifest drives BOTH the update delta (files this run
+        // need not touch) and the removed-content sweep — so load it once, here, before the write
+        // and before `finish_depot` overwrites the record.
         let previous_manifest_id = cfg.installed_manifest(depot_id);
+        // A clean-pause marker for the previous manifest means its last write never completed, so
+        // the install on disk is NOT that manifest's file set: neither trust the delta nor delete
+        // anything from it (the next successful run clears the marker and restores both).
+        let previous = if previous_manifest_id == 0 || previous_manifest_id == depot.manifest_id {
+            None
+        } else if has_clean_pause_marker(&config_dir, depot_id, previous_manifest_id) {
+            if let Some(log) = log {
+                log(&format!(
+                    "depot-delta depot={depot_id} skipped: previous manifest \
+{previous_manifest_id} has an unfinished write"
+                ));
+            }
+            None
+        } else {
+            load_cached_manifest(&cfg, depot_id, previous_manifest_id, &depot.depot_key)
+        };
+        // Files this run must NOT touch: the previous manifest proves their bytes already match.
+        let trusted = previous
+            .as_ref()
+            .map(|p| crate::store_dl::steam::depot_writer::unchanged_files(p, &manifest))
+            .unwrap_or_default();
+        if let Some(log) = log {
+            match previous.as_ref() {
+                Some(p) => log(&format!(
+                    "depot-delta depot={depot_id} unchanged={}/{} changed={} removed={}",
+                    trusted.len(),
+                    manifest.files.len(),
+                    manifest.files.len() - trusted.len(),
+                    crate::store_dl::steam::depot_writer::removed_files(p, &manifest).len(),
+                )),
+                None => {}
+            }
+        }
         let chunk_progress = |done: u64, total: u64, verifying: bool| {
             // First real (non-verify) byte = the download has genuinely started: NOW spawn
             // the background CDN probe. An all-verified run never spawns it (nothing to
@@ -642,6 +676,10 @@ pub fn download_resolved_depots_with_cancel_progress(
                 status: verify_status,
                 auth_token_refresher,
                 probe_hints: Some(probe_hints.clone()),
+                // Update delta: these files already match the manifest, so no jobs, no re-hash,
+                // no finalize. Empty for a fresh install / verify / when the previous manifest is
+                // unknown, which leaves the classic full-walk behaviour.
+                trusted_files: Some(&trusted),
                 ..Default::default()
             },
         );
@@ -660,24 +698,22 @@ pub fn download_resolved_depots_with_cancel_progress(
         // succeeded, so a failed or cancelled run never destroys data. The previous manifest is
         // taken from the local cache (written when it was downloaded) — no extra network round
         // trip, and when it is not cached the sweep is skipped with a log line rather than failing.
-        if previous_manifest_id != 0 && previous_manifest_id != depot.manifest_id {
-            match load_cached_manifest(&cfg, depot_id, previous_manifest_id, &depot.depot_key) {
-                Some(previous) => {
-                    let removed = crate::store_dl::steam::depot_writer::removed_files(
-                        &previous, &manifest,
-                    );
-                    let stats = crate::store_dl::steam::depot_writer::prune_removed_files(
-                        install_dir, &removed, log,
-                    );
-                    if let Some(log) = log {
-                        log(&stats.line(depot_id));
-                    }
+        match previous.as_ref() {
+            Some(previous) => {
+                let removed = crate::store_dl::steam::depot_writer::removed_files(previous, &manifest);
+                let stats = crate::store_dl::steam::depot_writer::prune_removed_files(
+                    install_dir, &removed, log,
+                );
+                if let Some(log) = log {
+                    log(&stats.line(depot_id));
                 }
-                None => {
-                    if let Some(log) = log {
+            }
+            None => {
+                if let Some(log) = log {
+                    if previous_manifest_id != 0 && previous_manifest_id != depot.manifest_id {
                         log(&format!(
                             "depot-prune depot={depot_id} skipped: previous manifest \
-{previous_manifest_id} not in the local cache"
+{previous_manifest_id} not usable from the local cache"
                         ));
                     }
                 }

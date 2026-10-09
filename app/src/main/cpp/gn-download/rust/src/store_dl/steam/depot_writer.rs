@@ -263,8 +263,12 @@ pub struct DepotWriteOptions<'a> {
     pub auth_token_refresher: Option<&'a CdnAuthTokenRefresher>,
     /// Live ranking of the ASSIGNED CDN servers from the background CDN probe
     /// (`cdn_probe::seed_from_cache` + `spawn_background_probe`); the scheduler reprioritizes
-    /// from it mid-download. `None` = cold ranking (learn speeds as chunks complete).
+    /// from it mid-download. `None` = cold ranking (learn speeds as chunk completions).
     pub probe_hints: Option<Arc<crate::store_dl::steam::cdn_probe::ProbeHints>>,
+    /// File indices ([`unchanged_files`]) this run must NOT touch: their bytes already match the
+    /// manifest, so they get no chunk jobs, no re-hash and no finalize. Only the update path sets
+    /// it, and only when the previous manifest is known good (see `depot_downloader`).
+    pub trusted_files: Option<&'a [u32]>,
 }
 
 impl Default for DepotWriteOptions<'_> {
@@ -280,6 +284,7 @@ impl Default for DepotWriteOptions<'_> {
             status: None,
             auth_token_refresher: None,
             probe_hints: None,
+            trusted_files: None,
         }
     }
 }
@@ -556,6 +561,51 @@ pub fn prune_removed_files(
         }
     }
     stats
+}
+
+/// Files whose bytes this update does NOT have to touch: present in `previous` with the SAME
+/// path, size and content hash as `new`, so the manifest itself proves the on-disk bytes are the
+/// ones the new build wants. Steam's client computes the same set and never re-hashes or
+/// re-downloads these files — that is why a patch is fast there and why our update used to be
+/// slow (it re-hashed the whole install against the new manifest).
+///
+/// Deliberately conservative, because the caller is trusting these files blindly:
+/// - only regular files (`previous` and `new` entries must match on the exact path, so a
+///   case-only rename is NOT trusted — the writer re-spells on write and that case is rare);
+/// - both content hashes must be present and equal (an empty hash proves nothing);
+/// - the size must match too.
+///
+/// The complement is the delta: everything else is re-hashed against the new manifest as usual,
+/// which also covers files the user corrupted (that is what Verify is for).
+pub fn unchanged_files(previous: &ContentManifest, new: &ContentManifest) -> Vec<u32> {
+    // Exact path -> (size, content hash) of the previous build's regular files.
+    let mut before: HashMap<&str, (u64, &[u8])> = HashMap::new();
+    for file in &previous.files {
+        if (file.flags & DEPOT_FILE_FLAG_DIRECTORY) != 0 || !file.linktarget.is_empty() {
+            continue;
+        }
+        if file.sha_content.is_empty() {
+            continue;
+        }
+        before.insert(file.filename.as_str(), (file.size, file.sha_content.as_slice()));
+    }
+    new.files
+        .iter()
+        .enumerate()
+        .filter(|(_, file)| {
+            (file.flags & DEPOT_FILE_FLAG_DIRECTORY) == 0
+                && file.linktarget.is_empty()
+                && !file.sha_content.is_empty()
+        })
+        .filter(|(_, file)| {
+            before
+                .get(file.filename.as_str())
+                .is_some_and(|(size, sha)| {
+                    *size == file.size && *sha == file.sha_content.as_slice()
+                })
+        })
+        .map(|(idx, _)| idx as u32)
+        .collect()
 }
 
 pub fn depot_adler_hash(data: &[u8]) -> u32 {
@@ -1515,6 +1565,11 @@ struct FileSlot {
     path: String,
     mode: u32,
     is_regular: bool,
+    /// Content already matches this manifest ([`unchanged_files`]): no chunk jobs were planned for
+    /// it, and neither the drain assertion nor the finalize pass may touch it (finalize would
+    /// otherwise create/truncate a file it never wrote). Atomic for the same reason as
+    /// `remaining`: the table is shared immutably across the worker pool.
+    trusted: AtomicBool,
 }
 
 /// Per-depot open-file table. Handles are opened lazily on first touch and closed as soon as the
@@ -1598,6 +1653,7 @@ impl DepotFiles {
                     opened: false,
                 }),
                 remaining: AtomicUsize::new(if is_regular { file.chunks.len() } else { 0 }),
+                trusted: AtomicBool::new(false),
                 size: file.size,
                 preexisting_len: preexisting,
                 path,
@@ -1608,6 +1664,18 @@ impl DepotFiles {
         Self {
             slots,
             already_present_bytes: already_present,
+        }
+    }
+
+    /// Flag the files the update delta proved unchanged, so every pass that would otherwise
+    /// re-hash, re-download or finalize them leaves them alone.
+    fn mark_trusted(&self, trusted: &[u32]) {
+        for &idx in trusted {
+            if let Some(slot) = self.slots.get(idx as usize) {
+                slot.trusted.store(true, Ordering::Relaxed);
+                // Nothing will decrement this: the file is not part of this run's job list.
+                slot.remaining.store(0, Ordering::Relaxed);
+            }
         }
     }
 
@@ -1674,7 +1742,10 @@ impl DepotFiles {
     /// (which have no chunk jobs to trigger `complete_chunk`).
     fn finalize_remaining(&self) -> Result<(), String> {
         for slot in &self.slots {
-            if !slot.is_regular {
+            // A trusted file was never opened by this run and must not be: the 0-chunk branch
+            // below would CREATE it (a zero-filled file at the manifest's size) if the user
+            // deleted it, which is exactly the silent-corruption case this must not introduce.
+            if !slot.is_regular || slot.trusted.load(Ordering::Relaxed) {
                 continue;
             }
             let mut st = slot.state.lock().expect("slot state poisoned");
@@ -1867,7 +1938,9 @@ fn drain_contiguous(
 /// on-disk bytes may be missing.
 fn assert_pipeline_drained(files: &DepotFiles, writers: &[Mutex<OrderedWriter>]) -> Result<(), String> {
     for (idx, slot) in files.slots.iter().enumerate() {
-        if !slot.is_regular {
+        // Trusted (update-delta unchanged) files have no jobs and were never written: their cursor
+        // is legitimately 0 while the file holds the manifest's bytes already.
+        if !slot.is_regular || slot.trusted.load(Ordering::Relaxed) {
             continue;
         }
         let writer = writers
@@ -1971,7 +2044,7 @@ pub fn write_depot_sequential(
     target_dir: &str,
     options: DepotWriteOptions<'_>,
 ) -> DepotWriteResult {
-    let plan = match plan_depot_write(
+    let mut plan = match plan_depot_write(
         manifest,
         depot_key,
         servers.len(),
@@ -1982,7 +2055,20 @@ pub fn write_depot_sequential(
         Err(error) => return error,
     };
 
+    // Update delta: drop the jobs of files the previous manifest proves unchanged, so this run
+    // never re-hashes or re-downloads them (Steam's own update behaviour).
+    if let Some(trusted) = options.trusted_files {
+        if !trusted.is_empty() {
+            plan.chunk_jobs
+                .retain(|job| !trusted.contains(&job.file_idx));
+            plan.worker_count = clamp_worker_count(options.max_workers, plan.chunk_jobs.len());
+        }
+    }
+
     let files = DepotFiles::prepare(manifest, &plan, target_dir);
+    if let Some(trusted) = options.trusted_files {
+        files.mark_trusted(trusted);
+    }
 
     // Free-space guard using the EXACT manifest sizes (ground truth), minus what is already on disk.
     // Conservative: only fail when statvfs succeeds with a sane non-zero figure and the deficit
@@ -3866,6 +3952,92 @@ mod tests {
         assert!(!dir.join("Game").exists(), "emptied directory chain pruned");
         assert!(dir.join("Keep/stays.bin").exists(), "unrelated content untouched");
         assert!(dir.exists(), "the install root itself is never removed");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn unchanged_files_trusts_only_identical_regular_files() {
+        let f = |name: &str, size: u64, sha: &[u8]| crate::store_dl::steam::content_manifest::FileMapping {
+            filename: name.into(),
+            size,
+            sha_content: sha.to_vec(),
+            ..Default::default()
+        };
+        let manifest = |files: Vec<crate::store_dl::steam::content_manifest::FileMapping>| ContentManifest {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
+                filenames_encrypted: false,
+                ..Default::default()
+            },
+            files,
+            signature: Vec::new(),
+        };
+        let previous = manifest(vec![
+            f("Game/same.bin", 10, b"SAME"),
+            f("Game/changed.bin", 10, b"OLD"),
+            f("Game/renamed.bin", 10, b"SAME"),
+            f("Game/nohash.bin", 10, b""),
+            f("bin", 0, b"SAME"), // still trusted: a regular entry, not a directory flag
+        ]);
+        let mut new = manifest(vec![
+            f("Game/same.bin", 10, b"SAME"),       // identical -> trusted
+            f("Game/changed.bin", 10, b"NEW"),     // content changed -> NOT trusted
+            f("Game/renamed.bin", 10, b"SAME"),    // stays, but see the case test below
+            f("Game/nohash.bin", 10, b""),         // no hash to compare -> NOT trusted
+            f("Game/added.bin", 5, b"ADDED"),      // new file -> NOT trusted
+        ]);
+        new.files[2].filename = "Game/RENAMED.bin".into(); // case-only rename of the same content
+        let trusted = unchanged_files(&previous, &new);
+        assert_eq!(
+            trusted,
+            vec![0u32],
+            "only the byte-identical same-path file is trusted; a content change, a case-only \
+rename, a missing hash and a new file all fall through to the normal walk"
+        );
+        // A file whose size disagrees with the hash entry is not trusted either.
+        let mut size_mismatch = manifest(vec![f("Game/same.bin", 11, b"SAME")]);
+        size_mismatch.files[0].filename = "Game/same.bin".into();
+        assert!(unchanged_files(&previous, &size_mismatch).is_empty());
+    }
+
+    #[test]
+    fn trusted_files_get_no_jobs_and_are_left_alone_by_finalize() {
+        // A trusted file must keep whatever is on disk: no chunk job, no cursor movement, and the
+        // finalize pass must not create/truncate it (the 0-chunk branch would otherwise write a
+        // zero-filled file at the manifest's size if the user deleted it).
+        let dir = std::env::temp_dir().join(format!("gntrusted-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("kept.bin"), b"already the right bytes").unwrap();
+        let manifest = ContentManifest {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
+                filenames_encrypted: false,
+                ..Default::default()
+            },
+            files: vec![crate::store_dl::steam::content_manifest::FileMapping {
+                filename: "kept.bin".into(),
+                size: 24,
+                chunks: vec![ChunkData {
+                    offset: 0,
+                    cb_original: 24,
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }],
+            signature: Vec::new(),
+        };
+        let base = dir.to_str().unwrap();
+        let plan = plan_depot_write(&manifest, &[1u8; 32], 4, base, 4).unwrap();
+        let files = DepotFiles::prepare(&manifest, &plan, base);
+        files.mark_trusted(&[0]);
+        // Finalize must be a no-op: the file is neither truncated nor re-created.
+        files.finalize_remaining().unwrap();
+        assert_eq!(fs::read(dir.join("kept.bin")).unwrap(), b"already the right bytes");
+        // The drain assertion accepts it (cursor 0 / size 24 is legitimate for a trusted file).
+        let writers = vec![Mutex::new(OrderedWriter::default())];
+        assert_pipeline_drained(&files, &writers).unwrap();
+        // The same file, NOT trusted, is what the assertion is there to catch.
+        let files2 = DepotFiles::prepare(&manifest, &plan, base);
+        assert!(assert_pipeline_drained(&files2, &writers).is_err());
         let _ = fs::remove_dir_all(&dir);
     }
 
