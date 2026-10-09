@@ -69,6 +69,7 @@ import app.gamenative.events.AndroidEvent
 import app.gamenative.gamefixes.GameFixesRegistry
 import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.SteamService
+import app.gamenative.service.download.SteamDownloadMode
 import app.gamenative.service.ea.EaCloudPreference
 import app.gamenative.service.ea.EaCloudSavesManager
 import app.gamenative.service.ea.EaLaunchSupport
@@ -2493,7 +2494,7 @@ fun preLaunchApp(
                     setMessageDialogState(MessageDialogState(false))
                     if (update) {
                         val dlcAppIds = SteamService.getInstalledApp(gameId)?.dlcDepots.orEmpty()
-                        SteamService.downloadApp(gameId, dlcAppIds, branch = branch, isUpdateOrVerify = true)
+                        SteamService.downloadApp(gameId, dlcAppIds, branch = branch, mode = SteamDownloadMode.UPDATE)
                     }
                     return@launch
                 }

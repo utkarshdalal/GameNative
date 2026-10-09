@@ -455,6 +455,109 @@ impl DepotFileAction {
     }
 }
 
+/// Case-folded relative-path key for a manifest entry: backslashes normalised, lowercased. Two
+/// entries with the same key are the same object on the stores' case-insensitive filesystems (and
+/// the writer re-spells to on-disk case anyway), so a case-only rename must NOT count as a removal.
+fn folded_entry_key(name: &str) -> String {
+    name.replace('\\', "/").to_lowercase()
+}
+
+/// Files the PREVIOUS manifest listed that `new` does not — the content an update removed.
+///
+/// Directories are excluded (they are pruned once empty by [`prune_removed_files`]), and every
+/// entry of the new manifest — file, directory or symlink — counts as "still present", so a path
+/// that merely changed kind is never deleted. Steam's client prunes exactly this set on an update.
+pub fn removed_files(previous: &ContentManifest, new: &ContentManifest) -> Vec<String> {
+    let present: std::collections::HashSet<String> =
+        new.files.iter().map(|f| folded_entry_key(&f.filename)).collect();
+    previous
+        .files
+        .iter()
+        .filter(|f| (f.flags & DEPOT_FILE_FLAG_DIRECTORY) == 0)
+        .filter(|f| !present.contains(&folded_entry_key(&f.filename)))
+        .map(|f| f.filename.clone())
+        .collect()
+}
+
+/// What a removed-content sweep did, for the log line (and for tests).
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct PruneStats {
+    /// Files unlinked.
+    pub deleted: u32,
+    /// Already gone (a previous attempt, or the user deleted them) — not an error.
+    pub missing: u32,
+    /// Directories removed because the sweep emptied them.
+    pub dirs_pruned: u32,
+    /// Paths rejected by the safety rule (absolute / `..`) — never touched.
+    pub unsafe_paths: u32,
+    /// Unlink failed for another reason (in use, permissions, IO).
+    pub failed: u32,
+}
+
+impl PruneStats {
+    pub fn line(&self, depot_id: u32) -> String {
+        format!(
+            "depot-prune depot={depot_id} deleted={} missing={} dirs={} unsafe={} failed={}",
+            self.deleted, self.missing, self.dirs_pruned, self.unsafe_paths, self.failed
+        )
+    }
+}
+
+/// Delete `removed` (relative manifest paths) under `target_dir`, then prune any directory the
+/// sweep emptied — bounded to `target_dir`. Never fails the run: an unsafe path is skipped, and a
+/// failed unlink is counted and logged, because a leftover file is better than a failed update.
+pub fn prune_removed_files(
+    target_dir: &str,
+    removed: &[String],
+    log: Option<&(dyn Fn(&str) + Sync)>,
+) -> PruneStats {
+    let mut stats = PruneStats::default();
+    let root = Path::new(target_dir);
+    for name in removed {
+        if !path_is_safe(name) {
+            stats.unsafe_paths += 1;
+            continue;
+        }
+        // Re-spell to the on-disk case: the tree the writer built may differ in case from the
+        // manifest we are diffing against (`Game/` vs `game/`).
+        let rel = crate::store_dl::resolve_existing_case(target_dir, name);
+        let path = std::path::PathBuf::from(join_target_path(target_dir, &rel));
+        if !path.starts_with(root) {
+            stats.unsafe_paths += 1;
+            continue;
+        }
+        match fs::remove_file(&path) {
+            Ok(()) => {
+                stats.deleted += 1;
+                // Walk up, removing only directories this sweep emptied; stop at the first
+                // non-empty one (or at the install root).
+                let mut dir = path.parent();
+                while let Some(current) = dir {
+                    if current == root || !current.starts_with(root) {
+                        break;
+                    }
+                    if fs::remove_dir(current).is_err() {
+                        break;
+                    }
+                    stats.dirs_pruned += 1;
+                    dir = current.parent();
+                }
+            }
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => stats.missing += 1,
+            Err(err) => {
+                stats.failed += 1;
+                if let Some(log) = log {
+                    log(&format!(
+                        "depot-prune: unlink '{}' failed: {err}",
+                        path.display()
+                    ));
+                }
+            }
+        }
+    }
+    stats
+}
+
 pub fn depot_adler_hash(data: &[u8]) -> u32 {
     const BLOCK: usize = 5552;
     let mut a = 0u32;
@@ -3689,7 +3792,85 @@ mod tests {
     }
 
     #[test]
-    fn rejects_paths_that_escape_target() {
+    fn removed_files_diffs_the_previous_manifest_case_insensitively() {
+        let file = |name: &str, dir: bool| crate::store_dl::steam::content_manifest::FileMapping {
+            filename: name.into(),
+            flags: if dir { DEPOT_FILE_FLAG_DIRECTORY } else { 0 },
+            ..Default::default()
+        };
+        let manifest = |files: Vec<crate::store_dl::steam::content_manifest::FileMapping>| {
+            ContentManifest {
+                metadata: crate::store_dl::steam::content_manifest::Metadata {
+                    filenames_encrypted: false,
+                    ..Default::default()
+                },
+                files,
+                signature: Vec::new(),
+            }
+        };
+        // The old version: two files in Game/, a pak in bin/, one directory entry.
+        let previous = manifest(vec![
+            file("Game/keep.cfg", false),
+            file("Game/gone.bin", false),
+            file("bin/pak0.pk4", false),
+            file("Game", true),
+        ]);
+        // The new version: keep.cfg survives, GONE.BIN is a pure case rename of gone.bin
+        // (same file on the store's filesystem), the pak MOVED to a new directory, and Game/ is
+        // still a directory.
+        let new = manifest(vec![
+            file("Game/keep.cfg", false),
+            file("Game/GONE.bin", false),
+            file("data/pak0.pk4", false),
+            file("Game", true),
+        ]);
+        let removed = removed_files(&previous, &new);
+        assert_eq!(
+            removed,
+            vec!["bin/pak0.pk4".to_string()],
+            "only the genuinely removed path: a case-only rename and a directory entry survive"
+        );
+        // A path that stayed but changed kind is not a removal either.
+        let new_kind = manifest(vec![file("Game/gone.bin", true), file("Game/keep.cfg", false)]);
+        assert!(removed_files(&previous, &new_kind).contains(&"bin/pak0.pk4".to_string()));
+        assert!(!removed_files(&previous, &new_kind).contains(&"Game/gone.bin".to_string()));
+    }
+
+    #[test]
+    fn prune_removed_files_deletes_and_prunes_but_stays_inside_the_target() {
+        let dir = std::env::temp_dir().join(format!("gnprune-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("Game/Sub")).unwrap();
+        fs::create_dir_all(dir.join("Keep")).unwrap();
+        fs::write(dir.join("Game/Sub/gone.bin"), b"x").unwrap();
+        fs::write(dir.join("Keep/stays.bin"), b"x").unwrap();
+        let base = dir.to_string_lossy().into_owned();
+        let collected: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
+        let logger = move |line: &str| collected.lock().unwrap().push(line.to_string());
+
+        let stats = prune_removed_files(
+            &base,
+            &[
+                "Game/Sub/gone.bin".to_string(),   // removed and emptied its directory chain
+                "Game/never-existed.bin".to_string(), // already gone
+                "../escape.bin".to_string(),       // unsafe: never touched
+                "/abs.bin".to_string(),            // unsafe
+            ],
+            Some(&logger),
+        );
+        assert_eq!(stats.deleted, 1);
+        assert_eq!(stats.missing, 1);
+        assert_eq!(stats.unsafe_paths, 2);
+        assert_eq!(stats.failed, 0);
+        assert_eq!(stats.dirs_pruned, 2, "Game/Sub and then Game, both emptied");
+        assert!(!dir.join("Game").exists(), "emptied directory chain pruned");
+        assert!(dir.join("Keep/stays.bin").exists(), "unrelated content untouched");
+        assert!(dir.exists(), "the install root itself is never removed");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn reject_paths_that_escape_target() {
         assert!(path_is_safe("a/b/file.txt"));
         assert!(path_is_safe("./a/file.txt"));
         assert!(!path_is_safe(""));

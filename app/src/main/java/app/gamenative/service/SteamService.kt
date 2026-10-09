@@ -73,6 +73,7 @@ import com.winlator.xenvironment.ImageFs
 import dagger.hilt.android.AndroidEntryPoint
 import app.gamenative.service.download.GameDownloadService
 import app.gamenative.service.download.NativeTreeDelete
+import app.gamenative.service.download.SteamDownloadMode
 import `in`.dragonbra.javasteam.enums.EAccountType
 import `in`.dragonbra.javasteam.enums.EDepotFileFlag
 import `in`.dragonbra.javasteam.enums.ELicenseFlags
@@ -2108,17 +2109,33 @@ class SteamService : Service(), IChallengeUrlChanged {
             return@withContext result
         }
 
-        fun downloadApp(appId: Int): DownloadInfo? {
+        /**
+         * Re-run a download for [appId] in [mode] — what the app menu's "Verify Files" and
+         * "Update" both funnel through. A transfer already in progress is RESUMED as-is (its
+         * mode was chosen when it started); otherwise the run uses [mode], which is the whole
+         * point of the split: VERIFY repairs the installed build, UPDATE moves to the current one.
+         */
+        fun downloadApp(appId: Int, mode: SteamDownloadMode): DownloadInfo? {
             val currentDownloadInfo = downloadJobs[appId]
             if (currentDownloadInfo != null) {
                 val branch = getDownloadingAppInfoOf(appId)?.branch
                     ?: getInstalledApp(appId)?.branch
                     ?: "public"
-                return downloadApp(appId, currentDownloadInfo.downloadingAppIds, branch = branch, isUpdateOrVerify = false)
+                return downloadApp(
+                    appId,
+                    currentDownloadInfo.downloadingAppIds,
+                    branch = branch,
+                    mode = SteamDownloadMode.INSTALL,
+                )
             } else {
                 val downloadingAppInfo = getDownloadingAppInfoOf(appId)
                 if (downloadingAppInfo != null) {
-                    return downloadApp(appId, downloadingAppInfo.dlcAppIds.orEmpty(), branch = downloadingAppInfo.branch, isUpdateOrVerify = false)
+                    return downloadApp(
+                        appId,
+                        downloadingAppInfo.dlcAppIds.orEmpty(),
+                        branch = downloadingAppInfo.branch,
+                        mode = SteamDownloadMode.INSTALL,
+                    )
                 } else {
                     val installedApp = getInstalledApp(appId)
                     val branch = installedApp?.branch ?: "public"
@@ -2131,12 +2148,20 @@ class SteamService : Service(), IChallengeUrlChanged {
                         }
                     }
 
-                    return downloadApp(appId, dlcAppIds, branch = branch, isUpdateOrVerify = true)
+                    // Fresh run for this app: re-check every depot (UPDATE) or re-verify the
+                    // installed build (VERIFY) — never the INSTALL depot filter, which would skip
+                    // the depots this run exists to re-check.
+                    return downloadApp(appId, dlcAppIds, branch = branch, mode = mode)
                 }
             }
         }
 
-        fun downloadApp(appId: Int, dlcAppIds: List<Int>, branch: String = "public", isUpdateOrVerify: Boolean): DownloadInfo? {
+        fun downloadApp(
+            appId: Int,
+            dlcAppIds: List<Int>,
+            branch: String = "public",
+            mode: SteamDownloadMode,
+        ): DownloadInfo? {
             if (!checkWifiOrNotify()) return null
             // A queued (auto-paused) entry being resumed keeps showing "Queued" until the
             // fresh DownloadInfo replaces it below, and depot resolution can take a moment;
@@ -2161,7 +2186,10 @@ class SteamService : Service(), IChallengeUrlChanged {
                     userSelectedDlcAppIds = dlcAppIds,
                     branch = branch,
                     containerLanguage = containerLanguage,
-                    isUpdateOrVerify = isUpdateOrVerify)
+                    mode = mode,
+                    // VERIFY repairs the build the user has: its per-depot manifest ids come from
+                    // the app's own record, not from PICS. Empty for INSTALL/UPDATE.
+                    verifyGids = if (mode == SteamDownloadMode.VERIFY) installedManifestIds(appId) else emptyMap())
             }
         }
 
@@ -2498,7 +2526,8 @@ class SteamService : Service(), IChallengeUrlChanged {
             userSelectedDlcAppIds: List<Int>,
             branch: String,
             containerLanguage: String,
-            isUpdateOrVerify: Boolean,
+            mode: SteamDownloadMode,
+            verifyGids: Map<Int, ULong>,
         ): DownloadInfo? {
             val appDirPath = getAppDirPath(appId)
 
@@ -2527,9 +2556,11 @@ class SteamService : Service(), IChallengeUrlChanged {
                 userSelectedDlcAppIds.contains(depot.dlcAppId) && indirectDlcAppIds.contains(depot.dlcAppId) && hasDepotContent(depot)
             }
 
-            // Remove depots that are already downloaded (not for update/verify)
+            // Remove depots that are already downloaded (INSTALL only: an UPDATE must re-check
+            // every depot — the engine skips the ones whose manifest is unchanged — and a VERIFY
+            // exists precisely to re-check what is on disk).
             val appInfo = getInstalledApp(appId)
-            if (appInfo != null && !isUpdateOrVerify) {
+            if (appInfo != null && mode == SteamDownloadMode.INSTALL) {
                 mainAppDepots = mainAppDepots.filter { it.key !in appInfo.downloadedDepots }
             }
 
@@ -2630,7 +2661,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 val downloadJob = instance!!.scope.launch {
                     try {
-                        if (isUpdateOrVerify) {
+                        if (mode != SteamDownloadMode.INSTALL) {
                             SteamUtils.clearStaleDrmBackups(appDirPath)
                         }
 
@@ -2680,7 +2711,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                             branch = branch,
                             branchPassword = branchPassword,
                             installDir = getAppDirPath(appId),
-                            isUpdateOrVerify = isUpdateOrVerify,
+                            mode = mode,
+                            verifyGids = verifyGids,
                             depotIdToIndex = depotIdToIndex,
                             downloadInfo = di,
                             // Adaptive-window ceiling (ramps up only while the link delivers);

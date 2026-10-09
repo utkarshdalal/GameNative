@@ -68,7 +68,8 @@ object GameDownloadService {
     // ─────────────────────────────────────────────────────────────────────────────
 
     /**
-     * Downloads (or, when [isUpdateOrVerify], re-verifies) [selectedDepots] of [appId] into
+     * Downloads (or, for [SteamDownloadMode.UPDATE] / [SteamDownloadMode.VERIFY], re-checks)
+     * [selectedDepots] of [appId] into
      * [installDir], reporting progress into [downloadInfo] exactly like the old
      * `DepotDownloader` listener did (per-depot delta bytes + per-depot fraction).
      *
@@ -87,7 +88,9 @@ object GameDownloadService {
         branch: String,
         branchPassword: String?,
         installDir: String,
-        isUpdateOrVerify: Boolean,
+        mode: SteamDownloadMode,
+        /** Per-depot manifest recorded as installed, used by [SteamDownloadMode.VERIFY] only. */
+        verifyGids: Map<Int, ULong>,
         depotIdToIndex: Map<Int, Int>,
         downloadInfo: DownloadInfo,
         maxWorkers: Int,
@@ -112,7 +115,8 @@ object GameDownloadService {
             selectedDepots.toSortedMap().map { (depotId, depot) ->
                 async {
                     resolveDepotForDownload(
-                        steamApps, steamContent, appId, depotId, depot, branch, branchPassword, parentScope,
+                        steamApps, steamContent, appId, depotId, depot, branch, branchPassword,
+                        mode, verifyGids, parentScope,
                     )
                 }
             }.awaitAll()
@@ -130,6 +134,15 @@ object GameDownloadService {
             resolvedDepotIds.add(resolved.depotId)
         }
         if (depotsJson.length() == 0) {
+            // A VERIFY has no manifest to work from when the app records none (e.g. it was
+            // installed by the real Steam client, which keeps no `.DepotDownloader/depot.config`).
+            // Say so instead of the generic message: the fix is an update, not a retry.
+            if (mode == SteamDownloadMode.VERIFY) {
+                throw DownloadFailedException(
+                    "Verify: no installed manifest recorded for " +
+                        "${selectedDepots.size} depot(s) — use Update to fetch the current version",
+                )
+            }
             throw DownloadFailedException(
                 "No entitled depots to download " +
                     "(all ${selectedDepots.size} selected depot(s) skipped: ${selectedDepots.keys.sorted()})",
@@ -140,8 +153,9 @@ object GameDownloadService {
             .put("install_dir", installDir)
             .put("ca_bundle_path", "")
             // fresh = discard the journal entries for these depots and re-validate every
-            // existing chunk on disk — the old engine's update/verify semantics.
-            .put("fresh", isUpdateOrVerify)
+            // existing chunk on disk — the old engine's update/verify semantics. Both UPDATE and
+            // VERIFY want that (VERIFY against the installed manifest, see SteamDownloadMode).
+            .put("fresh", mode != SteamDownloadMode.INSTALL)
             .put("max_workers", maxWorkers)
             .put("process_workers", processWorkers)
             .put("pipeline_logs", SHOW_PIPELINE_LOGS)
@@ -444,9 +458,27 @@ object GameDownloadService {
         depot: DepotInfo,
         branch: String,
         branchPassword: String?,
+        mode: SteamDownloadMode,
+        verifyGids: Map<Int, ULong>,
         parentScope: CoroutineScope,
     ): ResolvedDepot? {
-        val gid = resolveManifestGid(steamApps, appId, depotId, depot, branch, branchPassword)
+        // VERIFY pins to the manifest the app recorded as installed — never PICS' current one, so
+        // verifying repairs the build the user has instead of silently upgrading it. The request
+        // code below is then issued for THAT gid; the depot key is per depot, not per manifest.
+        val gid = if (mode == SteamDownloadMode.VERIFY) {
+            val installed = verifyGids[depotId]?.toLong() ?: 0L
+            if (installed == 0L) {
+                Timber.tag(TAG).w("Verify: depot $depotId has no installed manifest — skipped")
+            } else {
+                Timber.tag(TAG).i(
+                    "Verify: depot $depotId pinned to installed manifest " +
+                        java.lang.Long.toUnsignedString(installed),
+                )
+            }
+            installed
+        } else {
+            resolveManifestGid(steamApps, appId, depotId, depot, branch, branchPassword)
+        }
         if (gid == 0L) {
             Timber.tag(TAG).w("Skipping depot $depotId: no manifest gid for branch $branch")
             return null
@@ -849,8 +881,12 @@ object GameDownloadService {
         if (nextEntry != null) {
             Timber.i("[GameDownloadService] Resuming ${nextEntry.gameSource} download for ${nextEntry.gameId}")
             when (nextEntry.gameSource) {
+                // Resuming a queued entry: the queue does not record which mode the entry was
+                // started with, and re-checking against the current manifests is the previous
+                // behaviour (it also repairs a partially transferred install).
                 GameSource.STEAM -> SteamService.downloadApp(
-                    appId = nextEntry.gameId.toInt()
+                    appId = nextEntry.gameId.toInt(),
+                    mode = SteamDownloadMode.UPDATE,
                 )
                 GameSource.AMAZON -> AmazonService.downloadGame(
                     context = context,

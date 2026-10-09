@@ -60,6 +60,7 @@ import app.gamenative.events.SteamEvent
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamService.Companion.getAppDirPath
+import app.gamenative.service.download.SteamDownloadMode
 import app.gamenative.ui.component.dialog.MessageDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.state.MessageDialogState
@@ -624,7 +625,7 @@ class SteamAppScreen : BaseAppScreen() {
             resumeWorkshopDownload(gameId, context)
         } else if (SteamService.hasPartialDownload(gameId)) {
             CoroutineScope(Dispatchers.IO).launch {
-                SteamService.downloadApp(gameId)
+                SteamService.downloadApp(gameId, SteamDownloadMode.UPDATE)
             }
         } else if (!isInstalled) {
             // Request storage permissions first, then show install dialog
@@ -650,7 +651,7 @@ class SteamAppScreen : BaseAppScreen() {
             resumeWorkshopDownload(gameId, context)
         } else {
             CoroutineScope(Dispatchers.IO).launch {
-                SteamService.downloadApp(gameId)
+                SteamService.downloadApp(gameId, SteamDownloadMode.UPDATE)
             }
         }
     }
@@ -681,7 +682,7 @@ class SteamAppScreen : BaseAppScreen() {
 
     override fun onUpdateClick(context: Context, libraryItem: LibraryItem) {
         CoroutineScope(Dispatchers.IO).launch {
-            SteamService.downloadApp(libraryItem.gameId)
+            SteamService.downloadApp(libraryItem.gameId, SteamDownloadMode.UPDATE)
         }
     }
 
@@ -1000,7 +1001,7 @@ class SteamAppScreen : BaseAppScreen() {
 
         if (container.language != config.language) {
             CoroutineScope(Dispatchers.IO).launch {
-                SteamService.downloadApp(libraryItem.gameId)
+                SteamService.downloadApp(libraryItem.gameId, SteamDownloadMode.UPDATE)
             }
         }
     }
@@ -1241,7 +1242,11 @@ class SteamAppScreen : BaseAppScreen() {
                         )
                         hideInstallDialog(gameId)
                         CoroutineScope(Dispatchers.IO).launch {
-                            SteamService.downloadApp(gameId)
+                            // UPDATE, not INSTALL: this dialog confirms an install, but the run
+                            // must re-hash any leftover files and re-check every depot (INSTALL
+                            // skips depots the app already records as downloaded, which would
+                            // leave a half-broken install half-broken).
+                            SteamService.downloadApp(gameId, SteamDownloadMode.UPDATE)
                         }
                     }
                 }
@@ -1286,7 +1291,16 @@ class SteamAppScreen : BaseAppScreen() {
                         if (operation != null) {
                             CoroutineScope(Dispatchers.IO).launch {
                                 val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
-                                val downloadInfo = SteamService.downloadApp(gameId)
+                                // "Verify Files" repairs the installed build (pinned to the
+                                // manifest this app recorded as installed); "Update" fetches the
+                                // current one. Both used to run the same update-all path, so
+                                // verifying silently upgraded the game.
+                                val mode = if (operation == AppOptionMenuType.VerifyFiles) {
+                                    SteamDownloadMode.VERIFY
+                                } else {
+                                    SteamDownloadMode.UPDATE
+                                }
+                                val downloadInfo = SteamService.downloadApp(gameId, mode)
                                 MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
                                 MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
                                 MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_COLDCLIENT_USED)
@@ -1493,7 +1507,7 @@ class SteamAppScreen : BaseAppScreen() {
                             ConversionTracker.campaignAttribution(gameId),
                     )
                     CoroutineScope(Dispatchers.IO).launch {
-                        SteamService.downloadApp(gameId, dlcAppIds, branch = branch, isUpdateOrVerify = false)
+                        SteamService.downloadApp(gameId, dlcAppIds, branch = branch, mode = SteamDownloadMode.INSTALL)
                     }
                 },
                 onDismissRequest = {
@@ -1648,11 +1662,13 @@ class SteamAppScreen : BaseAppScreen() {
                             val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
                             val dlcAppIds = SteamService.getInstalledApp(gameId)
                                 ?.dlcDepots.orEmpty()
+                            // Switching branch: take that branch's CURRENT manifests (an update
+                            // against the newly selected branch), not the installed build's.
                             SteamService.downloadApp(
                                 gameId,
                                 dlcAppIds,
                                 branch = selectedBranch,
-                                isUpdateOrVerify = true,
+                                mode = SteamDownloadMode.UPDATE,
                             )
                             container.isNeedsUnpacking = true
                             container.saveData()

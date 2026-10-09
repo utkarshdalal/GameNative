@@ -584,6 +584,10 @@ pub fn download_resolved_depots_with_cancel_progress(
         }
 
         let depot_id = depot.depot_id;
+        // The manifest recorded for this depot BEFORE this run: on an update it is the version the
+        // user currently has, and its cached manifest is what the removed-content sweep diffs
+        // against. Read here, before `finish_depot` overwrites it below.
+        let previous_manifest_id = cfg.installed_manifest(depot_id);
         let chunk_progress = |done: u64, total: u64, verifying: bool| {
             // First real (non-verify) byte = the download has genuinely started: NOW spawn
             // the background CDN probe. An all-verified run never spawns it (nothing to
@@ -651,6 +655,35 @@ pub fn download_resolved_depots_with_cancel_progress(
             ));
         }
 
+        // ── Removed content: files the PREVIOUS manifest listed that this one does not. Steam's
+        // client prunes this set as part of an update; we do it only AFTER the depot's writes
+        // succeeded, so a failed or cancelled run never destroys data. The previous manifest is
+        // taken from the local cache (written when it was downloaded) — no extra network round
+        // trip, and when it is not cached the sweep is skipped with a log line rather than failing.
+        if previous_manifest_id != 0 && previous_manifest_id != depot.manifest_id {
+            match load_cached_manifest(&cfg, depot_id, previous_manifest_id, &depot.depot_key) {
+                Some(previous) => {
+                    let removed = crate::store_dl::steam::depot_writer::removed_files(
+                        &previous, &manifest,
+                    );
+                    let stats = crate::store_dl::steam::depot_writer::prune_removed_files(
+                        install_dir, &removed, log,
+                    );
+                    if let Some(log) = log {
+                        log(&stats.line(depot_id));
+                    }
+                }
+                None => {
+                    if let Some(log) = log {
+                        log(&format!(
+                            "depot-prune depot={depot_id} skipped: previous manifest \
+{previous_manifest_id} not in the local cache"
+                        ));
+                    }
+                }
+            }
+        }
+
         if !cfg.finish_depot(depot.depot_id, depot.manifest_id) {
             return DepotDownloadResult::fail(format!(
                 "download: depot.config finish failed for depot {}",
@@ -665,6 +698,25 @@ pub fn download_resolved_depots_with_cancel_progress(
     }
 
     result
+}
+
+/// Parse + decrypt a manifest from the local depot cache, exactly as the resolve phase does for
+/// the manifest it is downloading. `None` = not cached (or unusable), which makes the caller skip
+/// its removed-content sweep instead of failing.
+fn load_cached_manifest(
+    cfg: &DepotConfigStore,
+    depot_id: u32,
+    manifest_id: u64,
+    depot_key: &[u8],
+) -> Option<ContentManifest> {
+    let cache = cfg.manifest_cache_path(depot_id, manifest_id);
+    let raw = read_cached_manifest(&cache)?;
+    let mut manifest = ContentManifest::parse(&raw)?;
+    if !manifest.decrypt_filenames(depot_key) {
+        return None;
+    }
+    crate::store_dl::steam::depot_writer::normalize_manifest_case_paths(&mut manifest);
+    Some(manifest)
 }
 
 fn read_cached_manifest(path: &Path) -> Option<Vec<u8>> {
