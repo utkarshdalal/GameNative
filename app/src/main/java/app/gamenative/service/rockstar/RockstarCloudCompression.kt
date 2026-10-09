@@ -3,6 +3,7 @@ package app.gamenative.service.rockstar
 import com.jcraft.jzlib.Deflater
 import com.jcraft.jzlib.JZlib
 import java.io.File
+import java.io.RandomAccessFile
 import java.security.MessageDigest
 import java.util.zip.DataFormatException
 import java.util.zip.Inflater
@@ -24,14 +25,15 @@ object RockstarCloudCompression {
     class Result(val size: Long, val md5: String)
 
     fun compress(plain: File, out: File): Result {
-        val (size, digest) = hash(plain)
-        if (size < 1 || size > MAX_PLAIN) throw RockstarCloudException("Rockstar cloud save ${plain.name}: size $size cannot be compressed")
         val deflater = Deflater(JZlib.Z_BEST_COMPRESSION, WINDOW_BITS, MEM_LEVEL, JZlib.W_NONE)
+        val md5 = MessageDigest.getInstance("MD5")
         val input = ByteArray(BUFFER)
         val output = ByteArray(BUFFER)
+        var size = 0L
         try {
-            out.outputStream().buffered().use { stream ->
-                stream.write(header(size, digest))
+            RandomAccessFile(out, "rw").use { stream ->
+                stream.setLength(0)
+                stream.write(ByteArray(HEADER))
                 fun drain(flush: Int): Int {
                     deflater.setOutput(output, 0, output.size)
                     val rc = deflater.deflate(flush)
@@ -45,16 +47,26 @@ object RockstarCloudCompression {
                     while (true) {
                         val n = source.read(input)
                         if (n < 0) break
+                        size += n
+                        if (size > MAX_PLAIN) throw RockstarCloudException("Rockstar cloud save ${plain.name}: size $size cannot be compressed")
+                        md5.update(input, 0, n)
                         deflater.setInput(input, 0, n, false)
                         while (deflater.avail_in > 0) drain(JZlib.Z_NO_FLUSH)
                     }
                 }
+                if (size < 1) throw RockstarCloudException("Rockstar cloud save ${plain.name}: size $size cannot be compressed")
                 while (drain(JZlib.Z_FINISH) != JZlib.Z_STREAM_END) Unit
+                val digest = md5.digest()
+                stream.seek(0)
+                stream.write(header(size, digest))
+                return Result(size, RockstarCloudApi.hex(digest))
             }
+        } catch (e: Throwable) {
+            out.delete()
+            throw e
         } finally {
             deflater.end()
         }
-        return Result(size, RockstarCloudApi.hex(digest))
     }
 
     fun decompress(blob: File, out: File): Result {
@@ -111,6 +123,9 @@ object RockstarCloudCompression {
                 }
                 return Result(size, RockstarCloudApi.hex(digest))
             }
+        } catch (e: Throwable) {
+            out.delete()
+            throw e
         } finally {
             inflater.end()
         }
@@ -122,21 +137,6 @@ object RockstarCloudCompression {
         for (i in 0 until 4) header[2 + i] = (size shr (8 * i)).toByte()
         md5.copyInto(header, 6)
         return header
-    }
-
-    private fun hash(file: File): Pair<Long, ByteArray> {
-        val md5 = MessageDigest.getInstance("MD5")
-        var size = 0L
-        file.inputStream().use { input ->
-            val buf = ByteArray(BUFFER)
-            while (true) {
-                val n = input.read(buf)
-                if (n < 0) break
-                md5.update(buf, 0, n)
-                size += n
-            }
-        }
-        return size to md5.digest()
     }
 
     private fun le(data: ByteArray, offset: Int, bytes: Int): Long =

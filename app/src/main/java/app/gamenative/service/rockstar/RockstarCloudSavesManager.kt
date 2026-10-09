@@ -209,14 +209,17 @@ object RockstarCloudSavesManager {
                 val sizeMismatch = entry.size >= 0 && blob.size != entry.size
                 val hashMismatch = entry.md5 != null && entry.md5 != blob.md5
                 val got = if (compressed) {
-                    if (sizeMismatch || hashMismatch) {
-                        Timber.tag(TAG).w("GetFile $name: manifest Size/MD5Hash do not describe the downloaded blob (${blob.size} vs ${entry.size} bytes)")
-                    }
                     val plain = File(tmpDir, "$index.plain")
                     val unpacked = RockstarCloudCompression.decompress(temp, plain)
+                    if (sizeMismatch && unpacked.size != entry.size) {
+                        throw RockstarCloudException("Rockstar cloud pull: downloaded size ${blob.size} (plain ${unpacked.size}) differs from manifest ${entry.size}")
+                    }
+                    if (hashMismatch && entry.md5 != unpacked.md5) {
+                        throw RockstarCloudException("Rockstar cloud pull: downloaded content does not match the manifest MD5Hash")
+                    }
                     temp.delete()
                     temp = plain
-                    RockstarCloudDownload(unpacked.size, unpacked.md5, blob.version, blob.lastModified)
+                    RockstarCloudDownload(unpacked.size, unpacked.md5, blob.version, blob.lastModified, cloudMd5 = blob.md5)
                 } else {
                     if (sizeMismatch) {
                         throw RockstarCloudException("Rockstar cloud pull: downloaded size ${blob.size} differs from manifest ${entry.size}")
@@ -241,9 +244,9 @@ object RockstarCloudSavesManager {
             val got = fetched[name]
             val mine = local[name]
             when {
-                got != null -> next[name] = RockstarSyncedState(entry.version, got.md5, got.size, entry.serverLastModifiedUtc)
+                got != null -> next[name] = RockstarSyncedState(entry.version, got.md5, got.size, entry.serverLastModifiedUtc, got.cloudMd5)
                 mine != null && mine.state.matches(entry.md5) ->
-                    next[name] = RockstarSyncedState(entry.version, mine.md5, mine.size, entry.serverLastModifiedUtc)
+                    next[name] = RockstarSyncedState(entry.version, mine.md5, mine.size, entry.serverLastModifiedUtc, mine.uploadMd5)
             }
         }
         saveState(container, State(title.titleId, profileDir.absolutePath, next))
@@ -325,7 +328,13 @@ object RockstarCloudSavesManager {
                 }
                 val now = remote[name]
                 val known = synced[name]
-                if (now == null || known == null || now.md5 == null || now.md5 != known.md5) {
+                if (now?.md5 != null && now.md5.equals(mine.uploadMd5 ?: mine.md5, ignoreCase = true)) {
+                    Timber.tag(TAG).i("PostFile $name rejected (${e.code}) but the cloud already holds this content as version ${now.version}")
+                    synced[name] = RockstarSyncedState(now.version, mine.md5, mine.size, now.serverLastModifiedUtc, mine.uploadMd5)
+                    saveState(container, State(session.titleId, profileDir.absolutePath, synced))
+                    continue
+                }
+                if (now == null || known == null || now.md5 == null || !now.md5.equals(known.cloudMd5 ?: known.md5, ignoreCase = true)) {
                     Timber.tag(TAG).w("PostFile $name rejected (${e.code}); the cloud copy changed since the last sync, left as is")
                     ok = false
                     continue
@@ -346,7 +355,7 @@ object RockstarCloudSavesManager {
                 ok = false
                 continue
             }
-            synced[name] = RockstarSyncedState(posted.version ?: expected, mine.md5, mine.size, posted.serverLastModifiedUtc ?: lastModified)
+            synced[name] = RockstarSyncedState(posted.version ?: expected, mine.md5, mine.size, posted.serverLastModifiedUtc ?: lastModified, mine.uploadMd5)
             saveState(container, State(session.titleId, profileDir.absolutePath, synced))
             uploaded++
         }
@@ -432,13 +441,8 @@ object RockstarCloudSavesManager {
                 continue
             }
             val blob = File(uploadDir, "$index.z")
-            try {
-                RockstarCloudCompression.compress(file, blob)
-            } catch (e: RockstarCloudException) {
-                Timber.tag(TAG).w("Cloud save $name skipped: ${e.message}")
-                blob.delete()
-                continue
-            }
+            val packed = RockstarCloudCompression.compress(file, blob)
+            if (packed.size != size || packed.md5 != md5) throw RockstarCloudException("Rockstar cloud save $name changed while it was being read")
             out[name] = LocalFile(file, size, modified, md5, blob, hashFile(blob).second)
         }
         return out
@@ -600,6 +604,7 @@ object RockstarCloudSavesManager {
                             entry.getString("md5"),
                             entry.getLong("size"),
                             entry.optString("serverModified").takeIf { it.isNotEmpty() },
+                            entry.optString("cloudMd5").takeIf { it.isNotEmpty() },
                         ),
                     )
                 }
@@ -621,7 +626,7 @@ object RockstarCloudSavesManager {
             files.put(
                 name,
                 JSONObject().put("version", entry.version).put("md5", entry.md5).put("size", entry.size)
-                    .put("serverModified", entry.serverModified.orEmpty()),
+                    .put("serverModified", entry.serverModified.orEmpty()).put("cloudMd5", entry.cloudMd5.orEmpty()),
             )
         }
         val json = JSONObject().put("titleId", state.titleId).put("profile", state.profile).put("files", files)

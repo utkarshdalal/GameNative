@@ -14,7 +14,7 @@ data class RockstarLocalState(val md5: String, val size: Long, val uploadMd5: St
 
 data class RockstarRemoteState(val version: Long, val md5: String?)
 
-data class RockstarSyncedState(val version: Long, val md5: String, val size: Long, val serverModified: String?)
+data class RockstarSyncedState(val version: Long, val md5: String, val size: Long, val serverModified: String?, val cloudMd5: String? = null)
 
 enum class RockstarCloudAction { NONE, DOWNLOAD, UPLOAD, CONFLICT }
 
