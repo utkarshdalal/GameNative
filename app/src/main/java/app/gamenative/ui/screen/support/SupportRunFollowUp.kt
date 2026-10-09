@@ -145,7 +145,11 @@ object SupportRunFollowUp {
             update { it.copy(phase = Phase.FAILED, progress = null, failure = outcome) }
             return
         }
-        withContext(Dispatchers.IO) { DebugReportUtils.deleteReport(dir) }
+        withContext(Dispatchers.IO) {
+            val header = DebugReportUtils.readHeader(dir)
+            DebugReportUtils.deleteReport(dir)
+            SupportAppliedRun.recordReportedRun(context, current.appId, header)
+        }
         SupportSession.clearRun(current.appId)
         val target = outcome.conversationId
         posted?.let { _updates.tryEmit(target to it) }

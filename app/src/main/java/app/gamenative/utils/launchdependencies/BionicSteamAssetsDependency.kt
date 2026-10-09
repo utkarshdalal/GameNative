@@ -56,12 +56,24 @@ object BionicSteamAssetsDependency : LaunchDependency {
     )
 
     /**
+     * Protons whose wcp already ships its own lsteamclient in lib/wine. No archive
+     * is overlaid (it would be a different build against the same ABI-locked unixlib);
+     * the tree's PE DLLs are still copied into the prefix every boot.
+     */
+    private val BUNDLED_LSTEAMCLIENT_WINE = setOf(
+        "proton-11.0-2-x86_64-1",
+        "proton-11.0-2-arm64ec-1",
+    )
+
+    /**
      * Wine versions that ship a dedicated steam.exe helper. steam.exe is
      * otherwise version-independent, so all other versions use the default.
      */
     private val STEAM_EXE_BY_WINE = mapOf(
         "proton-11.0-1-x86_64-1" to STEAM_EXE_PROTON11,
         "proton-11.0-1-arm64ec-1" to STEAM_EXE_PROTON11,
+        "proton-11.0-2-x86_64-1" to STEAM_EXE_PROTON11,
+        "proton-11.0-2-arm64ec-1" to STEAM_EXE_PROTON11,
     )
 
     /** Filename of the steam.exe helper (server asset + filesDir cache) for this container. */
@@ -73,6 +85,7 @@ object BionicSteamAssetsDependency : LaunchDependency {
 
     private fun lsteamclientArchiveFor(container: Container): String? {
         val wineVersion = container.wineVersion
+        if (wineVersion in BUNDLED_LSTEAMCLIENT_WINE) return null
         LSTEAMCLIENT_ARCHIVE_BY_WINE[wineVersion]?.let { return it }
         val major = Regex("^proton-(\\d+)").find(wineVersion)?.groupValues?.get(1)?.toIntOrNull()
             ?: return null
@@ -143,18 +156,20 @@ object BionicSteamAssetsDependency : LaunchDependency {
      * lsteamclient, or if the archive hasn't been downloaded yet.
      */
     fun extractLsteamclientIntoPrefix(context: Context, container: Container) {
-        val archive = lsteamclientArchiveFor(container) ?: return
-        val imageFs = ImageFs.find(context)
-        val archiveCache = File(imageFs.filesDir, archive)
-        if (!archiveCache.exists()) {
-            Timber.e("lsteamclient archive $archive not downloaded; extract skipped")
-            return
-        }
+        val archive = lsteamclientArchiveFor(container)
+        if (archive == null && container.wineVersion !in BUNDLED_LSTEAMCLIENT_WINE) return
         val libDir = wineLibDir(context, container)
-        libDir.mkdirs()
-        if (!TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, archiveCache, libDir)) {
-            Timber.e("Failed to extract $archive into ${libDir.absolutePath}")
-            return
+        if (archive != null) {
+            val archiveCache = File(ImageFs.find(context).filesDir, archive)
+            if (!archiveCache.exists()) {
+                Timber.e("lsteamclient archive $archive not downloaded; extract skipped")
+                return
+            }
+            libDir.mkdirs()
+            if (!TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, archiveCache, libDir)) {
+                Timber.e("Failed to extract $archive into ${libDir.absolutePath}")
+                return
+            }
         }
         val sys32Src = treeSystem32DllIn(libDir, container)
         val sysWowSrc = treeSyswow64DllIn(libDir)

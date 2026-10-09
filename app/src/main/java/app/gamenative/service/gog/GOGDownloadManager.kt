@@ -1010,9 +1010,12 @@ class GOGDownloadManager @Inject constructor(
                         }
                     }
 
-                    override fun onLog(line: String) {
-                        if (GameDownloadService.SHOW_PIPELINE_LOGS) Timber.tag("GOG").d(line)
-                    }
+                    // Intentionally empty: the engine already wrote this line to logcat itself
+                    // (native tag GN_GOG_DL, gated by SHOW_PIPELINE_LOGS), so forwarding it to
+                    // Timber here would put every pipeline line into the same pid's log twice —
+                    // and both copies into the logcat-based captures (Save logcat / crash report
+                    // / support bundle). One emitter per line; the native one owns logcat.
+                    override fun onLog(line: String) {}
 
                     override fun onComplete(
                         success: Boolean,

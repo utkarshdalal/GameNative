@@ -1138,9 +1138,11 @@ class EpicDownloadManager @Inject constructor(
                 }
             }
 
-            override fun onLog(line: String) {
-                if (GameDownloadService.SHOW_PIPELINE_LOGS) Timber.tag("Epic").d(line)
-            }
+            // Intentionally empty: the engine already wrote this line to logcat itself (native
+            // tag GN_EPIC_DL, gated by SHOW_PIPELINE_LOGS) — forwarding it to Timber would log
+            // every pipeline line twice into the same pid's log (and twice into Save logcat /
+            // the crash report / the support bundle).
+            override fun onLog(line: String) {}
 
             override fun onComplete(success: Boolean, error: String, bytesCredited: Long) = Unit
         }

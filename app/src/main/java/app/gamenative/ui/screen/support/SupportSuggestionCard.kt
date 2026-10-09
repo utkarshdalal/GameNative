@@ -185,7 +185,7 @@ private fun runRecordText(run: DebugRunParams): String? {
 }
 
 @Composable
-private fun OutlinedFocusButton(
+internal fun OutlinedFocusButton(
     text: String,
     enabled: Boolean,
     onClick: () -> Unit,

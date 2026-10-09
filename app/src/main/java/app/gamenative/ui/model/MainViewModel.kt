@@ -33,8 +33,10 @@ import app.gamenative.utils.CustomGameScanner
 import app.gamenative.ui.data.MainState
 import app.gamenative.ui.enums.ConnectionState
 import app.gamenative.ui.screen.PluviaScreen
+import app.gamenative.ui.screen.support.SupportAppliedRun
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.DebugReportUtils
+import app.gamenative.utils.DebugRunParamsHolder
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.UpdateInfo
@@ -593,6 +595,12 @@ class MainViewModel @Inject constructor(
         PrefManager.hasAttemptedGameLaunch = true
         // Show booting splash before launching the app
         viewModelScope.launch {
+            _state.value.takeIf { !it.debugRun && !it.bootToContainer && !it.testGraphics && !it.diagnostics }?.let {
+                withContext(Dispatchers.IO) { SupportAppliedRun.pending(context, appId) }?.let { pending ->
+                    DebugRunParamsHolder.set(appId, pending.run)
+                    setDebugRun(true)
+                }
+            }
             viewModelScope.launch(Dispatchers.IO) {
                 libraryPlayHistoryDao.upsert(
                     LibraryPlayHistory(
@@ -814,7 +822,10 @@ class MainViewModel @Inject constructor(
         val isLocalSavesOnly = ContainerUtils.isLocalSavesOnly(context, appId)
         if (isLocalSavesOnly || (gameSource == GameSource.STEAM && isOffline.value)) {
             Timber.tag("Exit").i("Local saves only or offline mode enabled for $appId — skipping cloud sync on exit")
-            if (!isLocalSavesOnly && gameSource == GameSource.STEAM) pushEaCloudSaves(context, appId, gameId)
+            if (!isLocalSavesOnly && gameSource == GameSource.STEAM) {
+                pushEaCloudSaves(context, appId, gameId)
+                pushRockstarCloudSaves(context, appId, gameId)
+            }
             return
         }
 
@@ -880,6 +891,7 @@ class MainViewModel @Inject constructor(
                 Timber.tag("Steam").e(t, "[Cloud Saves] Exception during close app sync for $gameId")
             }
             pushEaCloudSaves(context, appId, gameId)
+            pushRockstarCloudSaves(context, appId, gameId)
         }
     }
 
@@ -893,6 +905,21 @@ class MainViewModel @Inject constructor(
             throw e
         } catch (t: Throwable) {
             Timber.tag("EA").w("Cloud save push failed for $gameId: ${t.javaClass.simpleName}")
+        }
+    }
+
+    private suspend fun pushRockstarCloudSaves(context: Context, appId: String, gameId: Int) {
+        try {
+            withContext(Dispatchers.IO) {
+                val gameDir = File(SteamService.getAppDirPath(gameId))
+                if (!app.gamenative.service.rockstar.RockstarLaunchSupport.isRockstarTitle(gameDir)) return@withContext
+                val container = ContainerUtils.getContainer(context, appId)
+                app.gamenative.service.rockstar.RockstarCloudSavesManager.syncAfterExit(context, container, gameDir)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (t: Throwable) {
+            Timber.tag("RockstarCloud").w("Cloud save push failed for $gameId: ${t.javaClass.simpleName}")
         }
     }
 

@@ -10,9 +10,29 @@ internal object PerfVerdicts {
     private const val THERMAL_MODERATE = 2
     private const val SUSTAINED_SEC = 20
     private const val CEILING_RATIO = 0.85
+    private const val HELPER_SATURATED_CPU = 40.0
+    private const val HELPER_GAME_MAX_CPU = 50.0
+    private const val MAX_HELPER_NOTES = 3
     private val thermalNames = arrayOf("NONE", "LIGHT", "MODERATE", "SEVERE", "CRITICAL", "EMERGENCY", "SHUTDOWN")
 
     private class Sustained(val maxSec: Int, val firstStartT: Int?)
+
+    internal class HelperLoad(val name: String, val avgCpu: Double)
+
+    internal fun helperProcessLoad(
+        windows: List<PerfProcessWindow>,
+        gamePid: Int?,
+        gameName: String? = null,
+    ): Pair<Double, List<HelperLoad>>? {
+        if (windows.isEmpty() || gamePid == null) return null
+        val count = windows.size.toDouble()
+        val gameAvg = windows.sumOf { w -> w.processes.firstOrNull { it.pid == gamePid }?.cpuPct ?: 0 } / count
+        val helpers = windows.flatMap { w -> w.processes.filter { it.pid != gamePid && it.name != gameName } }
+            .groupBy { it.name }
+            .map { (name, entries) -> HelperLoad(name, entries.sumOf { it.cpuPct } / count) }
+            .sortedByDescending { it.avgCpu }
+        return gameAvg to helpers
+    }
 
     fun compute(run: PerfRun): JSONObject {
         val samples = run.samples
@@ -61,6 +81,13 @@ internal object PerfVerdicts {
         val vsyncLocked = run.totalFrames > 0 && vsyncFraction > 0.7
         val frameP50 = percentile(run.histogramMs, 0.50)
         val frameP99 = percentile(run.histogramMs, 0.99)
+        val helperLoad = helperProcessLoad(run.processWindows, gamePid, gameName)
+        val gameWindowCpu = helperLoad?.first
+        val saturatedHelpers = if (helperLoad != null && helperLoad.first < HELPER_GAME_MAX_CPU) {
+            helperLoad.second.filter { it.avgCpu >= HELPER_SATURATED_CPU }.take(MAX_HELPER_NOTES)
+        } else {
+            emptyList()
+        }
         val hitching = frameP50 != null && frameP99 != null && frameP50 > 0 &&
             frameP99 > 3 * frameP50 && fpsMed != null && fpsMed > 25
 
@@ -75,6 +102,13 @@ internal object PerfVerdicts {
         if (gpuBound) {
             signals += "gpu"
             notes += "GPU busy ${fmt(gpuMed)}% with total CPU ${fmt(cpuMed)}%"
+        }
+        if (saturatedHelpers.isNotEmpty()) {
+            signals += "helperProcessBound"
+            saturatedHelpers.forEach { helper ->
+                notes += "${helper.name} saturated (${fmt(helper.avgCpu)}% CPU) while the game used ${fmt(gameWindowCpu)}%: " +
+                    "an IPC or helper-process bottleneck, not the game's own work"
+            }
         }
         if (hotCore != null) {
             signals += "cpuSingleThread"
@@ -229,6 +263,15 @@ internal object PerfVerdicts {
                 },
             )
             put("threadProfile", threadProfile)
+            if (helperLoad != null) {
+                put(
+                    "processCpuAvg",
+                    JSONArray().apply {
+                        put(JSONObject().putOpt("name", gameName).put("game", true).put("cpu", helperLoad.first.roundToInt()))
+                        helperLoad.second.take(5).forEach { put(JSONObject().put("name", it.name).put("cpu", it.avgCpu.roundToInt())) }
+                    },
+                )
+            }
             put(
                 "medians",
                 JSONObject().apply {

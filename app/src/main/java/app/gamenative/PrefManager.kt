@@ -1146,6 +1146,20 @@ object PrefManager {
             setPref(DISCORD_OAUTH_NONCE, value)
         }
 
+    private val DISCORD_MERGE_PENDING = booleanPreferencesKey("discord_merge_pending")
+    var discordMergePending: Boolean
+        get() = getPref(DISCORD_MERGE_PENDING, false)
+        set(value) {
+            setPref(DISCORD_MERGE_PENDING, value)
+        }
+
+    private val DISCORD_LINKED_NAME = stringPreferencesKey("discord_linked_name")
+    var discordLinkedName: String
+        get() = getPref(DISCORD_LINKED_NAME, "")
+        set(value) {
+            setPref(DISCORD_LINKED_NAME, value)
+        }
+
     private val SUPPORT_LAST_SEEN = stringPreferencesKey("support_last_seen")
     var supportLastSeen: String
         get() = getPref(SUPPORT_LAST_SEEN, "")
