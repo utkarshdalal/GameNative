@@ -1814,6 +1814,10 @@ https://gamenative.app
     <string name="screen_effects_scaling_mode_fsr_desc">Чёткое масштабирование сверхвысокого разрешения.</string>
     <string name="screen_effects_scaling_mode_fsr_aspect">FSR Fit</string>
     <string name="screen_effects_scaling_mode_fsr_aspect_desc">FSR, сохраняет соотношение сторон.</string>
+    <string name="screen_effects_scaling_mode_sgsr">SGSR</string>
+    <string name="screen_effects_scaling_mode_sgsr_desc">Однопроходное масштабирование Snapdragon.</string>
+    <string name="screen_effects_scaling_mode_sgsr_aspect">SGSR Fit</string>
+    <string name="screen_effects_scaling_mode_sgsr_aspect_desc">SGSR, сохраняет соотношение сторон.</string>
     <string name="screen_effects_scaling_mode_dls">DLS</string>
     <string name="screen_effects_scaling_mode_dls_desc">Повышение резкости / чёткости.</string>
     <string name="screen_effects_scaling_mode_natural">Естественный</string>

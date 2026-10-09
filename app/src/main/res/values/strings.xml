@@ -367,6 +367,10 @@
     <string name="screen_effects_scaling_mode_dls_desc">Sharpen / clarity pass.</string>
     <string name="screen_effects_scaling_mode_natural">Natural</string>
     <string name="screen_effects_scaling_mode_natural_desc">Warmer color tone.</string>
+    <string name="screen_effects_scaling_mode_sgsr">SGSR</string>
+    <string name="screen_effects_scaling_mode_sgsr_desc">Snapdragon single-pass upscale.</string>
+    <string name="screen_effects_scaling_mode_sgsr_aspect">SGSR Fit</string>
+    <string name="screen_effects_scaling_mode_sgsr_aspect_desc">SGSR, keeps aspect ratio.</string>
     <string name="screen_effects_fsr">FSR 1.0</string>
     <string name="screen_effects_fsr_description">Official AMD FidelityFX Super Resolution 1.0 using EASU + RCAS with a lower internal render resolution and full-resolution upscale.</string>
     <string name="screen_effects_fsr_quality">FSR quality</string>

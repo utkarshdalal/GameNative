@@ -287,6 +287,10 @@
     <string name="screen_effects_scaling_mode_stretch_desc">縦横比を無視して画面いっぱいに引き伸ばします。</string>
     <string name="screen_effects_scaling_mode_fsr_desc">くっきりした超解像アップスケール。</string>
     <string name="screen_effects_scaling_mode_fsr_aspect_desc">FSR（縦横比を維持）。</string>
+    <string name="screen_effects_scaling_mode_sgsr">SGSR</string>
+    <string name="screen_effects_scaling_mode_sgsr_desc">Snapdragonのシングルパス・アップスケール。</string>
+    <string name="screen_effects_scaling_mode_sgsr_aspect">SGSRフィット</string>
+    <string name="screen_effects_scaling_mode_sgsr_aspect_desc">SGSR（縦横比を維持）。</string>
     <string name="screen_effects_scaling_mode_dls_desc">シャープ化／クラリティ処理。</string>
     <string name="screen_effects_scaling_mode_natural_desc">暖かみのある色合い。</string>
     <string name="screen_effects_color_adjustments">色の調整</string>
