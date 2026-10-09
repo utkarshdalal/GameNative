@@ -2461,6 +2461,11 @@
     <string name="control_stroke_width_extra_thick">Bardzo gruba</string>
     <string name="button_look_through">Sterowanie przez przeciąganie</string>
     <string name="button_look_through_subtitle">Naciśnij i przeciągnij od tego przycisku, aby sterować także ruchem lub widokiem kamery. Niedostępne w trybie ekranu dotykowego.</string>
+    <string name="control_haptic_feedback">Reakcja haptyczna</string>
+    <string name="control_vibrate_on_touch">Wibruj przy dotyku</string>
+    <string name="control_vibrate_on_touch_subtitle">Wibruj po dotknięciu tej kontrolki</string>
+    <string name="control_vibration_strength">Siła wibracji</string>
+    <string name="control_vibration_strength_subtitle">Puść suwak, aby poczuć siłę</string>
     <string name="preview">Podgląd</string>
     <string name="active">Aktywny</string>
     <string name="apply_all">Zastosuj do wszystkich</string>

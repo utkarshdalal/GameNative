@@ -2438,6 +2438,11 @@
     <string name="control_stroke_width_extra_thick">Foarte gros</string>
     <string name="button_look_through">Control prin glisare</string>
     <string name="button_look_through_subtitle">Apasă și glisează de la acest buton pentru a controla și mișcarea sau camera. Indisponibil în modul ecran tactil.</string>
+    <string name="control_haptic_feedback">Feedback haptic</string>
+    <string name="control_vibrate_on_touch">Vibrează la atingere</string>
+    <string name="control_vibrate_on_touch_subtitle">Vibrează când atingi acest control</string>
+    <string name="control_vibration_strength">Puterea vibrației</string>
+    <string name="control_vibration_strength_subtitle">Eliberează glisorul pentru a simți puterea</string>
     <string name="preview">Previzualizare</string>
     <string name="active">Activ</string>
     <string name="apply_all">Aplică tuturor</string>

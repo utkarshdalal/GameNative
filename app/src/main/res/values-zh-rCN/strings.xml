@@ -2475,6 +2475,11 @@
     <string name="control_stroke_width_extra_thick">特粗</string>
     <string name="button_look_through">拖动穿透</string>
     <string name="button_look_through_subtitle">按住此按钮并拖动，也可控制移动或镜头视角。触摸屏模式下不可用。</string>
+    <string name="control_haptic_feedback">触感反馈</string>
+    <string name="control_vibrate_on_touch">触摸时振动</string>
+    <string name="control_vibrate_on_touch_subtitle">触摸此控件时振动</string>
+    <string name="control_vibration_strength">振动强度</string>
+    <string name="control_vibration_strength_subtitle">松开滑块即可感受强度</string>
     <string name="preview">预览</string>
     <string name="active">激活</string>
     <string name="apply_all">全部应用</string>

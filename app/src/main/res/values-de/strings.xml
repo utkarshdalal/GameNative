@@ -2399,6 +2399,11 @@
     <string name="control_stroke_width_extra_thick">Extra dick</string>
     <string name="button_look_through">Durchgriff</string>
     <string name="button_look_through_subtitle">Diese Taste drücken und von ihr aus ziehen, um zusätzlich Bewegung oder Kamerablick zu steuern. Im Touchscreen-Modus nicht verfügbar.</string>
+    <string name="control_haptic_feedback">Haptisches Feedback</string>
+    <string name="control_vibrate_on_touch">Bei Berührung vibrieren</string>
+    <string name="control_vibrate_on_touch_subtitle">Vibrieren, wenn du dieses Steuerelement berührst</string>
+    <string name="control_vibration_strength">Vibrationsstärke</string>
+    <string name="control_vibration_strength_subtitle">Lass den Regler los, um die Stärke zu spüren</string>
     <string name="preview">Vorschau</string>
     <string name="active">Aktiv</string>
     <string name="apply_all">Auf alle anwenden</string>

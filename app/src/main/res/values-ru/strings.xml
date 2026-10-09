@@ -2385,6 +2385,11 @@ https://gamenative.app
     <string name="control_stroke_width_extra_thick">Очень толстая</string>
     <string name="button_look_through">Сквозное управление</string>
     <string name="button_look_through_subtitle">Нажмите эту кнопку и проведите от неё, чтобы также управлять движением или камерой. Недоступно в режиме сенсорного экрана.</string>
+    <string name="control_haptic_feedback">Тактильный отклик</string>
+    <string name="control_vibrate_on_touch">Вибрация при касании</string>
+    <string name="control_vibrate_on_touch_subtitle">Вибрировать при касании этого элемента</string>
+    <string name="control_vibration_strength">Сила вибрации</string>
+    <string name="control_vibration_strength_subtitle">Отпустите ползунок, чтобы почувствовать силу</string>
     <string name="preview">Предпросмотр</string>
     <string name="active">Активно</string>
     <string name="apply_all">Применить ко всем</string>

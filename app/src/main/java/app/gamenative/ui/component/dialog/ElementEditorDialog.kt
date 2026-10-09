@@ -206,6 +206,9 @@ fun ElementEditorDialog(
     var currentLegacyShooterLookThrough by remember {
         mutableStateOf(element.shooterLookThroughSetting)
     }
+    // Haptic feedback is only written to the element on save, so discarding needs no restore
+    var currentHapticFeedback by remember { mutableStateOf(element.isHapticFeedback) }
+    var currentHapticStrength by remember { mutableIntStateOf(element.hapticStrength) }
     val originalControlAppearances by remember {
         mutableStateOf(
             view.profile?.elements
@@ -272,6 +275,8 @@ fun ElementEditorDialog(
             element.setToggleSwitch(currentToggleSwitch)
         }
 
+        element.isHapticFeedback = currentHapticFeedback
+        element.hapticStrength = currentHapticStrength
         applyCurrentControlAppearance()
         view.profile?.save()
         view.invalidate()
@@ -1016,6 +1021,22 @@ fun ElementEditorDialog(
                     }
                 }
 
+                HapticFeedbackSettings(
+                    enabled = currentHapticFeedback,
+                    strength = currentHapticStrength,
+                    onEnabledChange = {
+                        currentHapticFeedback = it
+                        if (it) view.vibrate(currentHapticStrength)
+                        hasUnsavedChanges = true
+                    },
+                    onStrengthChange = {
+                        currentHapticStrength = it
+                        hasUnsavedChanges = true
+                    },
+                    // Lets the user feel the strength they picked
+                    onStrengthChangeFinished = { view.vibrate(currentHapticStrength) }
+                )
+
                 // Properties Section
                 SettingsGroup(title = { Text(stringResource(R.string.properties)) }) {
                     SettingsMenuLink(
@@ -1145,6 +1166,61 @@ fun ElementEditorDialog(
                 }
             }
         )
+    }
+}
+
+/**
+ * Haptic feedback section: vibrate on touch and, when on, the vibration strength.
+ * Kept out of [ElementEditorDialog] so its already large content lambda doesn't grow.
+ */
+@Composable
+private fun HapticFeedbackSettings(
+    enabled: Boolean,
+    strength: Int,
+    onEnabledChange: (Boolean) -> Unit,
+    onStrengthChange: (Int) -> Unit,
+    onStrengthChangeFinished: () -> Unit
+) {
+    SettingsGroup(title = { Text(stringResource(R.string.control_haptic_feedback)) }) {
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(stringResource(R.string.control_vibrate_on_touch)) },
+            subtitle = { Text(stringResource(R.string.control_vibrate_on_touch_subtitle)) },
+            state = enabled,
+            onCheckedChange = onEnabledChange,
+        )
+
+        if (enabled) {
+            SettingsMenuLink(
+                colors = settingsTileColors(),
+                title = { Text(stringResource(R.string.control_vibration_strength)) },
+                subtitle = { Text(stringResource(R.string.control_vibration_strength_subtitle)) },
+                onClick = {}
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Slider(
+                    value = strength.toFloat(),
+                    onValueChange = { onStrengthChange(it.roundToInt()) },
+                    onValueChangeFinished = onStrengthChangeFinished,
+                    valueRange = ControlElement.MIN_HAPTIC_STRENGTH.toFloat()..ControlElement.MAX_HAPTIC_STRENGTH.toFloat(),
+                    // 10% steps
+                    steps = 8,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = "$strength%",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
     }
 }
 

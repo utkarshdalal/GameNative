@@ -58,6 +58,8 @@ public class InputControlsView extends View {
     private static final long SHOOTER_SPRINT_TAP_DURATION_MS = 120;
     public static final float DEFAULT_OVERLAY_OPACITY = 0.4f;
     private static final int SEQUENCE_PRESS_MS = 80;
+    private static final long HAPTIC_PULSE_MS = 25;
+    private static final long MIN_HAPTIC_PULSE_MS = 5;
     // LX, LY, RX, RY - the leading entries of the axis array processed in processJoystickInput
     private static final int PHYSICAL_STICK_AXIS_COUNT = 4;
     private boolean editMode = false;
@@ -220,6 +222,29 @@ public class InputControlsView extends View {
         if (touchpadView != null) touchpadView.cancelTouchInput();
         touchpadPointers.clear();
         lookThroughPointerState.clear();
+    }
+
+    // A control with haptic feedback on vibrates at its own strength. The others keep the
+    // system touch feedback, which only works when it's turned on in the device settings.
+    void performTouchFeedback(ControlElement element) {
+        if (element.isHapticFeedback()) vibrate(element.getHapticStrength());
+        else performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
+    }
+
+    /** Vibrates once, with a strength from ControlElement.MIN_HAPTIC_STRENGTH to MAX_HAPTIC_STRENGTH. */
+    public void vibrate(int strength) {
+        Vibrator vibrator = (Vibrator) getContext().getSystemService(Context.VIBRATOR_SERVICE);
+        if (vibrator == null || !vibrator.hasVibrator()) return;
+        float fraction = (float)strength / ControlElement.MAX_HAPTIC_STRENGTH;
+        if (vibrator.hasAmplitudeControl()) {
+            int amplitude = Mathf.clamp(Math.round(255 * fraction), 1, 255);
+            vibrator.vibrate(VibrationEffect.createOneShot(HAPTIC_PULSE_MS, amplitude));
+        }
+        else {
+            // Without amplitude control every pulse is equally strong, so a shorter one feels weaker
+            long duration = Math.max(MIN_HAPTIC_PULSE_MS, Math.round(HAPTIC_PULSE_MS * fraction));
+            vibrator.vibrate(VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE));
+        }
     }
 
     public void setOverlayOpacity(float overlayOpacity) {
@@ -1295,7 +1320,7 @@ public class InputControlsView extends View {
             // Skip hidden sticks in container shooter mode
             if (isStickHiddenByShooterMode(element)) continue;
             if (element.handleTouchDown(pointerId, x, y)) {
-                performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
+                performTouchFeedback(element);
                 handled = true;
                 if (allowButtonLookThrough
                         && element.getType() == ControlElement.Type.BUTTON
@@ -1489,7 +1514,7 @@ public class InputControlsView extends View {
                     boolean lookThroughCandidate = false;
                     for (ControlElement element : profile.getElements()) {
                         if (element.handleTouchDown(pointerId, x, y)) {
-                            performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
+                            performTouchFeedback(element);
                             handled = true;
                             if (event.getToolType(actionIndex) == MotionEvent.TOOL_TYPE_FINGER
                                     && element.getType() == ControlElement.Type.BUTTON

@@ -2457,6 +2457,11 @@
     <string name="control_stroke_width_extra_thick">Дуже товста</string>
     <string name="button_look_through">Наскрізне керування</string>
     <string name="button_look_through_subtitle">Натисніть цю кнопку й проведіть від неї, щоб також керувати рухом або камерою. Недоступно в режимі сенсорного екрана.</string>
+    <string name="control_haptic_feedback">Тактильний відгук</string>
+    <string name="control_vibrate_on_touch">Вібрація при дотику</string>
+    <string name="control_vibrate_on_touch_subtitle">Вібрувати при дотику до цього елемента</string>
+    <string name="control_vibration_strength">Сила вібрації</string>
+    <string name="control_vibration_strength_subtitle">Відпустіть повзунок, щоб відчути силу</string>
     <string name="preview">Попередній перегляд</string>
     <string name="active">Активно</string>
     <string name="apply_all">Застосувати до всіх</string>

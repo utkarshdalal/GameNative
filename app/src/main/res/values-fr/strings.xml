@@ -2477,6 +2477,11 @@
     <string name="control_stroke_width_extra_thick">Très épais</string>
     <string name="button_look_through">Contrôle par glissement</string>
     <string name="button_look_through_subtitle">Appuyez sur ce bouton et faites glisser pour contrôler aussi le déplacement ou la caméra. Indisponible en mode écran tactile.</string>
+    <string name="control_haptic_feedback">Retour haptique</string>
+    <string name="control_vibrate_on_touch">Vibrer au toucher</string>
+    <string name="control_vibrate_on_touch_subtitle">Vibrer lorsque vous touchez cette commande</string>
+    <string name="control_vibration_strength">Force de vibration</string>
+    <string name="control_vibration_strength_subtitle">Relâchez le curseur pour ressentir la force</string>
     <string name="preview">Aperçu</string>
     <string name="active">Actif</string>
     <string name="apply_all">Appliquer à tous</string>

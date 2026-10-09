@@ -2457,6 +2457,11 @@
     <string name="control_stroke_width_extra_thick">Extra grueso</string>
     <string name="button_look_through">Control al arrastrar</string>
     <string name="button_look_through_subtitle">Pulsa y arrastra desde este botón para controlar también el movimiento o la cámara. No disponible en el modo de pantalla táctil.</string>
+    <string name="control_haptic_feedback">Respuesta háptica</string>
+    <string name="control_vibrate_on_touch">Vibrar al tocar</string>
+    <string name="control_vibrate_on_touch_subtitle">Vibrar al tocar este control</string>
+    <string name="control_vibration_strength">Fuerza de la vibración</string>
+    <string name="control_vibration_strength_subtitle">Suelta el control deslizante para sentir la fuerza</string>
     <string name="preview">Vista previa</string>
     <string name="active">Activo</string>
     <string name="apply_all">Aplicar a todos</string>

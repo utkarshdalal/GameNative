@@ -766,6 +766,8 @@ object ControlProfileService {
             optionalBoolean(element, "scrollLocked")
             optionalBoolean(element, "lookThrough")
             optionalBoolean(element, "shooterLookThrough")
+            optionalBoolean(element, "hapticFeedback")
+            optionalInt(element, "hapticStrength", ControlElement.MIN_HAPTIC_STRENGTH, ControlElement.MAX_HAPTIC_STRENGTH)
             element.optStringOrNull("shooterMovementType")
             element.optStringOrNull("shooterLookType")
             optionalFiniteNumber(element, "shooterLookSensitivity", 0.01, 20.0)

@@ -37,6 +37,9 @@ public class ControlElement {
     public static final float INHERIT_BUTTON_OPACITY = -1.0f;
     public static final float DEFAULT_BUTTON_STROKE_SCALE = 1.0f;
     public static final boolean DEFAULT_LOOK_THROUGH = false;
+    public static final int MIN_HAPTIC_STRENGTH = 10;
+    public static final int MAX_HAPTIC_STRENGTH = 100;
+    public static final int DEFAULT_HAPTIC_STRENGTH = 50;
     public enum Type {
         BUTTON, D_PAD, RANGE_BUTTON, STICK, TRACKPAD, SHOOTER_MODE;
 
@@ -111,6 +114,8 @@ public class ControlElement {
     // look-through. Those buttons retain their legacy shooter-only setting.
     private Boolean lookThrough = DEFAULT_LOOK_THROUGH;
     private boolean shooterLookThrough = true;
+    private boolean hapticFeedback = false;
+    private int hapticStrength = DEFAULT_HAPTIC_STRENGTH;
 
     public ControlElement(InputControlsView inputControlsView) {
         this.inputControlsView = inputControlsView;
@@ -439,6 +444,22 @@ public class ControlElement {
 
     public boolean getShooterLookThroughSetting() {
         return shooterLookThrough;
+    }
+
+    public boolean isHapticFeedback() {
+        return hapticFeedback;
+    }
+
+    public void setHapticFeedback(boolean hapticFeedback) {
+        this.hapticFeedback = hapticFeedback;
+    }
+
+    public int getHapticStrength() {
+        return hapticStrength;
+    }
+
+    public void setHapticStrength(int hapticStrength) {
+        this.hapticStrength = Mathf.clamp(hapticStrength, MIN_HAPTIC_STRENGTH, MAX_HAPTIC_STRENGTH);
     }
 
     public void copyButtonAppearanceFrom(ControlElement element) {
@@ -1180,6 +1201,8 @@ public class ControlElement {
             if (buttonStrokeScale != DEFAULT_BUTTON_STROKE_SCALE) elementJSONObject.put("buttonStrokeScale", (double)buttonStrokeScale);
             if (type == Type.BUTTON && lookThrough != null) elementJSONObject.put("lookThrough", lookThrough);
             if (type == Type.BUTTON && !shooterLookThrough) elementJSONObject.put("shooterLookThrough", false);
+            if (hapticFeedback) elementJSONObject.put("hapticFeedback", true);
+            if (hapticStrength != DEFAULT_HAPTIC_STRENGTH) elementJSONObject.put("hapticStrength", hapticStrength);
 
             return elementJSONObject;
         }

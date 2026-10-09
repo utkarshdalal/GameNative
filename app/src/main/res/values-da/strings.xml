@@ -2329,6 +2329,11 @@
     <string name="control_stroke_width_extra_thick">Ekstra tyk</string>
     <string name="button_look_through">Gennemkig</string>
     <string name="button_look_through_subtitle">Tryk på og træk fra denne knap for også at styre bevægelse eller kameravisningen. Ikke tilgængelig i touchscreen-tilstand.</string>
+    <string name="control_haptic_feedback">Haptisk feedback</string>
+    <string name="control_vibrate_on_touch">Vibrer ved berøring</string>
+    <string name="control_vibrate_on_touch_subtitle">Vibrer, når du rører ved denne kontrol</string>
+    <string name="control_vibration_strength">Vibrationsstyrke</string>
+    <string name="control_vibration_strength_subtitle">Slip skyderen for at mærke styrken</string>
     <string name="preview">Forhåndsvisning</string>
     <string name="active">Aktiv</string>
     <string name="apply_all">Anvend alle</string>
