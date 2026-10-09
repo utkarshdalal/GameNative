@@ -4324,7 +4324,9 @@ private fun setupXEnvironment(
                 Timber.w(e, "wineserver -k between pre-install steps (non-fatal)")
             }
             val nextRemaining = remaining.drop(1)
-            if (nextRemaining.isEmpty()) {
+            if (nextRemaining.isEmpty() && container.isLaunchHeadlessSteam && gameSource == GameSource.STEAM && !bootToContainer) {
+                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(context.getString(R.string.steam_starting)))
+            } else if (nextRemaining.isEmpty()) {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Launching game..."))
             } else {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing prerequisites..."))
@@ -4412,9 +4414,7 @@ private fun setupXEnvironment(
         }
     }
 
-    CoroutineScope(Dispatchers.IO).launch {
-        xServer.winHandler.start()
-    }
+    xServer.winHandler.start()
     try {
         immersiveHooks?.windowsVr?.beforeGuestProcessStart()
         environment.startEnvironmentComponents()
@@ -4424,6 +4424,7 @@ private fun setupXEnvironment(
         }
     } catch (e: Exception) {
         Timber.e(e, "Failed to start environment components, cleaning up")
+        runCatching { xServer.winHandler.stop() }
         try {
             environment.stopEnvironmentComponents()
         } catch (cleanupEx: Exception) {

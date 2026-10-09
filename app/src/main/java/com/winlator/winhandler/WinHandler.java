@@ -67,7 +67,8 @@ public class WinHandler {
     private volatile int currentControllerId;
     private byte dinputMapperType;
     private final List<Integer> gamepadClients;
-    private boolean initReceived;
+    private volatile boolean initReceived;
+    private Thread initTimeoutThread;
     private InetAddress localhost;
     private OnGetProcessInfoListener onGetProcessInfoListener;
     private PreferredInputApi preferredInputApi;
@@ -400,10 +401,11 @@ public class WinHandler {
             this.sendData.rewind();
             this.sendData.put(RequestCodes.LIST_PROCESSES);
             this.sendData.putInt(0);
-            if (!sendPacket(CLIENT_PORT) && (onGetProcessInfoListener = this.onGetProcessInfoListener) != null) {
+            boolean sent = sendPacket(CLIENT_PORT);
+            if (!sent && (onGetProcessInfoListener = this.onGetProcessInfoListener) != null) {
                 onGetProcessInfoListener.onGetProcessInfo(0, 0, null);
             }
-            Log.d(TAG, "WinHandler listProcesses sent (initReceived=" + this.initReceived + ")");
+            Log.d(TAG, "WinHandler listProcesses " + (sent ? "sent" : "not sent"));
         });
     }
 
@@ -507,10 +509,11 @@ public class WinHandler {
     }
 
     private void startSendThread() {
-        Executors.newSingleThreadExecutor().execute(() -> {
+        initTimeoutThread = new Thread(() -> {
             try {
                 Thread.sleep(INIT_TIMEOUT_MS);
-            } catch (InterruptedException ignored) {
+            } catch (InterruptedException e) {
+                return;
             }
             synchronized (this.actions) {
                 if (!this.initReceived && this.running) {
@@ -519,7 +522,9 @@ public class WinHandler {
                     this.actions.notify();
                 }
             }
-        });
+        }, "WinHandler-init-timeout");
+        initTimeoutThread.setDaemon(true);
+        initTimeoutThread.start();
         Executors.newSingleThreadExecutor().execute(() -> {
             while (this.running) {
                 synchronized (this.actions) {
@@ -544,6 +549,10 @@ public class WinHandler {
         Thread keepaliveThread = rumbleKeepaliveThread;
         if (keepaliveThread != null) {
             keepaliveThread.interrupt();
+        }
+        Thread timeoutThread = initTimeoutThread;
+        if (timeoutThread != null) {
+            timeoutThread.interrupt();
         }
         try {
             if (rumblePollerThreads != null && rumblePollerThreads.length > 0) {
@@ -805,6 +814,9 @@ public class WinHandler {
             Log.i(TAG, "WinHandler bound to " + this.socket.getLocalSocketAddress());
         } catch (IOException e) {
             Log.e(TAG, "WinHandler bind failed", e);
+            DatagramSocket failed = this.socket;
+            this.socket = null;
+            if (failed != null) failed.close();
         }
         Executors.newSingleThreadExecutor().execute(() -> {
             try {
@@ -817,7 +829,7 @@ public class WinHandler {
                     }
                 }
             } catch (IOException e) {
-                Log.e(TAG, "WinHandler receive loop ended", e);
+                if (this.running) Log.e(TAG, "WinHandler receive loop ended", e);
             }
         });
         startRumblePoller();

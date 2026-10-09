@@ -2373,7 +2373,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             if (!hasOwnSteamInputManifest(appId)) return false
             val manifestFile = resolveSteamInputManifestFile(appId, getAppDirPath(appId)) ?: return false
             val types = if (headless) HOST_CONTROLLER_TYPES else PREFERRED_CONTROLLER_TYPES
-            return loadConfigFromManifest(manifestFile, types) != null
+            return !loadConfigFromManifest(manifestFile, types).isNullOrBlank()
         }
 
         /** Layout the headless client activates for the pad, which identifies as an Xbox 360 controller. */
