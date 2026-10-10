@@ -23,12 +23,13 @@ data class SupportComponent(
 ) {
     enum class Type(val id: String, val format: PackageFormat, val key: String) {
         TURNIP("turnip", PackageFormat.ADRENOTOOLS_ZIP, KEY_GRAPHICS_DRIVER_VERSION),
-        WRAPPER("wrapper", PackageFormat.ADRENOTOOLS_ZIP, KEY_GRAPHICS_DRIVER_VERSION),
+        WRAPPER("wrapper", PackageFormat.CONTENT_PACKAGE, KEY_GRAPHICS_DRIVER),
         FEXCORE("fexcore", PackageFormat.CONTENT_PACKAGE, KEY_FEXCORE_VERSION),
         BOX64("box64", PackageFormat.CONTENT_PACKAGE, KEY_BOX64_VERSION),
         DXVK("dxvk", PackageFormat.CONTENT_PACKAGE, KEY_DXVK_VERSION),
         VKD3D("vkd3d", PackageFormat.CONTENT_PACKAGE, KEY_VKD3D_VERSION),
         PROTON("proton", PackageFormat.CONTENT_PACKAGE, KEY_WINE_VERSION),
+        LSFG("lsfg", PackageFormat.LSFG_LAYER_ZIP, KEY_LSFG_LAYER_VERSION),
         ;
 
         companion object {
@@ -39,6 +40,7 @@ data class SupportComponent(
     enum class PackageFormat(val id: String) {
         ADRENOTOOLS_ZIP("adrenotools-zip"),
         CONTENT_PACKAGE("content-package"),
+        LSFG_LAYER_ZIP("lsfg-layer-zip"),
         ;
 
         companion object {
@@ -48,19 +50,23 @@ data class SupportComponent(
 
     companion object {
         const val KEY_GRAPHICS_DRIVER_VERSION = "graphicsDriverConfig.version"
+        const val KEY_GRAPHICS_DRIVER = "graphicsDriver"
         const val KEY_FEXCORE_VERSION = "fexcoreVersion"
         const val KEY_BOX64_VERSION = "box64Version"
         const val KEY_DXVK_VERSION = "dxwrapperConfig.version"
         const val KEY_VKD3D_VERSION = "dxwrapperConfig.vkd3dVersion"
         const val KEY_WINE_VERSION = "wineVersion"
+        const val KEY_LSFG_LAYER_VERSION = "lsfgLayerVersion"
 
         val APPLY_KEYS = setOf(
             KEY_GRAPHICS_DRIVER_VERSION,
+            KEY_GRAPHICS_DRIVER,
             KEY_FEXCORE_VERSION,
             KEY_BOX64_VERSION,
             KEY_DXVK_VERSION,
             KEY_VKD3D_VERSION,
             KEY_WINE_VERSION,
+            KEY_LSFG_LAYER_VERSION,
         )
 
         const val MAX_SIZE = 2L * 1024 * 1024 * 1024
