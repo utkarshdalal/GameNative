@@ -2557,7 +2557,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             val appDirPath = getAppDirPath(appId)
 
             if (!checkWifiOrNotify()) return null
-            if (downloadJobs.contains(appId)) return getAppDownloadInfo(appId)
+            if (downloadJobs.containsKey(appId)) return getAppDownloadInfo(appId)
             Timber.d("depots is empty? " + downloadableDepots.isEmpty())
             if (downloadableDepots.isEmpty()) return null
 

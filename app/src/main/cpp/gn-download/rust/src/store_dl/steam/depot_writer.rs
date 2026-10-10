@@ -2210,10 +2210,14 @@ fn write_depot_single(
     // Delta update: the trusted files' jobs were dropped, so nothing would ever advance the counter
     // for them. Credit their bytes up front (they ARE on disk) so the bar reaches its total and an
     // all-trusted depot still reports progress.
+    // `verifying = true`, deliberately: these bytes were not downloaded, and that flag is what the
+    // caller keys on for two separate things — it keeps them out of the "bytes downloaded" stat, and
+    // it gates the background CDN probe, which must start only on the first REAL downloaded byte (a
+    // depot whose every file is trusted has nothing to probe for).
     bytes_written += files.trusted_bytes();
     if let Some(on_progress) = options.on_progress {
         if bytes_written > 0 {
-            on_progress(bytes_written, total_bytes, false);
+            on_progress(bytes_written, total_bytes, true);
         }
     }
     for (job_index, job) in plan.chunk_jobs.iter().enumerate() {
