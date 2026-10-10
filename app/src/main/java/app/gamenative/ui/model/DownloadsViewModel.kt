@@ -14,7 +14,6 @@ import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.db.dao.SteamAppDao
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.SteamService
-import app.gamenative.service.download.SteamDownloadMode
 import app.gamenative.service.amazon.AmazonConstants
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.download.GameDownloadService
@@ -633,7 +632,8 @@ class DownloadsViewModel @Inject constructor(
         when (item.gameSource) {
             GameSource.STEAM -> {
                 val id = item.appId.toIntOrNull() ?: return
-                SteamService.downloadApp(id, SteamDownloadMode.UPDATE)
+                // Resuming from the downloads list: keep the mode the record was started with.
+                SteamService.downloadApp(id, SteamService.resumeModeFor(id))
             }
 
             GameSource.GOG -> {

@@ -625,7 +625,9 @@ class SteamAppScreen : BaseAppScreen() {
             resumeWorkshopDownload(gameId, context)
         } else if (SteamService.hasPartialDownload(gameId)) {
             CoroutineScope(Dispatchers.IO).launch {
-                SteamService.downloadApp(gameId, SteamDownloadMode.UPDATE)
+                // Resuming an interrupted transfer keeps the mode it was started with (an
+                // interrupted verify stays a verify; an install stays an install).
+                SteamService.downloadApp(gameId, SteamService.resumeModeFor(gameId))
             }
         } else if (!isInstalled) {
             // Request storage permissions first, then show install dialog
@@ -651,7 +653,8 @@ class SteamAppScreen : BaseAppScreen() {
             resumeWorkshopDownload(gameId, context)
         } else {
             CoroutineScope(Dispatchers.IO).launch {
-                SteamService.downloadApp(gameId, SteamDownloadMode.UPDATE)
+                // Resume of an interrupted run: the download record remembers its mode.
+                SteamService.downloadApp(gameId, SteamService.resumeModeFor(gameId))
             }
         }
     }

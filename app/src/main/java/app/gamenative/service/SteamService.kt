@@ -2585,7 +2585,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             // the rest HERE, before the run and before completion: `completeAppDownload` records
             // every selected depot as downloaded, so a skipped depot left in the list would make a
             // later INSTALL skip content that was never installed.
-            if (mode == SteamDownloadMode.VERIFY) {
+            if (mode == SteamDownloadMode.VERIFY && installedGids.isNotEmpty()) {
                 val before = mainAppDepots.keys + dlcAppDepots.keys
                 mainAppDepots = mainAppDepots.filterKeys { installedGids.containsKey(it) }
                 dlcAppDepots = dlcAppDepots.filterKeys { installedGids.containsKey(it) }
@@ -2629,7 +2629,10 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             Timber.i("selectedDepots is empty? " + selectedDepots.isEmpty())
 
-            if (selectedDepots.isEmpty()) return null
+            if (selectedDepots.isEmpty()) {
+                Timber.w("downloadApp: no depots selected for $appId (mode $mode) — nothing to do")
+                return null
+            }
 
             Timber.i("Starting download for $appId")
             Timber.i("App contains ${mainAppDepots.size} depot(s): ${mainAppDepots.keys}")
