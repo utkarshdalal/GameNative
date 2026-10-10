@@ -280,6 +280,12 @@ object BestConfigService {
             }
         }
 
+        if (BuildConfig.XR_BUILD) {
+            filteredJson.put("launchRealSteam", true)
+            filteredJson.put("launchBionicSteam", false)
+            filteredJson.put("steamType", Container.STEAM_TYPE_HEADLESS)
+        }
+
         return filteredJson
     }
 

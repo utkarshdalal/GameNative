@@ -986,6 +986,14 @@ object ContainerUtils {
             containerData = containerData.copy(graphicsDriverConfig = kvs.toString())
         }
 
+        if (BuildConfig.XR_BUILD) {
+            containerData = containerData.copy(
+                launchRealSteam = true,
+                launchBionicSteam = false,
+                steamType = Container.STEAM_TYPE_HEADLESS,
+            )
+        }
+
         if (Build.MANUFACTURER.equals("samsung", ignoreCase = true) && GPUInformation.isAdreno740(context)) {
             val ev = EnvVars(containerData.envVars)
             if (!ev.has("FD_DEV_FEATURES")) {
