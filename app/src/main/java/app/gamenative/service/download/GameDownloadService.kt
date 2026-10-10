@@ -198,11 +198,12 @@ object GameDownloadService {
         val plan = JSONObject()
             .put("install_dir", installDir)
             .put("ca_bundle_path", "")
-            // fresh = discard this depot's journal entries and re-validate existing chunks against
-            // the manifest instead of trusting what the journal recorded. Both UPDATE and VERIFY
-            // want that, and they differ in WHAT they re-validate: UPDATE trusts the files its
-            // delta proves unchanged (no jobs, nothing hashed) and re-hashes the rest, while VERIFY
-            // re-hashes everything against the installed manifest (see SteamDownloadMode).
+            // fresh = walk the depot even when the store already records the requested build, and
+            // re-hash its existing chunks against the manifest (a chunk that matches is kept, a
+            // mismatch is re-fetched). UPDATE and VERIFY both want that and differ in WHAT they
+            // re-validate: UPDATE trusts the files its delta proves unchanged (no jobs, nothing
+            // hashed) and re-hashes the rest, while VERIFY re-hashes everything against the build the
+            // store records as installed (see SteamDownloadMode).
             .put("fresh", mode != SteamDownloadMode.INSTALL)
             .put("untrusted_paths", JSONArray(patchedPaths))
             .put("max_workers", maxWorkers)
