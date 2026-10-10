@@ -32,7 +32,9 @@ class WindowsVrPayloadManagerTest {
         container = mockk(relaxed = true)
         every { container.rootDir } returns containerRoot
         every { container.drives } returns "A:${gameRoot.path}"
-        manager = WindowsVrPayloadManager(context, WindowsVrDiagnostics(context))
+        manager = WindowsVrPayloadManager(context, WindowsVrDiagnostics(context)) { name ->
+            "fake $name".toByteArray()
+        }
     }
 
     @Test

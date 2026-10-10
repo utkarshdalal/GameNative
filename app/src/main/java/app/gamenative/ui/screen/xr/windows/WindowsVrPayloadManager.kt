@@ -15,6 +15,7 @@ private const val OPEN_COMPOSITE_SCAN_LIMIT = 200000
 class WindowsVrPayloadManager(
     private val context: Context,
     private val diagnostics: WindowsVrDiagnostics,
+    private val readAsset: (String) -> ByteArray = { name -> context.assets.open(name).use { it.readBytes() } },
 ) {
     data class PreparedPayload(val prefixDirectory: File, val manifest: File)
     private data class RegistryMutation(val registry: File, val backup: File, val missing: File)
@@ -71,7 +72,7 @@ class WindowsVrPayloadManager(
         val targets = cachedTargets ?: openCompositeTargets(scanOpenComposite(gameRoot))
         diagnostics.record("opencomposite", "targets=${targets.size} source=${if (cachedTargets != null) "cache" else "scan"}")
         check(targets.isNotEmpty()) { "No x64 or x86 openvr_api.dll was found under the launched game" }
-        val adapters = targets.map { it.second }.distinct().associateWith { name -> context.assets.open(name).use { it.readBytes() } }
+        val adapters = targets.map { it.second }.distinct().associateWith(readAsset)
         val record = File(payloadDirectory, "opencomposite.targets")
         val directories = targets.map { checkNotNull(it.first.parentFile).canonicalPath }.distinct()
         writeIfChanged(record, directories.joinToString("\n", transform = ::encodePath).toByteArray())
@@ -311,7 +312,7 @@ class WindowsVrPayloadManager(
     }
 
     private fun copyAssetIfChanged(assetPath: String, destination: File) {
-        val bytes = context.assets.open(assetPath).use { it.readBytes() }
+        val bytes = readAsset(assetPath)
         writeIfChanged(destination, bytes)
         diagnostics.record("payload-file", "${destination.name} size=${bytes.size} sha256=${sha256(bytes)}")
     }
