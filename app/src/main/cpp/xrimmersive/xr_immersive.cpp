@@ -981,6 +981,9 @@ void XrImmersiveSession::uploadPendingGameFrameLocked() {
 
     glBindTexture(GL_TEXTURE_2D, gameTexture_);
     if (pendingFrameWidth_ != gameTextureWidth_ || pendingFrameHeight_ != gameTextureHeight_) {
+        // Deliberately plain GL_RGBA: kQuadFragmentShader / kDirectQuadFragmentShader already
+        // linearize this sRGB-encoded capture themselves (uLinearizeSrc), so tagging it sRGB here
+        // would decode it twice and darken the flat screen.
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, pendingFrameWidth_, pendingFrameHeight_, 0,
                      GL_RGBA, GL_UNSIGNED_BYTE, pendingFramePixels_.data());
         gameTextureWidth_ = pendingFrameWidth_;
