@@ -295,6 +295,7 @@ class PluviaApp : SplitCompatApplication() {
             radialMenuCoordinator = null
             achievementWatcher = null
             ActiveGameRegistry.clear()
+            SteamService.clearSuspendedGameState()
             SteamService.keepAlive = false
             SteamService.clearPlayingConflict()
             clearActiveSuspendState()

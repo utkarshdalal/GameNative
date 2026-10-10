@@ -161,6 +161,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.BufferOverflow
 import okio.Path.Companion.toPath
 import kotlinx.coroutines.channels.Channel
@@ -3079,69 +3080,58 @@ class SteamService : Service(), IChallengeUrlChanged {
         /** How long the game can stay suspended before Steam is told it is no longer being played. */
         private const val SUSPENDED_GAME_TIMEOUT_MS = 60_000L
 
-        private val suspendedGameLock = Any()
+        private var suspendTimer: Job? = null
 
-        /** Keeps the playing-state updates of the active game in order. */
-        private val activeGamePlayingStateMutex = Mutex()
-
-        private var suspendedGameTimeoutJob: Job? = null
-
-        /** The active game Steam was told is no longer being played because it stayed suspended. */
+        /** True while Steam is told nothing is being played because the game stayed suspended. */
         @Volatile
-        private var suspendedGame: GameProcessInfo? = null
+        private var playtimePaused = false
 
         /**
-         * Called when the game processes are suspended (app in the background, screen off, in-game menu).
-         * If they are still suspended after [SUSPENDED_GAME_TIMEOUT_MS], Steam is told the game is no
-         * longer being played, so the suspended time does not count as playtime.
+         * Called when the game processes are suspended, for example in the background, with the screen off
+         * or in the in-game menu. If they are still suspended after [SUSPENDED_GAME_TIMEOUT_MS], Steam is told
+         * the game is no longer being played, so the suspended time does not count as playtime.
          */
         @JvmStatic
         fun onGameProcessesSuspended() {
-            synchronized(suspendedGameLock) {
-                val activeGame = ActiveGameRegistry.get() ?: return
-                if (suspendedGameTimeoutJob?.isActive == true || suspendedGame === activeGame) return
-                suspendedGameTimeoutJob = instance?.scope?.launch {
-                    delay(SUSPENDED_GAME_TIMEOUT_MS)
-                    synchronized(suspendedGameLock) {
-                        if (!isActive || ActiveGameRegistry.get() !== activeGame) return@launch
-                        suspendedGame = activeGame
-                    }
-                    Timber.i(
-                        "Game suspended for %d s, telling Steam appId=%d is no longer being played",
-                        SUSPENDED_GAME_TIMEOUT_MS / 1000,
-                        activeGame.appId,
-                    )
-                    notifyActiveGamePlayingState()
-                }
+            val game = ActiveGameRegistry.get() ?: return
+            if (suspendTimer?.isActive == true || playtimePaused) return
+            suspendTimer = instance?.scope?.launch {
+                delay(SUSPENDED_GAME_TIMEOUT_MS)
+                if (ActiveGameRegistry.get() !== game) return@launch
+                playtimePaused = true
+                Timber.i(
+                    "Game suspended for %d s, telling Steam appId=%d is no longer being played",
+                    SUSPENDED_GAME_TIMEOUT_MS / 1000,
+                    game.appId,
+                )
+                notifyRunningProcesses()
             }
         }
 
         /** Called when the game processes resume; tells Steam the game is being played again if needed. */
         @JvmStatic
         fun onGameProcessesResumed() {
-            val resumedGame = synchronized(suspendedGameLock) {
-                suspendedGameTimeoutJob?.cancel()
-                suspendedGameTimeoutJob = null
-                val game = suspendedGame
-                suspendedGame = null
-                game
-            } ?: return
-            Timber.i("Game resumed, telling Steam appId=%d is being played again", resumedGame.appId)
+            val timer = suspendTimer
+            suspendTimer = null
             instance?.scope?.launch {
-                notifyActiveGamePlayingState()
+                // A countdown that already fired sends its update first, so the game is announced last
+                timer?.cancelAndJoin()
+                if (!playtimePaused) return@launch
+                playtimePaused = false
+                val game = ActiveGameRegistry.get() ?: return@launch
+                Timber.i("Game resumed, telling Steam appId=%d is being played again", game.appId)
+                notifyRunningProcesses(game)
             }
         }
 
-        /** Tells Steam whether the active game is being played: it is, unless it stayed suspended too long. */
-        private suspend fun notifyActiveGamePlayingState() {
-            activeGamePlayingStateMutex.withLock {
-                val activeGame = ActiveGameRegistry.get() ?: return
-                if (activeGame === suspendedGame) {
-                    notifyRunningProcesses()
-                } else {
-                    notifyRunningProcesses(activeGame)
-                }
-            }
+        /**
+         * Called when the game exits. Exiting doesn't resume the processes, so without this a countdown or a
+         * paused playtime would carry over to the next game.
+         */
+        fun clearSuspendedGameState() {
+            suspendTimer?.cancel()
+            suspendTimer = null
+            playtimePaused = false
         }
 
         fun beginLaunchApp(
@@ -4715,7 +4705,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 if (activeGame != null) {
                     Timber.i("Re-sending active game session for appId=%d after Steam reconnect", activeGame.appId)
                     scope.launch {
-                        notifyActiveGamePlayingState()
+                        if (!playtimePaused) notifyRunningProcesses(activeGame)
                     }
                 } else {
                     Timber.d("No active game session to re-send after Steam reconnect")

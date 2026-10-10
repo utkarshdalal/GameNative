@@ -46,7 +46,7 @@ class SteamServiceSuspendedGameTest {
     fun tearDown() {
         ActiveGameRegistry.clear()
         // The suspended state lives in the companion, so reset it for the next test
-        SteamService.onGameProcessesResumed()
+        SteamService.clearSuspendedGameState()
         scope.cancel()
         unmockkObject(SteamService.Companion)
         SteamService.instance = previousService
@@ -98,6 +98,35 @@ class SteamServiceSuspendedGameTest {
     }
 
     @Test
+    fun `exiting during the countdown gives the next game its own countdown`() {
+        SteamService.onGameProcessesSuspended()
+        passTime(30_000)
+        exitGame()
+        ActiveGameRegistry.set(GameProcessInfo(appId = 440, processes = emptyList()))
+        SteamService.onGameProcessesSuspended()
+        passTime(30_000)
+        assertEquals(emptyList<List<Int>>(), notified)
+
+        passTime(30_000)
+        assertEquals(listOf(emptyList<Int>()), notified)
+    }
+
+    @Test
+    fun `exiting while the playtime is stopped does not carry over to the next game`() {
+        SteamService.onGameProcessesSuspended()
+        passTime(60_000)
+        exitGame()
+        ActiveGameRegistry.set(GameProcessInfo(appId = 440, processes = emptyList()))
+        SteamService.onGameProcessesSuspended()
+        passTime(60_000)
+        assertEquals(listOf(emptyList<Int>(), emptyList()), notified)
+
+        SteamService.onGameProcessesResumed()
+        scheduler.advanceUntilIdle()
+        assertEquals(listOf(emptyList(), emptyList(), listOf(440)), notified)
+    }
+
+    @Test
     fun `nothing is sent without an active game`() {
         ActiveGameRegistry.clear()
         SteamService.onGameProcessesSuspended()
@@ -106,6 +135,12 @@ class SteamServiceSuspendedGameTest {
         scheduler.advanceUntilIdle()
 
         assertEquals(emptyList<List<Int>>(), notified)
+    }
+
+    // What PluviaApp.shutdownEnvironment does for the game session
+    private fun exitGame() {
+        ActiveGameRegistry.clear()
+        SteamService.clearSuspendedGameState()
     }
 
     private fun passTime(millis: Long) {
