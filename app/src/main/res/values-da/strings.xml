@@ -2676,6 +2676,11 @@
     <string name="gyro_section_response">Respons</string>
     <string name="gyro_output">Output</string>
     <string name="gyro_output_subtitle">Vælg, hvad enhedens bevægelse styrer.</string>
+    <string name="gyro_input_priority">Inputprioritet</string>
+    <string name="gyro_priority_combined">Kombineret (standard)</string>
+    <string name="gyro_priority_stick_touch">Prioritet for stick / touchskærm</string>
+    <string name="gyro_priority_combined_help">Kombinér gyrobevægelser med bevægelser fra stick, touchskærm, pen og controllerstyret mus på samme output.</string>
+    <string name="gyro_priority_stick_touch_help">Sæt gyrobevægelser på samme output på pause under bevægelser via stick, touchskærm, pen eller controllerstyret mus. Genoptag, når den manuelle bevægelse stopper.</string>
     <string name="gyro_conversion_style">Konverteringstype</string>
     <string name="gyro_conversion_yaw">Lokalt koordinatsystem (Yaw)</string>
     <string name="gyro_conversion_roll">Lokalt koordinatsystem (Roll)</string>

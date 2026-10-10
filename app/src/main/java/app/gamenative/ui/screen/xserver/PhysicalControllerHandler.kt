@@ -33,6 +33,7 @@ class PhysicalControllerHandler(
     private val onRadialMenuVectorChanged: ((Float, Float) -> Unit)? = null,
     private val onGyroModifierChanged: ((Any, Boolean) -> Unit)? = null,
     private val gyroStickMixer: ((Binding, Boolean, Float, Int) -> Float)? = null,
+    private val onMouseMovementChanged: ((Any, Boolean) -> Unit)? = null,
     private val gamepadStateSender: (GamepadState?) -> Unit = { state ->
         xServer?.winHandler?.let { winHandler ->
             winHandler.sendGamepadState()
@@ -363,7 +364,6 @@ class PhysicalControllerHandler(
                         if (mouseMoveOffset.x == 0f) mouseMoveRemainder.x = 0f
                         if (mouseMoveOffset.y == 0f) mouseMoveRemainder.y = 0f
                         if (mouseMoveOffset.x == 0f && mouseMoveOffset.y == 0f) return@synchronized
-
                         // Look up cursor speed dynamically so it updates when profile changes
                         val cursorSpeed = profile?.cursorSpeed ?: 1f
                         val scaledX = mouseMoveOffset.x * 10 * cursorSpeed + mouseMoveRemainder.x
@@ -417,6 +417,7 @@ class PhysicalControllerHandler(
                     mouseMoveOffset.y += contribution
                 }
             }
+            onMouseMovementChanged?.invoke(this, mouseMoveOffset.x != 0f || mouseMoveOffset.y != 0f)
             if (mouseMoveContributions.isEmpty()) {
                 mouseMoveRemainder.set(0f, 0f)
                 mouseMoveTimer?.cancel()
@@ -427,6 +428,7 @@ class PhysicalControllerHandler(
 
     private fun clearMouseMoveContributions() {
         synchronized(mouseMoveLock) {
+            onMouseMovementChanged?.invoke(this, false)
             mouseMoveContributions.clear()
             mouseMoveOffset.set(0f, 0f)
             mouseMoveRemainder.set(0f, 0f)

@@ -2797,6 +2797,11 @@
     <string name="gyro_section_response">Risposta</string>
     <string name="gyro_output">Uscita</string>
     <string name="gyro_output_subtitle">Scegli cosa controllare con il movimento del dispositivo.</string>
+    <string name="gyro_input_priority">Priorità di input</string>
+    <string name="gyro_priority_combined">Combinato (predefinito)</string>
+    <string name="gyro_priority_stick_touch">Priorità stick / touchscreen</string>
+    <string name="gyro_priority_combined_help">Combina il movimento del giroscopio con quello di stick, touchscreen, penna e mouse controllato dal controller sulla stessa uscita.</string>
+    <string name="gyro_priority_stick_touch_help">Mette in pausa il movimento del giroscopio sulla stessa uscita durante i movimenti tramite stick, touchscreen, penna o mouse controllato dal controller. Riprende quando il movimento manuale termina.</string>
     <string name="gyro_conversion_style">Modalità di conversione</string>
     <string name="gyro_conversion_yaw">Spazio locale (imbardata)</string>
     <string name="gyro_conversion_roll">Spazio locale (rollio)</string>

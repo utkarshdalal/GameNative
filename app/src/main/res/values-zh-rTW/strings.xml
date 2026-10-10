@@ -2810,6 +2810,11 @@
     <string name="gyro_section_response">反應</string>
     <string name="gyro_output">輸出</string>
     <string name="gyro_output_subtitle">選擇裝置動作所控制的輸出。</string>
+    <string name="gyro_input_priority">輸入優先順序</string>
+    <string name="gyro_priority_combined">合併（預設）</string>
+    <string name="gyro_priority_stick_touch">搖桿 / 觸控螢幕優先</string>
+    <string name="gyro_priority_combined_help">將陀螺儀動作與搖桿、觸控螢幕、觸控筆及透過控制器操作滑鼠產生的動作合併至同一輸出。</string>
+    <string name="gyro_priority_stick_touch_help">當搖桿、觸控螢幕、觸控筆或透過控制器操作的滑鼠正在控制同一輸出移動時，暫停陀螺儀動作。手動移動停止後恢復。</string>
     <string name="gyro_conversion_style">轉換方式</string>
     <string name="gyro_conversion_yaw">局部空間（偏航）</string>
     <string name="gyro_conversion_roll">局部空間（橫滾）</string>

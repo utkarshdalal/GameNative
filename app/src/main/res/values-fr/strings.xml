@@ -2806,6 +2806,11 @@
     <string name="gyro_section_response">Réponse</string>
     <string name="gyro_output">Sortie</string>
     <string name="gyro_output_subtitle">Choisissez ce que contrôle le mouvement de l’appareil.</string>
+    <string name="gyro_input_priority">Priorité d’entrée</string>
+    <string name="gyro_priority_combined">Combinée (par défaut)</string>
+    <string name="gyro_priority_stick_touch">Priorité au stick / écran tactile</string>
+    <string name="gyro_priority_combined_help">Combine les mouvements du gyroscope avec ceux du stick, de l’écran tactile, du stylet et de la souris contrôlée par la manette sur la même sortie.</string>
+    <string name="gyro_priority_stick_touch_help">Met en pause les mouvements du gyroscope sur la même sortie lors de mouvements via le stick, l’écran tactile, le stylet ou la souris contrôlée par la manette. Reprend lorsque le mouvement manuel s’arrête.</string>
     <string name="gyro_conversion_style">Mode de conversion</string>
     <string name="gyro_conversion_yaw">Repère local (lacet)</string>
     <string name="gyro_conversion_roll">Repère local (roulis)</string>

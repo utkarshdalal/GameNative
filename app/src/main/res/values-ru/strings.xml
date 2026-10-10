@@ -2738,6 +2738,11 @@ https://gamenative.app
     <string name="gyro_section_response">Отклик</string>
     <string name="gyro_output">Вывод</string>
     <string name="gyro_output_subtitle">Выберите, чем управляет движение устройства.</string>
+    <string name="gyro_input_priority">Приоритет ввода</string>
+    <string name="gyro_priority_combined">Совместно (по умолчанию)</string>
+    <string name="gyro_priority_stick_touch">Приоритет стика / сенсорного экрана</string>
+    <string name="gyro_priority_combined_help">Объединяет движения гироскопа с движениями стика, сенсорного экрана, стилуса и мыши, управляемой контроллером, на том же выходе.</string>
+    <string name="gyro_priority_stick_touch_help">Приостанавливает движения гироскопа на том же выходе во время управления движением с помощью стика, сенсорного экрана, стилуса или мыши, управляемой контроллером. Возобновляет их, когда ручное движение прекращается.</string>
     <string name="gyro_conversion_style">Режим преобразования</string>
     <string name="gyro_conversion_yaw">Локальные координаты (рыскание)</string>
     <string name="gyro_conversion_roll">Локальные координаты (крен)</string>

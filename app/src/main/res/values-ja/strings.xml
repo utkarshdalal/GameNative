@@ -2766,6 +2766,11 @@
     <string name="gyro_section_response">応答</string>
     <string name="gyro_output">出力</string>
     <string name="gyro_output_subtitle">端末の動きで操作する対象を選択します。</string>
+    <string name="gyro_input_priority">入力の優先順位</string>
+    <string name="gyro_priority_combined">併用（デフォルト）</string>
+    <string name="gyro_priority_stick_touch">スティック／タッチスクリーン優先</string>
+    <string name="gyro_priority_combined_help">同じ出力に対するジャイロの動きと、スティック、タッチスクリーン、スタイラス、コントローラーによるマウスの動きを組み合わせます。</string>
+    <string name="gyro_priority_stick_touch_help">同じ出力に対するスティック、タッチスクリーン、スタイラス、またはコントローラーでのマウス操作に動きがある間、ジャイロの動きを一時停止します。手動操作による動きが止まると再開します。</string>
     <string name="gyro_conversion_style">変換方式</string>
     <string name="gyro_conversion_yaw">ローカル空間（ヨー）</string>
     <string name="gyro_conversion_roll">ローカル空間（ロール）</string>

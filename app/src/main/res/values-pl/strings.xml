@@ -2814,6 +2814,11 @@
     <string name="gyro_section_response">Reakcja</string>
     <string name="gyro_output">Wyjście</string>
     <string name="gyro_output_subtitle">Wybierz, czym steruje ruch urządzenia.</string>
+    <string name="gyro_input_priority">Priorytet wejścia</string>
+    <string name="gyro_priority_combined">Łączone (domyślnie)</string>
+    <string name="gyro_priority_stick_touch">Priorytet drążka / ekranu dotykowego</string>
+    <string name="gyro_priority_combined_help">Łączy ruch żyroskopu z ruchem drążka, ekranu dotykowego, rysika i myszy sterowanej kontrolerem na tym samym wyjściu.</string>
+    <string name="gyro_priority_stick_touch_help">Wstrzymuje ruch żyroskopu na tym samym wyjściu podczas ruchu za pomocą drążka, ekranu dotykowego, rysika lub myszy sterowanej kontrolerem. Wznawia go, gdy ruch ręczny ustaje.</string>
     <string name="gyro_conversion_style">Tryb przeliczania</string>
     <string name="gyro_conversion_yaw">Układ lokalny (odchylenie)</string>
     <string name="gyro_conversion_roll">Układ lokalny (przechylenie)</string>

@@ -2819,6 +2819,11 @@
     <string name="gyro_section_response">响应</string>
     <string name="gyro_output">输出</string>
     <string name="gyro_output_subtitle">选择设备动作所控制的输出。</string>
+    <string name="gyro_input_priority">输入优先级</string>
+    <string name="gyro_priority_combined">合并（默认）</string>
+    <string name="gyro_priority_stick_touch">摇杆 / 触摸屏优先</string>
+    <string name="gyro_priority_combined_help">将陀螺仪动作与摇杆、触摸屏、触控笔及通过控制器操作鼠标产生的动作合并到同一输出。</string>
+    <string name="gyro_priority_stick_touch_help">当摇杆、触摸屏、触控笔或通过控制器操作的鼠标正在控制同一输出移动时，暂停陀螺仪动作。手动移动停止后恢复。</string>
     <string name="gyro_conversion_style">转换方式</string>
     <string name="gyro_conversion_yaw">局部空间（偏航）</string>
     <string name="gyro_conversion_roll">局部空间（横滚）</string>
