@@ -585,13 +585,14 @@ pub fn download_resolved_depots_with_cancel_progress(
     // cached manifest's filenames need a depot key this layer does not hold — so a removed path
     // cannot be proven unowned. Skip the sweep for the whole run rather than risk deleting another
     // depot's file; it runs again on the next update that resolves everything.
+    // Every recorded depot that this run does not resolve counts, INCLUDING one stamped
+    // INVALID_MANIFEST_ID: that marker means its write never finished, so it can still own files on
+    // disk that no manifest of this run lists.
     let unenumerable_installed: Vec<u32> = cfg
         .installed_depots()
         .into_iter()
-        .filter(|(id, manifest)| {
-            *manifest != 0 && *manifest != INVALID_MANIFEST_ID && !resolved_ids.contains(id)
-        })
         .map(|(id, _)| id)
+        .filter(|id| !resolved_ids.contains(id))
         .collect();
     if !unenumerable_installed.is_empty() {
         if let Some(log) = log {

@@ -441,6 +441,9 @@ fn verify_file_total(manifest: &ContentManifest, files: &DepotFiles) -> u32 {
     (0..manifest.files.len())
         .filter(|&i| {
             files.needs_verify(i)
+                // Trusted files (update delta) get no jobs, so no writer can report them: counting
+                // them would leave the counter permanently below its own total.
+                && !files.is_trusted(i)
                 && manifest
                     .files
                     .get(i)
@@ -1702,6 +1705,25 @@ impl DepotFiles {
         }
     }
 
+    /// True when the update delta proved this file's bytes already match the manifest, so this run
+    /// neither hashes nor touches it (and must not count it in the verify counter).
+    fn is_trusted(&self, file_idx: usize) -> bool {
+        self.slots
+            .get(file_idx)
+            .is_some_and(|slot| slot.trusted.load(Ordering::Relaxed))
+    }
+
+    /// Bytes this run credits as already present (the trusted files). Counted towards progress so a
+    /// delta update's bar reflects "most of the install is already there" and still reaches its
+    /// total — the jobs of these files were dropped, so nothing else would advance the counter.
+    fn trusted_bytes(&self) -> u64 {
+        self.slots
+            .iter()
+            .filter(|slot| slot.is_regular && slot.trusted.load(Ordering::Relaxed))
+            .map(|slot| slot.size)
+            .sum()
+    }
+
     /// Flag the files the update delta proved unchanged, so every pass that would otherwise
     /// re-hash, re-download or finalize them leaves them alone.
     fn mark_trusted(&self, trusted: &[u32]) {
@@ -2094,8 +2116,10 @@ pub fn write_depot_sequential(
     // never re-hashes or re-downloads them (Steam's own update behaviour).
     if let Some(trusted) = options.trusted_files {
         if !trusted.is_empty() {
-            plan.chunk_jobs
-                .retain(|job| !trusted.contains(&job.file_idx));
+            // A set, not a linear scan: a big depot has ~10^5 chunk jobs and can have as many
+            // trusted files, and this filter runs before a single byte moves.
+            let trusted: std::collections::HashSet<u32> = trusted.iter().copied().collect();
+            plan.chunk_jobs.retain(|job| !trusted.contains(&job.file_idx));
             plan.worker_count = clamp_worker_count(options.max_workers, plan.chunk_jobs.len());
         }
     }
@@ -2183,6 +2207,15 @@ fn write_depot_single(
     } else {
         0
     };
+    // Delta update: the trusted files' jobs were dropped, so nothing would ever advance the counter
+    // for them. Credit their bytes up front (they ARE on disk) so the bar reaches its total and an
+    // all-trusted depot still reports progress.
+    bytes_written += files.trusted_bytes();
+    if let Some(on_progress) = options.on_progress {
+        if bytes_written > 0 {
+            on_progress(bytes_written, total_bytes, false);
+        }
+    }
     for (job_index, job) in plan.chunk_jobs.iter().enumerate() {
         if options
             .cancel
@@ -2299,7 +2332,10 @@ fn write_depot_parallel(
     target_dir: &str,
 ) -> DepotWriteResult {
     let total_bytes = plan.total_bytes;
-    let bytes_written = AtomicU64::new(0);
+    // See the single path: trusted (delta-unchanged) files keep their bytes on disk and have no
+    // jobs, so their size seeds the counter or the bar stops short of its total (and the watchdog
+    // would see a depot that never advances).
+    let bytes_written = AtomicU64::new(files.trusted_bytes());
     let in_flight = AtomicU64::new(0);
     let fetched_pending = AtomicU64::new(0);
     let reported = AtomicU64::new(0);

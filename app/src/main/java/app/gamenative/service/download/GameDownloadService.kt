@@ -143,9 +143,18 @@ object GameDownloadService {
             resolvedDepotIds.add(resolved.depotId)
         }
         if (depotsJson.length() == 0) {
-            if (upToDate == selectedDepots.size && upToDate > 0) {
-                Timber.tag(TAG)
-                    .i("Update: all $upToDate depot(s) already at the current manifest — nothing to do")
+            // Nothing to download AND at least one depot was confirmed current: the update has no
+            // work to do. The remaining selected depots are "unavailable" (key denied, no gid on
+            // this branch — a DLC the account does not own, say), which the resolver already logged
+            // and which were skipped-and-continued before this change too; failing the run here
+            // would turn a no-op update into an error.
+            if (upToDate > 0) {
+                val unavailable = selectedDepots.size - upToDate
+                Timber.tag(TAG).i(
+                    "Update: $upToDate depot(s) already at the current manifest" +
+                        (if (unavailable > 0) ", $unavailable unavailable (see the log)" else "") +
+                        " — nothing to do",
+                )
                 return
             }
             // A VERIFY has no manifest to work from when the app records none (e.g. it was

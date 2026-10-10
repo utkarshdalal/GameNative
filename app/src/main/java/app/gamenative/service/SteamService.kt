@@ -2133,21 +2133,29 @@ class SteamService : Service(), IChallengeUrlChanged {
                 val branch = getDownloadingAppInfoOf(appId)?.branch
                     ?: getInstalledApp(appId)?.branch
                     ?: "public"
-                // A transfer already running keeps the mode its record carries.
+                // A transfer still RUNNING keeps the mode its record carries; a finished/cancelled
+                // job object that lingers must not override the caller's explicit mode (the record
+                // is only deleted on the success path, so it outlives a cancel).
+                val activeMode = if (currentDownloadInfo.isActive()) resumeModeFor(appId) else mode
                 return downloadApp(
                     appId,
                     currentDownloadInfo.downloadingAppIds,
                     branch = branch,
-                    mode = resumeModeFor(appId),
+                    mode = activeMode,
                 )
             } else {
                 val downloadingAppInfo = getDownloadingAppInfoOf(appId)
                 if (downloadingAppInfo != null) {
+                    // A persisted record with no live job: keep its depot/branch parameters, but
+                    // honour the caller's mode. Callers that MEAN to resume pass
+                    // `resumeModeFor(appId)` themselves (the queue and every UI resume path), so an
+                    // explicit "Verify Files" is not silently downgraded to the recorded UPDATE by a
+                    // record a cancelled run left behind.
                     return downloadApp(
                         appId,
                         downloadingAppInfo.dlcAppIds.orEmpty(),
                         branch = downloadingAppInfo.branch,
-                        mode = resumeModeFor(appId),
+                        mode = mode,
                     )
                 } else {
                     val installedApp = getInstalledApp(appId)
