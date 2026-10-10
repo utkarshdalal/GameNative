@@ -182,9 +182,10 @@ public class InputDeviceManager implements Pointer.OnPointerMotionListener, Keyb
             winHandler.mouseEvent(MouseEventFlags.getFlagFor(button, false), 0, 0, 0);
         }
         else {
-            Bitmask eventMask = createPointerEventMask();
+            Bitmask keyButMask = getKeyButMask();
+            keyButMask.set(button.flag());
             Window grabWindow = xServer.grabManager.getWindow();
-            Window window = grabWindow == null || xServer.grabManager.isOwnerEvents() ? pointWindow.getAncestorWithEventMask(eventMask) : null;
+            Window window = grabWindow == null || xServer.grabManager.isOwnerEvents() ? pointWindow.getAncestorWithEventId(Event.BUTTON_RELEASE) : null;
 
             if (grabWindow != null || window != null) {
                 Window eventWindow = window != null ? window : grabWindow;
@@ -194,8 +195,8 @@ public class InputDeviceManager implements Pointer.OnPointerMotionListener, Keyb
                 short[] localPoint = eventWindow.rootPointToLocal(x, y);
 
                 Window child = eventWindow.isAncestorOf(pointWindow) ? pointWindow : null;
-                ButtonRelease buttonRelease = new ButtonRelease(button.code(), xServer.windowManager.rootWindow, eventWindow, child, x, y, localPoint[0], localPoint[1], eventMask);
-                sendEvent(window, eventMask, buttonRelease);
+                ButtonRelease buttonRelease = new ButtonRelease(button.code(), xServer.windowManager.rootWindow, eventWindow, child, x, y, localPoint[0], localPoint[1], keyButMask);
+                sendEvent(window, Event.BUTTON_RELEASE, buttonRelease);
             }
 
             if (xServer.pointer.getButtonMask().isEmpty() && xServer.grabManager.isReleaseWithButtons()) {

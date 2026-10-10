@@ -82,6 +82,8 @@ Most of the time you don't need this — if you just want to play, grab the rele
    ```
    You can get one from your [SteamGridDB preferences](https://www.steamgriddb.com/profile/preferences). Without it everything still works — it just won't fetch images.
 
+Mouse-release routing uses `BUTTON_RELEASE`, not pointer-motion subscriptions, so a button-only X11 client still receives mouse-up after window geometry changes during an implicit grab. Run the regression with `gradlew :app:testLegacyDebugUnitTest --tests com.winlator.xserver.InputDeviceManagerButtonReleaseTest`.
+
 ## Analytics & privacy
 
 GameNative uses [PostHog](https://posthog.com) for anonymous analytics. No personal information is ever collected — no names, emails, IPs or device identifiers.
