@@ -2200,9 +2200,13 @@ class SteamService : Service(), IChallengeUrlChanged {
                     branch = branch,
                     containerLanguage = containerLanguage,
                     mode = mode,
-                    // VERIFY repairs the build the user has: its per-depot manifest ids come from
-                    // the app's own record, not from PICS. Empty for INSTALL/UPDATE.
-                    verifyGids = if (mode == SteamDownloadMode.VERIFY) installedManifestIds(appId) else emptyMap())
+                    // The app's own record of what is installed per depot: VERIFY pins to it,
+                    // UPDATE uses it to skip depots that are already current. Empty for INSTALL.
+                    installedGids = if (mode == SteamDownloadMode.INSTALL) {
+                        emptyMap()
+                    } else {
+                        installedManifestIds(appId)
+                    })
             }
         }
 
@@ -2540,7 +2544,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             branch: String,
             containerLanguage: String,
             mode: SteamDownloadMode,
-            verifyGids: Map<Int, ULong>,
+            installedGids: Map<Int, ULong>,
         ): DownloadInfo? {
             val appDirPath = getAppDirPath(appId)
 
@@ -2583,8 +2587,8 @@ class SteamService : Service(), IChallengeUrlChanged {
             // later INSTALL skip content that was never installed.
             if (mode == SteamDownloadMode.VERIFY) {
                 val before = mainAppDepots.keys + dlcAppDepots.keys
-                mainAppDepots = mainAppDepots.filterKeys { verifyGids.containsKey(it) }
-                dlcAppDepots = dlcAppDepots.filterKeys { verifyGids.containsKey(it) }
+                mainAppDepots = mainAppDepots.filterKeys { installedGids.containsKey(it) }
+                dlcAppDepots = dlcAppDepots.filterKeys { installedGids.containsKey(it) }
                 val skipped = (before - (mainAppDepots.keys + dlcAppDepots.keys)).sorted()
                 if (skipped.isNotEmpty()) {
                     Timber.w("Verify: skipping depot(s) with no recorded manifest: $skipped")
@@ -2740,7 +2744,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                             branchPassword = branchPassword,
                             installDir = getAppDirPath(appId),
                             mode = mode,
-                            verifyGids = verifyGids,
+                            installedGids = installedGids,
                             depotIdToIndex = depotIdToIndex,
                             downloadInfo = di,
                             // Adaptive-window ceiling (ramps up only while the link delivers);

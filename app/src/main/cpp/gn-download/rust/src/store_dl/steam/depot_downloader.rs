@@ -654,16 +654,31 @@ cannot be enumerated for ownership",
         // plus every depot the app still records as installed, from its cached manifest) and keep
         // them out of the sweep.
 
-        if let Some(log) = log {
-            match previous.as_ref() {
-                Some(p) => log(&format!(
-                    "depot-delta depot={depot_id} unchanged={}/{} changed={} removed={}",
-                    trusted.len(),
-                    manifest.files.len(),
-                    manifest.files.len() - trusted.len(),
-                    crate::store_dl::steam::depot_writer::removed_files(p, &manifest).len(),
-                )),
-                None => {}
+        match previous.as_ref() {
+            Some(p) => {
+                if let Some(log) = log {
+                    log(&format!(
+                        "depot-delta depot={depot_id} unchanged={}/{} changed={} removed={}",
+                        trusted.len(),
+                        manifest.files.len(),
+                        manifest.files.len() - trusted.len(),
+                        crate::store_dl::steam::depot_writer::removed_files(p, &manifest).len(),
+                    ));
+                }
+            }
+            None => {
+                // No usable previous manifest: either the requested manifest IS the installed one
+                // (a verify, or an update the Kotlin side could not prove is up to date) or the
+                // cache/config is missing. Either way this depot is walked in full — say so, the
+                // log is otherwise indistinguishable from a silent full re-hash.
+                if let Some(log) = log {
+                    if previous_manifest_id == depot.manifest_id {
+                        log(&format!(
+                            "depot-delta depot={depot_id} no delta: manifest {} is already the installed one — full walk",
+                            depot.manifest_id
+                        ));
+                    }
+                }
             }
         }
         let chunk_progress = |done: u64, total: u64, verifying: bool| {

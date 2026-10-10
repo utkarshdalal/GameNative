@@ -89,8 +89,12 @@ object GameDownloadService {
         branchPassword: String?,
         installDir: String,
         mode: SteamDownloadMode,
-        /** Per-depot manifest recorded as installed, used by [SteamDownloadMode.VERIFY] only. */
-        verifyGids: Map<Int, ULong>,
+        /**
+         * Per-depot manifest this app recorded as installed. [SteamDownloadMode.VERIFY] pins to
+         * it, and [SteamDownloadMode.UPDATE] uses it to skip depots whose current manifest is
+         * already the installed one (nothing to do there).
+         */
+        installedGids: Map<Int, ULong>,
         depotIdToIndex: Map<Int, Int>,
         downloadInfo: DownloadInfo,
         maxWorkers: Int,
@@ -111,16 +115,21 @@ object GameDownloadService {
         // ── 2. Resolve per-depot (gid, depot key, manifest request code) ────────
         val depotsJson = JSONArray()
         val resolvedDepotIds = mutableListOf<Int>()
-        val resolvedDepots = coroutineScope {
+        val resolutions = coroutineScope {
             selectedDepots.toSortedMap().map { (depotId, depot) ->
                 async {
                     resolveDepotForDownload(
                         steamApps, steamContent, appId, depotId, depot, branch, branchPassword,
-                        mode, verifyGids, parentScope,
+                        mode, installedGids, parentScope,
                     )
                 }
             }.awaitAll()
-        }.filterNotNull()
+        }
+        // "Up to date" is an outcome, not a failure: an update whose depots all already match the
+        // current manifests must finish successfully (nothing was wrong, there was nothing to do).
+        val upToDate = resolutions.count { it is DepotResolution.UpToDate }
+        val resolvedDepots = resolutions.filterIsInstance<DepotResolution.Resolved>()
+            .map { it.depot }
         for (resolved in resolvedDepots) {
             depotsJson.put(
                 JSONObject()
@@ -134,6 +143,11 @@ object GameDownloadService {
             resolvedDepotIds.add(resolved.depotId)
         }
         if (depotsJson.length() == 0) {
+            if (upToDate == selectedDepots.size && upToDate > 0) {
+                Timber.tag(TAG)
+                    .i("Update: all $upToDate depot(s) already at the current manifest — nothing to do")
+                return
+            }
             // A VERIFY has no manifest to work from when the app records none (e.g. it was
             // installed by the real Steam client, which keeps no `.DepotDownloader/depot.config`).
             // Say so instead of the generic message: the fix is an update, not a retry.
@@ -441,6 +455,17 @@ object GameDownloadService {
      * branches (via `checkAppBetaPassword` + `picsGetPrivateBeta`, mirroring the old
      * DepotDownloader's private-beta depot-section path).
      */
+    /**
+     * Why a depot did (or did not) make it into the run. `UpToDate` is a successful outcome —
+     * [SteamDownloadMode.UPDATE] skips a depot whose current manifest is already the installed one
+     * — and is counted separately so an all-up-to-date update is not reported as a failure.
+     */
+    private sealed interface DepotResolution {
+        class Resolved(val depot: ResolvedDepot) : DepotResolution
+        data object UpToDate : DepotResolution
+        class Unavailable(val reason: String) : DepotResolution
+    }
+
     private class ResolvedDepot(
         val depotId: Int,
         val gid: Long,
@@ -459,14 +484,14 @@ object GameDownloadService {
         branch: String,
         branchPassword: String?,
         mode: SteamDownloadMode,
-        verifyGids: Map<Int, ULong>,
+        installedGids: Map<Int, ULong>,
         parentScope: CoroutineScope,
-    ): ResolvedDepot? {
+    ): DepotResolution {
         // VERIFY pins to the manifest the app recorded as installed — never PICS' current one, so
         // verifying repairs the build the user has instead of silently upgrading it. The request
         // code below is then issued for THAT gid; the depot key is per depot, not per manifest.
         val gid = if (mode == SteamDownloadMode.VERIFY) {
-            val installed = verifyGids[depotId]?.toLong() ?: 0L
+            val installed = installedGids[depotId]?.toLong() ?: 0L
             if (installed == 0L) {
                 Timber.tag(TAG).w("Verify: depot $depotId has no installed manifest — skipped")
             } else {
@@ -477,11 +502,26 @@ object GameDownloadService {
             }
             installed
         } else {
-            resolveManifestGid(steamApps, appId, depotId, depot, branch, branchPassword)
+            val current = resolveManifestGid(steamApps, appId, depotId, depot, branch, branchPassword)
+            // UPDATE: a depot whose current manifest IS the installed one has nothing to do. It is
+            // still selected (so its files stay checked when something else in it changed), but
+            // walking it would re-hash the whole depot against the very manifest it already
+            // matches — Valve's client calls this "up to date" and skips it.
+            if (mode == SteamDownloadMode.UPDATE &&
+                current != 0L &&
+                installedGids[depotId]?.toLong() == current
+            ) {
+                Timber.tag(TAG).i(
+                    "Update: depot $depotId already at manifest " +
+                        java.lang.Long.toUnsignedString(current) + " — up to date, skipped",
+                )
+                return DepotResolution.UpToDate
+            }
+            current
         }
         if (gid == 0L) {
             Timber.tag(TAG).w("Skipping depot $depotId: no manifest gid for branch $branch")
-            return null
+            return DepotResolution.Unavailable("no manifest gid for branch $branch")
         }
 
         // Depot keys are granted to the app that OWNS the depot, not necessarily
@@ -506,13 +546,15 @@ object GameDownloadService {
                 ""
             }
             Timber.tag(TAG).w("Skipping depot $depotId: depot key denied (${keyCallback.result})$dlcNote")
-            return null
+            return DepotResolution.Unavailable("depot key denied (${keyCallback.result})$dlcNote")
         }
 
         val requestCode = fetchManifestRequestCode(
             steamContent, depotId, owningAppId, gid, branch, parentScope,
         )
-        return ResolvedDepot(depotId, gid, keyCallback.depotKey, requestCode)
+        return DepotResolution.Resolved(
+            ResolvedDepot(depotId, gid, keyCallback.depotKey, requestCode),
+        )
     }
 
     private suspend fun resolveManifestGid(
