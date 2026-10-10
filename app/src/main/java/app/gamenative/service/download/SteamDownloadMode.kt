@@ -1,9 +1,13 @@
 package app.gamenative.service.download
 
 /**
- * What a Steam download run is FOR. The three modes differ in exactly two places: which depot
- * manifests are used ([app.gamenative.service.download.GameDownloadService] `resolveDepotForDownload`),
- * and whether the app's already-downloaded depots are re-included (SteamService depot selection).
+ * What a Steam download run is FOR. The modes are decided in two places —
+ * [app.gamenative.service.download.GameDownloadService] `resolveDepotForDownload` (which manifest a
+ * depot is pinned to) and the depot selection in SteamService (which depots enter the run at all) —
+ * and that choice has three consequences in the engine: `fresh` (INSTALL trusts the resume journal,
+ * UPDATE/VERIFY always re-validate against the manifest), whether the previous manifest is diffed
+ * for a per-file delta and a removed-file sweep (UPDATE, when it has a usable previous manifest),
+ * and whether the run can move the install to a different build (UPDATE yes, VERIFY never).
  *
  * Steam itself has no such split — its client only ever installs/updates to the *current* build,
  * and "verify integrity" verifies against the manifest of the build you have installed. Passing a

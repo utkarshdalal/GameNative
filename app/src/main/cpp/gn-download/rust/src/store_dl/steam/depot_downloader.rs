@@ -1,7 +1,9 @@
 use crate::store_dl::steam::cdn_client::{auth_status, CdnClient, CdnManifestResult};
 use crate::store_dl::steam::content_manifest::ContentManifest;
 use crate::store_dl::steam::depot_config::{DepotConfigStore, DepotProgressStore, INVALID_MANIFEST_ID};
-use crate::store_dl::steam::depot_writer::{write_depot_sequential, CdnAuthTokenRefresher, DepotWriteOptions};
+use crate::store_dl::steam::depot_writer::{
+    write_depot_sequential, CdnAuthTokenRefresher, DepotWriteOptions, DEPOT_FILE_FLAG_DIRECTORY,
+};
 use crate::store_dl::steam::pb::ccontentserverdirectory::CContentServerDirectoryServerInfo;
 use std::fs;
 use std::collections::{HashMap, HashSet};
@@ -761,8 +763,16 @@ cannot be enumerated for ownership",
         match previous.as_ref().filter(|_| unenumerable_installed.is_empty()) {
             Some(previous) => {
                 let removed = crate::store_dl::steam::depot_writer::removed_files(previous, &manifest);
+                // Directories this build still declares: the sweep may empty them but must not
+                // remove them (see `prune_removed_files`).
+                let retained_dirs: HashSet<String> = manifest
+                    .files
+                    .iter()
+                    .filter(|file| (file.flags & DEPOT_FILE_FLAG_DIRECTORY) != 0)
+                    .map(|file| crate::store_dl::steam::depot_writer::folded_entry_key(&file.filename))
+                    .collect();
                 let stats = crate::store_dl::steam::depot_writer::prune_removed_files(
-                    install_dir, &removed, &protected, log,
+                    install_dir, &removed, &protected, &retained_dirs, log,
                 );
                 if let Some(log) = log {
                     log(&stats.line(depot_id));
@@ -808,6 +818,16 @@ fn load_cached_manifest(
     let cache = cfg.manifest_cache_path(depot_id, manifest_id);
     let raw = read_cached_manifest(&cache)?;
     let mut manifest = ContentManifest::parse(&raw)?;
+    // Same identity check the Phase-1 resolve path applies to a cached manifest: a truncated write,
+    // or a file sitting under the wrong `<depot>_<gid>.manifest` name, must not be diffed against.
+    // A wrong previous manifest would produce a wrong removed-file set (the sweep only ever deletes
+    // paths absent from the new manifest, so the damage is bounded to files this depot no longer
+    // lists — but that includes another depot's paths, which is why the check matters).
+    if manifest.metadata.gid_manifest != manifest_id
+        || (manifest.metadata.depot_id != 0 && manifest.metadata.depot_id != depot_id)
+    {
+        return None;
+    }
     if !manifest.decrypt_filenames(depot_key) {
         return None;
     }

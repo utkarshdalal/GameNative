@@ -521,11 +521,16 @@ impl PruneStats {
 /// `protected` holds case-folded paths (`folded_entry_key`) that any depot of the run still
 /// installs. Files in it are kept: depots share one install dir, so a path this depot dropped can
 /// still belong to another depot that has it installed.
+///
+/// `retained_dirs` holds the case-folded paths of the directories the NEW manifest still declares:
+/// the walk-up stops at one of them, so a directory this build expects is never removed just because
+/// the sweep emptied it (a game that needs an empty `Mods/`, `config/`, … to exist).
 #[allow(clippy::too_many_arguments)]
 pub fn prune_removed_files(
     target_dir: &str,
     removed: &[String],
     protected: &std::collections::HashSet<String>,
+    retained_dirs: &std::collections::HashSet<String>,
     log: Option<&(dyn Fn(&str) + Sync)>,
 ) -> PruneStats {
     let mut stats = PruneStats::default();
@@ -578,6 +583,12 @@ pub fn prune_removed_files(
                 while let Some(current) = dir {
                     if current == root || !current.starts_with(root) {
                         break;
+                    }
+                    // A directory the new manifest declares is not ours to remove, empty or not.
+                    if let Ok(rel) = current.strip_prefix(root) {
+                        if retained_dirs.contains(&folded_entry_key(&rel.to_string_lossy())) {
+                            break;
+                        }
                     }
                     if fs::remove_dir(current).is_err() {
                         break;
@@ -4025,6 +4036,7 @@ mod tests {
                 "other/owned.bin".to_string(),     // owned by another depot
             ],
             &protected,
+            &std::collections::HashSet::new(),
             Some(&logger),
         );
         assert_eq!(stats.deleted, 1);
@@ -4144,6 +4156,7 @@ rename, a missing hash and a new file all fall through to the normal walk"
             &base,
             &["Game/victim.bin".to_string()],
             &std::collections::HashSet::new(),
+            &std::collections::HashSet::new(),
             None,
         );
         assert_eq!(stats.unsafe_paths, 1, "a path resolving outside the root is refused");
@@ -4154,6 +4167,32 @@ rename, a missing hash and a new file all fall through to the normal walk"
         );
         let _ = fs::remove_file(&linked);
         let _ = fs::remove_dir_all(&outside);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn prune_keeps_a_directory_the_new_manifest_still_declares() {
+        // A game can require an empty directory to exist (`Mods/`, `config/`): the new manifest
+        // declares it, so the sweep may empty it but must not remove it.
+        let dir = std::env::temp_dir().join(format!("gnprune-retained-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("Mods")).unwrap();
+        fs::create_dir_all(dir.join("Scratch")).unwrap();
+        fs::write(dir.join("Mods/old.bin"), b"x").unwrap();
+        fs::write(dir.join("Scratch/old.bin"), b"x").unwrap();
+        let base = dir.to_string_lossy().into_owned();
+        let retained: std::collections::HashSet<String> =
+            [folded_entry_key("Mods")].into_iter().collect();
+        let stats = prune_removed_files(
+            &base,
+            &["Mods/old.bin".to_string(), "Scratch/old.bin".to_string()],
+            &std::collections::HashSet::new(),
+            &retained,
+            None,
+        );
+        assert_eq!(stats.deleted, 2);
+        assert!(dir.join("Mods").is_dir(), "a declared directory survives being emptied");
+        assert!(!dir.join("Scratch").exists(), "an undeclared emptied directory is pruned");
         let _ = fs::remove_dir_all(&dir);
     }
 

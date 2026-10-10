@@ -2709,10 +2709,6 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 val downloadJob = instance!!.scope.launch {
                     try {
-                        if (mode != SteamDownloadMode.INSTALL) {
-                            SteamUtils.clearStaleDrmBackups(appDirPath)
-                        }
-
                         // Get licenses from database
                         val licenses = getLicensesFromDb()
                         if (licenses.isEmpty()) {
@@ -2753,7 +2749,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                         Timber.i("Downloading game to " + defaultAppInstallPath)
 
-                        GameDownloadService.downloadSteamApp(
+                        val outcome = GameDownloadService.downloadSteamApp(
                             appId = appId,
                             selectedDepots = selectedDepots,
                             branch = branch,
@@ -2907,7 +2903,11 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                         // Complete app download
                         if (mainAppDepots.isNotEmpty()) {
-                            val mainAppDepotIds = mainAppDepots.keys.sorted()
+                            // Depots this run could not resolve (key denied, no gid) are NOT
+                            // installed by it, so they must not enter the installed record: a
+                            // later INSTALL skips whatever `downloadedDepots` lists.
+                            val mainAppDepotIds =
+                                (mainAppDepots.keys - outcome.unavailableDepotIds.toSet()).sorted()
                             completeAppDownload(
                                 downloadInfo = di,
                                 downloadingAppId = appId,
@@ -2926,7 +2926,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                                 depot.dlcAppId == dlcAppId &&
                                     (depotId !in mainAppDepots || depotId in dlcAppDepotIds)
                             }
-                            val dlcDepotIds = dlcDepots.keys.sorted()
+                            val dlcDepotIds =
+                                (dlcDepots.keys - outcome.unavailableDepotIds.toSet()).sorted()
                             completeAppDownload(
                                 downloadInfo = di,
                                 downloadingAppId = dlcAppId,

@@ -7,6 +7,7 @@ import app.gamenative.data.SteamApp
 import app.gamenative.service.SteamService
 import app.gamenative.utils.DepotManifestFiles
 import app.gamenative.utils.LocaleHelper
+import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.generateSteamApp
 import `in`.dragonbra.javasteam.enums.EResult
 import `in`.dragonbra.javasteam.steam.cdn.Server
@@ -100,7 +101,7 @@ object GameDownloadService {
         maxWorkers: Int,
         processWorkers: Int,
         parentScope: CoroutineScope,
-    ) {
+    ): SteamRunOutcome {
         val steamClient = SteamService.instance?.steamClient
             ?: throw DownloadFailedException("Steam client not available")
         val steamApps = steamClient.getHandler(SteamApps::class.java)
@@ -155,12 +156,22 @@ object GameDownloadService {
                         (if (unavailable > 0) ", $unavailable unavailable (see the log)" else "") +
                         " — nothing to do",
                 )
-                return
+                return SteamRunOutcome(
+                    depotsRun = 0,
+                    unavailableDepotIds = resolutions
+                        .filterIsInstance<DepotResolution.Unavailable>()
+                        .map { it.depotId },
+                )
             }
-            // A VERIFY has no manifest to work from when the app records none (e.g. it was
-            // installed by the real Steam client, which keeps no `.DepotDownloader/depot.config`).
-            // Say so instead of the generic message: the fix is an update, not a retry.
-            if (mode == SteamDownloadMode.VERIFY) {
+            // Every depot was skipped and none was confirmed current, so say WHY rather than
+            // guessing: a VERIFY whose depots have no recorded manifest is a user action ("run
+            // Update"), while a denied depot key is an entitlement problem that retrying or
+            // updating will not fix the same way.
+            val reasons = resolutions
+                .filterIsInstance<DepotResolution.Unavailable>()
+                .map { it.reason }
+                .distinct()
+            if (mode == SteamDownloadMode.VERIFY && installedGids.isEmpty()) {
                 throw DownloadFailedException(
                     "Verify: no installed manifest recorded for " +
                         "${selectedDepots.size} depot(s) — use Update to fetch the current version",
@@ -168,8 +179,18 @@ object GameDownloadService {
             }
             throw DownloadFailedException(
                 "No entitled depots to download " +
-                    "(all ${selectedDepots.size} selected depot(s) skipped: ${selectedDepots.keys.sorted()})",
+                    "(all ${selectedDepots.size} selected depot(s) skipped: " +
+                    reasons.joinToString("; ").ifEmpty { "${selectedDepots.keys.sorted()}" } + ")",
             )
+        }
+
+        // Stale DRM backups (`*.original.exe` / `*.unpacked.exe` / `steam_api*.dll.orig`) are
+        // cleared only when this run will actually touch the install: they exist for a file we
+        // patched, and a run that rewrites that file (it no longer matches the manifest) makes the
+        // backup stale, whereas a run with nothing to do must LEAVE them — the patched file stays
+        // on disk, so the backup is still the only way back to the original.
+        if (mode != SteamDownloadMode.INSTALL && resolvedDepots.isNotEmpty()) {
+            SteamUtils.clearStaleDrmBackups(installDir)
         }
 
         val plan = JSONObject()
@@ -210,6 +231,13 @@ object GameDownloadService {
                 resolved.depotKey,
             )
         }
+
+        return SteamRunOutcome(
+            depotsRun = resolvedDepots.size,
+            unavailableDepotIds = resolutions
+                .filterIsInstance<DepotResolution.Unavailable>()
+                .map { it.depotId },
+        )
     }
 
     private suspend fun runNativeSteamDownload(
@@ -465,6 +493,17 @@ object GameDownloadService {
      * DepotDownloader's private-beta depot-section path).
      */
     /**
+     * What a Steam run actually did, so the caller can tell "nothing to do" from "did work" and
+     * knows which depots it could NOT handle (they must not be recorded as downloaded).
+     */
+    data class SteamRunOutcome(
+        /** Depots handed to the engine (0 = nothing needed doing). */
+        val depotsRun: Int,
+        /** Depots the run could not resolve at all (key denied, no gid): not installed by us. */
+        val unavailableDepotIds: List<Int>,
+    )
+
+    /**
      * Why a depot did (or did not) make it into the run. `UpToDate` is a successful outcome —
      * [SteamDownloadMode.UPDATE] skips a depot whose current manifest is already the installed one
      * — and is counted separately so an all-up-to-date update is not reported as a failure.
@@ -472,7 +511,7 @@ object GameDownloadService {
     private sealed interface DepotResolution {
         class Resolved(val depot: ResolvedDepot) : DepotResolution
         data object UpToDate : DepotResolution
-        class Unavailable(val reason: String) : DepotResolution
+        class Unavailable(val depotId: Int, val reason: String) : DepotResolution
     }
 
     private class ResolvedDepot(
@@ -530,7 +569,7 @@ object GameDownloadService {
         }
         if (gid == 0L) {
             Timber.tag(TAG).w("Skipping depot $depotId: no manifest gid for branch $branch")
-            return DepotResolution.Unavailable("no manifest gid for branch $branch")
+            return DepotResolution.Unavailable(depotId, "no manifest gid for branch $branch")
         }
 
         // Depot keys are granted to the app that OWNS the depot, not necessarily
@@ -555,7 +594,10 @@ object GameDownloadService {
                 ""
             }
             Timber.tag(TAG).w("Skipping depot $depotId: depot key denied (${keyCallback.result})$dlcNote")
-            return DepotResolution.Unavailable("depot key denied (${keyCallback.result})$dlcNote")
+            return DepotResolution.Unavailable(
+                depotId,
+                "depot key denied (${keyCallback.result})$dlcNote",
+            )
         }
 
         val requestCode = fetchManifestRequestCode(
