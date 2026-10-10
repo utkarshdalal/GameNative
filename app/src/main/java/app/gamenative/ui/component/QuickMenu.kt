@@ -1238,7 +1238,13 @@ fun QuickMenu(
                     when (selectedTab) {
                         QuickMenuTab.HUD -> hudItemFocusRequester.requestFocus()
                         QuickMenuTab.LSFG -> lsfgItemFocusRequester.requestFocus()
-                        QuickMenuTab.INVITE -> inviteItemFocusRequester.requestFocus()
+                        QuickMenuTab.INVITE -> {
+                            if (inviteMenu?.friends?.isNotEmpty() == true) {
+                                inviteItemFocusRequester.requestFocus()
+                            } else {
+                                inviteTabFocusRequester.requestFocus()
+                            }
+                        }
                         QuickMenuTab.EFFECTS -> effectsItemFocusRequester.requestFocus()
                         QuickMenuTab.POWER -> powerItemFocusRequester.requestFocus()
                         QuickMenuTab.TOOLS -> toolsItemFocusRequester.requestFocus()
