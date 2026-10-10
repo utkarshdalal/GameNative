@@ -90,15 +90,17 @@ class InputDeviceManagerButtonReleaseTest {
         }
     }
 
+    /** In-memory little-endian X11 stream for checking exact event fields. */
     private class RecordingOutput : XOutputStream(1024) {
         init {
             setByteOrder(ByteOrder.LITTLE_ENDIAN)
         }
 
-        /** Keep real X11 packets in memory instead of flushing to an Android native socket. */
+        /** Disable automatic flushing because host tests have no Android native socket. */
         override fun lock(): XStreamLock = XStreamLock {}
     }
 
+    /** Host-test shadow for Drawable's Android-only rasterizer setup, not X11 routing. */
     @Implements(value = Drawable::class, isInAndroidSdk = false)
     class HeadlessDrawable {
         companion object {
