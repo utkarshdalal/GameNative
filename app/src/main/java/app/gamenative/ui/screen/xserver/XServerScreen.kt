@@ -5486,7 +5486,13 @@ private suspend fun setupWineSystemFiles(
         containerDataChanged = true
     }
 
-    if (xServerState.value.dxwrapper == "cnc-ddraw") envVars.put("CNC_DDRAW_CONFIG_FILE", "C:\\ProgramData\\cnc-ddraw\\ddraw.ini")
+    if (xServerState.value.dxwrapper == "cnc-ddraw") {
+        envVars.put("CNC_DDRAW_CONFIG_FILE", "C:\\ProgramData\\cnc-ddraw\\ddraw.ini")
+        envVars.put(
+            "WINEDLLOVERRIDES",
+            ModDllOverrides.merge(envVars.get("WINEDLLOVERRIDES"), listOf("ddraw")),
+        )
+    }
 
     // val wincomponents = if (shortcut != null) shortcut.getExtra("wincomponents", container.winComponents) else container.winComponents
     val wincomponents = container.winComponents
