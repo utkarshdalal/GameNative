@@ -1849,6 +1849,25 @@ object PrefManager {
             }
         }
 
+    /**
+     * The [app.gamenative.service.download.SteamDownloadMode] an interrupted download of [appId]
+     * was started with, so a resume keeps its intent (a verify stays a verify instead of becoming
+     * an update). Deliberately NOT a database column: a new column means a schema version bump, and
+     * a version bump makes every build on an older version fail to open the database ("migration
+     * from N to N-1 was required") — which is exactly the state a developer switching between
+     * branches must not be trapped in. This is transient per-app state, so DataStore is its home.
+     */
+    fun steamDownloadMode(appId: Int): String? =
+        getPref(stringPreferencesKey("steam_dl_mode_$appId"), "").ifEmpty { null }
+
+    fun setSteamDownloadMode(appId: Int, mode: String) {
+        setPref(stringPreferencesKey("steam_dl_mode_$appId"), mode)
+    }
+
+    fun clearSteamDownloadMode(appId: Int) {
+        removePref(stringPreferencesKey("steam_dl_mode_$appId"))
+    }
+
     fun setPreferredFamilyLender(appId: Int, lenderSteamId: Long?) {
         scope.launch {
             dataStore.edit { pref ->

@@ -2090,6 +2090,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             with(instance!!) {
                 db.withTransaction {
                     appInfoDao.deleteApp(appId)
+                    PrefManager.clearSteamDownloadMode(appId)
                     changeNumbersDao.deleteByAppId(appId)
                     fileChangeListsDao.deleteByAppId(appId)
                     steamFileHashCacheDao.deleteByAppId(appId)
@@ -2116,14 +2117,13 @@ class SteamService : Service(), IChallengeUrlChanged {
          * point of the split: VERIFY repairs the installed build, UPDATE moves to the current one.
          */
         /**
-         * The mode an interrupted run for [appId] was started with ([DownloadingAppInfo.mode]),
+         * The mode an interrupted run for [appId] was started with (DataStore, not the DB),
          * used when resuming: the queue and the resume paths must not turn a VERIFY into an INSTALL
          * (which would resolve current manifests) or an UPDATE into one (which would skip the
          * depots it exists to re-check). UPDATE when nothing is recorded.
          */
         fun resumeModeFor(appId: Int): SteamDownloadMode =
-            getDownloadingAppInfoOf(appId)
-                ?.mode
+            PrefManager.steamDownloadMode(appId)
                 ?.let { stored -> runCatching { SteamDownloadMode.valueOf(stored) }.getOrNull() }
                 ?: SteamDownloadMode.UPDATE
 
@@ -2647,17 +2647,19 @@ class SteamService : Service(), IChallengeUrlChanged {
             Timber.i("DLC contains ${dlcAppDepots.size} depot(s): ${dlcAppDepots.keys}")
             Timber.i("downloadingAppIds: $downloadingAppIds")
 
-            // Save downloading app info
+            // Save downloading app info, plus the mode this run was started with (DataStore — see
+            // `resumeModeFor`: a resume must keep its intent, and a database column would force a
+            // schema version bump that traps any build on an older version).
             runBlocking {
                 instance?.downloadingAppInfoDao?.insert(
                     DownloadingAppInfo(
                         appId,
                         dlcAppIds = userSelectedDlcAppIds,
                         branch = branch,
-                        mode = mode.name,
                     ),
                 )
             }
+            PrefManager.setSteamDownloadMode(appId, mode.name)
 
             val info = DownloadInfo(selectedDepots.size, appId, downloadingAppIds).also { di ->
                 di.setPersistencePath(appDirPath)
@@ -2937,8 +2939,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                         removeDownloadJob(appId)
                         PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(appId, GameSource.STEAM))
 
-                        // Remove the downloading app info
+                        // Remove the downloading app info (and the recorded mode with it)
                         instance?.downloadingAppInfoDao?.deleteApp(appId)
+                        PrefManager.clearSteamDownloadMode(appId)
                     } catch (e: CancellationException) {
                         Timber.d(e, "Download canceled for app $appId")
                         throw e
@@ -3025,6 +3028,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 // clean up DB record BEFORE notifying UI to avoid stale "Resume" button
                 instance?.downloadingAppInfoDao?.deleteApp(downloadInfo.gameId)
+                PrefManager.clearSteamDownloadMode(downloadInfo.gameId)
 
                 // Clear persisted bytes now — depot install is committed. Post-install sync is
                 // best-effort and may be cancelled, so this must not be deferred past the sync block.
@@ -4235,6 +4239,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             for (record in downloadingAppInfoDao.getAll()) {
                 if (isAppInstalled(record.appId)) {
                     downloadingAppInfoDao.deleteApp(record.appId)
+                    PrefManager.clearSteamDownloadMode(record.appId)
                 }
             }
         }
