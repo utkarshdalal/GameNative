@@ -2111,12 +2111,6 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
 
         /**
-         * Re-run a download for [appId] in [mode] — what the app menu's "Verify Files" and
-         * "Update" both funnel through. A transfer already in progress is RESUMED as-is (its
-         * mode was chosen when it started); otherwise the run uses [mode], which is the whole
-         * point of the split: VERIFY repairs the installed build, UPDATE moves to the current one.
-         */
-        /**
          * The mode an interrupted run for [appId] was started with (DataStore, not the DB),
          * used when resuming: the queue and the resume paths must not turn a VERIFY into an INSTALL
          * (which would resolve current manifests) or an UPDATE into one (which would skip the
@@ -2127,6 +2121,12 @@ class SteamService : Service(), IChallengeUrlChanged {
                 ?.let { stored -> runCatching { SteamDownloadMode.valueOf(stored) }.getOrNull() }
                 ?: SteamDownloadMode.UPDATE
 
+        /**
+         * Re-run a download for [appId] in [mode] — what the app menu's "Verify Files" and
+         * "Update" both funnel through. A transfer already in progress is RESUMED as-is (its
+         * mode was chosen when it started); otherwise the run uses [mode], which is the whole
+         * point of the split: VERIFY repairs the installed build, UPDATE moves to the current one.
+         */
         fun downloadApp(appId: Int, mode: SteamDownloadMode): DownloadInfo? {
             val currentDownloadInfo = downloadJobs[appId]
             if (currentDownloadInfo != null) {
@@ -2658,8 +2658,11 @@ class SteamService : Service(), IChallengeUrlChanged {
                         branch = branch,
                     ),
                 )
+                // Awaited in the same blocking scope as the record itself: the mode must be durable
+                // before the run can be interrupted, or the resume reads nothing and falls back to
+                // UPDATE — silently upgrading an interrupted VERIFY.
+                PrefManager.setSteamDownloadMode(appId, mode.name)
             }
-            PrefManager.setSteamDownloadMode(appId, mode.name)
 
             val info = DownloadInfo(selectedDepots.size, appId, downloadingAppIds).also { di ->
                 di.setPersistencePath(appDirPath)
