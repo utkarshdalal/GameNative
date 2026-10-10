@@ -126,8 +126,27 @@ bool WindowsProjectionPresenter::ensureProgram() {
 EGLImageKHR WindowsProjectionPresenter::createImageFromHardwareBuffer(AHardwareBuffer *buffer) {
     EGLClientBuffer client = eglGetNativeClientBufferANDROID(buffer);
     if (client == nullptr) return EGL_NO_IMAGE_KHR;
-    const EGLint attributes[] = {EGL_IMAGE_PRESERVED_KHR, EGL_TRUE, EGL_NONE};
-    return eglCreateImageKHR(display_, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, client, attributes);
+    // The game's rendered frame is sRGB-encoded (like any normal D3D/Vulkan swapchain); tag the
+    // image so sampling decodes it to linear — otherwise it gets sRGB-encoded a second time when
+    // written to our own sRGB swapchain (xr_immersive.cpp), washing out colors in every game.
+    const EGLint attributes[] = {
+        EGL_IMAGE_PRESERVED_KHR, EGL_TRUE,
+        EGL_GL_COLORSPACE_KHR, EGL_GL_COLORSPACE_SRGB_KHR,
+        EGL_NONE,
+    };
+    EGLImageKHR image =
+        eglCreateImageKHR(display_, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, client, attributes);
+    if (image != EGL_NO_IMAGE_KHR) return image;
+    // A driver that rejects the colorspace attribute must not stall the projection: retry without
+    // it (colors then look as they did before this tag existed) rather than dropping the frame.
+    static bool logged = false;
+    if (!logged) {
+        logged = true;
+        LOGI("EGL hardware-buffer import with sRGB colorspace failed (0x%x) — retrying untagged",
+             eglGetError());
+    }
+    const EGLint plain[] = {EGL_IMAGE_PRESERVED_KHR, EGL_TRUE, EGL_NONE};
+    return eglCreateImageKHR(display_, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, client, plain);
 }
 
 EGLImageKHR WindowsProjectionPresenter::createImageFromDmabuf(const EyeFrame &frame) {
@@ -168,7 +187,22 @@ EGLImageKHR WindowsProjectionPresenter::createImageFromDmabuf(const EyeFrame &fr
             attributes[count++] = static_cast<EGLint>(frame.modifier >> 32);
         }
     }
+    // Same sRGB tag as createImageFromHardwareBuffer. Last in the list so a driver that rejects
+    // it can be retried by just cutting it off, which is no worse than before the tag existed.
+    const int colorspaceAt = count;
+    attributes[count++] = EGL_GL_COLORSPACE_KHR;
+    attributes[count++] = EGL_GL_COLORSPACE_SRGB_KHR;
     attributes[count] = EGL_NONE;
+    EGLImageKHR image =
+        eglCreateImageKHR(display_, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, attributes);
+    if (image != EGL_NO_IMAGE_KHR) return image;
+    static bool logged = false;
+    if (!logged) {
+        logged = true;
+        LOGI("EGL dma-buf import with sRGB colorspace failed (0x%x) — retrying untagged",
+             eglGetError());
+    }
+    attributes[colorspaceAt] = EGL_NONE;
     return eglCreateImageKHR(display_, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, attributes);
 }
 
@@ -217,7 +251,7 @@ int WindowsProjectionPresenter::createReleaseFence() {
     return fd;
 }
 
-bool WindowsProjectionPresenter::uploadLinearDmabufToTexture(
+bool WindowsProjectionPresenter::uploadDmabufToSrgbTexture(
     uint32_t eye, int imageIndex, const EyeFrame &frame, GLuint &texture,
     uint64_t &cachedRegistration) {
     if (frame.planeCount != 1 || frame.dmabufFds[0] < 0 || frame.modifier != 0 ||
@@ -261,7 +295,9 @@ bool WindowsProjectionPresenter::uploadLinearDmabufToTexture(
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_G, GL_GREEN);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, swap ? GL_RED : GL_BLUE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_A, GL_ALPHA);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, frame.width, frame.height, 0,
+        // GL_SRGB8_ALPHA8: the source frame is sRGB-encoded, so sampling must decode it or it
+        // gets sRGB-encoded a second time on write to our own sRGB swapchain (xr_immersive.cpp).
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB8_ALPHA8, frame.width, frame.height, 0,
                      GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
     }
     if (acquireSync_ != EGL_NO_SYNC_KHR) {
@@ -309,7 +345,7 @@ bool WindowsProjectionPresenter::importEyeBuffer(WindowsFrameTransport &transpor
     uint64_t &registration = registrations_[eye][image];
     if (cpuFallback_[eye][image]) {
         if (!fresh && registration == frame.registrationSerial) return cachedTexture != 0;
-        if (uploadLinearDmabufToTexture(eye, image, frame, cachedTexture, registration)) return true;
+        if (uploadDmabufToSrgbTexture(eye, image, frame, cachedTexture, registration)) return true;
     }
     if (cachedImage != EGL_NO_IMAGE_KHR && registration == frame.registrationSerial) return true;
     if (cachedImage != EGL_NO_IMAGE_KHR) {
@@ -333,7 +369,7 @@ bool WindowsProjectionPresenter::importEyeBuffer(WindowsFrameTransport &transpor
                      extensions != nullptr && strstr(extensions, "EGL_EXT_image_dma_buf_import") != nullptr,
                      extensions != nullptr && strstr(extensions, "EGL_EXT_image_dma_buf_import_modifiers") != nullptr);
             }
-            if (uploadLinearDmabufToTexture(eye, image, frame, cachedTexture, registration)) return true;
+            if (uploadDmabufToSrgbTexture(eye, image, frame, cachedTexture, registration)) return true;
         } else {
             LOGI("windows vr eye %u image %d: zero-copy EGL dma-buf import active", eye, image);
         }
