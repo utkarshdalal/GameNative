@@ -4,6 +4,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
 import com.winlator.container.Container
 import java.io.File
+import timber.log.Timber
 
 /**
  * Determines whether pre-install steps (VC Redist, GOG script interpreter) need to run
@@ -97,6 +98,10 @@ object PreInstallSteps {
         val gameDir = getGameDir(container) ?: return
         val gameDirPath = gameDir.absolutePath
         MarkerUtils.addMarker(gameDirPath, marker)
+        currentSteps().filter { it.marker == marker }.forEach { step ->
+            runCatching { step.onCompleted(container, gameDir) }
+                .onFailure { Timber.w(it, "onCompleted failed for ${marker.name}") }
+        }
         touchPrefixStamp(container)
     }
 
