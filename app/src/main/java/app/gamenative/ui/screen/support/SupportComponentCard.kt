@@ -62,6 +62,7 @@ private fun typeLabel(type: SupportComponent.Type): String = when (type) {
     SupportComponent.Type.DXVK -> "DXVK"
     SupportComponent.Type.VKD3D -> "VKD3D-Proton"
     SupportComponent.Type.PROTON -> "Proton"
+    SupportComponent.Type.LSFG -> "LSFG-VK layer"
 }
 
 @Composable

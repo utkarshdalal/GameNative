@@ -54,6 +54,14 @@ object LsfgVkManager {
     private const val LIB_FILENAME = "liblsfg-vk-layer.so"
     private const val MANIFEST_FILENAME = "VkLayer_LS_frame_generation.json"
     private const val VERSION_FILENAME = ".lsfg_vk_runtime_version"
+    const val LAYER_LIB_FILENAME = LIB_FILENAME
+    const val LAYER_MANIFEST_FILENAME = MANIFEST_FILENAME
+
+    // Layer builds installed from support component cards live under files/lsfg_layers/<version>/ and are
+    // pinned to a container through the lsfgLayerVersion extra.
+    private const val LAYERS_DIR = "lsfg_layers"
+    const val EXTRA_LAYER_VERSION = "lsfgLayerVersion"
+    private val LAYER_VERSION_RE = Regex("^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$")
 
     // Relative path from implicit_layer.d back to lib/
     private const val MANIFEST_LIBRARY_PATH = "../../../lib/$LIB_FILENAME"
@@ -107,6 +115,25 @@ object LsfgVkManager {
         isSupported(container) &&
             parseBool(container.getExtra(EXTRA_ARMED, "false")) &&
             isDllAvailable()
+
+    fun layerDir(context: Context, version: String): File = File(File(context.filesDir, LAYERS_DIR), version)
+
+    fun installedLayerVersions(context: Context): List<String> =
+        File(context.filesDir, LAYERS_DIR).listFiles().orEmpty()
+            .filter { it.isDirectory && LAYER_VERSION_RE.matches(it.name) && File(it, LIB_FILENAME).isFile }
+            .map { it.name }
+
+    /** The layer build pinned to this container by a support card, or null for the bundled layer. */
+    private fun pinnedLayer(context: Context, container: Container): Pair<String, File>? {
+        val version = container.getExtra(EXTRA_LAYER_VERSION, "").trim()
+        if (!LAYER_VERSION_RE.matches(version)) return null
+        val dir = layerDir(context, version)
+        if (!File(dir, LIB_FILENAME).isFile) {
+            Timber.tag(TAG).w("Pinned LSFG layer %s is not installed; using the bundled layer", version)
+            return null
+        }
+        return version to dir
+    }
 
     /** Whether Lossless Scaling is installed (Lossless.dll exists in Steam dir). */
     @JvmStatic
@@ -368,8 +395,10 @@ object LsfgVkManager {
         val manifestFile = File(layerDir, MANIFEST_FILENAME)
         val versionFile = File(layerDir, VERSION_FILENAME)
 
+        val pinned = pinnedLayer(context, container)
+        val runtimeVersion = pinned?.let { "card-${it.first}" } ?: RUNTIME_VERSION
         val installedVersion = versionFile.takeIf { it.exists() }?.readText()?.trim().orEmpty()
-        val needsInstall = installedVersion != RUNTIME_VERSION ||
+        val needsInstall = installedVersion != runtimeVersion ||
             !libFile.isFile || !manifestFile.isFile
 
         var success = true
@@ -379,9 +408,9 @@ object LsfgVkManager {
                 localLibDir.mkdirs()
                 layerDir.mkdirs()
 
-                // Copy the layer .so from native library directory (jniLibs)
+                // Copy the layer .so from the pinned build, or from the native library directory (jniLibs)
                 val nativeLibDir = File(context.applicationInfo.nativeLibraryDir)
-                val sourceLib = File(nativeLibDir, LIB_FILENAME)
+                val sourceLib = pinned?.let { File(it.second, LIB_FILENAME) } ?: File(nativeLibDir, LIB_FILENAME)
                 if (!sourceLib.exists()) {
                     Timber.tag(TAG).e("Native library not found: %s", sourceLib.absolutePath)
                     return false
@@ -392,14 +421,14 @@ object LsfgVkManager {
                     }
                 }
                 // Write the manifest with patched library_path
-                val manifestText = context.assets.open(ASSET_MANIFEST)
-                    .bufferedReader().use { it.readText() }
+                val pinnedManifest = pinned?.let { File(it.second, MANIFEST_FILENAME) }?.takeIf { it.isFile }
+                val manifestText = (pinnedManifest?.readText() ?: context.assets.open(ASSET_MANIFEST).bufferedReader().use { it.readText() })
                     .replace(
-                        "\"library_path\": \"$LIB_FILENAME\"",
+                        Regex("\"library_path\"\\s*:\\s*\"[^\"]*\""),
                         "\"library_path\": \"$MANIFEST_LIBRARY_PATH\""
                     )
                 FileUtils.writeString(manifestFile, manifestText)
-                FileUtils.writeString(versionFile, RUNTIME_VERSION)
+                FileUtils.writeString(versionFile, runtimeVersion)
 
                 // Set executable permissions
                 if (libFile.exists()) FileUtils.chmod(libFile, 0b111101101)
@@ -408,7 +437,7 @@ object LsfgVkManager {
 
                 val ok = libFile.isFile && manifestFile.isFile
                 if (ok) {
-                    Timber.tag(TAG).i("Installed LSFG runtime %s into %s", RUNTIME_VERSION, rootDir)
+                    Timber.tag(TAG).i("Installed LSFG runtime %s into %s", runtimeVersion, rootDir)
                 } else {
                     Timber.tag(TAG).e("Runtime installation verification failed")
                     success = false
