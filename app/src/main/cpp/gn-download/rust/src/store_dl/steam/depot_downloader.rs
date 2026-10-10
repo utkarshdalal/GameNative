@@ -571,11 +571,53 @@ pub fn download_resolved_depots_with_cancel_progress(
     drop(probe_manifests);
     let probe_spawned = AtomicBool::new(false);
 
+    // Depots share one install dir, so a path this depot's update drops may still belong to
+    // another depot: every path ANY depot of this run installs is off-limits to the sweep below.
+    let mut protected: HashSet<String> = HashSet::new();
+    let mut resolved_ids: HashSet<u32> = HashSet::new();
+    for (depot, manifest) in &resolved {
+        resolved_ids.insert(depot.depot_id);
+        for file in &manifest.files {
+            protected.insert(crate::store_dl::steam::depot_writer::folded_entry_key(&file.filename));
+        }
+    }
+    // A depot the app records as installed but this run does not resolve cannot be enumerated — its
+    // cached manifest's filenames need a depot key this layer does not hold — so a removed path
+    // cannot be proven unowned. Skip the sweep for the whole run rather than risk deleting another
+    // depot's file; it runs again on the next update that resolves everything.
+    let unenumerable_installed: Vec<u32> = cfg
+        .installed_depots()
+        .into_iter()
+        .filter(|(id, manifest)| {
+            *manifest != 0 && *manifest != INVALID_MANIFEST_ID && !resolved_ids.contains(id)
+        })
+        .map(|(id, _)| id)
+        .collect();
+    if !unenumerable_installed.is_empty() {
+        if let Some(log) = log {
+            log(&format!(
+                "depot-prune disabled: {} installed depot(s) not part of this run ({:?}) \
+cannot be enumerated for ownership",
+                unenumerable_installed.len(),
+                unenumerable_installed
+            ));
+        }
+    }
+
     // ── Phase 2: all metadata resolved — download the depots in order.
     for (depot, manifest) in resolved {
         if cancel.is_some_and(|cancel| cancel.load(Ordering::Relaxed)) {
             return DepotDownloadResult::fail("cancelled");
         }
+        let depot_id = depot.depot_id;
+        // The manifest recorded for this depot from the PREVIOUS run: the version the user has, and
+        // the manifest both the update delta and the removed-content sweep diff against.
+        //
+        // It must be read BEFORE `begin_depot`, which stamps INVALID_MANIFEST_ID over the record
+        // (that marker is how a half-written depot is flagged) — reading afterwards yields the
+        // marker, so the cache lookup would look for `<depot>_9223372036854775807.manifest`, miss,
+        // and silently skip the delta and the sweep on every single update.
+        let previous_manifest_id = cfg.installed_manifest(depot_id);
         if !cfg.begin_depot(depot.depot_id) {
             return DepotDownloadResult::fail(format!(
                 "download: depot.config begin failed for depot {}",
@@ -583,16 +625,13 @@ pub fn download_resolved_depots_with_cancel_progress(
             ));
         }
 
-        let depot_id = depot.depot_id;
-        // The manifest recorded for this depot BEFORE this run: on an update it is the version the
-        // user currently has. Its cached manifest drives BOTH the update delta (files this run
-        // need not touch) and the removed-content sweep — so load it once, here, before the write
-        // and before `finish_depot` overwrites the record.
-        let previous_manifest_id = cfg.installed_manifest(depot_id);
         // A clean-pause marker for the previous manifest means its last write never completed, so
         // the install on disk is NOT that manifest's file set: neither trust the delta nor delete
         // anything from it (the next successful run clears the marker and restores both).
-        let previous = if previous_manifest_id == 0 || previous_manifest_id == depot.manifest_id {
+        let previous = if previous_manifest_id == 0
+            || previous_manifest_id == INVALID_MANIFEST_ID
+            || previous_manifest_id == depot.manifest_id
+        {
             None
         } else if has_clean_pause_marker(&config_dir, depot_id, previous_manifest_id) {
             if let Some(log) = log {
@@ -610,6 +649,11 @@ pub fn download_resolved_depots_with_cancel_progress(
             .as_ref()
             .map(|p| crate::store_dl::steam::depot_writer::unchanged_files(p, &manifest))
             .unwrap_or_default();
+        // Depots share one install dir, so a path this depot dropped may still belong to another
+        // depot that has it installed: collect every OTHER depot's paths (the ones in this run,
+        // plus every depot the app still records as installed, from its cached manifest) and keep
+        // them out of the sweep.
+
         if let Some(log) = log {
             match previous.as_ref() {
                 Some(p) => log(&format!(
@@ -698,11 +742,11 @@ pub fn download_resolved_depots_with_cancel_progress(
         // succeeded, so a failed or cancelled run never destroys data. The previous manifest is
         // taken from the local cache (written when it was downloaded) — no extra network round
         // trip, and when it is not cached the sweep is skipped with a log line rather than failing.
-        match previous.as_ref() {
+        match previous.as_ref().filter(|_| unenumerable_installed.is_empty()) {
             Some(previous) => {
                 let removed = crate::store_dl::steam::depot_writer::removed_files(previous, &manifest);
                 let stats = crate::store_dl::steam::depot_writer::prune_removed_files(
-                    install_dir, &removed, log,
+                    install_dir, &removed, &protected, log,
                 );
                 if let Some(log) = log {
                     log(&stats.line(depot_id));

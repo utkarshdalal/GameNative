@@ -463,7 +463,7 @@ impl DepotFileAction {
 /// Case-folded relative-path key for a manifest entry: backslashes normalised, lowercased. Two
 /// entries with the same key are the same object on the stores' case-insensitive filesystems (and
 /// the writer re-spells to on-disk case anyway), so a case-only rename must NOT count as a removal.
-fn folded_entry_key(name: &str) -> String {
+pub fn folded_entry_key(name: &str) -> String {
     name.replace('\\', "/").to_lowercase()
 }
 
@@ -493,8 +493,12 @@ pub struct PruneStats {
     pub missing: u32,
     /// Directories removed because the sweep emptied them.
     pub dirs_pruned: u32,
-    /// Paths rejected by the safety rule (absolute / `..`) — never touched.
+    /// Paths rejected by the safety rule (absolute / `..`, or a parent that resolves outside the
+    /// install root) — never touched.
     pub unsafe_paths: u32,
+    /// Paths another depot of the same app still lists: removed from THIS depot's manifest but
+    /// owned elsewhere under the shared install dir, so kept.
+    pub shared: u32,
     /// Unlink failed for another reason (in use, permissions, IO).
     pub failed: u32,
 }
@@ -502,8 +506,8 @@ pub struct PruneStats {
 impl PruneStats {
     pub fn line(&self, depot_id: u32) -> String {
         format!(
-            "depot-prune depot={depot_id} deleted={} missing={} dirs={} unsafe={} failed={}",
-            self.deleted, self.missing, self.dirs_pruned, self.unsafe_paths, self.failed
+            "depot-prune depot={depot_id} deleted={} missing={} dirs={} unsafe={} shared={} failed={}",
+            self.deleted, self.missing, self.dirs_pruned, self.unsafe_paths, self.shared, self.failed
         )
     }
 }
@@ -511,16 +515,28 @@ impl PruneStats {
 /// Delete `removed` (relative manifest paths) under `target_dir`, then prune any directory the
 /// sweep emptied — bounded to `target_dir`. Never fails the run: an unsafe path is skipped, and a
 /// failed unlink is counted and logged, because a leftover file is better than a failed update.
+/// `protected` holds case-folded paths (`folded_entry_key`) that any depot of the run still
+/// installs. Files in it are kept: depots share one install dir, so a path this depot dropped can
+/// still belong to another depot that has it installed.
+#[allow(clippy::too_many_arguments)]
 pub fn prune_removed_files(
     target_dir: &str,
     removed: &[String],
+    protected: &std::collections::HashSet<String>,
     log: Option<&(dyn Fn(&str) + Sync)>,
 ) -> PruneStats {
     let mut stats = PruneStats::default();
     let root = Path::new(target_dir);
+    // Resolved once: the containment check below compares each removed file's parent against it,
+    // because a lexical prefix check cannot see through a symlinked directory inside the install.
+    let canonical_root = std::fs::canonicalize(root).ok();
     for name in removed {
         if !path_is_safe(name) {
             stats.unsafe_paths += 1;
+            continue;
+        }
+        if protected.contains(&folded_entry_key(name)) {
+            stats.shared += 1;
             continue;
         }
         // Re-spell to the on-disk case: the tree the writer built may differ in case from the
@@ -530,6 +546,25 @@ pub fn prune_removed_files(
         if !path.starts_with(root) {
             stats.unsafe_paths += 1;
             continue;
+        }
+        // `starts_with` is lexical: if a parent directory inside the install is a symlink pointing
+        // out of it, the unlink would follow it. Require the RESOLVED parent to stay beneath the
+        // resolved install root; when the parent cannot be resolved (already gone, unreadable) the
+        // lexical check above stands and the unlink simply fails.
+        if let (Some(canonical_root), Some(parent)) = (
+            canonical_root.as_ref(),
+            path.parent().and_then(|p| std::fs::canonicalize(p).ok()),
+        ) {
+            if !parent.starts_with(canonical_root) {
+                stats.unsafe_paths += 1;
+                if let Some(log) = log {
+                    log(&format!(
+                        "depot-prune: '{}' resolves outside the install dir — kept",
+                        path.display()
+                    ));
+                }
+                continue;
+            }
         }
         match fs::remove_file(&path) {
             Ok(()) => {
@@ -3934,6 +3969,12 @@ mod tests {
         let collected: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
         let logger = move |line: &str| collected.lock().unwrap().push(line.to_string());
 
+        // A path another depot of the run still installs is never touched (kept out of the Game/
+        // chain under test, so that chain still empties completely).
+        let protected: std::collections::HashSet<String> =
+            ["other/owned.bin".to_string()].into_iter().collect();
+        fs::create_dir_all(dir.join("other")).unwrap();
+        fs::write(dir.join("other/owned.bin"), b"x").unwrap();
         let stats = prune_removed_files(
             &base,
             &[
@@ -3941,12 +3982,16 @@ mod tests {
                 "Game/never-existed.bin".to_string(), // already gone
                 "../escape.bin".to_string(),       // unsafe: never touched
                 "/abs.bin".to_string(),            // unsafe
+                "other/owned.bin".to_string(),     // owned by another depot
             ],
+            &protected,
             Some(&logger),
         );
         assert_eq!(stats.deleted, 1);
         assert_eq!(stats.missing, 1);
         assert_eq!(stats.unsafe_paths, 2);
+        assert_eq!(stats.shared, 1, "another depot's file is kept");
+        assert!(dir.join("other/owned.bin").exists());
         assert_eq!(stats.failed, 0);
         assert_eq!(stats.dirs_pruned, 2, "Game/Sub and then Game, both emptied");
         assert!(!dir.join("Game").exists(), "emptied directory chain pruned");
@@ -4038,6 +4083,37 @@ rename, a missing hash and a new file all fall through to the normal walk"
         // The same file, NOT trusted, is what the assertion is there to catch.
         let files2 = DepotFiles::prepare(&manifest, &plan, base);
         assert!(assert_pipeline_drained(&files2, &writers).is_err());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn prune_refuses_a_removed_path_that_resolves_outside_the_install_dir() {
+        // A lexical prefix check cannot see a symlinked parent: `Game -> /elsewhere` would have the
+        // sweep unlink outside the install dir. The resolved-parent check must refuse it.
+        let outside = std::env::temp_dir().join(format!("gnprune-outside-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("gnprune-symlink-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&outside);
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(outside.join("victim.bin"), b"precious").unwrap();
+        fs::create_dir_all(&dir).unwrap();
+        let linked = dir.join("Game");
+        std::os::unix::fs::symlink(&outside, &linked).unwrap();
+        let base = dir.to_string_lossy().into_owned();
+        let stats = prune_removed_files(
+            &base,
+            &["Game/victim.bin".to_string()],
+            &std::collections::HashSet::new(),
+            None,
+        );
+        assert_eq!(stats.unsafe_paths, 1, "a path resolving outside the root is refused");
+        assert_eq!(stats.deleted, 0);
+        assert!(
+            outside.join("victim.bin").exists(),
+            "the file outside the install dir must survive"
+        );
+        let _ = fs::remove_file(&linked);
+        let _ = fs::remove_dir_all(&outside);
         let _ = fs::remove_dir_all(&dir);
     }
 

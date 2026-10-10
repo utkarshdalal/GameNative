@@ -2115,17 +2115,30 @@ class SteamService : Service(), IChallengeUrlChanged {
          * mode was chosen when it started); otherwise the run uses [mode], which is the whole
          * point of the split: VERIFY repairs the installed build, UPDATE moves to the current one.
          */
+        /**
+         * The mode an interrupted run for [appId] was started with ([DownloadingAppInfo.mode]),
+         * used when resuming: the queue and the resume paths must not turn a VERIFY into an INSTALL
+         * (which would resolve current manifests) or an UPDATE into one (which would skip the
+         * depots it exists to re-check). UPDATE when nothing is recorded.
+         */
+        fun resumeModeFor(appId: Int): SteamDownloadMode =
+            getDownloadingAppInfoOf(appId)
+                ?.mode
+                ?.let { stored -> runCatching { SteamDownloadMode.valueOf(stored) }.getOrNull() }
+                ?: SteamDownloadMode.UPDATE
+
         fun downloadApp(appId: Int, mode: SteamDownloadMode): DownloadInfo? {
             val currentDownloadInfo = downloadJobs[appId]
             if (currentDownloadInfo != null) {
                 val branch = getDownloadingAppInfoOf(appId)?.branch
                     ?: getInstalledApp(appId)?.branch
                     ?: "public"
+                // A transfer already running keeps the mode its record carries.
                 return downloadApp(
                     appId,
                     currentDownloadInfo.downloadingAppIds,
                     branch = branch,
-                    mode = SteamDownloadMode.INSTALL,
+                    mode = resumeModeFor(appId),
                 )
             } else {
                 val downloadingAppInfo = getDownloadingAppInfoOf(appId)
@@ -2134,7 +2147,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                         appId,
                         downloadingAppInfo.dlcAppIds.orEmpty(),
                         branch = downloadingAppInfo.branch,
-                        mode = SteamDownloadMode.INSTALL,
+                        mode = resumeModeFor(appId),
                     )
                 } else {
                     val installedApp = getInstalledApp(appId)
@@ -2551,7 +2564,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
 
             // Depots from DLC App
-            val dlcAppDepots = downloadableDepots.filter { (_, depot) ->
+            var dlcAppDepots = downloadableDepots.filter { (_, depot) ->
                 !mainAppDepots.map { it.key }.contains(depot.depotId) &&
                 userSelectedDlcAppIds.contains(depot.dlcAppId) && indirectDlcAppIds.contains(depot.dlcAppId) && hasDepotContent(depot)
             }
@@ -2562,6 +2575,20 @@ class SteamService : Service(), IChallengeUrlChanged {
             val appInfo = getInstalledApp(appId)
             if (appInfo != null && mode == SteamDownloadMode.INSTALL) {
                 mainAppDepots = mainAppDepots.filter { it.key !in appInfo.downloadedDepots }
+            }
+
+            // A VERIFY can only re-check depots whose installed manifest this app recorded. Skip
+            // the rest HERE, before the run and before completion: `completeAppDownload` records
+            // every selected depot as downloaded, so a skipped depot left in the list would make a
+            // later INSTALL skip content that was never installed.
+            if (mode == SteamDownloadMode.VERIFY) {
+                val before = mainAppDepots.keys + dlcAppDepots.keys
+                mainAppDepots = mainAppDepots.filterKeys { verifyGids.containsKey(it) }
+                dlcAppDepots = dlcAppDepots.filterKeys { verifyGids.containsKey(it) }
+                val skipped = (before - (mainAppDepots.keys + dlcAppDepots.keys)).sorted()
+                if (skipped.isNotEmpty()) {
+                    Timber.w("Verify: skipping depot(s) with no recorded manifest: $skipped")
+                }
             }
 
             // Combine main app and DLC depots
@@ -2612,6 +2639,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                         appId,
                         dlcAppIds = userSelectedDlcAppIds,
                         branch = branch,
+                        mode = mode.name,
                     ),
                 )
             }
@@ -3716,11 +3744,26 @@ class SteamService : Service(), IChallengeUrlChanged {
                 }
             }
             if (ids.isEmpty()) {
+                // Legacy fallback: no `depot.config`, so guess the installed manifest from the
+                // cache directory. Only a depot with EXACTLY ONE cached manifest is unambiguous —
+                // two candidates means we cannot tell which one is installed, and handing the wrong
+                // one to VERIFY would re-hash the install against a build the user never had.
+                val byDepot = mutableMapOf<Int, MutableList<ULong>>()
                 cacheDir.listFiles()?.forEach { file ->
                     val match = Regex("""^(\d+)_(\d+)\.manifest$""").matchEntire(file.name) ?: return@forEach
                     val depotId = match.groupValues[1].toIntOrNull() ?: return@forEach
                     val gid = match.groupValues[2].toULongOrNull() ?: return@forEach
-                    ids[depotId] = gid
+                    byDepot.getOrPut(depotId) { mutableListOf() }.add(gid)
+                }
+                val ambiguous = byDepot.filterValues { it.size > 1 }.keys.sorted()
+                if (ambiguous.isNotEmpty()) {
+                    Timber.w(
+                        "installedManifestIds: no depot.config and multiple cached manifests for " +
+                            "depot(s) $ambiguous — treating their installed version as unknown",
+                    )
+                }
+                byDepot.filterValues { it.size == 1 }.forEach { (depotId, gids) ->
+                    ids[depotId] = gids.first()
                 }
             }
             return ids

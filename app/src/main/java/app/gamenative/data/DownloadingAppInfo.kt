@@ -14,4 +14,13 @@ data class DownloadingAppInfo (
 
     @ColumnInfo("branch", defaultValue = "public")
     val branch: String = "public",
+
+    /**
+     * The [app.gamenative.service.download.SteamDownloadMode] this run was started with, so an
+     * interrupted UPDATE or VERIFY resumes as itself: resuming either one as INSTALL would skip the
+     * depots it exists to re-check, and a resumed VERIFY would resolve current branch manifests
+     * instead of the installed ones. Stored by name; unknown values fall back to UPDATE.
+     */
+    @ColumnInfo("mode", defaultValue = "UPDATE")
+    val mode: String = "UPDATE",
 )

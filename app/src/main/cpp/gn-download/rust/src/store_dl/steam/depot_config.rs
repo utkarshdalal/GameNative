@@ -49,6 +49,16 @@ impl DepotConfigStore {
             .join(format!("{depot_id}_{manifest_id}.manifest"))
     }
 
+    /// Every depot this config records, as `(depot_id, manifest_id)`. Used by the removed-content
+    /// sweep to notice depots it cannot enumerate (their cached manifest's filenames need a depot
+    /// key this layer does not hold).
+    pub fn installed_depots(&self) -> Vec<(u32, u64)> {
+        self.installed
+            .iter()
+            .map(|(depot, manifest)| (*depot, *manifest))
+            .collect()
+    }
+
     pub fn installed_manifest(&self, depot_id: u32) -> u64 {
         self.installed.get(&depot_id).copied().unwrap_or(0)
     }

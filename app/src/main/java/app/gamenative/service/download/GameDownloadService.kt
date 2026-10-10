@@ -881,12 +881,11 @@ object GameDownloadService {
         if (nextEntry != null) {
             Timber.i("[GameDownloadService] Resuming ${nextEntry.gameSource} download for ${nextEntry.gameId}")
             when (nextEntry.gameSource) {
-                // Resuming a queued entry: the queue does not record which mode the entry was
-                // started with, and re-checking against the current manifests is the previous
-                // behaviour (it also repairs a partially transferred install).
+                // Resuming a queued entry: the download RECORD remembers the mode the entry was
+                // started with (UPDATE/VERIFY), so a queued verify does not come back as an update.
                 GameSource.STEAM -> SteamService.downloadApp(
                     appId = nextEntry.gameId.toInt(),
-                    mode = SteamDownloadMode.UPDATE,
+                    mode = SteamService.resumeModeFor(nextEntry.gameId.toInt()),
                 )
                 GameSource.AMAZON -> AmazonService.downloadGame(
                     context = context,
