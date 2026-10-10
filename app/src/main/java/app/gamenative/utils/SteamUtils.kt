@@ -736,13 +736,13 @@ object SteamUtils {
      * Creates a Steam ACF (Application Cache File) manifest for the given app
      * This allows real Steam to detect the game as installed
      */
-    private fun customExecutables(depots: Map<Int, DepotInfo>, installedBranch: String, downloaderCacheDir: File): List<String> =
+    private fun customExecutables(depots: Map<Int, DepotInfo>, installedBranch: String, appDirPath: String): List<String> =
         depots.flatMap { (depotId, depotInfo) ->
             val gid = (depotInfo.manifests[installedBranch]
                 ?: depotInfo.manifests["public"]
                 ?: depotInfo.manifests.values.firstOrNull())?.gid ?: return@flatMap emptyList()
             val manifest = runCatching {
-                DepotManifest.loadFromFile(File(downloaderCacheDir, "${depotId}_${gid.toULong()}.manifest").absolutePath)
+                DepotManifest.loadFromFile(DepotManifestFiles.manifestFile(appDirPath, depotId, gid).absolutePath)
             }.getOrNull()
             manifest?.files.orEmpty()
                 .filter { it.flags.contains(EDepotFileFlag.CustomExecutable) }
@@ -751,8 +751,11 @@ object SteamUtils {
 
     fun hasCustomExecutables(steamAppId: Int): Boolean {
         val installedBranch = SteamService.getInstalledApp(steamAppId)?.branch ?: "public"
-        val downloaderCacheDir = File(SteamService.getAppDirPath(steamAppId), ".DepotDownloader")
-        return customExecutables(SteamService.getDownloadableDepots(steamAppId), installedBranch, downloaderCacheDir).isNotEmpty()
+        return customExecutables(
+            SteamService.getDownloadableDepots(steamAppId),
+            installedBranch,
+            SteamService.getAppDirPath(steamAppId),
+        ).isNotEmpty()
     }
 
     private fun createAppManifest(context: Context, steamAppId: Int, language: String) {
@@ -796,14 +799,13 @@ object SteamUtils {
 
             val regularDepots = mutableMapOf<Int, DepotInfo>()
             val sharedDepots = mutableMapOf<Int, DepotInfo>()
-            val downloaderCacheDir = File(gameDir, ".DepotDownloader")
 
             downloadableDepots.forEach { (depotId, depotInfo) ->
                 val manifest = depotInfo.manifests[installedBranch]
                     ?: depotInfo.manifests["public"]
                     ?: depotInfo.manifests.values.firstOrNull()
                 if (manifest != null && manifest.gid != 0L) {
-                    if (File(downloaderCacheDir, "${depotId}_${manifest.gid.toULong()}.manifest").isFile) regularDepots[depotId] = depotInfo
+                    if (DepotManifestFiles.manifestFile(gameDir.absolutePath, depotId, manifest.gid).isFile) regularDepots[depotId] = depotInfo
                 } else {
                     sharedDepots[depotId] = depotInfo
                 }
@@ -852,7 +854,7 @@ object SteamUtils {
                     appendLine("\t}")
                 }
 
-                val customExecutables = customExecutables(regularDepots, installedBranch, downloaderCacheDir)
+                val customExecutables = customExecutables(regularDepots, installedBranch, gameDir.absolutePath)
                 if (customExecutables.isNotEmpty()) {
                     appendLine("\t\"CheckGuid\"")
                     appendLine("\t{")
@@ -877,7 +879,7 @@ object SteamUtils {
                 val gid = (depotInfo.manifests[installedBranch]
                     ?: depotInfo.manifests["public"]
                     ?: depotInfo.manifests.values.firstOrNull())?.gid ?: return@forEach
-                val src = File(downloaderCacheDir, "${depotId}_${gid.toULong()}.manifest")
+                val src = DepotManifestFiles.manifestFile(gameDir.absolutePath, depotId, gid)
                 val dst = File(depotCacheDir, src.name)
                 if (src.isFile && (!dst.isFile || dst.length() != src.length())) {
                     src.copyTo(dst, overwrite = true)
@@ -1051,29 +1053,77 @@ object SteamUtils {
         }
     }
 
+    /** How deep a game directory is scanned for DRM backup artifacts. */
+    private const val DRM_BACKUP_MAX_DEPTH = 10
+
     /**
-     * Deletes DRM backup artifacts (.original.exe, .unpacked.exe, steam_api*.dll.orig) left in
-     * the game directory by emulated-mode launches. Called when an update/verify download starts:
-     * the depot download restores pristine current-build files, so existing backups hold the
-     * previous build, and a later restore pass (bionic/real-Steam launch) would overwrite the
-     * freshly updated files with stale ones.
+     * The DRM backup artifacts an emulated-mode launch leaves behind, and the file each one
+     * protects: `X.original.exe` and `X.unpacked.exe` are copies of `X` taken before it was
+     * patched, and `steam_api*.dll.orig` is the pre-patch dll. Null for anything else.
+     *
+     * This is the ONE definition of the naming convention — creation, restore and cleanup all key
+     * off it, and the engine is told which files are patched (see [drmPatchedPaths]).
+     */
+    private fun drmBackupTarget(file: File): String? {
+        val name = file.name
+        return when {
+            name.endsWith(".original.exe", ignoreCase = true) ->
+                name.dropLast(".original.exe".length)
+            name.endsWith(".unpacked.exe", ignoreCase = true) ->
+                name.dropLast(".unpacked.exe".length)
+            name.startsWith("steam_api", ignoreCase = true) && name.endsWith(".dll.orig", ignoreCase = true) ->
+                name.dropLast(".orig".length)
+            else -> null
+        }
+    }
+
+    /**
+     * The files this app has PATCHED, relative to [appDirPath] and `/`-separated — i.e. the ones a
+     * DRM backup exists for. A patched file no longer holds the manifest's bytes, so the depot
+     * engine must revalidate and rewrite it rather than trust it in an update delta; the plan
+     * carries these paths as `untrusted_paths` for exactly that reason.
+     */
+    fun drmPatchedPaths(appDirPath: String): List<String> {
+        val root = File(appDirPath)
+        if (!root.exists()) return emptyList()
+        val rootPath = root.toPath()
+        return root.walkTopDown()
+            .maxDepth(DRM_BACKUP_MAX_DEPTH)
+            .filter { it.isFile }
+            .mapNotNull { file ->
+                val target = drmBackupTarget(file) ?: return@mapNotNull null
+                val parent = file.parentFile ?: return@mapNotNull null
+                // A target outside the install dir is never handed to the engine.
+                runCatching {
+                    rootPath.relativize(File(parent, target).toPath())
+                        .toString()
+                        .replace(File.separatorChar, '/')
+                }.getOrNull()?.takeIf { it.isNotEmpty() && !it.startsWith("..") }
+            }
+            .toList()
+    }
+
+    /**
+     * Deletes the DRM backup artifacts (.original.exe, .unpacked.exe, steam_api*.dll.orig) of a
+     * game directory. They hold the PREVIOUS build, so after an update restored pristine files they
+     * would let a later restore pass overwrite the fresh files with stale ones.
+     *
+     * Only safe once the download has rewritten every backed-up file — which is what
+     * [drmPatchedPaths] forces (the engine never trusts a patched path, so it always rewrites it).
+     * Callers must therefore run this AFTER a successful download, never before it started.
      */
     fun clearStaleDrmBackups(appDirPath: String) {
         val root = File(appDirPath)
         if (!root.exists()) return
         var deleted = 0
-        root.walkTopDown().maxDepth(10).forEach { file ->
-            if (!file.isFile) return@forEach
-            val name = file.name
-            val isBackup = name.endsWith(".original.exe", ignoreCase = true) ||
-                name.endsWith(".unpacked.exe", ignoreCase = true) ||
-                (name.startsWith("steam_api", ignoreCase = true) && name.endsWith(".dll.orig", ignoreCase = true))
-            if (isBackup && file.delete()) deleted++
+        root.walkTopDown().maxDepth(DRM_BACKUP_MAX_DEPTH).forEach { file ->
+            if (file.isFile && drmBackupTarget(file) != null && file.delete()) deleted++
         }
         if (deleted > 0) {
             Timber.i("Deleted $deleted stale DRM backup file(s) in $appDirPath")
         }
     }
+
 
     /**
      * Restores the original executable files from their .original.exe backups

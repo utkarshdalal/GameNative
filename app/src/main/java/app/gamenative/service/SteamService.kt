@@ -58,6 +58,7 @@ import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.DepotManifestFiles
 import app.gamenative.utils.FileUtils
 import app.gamenative.utils.LicenseSerializer
 import app.gamenative.utils.LocaleHelper
@@ -74,6 +75,7 @@ import com.winlator.xenvironment.ImageFs
 import dagger.hilt.android.AndroidEntryPoint
 import app.gamenative.service.download.GameDownloadService
 import app.gamenative.service.download.NativeTreeDelete
+import app.gamenative.service.download.SteamDownloadMode
 import `in`.dragonbra.javasteam.enums.EAccountType
 import `in`.dragonbra.javasteam.enums.EDepotFileFlag
 import `in`.dragonbra.javasteam.enums.ELicenseFlags
@@ -367,6 +369,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         const val INVALID_APP_ID: Int = Int.MAX_VALUE
         const val INVALID_PKG_ID: Int = Int.MAX_VALUE
+
         private const val STEAM_CONTROLLER_CONFIG_FILENAME = "steam_controller_config.vdf"
 
         /**
@@ -1994,7 +1997,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                 if (mi.size > largestDepotSize) largestDepotSize = mi.size
 
                 // Check cache first
-                val man = DepotManifest.loadFromFile("${getAppDirPath(appId)}/.DepotDownloader/${depot.depotId}_${mi.gid}.manifest")
+                val man = DepotManifest.loadFromFile(
+                    DepotManifestFiles.manifestFile(getAppDirPath(appId), depot.depotId, mi.gid).absolutePath,
+                )
 
                 Timber.d("Using manifest for depot ${depot.depotId}  size=${mi.size}")
 
@@ -2092,6 +2097,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             with(instance!!) {
                 db.withTransaction {
                     appInfoDao.deleteApp(appId)
+                    PrefManager.clearSteamDownloadMode(appId)
                     changeNumbersDao.deleteByAppId(appId)
                     fileChangeListsDao.deleteByAppId(appId)
                     steamFileHashCacheDao.deleteByAppId(appId)
@@ -2111,17 +2117,53 @@ class SteamService : Service(), IChallengeUrlChanged {
             return@withContext result
         }
 
-        fun downloadApp(appId: Int): DownloadInfo? {
+        /**
+         * The mode an interrupted run for [appId] was started with (DataStore, not the DB),
+         * used when resuming: the queue and the resume paths must not turn a VERIFY into an INSTALL
+         * (which would resolve current manifests) or an UPDATE into one (which would skip the
+         * depots it exists to re-check). UPDATE when nothing is recorded.
+         */
+        fun resumeModeFor(appId: Int): SteamDownloadMode =
+            PrefManager.steamDownloadMode(appId)
+                ?.let { stored -> runCatching { SteamDownloadMode.valueOf(stored) }.getOrNull() }
+                ?: SteamDownloadMode.UPDATE
+
+        /**
+         * Re-run a download for [appId] in [mode] — what the app menu's "Verify Files" and
+         * "Update" both funnel through. A transfer already in progress is RESUMED as-is (its
+         * mode was chosen when it started); otherwise the run uses [mode], which is the whole
+         * point of the split: VERIFY repairs the installed build, UPDATE moves to the current one.
+         */
+        fun downloadApp(appId: Int, mode: SteamDownloadMode): DownloadInfo? {
             val currentDownloadInfo = downloadJobs[appId]
             if (currentDownloadInfo != null) {
                 val branch = getDownloadingAppInfoOf(appId)?.branch
                     ?: getInstalledApp(appId)?.branch
                     ?: "public"
-                return downloadApp(appId, currentDownloadInfo.downloadingAppIds, branch = branch, isUpdateOrVerify = false)
+                // A transfer still RUNNING keeps the mode its record carries; a finished/cancelled
+                // job object that lingers must not override the caller's explicit mode (the record
+                // is only deleted on the success path, so it outlives a cancel).
+                val activeMode = if (currentDownloadInfo.isActive()) resumeModeFor(appId) else mode
+                return downloadApp(
+                    appId,
+                    currentDownloadInfo.downloadingAppIds,
+                    branch = branch,
+                    mode = activeMode,
+                )
             } else {
                 val downloadingAppInfo = getDownloadingAppInfoOf(appId)
                 if (downloadingAppInfo != null) {
-                    return downloadApp(appId, downloadingAppInfo.dlcAppIds.orEmpty(), branch = downloadingAppInfo.branch, isUpdateOrVerify = false)
+                    // A persisted record with no live job: keep its depot/branch parameters, but
+                    // honour the caller's mode. Callers that MEAN to resume pass
+                    // `resumeModeFor(appId)` themselves (the queue and every UI resume path), so an
+                    // explicit "Verify Files" is not silently downgraded to the recorded UPDATE by a
+                    // record a cancelled run left behind.
+                    return downloadApp(
+                        appId,
+                        downloadingAppInfo.dlcAppIds.orEmpty(),
+                        branch = downloadingAppInfo.branch,
+                        mode = mode,
+                    )
                 } else {
                     val installedApp = getInstalledApp(appId)
                     val branch = installedApp?.branch ?: "public"
@@ -2134,12 +2176,20 @@ class SteamService : Service(), IChallengeUrlChanged {
                         }
                     }
 
-                    return downloadApp(appId, dlcAppIds, branch = branch, isUpdateOrVerify = true)
+                    // Fresh run for this app: re-check every depot (UPDATE) or re-verify the
+                    // installed build (VERIFY) — never the INSTALL depot filter, which would skip
+                    // the depots this run exists to re-check.
+                    return downloadApp(appId, dlcAppIds, branch = branch, mode = mode)
                 }
             }
         }
 
-        fun downloadApp(appId: Int, dlcAppIds: List<Int>, branch: String = "public", isUpdateOrVerify: Boolean): DownloadInfo? {
+        fun downloadApp(
+            appId: Int,
+            dlcAppIds: List<Int>,
+            branch: String = "public",
+            mode: SteamDownloadMode,
+        ): DownloadInfo? {
             if (!checkWifiOrNotify()) return null
             // A queued (auto-paused) entry being resumed keeps showing "Queued" until the
             // fresh DownloadInfo replaces it below, and depot resolution can take a moment;
@@ -2158,13 +2208,25 @@ class SteamService : Service(), IChallengeUrlChanged {
                 Timber.tag("SteamService").d("downloadApp: downloading app $appId with language $containerLanguage, branch $branch")
 
                 val depots = getDownloadableDepots(appId = appId, preferredLanguage = containerLanguage)
+                // Upgrade a pre-split install's manifest store once, here where every mode starts:
+                // the installed record lives in `completed/` now, and an INSTALL (which does not read
+                // the record for gids) still needs it — its delta and pruned-content sweep diff
+                // against it.
+                DepotManifestFiles.migrateLegacyLayout(getAppDirPath(appId))
                 downloadApp(
                     appId = appId,
                     downloadableDepots = depots,
                     userSelectedDlcAppIds = dlcAppIds,
                     branch = branch,
                     containerLanguage = containerLanguage,
-                    isUpdateOrVerify = isUpdateOrVerify)
+                    mode = mode,
+                    // The app's own record of what is installed per depot: VERIFY pins to it,
+                    // UPDATE uses it to skip depots that are already current. Empty for INSTALL.
+                    installedGids = if (mode == SteamDownloadMode.INSTALL) {
+                        emptyMap()
+                    } else {
+                        installedManifestIds(appId)
+                    })
             }
         }
 
@@ -2509,12 +2571,13 @@ class SteamService : Service(), IChallengeUrlChanged {
             userSelectedDlcAppIds: List<Int>,
             branch: String,
             containerLanguage: String,
-            isUpdateOrVerify: Boolean,
+            mode: SteamDownloadMode,
+            installedGids: Map<Int, ULong>,
         ): DownloadInfo? {
             val appDirPath = getAppDirPath(appId)
 
             if (!checkWifiOrNotify()) return null
-            if (downloadJobs.contains(appId)) return getAppDownloadInfo(appId)
+            if (downloadJobs.containsKey(appId)) return getAppDownloadInfo(appId)
             Timber.d("depots is empty? " + downloadableDepots.isEmpty())
             if (downloadableDepots.isEmpty()) return null
 
@@ -2533,15 +2596,31 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
 
             // Depots from DLC App
-            val dlcAppDepots = downloadableDepots.filter { (_, depot) ->
+            var dlcAppDepots = downloadableDepots.filter { (_, depot) ->
                 !mainAppDepots.map { it.key }.contains(depot.depotId) &&
                 userSelectedDlcAppIds.contains(depot.dlcAppId) && indirectDlcAppIds.contains(depot.dlcAppId) && hasDepotContent(depot)
             }
 
-            // Remove depots that are already downloaded (not for update/verify)
+            // Remove depots that are already downloaded (INSTALL only: an UPDATE must re-check
+            // every depot — the engine skips the ones whose manifest is unchanged — and a VERIFY
+            // exists precisely to re-check what is on disk).
             val appInfo = getInstalledApp(appId)
-            if (appInfo != null && !isUpdateOrVerify) {
+            if (appInfo != null && mode == SteamDownloadMode.INSTALL) {
                 mainAppDepots = mainAppDepots.filter { it.key !in appInfo.downloadedDepots }
+            }
+
+            // A VERIFY can only re-check depots whose installed manifest this app recorded. Skip
+            // the rest HERE, before the run and before completion: `completeAppDownload` records
+            // every selected depot as downloaded, so a skipped depot left in the list would make a
+            // later INSTALL skip content that was never installed.
+            if (mode == SteamDownloadMode.VERIFY && installedGids.isNotEmpty()) {
+                val before = mainAppDepots.keys + dlcAppDepots.keys
+                mainAppDepots = mainAppDepots.filterKeys { installedGids.containsKey(it) }
+                dlcAppDepots = dlcAppDepots.filterKeys { installedGids.containsKey(it) }
+                val skipped = (before - (mainAppDepots.keys + dlcAppDepots.keys)).sorted()
+                if (skipped.isNotEmpty()) {
+                    Timber.w("Verify: skipping depot(s) with no recorded manifest: $skipped")
+                }
             }
 
             // Combine main app and DLC depots
@@ -2578,14 +2657,19 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             Timber.i("selectedDepots is empty? " + selectedDepots.isEmpty())
 
-            if (selectedDepots.isEmpty()) return null
+            if (selectedDepots.isEmpty()) {
+                Timber.w("downloadApp: no depots selected for $appId (mode $mode) — nothing to do")
+                return null
+            }
 
             Timber.i("Starting download for $appId")
             Timber.i("App contains ${mainAppDepots.size} depot(s): ${mainAppDepots.keys}")
             Timber.i("DLC contains ${dlcAppDepots.size} depot(s): ${dlcAppDepots.keys}")
             Timber.i("downloadingAppIds: $downloadingAppIds")
 
-            // Save downloading app info
+            // Save downloading app info, plus the mode this run was started with (DataStore — see
+            // `resumeModeFor`: a resume must keep its intent, and a database column would force a
+            // schema version bump that traps any build on an older version).
             runBlocking {
                 instance?.downloadingAppInfoDao?.insert(
                     DownloadingAppInfo(
@@ -2594,6 +2678,10 @@ class SteamService : Service(), IChallengeUrlChanged {
                         branch = branch,
                     ),
                 )
+                // Awaited in the same blocking scope as the record itself: the mode must be durable
+                // before the run can be interrupted, or the resume reads nothing and falls back to
+                // UPDATE — silently upgrading an interrupted VERIFY.
+                PrefManager.setSteamDownloadMode(appId, mode.name)
             }
 
             val info = DownloadInfo(selectedDepots.size, appId, downloadingAppIds).also { di ->
@@ -2641,10 +2729,6 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 val downloadJob = instance!!.scope.launch {
                     try {
-                        if (isUpdateOrVerify) {
-                            SteamUtils.clearStaleDrmBackups(appDirPath)
-                        }
-
                         // Get licenses from database
                         val licenses = getLicensesFromDb()
                         if (licenses.isEmpty()) {
@@ -2685,13 +2769,14 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                         Timber.i("Downloading game to " + defaultAppInstallPath)
 
-                        GameDownloadService.downloadSteamApp(
+                        val outcome = GameDownloadService.downloadSteamApp(
                             appId = appId,
                             selectedDepots = selectedDepots,
                             branch = branch,
                             branchPassword = branchPassword,
                             installDir = getAppDirPath(appId),
-                            isUpdateOrVerify = isUpdateOrVerify,
+                            mode = mode,
+                            installedGids = installedGids,
                             depotIdToIndex = depotIdToIndex,
                             downloadInfo = di,
                             // Adaptive-window ceiling (ramps up only while the link delivers);
@@ -2838,7 +2923,11 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                         // Complete app download
                         if (mainAppDepots.isNotEmpty()) {
-                            val mainAppDepotIds = mainAppDepots.keys.sorted()
+                            // Depots this run could not resolve (key denied, no gid) are NOT
+                            // installed by it, so they must not enter the installed record: a
+                            // later INSTALL skips whatever `downloadedDepots` lists.
+                            val mainAppDepotIds =
+                                (mainAppDepots.keys - outcome.unavailableDepotIds.toSet()).sorted()
                             completeAppDownload(
                                 downloadInfo = di,
                                 downloadingAppId = appId,
@@ -2857,7 +2946,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                                 depot.dlcAppId == dlcAppId &&
                                     (depotId !in mainAppDepots || depotId in dlcAppDepotIds)
                             }
-                            val dlcDepotIds = dlcDepots.keys.sorted()
+                            val dlcDepotIds =
+                                (dlcDepots.keys - outcome.unavailableDepotIds.toSet()).sorted()
                             completeAppDownload(
                                 downloadInfo = di,
                                 downloadingAppId = dlcAppId,
@@ -2873,8 +2963,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                         removeDownloadJob(appId)
                         PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(appId, GameSource.STEAM))
 
-                        // Remove the downloading app info
+                        // Remove the downloading app info (and the recorded mode with it)
                         instance?.downloadingAppInfoDao?.deleteApp(appId)
+                        PrefManager.clearSteamDownloadMode(appId)
                     } catch (e: CancellationException) {
                         Timber.d(e, "Download canceled for app $appId")
                         throw e
@@ -2961,6 +3052,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 // clean up DB record BEFORE notifying UI to avoid stale "Resume" button
                 instance?.downloadingAppInfoDao?.deleteApp(downloadInfo.gameId)
+                PrefManager.clearSteamDownloadMode(downloadInfo.gameId)
 
                 // Clear persisted bytes now — depot install is committed. Post-install sync is
                 // best-effort and may be cancelled, so this must not be deferred past the sync block.
@@ -3683,26 +3775,18 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
+        /**
+         * Which build each depot of `appId` is at, read from the manifest store's installed record
+         * (`completed/`'s file names — see [DepotManifestFiles]). A depot with no completed manifest
+         * is simply absent: nothing has been installed for it yet, or its last write never finished.
+         *
+         * UPDATE uses this to skip depots that are already current, VERIFY to know what it may
+         * re-check and against which gid.
+         */
         private fun installedManifestIds(appId: Int): Map<Int, ULong> {
-            val cacheDir = File(getAppDirPath(appId), ".DepotDownloader")
-            val ids = mutableMapOf<Int, ULong>()
-            runCatching { File(cacheDir, "depot.config").readText() }.getOrNull()?.let { text ->
-                val block = text.substringAfter("\"installedManifestIDs\"", "").substringAfter('{', "").substringBefore('}')
-                Regex("\"(\\d+)\"\\s*:\\s*(\\d+)").findAll(block).forEach { match ->
-                    val depotId = match.groupValues[1].toIntOrNull() ?: return@forEach
-                    val gid = match.groupValues[2].toULongOrNull() ?: return@forEach
-                    ids[depotId] = gid
-                }
-            }
-            if (ids.isEmpty()) {
-                cacheDir.listFiles()?.forEach { file ->
-                    val match = Regex("""^(\d+)_(\d+)\.manifest$""").matchEntire(file.name) ?: return@forEach
-                    val depotId = match.groupValues[1].toIntOrNull() ?: return@forEach
-                    val gid = match.groupValues[2].toULongOrNull() ?: return@forEach
-                    ids[depotId] = gid
-                }
-            }
-            return ids
+            val appDirPath = getAppDirPath(appId)
+            DepotManifestFiles.migrateLegacyLayout(appDirPath)
+            return DepotManifestFiles.installedManifests(appDirPath)
         }
 
         suspend fun checkPrivateBranchPassword(appId: Int, password: String): Map<String, ByteArray> =
@@ -4156,6 +4240,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             for (record in downloadingAppInfoDao.getAll()) {
                 if (isAppInstalled(record.appId)) {
                     downloadingAppInfoDao.deleteApp(record.appId)
+                    PrefManager.clearSteamDownloadMode(record.appId)
                 }
             }
         }
