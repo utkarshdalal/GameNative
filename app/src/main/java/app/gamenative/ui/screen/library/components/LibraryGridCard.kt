@@ -61,10 +61,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
+import app.gamenative.data.CommunityCompatibilitySummary
 import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.gog.GogRecommendationsRepository
+import app.gamenative.ui.component.CommunityCompatibilityBadge
 import app.gamenative.ui.component.CompatibilityBadge
 import app.gamenative.ui.component.GameStatsRow
 import app.gamenative.ui.component.focusRing
@@ -96,7 +98,9 @@ internal fun GridViewCard(
     hideText: Boolean,
     imageAlpha: Float,
     onImageLoadFailed: () -> Unit,
+    onImageLoaded: () -> Unit = {},
     compatibilityStatus: GameCompatibilityStatus?,
+    communityCompatibility: CommunityCompatibilitySummary?,
     gameStats: GameCardStats?,
     showFocusGlow: Boolean,
     context: Context,
@@ -214,9 +218,11 @@ internal fun GridViewCard(
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 // Game image (primary + optional fallback for Steam header/hero)
-                val imageUrls = if (appInfo.gameSource == GameSource.CUSTOM_GAME) {
-                    produceState(
-                        initialValue = GridImageUrls("", ""),
+                // Custom game URLs are resolved off the main thread; null means "not resolved yet"
+                // so the image isn't loaded (and can't report a failure) until the real URL is known.
+                val resolvedImageUrls: GridImageUrls? = if (appInfo.gameSource == GameSource.CUSTOM_GAME) {
+                    produceState<GridImageUrls?>(
+                        initialValue = null,
                         key1 = appInfo.appId,
                         key2 = paneType,
                         key3 = imageRefreshCounter,
@@ -230,6 +236,7 @@ internal fun GridViewCard(
                         getGridImageUrl(context, appInfo, paneType)
                     }
                 }
+                val imageUrls = resolvedImageUrls ?: GridImageUrls("", "")
 
                 var currentImageUrl by remember(
                     imageUrls.primary,
@@ -237,7 +244,11 @@ internal fun GridViewCard(
                     appInfo.appId,
                     imageRefreshCounter,
                 ) {
-                    mutableStateOf(imageUrls.primary)
+                    mutableStateOf(imageUrls.primary.ifEmpty { imageUrls.fallback })
+                }
+
+                if (resolvedImageUrls != null && currentImageUrl.isEmpty()) {
+                    LaunchedEffect(resolvedImageUrls) { onImageLoadFailed() }
                 }
 
                 if (isCapsule && currentImageUrl.isNotEmpty()) {
@@ -257,23 +268,26 @@ internal fun GridViewCard(
                     Modifier
                 }
 
-                ListItemImage(
-                    modifier = Modifier.fillMaxSize(),
-                    imageModifier = Modifier
-                        .fillMaxSize()
-                        .alpha(imageAlpha)
-                        .then(gridHeroZoom)
-                        .then(if (frost > 0f) Modifier.blur(10.dp * frost) else Modifier),
-                    contentScale = getGridContentScale(paneType),
-                    image = { currentImageUrl },
-                    onFailure = {
-                        if (imageUrls.fallback.isNotEmpty() && currentImageUrl == imageUrls.primary) {
-                            currentImageUrl = imageUrls.fallback
-                        } else {
-                            onImageLoadFailed()
-                        }
-                    },
-                )
+                if (currentImageUrl.isNotEmpty()) {
+                    ListItemImage(
+                        modifier = Modifier.fillMaxSize(),
+                        imageModifier = Modifier
+                            .fillMaxSize()
+                            .alpha(imageAlpha)
+                            .then(gridHeroZoom)
+                            .then(if (frost > 0f) Modifier.blur(10.dp * frost) else Modifier),
+                        contentScale = getGridContentScale(paneType),
+                        image = { currentImageUrl },
+                        onFailure = {
+                            if (imageUrls.fallback.isNotEmpty() && currentImageUrl == imageUrls.primary) {
+                                currentImageUrl = imageUrls.fallback
+                            } else {
+                                onImageLoadFailed()
+                            }
+                        },
+                        onSuccess = onImageLoaded,
+                    )
+                }
 
                 val displayName = if (appInfo.isRecTeaser) {
                     stringResource(R.string.rec_teaser_title)
@@ -430,19 +444,32 @@ internal fun GridViewCard(
                         )
                     }
                 } else {
-                    val badgeStatus = if (appInfo.isRecommended) {
-                        GameCompatibilityStatus.RECOMMENDED
-                    } else {
-                        compatibilityStatus
-                    }
-                    badgeStatus?.let { status ->
-                        CompatibilityBadge(
-                            status = status,
+                    if (!appInfo.isRecommended && communityCompatibility != null) {
+                        CommunityCompatibilityBadge(
+                            verdict = communityCompatibility.verdict,
+                            verdictLoaded = communityCompatibility.verdictLoaded,
+                            loadFailed = communityCompatibility.loadFailed,
+                            checking = communityCompatibility.isChecking,
                             showLabel = true,
                             modifier = Modifier
                                 .align(Alignment.TopStart)
-                                .padding(top = topOverlayPadding, start = topOverlayPadding),
+                                .padding(top = topOverlayPadding, start = topOverlayPadding, end = topIconPadding + 24.dp),
                         )
+                    } else {
+                        val badgeStatus = if (appInfo.isRecommended) {
+                            GameCompatibilityStatus.RECOMMENDED
+                        } else {
+                            compatibilityStatus
+                        }
+                        badgeStatus?.let { status ->
+                            CompatibilityBadge(
+                                status = status,
+                                showLabel = true,
+                                modifier = Modifier
+                                    .align(Alignment.TopStart)
+                                    .padding(top = topOverlayPadding, start = topOverlayPadding),
+                            )
+                        }
                     }
                 }
 

@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
@@ -42,6 +43,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -84,7 +86,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private enum class CommunityHardwareScope {
+enum class CommunityHardwareScope {
     CURRENT_DEVICE,
     CURRENT_GPU,
     COMPATIBLE_GPUS,
@@ -104,6 +106,8 @@ fun CommunityConfigsDialog(
     currentEnvironmentVariables: String,
     onDismissRequest: () -> Unit,
     onApply: (CommunityConfigRun, String, CommunityConfigApplyOptions) -> Unit,
+    initialHardwareScope: CommunityHardwareScope = CommunityHardwareScope.CURRENT_DEVICE,
+    canApply: Boolean = true,
     service: CommunityConfigService = CommunityConfigService.shared,
 ) {
     if (!visible) return
@@ -114,7 +118,7 @@ fun CommunityConfigsDialog(
     var detectedDevices by remember(gameName) { mutableStateOf(emptyList<CommunityConfigDevice>()) }
     var resolvedGame by remember(gameName) { mutableStateOf<CommunityGame?>(null) }
     var sort by remember(gameName) { mutableStateOf(CommunityConfigSort.HIGHEST_RATED) }
-    var hardwareScope by remember(gameName) { mutableStateOf(CommunityHardwareScope.CURRENT_DEVICE) }
+    var hardwareScope by remember(gameName, initialHardwareScope) { mutableStateOf(initialHardwareScope) }
     var runs by remember(gameName) { mutableStateOf(emptyList<CommunityConfigRun>()) }
     var total by remember(gameName) { mutableIntStateOf(0) }
     var hasMore by remember(gameName) { mutableStateOf(false) }
@@ -446,6 +450,7 @@ fun CommunityConfigsDialog(
             matchType = matchType,
             currentLaunchArguments = currentLaunchArguments,
             currentEnvironmentVariables = currentEnvironmentVariables,
+            canApply = canApply,
             onDismissRequest = { selectedRun = null },
             onApply = { options ->
                 selectedRun = null
@@ -746,6 +751,7 @@ private fun CommunityConfigPreviewDialog(
     matchType: String,
     currentLaunchArguments: String,
     currentEnvironmentVariables: String,
+    canApply: Boolean,
     onDismissRequest: () -> Unit,
     onApply: (CommunityConfigApplyOptions) -> Unit,
 ) {
@@ -788,6 +794,19 @@ private fun CommunityConfigPreviewDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                if (!canApply) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                        shape = RoundedCornerShape(10.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.community_config_install_before_apply),
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(12.dp),
+                        )
+                    }
+                }
                 if (matchType == "fallback_match") {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -914,6 +933,7 @@ private fun CommunityConfigPreviewDialog(
         },
         confirmButton = {
             Button(
+                enabled = canApply,
                 onClick = {
                     onApply(
                         CommunityConfigApplyOptions(

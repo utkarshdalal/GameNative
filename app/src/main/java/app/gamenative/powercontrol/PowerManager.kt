@@ -306,8 +306,10 @@ object PowerManager {
      */
     fun resume() {
         if (!isGameStarted) return
-        driver.start()
-        applyCurrentProfile()
+        if (isProfilePowerControlEnabled()) {
+            driver.start()
+            applyCurrentProfile()
+        }
         if (currentProfile.adaptiveFpsCapEnabled) {
             AdaptiveFpsCapController.start(containerDir, tunerLogDirectory())
         }
@@ -731,6 +733,10 @@ object PowerManager {
      * Check if driver is supported
      */
     fun isDriverSupported(): Boolean = driver.isDriverSupported()
+
+    fun isGovernorSupported(): Boolean = driver.isGovernorSupported()
+
+    fun driverName(): String = driver::class.java.simpleName
 
     /**
      * Get display unit preference for frequency values

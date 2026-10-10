@@ -48,6 +48,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -84,6 +85,7 @@ import app.gamenative.events.SteamEvent
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.dialog.SupportersDialog
 import app.gamenative.ui.screen.PluviaScreen
+import app.gamenative.ui.screen.support.SupportReplyWatcher
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.SteamIconImage
 import app.gamenative.ui.util.adaptivePanelWidth
@@ -104,6 +106,7 @@ private fun SystemMenuItem(
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester = remember { FocusRequester() },
     isDestructive: Boolean = false,
+    badge: Boolean = false,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
@@ -159,6 +162,13 @@ private fun SystemMenuItem(
                 color = contentColor,
                 fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Normal,
             )
+            if (badge) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape),
+                )
+            }
         }
     }
 }
@@ -577,6 +587,16 @@ fun SystemMenu(
                                 onDismiss()
                             },
                             focusRequester = firstItemFocusRequester,
+                        )
+
+                        SystemMenuItem(
+                            text = stringResource(R.string.support_title),
+                            icon = Icons.Default.SupportAgent,
+                            onClick = {
+                                onNavigateRoute(PluviaScreen.Support.route)
+                                onDismiss()
+                            },
+                            badge = SupportReplyWatcher.unread.value.isNotEmpty(),
                         )
 
                         SystemMenuItem(

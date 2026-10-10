@@ -64,6 +64,10 @@ struct PartJob {
     chunk: usize,
     /// Ordinal into `EpicRequest.pending_file_indices` (NOT the manifest file index).
     file_ord: usize,
+    /// Index of the part within its file's `parts` list — selective resume filters jobs
+    /// against the per-part verified bitmap (GUID-less parts have no job, so job order
+    /// alone cannot recover the part index).
+    part_idx: usize,
     src_off: u64,
     dst_off: u64,
     len: u64,
@@ -149,12 +153,13 @@ pub fn build_plan(req: &EpicRequest) -> Result<EpicPlan, String> {
     let mut jobs = Vec::new();
     for (ord, &fi) in req.pending_file_indices.iter().enumerate() {
         let mut dst = 0u64;
-        for part in &manifest.files[fi].parts {
+        for (part_idx, part) in manifest.files[fi].parts.iter().enumerate() {
             let len = (part.size.max(0) as u32) as u64; // Java `size & 0xFFFFFFFFL`
             if let Some(&ci) = by_guid.get(&part.guid_str()) {
                 jobs.push(PartJob {
                     chunk: ci,
                     file_ord: ord,
+                    part_idx,
                     src_off: part.offset.max(0) as u64,
                     dst_off: dst,
                     len,
@@ -200,53 +205,56 @@ pub fn build_plan(req: &EpicRequest) -> Result<EpicPlan, String> {
     })
 }
 
-/// Cancelled-run resume: read back an unfinished file AT ITS FINAL PATH and find its longest
-/// PART-VERIFIED prefix. The file is written as a strictly contiguous prefix (the ordered drain
-/// forbids holes), so walking the file's parts in order and re-hashing the on-disk bytes of
-/// each proves which parts are already downloaded and intact. A part can only re-verify when
-/// it covers its WHOLE chunk (`offset == 0`): the manifest's SHA-1 spans the entire
-/// decompressed chunk, so a slice can never match it — the SHA-1 comparison itself also
-/// settles the length (a proper prefix of the chunk hashes differently). Stops at the first
-/// part that is unverifiable (chunk unknown or hash-less, a slice, truncated, or mismatched);
-/// everything past the returned prefix is re-fetched. Zero-length parts contribute no bytes
-/// and verify trivially. No trust is involved: every kept byte re-hashes against the manifest.
-/// Returns (verified part count, verified byte length).
-fn verified_prefix(
+/// Cancelled-run / repair resume: read back an unfinished file AT ITS FINAL PATH and verify
+/// EVERY part against the manifest's chunk SHA-1s, returning a per-part bitmap — the Steam
+/// writer's selective-redispatch concept: only parts whose on-disk bytes are missing or
+/// mismatched are re-fetched; verified parts become markers in the file's ordered drain and
+/// are never rewritten. Unlike the old prefix model, verification does NOT stop at the first
+/// bad part, so one corrupt part in the middle of a large file no longer costs the whole
+/// suffix. A part can only re-verify when it covers its WHOLE chunk (`offset == 0`): the
+/// manifest's SHA-1 spans the entire decompressed chunk, so a slice can never match it (the
+/// SHA-1 comparison itself also settles the length — a proper prefix hashes differently).
+/// Zero-length parts contribute no bytes and verify trivially. Unverifiable parts (unknown or
+/// hash-less chunk, a slice, truncated or mismatched bytes) are simply `false` (re-fetched).
+/// No trust is involved: every kept byte re-hashes against the manifest.
+fn verified_parts(
     path: &Path,
     file: &super::manifest::FileInfo,
     manifest: &Manifest,
     by_guid: &std::collections::HashMap<String, usize>,
-) -> (usize, u64) {
+) -> Vec<bool> {
+    let mut out = vec![false; file.parts.len()];
     let Ok(handle) = File::open(path) else {
-        return (0, 0);
+        return out;
     };
     let mut cursor = 0u64;
     for (n, part) in file.parts.iter().enumerate() {
         let len = (part.size.max(0) as u32) as u64;
         if len == 0 {
-            continue; // no bytes: nothing to verify, nothing to re-fetch
+            out[n] = true; // no bytes: nothing to verify, nothing to re-fetch
+            continue;
         }
         let verifiable = by_guid
             .get(&part.guid_str())
             .and_then(|&ci| manifest.unique_chunks[ci].verifiable_sha1());
         let Some(expected) = verifiable else {
-            return (n, cursor);
+            cursor += len;
+            continue; // chunk unknown/hash-less: this part stays unverifiable (it has no
+            // fetch job either — pre-existing behavior), but LATER parts verify independently
         };
         if part.offset != 0 || len > 64 * 1024 * 1024 {
-            return (n, cursor);
+            cursor += len;
+            continue; // a slice stays unverifiable but LATER whole-chunk parts can still verify
         }
         let mut data = vec![0u8; len as usize];
-        if handle.read_exact_at(&mut data, cursor).is_err() {
-            return (n, cursor);
-        }
-        let mut sha = Sha1::new();
-        sha.update(&data);
-        if sha.finalize().as_slice() != &expected[..] {
-            return (n, cursor);
+        if handle.read_exact_at(&mut data, cursor).is_ok() {
+            let mut sha = Sha1::new();
+            sha.update(&data);
+            out[n] = sha.finalize().as_slice() == &expected[..];
         }
         cursor += len;
     }
-    (file.parts.len(), cursor)
+    out
 }
 
 /// One pending file's streamed-write state. Parts park in the ordered drain and append to the
@@ -265,9 +273,12 @@ struct StreamFile {
     completed: AtomicBool,
     /// The file was opened for writing this run — error cleanup deletes only touched files.
     touched: AtomicBool,
-    /// Byte length of the part-verified prefix already on disk (resume): the first open keeps
-    /// the file and truncates at this cursor instead of starting empty (0 = fresh).
-    resume_from: u64,
+    /// Selective resume: the file already exists with at least one part-verified region (the
+    /// drain holds markers for those). The first open KEEPS the whole file — no truncation:
+    /// verified bytes anywhere in it stay valid, unverified parts are rewritten at their
+    /// offsets, and any garbage tail is truncated to the manifest size at completion
+    /// (`false` = fresh: the first open creates/truncates).
+    resumed_existing: bool,
 }
 
 impl StreamFile {
@@ -294,17 +305,11 @@ impl StreamFile {
                     .lock()
                     .map_err(|_| "file handle poisoned".to_string())?;
                 if guard.is_none() {
-                    let opened = if self.resume_from > 0 {
-                        // Resume: the file already holds a part-verified prefix — keep it,
-                        // drop any unverified tail past the cursor, continue appending.
-                        OpenOptions::new()
-                            .read(true)
-                            .write(true)
-                            .open(&self.out_path)
-                            .and_then(|f| {
-                                f.set_len(self.resume_from)?;
-                                Ok(f)
-                            })
+                    let opened = if self.resumed_existing {
+                        // Selective resume: keep the whole file — verified parts anywhere in
+                        // it stay valid, re-fetched parts are rewritten at their offsets, a
+                        // garbage tail is truncated to the manifest size at completion.
+                        OpenOptions::new().read(true).write(true).open(&self.out_path)
                     } else {
                         // Lazy open: File::create also truncates a stale partial from a
                         // crashed run.
@@ -338,7 +343,19 @@ impl StreamFile {
             ));
         }
         drop(drain);
-        // Complete in place: close the handle and mark the file done.
+        // Complete in place: a resumed file can carry a garbage tail past the manifest end
+        // (torn write or old pre-allocation) — every kept byte is part-verified, so just drop
+        // it; then close the handle and mark the file done.
+        if self.resumed_existing {
+            if let Some(handle) = self
+                .handle
+                .lock()
+                .map_err(|_| "file handle poisoned".to_string())?
+                .as_ref()
+            {
+                let _ = handle.set_len(self.size);
+            }
+        }
         let _ = self
             .handle
             .lock()
@@ -491,16 +508,24 @@ pub fn run_plan(
         return outcome;
     }
 
-    // Cancelled-run resume pass: re-hash partial files at their final paths part-by-part
-    // against the manifest's chunk SHA-1s ([`verified_prefix`]) on the process-pool shape, so
-    // the fetch below skips each interrupted file's verified prefix. No trust: every kept byte
-    // re-hashes against the manifest.
+    // Cancelled-run resume pass: re-hash partial files at their final paths PART-BY-PART
+    // against the manifest's chunk SHA-1s ([`verified_parts`]) on the process-pool shape, so
+    // the fetch below re-fetches ONLY each file's mismatched/missing parts — verified parts
+    // become markers in the file's drain (the Steam writer's selective redispatch), not a
+    // whole-suffix re-download past the first bad part. No trust: every kept byte re-hashes
+    // against the manifest.
     let install_dir = Path::new(&req.install_dir);
     let by_guid = plan.manifest.chunk_index_by_guid();
-    let resume: Vec<(AtomicUsize, AtomicU64)> = req
+    let verified: Vec<Vec<AtomicBool>> = req
         .pending_file_indices
         .iter()
-        .map(|_| (AtomicUsize::new(0), AtomicU64::new(0)))
+        .map(|&fi| {
+            plan.manifest.files[fi]
+                .parts
+                .iter()
+                .map(|_| AtomicBool::new(false))
+                .collect()
+        })
         .collect();
     let resume_next = AtomicUsize::new(0);
     let verify_threads = req
@@ -522,10 +547,12 @@ pub fn run_plan(
                 // (1-based claim order among the pending files, for the UI status row).
                 verify_status(&file.filename, ord as u32 + 1, req.pending_file_indices.len() as u32);
                 let on_disk = crate::store_dl::resolve_existing_case(&req.install_dir, &file.filename);
-                let (n, bytes) =
-                    verified_prefix(&install_dir.join(&on_disk), file, &plan.manifest, &by_guid);
-                resume[ord].0.store(n, Ordering::Relaxed);
-                resume[ord].1.store(bytes, Ordering::Relaxed);
+                for (part_idx, ok) in verified_parts(&install_dir.join(&on_disk), file, &plan.manifest, &by_guid)
+                    .iter()
+                    .enumerate()
+                {
+                    verified[ord][part_idx].store(*ok, Ordering::Relaxed);
+                }
             });
         }
     });
@@ -568,7 +595,7 @@ pub fn run_plan(
                         parts_written: AtomicU32::new(0),
                         completed: AtomicBool::new(true),
                         touched: AtomicBool::new(false),
-                        resume_from: 0,
+                        resumed_existing: false,
                     });
                 }
                 Err(e) => {
@@ -579,9 +606,12 @@ pub fn run_plan(
             }
             continue;
         }
-        let verified_parts = resume[ord].0.load(Ordering::Relaxed);
-        let verified_bytes = resume[ord].1.load(Ordering::Relaxed);
-        if verified_parts == file.parts.len() {
+        let part_ok: Vec<bool> = verified[ord]
+            .iter()
+            .map(|b| b.load(Ordering::Relaxed))
+            .collect();
+        let verified_count = part_ok.iter().filter(|&&ok| ok).count();
+        if verified_count == file.parts.len() {
             // Every part of the file re-hashed against the manifest's chunk SHA-1s from the
             // bytes already at the final path: the file is complete in place, no fetching.
             log(&format!("resume-complete {}", file.filename));
@@ -594,25 +624,40 @@ pub fn run_plan(
                 parts_written: AtomicU32::new(0),
                 completed: AtomicBool::new(true),
                 touched: AtomicBool::new(false),
-                resume_from: 0,
+                resumed_existing: false,
             });
             continue;
         }
-        resumed_parts += verified_parts as u64;
+        // Selective resume: verified parts park as markers so the drain's cursor walks over
+        // their on-disk bytes in order; only the missing/mismatched parts are fetched.
+        let mut drain = OrderedDrain::with_cursor(0);
+        let mut verified_bytes = 0u64;
+        {
+            let mut dst = 0u64;
+            for (part_idx, part) in file.parts.iter().enumerate() {
+                let len = (part.size.max(0) as u32) as u64;
+                if part_ok[part_idx] {
+                    drain.insert_verified(dst, len);
+                    verified_bytes += len;
+                }
+                dst += len;
+            }
+        }
+        resumed_parts += verified_count as u64;
         resumed_bytes += verified_bytes;
         // The file is NOT created here: it opens lazily on the file's first drained write
-        // (a fresh open truncates a stale partial; a resumed open keeps the verified prefix),
+        // (a fresh open truncates a stale partial; a resumed open keeps the verified parts),
         // so a big pending set cannot exhaust the fd limit at setup.
         files.push(StreamFile {
             handle: Mutex::new(None),
-            drain: Mutex::new(OrderedDrain::with_cursor(verified_bytes)),
+            drain: Mutex::new(drain),
             out_path,
             size: file.file_size(),
-            parts_total: (file.parts.len() - verified_parts) as u32,
-            parts_written: AtomicU32::new(0),
+            parts_total: file.parts.len() as u32,
+            parts_written: AtomicU32::new(verified_count as u32),
             completed: AtomicBool::new(false),
             touched: AtomicBool::new(false),
-            resume_from: verified_bytes,
+            resumed_existing: verified_count > 0,
         });
     }
     log(&format!(
@@ -634,20 +679,13 @@ pub fn run_plan(
         }
     };
 
-    // The fetch set: plan.jobs minus each file's verified-prefix parts. Jobs are built in
-    // (file, part) order, so dropping the first `verified` jobs of each file removes exactly
-    // the prefix — shared-chunk duplicates past the prefix are still fetched per consumer.
-    let mut seen: Vec<usize> = vec![0; files.len()];
+    // The fetch set: plan.jobs minus each file's verified parts (selective redispatch).
+    // Shared-chunk duplicates whose part is unverified are still fetched per consumer.
     let jobs: Vec<PartJob> = plan
         .jobs
         .iter()
         .copied()
-        .filter(|j| {
-            let s = &mut seen[j.file_ord];
-            let skip = *s < resume[j.file_ord].0.load(Ordering::Relaxed);
-            *s += 1;
-            !skip
-        })
+        .filter(|j| !verified[j.file_ord][j.part_idx].load(Ordering::Relaxed))
         .collect();
     let chunks_total = jobs.len() as u64;
     outcome.chunks_total = chunks_total;
@@ -931,7 +969,7 @@ mod tests {
                 parts_written: AtomicU32::new(0),
                 completed: AtomicBool::new(false),
                 touched: AtomicBool::new(false),
-                resume_from: 0,
+                resumed_existing: false,
             }
         };
         let stream_files = vec![mk("Game/a.bin", 6000, 2), mk("Game/b.bin", 500, 1)];
@@ -1001,7 +1039,7 @@ mod tests {
             parts_written: AtomicU32::new(0),
             completed: AtomicBool::new(false),
             touched: AtomicBool::new(false),
-            resume_from: 0,
+            resumed_existing: false,
         }];
         let sink = StreamSink {
             plan: &plan,
@@ -1082,7 +1120,7 @@ mod tests {
                 parts_written: AtomicU32::new(0),
                 completed: AtomicBool::new(false),
                 touched: AtomicBool::new(false),
-                resume_from: 0,
+                resumed_existing: false,
             }
         };
         let stream_files = vec![mk("Game/a.bin", 6000, 2), mk("Game/b.bin", 500, 1)];
@@ -1239,29 +1277,31 @@ mod tests {
         let dir = super::super::chunk::test_support::temp_dir("prefix");
         let path = dir.join("a.bin");
         // No file → nothing verified.
-        assert_eq!(verified_prefix(&path, file, &manifest, &by_guid), (0, 0));
-        // First part intact + garbage tail → exactly the first part keeps.
+        assert_eq!(verified_parts(&path, file, &manifest, &by_guid), vec![false, false]);
+        // First part intact + garbage tail → only the first part keeps.
         let mut body = d1.clone();
         body.extend_from_slice(&[0xEE; 1500]);
         std::fs::write(&path, &body).unwrap();
-        assert_eq!(verified_prefix(&path, file, &manifest, &by_guid), (1, 4000));
+        assert_eq!(verified_parts(&path, file, &manifest, &by_guid), vec![true, false]);
         // Whole file → both parts.
         let mut whole = d1.clone();
         whole.extend_from_slice(&d2);
         std::fs::write(&path, &whole).unwrap();
-        assert_eq!(verified_prefix(&path, file, &manifest, &by_guid), (2, 7000));
-        // Corruption inside part 0 rewinds to nothing.
+        assert_eq!(verified_parts(&path, file, &manifest, &by_guid), vec![true, true]);
+        // Corruption inside part 0 keeps part 1 — the selective-redispatch case (prefix
+        // model: (0, 0) and a whole-file re-download).
         let mut corrupt = whole.clone();
         corrupt[10] ^= 0xFF;
         std::fs::write(&path, &corrupt).unwrap();
-        assert_eq!(verified_prefix(&path, file, &manifest, &by_guid), (0, 0));
+        assert_eq!(verified_parts(&path, file, &manifest, &by_guid), vec![false, true]);
         let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// A part that is a SLICE of a chunk can never re-verify (the SHA-1 spans the whole
-    /// decompressed chunk): the prefix stops before it even when the bytes on disk are intact.
+    /// decompressed chunk): it is re-fetched even when the bytes on disk are intact, while
+    /// the whole-chunk parts around it keep.
     #[test]
-    fn prefix_verify_cannot_trust_a_chunk_slice() {
+    fn verified_parts_cannot_trust_a_chunk_slice() {
         use super::super::chunk::test_support::sha1_of;
         let d1: Vec<u8> = (0..4000u32).map(|i| (i % 251) as u8).collect();
         let d2: Vec<u8> = (0..3000u32).map(|i| (i % 241) as u8).collect();
@@ -1295,11 +1335,12 @@ mod tests {
         let file = &manifest.files[0];
         let dir = super::super::chunk::test_support::temp_dir("slicepfx");
         let path = dir.join("a.bin");
-        // The on-disk bytes are exactly right — but part 1 is a slice, so the prefix stops.
+        // The on-disk bytes are exactly right — but part 1 is a slice: it can never
+        // re-verify (the SHA-1 spans the whole chunk) → re-fetched, while part 0 keeps.
         let mut body = d1.clone();
         body.extend_from_slice(&d2[100..600]);
         std::fs::write(&path, &body).unwrap();
-        assert_eq!(verified_prefix(&path, file, &manifest, &by_guid), (1, 4000));
+        assert_eq!(verified_parts(&path, file, &manifest, &by_guid), vec![true, false]);
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -1407,14 +1448,20 @@ mod tests {
         std::fs::write(&out_path, &d1).unwrap();
         let stream_files = vec![StreamFile {
             handle: Mutex::new(None),
-            drain: Mutex::new(OrderedDrain::with_cursor(d1.len() as u64)),
+            drain: Mutex::new({
+                // Selective-resume shape: part 0 verified on disk → a marker at offset 0;
+                // the cursor walks over it and part 1 appends after it.
+                let mut d = OrderedDrain::with_cursor(0);
+                d.insert_verified(0, d1.len() as u64);
+                d
+            }),
             out_path: out_path.clone(),
             size: whole.len() as u64,
-            parts_total: 1, // only part 1 is outstanding
-            parts_written: AtomicU32::new(0),
+            parts_total: 2,
+            parts_written: AtomicU32::new(1), // part 0 verified; only part 1 is outstanding
             completed: AtomicBool::new(false),
             touched: AtomicBool::new(false),
-            resume_from: d1.len() as u64,
+            resumed_existing: true,
         }];
         let jobs: Vec<PartJob> = plan.jobs[1..].to_vec(); // only part 1 is re-fetched
         let sink = StreamSink {

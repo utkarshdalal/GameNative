@@ -40,6 +40,7 @@ object GameFixesRegistry {
         STEAM_Fix_413150,
         STEAM_Fix_413420,
         STEAM_Fix_595520,
+        STEAM_Fix_658920,
         STEAM_Fix_752580,
         STEAM_Fix_1293830,
         STEAM_Fix_1637320,
@@ -54,6 +55,7 @@ object GameFixesRegistry {
         EPIC_Fix_e345fdb9186645a48d30c3f85a8951dc,
         EPIC_Fix_59a0c86d02da42e8ba6444cb171e61bf,
         EPIC_Fix_864c7bc2c2394f7dbd1b534aa068ff56,
+        EPIC_Fix_7f6bb22e14044be880ba254f683cd928,
     ).associateBy { it.gameSource to it.gameId }
 
     private var fixesProvider: () -> Map<Pair<GameSource, String>, GameFix> = { fixes }

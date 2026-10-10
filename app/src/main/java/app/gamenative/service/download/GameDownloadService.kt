@@ -5,6 +5,7 @@ import app.gamenative.R
 import app.gamenative.data.DownloadInfo
 import app.gamenative.data.SteamApp
 import app.gamenative.service.SteamService
+import app.gamenative.utils.DepotManifestFiles
 import app.gamenative.utils.LocaleHelper
 import app.gamenative.utils.generateSteamApp
 import `in`.dragonbra.javasteam.enums.EResult
@@ -26,7 +27,6 @@ import org.json.JSONObject
 import timber.log.Timber
 import android.content.Context
 import android.content.Intent
-import app.gamenative.BuildConfig
 import app.gamenative.data.GameSource
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
@@ -166,6 +166,13 @@ object GameDownloadService {
             downloadInfo = downloadInfo,
             parentScope = parentScope,
         )
+
+        for (resolved in resolvedDepots) {
+            DepotManifestFiles.decryptFilenames(
+                DepotManifestFiles.manifestFile(installDir, resolved.depotId, resolved.gid),
+                resolved.depotKey,
+            )
+        }
     }
 
     private suspend fun runNativeSteamDownload(
@@ -423,9 +430,11 @@ object GameDownloadService {
     private class ResolvedDepot(
         val depotId: Int,
         val gid: Long,
-        val depotKeyHex: String,
+        val depotKey: ByteArray,
         val requestCode: Long,
-    )
+    ) {
+        val depotKeyHex: String get() = depotKey.toHex()
+    }
 
     private suspend fun resolveDepotForDownload(
         steamApps: SteamApps,
@@ -471,7 +480,7 @@ object GameDownloadService {
         val requestCode = fetchManifestRequestCode(
             steamContent, depotId, owningAppId, gid, branch, parentScope,
         )
-        return ResolvedDepot(depotId, gid, keyCallback.depotKey.toHex(), requestCode)
+        return ResolvedDepot(depotId, gid, keyCallback.depotKey, requestCode)
     }
 
     private suspend fun resolveManifestGid(
@@ -586,7 +595,7 @@ object GameDownloadService {
     fun downloadGogChunks(
         kind: Int,
         depotManifests: Array<String>,
-        cdnBase: String,
+        cdnBases: Array<String>,
         installDir: String,
         skipPaths: Array<String>,
         maxWorkers: Int,
@@ -595,7 +604,7 @@ object GameDownloadService {
         label: String,
         listener: NativeGogDownloadListener,
     ): Long = NativeGogDownload.start(
-        kind, depotManifests, cdnBase, installDir, skipPaths, "",
+        kind, depotManifests, cdnBases, installDir, skipPaths, "",
         maxWorkers, processWorkers, sortLargestFirst, label, listener,
     )
 
@@ -661,12 +670,16 @@ object GameDownloadService {
     private val registeredDownloads = ConcurrentHashMap<String, DownloadEntry>()
 
     /**
-     * Hardcoded switch for native engine pipeline logs (throughput / fetch-window / staging
-     * lines). Steam emits them from Rust via android_log (tag GN_STEAM_DL) — the flag travels
-     * in the plan JSON so no JNI callback is even wired when off; Epic/GOG/Amazon forward their
-     * lines over JNI `onLog`, gated at the Timber call sites in their managers.
+     * Gate for native engine pipeline logs (throughput / fetch-window / cdn-probe / write-stall
+     * lines). Always on: these lines are the only way to diagnose a user's download after the
+     * fact, and every capture the app offers is logcat-based — the settings "Save logcat" tail
+     * (`logcat -d --pid=<app>`, so the native tags come along), the crash report, and the support
+     * bundle's unfiltered `logcat -v threadtime`. Steam emits them from Rust via android_log (tag
+     * GN_STEAM_DL); the flag travels in the plan JSON; Epic/GOG/Amazon forward their lines over
+     * JNI `onLog`, gated at the Timber call sites in their managers (INFO, because ReleaseTree
+     * drops Debug/Verbose).
      */
-    val SHOW_PIPELINE_LOGS = BuildConfig.DEBUG
+    val SHOW_PIPELINE_LOGS = true
 
     /**
      * Serializes every queue state transition (pause-all + register, remove + resume).

@@ -3,6 +3,7 @@ package app.gamenative.utils
 import app.gamenative.data.BranchInfo
 import app.gamenative.data.ConfigInfo
 import app.gamenative.data.DepotInfo
+import app.gamenative.data.EulaInfo
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryAssetsInfo
 import app.gamenative.data.LibraryCapsuleInfo
@@ -24,15 +25,34 @@ import app.gamenative.enums.SteamRealm
 import app.gamenative.service.SteamService.Companion.INVALID_APP_ID
 import `in`.dragonbra.javasteam.types.KeyValue
 import java.util.Date
+import java.util.Locale
 import timber.log.Timber
 
-const val CURRENT_UFS_PARSE_VERSION = 4
+// Bumping re-parses the whole SteamApp row from PICS on next login and also triggers the root-override cloud requery.
+const val CURRENT_UFS_PARSE_VERSION = 7
 
 /**
  * Extension functions relating to [KeyValue] as the receiver type.
  */
 
+data class VrClassification(val isVrOnly: Boolean, val isVrSupported: Boolean)
+
+// category_53/54 are Valve's "VR Supported"/"VR Only" flags; tag 21978 ("VR") catches titles
+// whose developer didn't set the curated categories. Null without a common section.
+fun KeyValue.vrClassification(): VrClassification? {
+    val common = this["common"]
+    if (common.children.isEmpty()) return null
+    val categoryNames = common["category"].children.mapNotNull { it.name }
+    val storeTagIds = common["store_tags"].children.mapNotNull { it.asInteger(-1).takeIf { id -> id >= 0 } }
+    return VrClassification(
+        isVrOnly = categoryNames.contains("category_54"),
+        isVrSupported = categoryNames.contains("category_53") || storeTagIds.contains(21978),
+    )
+}
+
 fun KeyValue.generateSteamApp(): SteamApp {
+    val vr = vrClassification()
+
     return SteamApp(
         id = this["appid"].asInteger(INVALID_APP_ID),
         depots = this["depots"].children
@@ -104,6 +124,8 @@ fun KeyValue.generateSteamApp(): SteamApp {
         reviewScore = this["common"]["review_score"].asByte(),
         reviewPercentage = this["common"]["review_percentage"].asByte(),
         controllerSupport = ControllerSupport.from(this["common"]["controller_support"].value),
+        isVrOnly = vr?.isVrOnly == true,
+        isVrSupported = vr?.isVrSupported == true,
         demoOfAppId = this["common"]["extended"]["demoofappid"].asInteger(),
         developer = this["extended"]["developer"].value.orEmpty(),
         publisher = this["extended"]["publisher"].value.orEmpty(),
@@ -126,6 +148,19 @@ fun KeyValue.generateSteamApp(): SteamApp {
         visibleOnlyWhenInstalled = this["common"]["extended"]["visibleonlywheninstalled"].asBoolean(),
         visibleOnlyWhenSubscribed = this["common"]["extended"]["visibleonlywhensubscribed"].asBoolean(),
         launchEulaUrl = this["common"]["extended"]["launcheula"].value.orEmpty(),
+        eulas = this["common"]["eulas"].children.mapNotNull { eula ->
+            val id = eula["id"].value?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+            EulaInfo(
+                id = id,
+                name = eula["name"].value.orEmpty(),
+                url = eula["url"].value.orEmpty(),
+                version = eula["version"].value.orEmpty(),
+                countries = eula["countries"].value.orEmpty()
+                    .split(',')
+                    .map { it.trim().uppercase(Locale.ROOT) }
+                    .filter { it.isNotEmpty() },
+            )
+        },
         requireDefaultInstallFolder = this["common"]["config"]["requiredefaultinstallfolder"].asBoolean(),
         contentType = this["common"]["config"]["contentType"].asInteger(),
         installDir = this["common"]["config"]["installdir"].value.orEmpty(),

@@ -1,3 +1,4 @@
+use crate::queue_delay::{delay_offset, QueueDelay, RttProber, QUEUE_GAIN, TARGET_QUEUE_MS};
 use crate::store_dl::steam::cdn_client::{auth_status, AsyncCdnClient, AsyncFetchError, CdnClient, CdnConnection, FetchFailKind};
 use crate::store_dl::steam::content_manifest::{ChunkData, ContentManifest};
 use crate::store_dl::steam::depot_chunk::process_depot_chunk;
@@ -344,6 +345,116 @@ pub fn budget_admits(in_flight: u64, raw_len: u64, budget: u64) -> bool {
     in_flight == 0 || in_flight.saturating_add(raw_len) <= budget
 }
 
+/// Which queue entry a dispatch decision took, so the commit step pops exactly that entry.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum JobSource {
+    /// `ready[idx]` — a fresh job (0 attempts spent).
+    Ready(usize),
+    /// `retry[idx]` — a retry whose backoff has elapsed.
+    Retry(usize),
+}
+
+/// True when `job`'s chunk sits exactly at its file's copy cursor: the one chunk that can
+/// unblock that file, and the only job the byte-budget gate admits over budget (it is copied
+/// out the moment it lands, freeing itself and draining the chunks parked behind the gap).
+fn is_head_of_line(manifest: &ContentManifest, cursors: &[AtomicU64], job: ChunkWriteJob) -> bool {
+    manifest
+        .files
+        .get(job.file_idx as usize)
+        .and_then(|f| f.chunks.get(job.chunk_idx as usize))
+        .is_some_and(|chunk| {
+            cursors
+                .get(job.file_idx as usize)
+                .is_some_and(|c| c.load(Ordering::Relaxed) == chunk.offset)
+        })
+}
+
+/// The first dispatchable head-of-line job, preferring `retry` (oldest first) over fresh `ready`
+/// jobs. Not-yet-due retries are skipped — their backoff is at most ~4 s, so waiting for one to
+/// come due costs at most a probe tick.
+fn find_head_of_line_job<F>(
+    retry: &VecDeque<PendingChunk>,
+    ready: &VecDeque<ChunkWriteJob>,
+    now: Instant,
+    head_of_line: F,
+) -> Option<(ChunkWriteJob, u32, JobSource)>
+where
+    F: Fn(ChunkWriteJob) -> bool,
+{
+    if let Some((idx, p)) = retry
+        .iter()
+        .enumerate()
+        .find(|(_, p)| p.not_before <= now && head_of_line(p.job))
+    {
+        return Some((p.job, p.attempts, JobSource::Retry(idx)));
+    }
+    ready
+        .iter()
+        .enumerate()
+        .find(|(_, job)| head_of_line(**job))
+        .map(|(idx, job)| (*job, 0u32, JobSource::Ready(idx)))
+}
+
+/// Byte-budget gate with the head-of-line rescue. `Ok(chosen)` = dispatch it; `Err(())` = the
+/// budget refused a job that is NOT head-of-line and no head-of-line job is available, so the
+/// caller records a budget stall and waits.
+///
+/// A picked job is admitted as-is when it fits the budget, or when it IS head-of-line (see the
+/// dispatch site). When a NON-head-of-line job is refused, the queue front is simply the wrong
+/// job: the budget is full of chunks parked behind some file's cursor gap, and the frontier chunk
+/// that would free them may sit anywhere in `retry`/`ready`. Waiting there deadlocks — the budget
+/// can only drain by writing past the very gap that chunk fills, and nothing is in flight to free
+/// it (device depot 292031: `in_flight=0` with `reserved=191/192MiB`, `budget_stalls` climbing,
+/// `host_stalls=0`, frontier chunk behind `retry`'s front). So substitute the head-of-line job:
+/// it bypasses the budget by design and is, by definition, the work the writer is blocked on.
+fn resolve_budget_gate<F>(
+    picked: (ChunkWriteJob, u32, JobSource),
+    reserve: u64,
+    in_flight: u64,
+    budget: u64,
+    retry: &VecDeque<PendingChunk>,
+    ready: &VecDeque<ChunkWriteJob>,
+    now: Instant,
+    head_of_line: F,
+) -> Result<(ChunkWriteJob, u32, JobSource), ()>
+where
+    F: Fn(ChunkWriteJob) -> bool + Copy,
+{
+    if head_of_line(picked.0) || budget_admits(in_flight, reserve, budget) {
+        return Ok(picked);
+    }
+    find_head_of_line_job(retry, ready, now, head_of_line).ok_or(())
+}
+
+/// Files whose on-disk bytes will be re-hashed (resume/verify candidates) — the denominator of
+/// the UI's `Verifying Files (n/N)` counter.
+///
+/// A candidate must also have chunks: a preexisting file whose manifest entry has none gets no
+/// chunk job, so no writer can ever report it — counting it would leave the counter stuck below
+/// its own total (visible since the total is now published before the first chunk).
+fn verify_file_total(manifest: &ContentManifest, files: &DepotFiles) -> u32 {
+    (0..manifest.files.len())
+        .filter(|&i| {
+            files.needs_verify(i)
+                && manifest
+                    .files
+                    .get(i)
+                    .is_some_and(|file| !file.chunks.is_empty())
+        })
+        .count() as u32
+}
+
+impl DepotFileAction {
+    /// The absolute target path of this action.
+    fn path(&self) -> &str {
+        match self {
+            DepotFileAction::Directory { path }
+            | DepotFileAction::Symlink { path, .. }
+            | DepotFileAction::Regular { path, .. } => path,
+        }
+    }
+}
+
 pub fn depot_adler_hash(data: &[u8]) -> u32 {
     const BLOCK: usize = 5552;
     let mut a = 0u32;
@@ -410,6 +521,10 @@ pub fn plan_depot_write(
         ..Default::default()
     };
 
+    // One cached resolver for the whole plan: metadata-bound, and this pass runs before the
+    // driver loop (see `CaseResolver` — a per-file `resolve_existing_case` here is a stat per path
+    // component, plus a directory scan for every not-yet-existing file).
+    let mut resolver = crate::store_dl::CaseResolver::new();
     for (file_idx, file) in manifest.files.iter().enumerate() {
         if !path_is_safe(&file.filename) {
             return Err(DepotWriteResult::fail(
@@ -419,7 +534,7 @@ pub fn plan_depot_write(
         }
         // Re-spell to the on-disk case so Directory/Symlink actions land in the dir an earlier
         // depot already created (`Game/`) instead of mkdir-ing a duplicate (`game/`).
-        let rel = crate::store_dl::resolve_existing_case(target_dir, &file.filename);
+        let rel = resolver.resolve(target_dir, &file.filename);
         let path = join_target_path(target_dir, &rel);
         if !file.linktarget.is_empty() {
             // Path-traversal guard: symlinks are created up front (before any file write),
@@ -822,6 +937,8 @@ enum WindowReason {
     HoldErrors,
     HoldThroughputDown,
     ShrinkCongestion,
+    ShrinkQueueDelay,
+    HoldQueueDelay,
     ShrinkRateLimited,
     ShrinkTimeout,
     ShrinkReset,
@@ -843,6 +960,8 @@ impl WindowReason {
             WindowReason::HoldErrors => "hold:errors",
             WindowReason::HoldThroughputDown => "hold:throughput-down",
             WindowReason::ShrinkCongestion => "shrink:congestion",
+            WindowReason::ShrinkQueueDelay => "shrink:queue",
+            WindowReason::HoldQueueDelay => "hold:queue",
             WindowReason::ShrinkRateLimited => "shrink:429",
             WindowReason::ShrinkTimeout => "shrink:timeout",
             WindowReason::ShrinkReset => "shrink:reset",
@@ -919,6 +1038,11 @@ struct AdaptiveWindow {
     /// the pipe (on-device: shrink-to-6 on a 16-host pool sawtoothed throughput). Error
     /// shrinks are unaffected (a storm still goes to `min`).
     congestion_floor: usize,
+    /// Shared queueing-delay sample from the TCP-connect prober (LEDBAT, `queue_delay.rs`);
+    /// `None` = no prober attached (tests, no hosts) → the classic logic runs untouched.
+    queue: Option<Arc<QueueDelay>>,
+    /// The sample polled on the latest probe tick, for the summary line.
+    last_queue: Option<(f64, f64)>,
 }
 
 impl AdaptiveWindow {
@@ -951,7 +1075,15 @@ impl AdaptiveWindow {
             last_err_rate: 0.0,
             probes_since_log: 0,
             congestion_floor: min,
+            queue: None,
+            last_queue: None,
         }
+    }
+
+    /// Attach the shared queueing-delay sample (LEDBAT shrink / growth veto).
+    fn with_queue_delay(mut self, queue: Arc<QueueDelay>) -> Self {
+        self.queue = Some(queue);
+        self
     }
 
     /// Set the congestion-shrink floor (defaults to `min`). See the field doc.
@@ -989,6 +1121,20 @@ impl AdaptiveWindow {
         // Always give up at least one slot while above the floor, so a factor that rounds to the same
         // value still makes progress.
         let next = scaled.min(self.current.saturating_sub(1)).max(self.min);
+        self.apply_shrink(now, next, reason);
+    }
+
+    /// LEDBAT proportional shrink: `window × (1 + GAIN × off)` with off ∈ [-1, 0) — at most ~10%
+    /// per probe tick. Floors at `min` (NOT `congestion_floor`): a queue over target means the
+    /// bottleneck pipe IS full — unlike the per-conn-throttle case, a small window DOES drain it.
+    fn shrink_queue(&mut self, now: Instant, queue_ms: f64) {
+        let factor = 1.0 + QUEUE_GAIN * delay_offset(queue_ms);
+        let scaled = (self.current as f64 * factor).floor() as usize;
+        let next = scaled.min(self.current.saturating_sub(1)).max(self.min);
+        self.apply_shrink(now, next, WindowReason::ShrinkQueueDelay);
+    }
+
+    fn apply_shrink(&mut self, now: Instant, next: usize, reason: WindowReason) {
         self.current = next.max(self.min);
         self.cooldown_until = Some(now + Duration::from_millis(WINDOW_COOLDOWN_MS));
         self.slow_start = false;
@@ -1060,16 +1206,34 @@ impl AdaptiveWindow {
         let before = self.current;
         let cooling = self.cooldown_until.is_some_and(|t| now < t);
 
+        // The prober's queueing-delay sample for this tick (`None` until it warms up, or when
+        // no prober is attached — the classic logic then runs untouched).
+        let queue_ms = self.queue.as_ref().and_then(|q| q.sample());
+        self.last_queue = queue_ms;
+
         if err_rate > WINDOW_ERR_RATE_HIGH {
             // A sustained error storm: shrink immediately.
             self.shrink(now, WindowReason::ShrinkErrorRate);
         } else if cooling {
             self.last_reason = WindowReason::HoldCooldown;
-        } else if self.ok_count >= WINDOW_LATENCY_MIN_SAMPLES
+        } else if let Some((over, _)) = queue_ms.filter(|(q, _)| *q > TARGET_QUEUE_MS) {
+            // LEDBAT: the bottleneck queue is over target — yield proportionally. Checked before
+            // every growth path, so nothing grows into an over-target queue; the 3 s cooldown
+            // (set by the shrink) gives the queue time to drain before the next decision. At the
+            // floor we can only hold: a queue we cannot drain at min window is not ours.
+            if self.current > self.min {
+                self.shrink_queue(now, over);
+            } else {
+                self.last_reason = WindowReason::HoldQueueDelay;
+            }
+        } else if queue_ms.is_none()
+            && self.ok_count >= WINDOW_LATENCY_MIN_SAMPLES
             && self.latency_min_ms > 0.0
             && self.latency_ewma_ms > WINDOW_LATENCY_CONGESTION_FACTOR * self.latency_min_ms
             && sample_bps < self.bps_ewma * WINDOW_CONGESTION_BPS_CONFIRM
         {
+            // (Fallback only, while the TCP prober has no sample yet: its queueing-delay signal
+            // is strictly cleaner — a connect carries no body, so its RTT inflation IS queueing.)
             // Bufferbloated at err_rate~0 AND paying for it in throughput: the window exceeds
             // the link's real BDP. The throughput confirmation distinguishes this from ordinary
             // BDP queuing (high RTT but still rising — shrinking THERE only sawtooths; on-device
@@ -1157,7 +1321,7 @@ impl AdaptiveWindow {
         format!(
             "fetch-window depot={depot_id} window={} (min={} max={}) in_flight={in_flight_requests} \
 last={:.2}MB/s ewma={:.2}MB/s best={:.2}MB/s reason={} cooldown={}ms err_rate={:.1}% \
-phase={} rtt={:.0}ms budget_stalls={} host_stalls={}",
+phase={} rtt={:.0}ms queue={} rtt_base={} budget_stalls={} host_stalls={}",
             self.current,
             self.min,
             self.max,
@@ -1169,6 +1333,8 @@ phase={} rtt={:.0}ms budget_stalls={} host_stalls={}",
             self.last_err_rate * 100.0,
             if self.slow_start { "slow-start" } else { "steady" },
             self.latency_ewma_ms,
+            self.last_queue.map(|(q, _)| format!("{q:.0}ms")).unwrap_or_else(|| "-".to_string()),
+            self.last_queue.map(|(_, b)| format!("{b:.0}ms")).unwrap_or_else(|| "-".to_string()),
             self.last_budget_stalls,
             self.last_host_stalls
         )
@@ -1292,16 +1458,24 @@ pub fn normalize_manifest_case_paths(manifest: &mut ContentManifest) {
 }
 
 impl DepotFiles {
-    fn prepare(manifest: &ContentManifest, target_dir: &str) -> Self {
+    /// `plan` supplies every file's already-resolved (case-corrected) absolute path from
+    /// [`plan_depot_write`] — resolving again here walked the tree a second time per file, all of
+    /// it before the driver loop could report the first verify status (see [`CaseResolver`]).
+    fn prepare(manifest: &ContentManifest, plan: &DepotWritePlan, target_dir: &str) -> Self {
         let mut slots = Vec::with_capacity(manifest.files.len());
         let mut already_present = 0u64;
-        for file in &manifest.files {
+        for (file_idx, file) in manifest.files.iter().enumerate() {
             let is_regular =
                 file.linktarget.is_empty() && (file.flags & DEPOT_FILE_FLAG_DIRECTORY) == 0;
-            // Re-spell to the on-disk case so a resume finds files an older manifest (or a
-            // sibling depot) wrote with different casing (`Game/` vs `game/`).
-            let rel = crate::store_dl::resolve_existing_case(target_dir, &file.filename);
-            let path = join_target_path(target_dir, &rel);
+            // The plan pushes exactly one action per manifest file, in manifest order; fall back to
+            // resolving on the spot only if that invariant is ever broken.
+            let path = match plan.actions.get(file_idx) {
+                Some(action) => action.path().to_string(),
+                None => {
+                    let rel = crate::store_dl::resolve_existing_case(target_dir, &file.filename);
+                    join_target_path(target_dir, &rel)
+                }
+            };
             let preexisting = if is_regular {
                 fs::metadata(&path).map(|m| m.len()).unwrap_or(0)
             } else {
@@ -1410,6 +1584,7 @@ impl DepotFiles {
                     .map_err(|err| format!("write_depot: final sync '{}': {err}", slot.path))?;
             } else if !st.opened {
                 // 0-chunk regular file (never touched by a worker): ensure it exists at exact size.
+                make_parent_dirs(Path::new(&slot.path))?;
                 let file = OpenOptions::new()
                     .create(true)
                     .write(true)
@@ -1704,7 +1879,7 @@ pub fn write_depot_sequential(
         Err(error) => return error,
     };
 
-    let files = DepotFiles::prepare(manifest, target_dir);
+    let files = DepotFiles::prepare(manifest, &plan, target_dir);
 
     // Free-space guard using the EXACT manifest sizes (ground truth), minus what is already on disk.
     // Conservative: only fail when statvfs succeeds with a sane non-zero figure and the deficit
@@ -1720,6 +1895,18 @@ pub fn write_depot_sequential(
                 ),
                 false,
             );
+        }
+    }
+
+    // Report the verify/update phase as soon as its candidate count is known — before the layout
+    // pass and before the first chunk of the driver loop — so the UI leaves its previous state and
+    // shows the real denominator instead of staying silent through the remaining pre-pass. The
+    // counter takes over from the driver below, one file at a time. An empty path is deliberate:
+    // no single file is being hashed yet, and the UI string only renders `(n/N)`.
+    if let Some(status) = options.status {
+        let total = verify_file_total(manifest, &files);
+        if total > 0 {
+            status("", 0, total);
         }
     }
 
@@ -1768,9 +1955,7 @@ fn write_depot_single(
     // with pre-existing on-disk bytes), for the UI status row.
     let mut verify_seen = 0u32;
     let verify_total = if options.status.is_some() {
-        (0..manifest.files.len())
-            .filter(|&i| files.needs_verify(i))
-            .count() as u32
+        verify_file_total(manifest, files)
     } else {
         0
     };
@@ -2320,10 +2505,17 @@ async fn run_async_fetch_driver(
         }
     };
 
+    // LEDBAT queueing-delay signal: a TCP-connect prober on the assigned CDN hosts (stops on drop).
+    let queue_delay = Arc::new(QueueDelay::new());
+    let _rtt_prober = RttProber::spawn(
+        servers.iter().map(|s| s.host.clone()).collect(),
+        Arc::clone(&queue_delay),
+    );
     let mut window = AdaptiveWindow::new(bootstrap, win_min, win_max, Instant::now())
         // win_max = distinct_hosts × PER_HOST_CAP (capped), so this recovers the host count:
         // the congestion shrink floors there (see the field doc).
-        .with_congestion_floor(win_max / PER_HOST_CAP);
+        .with_congestion_floor(win_max / PER_HOST_CAP)
+        .with_queue_delay(queue_delay);
     let mut sched = FetchScheduler::new(servers, PER_HOST_CAP);
     let mut inflight: FuturesUnordered<_> = FuturesUnordered::new();
     let mut ready: VecDeque<ChunkWriteJob> = VecDeque::new();
@@ -2336,9 +2528,7 @@ async fn run_async_fetch_driver(
     let mut last_verify_file: Option<usize> = None;
     let mut verify_seen = 0u32;
     let verify_total = if status.is_some() {
-        (0..manifest.files.len())
-            .filter(|&i| files.needs_verify(i))
-            .count() as u32
+        verify_file_total(manifest, files)
     } else {
         0
     };
@@ -2484,37 +2674,41 @@ async fn run_async_fetch_driver(
             }
 
             // Choose the next unit of work: a due retry first, else a fresh ready job.
-            let use_retry = retry.front().is_some_and(|p| p.not_before <= now);
-            let (job, attempts) = if use_retry {
-                let p = *retry.front().expect("retry nonempty");
-                (p.job, p.attempts)
-            } else if let Some(&job) = ready.front() {
-                (job, 0u32)
-            } else {
-                break; // nothing dispatchable now (verify yield, retry not due, or all done)
+            let picked = match retry.front() {
+                Some(p) if p.not_before <= now => (p.job, p.attempts, JobSource::Retry(0)),
+                _ => match ready.front() {
+                    Some(&job) => (job, 0u32, JobSource::Ready(0)),
+                    // nothing dispatchable now (verify yield, retry not due, or all done)
+                    None => break,
+                },
             };
 
-            // Byte-budget gate (hard memory bound): reserve the compressed size at DISPATCH.
+            // Byte-budget gate (hard memory bound): reserve the compressed size at DISPATCH. The
+            // gate also rescues the head-of-line job when the budget refuses a non-head-of-line
+            // one (see `resolve_budget_gate`: refusing it and waiting deadlocks, because the
+            // budget can only drain by writing past the gap that job fills).
+            let picked_reserve = reserve_bytes(manifest, picked.0);
+            let head_of_line = |job: ChunkWriteJob| is_head_of_line(manifest, cursors, job);
+            let (job, attempts, source) = match resolve_budget_gate(
+                picked,
+                picked_reserve,
+                in_flight.load(Ordering::Relaxed),
+                budget,
+                &retry,
+                &ready,
+                now,
+                head_of_line,
+            ) {
+                Ok(chosen) => chosen,
+                Err(()) => {
+                    // Diagnostic only: the window wanted this slot, the memory budget refused it.
+                    window.note_budget_stall();
+                    break; // wait for a completion to free budget
+                }
+            };
+            // Reserve for the job actually dispatched: a rescued head-of-line job may differ in
+            // size from the picked one, and the fetch future reconciles `done.reserve` on arrival.
             let reserve = reserve_bytes(manifest, job);
-            // A HEAD-OF-LINE chunk (its offset is exactly its file's copy cursor) is always
-            // admitted, even over budget: it is copied out immediately on arrival, freeing itself
-            // and draining whatever is queued behind it. Refusing it would deadlock against a
-            // budget full of chunks parked behind this very gap. (When nothing is in flight every
-            // dispatchable job is head-of-line, so an oversized chunk can't deadlock either.)
-            let head_of_line = manifest
-                .files
-                .get(job.file_idx as usize)
-                .and_then(|f| f.chunks.get(job.chunk_idx as usize))
-                .is_some_and(|chunk| {
-                    cursors
-                        .get(job.file_idx as usize)
-                        .is_some_and(|c| c.load(Ordering::Relaxed) == chunk.offset)
-                });
-            if !head_of_line && !budget_admits(in_flight.load(Ordering::Relaxed), reserve, budget) {
-                // Diagnostic only: the window wanted this slot, the memory budget refused it.
-                window.note_budget_stall();
-                break; // wait for a completion to free budget
-            }
 
             // Speed-ranked, per-host-capped server pick.
             let Some(server_idx) = sched.pick(now) else {
@@ -2564,11 +2758,15 @@ async fn run_async_fetch_driver(
                 }
             };
 
-            // Commit: pop the work item, reserve budget, launch the fetch future.
-            if use_retry {
-                retry.pop_front();
-            } else {
-                ready.pop_front();
+            // Commit: remove the work item (its exact queue entry — the gate may have rescued a
+            // head-of-line job from behind the front), reserve budget, launch the fetch future.
+            match source {
+                JobSource::Retry(idx) => {
+                    retry.remove(idx);
+                }
+                JobSource::Ready(idx) => {
+                    ready.remove(idx);
+                }
             }
             in_flight.fetch_add(reserve, Ordering::Relaxed);
             verify_since_yield = 0;
@@ -3217,6 +3415,280 @@ mod tests {
     }
 
     #[test]
+    fn budget_gate_rescues_the_head_of_line_chunk_from_behind_the_queue_front() {
+        // The device deadlock (depot 292031): the budget is full of chunks parked behind one
+        // file's cursor gap, the picked job is a non-head-of-line retry, and the frontier chunk
+        // sits BEHIND it in the retry queue. Dispatching nothing and waiting deadlocks.
+        let now = Instant::now();
+        let frontier = ChunkWriteJob {
+            file_idx: 5,
+            chunk_idx: 60,
+        };
+        let retry = VecDeque::from([
+            PendingChunk {
+                job: ChunkWriteJob {
+                    file_idx: 5,
+                    chunk_idx: 75,
+                },
+                attempts: 1,
+                not_before: now,
+            },
+            PendingChunk {
+                job: frontier,
+                attempts: 1,
+                not_before: now,
+            },
+        ]);
+        let ready = VecDeque::from([ChunkWriteJob {
+            file_idx: 6,
+            chunk_idx: 0,
+        }]);
+        let picked = (retry[0].job, 1u32, JobSource::Retry(0));
+        let chosen = resolve_budget_gate(
+            picked,
+            3 * MIB,
+            191 * MIB,
+            192 * MIB,
+            &retry,
+            &ready,
+            now,
+            |job| job == frontier,
+        )
+        .expect("the frontier chunk is dispatchable over budget");
+        assert_eq!(chosen, (frontier, 1, JobSource::Retry(1)));
+    }
+
+    #[test]
+    fn budget_gate_rescue_falls_through_to_a_fresh_ready_job() {
+        let now = Instant::now();
+        let frontier = ChunkWriteJob {
+            file_idx: 6,
+            chunk_idx: 40,
+        };
+        let retry = VecDeque::from([PendingChunk {
+            job: ChunkWriteJob {
+                file_idx: 5,
+                chunk_idx: 75,
+            },
+            attempts: 1,
+            not_before: now,
+        }]);
+        let ready = VecDeque::from([
+            ChunkWriteJob {
+                file_idx: 7,
+                chunk_idx: 0,
+            },
+            frontier,
+        ]);
+        let picked = (retry[0].job, 1u32, JobSource::Retry(0));
+        let chosen = resolve_budget_gate(
+            picked,
+            3 * MIB,
+            191 * MIB,
+            192 * MIB,
+            &retry,
+            &ready,
+            now,
+            |job| job == frontier,
+        )
+        .expect("a head-of-line job exists in ready");
+        assert_eq!(chosen, (frontier, 0, JobSource::Ready(1)));
+    }
+
+    #[test]
+    fn budget_gate_stalls_only_when_no_head_of_line_job_is_dispatchable() {
+        let now = Instant::now();
+        let retry = VecDeque::from([
+            // Head-of-line, but its backoff has NOT elapsed: not selectable yet (a probe tick
+            // later it is due, and the next pass rescues it).
+            PendingChunk {
+                job: ChunkWriteJob {
+                    file_idx: 5,
+                    chunk_idx: 60,
+                },
+                attempts: 1,
+                not_before: now + Duration::from_secs(2),
+            },
+        ]);
+        let ready = VecDeque::from([ChunkWriteJob {
+            file_idx: 6,
+            chunk_idx: 0,
+        }]);
+        let picked = (ready[0], 0u32, JobSource::Ready(0));
+        let hol = |job: ChunkWriteJob| job.chunk_idx == 60;
+        assert!(
+            resolve_budget_gate(picked, 3 * MIB, 191 * MIB, 192 * MIB, &retry, &ready, now, hol).is_err(),
+            "a not-yet-due retry must not be rescued early"
+        );
+        // Once due, the same state resolves.
+        assert_eq!(
+            resolve_budget_gate(
+                picked,
+                3 * MIB,
+                191 * MIB,
+                192 * MIB,
+                &retry,
+                &ready,
+                now + Duration::from_secs(3),
+                hol,
+            )
+            .expect("due now"),
+            (
+                ChunkWriteJob {
+                    file_idx: 5,
+                    chunk_idx: 60
+                },
+                1,
+                JobSource::Retry(0)
+            )
+        );
+    }
+
+    #[test]
+    fn budget_gate_admits_without_rescue_when_the_budget_allows_it() {
+        let now = Instant::now();
+        let job = ChunkWriteJob {
+            file_idx: 5,
+            chunk_idx: 75,
+        };
+        let ready = VecDeque::from([job]);
+        // Fits the budget: dispatch as picked (no rescue scan, no stall).
+        assert_eq!(
+            resolve_budget_gate(
+                (job, 0, JobSource::Ready(0)),
+                MIB,
+                0,
+                192 * MIB,
+                &VecDeque::new(),
+                &ready,
+                now,
+                |_| false,
+            )
+            .expect("fits"),
+            (job, 0, JobSource::Ready(0))
+        );
+        // Over budget but head-of-line: admitted as-is (it frees itself on arrival).
+        assert_eq!(
+            resolve_budget_gate(
+                (job, 0, JobSource::Ready(0)),
+                10 * MIB,
+                191 * MIB,
+                192 * MIB,
+                &VecDeque::new(),
+                &ready,
+                now,
+                |j| j == job,
+            )
+            .expect("head-of-line over budget"),
+            (job, 0, JobSource::Ready(0))
+        );
+    }
+
+    #[test]
+    fn is_head_of_line_matches_a_chunk_at_the_file_cursor() {
+        let manifest = ContentManifest {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
+                filenames_encrypted: false,
+                ..Default::default()
+            },
+            files: vec![crate::store_dl::steam::content_manifest::FileMapping {
+                filename: "Game/a.bin".into(),
+                size: 300,
+                chunks: vec![
+                    ChunkData {
+                        offset: 0,
+                        cb_original: 100,
+                        ..Default::default()
+                    },
+                    ChunkData {
+                        offset: 100,
+                        cb_original: 200,
+                        ..Default::default()
+                    },
+                ],
+                ..Default::default()
+            }],
+            signature: Vec::new(),
+        };
+        let cursors = vec![AtomicU64::new(100)];
+        assert!(!is_head_of_line(
+            &manifest,
+            &cursors,
+            ChunkWriteJob {
+                file_idx: 0,
+                chunk_idx: 0
+            }
+        ));
+        assert!(is_head_of_line(
+            &manifest,
+            &cursors,
+            ChunkWriteJob {
+                file_idx: 0,
+                chunk_idx: 1
+            }
+        ));
+        // Out-of-range indices are not head-of-line (never rescued).
+        assert!(!is_head_of_line(
+            &manifest,
+            &cursors,
+            ChunkWriteJob {
+                file_idx: 9,
+                chunk_idx: 0
+            }
+        ));
+    }
+
+    #[test]
+    fn verify_total_counts_only_candidates_that_have_chunks() {
+        // A preexisting file whose manifest entry has no chunks gets no chunk job, so no writer can
+        // ever report it: counting it left the (now early-published) counter below its own total.
+        let dir = std::env::temp_dir().join(format!("gnverifytotal-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("data.bin"), b"abc").unwrap();
+        fs::write(dir.join("blob.bin"), b"abcd").unwrap();
+        let manifest = ContentManifest {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
+                filenames_encrypted: false,
+                ..Default::default()
+            },
+            files: vec![
+                crate::store_dl::steam::content_manifest::FileMapping {
+                    filename: "data.bin".into(),
+                    size: 3,
+                    chunks: vec![ChunkData {
+                        offset: 0,
+                        cb_original: 3,
+                        crc: depot_adler_hash(b"abc"),
+                        ..Default::default()
+                    }],
+                    ..Default::default()
+                },
+                crate::store_dl::steam::content_manifest::FileMapping {
+                    filename: "blob.bin".into(),
+                    size: 4,
+                    chunks: Vec::new(),
+                    ..Default::default()
+                },
+            ],
+            signature: Vec::new(),
+        };
+        let base = dir.to_str().unwrap();
+        let plan = plan_depot_write(&manifest, &[1u8; 32], 4, base, 4).unwrap();
+        let files = DepotFiles::prepare(&manifest, &plan, base);
+        assert!(
+            files.needs_verify(0) && files.needs_verify(1),
+            "both files have bytes on disk"
+        );
+        assert_eq!(
+            verify_file_total(&manifest, &files),
+            1,
+            "only a candidate with chunk jobs can be reported by a writer"
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn rejects_paths_that_escape_target() {
         assert!(path_is_safe("a/b/file.txt"));
         assert!(path_is_safe("./a/file.txt"));
@@ -3510,7 +3982,8 @@ mod tests {
             }],
             signature: Vec::new(),
         };
-        let files = DepotFiles::prepare(&manifest, dir.to_str().unwrap());
+        let plan = plan_depot_write(&manifest, &[1u8; 32], 4, dir.to_str().unwrap(), 4).unwrap();
+        let files = DepotFiles::prepare(&manifest, &plan, dir.to_str().unwrap());
         assert_eq!(files.already_present_bytes, 0);
         let handle = files.acquire(0).unwrap();
         // NO file allocation: the file expands only as real bytes are appended (no zero-fill).
@@ -3699,7 +4172,8 @@ mod tests {
             }],
             signature: Vec::new(),
         };
-        let files = DepotFiles::prepare(&manifest, dir.to_str().unwrap());
+        let plan = plan_depot_write(&manifest, &[1u8; 32], 4, dir.to_str().unwrap(), 4).unwrap();
+        let files = DepotFiles::prepare(&manifest, &plan, dir.to_str().unwrap());
         let handle = files.acquire(0).expect("acquire");
         let mut writer = OrderedWriter::default();
         let cursors = vec![AtomicU64::new(0)];
@@ -3770,7 +4244,8 @@ mod tests {
             }],
             signature: Vec::new(),
         };
-        let files = DepotFiles::prepare(&manifest, dir.to_str().unwrap());
+        let plan = plan_depot_write(&manifest, &[1u8; 32], 4, dir.to_str().unwrap(), 4).unwrap();
+        let files = DepotFiles::prepare(&manifest, &plan, dir.to_str().unwrap());
         let mut writer = OrderedWriter::default();
         writer.cursor = 2;
         writer.pending.insert(
@@ -3916,6 +4391,41 @@ mod tests {
         // All three chunks were verified on disk, none fetched.
         assert_eq!(verified.load(Ordering::Relaxed), 3);
         assert_eq!(fs::metadata(dir.join("data.bin")).unwrap().len(), 9);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn empty_file_in_a_folder_without_other_files_gets_its_folder() {
+        let dir = temp_dir("empty_file_parent");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("data.bin"), b"abcdefghi").unwrap();
+        let mut manifest = three_chunk_manifest();
+        manifest.files.push(crate::store_dl::steam::content_manifest::FileMapping {
+            filename: "cfg/deckard/dummy.json".into(),
+            size: 0,
+            ..Default::default()
+        });
+        let server = CContentServerDirectoryServerInfo {
+            host: "cdn.example".into(),
+            https_support: "mandatory".into(),
+            ..Default::default()
+        };
+
+        let result = write_depot_sequential(
+            &manifest,
+            &[3u8; 32],
+            &CdnClient::new(""),
+            &[server],
+            dir.to_str().unwrap(),
+            DepotWriteOptions {
+                max_workers: 4,
+                max_process_workers: 2,
+                ..Default::default()
+            },
+        );
+
+        assert!(result.ok(), "{}", result.error);
+        assert_eq!(fs::metadata(dir.join("cfg/deckard/dummy.json")).unwrap().len(), 0);
         let _ = fs::remove_dir_all(&dir);
     }
 
@@ -4326,6 +4836,71 @@ mod tests {
             w.record_err(storm_at, FetchFailKind::Timeout);
         }
         assert!(w.current < 16, "error shrink is not floored, got {}", w.current);
+    }
+
+    #[test]
+    fn queue_delay_over_target_shrinks_proportionally_and_vetoes_growth() {
+        let t = Instant::now();
+        let q = Arc::new(QueueDelay::new());
+        q.publish(2.0 * TARGET_QUEUE_MS, 30.0); // off = -1 → window × (1 − GAIN)
+        let mut w = AdaptiveWindow::new(64, 2, 256, t).with_queue_delay(Arc::clone(&q));
+        let before = w.current;
+        w.maybe_probe(t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS + 10), 1_000_000);
+        assert_eq!(w.last_reason, WindowReason::ShrinkQueueDelay);
+        let expect = ((before as f64) * (1.0 - QUEUE_GAIN)).floor() as usize;
+        assert_eq!(w.current, expect, "proportional LEDBAT decrease");
+        assert!(w.cooldown_until.is_some(), "the cooldown gives the queue time to drain");
+        assert!(!w.slow_start);
+        assert_eq!(w.last_queue, Some((2.0 * TARGET_QUEUE_MS, 30.0)));
+        // While the queue stays over target and the cooldown runs: no growth, no double-shrink.
+        w.maybe_probe(t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS * 2 + 10), 2_000_000);
+        assert_eq!(w.current, expect);
+        assert_eq!(w.last_reason, WindowReason::HoldCooldown);
+    }
+
+    #[test]
+    fn queue_delay_under_target_keeps_the_classic_growth_path() {
+        let t = Instant::now();
+        let q = Arc::new(QueueDelay::new());
+        q.publish(10.0, 30.0); // queue well under target
+        let mut w = AdaptiveWindow::new(8, 2, 256, t).with_queue_delay(q);
+        w.maybe_probe(t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS + 10), 20_000_000);
+        assert!(w.current > 8, "healthy queue: slow-start still doubles");
+        assert_eq!(w.last_reason, WindowReason::GrowSlowStart);
+    }
+
+    #[test]
+    fn queue_delay_shrink_floors_at_min_then_holds() {
+        let t = Instant::now();
+        let q = Arc::new(QueueDelay::new());
+        q.publish(10.0 * TARGET_QUEUE_MS, 30.0); // a queue we did not build
+        let mut w = AdaptiveWindow::new(2, 2, 256, t).with_queue_delay(q);
+        w.maybe_probe(t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS + 10), 1_000_000);
+        assert_eq!(w.current, 2, "already at min: nothing left to yield");
+        assert_eq!(w.last_reason, WindowReason::HoldQueueDelay);
+    }
+
+    #[test]
+    fn no_queue_sample_falls_back_to_the_latency_congestion_path() {
+        // Without a prober sample the classic 5x-latency + throughput-confirm shrink must still
+        // fire (prober warm-up, or every CDN host unreachable).
+        let t = Instant::now();
+        let q = Arc::new(QueueDelay::new()); // never published → sample() is None
+        let mut w = AdaptiveWindow::new(8, 2, 256, t)
+            .with_congestion_floor(16)
+            .with_queue_delay(q);
+        for i in 1..=2u64 {
+            for _ in 0..40 {
+                w.record_ok(20.0);
+            }
+            w.maybe_probe(t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS * i + 10), 20_000_000 * i);
+        }
+        for _ in 0..40 {
+            w.record_ok(200.0);
+        }
+        w.maybe_probe(t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS * 3 + 10), 45_000_000);
+        assert_eq!(w.last_reason, WindowReason::ShrinkCongestion);
+        // …and once the prober DOES deliver, an over-target queue supersedes the latency path.
     }
 
     #[test]

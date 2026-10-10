@@ -941,7 +941,10 @@ class GOGDownloadManager @Inject constructor(
 
         for (product in orderedProducts) {
             val manifests = rawDepotJsonByProduct.getValue(product).toTypedArray()
-            var cdnBase = productUrlMap.getValue(product).first()
+            // All ranked mirrors, best first: the engine fetches every chunk with one
+            // candidate URL per mirror, so the fetch core spreads load across hosts and
+            // prefers the faster one (a HEAD-probe winner alone can be the slow CDN).
+            var cdnBases = productUrlMap.getValue(product)
             var refreshesLeft = 3
 
             while (true) {
@@ -1007,9 +1010,12 @@ class GOGDownloadManager @Inject constructor(
                         }
                     }
 
-                    override fun onLog(line: String) {
-                        if (GameDownloadService.SHOW_PIPELINE_LOGS) Timber.tag("GOG").d(line)
-                    }
+                    // Intentionally empty: the engine already wrote this line to logcat itself
+                    // (native tag GN_GOG_DL, gated by SHOW_PIPELINE_LOGS), so forwarding it to
+                    // Timber here would put every pipeline line into the same pid's log twice —
+                    // and both copies into the logcat-based captures (Save logcat / crash report
+                    // / support bundle). One emitter per line; the native one owns logcat.
+                    override fun onLog(line: String) {}
 
                     override fun onComplete(
                         success: Boolean,
@@ -1027,7 +1033,7 @@ class GOGDownloadManager @Inject constructor(
                 val handle = GameDownloadService.downloadGogChunks(
                     kind = NativeGogDownload.KIND_GEN2_CHUNKS,
                     depotManifests = manifests,
-                    cdnBase = cdnBase,
+                    cdnBases = cdnBases.toTypedArray(),
                     installDir = installDir.absolutePath,
                     skipPaths = donePaths.toTypedArray(),
                     // Adaptive-window ceiling (ramps up only while the link delivers).
@@ -1069,8 +1075,8 @@ class GOGDownloadManager @Inject constructor(
                             linksResult.exceptionOrNull() ?: Exception("Failed to refresh secure link"),
                         )
                     }
-                    cdnBase = CdnRankingUtils.rankBaseUrlsByHeadProbe(urls, Net.http, "GOG Galaxy").first()
-                    productUrlMap[product] = listOf(cdnBase)
+                    cdnBases = CdnRankingUtils.rankBaseUrlsByHeadProbe(urls, Net.http, "GOG Galaxy")
+                    productUrlMap[product] = cdnBases
                     continue
                 }
                 return@withContext Result.failure(

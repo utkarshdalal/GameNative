@@ -5,6 +5,34 @@ import org.junit.Test
 
 class LibrarySortUtilsTest {
 
+    @Test fun everyCategoryAndInstalledGroupIsAlphabetical() {
+        data class Game(val name: String, val installed: Boolean, val verdict: app.gamenative.data.CommunityCompatibilityVerdict?)
+        val categories = app.gamenative.data.CommunityCompatibilityVerdict.entries.sortedBy { it.sortPriority }
+        val games = categories.flatMap { listOf(Game("z $it", false, it), Game("a $it", false, it)) } +
+            listOf(
+                Game("z installed", true, categories.first()), Game("a installed", true, categories.last()),
+                Game("Unavailable", false, null),
+            )
+        val sorted = games.reversed().sortedWith(
+            LibrarySortUtils.compatibilityComparator(
+                name = Game::name,
+                isInstalled = Game::installed,
+                summary = { game ->
+                    game.verdict?.let {
+                        app.gamenative.data.CommunityCompatibilitySummary(
+                            it, app.gamenative.data.CommunityEvidenceTier.SAME_GPU, verdictLoaded = true,
+                            sessionCount = if (game.name.startsWith("z")) 1000 else 1,
+                        )
+                    }
+                },
+            ),
+        )
+        assertEquals(
+            listOf("a installed", "z installed") + categories.flatMap { listOf("a $it", "z $it") } + "Unavailable",
+            sorted.map { it.name },
+        )
+    }
+
     private data class Entry(
         val name: String,
         val isInstalled: Boolean,

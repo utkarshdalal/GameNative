@@ -349,6 +349,9 @@ bool XrImmersiveSession::setupInstanceAndSession() {
     const char *picoControllerExtension = "XR_BD_controller_interaction";
     const bool picoControllerExtensionAvailable = IsInstanceExtensionSupported(picoControllerExtension);
     if (picoControllerExtensionAvailable) extensions.push_back(picoControllerExtension);
+    const char *picoUltraControllerExtension = "XR_BD_ultra_controller_interaction";
+    const bool picoUltraControllerExtensionAvailable = IsInstanceExtensionSupported(picoUltraControllerExtension);
+    if (picoUltraControllerExtensionAvailable) extensions.push_back(picoUltraControllerExtension);
 
     XrInstanceCreateInfoAndroidKHR androidInfo{XR_TYPE_INSTANCE_CREATE_INFO_ANDROID_KHR};
     androidInfo.applicationVM = vm_;
@@ -417,8 +420,19 @@ bool XrImmersiveSession::setupInstanceAndSession() {
         return false;
     }
 
-    const EGLint contextAttribs[] = {EGL_CONTEXT_CLIENT_VERSION, 3, EGL_NONE};
+    const char *eglExtensions = eglQueryString(eglDisplay_, EGL_EXTENSIONS);
+    const bool hasPriority = eglExtensions && strstr(eglExtensions, "EGL_IMG_context_priority");
+    const EGLint contextAttribs[] = {
+        EGL_CONTEXT_CLIENT_VERSION, 3,
+        hasPriority ? EGL_CONTEXT_PRIORITY_LEVEL_IMG : EGL_NONE, EGL_CONTEXT_PRIORITY_HIGH_IMG,
+        EGL_NONE,
+    };
     eglContext_ = eglCreateContext(eglDisplay_, eglConfig_, EGL_NO_CONTEXT, contextAttribs);
+    if (hasPriority) {
+        EGLint priority = 0;
+        eglQueryContext(eglDisplay_, eglContext_, EGL_CONTEXT_PRIORITY_LEVEL_IMG, &priority);
+        LOGI("Compositor EGL context priority 0x%x", priority);
+    }
 
     const EGLint pbufferAttribs[] = {EGL_WIDTH, 16, EGL_HEIGHT, 16, EGL_NONE};
     eglPbufferSurface_ = eglCreatePbufferSurface(eglDisplay_, eglConfig_, pbufferAttribs);
@@ -734,6 +748,10 @@ bool XrImmersiveSession::setupInstanceAndSession() {
         suggestBindings("/interaction_profiles/pico/neo3_controller", picoLegacyBindings);
         suggestBindings("/interaction_profiles/bytedance/pico_neo3_controller", bindings);
         suggestBindings("/interaction_profiles/bytedance/pico4_controller", bindings);
+        suggestBindings("/interaction_profiles/bytedance/pico4s_controller", bindings);
+    }
+    if (picoUltraControllerExtensionAvailable) {
+        suggestBindings("/interaction_profiles/bytedance/pico_ultra_controller_bd", bindings);
     }
 
     XrSessionActionSetsAttachInfo attachInfo{XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO};
@@ -981,6 +999,9 @@ void XrImmersiveSession::uploadPendingGameFrameLocked() {
 
     glBindTexture(GL_TEXTURE_2D, gameTexture_);
     if (pendingFrameWidth_ != gameTextureWidth_ || pendingFrameHeight_ != gameTextureHeight_) {
+        // Deliberately plain GL_RGBA: kQuadFragmentShader / kDirectQuadFragmentShader already
+        // linearize this sRGB-encoded capture themselves (uLinearizeSrc), so tagging it sRGB here
+        // would decode it twice and darken the flat screen.
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, pendingFrameWidth_, pendingFrameHeight_, 0,
                      GL_RGBA, GL_UNSIGNED_BYTE, pendingFramePixels_.data());
         gameTextureWidth_ = pendingFrameWidth_;
@@ -1114,12 +1135,16 @@ bool XrImmersiveSession::submitWindowsProjection(XrTime predictedDisplayTime) {
     XrCompositionLayerPassthroughFB passthroughLayer{XR_TYPE_COMPOSITION_LAYER_PASSTHROUGH_FB};
     passthroughLayer.space = XR_NULL_HANDLE;
     passthroughLayer.layerHandle = passthroughLayer_;
-    std::array<const XrCompositionLayerBaseHeader *, 3> layers{};
+    XrCompositionLayerQuad gameOverlay{XR_TYPE_COMPOSITION_LAYER_QUAD};
+    const bool gameOverlayRendered =
+        windowsProjection_.renderQuad(windowsTransport_, windowsTrackingSpace_, &gameOverlay);
+    std::array<const XrCompositionLayerBaseHeader *, 4> layers{};
     uint32_t layerCount = 0;
     if (passthroughActive_ && passthroughLayer_ != XR_NULL_HANDLE) {
         layers[layerCount++] = reinterpret_cast<const XrCompositionLayerBaseHeader *>(&passthroughLayer);
     }
     layers[layerCount++] = reinterpret_cast<const XrCompositionLayerBaseHeader *>(&projection);
+    if (gameOverlayRendered) layers[layerCount++] = reinterpret_cast<const XrCompositionLayerBaseHeader *>(&gameOverlay);
     if (overlayRendered) layers[layerCount++] = reinterpret_cast<const XrCompositionLayerBaseHeader *>(&overlay);
     XrFrameEndInfo endInfo{XR_TYPE_FRAME_END_INFO};
     endInfo.displayTime = predictedDisplayTime;

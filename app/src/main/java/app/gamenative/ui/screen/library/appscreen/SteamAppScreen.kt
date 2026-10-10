@@ -51,6 +51,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.PreferredCopyOption
 import app.gamenative.enums.LoginResult
+import app.gamenative.data.StoreGameDetails
 import app.gamenative.enums.Marker
 import app.gamenative.enums.PathType
 import app.gamenative.enums.SyncResult
@@ -75,6 +76,7 @@ import app.gamenative.workshop.WorkshopManager
 import app.gamenative.NetworkMonitor
 import app.gamenative.service.SteamService.Companion.getInstalledApp
 import com.google.android.play.core.splitcompat.SplitCompat
+import app.gamenative.utils.ConversionTracker
 import com.posthog.PostHog
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
@@ -397,11 +399,6 @@ class SteamAppScreen : BaseAppScreen() {
             }
         }
 
-        val (compatibilityMessage, compatibilityColor) = rememberCompatibilityInfo(
-            context = context,
-            gameName = appInfo.name,
-        )
-
         // Read companion Snapshot map so status recomposes when the change-copy dialog updates it.
         val preferredCopyUi = preferredCopyUiByAppId[gameId]
         // familyGroupId flips early on LoggedOn; dataVersion bumps after shared-library refresh.
@@ -445,13 +442,14 @@ class SteamAppScreen : BaseAppScreen() {
             sizeFromStore = sizeFromStore,
             lastPlayedText = lastPlayedText,
             playtimeText = playtimeText,
-            compatibilityMessage = compatibilityMessage,
-            compatibilityColor = compatibilityColor,
             preferredCopyStatusText = preferredCopyUi?.statusText,
             showChangePreferredCopy = preferredCopyUi?.showChange == true,
             onChangePreferredCopy = { showPreferredCopyDialog(gameId) },
             isLoadingPreferredCopy = preferredCopyUi?.isLoading == true ||
                 (preferredCopyUi == null && familyGroupId != 0L),
+            storeDetails = StoreGameDetails(
+                reviewPercentage = appInfo.reviewPercentage.toInt().takeIf { it in 1..100 },
+            ),
         )
     }
 
@@ -1238,7 +1236,8 @@ class SteamAppScreen : BaseAppScreen() {
                     {
                         PostHog.capture(
                             event = "game_install_started",
-                            properties = mapOf("game_name" to (appInfo?.name ?: "")),
+                            properties = mapOf("game_name" to (appInfo?.name ?: "")) +
+                                ConversionTracker.campaignAttribution(gameId),
                         )
                         hideInstallDialog(gameId)
                         CoroutineScope(Dispatchers.IO).launch {
@@ -1490,7 +1489,8 @@ class SteamAppScreen : BaseAppScreen() {
 
                     PostHog.capture(
                         event = "game_install_started",
-                        properties = mapOf("game_name" to (appInfo?.name ?: ""))
+                        properties = mapOf("game_name" to (appInfo?.name ?: "")) +
+                            ConversionTracker.campaignAttribution(gameId),
                     )
                     CoroutineScope(Dispatchers.IO).launch {
                         SteamService.downloadApp(gameId, dlcAppIds, branch = branch, isUpdateOrVerify = false)

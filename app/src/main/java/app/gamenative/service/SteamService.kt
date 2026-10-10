@@ -14,6 +14,7 @@ import app.gamenative.ui.data.Achievement
 import app.gamenative.ui.util.GameInviteNotificationManager
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.service.callback.GameInviteCallback
+import app.gamenative.service.cloud.CloseSyncTracker
 import app.gamenative.service.handler.GameInviteHandler
 import androidx.room.withTransaction
 import app.gamenative.BuildConfig
@@ -32,6 +33,7 @@ import app.gamenative.data.LaunchInfo
 import app.gamenative.data.OwnedGames
 import app.gamenative.data.PostSyncInfo
 import app.gamenative.data.PreferredCopyOption
+import app.gamenative.data.SteamAgreementState
 import app.gamenative.data.SteamApp
 import app.gamenative.data.SteamControllerConfigDetail
 import app.gamenative.data.SteamFriend
@@ -83,10 +85,12 @@ import `in`.dragonbra.javasteam.networking.steam3.ProtocolTypes
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesClientObjects.ECloudPendingRemoteOperation
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesCloudconfigstoreSteamclient
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesFamilygroupsSteamclient
+import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesPlayerSteamclient
 import app.gamenative.data.SteamCollectionRepository
 import app.gamenative.steam.CloudConfigStoreService
 import app.gamenative.steam.SteamCollectionParser
 import `in`.dragonbra.javasteam.rpc.service.FamilyGroups
+import `in`.dragonbra.javasteam.rpc.service.Player
 import `in`.dragonbra.javasteam.steam.authentication.AuthPollResult
 import `in`.dragonbra.javasteam.steam.authentication.AuthSessionDetails
 import `in`.dragonbra.javasteam.steam.authentication.AuthenticationException
@@ -139,6 +143,7 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.Collections
 import java.util.EnumSet
+import java.util.Locale
 import java.util.concurrent.CancellationException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
@@ -155,6 +160,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.BufferOverflow
 import okio.Path.Companion.toPath
@@ -174,7 +180,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import timber.log.Timber
 import app.gamenative.data.DownloadingAppInfo
@@ -269,6 +274,7 @@ class SteamService : Service(), IChallengeUrlChanged {
     private var _steamCloud: SteamCloud? = null
     private var _steamUserStats: SteamUserStats? = null
     private var _steamFamilyGroups: FamilyGroups? = null
+    private var _steamPlayer: Player? = null
 
     private var _loginResult: LoginResult = LoginResult.Failed
 
@@ -1123,6 +1129,63 @@ class SteamService : Service(), IChallengeUrlChanged {
             true
         }
 
+        suspend fun getSteamAgreementState(): SteamAgreementState? = withContext(Dispatchers.IO) {
+            if (!isLoggedIn) return@withContext null
+            val player = instance?._steamPlayer ?: return@withContext null
+            try {
+                withTimeout(15_000) {
+                    val request = SteammessagesPlayerSteamclient.CPlayer_GetTimeSSAAccepted_Request.newBuilder().build()
+                    val response = player.getTimeSSAAccepted(request).await()
+                    if (response.result != EResult.OK) {
+                        Timber.w("getTimeSSAAccepted returned ${response.result}")
+                        return@withTimeout null
+                    }
+                    val body = response.body
+                    val state = SteamAgreementState(
+                        timeAccepted = body.timeSsaAccepted.toUInt().toLong(),
+                        timeUpdated = body.timeSsaUpdated.toUInt().toLong(),
+                    )
+                    Timber.i(
+                        "SSA state: timeSsaAccepted=${state.timeAccepted} timeSsaUpdated=${state.timeUpdated} " +
+                            "needsAcceptance=${state.needsAcceptance}",
+                    )
+                    state
+                }
+            } catch (e: TimeoutCancellationException) {
+                Timber.w("getTimeSSAAccepted timed out")
+                null
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.e(e, "getTimeSSAAccepted failed")
+                null
+            }
+        }
+
+        suspend fun acceptSteamAgreement(): Boolean = withContext(Dispatchers.IO) {
+            if (!isLoggedIn) return@withContext false
+            val player = instance?._steamPlayer ?: return@withContext false
+            try {
+                withTimeout(15_000) {
+                    val request = SteammessagesPlayerSteamclient.CPlayer_AcceptSSA_Request.newBuilder().apply {
+                        agreementType = SteammessagesPlayerSteamclient.EAgreementType.k_EAgreementType_GlobalSSA
+                        timeSignedUtc = (System.currentTimeMillis() / 1000L).toInt()
+                    }.build()
+                    val response = player.acceptSSA(request).await()
+                    Timber.i("acceptSSA returned ${response.result}")
+                    response.result == EResult.OK
+                }
+            } catch (e: TimeoutCancellationException) {
+                Timber.w("acceptSSA timed out")
+                false
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.e(e, "acceptSSA failed")
+                false
+            }
+        }
+
         private fun findLicenseForLender(
             licensesForApp: List<SteamLicense>,
             lenderAccountId: Int,
@@ -1468,10 +1531,17 @@ class SteamService : Service(), IChallengeUrlChanged {
                     return@runCatching 0
                 }
 
+                val accessTokens = runCatching {
+                    service._steamApps
+                        ?.picsGetAccessTokens(appIds = missingAppIds.toList(), packageIds = emptyList())
+                        ?.await()
+                        ?.appTokens
+                }.getOrNull() ?: emptyMap()
+
                 missingAppIds
                     .chunked(MAX_PICS_BUFFER)
                     .forEach { chunk ->
-                        val requests = chunk.map { PICSRequest(id = it) }
+                        val requests = chunk.map { PICSRequest(id = it, accessToken = accessTokens[it] ?: 0L) }
                         service.appPicsChannel.send(requests)
                     }
 
@@ -1612,7 +1682,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             val appInfo = getAppInfoOf(appId) ?: return emptyMap()
             val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
             val hasSteamUnlockedBranch = runBlocking { getSteamUnlockedBranches(appId).isNotEmpty() }
-            val licensedDepots = getLicensedDepotIds(appId).orEmpty().toMutableSet()
+            val licensedDepots = getLicensedDepotIds(appId)?.toMutableSet()
 
             // Use the dlcAppID of the ownedDlc, to find the licensed depotIds from steam_license
             val mainPackageDepotIds = getPkgInfoOf(appId)?.depotIds.orEmpty().toSet()
@@ -1621,7 +1691,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 val dlcDepotIds = getPkgInfoOf(dlcAppId)?.depotIds.orEmpty()
 
                 // Make sure licensedDepots contains the dlc depots
-                licensedDepots.addAll(dlcDepotIds)
+                licensedDepots?.addAll(dlcDepotIds)
 
                 if (mainPackageDepotIds.isEmpty()) return@forEach
 
@@ -1665,7 +1735,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             val appInfo = getAppInfoOf(appId) ?: return emptyMap()
             val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
             val hasSteamUnlockedBranch = runBlocking { getSteamUnlockedBranches(appId).isNotEmpty() }
-            val licensedDepots = getLicensedDepotIds(appId).orEmpty().toMutableSet()
+            val licensedDepots = getLicensedDepotIds(appId)
 
             val map = getMainAppDepots(appId, preferredLanguage).toMutableMap()
 
@@ -1987,6 +2057,8 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
 
         suspend fun deleteApp(appId: Int): Boolean = withContext(Dispatchers.IO) {
+            // the close-time cloud sync uploads out of this install dir; deleting mid-upload leaves it half sent.
+            CloseSyncTracker.awaitIdle(CloseSyncTracker.keyOf(GameSource.STEAM, appId))
             // snapshot path before marker removal (removing the marker changes resolution)
             val appInfo = getInstalledApp(appId)
             val result = if (appInfo?.isImported == true) {
@@ -2292,25 +2364,51 @@ class SteamService : Service(), IChallengeUrlChanged {
             return FileUtils.findFileCaseInsensitive(File(appDirPath), manifestPath)
         }
 
+        /** True when the game ships its own Steam Input action manifest, i.e. it hands input to Steam Input. */
+        fun hasOwnSteamInputManifest(appId: Int): Boolean {
+            val config = getAppInfoOf(appId)?.config ?: return false
+            if (config.steamControllerTemplateIndex != 13) return false
+            return resolveSteamInputManifestFile(appId, getAppDirPath(appId)) != null
+        }
+
+        /** True when the game's own manifest carries a layout for the pad types we can present. */
+        fun hasCompatibleSteamInputManifest(appId: Int, headless: Boolean): Boolean {
+            if (!hasOwnSteamInputManifest(appId)) return false
+            val manifestFile = resolveSteamInputManifestFile(appId, getAppDirPath(appId)) ?: return false
+            val types = if (headless) HOST_CONTROLLER_TYPES else PREFERRED_CONTROLLER_TYPES
+            return !loadConfigFromManifest(manifestFile, types).isNullOrBlank()
+        }
+
+        /** Layout the headless client activates for the pad, which identifies as an Xbox 360 controller. */
+        fun resolveSteamHostControllerVdfText(appId: Int): String? {
+            if (hasOwnSteamInputManifest(appId)) {
+                val manifestFile = resolveSteamInputManifestFile(appId, getAppDirPath(appId)) ?: return null
+                return loadConfigFromManifest(manifestFile, HOST_CONTROLLER_TYPES)
+            }
+            return resolveSteamControllerVdfText(appId)
+        }
+
         private fun loadConfigFromManifest(
             manifestFile: File,
+            controllerTypes: List<String> = PREFERRED_CONTROLLER_TYPES,
         ): String? {
             if (!manifestFile.exists()) return null
             val manifestDirPath = manifestFile.parentFile?.path ?: return null
 
             val manifestText = manifestFile.readText(Charsets.UTF_8)
             val configText = try {
-                parseManifestForConfig(manifestDirPath, manifestText)
+                parseManifestForConfig(manifestDirPath, manifestText, controllerTypes)
             } catch (e: Exception) {
                 Timber.e(e, "Failed to parse Steam Input manifest config at ${manifestFile.path}")
                 return null
             }
-            return configText ?: manifestText
+            return configText
         }
 
         private fun parseManifestForConfig(
             manifestDirPath: String,
             manifestText: String,
+            controllerTypes: List<String> = PREFERRED_CONTROLLER_TYPES,
         ): String? {
             return try {
                 val kv = KeyValue.loadFromString(manifestText) ?: return null
@@ -2320,16 +2418,16 @@ class SteamService : Service(), IChallengeUrlChanged {
                     kv["Action Manifest"]
                 }
                 if (actionManifest === KeyValue.INVALID) {
-                    return findSiblingControllerConfig(manifestDirPath)
+                    return findSiblingControllerConfig(manifestDirPath, controllerTypes)
                 }
 
                 val configs = actionManifest["configurations"]
                 if (configs === KeyValue.INVALID || configs.children.isEmpty()) {
-                    return findSiblingControllerConfig(manifestDirPath)
+                    return findSiblingControllerConfig(manifestDirPath, controllerTypes)
                         ?: throw IllegalStateException("No configurations found in Action Manifest")
                 }
 
-                for (controllerType in PREFERRED_CONTROLLER_TYPES) {
+                for (controllerType in controllerTypes) {
                     val controllerBlock = configs[controllerType]
                     if (controllerBlock === KeyValue.INVALID) continue
 
@@ -2344,7 +2442,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     }
                 }
 
-                findSiblingControllerConfig(manifestDirPath)
+                findSiblingControllerConfig(manifestDirPath, controllerTypes)
                     ?: throw IllegalStateException("No valid controller configuration found in Action Manifest")
             } catch (e: Exception) {
                 Timber.e(e, "Failed to parse Steam Input manifest config")
@@ -2359,8 +2457,14 @@ class SteamService : Service(), IChallengeUrlChanged {
             "controller_xbox360",
         )
 
-        private fun findSiblingControllerConfig(manifestDirPath: String): String? {
-            for (controllerType in PREFERRED_CONTROLLER_TYPES) {
+        private val HOST_CONTROLLER_TYPES = listOf(
+            "controller_xbox360",
+            "controller_xboxone",
+            "controller_generic",
+        )
+
+        private fun findSiblingControllerConfig(manifestDirPath: String, controllerTypes: List<String> = PREFERRED_CONTROLLER_TYPES): String? {
+            for (controllerType in controllerTypes) {
                 val configFile = FileUtils.findFileCaseInsensitive(File(manifestDirPath), "$controllerType.vdf")
                     ?: continue
                 return configFile.readText(Charsets.UTF_8)
@@ -3569,42 +3673,36 @@ class SteamService : Service(), IChallengeUrlChanged {
             appId: Int,
             branch: String = "public",
         ): Boolean = withContext(Dispatchers.IO) {
-            // Don't try if there's no internet
-            if (!isConnected) return@withContext false
-
-            val steamApps = instance?._steamApps ?: return@withContext false
-
-            // ── 1. Fetch the latest app header from Steam (PICS).
-            val pics = try {
-                steamApps.picsGetProductInfo(
-                    apps = listOf(PICSRequest(id = appId)),
-                    packages = emptyList(),
-                ).await()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Timber.w(e, "isUpdatePending: PICS request failed for appId=$appId")
-                return@withContext false
-            }
-
-            val remoteAppInfo = pics.results
-                .firstOrNull()
-                ?.apps
-                ?.values
-                ?.firstOrNull()
-                ?: return@withContext false // nothing returned ⇒ treat as up-to-date
-
-            val remoteSteamApp = remoteAppInfo.keyValues.generateSteamApp()
-            val localSteamApp = getAppInfoOf(appId) ?: return@withContext true // not cached yet
-
-            // ── 2. Compare manifest IDs of the depots we actually install.
+            val appInfo = getAppInfoOf(appId) ?: return@withContext false
+            val installed = installedManifestIds(appId)
+            if (installed.isEmpty()) return@withContext false
             getDownloadableDepots(appId).keys.any { depotId ->
-                val remoteManifest = remoteSteamApp.depots[depotId]?.manifests?.get(branch)
-                val localManifest = localSteamApp.depots[depotId]?.manifests?.get(branch)
-                // If remote manifest is null, skip this depot (hack for Castle Crashers)
-                if (remoteManifest == null) return@any false
-                remoteManifest?.gid != localManifest?.gid
+                val current = appInfo.depots[depotId]?.manifests?.get(branch)?.gid ?: return@any false
+                val onDisk = installed[depotId] ?: return@any false
+                current.toULong() != onDisk
             }
+        }
+
+        private fun installedManifestIds(appId: Int): Map<Int, ULong> {
+            val cacheDir = File(getAppDirPath(appId), ".DepotDownloader")
+            val ids = mutableMapOf<Int, ULong>()
+            runCatching { File(cacheDir, "depot.config").readText() }.getOrNull()?.let { text ->
+                val block = text.substringAfter("\"installedManifestIDs\"", "").substringAfter('{', "").substringBefore('}')
+                Regex("\"(\\d+)\"\\s*:\\s*(\\d+)").findAll(block).forEach { match ->
+                    val depotId = match.groupValues[1].toIntOrNull() ?: return@forEach
+                    val gid = match.groupValues[2].toULongOrNull() ?: return@forEach
+                    ids[depotId] = gid
+                }
+            }
+            if (ids.isEmpty()) {
+                cacheDir.listFiles()?.forEach { file ->
+                    val match = Regex("""^(\d+)_(\d+)\.manifest$""").matchEntire(file.name) ?: return@forEach
+                    val depotId = match.groupValues[1].toIntOrNull() ?: return@forEach
+                    val gid = match.groupValues[2].toULongOrNull() ?: return@forEach
+                    ids[depotId] = gid
+                }
+            }
+            return ids
         }
 
         suspend fun checkPrivateBranchPassword(appId: Int, password: String): Map<String, ByteArray> =
@@ -4171,6 +4269,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             _unifiedFriends = SteamUnifiedFriends(this)
             _steamFamilyGroups = steamClient!!.getHandler<SteamUnifiedMessages>()!!.createService<FamilyGroups>()
+            _steamPlayer = steamClient!!.getHandler<SteamUnifiedMessages>()!!.createService<Player>()
 
             // subscribe to the callbacks we are interested in
             with(callbackSubscriptions) {
@@ -4498,6 +4597,10 @@ class SteamService : Service(), IChallengeUrlChanged {
                 // servers from the Steam Directory.
                 if (!PrefManager.cellIdManuallySet) {
                     PrefManager.cellId = callback.cellID
+                }
+
+                callback.ipCountryCode?.takeIf { it.isNotBlank() }?.let {
+                    PrefManager.steamIpCountryCode = it.trim().uppercase(Locale.ROOT)
                 }
 
                 // retrieve persona data of logged in user

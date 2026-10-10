@@ -18,8 +18,9 @@ object RockstarLaunchSupport {
     fun clearPlacedTokens() {
         val installed = SteamService.getAllInstalledApps() ?: return
         for (app in installed) {
-            val gameDir = File(SteamService.getAppDirPath(app.id))
-            if (!gameDir.isDirectory || !isRockstarTitle(gameDir)) continue
+            val installDir = File(SteamService.getAppDirPath(app.id))
+            if (!isRockstarTitle(installDir)) continue
+            val gameDir = RockstarHelperArchive.titleDir(installDir)
             for (name in listOf(RockstarConstants.TOKEN_FILE, RockstarConstants.TOKEN_FILE + ".previous")) {
                 val file = File(gameDir, name)
                 if (file.exists() && file.delete()) Timber.i("Rockstar: removed %s from %s", name, gameDir.name)
@@ -33,7 +34,7 @@ object RockstarLaunchSupport {
      * that launch.
      */
     fun hasUsableToken(gameDir: File): Boolean = runCatching {
-        val f = File(gameDir, RockstarConstants.TOKEN_FILE)
+        val f = File(RockstarHelperArchive.titleDir(gameDir), RockstarConstants.TOKEN_FILE)
         f.exists() && RockstarConstants.TOKEN_SHAPE.matches(f.readText().trim())
     }.getOrDefault(false)
 
@@ -44,11 +45,12 @@ object RockstarLaunchSupport {
      * not yet confirmed, so a capture that looks right but is not would otherwise overwrite a
      * working token and leave the game unable to sign in with no way back.
      */
-    fun placeToken(context: Context, gameDir: File): Boolean {
+    fun placeToken(context: Context, installDir: File): Boolean {
         val creds = RockstarAuthManager.load(context) ?: run {
             Timber.w("Rockstar: no stored session, cannot place the token")
             return false
         }
+        val gameDir = RockstarHelperArchive.titleDir(installDir)
         val target = File(gameDir, RockstarConstants.TOKEN_FILE)
         return runCatching {
             if (target.exists()) {

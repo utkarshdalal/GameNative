@@ -1018,7 +1018,7 @@ int64_t VulkanRendererContext::enableXrTarget() {
     if (device==VK_NULL_HANDLE) return 0;
     // A surface resize may still be queued for the render loop; process it here so the
     // target is sized from the current swapchain extent, not the stale one.
-    if (fbResized.load()) {
+    if (fbResized.load() && !surfaceDetached.load(std::memory_order_acquire) && surface!=VK_NULL_HANDLE) {
         for (auto& f:inFlightFences) vk_.WaitForFences(device,1,&f,VK_TRUE,UINT64_MAX);
         cleanupSwapchain();
         try {

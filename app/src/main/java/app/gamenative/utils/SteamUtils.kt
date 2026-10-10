@@ -350,11 +350,12 @@ object SteamUtils {
         // Restore original steamclient.dll files if they exist
         restoreSteamclientFiles(context, steamAppId)
 
+        val container = ContainerUtils.getOrCreateContainer(context, appId)
+
         // Create Steam ACF manifest for real Steam compatibility
-        createAppManifest(context, steamAppId)
+        createAppManifest(context, steamAppId, container.language)
 
         // Game-specific Handling
-        val container = ContainerUtils.getOrCreateContainer(context, appId)
         ensureSaveLocationsForGames(context, steamAppId, container)
 
         // Generate achievements.json
@@ -754,7 +755,7 @@ object SteamUtils {
         return customExecutables(SteamService.getDownloadableDepots(steamAppId), installedBranch, downloaderCacheDir).isNotEmpty()
     }
 
-    private fun createAppManifest(context: Context, steamAppId: Int) {
+    private fun createAppManifest(context: Context, steamAppId: Int, language: String) {
         try {
             Timber.i("Attempting to createAppManifest for appId: $steamAppId")
             val appInfo = SteamService.getAppInfoOf(steamAppId)
@@ -859,8 +860,8 @@ object SteamUtils {
                     appendLine("\t}")
                 }
 
-                appendLine("\t\"UserConfig\" { \"language\" \"english\" }")
-                appendLine("\t\"MountedConfig\" { \"language\" \"english\" }")
+                appendLine("\t\"UserConfig\" { \"language\" \"${escapeString(language)}\" }")
+                appendLine("\t\"MountedConfig\" { \"language\" \"${escapeString(language)}\" }")
 
                 appendLine("}")
             }
@@ -957,11 +958,12 @@ object SteamUtils {
         // Update or modify localconfig.vdf
         val steam3AccountId = getSteam3AccountId()?.toString().orEmpty()
         updateOrModifyLocalConfig(imageFs, container, steamAppId.toString(), steam3AccountId)
+        writeSteamHostControllerLayout(imageFs, container, steamAppId)
 
         skipFirstTimeSteamSetup(imageFs.rootDir)
         val appDirPath = SteamService.getAppDirPath(steamAppId)
         if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_DLL_RESTORED)) {
-            createAppManifest(context, steamAppId)
+            createAppManifest(context, steamAppId, container.language)
             return
         }
         MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
@@ -982,7 +984,7 @@ object SteamUtils {
         restoreSteamclientFiles(context, steamAppId)
 
         // Create Steam ACF manifest for real Steam compatibility
-        createAppManifest(context, steamAppId)
+        createAppManifest(context, steamAppId, container.language)
 
         // Game-specific Handling
         ensureSaveLocationsForGames(context, steamAppId, container)
@@ -1245,7 +1247,7 @@ object SteamUtils {
                 ?: container.javaClass.getMethod("getLanguage").invoke(container) as? String)
                 ?: "english"
         }.getOrDefault("english").lowercase()
-        val useSteamInput = container.getExtra("useSteamInput", "false").toBoolean()
+        val useSteamInput = isSteamInputEnabled(container, steamAppId)
 
         // Get appInfo to check if saveFilePatterns exist (used for both user and app configs)
         val appInfo = getAppInfoOf(steamAppId)
@@ -1566,11 +1568,29 @@ object SteamUtils {
     }
 
     /**
+     * A game that ships its own Steam Input action manifest hands input to Steam Input, so it is driven
+     * only when that manifest has a layout for a pad type we can present, whatever the container switch
+     * says. Every other game follows the container switch.
+     */
+    fun isSteamInputEnabled(container: Container, appId: Int): Boolean =
+        if (SteamService.hasOwnSteamInputManifest(appId)) {
+            SteamService.hasCompatibleSteamInputManifest(appId, container.isLaunchHeadlessSteam)
+        } else {
+            container.getExtra("useSteamInput", "false").toBoolean()
+        }
+
+    /**
      * Per-app Steam Input preference the client reads from localconfig
-     * (UserLocalConfigStore/apps/<appid>/UseSteamControllerConfig): 2 = force on, 0 = global default.
+     * (UserLocalConfigStore/apps/<appid>/UseSteamControllerConfig): 2 = force on, 0 = global default;
+     * the SteamController_*Support keys at the root are the global opt-in the client checks first.
      */
     private fun setSteamInputPreference(root: KeyValue, appId: String, container: Container) {
-        val useSteamInput = container.getExtra("useSteamInput", "false").toBoolean()
+        val useSteamInput = isSteamInputEnabled(container, appId.toInt())
+        for (key in listOf("SteamController_XBoxSupport", "SteamController_GenericGamepadSupport")) {
+            val existing = root.children.firstOrNull { it.name == key }
+            val value = if (useSteamInput) "1" else "0"
+            if (existing != null) existing.value = value else root.children.add(KeyValue(key, value))
+        }
         var apps = root.children.firstOrNull { it.name == "apps" }
         if (apps == null) { apps = KeyValue("apps"); root.children.add(apps) }
         var app = apps.children.firstOrNull { it.name == appId }
@@ -1578,6 +1598,16 @@ object SteamUtils {
         val value = if (useSteamInput) "2" else "0"
         val key = app.children.firstOrNull { it.name == "UseSteamControllerConfig" }
         if (key != null) key.value = value else app.children.add(KeyValue("UseSteamControllerConfig", value))
+    }
+
+    /** The layout the headless host loads and activates for the game (Steam\steamhost_controller_<appid>.vdf). */
+    private fun writeSteamHostControllerLayout(imageFs: ImageFs, container: Container, appId: Int) {
+        val layoutFile = File(imageFs.wineprefix, "drive_c/Program Files (x86)/Steam/steamhost_controller_$appId.vdf")
+        if (!isSteamInputEnabled(container, appId)) { layoutFile.delete(); return }
+        val text = SteamService.resolveSteamHostControllerVdfText(appId)
+        if (text.isNullOrEmpty()) { Timber.w("No Steam Input layout available for $appId"); layoutFile.delete(); return }
+        layoutFile.parentFile?.mkdirs()
+        layoutFile.writeText(text, Charsets.UTF_8)
     }
 
     fun updateOrModifyLocalConfig(imageFs: ImageFs, container: Container, appId: String, steamUserId64: String) {

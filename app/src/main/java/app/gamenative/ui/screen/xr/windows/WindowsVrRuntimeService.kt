@@ -80,6 +80,7 @@ class WindowsVrRuntimeService(context: Context) : Closeable {
         env.put("GAMENATIVE_XR_TRANSPORT", active.transportEndpoint)
         env.put("GAMENATIVE_XR_RUNTIME_DIR", active.runtimeDirectory)
         env.put("GAMENATIVE_XR_UNIX_LOG", payload.prefixDirectory.resolve("unix.log").path)
+        env.put("MESA_VK_WSI_HEADLESS_SWAPCHAIN", "1")
         val overrides = env.get("WINEDLLOVERRIDES").split(';')
             .map(String::trim)
             .filter(String::isNotEmpty)

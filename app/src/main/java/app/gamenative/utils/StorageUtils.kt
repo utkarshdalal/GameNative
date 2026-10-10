@@ -9,6 +9,7 @@ import java.io.File
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.FileVisitResult
+import java.nio.file.LinkOption
 import java.nio.file.Paths
 import java.nio.file.SimpleFileVisitor
 import java.nio.file.StandardCopyOption
@@ -91,7 +92,9 @@ object StorageUtils {
             var bytes = 0L
             val tree = folder.walk()
             tree.forEach {
-                bytes += it.length()
+                if (!it.isFile || hardLinkCount(it.toPath()) <= 1) {
+                    bytes += it.length()
+                }
                 // allow interruption if run as coroutine
                 yield()
             }
@@ -99,6 +102,10 @@ object StorageUtils {
         }
         return 0L
     }
+
+    private fun hardLinkCount(path: Path): Int =
+        runCatching { (Files.getAttribute(path, "unix:nlink", LinkOption.NOFOLLOW_LINKS) as Number).toInt() }
+            .getOrDefault(1)
 
     fun formatBinarySize(bytes: Long, decimalPlaces: Int = 2): String {
         require(bytes > Long.MIN_VALUE) { "Out of range" }
@@ -170,6 +177,49 @@ object StorageUtils {
             Timber.w("Could not migrate $path; leaving in place")
             path
         }
+    }
+
+    /**
+     * Returns whether [appFilesDir] should be offered as a separate install target.
+     *
+     * Primary storage is not always backed by built-in storage. When Android migrates primary
+     * shared storage to adopted media, the SD-backed volume remains primary but has a non-default
+     * storage UUID.
+     */
+    fun isExternalInstallTarget(storageManager: StorageManager?, appFilesDir: File): Boolean {
+        val volume = storageManager?.getStorageVolume(appFilesDir)
+            ?: return runCatching { Environment.isExternalStorageRemovable(appFilesDir) }.getOrDefault(false)
+        if (!volume.isPrimary) return true
+
+        val resolvedStorageUuid = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            volume.storageUuid
+        } else {
+            try {
+                storageManager.getUuidForPath(appFilesDir)
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+        return isNonDefaultPrimaryStorage(
+            resolvedStorageUuid = resolvedStorageUuid,
+            legacyVolumeUuid = volume.uuid,
+            isPhysicalPrimary = volume.isRemovable && !volume.isEmulated,
+            allowLegacyUuidFallback = Build.VERSION.SDK_INT < Build.VERSION_CODES.S,
+            defaultStorageUuid = StorageManager.UUID_DEFAULT,
+        )
+    }
+
+    internal fun isNonDefaultPrimaryStorage(
+        resolvedStorageUuid: java.util.UUID?,
+        legacyVolumeUuid: String?,
+        isPhysicalPrimary: Boolean,
+        allowLegacyUuidFallback: Boolean,
+        defaultStorageUuid: java.util.UUID,
+    ): Boolean {
+        if (resolvedStorageUuid != null) return resolvedStorageUuid != defaultStorageUuid
+        if (isPhysicalPrimary) return true
+        return allowLegacyUuidFallback && !legacyVolumeUuid.isNullOrBlank()
     }
 
     /**

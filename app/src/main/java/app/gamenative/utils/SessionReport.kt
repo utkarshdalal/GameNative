@@ -13,6 +13,8 @@ import android.os.SystemClock
 import android.view.Display
 import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
+import app.gamenative.filedetect.GameFileDetection
+import app.gamenative.powercontrol.metrics.PowerTelemetry
 import com.winlator.container.Container
 import java.io.File
 import org.json.JSONObject
@@ -39,6 +41,14 @@ object DeviceInfo {
             registerAll(gpuProperties(context))
         } catch (e: Exception) {
             Timber.w(e, "DeviceInfo: gpu properties failed")
+        }
+    }
+
+    fun registerPowerSuperProperties() {
+        try {
+            registerAll(PowerTelemetry.capabilityProperties())
+        } catch (e: Exception) {
+            Timber.w(e, "DeviceInfo: power properties failed")
         }
     }
 
@@ -101,8 +111,20 @@ object DeviceInfo {
 object SessionReport {
 
     private val CONFIG_DIFF_IGNORED = setOf(
-        "id", "name", "sessionMetadata", "drives", "executablePath", "execArgs", "configSource",
+        "id", "name", "sessionMetadata", "drives", "configSource", "needsUnpacking", "desktopTheme", "language", "showFPS",
+        "installPath", "rcfileId",
     )
+
+    private val CONFIG_DIFF_IGNORED_EXTRA = setOf(
+        "appliedWineVersion", "appliedContainerVariant", "lastInstalledMainWrapper", "box64Version", "fexcoreVersion",
+        "appVersion", "imgVersion", "openal_dlls", "xaudioDllsExtracted", "config_changed", "wineprefixNeedsUpdate",
+        "dxwrapper", "wincomponents", "audioDriver", "graphicsDriver", "graphicsDriverAdreno", "desktopTheme",
+        "startupSelection", "language", "profileId", "selected_menu_item_id", "discord_support_prompt_shown",
+        "ai_debug_offer_last_shown", "app_id", "game_source", "workshopModPath",
+        "sharpnessLevel", "sharpnessEffect", "sharpnessDenoise",
+    )
+
+    private fun isIgnoredExtra(key: String) = key in CONFIG_DIFF_IGNORED_EXTRA || key.startsWith("screenEffects")
 
     fun markConfigApplied(container: Container, source: String) {
         try {
@@ -117,6 +139,21 @@ object SessionReport {
     }
 
     private fun appliedConfigFile(container: Container) = File(container.rootDir, "applied_config.json")
+
+    fun recordRun(container: Container, properties: Map<String, Any>) {
+        try {
+            val dir = File(container.rootDir, ".gamenative/runs").also { it.mkdirs() }
+            val file = File(dir, "${System.currentTimeMillis()}.json")
+            val tmp = File(dir, "${file.name}.tmp")
+            tmp.writeText(JSONObject(properties).toString())
+            if (!tmp.renameTo(file)) tmp.delete()
+            dir.listFiles { f -> f.name.endsWith(".json") }?.sortedBy { it.name }?.dropLast(MAX_RUN_FILES)?.forEach { it.delete() }
+        } catch (e: Exception) {
+            Timber.w(e, "SessionReport: record run failed")
+        }
+    }
+
+    private const val MAX_RUN_FILES = 30
 
     fun configProperties(container: Container): Map<String, Any> = buildMap {
         try {
@@ -134,8 +171,11 @@ object SessionReport {
                 if (key == "extraData") {
                     val b = before.optJSONObject(key) ?: JSONObject()
                     val a = after.optJSONObject(key) ?: JSONObject()
-                    for (sub in a.keys()) if (b.optString(sub) != a.optString(sub)) changed.add("extraData.$sub")
-                } else if (before.optString(key) != after.optString(key)) {
+                    for (sub in a.keys()) {
+                        if (isIgnoredExtra(sub)) continue
+                        if (b.optString(sub) != a.optString(sub)) changed.add("extraData.$sub")
+                    }
+                } else if (before.has(key) && before.optString(key) != after.optString(key)) {
                     changed.add(key)
                 }
             }
@@ -155,7 +195,10 @@ object SessionReport {
         put("exit_reason", reason)
         try {
             putAll(configProperties(container))
-            putAll(windowActivity.snapshot(context, frameRating?.totalFrames ?: 0L))
+            putAll(GameFileDetection.properties(container))
+            putAll(windowActivity.snapshot(context, frameRating?.totalFrames ?: 0L, frameRating?.activeMs ?: 0L))
+            runCatching { putAll(PowerTelemetry.sessionProperties()) }
+                .onFailure { Timber.w(it, "SessionReport: power properties failed") }
             if (frameRating != null) {
                 put("total_frames", frameRating.totalFrames)
                 frameRating.fpsBy5Min.takeIf { it.isNotEmpty() }?.let { put("fps_by_5min", it) }
@@ -194,17 +237,21 @@ class WindowActivity {
     private class Entry(val className: String, val firstMs: Long) {
         var lastMs: Long = firstMs
         var frames: Long = 0
+        var activeMs: Long = 0
         var mapped: Boolean = false
     }
 
     private var trackedClass: String? = null
     private var trackedStartFrames = 0L
+    private var trackedStartActiveMs = 0L
 
     private val lock = Any()
     private var startMs = 0L
     private val windows = LinkedHashMap<String, Entry>()
     private val classByWindowId = HashMap<Int, String>()
     private var batteryStartPct = -1
+    private var batteryStartTempC = 0
+    private var chargingStart: Boolean? = null
     private val thermalTransitions = ArrayList<Pair<Long, Int>>()
     private var powerManager: PowerManager? = null
     private val thermalListener = PowerManager.OnThermalStatusChangedListener { status ->
@@ -236,7 +283,14 @@ class WindowActivity {
             thermalTransitions.clear()
             trackedClass = null
             trackedStartFrames = 0L
+            trackedStartActiveMs = 0L
             batteryStartPct = readBatteryPct(context)
+            batteryStartTempC = 0
+            chargingStart = null
+            context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))?.let { intent ->
+                batteryStartTempC = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0)
+                chargingStart = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0
+            }
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             powerManager = (context.getSystemService(Context.POWER_SERVICE) as? PowerManager)?.also {
@@ -269,24 +323,28 @@ class WindowActivity {
         }
     }
 
-    fun onTrackedWindow(window: Window?, totalFrames: Long) {
+    fun onTrackedWindow(window: Window?, totalFrames: Long, activeMs: Long) {
         try {
             val next = window?.let { entryFor(it) }
             synchronized(lock) {
-                closeTrackedSegment(totalFrames)
+                closeTrackedSegment(totalFrames, activeMs)
                 trackedClass = next?.className
                 trackedStartFrames = totalFrames
+                trackedStartActiveMs = activeMs
             }
         } catch (e: Exception) {
             Timber.w(e, "WindowActivity: tracked window failed")
         }
     }
 
-    private fun closeTrackedSegment(totalFrames: Long) {
+    private fun closeTrackedSegment(totalFrames: Long, activeMs: Long) {
         val cls = trackedClass ?: return
         val delta = totalFrames - trackedStartFrames
         if (delta > 0) windows[cls]?.let { it.frames += delta }
+        val activeDelta = activeMs - trackedStartActiveMs
+        if (activeDelta > 0) windows[cls]?.let { it.activeMs += activeDelta }
         trackedStartFrames = totalFrames
+        trackedStartActiveMs = activeMs
     }
 
     fun onWindowMapped(window: Window) {
@@ -314,21 +372,23 @@ class WindowActivity {
         windows.getOrPut(className) { Entry(className, now) }
     }
 
-    fun snapshot(context: Context?, totalFrames: Long): Map<String, Any> = try {
-        buildSnapshot(context, totalFrames)
+    fun snapshot(context: Context?, totalFrames: Long, activeMs: Long): Map<String, Any> = try {
+        buildSnapshot(context, totalFrames, activeMs)
     } catch (e: Exception) {
         Timber.w(e, "WindowActivity: snapshot failed")
         emptyMap()
     }
 
-    private fun buildSnapshot(context: Context?, totalFrames: Long): Map<String, Any> = synchronized(lock) {
-        closeTrackedSegment(totalFrames)
+    private fun buildSnapshot(context: Context?, totalFrames: Long, activeMs: Long): Map<String, Any> = synchronized(lock) {
+        closeTrackedSegment(totalFrames, activeMs)
         buildMap {
             val batteryEnd = context?.let { readBatteryPct(it) } ?: -1
             if (batteryStartPct >= 0 && batteryEnd >= 0) {
                 put("battery_start_pct", batteryStartPct)
                 put("battery_end_pct", batteryEnd)
             }
+            if (batteryStartTempC > 0) put("battery_temp_start_c", (batteryStartTempC / 10f).roundToInt())
+            chargingStart?.let { put("charging_start", it) }
             if (thermalTransitions.isNotEmpty()) {
                 put("thermal_peak", thermalTransitions.maxOf { it.second })
                 thermalTransitions.firstOrNull { it.second >= PowerManager.THERMAL_STATUS_MODERATE }
@@ -343,6 +403,7 @@ class WindowActivity {
                 windows.values.maxByOrNull { it.frames }?.takeIf { it.frames > 0 }?.let { main ->
                     put("main_window_class", main.className)
                     put("main_window_seconds", (endMs(main) - main.firstMs) / 1000)
+                    put("main_window_active_seconds", main.activeMs / 1000)
                     put("main_window_frames", main.frames)
                 }
                 put(
@@ -353,6 +414,7 @@ class WindowActivity {
                             "first_s" to ((e.firstMs - startMs) / 1000),
                             "last_s" to ((endMs(e) - startMs) / 1000),
                             "frames" to e.frames,
+                            "active_s" to (e.activeMs / 1000),
                         )
                     },
                 )

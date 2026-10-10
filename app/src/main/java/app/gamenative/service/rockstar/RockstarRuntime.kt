@@ -11,7 +11,7 @@ import timber.log.Timber
  */
 object RockstarRuntime {
     const val SOCIAL_CLUB_DIR = "Program Files/Rockstar Games/Social Club"
-    private const val PAYLOAD = "x64/"
+    const val SOCIAL_CLUB_X86_DIR = "Program Files (x86)/Rockstar Games/Social Club"
     private val installers = listOf("Redistributables/Social-Club-Setup.exe", "Installers/Social-Club-Setup.exe")
     private val signature = byteArrayOf(0x37, 0x7A, 0xBC.toByte(), 0xAF.toByte(), 0x27, 0x1C)
 
@@ -22,17 +22,30 @@ object RockstarRuntime {
 
     fun socialClubDir(prefixDriveC: File) = File(prefixDriveC, SOCIAL_CLUB_DIR)
 
+    fun socialClubX86Dir(prefixDriveC: File) = File(prefixDriveC, SOCIAL_CLUB_X86_DIR)
+
     fun isInstalled(prefixDriveC: File) = File(socialClubDir(prefixDriveC), "socialclub.dll").isFile
 
-    fun installer(gameDir: File): File? = installers.map { File(gameDir, it) }.firstOrNull { it.isFile }
+    fun installer(installDir: File): File? =
+        listOf(installDir, RockstarHelperArchive.titleDir(installDir)).distinct()
+            .flatMap { dir -> installers.map { File(dir, it) } }
+            .firstOrNull { it.isFile }
 
     fun install(context: Context, installer: File, prefixDriveC: File, onProgress: (Float) -> Unit = {}) =
-        install(installer, prefixDriveC, nativeExtractor(context), onProgress)
+        install(installer, prefixDriveC, nativeExtractor(context, "x64/"), onProgress)
 
-    internal fun install(installer: File, prefixDriveC: File, extractor: Extractor, onProgress: (Float) -> Unit = {}) {
+    fun ensureX86(context: Context, installer: File?, prefixDriveC: File, onProgress: (Float) -> Unit = {}) {
+        if (installer == null || File(socialClubX86Dir(prefixDriveC), "socialclub.dll").isFile) return
+        runCatching { unpack(installer, socialClubX86Dir(prefixDriveC), nativeExtractor(context, "x86/"), onProgress) }
+            .onFailure { Timber.w(it, "Rockstar: x86 Social Club runtime not installed") }
+    }
+
+    internal fun install(installer: File, prefixDriveC: File, extractor: Extractor, onProgress: (Float) -> Unit = {}) =
+        unpack(installer, socialClubDir(prefixDriveC), extractor, onProgress)
+
+    private fun unpack(installer: File, target: File, extractor: Extractor, onProgress: (Float) -> Unit) {
         val offsets = signatureOffsets(installer)
         check(offsets.isNotEmpty()) { "${installer.name} is not a 7z self-extractor" }
-        val target = socialClubDir(prefixDriveC)
         val stage = File(target.parentFile, "Social Club.installing")
         stage.deleteRecursively()
         check(stage.mkdirs()) { "Cannot create the Social Club directory" }
@@ -52,10 +65,10 @@ object RockstarRuntime {
         Timber.i("Rockstar: Social Club runtime installed from ${installer.name}")
     }
 
-    private fun nativeExtractor(context: Context) = Extractor { installer, offset, stage, onProgress ->
+    private fun nativeExtractor(context: Context, payload: String) = Extractor { installer, offset, stage, onProgress ->
         val tool = File(context.applicationInfo.nativeLibraryDir, "lib7zx.so")
         check(tool.isFile) { "The archive decoder is missing from this build" }
-        val process = ProcessBuilder(tool.path, installer.path, offset.toString(), stage.path, PAYLOAD)
+        val process = ProcessBuilder(tool.path, installer.path, offset.toString(), stage.path, payload)
             .redirectErrorStream(true).start()
         val output = StringBuilder()
         process.inputStream.bufferedReader().forEachLine { line ->

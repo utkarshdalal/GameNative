@@ -1,5 +1,14 @@
 package app.gamenative.ui.component.dialog
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import android.view.View
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,17 +22,16 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -50,6 +58,21 @@ fun GeneralTabContent(
     nonzeroResolutionError: String,
 ) {
     val config = state.config.value
+
+    // Microphone input is opt-in. The RECORD_AUDIO runtime permission is only requested when
+    // the user turns the toggle on (never at screen entry), and only when it isn't already
+    // granted. The grant state is checked fresh at toggle time rather than cached, so a
+    // permission revoked in system settings is picked up correctly.
+    val context = LocalContext.current
+    val micPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        // Only enable the option once the user actually granted access.
+        if (granted) {
+            state.config.value = state.config.value.copy(micEnabled = true)
+        }
+    }
+
     val graphicsDrivers = state.graphicsDrivers.value
     val glibcWineEntries = state.glibcWineEntries.value
     val bionicWineEntries = state.bionicWineEntries.value
@@ -311,6 +334,15 @@ fun GeneralTabContent(
             state = config.portraitMode,
             onCheckedChange = { state.config.value = config.copy(portraitMode = it) },
         )
+        if (config.portraitMode && displayHasCutout(LocalView.current)) {
+            SettingsSwitch(
+                colors = settingsTileColorsAlt(),
+                title = { Text(text = stringResource(R.string.portrait_below_cutout)) },
+                subtitle = { Text(text = stringResource(R.string.portrait_below_cutout_description)) },
+                state = config.portraitBelowCutout,
+                onCheckedChange = { state.config.value = config.copy(portraitBelowCutout = it) },
+            )
+        }
         SettingsListDropdown(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.audio_driver)) },
@@ -329,6 +361,25 @@ fun GeneralTabContent(
                 onCheckedChange = { state.config.value = config.copy(pulseaudioLowLatency = it) },
             )
         }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.microphone_input)) },
+            subtitle = { Text(text = stringResource(R.string.microphone_input_description)) },
+            state = config.micEnabled,
+            onCheckedChange = { enabled ->
+                val hasMicPermission = ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.RECORD_AUDIO,
+                ) == PackageManager.PERMISSION_GRANTED
+                if (enabled && !hasMicPermission) {
+                    // Ask only now that the user explicitly wants mic input; the launcher
+                    // callback flips the switch on if they grant.
+                    micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                } else {
+                    state.config.value = config.copy(micEnabled = enabled)
+                }
+            },
+        )
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.force_dlc)) },
@@ -352,6 +403,13 @@ fun GeneralTabContent(
                 onCheckedChange = { state.config.value = config.copy(unpackFiles = it) },
             )
         }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.load_mods)) },
+            subtitle = { Text(text = AnnotatedString.fromHtml(stringResource(R.string.load_mods_description))) },
+            state = config.loadMods,
+            onCheckedChange = { state.config.value = config.copy(loadMods = it) },
+        )
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.steam_offline_mode)) },
@@ -462,4 +520,9 @@ fun GeneralTabContent(
             },
         )
     }
+}
+
+private fun displayHasCutout(view: View): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return true
+    return view.display?.cutout != null
 }

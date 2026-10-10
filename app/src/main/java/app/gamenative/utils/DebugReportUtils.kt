@@ -3,10 +3,15 @@ package app.gamenative.utils
 import android.content.Context
 import android.os.Build
 import app.gamenative.BuildConfig
+import app.gamenative.filedetect.GameFileDetection
+import app.gamenative.ui.screen.support.SupportComponentApplier
+import app.gamenative.ui.screen.support.SupportPatchApplier
+import app.gamenative.ui.screen.support.SupportSuggestionApplier
 import com.winlator.core.GPUInformation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
@@ -19,6 +24,7 @@ object DebugReportUtils {
     private const val LOG_FILE = "log.gz"
     private const val PERF_FILE = "perf.json"
     private const val LOGCAT_FILE = "logcat.gz"
+    const val CPU_PROFILE_FILE = "cpu_profile.json"
 
     @Volatile
     private var logcatProcess: Process? = null
@@ -39,6 +45,11 @@ object DebugReportUtils {
     fun perfFile(reportDir: File): File = File(reportDir, PERF_FILE)
 
     fun logcatFile(reportDir: File): File = File(reportDir, LOGCAT_FILE)
+
+    fun cpuProfileFile(reportDir: File): File = File(reportDir, CPU_PROFILE_FILE)
+
+    fun cpuProfileBeside(perfFile: File?): File? =
+        perfFile?.parentFile?.let { cpuProfileFile(it) }?.takeIf { it.exists() }
 
     private fun rawLogcatFile(context: Context, appId: String): File =
         File(context.getExternalFilesDir(null), "wine_logs/debug_run_$appId.logcat")
@@ -90,6 +101,18 @@ object DebugReportUtils {
         }
     }
 
+    fun newestReport(context: Context, appId: String): File? {
+        val prefix = "${appId}_"
+        return reportsDir(context).listFiles()
+            ?.filter { dir ->
+                dir.isDirectory &&
+                    dir.name.startsWith(prefix) &&
+                    dir.name.removePrefix(prefix).toLongOrNull() != null &&
+                    logFile(dir).exists()
+            }
+            ?.maxByOrNull { it.name.removePrefix(prefix).toLong() }
+    }
+
     fun deleteReport(reportDir: File) {
         reportDir.deleteRecursively()
     }
@@ -121,10 +144,17 @@ object DebugReportUtils {
             }
 
             compressLog(claimedLog, logFile(dir))
-            val header = buildHeader(context, appId)
+            val header = buildHeader(context, appId, DebugRunParamsHolder.get(appId))
             if (perf != null) {
                 perfFile(dir).writeText(perf.perf.toString())
                 header.put("perf", perf.verdict)
+                perf.cpuProfile?.let { profile ->
+                    try {
+                        cpuProfileFile(dir).writeText(profile.toString())
+                    } catch (e: Exception) {
+                        Timber.w(e, "DebugReportUtils: Failed to write cpu profile")
+                    }
+                }
             }
             val rawLogcat = rawLogcatFile(context, appId)
             if (rawLogcat.exists() && rawLogcat.length() > 0L) {
@@ -139,6 +169,8 @@ object DebugReportUtils {
             Timber.e(e, "DebugReportUtils: Failed to create pending report for $appId")
             reportDir?.deleteRecursively()
             null
+        } finally {
+            DebugRunParamsHolder.clear(appId)
         }
     }
 
@@ -158,7 +190,7 @@ object DebugReportUtils {
         }
     }
 
-    private fun buildHeader(context: Context, appId: String): JSONObject {
+    private fun buildHeader(context: Context, appId: String, runParams: DebugRunParams?): JSONObject {
         val container = ContainerUtils.getContainer(context, appId)
 
         val gpu = try {
@@ -170,6 +202,7 @@ object DebugReportUtils {
 
         val avgFps = container.getSessionMetadata("avg_fps", "").toFloatOrNull()
         val sessionLengthSec = container.getSessionMetadata("session_length_sec", "").toIntOrNull()
+        val totalFrames = container.getSessionMetadata("total_frames", "").toLongOrNull()
 
         return JSONObject().apply {
             put("gameName", ContainerUtils.resolveGameName(appId))
@@ -184,6 +217,23 @@ object DebugReportUtils {
             put("configs", JSONObject(container.containerJson))
             if (avgFps != null) put("avgFps", avgFps.toDouble()) else put("avgFps", JSONObject.NULL)
             if (sessionLengthSec != null) put("sessionLengthSec", sessionLengthSec) else put("sessionLengthSec", JSONObject.NULL)
+            if (totalFrames != null) put("totalFrames", totalFrames) else put("totalFrames", JSONObject.NULL)
+            put("runParams", (runParams ?: DebugRunParams()).toJson())
+            runCatching { GameFileDetection.properties(container) }.getOrNull()?.forEach { (key, value) ->
+                put(key, if (value is List<*>) JSONArray(value) else value)
+            }
+            val appliedFile = SupportSuggestionApplier.appliedRecordFile(container)
+            if (appliedFile.exists()) {
+                runCatching { JSONObject(appliedFile.readText()) }.getOrNull()?.let { put("appliedSuggestion", it) }
+            }
+            val patchFile = SupportPatchApplier.appliedRecordFile(container)
+            if (patchFile.exists()) {
+                runCatching { JSONObject(patchFile.readText()) }.getOrNull()?.let { put("appliedPatch", it) }
+            }
+            val componentFile = SupportComponentApplier.appliedRecordFile(container)
+            if (componentFile.exists()) {
+                runCatching { JSONObject(componentFile.readText()) }.getOrNull()?.let { put("appliedComponent", it) }
+            }
         }
     }
 

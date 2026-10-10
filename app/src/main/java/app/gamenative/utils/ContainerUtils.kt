@@ -3,9 +3,11 @@ package app.gamenative.utils
 import android.content.Context
 import android.os.Build
 import app.gamenative.BuildConfig
+import app.gamenative.MainActivity
 import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
+import app.gamenative.inputcontrols.ControlProfileService
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
@@ -124,6 +126,7 @@ object ContainerUtils {
             dxwrapperConfig = PrefManager.dxWrapperConfig,
             audioDriver = PrefManager.audioDriver,
             pulseaudioLowLatency = PrefManager.pulseaudioLowLatency,
+            micEnabled = PrefManager.micEnabled,
             wincomponents = PrefManager.winComponents,
             drives = PrefManager.drives,
             execArgs = PrefManager.execArgs,
@@ -144,6 +147,7 @@ object ContainerUtils {
             forceDlc = PrefManager.forceDlc,
             localSavesOnly = PrefManager.localSavesOnly,
             steamOfflineMode = PrefManager.steamOfflineMode,
+            loadMods = PrefManager.loadMods,
             epicOfflineMode = PrefManager.epicOfflineMode,
             useLegacyDRM = PrefManager.useLegacyDRM,
             unpackFiles = PrefManager.unpackFiles,
@@ -171,11 +175,13 @@ object ContainerUtils {
 			dinputMapperType = PrefManager.dinputMapperType.toByte(),
             disableMouseInput = PrefManager.disableMouseInput,
             portraitMode = PrefManager.portraitMode,
+            portraitBelowCutout = PrefManager.portraitBelowCutout,
             externalDisplayMode = PrefManager.externalDisplayInputMode,
             externalDisplaySwap = PrefManager.externalDisplaySwap,
             sharpnessEffect = PrefManager.sharpnessEffect,
             sharpnessLevel = PrefManager.sharpnessLevel,
             sharpnessDenoise = PrefManager.sharpnessDenoise,
+            vibrationIntensity = PrefManager.vibrationIntensity,
         )
     }
 
@@ -192,6 +198,7 @@ object ContainerUtils {
         PrefManager.dxWrapperConfig = containerData.dxwrapperConfig
         PrefManager.audioDriver = containerData.audioDriver
         PrefManager.pulseaudioLowLatency = containerData.pulseaudioLowLatency
+        PrefManager.micEnabled = containerData.micEnabled
         PrefManager.winComponents = containerData.wincomponents
         PrefManager.drives = containerData.drives
         PrefManager.execArgs = containerData.execArgs
@@ -235,6 +242,7 @@ object ContainerUtils {
         PrefManager.forceDlc = containerData.forceDlc
         PrefManager.localSavesOnly = containerData.localSavesOnly
         PrefManager.steamOfflineMode = containerData.steamOfflineMode
+        PrefManager.loadMods = containerData.loadMods
         PrefManager.epicOfflineMode = containerData.epicOfflineMode
         PrefManager.useLegacyDRM = containerData.useLegacyDRM
         PrefManager.unpackFiles = containerData.unpackFiles
@@ -242,9 +250,11 @@ object ContainerUtils {
         PrefManager.fasterExternalLoading = containerData.fasterExternalLoading
         PrefManager.disableLibredirect = containerData.disableLibredirect
         PrefManager.portraitMode = containerData.portraitMode
+        PrefManager.portraitBelowCutout = containerData.portraitBelowCutout
         PrefManager.sharpnessEffect = containerData.sharpnessEffect
         PrefManager.sharpnessLevel = containerData.sharpnessLevel
         PrefManager.sharpnessDenoise = containerData.sharpnessDenoise
+        PrefManager.vibrationIntensity = containerData.vibrationIntensity
     }
 
     fun toContainerData(container: Container): ContainerData {
@@ -315,6 +325,7 @@ object ContainerUtils {
             dxwrapperConfig = container.dxWrapperConfig,
             audioDriver = container.audioDriver,
             pulseaudioLowLatency = container.getPulseaudioLowLatency(),
+            micEnabled = container.getMicEnabled(),
             wincomponents = container.winComponents,
             drives = container.drives,
             execArgs = container.execArgs,
@@ -346,12 +357,14 @@ object ContainerUtils {
             forceDlc = container.isForceDlc,
             localSavesOnly = container.isLocalSavesOnly,
             steamOfflineMode = container.isSteamOfflineMode(),
+            loadMods = container.isLoadMods(),
             epicOfflineMode = container.isEpicOfflineMode(),
             disableEpicOverlay = container.isDisableEpicOverlay,
             useLegacyDRM = container.isUseLegacyDRM(),
             unpackFiles = container.isUnpackFiles(),
             suspendPolicy = container.suspendPolicy,
             portraitMode = container.isPortraitMode,
+            portraitBelowCutout = container.isPortraitBelowCutout,
             enableXInput = enableX,
             enableDInput = enableD,
             dinputMapperType = mapperType,
@@ -372,6 +385,7 @@ object ContainerUtils {
             sharpnessEffect = container.getExtra("sharpnessEffect", "None"),
             sharpnessLevel = container.getExtra("sharpnessLevel", "100").toIntOrNull() ?: 100,
             sharpnessDenoise = container.getExtra("sharpnessDenoise", "100").toIntOrNull() ?: 100,
+            vibrationIntensity = (container.getExtra("vibrationIntensity", "100").toIntOrNull() ?: 100).coerceIn(0, 100),
             // LSFG Vulkan frame generation
             lsfgEnabled = container.getExtra(LsfgVkManager.EXTRA_ARMED, "false").toBoolean(),
             windowsVrEnabled = container.getExtra("windowsVrEnabled", "false").toBoolean(),
@@ -439,6 +453,7 @@ object ContainerUtils {
                     ?: updatedData
                 "useLegacyDRM" -> value?.let { updatedData.copy(useLegacyDRM = it as? Boolean ?: updatedData.useLegacyDRM) } ?: updatedData
                 "steamOfflineMode" -> value?.let { updatedData.copy(steamOfflineMode = it as? Boolean ?: updatedData.steamOfflineMode) } ?: updatedData
+                "loadMods" -> value?.let { updatedData.copy(loadMods = it as? Boolean ?: updatedData.loadMods) } ?: updatedData
                 "epicOfflineMode" -> value?.let { updatedData.copy(epicOfflineMode = it as? Boolean ?: updatedData.epicOfflineMode) } ?: updatedData
                 "unpackFiles" -> value?.let { updatedData.copy(unpackFiles = it as? Boolean ?: updatedData.unpackFiles) } ?: updatedData
                 "suspendPolicy" -> value?.let { updatedData.copy(suspendPolicy = it as? String ?: updatedData.suspendPolicy) } ?: updatedData
@@ -449,6 +464,8 @@ object ContainerUtils {
                 "wincomponents" -> value?.let { updatedData.copy(wincomponents = it as? String ?: updatedData.wincomponents) } ?: updatedData
                 "videoMemorySize" -> value?.let { updatedData.copy(videoMemorySize = it as? String ?: updatedData.videoMemorySize) } ?: updatedData
                 "launchBionicSteam" -> value?.let { updatedData.copy(launchBionicSteam = it as? Boolean ?: updatedData.launchBionicSteam) } ?: updatedData
+                "launchRealSteam" -> value?.let { updatedData.copy(launchRealSteam = it as? Boolean ?: updatedData.launchRealSteam) } ?: updatedData
+                "steamType" -> value?.let { updatedData.copy(steamType = (it as? String)?.takeIf { s -> s.isNotBlank() } ?: updatedData.steamType) } ?: updatedData
                 else -> updatedData
             }
         }
@@ -506,6 +523,7 @@ object ContainerUtils {
         container.dxWrapperConfig = containerData.dxwrapperConfig
         container.audioDriver = containerData.audioDriver
         container.setPulseaudioLowLatency(containerData.pulseaudioLowLatency)
+        container.setMicEnabled(containerData.micEnabled)
         container.winComponents = containerData.wincomponents
         container.drives = containerData.drives
         container.execArgs = containerData.execArgs
@@ -551,18 +569,21 @@ object ContainerUtils {
         container.setForceDlc(containerData.forceDlc)
         container.setLocalSavesOnly(containerData.localSavesOnly)
         container.setSteamOfflineMode(containerData.steamOfflineMode)
+        container.setLoadMods(containerData.loadMods)
         container.setEpicOfflineMode(containerData.epicOfflineMode)
         container.setDisableEpicOverlay(containerData.disableEpicOverlay)
         container.setUseLegacyDRM(containerData.useLegacyDRM)
         container.setUnpackFiles(containerData.unpackFiles)
         container.setSuspendPolicy(containerData.suspendPolicy)
         container.setPortraitMode(containerData.portraitMode)
+        container.setPortraitBelowCutout(containerData.portraitBelowCutout)
         if (previousUnpackFiles != containerData.unpackFiles && containerData.unpackFiles) {
             container.setNeedsUnpacking(true)
         }
         container.putExtra("sharpnessEffect", containerData.sharpnessEffect)
         container.putExtra("sharpnessLevel", containerData.sharpnessLevel.toString())
         container.putExtra("sharpnessDenoise", containerData.sharpnessDenoise.toString())
+        container.putExtra("vibrationIntensity", containerData.vibrationIntensity.coerceIn(0, 100).toString())
         // LSFG Vulkan frame generation
         container.putExtra(LsfgVkManager.EXTRA_ARMED, containerData.lsfgEnabled.toString())
         container.putExtra("windowsVrEnabled", containerData.windowsVrEnabled.toString())
@@ -788,7 +809,6 @@ object ContainerUtils {
 
         // Create the actual container
         var container = containerManager.createContainerFuture(containerId, data).get()
-
         // If container creation failed, it might be because directory already exists but is corrupted
         // Try to clean it up and retry once
         if (container == null) {
@@ -847,6 +867,7 @@ object ContainerUtils {
                     runBlocking(Dispatchers.IO) {
                         try {
                             val bestConfig = BestConfigService.fetchBestConfig(
+                                context = context,
                                 gameName = gameName,
                                 gpuName = gpuName,
                                 gameStore = gameSource.name,
@@ -900,6 +921,7 @@ object ContainerUtils {
                 dxwrapperConfig = PrefManager.dxWrapperConfig,
                 audioDriver = PrefManager.audioDriver,
                 pulseaudioLowLatency = PrefManager.pulseaudioLowLatency,
+                micEnabled = PrefManager.micEnabled,
                 wincomponents = PrefManager.winComponents,
                 drives = drives,
                 execArgs = PrefManager.execArgs,
@@ -936,6 +958,7 @@ object ContainerUtils {
                 disableMouseInput = PrefManager.disableMouseInput,
                 forceDlc = PrefManager.forceDlc,
                 steamOfflineMode = PrefManager.steamOfflineMode,
+                loadMods = PrefManager.loadMods,
                 epicOfflineMode = PrefManager.epicOfflineMode,
                 useLegacyDRM = PrefManager.useLegacyDRM,
                 unpackFiles = PrefManager.unpackFiles,
@@ -943,8 +966,10 @@ object ContainerUtils {
                 fasterExternalLoading = PrefManager.fasterExternalLoading,
                 disableLibredirect = PrefManager.disableLibredirect,
                 portraitMode = PrefManager.portraitMode,
+                portraitBelowCutout = PrefManager.portraitBelowCutout,
                 externalDisplayMode = PrefManager.externalDisplayInputMode,
                 externalDisplaySwap = PrefManager.externalDisplaySwap,
+                vibrationIntensity = PrefManager.vibrationIntensity,
             )
         }
 
@@ -955,10 +980,18 @@ object ContainerUtils {
             containerData
         }
 
-        if (BuildConfig.XR_BUILD) {
+        if (BuildConfig.XR_BUILD && MainActivity.isMetaQuest()) {
             val kvs = KeyValueSet(containerData.graphicsDriverConfig)
             kvs.put("adrenotoolsTurnip", "0")
             containerData = containerData.copy(graphicsDriverConfig = kvs.toString())
+        }
+
+        if (BuildConfig.XR_BUILD) {
+            containerData = containerData.copy(
+                launchRealSteam = true,
+                launchBionicSteam = false,
+                steamType = Container.STEAM_TYPE_HEADLESS,
+            )
         }
 
         if (Build.MANUFACTURER.equals("samsung", ignoreCase = true) && GPUInformation.isAdreno740(context)) {
@@ -1065,7 +1098,7 @@ object ContainerUtils {
         }
 
         val resolvedGameFolderPath = if (gameSource == GameSource.CUSTOM_GAME) {
-            gameFolderPath
+            CustomGameScanner.migrateToInternalStorage(gameFolderPath)
         } else {
             StorageUtils.resolveLegacyGameDir(gameFolderPath)
         }
@@ -1169,6 +1202,8 @@ object ContainerUtils {
             manager.removeContainerAsync(
                 manager.getContainerById(appId),
             ) {
+                runCatching { ControlProfileService.deleteWorkingProfilesForContainer(context, appId) }
+                    .onFailure { Timber.w(it, "Unable to remove control profiles for container $appId") }
                 Timber.i("[ContainerDeletion] Successfully deleted container for appId=$appId")
             }
         } else {

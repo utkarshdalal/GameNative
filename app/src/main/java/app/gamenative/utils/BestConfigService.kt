@@ -1,8 +1,11 @@
 package app.gamenative.utils
 
+import android.app.ActivityManager
 import android.content.Context
+import android.os.Build
 import androidx.compose.ui.graphics.Color
 import app.gamenative.BuildConfig
+import app.gamenative.MainActivity
 import app.gamenative.PrefManager
 import app.gamenative.R
 import com.winlator.box86_64.Box86_64PresetManager
@@ -70,6 +73,7 @@ object BestConfigService {
      * Returns cached response if available, otherwise makes API call.
      */
     suspend fun fetchBestConfig(
+        context: Context,
         gameName: String,
         gpuName: String,
         gameStore: String,
@@ -90,7 +94,18 @@ object BestConfigService {
                 // Modern build can't run glibc containers — server should pick a config that
                 // doesn't require glibc when this is true.
                 put("modernBuild", BuildConfig.MODERN_ANDROID)
+                HardwareUtils.getSOCName()?.let { put("socModel", it) }
+                put("model", Build.MODEL)
+                put("androidSdk", Build.VERSION.SDK_INT)
+                put("androidVersion", Build.VERSION.RELEASE)
+                put("appVersionCode", BuildConfig.VERSION_CODE)
+                val memInfo = ActivityManager.MemoryInfo()
+                (context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager)?.getMemoryInfo(memInfo)
+                if (memInfo.totalMem > 0) put("ramTotalMb", memInfo.totalMem / (1024L * 1024L))
+                GPUInformation.getVersion(context)?.takeIf { it.isNotBlank() }?.let { put("gpuDriverVersion", it) }
             }
+
+            PlayIntegrity.signingCertSha256?.let { requestBody.put("signingCertSha256", it) }
 
             val attestation = KeyAttestationHelper.getAttestationFields("https://api.gamenative.app")
             if (attestation != null) {
@@ -255,7 +270,7 @@ object BestConfigService {
             filteredJson.put("graphicsDriverVersion", ContainerUtils.WRAPPER_ADRENO_A12)
         }
 
-        if (BuildConfig.XR_BUILD) {
+        if (BuildConfig.XR_BUILD && MainActivity.isMetaQuest()) {
             val kvs = KeyValueSet(filteredJson.optString("graphicsDriverConfig", ""))
             val isTurnip = filteredJson.optString("graphicsDriverVersion", "").contains("turnip", ignoreCase = true) ||
                 kvs.get("version").contains("turnip", ignoreCase = true)
@@ -263,6 +278,12 @@ object BestConfigService {
                 kvs.put("adrenotoolsTurnip", "0")
                 filteredJson.put("graphicsDriverConfig", kvs.toString())
             }
+        }
+
+        if (BuildConfig.XR_BUILD) {
+            filteredJson.put("launchRealSteam", true)
+            filteredJson.put("launchBionicSteam", false)
+            filteredJson.put("steamType", Container.STEAM_TYPE_HEADLESS)
         }
 
         return filteredJson
@@ -962,8 +983,23 @@ object BestConfigService {
                 if (filteredJson.has("launchBionicSteam") && !filteredJson.isNull("launchBionicSteam")) {
                     resultMap["launchBionicSteam"] = filteredJson.optBoolean("launchBionicSteam", false)
                 }
+                if (filteredJson.has("launchRealSteam") && !filteredJson.isNull("launchRealSteam")) {
+                    resultMap["launchRealSteam"] = filteredJson.optBoolean("launchRealSteam", false)
+                }
                 if (filteredJson.has("steamOfflineMode") && !filteredJson.isNull("steamOfflineMode")) {
                     resultMap["steamOfflineMode"] = filteredJson.optBoolean("steamOfflineMode", PrefManager.steamOfflineMode)
+                }
+                if (filteredJson.has("loadMods") && !filteredJson.isNull("loadMods")) {
+                    resultMap["loadMods"] = filteredJson.optBoolean("loadMods", PrefManager.loadMods)
+                }
+                if (filteredJson.has("epicOfflineMode") && !filteredJson.isNull("epicOfflineMode")) {
+                    resultMap["epicOfflineMode"] = filteredJson.optBoolean("epicOfflineMode", false)
+                }
+                if (filteredJson.has("unpackFiles") && !filteredJson.isNull("unpackFiles")) {
+                    resultMap["unpackFiles"] = filteredJson.optBoolean("unpackFiles", false)
+                }
+                if (filteredJson.has("suspendPolicy") && !filteredJson.isNull("suspendPolicy")) {
+                    resultMap["suspendPolicy"] = filteredJson.optString("suspendPolicy", "")
                 }
                 if (filteredJson.has("envVars") && !filteredJson.isNull("envVars")) {
                     var envVars = filteredJson.optString("envVars", PrefManager.envVars)

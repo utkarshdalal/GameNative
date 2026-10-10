@@ -61,12 +61,14 @@ public class WinHandler {
     private MappedByteBuffer gamepadBuffer;
     private static final short SERVER_PORT = 7947;
     private static final short CLIENT_PORT = 7946;
+    private static final long INIT_TIMEOUT_MS = 15000;
     private final ArrayDeque<Runnable> actions;
     private ExternalController currentController;
     private volatile int currentControllerId;
     private byte dinputMapperType;
     private final List<Integer> gamepadClients;
-    private boolean initReceived;
+    private volatile boolean initReceived;
+    private Thread initTimeoutThread;
     private InetAddress localhost;
     private OnGetProcessInfoListener onGetProcessInfoListener;
     private PreferredInputApi preferredInputApi;
@@ -86,6 +88,11 @@ public class WinHandler {
     private final short[] lastHighFreq = new short[MAX_PLAYERS];
     private final boolean[] isRumbling = new boolean[MAX_PLAYERS];
     private final int[] rumbleDeviceIds = new int[MAX_PLAYERS];
+    private final long[] controllerRumbleAppliedMs = new long[MAX_PLAYERS];
+    private final int[] controllerRumbleAmplitude = new int[MAX_PLAYERS];
+    private final Object rumbleLock = new Object();
+    private Thread rumbleKeepaliveThread;
+    private volatile int vibrationIntensity = 100;
     private long lastStandalonePhoneRumbleMs = 0;
     private boolean isShowingAssignDialog = false;
     private Context activity;
@@ -114,7 +121,8 @@ public class WinHandler {
     private static final int OFF_RUMBLE_LOW = 32;
     private static final int OFF_RUMBLE_HIGH = 34;
     private static final int OFF_CONNECTED = 40;
-    private static final int CONTROLLER_RUMBLE_DURATION_MS = 1000;
+    private static final int CONTROLLER_RUMBLE_DURATION_MS = 10000;
+    private static final int CONTROLLER_RUMBLE_REARM_MS = 9000;
     private static final int PHONE_RUMBLE_FALLBACK_DURATION_MS = 40;
     private static final int STANDALONE_PHONE_RUMBLE_DURATION_MS = 70;
     private static final int STANDALONE_PHONE_RUMBLE_THROTTLE_MS = 120;
@@ -353,6 +361,7 @@ public class WinHandler {
             this.socket.send(this.sendPacket);
             return true;
         } catch (IOException e) {
+            Log.w(TAG, "WinHandler send failed (code " + this.sendData.get(0) + ")", e);
             return false;
         }
     }
@@ -418,9 +427,11 @@ public class WinHandler {
             this.sendData.rewind();
             this.sendData.put(RequestCodes.LIST_PROCESSES);
             this.sendData.putInt(0);
-            if (!sendPacket(CLIENT_PORT) && (onGetProcessInfoListener = this.onGetProcessInfoListener) != null) {
+            boolean sent = sendPacket(CLIENT_PORT);
+            if (!sent && (onGetProcessInfoListener = this.onGetProcessInfoListener) != null) {
                 onGetProcessInfoListener.onGetProcessInfo(0, 0, null);
             }
+            Log.d(TAG, "WinHandler listProcesses " + (sent ? "sent" : "not sent"));
         });
     }
 
@@ -524,6 +535,22 @@ public class WinHandler {
     }
 
     private void startSendThread() {
+        initTimeoutThread = new Thread(() -> {
+            try {
+                Thread.sleep(INIT_TIMEOUT_MS);
+            } catch (InterruptedException e) {
+                return;
+            }
+            synchronized (this.actions) {
+                if (!this.initReceived && this.running) {
+                    Log.w(TAG, "WinHandler INIT not received within " + INIT_TIMEOUT_MS + " ms; sending anyway");
+                    this.initReceived = true;
+                    this.actions.notify();
+                }
+            }
+        }, "WinHandler-init-timeout");
+        initTimeoutThread.setDaemon(true);
+        initTimeoutThread.start();
         Executors.newSingleThreadExecutor().execute(() -> {
             while (this.running) {
                 synchronized (this.actions) {
@@ -545,6 +572,14 @@ public class WinHandler {
         for (int slot = 0; slot < MAX_PLAYERS; slot++) {
             rumbleTeardown(slot);
         }
+        Thread keepaliveThread = rumbleKeepaliveThread;
+        if (keepaliveThread != null) {
+            keepaliveThread.interrupt();
+        }
+        Thread timeoutThread = initTimeoutThread;
+        if (timeoutThread != null) {
+            timeoutThread.interrupt();
+        }
         try {
             if (rumblePollerThreads != null && rumblePollerThreads.length > 0) {
                 for (Thread t : rumblePollerThreads) {
@@ -553,7 +588,13 @@ public class WinHandler {
                     }
                 }
             }
+            if (keepaliveThread != null) {
+                keepaliveThread.join();
+            }
         } catch (InterruptedException ignored) {
+        }
+        for (int slot = 0; slot < MAX_PLAYERS; slot++) {
+            stopVibration(slot);
         }
         DatagramSocket datagramSocket = this.socket;
         if (datagramSocket != null) {
@@ -583,6 +624,7 @@ public class WinHandler {
         ExternalController externalController;
         switch (requestCode) {
             case RequestCodes.INIT:
+                Log.i(TAG, "WinHandler INIT received from port " + port);
                 this.initReceived = true;
                 synchronized (this.actions) {
                     this.actions.notify();
@@ -790,16 +832,25 @@ public class WinHandler {
             }
         }
         refreshControllerMappings();
+        Log.i(TAG, "WinHandler start: localhost=" + this.localhost);
         this.running = true;
         activeInstance = this;
         startSendThread();
+        try {
+            DatagramSocket datagramSocket = new DatagramSocket((SocketAddress) null);
+            this.socket = datagramSocket;
+            datagramSocket.setReuseAddress(true);
+            this.socket.bind(new InetSocketAddress((InetAddress) null, SERVER_PORT));
+            Log.i(TAG, "WinHandler bound to " + this.socket.getLocalSocketAddress());
+        } catch (IOException e) {
+            Log.e(TAG, "WinHandler bind failed", e);
+            DatagramSocket failed = this.socket;
+            this.socket = null;
+            if (failed != null) failed.close();
+        }
         Executors.newSingleThreadExecutor().execute(() -> {
             try {
-                DatagramSocket datagramSocket = new DatagramSocket((SocketAddress) null);
-                this.socket = datagramSocket;
-                datagramSocket.setReuseAddress(true);
-                this.socket.bind(new InetSocketAddress((InetAddress) null, SERVER_PORT));
-                while (this.running) {
+                while (this.running && this.socket != null) {
                     this.socket.receive(this.receivePacket);
                     synchronized (this.actions) {
                         this.receiveData.rewind();
@@ -807,10 +858,12 @@ public class WinHandler {
                         handleRequest(requestCode, this.receivePacket.getPort());
                     }
                 }
-            } catch (IOException ignored) {
+            } catch (IOException e) {
+                if (this.running) Log.e(TAG, "WinHandler receive loop ended", e);
             }
         });
         startRumblePoller();
+        startRumbleKeepalive();
     }
 
     private void startRumblePoller() {
@@ -868,21 +921,75 @@ public class WinHandler {
         }
     }
 
+    private void startRumbleKeepalive() {
+        rumbleKeepaliveThread = new Thread(() -> {
+            synchronized (rumbleLock) {
+                while (running) {
+                    try {
+                        long nextDeadline = Long.MAX_VALUE;
+                        for (int slot = 0; slot < MAX_PLAYERS; slot++) {
+                            if (controllerRumbleAppliedMs[slot] == 0) continue;
+                            if (SystemClock.uptimeMillis() - controllerRumbleAppliedMs[slot] >= CONTROLLER_RUMBLE_REARM_MS) {
+                                rearmControllerVibration(slot);
+                                if (controllerRumbleAppliedMs[slot] == 0) continue;
+                            }
+                            nextDeadline = Math.min(nextDeadline, controllerRumbleAppliedMs[slot] + CONTROLLER_RUMBLE_REARM_MS);
+                        }
+                        if (nextDeadline == Long.MAX_VALUE) {
+                            rumbleLock.wait();
+                        } else {
+                            rumbleLock.wait(Math.max(1, nextDeadline - SystemClock.uptimeMillis()));
+                        }
+                    } catch (InterruptedException e) {
+                        return;
+                    } catch (Throwable t) {
+                        Log.e(TAG, "Rumble keepalive failed", t);
+                    }
+                }
+            }
+        }, "rumble-keepalive");
+        rumbleKeepaliveThread.start();
+    }
+
+    private void rearmControllerVibration(int slot) {
+        controllerRumbleAppliedMs[slot] = 0;
+        InputDevice device = InputDevice.getDevice(rumbleDeviceIds[slot]);
+        Vibrator controllerVibrator = device != null ? device.getVibrator() : null;
+        if (controllerVibrator != null && controllerVibrator.hasVibrator()) {
+            controllerVibrator.vibrate(VibrationEffect.createOneShot(CONTROLLER_RUMBLE_DURATION_MS, controllerRumbleAmplitude[slot]));
+            controllerRumbleAppliedMs[slot] = SystemClock.uptimeMillis();
+        }
+    }
+
+    public void setVibrationIntensity(int intensity) {
+        vibrationIntensity = Math.max(0, Math.min(100, intensity));
+    }
+
     private void startVibration(int slot, short lowFreq, short highFreq) {
         if (slot < 0 || slot >= MAX_PLAYERS) {
             return;
         }
-        // A live Steam Controller owns rumble output for ITS slot only (its own motors); forward and skip the
-        // per-slot device path. Other slots fall through to the stock path below.
-        RumbleForwarder fwd = scRumbleForwarderFor(slot);
-        if (fwd != null) {
-            // Cancel any local buzz still in flight on this slot so it doesn't linger alongside the SC's rumble.
-            if (isRumbling[slot]) { stopDeviceVibration(rumbleDeviceIds[slot]); isRumbling[slot] = false; }
-            fwd.onRumble(lowFreq, highFreq);
-            return;
-        }
-        if (startDeviceVibration(rumbleDeviceIds[slot], lowFreq, highFreq)) {
-            isRumbling[slot] = true;
+        synchronized (rumbleLock) {
+            // A live Steam Controller owns rumble output for ITS slot only (its own motors); forward and skip the
+            // per-slot device path. Other slots fall through to the stock path below.
+            RumbleForwarder fwd = scRumbleForwarderFor(slot);
+            if (fwd != null) {
+                // Cancel any local buzz still in flight on this slot so it doesn't linger alongside the SC's rumble.
+                controllerRumbleAppliedMs[slot] = 0;
+                if (isRumbling[slot]) { stopDeviceVibration(rumbleDeviceIds[slot]); isRumbling[slot] = false; }
+                fwd.onRumble(lowFreq, highFreq);
+                return;
+            }
+            boolean controllerWasRumbling = controllerRumbleAppliedMs[slot] != 0;
+            controllerRumbleAppliedMs[slot] = 0;
+            if (startDeviceVibration(slot, rumbleDeviceIds[slot], lowFreq, highFreq)) {
+                isRumbling[slot] = true;
+            } else if (controllerWasRumbling) {
+                stopVibration(slot);
+            }
+            if (!controllerWasRumbling && controllerRumbleAppliedMs[slot] != 0) {
+                rumbleLock.notifyAll();
+            }
         }
     }
 
@@ -900,7 +1007,7 @@ public class WinHandler {
         return phoneAmplitude;
     }
 
-    private boolean startDeviceVibration(int deviceId, short lowFreq, short highFreq) {
+    private boolean startDeviceVibration(int slot, int deviceId, short lowFreq, short highFreq) {
         // --- Step 1: Calculate the base amplitude once at the top ---
         int unsignedLowFreq = lowFreq & 0xFFFF;
         int unsignedHighFreq = highFreq & 0xFFFF;
@@ -908,6 +1015,7 @@ public class WinHandler {
         // This is the raw amplitude for a physical X-Input device
         int amplitude = Math.round((float) dominantRumble / 65535.0f * 254.0f) + 1;
         if (amplitude > 255) amplitude = 255;
+        amplitude = amplitude * vibrationIntensity / 100;
         // If amplitude is negligible, just stop and exit.
         if (amplitude <= 1) {
             return false;
@@ -920,6 +1028,8 @@ public class WinHandler {
             Vibrator controllerVibrator = device.getVibrator();
             if (controllerVibrator != null && controllerVibrator.hasVibrator()) {
                 controllerVibrator.vibrate(VibrationEffect.createOneShot(CONTROLLER_RUMBLE_DURATION_MS, amplitude));
+                controllerRumbleAmplitude[slot] = amplitude;
+                controllerRumbleAppliedMs[slot] = SystemClock.uptimeMillis();
                 controllerVibrated = true;
             }
         }
@@ -956,12 +1066,19 @@ public class WinHandler {
         if (slot < 0 || slot >= MAX_PLAYERS) {
             return;
         }
-        // A live Steam Controller owns rumble output for ITS slot; forward the stop and skip the device path.
-        RumbleForwarder fwd = scRumbleForwarderFor(slot);
-        if (fwd != null) { fwd.onRumble((short) 0, (short) 0); return; }
-        if (!isRumbling[slot]) return;
-        stopDeviceVibration(rumbleDeviceIds[slot]);
-        isRumbling[slot] = false;
+        synchronized (rumbleLock) {
+            controllerRumbleAppliedMs[slot] = 0;
+            // A live Steam Controller owns rumble output for ITS slot; forward the stop and skip the device path.
+            RumbleForwarder fwd = scRumbleForwarderFor(slot);
+            if (fwd != null) {
+                if (isRumbling[slot]) { stopDeviceVibration(rumbleDeviceIds[slot]); isRumbling[slot] = false; }
+                fwd.onRumble((short) 0, (short) 0);
+                return;
+            }
+            if (!isRumbling[slot]) return;
+            stopDeviceVibration(rumbleDeviceIds[slot]);
+            isRumbling[slot] = false;
+        }
     }
 
     private void stopDeviceVibration(int deviceId) {

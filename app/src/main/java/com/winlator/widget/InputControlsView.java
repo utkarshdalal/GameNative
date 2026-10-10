@@ -58,6 +58,8 @@ public class InputControlsView extends View {
     private static final long SHOOTER_SPRINT_TAP_DURATION_MS = 120;
     public static final float DEFAULT_OVERLAY_OPACITY = 0.4f;
     private static final int SEQUENCE_PRESS_MS = 80;
+    // LX, LY, RX, RY - the leading entries of the axis array processed in processJoystickInput
+    private static final int PHYSICAL_STICK_AXIS_COUNT = 4;
     private boolean editMode = false;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path path = new Path();
@@ -82,6 +84,7 @@ public class InputControlsView extends View {
     private final Bitmap[] icons = new Bitmap[40];
     private Timer mouseMoveTimer;
     private final PointF mouseMoveOffset = new PointF();
+    private final PointF mouseMoveRemainder = new PointF();
     private boolean showTouchscreenControls = true;
 
     // Shooter mode state
@@ -234,7 +237,24 @@ public class InputControlsView extends View {
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
-        if (profile != null && profile.isElementsLoaded() && oldw > 0 && w != oldw) {
+        snappingSize = Math.max(1, w / 100);
+        if (profile != null && profile.isElementsLoaded() && w > 0 && h > 0
+                && (w != oldw || h != oldh)) {
+            if (editMode && oldw > 0 && oldh > 0) {
+                int oldSnappingSize = Math.max(1, oldw / 100);
+                int oldMaxWidth = Math.max(1, (int)Mathf.roundTo(oldw, oldSnappingSize));
+                int oldMaxHeight = Math.max(1, (int)Mathf.roundTo(oldh, oldSnappingSize));
+                if (!profile.saveElementsForLayoutSize(oldMaxWidth, oldMaxHeight)) {
+                    int newMaxWidth = Math.max(1, getMaxWidth());
+                    int newMaxHeight = Math.max(1, getMaxHeight());
+                    for (ControlElement element : profile.getElements()) {
+                        element.setX(Math.round((float)element.getX() * newMaxWidth / oldMaxWidth));
+                        element.setY(Math.round((float)element.getY() * newMaxHeight / oldMaxHeight));
+                    }
+                    cancelTouchRouting();
+                    return;
+                }
+            }
             cancelTouchRouting();
             profile.loadElements(this);
         }
@@ -250,7 +270,7 @@ public class InputControlsView extends View {
             return;
         }
 
-        snappingSize = width / 100;
+        snappingSize = Math.max(1, width / 100);
         readyToDraw = true;
 
         if (editMode) {
@@ -577,7 +597,18 @@ public class InputControlsView extends View {
             mouseMoveTimer.schedule(new TimerTask() {
                 @Override
                 public void run() {
-                    xServer.injectPointerMoveDelta((int)(mouseMoveOffset.x * 10 * cursorSpeed), (int)(mouseMoveOffset.y * 10 * cursorSpeed));
+                    if (mouseMoveOffset.x == 0f) mouseMoveRemainder.x = 0f;
+                    if (mouseMoveOffset.y == 0f) mouseMoveRemainder.y = 0f;
+                    if (mouseMoveOffset.x == 0f && mouseMoveOffset.y == 0f) return;
+
+                    float scaledX = mouseMoveOffset.x * 10 * cursorSpeed + mouseMoveRemainder.x;
+                    float scaledY = mouseMoveOffset.y * 10 * cursorSpeed + mouseMoveRemainder.y;
+                    int deltaX = (int)scaledX;
+                    int deltaY = (int)scaledY;
+                    mouseMoveRemainder.set(scaledX - deltaX, scaledY - deltaY);
+                    if (deltaX != 0 || deltaY != 0) {
+                        xServer.injectPointerMoveDelta(deltaX, deltaY);
+                    }
                 }
             }, 0, 1000 / 60);
         }
@@ -589,7 +620,15 @@ public class InputControlsView extends View {
         final float[] values = {controller.state.thumbLX, controller.state.thumbLY, controller.state.thumbRX, controller.state.thumbRY, controller.state.getDPadX(), controller.state.getDPadY()};
 
         for (byte i = 0; i < axes.length; i++) {
-            if (Math.abs(values[i]) > ControlElement.STICK_DEAD_ZONE) {
+            // Tuned analog-stick values already include the user's chosen deadzone, so anything
+            // non-zero is live input. Untuned legacy profiles and digital hat axes retain the
+            // original fixed activation threshold.
+            boolean isStick = i < PHYSICAL_STICK_AXIS_COUNT;
+            boolean isActive = isStick && profile.isStickTuningConfigured()
+                    ? values[i] != 0
+                    : Math.abs(values[i]) > ControlElement.STICK_DEAD_ZONE;
+
+            if (isActive) {
                 controllerBinding = controller.getControllerBinding(ExternalControllerBinding.getKeyCodeForAxis(axes[i], Mathf.sign(values[i])));
                 if (controllerBinding != null) handleInputEvent(controllerBinding.getBindingCombo(), true, values[i]);
             }
@@ -1365,6 +1404,7 @@ public class InputControlsView extends View {
 
     @Override
     public boolean onGenericMotionEvent(MotionEvent event) {
+        if (!isEnabled()) return false;
         if (!editMode && profile != null) {
             ExternalController controller = profile.getController(event.getDeviceId());
             if (controller != null && controller.updateStateFromMotionEvent(event)) {
@@ -1384,6 +1424,9 @@ public class InputControlsView extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        // Drawing-only profile previews have no touchpad or X server. Disabled views
+        // must leave gestures to their parent (including scrolling over the preview).
+        if (!isEnabled()) return false;
         if (editMode && readyToDraw) {
             switch (event.getAction()) {
                 case MotionEvent.ACTION_DOWN: {
@@ -1563,6 +1606,7 @@ public class InputControlsView extends View {
     }
 
     public boolean onKeyEvent(KeyEvent event) {
+        if (!isEnabled()) return false;
         if (profile != null && event.getRepeatCount() == 0) {
             ExternalController controller = profile.getController(event.getDeviceId());
             if (controller != null) {
@@ -1982,6 +2026,7 @@ public class InputControlsView extends View {
     }
 
     public Bitmap getIcon(byte id) {
+        if (id < 0 || id >= icons.length) return null;
         if (icons[id] == null) {
             Context context = getContext();
             try (InputStream is = context.getAssets().open("inputcontrols/icons/"+id+".png")) {
