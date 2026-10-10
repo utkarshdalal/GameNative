@@ -156,13 +156,13 @@ public class ControllerManager {
     /**
      * Saves the current player slot assignments and enabled states to SharedPreferences.
      */
-    public void saveAssignments() {
+    public synchronized void saveAssignments() {
         SharedPreferences.Editor editor = preferences.edit();
         for (int i = 0; i < MAX_SLOTS; i++) {
             // Save the assigned device identifier, with any session-only virtual-slot displacement undone so
             // a pad moved off Player 1 for a Steam Controller never has that move written to preferences.
             String deviceIdentifier = slotAssignments.get(i);
-            boolean enabled = enabledSlots[i];
+            boolean enabled = i == 0 && reservedSlots[0] ? reservedSlotWasEnabled : enabledSlots[i];
             if (displacedIdentifier != null) {
                 if (i == displacedToSlot) {
                     deviceIdentifier = null;
@@ -600,6 +600,7 @@ public class ControllerManager {
     private String displacedIdentifier = null;
     private int displacedToSlot = -1;
     private boolean displacedToSlotWasEnabled = false;
+    private boolean reservedSlotWasEnabled = false;
 
     /**
      * Reserves <b>Player 1</b> for a virtual controller, moving any physical pad sitting there to the next
@@ -640,6 +641,7 @@ public class ControllerManager {
             displacedToSlot = target;
             Log.i(TAG, "Moved " + occupant + " to Player " + (target + 1) + " for a virtual controller");
         }
+        reservedSlotWasEnabled = enabledSlots[0];
         reservedSlots[0] = true;
         enabledSlots[0] = true;
         notifySlotsChanged();
@@ -660,6 +662,7 @@ public class ControllerManager {
     public synchronized void releaseVirtualSlot(int slot) {
         if (slot < 0 || slot >= MAX_SLOTS || !reservedSlots[slot]) return;
         reservedSlots[slot] = false;
+        enabledSlots[slot] = reservedSlotWasEnabled;
         if (displacedIdentifier != null) {
             if (displacedIdentifier.equals(slotAssignments.get(displacedToSlot))) {
                 slotAssignments.remove(displacedToSlot);

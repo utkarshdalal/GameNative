@@ -44,13 +44,15 @@ class TritonMapper(
     }
 
     /**
-     * Player slot this session drives, reserved from [ControllerManager] in [start]. The Triton is not an
-     * Android input device, so the auto-assigner can't see it; without the reservation it would hand this
-     * slot to the next physical pad, and the two would then share one gamepad state and one rumble channel
-     * (an Xbox pad's rumble came out of the Steam Controller's motors). Released in [stop].
+     * Player slot this session drives, reserved from [ControllerManager] once the transport is live. The Triton
+     * is not an Android input device, so the auto-assigner can't see it; without the reservation it would hand
+     * this slot to the next physical pad, and the two would then share one gamepad state and one rumble channel
+     * (an Xbox pad's rumble came out of the Steam Controller's motors). Released on any transport error and in
+     * [stop], so an absent controller never locks physical pads out of Player 1.
      */
     @Volatile private var gamepadSlot = FALLBACK_GAMEPAD_SLOT
-    private var reservedSlot = -1
+    @Volatile private var reservedSlot = -1
+    @Volatile private var sink: XServerOutputSink? = null
 
     // ble is read from the BLE binder thread (via the haptics writeOut lambda) but written on the main thread;
     // interpreter/bleRetries are touched from both BLE callbacks and the main handler — mark volatile for visibility.
@@ -103,12 +105,32 @@ class TritonMapper(
     /** Start the BLE transport (the only transport). Feeds the [ProfileInterpreter] so action sets / layers /
      *  mode-shift / overlays / keyboard run in-game. */
     fun start() {
-        // Take a player slot BEFORE any output can reach WinHandler, so a pad plugged in later is auto-assigned
-        // a different one instead of colliding with us.
-        reservedSlot = runCatching { ControllerManager.getInstance().reserveVirtualSlot() }.getOrDefault(-1)
-        gamepadSlot = if (reservedSlot >= 0) reservedSlot else FALLBACK_GAMEPAD_SLOT
-        Log.i(TAG, "using gamepad slot ${gamepadSlot + 1} (reserved=${reservedSlot >= 0})")
         startBle()
+    }
+
+    private fun reserveSlot() {
+        if (reservedSlot < 0) {
+            reservedSlot = runCatching { ControllerManager.getInstance().reserveVirtualSlot() }.getOrDefault(-1)
+        }
+        gamepadSlot = if (reservedSlot >= 0) reservedSlot else FALLBACK_GAMEPAD_SLOT
+        updateSink()
+        Log.i(TAG, "using gamepad slot ${gamepadSlot + 1} (reserved=${reservedSlot >= 0})")
+    }
+
+    private fun releaseSlot() {
+        if (reservedSlot >= 0) {
+            runCatching { ControllerManager.getInstance().releaseVirtualSlot(reservedSlot) }
+            reservedSlot = -1
+        }
+        gamepadSlot = FALLBACK_GAMEPAD_SLOT
+        updateSink()
+    }
+
+    private fun updateSink() {
+        sink?.let {
+            it.gamepadSlot = gamepadSlot
+            it.ownsPlayerOne = reservedSlot == 0
+        }
     }
 
     /**
@@ -136,6 +158,7 @@ class TritonMapper(
             onState = { state -> if (running) interp.apply(state) },
             onReady = {
                 bleRetries = 0; transportReady = true
+                reserveSlot()
                 // Only claim the game's rumble output once a controller is REALLY there. Claiming it up-front (at
                 // start) would silently kill rumble for everyone whose transport never connects, since the tap
                 // makes WinHandler skip the device/phone path. Released again on any error below.
@@ -147,6 +170,7 @@ class TritonMapper(
                 transportReady = false
                 setRumbleForwarder(false)
                 runCatching { b.close() }
+                releaseSlot()
                 if (ble === b) ble = null
                 if (running && bleRetries < MAX_BLE_RETRIES) {
                     bleRetries++
@@ -162,8 +186,11 @@ class TritonMapper(
     /** Build the interpreter for the active [config] (or [ScProfile.default]). */
     private fun buildInterpreter(haptics: TritonHaptics?): ProfileInterpreter {
         val cfg = config
+        val s = XServerOutputSink(xServer, gamepadSlot)
+        sink = s
+        updateSink()
         return ProfileInterpreter(
-            XServerOutputSink(xServer, gamepadSlot),
+            s,
             cfg?.defaultProfile() ?: ScProfile.default(),
             haptics,
             menuOverlay = menuOverlay,
@@ -204,8 +231,7 @@ class TritonMapper(
         transportReady = false
         running = false
         setRumbleForwarder(false)
-        runCatching { ControllerManager.getInstance().releaseVirtualSlot(reservedSlot) }
-        reservedSlot = -1
+        releaseSlot()
         bleHandler.removeCallbacksAndMessages(null)
         ble?.close(); ble = null
         haptics = null

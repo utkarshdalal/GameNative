@@ -2788,8 +2788,13 @@ fun XServerScreen(
                             scKeyboardOverlay,
                             configKey = appId,
                             uiBridge = scUiBridge,
-                        ).also { it.start() }
-                    }.onFailure { Timber.e(it, "Steam Controller startup failed; continuing without it") }
+                        )
+                        sc.mapper?.start()
+                    }.onFailure {
+                        Timber.e(it, "Steam Controller startup failed; continuing without it")
+                        runCatching { sc.mapper?.stop() }
+                        sc.mapper = null
+                    }
 
                     // Store profile for auto-show logic
                     loadedProfile = targetProfile
