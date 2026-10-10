@@ -896,7 +896,7 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Pro-rapporter springer køen over.</string>
     <string name="support_limit_title">Dagens fair-use-grænse er nået</string>
-    <string name="support_upgrade_reason_required">AI-svar kræver et GameNative-abonnement.</string>
+    <string name="support_upgrade_reason_required">AI-svar kræver et GameNative-abonnement. Hvis du allerede abonnerer via Discord eller Ko-fi, så forbind Discord i Indstillinger.</string>
     <string name="support_see_plans">Se planer</string>
     <string name="support_plan_basic_title">$5/måned · Basic</string>
     <string name="support_plan_basic_body">Få dine spil til at køre, eller til at køre bedre.</string>

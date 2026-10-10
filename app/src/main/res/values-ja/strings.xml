@@ -1049,7 +1049,7 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Pro のレポートはキューを待たずに処理されます。</string>
     <string name="support_limit_title">本日の公正利用の上限に達しました</string>
-    <string name="support_upgrade_reason_required">AI の返信には GameNative のサブスクリプションが必要です。</string>
+    <string name="support_upgrade_reason_required">AI の返信には GameNative のサブスクリプションが必要です。すでに Discord または Ko-fi でサブスクリプションに登録している場合は、設定で Discord を連携してください。</string>
     <string name="support_see_plans">プランを見る</string>
     <string name="support_plan_basic_title">$5/月 · Basic</string>
     <string name="support_plan_basic_body">ゲームを動かす。もっと快適に動かす。</string>

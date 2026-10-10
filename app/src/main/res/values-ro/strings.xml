@@ -1082,7 +1082,7 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Rapoartele Pro sar peste coadă.</string>
     <string name="support_limit_title">Limita zilnică de utilizare corectă a fost atinsă</string>
-    <string name="support_upgrade_reason_required">Răspunsurile AI necesită un abonament GameNative.</string>
+    <string name="support_upgrade_reason_required">Răspunsurile AI necesită un abonament GameNative. Dacă ai deja un abonament pe Discord sau Ko-fi, conectează Discord în Setări.</string>
     <string name="support_see_plans">Vezi planurile</string>
     <string name="support_plan_basic_title">$5/lună · Basic</string>
     <string name="support_plan_basic_body">Fă-ți jocurile să ruleze sau să ruleze mai bine.</string>

@@ -1253,7 +1253,7 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Pro reports skip the queue.</string>
     <string name="support_limit_title">Daily fair-use limit reached</string>
-    <string name="support_upgrade_reason_required">AI replies need a GameNative subscription.</string>
+    <string name="support_upgrade_reason_required">AI replies need a GameNative subscription. If you already subscribe on Discord or Ko-fi, connect Discord in Settings.</string>
     <string name="support_see_plans">See plans</string>
     <string name="support_plan_basic_title">$5/month · Basic</string>
     <string name="support_plan_basic_body">Get your games running, or running better.</string>

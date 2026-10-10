@@ -1077,7 +1077,7 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Звіти Pro проходять без черги.</string>
     <string name="support_limit_title">Денний ліміт чесного використання вичерпано</string>
-    <string name="support_upgrade_reason_required">Для відповідей AI потрібна підписка GameNative.</string>
+    <string name="support_upgrade_reason_required">Для відповідей AI потрібна підписка GameNative. Якщо ви вже маєте підписку в Discord або на Ko-fi, підключіть Discord у налаштуваннях.</string>
     <string name="support_see_plans">Переглянути плани</string>
     <string name="support_plan_basic_title">$5/місяць · Basic</string>
     <string name="support_plan_basic_body">Запустіть свої ігри або змусьте їх працювати краще.</string>
