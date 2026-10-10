@@ -68,7 +68,10 @@ class SupportComponentTest {
             val component = SupportComponent.parse(card(type = type, format = "content-package", version = "$type-test-1", key = key))
             assertNotNull(type, component)
         }
-        assertNotNull(SupportComponent.parse(card(type = "wrapper")))
+        assertNotNull(SupportComponent.parse(card(type = "wrapper", format = "content-package", version = "wrapper-fix-a1b2c3d", key = "graphicsDriver")))
+        assertNotNull(SupportComponent.parse(card(type = "lsfg", format = "lsfg-layer-zip", version = "lsfg-fix-a1b2c3d", key = "lsfgLayerVersion")))
+        assertNull(SupportComponent.parse(card(type = "wrapper")))
+        assertNull(SupportComponent.parse(card(type = "lsfg", format = "content-package", version = "lsfg-fix-a1b2c3d", key = "lsfgLayerVersion")))
     }
 
     @Test

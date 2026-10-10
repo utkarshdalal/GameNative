@@ -447,7 +447,7 @@ object LsfgVkManager {
                 success = false
             }
         } else {
-            Timber.tag(TAG).d("Runtime %s already installed in %s", RUNTIME_VERSION, rootDir)
+            Timber.tag(TAG).d("Runtime %s already installed in %s", runtimeVersion, rootDir)
         }
 
         // Delete the Lossless Scaling container if it exists (no longer needed)

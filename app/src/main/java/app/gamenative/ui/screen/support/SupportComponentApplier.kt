@@ -76,7 +76,7 @@ object SupportComponentApplier {
             SupportComponent.Type.TURNIP ->
                 listOf(SupportSuggestionApplier.Edit("graphicsDriverConfig.version", null, installedId))
             SupportComponent.Type.WRAPPER ->
-                listOf(SupportSuggestionApplier.Edit(SupportComponent.KEY_GRAPHICS_DRIVER, null, component.versionName))
+                listOf(SupportSuggestionApplier.Edit(SupportComponent.KEY_GRAPHICS_DRIVER, null, "wrapper-$installedId".lowercase()))
             SupportComponent.Type.LSFG ->
                 listOf(SupportSuggestionApplier.Edit(SupportComponent.KEY_LSFG_LAYER_VERSION, null, installedId))
             SupportComponent.Type.FEXCORE -> listOf(SupportSuggestionApplier.Edit("fexcoreVersion", null, installedId))
@@ -119,6 +119,42 @@ object SupportComponentApplier {
     }
 
     private val LAYER_ENTRIES = setOf("meta.json", LsfgVkManager.LAYER_LIB_FILENAME, LsfgVkManager.LAYER_MANIFEST_FILENAME)
+    private const val LAYER_ENTRY_MAX = 64L * 1024 * 1024
+    private const val LAYER_TOTAL_MAX = 96L * 1024 * 1024
+
+    private fun extractLayerZip(file: File, staging: File): String? {
+        var metaName: String? = null
+        var total = 0L
+        val seen = mutableSetOf<String>()
+        ZipFile(file).use { zip ->
+            for (entry in zip.entries()) {
+                if (entry.isDirectory) continue
+                if (entry.name !in LAYER_ENTRIES) throw StepFailure("layer zip holds an unexpected file ${entry.name}")
+                if (!seen.add(entry.name)) throw StepFailure("layer zip holds ${entry.name} twice")
+                if (entry.size > LAYER_ENTRY_MAX) throw StepFailure("${entry.name} is too large")
+                val out = File(staging, entry.name)
+                zip.getInputStream(entry).use { input ->
+                    out.outputStream().use { output ->
+                        val buffer = ByteArray(64 * 1024)
+                        var written = 0L
+                        while (true) {
+                            val n = input.read(buffer)
+                            if (n < 0) break
+                            written += n
+                            total += n
+                            if (written > LAYER_ENTRY_MAX || total > LAYER_TOTAL_MAX) throw StepFailure("layer zip is too large")
+                            output.write(buffer, 0, n)
+                        }
+                    }
+                }
+                if (entry.name == "meta.json") metaName = runCatching { JSONObject(out.readText()).optString("name") }.getOrNull()
+            }
+        }
+        for (required in LAYER_ENTRIES) {
+            if (!File(staging, required).isFile) throw StepFailure("layer zip has no $required")
+        }
+        return metaName
+    }
 
     private suspend fun importLayer(context: Context, component: SupportComponent, file: File): String {
         val name = component.applyValue
@@ -127,20 +163,14 @@ object SupportComponentApplier {
             val staging = File(target.parentFile, ".$name.tmp")
             staging.deleteRecursively()
             staging.mkdirs()
-            var metaName: String? = null
-            ZipFile(file).use { zip ->
-                for (entry in zip.entries()) {
-                    if (entry.isDirectory) continue
-                    if (entry.name !in LAYER_ENTRIES) throw StepFailure("layer zip holds an unexpected file ${entry.name}")
-                    val out = File(staging, entry.name)
-                    zip.getInputStream(entry).use { input -> out.outputStream().use { input.copyTo(it) } }
-                    if (entry.name == "meta.json") metaName = runCatching { JSONObject(out.readText()).optString("name") }.getOrNull()
-                }
+            try {
+                val metaName = extractLayerZip(file, staging)
+                if (metaName != name) throw StepFailure("meta.json name is ${metaName ?: "missing"}, expected $name")
+                target.deleteRecursively()
+                if (!staging.renameTo(target)) throw StepFailure("layer install failed")
+            } finally {
+                staging.deleteRecursively()
             }
-            if (metaName != name) throw StepFailure("meta.json name is ${metaName ?: "missing"}, expected $name")
-            if (!File(staging, LsfgVkManager.LAYER_LIB_FILENAME).isFile) throw StepFailure("layer zip has no ${LsfgVkManager.LAYER_LIB_FILENAME}")
-            target.deleteRecursively()
-            if (!staging.renameTo(target)) throw StepFailure("layer install failed")
         }
         if (name !in installedIds(context, component.type)) throw StepFailure("layer $name is not in the installed list")
         return name
