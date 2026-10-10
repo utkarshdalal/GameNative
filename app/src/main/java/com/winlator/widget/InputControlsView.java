@@ -75,7 +75,7 @@ public class InputControlsView extends View {
     private float offsetX;
     private float offsetY;
     private ControlElement selectedElement;
-    private ControlsProfile profile;
+    private volatile ControlsProfile profile;
     // Retained while the overlay controls are hidden so gyro can keep targeting the active gamepad.
     private ControlsProfile gyroProfile;
     private float overlayOpacity = DEFAULT_OVERLAY_OPACITY;
@@ -84,6 +84,7 @@ public class InputControlsView extends View {
     private final Bitmap[] icons = new Bitmap[40];
     private Timer mouseMoveTimer;
     private final PointF mouseMoveOffset = new PointF();
+    private final Object mouseMoveStateLock = new Object();
     private final PointF mouseMoveRemainder = new PointF();
     private boolean showTouchscreenControls = true;
 
@@ -441,6 +442,8 @@ public class InputControlsView extends View {
             }
         }
 
+        if (profileChanged || profile == null) stopMouseMoveTimer();
+
         onControlsProfileContentChanged(profileChanged);
         gyroController.setHasProfile(profile != null);
     }
@@ -451,6 +454,7 @@ public class InputControlsView extends View {
         synchronized (this) {
             this.profile = null;
         }
+        stopMouseMoveTimer();
     }
 
     /** Re-evaluates latched gyro activation after the active profile is edited in place. */
@@ -575,8 +579,7 @@ public class InputControlsView extends View {
     protected void onDetachedFromWindow() {
         cancelTouchRouting();
         gyroController.onDetachedFromWindow();
-        if (mouseMoveTimer != null)
-            mouseMoveTimer.cancel();
+        stopMouseMoveTimer();
         super.onDetachedFromWindow();
     }
 
@@ -590,27 +593,43 @@ public class InputControlsView extends View {
         return (int)Mathf.roundTo(getHeight(), snappingSize);
     }
 
-    private void createMouseMoveTimer() {
+    private synchronized void createMouseMoveTimer() {
         if (profile != null && mouseMoveTimer == null) {
-            final float cursorSpeed = profile.getCursorSpeed();
             mouseMoveTimer = new Timer();
             mouseMoveTimer.schedule(new TimerTask() {
                 @Override
                 public void run() {
-                    if (mouseMoveOffset.x == 0f) mouseMoveRemainder.x = 0f;
-                    if (mouseMoveOffset.y == 0f) mouseMoveRemainder.y = 0f;
-                    if (mouseMoveOffset.x == 0f && mouseMoveOffset.y == 0f) return;
+                    synchronized (mouseMoveStateLock) {
+                        ControlsProfile currentProfile = profile;
+                        if (currentProfile == null) return;
 
-                    float scaledX = mouseMoveOffset.x * 10 * cursorSpeed + mouseMoveRemainder.x;
-                    float scaledY = mouseMoveOffset.y * 10 * cursorSpeed + mouseMoveRemainder.y;
-                    int deltaX = (int)scaledX;
-                    int deltaY = (int)scaledY;
-                    mouseMoveRemainder.set(scaledX - deltaX, scaledY - deltaY);
-                    if (deltaX != 0 || deltaY != 0) {
-                        xServer.injectPointerMoveDelta(deltaX, deltaY);
+                        if (mouseMoveOffset.x == 0f) mouseMoveRemainder.x = 0f;
+                        if (mouseMoveOffset.y == 0f) mouseMoveRemainder.y = 0f;
+                        if (mouseMoveOffset.x == 0f && mouseMoveOffset.y == 0f) return;
+
+                        float cursorSpeed = currentProfile.getCursorSpeed();
+                        float scaledX = mouseMoveOffset.x * 10 * cursorSpeed + mouseMoveRemainder.x;
+                        float scaledY = mouseMoveOffset.y * 10 * cursorSpeed + mouseMoveRemainder.y;
+                        int deltaX = (int)scaledX;
+                        int deltaY = (int)scaledY;
+                        mouseMoveRemainder.set(scaledX - deltaX, scaledY - deltaY);
+                        if (deltaX != 0 || deltaY != 0) {
+                            xServer.injectPointerMoveDelta(deltaX, deltaY);
+                        }
                     }
                 }
             }, 0, 1000 / 60);
+        }
+    }
+
+    private synchronized void stopMouseMoveTimer() {
+        if (mouseMoveTimer != null) {
+            mouseMoveTimer.cancel();
+            mouseMoveTimer = null;
+        }
+        synchronized (mouseMoveStateLock) {
+            mouseMoveOffset.set(0, 0);
+            mouseMoveRemainder.set(0, 0);
         }
     }
 
@@ -1806,11 +1825,17 @@ public class InputControlsView extends View {
                 return;
             }
             else if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_RIGHT) {
-                mouseMoveOffset.x = isActionDown ? (offset != 0 ? offset : (binding == Binding.MOUSE_MOVE_LEFT ? -1 : 1)) : 0;
+                synchronized (mouseMoveStateLock) {
+                    mouseMoveOffset.x = isActionDown ? (offset != 0 ? offset : (binding == Binding.MOUSE_MOVE_LEFT ? -1 : 1)) : 0;
+                    if (mouseMoveOffset.x == 0f) mouseMoveRemainder.x = 0f;
+                }
                 if (isActionDown) createMouseMoveTimer();
             }
             else if (binding == Binding.MOUSE_MOVE_DOWN || binding == Binding.MOUSE_MOVE_UP) {
-                mouseMoveOffset.y = isActionDown ? (offset != 0 ? offset : (binding == Binding.MOUSE_MOVE_UP ? -1 : 1)) : 0;
+                synchronized (mouseMoveStateLock) {
+                    mouseMoveOffset.y = isActionDown ? (offset != 0 ? offset : (binding == Binding.MOUSE_MOVE_UP ? -1 : 1)) : 0;
+                    if (mouseMoveOffset.y == 0f) mouseMoveRemainder.y = 0f;
+                }
                 if (isActionDown) createMouseMoveTimer();
             }
             else {

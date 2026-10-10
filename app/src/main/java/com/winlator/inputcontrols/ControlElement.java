@@ -97,6 +97,8 @@ public class ControlElement {
     private PointF currentPosition;
     private RangeScroller scroller;
     private CubicBezierInterpolator interpolator;
+    private final MouseDeltaAccumulator trackpadCursorX = new MouseDeltaAccumulator();
+    private final MouseDeltaAccumulator trackpadCursorY = new MouseDeltaAccumulator();
     private Object touchTime;
     private String shooterMovementType = "wasd";
     private String shooterLookType = "mouse";
@@ -114,6 +116,27 @@ public class ControlElement {
 
     public ControlElement(InputControlsView inputControlsView) {
         this.inputControlsView = inputControlsView;
+    }
+
+    static final class MouseDeltaAccumulator {
+        private float remainder;
+
+        int scale(float value, float multiplier) {
+            if (value == 0.0f) return 0;
+            float scaledValue = value * multiplier + remainder;
+            int wholePixels = (int)scaledValue;
+            remainder = scaledValue - wholePixels;
+            return wholePixels;
+        }
+
+        void reset() {
+            remainder = 0.0f;
+        }
+    }
+
+    private void resetTrackpadCursorRemainders() {
+        trackpadCursorX.reset();
+        trackpadCursorY.reset();
     }
 
     private static Object[] createBindingSources(int count) {
@@ -1293,6 +1316,7 @@ public class ControlElement {
             }
             else {
                 if (type == Type.TRACKPAD) {
+                    resetTrackpadCursorRemainders();
                     if (currentPosition == null) currentPosition = new PointF();
                     currentPosition.set(x, y);
                 }
@@ -1382,8 +1406,12 @@ public class ControlElement {
             else if (type == Type.TRACKPAD) {
                 final boolean[] states = {deltaY <= -TRACKPAD_MIN_SPEED, deltaX >= TRACKPAD_MIN_SPEED, deltaY >= TRACKPAD_MIN_SPEED, deltaX <= -TRACKPAD_MIN_SPEED};
                 if (handleRadialMenuDirectionalMove(pointerId, states, x, y)) return true;
-                int cursorDx = 0;
-                int cursorDy = 0;
+                ControlsProfile activeProfile = inputControlsView.getProfile();
+                float cursorSpeed = activeProfile != null
+                        ? activeProfile.getCursorSpeed()
+                        : ControlsProfile.DEFAULT_CURSOR_SPEED;
+                float cursorDeltaX = 0;
+                float cursorDeltaY = 0;
 
                 for (byte i = 0; i < 4; i++) {
                     float value = (i == 1 || i == 3 ? deltaX : deltaY);
@@ -1395,10 +1423,10 @@ public class ControlElement {
                             value *= TouchpadView.CURSOR_ACCELERATION;
                         }
                         if (mouseMoveBinding == Binding.MOUSE_MOVE_LEFT || mouseMoveBinding == Binding.MOUSE_MOVE_RIGHT) {
-                            cursorDx = Mathf.roundPoint(value);
+                            cursorDeltaX = value;
                         }
                         else {
-                            cursorDy = Mathf.roundPoint(value);
+                            cursorDeltaY = value;
                         }
                         boolean nextState = states[i];
                         if (!bindingCombo.isSingleBinding() && this.states[i] != nextState) {
@@ -1446,6 +1474,8 @@ public class ControlElement {
                     }
                 }
 
+                int cursorDx = trackpadCursorX.scale(cursorDeltaX, cursorSpeed);
+                int cursorDy = trackpadCursorY.scale(cursorDeltaY, cursorSpeed);
                 if (cursorDx != 0 || cursorDy != 0) inputControlsView.getXServer().injectPointerMoveDelta(cursorDx, cursorDy);
             }
             else {
@@ -1525,6 +1555,8 @@ public class ControlElement {
             else if (type == Type.RANGE_BUTTON || type == Type.D_PAD || type == Type.STICK || type == Type.TRACKPAD) {
                 releaseActiveDirectionalStates();
 
+                if (type == Type.TRACKPAD) resetTrackpadCursorRemainders();
+
                 if (type == Type.RANGE_BUTTON) {
                     scroller.handleTouchUp();
                 }
@@ -1565,6 +1597,7 @@ public class ControlElement {
         }
         else if (type == Type.RANGE_BUTTON || type == Type.D_PAD || type == Type.STICK || type == Type.TRACKPAD) {
             releaseActiveDirectionalStates();
+            if (type == Type.TRACKPAD) resetTrackpadCursorRemainders();
             if (type == Type.RANGE_BUTTON) scroller.cancelTouch();
             currentPosition = null;
         }

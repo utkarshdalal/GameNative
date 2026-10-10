@@ -3640,7 +3640,7 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
         }
     }
 
-    PluviaApp.touchpadView?.setSensitivity(profile.getCursorSpeed() * 1.0f)
+    PluviaApp.touchpadView?.setSensitivity(profile.cursorSpeed)
 
 }
 
@@ -3683,7 +3683,7 @@ private fun hideInputControls() {
     PluviaApp.inputControlsView?.hideProfileForOverlay()
     PluviaApp.xServerView?.getxServer()?.winHandler?.refreshControllerMappingsForHotplug()
 
-    PluviaApp.touchpadView?.setSensitivity(1.0f)
+    PluviaApp.touchpadView?.setSensitivity(ControlsProfile.DEFAULT_CURSOR_SPEED)
     PluviaApp.touchpadView?.setPointerButtonLeftEnabled(true)
     PluviaApp.touchpadView?.setPointerButtonRightEnabled(true)
     PluviaApp.touchpadView?.isEnabled()?.let {

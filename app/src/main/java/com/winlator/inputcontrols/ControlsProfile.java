@@ -90,7 +90,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
 
     public final int id;
     private String name;
-    private float cursorSpeed = DEFAULT_CURSOR_SPEED;
+    private volatile float cursorSpeed = DEFAULT_CURSOR_SPEED;
     private float leftStickDeadzone = DEFAULT_STICK_DEADZONE;
     private float rightStickDeadzone = DEFAULT_STICK_DEADZONE;
     private float leftStickSensitivity = DEFAULT_STICK_SENSITIVITY;
@@ -161,7 +161,9 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
     }
 
     public void setCursorSpeed(float cursorSpeed) {
-        this.cursorSpeed = cursorSpeed;
+        this.cursorSpeed = Float.isFinite(cursorSpeed) && cursorSpeed > 0.0f
+                ? cursorSpeed
+                : DEFAULT_CURSOR_SPEED;
     }
 
     private static float clampDeadzone(float value) {
