@@ -268,6 +268,9 @@ pub struct DepotWriteOptions<'a> {
     /// manifest, so they get no chunk jobs, no re-hash and no finalize. Only the update path sets
     /// it, and only when the previous manifest is known good (see `depot_downloader`).
     pub trusted_files: Option<&'a [u32]>,
+    /// `(file_idx, chunk_idx)` pairs ([`unchanged_chunks`]) whose bytes the previous manifest proves
+    /// are already on disk: counted as verified without being re-hashed.
+    pub trusted_chunks: Option<&'a [(u32, u32)]>,
 }
 
 impl Default for DepotWriteOptions<'_> {
@@ -284,6 +287,7 @@ impl Default for DepotWriteOptions<'_> {
             auth_token_refresher: None,
             probe_hints: None,
             trusted_files: None,
+            trusted_chunks: None,
         }
     }
 }
@@ -438,6 +442,7 @@ fn verify_file_total(manifest: &ContentManifest, files: &DepotFiles) -> u32 {
     (0..manifest.files.len())
         .filter(|&i| {
             files.needs_verify(i)
+                && !files.all_chunks_trusted(i)
                 // Trusted files (update delta) get no jobs, so no writer can report them: counting
                 // them would leave the counter permanently below its own total.
                 && !files.is_trusted(i)
@@ -652,6 +657,43 @@ pub fn unchanged_files(previous: &ContentManifest, new: &ContentManifest) -> Vec
         })
         .map(|(idx, _)| idx as u32)
         .collect()
+}
+
+/// Chunks of the new manifest that sit at the same offset, with the same hash and size, in the same-path regular file of `previous`.
+pub fn unchanged_chunks(previous: &ContentManifest, new: &ContentManifest) -> Vec<(u32, u32)> {
+    let is_regular = |file: &crate::store_dl::steam::content_manifest::FileMapping| {
+        (file.flags & DEPOT_FILE_FLAG_DIRECTORY) == 0 && file.linktarget.is_empty()
+    };
+    let mut before: HashMap<&str, HashMap<u64, (&[u8], u32)>> = HashMap::new();
+    for file in previous.files.iter().filter(|file| is_regular(file)) {
+        let chunks = file
+            .chunks
+            .iter()
+            .filter(|chunk| !chunk.sha.is_empty())
+            .map(|chunk| (chunk.offset, (chunk.sha.as_slice(), chunk.cb_original)))
+            .collect();
+        before.insert(file.filename.as_str(), chunks);
+    }
+    let mut out = Vec::new();
+    for (file_idx, file) in new.files.iter().enumerate() {
+        if !is_regular(file) {
+            continue;
+        }
+        let Some(old) = before.get(file.filename.as_str()) else {
+            continue;
+        };
+        for (chunk_idx, chunk) in file.chunks.iter().enumerate() {
+            if chunk.sha.is_empty() || chunk.cb_original == 0 {
+                continue;
+            }
+            if old.get(&chunk.offset).is_some_and(|(sha, cb)| {
+                *sha == chunk.sha.as_slice() && *cb == chunk.cb_original
+            }) {
+                out.push((file_idx as u32, chunk_idx as u32));
+            }
+        }
+    }
+    out
 }
 
 pub fn depot_adler_hash(data: &[u8]) -> u32 {
@@ -1612,6 +1654,8 @@ struct FileSlot {
     /// otherwise create/truncate a file it never wrote). Atomic for the same reason as
     /// `remaining`: the table is shared immutably across the worker pool.
     trusted: AtomicBool,
+    /// Every chunk of this file is a trusted chunk already within its pre-existing length.
+    chunks_all_trusted: bool,
 }
 
 /// Per-depot open-file table. Handles are opened lazily on first touch and closed as soon as the
@@ -1623,6 +1667,7 @@ struct DepotFiles {
     slots: Vec<FileSlot>,
     /// Sum of already-present bytes on disk (clamped to each file's size) — for the free-space guard.
     already_present_bytes: u64,
+    trusted_chunks: std::collections::HashSet<(u32, u32)>,
 }
 
 /// Normalize manifest file paths to case-insensitive (Windows / Android-storage) semantics:
@@ -1696,6 +1741,7 @@ impl DepotFiles {
                 }),
                 remaining: AtomicUsize::new(if is_regular { file.chunks.len() } else { 0 }),
                 trusted: AtomicBool::new(false),
+                chunks_all_trusted: false,
                 size: file.size,
                 preexisting_len: preexisting,
                 path,
@@ -1706,6 +1752,7 @@ impl DepotFiles {
         Self {
             slots,
             already_present_bytes: already_present,
+            trusted_chunks: std::collections::HashSet::new(),
         }
     }
 
@@ -1738,6 +1785,38 @@ impl DepotFiles {
                 slot.remaining.store(0, Ordering::Relaxed);
             }
         }
+    }
+
+    fn mark_trusted_chunks(&mut self, manifest: &ContentManifest, pairs: &[(u32, u32)]) {
+        self.trusted_chunks = pairs.iter().copied().collect();
+        for (file_idx, file) in manifest.files.iter().enumerate() {
+            let all = !file.chunks.is_empty()
+                && (0..file.chunks.len())
+                    .all(|chunk_idx| self.chunk_is_trusted(file_idx, chunk_idx, &file.chunks[chunk_idx]));
+            if let Some(slot) = self.slots.get_mut(file_idx) {
+                slot.chunks_all_trusted = all;
+            }
+        }
+    }
+
+    /// True when the update delta proved this chunk unchanged and the file was at least that long
+    /// before this run started, so its bytes are on disk without re-hashing them.
+    fn chunk_is_trusted(&self, file_idx: usize, chunk_idx: usize, chunk: &ChunkData) -> bool {
+        if chunk.cb_original == 0
+            || !self.trusted_chunks.contains(&(file_idx as u32, chunk_idx as u32))
+        {
+            return false;
+        }
+        let end = chunk.offset.saturating_add(chunk.cb_original as u64);
+        self.slots
+            .get(file_idx)
+            .is_some_and(|slot| slot.is_regular && slot.preexisting_len >= end)
+    }
+
+    fn all_chunks_trusted(&self, file_idx: usize) -> bool {
+        self.slots
+            .get(file_idx)
+            .is_some_and(|slot| slot.chunks_all_trusted)
     }
 
     /// A file needs its on-disk chunks verified only if something is already there (resume/verify).
@@ -2127,7 +2206,12 @@ pub fn write_depot_sequential(
         }
     }
 
-    let files = DepotFiles::prepare(manifest, &plan, target_dir);
+    let mut files = DepotFiles::prepare(manifest, &plan, target_dir);
+    if let Some(trusted_chunks) = options.trusted_chunks {
+        if !trusted_chunks.is_empty() {
+            files.mark_trusted_chunks(manifest, trusted_chunks);
+        }
+    }
     if let Some(trusted) = options.trusted_files {
         files.mark_trusted(trusted);
     }
@@ -2238,7 +2322,10 @@ fn write_depot_single(
             Some(chunk) => chunk,
             None => return DepotWriteResult::fail("bad chunk index"),
         };
-        if files.needs_verify(file_idx) && last_verify_file != Some(file_idx) {
+        if files.needs_verify(file_idx)
+            && !files.all_chunks_trusted(file_idx)
+            && last_verify_file != Some(file_idx)
+        {
             // Resume/verify: report the file whose on-disk chunks are being re-hashed.
             last_verify_file = Some(file_idx);
             verify_seen += 1;
@@ -2250,7 +2337,10 @@ fn write_depot_single(
             Ok(handle) => handle,
             Err(error) => return DepotWriteResult::fail(error),
         };
-        if files.needs_verify(file_idx) && existing_chunk_matches(&handle, chunk) {
+        if files.needs_verify(file_idx)
+            && (files.chunk_is_trusted(file_idx, job.chunk_idx as usize, chunk)
+                || existing_chunk_matches(&handle, chunk))
+        {
             bytes_written += chunk.cb_original as u64;
             if let Some(on_progress) = options.on_progress {
                 on_progress(bytes_written, total_bytes, true);
@@ -2864,7 +2954,7 @@ async fn run_async_fetch_driver(
                 next_job += 1;
                 let file_idx = job.file_idx as usize;
                 if files.needs_verify(file_idx) {
-                    if last_verify_file != Some(file_idx) {
+                    if last_verify_file != Some(file_idx) && !files.all_chunks_trusted(file_idx) {
                         // Resume/verify: report the file whose on-disk chunks are being re-hashed.
                         last_verify_file = Some(file_idx);
                         verify_seen += 1;
@@ -2894,7 +2984,9 @@ async fn run_async_fetch_driver(
                             break;
                         }
                     };
-                    if existing_chunk_matches(&handle, chunk) {
+                    if files.chunk_is_trusted(file_idx, job.chunk_idx as usize, chunk)
+                        || existing_chunk_matches(&handle, chunk)
+                    {
                         // Already on disk: park a Verified marker at the chunk's offset and let
                         // the normal drain walk the cursor over it IN ORDER. Never bump the
                         // cursor here directly — that assumed verified chunks form a contiguous
@@ -4082,6 +4174,157 @@ rename, a missing hash and a new file all fall through to the normal walk"
         let mut size_mismatch = manifest(vec![f("Game/same.bin", 11, b"SAME")]);
         size_mismatch.files[0].filename = "Game/same.bin".into();
         assert!(unchanged_files(&previous, &size_mismatch).is_empty());
+    }
+
+    fn delta_chunk(offset: u64, sha: &[u8], cb: u32) -> ChunkData {
+        ChunkData {
+            sha: sha.to_vec(),
+            offset,
+            cb_original: cb,
+            ..Default::default()
+        }
+    }
+
+    fn delta_file(
+        name: &str,
+        chunks: Vec<ChunkData>,
+    ) -> crate::store_dl::steam::content_manifest::FileMapping {
+        crate::store_dl::steam::content_manifest::FileMapping {
+            filename: name.into(),
+            size: chunks.iter().map(|c| c.offset + c.cb_original as u64).max().unwrap_or(0),
+            sha_content: b"FILE".to_vec(),
+            chunks,
+            ..Default::default()
+        }
+    }
+
+    fn delta_manifest(
+        files: Vec<crate::store_dl::steam::content_manifest::FileMapping>,
+    ) -> ContentManifest {
+        ContentManifest {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
+                filenames_encrypted: false,
+                ..Default::default()
+            },
+            files,
+            signature: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn unchanged_chunks_trusts_only_same_offset_same_hash_chunks() {
+        let mut dir = delta_file("Game/dir", vec![delta_chunk(0, b"A", 4)]);
+        dir.flags = DEPOT_FILE_FLAG_DIRECTORY;
+        let mut link = delta_file("Game/link", vec![delta_chunk(0, b"A", 4)]);
+        link.linktarget = "target".into();
+        let previous = delta_manifest(vec![
+            delta_file(
+                "Game/data.bin",
+                vec![
+                    delta_chunk(0, b"A", 4),
+                    delta_chunk(4, b"B", 4),
+                    delta_chunk(8, b"C", 4),
+                    delta_chunk(12, b"D", 4),
+                    delta_chunk(16, b"", 4),
+                ],
+            ),
+            delta_file("Game/renamed.bin", vec![delta_chunk(0, b"A", 4)]),
+            dir.clone(),
+            link.clone(),
+            delta_file("Game/was_dir", vec![delta_chunk(0, b"A", 4)]),
+        ]);
+        let mut now_dir = delta_file("Game/was_dir", vec![delta_chunk(0, b"A", 4)]);
+        now_dir.flags = DEPOT_FILE_FLAG_DIRECTORY;
+        let new = delta_manifest(vec![
+            delta_file(
+                "Game/data.bin",
+                vec![
+                    delta_chunk(0, b"A", 4),  // same offset, sha, size -> trusted
+                    delta_chunk(4, b"X", 4),  // content changed
+                    delta_chunk(12, b"C", 4), // moved from offset 8
+                    delta_chunk(16, b"D", 4), // moved from offset 12
+                    delta_chunk(20, b"", 4),  // no hash
+                    delta_chunk(8, b"C", 3),  // same offset and sha, different size
+                ],
+            ),
+            delta_file("Game/RENAMED.bin", vec![delta_chunk(0, b"A", 4)]),
+            delta_file("Game/added.bin", vec![delta_chunk(0, b"A", 4)]),
+            dir,
+            link,
+            now_dir,
+        ]);
+        assert_eq!(unchanged_chunks(&previous, &new), vec![(0u32, 0u32)]);
+    }
+
+    #[test]
+    fn trusted_chunk_beyond_the_preexisting_length_is_not_trusted() {
+        let dir = temp_dir("trusted_chunk_truncated");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("data.bin"), b"123456").unwrap();
+        let manifest = delta_manifest(vec![delta_file(
+            "data.bin",
+            vec![delta_chunk(0, b"A", 4), delta_chunk(4, b"B", 4)],
+        )]);
+        let base = dir.to_str().unwrap();
+        let plan = plan_depot_write(&manifest, &[1u8; 32], 4, base, 4).unwrap();
+        let mut files = DepotFiles::prepare(&manifest, &plan, base);
+        files.mark_trusted_chunks(&manifest, &[(0, 0), (0, 1)]);
+        assert!(files.chunk_is_trusted(0, 0, &manifest.files[0].chunks[0]));
+        assert!(!files.chunk_is_trusted(0, 1, &manifest.files[0].chunks[1]));
+        assert!(!files.all_chunks_trusted(0));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    fn write_with_trusted_chunks(name: &str, max_workers: u32) {
+        let server = CContentServerDirectoryServerInfo {
+            host: "cdn.example".into(),
+            https_support: "mandatory".into(),
+            ..Default::default()
+        };
+        let dir = temp_dir(name);
+        fs::create_dir_all(&dir).unwrap();
+        let on_disk = b"WRONGBYTES";
+        fs::write(dir.join("data.bin"), on_disk).unwrap();
+        let mut chunks = vec![delta_chunk(0, b"A", 5), delta_chunk(5, b"B", 5)];
+        chunks[0].crc = depot_adler_hash(b"right");
+        chunks[1].crc = depot_adler_hash(b"bytes");
+        let manifest = delta_manifest(vec![delta_file("data.bin", chunks)]);
+        let statuses = Mutex::new(Vec::new());
+        let status = |path: &str, seen: u32, total: u32| {
+            statuses.lock().unwrap().push((path.to_string(), seen, total));
+        };
+        let result = write_depot_sequential(
+            &manifest,
+            &[3u8; 32],
+            &CdnClient::new(""),
+            &[server],
+            dir.to_str().unwrap(),
+            DepotWriteOptions {
+                max_workers,
+                max_process_workers: 2,
+                status: Some(&status),
+                trusted_chunks: Some(&[(0, 0), (0, 1)]),
+                ..Default::default()
+            },
+        );
+        assert!(result.ok(), "{}", result.error);
+        assert_eq!(result.bytes_written, 10);
+        assert_eq!(fs::read(dir.join("data.bin")).unwrap(), on_disk);
+        assert!(
+            statuses.lock().unwrap().is_empty(),
+            "a file whose every chunk is trusted is not reported as re-hashed"
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn single_writer_counts_trusted_chunks_without_rehashing_them() {
+        write_with_trusted_chunks("trusted_chunks_single", 1);
+    }
+
+    #[test]
+    fn parallel_writer_counts_trusted_chunks_without_rehashing_them() {
+        write_with_trusted_chunks("trusted_chunks_parallel", 4);
     }
 
     #[test]
