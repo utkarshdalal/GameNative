@@ -613,6 +613,7 @@ interrupted — full walk"
         // Files this run must NOT touch: the previous build's manifest proves their bytes already
         // match — minus the ones the app patched (see `trusted_files`).
         let trusted = trusted_files(previous.as_ref(), &manifest, untrusted_paths);
+        let trusted_chunks = trusted_chunks(previous.as_ref(), &manifest, untrusted_paths, &trusted);
         // Only a run with patched files can lose a trusted file, and only then is it worth diffing
         // again just to report how many (the diff itself is the expensive part of this block).
         if !untrusted_paths.is_empty() {
@@ -641,11 +642,13 @@ revalidated (DRM backup present)",
             Some(p) => {
                 if let Some(log) = log {
                     log(&format!(
-                        "depot-delta depot={depot_id} unchanged={}/{} changed={} removed={}",
+                        "depot-delta depot={depot_id} unchanged={}/{} changed={} removed={} \
+chunks_trusted={}",
                         trusted.len(),
                         manifest.files.len(),
                         manifest.files.len() - trusted.len(),
                         crate::store_dl::steam::depot_writer::removed_files(p, &manifest).len(),
+                        trusted_chunks.len(),
                     ));
                 }
             }
@@ -722,6 +725,7 @@ revalidated (DRM backup present)",
                 // no finalize. Empty for a fresh install / verify / when the previous manifest is
                 // unknown, which leaves the classic full-walk behaviour.
                 trusted_files: Some(&trusted),
+                trusted_chunks: Some(&trusted_chunks),
                 ..Default::default()
             },
         );
@@ -822,6 +826,33 @@ fn trusted_files(
         });
     }
     trusted
+}
+
+/// Chunks of a CHANGED file that the previous build's manifest proves are already on disk, minus
+/// DRM-patched paths and files already trusted as a whole.
+fn trusted_chunks(
+    previous: Option<&ContentManifest>,
+    manifest: &ContentManifest,
+    untrusted_paths: &[String],
+    trusted_files: &[u32],
+) -> Vec<(u32, u32)> {
+    let Some(previous) = previous else {
+        return Vec::new();
+    };
+    let whole: HashSet<u32> = trusted_files.iter().copied().collect();
+    let untrusted: HashSet<String> = untrusted_paths
+        .iter()
+        .map(|path| crate::store_dl::steam::depot_writer::folded_entry_key(path))
+        .collect();
+    let mut chunks = crate::store_dl::steam::depot_writer::unchanged_chunks(previous, manifest);
+    chunks.retain(|(file_idx, _)| {
+        let file = &manifest.files[*file_idx as usize];
+        !whole.contains(file_idx)
+            && !untrusted.contains(&crate::store_dl::steam::depot_writer::folded_entry_key(
+                &file.filename,
+            ))
+    });
+    chunks
 }
 
 /// Parse + decrypt the INSTALLED build's manifest from `completed/`, exactly as the resolve phase
@@ -1113,6 +1144,37 @@ mod tests {
         // Nothing to compare against (a fresh install, a verify, or a previous build that could not
         // be read): everything is walked.
         assert!(trusted_files(None, &manifest, &[]).is_empty());
+    }
+
+    #[test]
+    fn delta_trusts_the_unchanged_chunks_of_a_changed_file() {
+        let (mut previous, mut manifest) = same_file_pair();
+        let chunk = |offset: u64, sha: u8| crate::store_dl::steam::content_manifest::ChunkData {
+            sha: vec![sha; 20],
+            offset,
+            cb_original: 5,
+            ..Default::default()
+        };
+        previous.files[0].size = 10;
+        previous.files[0].chunks = vec![chunk(0, 7), chunk(5, 8)];
+        manifest.files[0].size = 10;
+        manifest.files[0].sha_content = vec![2u8; 20];
+        manifest.files[0].chunks = vec![chunk(0, 7), chunk(5, 9)];
+
+        let whole = trusted_files(Some(&previous), &manifest, &[]);
+        assert!(whole.is_empty(), "the file changed, so it is not trusted as a whole");
+        assert_eq!(
+            trusted_chunks(Some(&previous), &manifest, &[], &whole),
+            vec![(0u32, 0u32)],
+            "only the chunk with the same offset and sha is trusted"
+        );
+
+        let patched = ["GAME\\game.exe".to_string()];
+        assert!(trusted_chunks(Some(&previous), &manifest, &patched, &whole).is_empty());
+
+        assert!(trusted_chunks(Some(&previous), &manifest, &[], &[0]).is_empty(),
+            "a file trusted as a whole contributes no chunks");
+        assert!(trusted_chunks(None, &manifest, &[], &[]).is_empty());
     }
 
     /// A DRM-patched file (a Steamless-unpacked exe, a replaced steam_api*.dll) has a backup sibling
