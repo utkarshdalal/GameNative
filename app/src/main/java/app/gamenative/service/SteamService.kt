@@ -529,10 +529,23 @@ class SteamService : Service(), IChallengeUrlChanged {
             instance?.notifierOrNull?.showIdle(NotificationHelper.NOTIFICATION_ID_STEAM)
         }
 
-        // Track whether a game is currently running to prevent premature service stop
+        // A game is loading (loading dialog or boot splash); keepAlive only starts with the game exe.
+        @Volatile
+        var isLaunchInProgress: Boolean = false
+
+        // Track whether a game is currently running to prevent premature service stop. The
+        // launch guard's job is done once the game is confirmed running.
         @JvmStatic
         @Volatile
         var keepAlive: Boolean = false
+            set(value) {
+                field = value
+                if (value) isLaunchInProgress = false
+            }
+
+        // From the start of a game exit until its cloud sync has run.
+        @Volatile
+        var isExitInProgress: Boolean = false
 
         @Volatile
         var isImporting: Boolean = false
@@ -4337,7 +4350,11 @@ class SteamService : Service(), IChallengeUrlChanged {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        if (!hasActiveOperations() && !(BuildConfig.XR_BUILD && keepAlive)) {
+        if (!hasActiveOperations() &&
+            !isLaunchInProgress &&
+            !isExitInProgress &&
+            !(BuildConfig.XR_BUILD && keepAlive)
+        ) {
             Timber.i("Task removed and no active work — stopping service")
             stopSelf()
         } else {
