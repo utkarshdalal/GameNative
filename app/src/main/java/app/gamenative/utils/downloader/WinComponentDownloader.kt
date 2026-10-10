@@ -68,7 +68,6 @@ object WinComponentDownloader {
             Timber.d("Using cached wincomponent: $componentId at ${destFile.absolutePath}")
             return@withContext destFile
         }
-        cacheDir.listFiles()?.filter { it.name == "$componentId.tzst" || it.name.startsWith("$componentId-v") }?.forEach { it.delete() }
 
         // Download from server using local manifest
         Timber.i("Downloading wincomponent: $componentId from server")
@@ -83,6 +82,9 @@ object WinComponentDownloader {
                 onProgress = onProgress
             )
             Timber.i("Successfully downloaded wincomponent: $componentId")
+            cacheDir.listFiles()
+                ?.filter { it != destFile && !it.name.endsWith(".part") && (it.name == "$componentId.tzst" || it.name.startsWith("$componentId-v")) }
+                ?.forEach { it.delete() }
         } catch (e: Exception) {
             Timber.e(e, "Failed to download wincomponent: $componentId")
             destFile.delete()
