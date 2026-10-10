@@ -132,6 +132,9 @@ object QuickMenuAction {
     const val CONTROL_PROFILES = 12
     const val CONTROL_PROFILE_APPLIED = 13
     const val PHYSICAL_CONTROLLER_SETTINGS = 14
+
+    // html5-only; the wine path never emits these.
+    const val EDIT_OVERLAY = 15
 }
 
 private object QuickMenuTab {
@@ -395,6 +398,9 @@ fun QuickMenu(
     onShooterModeSettingsClick: () -> Unit = {},
     activeToggleIds: Set<Int> = emptySet(),
     lsfg: LsfgQuickMenuState = LsfgQuickMenuState(),
+    // html5 hides KEYBOARD / PERFORMANCE_HUD and shows EDIT_OVERLAY instead; also hides the
+    // physical-controller tuning gear (stick tuning lives in ExternalController, wine-only).
+    isHtml5: Boolean = false,
     onAnimationComplete: (Boolean) -> Unit = {},
     /** Lets the menu open itself when the running game asks for its Steam invite dialog. */
     onRequestOpen: () -> Unit = {},
@@ -445,91 +451,44 @@ fun QuickMenu(
     // dex verifier's register limit and extra locals can produce invalid bytecode.
     val gyroMenu = remember(container?.id) { container?.let(::GyroQuickMenuState) }
 
+    val accentPurple = PluviaTheme.colors.accentPurple
+    fun quickItem(id: Int, icon: ImageVector, labelResId: Int) =
+        QuickMenuItem(id = id, icon = icon, labelResId = labelResId, accentColor = accentPurple)
+
     val controllerItems = buildList {
-        add(
-            QuickMenuItem(
-                id = QuickMenuAction.DISABLE_MOUSE,
-                icon = Icons.Filled.Mouse,
-                labelResId = R.string.disable_mouse_input,
-                accentColor = PluviaTheme.colors.accentPurple,
-            )
-        )
-        add(
-            QuickMenuItem(
-                id = QuickMenuAction.KEYBOARD,
-                icon = Icons.Default.Keyboard,
-                labelResId = R.string.keyboard,
-                accentColor = PluviaTheme.colors.accentPurple,
-            )
-        )
-        add(
-            QuickMenuItem(
-                id = QuickMenuAction.INPUT_CONTROLS,
-                icon = Icons.Default.TouchApp,
-                labelResId = R.string.input_controls,
-                accentColor = PluviaTheme.colors.accentPurple,
-            )
-        )
-        if (hasPhysicalController) {
-            add(
-                QuickMenuItem(
-                    id = QuickMenuAction.EDIT_PHYSICAL_CONTROLLER,
-                    icon = Icons.Default.Gamepad,
-                    labelResId = R.string.edit_physical_controller,
-                    accentColor = PluviaTheme.colors.accentPurple,
-                )
-            )
+        if (isHtml5) {
+            add(quickItem(QuickMenuAction.EDIT_OVERLAY, Icons.Default.Edit, R.string.quickmenu_edit_overlay))
+        } else {
+            add(quickItem(QuickMenuAction.DISABLE_MOUSE, Icons.Filled.Mouse, R.string.disable_mouse_input))
+            add(quickItem(QuickMenuAction.KEYBOARD, Icons.Default.Keyboard, R.string.keyboard))
         }
-        add(
-            QuickMenuItem(
-                id = QuickMenuAction.EDIT_CONTROLS,
-                icon = Icons.Default.Edit,
-                labelResId = R.string.edit_controls,
-                accentColor = PluviaTheme.colors.accentPurple,
-            )
-        )
-        add(
-            QuickMenuItem(
-                id = QuickMenuAction.CONTROL_PROFILES,
-                icon = Icons.Default.Gamepad,
-                labelResId = R.string.control_profiles,
-                accentColor = PluviaTheme.colors.accentPurple,
-            )
-        )
-        add(
-            QuickMenuItem(
-                id = QuickMenuAction.TOUCHSCREEN_MODE,
-                icon = Icons.Default.Fingerprint,
-                labelResId = R.string.touchscreen_mode,
-                accentColor = PluviaTheme.colors.accentPurple,
-            )
-        )
-        add(
-            QuickMenuItem(
-                id = QuickMenuAction.SHOOTER_MODE,
-                icon = Icons.Default.Gamepad,
-                labelResId = R.string.shooter_mode_toggle,
-                accentColor = PluviaTheme.colors.accentPurple,
-            )
-        )
-        add(
-            QuickMenuItem(
-                id = QuickMenuAction.RADIAL_MENU,
-                icon = Icons.Default.Settings,
-                labelResId = R.string.radial_menu,
-                accentColor = PluviaTheme.colors.accentPurple,
-            )
-        )
-        if (container != null) {
-            add(
-                QuickMenuItem(
-                    id = QuickMenuAction.GYRO,
-                    icon = Icons.Default.ScreenRotation,
-                    labelResId = R.string.gyro_aiming,
-                    accentColor = PluviaTheme.colors.accentPurple,
-                    enabled = gyroMenu?.isAvailable == true,
-                ),
-            )
+        add(quickItem(QuickMenuAction.INPUT_CONTROLS, Icons.Default.TouchApp, R.string.input_controls))
+        if (hasPhysicalController) {
+            add(quickItem(QuickMenuAction.EDIT_PHYSICAL_CONTROLLER, Icons.Default.Gamepad, R.string.edit_physical_controller))
+        }
+        if (!isHtml5) {
+            add(quickItem(QuickMenuAction.EDIT_CONTROLS, Icons.Default.Edit, R.string.edit_controls))
+            add(quickItem(QuickMenuAction.CONTROL_PROFILES, Icons.Default.Gamepad, R.string.control_profiles))
+        }
+        add(quickItem(QuickMenuAction.TOUCHSCREEN_MODE, Icons.Default.Fingerprint, R.string.touchscreen_mode))
+        // wine-only gamepad remap.
+        if (!isHtml5) {
+            add(quickItem(QuickMenuAction.SHOOTER_MODE, Icons.Default.Gamepad, R.string.shooter_mode_toggle))
+        }
+        // wine-only overlays.
+        if (!isHtml5) {
+            add(quickItem(QuickMenuAction.RADIAL_MENU, Icons.Default.Settings, R.string.radial_menu))
+            if (container != null) {
+                add(
+                    QuickMenuItem(
+                        id = QuickMenuAction.GYRO,
+                        icon = Icons.Default.ScreenRotation,
+                        labelResId = R.string.gyro_aiming,
+                        accentColor = accentPurple,
+                        enabled = gyroMenu?.isAvailable == true,
+                    ),
+                )
+            }
         }
     }
 
@@ -550,17 +509,18 @@ fun QuickMenu(
         mutableStateOf(container?.let { app.gamenative.utils.LsfgVkManager.backend(it) } ?: "native")
     }
 
-    var selectedTab by rememberSaveable {
-        mutableIntStateOf(
-            when {
-                PrefManager.quickMenuLastTab == QuickMenuTab.LSFG && !isLsfgAvailable -> QuickMenuTab.HUD
-                PrefManager.quickMenuLastTab == QuickMenuTab.INVITE && inviteMenu == null -> QuickMenuTab.HUD
-                PrefManager.quickMenuLastTab == QuickMenuTab.POWER -> QuickMenuTab.HUD
-                PrefManager.quickMenuLastTab == QuickMenuTab.IMMERSIVE && immersiveControls == null -> QuickMenuTab.HUD
-                else -> PrefManager.quickMenuLastTab
-            }
-        )
+    // coerce a stale persisted tab that html5 hides (EFFECTS/TOOLS/LSFG) or this container can't back.
+    val initialTab = PrefManager.quickMenuLastTab.let { saved ->
+        when {
+            isHtml5 && (saved == QuickMenuTab.EFFECTS || saved == QuickMenuTab.TOOLS || saved == QuickMenuTab.LSFG) -> QuickMenuTab.CONTROLLER
+            saved == QuickMenuTab.LSFG && !isLsfgAvailable -> QuickMenuTab.HUD
+            saved == QuickMenuTab.INVITE && inviteMenu == null -> QuickMenuTab.HUD
+            saved == QuickMenuTab.POWER -> QuickMenuTab.HUD
+            saved == QuickMenuTab.IMMERSIVE && immersiveControls == null -> QuickMenuTab.HUD
+            else -> saved
+        }
     }
+    var selectedTab by rememberSaveable(isHtml5) { mutableIntStateOf(initialTab) }
     val selectedTabLabelResId = when (selectedTab) {
         QuickMenuTab.HUD -> R.string.performance_hud
         QuickMenuTab.LSFG -> R.string.lsfg_tab_title
@@ -816,6 +776,7 @@ fun QuickMenu(
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
+                                // the HUD view is renderer-agnostic, so both runtimes get it.
                                 QuickMenuTabButton(
                                     icon = Icons.Default.QueryStats,
                                     contentDescriptionResId = R.string.performance_hud,
@@ -840,7 +801,7 @@ fun QuickMenu(
                                     modifier = Modifier.width(56.dp),
                                     focusRequester = powerTabFocusRequester,
                                 )
-                                if (isLsfgAvailable) {
+                                if (!isHtml5 && isLsfgAvailable) {
                                     QuickMenuTabButton(
                                         icon = Icons.Default.Speed,
                                         contentDescriptionResId = R.string.lsfg_tab_title,
@@ -868,7 +829,7 @@ fun QuickMenu(
                                         focusRequester = inviteTabFocusRequester,
                                     )
                                 }
-                                if (renderer != null || glRenderer != null) {
+                                if (!isHtml5 && (renderer != null || glRenderer != null)) {
                                     QuickMenuTabButton(
                                         icon = Icons.Default.AutoFixHigh,
                                         contentDescriptionResId = R.string.screen_effects,
@@ -894,15 +855,20 @@ fun QuickMenu(
                                     modifier = Modifier.width(56.dp),
                                     focusRequester = controllerTabFocusRequester,
                                 )
-                                QuickMenuTabButton(
-                                    icon = Icons.Default.BarChart,
-                                    contentDescriptionResId = R.string.task_manager,
-                                    selected = selectedTab == QuickMenuTab.TOOLS,
-                                    accentColor = PluviaTheme.colors.accentPurple,
-                                    onSelected = { selectedTab = QuickMenuTab.TOOLS },
-                                    modifier = Modifier.width(56.dp),
-                                    focusRequester = toolsTabFocusRequester,
-                                )
+                                if (!isHtml5) {
+                                    QuickMenuTabButton(
+                                        icon = Icons.Default.BarChart,
+                                        contentDescriptionResId = R.string.task_manager,
+                                        selected = selectedTab == QuickMenuTab.TOOLS,
+                                        accentColor = PluviaTheme.colors.accentPurple,
+                                        onSelected = {
+                                            selectedTab = QuickMenuTab.TOOLS
+                                            PrefManager.quickMenuLastTab = selectedTab
+                                        },
+                                        modifier = Modifier.width(56.dp),
+                                        focusRequester = toolsTabFocusRequester,
+                                    )
+                                }
                                 if (immersiveControls != null) {
                                     QuickMenuTabButton(
                                         icon = Icons.Default.ViewInAr,
@@ -1099,6 +1065,7 @@ fun QuickMenu(
                                             val touchscreenEnabled = isTouchscreenModeActive
                                             val shooterEnabled = isShooterModeActive
                                             controllerItems.forEachIndexed { index, item ->
+                                                val hasTuningGear = item.id == QuickMenuAction.EDIT_PHYSICAL_CONTROLLER && !isHtml5
                                                 QuickMenuItemRow(
                                                     item = item,
                                                     isActive = if (item.id == QuickMenuAction.GYRO) {
@@ -1122,7 +1089,7 @@ fun QuickMenu(
                                                     },
                                                     focusRequester = if (index == 0) controllerItemFocusRequester else null,
                                                     onFocused = { lastControllerFocusRequester = it },
-                                                    secondaryIcon = if (item.id == QuickMenuAction.EDIT_PHYSICAL_CONTROLLER)
+                                                    secondaryIcon = if (hasTuningGear)
                                                         Icons.Default.Settings
                                                     else if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && touchscreenEnabled)
                                                         Icons.Default.Settings
@@ -1131,7 +1098,7 @@ fun QuickMenu(
                                                     else if (item.id == QuickMenuAction.GYRO && gyroEnabled)
                                                         Icons.Default.Settings
                                                     else null,
-                                                    secondaryContentDescriptionResId = if (item.id == QuickMenuAction.EDIT_PHYSICAL_CONTROLLER)
+                                                    secondaryContentDescriptionResId = if (hasTuningGear)
                                                         R.string.physical_controller_settings_title
                                                     else if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && touchscreenEnabled)
                                                         R.string.gesture_settings_title
@@ -1140,7 +1107,7 @@ fun QuickMenu(
                                                     else if (item.id == QuickMenuAction.GYRO && gyroEnabled)
                                                         R.string.gyro_settings_title
                                                     else null,
-                                                    onSecondaryClick = if (item.id == QuickMenuAction.EDIT_PHYSICAL_CONTROLLER)
+                                                    onSecondaryClick = if (hasTuningGear)
                                                         ({ onItemSelected(QuickMenuAction.PHYSICAL_CONTROLLER_SETTINGS) })
                                                     else if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && touchscreenEnabled)
                                                         onTouchGestureSettingsClick
@@ -1235,6 +1202,7 @@ fun QuickMenu(
         if (isVisible) {
             repeat(3) { attempt ->
                 try {
+                    // EFFECTS unreachable on html5 (tab hidden), so the when still routes correctly.
                     when (selectedTab) {
                         QuickMenuTab.HUD -> hudItemFocusRequester.requestFocus()
                         QuickMenuTab.LSFG -> lsfgItemFocusRequester.requestFocus()
@@ -1736,6 +1704,8 @@ private fun PerformanceHudQuickMenuTab(
                 accentColor = accentColor,
             )
         }
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         Spacer(modifier = Modifier.height(12.dp))
     }
@@ -2862,7 +2832,9 @@ private fun QuickMenuItemRow(
                                 ),
                             ),
                         )
-                    } else Modifier
+                    } else {
+                        Modifier
+                    }
                 )
                 .then(
                     if (isEnabled) Modifier.focusRing(interactionSource, shape, width = 2.dp)

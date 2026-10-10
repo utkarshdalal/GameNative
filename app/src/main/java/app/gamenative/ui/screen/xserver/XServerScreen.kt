@@ -78,6 +78,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import app.gamenative.R
+import app.gamenative.runtime.requireWineRuntime
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.ui.util.applyScreenEffectsConfig
 import app.gamenative.ui.util.loadScreenEffectsConfig
@@ -1881,7 +1882,8 @@ fun XServerScreen(
             val observer = LifecycleEventObserver { _, event ->
                 when (event) {
                     Lifecycle.Event.ON_PAUSE,
-                    Lifecycle.Event.ON_RESUME -> {
+                    Lifecycle.Event.ON_RESUME,
+                    -> {
                         Timber.d("Synchronizing XServerView renderer for lifecycle event: $event")
                         syncRendererToCurrentLifecycleState()
                         if (event == Lifecycle.Event.ON_RESUME) {
@@ -2335,6 +2337,8 @@ fun XServerScreen(
 
                     setupExecutor.submit {
                         try {
+                            // guards activateContainer + the wine prefix work below; see requireWineRuntime.
+                            requireWineRuntime(container, bootToContainer)
                             val containerManager = ContainerManager(context)
                             // Configure WinHandler with container's input API settings
                             val handler = getxServer().winHandler
@@ -4652,12 +4656,16 @@ private fun getWineStartCommand(
         val appIdInt = runCatching { ContainerUtils.extractGameIdFromContainerId(appId) }.getOrNull()
         val productId = if (appIdInt != null) {
             app.gamenative.service.amazon.AmazonService.getProductIdByAppId(appIdInt)
-        } else null
+        } else {
+            null
+        }
         Timber.tag("XServerScreen").i("Launching Amazon game: appId=$appIdInt, productId=$productId")
 
         val installPath = if (appIdInt != null) {
             app.gamenative.service.amazon.AmazonService.getInstallPathByAppId(appIdInt)
-        } else null
+        } else {
+            null
+        }
 
         if (installPath.isNullOrEmpty()) {
             Timber.tag("XServerScreen").e("Cannot launch: Amazon game not installed")
@@ -4753,7 +4761,9 @@ private fun getWineStartCommand(
             kotlinx.coroutines.runBlocking(Dispatchers.IO) {
                 app.gamenative.service.amazon.AmazonService.getAmazonGameOf(productId)
             }
-        } else null
+        } else {
+            null
+        }
         if (amazonGame != null) {
             envVars.put("AMAZON_GAMES_FUEL_ENTITLEMENT_ID", amazonGame.entitlementId)
             if (amazonGame.productSku.isNotEmpty()) {
@@ -5401,7 +5411,9 @@ private fun extractx86_64InputDlls(context: Context, container: Container) {
     if ("proton-9.0-x86_64" == wineVersion) {
         val wineFolder: File = File(imageFs.getWinePath() + "/lib/wine/")
         Log.d("XServerDisplayActivity", "Extracting input dlls to " + wineFolder.getPath())
-    } else Log.d("XServerDisplayActivity", "Wine version is not proton-9.0-x86_64, skipping input dlls extraction")
+    } else {
+        Log.d("XServerDisplayActivity", "Wine version is not proton-9.0-x86_64, skipping input dlls extraction")
+    }
 }
 
 private suspend fun setupWineSystemFiles(
@@ -5602,7 +5614,7 @@ private suspend fun applyGeneralPatches(
                 downloaded,
                 rootDir,
                 onExtractFileListener,
-            );
+            )
         }
         Timber.i("Extracting WFM from container_pattern_common.tzst")
         check(containerManager.extractContainerPatternCommonWfm(rootDir, onExtractFileListener)) {
@@ -6182,9 +6194,13 @@ private suspend fun extractGraphicsDriverFiles(
         }
 
         if (currentWrapperVersion.lowercase(Locale.getDefault())
-                .contains("turnip") && isAdrenotoolsTurnip == "0"
-        ) envVars.put("VK_ICD_FILENAMES", imageFs.getShareDir().path + "/vulkan/icd.d/freedreno_icd.aarch64.json")
-        else envVars.put("VK_ICD_FILENAMES", imageFs.getShareDir().path + "/vulkan/icd.d/wrapper_icd.aarch64.json")
+                .contains("turnip") &&
+            isAdrenotoolsTurnip == "0"
+        ) {
+            envVars.put("VK_ICD_FILENAMES", imageFs.getShareDir().path + "/vulkan/icd.d/freedreno_icd.aarch64.json")
+        } else {
+            envVars.put("VK_ICD_FILENAMES", imageFs.getShareDir().path + "/vulkan/icd.d/wrapper_icd.aarch64.json")
+        }
         envVars.put("GALLIUM_DRIVER", "zink")
         envVars.put("LIBGL_KOPPER_DISABLE", "true")
 
@@ -6261,8 +6277,9 @@ private suspend fun extractGraphicsDriverFiles(
         }
 
         val maxDeviceMemory: String? = graphicsDriverConfig.get("maxDeviceMemory", "0")
-        if (maxDeviceMemory != null && maxDeviceMemory.toInt() > 0)
+        if (maxDeviceMemory != null && maxDeviceMemory.toInt() > 0) {
             envVars.put("WRAPPER_VMEM_MAX_SIZE", maxDeviceMemory)
+        }
 
         val presentMode = graphicsDriverConfig.get("presentMode")
         if (presentMode.contains("immediate")) {
@@ -6494,7 +6511,9 @@ private fun readLibraryNameFromExtractedDir(destinationDir: File): String? {
             val json = org.json.JSONObject(content)
             val libraryName = json.optString("libraryName", "").trim()
             if (libraryName.isNotEmpty()) libraryName else null
-        } else null
+        } else {
+            null
+        }
     } catch (_: Exception) {
         null
     }

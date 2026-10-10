@@ -172,6 +172,7 @@ class CustomGameAppScreen : BaseAppScreen() {
             logoUrl = logoUrl,
             capsuleUrl = capsuleUrl,
             headerUrl = headerUrl,
+            runtime = ContainerUtils.resolveRuntime(context, libraryItem.appId),
         )
     }
 
@@ -449,9 +450,8 @@ class CustomGameAppScreen : BaseAppScreen() {
         return ContainerUtils.toContainerData(container)
     }
 
-    override fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData) {
-        ContainerUtils.applyToContainer(context, libraryItem.appId, config)
-    }
+    override suspend fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData): Boolean =
+        ContainerUtils.applyToContainerGated(context, libraryItem.appId, config)
 
     override fun supportsContainerConfig(): Boolean = true
 
@@ -462,7 +462,8 @@ class CustomGameAppScreen : BaseAppScreen() {
         libraryItem: LibraryItem,
         onDismiss: () -> Unit,
         onEditContainer: () -> Unit,
-        onBack: () -> Unit
+        onBack: () -> Unit,
+        onClickPlay: (Boolean) -> Unit,
     ) {
         val context = LocalContext.current
         val scope = rememberCoroutineScope()

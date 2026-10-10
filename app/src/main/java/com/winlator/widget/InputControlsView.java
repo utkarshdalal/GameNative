@@ -21,6 +21,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewConfiguration;
 import android.widget.FrameLayout;
+import android.util.Log;
 import android.util.SparseArray;
 import android.util.SparseBooleanArray;
 
@@ -81,6 +82,8 @@ public class InputControlsView extends View {
     private float overlayOpacity = DEFAULT_OVERLAY_OPACITY;
     private TouchpadView touchpadView;
     private XServer xServer;
+    // receives binding presses in html5 mode, where xServer is null.
+    private Html5BindingSink html5BindingSink;
     private final Bitmap[] icons = new Bitmap[40];
     private Timer mouseMoveTimer;
     private final PointF mouseMoveOffset = new PointF();
@@ -567,6 +570,14 @@ public class InputControlsView extends View {
         createMouseMoveTimer();
     }
 
+    public Html5BindingSink getHtml5BindingSink() {
+        return html5BindingSink;
+    }
+
+    public void setHtml5BindingSink(Html5BindingSink sink) {
+        this.html5BindingSink = sink;
+    }
+
     public int getMaxWidth() {
         return (int)Mathf.roundTo(getWidth(), snappingSize);
     }
@@ -591,7 +602,8 @@ public class InputControlsView extends View {
     }
 
     private void createMouseMoveTimer() {
-        if (profile != null && mouseMoveTimer == null) {
+        // html5 has no xServer; the timer would NPE on its first tick. html5 gets MOUSE_MOVE via the sink.
+        if (profile != null && mouseMoveTimer == null && xServer != null) {
             final float cursorSpeed = profile.getCursorSpeed();
             mouseMoveTimer = new Timer();
             mouseMoveTimer.schedule(new TimerTask() {
@@ -1048,8 +1060,15 @@ public class InputControlsView extends View {
         for (int i = 0; i < 4; i++) {
             float value = (i == 1 || i == 3) ? deltaX : deltaY;
             value = getStickOutputValue(value, deadzone, sensitivity);
-            handleInputEvent(bindings[i], true, value);
-            rightJoystickStates[i] = true;
+            // a zero value goes out as a release, not a press: the html5 sink reads a press with
+            // offset 0 as a digital tap (full deflection). the wine axis ends up 0 either way.
+            if (value != 0f) {
+                handleInputEvent(bindings[i], true, value);
+                rightJoystickStates[i] = true;
+            } else if (rightJoystickStates[i]) {
+                handleInputEvent(bindings[i], false, 0f);
+                rightJoystickStates[i] = false;
+            }
         }
         invalidate();
     }
@@ -1154,8 +1173,14 @@ public class InputControlsView extends View {
             float value = (i == 1 || i == 3) ? deltaX : deltaY;
             if (bindings[i].isGamepad()) {
                 value = getStickOutputValue(value, analogDeadzone, sensitivity);
-                handleInputEvent(bindings[i], true, value);
-                joystickStates[i] = true;
+                // zero goes out as a release, not a press -- see handleRightJoystickMove
+                if (value != 0f) {
+                    handleInputEvent(bindings[i], true, value);
+                    joystickStates[i] = true;
+                } else if (joystickStates[i]) {
+                    handleInputEvent(bindings[i], false, 0f);
+                    joystickStates[i] = false;
+                }
             } else {
                 if (newStates[i] != joystickStates[i]) {
                     handleInputEvent(bindings[i], newStates[i]);
@@ -1427,6 +1452,10 @@ public class InputControlsView extends View {
         // Drawing-only profile previews have no touchpad or X server. Disabled views
         // must leave gestures to their parent (including scrolling over the preview).
         if (!isEnabled()) return false;
+        // html5 mode has no sister TouchpadView: unhandled touches must reach the WebView underneath.
+        boolean html5Mode = touchpadView == null;
+        boolean anyHandled = false;
+
         if (editMode && readyToDraw) {
             switch (event.getAction()) {
                 case MotionEvent.ACTION_DOWN: {
@@ -1460,6 +1489,7 @@ public class InputControlsView extends View {
                     break;
                 }
             }
+            return true;
         }
 
         if (!editMode && profile != null) {
@@ -1467,7 +1497,7 @@ public class InputControlsView extends View {
             int pointerId = event.getPointerId(actionIndex);
             int actionMasked = event.getActionMasked();
             boolean handled = false;
-            boolean touchscreenMode = touchpadView.isTouchscreenMode();
+            boolean touchscreenMode = touchpadView != null && touchpadView.isTouchscreenMode();
             if (touchscreenMode && lookThroughPointerState.isActive()) {
                 cancelTouchRouting();
             }
@@ -1481,11 +1511,14 @@ public class InputControlsView extends View {
                     // Shooter mode intercept (use containerShooterMode so toggle button is always reachable)
                     if ((shooterModeActive || containerShooterMode)
                             && handleShooterTouchDown(pointerId, x, y, !touchscreenMode)) {
+                        anyHandled = true;
                         break;
                     }
 
-                    touchpadView.setPointerButtonLeftEnabled(true);
-                    touchpadView.setPointerButtonRightEnabled(true);
+                    if (touchpadView != null) {
+                        touchpadView.setPointerButtonLeftEnabled(true);
+                        touchpadView.setPointerButtonRightEnabled(true);
+                    }
                     boolean lookThroughCandidate = false;
                     for (ControlElement element : profile.getElements()) {
                         if (element.handleTouchDown(pointerId, x, y)) {
@@ -1498,10 +1531,10 @@ public class InputControlsView extends View {
                                 lookThroughCandidate = true;
                             }
                         }
-                        if (element.getBindingAt(0) == Binding.MOUSE_LEFT_BUTTON) {
+                        if (touchpadView != null && element.getBindingAt(0) == Binding.MOUSE_LEFT_BUTTON) {
                             touchpadView.setPointerButtonLeftEnabled(false);
                         }
-                        if (element.getBindingAt(0) == Binding.MOUSE_RIGHT_BUTTON) {
+                        if (touchpadView != null && element.getBindingAt(0) == Binding.MOUSE_RIGHT_BUTTON) {
                             touchpadView.setPointerButtonRightEnabled(false);
                         }
                     }
@@ -1513,12 +1546,13 @@ public class InputControlsView extends View {
                                 touchpadPointers.size() > 0
                         );
                     }
-                    if (!handled) {
+                    if (!handled && touchpadView != null) {
                         if (!lookThroughPointerState.isActive()) {
                             touchpadPointers.put(pointerId, true);
                             touchpadView.onTouchEvent(event);
                         }
                     }
+                    if (handled) anyHandled = true;
                     break;
                 }
                 case MotionEvent.ACTION_MOVE: {
@@ -1529,12 +1563,16 @@ public class InputControlsView extends View {
                         // Shooter mode intercept per pointer
                         if (shooterModeActive || containerShooterModeRuntime) {
                             int pid = event.getPointerId(i);
-                            if (handleShooterTouchMovePointer(pid, x, y)) continue;
+                            if (handleShooterTouchMovePointer(pid, x, y)) {
+                                anyHandled = true;
+                                continue;
+                            }
                             // Non-intercepted pointer in shooter mode: try elements with correct ID
                             handled = false;
                             for (ControlElement element : profile.getElements()) {
                                 if (element.handleTouchMove(pid, x, y)) handled = true;
                             }
+                            if (handled) anyHandled = true;
                             continue;
                         }
 
@@ -1543,7 +1581,7 @@ public class InputControlsView extends View {
                         for (ControlElement element : profile.getElements()) {
                             if (element.handleTouchMove(pid, x, y)) handled = true;
                         }
-                        if (lookThroughPointerState.owns(pid)) {
+                        if (touchpadView != null && lookThroughPointerState.owns(pid)) {
                             LookThroughPointerState.Delta delta = lookThroughPointerState.move(
                                     pid,
                                     x,
@@ -1554,8 +1592,11 @@ public class InputControlsView extends View {
                                 touchpadView.movePointerFromLookThrough(delta.x, delta.y);
                             }
                         }
+                        if (handled) anyHandled = true;
                     }
-                    if (!(shooterModeActive || containerShooterModeRuntime) && touchpadPointers.size() > 0) {
+                    if (touchpadView != null
+                            && !(shooterModeActive || containerShooterModeRuntime)
+                            && touchpadPointers.size() > 0) {
                         touchpadView.onTouchEvent(event);
                     }
                     break;
@@ -1588,9 +1629,10 @@ public class InputControlsView extends View {
                         }
                     }
                     for (ControlElement element : profile.getElements()) if (element.handleTouchUp(pointerId)) handled = true;
-                    if (touchpadPointers.get(pointerId)) touchpadView.onTouchEvent(event);
+                    if (touchpadView != null && touchpadPointers.get(pointerId)) touchpadView.onTouchEvent(event);
                     lookThroughPointerState.release(pointerId);
                     touchpadPointers.delete(pointerId);
+                    if (handled) anyHandled = true;
                     break;
             }
 
@@ -1602,6 +1644,8 @@ public class InputControlsView extends View {
                 winHandler.sendVirtualGamepadState(state);
             }
         }
+        // wine's sister TouchpadView absorbs whatever ICV didn't claim; html5 must pass it to the WebView.
+        if (html5Mode) return anyHandled;
         return true;
     }
 
@@ -1781,6 +1825,16 @@ public class InputControlsView extends View {
                 ExternalController controller = winHandler.getCurrentController();
                 if (controller != null) controller.state.copy(state);
             }
+
+            // the sink writes the SAME profile.gamepadState physical KeyEvents do.
+            if (xServer == null && html5BindingSink != null) {
+                html5BindingSink.onBinding(binding, isActionDown, offset);
+            } else if (xServer == null) {
+                // wiring race: the touch landed before the sink was set. warn in release too, or the swallowed
+                // input looks like an overlay bug.
+                Log.w("InputControlsView",
+                    "dropped " + binding.name() + " (html5 mode, sink=null)");
+            }
         }
         else {
             if (binding == Binding.SHOW_KEYBOARD) {
@@ -1808,12 +1862,19 @@ public class InputControlsView extends View {
             else if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_RIGHT) {
                 mouseMoveOffset.x = isActionDown ? (offset != 0 ? offset : (binding == Binding.MOUSE_MOVE_LEFT ? -1 : 1)) : 0;
                 if (isActionDown) createMouseMoveTimer();
+                if (xServer == null && html5BindingSink != null) {
+                    html5BindingSink.onBinding(binding, isActionDown, offset);
+                }
             }
             else if (binding == Binding.MOUSE_MOVE_DOWN || binding == Binding.MOUSE_MOVE_UP) {
                 mouseMoveOffset.y = isActionDown ? (offset != 0 ? offset : (binding == Binding.MOUSE_MOVE_UP ? -1 : 1)) : 0;
                 if (isActionDown) createMouseMoveTimer();
+                if (xServer == null && html5BindingSink != null) {
+                    html5BindingSink.onBinding(binding, isActionDown, offset);
+                }
             }
             else {
+                if (xServer != null) {
                 Pointer.Button pointerButton = binding.getPointerButton();
                 if (isActionDown) {
                     if (pointerButton != null) {
@@ -1826,6 +1887,14 @@ public class InputControlsView extends View {
                         xServer.injectPointerButtonRelease(pointerButton);
                     }
                     else binding.inject(xServer, false);
+                    }
+                }
+                else if (html5BindingSink != null) {
+                    html5BindingSink.onBinding(binding, isActionDown, offset);
+                }
+                else {
+                    Log.w("InputControlsView", "no xServer or Html5BindingSink -- dropping " +
+                            binding.name() + " " + (isActionDown ? "down" : "up"));
                 }
             }
         }

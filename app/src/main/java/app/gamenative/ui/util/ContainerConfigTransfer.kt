@@ -3,12 +3,14 @@ package app.gamenative.ui.util
 import android.content.Context
 import android.net.Uri
 import app.gamenative.R
+import app.gamenative.runtime.WebViewContainer
 import app.gamenative.ui.screen.library.appscreen.BaseAppScreen
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.BestConfigService
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.SessionReport
 import app.gamenative.utils.ManifestInstaller
+import com.winlator.container.Container
 import java.io.IOException
 import kotlin.text.Charsets
 import kotlinx.coroutines.CancellationException
@@ -17,9 +19,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import org.json.JSONObject
+import timber.log.Timber
 
 object ContainerConfigTransfer {
     suspend fun exportConfig(
@@ -31,7 +37,27 @@ object ContainerConfigTransfer {
             val jsonText =
                 withContext(Dispatchers.IO) {
                     val container = ContainerUtils.getOrCreateContainer(context, appId)
-                    JSONObject(container.containerJson).toString(2)
+                    val wineJson = JSONObject(container.containerJson)
+                    unwrapNestedJsonString(wineJson, "gestureConfig")
+                    val isHtml5 = container.containerVariant
+                        .equals(Container.CONTAINER_VARIANT_HTML5, ignoreCase = true)
+                    if (!isHtml5) {
+                        wineJson.toString(2)
+                    } else {
+                        // emit the wrapper even when the WebViewContainer JSON is missing ("html5": null)
+                        // so the variant signal survives import.
+                        val webView = ContainerUtils.loadWebViewContainerForAppId(appId)
+                        val wrapper = JSONObject()
+                        wrapper.put("wine", wineJson)
+                        if (webView != null) {
+                            val webViewObj = JSONObject(WebViewContainer.encodeToJson(webView))
+                            unwrapNestedJsonString(webViewObj, "gestureConfig")
+                            wrapper.put("html5", webViewObj)
+                        } else {
+                            wrapper.put("html5", JSONObject.NULL)
+                        }
+                        wrapper.toString(2)
+                    }
                 }
 
             withContext(Dispatchers.IO) {
@@ -85,11 +111,24 @@ object ContainerConfigTransfer {
                 return false
             }
 
-            // Parse as BestConfig-style JSON
-            val configJson: JsonObject =
+            // BestConfigService only understands the bare wine shape, so unwrap the html5 wrapper first.
+            val rootObj: JsonObject =
                 withContext(Dispatchers.Default) {
                     Json.parseToJsonElement(jsonText).jsonObject
                 }
+
+            // requires BOTH keys so bare-wine JSONs keep importing unchanged.
+            val isWrapped = rootObj.containsKey("wine") && rootObj.containsKey("html5")
+            val wineBlock: JsonObject = if (isWrapped) rootObj["wine"]!!.jsonObject else rootObj
+            val html5BlockText: String? = if (isWrapped) {
+                rootObj["html5"]?.let { el ->
+                    if (el is JsonNull) null else collapseToJsonString(el.jsonObject, "gestureConfig").toString()
+                }
+            } else {
+                null
+            }
+
+            val configJson = wineBlock
 
             val matchType = "exact_gpu_match"
 
@@ -200,6 +239,23 @@ object ContainerConfigTransfer {
                 SessionReport.markConfigApplied(container, "imported")
             }
 
+            // 4) restore html5 sidecar verbatim when destination is html5 AND wrapper carried one.
+            if (html5BlockText != null) {
+                withContext(Dispatchers.IO) {
+                    val destContainer = ContainerUtils.getOrCreateContainer(context, appId)
+                    val isHtml5 = destContainer.containerVariant
+                        .equals(Container.CONTAINER_VARIANT_HTML5, ignoreCase = true)
+                    val slug = ContainerUtils.webViewContainerSlugForAppId(appId)
+                    val decoded = WebViewContainer.decodeFromJson(html5BlockText)
+                    if (isHtml5 && slug != null && decoded != null) {
+                        WebViewContainer.save(slug, decoded)
+                    } else {
+                        Timber.tag("ContainerConfigTransfer")
+                            .w("html5 block dropped: isHtml5=$isHtml5 slug=$slug decoded=${decoded != null}")
+                    }
+                }
+            }
+
             SnackbarManager.show(
                 context.getString(R.string.best_config_applied_successfully),
             )
@@ -226,5 +282,19 @@ object ContainerConfigTransfer {
             false
         }
     }
+
+    // gestureConfig is a JSON-encoded String, so export would escape every inner quote; unwrap it so
+    // users editing the file see real keys.
+    private fun unwrapNestedJsonString(obj: JSONObject, key: String) {
+        val raw = obj.optString(key, "")
+        if (raw.isBlank()) return
+        runCatching { obj.put(key, JSONObject(raw)) }
 }
 
+    // inverse of unwrapNestedJsonString: WebViewContainer.gestureConfig is a String field.
+    private fun collapseToJsonString(obj: JsonObject, key: String): JsonObject {
+        val value: JsonElement = obj[key] ?: return obj
+        if (value !is JsonObject) return obj
+        return JsonObject(obj.toMutableMap().apply { this[key] = JsonPrimitive(value.toString()) })
+    }
+}
