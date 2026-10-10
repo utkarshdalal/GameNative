@@ -1,0 +1,3197 @@
+"controller_mappings"
+{
+	"version"		"3"
+	"revision"		"1457"
+	"title"		"Delf's Sensible Steam Deck Layout for Default Controls v3.2"
+	"description"		"A sensible and intuitive layout designed to provide access to all necessary binds without overwhelming you. Perfect for new or old players alike. Version 3.2 fixes the annoying layout changed messages and fixes some tooltips."
+	"creator"		"76561197968649157"
+	"progenitor"		""
+	"url"		"usercloud://259680/delf's sensible steam deck layout for default controls v3.2_0"
+	"export_type"		"community"
+	"controller_type"		"controller_neptune"
+	"controller_caps"		"23117823"
+	"major_revision"		"0"
+	"minor_revision"		"0"
+	"Timestamp"		"-1239531136"
+	"actions"
+	{
+		"Default"
+		{
+			"title"		"Main"
+			"legacy_set"		"1"
+		}
+		"Preset_1000001"
+		{
+			"title"		"Extra Touch Menus"
+			"legacy_set"		"1"
+		}
+	}
+	"action_layers"
+	{
+	}
+	"group"
+	{
+		"id"		"0"
+		"mode"		"four_buttons"
+		"name"		""
+		"description"		""
+		"inputs"
+		{
+			"button_a"
+			{
+				"activators"
+				{
+					"Start_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press RETURN, Confirm, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"button_b"
+			{
+				"activators"
+				{
+					"Start_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press ESCAPE, Back / Cancel, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"button_x"
+			{
+				"activators"
+				{
+					"Start_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press R, Rest, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"button_y"
+			{
+				"activators"
+				{
+					"Start_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press Z, Auto-Explore, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+		}
+		"settings"
+		{
+			"button_size"		"17994"
+			"button_dist"		"19994"
+		}
+	}
+	"group"
+	{
+		"id"		"1"
+		"mode"		"dpad"
+		"name"		""
+		"description"		""
+		"inputs"
+		{
+			"dpad_north"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press 1, Weapon 1, , "
+						}
+						"settings"
+						{
+							"repeat_rate"		"99"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"dpad_south"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press 3, Weapon 3, , "
+						}
+						"settings"
+						{
+							"repeat_rate"		"99"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"dpad_east"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press 2, Weapon 2, , "
+						}
+						"settings"
+						{
+							"repeat_rate"		"99"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"dpad_west"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press 4, Weapon 4, , "
+						}
+						"settings"
+						{
+							"repeat_rate"		"99"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+		}
+		"settings"
+		{
+			"deadzone"		"5000"
+			"edge_binding_radius"		"24996"
+		}
+	}
+	"group"
+	{
+		"id"		"2"
+		"mode"		"absolute_mouse"
+		"name"		""
+		"description"		""
+		"inputs"
+		{
+			"click"
+			{
+				"activators"
+				{
+					"Start_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press L, Free Look, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+		}
+		"settings"
+		{
+			"sensitivity"		"155"
+			"trackball"		"0"
+			"friction"		"1"
+			"acceleration"		"1"
+			"doubetap_max_duration"		"320"
+		}
+	}
+	"group"
+	{
+		"id"		"3"
+		"mode"		"dpad"
+		"name"		""
+		"description"		""
+		"inputs"
+		{
+			"dpad_north"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press UP_ARROW, Move Forward, , "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"repeat_rate"		"99"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"dpad_south"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press DOWN_ARROW, Move Back, , "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"repeat_rate"		"99"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"dpad_east"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press RIGHT_ARROW, Move Right, , "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"repeat_rate"		"99"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"dpad_west"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press LEFT_ARROW, Move Left, , "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"repeat_rate"		"99"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"click"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press Q, Sprint, , "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"repeat_rate"		"99"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+		}
+		"settings"
+		{
+			"requires_click"		"0"
+			"edge_binding_radius"		"24995"
+		}
+	}
+	"group"
+	{
+		"id"		"4"
+		"mode"		"trigger"
+		"name"		""
+		"description"		""
+		"inputs"
+		{
+			"edge"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"mouse_button RIGHT, , "
+						}
+						"settings"
+						{
+							"repeat_rate"		"99"
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+		}
+	}
+	"group"
+	{
+		"id"		"5"
+		"mode"		"trigger"
+		"name"		""
+		"description"		""
+		"inputs"
+		{
+			"edge"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"mouse_button LEFT, , "
+						}
+						"settings"
+						{
+							"repeat_rate"		"99"
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+		}
+	}
+	"group"
+	{
+		"id"		"6"
+		"mode"		"scrollwheel"
+		"name"		""
+		"description"		""
+		"inputs"
+		{
+			"scroll_clockwise"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"mouse_wheel SCROLL_DOWN, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"scroll_counterclockwise"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"mouse_wheel SCROLL_UP, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+		}
+	}
+	"group"
+	{
+		"id"		"7"
+		"mode"		"absolute_mouse"
+		"name"		""
+		"description"		""
+		"inputs"
+		{
+		}
+		"settings"
+		{
+			"gyro_natural_sensitivity"		"99"
+		}
+	}
+	"group"
+	{
+		"id"		"8"
+		"mode"		"four_buttons"
+		"name"		""
+		"description"		""
+		"inputs"
+		{
+			"button_a"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press DOWN_ARROW, , "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"button_b"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press RIGHT_ARROW, , "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"button_x"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press LEFT_ARROW, , "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"button_y"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press UP_ARROW, , "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+		}
+		"settings"
+		{
+			"requires_click"		"0"
+		}
+	}
+	"group"
+	{
+		"id"		"10"
+		"mode"		"dpad"
+		"name"		""
+		"description"		""
+		"inputs"
+		{
+			"dpad_north"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press UP_ARROW, Up, , "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"repeat_rate"		"250"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"dpad_south"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press DOWN_ARROW, Down, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"dpad_east"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press RIGHT_ARROW, Right, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"dpad_west"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press LEFT_ARROW, Left, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+		}
+		"settings"
+		{
+			"requires_click"		"0"
+			"layout"		"0"
+			"haptic_intensity_override"		"0"
+		}
+	}
+	"group"
+	{
+		"id"		"11"
+		"mode"		"joystick_mouse"
+		"name"		""
+		"description"		""
+		"inputs"
+		{
+			"click"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press C, character, , "
+						}
+						"settings"
+						{
+							"haptic_intensity"		"1"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+		}
+		"settings"
+		{
+			"output_joystick"		"2"
+			"sensitivity"		"145"
+		}
+	}
+	"group"
+	{
+		"id"		"12"
+		"mode"		"four_buttons"
+		"name"		""
+		"description"		""
+		"inputs"
+		{
+		}
+	}
+	"group"
+	{
+		"id"		"14"
+		"mode"		"scrollwheel"
+		"name"		""
+		"description"		""
+		"inputs"
+		{
+			"click"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press C, character, , "
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+		}
+		"settings"
+		{
+			"scroll_type"		"2"
+		}
+	}
+	"group"
+	{
+		"id"		"15"
+		"mode"		"flickstick"
+		"name"		""
+		"description"		""
+		"inputs"
+		{
+		}
+	}
+	"group"
+	{
+		"id"		"16"
+		"mode"		"joystick_move"
+		"name"		""
+		"description"		""
+		"inputs"
+		{
+		}
+	}
+	"group"
+	{
+		"id"		"17"
+		"mode"		"dpad"
+		"name"		""
+		"description"		""
+		"inputs"
+		{
+			"dpad_north"
+			{
+				"activators"
+				{
+					"Long_Press"
+					{
+						"bindings"
+						{
+							"binding"		"mouse_wheel SCROLL_UP, Scroll Up, , "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"long_press_time"		"120"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"dpad_south"
+			{
+				"activators"
+				{
+					"Long_Press"
+					{
+						"bindings"
+						{
+							"binding"		"mouse_wheel SCROLL_DOWN, Scroll Down, , "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"long_press_time"		"120"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"dpad_east"
+			{
+				"activators"
+				{
+					"Long_Press"
+					{
+						"bindings"
+						{
+							"binding"		"controller_action MOUSE_POSITION 24000 16000 0, Description Scrolling, , "
+						}
+						"settings"
+						{
+							"long_press_time"		"120"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"dpad_west"
+			{
+				"activators"
+				{
+					"Long_Press"
+					{
+						"bindings"
+						{
+							"binding"		"controller_action MOUSE_POSITION 8000 16000 0, Description Scrolling, , "
+						}
+						"settings"
+						{
+							"long_press_time"		"120"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"click"
+			{
+				"activators"
+				{
+					"Start_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press X, Toggle Advanced Descriptions, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+		}
+		"settings"
+		{
+			"requires_click"		"0"
+			"layout"		"3"
+		}
+	}
+	"group"
+	{
+		"id"		"18"
+		"mode"		"touch_menu"
+		"name"		"Hotkeys"
+		"description"		""
+		"inputs"
+		{
+			"touch_menu_button_0"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press 1, , "
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_1"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press 2, , "
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_2"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press 3, , "
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_3"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press 4, , "
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_4"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press 5, , "
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_5"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press 6, , "
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_6"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press 7, , "
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_7"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press 8, , "
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_8"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press 9, , "
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_9"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press 0, , "
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_10"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press DASH, , "
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_11"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press EQUALS, , "
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+		}
+		"settings"
+		{
+			"touch_menu_opacity"		"100"
+			"touch_menu_position_x"		"5"
+			"touch_menu_position_y"		"62"
+			"touchmenu_inner_deadzone"		"0"
+			"touchmenu_button_fire_type"		"1"
+		}
+	}
+	"group"
+	{
+		"id"		"20"
+		"mode"		"radial_menu"
+		"name"		"Menus"
+		"description"		""
+		"inputs"
+		{
+			"touch_menu_button_1"
+			{
+				"activators"
+				{
+					"Long_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press P, Level Up, ghost_035_magic_0316.png, #232323 #48B119"
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"long_press_time"		"500"
+							"repeat_rate"		"1000"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_2"
+			{
+				"activators"
+				{
+					"Long_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press C, Character, ghost_050_menu_0040.png, #232323 #00ADAD"
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"long_press_time"		"500"
+							"repeat_rate"		"1000"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_3"
+			{
+				"activators"
+				{
+					"Long_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press J, Journal, ghost_050_menu_0090.png, #232323 #AD00AD"
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"long_press_time"		"500"
+							"repeat_rate"		"1000"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_4"
+			{
+				"activators"
+				{
+					"Long_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press M, Learned Abilities, ghost_035_magic_0318.png, #232323 #AD3A00"
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"long_press_time"		"500"
+							"repeat_rate"		"1000"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_5"
+			{
+				"activators"
+				{
+					"Long_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press H, Combat/Message Log, ghost_075_utility_030.png, #232323 #AD0000"
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"long_press_time"		"500"
+							"repeat_rate"		"1000"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_6"
+			{
+				"activators"
+				{
+					"Long_Press"
+					{
+						"bindings"
+						{
+							"binding"		"controller_action SHOW_KEYBOARD, Show Keyboard, , "
+							"binding"		"controller_action CHANGE_PRESET 1 0 0, Show Keyboard, , "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"long_press_time"		"500"
+							"repeat_rate"		"1000"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_7"
+			{
+				"activators"
+				{
+					"Long_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press LEFT_SHIFT, Landmarks (Mod Required), ghost_030_inv_0303.png, #232323 #33AD69"
+							"binding"		"key_press LEFT_ALT, Landmarks (Mod Required), ghost_030_inv_0303.png, #232323 #33AD69"
+							"binding"		"key_press L, Landmarks (Mod Required), ghost_030_inv_0303.png, #232323 #33AD69"
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"long_press_time"		"500"
+							"repeat_rate"		"1000"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_8"
+			{
+				"activators"
+				{
+					"Long_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press TAB, Map, ghost_050_menu_0030.png, #232323 #0074AD"
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"long_press_time"		"500"
+							"repeat_rate"		"1000"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_9"
+			{
+				"activators"
+				{
+					"Long_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press I, Inventory, ghost_030_inv_0070.png, #232323 #96AD00"
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"long_press_time"		"500"
+							"repeat_rate"		"1000"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+		}
+		"settings"
+		{
+			"touchmenu_button_fire_type"		"3"
+			"touch_menu_opacity"		"100"
+			"touch_menu_position_x"		"5"
+			"touch_menu_position_y"		"58"
+			"touch_menu_scale"		"130"
+		}
+	}
+	"group"
+	{
+		"id"		"21"
+		"mode"		"radial_menu"
+		"name"		"Movement (Radial)"
+		"description"		""
+		"inputs"
+		{
+			"touch_menu_button_0"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"controller_action mouse_delta 0 0, , ghost_035_magic_0311.png, #232323 #FFFFFF"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_1"
+			{
+				"activators"
+				{
+					"Long_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press UP_ARROW, , ghost_045_move_0407.png, "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"long_press_time"		"200"
+							"repeat_rate"		"280"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_2"
+			{
+				"activators"
+				{
+					"Long_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press KEYPAD_9, , ghost_045_move_0404.png, "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"long_press_time"		"200"
+							"repeat_rate"		"280"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_3"
+			{
+				"activators"
+				{
+					"Long_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press RIGHT_ARROW, , ghost_045_move_0400.png, "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"long_press_time"		"200"
+							"repeat_rate"		"280"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_4"
+			{
+				"activators"
+				{
+					"Long_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press KEYPAD_3, , ghost_045_move_0402.png, "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"long_press_time"		"200"
+							"repeat_rate"		"280"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_5"
+			{
+				"activators"
+				{
+					"Long_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press DOWN_ARROW, , ghost_045_move_0403.png, "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"long_press_time"		"200"
+							"repeat_rate"		"280"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_6"
+			{
+				"activators"
+				{
+					"Long_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press KEYPAD_1, , ghost_045_move_0406.png, "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"long_press_time"		"200"
+							"repeat_rate"		"280"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_7"
+			{
+				"activators"
+				{
+					"Long_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press LEFT_ARROW, , ghost_045_move_0401.png, "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"long_press_time"		"200"
+							"repeat_rate"		"280"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_8"
+			{
+				"activators"
+				{
+					"Long_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press KEYPAD_7, , ghost_045_move_0405.png, #232323 #FFFFFF"
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"long_press_time"		"200"
+							"repeat_rate"		"280"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"click"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press KEYPAD_5, Wait, , "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"repeat_rate"		"280"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+		}
+		"settings"
+		{
+			"touchmenu_button_fire_type"		"3"
+			"haptic_intensity"		"3"
+			"touch_menu_button_count"		"9"
+			"touch_menu_opacity"		"100"
+			"touch_menu_position_x"		"5"
+			"touch_menu_position_y"		"62"
+			"touch_menu_show_labels"		"0"
+		}
+	}
+	"group"
+	{
+		"id"		"22"
+		"mode"		"reference"
+		"description"		""
+		"settings"
+		{
+			"referenced_mode"		"18"
+		}
+	}
+	"group"
+	{
+		"id"		"23"
+		"mode"		"dpad"
+		"name"		""
+		"description"		""
+		"inputs"
+		{
+		}
+	}
+	"group"
+	{
+		"id"		"24"
+		"mode"		"reference"
+		"description"		""
+		"settings"
+		{
+			"referenced_mode"		"21"
+		}
+	}
+	"group"
+	{
+		"id"		"25"
+		"mode"		"reference"
+		"description"		""
+		"settings"
+		{
+			"referenced_mode"		"21"
+		}
+	}
+	"group"
+	{
+		"id"		"32"
+		"mode"		"flickstick"
+		"name"		""
+		"description"		""
+		"inputs"
+		{
+		}
+	}
+	"group"
+	{
+		"id"		"33"
+		"mode"		"joystick_move"
+		"name"		""
+		"description"		""
+		"inputs"
+		{
+		}
+	}
+	"group"
+	{
+		"id"		"34"
+		"mode"		"reference"
+		"description"		""
+		"settings"
+		{
+			"referenced_mode"		"18"
+		}
+	}
+	"group"
+	{
+		"id"		"36"
+		"mode"		"reference"
+		"description"		""
+		"settings"
+		{
+			"referenced_mode"		"20"
+		}
+	}
+	"group"
+	{
+		"id"		"53"
+		"mode"		"reference"
+		"description"		""
+		"settings"
+		{
+			"referenced_mode"		"18"
+		}
+	}
+	"group"
+	{
+		"id"		"52"
+		"mode"		"four_buttons"
+		"name"		""
+		"description"		""
+		"inputs"
+		{
+			"button_a"
+			{
+				"activators"
+				{
+					"Start_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press RETURN, Confirm, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"button_b"
+			{
+				"activators"
+				{
+					"Start_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press ESCAPE, Back / Cancel, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+		}
+		"settings"
+		{
+			"button_size"		"17994"
+			"button_dist"		"19994"
+		}
+	}
+	"group"
+	{
+		"id"		"54"
+		"mode"		"absolute_mouse"
+		"name"		""
+		"description"		""
+		"inputs"
+		{
+			"click"
+			{
+				"activators"
+				{
+					"Soft_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press L, Free Look, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+		}
+		"settings"
+		{
+			"sensitivity"		"145"
+			"friction"		"1"
+			"acceleration"		"1"
+			"doubetap_max_duration"		"320"
+		}
+	}
+	"group"
+	{
+		"id"		"55"
+		"mode"		"reference"
+		"description"		""
+		"settings"
+		{
+			"referenced_mode"		"21"
+		}
+	}
+	"group"
+	{
+		"id"		"56"
+		"mode"		"trigger"
+		"name"		""
+		"description"		""
+		"inputs"
+		{
+			"edge"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"mouse_button RIGHT, , "
+						}
+						"settings"
+						{
+							"repeat_rate"		"99"
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+		}
+	}
+	"group"
+	{
+		"id"		"57"
+		"mode"		"trigger"
+		"name"		""
+		"description"		""
+		"inputs"
+		{
+		}
+	}
+	"group"
+	{
+		"id"		"58"
+		"mode"		"dpad"
+		"name"		""
+		"description"		""
+		"inputs"
+		{
+			"dpad_north"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press UP_ARROW, Up, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"dpad_south"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press DOWN_ARROW, Down, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"dpad_east"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press RIGHT_ARROW, Right, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"dpad_west"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press LEFT_ARROW, Left, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+		}
+		"settings"
+		{
+			"requires_click"		"0"
+			"layout"		"0"
+			"haptic_intensity_override"		"0"
+		}
+	}
+	"group"
+	{
+		"id"		"59"
+		"mode"		"dpad"
+		"name"		""
+		"description"		""
+		"inputs"
+		{
+			"dpad_north"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"mouse_wheel SCROLL_UP, Scroll Up, , "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"repeat_rate"		"10"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"dpad_south"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"mouse_wheel SCROLL_DOWN, Scroll Down, , "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"repeat_rate"		"10"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"dpad_east"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"controller_action MOUSE_POSITION 24000 16000 0, Description Scrolling, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"dpad_west"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"controller_action MOUSE_POSITION 8000 16000 0, Description Scrolling, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+		}
+		"settings"
+		{
+			"requires_click"		"0"
+			"layout"		"3"
+		}
+	}
+	"group"
+	{
+		"id"		"60"
+		"mode"		"reference"
+		"description"		""
+		"settings"
+		{
+			"referenced_mode"		"20"
+		}
+	}
+	"group"
+	{
+		"id"		"61"
+		"mode"		"radial_menu"
+		"name"		"Party"
+		"description"		""
+		"inputs"
+		{
+			"touch_menu_button_1"
+			{
+				"activators"
+				{
+					"Long_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press F1, You, ghost_040_act_0312.png, #232323 #96AD00"
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"long_press_time"		"500"
+							"repeat_rate"		"1000"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_2"
+			{
+				"activators"
+				{
+					"Long_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press F2, Party 2, ghost_035_magic_0345.png, #232323 #0045AD"
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"long_press_time"		"500"
+							"repeat_rate"		"1000"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_3"
+			{
+				"activators"
+				{
+					"Long_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press F3, Party 3, ghost_035_magic_0343.png, #232323 #00AD00"
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"long_press_time"		"500"
+							"repeat_rate"		"1000"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_4"
+			{
+				"activators"
+				{
+					"Long_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press F4, Party 4, ghost_035_magic_0331.png, #232323 #AD0000"
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"long_press_time"		"500"
+							"repeat_rate"		"1000"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_5"
+			{
+				"activators"
+				{
+					"Long_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press F5, Party 5, ghost_035_magic_0365.png, #232323 #AD5D00"
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"long_press_time"		"500"
+							"repeat_rate"		"1000"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+		}
+		"settings"
+		{
+			"touchmenu_button_fire_type"		"3"
+			"haptic_intensity"		"3"
+			"touch_menu_button_count"		"2"
+			"touch_menu_opacity"		"100"
+			"touch_menu_position_x"		"95"
+			"touch_menu_position_y"		"62"
+			"touch_menu_scale"		"110"
+		}
+	}
+	"group"
+	{
+		"id"		"62"
+		"mode"		"reference"
+		"description"		""
+		"settings"
+		{
+			"referenced_mode"		"61"
+		}
+	}
+	"group"
+	{
+		"id"		"63"
+		"mode"		"touch_menu"
+		"name"		"Actions"
+		"description"		""
+		"inputs"
+		{
+			"touch_menu_button_0"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press PAGE_UP, Previous Hotbar, ghost_045_move_0230.png, #232323 #00ADAD"
+						}
+						"settings"
+						{
+							"repeat_rate"		"240"
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_1"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press PAGE_DOWN, Next Hotbar, ghost_045_move_0210.png, #232323 #00ADAD"
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_2"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press LEFT_SHIFT, Restart Sustains (Mod Required), ghost_075_utility_040.png, #232323 #96AD00"
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+							"delay_end"		"50"
+							"interruptable"		"0"
+						}
+					}
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press S, , "
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+							"delay_start"		"10"
+							"interruptable"		"0"
+						}
+					}
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press LEFT_ALT, , "
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+							"delay_end"		"50"
+							"interruptable"		"0"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_3"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press LEFT_SHIFT, Change Level, ghost_045_move_0120.png, #232323 #6800AD"
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+							"delay_end"		"50"
+							"interruptable"		"0"
+						}
+					}
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press COMMA, , "
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+							"delay_start"		"10"
+							"interruptable"		"0"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_4"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press LEFT_CONTROL, Toggle Automatic Talents, ghost_050_menu_0303.png, #232323 #AD5D00"
+						}
+						"settings"
+						{
+							"repeat_rate"		"1000"
+							"haptic_intensity"		"2"
+							"delay_end"		"50"
+							"interruptable"		"0"
+						}
+					}
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press P, , "
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+							"delay_start"		"10"
+							"interruptable"		"0"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_5"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press G, Pickup Item, ghost_045_move_0020.png, #232323 #00AD00"
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_6"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press LEFT_SHIFT, Drop Item, ghost_045_move_0010.png, #232323 #AD0000"
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+							"delay_end"		"50"
+							"interruptable"		"0"
+						}
+					}
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press D, , "
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+							"delay_start"		"10"
+							"interruptable"		"0"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+		}
+		"settings"
+		{
+			"touch_menu_opacity"		"100"
+			"touch_menu_position_x"		"5"
+			"touch_menu_position_y"		"62"
+		}
+	}
+	"group"
+	{
+		"id"		"64"
+		"mode"		"reference"
+		"description"		""
+		"settings"
+		{
+			"referenced_mode"		"63"
+		}
+	}
+	"group"
+	{
+		"id"		"65"
+		"mode"		"touch_menu"
+		"name"		"Movement"
+		"description"		""
+		"inputs"
+		{
+			"touch_menu_button_0"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press KEYPAD_7, , ghost_045_move_0405.png, #232323 #FFFFFF"
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"repeat_rate"		"250"
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_1"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press UP_ARROW, , ghost_045_move_0407.png, "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"repeat_rate"		"250"
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_2"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press KEYPAD_9, , ghost_045_move_0404.png, "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"repeat_rate"		"250"
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_3"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press LEFT_ARROW, , ghost_045_move_0401.png, "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"repeat_rate"		"250"
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_4"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press KEYPAD_5, , ghost_035_magic_0311.png, "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"repeat_rate"		"250"
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_5"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press RIGHT_ARROW, , ghost_045_move_0400.png, "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"repeat_rate"		"250"
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_6"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press KEYPAD_1, , ghost_045_move_0406.png, "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"repeat_rate"		"250"
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_7"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press DOWN_ARROW, , ghost_045_move_0403.png, "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"repeat_rate"		"250"
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_8"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press KEYPAD_3, , ghost_045_move_0402.png, "
+						}
+						"settings"
+						{
+							"hold_repeats"		"1"
+							"repeat_rate"		"250"
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+		}
+		"settings"
+		{
+			"haptic_intensity"		"0"
+			"touch_menu_button_count"		"9"
+			"touch_menu_opacity"		"100"
+			"touch_menu_position_x"		"5"
+			"touch_menu_position_y"		"62"
+			"touch_menu_show_labels"		"0"
+		}
+	}
+	"group"
+	{
+		"id"		"66"
+		"mode"		"reference"
+		"description"		""
+		"settings"
+		{
+			"referenced_mode"		"65"
+		}
+	}
+	"group"
+	{
+		"id"		"67"
+		"mode"		"reference"
+		"description"		""
+		"settings"
+		{
+			"referenced_mode"		"63"
+		}
+	}
+	"group"
+	{
+		"id"		"68"
+		"mode"		"reference"
+		"description"		""
+		"settings"
+		{
+			"referenced_mode"		"63"
+		}
+	}
+	"group"
+	{
+		"id"		"69"
+		"mode"		"trigger"
+		"name"		""
+		"description"		""
+		"inputs"
+		{
+		}
+	}
+	"group"
+	{
+		"id"		"70"
+		"mode"		"trigger"
+		"name"		""
+		"description"		""
+		"inputs"
+		{
+		}
+	}
+	"group"
+	{
+		"id"		"71"
+		"mode"		"touch_menu"
+		"name"		"Uncommon Actions"
+		"description"		""
+		"inputs"
+		{
+			"touch_menu_button_0"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press LEFT_ALT, Toggle UI Visibility, ghost_090_media_0020.png, #232323 #33AD69"
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+							"delay_end"		"50"
+							"interruptable"		"0"
+						}
+					}
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press W, , "
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+							"delay_start"		"10"
+							"interruptable"		"0"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_1"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press LEFT_SHIFT, Tactical Display, ghost_050_menu_0060.png, #232323 #74AD00"
+						}
+						"settings"
+						{
+							"repeat_rate"		"1000"
+							"haptic_intensity"		"2"
+							"delay_end"		"50"
+							"interruptable"		"0"
+						}
+					}
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press T, , "
+						}
+						"settings"
+						{
+							"repeat_rate"		"1000"
+							"haptic_intensity"		"2"
+							"delay_start"		"10"
+							"interruptable"		"0"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_2"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press SPACE, Chat, ghost_110_social_0150.png, "
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_3"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press P, Cleanup Particles (Mod Required), ghost_035_magic_0312.png, #232323 #0074AD"
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+							"delay_start"		"10"
+						}
+					}
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press LEFT_ALT, , "
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+							"delay_end"		"50"
+						}
+					}
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press LEFT_CONTROL, , "
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+							"delay_end"		"50"
+						}
+					}
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press LEFT_SHIFT, , "
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+							"delay_end"		"50"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_4"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press Y, Store (MTX), ghost_050_menu_0010.png, #232323 #AD3A00"
+						}
+						"settings"
+						{
+							"repeat_rate"		"1000"
+							"haptic_intensity"		"2"
+							"delay_start"		"10"
+							"interruptable"		"0"
+						}
+					}
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press LEFT_CONTROL, , "
+						}
+						"settings"
+						{
+							"repeat_rate"		"1000"
+							"haptic_intensity"		"2"
+							"delay_end"		"50"
+							"interruptable"		"0"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"touch_menu_button_5"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press LEFT_ALT, Cosmetics, ghost_050_menu_0120.png, #232323 #AD00AD"
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+							"delay_end"		"50"
+							"interruptable"		"0"
+						}
+					}
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press Y, , "
+						}
+						"settings"
+						{
+							"haptic_intensity"		"2"
+							"delay_start"		"10"
+							"interruptable"		"0"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+		}
+		"settings"
+		{
+			"sensitivity"		"300"
+			"touch_menu_opacity"		"100"
+			"touch_menu_position_x"		"95"
+			"touch_menu_position_y"		"62"
+		}
+	}
+	"group"
+	{
+		"id"		"72"
+		"mode"		"reference"
+		"description"		""
+		"settings"
+		{
+			"referenced_mode"		"71"
+		}
+	}
+	"group"
+	{
+		"id"		"51"
+		"mode"		"switches"
+		"name"		""
+		"description"		""
+		"inputs"
+		{
+			"button_escape"
+			{
+				"activators"
+				{
+					"Start_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press ESCAPE, Menu, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"left_bumper"
+			{
+				"activators"
+				{
+					"release"
+					{
+						"bindings"
+						{
+							"binding"		"controller_action CHANGE_PRESET 1 0 0, Release to Default, , "
+						}
+						"settings"
+						{
+							"delay_start"		"500"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"right_bumper"
+			{
+				"activators"
+				{
+					"release"
+					{
+						"bindings"
+						{
+							"binding"		"controller_action CHANGE_PRESET 1 0 0, Release to Default, , "
+						}
+						"settings"
+						{
+							"delay_start"		"500"
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"button_back_right_upper"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press LEFT_CONTROL, Hold for Party Commands, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"button_capture"
+			{
+				"activators"
+				{
+					"release"
+					{
+						"bindings"
+						{
+							"binding"		"controller_action system_key_1, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+		}
+	}
+	"group"
+	{
+		"id"		"9"
+		"mode"		"switches"
+		"name"		""
+		"description"		"Just what you need, with extended play in mind."
+		"inputs"
+		{
+			"button_escape"
+			{
+				"activators"
+				{
+					"Start_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press ESCAPE, Menu, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"button_menu"
+			{
+				"activators"
+				{
+					"Start_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press Q, Weapon Swap, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"left_bumper"
+			{
+				"activators"
+				{
+					"Start_Press"
+					{
+						"bindings"
+						{
+							"binding"		"controller_action CHANGE_PRESET 2 0 0, Hold for Menus, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"right_bumper"
+			{
+				"activators"
+				{
+					"Start_Press"
+					{
+						"bindings"
+						{
+							"binding"		"controller_action CHANGE_PRESET 2 0 0, Hold for Menus, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"button_back_left"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press LEFT_SHIFT, Change Level, , "
+							"binding"		"key_press PERIOD, Change Level, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"button_back_right"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press LEFT_ALT, Hotbar, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"button_back_left_upper"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press LEFT_SHIFT, Hotbar, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"button_back_right_upper"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press LEFT_CONTROL, Hotbar, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+			"button_capture"
+			{
+				"activators"
+				{
+					"release"
+					{
+						"bindings"
+						{
+							"binding"		"controller_action system_key_1, , "
+						}
+					}
+				}
+				"disabled_activators"
+				{
+				}
+			}
+		}
+	}
+	"preset"
+	{
+		"id"		"0"
+		"name"		"Default"
+		"group_source_bindings"
+		{
+			"9"		"switch active"
+			"0"		"button_diamond active"
+			"1"		"left_trackpad inactive"
+			"6"		"left_trackpad inactive"
+			"12"		"left_trackpad inactive"
+			"22"		"left_trackpad active"
+			"23"		"left_trackpad inactive modeshift"
+			"2"		"right_trackpad active"
+			"3"		"joystick inactive"
+			"8"		"joystick inactive"
+			"18"		"joystick inactive"
+			"32"		"joystick inactive"
+			"33"		"joystick inactive"
+			"34"		"joystick inactive"
+			"21"		"joystick inactive"
+			"25"		"joystick active"
+			"65"		"joystick inactive"
+			"20"		"joystick inactive"
+			"36"		"joystick inactive"
+			"61"		"joystick inactive"
+			"71"		"joystick inactive"
+			"4"		"left_trigger active"
+			"5"		"right_trigger active"
+			"7"		"gyro inactive"
+			"10"		"dpad active"
+			"11"		"right_joystick inactive"
+			"14"		"right_joystick inactive"
+			"15"		"right_joystick inactive"
+			"16"		"right_joystick inactive"
+			"17"		"right_joystick active"
+			"24"		"right_joystick inactive"
+		}
+	}
+	"preset"
+	{
+		"id"		"1"
+		"name"		"Preset_1000001"
+		"group_source_bindings"
+		{
+			"51"		"switch active"
+			"52"		"button_diamond active"
+			"53"		"left_trackpad inactive"
+			"64"		"left_trackpad active"
+			"66"		"left_trackpad inactive"
+			"54"		"right_trackpad inactive"
+			"68"		"right_trackpad inactive"
+			"72"		"right_trackpad active"
+			"55"		"joystick inactive"
+			"63"		"joystick inactive"
+			"60"		"joystick active"
+			"56"		"left_trigger inactive"
+			"69"		"left_trigger active"
+			"57"		"right_trigger inactive"
+			"70"		"right_trigger active"
+			"58"		"dpad active"
+			"59"		"right_joystick inactive"
+			"67"		"right_joystick inactive"
+			"62"		"right_joystick active"
+		}
+	}
+	"settings"
+	{
+	}
+}
