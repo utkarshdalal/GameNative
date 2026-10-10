@@ -1291,7 +1291,9 @@ object SteamUtils {
 
             dlcApps?.forEach { dlcApp ->
                 val installedDlcApp = SteamService.getInstalledApp(dlcApp.id)
-                if (installedDlcApp != null && !appendedDlcIds.contains(dlcApp.id)) {
+                // Force DLC must also enumerate licensed, depot-bearing DLC whose files are
+                // delivered by the base install and therefore have no separate AppInfo row.
+                if ((forceDlc || installedDlcApp != null) && !appendedDlcIds.contains(dlcApp.id)) {
                     appendLine("${dlcApp.id}=dlc${dlcApp.id}")
                     appendedDlcIds.add(dlcApp.id)
                 }
@@ -1786,4 +1788,3 @@ object SteamUtils {
         }
     }
 }
-
