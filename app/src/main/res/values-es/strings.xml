@@ -1087,7 +1087,7 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Los informes Pro se saltan la cola.</string>
     <string name="support_limit_title">Límite diario de uso razonable alcanzado</string>
-    <string name="support_upgrade_reason_required">Las respuestas de la AI requieren una suscripción a GameNative.</string>
+    <string name="support_upgrade_reason_required">Las respuestas de la AI requieren una suscripción a GameNative. Si ya estás suscrito en Discord o Ko-fi, conecta Discord en Ajustes.</string>
     <string name="support_see_plans">Ver planes</string>
     <string name="support_plan_basic_title">$5/mes · Basic</string>
     <string name="support_plan_basic_body">Haz que tus juegos funcionen, o que funcionen mejor.</string>

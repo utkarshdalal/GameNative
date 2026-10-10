@@ -1046,7 +1046,7 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Pro-Berichte überspringen die Warteschlange.</string>
     <string name="support_limit_title">Tägliche Fair-Use-Grenze erreicht</string>
-    <string name="support_upgrade_reason_required">AI-Antworten erfordern ein GameNative-Abo.</string>
+    <string name="support_upgrade_reason_required">AI-Antworten erfordern ein GameNative-Abo. Wenn du bereits über Discord oder Ko-fi abonnierst, verbinde Discord in den Einstellungen.</string>
     <string name="support_see_plans">Pläne ansehen</string>
     <string name="support_plan_basic_title">$5/Monat · Basic</string>
     <string name="support_plan_basic_body">Bring deine Spiele zum Laufen – oder lass sie besser laufen.</string>

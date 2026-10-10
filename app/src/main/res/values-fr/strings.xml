@@ -1097,7 +1097,7 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Les rapports Pro passent avant la file d\'attente.</string>
     <string name="support_limit_title">Limite d\'usage raisonnable du jour atteinte</string>
-    <string name="support_upgrade_reason_required">Les réponses de l\'AI nécessitent un abonnement GameNative.</string>
+    <string name="support_upgrade_reason_required">Les réponses de l\'AI nécessitent un abonnement GameNative. Si vous êtes déjà abonné via Discord ou Ko-fi, connectez Discord dans les Paramètres.</string>
     <string name="support_see_plans">Voir les abonnements</string>
     <string name="support_plan_basic_title">$5/mois · Basic</string>
     <string name="support_plan_basic_body">Faites fonctionner vos jeux, ou faites-les mieux tourner.</string>

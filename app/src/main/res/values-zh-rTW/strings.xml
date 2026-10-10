@@ -1066,7 +1066,7 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Pro 報告不必排隊。</string>
     <string name="support_limit_title">已達到今天的合理使用額度</string>
-    <string name="support_upgrade_reason_required">AI 回覆需要 GameNative 訂閱。</string>
+    <string name="support_upgrade_reason_required">AI 回覆需要 GameNative 訂閱。如果你已在 Discord 或 Ko-fi 上訂閱，請在設定中連接 Discord。</string>
     <string name="support_see_plans">查看方案</string>
     <string name="support_plan_basic_title">$5/月 · Basic</string>
     <string name="support_plan_basic_body">讓你的遊戲執行起來，或執行得更好。</string>

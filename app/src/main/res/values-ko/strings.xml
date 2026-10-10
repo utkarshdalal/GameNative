@@ -1079,7 +1079,7 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Pro 보고서는 대기열을 건너뜁니다.</string>
     <string name="support_limit_title">오늘의 공정 사용 한도 도달</string>
-    <string name="support_upgrade_reason_required">AI 답변에는 GameNative 구독이 필요합니다.</string>
+    <string name="support_upgrade_reason_required">AI 답변에는 GameNative 구독이 필요합니다. 이미 Discord 또는 Ko-fi에서 구독 중이라면 설정에서 Discord를 연결하세요.</string>
     <string name="support_see_plans">플랜 보기</string>
     <string name="support_plan_basic_title">$5/월 · Basic</string>
     <string name="support_plan_basic_body">게임을 실행되게, 또는 더 잘 실행되게.</string>

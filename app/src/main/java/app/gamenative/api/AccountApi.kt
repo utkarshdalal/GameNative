@@ -354,6 +354,11 @@ object AccountApi {
                     account.value = result.data
                 }
             }
+            withContext(Dispatchers.IO) {
+                if (!result.data.discordLinked && PrefManager.discordRelayToken.isNotEmpty()) {
+                    PrefManager.discordMergePending = true
+                }
+            }
         }
         return result
     }

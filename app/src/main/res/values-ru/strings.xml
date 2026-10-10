@@ -1265,7 +1265,7 @@ https://gamenative.app
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Отчёты Pro проходят без очереди.</string>
     <string name="support_limit_title">Дневной лимит честного использования исчерпан</string>
-    <string name="support_upgrade_reason_required">Для ответов AI нужна подписка GameNative.</string>
+    <string name="support_upgrade_reason_required">Для ответов AI нужна подписка GameNative. Если вы уже оформили подписку в Discord или на Ko-fi, подключите Discord в настройках.</string>
     <string name="support_see_plans">Посмотреть планы</string>
     <string name="support_plan_basic_title">$5/месяц · Basic</string>
     <string name="support_plan_basic_body">Запустите свои игры или заставьте их работать лучше.</string>
