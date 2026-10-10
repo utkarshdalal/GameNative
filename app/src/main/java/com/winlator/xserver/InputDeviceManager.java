@@ -175,6 +175,10 @@ public class InputDeviceManager implements Pointer.OnPointerMotionListener, Keyb
         }
     }
 
+    /**
+     * Reports X11 state before release, although Pointer has already cleared the button.
+     * Owner-events use normal delivery only for the grab client; otherwise use its grab window.
+     */
     @Override
     public void onPointerButtonRelease(Pointer.Button button) {
         if (xServer.isRelativeMouseMovement()) {
@@ -186,6 +190,9 @@ public class InputDeviceManager implements Pointer.OnPointerMotionListener, Keyb
             keyButMask.set(button.flag());
             Window grabWindow = xServer.grabManager.getWindow();
             Window window = grabWindow == null || xServer.grabManager.isOwnerEvents() ? pointWindow.getAncestorWithEventId(Event.BUTTON_RELEASE) : null;
+            if (grabWindow != null && window != null && !xServer.grabManager.getClient().isInterestedIn(Event.BUTTON_RELEASE, window)) {
+                window = null;
+            }
 
             if (grabWindow != null || window != null) {
                 Window eventWindow = window != null ? window : grabWindow;

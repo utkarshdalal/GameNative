@@ -82,7 +82,7 @@ Most of the time you don't need this — if you just want to play, grab the rele
    ```
    You can get one from your [SteamGridDB preferences](https://www.steamgriddb.com/profile/preferences). Without it everything still works — it just won't fetch images.
 
-Mouse-release routing uses `BUTTON_RELEASE`, not pointer-motion subscriptions, so a button-only X11 client still receives mouse-up after window geometry changes during an implicit grab. Run the regression with `gradlew :app:testLegacyDebugUnitTest --tests com.winlator.xserver.InputDeviceManagerButtonReleaseTest`.
+Mouse-release routing uses `BUTTON_RELEASE`, not pointer-motion subscriptions, so a button-only X11 client still receives mouse-up after window geometry changes during an implicit grab. Owner-events fall back to the grab window when the normal recipient has no release subscription for the grabbing client, including after that client deselects events. Run the regression on macOS/Linux with `./gradlew :app:testLegacyDebugUnitTest --tests com.winlator.xserver.InputDeviceManagerButtonReleaseTest`, or on Windows PowerShell with `.\gradlew.bat :app:testLegacyDebugUnitTest --tests com.winlator.xserver.InputDeviceManagerButtonReleaseTest`.
 
 ## Analytics & privacy
 
