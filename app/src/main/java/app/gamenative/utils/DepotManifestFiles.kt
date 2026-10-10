@@ -34,6 +34,7 @@ object DepotManifestFiles {
      * callers that only care whether the manifest is on disk still check `isFile`.
      */
     fun manifestFile(appDirPath: String, depotId: Int, gid: Long): File {
+        migrateLegacyLayout(appDirPath)
         val name = "$depotId" + "_" + "${gid.toULong()}$MANIFEST_SUFFIX"
         val completed = File(completedDir(appDirPath), name)
         return if (completed.isFile) completed else File(targetDir(appDirPath), name)
