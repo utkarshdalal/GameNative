@@ -57,6 +57,7 @@ import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.DepotManifestFiles
 import app.gamenative.utils.FileUtils
 import app.gamenative.utils.LicenseSerializer
 import app.gamenative.utils.LocaleHelper
@@ -368,12 +369,6 @@ class SteamService : Service(), IChallengeUrlChanged {
         const val INVALID_APP_ID: Int = Int.MAX_VALUE
         const val INVALID_PKG_ID: Int = Int.MAX_VALUE
 
-        /**
-         * The gid the native engine writes into `depot.config` while a depot's write is in flight
-         * (`begin_depot`), so a half-written depot can be spotted later. It is a MARKER, not a
-         * version: never hand it to anything as the installed manifest.
-         */
-        const val INVALID_MANIFEST_ID: ULong = 0x7FFFFFFFFFFFFFFFUL
         private const val STEAM_CONTROLLER_CONFIG_FILENAME = "steam_controller_config.vdf"
 
         /**
@@ -2001,7 +1996,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                 if (mi.size > largestDepotSize) largestDepotSize = mi.size
 
                 // Check cache first
-                val man = DepotManifest.loadFromFile("${getAppDirPath(appId)}/.DepotDownloader/${depot.depotId}_${mi.gid}.manifest")
+                val man = DepotManifest.loadFromFile(
+                    DepotManifestFiles.manifestFile(getAppDirPath(appId), depot.depotId, mi.gid).absolutePath,
+                )
 
                 Timber.d("Using manifest for depot ${depot.depotId}  size=${mi.size}")
 
@@ -2208,6 +2205,11 @@ class SteamService : Service(), IChallengeUrlChanged {
                 Timber.tag("SteamService").d("downloadApp: downloading app $appId with language $containerLanguage, branch $branch")
 
                 val depots = getDownloadableDepots(appId = appId, preferredLanguage = containerLanguage)
+                // Upgrade a pre-split install's manifest store once, here where every mode starts:
+                // the installed record lives in `completed/` now, and an INSTALL (which does not read
+                // the record for gids) still needs it — its delta and pruned-content sweep diff
+                // against it.
+                DepotManifestFiles.migrateLegacyLayout(getAppDirPath(appId))
                 downloadApp(
                     appId = appId,
                     downloadableDepots = depots,
@@ -3762,57 +3764,18 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
+        /**
+         * Which build each depot of `appId` is at, read from the manifest store's installed record
+         * (`completed/`'s file names — see [DepotManifestFiles]). A depot with no completed manifest
+         * is simply absent: nothing has been installed for it yet, or its last write never finished.
+         *
+         * UPDATE uses this to skip depots that are already current, VERIFY to know what it may
+         * re-check and against which gid.
+         */
         private fun installedManifestIds(appId: Int): Map<Int, ULong> {
-            val cacheDir = File(getAppDirPath(appId), ".DepotDownloader")
-            val ids = mutableMapOf<Int, ULong>()
-            val midWrite = mutableListOf<Int>()
-            runCatching { File(cacheDir, "depot.config").readText() }.getOrNull()?.let { text ->
-                val block = text.substringAfter("\"installedManifestIDs\"", "").substringAfter('{', "").substringBefore('}')
-                Regex("\"(\\d+)\"\\s*:\\s*(\\d+)").findAll(block).forEach { match ->
-                    val depotId = match.groupValues[1].toIntOrNull() ?: return@forEach
-                    val gid = match.groupValues[2].toULongOrNull() ?: return@forEach
-                    // A depot paused mid-write records the sentinel, not a version. Passing it on
-                    // would pin a VERIFY to a manifest that cannot be fetched, so it counts as
-                    // "unknown" — reported, never used.
-                    if (gid == INVALID_MANIFEST_ID) {
-                        midWrite += depotId
-                        return@forEach
-                    }
-                    ids[depotId] = gid
-                }
-            }
-            if (midWrite.isNotEmpty()) {
-                // Only reachable while a download is paused between `begin_depot` and
-                // `finish_depot`; the next run rewrites the depot and records a real gid.
-                Timber.w(
-                    "installedManifestIds: depot(s) ${midWrite.sorted()} were mid-write " +
-                        "(no usable installed manifest) — treating their installed version as unknown",
-                )
-            }
-            if (ids.isEmpty()) {
-                // Legacy fallback: no `depot.config`, so guess the installed manifest from the
-                // cache directory. Only a depot with EXACTLY ONE cached manifest is unambiguous —
-                // two candidates means we cannot tell which one is installed, and handing the wrong
-                // one to VERIFY would re-hash the install against a build the user never had.
-                val byDepot = mutableMapOf<Int, MutableList<ULong>>()
-                cacheDir.listFiles()?.forEach { file ->
-                    val match = Regex("""^(\d+)_(\d+)\.manifest$""").matchEntire(file.name) ?: return@forEach
-                    val depotId = match.groupValues[1].toIntOrNull() ?: return@forEach
-                    val gid = match.groupValues[2].toULongOrNull() ?: return@forEach
-                    byDepot.getOrPut(depotId) { mutableListOf() }.add(gid)
-                }
-                val ambiguous = byDepot.filterValues { it.size > 1 }.keys.sorted()
-                if (ambiguous.isNotEmpty()) {
-                    Timber.w(
-                        "installedManifestIds: no depot.config and multiple cached manifests for " +
-                            "depot(s) $ambiguous — treating their installed version as unknown",
-                    )
-                }
-                byDepot.filterValues { it.size == 1 }.forEach { (depotId, gids) ->
-                    ids[depotId] = gids.first()
-                }
-            }
-            return ids
+            val appDirPath = getAppDirPath(appId)
+            DepotManifestFiles.migrateLegacyLayout(appDirPath)
+            return DepotManifestFiles.installedManifests(appDirPath)
         }
 
         suspend fun checkPrivateBranchPassword(appId: Int, password: String): Map<String, ByteArray> =

@@ -208,7 +208,6 @@ pub type DepotStatusCallback<'a> = &'a (dyn Fn(&str, u32, u32) + Sync);
 pub struct DepotWriteResult {
     pub files_written: u64,
     pub bytes_written: u64,
-    pub resume_trust_safe: bool,
     pub error: String,
 }
 
@@ -298,15 +297,13 @@ impl DepotWriteResult {
         Self {
             files_written,
             bytes_written,
-            resume_trust_safe: true,
             error: String::new(),
         }
     }
 
-    pub fn fail(error: impl Into<String>, resume_trust_safe: bool) -> Self {
+    pub fn fail(error: impl Into<String>) -> Self {
         Self {
             error: error.into(),
-            resume_trust_safe,
             ..Default::default()
         }
     }
@@ -705,17 +702,15 @@ pub fn plan_depot_write(
     if manifest.metadata.filenames_encrypted {
         return Err(DepotWriteResult::fail(
             "write_depot: manifest filenames are still encrypted",
-            false,
         ));
     }
     if depot_key.len() != 32 {
         return Err(DepotWriteResult::fail(
             "write_depot: bad depot key length",
-            false,
         ));
     }
     if server_count == 0 {
-        return Err(DepotWriteResult::fail("write_depot: no CDN servers", false));
+        return Err(DepotWriteResult::fail("write_depot: no CDN servers"));
     }
 
     let mut plan = DepotWritePlan {
@@ -731,7 +726,6 @@ pub fn plan_depot_write(
         if !path_is_safe(&file.filename) {
             return Err(DepotWriteResult::fail(
                 format!("write_depot: unsafe path '{}'", file.filename),
-                false,
             ));
         }
         // Re-spell to the on-disk case so Directory/Symlink actions land in the dir an earlier
@@ -745,7 +739,6 @@ pub fn plan_depot_write(
             if !crate::store_dl::rel_path_is_safe(&file.linktarget) {
                 return Err(DepotWriteResult::fail(
                     format!("write_depot: unsafe linktarget '{}'", file.linktarget),
-                    false,
                 ));
             }
             plan.actions.push(DepotFileAction::Symlink {
@@ -2002,8 +1995,7 @@ fn drain_contiguous(
 /// Success assertion, run BEFORE finalize: every regular file's cursor must sit at its exact
 /// size with an empty reorder cushion. Catches a stranded-pending bug (verify-skip gap, lost
 /// chunk, accounting slip) LOUDLY, before `finalize_remaining`'s set_len could paper over a
-/// hole and journal a corrupt depot. Callers must report failure with resume trust UNSAFE —
-/// on-disk bytes may be missing.
+/// hole and leave a half-written file behind a successful-looking run.
 fn assert_pipeline_drained(files: &DepotFiles, writers: &[Mutex<OrderedWriter>]) -> Result<(), String> {
     for (idx, slot) in files.slots.iter().enumerate() {
         // Trusted (update-delta unchanged) files have no jobs and were never written: their cursor
@@ -2152,7 +2144,6 @@ pub fn write_depot_sequential(
                     needed / (1024 * 1024),
                     available / (1024 * 1024)
                 ),
-                false,
             );
         }
     }
@@ -2236,16 +2227,16 @@ fn write_depot_single(
             .cancel
             .is_some_and(|cancel| cancel.load(Ordering::Relaxed))
         {
-            return DepotWriteResult::fail("cancelled", true);
+            return DepotWriteResult::fail("cancelled");
         }
         let file_idx = job.file_idx as usize;
         let file = match manifest.files.get(file_idx) {
             Some(file) => file,
-            None => return DepotWriteResult::fail("bad file index", true),
+            None => return DepotWriteResult::fail("bad file index"),
         };
         let chunk = match file.chunks.get(job.chunk_idx as usize) {
             Some(chunk) => chunk,
-            None => return DepotWriteResult::fail("bad chunk index", true),
+            None => return DepotWriteResult::fail("bad chunk index"),
         };
         if files.needs_verify(file_idx) && last_verify_file != Some(file_idx) {
             // Resume/verify: report the file whose on-disk chunks are being re-hashed.
@@ -2257,7 +2248,7 @@ fn write_depot_single(
         }
         let handle = match files.acquire(file_idx) {
             Ok(handle) => handle,
-            Err(error) => return DepotWriteResult::fail(error, true),
+            Err(error) => return DepotWriteResult::fail(error),
         };
         if files.needs_verify(file_idx) && existing_chunk_matches(&handle, chunk) {
             bytes_written += chunk.cb_original as u64;
@@ -2265,7 +2256,7 @@ fn write_depot_single(
                 on_progress(bytes_written, total_bytes, true);
             }
             if let Err(error) = files.complete_chunk(file_idx, &handle) {
-                return DepotWriteResult::fail(error, true);
+                return DepotWriteResult::fail(error);
             }
             continue;
         }
@@ -2295,21 +2286,20 @@ fn write_depot_single(
                     on_progress(bytes_written, total_bytes, false);
                 }
                 if let Err(error) = files.complete_chunk(file_idx, &handle) {
-                    return DepotWriteResult::fail(error, true);
+                    return DepotWriteResult::fail(error);
                 }
             }
-            Err(error) => return DepotWriteResult::fail(error, true),
+            Err(error) => return DepotWriteResult::fail(error),
         }
     }
 
     if let Err(error) = files.finalize_remaining() {
-        return DepotWriteResult::fail(error, true);
+        return DepotWriteResult::fail(error);
     }
 
     DepotWriteResult {
         files_written: plan.files_written,
         bytes_written,
-        resume_trust_safe: true,
         error: String::new(),
     }
 }
@@ -2700,15 +2690,14 @@ host_ceiling={} budget={}MiB reason=start",
         }
 
         if cancel.is_some_and(|c| c.load(Ordering::Relaxed)) {
-            return DepotWriteResult::fail("cancelled", true);
+            return DepotWriteResult::fail("cancelled");
         }
         if let Some(error) = error_slot.lock().expect("err slot poisoned").take() {
-            return DepotWriteResult::fail(error, true);
+            return DepotWriteResult::fail(error);
         }
         DepotWriteResult {
             files_written: plan.files_written,
             bytes_written: bytes_written.load(Ordering::Relaxed),
-            resume_trust_safe: true,
             error: String::new(),
         }
     });
@@ -2720,10 +2709,10 @@ host_ceiling={} budget={}MiB reason=start",
     // an empty reorder cushion, BEFORE finalize_remaining's set_len could paper over a hole and
     // journal a corrupt depot (the verify-skip gap bug class). Resume trust is unsafe here.
     if let Err(error) = assert_pipeline_drained(&files, &writers) {
-        return DepotWriteResult::fail(error, false);
+        return DepotWriteResult::fail(error);
     }
     if let Err(error) = files.finalize_remaining() {
-        return DepotWriteResult::fail(error, true);
+        return DepotWriteResult::fail(error);
     }
     scope_result
 }
@@ -3229,13 +3218,12 @@ pub fn create_depot_layout(plan: &DepotWritePlan) -> DepotWriteResult {
             DepotFileAction::Regular { .. } => Ok(()),
         };
         if let Err(error) = result {
-            return DepotWriteResult::fail(error, false);
+            return DepotWriteResult::fail(error);
         }
     }
     DepotWriteResult {
         files_written: plan.files_written,
         bytes_written: 0,
-        resume_trust_safe: true,
         error: String::new(),
     }
 }
@@ -5032,7 +5020,6 @@ rename, a missing hash and a new file all fall through to the normal walk"
         );
         assert!(!result.ok());
         assert_eq!(result.error, "cancelled");
-        assert!(result.resume_trust_safe);
         let _ = fs::remove_dir_all(&dir);
     }
 

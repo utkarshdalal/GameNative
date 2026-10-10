@@ -50,8 +50,9 @@ import kotlin.concurrent.Volatile
  *   manifest request codes and the CDN server list are resolved here through `SteamApps` /
  *   `SteamContent`, then the Rust engine (ported from Bannerlator's `bl-steam-client` depot
  *   pipeline) fetches manifests + chunks, decrypts/decompresses/verifies and writes files.
- *   The on-disk journal keeps the old JavaSteam DepotDownloader `.DepotDownloader/` format so
- *   in-progress downloads resume across the swap.
+ *   The on-disk store lives in `.DepotDownloader/` (`completed/` = the installed record,
+ *   `target/` = the run in flight — see DepotManifestFiles), the location JavaSteam's
+ *   DepotDownloader used, so in-progress downloads resume across the swap.
  * - [downloadGogChunks] / [downloadEpicChunks] / [downloadAmazonFiles] — the byte-fetching
  *   engines for the other stores; the store managers keep manifest/auth/post-install logic.
  */

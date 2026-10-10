@@ -1,6 +1,6 @@
 use crate::store_dl::steam::cdn_client::{auth_status, CdnClient, CdnManifestResult};
 use crate::store_dl::steam::content_manifest::ContentManifest;
-use crate::store_dl::steam::depot_config::{DepotConfigStore, DepotProgressStore, INVALID_MANIFEST_ID};
+use crate::store_dl::steam::depot_config::DepotConfigStore;
 use crate::store_dl::steam::depot_writer::{
     write_depot_sequential, CdnAuthTokenRefresher, DepotWriteOptions, DEPOT_FILE_FLAG_DIRECTORY,
 };
@@ -78,47 +78,6 @@ impl DepotDownloadResult {
             error: String::new(),
         }
     }
-}
-
-pub fn clean_pause_marker_name(depot_id: u32, manifest_id: u64) -> String {
-    format!("{depot_id}_{manifest_id}.cleanpause")
-}
-
-pub fn clean_pause_marker_path(
-    config_dir: impl AsRef<Path>,
-    depot_id: u32,
-    manifest_id: u64,
-) -> PathBuf {
-    config_dir
-        .as_ref()
-        .join(clean_pause_marker_name(depot_id, manifest_id))
-}
-
-pub fn has_clean_pause_marker(
-    config_dir: impl AsRef<Path>,
-    depot_id: u32,
-    manifest_id: u64,
-) -> bool {
-    clean_pause_marker_path(config_dir, depot_id, manifest_id).is_file()
-}
-
-pub fn write_clean_pause_marker(
-    config_dir: impl AsRef<Path>,
-    depot_id: u32,
-    manifest_id: u64,
-) -> bool {
-    let path = clean_pause_marker_path(config_dir, depot_id, manifest_id);
-    let Some(parent) = path.parent() else {
-        return false;
-    };
-    if fs::create_dir_all(parent).is_err() {
-        return false;
-    }
-    fs::write(path, manifest_id.to_string()).is_ok()
-}
-
-pub fn remove_clean_pause_marker(config_dir: impl AsRef<Path>, depot_id: u32, manifest_id: u64) {
-    let _ = fs::remove_file(clean_pause_marker_path(config_dir, depot_id, manifest_id));
 }
 
 pub fn validate_download_inputs(
@@ -307,29 +266,28 @@ pub fn fetch_manifest_with_retry(
     }
 }
 
+/// Whether a depot still needs work, or is already at the requested build.
+///
+/// INSTALL asks for the build the app records as installed, so `completed/` already holding that gid
+/// means there is nothing to do; UPDATE and VERIFY pass `fresh` and always walk, because the engine
+/// cannot tell "unchanged" from "same gid, different content" without the manifest diff and the
+/// per-chunk re-hash that follow.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DepotResumeDecision {
     SkipInstalled,
-    Download { trust_existing_chunks: bool },
+    Download,
 }
 
 pub fn decide_depot_resume(
     fresh: bool,
     cfg: &DepotConfigStore,
     spec: DepotSpec,
-    clean_pause_marker_exists: bool,
 ) -> DepotResumeDecision {
     if !fresh && cfg.is_installed(spec.depot_id, spec.manifest_id) {
         DepotResumeDecision::SkipInstalled
     } else {
-        DepotResumeDecision::Download {
-            trust_existing_chunks: !fresh && clean_pause_marker_exists,
-        }
+        DepotResumeDecision::Download
     }
-}
-
-pub fn in_progress_manifest_id() -> u64 {
-    INVALID_MANIFEST_ID
 }
 
 pub fn map_write_progress(
@@ -444,34 +402,11 @@ pub fn download_resolved_depots_with_cancel_progress(
         return DepotDownloadResult::fail(format!("download: mkdir config dir: {error}"));
     }
 
+    // The installed record (`completed/` filenames) is read here and only ever changed by
+    // `finish_depot` after a depot's writes succeeded — nothing else in the run touches it, so the
+    // delta and the sweep below diff against the build the tree really is. `fresh` used to forget
+    // these depots up front, which silently disabled both of them.
     let mut cfg = DepotConfigStore::load(&config_dir);
-    // The version each depot currently has on disk, read BEFORE anything can overwrite it: `fresh`
-    // forgets these depots outright (below) and `begin_depot` stamps INVALID_MANIFEST_ID over the
-    // record, so any later read returns the marker rather than a gid — the update delta and the
-    // removed-content sweep would then diff against "unknown" and silently never run. This snapshot
-    // is the version the user actually has, and it is what both of them must diff against.
-    let installed_before: Vec<(u32, u64)> = depots
-        .iter()
-        .map(|depot| (depot.depot_id, cfg.installed_manifest(depot.depot_id)))
-        .collect();
-    if fresh {
-        // Reset only this batch's depots; a global discard would wipe earlier batches' records.
-        for depot in depots {
-            cfg.forget_depot(depot.depot_id);
-            DepotProgressStore::remove(&config_dir, depot.depot_id, depot.manifest_id);
-            remove_clean_pause_marker(&config_dir, depot.depot_id, depot.manifest_id);
-        }
-    }
-
-    // Paths the app has PATCHED (DRM: a Steamless-unpacked exe, a replaced steam_api*.dll). Each
-    // one has a backup sibling in the install dir, so the bytes on disk are no longer the previous
-    // manifest's even when the two manifests agree — a trusted file would keep the patched bytes
-    // forever. Forcing them through revalidation also makes the app's post-download backup cleanup
-    // correct: it may only delete a backup for a file the run actually rewrote.
-    let untrusted: HashSet<String> = untrusted_paths
-        .iter()
-        .map(|path| crate::store_dl::steam::depot_writer::folded_entry_key(path))
-        .collect();
 
     let cdn = CdnClient::new(ca_bundle_path);
     let mut result = DepotDownloadResult {
@@ -493,8 +428,7 @@ pub fn download_resolved_depots_with_cancel_progress(
             depot_id: depot.depot_id,
             manifest_id: depot.manifest_id,
         };
-        let clean_pause = has_clean_pause_marker(&config_dir, depot.depot_id, depot.manifest_id);
-        if decide_depot_resume(fresh, &cfg, spec, clean_pause) == DepotResumeDecision::SkipInstalled
+        if decide_depot_resume(fresh, &cfg, spec) == DepotResumeDecision::SkipInstalled
         {
             result.depots_skipped += 1;
             depots_done += 1;
@@ -507,21 +441,32 @@ pub fn download_resolved_depots_with_cancel_progress(
             ));
         }
 
-        let cache_path = cfg.manifest_cache_path(depot.depot_id, depot.manifest_id);
-        // A cached manifest is only usable when it parses AND its metadata matches the
-        // requested depot/gid — a truncated write or a file sitting under the wrong key
-        // is deleted and refetched once instead of poisoning every subsequent attempt
-        // ("manifest parse failed" is a permanent error; nothing would self-heal it).
-        let cached = read_cached_manifest(&cache_path).and_then(|raw| {
-            let parsed = ContentManifest::parse(&raw)?;
-            (parsed.metadata.depot_id == depot.depot_id
-                && parsed.metadata.gid_manifest == depot.manifest_id)
-                .then_some((raw, parsed))
-        });
-        let (_, mut manifest) = match cached {
+        let target_path = cfg.target_manifest_path(depot.depot_id, depot.manifest_id);
+        // A manifest is usable only when it parses AND its metadata matches the depot/gid it is filed
+        // under; anything else is a fetch, never a diff base (a wrong manifest would produce a wrong
+        // delta, a wrong sweep and a wrong verify).
+        let usable = |path: &Path| -> Option<(Vec<u8>, ContentManifest)> {
+            read_cached_manifest(path).and_then(|raw| {
+                let parsed = ContentManifest::parse(&raw)?;
+                (parsed.metadata.depot_id == depot.depot_id
+                    && parsed.metadata.gid_manifest == depot.manifest_id)
+                    .then_some((raw, parsed))
+            })
+        };
+        // `target/` holds THIS press's manifests and nothing else: whatever an earlier press left for
+        // this depot is dropped, so a resume re-reads what the CDN serves now instead of finishing a
+        // build that may have been superseded while the download sat paused.
+        let _ = cfg.drop_stale_targets(depot.depot_id);
+        // A depot asking for the build `completed/` already records (VERIFY pins to the installed gid)
+        // needs no fetch and no manifest request code — the manifest is on disk, so a verify works
+        // with no network at all.
+        let installed_now = cfg.has_completed(depot.depot_id, depot.manifest_id);
+        let local = installed_now
+            .then(|| cfg.completed_manifest_path(depot.depot_id, depot.manifest_id))
+            .and_then(|path| usable(&path));
+        let (_, mut manifest) = match local {
             Some(pair) => pair,
             None => {
-                let _ = fs::remove_file(&cache_path); // no-op when absent
                 if cancel.is_some_and(|cancel| cancel.load(Ordering::Relaxed)) {
                     return DepotDownloadResult::fail("cancelled");
                 }
@@ -564,7 +509,7 @@ pub fn download_resolved_depots_with_cancel_progress(
                         depot.depot_id, parsed.metadata.depot_id, parsed.metadata.gid_manifest
                     ));
                 }
-                let _ = write_manifest_cache(&cache_path, &fetched.raw_manifest);
+                let _ = write_manifest_cache(&target_path, &fetched.raw_manifest);
                 (fetched.raw_manifest, parsed)
             }
         };
@@ -605,13 +550,10 @@ pub fn download_resolved_depots_with_cancel_progress(
             protected.insert(crate::store_dl::steam::depot_writer::folded_entry_key(&file.filename));
         }
     }
-    // A depot the app records as installed but this run does not resolve cannot be enumerated — its
-    // cached manifest's filenames need a depot key this layer does not hold — so a removed path
-    // cannot be proven unowned. Skip the sweep for the whole run rather than risk deleting another
-    // depot's file; it runs again on the next update that resolves everything.
-    // Every recorded depot that this run does not resolve counts, INCLUDING one stamped
-    // INVALID_MANIFEST_ID: that marker means its write never finished, so it can still own files on
-    // disk that no manifest of this run lists.
+    // A depot `completed/` records but this run does not resolve cannot be enumerated — its
+    // manifest's filenames need a depot key this layer does not hold — so a removed path cannot be
+    // proven unowned. Skip the sweep for the whole run rather than risk deleting another depot's
+    // file; it runs again on the next update that resolves everything.
     let unenumerable_installed: Vec<u32> = cfg
         .installed_depots()
         .into_iter()
@@ -635,64 +577,55 @@ cannot be enumerated for ownership",
             return DepotDownloadResult::fail("cancelled");
         }
         let depot_id = depot.depot_id;
-        // The manifest recorded for this depot from the PREVIOUS run: the version the user has, and
-        // the manifest both the update delta and the removed-content sweep diff against. Read from
-        // the snapshot taken before the run touched the config — `fresh` (which UPDATE and VERIFY
-        // both send) forgets every depot in the batch and `begin_depot` stamps INVALID_MANIFEST_ID,
-        // so asking `cfg` here yields the marker for every fresh run and the cache lookup would go
-        // looking for `<depot>_9223372036854775807.manifest`, miss, and skip the delta and the
-        // sweep silently on every single update.
-        let previous_manifest_id = installed_before
-            .iter()
-            .find(|(id, _)| *id == depot_id)
-            .map_or(0, |(_, gid)| *gid);
-        if !cfg.begin_depot(depot.depot_id) {
+        // The build this depot is at: the gid in `completed/`'s filename is the record, and only a
+        // promotion ever rewrites it — so unlike the old pointer file it cannot be blanked by the run
+        // that is about to read it. This is what the delta and the sweep diff against.
+        let previous_manifest_id = cfg.installed_manifest(depot_id);
+        // Read the interrupted flag BEFORE marking this run, or we would read our own marker.
+        let interrupted = cfg.interrupted(depot_id);
+        if !cfg.begin_depot(depot.depot_id, depot.manifest_id) {
             return DepotDownloadResult::fail(format!(
-                "download: depot.config begin failed for depot {}",
+                "download: depot store begin failed for depot {}",
                 depot.depot_id
             ));
         }
 
-        // A clean-pause marker for the previous manifest means its last write never completed, so
-        // the install on disk is NOT that manifest's file set: neither trust the delta nor delete
-        // anything from it (the next successful run clears the marker and restores both).
+        // No usable previous build: nothing is installed here yet, the requested build IS the
+        // installed one (a verify), or a previous run for this depot was interrupted — in which case
+        // the tree may hold part of a build that is neither the completed nor the requested one, and
+        // a file that run half-rewrote could look unchanged to the delta. Walk those in full.
         let previous = if previous_manifest_id == 0
-            || previous_manifest_id == INVALID_MANIFEST_ID
             || previous_manifest_id == depot.manifest_id
+            || interrupted
         {
-            None
-        } else if has_clean_pause_marker(&config_dir, depot_id, previous_manifest_id) {
-            if let Some(log) = log {
-                log(&format!(
-                    "depot-delta depot={depot_id} skipped: previous manifest \
-{previous_manifest_id} has an unfinished write"
-                ));
+            if interrupted {
+                if let Some(log) = log {
+                    log(&format!(
+                        "depot-delta depot={depot_id} skipped: a previous run for this depot was \
+interrupted — full walk"
+                    ));
+                }
             }
             None
         } else {
             load_cached_manifest(&cfg, depot_id, previous_manifest_id, &depot.depot_key)
         };
-        // Files this run must NOT touch: the previous manifest proves their bytes already match.
-        let mut trusted = previous
-            .as_ref()
-            .map(|p| crate::store_dl::steam::depot_writer::unchanged_files(p, &manifest))
-            .unwrap_or_default();
-        // ...unless the app patched one of them: those bytes are NOT the previous manifest's, so
-        // they are revalidated and rewritten like any other change (see `untrusted`).
-        if !untrusted.is_empty() {
-            let before = trusted.len();
-            trusted.retain(|index| {
-                let file = &manifest.files[*index as usize];
-                !untrusted.contains(&crate::store_dl::steam::depot_writer::folded_entry_key(
-                    &file.filename,
-                ))
-            });
-            if before != trusted.len() {
-                if let Some(log) = log {
+        // Files this run must NOT touch: the previous build's manifest proves their bytes already
+        // match — minus the ones the app patched (see `trusted_files`).
+        let trusted = trusted_files(previous.as_ref(), &manifest, untrusted_paths);
+        // Only a run with patched files can lose a trusted file, and only then is it worth diffing
+        // again just to report how many (the diff itself is the expensive part of this block).
+        if !untrusted_paths.is_empty() {
+            if let (Some(log), Some(previous)) = (log, previous.as_ref()) {
+                let unchanged = crate::store_dl::steam::depot_writer::unchanged_files(
+                    previous, &manifest,
+                );
+                if unchanged.len() > trusted.len() {
                     log(&format!(
-                        "depot-delta depot={depot_id} patched={} of {before} unchanged files \
+                        "depot-delta depot={depot_id} patched={} of {} unchanged files \
 revalidated (DRM backup present)",
-                        before - trusted.len()
+                        unchanged.len() - trusted.len(),
+                        unchanged.len()
                     ));
                 }
             }
@@ -793,9 +726,8 @@ revalidated (DRM backup present)",
             },
         );
         if !write_result.ok() {
-            if write_result.resume_trust_safe {
-                let _ = write_clean_pause_marker(&config_dir, depot.depot_id, depot.manifest_id);
-            }
+            // The in-flight marker stays: that is what tells the next run this depot's tree may not
+            // be any single build, and it is cleared only by a successful promotion.
             return DepotDownloadResult::fail(format!(
                 "download: depot {} write failed: {}",
                 depot.depot_id, write_result.error
@@ -837,14 +769,21 @@ revalidated (DRM backup present)",
             }
         }
 
+        // This depot's writes succeeded, so the target manifest becomes the installed record —
+        // `completed/<depot>_<gid>.manifest`, which is also what the next run diffs against and what
+        // VERIFY reads. Anything the manifest promised is on disk now; before this point it is not.
         if !cfg.finish_depot(depot.depot_id, depot.manifest_id) {
             return DepotDownloadResult::fail(format!(
-                "download: depot.config finish failed for depot {}",
+                "download: depot store finish failed for depot {}",
                 depot.depot_id
             ));
         }
-        DepotProgressStore::new(&config_dir, depot.depot_id, depot.manifest_id).discard();
-        remove_clean_pause_marker(&config_dir, depot.depot_id, depot.manifest_id);
+        if let Some(log) = log {
+            log(&format!(
+                "depot-store depot={depot_id} completed gid={}",
+                depot.manifest_id
+            ));
+        }
         result.bytes_written += write_result.bytes_written;
         result.depots_completed += 1;
         depots_done += 1;
@@ -853,19 +792,51 @@ revalidated (DRM backup present)",
     result
 }
 
-/// Parse + decrypt a manifest from the local depot cache, exactly as the resolve phase does for
-/// the manifest it is downloading. `None` = not cached (or unusable), which makes the caller skip
-/// its removed-content sweep instead of failing.
+/// The files this run must NOT touch: the previous build's manifest proves their bytes already match,
+/// so they get no chunk jobs, no re-hash and no finalize.
+///
+/// `untrusted` are the paths the app patched (DRM): a file the app rewrote no longer holds the
+/// previous manifest's bytes, even when path, size and content hash all agree, so it is revalidated
+/// and rewritten like any other change instead of being trusted forever.
+fn trusted_files(
+    previous: Option<&ContentManifest>,
+    manifest: &ContentManifest,
+    untrusted_paths: &[String],
+) -> Vec<u32> {
+    let Some(previous) = previous else {
+        return Vec::new();
+    };
+    let mut trusted = crate::store_dl::steam::depot_writer::unchanged_files(previous, manifest);
+    if !untrusted_paths.is_empty() {
+        // The app sends Windows-style relative paths; both sides are folded the same way so a
+        // separator or case difference cannot smuggle a patched file back into the trusted set.
+        let untrusted: HashSet<String> = untrusted_paths
+            .iter()
+            .map(|path| crate::store_dl::steam::depot_writer::folded_entry_key(path))
+            .collect();
+        trusted.retain(|index| {
+            let file = &manifest.files[*index as usize];
+            !untrusted.contains(&crate::store_dl::steam::depot_writer::folded_entry_key(
+                &file.filename,
+            ))
+        });
+    }
+    trusted
+}
+
+/// Parse + decrypt the INSTALLED build's manifest from `completed/`, exactly as the resolve phase
+/// does for the manifest it is downloading. `None` = not on disk (or unusable), which makes the
+/// caller walk the depot in full instead of diffing and sweeping against it.
 fn load_cached_manifest(
     cfg: &DepotConfigStore,
     depot_id: u32,
     manifest_id: u64,
     depot_key: &[u8],
 ) -> Option<ContentManifest> {
-    let cache = cfg.manifest_cache_path(depot_id, manifest_id);
-    let raw = read_cached_manifest(&cache)?;
+    let completed = cfg.completed_manifest_path(depot_id, manifest_id);
+    let raw = read_cached_manifest(&completed)?;
     let mut manifest = ContentManifest::parse(&raw)?;
-    // Same identity check the Phase-1 resolve path applies to a cached manifest: a truncated write,
+    // Same identity check the Phase-1 resolve path applies to a local manifest: a truncated write,
     // or a file sitting under the wrong `<depot>_<gid>.manifest` name, must not be diffed against.
     // A wrong previous manifest would produce a wrong removed-file set (the sweep only ever deletes
     // paths absent from the new manifest, so the damage is bounded to files this depot no longer
@@ -911,26 +882,6 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
-    fn marker_names_match_cpp_format() {
-        assert_eq!(clean_pause_marker_name(123, 456), "123_456.cleanpause");
-    }
-
-    #[test]
-    fn clean_pause_marker_files_roundtrip() {
-        let dir = temp_dir("clean_pause");
-        assert!(!has_clean_pause_marker(&dir, 123, 456));
-        assert!(write_clean_pause_marker(&dir, 123, 456));
-        assert!(has_clean_pause_marker(&dir, 123, 456));
-        assert_eq!(
-            fs::read_to_string(clean_pause_marker_path(&dir, 123, 456)).unwrap(),
-            "456"
-        );
-        remove_clean_pause_marker(&dir, 123, 456);
-        assert!(!has_clean_pause_marker(&dir, 123, 456));
-        let _ = fs::remove_dir_all(&dir);
-    }
-
-    #[test]
     fn filters_non_china_servers_with_hosts() {
         let servers = filter_usable_cdn_servers([
             CContentServerDirectoryServerInfo {
@@ -955,34 +906,28 @@ mod tests {
     fn resume_decision_matches_cpp_fresh_and_installed_rules() {
         let dir = temp_dir("resume_decision");
         let mut cfg = DepotConfigStore::load(&dir);
-        cfg.finish_depot(100, 555);
-        let spec = DepotSpec {
+        fs::create_dir_all(cfg.target_dir()).unwrap();
+        fs::write(cfg.target_manifest_path(100, 555), b"manifest").unwrap();
+        assert!(cfg.finish_depot(100, 555));
+        let spec = |manifest_id: u64| DepotSpec {
             depot_id: 100,
-            manifest_id: 555,
+            manifest_id,
         };
+        // INSTALL asks for the build `completed/` records: there is nothing left to do.
         assert_eq!(
-            decide_depot_resume(false, &cfg, spec, false),
+            decide_depot_resume(false, &cfg, spec(555)),
             DepotResumeDecision::SkipInstalled
         );
+        // UPDATE and VERIFY send `fresh`, so the same gid is still walked — the manifest diff and the
+        // per-chunk re-hash decide what is really left.
         assert_eq!(
-            decide_depot_resume(true, &cfg, spec, true),
-            DepotResumeDecision::Download {
-                trust_existing_chunks: false
-            }
+            decide_depot_resume(true, &cfg, spec(555)),
+            DepotResumeDecision::Download
         );
+        // A different build always has work to do.
         assert_eq!(
-            decide_depot_resume(
-                false,
-                &cfg,
-                DepotSpec {
-                    depot_id: 100,
-                    manifest_id: 777
-                },
-                true
-            ),
-            DepotResumeDecision::Download {
-                trust_existing_chunks: true
-            }
+            decide_depot_resume(false, &cfg, spec(777)),
+            DepotResumeDecision::Download
         );
         let _ = fs::remove_dir_all(&dir);
     }
@@ -1048,7 +993,6 @@ mod tests {
             "download: no depots"
         );
         assert!(validate_download_inputs("/tmp/app", &[DepotSpec::default()]).is_ok());
-        assert_eq!(in_progress_manifest_id(), INVALID_MANIFEST_ID);
     }
 
     #[test]
@@ -1074,15 +1018,21 @@ mod tests {
     }
 
     #[test]
-    fn resolved_download_uses_cached_manifest_and_records_install() {
-        let dir = temp_dir("resolved_download_cached_manifest");
+    fn resolved_download_uses_the_installed_manifest_without_a_fetch() {
+        let dir = temp_dir("resolved_download_installed_manifest");
         let config_dir = config_dir_path(&dir);
         assert_eq!(config_dir, dir.join(".DepotDownloader"));
-        fs::create_dir_all(&config_dir).unwrap();
-        let raw_manifest = raw_layout_manifest(100, 555, "empty.bin", 5);
-        fs::write(config_dir.join("100_555.manifest"), raw_manifest).unwrap();
+        let store = DepotConfigStore::load(&config_dir);
+        fs::create_dir_all(store.completed_dir()).unwrap();
+        // The build `completed/` records IS the one being asked for: VERIFY pins to it, so the
+        // manifest is read from disk and the run needs no CDN at all.
+        fs::write(
+            store.completed_manifest_path(100, 555),
+            raw_layout_manifest(100, 555, "empty.bin", 5),
+        )
+        .unwrap();
 
-        let result = download_resolved_depots(
+        let result = download_resolved_depots_with_cancel_progress(
             dir.to_str().unwrap(),
             &[ResolvedDepotSpec {
                 depot_id: 100,
@@ -1096,9 +1046,16 @@ mod tests {
                 ..Default::default()
             }],
             "",
-            false,
+            true, // walked: the manifest diff and the per-chunk re-hash decide the work
+            &[],
             4,
             4,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
         );
 
         assert!(result.success, "{}", result.error);
@@ -1107,6 +1064,10 @@ mod tests {
         assert_eq!(fs::metadata(dir.join("empty.bin")).unwrap().len(), 5);
         let cfg = DepotConfigStore::load(&config_dir);
         assert!(cfg.is_installed(100, 555));
+        assert!(
+            !store.target_manifest_path(100, 555).exists(),
+            "nothing was fetched, so nothing was staged in target/"
+        );
 
         let skipped = download_resolved_depots(
             dir.to_str().unwrap(),
@@ -1132,155 +1093,82 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
     }
 
-    /// An UPDATE (or VERIFY) sends `fresh = true`, which forgets every depot in the batch before
-    /// Phase 2 runs. If the previous gid is read from the config at that point it is already gone,
-    /// so the delta and the sweep diff against "unknown" and never run. Both reads therefore come
-    /// from the pre-run snapshot; this asserts the delta really fires and the install is untouched.
+    /// The update delta is a manifest diff: a file whose path, size and content hash are the same in
+    /// both builds is not touched at all (no job, no re-hash, no finalize).
     #[test]
-    fn fresh_update_still_runs_the_delta_against_the_previous_manifest() {
-        let dir = temp_dir("fresh_update_runs_delta");
-        let config_dir = config_dir_path(&dir);
-        fs::create_dir_all(&config_dir).unwrap();
-        let sha = vec![7u8; 20];
-        // The build the user has (gid 111, recorded + cached) and the build the update requests
-        // (gid 222): the one file is identical in both, so the whole depot is a no-op.
-        fs::write(
-            config_dir.join("100_111.manifest"),
-            raw_manifest_entry(100, 111, "data.bin", 5, Some(&sha)),
-        )
-        .unwrap();
-        fs::write(
-            config_dir.join("100_222.manifest"),
-            raw_manifest_entry(100, 222, "data.bin", 5, Some(&sha)),
-        )
-        .unwrap();
-        fs::write(dir.join("data.bin"), [1u8, 2, 3, 4, 5]).unwrap();
-        assert!(DepotConfigStore::load(&config_dir).finish_depot(100, 111));
+    fn delta_trusts_only_files_the_previous_manifest_proves_unchanged() {
+        let (previous, manifest) = same_file_pair();
+        assert_eq!(trusted_files(Some(&previous), &manifest, &[]), vec![0]);
 
-        let lines: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
-        let logger = |line: &str| lines.lock().unwrap().push(line.to_string());
-        let result = download_resolved_depots_with_cancel_progress(
-            dir.to_str().unwrap(),
-            &[ResolvedDepotSpec {
-                depot_id: 100,
-                manifest_id: 222,
-                depot_key: vec![1u8; 32],
-                manifest_request_code: 0,
-            }],
-            &[CContentServerDirectoryServerInfo {
-                host: "cdn.example".into(),
-                https_support: "mandatory".into(),
-                ..Default::default()
-            }],
-            "",
-            true, // UPDATE / VERIFY both send fresh = true
-            &[],
-            4,
-            4,
-            None,
-            None,
-            None,
-            None,
-            Some(&logger),
-            None,
-        );
+        // A different content hash is the whole point of the diff: not trusted.
+        let mut changed = manifest.clone();
+        changed.files[0].sha_content = vec![9u8; 20];
+        assert!(trusted_files(Some(&previous), &changed, &[]).is_empty());
 
-        let logged = lines.lock().unwrap().join("\n");
-        assert!(result.success, "{}", result.error);
-        assert!(
-            logged.contains("depot-delta depot=100 unchanged=1/1"),
-            "the delta did not run for a fresh update: {logged}"
-        );
-        // The file is not even a job: the same bytes are still on disk (the synthetic entry has no
-        // chunks, so a rewritten file would come out empty — see the writer's
-        // `trusted_files_get_no_jobs_and_are_left_alone_by_finalize` for the job-level assertion).
-        assert_eq!(fs::read(dir.join("data.bin")).unwrap(), [1u8, 2, 3, 4, 5]);
-        assert!(DepotConfigStore::load(&config_dir).is_installed(100, 222));
-        let _ = fs::remove_dir_all(&dir);
+        // A different size is not trusted either.
+        let mut resized = manifest.clone();
+        resized.files[0].size = 6;
+        assert!(trusted_files(Some(&previous), &resized, &[]).is_empty());
+
+        // Nothing to compare against (a fresh install, a verify, or a previous build that could not
+        // be read): everything is walked.
+        assert!(trusted_files(None, &manifest, &[]).is_empty());
     }
 
     /// A DRM-patched file (a Steamless-unpacked exe, a replaced steam_api*.dll) has a backup sibling
     /// on disk, so its bytes are NOT the previous manifest's even though path, size and hash all
-    /// match. The delta must revalidate it, otherwise the patch survives an update forever and the
-    /// app's post-download backup cleanup throws away the only copy of the original.
+    /// match. Trusting it would keep the patch forever, and the app's post-download backup cleanup
+    /// would then delete the only copy of the original. Paths arrive from the app as Windows-style
+    /// relative paths, so the match folds case and separators.
     #[test]
     fn delta_never_trusts_a_drm_patched_path() {
-        let dir = temp_dir("delta_distrusts_patched_path");
-        let config_dir = config_dir_path(&dir);
-        fs::create_dir_all(&config_dir).unwrap();
-        let sha = vec![7u8; 20];
-        fs::write(
-            config_dir.join("100_111.manifest"),
-            raw_manifest_entry(100, 111, "Game/game.exe", 5, Some(&sha)),
-        )
-        .unwrap();
-        fs::write(
-            config_dir.join("100_222.manifest"),
-            raw_manifest_entry(100, 222, "Game/game.exe", 5, Some(&sha)),
-        )
-        .unwrap();
-        fs::create_dir_all(dir.join("Game")).unwrap();
-        fs::write(dir.join("Game/game.exe"), [1u8, 2, 3, 4, 5]).unwrap();
-        assert!(DepotConfigStore::load(&config_dir).finish_depot(100, 111));
+        let (previous, manifest) = same_file_pair();
+        let patched = ["GAME\\game.exe".to_string()];
+        assert!(
+            trusted_files(Some(&previous), &manifest, &patched).is_empty(),
+            "a patched file must be revalidated and rewritten like any other change"
+        );
 
-        let lines: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
-        let logger = |line: &str| lines.lock().unwrap().push(line.to_string());
-        let result = download_resolved_depots_with_cancel_progress(
-            dir.to_str().unwrap(),
-            &[ResolvedDepotSpec {
+        // An unrelated patched path does not disturb the delta.
+        let other = ["other/dll.orig".to_string()];
+        assert_eq!(trusted_files(Some(&previous), &manifest, &other), vec![0]);
+    }
+
+    /// One file (`Game/game.exe`, 5 bytes, one content hash) present in both manifests.
+    fn same_file_pair() -> (ContentManifest, ContentManifest) {
+        let build = |manifest_id: u64| ContentManifest {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
                 depot_id: 100,
-                manifest_id: 222,
-                depot_key: vec![1u8; 32],
-                manifest_request_code: 0,
-            }],
-            &[CContentServerDirectoryServerInfo {
-                host: "cdn.example".into(),
-                https_support: "mandatory".into(),
+                gid_manifest: manifest_id,
+                filenames_encrypted: false,
+                ..Default::default()
+            },
+            files: vec![crate::store_dl::steam::content_manifest::FileMapping {
+                filename: "Game/game.exe".into(),
+                size: 5,
+                sha_content: vec![7u8; 20],
                 ..Default::default()
             }],
-            "",
-            true,
-            // Backslashes and case are what a Windows-derived path may look like; the match is
-            // case-folded and separator-normalized.
-            &["GAME\\game.exe".to_string()],
-            4,
-            4,
-            None,
-            None,
-            None,
-            None,
-            Some(&logger),
-            None,
-        );
-
-        let logged = lines.lock().unwrap().join("\n");
-        assert!(result.success, "{}", result.error);
-        assert!(
-            logged.contains("depot-delta depot=100 patched=1 of 1 unchanged files"),
-            "the patched file was not forced through revalidation: {logged}"
-        );
-        assert!(
-            logged.contains("depot-delta depot=100 unchanged=0/1"),
-            "the patched file was still counted as unchanged: {logged}"
-        );
-        // `changed=1` is the rewrite signal: the file is a job again and goes back through the
-        // manifest's chunks (this synthetic entry has none, so nothing is written and the patch
-        // survives — the real rewrite is the writer layer's job, covered by its trusted/no-jobs
-        // test). What must never happen is the file being COUNTED as unchanged, which is what left
-        // a DRM-patched exe and its backup mismatched forever.
-        let _ = fs::remove_dir_all(&dir);
+            signature: Vec::new(),
+        };
+        (build(111), build(222))
     }
 
     #[test]
-    fn resolved_download_rejects_bad_cache_and_refetches() {
-        let dir = temp_dir("resolved_download_bad_cache");
+    fn a_manifest_that_does_not_match_its_name_is_never_trusted() {
+        let dir = temp_dir("resolved_download_bad_manifest");
         let config_dir = config_dir_path(&dir);
-        fs::create_dir_all(&config_dir).unwrap();
+        let store = DepotConfigStore::load(&config_dir);
+        fs::create_dir_all(store.completed_dir()).unwrap();
         let raw = raw_layout_manifest(100, 555, "empty.bin", 5);
-        // Wrong-key cache: named for gid 999, content is gid 555 (metadata mismatch).
-        fs::write(config_dir.join("100_999.manifest"), &raw).unwrap();
-        // Truncated cache: unparseable.
-        fs::write(config_dir.join("200_555.manifest"), &raw[..raw.len() / 2]).unwrap();
+        // Wrong-gid manifest: named for gid 999, content is gid 555 (metadata mismatch).
+        fs::write(store.completed_manifest_path(100, 999), &raw).unwrap();
+        // Truncated manifest: unparseable.
+        fs::write(
+            store.completed_manifest_path(200, 555),
+            &raw[..raw.len() / 2],
+        )
+        .unwrap();
 
         let server = CContentServerDirectoryServerInfo {
             host: "cdn.example".into(),
@@ -1294,26 +1182,22 @@ mod tests {
             manifest_request_code: 0,
         };
 
-        // Both bad caches must be treated as a miss: refetch (fails here — no real
-        // CDN) instead of failing permanently on parse, and the poison file is gone.
-        let wrong_key = download_resolved_depots(
+        // Neither is usable, so neither is diffed against: the run fetches instead (and fails here,
+        // because there is no real CDN) rather than trusting a file that is not the build it claims.
+        let wrong_gid = download_resolved_depots(
             dir.to_str().unwrap(),
             &[spec(100, 999)],
             std::slice::from_ref(&server),
             "",
-            false,
+            true,
             4,
             4,
         );
-        assert!(!wrong_key.success);
+        assert!(!wrong_gid.success);
         assert!(
-            wrong_key.error.contains("manifest fetch failed"),
+            wrong_gid.error.contains("manifest fetch failed"),
             "{}",
-            wrong_key.error
-        );
-        assert!(
-            !config_dir.join("100_999.manifest").exists(),
-            "mismatched cache must be deleted"
+            wrong_gid.error
         );
 
         let truncated = download_resolved_depots(
@@ -1321,7 +1205,7 @@ mod tests {
             &[spec(200, 555)],
             std::slice::from_ref(&server),
             "",
-            false,
+            true,
             4,
             4,
         );
@@ -1331,10 +1215,10 @@ mod tests {
             "{}",
             truncated.error
         );
-        assert!(
-            !config_dir.join("200_555.manifest").exists(),
-            "truncated cache must be deleted"
-        );
+        // The unusable files stay where they are: the next successful run promotes a good manifest
+        // over them, and until then the record must not be silently dropped.
+        assert_eq!(DepotConfigStore::load(&config_dir).installed_manifest(100), 999);
+        assert_eq!(DepotConfigStore::load(&config_dir).installed_manifest(200), 555);
         let _ = fs::remove_dir_all(&dir);
     }
 
@@ -1364,26 +1248,11 @@ mod tests {
     }
 
     fn raw_layout_manifest(depot_id: u32, manifest_id: u64, filename: &str, size: u64) -> Vec<u8> {
-        raw_manifest_entry(depot_id, manifest_id, filename, size, None)
-    }
-
-    /// A one-file manifest, optionally carrying a `sha_content` (file field 5). Only a file whose
-    /// hash BOTH manifests agree on is eligible for the update delta, so the delta tests need one.
-    fn raw_manifest_entry(
-        depot_id: u32,
-        manifest_id: u64,
-        filename: &str,
-        size: u64,
-        sha_content: Option<&[u8]>,
-    ) -> Vec<u8> {
         let mut file_body = Vec::new();
         {
             let mut writer = Writer::new(&mut file_body);
             writer.string_field(1, filename);
             writer.uint64_field(2, size);
-            if let Some(sha) = sha_content {
-                writer.bytes_field(5, sha);
-            }
         }
 
         let mut payload = Vec::new();
