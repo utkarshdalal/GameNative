@@ -61,12 +61,14 @@ public class WinHandler {
     private MappedByteBuffer gamepadBuffer;
     private static final short SERVER_PORT = 7947;
     private static final short CLIENT_PORT = 7946;
+    private static final long INIT_TIMEOUT_MS = 15000;
     private final ArrayDeque<Runnable> actions;
     private ExternalController currentController;
     private volatile int currentControllerId;
     private byte dinputMapperType;
     private final List<Integer> gamepadClients;
-    private boolean initReceived;
+    private volatile boolean initReceived;
+    private Thread initTimeoutThread;
     private InetAddress localhost;
     private OnGetProcessInfoListener onGetProcessInfoListener;
     private PreferredInputApi preferredInputApi;
@@ -333,6 +335,7 @@ public class WinHandler {
             this.socket.send(this.sendPacket);
             return true;
         } catch (IOException e) {
+            Log.w(TAG, "WinHandler send failed (code " + this.sendData.get(0) + ")", e);
             return false;
         }
     }
@@ -398,9 +401,11 @@ public class WinHandler {
             this.sendData.rewind();
             this.sendData.put(RequestCodes.LIST_PROCESSES);
             this.sendData.putInt(0);
-            if (!sendPacket(CLIENT_PORT) && (onGetProcessInfoListener = this.onGetProcessInfoListener) != null) {
+            boolean sent = sendPacket(CLIENT_PORT);
+            if (!sent && (onGetProcessInfoListener = this.onGetProcessInfoListener) != null) {
                 onGetProcessInfoListener.onGetProcessInfo(0, 0, null);
             }
+            Log.d(TAG, "WinHandler listProcesses " + (sent ? "sent" : "not sent"));
         });
     }
 
@@ -504,6 +509,22 @@ public class WinHandler {
     }
 
     private void startSendThread() {
+        initTimeoutThread = new Thread(() -> {
+            try {
+                Thread.sleep(INIT_TIMEOUT_MS);
+            } catch (InterruptedException e) {
+                return;
+            }
+            synchronized (this.actions) {
+                if (!this.initReceived && this.running) {
+                    Log.w(TAG, "WinHandler INIT not received within " + INIT_TIMEOUT_MS + " ms; sending anyway");
+                    this.initReceived = true;
+                    this.actions.notify();
+                }
+            }
+        }, "WinHandler-init-timeout");
+        initTimeoutThread.setDaemon(true);
+        initTimeoutThread.start();
         Executors.newSingleThreadExecutor().execute(() -> {
             while (this.running) {
                 synchronized (this.actions) {
@@ -528,6 +549,10 @@ public class WinHandler {
         Thread keepaliveThread = rumbleKeepaliveThread;
         if (keepaliveThread != null) {
             keepaliveThread.interrupt();
+        }
+        Thread timeoutThread = initTimeoutThread;
+        if (timeoutThread != null) {
+            timeoutThread.interrupt();
         }
         try {
             if (rumblePollerThreads != null && rumblePollerThreads.length > 0) {
@@ -573,6 +598,7 @@ public class WinHandler {
         ExternalController externalController;
         switch (requestCode) {
             case RequestCodes.INIT:
+                Log.i(TAG, "WinHandler INIT received from port " + port);
                 this.initReceived = true;
                 synchronized (this.actions) {
                     this.actions.notify();
@@ -776,16 +802,25 @@ public class WinHandler {
             }
         }
         refreshControllerMappings();
+        Log.i(TAG, "WinHandler start: localhost=" + this.localhost);
         this.running = true;
         activeInstance = this;
         startSendThread();
+        try {
+            DatagramSocket datagramSocket = new DatagramSocket((SocketAddress) null);
+            this.socket = datagramSocket;
+            datagramSocket.setReuseAddress(true);
+            this.socket.bind(new InetSocketAddress((InetAddress) null, SERVER_PORT));
+            Log.i(TAG, "WinHandler bound to " + this.socket.getLocalSocketAddress());
+        } catch (IOException e) {
+            Log.e(TAG, "WinHandler bind failed", e);
+            DatagramSocket failed = this.socket;
+            this.socket = null;
+            if (failed != null) failed.close();
+        }
         Executors.newSingleThreadExecutor().execute(() -> {
             try {
-                DatagramSocket datagramSocket = new DatagramSocket((SocketAddress) null);
-                this.socket = datagramSocket;
-                datagramSocket.setReuseAddress(true);
-                this.socket.bind(new InetSocketAddress((InetAddress) null, SERVER_PORT));
-                while (this.running) {
+                while (this.running && this.socket != null) {
                     this.socket.receive(this.receivePacket);
                     synchronized (this.actions) {
                         this.receiveData.rewind();
@@ -793,7 +828,8 @@ public class WinHandler {
                         handleRequest(requestCode, this.receivePacket.getPort());
                     }
                 }
-            } catch (IOException ignored) {
+            } catch (IOException e) {
+                if (this.running) Log.e(TAG, "WinHandler receive loop ended", e);
             }
         });
         startRumblePoller();

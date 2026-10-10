@@ -441,6 +441,9 @@ private val REAL_STEAM_PROCESSES = setOf(
     "steamerrorreporter",
     "steamerrorreporter64",
     "gameoverlayui",
+    "gameoverlayui64",
+    "steamhost32",
+    "steamhost64",
     "eastub",
 )
 
@@ -1010,6 +1013,7 @@ fun XServerScreen(
             rockstarExecutable ?: if (container.isLaunchRealSteam && realSteamGameExecutable.isNotEmpty()) realSteamGameExecutable else container.executablePath,
         )
         if (!windowMatchesExecutable(window, targetExecutable)) return
+        Timber.i("Exit watch started for $targetExecutable (unmapped class=${window.className})")
 
         exitWatchJob = CoroutineScope(Dispatchers.IO).launch {
             val allowlist = buildEssentialProcessAllowlist(container.isLaunchRealSteam)
@@ -1052,11 +1056,12 @@ fun XServerScreen(
                     val snapshot = withTimeoutOrNull(EXIT_PROCESS_RESPONSE_TIMEOUT_MS) {
                         deferred.await()
                     }
-                    if (snapshot != null) {
-                        val hasNonEssential = snapshot.any {
-                            !allowlist.contains(normalizeProcessName(it.name))
-                        }
-                        if (!hasNonEssential) {
+                    if (snapshot == null) {
+                        Timber.w("Exit watch: no process snapshot within ${EXIT_PROCESS_RESPONSE_TIMEOUT_MS}ms")
+                    } else {
+                        val nonEssential = snapshot.map { normalizeProcessName(it.name) }.filter { it !in allowlist }
+                        Timber.i("Exit watch: ${snapshot.size} processes, non-essential=$nonEssential")
+                        if (nonEssential.isEmpty()) {
                             withContext(Dispatchers.Main) {
                                 exit(
                                     winHandler,
@@ -1069,11 +1074,12 @@ fun XServerScreen(
                                     "processes_exited",
                                 )
                             }
-                            break
+                            return@launch
                         }
                     }
                     delay(EXIT_PROCESS_POLL_INTERVAL_MS)
                 }
+                Timber.w("Exit watch for $targetExecutable ended without exiting")
             } finally {
                 winHandler.setOnGetProcessInfoListener(previousListener)
                 synchronized(lock) {
@@ -4192,6 +4198,8 @@ private fun setupXEnvironment(
             }
             if (preInstallCommands.isNotEmpty()) {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing prerequisites..."))
+            } else if (container.isLaunchHeadlessSteam && gameSource == GameSource.STEAM && !bootToContainer) {
+                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(context.getString(R.string.steam_starting)))
             } else {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Launching game..."))
             }
@@ -4316,7 +4324,9 @@ private fun setupXEnvironment(
                 Timber.w(e, "wineserver -k between pre-install steps (non-fatal)")
             }
             val nextRemaining = remaining.drop(1)
-            if (nextRemaining.isEmpty()) {
+            if (nextRemaining.isEmpty() && container.isLaunchHeadlessSteam && gameSource == GameSource.STEAM && !bootToContainer) {
+                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(context.getString(R.string.steam_starting)))
+            } else if (nextRemaining.isEmpty()) {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Launching game..."))
             } else {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing prerequisites..."))
@@ -4404,6 +4414,7 @@ private fun setupXEnvironment(
         }
     }
 
+    xServer.winHandler.start()
     try {
         immersiveHooks?.windowsVr?.beforeGuestProcessStart()
         environment.startEnvironmentComponents()
@@ -4413,6 +4424,7 @@ private fun setupXEnvironment(
         }
     } catch (e: Exception) {
         Timber.e(e, "Failed to start environment components, cleaning up")
+        runCatching { xServer.winHandler.stop() }
         try {
             environment.stopEnvironmentComponents()
         } catch (cleanupEx: Exception) {
@@ -4467,10 +4479,6 @@ private fun setupXEnvironment(
         }
     }
 
-    // put in separate scope since winhandler start method does some network stuff
-    CoroutineScope(Dispatchers.IO).launch {
-        xServer.winHandler.start()
-    }
     envVars.clear()
     xServerState.value = xServerState.value.copy(
         dxwrapperConfig = null,
