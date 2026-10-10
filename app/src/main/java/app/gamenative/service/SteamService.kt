@@ -1431,7 +1431,21 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
 
         fun isAppInstalled(appId: Int): Boolean {
-            return MarkerUtils.hasMarker(getAppDirPath(appId), Marker.DOWNLOAD_COMPLETE_MARKER)
+            val appInfo = getInstalledApp(appId)
+            if (!isOwnedSteamInstallRecord(appId, appInfo)) return false
+            return MarkerUtils.hasMarker(resolveAppDirPath(appId, appInfo), Marker.DOWNLOAD_COMPLETE_MARKER)
+        }
+
+        fun getInstalledAppIds(): Set<Int> {
+            return getAllInstalledApps()
+                .orEmpty()
+                .asSequence()
+                .filter { appInfo -> isOwnedSteamInstallRecord(appInfo.id, appInfo) }
+                .filter { appInfo ->
+                    MarkerUtils.hasMarker(resolveAppDirPath(appInfo.id, appInfo), Marker.DOWNLOAD_COMPLETE_MARKER)
+                }
+                .map { appInfo -> appInfo.id }
+                .toSet()
         }
 
         fun getAppDlc(appId: Int): Map<Int, DepotInfo> {
@@ -1816,10 +1830,13 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
 
         fun getAppDirPath(gameId: Int): String {
+            return resolveAppDirPath(gameId, getInstalledApp(gameId))
+        }
+
+        private fun resolveAppDirPath(gameId: Int, appInfo: AppInfo?): String {
             val info = getAppInfoOf(gameId)
 
             // For installed game, check whether it has customInstallPath and return it
-            val appInfo = getInstalledApp(gameId)
             if (appInfo != null && appInfo.isImported) {
                 return appInfo.customInstallPath
             }
@@ -5503,4 +5520,8 @@ class SteamService : Service(), IChallengeUrlChanged {
         val ticket = getEncryptedAppTicket(appId) ?: return null
         return Base64.encodeToString(ticket, Base64.NO_WRAP)
     }
+}
+
+internal fun isOwnedSteamInstallRecord(requestedAppId: Int, appInfo: AppInfo?): Boolean {
+    return appInfo?.id == requestedAppId && appInfo.isDownloaded
 }

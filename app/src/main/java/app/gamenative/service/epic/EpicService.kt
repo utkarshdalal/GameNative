@@ -18,10 +18,12 @@ import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.GameSource
+import app.gamenative.service.NotificationHelper
 import app.gamenative.service.download.GameDownloadService
 import app.gamenative.service.download.NativeTreeDelete
 import app.gamenative.utils.ContainerUtils
-import app.gamenative.service.NotificationHelper
+import app.gamenative.utils.InstallPathOwner
+import app.gamenative.utils.hasUniqueInstallPathOwner
 import com.winlator.container.Container
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
@@ -363,6 +365,20 @@ class EpicService : Service() {
                     EpicConstants.getGameInstallPath(context, it)
                 }
                 ?: return false
+
+            val target = InstallPathOwner(GameSource.EPIC, game.installIdentity(), installPath)
+            val candidates = runBlocking(Dispatchers.IO) {
+                getInstance()?.epicManager?.getAllGames().orEmpty()
+            }.map { candidate ->
+                InstallPathOwner(
+                    source = GameSource.EPIC,
+                    stableId = candidate.installIdentity(),
+                    installPath = candidate.installPath.ifBlank {
+                        EpicConstants.getGameInstallPath(context, candidate.appName)
+                    },
+                )
+            }
+            if (!hasUniqueInstallPathOwner(target, candidates)) return false
 
             val isDownloadComplete = MarkerUtils.hasMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
             val isDownloadInProgress = MarkerUtils.hasMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
@@ -797,4 +813,8 @@ class EpicService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+}
+
+private fun EpicGame.installIdentity(): String {
+    return catalogId.ifBlank { "$namespace:$appName" }
 }

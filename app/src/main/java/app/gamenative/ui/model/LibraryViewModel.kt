@@ -36,7 +36,6 @@ import app.gamenative.db.dao.SteamAppDao
 import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.db.dao.EpicGameDao
 import app.gamenative.db.dao.AmazonGameDao
-import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonArtwork
 import app.gamenative.service.amazon.AmazonService
@@ -779,9 +778,9 @@ class LibraryViewModel @Inject constructor(
             val currentState = _state.value
             val currentFilter = AppFilter.getAppType(currentState.appInfoSortType)
 
-            // Fetch download directory apps once on IO thread and cache as a HashSet for O(1) lookups
-            val downloadDirectoryApps = DownloadService.getDownloadDirectoryApps() + SteamService.getImportedAppDirs()
-            val downloadDirectorySet = downloadDirectoryApps.toHashSet()
+            // A directory name is not a Steam identity: different app IDs can share installDir.
+            // Use the app-ID-keyed install records and verify their completion markers instead.
+            val installedSteamAppIds = SteamService.getInstalledAppIds()
 
             fun passesCompatibleFilter(gameName: String): Boolean {
                 if (!currentState.appInfoSortType.contains(AppFilter.COMPATIBLE)) {
@@ -831,7 +830,7 @@ class LibraryViewModel @Inject constructor(
                     val installedOnly = currentState.currentTab.installedOnly ||
                         currentState.appInfoSortType.contains(AppFilter.INSTALLED)
                     if (installedOnly) {
-                        downloadDirectorySet.contains(SteamService.getAppDirName(item))
+                        item.id in installedSteamAppIds
                     } else {
                         true
                     }
@@ -902,7 +901,7 @@ class LibraryViewModel @Inject constructor(
                 .filter { item -> passesStatsFilters(currentState, GameSource.STEAM, item.name) }
                 .sortedWith(
                     compareByDescending<SteamApp> {
-                        downloadDirectorySet.contains(SteamService.getAppDirName(it))
+                        it.id in installedSteamAppIds
                     }.thenBy { it.name.lowercase() },
                 )
                 .toList()
@@ -918,7 +917,7 @@ class LibraryViewModel @Inject constructor(
             val steamEntriesAppIds = mutableSetOf<String>()
 
             val steamEntries: List<LibraryEntry> = filteredSteamApps.map { item ->
-                val isInstalled = downloadDirectorySet.contains(SteamService.getAppDirName(item))
+                val isInstalled = item.id in installedSteamAppIds
                 val installedBranch = if (isInstalled) {
                     SteamService.getInstalledApp(item.id)?.branch ?: "public"
                 } else {
