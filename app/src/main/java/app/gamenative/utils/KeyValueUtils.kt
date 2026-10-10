@@ -3,6 +3,7 @@ package app.gamenative.utils
 import app.gamenative.data.BranchInfo
 import app.gamenative.data.ConfigInfo
 import app.gamenative.data.DepotInfo
+import app.gamenative.data.EulaInfo
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryAssetsInfo
 import app.gamenative.data.LibraryCapsuleInfo
@@ -24,10 +25,11 @@ import app.gamenative.enums.SteamRealm
 import app.gamenative.service.SteamService.Companion.INVALID_APP_ID
 import `in`.dragonbra.javasteam.types.KeyValue
 import java.util.Date
+import java.util.Locale
 import timber.log.Timber
 
 // Bumping re-parses the whole SteamApp row from PICS on next login and also triggers the root-override cloud requery.
-const val CURRENT_UFS_PARSE_VERSION = 5
+const val CURRENT_UFS_PARSE_VERSION = 7
 
 /**
  * Extension functions relating to [KeyValue] as the receiver type.
@@ -146,6 +148,19 @@ fun KeyValue.generateSteamApp(): SteamApp {
         visibleOnlyWhenInstalled = this["common"]["extended"]["visibleonlywheninstalled"].asBoolean(),
         visibleOnlyWhenSubscribed = this["common"]["extended"]["visibleonlywhensubscribed"].asBoolean(),
         launchEulaUrl = this["common"]["extended"]["launcheula"].value.orEmpty(),
+        eulas = this["common"]["eulas"].children.mapNotNull { eula ->
+            val id = eula["id"].value?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+            EulaInfo(
+                id = id,
+                name = eula["name"].value.orEmpty(),
+                url = eula["url"].value.orEmpty(),
+                version = eula["version"].value.orEmpty(),
+                countries = eula["countries"].value.orEmpty()
+                    .split(',')
+                    .map { it.trim().uppercase(Locale.ROOT) }
+                    .filter { it.isNotEmpty() },
+            )
+        },
         requireDefaultInstallFolder = this["common"]["config"]["requiredefaultinstallfolder"].asBoolean(),
         contentType = this["common"]["config"]["contentType"].asInteger(),
         installDir = this["common"]["config"]["installdir"].value.orEmpty(),

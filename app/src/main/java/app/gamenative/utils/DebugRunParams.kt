@@ -23,15 +23,24 @@ data class DebugRunParams(
         put("instruction", instruction ?: JSONObject.NULL)
     }
 
+    fun toRunJson(): JSONObject = JSONObject().apply {
+        put("winedebug", JSONArray(winedebug))
+        put("env", JSONObject(env))
+        put("attach", JSONArray(attach.toList()))
+        put("minSeconds", minSeconds ?: JSONObject.NULL)
+        put("instruction", instruction ?: JSONObject.NULL)
+    }
+
     companion object {
         const val ATTACH_LOGCAT = "logcat"
         const val ATTACH_PERF = "perf"
         const val ATTACH_WRAPPER_DIAG = "wrapper_diag"
+        const val ATTACH_CPU = "cpu"
 
         const val BASE_WINEDEBUG = "warn+seh,+loaddll,+process,+timestamp,+pid,+tid"
 
         val DEFAULT_ATTACH: Set<String> = linkedSetOf(ATTACH_LOGCAT, ATTACH_PERF)
-        private val ALLOWED_ATTACH = setOf(ATTACH_LOGCAT, ATTACH_PERF, ATTACH_WRAPPER_DIAG)
+        private val ALLOWED_ATTACH = setOf(ATTACH_LOGCAT, ATTACH_PERF, ATTACH_WRAPPER_DIAG, ATTACH_CPU)
 
         private val CHANNEL_PATTERN = Regex("^[+-]?[a-z0-9_]{1,24}$")
         private val BANNED_CHANNELS = setOf("all", "relay", "server", "heap", "snoop", "file")

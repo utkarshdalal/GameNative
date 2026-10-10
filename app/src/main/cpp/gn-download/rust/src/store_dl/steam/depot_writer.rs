@@ -426,6 +426,35 @@ where
     find_head_of_line_job(retry, ready, now, head_of_line).ok_or(())
 }
 
+/// Files whose on-disk bytes will be re-hashed (resume/verify candidates) — the denominator of
+/// the UI's `Verifying Files (n/N)` counter.
+///
+/// A candidate must also have chunks: a preexisting file whose manifest entry has none gets no
+/// chunk job, so no writer can ever report it — counting it would leave the counter stuck below
+/// its own total (visible since the total is now published before the first chunk).
+fn verify_file_total(manifest: &ContentManifest, files: &DepotFiles) -> u32 {
+    (0..manifest.files.len())
+        .filter(|&i| {
+            files.needs_verify(i)
+                && manifest
+                    .files
+                    .get(i)
+                    .is_some_and(|file| !file.chunks.is_empty())
+        })
+        .count() as u32
+}
+
+impl DepotFileAction {
+    /// The absolute target path of this action.
+    fn path(&self) -> &str {
+        match self {
+            DepotFileAction::Directory { path }
+            | DepotFileAction::Symlink { path, .. }
+            | DepotFileAction::Regular { path, .. } => path,
+        }
+    }
+}
+
 pub fn depot_adler_hash(data: &[u8]) -> u32 {
     const BLOCK: usize = 5552;
     let mut a = 0u32;
@@ -492,6 +521,10 @@ pub fn plan_depot_write(
         ..Default::default()
     };
 
+    // One cached resolver for the whole plan: metadata-bound, and this pass runs before the
+    // driver loop (see `CaseResolver` — a per-file `resolve_existing_case` here is a stat per path
+    // component, plus a directory scan for every not-yet-existing file).
+    let mut resolver = crate::store_dl::CaseResolver::new();
     for (file_idx, file) in manifest.files.iter().enumerate() {
         if !path_is_safe(&file.filename) {
             return Err(DepotWriteResult::fail(
@@ -501,7 +534,7 @@ pub fn plan_depot_write(
         }
         // Re-spell to the on-disk case so Directory/Symlink actions land in the dir an earlier
         // depot already created (`Game/`) instead of mkdir-ing a duplicate (`game/`).
-        let rel = crate::store_dl::resolve_existing_case(target_dir, &file.filename);
+        let rel = resolver.resolve(target_dir, &file.filename);
         let path = join_target_path(target_dir, &rel);
         if !file.linktarget.is_empty() {
             // Path-traversal guard: symlinks are created up front (before any file write),
@@ -1425,16 +1458,24 @@ pub fn normalize_manifest_case_paths(manifest: &mut ContentManifest) {
 }
 
 impl DepotFiles {
-    fn prepare(manifest: &ContentManifest, target_dir: &str) -> Self {
+    /// `plan` supplies every file's already-resolved (case-corrected) absolute path from
+    /// [`plan_depot_write`] — resolving again here walked the tree a second time per file, all of
+    /// it before the driver loop could report the first verify status (see [`CaseResolver`]).
+    fn prepare(manifest: &ContentManifest, plan: &DepotWritePlan, target_dir: &str) -> Self {
         let mut slots = Vec::with_capacity(manifest.files.len());
         let mut already_present = 0u64;
-        for file in &manifest.files {
+        for (file_idx, file) in manifest.files.iter().enumerate() {
             let is_regular =
                 file.linktarget.is_empty() && (file.flags & DEPOT_FILE_FLAG_DIRECTORY) == 0;
-            // Re-spell to the on-disk case so a resume finds files an older manifest (or a
-            // sibling depot) wrote with different casing (`Game/` vs `game/`).
-            let rel = crate::store_dl::resolve_existing_case(target_dir, &file.filename);
-            let path = join_target_path(target_dir, &rel);
+            // The plan pushes exactly one action per manifest file, in manifest order; fall back to
+            // resolving on the spot only if that invariant is ever broken.
+            let path = match plan.actions.get(file_idx) {
+                Some(action) => action.path().to_string(),
+                None => {
+                    let rel = crate::store_dl::resolve_existing_case(target_dir, &file.filename);
+                    join_target_path(target_dir, &rel)
+                }
+            };
             let preexisting = if is_regular {
                 fs::metadata(&path).map(|m| m.len()).unwrap_or(0)
             } else {
@@ -1543,6 +1584,7 @@ impl DepotFiles {
                     .map_err(|err| format!("write_depot: final sync '{}': {err}", slot.path))?;
             } else if !st.opened {
                 // 0-chunk regular file (never touched by a worker): ensure it exists at exact size.
+                make_parent_dirs(Path::new(&slot.path))?;
                 let file = OpenOptions::new()
                     .create(true)
                     .write(true)
@@ -1837,7 +1879,7 @@ pub fn write_depot_sequential(
         Err(error) => return error,
     };
 
-    let files = DepotFiles::prepare(manifest, target_dir);
+    let files = DepotFiles::prepare(manifest, &plan, target_dir);
 
     // Free-space guard using the EXACT manifest sizes (ground truth), minus what is already on disk.
     // Conservative: only fail when statvfs succeeds with a sane non-zero figure and the deficit
@@ -1853,6 +1895,18 @@ pub fn write_depot_sequential(
                 ),
                 false,
             );
+        }
+    }
+
+    // Report the verify/update phase as soon as its candidate count is known — before the layout
+    // pass and before the first chunk of the driver loop — so the UI leaves its previous state and
+    // shows the real denominator instead of staying silent through the remaining pre-pass. The
+    // counter takes over from the driver below, one file at a time. An empty path is deliberate:
+    // no single file is being hashed yet, and the UI string only renders `(n/N)`.
+    if let Some(status) = options.status {
+        let total = verify_file_total(manifest, &files);
+        if total > 0 {
+            status("", 0, total);
         }
     }
 
@@ -1901,9 +1955,7 @@ fn write_depot_single(
     // with pre-existing on-disk bytes), for the UI status row.
     let mut verify_seen = 0u32;
     let verify_total = if options.status.is_some() {
-        (0..manifest.files.len())
-            .filter(|&i| files.needs_verify(i))
-            .count() as u32
+        verify_file_total(manifest, files)
     } else {
         0
     };
@@ -2476,9 +2528,7 @@ async fn run_async_fetch_driver(
     let mut last_verify_file: Option<usize> = None;
     let mut verify_seen = 0u32;
     let verify_total = if status.is_some() {
-        (0..manifest.files.len())
-            .filter(|&i| files.needs_verify(i))
-            .count() as u32
+        verify_file_total(manifest, files)
     } else {
         0
     };
@@ -3589,6 +3639,56 @@ mod tests {
     }
 
     #[test]
+    fn verify_total_counts_only_candidates_that_have_chunks() {
+        // A preexisting file whose manifest entry has no chunks gets no chunk job, so no writer can
+        // ever report it: counting it left the (now early-published) counter below its own total.
+        let dir = std::env::temp_dir().join(format!("gnverifytotal-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("data.bin"), b"abc").unwrap();
+        fs::write(dir.join("blob.bin"), b"abcd").unwrap();
+        let manifest = ContentManifest {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
+                filenames_encrypted: false,
+                ..Default::default()
+            },
+            files: vec![
+                crate::store_dl::steam::content_manifest::FileMapping {
+                    filename: "data.bin".into(),
+                    size: 3,
+                    chunks: vec![ChunkData {
+                        offset: 0,
+                        cb_original: 3,
+                        crc: depot_adler_hash(b"abc"),
+                        ..Default::default()
+                    }],
+                    ..Default::default()
+                },
+                crate::store_dl::steam::content_manifest::FileMapping {
+                    filename: "blob.bin".into(),
+                    size: 4,
+                    chunks: Vec::new(),
+                    ..Default::default()
+                },
+            ],
+            signature: Vec::new(),
+        };
+        let base = dir.to_str().unwrap();
+        let plan = plan_depot_write(&manifest, &[1u8; 32], 4, base, 4).unwrap();
+        let files = DepotFiles::prepare(&manifest, &plan, base);
+        assert!(
+            files.needs_verify(0) && files.needs_verify(1),
+            "both files have bytes on disk"
+        );
+        assert_eq!(
+            verify_file_total(&manifest, &files),
+            1,
+            "only a candidate with chunk jobs can be reported by a writer"
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn rejects_paths_that_escape_target() {
         assert!(path_is_safe("a/b/file.txt"));
         assert!(path_is_safe("./a/file.txt"));
@@ -3882,7 +3982,8 @@ mod tests {
             }],
             signature: Vec::new(),
         };
-        let files = DepotFiles::prepare(&manifest, dir.to_str().unwrap());
+        let plan = plan_depot_write(&manifest, &[1u8; 32], 4, dir.to_str().unwrap(), 4).unwrap();
+        let files = DepotFiles::prepare(&manifest, &plan, dir.to_str().unwrap());
         assert_eq!(files.already_present_bytes, 0);
         let handle = files.acquire(0).unwrap();
         // NO file allocation: the file expands only as real bytes are appended (no zero-fill).
@@ -4071,7 +4172,8 @@ mod tests {
             }],
             signature: Vec::new(),
         };
-        let files = DepotFiles::prepare(&manifest, dir.to_str().unwrap());
+        let plan = plan_depot_write(&manifest, &[1u8; 32], 4, dir.to_str().unwrap(), 4).unwrap();
+        let files = DepotFiles::prepare(&manifest, &plan, dir.to_str().unwrap());
         let handle = files.acquire(0).expect("acquire");
         let mut writer = OrderedWriter::default();
         let cursors = vec![AtomicU64::new(0)];
@@ -4142,7 +4244,8 @@ mod tests {
             }],
             signature: Vec::new(),
         };
-        let files = DepotFiles::prepare(&manifest, dir.to_str().unwrap());
+        let plan = plan_depot_write(&manifest, &[1u8; 32], 4, dir.to_str().unwrap(), 4).unwrap();
+        let files = DepotFiles::prepare(&manifest, &plan, dir.to_str().unwrap());
         let mut writer = OrderedWriter::default();
         writer.cursor = 2;
         writer.pending.insert(
@@ -4288,6 +4391,41 @@ mod tests {
         // All three chunks were verified on disk, none fetched.
         assert_eq!(verified.load(Ordering::Relaxed), 3);
         assert_eq!(fs::metadata(dir.join("data.bin")).unwrap().len(), 9);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn empty_file_in_a_folder_without_other_files_gets_its_folder() {
+        let dir = temp_dir("empty_file_parent");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("data.bin"), b"abcdefghi").unwrap();
+        let mut manifest = three_chunk_manifest();
+        manifest.files.push(crate::store_dl::steam::content_manifest::FileMapping {
+            filename: "cfg/deckard/dummy.json".into(),
+            size: 0,
+            ..Default::default()
+        });
+        let server = CContentServerDirectoryServerInfo {
+            host: "cdn.example".into(),
+            https_support: "mandatory".into(),
+            ..Default::default()
+        };
+
+        let result = write_depot_sequential(
+            &manifest,
+            &[3u8; 32],
+            &CdnClient::new(""),
+            &[server],
+            dir.to_str().unwrap(),
+            DepotWriteOptions {
+                max_workers: 4,
+                max_process_workers: 2,
+                ..Default::default()
+            },
+        );
+
+        assert!(result.ok(), "{}", result.error);
+        assert_eq!(fs::metadata(dir.join("cfg/deckard/dummy.json")).unwrap().len(), 0);
         let _ = fs::remove_dir_all(&dir);
     }
 

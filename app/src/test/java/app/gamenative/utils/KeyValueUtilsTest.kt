@@ -892,6 +892,52 @@ class KeyValueUtilsTest {
     }
 
     @Test
+    fun commonEulasAreParsedWithMissingVersionAsEmpty() {
+        val kvString = """
+            "appinfo"
+            {
+                "appid"     "582010"
+                "common"
+                {
+                    "name"      "MONSTER HUNTER: WORLD"
+                    "eulas"
+                    {
+                        "0"
+                        {
+                            "id"        "582010_eula_1"
+                            "name"      "Monster Hunter: World EULA"
+                            "url"       "https://store.steampowered.com//eula/582010_eula_1"
+                            "version"   "2"
+                        }
+                        "1"
+                        {
+                            "id"        "582010_eula_2"
+                            "name"      "Second EULA"
+                            "url"       "https://store.steampowered.com//eula/582010_eula_2"
+                            "countries" "jp, KR ,"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+
+        val kv = KeyValue.loadFromString(kvString)!!
+        val eulas = kv.generateSteamApp().eulas
+
+        assertEquals(2, eulas.size)
+        assertEquals("582010_eula_1", eulas[0].id)
+        assertEquals("Monster Hunter: World EULA", eulas[0].name)
+        assertEquals("https://store.steampowered.com//eula/582010_eula_1", eulas[0].url)
+        assertEquals("2", eulas[0].version)
+        assertEquals("582010_eula_1:2", eulas[0].acceptanceKey)
+        assertEquals("582010_eula_2", eulas[1].id)
+        assertEquals("", eulas[1].version)
+        assertEquals("582010_eula_2:", eulas[1].acceptanceKey)
+        assertEquals(emptyList<String>(), eulas[0].countries)
+        assertEquals(listOf("JP", "KR"), eulas[1].countries)
+    }
+
+    @Test
     fun winProgramDataRootIsRecognized() {
         val kvString = """
             "appinfo"

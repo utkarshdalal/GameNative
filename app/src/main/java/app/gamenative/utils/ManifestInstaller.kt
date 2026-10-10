@@ -159,7 +159,7 @@ object ManifestInstaller {
         }
     }
 
-    private suspend fun extractContent(
+    internal suspend fun extractContent(
         mgr: ContentsManager,
         uri: Uri,
     ): Triple<ContentProfile?, ContentsManager.InstallFailedReason?, Exception?> = withContext(Dispatchers.IO) {
@@ -190,7 +190,7 @@ object ManifestInstaller {
         Triple(profile, failReason, err)
     }
 
-    private suspend fun finishInstall(
+    internal suspend fun finishInstall(
         mgr: ContentsManager,
         profile: ContentProfile,
     ): Boolean = withContext(Dispatchers.IO) {

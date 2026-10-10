@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-09-13",
+  "updatedAt": "2026-10-06",
   "items": {
     "driver": [
       {
@@ -846,6 +846,18 @@
         "name": "Proton 11.0-1 ARM64ec",
         "url": "https://downloads.gamenative.app/proton-11.0-1-arm64ec.wcp",
         "variant": "bionic"
+      },
+      {
+        "id": "proton-11.0-2-x86_64-1",
+        "name": "Proton 11.0-2 x86-64",
+        "url": "https://downloads.gamenative.app/proton-11.0-2-x86_64.wcp",
+        "variant": "bionic"
+      },
+      {
+        "id": "proton-11.0-2-arm64ec-1",
+        "name": "Proton 11.0-2 ARM64ec",
+        "url": "https://downloads.gamenative.app/proton-11.0-2-arm64ec.wcp",
+        "variant": "bionic"
       }
     ],
     "fexcore": [
@@ -925,6 +937,12 @@
         "id": "3.0.1-0",
         "name": "VKD3D 3.0.1-0",
         "url": "https://downloads.gamenative.app/drivers/vkd3d-proton-3.0.1.wcp",
+        "variant": "bionic"
+      },
+      {
+        "id": "3.0.1-4559a01d",
+        "name": "VKD3D 3.0.1-4559a01d (nightly)",
+        "url": "https://downloads.gamenative.app/dxwrapper/vkd3d-3.0.1-4559a01d.tzst",
         "variant": "bionic"
       }
     ]
