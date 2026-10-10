@@ -515,6 +515,15 @@ object LsfgVkManager {
             return false
         }
 
+        if (isNativeBackend(container)) {
+            // Native frame generation runs in GameNative's host renderer. Keep
+            // the legacy implicit layer out of the guest Vulkan chain: even
+            // with multiplier=1 it still hooks swapchain creation.
+            envVars.put(ENV_DISABLE, "1")
+            Timber.tag(TAG).i("LSFG native backend: guest Vulkan layer disabled")
+            return true
+        }
+
         envVars.put(ENV_CONFIG, configFile(container).absolutePath)
         envVars.put(ENV_PROCESS, PROCESS_EXE_IDENTIFIER)
 
