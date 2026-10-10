@@ -653,9 +653,11 @@ cannot be enumerated for ownership",
             .map(|p| crate::store_dl::steam::depot_writer::unchanged_files(p, &manifest))
             .unwrap_or_default();
         // Depots share one install dir, so a path this depot dropped may still belong to another
-        // depot that has it installed: collect every OTHER depot's paths (the ones in this run,
-        // plus every depot the app still records as installed, from its cached manifest) and keep
-        // them out of the sweep.
+        // depot: `protected` (built before the loop from the manifests of this run) holds every path
+        // any of them installs, and the sweep skips those. A depot recorded as installed that this
+        // run does NOT resolve cannot be added to that set — its cached manifest's filenames need a
+        // depot key this layer does not hold — so `unenumerable_installed` disables the sweep
+        // entirely for the run instead (see the guard below and its log line).
 
         match previous.as_ref() {
             Some(p) => {

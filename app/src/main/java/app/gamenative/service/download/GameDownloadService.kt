@@ -77,9 +77,10 @@ object GameDownloadService {
      * Depots Steam refuses to serve (no manifest gid for the branch, depot key denied —
      * e.g. a DLC the account doesn't own) are skipped, not fatal.
      *
-     * Returns the ids of the depots that were actually downloaded, so the caller only
-     * marks those complete (a skipped depot must NOT be recorded as downloaded — it
-     * would be filtered out as "already downloaded" forever after).
+     * Returns a [SteamRunOutcome]: how many depots were handed to the engine (0 = every depot was
+     * already current, nothing to do) and which ones it could not resolve, so the caller records
+     * only the depots this run actually handled (an unresolved depot must NOT be marked downloaded —
+     * it would be filtered out as "already downloaded" forever after).
      * Throws [DownloadFailedException] when not a single depot was servable, and
      * [kotlinx.coroutines.CancellationException] when the calling job is cancelled.
      */
@@ -196,9 +197,11 @@ object GameDownloadService {
         val plan = JSONObject()
             .put("install_dir", installDir)
             .put("ca_bundle_path", "")
-            // fresh = discard the journal entries for these depots and re-validate every
-            // existing chunk on disk — the old engine's update/verify semantics. Both UPDATE and
-            // VERIFY want that (VERIFY against the installed manifest, see SteamDownloadMode).
+            // fresh = discard this depot's journal entries and re-validate existing chunks against
+            // the manifest instead of trusting what the journal recorded. Both UPDATE and VERIFY
+            // want that, and they differ in WHAT they re-validate: UPDATE trusts the files its
+            // delta proves unchanged (no jobs, nothing hashed) and re-hashes the rest, while VERIFY
+            // re-hashes everything against the installed manifest (see SteamDownloadMode).
             .put("fresh", mode != SteamDownloadMode.INSTALL)
             .put("max_workers", maxWorkers)
             .put("process_workers", processWorkers)

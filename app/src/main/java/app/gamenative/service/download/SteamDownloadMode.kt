@@ -15,8 +15,9 @@ package app.gamenative.service.download
  * update, so verifying a game silently upgraded it.
  */
 enum class SteamDownloadMode {
-    /** Fresh install (or resume of one): depots already recorded as downloaded are skipped, and
-     *  the existing on-disk state is trusted via the resume journal (no forced re-hash). */
+    /** Fresh install (or resume of one): depots already recorded as downloaded are skipped, and a
+     *  run that resumes from a clean pause trusts the chunks its journal recorded instead of
+     *  re-hashing them. */
     INSTALL,
 
     /** Update: take each depot's CURRENT manifest for the branch (PICS), re-hash existing chunks
