@@ -1719,14 +1719,26 @@ fun XServerScreen(
                     winHandler.refreshControllerMappingsForHotplug()
                 }
                 val assignedSlot = ControllerManager.getInstance().getSlotForDevice(it.event.device.id)
-                if (assignedSlot > 0) {
-                    handled = winHandler.onKeyEvent(it.event)
-                } else {
-                    winHandler.setCurrentController(it.event.device.id)
-                    handled = physicalControllerHandler?.onKeyEvent(it.event) == true
-                    if (!handled) handled = PluviaApp.inputControlsView?.onKeyEvent(it.event) == true
-                    // Final fallback to WinHandler passthrough
-                    if (!handled) handled = winHandler.onKeyEvent(it.event)
+                val route = gamepadInputRouteForSlot(assignedSlot)
+                Log.d("gnpad", "key deviceId=" + it.event.device.id +
+                    " keyCode=" + it.event.keyCode +
+                    " action=" + it.event.action +
+                    " slot=" + assignedSlot +
+                    " route=" + route)
+                for (stage in route) {
+                    handled = when (stage) {
+                        GamepadInputRoute.SET_CURRENT_CONTROLLER -> {
+                            winHandler.setCurrentController(it.event.device.id)
+                            false
+                        }
+                        GamepadInputRoute.PHYSICAL_CONTROLLER -> physicalControllerHandler?.onKeyEvent(it.event) == true
+                        GamepadInputRoute.INPUT_CONTROLS -> PluviaApp.inputControlsView?.onKeyEvent(it.event) == true
+                        GamepadInputRoute.WIN_HANDLER -> winHandler.onKeyEvent(it.event)
+                    }
+                    if (handled) {
+                        Log.d("gnpad", "key handled by " + stage + " deviceId=" + it.event.device.id + " keyCode=" + it.event.keyCode)
+                        break
+                    }
                 }
             }
             if (!handled && isKeyboard) {
@@ -1771,14 +1783,24 @@ fun XServerScreen(
                 val winHandler = xServerView!!.getxServer().winHandler
                 ControllerManager.getInstance().noteGamepadActivity(it.event)
                 val assignedSlot = ControllerManager.getInstance().getSlotForDevice(it.event.device.id)
-                if (assignedSlot > 0) {
-                    handled = winHandler.onGenericMotionEvent(it.event)
-                } else {
-                    winHandler.setCurrentController(it.event.device.id)
-                    handled = physicalControllerHandler?.onGenericMotionEvent(it.event!!) == true
-                    if (!handled) handled = PluviaApp.inputControlsView?.onGenericMotionEvent(it.event) == true
-                    // Final fallback to WinHandler passthrough
-                    if (!handled) handled = winHandler.onGenericMotionEvent(it.event)
+                val route = gamepadInputRouteForSlot(assignedSlot)
+                Log.d("gnpad", "motion deviceId=" + it.event.device.id +
+                    " slot=" + assignedSlot +
+                    " route=" + route)
+                for (stage in route) {
+                    handled = when (stage) {
+                        GamepadInputRoute.SET_CURRENT_CONTROLLER -> {
+                            winHandler.setCurrentController(it.event.device.id)
+                            false
+                        }
+                        GamepadInputRoute.PHYSICAL_CONTROLLER -> physicalControllerHandler?.onGenericMotionEvent(it.event!!) == true
+                        GamepadInputRoute.INPUT_CONTROLS -> PluviaApp.inputControlsView?.onGenericMotionEvent(it.event) == true
+                        GamepadInputRoute.WIN_HANDLER -> winHandler.onGenericMotionEvent(it.event)
+                    }
+                    if (handled) {
+                        Log.d("gnpad", "motion handled by " + stage + " deviceId=" + it.event.device.id)
+                        break
+                    }
                 }
             }
             if (PluviaApp.touchpadView?.hasPointerCapture() != true && !PluviaApp.isOverlayPaused) {
