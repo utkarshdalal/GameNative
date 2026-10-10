@@ -335,7 +335,7 @@ class BestConfigServiceTest {
     }
 
     @Test
-    fun testKnownConfigAppliesSteamClientAndSteamType() {
+    fun testKnownConfigAppliesSteamClientButNotSteamType() {
         val configJson = """
             {
                 "dxwrapper": "dxvk",
@@ -344,7 +344,7 @@ class BestConfigServiceTest {
                 "box64Version": "0.3.6",
                 "wineVersion": "proton-9.0-x86_64",
                 "launchRealSteam": true,
-                "steamType": "headless"
+                "steamType": "normal"
             }
         """.trimIndent()
 
@@ -352,10 +352,10 @@ class BestConfigServiceTest {
         val parsed = runBlocking { BestConfigService.parseConfigResult(context, bestConfig, "exact_gpu_match", true) }
 
         assertEquals(true, parsed.config["launchRealSteam"])
-        assertEquals("headless", parsed.config["steamType"])
+        assertFalse(parsed.config.containsKey("steamType"))
 
         val updated = ContainerUtils.applyBestConfigMapToContainerData(
-            containerData = ContainerData(launchRealSteam = false, steamType = Container.STEAM_TYPE_NORMAL),
+            containerData = ContainerData(launchRealSteam = false, steamType = Container.STEAM_TYPE_HEADLESS),
             bestConfigMap = parsed.config,
         )
 
