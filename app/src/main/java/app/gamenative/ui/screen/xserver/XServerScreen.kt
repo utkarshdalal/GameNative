@@ -4291,7 +4291,13 @@ private fun setupXEnvironment(
         envVars.put("WRAPPER_LOG_LEVEL", "info")
         envVars.put("VKD3D_DEBUG", "warn")
         envVars.put("DXVK_LOG_LEVEL", "info")
-        envVars.put("WINEDEBUG", "+vulkan")
+        envVars.put(
+            "WINEDEBUG",
+            if (enableWineDebug && wineDebugChannels.isNotEmpty())
+                "+" + wineDebugChannels.replace(",", ",+")
+            else
+                "+vulkan",
+        )
     } else {
         envVars.put(
             "WINEDEBUG",
