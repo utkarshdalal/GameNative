@@ -826,7 +826,6 @@ private val communityConfigAllowedKeys = setOf(
     "useLegacyDRM",
     "launchRealSteam",
     "launchBionicSteam",
-    "steamType",
     "steamOfflineMode",
     "epicOfflineMode",
     "unpackFiles",

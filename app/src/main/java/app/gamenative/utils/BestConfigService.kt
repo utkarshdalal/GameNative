@@ -979,9 +979,6 @@ object BestConfigService {
                 if (filteredJson.has("launchRealSteam") && !filteredJson.isNull("launchRealSteam")) {
                     resultMap["launchRealSteam"] = filteredJson.optBoolean("launchRealSteam", false)
                 }
-                if (filteredJson.has("steamType") && !filteredJson.isNull("steamType")) {
-                    resultMap["steamType"] = filteredJson.optString("steamType", "")
-                }
                 if (filteredJson.has("steamOfflineMode") && !filteredJson.isNull("steamOfflineMode")) {
                     resultMap["steamOfflineMode"] = filteredJson.optBoolean("steamOfflineMode", PrefManager.steamOfflineMode)
                 }
