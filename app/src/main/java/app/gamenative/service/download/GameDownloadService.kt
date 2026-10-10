@@ -185,13 +185,13 @@ object GameDownloadService {
             )
         }
 
-        // Stale DRM backups (`*.original.exe` / `*.unpacked.exe` / `steam_api*.dll.orig`) are
-        // cleared only when this run will actually touch the install: they exist for a file we
-        // patched, and a run that rewrites that file (it no longer matches the manifest) makes the
-        // backup stale, whereas a run with nothing to do must LEAVE them — the patched file stays
-        // on disk, so the backup is still the only way back to the original.
-        if (mode != SteamDownloadMode.INSTALL && resolvedDepots.isNotEmpty()) {
-            SteamUtils.clearStaleDrmBackups(installDir)
+        // Files this app has patched (DRM): each has a backup sibling, so its bytes are NOT the
+        // manifest's even when the old and new manifests agree on path, size and hash. Without this
+        // list the update delta would trust a patched exe/dll, leave it on disk, and the cleanup
+        // below would then delete the only copy of the original it could be restored from.
+        val patchedPaths = SteamUtils.drmPatchedPaths(installDir)
+        if (patchedPaths.isNotEmpty()) {
+            Timber.i("Steam download: ${patchedPaths.size} DRM-patched file(s) forced through revalidation")
         }
 
         val plan = JSONObject()
@@ -203,6 +203,7 @@ object GameDownloadService {
             // delta proves unchanged (no jobs, nothing hashed) and re-hashes the rest, while VERIFY
             // re-hashes everything against the installed manifest (see SteamDownloadMode).
             .put("fresh", mode != SteamDownloadMode.INSTALL)
+            .put("untrusted_paths", JSONArray(patchedPaths))
             .put("max_workers", maxWorkers)
             .put("process_workers", processWorkers)
             .put("pipeline_logs", SHOW_PIPELINE_LOGS)
@@ -227,6 +228,16 @@ object GameDownloadService {
             downloadInfo = downloadInfo,
             parentScope = parentScope,
         )
+
+        // Stale DRM backups (`*.original.exe` / `*.unpacked.exe` / `steam_api*.dll.orig`) hold the
+        // PREVIOUS build, so once the download restored pristine files a later restore pass would
+        // overwrite the fresh ones with stale copies. Every backup belongs to a file listed in
+        // `patchedPaths`, and the engine never trusts those, so this run rewrote all of them — which
+        // is the only condition under which deleting the backups is safe (a run with nothing to do
+        // leaves the patched files on disk, so their backups are still the only way back).
+        if (resolvedDepots.isNotEmpty()) {
+            SteamUtils.clearStaleDrmBackups(installDir)
+        }
 
         for (resolved in resolvedDepots) {
             DepotManifestFiles.decryptFilenames(

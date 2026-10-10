@@ -367,6 +367,13 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         const val INVALID_APP_ID: Int = Int.MAX_VALUE
         const val INVALID_PKG_ID: Int = Int.MAX_VALUE
+
+        /**
+         * The gid the native engine writes into `depot.config` while a depot's write is in flight
+         * (`begin_depot`), so a half-written depot can be spotted later. It is a MARKER, not a
+         * version: never hand it to anything as the installed manifest.
+         */
+        const val INVALID_MANIFEST_ID: ULong = 0x7FFFFFFFFFFFFFFFUL
         private const val STEAM_CONTROLLER_CONFIG_FILENAME = "steam_controller_config.vdf"
 
         /**
@@ -3758,13 +3765,29 @@ class SteamService : Service(), IChallengeUrlChanged {
         private fun installedManifestIds(appId: Int): Map<Int, ULong> {
             val cacheDir = File(getAppDirPath(appId), ".DepotDownloader")
             val ids = mutableMapOf<Int, ULong>()
+            val midWrite = mutableListOf<Int>()
             runCatching { File(cacheDir, "depot.config").readText() }.getOrNull()?.let { text ->
                 val block = text.substringAfter("\"installedManifestIDs\"", "").substringAfter('{', "").substringBefore('}')
                 Regex("\"(\\d+)\"\\s*:\\s*(\\d+)").findAll(block).forEach { match ->
                     val depotId = match.groupValues[1].toIntOrNull() ?: return@forEach
                     val gid = match.groupValues[2].toULongOrNull() ?: return@forEach
+                    // A depot paused mid-write records the sentinel, not a version. Passing it on
+                    // would pin a VERIFY to a manifest that cannot be fetched, so it counts as
+                    // "unknown" — reported, never used.
+                    if (gid == INVALID_MANIFEST_ID) {
+                        midWrite += depotId
+                        return@forEach
+                    }
                     ids[depotId] = gid
                 }
+            }
+            if (midWrite.isNotEmpty()) {
+                // Only reachable while a download is paused between `begin_depot` and
+                // `finish_depot`; the next run rewrites the depot and records a real gid.
+                Timber.w(
+                    "installedManifestIds: depot(s) ${midWrite.sorted()} were mid-write " +
+                        "(no usable installed manifest) — treating their installed version as unknown",
+                )
             }
             if (ids.isEmpty()) {
                 // Legacy fallback: no `depot.config`, so guess the installed manifest from the
