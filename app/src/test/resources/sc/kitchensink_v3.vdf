@@ -1,0 +1,158 @@
+// Synthetic "kitchen-sink" Steam Input config (v3 schema) authored for the importer worst-case test.
+// Goal: exercise ONE OF EVERY activator and EVERY binding command in a single config, with known outputs —
+// something no real-world config does (real configs are big but feature-narrow, e.g. KSP is ~all key_press).
+// Feature surface mirrored from a scan of 358 local community configs (docs/COMMUNITY-CONFIG-IMPORT.md).
+"controller_mappings"
+{
+	"version"		"3"
+	"title"		"Kitchen Sink (synthetic worst case)"
+	"controller_type"		"controller_neptune"
+
+	// --- button_diamond: all four "core" activators incl. Turbo + a key combo ---
+	"group"
+	{
+		"id"		"0"
+		"mode"		"four_buttons"
+		"inputs"
+		{
+			"button_a" { "activators" { "Full_Press" { "bindings" {
+				"binding"	"key_press LEFT_CONTROL, Copy"
+				"binding"	"key_press C, Copy"
+			} } } }
+			"button_b" { "activators" { "Double_Press" {
+				"bindings" { "binding" "key_press V, Paste" }
+				"settings" { "doubletap_max_duration" "250" }
+			} } }
+			"button_x" { "activators" { "Long_Press" {
+				"bindings" { "binding" "key_press X" }
+				"settings" { "long_press_time" "600" }
+			} } }
+			"button_y" { "activators" { "Full_Press" {
+				"bindings" { "binding" "key_press Y" }
+				"settings" { "hold_repeats" "1" "repeat_rate" "10" }
+			} } }
+		}
+	}
+
+	// --- switch: Start_Press / release / Soft_Press + the three SKIPPED binding commands ---
+	"group"
+	{
+		"id"		"1"
+		"mode"		"switches"
+		"inputs"
+		{
+			"button_escape" { "activators" { "Start_Press" { "bindings" { "binding" "key_press ESCAPE" } } } }
+			"button_menu"   { "activators" { "release"     { "bindings" { "binding" "key_press TAB" } } } }
+			"left_bumper"   { "activators" { "Soft_Press"  { "bindings" { "binding" "mouse_button MIDDLE" } } } }
+			"right_bumper"  { "activators" { "Full_Press"  { "bindings" { "binding" "controller_action SCREENSHOT" } } } }
+			"button_back_left"  { "activators" { "Full_Press" { "bindings" { "binding" "game_action InGameAction1" } } } }
+			"button_back_right" { "activators" { "Full_Press" { "bindings" { "binding" "mode_shift dpad 99" } } } }
+			"button_back_left_upper" { "activators" { "Full_Press" {
+				"bindings" { "binding" "xinput_button A" }
+				"settings" { "toggle" "1" "interruptable" "0" }
+			} } }
+			"button_back_right_upper" { "activators" { "Full_Press" { "bindings" { "binding" "key_press F" } } } }
+		}
+	}
+
+	// --- dpad: xinput dpad / key / mouse_wheel / key-combo, one per direction ---
+	"group"
+	{
+		"id"		"2"
+		"mode"		"dpad"
+		"inputs"
+		{
+			"dpad_north" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button DPAD_UP" } } } }
+			"dpad_south" { "activators" { "Full_Press" { "bindings" { "binding" "key_press DOWN_ARROW" } } } }
+			"dpad_east"  { "activators" { "Full_Press" { "bindings" { "binding" "mouse_wheel SCROLL_UP" } } } }
+			"dpad_west"  { "activators" { "Full_Press" { "bindings" {
+				"binding" "key_press LEFT_SHIFT"
+				"binding" "key_press TAB"
+			} } } }
+		}
+	}
+
+	// --- left stick: joystick_move + click -> L3 ; deadzone setting ---
+	"group"
+	{
+		"id"		"3"
+		"mode"		"joystick_move"
+		"inputs" { "click" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button JOYSTICK_LEFT" } } } } }
+		"settings" { "deadzone" "5000" "invert_y" "0" }
+	}
+
+	// --- right stick: REFERENCE -> group 10 (tests reference resolution to a usable mode) ---
+	"group"
+	{
+		"id"		"4"
+		"mode"		"reference"
+		"settings" { "referenced_mode" "10" }
+	}
+
+	// --- left pad: scrollwheel ---
+	"group" { "id" "5" "mode" "scrollwheel" }
+
+	// --- right pad: absolute_mouse + Soft_Press click -> LMB ---
+	"group"
+	{
+		"id"		"6"
+		"mode"		"absolute_mouse"
+		"inputs" { "click" { "activators" { "Soft_Press" { "bindings" { "binding" "mouse_button LEFT" } } } } }
+		"settings" { "sensitivity" "200" "invert_y" "0" }
+	}
+
+	// --- left trigger: staged full-pull (edge) -> RMB ; haptic setting ---
+	"group"
+	{
+		"id"		"7"
+		"mode"		"trigger"
+		"inputs" { "edge" { "activators" { "Full_Press" {
+			"bindings" { "binding" "mouse_button RIGHT" }
+			"settings" { "haptic_intensity" "2" }
+		} } } }
+	}
+
+	// --- right trigger: analog xinput passthrough -> Axis ---
+	"group"
+	{
+		"id"		"8"
+		"mode"		"trigger"
+		"inputs" { "click" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button TRIGGER_RIGHT" } } } } }
+	}
+
+	// --- reference target for group 4: joystick_move + click -> R3 ---
+	"group"
+	{
+		"id"		"10"
+		"mode"		"joystick_move"
+		"inputs" { "click" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button JOYSTICK_RIGHT" } } } } }
+	}
+
+	// --- mode-shift alternate for right_trackpad: must NOT clobber the base absolute_mouse (group 6) ---
+	"group"
+	{
+		"id"		"17"
+		"mode"		"dpad"
+		"inputs" { "dpad_north" { "activators" { "Full_Press" { "bindings" { "binding" "key_press 1" } } } } }
+	}
+
+	"preset"
+	{
+		"id"		"0"
+		"name"		"Default"
+		"group_source_bindings"
+		{
+			"0"		"button_diamond active"
+			"1"		"switch active"
+			"2"		"dpad active"
+			"3"		"joystick active"
+			"4"		"right_joystick active"
+			"5"		"left_trackpad active"
+			"6"		"right_trackpad active"
+			"17"	"right_trackpad active modeshift"
+			"7"		"left_trigger active"
+			"8"		"right_trigger active"
+			"9"		"gyro inactive"
+		}
+	}
+}

@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "updatedAt": "2026-05-27",
+  "version": 2,
+  "updatedAt": "2026-10-06",
   "components": [
     {
       "id": "direct3d",

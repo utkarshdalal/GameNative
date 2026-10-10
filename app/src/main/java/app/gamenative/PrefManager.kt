@@ -1638,6 +1638,14 @@ object PrefManager {
             setPref(CUSTOM_GAME_MANUAL_FOLDERS, Json.encodeToString(value))
         }
 
+    // Steam Controller (2026 "Triton") BLE support. OFF by default: enabling it makes every game launch connect to
+    // the controller over BLE, which is pure overhead (and a runtime BT-permission prompt) for anyone without the
+    // hardware. The settings switch requests the Bluetooth permissions before it can be turned on.
+    private val STEAM_CONTROLLER_ENABLED = booleanPreferencesKey("steam_controller_enabled")
+    var steamControllerEnabled: Boolean
+        get() = getPref(STEAM_CONTROLLER_ENABLED, false)
+        set(value) = setPref(STEAM_CONTROLLER_ENABLED, value)
+
     private val FAVORITE_APP_IDS = stringPreferencesKey("favorite_app_ids")
     var favoriteAppIds: Set<String>
         get() {
@@ -1848,6 +1856,32 @@ object PrefManager {
                 )
             }
         }
+
+    /**
+     * The [app.gamenative.service.download.SteamDownloadMode] an interrupted download of [appId]
+     * was started with, so a resume keeps its intent (a verify stays a verify instead of becoming
+     * an update). Deliberately NOT a database column: a new column means a schema version bump, and
+     * a version bump makes every build on an older version fail to open the database ("migration
+     * from N to N-1 was required") — which is exactly the state a developer switching between
+     * branches must not be trapped in. This is transient per-app state, so DataStore is its home.
+     */
+    fun steamDownloadMode(appId: Int): String? =
+        getPref(stringPreferencesKey("steam_dl_mode_$appId"), "").ifEmpty { null }
+
+    /**
+     * Records the mode and SUSPENDS until it is applied. The fire-and-forget [setPref] would return
+     * before the edit lands, and the run reads the value back on resume: a lost write silently
+     * turns an interrupted VERIFY (or INSTALL) into an UPDATE, which is the bug the mode split
+     * exists to prevent, so callers must not race it.
+     */
+    suspend fun setSteamDownloadMode(appId: Int, mode: String) {
+        dataStore.edit { pref -> pref[stringPreferencesKey("steam_dl_mode_$appId")] = mode }
+    }
+
+    /** Clears the recorded mode, suspending until it is applied (see above). */
+    suspend fun clearSteamDownloadMode(appId: Int) {
+        dataStore.edit { pref -> pref.remove(stringPreferencesKey("steam_dl_mode_$appId")) }
+    }
 
     fun setPreferredFamilyLender(appId: Int, lenderSteamId: Long?) {
         scope.launch {

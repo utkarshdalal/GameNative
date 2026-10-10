@@ -208,7 +208,6 @@ pub type DepotStatusCallback<'a> = &'a (dyn Fn(&str, u32, u32) + Sync);
 pub struct DepotWriteResult {
     pub files_written: u64,
     pub bytes_written: u64,
-    pub resume_trust_safe: bool,
     pub error: String,
 }
 
@@ -263,8 +262,15 @@ pub struct DepotWriteOptions<'a> {
     pub auth_token_refresher: Option<&'a CdnAuthTokenRefresher>,
     /// Live ranking of the ASSIGNED CDN servers from the background CDN probe
     /// (`cdn_probe::seed_from_cache` + `spawn_background_probe`); the scheduler reprioritizes
-    /// from it mid-download. `None` = cold ranking (learn speeds as chunks complete).
+    /// from it mid-download. `None` = cold ranking (learn speeds as chunk completions).
     pub probe_hints: Option<Arc<crate::store_dl::steam::cdn_probe::ProbeHints>>,
+    /// File indices ([`unchanged_files`]) this run must NOT touch: their bytes already match the
+    /// manifest, so they get no chunk jobs, no re-hash and no finalize. Only the update path sets
+    /// it, and only when the previous manifest is known good (see `depot_downloader`).
+    pub trusted_files: Option<&'a [u32]>,
+    /// `(file_idx, chunk_idx)` pairs ([`unchanged_chunks`]) whose bytes the previous manifest proves
+    /// are already on disk: counted as verified without being re-hashed.
+    pub trusted_chunks: Option<&'a [(u32, u32)]>,
 }
 
 impl Default for DepotWriteOptions<'_> {
@@ -280,6 +286,8 @@ impl Default for DepotWriteOptions<'_> {
             status: None,
             auth_token_refresher: None,
             probe_hints: None,
+            trusted_files: None,
+            trusted_chunks: None,
         }
     }
 }
@@ -293,15 +301,13 @@ impl DepotWriteResult {
         Self {
             files_written,
             bytes_written,
-            resume_trust_safe: true,
             error: String::new(),
         }
     }
 
-    pub fn fail(error: impl Into<String>, resume_trust_safe: bool) -> Self {
+    pub fn fail(error: impl Into<String>) -> Self {
         Self {
             error: error.into(),
-            resume_trust_safe,
             ..Default::default()
         }
     }
@@ -436,6 +442,10 @@ fn verify_file_total(manifest: &ContentManifest, files: &DepotFiles) -> u32 {
     (0..manifest.files.len())
         .filter(|&i| {
             files.needs_verify(i)
+                && !files.all_chunks_trusted(i)
+                // Trusted files (update delta) get no jobs, so no writer can report them: counting
+                // them would leave the counter permanently below its own total.
+                && !files.is_trusted(i)
                 && manifest
                     .files
                     .get(i)
@@ -453,6 +463,237 @@ impl DepotFileAction {
             | DepotFileAction::Regular { path, .. } => path,
         }
     }
+}
+
+/// Case-folded relative-path key for a manifest entry: backslashes normalised, lowercased. Two
+/// entries with the same key are the same object on the stores' case-insensitive filesystems (and
+/// the writer re-spells to on-disk case anyway), so a case-only rename must NOT count as a removal.
+pub fn folded_entry_key(name: &str) -> String {
+    name.replace('\\', "/").to_lowercase()
+}
+
+/// Files the PREVIOUS manifest listed that `new` does not — the content an update removed.
+///
+/// Directories are excluded (they are pruned once empty by [`prune_removed_files`]), and every
+/// entry of the new manifest — file, directory or symlink — counts as "still present", so a path
+/// that merely changed kind is never deleted. Steam's client prunes exactly this set on an update.
+pub fn removed_files(previous: &ContentManifest, new: &ContentManifest) -> Vec<String> {
+    let present: std::collections::HashSet<String> =
+        new.files.iter().map(|f| folded_entry_key(&f.filename)).collect();
+    previous
+        .files
+        .iter()
+        .filter(|f| (f.flags & DEPOT_FILE_FLAG_DIRECTORY) == 0)
+        .filter(|f| !present.contains(&folded_entry_key(&f.filename)))
+        .map(|f| f.filename.clone())
+        .collect()
+}
+
+/// What a removed-content sweep did, for the log line (and for tests).
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct PruneStats {
+    /// Files unlinked.
+    pub deleted: u32,
+    /// Already gone (a previous attempt, or the user deleted them) — not an error.
+    pub missing: u32,
+    /// Directories removed because the sweep emptied them.
+    pub dirs_pruned: u32,
+    /// Paths rejected by the safety rule (absolute / `..`, or a parent that resolves outside the
+    /// install root) — never touched.
+    pub unsafe_paths: u32,
+    /// Paths another depot of the same app still lists: removed from THIS depot's manifest but
+    /// owned elsewhere under the shared install dir, so kept.
+    pub shared: u32,
+    /// Unlink failed for another reason (in use, permissions, IO).
+    pub failed: u32,
+}
+
+impl PruneStats {
+    pub fn line(&self, depot_id: u32) -> String {
+        format!(
+            "depot-prune depot={depot_id} deleted={} missing={} dirs={} unsafe={} shared={} failed={}",
+            self.deleted, self.missing, self.dirs_pruned, self.unsafe_paths, self.shared, self.failed
+        )
+    }
+}
+
+/// Delete `removed` (relative manifest paths) under `target_dir`, then prune any directory the
+/// sweep emptied — bounded to `target_dir`. Never fails the run: an unsafe path is skipped, and a
+/// failed unlink is counted and logged, because a leftover file is better than a failed update.
+/// `protected` holds case-folded paths (`folded_entry_key`) that any depot of the run still
+/// installs. Files in it are kept: depots share one install dir, so a path this depot dropped can
+/// still belong to another depot that has it installed.
+///
+/// `retained_dirs` holds the case-folded paths of the directories the NEW manifest still declares:
+/// the walk-up stops at one of them, so a directory this build expects is never removed just because
+/// the sweep emptied it (a game that needs an empty `Mods/`, `config/`, … to exist).
+#[allow(clippy::too_many_arguments)]
+pub fn prune_removed_files(
+    target_dir: &str,
+    removed: &[String],
+    protected: &std::collections::HashSet<String>,
+    retained_dirs: &std::collections::HashSet<String>,
+    log: Option<&(dyn Fn(&str) + Sync)>,
+) -> PruneStats {
+    let mut stats = PruneStats::default();
+    let root = Path::new(target_dir);
+    // Resolved once: the containment check below compares each removed file's parent against it,
+    // because a lexical prefix check cannot see through a symlinked directory inside the install.
+    let canonical_root = std::fs::canonicalize(root).ok();
+    for name in removed {
+        if !path_is_safe(name) {
+            stats.unsafe_paths += 1;
+            continue;
+        }
+        if protected.contains(&folded_entry_key(name)) {
+            stats.shared += 1;
+            continue;
+        }
+        // Re-spell to the on-disk case: the tree the writer built may differ in case from the
+        // manifest we are diffing against (`Game/` vs `game/`).
+        let rel = crate::store_dl::resolve_existing_case(target_dir, name);
+        let path = std::path::PathBuf::from(join_target_path(target_dir, &rel));
+        if !path.starts_with(root) {
+            stats.unsafe_paths += 1;
+            continue;
+        }
+        // `starts_with` is lexical: if a parent directory inside the install is a symlink pointing
+        // out of it, the unlink would follow it. Require the RESOLVED parent to stay beneath the
+        // resolved install root; when the parent cannot be resolved (already gone, unreadable) the
+        // lexical check above stands and the unlink simply fails.
+        if let (Some(canonical_root), Some(parent)) = (
+            canonical_root.as_ref(),
+            path.parent().and_then(|p| std::fs::canonicalize(p).ok()),
+        ) {
+            if !parent.starts_with(canonical_root) {
+                stats.unsafe_paths += 1;
+                if let Some(log) = log {
+                    log(&format!(
+                        "depot-prune: '{}' resolves outside the install dir — kept",
+                        path.display()
+                    ));
+                }
+                continue;
+            }
+        }
+        match fs::remove_file(&path) {
+            Ok(()) => {
+                stats.deleted += 1;
+                // Walk up, removing only directories this sweep emptied; stop at the first
+                // non-empty one (or at the install root).
+                let mut dir = path.parent();
+                while let Some(current) = dir {
+                    if current == root || !current.starts_with(root) {
+                        break;
+                    }
+                    // A directory the new manifest declares is not ours to remove, empty or not.
+                    if let Ok(rel) = current.strip_prefix(root) {
+                        if retained_dirs.contains(&folded_entry_key(&rel.to_string_lossy())) {
+                            break;
+                        }
+                    }
+                    if fs::remove_dir(current).is_err() {
+                        break;
+                    }
+                    stats.dirs_pruned += 1;
+                    dir = current.parent();
+                }
+            }
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => stats.missing += 1,
+            Err(err) => {
+                stats.failed += 1;
+                if let Some(log) = log {
+                    log(&format!(
+                        "depot-prune: unlink '{}' failed: {err}",
+                        path.display()
+                    ));
+                }
+            }
+        }
+    }
+    stats
+}
+
+/// Files whose bytes this update does NOT have to touch: present in `previous` with the SAME
+/// path, size and content hash as `new`, so the manifest itself proves the on-disk bytes are the
+/// ones the new build wants. Steam's client computes the same set and never re-hashes or
+/// re-downloads these files — that is why a patch is fast there and why our update used to be
+/// slow (it re-hashed the whole install against the new manifest).
+///
+/// Deliberately conservative, because the caller is trusting these files blindly:
+/// - only regular files (`previous` and `new` entries must match on the exact path, so a
+///   case-only rename is NOT trusted — the writer re-spells on write and that case is rare);
+/// - both content hashes must be present and equal (an empty hash proves nothing);
+/// - the size must match too.
+///
+/// The complement is the delta: everything else is re-hashed against the new manifest as usual,
+/// which also covers files the user corrupted (that is what Verify is for).
+pub fn unchanged_files(previous: &ContentManifest, new: &ContentManifest) -> Vec<u32> {
+    // Exact path -> (size, content hash) of the previous build's regular files.
+    let mut before: HashMap<&str, (u64, &[u8])> = HashMap::new();
+    for file in &previous.files {
+        if (file.flags & DEPOT_FILE_FLAG_DIRECTORY) != 0 || !file.linktarget.is_empty() {
+            continue;
+        }
+        if file.sha_content.is_empty() {
+            continue;
+        }
+        before.insert(file.filename.as_str(), (file.size, file.sha_content.as_slice()));
+    }
+    new.files
+        .iter()
+        .enumerate()
+        .filter(|(_, file)| {
+            (file.flags & DEPOT_FILE_FLAG_DIRECTORY) == 0
+                && file.linktarget.is_empty()
+                && !file.sha_content.is_empty()
+        })
+        .filter(|(_, file)| {
+            before
+                .get(file.filename.as_str())
+                .is_some_and(|(size, sha)| {
+                    *size == file.size && *sha == file.sha_content.as_slice()
+                })
+        })
+        .map(|(idx, _)| idx as u32)
+        .collect()
+}
+
+/// Chunks of the new manifest that sit at the same offset, with the same hash and size, in the same-path regular file of `previous`.
+pub fn unchanged_chunks(previous: &ContentManifest, new: &ContentManifest) -> Vec<(u32, u32)> {
+    let is_regular = |file: &crate::store_dl::steam::content_manifest::FileMapping| {
+        (file.flags & DEPOT_FILE_FLAG_DIRECTORY) == 0 && file.linktarget.is_empty()
+    };
+    let mut before: HashMap<&str, HashMap<u64, (&[u8], u32)>> = HashMap::new();
+    for file in previous.files.iter().filter(|file| is_regular(file)) {
+        let chunks = file
+            .chunks
+            .iter()
+            .filter(|chunk| !chunk.sha.is_empty())
+            .map(|chunk| (chunk.offset, (chunk.sha.as_slice(), chunk.cb_original)))
+            .collect();
+        before.insert(file.filename.as_str(), chunks);
+    }
+    let mut out = Vec::new();
+    for (file_idx, file) in new.files.iter().enumerate() {
+        if !is_regular(file) {
+            continue;
+        }
+        let Some(old) = before.get(file.filename.as_str()) else {
+            continue;
+        };
+        for (chunk_idx, chunk) in file.chunks.iter().enumerate() {
+            if chunk.sha.is_empty() || chunk.cb_original == 0 {
+                continue;
+            }
+            if old.get(&chunk.offset).is_some_and(|(sha, cb)| {
+                *sha == chunk.sha.as_slice() && *cb == chunk.cb_original
+            }) {
+                out.push((file_idx as u32, chunk_idx as u32));
+            }
+        }
+    }
+    out
 }
 
 pub fn depot_adler_hash(data: &[u8]) -> u32 {
@@ -503,17 +744,15 @@ pub fn plan_depot_write(
     if manifest.metadata.filenames_encrypted {
         return Err(DepotWriteResult::fail(
             "write_depot: manifest filenames are still encrypted",
-            false,
         ));
     }
     if depot_key.len() != 32 {
         return Err(DepotWriteResult::fail(
             "write_depot: bad depot key length",
-            false,
         ));
     }
     if server_count == 0 {
-        return Err(DepotWriteResult::fail("write_depot: no CDN servers", false));
+        return Err(DepotWriteResult::fail("write_depot: no CDN servers"));
     }
 
     let mut plan = DepotWritePlan {
@@ -529,7 +768,6 @@ pub fn plan_depot_write(
         if !path_is_safe(&file.filename) {
             return Err(DepotWriteResult::fail(
                 format!("write_depot: unsafe path '{}'", file.filename),
-                false,
             ));
         }
         // Re-spell to the on-disk case so Directory/Symlink actions land in the dir an earlier
@@ -543,7 +781,6 @@ pub fn plan_depot_write(
             if !crate::store_dl::rel_path_is_safe(&file.linktarget) {
                 return Err(DepotWriteResult::fail(
                     format!("write_depot: unsafe linktarget '{}'", file.linktarget),
-                    false,
                 ));
             }
             plan.actions.push(DepotFileAction::Symlink {
@@ -1412,6 +1649,13 @@ struct FileSlot {
     path: String,
     mode: u32,
     is_regular: bool,
+    /// Content already matches this manifest ([`unchanged_files`]): no chunk jobs were planned for
+    /// it, and neither the drain assertion nor the finalize pass may touch it (finalize would
+    /// otherwise create/truncate a file it never wrote). Atomic for the same reason as
+    /// `remaining`: the table is shared immutably across the worker pool.
+    trusted: AtomicBool,
+    /// Every chunk of this file is a trusted chunk already within its pre-existing length.
+    chunks_all_trusted: bool,
 }
 
 /// Per-depot open-file table. Handles are opened lazily on first touch and closed as soon as the
@@ -1423,6 +1667,7 @@ struct DepotFiles {
     slots: Vec<FileSlot>,
     /// Sum of already-present bytes on disk (clamped to each file's size) — for the free-space guard.
     already_present_bytes: u64,
+    trusted_chunks: std::collections::HashSet<(u32, u32)>,
 }
 
 /// Normalize manifest file paths to case-insensitive (Windows / Android-storage) semantics:
@@ -1495,6 +1740,8 @@ impl DepotFiles {
                     opened: false,
                 }),
                 remaining: AtomicUsize::new(if is_regular { file.chunks.len() } else { 0 }),
+                trusted: AtomicBool::new(false),
+                chunks_all_trusted: false,
                 size: file.size,
                 preexisting_len: preexisting,
                 path,
@@ -1505,7 +1752,71 @@ impl DepotFiles {
         Self {
             slots,
             already_present_bytes: already_present,
+            trusted_chunks: std::collections::HashSet::new(),
         }
+    }
+
+    /// True when the update delta proved this file's bytes already match the manifest, so this run
+    /// neither hashes nor touches it (and must not count it in the verify counter).
+    fn is_trusted(&self, file_idx: usize) -> bool {
+        self.slots
+            .get(file_idx)
+            .is_some_and(|slot| slot.trusted.load(Ordering::Relaxed))
+    }
+
+    /// Bytes this run credits as already present (the trusted files). Counted towards progress so a
+    /// delta update's bar reflects "most of the install is already there" and still reaches its
+    /// total — the jobs of these files were dropped, so nothing else would advance the counter.
+    fn trusted_bytes(&self) -> u64 {
+        self.slots
+            .iter()
+            .filter(|slot| slot.is_regular && slot.trusted.load(Ordering::Relaxed))
+            .map(|slot| slot.size)
+            .sum()
+    }
+
+    /// Flag the files the update delta proved unchanged, so every pass that would otherwise
+    /// re-hash, re-download or finalize them leaves them alone.
+    fn mark_trusted(&self, trusted: &[u32]) {
+        for &idx in trusted {
+            if let Some(slot) = self.slots.get(idx as usize) {
+                slot.trusted.store(true, Ordering::Relaxed);
+                // Nothing will decrement this: the file is not part of this run's job list.
+                slot.remaining.store(0, Ordering::Relaxed);
+            }
+        }
+    }
+
+    fn mark_trusted_chunks(&mut self, manifest: &ContentManifest, pairs: &[(u32, u32)]) {
+        self.trusted_chunks = pairs.iter().copied().collect();
+        for (file_idx, file) in manifest.files.iter().enumerate() {
+            let all = !file.chunks.is_empty()
+                && (0..file.chunks.len())
+                    .all(|chunk_idx| self.chunk_is_trusted(file_idx, chunk_idx, &file.chunks[chunk_idx]));
+            if let Some(slot) = self.slots.get_mut(file_idx) {
+                slot.chunks_all_trusted = all;
+            }
+        }
+    }
+
+    /// True when the update delta proved this chunk unchanged and the file was at least that long
+    /// before this run started, so its bytes are on disk without re-hashing them.
+    fn chunk_is_trusted(&self, file_idx: usize, chunk_idx: usize, chunk: &ChunkData) -> bool {
+        if chunk.cb_original == 0
+            || !self.trusted_chunks.contains(&(file_idx as u32, chunk_idx as u32))
+        {
+            return false;
+        }
+        let end = chunk.offset.saturating_add(chunk.cb_original as u64);
+        self.slots
+            .get(file_idx)
+            .is_some_and(|slot| slot.is_regular && slot.preexisting_len >= end)
+    }
+
+    fn all_chunks_trusted(&self, file_idx: usize) -> bool {
+        self.slots
+            .get(file_idx)
+            .is_some_and(|slot| slot.chunks_all_trusted)
     }
 
     /// A file needs its on-disk chunks verified only if something is already there (resume/verify).
@@ -1571,7 +1882,10 @@ impl DepotFiles {
     /// (which have no chunk jobs to trigger `complete_chunk`).
     fn finalize_remaining(&self) -> Result<(), String> {
         for slot in &self.slots {
-            if !slot.is_regular {
+            // A trusted file was never opened by this run and must not be: the 0-chunk branch
+            // below would CREATE it (a zero-filled file at the manifest's size) if the user
+            // deleted it, which is exactly the silent-corruption case this must not introduce.
+            if !slot.is_regular || slot.trusted.load(Ordering::Relaxed) {
                 continue;
             }
             let mut st = slot.state.lock().expect("slot state poisoned");
@@ -1760,11 +2074,12 @@ fn drain_contiguous(
 /// Success assertion, run BEFORE finalize: every regular file's cursor must sit at its exact
 /// size with an empty reorder cushion. Catches a stranded-pending bug (verify-skip gap, lost
 /// chunk, accounting slip) LOUDLY, before `finalize_remaining`'s set_len could paper over a
-/// hole and journal a corrupt depot. Callers must report failure with resume trust UNSAFE —
-/// on-disk bytes may be missing.
+/// hole and leave a half-written file behind a successful-looking run.
 fn assert_pipeline_drained(files: &DepotFiles, writers: &[Mutex<OrderedWriter>]) -> Result<(), String> {
     for (idx, slot) in files.slots.iter().enumerate() {
-        if !slot.is_regular {
+        // Trusted (update-delta unchanged) files have no jobs and were never written: their cursor
+        // is legitimately 0 while the file holds the manifest's bytes already.
+        if !slot.is_regular || slot.trusted.load(Ordering::Relaxed) {
             continue;
         }
         let writer = writers
@@ -1868,7 +2183,7 @@ pub fn write_depot_sequential(
     target_dir: &str,
     options: DepotWriteOptions<'_>,
 ) -> DepotWriteResult {
-    let plan = match plan_depot_write(
+    let mut plan = match plan_depot_write(
         manifest,
         depot_key,
         servers.len(),
@@ -1879,7 +2194,27 @@ pub fn write_depot_sequential(
         Err(error) => return error,
     };
 
-    let files = DepotFiles::prepare(manifest, &plan, target_dir);
+    // Update delta: drop the jobs of files the previous manifest proves unchanged, so this run
+    // never re-hashes or re-downloads them (Steam's own update behaviour).
+    if let Some(trusted) = options.trusted_files {
+        if !trusted.is_empty() {
+            // A set, not a linear scan: a big depot has ~10^5 chunk jobs and can have as many
+            // trusted files, and this filter runs before a single byte moves.
+            let trusted: std::collections::HashSet<u32> = trusted.iter().copied().collect();
+            plan.chunk_jobs.retain(|job| !trusted.contains(&job.file_idx));
+            plan.worker_count = clamp_worker_count(options.max_workers, plan.chunk_jobs.len());
+        }
+    }
+
+    let mut files = DepotFiles::prepare(manifest, &plan, target_dir);
+    if let Some(trusted_chunks) = options.trusted_chunks {
+        if !trusted_chunks.is_empty() {
+            files.mark_trusted_chunks(manifest, trusted_chunks);
+        }
+    }
+    if let Some(trusted) = options.trusted_files {
+        files.mark_trusted(trusted);
+    }
 
     // Free-space guard using the EXACT manifest sizes (ground truth), minus what is already on disk.
     // Conservative: only fail when statvfs succeeds with a sane non-zero figure and the deficit
@@ -1893,7 +2228,6 @@ pub fn write_depot_sequential(
                     needed / (1024 * 1024),
                     available / (1024 * 1024)
                 ),
-                false,
             );
         }
     }
@@ -1959,23 +2293,39 @@ fn write_depot_single(
     } else {
         0
     };
+    // Delta update: the trusted files' jobs were dropped, so nothing would ever advance the counter
+    // for them. Credit their bytes up front (they ARE on disk) so the bar reaches its total and an
+    // all-trusted depot still reports progress.
+    // `verifying = true`, deliberately: these bytes were not downloaded, and that flag is what the
+    // caller keys on for two separate things — it keeps them out of the "bytes downloaded" stat, and
+    // it gates the background CDN probe, which must start only on the first REAL downloaded byte (a
+    // depot whose every file is trusted has nothing to probe for).
+    bytes_written += files.trusted_bytes();
+    if let Some(on_progress) = options.on_progress {
+        if bytes_written > 0 {
+            on_progress(bytes_written, total_bytes, true);
+        }
+    }
     for (job_index, job) in plan.chunk_jobs.iter().enumerate() {
         if options
             .cancel
             .is_some_and(|cancel| cancel.load(Ordering::Relaxed))
         {
-            return DepotWriteResult::fail("cancelled", true);
+            return DepotWriteResult::fail("cancelled");
         }
         let file_idx = job.file_idx as usize;
         let file = match manifest.files.get(file_idx) {
             Some(file) => file,
-            None => return DepotWriteResult::fail("bad file index", true),
+            None => return DepotWriteResult::fail("bad file index"),
         };
         let chunk = match file.chunks.get(job.chunk_idx as usize) {
             Some(chunk) => chunk,
-            None => return DepotWriteResult::fail("bad chunk index", true),
+            None => return DepotWriteResult::fail("bad chunk index"),
         };
-        if files.needs_verify(file_idx) && last_verify_file != Some(file_idx) {
+        if files.needs_verify(file_idx)
+            && !files.all_chunks_trusted(file_idx)
+            && last_verify_file != Some(file_idx)
+        {
             // Resume/verify: report the file whose on-disk chunks are being re-hashed.
             last_verify_file = Some(file_idx);
             verify_seen += 1;
@@ -1985,15 +2335,18 @@ fn write_depot_single(
         }
         let handle = match files.acquire(file_idx) {
             Ok(handle) => handle,
-            Err(error) => return DepotWriteResult::fail(error, true),
+            Err(error) => return DepotWriteResult::fail(error),
         };
-        if files.needs_verify(file_idx) && existing_chunk_matches(&handle, chunk) {
+        if files.needs_verify(file_idx)
+            && (files.chunk_is_trusted(file_idx, job.chunk_idx as usize, chunk)
+                || existing_chunk_matches(&handle, chunk))
+        {
             bytes_written += chunk.cb_original as u64;
             if let Some(on_progress) = options.on_progress {
                 on_progress(bytes_written, total_bytes, true);
             }
             if let Err(error) = files.complete_chunk(file_idx, &handle) {
-                return DepotWriteResult::fail(error, true);
+                return DepotWriteResult::fail(error);
             }
             continue;
         }
@@ -2023,21 +2376,20 @@ fn write_depot_single(
                     on_progress(bytes_written, total_bytes, false);
                 }
                 if let Err(error) = files.complete_chunk(file_idx, &handle) {
-                    return DepotWriteResult::fail(error, true);
+                    return DepotWriteResult::fail(error);
                 }
             }
-            Err(error) => return DepotWriteResult::fail(error, true),
+            Err(error) => return DepotWriteResult::fail(error),
         }
     }
 
     if let Err(error) = files.finalize_remaining() {
-        return DepotWriteResult::fail(error, true);
+        return DepotWriteResult::fail(error);
     }
 
     DepotWriteResult {
         files_written: plan.files_written,
         bytes_written,
-        resume_trust_safe: true,
         error: String::new(),
     }
 }
@@ -2075,7 +2427,10 @@ fn write_depot_parallel(
     target_dir: &str,
 ) -> DepotWriteResult {
     let total_bytes = plan.total_bytes;
-    let bytes_written = AtomicU64::new(0);
+    // See the single path: trusted (delta-unchanged) files keep their bytes on disk and have no
+    // jobs, so their size seeds the counter or the bar stops short of its total (and the watchdog
+    // would see a depot that never advances).
+    let bytes_written = AtomicU64::new(files.trusted_bytes());
     let in_flight = AtomicU64::new(0);
     let fetched_pending = AtomicU64::new(0);
     let reported = AtomicU64::new(0);
@@ -2425,15 +2780,14 @@ host_ceiling={} budget={}MiB reason=start",
         }
 
         if cancel.is_some_and(|c| c.load(Ordering::Relaxed)) {
-            return DepotWriteResult::fail("cancelled", true);
+            return DepotWriteResult::fail("cancelled");
         }
         if let Some(error) = error_slot.lock().expect("err slot poisoned").take() {
-            return DepotWriteResult::fail(error, true);
+            return DepotWriteResult::fail(error);
         }
         DepotWriteResult {
             files_written: plan.files_written,
             bytes_written: bytes_written.load(Ordering::Relaxed),
-            resume_trust_safe: true,
             error: String::new(),
         }
     });
@@ -2445,10 +2799,10 @@ host_ceiling={} budget={}MiB reason=start",
     // an empty reorder cushion, BEFORE finalize_remaining's set_len could paper over a hole and
     // journal a corrupt depot (the verify-skip gap bug class). Resume trust is unsafe here.
     if let Err(error) = assert_pipeline_drained(&files, &writers) {
-        return DepotWriteResult::fail(error, false);
+        return DepotWriteResult::fail(error);
     }
     if let Err(error) = files.finalize_remaining() {
-        return DepotWriteResult::fail(error, true);
+        return DepotWriteResult::fail(error);
     }
     scope_result
 }
@@ -2600,7 +2954,7 @@ async fn run_async_fetch_driver(
                 next_job += 1;
                 let file_idx = job.file_idx as usize;
                 if files.needs_verify(file_idx) {
-                    if last_verify_file != Some(file_idx) {
+                    if last_verify_file != Some(file_idx) && !files.all_chunks_trusted(file_idx) {
                         // Resume/verify: report the file whose on-disk chunks are being re-hashed.
                         last_verify_file = Some(file_idx);
                         verify_seen += 1;
@@ -2630,7 +2984,9 @@ async fn run_async_fetch_driver(
                             break;
                         }
                     };
-                    if existing_chunk_matches(&handle, chunk) {
+                    if files.chunk_is_trusted(file_idx, job.chunk_idx as usize, chunk)
+                        || existing_chunk_matches(&handle, chunk)
+                    {
                         // Already on disk: park a Verified marker at the chunk's offset and let
                         // the normal drain walk the cursor over it IN ORDER. Never bump the
                         // cursor here directly — that assumed verified chunks form a contiguous
@@ -2954,13 +3310,12 @@ pub fn create_depot_layout(plan: &DepotWritePlan) -> DepotWriteResult {
             DepotFileAction::Regular { .. } => Ok(()),
         };
         if let Err(error) = result {
-            return DepotWriteResult::fail(error, false);
+            return DepotWriteResult::fail(error);
         }
     }
     DepotWriteResult {
         files_written: plan.files_written,
         bytes_written: 0,
-        resume_trust_safe: true,
         error: String::new(),
     }
 }
@@ -3689,7 +4044,391 @@ mod tests {
     }
 
     #[test]
-    fn rejects_paths_that_escape_target() {
+    fn removed_files_diffs_the_previous_manifest_case_insensitively() {
+        let file = |name: &str, dir: bool| crate::store_dl::steam::content_manifest::FileMapping {
+            filename: name.into(),
+            flags: if dir { DEPOT_FILE_FLAG_DIRECTORY } else { 0 },
+            ..Default::default()
+        };
+        let manifest = |files: Vec<crate::store_dl::steam::content_manifest::FileMapping>| {
+            ContentManifest {
+                metadata: crate::store_dl::steam::content_manifest::Metadata {
+                    filenames_encrypted: false,
+                    ..Default::default()
+                },
+                files,
+                signature: Vec::new(),
+            }
+        };
+        // The old version: two files in Game/, a pak in bin/, one directory entry.
+        let previous = manifest(vec![
+            file("Game/keep.cfg", false),
+            file("Game/gone.bin", false),
+            file("bin/pak0.pk4", false),
+            file("Game", true),
+        ]);
+        // The new version: keep.cfg survives, GONE.BIN is a pure case rename of gone.bin
+        // (same file on the store's filesystem), the pak MOVED to a new directory, and Game/ is
+        // still a directory.
+        let new = manifest(vec![
+            file("Game/keep.cfg", false),
+            file("Game/GONE.bin", false),
+            file("data/pak0.pk4", false),
+            file("Game", true),
+        ]);
+        let removed = removed_files(&previous, &new);
+        assert_eq!(
+            removed,
+            vec!["bin/pak0.pk4".to_string()],
+            "only the genuinely removed path: a case-only rename and a directory entry survive"
+        );
+        // A path that stayed but changed kind is not a removal either.
+        let new_kind = manifest(vec![file("Game/gone.bin", true), file("Game/keep.cfg", false)]);
+        assert!(removed_files(&previous, &new_kind).contains(&"bin/pak0.pk4".to_string()));
+        assert!(!removed_files(&previous, &new_kind).contains(&"Game/gone.bin".to_string()));
+    }
+
+    #[test]
+    fn prune_removed_files_deletes_and_prunes_but_stays_inside_the_target() {
+        let dir = std::env::temp_dir().join(format!("gnprune-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("Game/Sub")).unwrap();
+        fs::create_dir_all(dir.join("Keep")).unwrap();
+        fs::write(dir.join("Game/Sub/gone.bin"), b"x").unwrap();
+        fs::write(dir.join("Keep/stays.bin"), b"x").unwrap();
+        let base = dir.to_string_lossy().into_owned();
+        let collected: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
+        let logger = move |line: &str| collected.lock().unwrap().push(line.to_string());
+
+        // A path another depot of the run still installs is never touched (kept out of the Game/
+        // chain under test, so that chain still empties completely).
+        let protected: std::collections::HashSet<String> =
+            ["other/owned.bin".to_string()].into_iter().collect();
+        fs::create_dir_all(dir.join("other")).unwrap();
+        fs::write(dir.join("other/owned.bin"), b"x").unwrap();
+        let stats = prune_removed_files(
+            &base,
+            &[
+                "Game/Sub/gone.bin".to_string(),   // removed and emptied its directory chain
+                "Game/never-existed.bin".to_string(), // already gone
+                "../escape.bin".to_string(),       // unsafe: never touched
+                "/abs.bin".to_string(),            // unsafe
+                "other/owned.bin".to_string(),     // owned by another depot
+            ],
+            &protected,
+            &std::collections::HashSet::new(),
+            Some(&logger),
+        );
+        assert_eq!(stats.deleted, 1);
+        assert_eq!(stats.missing, 1);
+        assert_eq!(stats.unsafe_paths, 2);
+        assert_eq!(stats.shared, 1, "another depot's file is kept");
+        assert!(dir.join("other/owned.bin").exists());
+        assert_eq!(stats.failed, 0);
+        assert_eq!(stats.dirs_pruned, 2, "Game/Sub and then Game, both emptied");
+        assert!(!dir.join("Game").exists(), "emptied directory chain pruned");
+        assert!(dir.join("Keep/stays.bin").exists(), "unrelated content untouched");
+        assert!(dir.exists(), "the install root itself is never removed");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn unchanged_files_trusts_only_identical_regular_files() {
+        let f = |name: &str, size: u64, sha: &[u8]| crate::store_dl::steam::content_manifest::FileMapping {
+            filename: name.into(),
+            size,
+            sha_content: sha.to_vec(),
+            ..Default::default()
+        };
+        let manifest = |files: Vec<crate::store_dl::steam::content_manifest::FileMapping>| ContentManifest {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
+                filenames_encrypted: false,
+                ..Default::default()
+            },
+            files,
+            signature: Vec::new(),
+        };
+        let previous = manifest(vec![
+            f("Game/same.bin", 10, b"SAME"),
+            f("Game/changed.bin", 10, b"OLD"),
+            f("Game/renamed.bin", 10, b"SAME"),
+            f("Game/nohash.bin", 10, b""),
+            f("bin", 0, b"SAME"), // still trusted: a regular entry, not a directory flag
+        ]);
+        let mut new = manifest(vec![
+            f("Game/same.bin", 10, b"SAME"),       // identical -> trusted
+            f("Game/changed.bin", 10, b"NEW"),     // content changed -> NOT trusted
+            f("Game/renamed.bin", 10, b"SAME"),    // stays, but see the case test below
+            f("Game/nohash.bin", 10, b""),         // no hash to compare -> NOT trusted
+            f("Game/added.bin", 5, b"ADDED"),      // new file -> NOT trusted
+        ]);
+        new.files[2].filename = "Game/RENAMED.bin".into(); // case-only rename of the same content
+        let trusted = unchanged_files(&previous, &new);
+        assert_eq!(
+            trusted,
+            vec![0u32],
+            "only the byte-identical same-path file is trusted; a content change, a case-only \
+rename, a missing hash and a new file all fall through to the normal walk"
+        );
+        // A file whose size disagrees with the hash entry is not trusted either.
+        let mut size_mismatch = manifest(vec![f("Game/same.bin", 11, b"SAME")]);
+        size_mismatch.files[0].filename = "Game/same.bin".into();
+        assert!(unchanged_files(&previous, &size_mismatch).is_empty());
+    }
+
+    fn delta_chunk(offset: u64, sha: &[u8], cb: u32) -> ChunkData {
+        ChunkData {
+            sha: sha.to_vec(),
+            offset,
+            cb_original: cb,
+            ..Default::default()
+        }
+    }
+
+    fn delta_file(
+        name: &str,
+        chunks: Vec<ChunkData>,
+    ) -> crate::store_dl::steam::content_manifest::FileMapping {
+        crate::store_dl::steam::content_manifest::FileMapping {
+            filename: name.into(),
+            size: chunks.iter().map(|c| c.offset + c.cb_original as u64).max().unwrap_or(0),
+            sha_content: b"FILE".to_vec(),
+            chunks,
+            ..Default::default()
+        }
+    }
+
+    fn delta_manifest(
+        files: Vec<crate::store_dl::steam::content_manifest::FileMapping>,
+    ) -> ContentManifest {
+        ContentManifest {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
+                filenames_encrypted: false,
+                ..Default::default()
+            },
+            files,
+            signature: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn unchanged_chunks_trusts_only_same_offset_same_hash_chunks() {
+        let mut dir = delta_file("Game/dir", vec![delta_chunk(0, b"A", 4)]);
+        dir.flags = DEPOT_FILE_FLAG_DIRECTORY;
+        let mut link = delta_file("Game/link", vec![delta_chunk(0, b"A", 4)]);
+        link.linktarget = "target".into();
+        let previous = delta_manifest(vec![
+            delta_file(
+                "Game/data.bin",
+                vec![
+                    delta_chunk(0, b"A", 4),
+                    delta_chunk(4, b"B", 4),
+                    delta_chunk(8, b"C", 4),
+                    delta_chunk(12, b"D", 4),
+                    delta_chunk(16, b"", 4),
+                ],
+            ),
+            delta_file("Game/renamed.bin", vec![delta_chunk(0, b"A", 4)]),
+            dir.clone(),
+            link.clone(),
+            delta_file("Game/was_dir", vec![delta_chunk(0, b"A", 4)]),
+        ]);
+        let mut now_dir = delta_file("Game/was_dir", vec![delta_chunk(0, b"A", 4)]);
+        now_dir.flags = DEPOT_FILE_FLAG_DIRECTORY;
+        let new = delta_manifest(vec![
+            delta_file(
+                "Game/data.bin",
+                vec![
+                    delta_chunk(0, b"A", 4),  // same offset, sha, size -> trusted
+                    delta_chunk(4, b"X", 4),  // content changed
+                    delta_chunk(12, b"C", 4), // moved from offset 8
+                    delta_chunk(16, b"D", 4), // moved from offset 12
+                    delta_chunk(20, b"", 4),  // no hash
+                    delta_chunk(8, b"C", 3),  // same offset and sha, different size
+                ],
+            ),
+            delta_file("Game/RENAMED.bin", vec![delta_chunk(0, b"A", 4)]),
+            delta_file("Game/added.bin", vec![delta_chunk(0, b"A", 4)]),
+            dir,
+            link,
+            now_dir,
+        ]);
+        assert_eq!(unchanged_chunks(&previous, &new), vec![(0u32, 0u32)]);
+    }
+
+    #[test]
+    fn trusted_chunk_beyond_the_preexisting_length_is_not_trusted() {
+        let dir = temp_dir("trusted_chunk_truncated");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("data.bin"), b"123456").unwrap();
+        let manifest = delta_manifest(vec![delta_file(
+            "data.bin",
+            vec![delta_chunk(0, b"A", 4), delta_chunk(4, b"B", 4)],
+        )]);
+        let base = dir.to_str().unwrap();
+        let plan = plan_depot_write(&manifest, &[1u8; 32], 4, base, 4).unwrap();
+        let mut files = DepotFiles::prepare(&manifest, &plan, base);
+        files.mark_trusted_chunks(&manifest, &[(0, 0), (0, 1)]);
+        assert!(files.chunk_is_trusted(0, 0, &manifest.files[0].chunks[0]));
+        assert!(!files.chunk_is_trusted(0, 1, &manifest.files[0].chunks[1]));
+        assert!(!files.all_chunks_trusted(0));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    fn write_with_trusted_chunks(name: &str, max_workers: u32) {
+        let server = CContentServerDirectoryServerInfo {
+            host: "cdn.example".into(),
+            https_support: "mandatory".into(),
+            ..Default::default()
+        };
+        let dir = temp_dir(name);
+        fs::create_dir_all(&dir).unwrap();
+        let on_disk = b"WRONGBYTES";
+        fs::write(dir.join("data.bin"), on_disk).unwrap();
+        let mut chunks = vec![delta_chunk(0, b"A", 5), delta_chunk(5, b"B", 5)];
+        chunks[0].crc = depot_adler_hash(b"right");
+        chunks[1].crc = depot_adler_hash(b"bytes");
+        let manifest = delta_manifest(vec![delta_file("data.bin", chunks)]);
+        let statuses = Mutex::new(Vec::new());
+        let status = |path: &str, seen: u32, total: u32| {
+            statuses.lock().unwrap().push((path.to_string(), seen, total));
+        };
+        let result = write_depot_sequential(
+            &manifest,
+            &[3u8; 32],
+            &CdnClient::new(""),
+            &[server],
+            dir.to_str().unwrap(),
+            DepotWriteOptions {
+                max_workers,
+                max_process_workers: 2,
+                status: Some(&status),
+                trusted_chunks: Some(&[(0, 0), (0, 1)]),
+                ..Default::default()
+            },
+        );
+        assert!(result.ok(), "{}", result.error);
+        assert_eq!(result.bytes_written, 10);
+        assert_eq!(fs::read(dir.join("data.bin")).unwrap(), on_disk);
+        assert!(
+            statuses.lock().unwrap().is_empty(),
+            "a file whose every chunk is trusted is not reported as re-hashed"
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn single_writer_counts_trusted_chunks_without_rehashing_them() {
+        write_with_trusted_chunks("trusted_chunks_single", 1);
+    }
+
+    #[test]
+    fn parallel_writer_counts_trusted_chunks_without_rehashing_them() {
+        write_with_trusted_chunks("trusted_chunks_parallel", 4);
+    }
+
+    #[test]
+    fn trusted_files_get_no_jobs_and_are_left_alone_by_finalize() {
+        // A trusted file must keep whatever is on disk: no chunk job, no cursor movement, and the
+        // finalize pass must not create/truncate it (the 0-chunk branch would otherwise write a
+        // zero-filled file at the manifest's size if the user deleted it).
+        let dir = std::env::temp_dir().join(format!("gntrusted-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("kept.bin"), b"already the right bytes").unwrap();
+        let manifest = ContentManifest {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
+                filenames_encrypted: false,
+                ..Default::default()
+            },
+            files: vec![crate::store_dl::steam::content_manifest::FileMapping {
+                filename: "kept.bin".into(),
+                size: 24,
+                chunks: vec![ChunkData {
+                    offset: 0,
+                    cb_original: 24,
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }],
+            signature: Vec::new(),
+        };
+        let base = dir.to_str().unwrap();
+        let plan = plan_depot_write(&manifest, &[1u8; 32], 4, base, 4).unwrap();
+        let files = DepotFiles::prepare(&manifest, &plan, base);
+        files.mark_trusted(&[0]);
+        // Finalize must be a no-op: the file is neither truncated nor re-created.
+        files.finalize_remaining().unwrap();
+        assert_eq!(fs::read(dir.join("kept.bin")).unwrap(), b"already the right bytes");
+        // The drain assertion accepts it (cursor 0 / size 24 is legitimate for a trusted file).
+        let writers = vec![Mutex::new(OrderedWriter::default())];
+        assert_pipeline_drained(&files, &writers).unwrap();
+        // The same file, NOT trusted, is what the assertion is there to catch.
+        let files2 = DepotFiles::prepare(&manifest, &plan, base);
+        assert!(assert_pipeline_drained(&files2, &writers).is_err());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn prune_refuses_a_removed_path_that_resolves_outside_the_install_dir() {
+        // A lexical prefix check cannot see a symlinked parent: `Game -> /elsewhere` would have the
+        // sweep unlink outside the install dir. The resolved-parent check must refuse it.
+        let outside = std::env::temp_dir().join(format!("gnprune-outside-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("gnprune-symlink-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&outside);
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(outside.join("victim.bin"), b"precious").unwrap();
+        fs::create_dir_all(&dir).unwrap();
+        let linked = dir.join("Game");
+        std::os::unix::fs::symlink(&outside, &linked).unwrap();
+        let base = dir.to_string_lossy().into_owned();
+        let stats = prune_removed_files(
+            &base,
+            &["Game/victim.bin".to_string()],
+            &std::collections::HashSet::new(),
+            &std::collections::HashSet::new(),
+            None,
+        );
+        assert_eq!(stats.unsafe_paths, 1, "a path resolving outside the root is refused");
+        assert_eq!(stats.deleted, 0);
+        assert!(
+            outside.join("victim.bin").exists(),
+            "the file outside the install dir must survive"
+        );
+        let _ = fs::remove_file(&linked);
+        let _ = fs::remove_dir_all(&outside);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn prune_keeps_a_directory_the_new_manifest_still_declares() {
+        // A game can require an empty directory to exist (`Mods/`, `config/`): the new manifest
+        // declares it, so the sweep may empty it but must not remove it.
+        let dir = std::env::temp_dir().join(format!("gnprune-retained-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("Mods")).unwrap();
+        fs::create_dir_all(dir.join("Scratch")).unwrap();
+        fs::write(dir.join("Mods/old.bin"), b"x").unwrap();
+        fs::write(dir.join("Scratch/old.bin"), b"x").unwrap();
+        let base = dir.to_string_lossy().into_owned();
+        let retained: std::collections::HashSet<String> =
+            [folded_entry_key("Mods")].into_iter().collect();
+        let stats = prune_removed_files(
+            &base,
+            &["Mods/old.bin".to_string(), "Scratch/old.bin".to_string()],
+            &std::collections::HashSet::new(),
+            &retained,
+            None,
+        );
+        assert_eq!(stats.deleted, 2);
+        assert!(dir.join("Mods").is_dir(), "a declared directory survives being emptied");
+        assert!(!dir.join("Scratch").exists(), "an undeclared emptied directory is pruned");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn reject_paths_that_escape_target() {
         assert!(path_is_safe("a/b/file.txt"));
         assert!(path_is_safe("./a/file.txt"));
         assert!(!path_is_safe(""));
@@ -4524,7 +5263,6 @@ mod tests {
         );
         assert!(!result.ok());
         assert_eq!(result.error, "cancelled");
-        assert!(result.resume_trust_safe);
         let _ = fs::remove_dir_all(&dir);
     }
 

@@ -7,8 +7,10 @@ import app.gamenative.api.SuggestionConfigKeys
 import app.gamenative.api.SupportApi
 import app.gamenative.api.SupportComponent
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.LsfgVkManager
 import app.gamenative.utils.ManifestComponentHelper
 import app.gamenative.utils.ManifestInstaller
+import app.gamenative.utils.SessionReport
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.contents.AdrenotoolsManager
@@ -17,6 +19,7 @@ import com.winlator.contents.ContentsManager
 import com.winlator.core.KeyValueSet
 import java.io.File
 import java.time.Instant
+import java.util.zip.ZipFile
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -63,10 +66,19 @@ object SupportComponentApplier {
             SuggestionConfigKeys.configValueOf(data, key)
         }
 
+    private fun isExtraKey(key: String): Boolean = key == SupportComponent.KEY_LSFG_LAYER_VERSION
+
+    private fun extraValue(container: Container, key: String): String? =
+        container.getExtra(key, "").trim().takeIf { it.isNotEmpty() }
+
     private fun editsFor(component: SupportComponent, installedId: String): List<SupportSuggestionApplier.Edit> =
         when (component.type) {
-            SupportComponent.Type.TURNIP, SupportComponent.Type.WRAPPER ->
+            SupportComponent.Type.TURNIP ->
                 listOf(SupportSuggestionApplier.Edit("graphicsDriverConfig.version", null, installedId))
+            SupportComponent.Type.WRAPPER ->
+                listOf(SupportSuggestionApplier.Edit(SupportComponent.KEY_GRAPHICS_DRIVER, null, "wrapper-$installedId".lowercase()))
+            SupportComponent.Type.LSFG ->
+                listOf(SupportSuggestionApplier.Edit(SupportComponent.KEY_LSFG_LAYER_VERSION, null, installedId))
             SupportComponent.Type.FEXCORE -> listOf(SupportSuggestionApplier.Edit("fexcoreVersion", null, installedId))
             SupportComponent.Type.BOX64 -> listOf(SupportSuggestionApplier.Edit("box64Version", null, installedId))
             SupportComponent.Type.DXVK -> listOf(
@@ -86,20 +98,82 @@ object SupportComponentApplier {
         SupportComponent.Type.DXVK -> setOf(ContentProfile.ContentType.CONTENT_TYPE_DXVK)
         SupportComponent.Type.VKD3D -> setOf(ContentProfile.ContentType.CONTENT_TYPE_VKD3D)
         SupportComponent.Type.PROTON -> setOf(ContentProfile.ContentType.CONTENT_TYPE_PROTON, ContentProfile.ContentType.CONTENT_TYPE_WINE)
-        SupportComponent.Type.TURNIP, SupportComponent.Type.WRAPPER -> emptySet()
+        SupportComponent.Type.WRAPPER -> setOf(ContentProfile.ContentType.CONTENT_TYPE_WRAPPER)
+        SupportComponent.Type.TURNIP, SupportComponent.Type.LSFG -> emptySet()
     }
 
     private suspend fun installedIds(context: Context, type: SupportComponent.Type): List<String> {
+        if (type == SupportComponent.Type.LSFG) return LsfgVkManager.installedLayerVersions(context)
         val lists = ManifestComponentHelper.loadInstalledContentLists(context)
         val installed = lists.installed
         return when (type) {
-            SupportComponent.Type.TURNIP, SupportComponent.Type.WRAPPER -> lists.installedDrivers
+            SupportComponent.Type.TURNIP -> lists.installedDrivers
+            SupportComponent.Type.WRAPPER -> installed.wrapper
             SupportComponent.Type.FEXCORE -> installed.fexcore
             SupportComponent.Type.BOX64 -> installed.box64 + installed.wowBox64
             SupportComponent.Type.DXVK -> installed.dxvk
             SupportComponent.Type.VKD3D -> installed.vkd3d
             SupportComponent.Type.PROTON -> installed.proton + installed.wine
+            SupportComponent.Type.LSFG -> emptyList()
         }
+    }
+
+    private val LAYER_ENTRIES = setOf("meta.json", LsfgVkManager.LAYER_LIB_FILENAME, LsfgVkManager.LAYER_MANIFEST_FILENAME)
+    private const val LAYER_ENTRY_MAX = 64L * 1024 * 1024
+    private const val LAYER_TOTAL_MAX = 96L * 1024 * 1024
+
+    private fun extractLayerZip(file: File, staging: File): String? {
+        var metaName: String? = null
+        var total = 0L
+        val seen = mutableSetOf<String>()
+        ZipFile(file).use { zip ->
+            for (entry in zip.entries()) {
+                if (entry.isDirectory) continue
+                if (entry.name !in LAYER_ENTRIES) throw StepFailure("layer zip holds an unexpected file ${entry.name}")
+                if (!seen.add(entry.name)) throw StepFailure("layer zip holds ${entry.name} twice")
+                if (entry.size > LAYER_ENTRY_MAX) throw StepFailure("${entry.name} is too large")
+                val out = File(staging, entry.name)
+                zip.getInputStream(entry).use { input ->
+                    out.outputStream().use { output ->
+                        val buffer = ByteArray(64 * 1024)
+                        var written = 0L
+                        while (true) {
+                            val n = input.read(buffer)
+                            if (n < 0) break
+                            written += n
+                            total += n
+                            if (written > LAYER_ENTRY_MAX || total > LAYER_TOTAL_MAX) throw StepFailure("layer zip is too large")
+                            output.write(buffer, 0, n)
+                        }
+                    }
+                }
+                if (entry.name == "meta.json") metaName = runCatching { JSONObject(out.readText()).optString("name") }.getOrNull()
+            }
+        }
+        for (required in LAYER_ENTRIES) {
+            if (!File(staging, required).isFile) throw StepFailure("layer zip has no $required")
+        }
+        return metaName
+    }
+
+    private suspend fun importLayer(context: Context, component: SupportComponent, file: File): String {
+        val name = component.applyValue
+        if (name !in installedIds(context, component.type)) {
+            val target = LsfgVkManager.layerDir(context, name)
+            val staging = File(target.parentFile, ".$name.tmp")
+            staging.deleteRecursively()
+            staging.mkdirs()
+            try {
+                val metaName = extractLayerZip(file, staging)
+                if (metaName != name) throw StepFailure("meta.json name is ${metaName ?: "missing"}, expected $name")
+                target.deleteRecursively()
+                if (!staging.renameTo(target)) throw StepFailure("layer install failed")
+            } finally {
+                staging.deleteRecursively()
+            }
+        }
+        if (name !in installedIds(context, component.type)) throw StepFailure("layer $name is not in the installed list")
+        return name
     }
 
     private suspend fun importDriver(context: Context, component: SupportComponent, file: File): String {
@@ -135,6 +209,39 @@ object SupportComponentApplier {
         }
         return installedIds(context, component.type).firstOrNull { it.equals(id, ignoreCase = true) }
             ?: throw StepFailure("$id is not in the installed list")
+    }
+
+    private suspend fun applyComponentEdits(
+        context: Context,
+        container: Container,
+        live: ContainerData,
+        edits: List<SupportSuggestionApplier.Edit>,
+        onProgress: (Float) -> Unit,
+        beforeSave: () -> Unit,
+        source: String,
+    ): SupportSuggestionApplier.Result {
+        val (extras, config) = edits.partition { isExtraKey(it.key) }
+        if (config.isNotEmpty()) {
+            val result = SupportSuggestionApplier.applyEdits(
+                context = context,
+                container = container,
+                live = live,
+                edits = config,
+                onProgress = { value, _ -> onProgress(value) },
+                beforeSave = if (extras.isEmpty()) beforeSave else ({ }),
+                source = source,
+            )
+            if (result != SupportSuggestionApplier.Result.Done) return result
+        }
+        if (extras.isNotEmpty()) {
+            withContext(NonCancellable) {
+                for (edit in extras) container.putExtra(edit.key, edit.value)
+                beforeSave()
+                container.saveData()
+                SessionReport.markConfigApplied(container, source)
+            }
+        }
+        return SupportSuggestionApplier.Result.Done
     }
 
     private fun writeAppliedRecord(
@@ -202,13 +309,15 @@ object SupportComponentApplier {
             }
             val container = ContainerUtils.getContainer(context, appId)
             val driver = component.packageFormat == SupportComponent.PackageFormat.ADRENOTOOLS_ZIP
-            if (driver && !ContainerUtils.toContainerData(container).containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
-                throw StepFailure("AdrenoTools drivers need a bionic container")
+            val layer = component.packageFormat == SupportComponent.PackageFormat.LSFG_LAYER_ZIP
+            val bionicOnly = driver || layer || component.type == SupportComponent.Type.WRAPPER
+            if (bionicOnly && !ContainerUtils.toContainerData(container).containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
+                throw StepFailure("${component.type.id} builds need a bionic container")
             }
 
             cache.deleteRecursively()
             cache.mkdirs()
-            val file = File(cache, if (driver) "package.zip" else "package.wcp")
+            val file = File(cache, if (driver || layer) "package.zip" else "package.wcp")
             onProgress(Step.DOWNLOAD, 0f)
             when (val result = SupportApi.downloadSigned(component.artifactUrl, file) { onProgress(Step.DOWNLOAD, it) }) {
                 is ApiResult.Success -> if (result.data != component.sha256) {
@@ -225,12 +334,16 @@ object SupportComponentApplier {
             }
 
             onProgress(Step.IMPORT, -1f)
-            val installedId = if (driver) importDriver(context, component, file) else importContent(context, component, file)
+            val installedId = when {
+                driver -> importDriver(context, component, file)
+                layer -> importLayer(context, component, file)
+                else -> importContent(context, component, file)
+            }
 
             onProgress(Step.APPLY, -1f)
             val live = ContainerUtils.toContainerData(container)
             val edits = editsFor(component, installedId)
-            val befores = edits.map { liveValue(live, it.key) }
+            val befores = edits.map { if (isExtraKey(it.key)) extraValue(container, it.key) else liveValue(live, it.key) }
             val appliedAt = Instant.now().toString()
             val snapshot = JSONObject().apply {
                 put("componentId", component.componentId)
@@ -254,12 +367,12 @@ object SupportComponentApplier {
             val record = snapshotFile(container, component.componentId)
             record.parentFile?.mkdirs()
             record.writeText(snapshot.toString())
-            val result = SupportSuggestionApplier.applyEdits(
+            val result = applyComponentEdits(
                 context = context,
                 container = container,
                 live = live,
                 edits = edits,
-                onProgress = { value, _ -> onProgress(Step.APPLY, value) },
+                onProgress = { value -> onProgress(Step.APPLY, value) },
                 beforeSave = {
                     runCatching { writeAppliedRecord(container, component, befores.last(), installedId, appliedAt, restored = false) }
                         .onFailure { Timber.e(it, "Recording the applied component failed") }
@@ -310,17 +423,17 @@ object SupportComponentApplier {
                     val key = entry.optString("key", "")
                     if (key.isEmpty()) continue
                     val before = if (entry.isNull("before")) null else entry.optString("before")
-                    if (before == null && !key.contains('.')) continue
+                    if (before == null && !key.contains('.') && !isExtraKey(key)) continue
                     add(SupportSuggestionApplier.Edit(key, null, before))
                 }
             }
             onProgress(Step.RESTORE, -1f)
-            val result = SupportSuggestionApplier.applyEdits(
+            val result = applyComponentEdits(
                 context = context,
                 container = container,
                 live = ContainerUtils.toContainerData(container),
                 edits = edits,
-                onProgress = { value, _ -> onProgress(Step.RESTORE, value) },
+                onProgress = { value -> onProgress(Step.RESTORE, value) },
                 beforeSave = { },
                 source = SOURCE_RESTORED,
             )

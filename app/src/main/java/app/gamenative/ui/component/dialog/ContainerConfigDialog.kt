@@ -101,6 +101,7 @@ import app.gamenative.utils.ManifestData
 import app.gamenative.utils.ManifestEntry
 import app.gamenative.utils.ManifestInstaller
 import app.gamenative.service.SteamService
+import app.gamenative.service.download.SteamDownloadMode
 import app.gamenative.utils.ManifestComponentHelper.VersionOptionList
 import app.gamenative.utils.ManifestRepository
 import app.gamenative.utils.PaddingUtils
@@ -549,7 +550,7 @@ fun ContainerConfigDialog(
 
         fun launchSteamAppDownload(appId: Int, label: String, onDownloaded: () -> Unit) {
             if (manifestInstallInProgress) return
-            val downloadInfo = SteamService.downloadApp(appId) ?: run {
+            val downloadInfo = SteamService.downloadApp(appId, SteamDownloadMode.UPDATE) ?: run {
                 onDownloaded()
                 return
             }
