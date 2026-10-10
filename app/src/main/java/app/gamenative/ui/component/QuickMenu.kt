@@ -1652,6 +1652,78 @@ private fun PerformanceHudQuickMenuTab(
             },
             accentColor = accentColor,
         )
+
+        QuickMenuToggleRow(
+            title = stringResource(R.string.performance_hud_battery_level_warning),
+            enabled = performanceHudConfig.batteryLevelWarningEnabled,
+            onToggle = {
+                onPerformanceHudConfigChanged(
+                    performanceHudConfig.copy(batteryLevelWarningEnabled = !performanceHudConfig.batteryLevelWarningEnabled),
+                )
+            },
+            accentColor = accentColor,
+        )
+        if (performanceHudConfig.batteryLevelWarningEnabled) {
+            QuickMenuAdjustmentRow(
+                title = stringResource(R.string.performance_hud_battery_level_limit),
+                valueText = stringResource(
+                    R.string.performance_hud_percentage_value,
+                    performanceHudConfig.batteryLevelWarningLimit,
+                ),
+                progress = normalizedProgress(performanceHudConfig.batteryLevelWarningLimit.toFloat(), 5f, 50f),
+                onDecrease = {
+                    onPerformanceHudConfigChanged(
+                        performanceHudConfig.copy(
+                            batteryLevelWarningLimit = (performanceHudConfig.batteryLevelWarningLimit - 5).coerceIn(5, 50),
+                        ),
+                    )
+                },
+                onIncrease = {
+                    onPerformanceHudConfigChanged(
+                        performanceHudConfig.copy(
+                            batteryLevelWarningLimit = (performanceHudConfig.batteryLevelWarningLimit + 5).coerceIn(5, 50),
+                        ),
+                    )
+                },
+                accentColor = accentColor,
+            )
+        }
+
+        QuickMenuToggleRow(
+            title = stringResource(R.string.performance_hud_battery_temp_warning),
+            enabled = performanceHudConfig.batteryTemperatureWarningEnabled,
+            onToggle = {
+                onPerformanceHudConfigChanged(
+                    performanceHudConfig.copy(batteryTemperatureWarningEnabled = !performanceHudConfig.batteryTemperatureWarningEnabled),
+                )
+            },
+            accentColor = accentColor,
+        )
+        if (performanceHudConfig.batteryTemperatureWarningEnabled) {
+            QuickMenuAdjustmentRow(
+                title = stringResource(R.string.performance_hud_battery_temp_limit),
+                valueText = stringResource(
+                    R.string.performance_hud_temperature_value,
+                    performanceHudConfig.batteryTemperatureWarningLimit,
+                ),
+                progress = normalizedProgress(performanceHudConfig.batteryTemperatureWarningLimit.toFloat(), 30f, 60f),
+                onDecrease = {
+                    onPerformanceHudConfigChanged(
+                        performanceHudConfig.copy(
+                            batteryTemperatureWarningLimit = (performanceHudConfig.batteryTemperatureWarningLimit - 5).coerceIn(30, 60),
+                        ),
+                    )
+                },
+                onIncrease = {
+                    onPerformanceHudConfigChanged(
+                        performanceHudConfig.copy(
+                            batteryTemperatureWarningLimit = (performanceHudConfig.batteryTemperatureWarningLimit + 5).coerceIn(30, 60),
+                        ),
+                    )
+                },
+                accentColor = accentColor,
+            )
+        }
         QuickMenuToggleRow(
             title = stringResource(R.string.performance_hud_power_draw),
             enabled = performanceHudConfig.showPowerDraw,

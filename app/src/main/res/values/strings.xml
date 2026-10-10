@@ -444,6 +444,7 @@
     <string name="performance_hud_color_intensity">Color intensity</string>
     <string name="performance_hud_text_outline">Text outline</string>
     <string name="performance_hud_percentage_value">%1$d%%</string>
+    <string name="performance_hud_temperature_value" translatable="false">%1$d°C</string>
     <string name="performance_hud_metrics">Shown metrics</string>
     <string name="performance_hud_metrics_description">Choose which stats appear in the overlay.</string>
     <string name="performance_hud_frame_rate">Frame rate</string>
@@ -460,6 +461,10 @@
     <string name="performance_hud_clock_time">Clock time</string>
     <string name="performance_hud_cpu_temperature">CPU temperature</string>
     <string name="performance_hud_gpu_temperature">GPU temperature</string>
+    <string name="performance_hud_battery_level_warning">Battery level warning</string>
+    <string name="performance_hud_battery_level_limit">Battery level limit</string>
+    <string name="performance_hud_battery_temp_warning">Battery temp warning</string>
+    <string name="performance_hud_battery_temp_limit">Battery temp limit</string>
     <string name="touchpad_help">Touchpad Help</string>
     <string name="hide_controls_with_controller">Hide on-screen controls with controller</string>
     <string name="hide_controls_with_controller_description">Automatically hide on-screen controls when a physical controller is connected</string>
