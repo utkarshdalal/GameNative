@@ -42,6 +42,10 @@ Full plan: [PLAN.MD](PLAN.MD) · Online matrix seed: [docs/online/MATRIX.md](doc
 
 **Next:** more fork-verified Online OK titles; keep weekly upstream merges.
 
+## Releases
+
+Tagged builds: `gamenative-online-v*` via [`.github/workflows/online-release.yml`](.github/workflows/online-release.yml) → [Releases](https://github.com/Vanyc-00X/GameNative-Online/releases).
+
 ## What you get (inherited + fork direction)
 
 From upstream GameNative:
