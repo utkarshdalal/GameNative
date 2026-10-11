@@ -103,9 +103,14 @@ import app.gamenative.ui.component.dialog.debugReportUsesApp
 import app.gamenative.ui.component.dialog.GameFeedbackDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.MessageDialog
+import app.gamenative.ui.component.dialog.OnlineSessionFeedbackDialog
+import app.gamenative.ui.component.dialog.OnlineSessionFeedbackDialogState
 import app.gamenative.ui.component.dialog.state.DebugReportDialogState
 import app.gamenative.ui.component.dialog.state.GameFeedbackDialogState
 import app.gamenative.ui.component.dialog.state.MessageDialogState
+import app.gamenative.online.OnlineFeedbackStore
+import app.gamenative.online.OnlineReadyFilter
+import app.gamenative.online.OnlineSessionReport
 import app.gamenative.ui.components.BootingSplash
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.enums.ConnectionState
@@ -414,6 +419,9 @@ fun PluviaMain(
 
     var gameFeedbackState by rememberSaveable(stateSaver = GameFeedbackDialogState.Saver) {
         mutableStateOf(GameFeedbackDialogState(false))
+    }
+    var onlineSessionFeedbackState by remember {
+        mutableStateOf(OnlineSessionFeedbackDialogState())
     }
 
     var debugReportState by rememberSaveable(stateSaver = DebugReportDialogState.Saver) {
@@ -771,6 +779,15 @@ fun PluviaMain(
                     gameFeedbackState = GameFeedbackDialogState(
                         visible = true,
                         appId = event.appId,
+                    )
+                }
+
+                is MainViewModel.MainUiEvent.ShowOnlineSessionFeedbackDialog -> {
+                    val gameName = ContainerUtils.resolveGameName(event.appId)
+                    onlineSessionFeedbackState = OnlineSessionFeedbackDialogState(
+                        visible = true,
+                        appId = event.appId,
+                        gameName = gameName,
                     )
                 }
 
@@ -1536,6 +1553,63 @@ fun PluviaMain(
                     )
                 }
             }
+
+            OnlineSessionFeedbackDialog(
+                state = onlineSessionFeedbackState,
+                onWorked = { notes ->
+                    val steamAppId = runCatching {
+                        ContainerUtils.extractGameIdFromContainerId(onlineSessionFeedbackState.appId)
+                    }.getOrNull()
+                    if (steamAppId != null) {
+                        OnlineFeedbackStore.save(
+                            context,
+                            OnlineSessionReport(
+                                appId = steamAppId.toString(),
+                                worked = true,
+                                notes = notes,
+                            ),
+                        )
+                        SnackbarManager.show(context.getString(R.string.online_feedback_thanks_worked))
+                    }
+                    onlineSessionFeedbackState = OnlineSessionFeedbackDialogState()
+                    viewModel.onGameFeedbackResolved(context, 5)
+                },
+                onFailed = { reason, notes ->
+                    val steamAppId = runCatching {
+                        ContainerUtils.extractGameIdFromContainerId(onlineSessionFeedbackState.appId)
+                    }.getOrNull()
+                    if (steamAppId != null) {
+                        OnlineFeedbackStore.save(
+                            context,
+                            OnlineSessionReport(
+                                appId = steamAppId.toString(),
+                                worked = false,
+                                failReason = reason,
+                                notes = notes,
+                            ),
+                        )
+                        SnackbarManager.show(context.getString(R.string.online_feedback_thanks_failed))
+                    }
+                    onlineSessionFeedbackState = OnlineSessionFeedbackDialogState()
+                    viewModel.onGameFeedbackResolved(context, 2)
+                },
+                onSkip = {
+                    onlineSessionFeedbackState = OnlineSessionFeedbackDialogState()
+                    viewModel.onGameFeedbackResolved(context, null)
+                },
+                onCopyDebug = {
+                    val steamAppId = runCatching {
+                        ContainerUtils.extractGameIdFromContainerId(onlineSessionFeedbackState.appId)
+                    }.getOrNull()
+                    if (steamAppId != null) {
+                        val line = OnlineReadyFilter.debugReportLine(context, steamAppId)
+                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                            as android.content.ClipboardManager
+                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("online_debug", line))
+                        SnackbarManager.show(context.getString(R.string.online_feedback_debug_copied))
+                    }
+                },
+            )
 
             GameFeedbackDialog(
                 state = gameFeedbackState,

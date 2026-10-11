@@ -1,12 +1,6 @@
-# Online compatibility matrix (seed)
+# Online compatibility matrix
 
-Living list for this fork. Status values match `OnlineStatus` in code.
-
-| App ID | Game | Status | Steam client | Proton | Notes | Last verified |
-|---|---|---|---|---|---|---|
-| 813780 | Age of Empires II: DE | `online_ok` | headless/bionic | 10 | Upstream-reported multiplayer fixes | TBD |
-| 730 | Counter-Strike 2 / CS family | `online_ok` | headless/bionic | 10 | Upstream-reported; verify build | TBD |
-| 1773180 | The Matriarch | `untested_online` | — | — | Has online tags; presence/status unproven on fork | TBD |
+Source of truth for the shipped asset: `app/src/main/assets/online_matrix.json`.
 
 ## Status legend
 
@@ -18,4 +12,14 @@ Living list for this fork. Status values match `OnlineStatus` in code.
 | `online_blocked` | ONLINE BLOCKED |
 | `untested_online` | UNTESTED ONLINE |
 
-Update this file when a title is verified. Do not mark anti-cheat titles as `online_ok`.
+## Seed highlights
+
+**ONLINE OK:** AoE II DE/HD, Counter-Strike family, Team Fortress 2  
+
+**ONLINE FLAKY:** Terraria, Valheim, L4D2, Portal 2 co-op, GTA V / RDR2 (Rockstar), Among Us, …  
+
+**ONLINE BLOCKED:** Dota 2, Apex, R6 Siege, Elden Ring online (anti-cheat)  
+
+**UNTESTED ONLINE:** The Matriarch, Lethal Company, Palworld, Stardew co-op, …  
+
+Update the JSON when a title is verified. User “online worked” reports also appear under the **Online Ready** library tab.

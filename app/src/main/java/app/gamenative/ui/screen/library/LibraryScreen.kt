@@ -1038,6 +1038,8 @@ private fun LibraryScreenContent(
                 // blank screen (or the empty message before stored favorites arrive).
                 val showFavoritesEmptyState = state.currentTab == LibraryTab.FAVORITES &&
                     favoritesLoaded && !state.isLoading && state.appInfoList.isEmpty()
+                val showOnlineReadyEmptyState = state.currentTab == LibraryTab.ONLINE_READY &&
+                    !state.isLoading && state.appInfoList.isEmpty()
                 if (showEmptyStateSplash) {
                     val (messageResId, buttonResId, onAction) = when (state.currentTab) {
                         LibraryTab.STEAM -> Triple(
@@ -1091,6 +1093,14 @@ private fun LibraryScreenContent(
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
+                } else if (showOnlineReadyEmptyState) {
+                    LibraryFavoritesEmptyState(
+                        titleResId = R.string.online_ready_empty_title,
+                        messageResId = R.string.online_ready_empty_message,
+                        actionLabelResId = R.string.favorites_empty_action,
+                        onAction = { onTabChanged(LibraryTab.ALL) },
+                        modifier = Modifier.fillMaxSize(),
+                    )
                 } else {
                     // Library list (content scrolls behind tab bar)
                     if (currentPaneType == PaneType.CAROUSEL) {

@@ -76,6 +76,7 @@ class MainViewModel @Inject constructor(
     companion object {
         private const val KEY_CURRENT_SCREEN_ROUTE = "current_screen_route"
         private const val MIN_WARM_PITCH_SESSION_MS = 7 * 60 * 1000L
+        private const val ONLINE_FEEDBACK_MIN_SESSION_MS = 2 * 60 * 1000L
         private const val WARM_PITCH_COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000L
         private const val SHORT_SESSION_MS = 90 * 1000L
         private const val AI_DEBUG_OFFER_INTERVAL_MS = 3 * 24 * 60 * 60 * 1000L
@@ -129,6 +130,7 @@ class MainViewModel @Inject constructor(
         data class SteamDisconnected(val isTerminal: Boolean) : MainUiEvent()
         data object ShowDiscordSupportDialog : MainUiEvent()
         data class ShowGameFeedbackDialog(val appId: String) : MainUiEvent()
+        data class ShowOnlineSessionFeedbackDialog(val appId: String) : MainUiEvent()
         data class ShowMembershipPitch(val appId: String, val trigger: String) : MainUiEvent()
         data class ShowDebugReportDialog(val appId: String) : MainUiEvent()
         data class ShowAiDebugOffer(val appId: String, val trigger: String) : MainUiEvent()
@@ -766,24 +768,49 @@ class MainViewModel @Inject constructor(
                     val feedbackGameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
                     if (feedbackGameSource != GameSource.CUSTOM_GAME) {
                         val container = ContainerUtils.getContainer(context, appId)
+                        val installProfile = app.gamenative.online.InstallProfileApplier.readFromContainer(container)
+                            ?: app.gamenative.online.InstallProfileStore.get(context, appId)
+                        val steamAppId = runCatching {
+                            ContainerUtils.extractGameIdFromContainerId(appId)
+                        }.getOrNull()
+                        val onlineSessionLongEnough = sessionLengthMs >= ONLINE_FEEDBACK_MIN_SESSION_MS
+                        val askOnlineFeedback = feedbackGameSource == GameSource.STEAM &&
+                            installProfile == app.gamenative.online.InstallProfile.ONLINE &&
+                            onlineSessionLongEnough &&
+                            steamAppId != null &&
+                            app.gamenative.online.OnlineFeedbackStore.shouldAsk(
+                                context,
+                                steamAppId.toString(),
+                                store = "steam",
+                            )
 
-                        val shown = container.getExtra("discord_support_prompt_shown", "false") == "true"
-                        val configChanged = container.getExtra("config_changed", "false") == "true"
-                        if (!shown) {
-                            container.putExtra("discord_support_prompt_shown", "true")
-                            container.saveData()
+                        if (askOnlineFeedback) {
                             feedbackRequested = true
-                            _uiEvent.send(MainUiEvent.ShowGameFeedbackDialog(appId))
-                        }
+                            app.gamenative.online.OnlineFeedbackStore.markAsked(
+                                context,
+                                steamAppId!!.toString(),
+                                store = "steam",
+                            )
+                            _uiEvent.send(MainUiEvent.ShowOnlineSessionFeedbackDialog(appId))
+                        } else {
+                            val shown = container.getExtra("discord_support_prompt_shown", "false") == "true"
+                            val configChanged = container.getExtra("config_changed", "false") == "true"
+                            if (!shown) {
+                                container.putExtra("discord_support_prompt_shown", "true")
+                                container.saveData()
+                                feedbackRequested = true
+                                _uiEvent.send(MainUiEvent.ShowGameFeedbackDialog(appId))
+                            }
 
-                        // Only show feedback if container config was changed before this game run
-                        if (configChanged) {
-                            // Clear the flag
-                            container.putExtra("config_changed", "false")
-                            container.saveData()
-                            // Show the feedback dialog
-                            feedbackRequested = true
-                            _uiEvent.send(MainUiEvent.ShowGameFeedbackDialog(appId))
+                            // Only show feedback if container config was changed before this game run
+                            if (configChanged) {
+                                // Clear the flag
+                                container.putExtra("config_changed", "false")
+                                container.saveData()
+                                // Show the feedback dialog
+                                feedbackRequested = true
+                                _uiEvent.send(MainUiEvent.ShowGameFeedbackDialog(appId))
+                            }
                         }
                     } else {
                         Timber.d("Custom game detected, not showing feedback")

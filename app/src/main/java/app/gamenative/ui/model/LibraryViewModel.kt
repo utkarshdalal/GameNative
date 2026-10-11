@@ -1233,6 +1233,14 @@ class LibraryViewModel @Inject constructor(
                 } else {
                     entries
                 }
+            }.let { entries ->
+                if (currentTab == app.gamenative.ui.enums.LibraryTab.ONLINE_READY) {
+                    entries.filter {
+                        app.gamenative.online.OnlineReadyFilter.isOnlineReady(context, it.item)
+                    }
+                } else {
+                    entries
+                }
             }.sortedWith(sortComparator).mapIndexed { idx, entry ->
                 entry.item.copy(index = idx, isInstalled = entry.isInstalled)
             }

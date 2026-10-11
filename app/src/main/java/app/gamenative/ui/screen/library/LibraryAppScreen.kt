@@ -164,6 +164,7 @@ import app.gamenative.data.StoreGameDetails
 import app.gamenative.service.SteamService
 import app.gamenative.online.OnlineCapability
 import app.gamenative.online.OnlineCapabilityDetector
+import app.gamenative.online.OnlineFeedbackStore
 import app.gamenative.online.OnlineStatus
 import app.gamenative.ui.component.CommunityCompatibilitySection
 import app.gamenative.ui.component.GamepadAction
@@ -1670,6 +1671,25 @@ internal fun AppScreenContent(
                 }
                 if (onlineInfo.capability != OnlineCapability.NONE || onlineInfo.status != OnlineStatus.OFFLINE_ONLY) {
                     OnlineStatusBadge(status = onlineInfo.status)
+                    val lastOnlineReport = remember(steamAppIdForOnline) {
+                        OnlineFeedbackStore.get(context, steamAppIdForOnline.toString())
+                    }
+                    if (lastOnlineReport != null) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = if (lastOnlineReport.worked) {
+                                stringResource(R.string.online_last_report_worked)
+                            } else {
+                                stringResource(
+                                    R.string.online_last_report_failed,
+                                    lastOnlineReport.failReason?.label
+                                        ?: stringResource(R.string.online_feedback_failed),
+                                )
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
+                        )
+                    }
                     Spacer(modifier = Modifier.height(12.dp))
                 }
 

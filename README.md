@@ -29,14 +29,15 @@ Full plan: [PLAN.MD](PLAN.MD) · Online matrix seed: [docs/online/MATRIX.md](doc
 
 ## Status
 
-**Phase 0 complete** · **Phase 1 core complete**
+**Phase 0–2 complete (core)**
 
-- Install dialog offers **Online** vs **Offline** when multiplayer is detected
-- Online install enables Headless Steam on the game container
-- Per-game online status badge on game details
-- Matrix seed in `app/src/main/assets/online_matrix.json`
+- Install dialog: **Online** vs **Offline**
+- Headless Steam for Online installs
+- Online status badges + **Online Ready** library tab
+- Post-session **Did online work?** prompt with fail reasons + copy debug
+- Matrix seed (~35 titles) in `app/src/main/assets/online_matrix.json`
 
-**Next:** Phase 2 — “Did online work?” prompts, fail-reason diagnostics, Online Ready tab.
+**Next:** Phase 3 — public compatibility page, share cards, more verified titles.
 
 ## What you get (inherited + fork direction)
 

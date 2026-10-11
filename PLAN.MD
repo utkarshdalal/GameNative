@@ -227,19 +227,20 @@ This becomes marketing, SEO, and contributor bait.
 - [x] Wire Online profile → Headless Steam on container create/install
 - [x] Persist profile (`InstallProfileStore` + container extra)
 - [x] Online status badge on game details
-- [ ] Post-session prompt / fail reasons (Phase 2)
+- [x] Post-session prompt / fail reasons (Phase 2)
 
-### Phase 2 — Trust layer (weeks 3–5)
-- Badges everywhere  
-- “Did online work?” prompt  
-- Fail reason mapping  
-- Seed matrix with 20–50 popular online games  
+### Phase 2 — Trust layer (weeks 3–5) ✅
+- [x] Badges on game details + Online Ready tab
+- [x] “Did online work?” prompt after Online-profile sessions (≥2 min)
+- [x] Fail reason mapping (`OnlineFailReason` + copy debug report)
+- [x] Seed matrix expanded (~35 titles in `online_matrix.json`)
+- [x] Local report persistence (`OnlineFeedbackStore`)
 
 ### Phase 3 — Growth loop (weeks 5–8)
-- Online Ready tab  
-- Public online compatibility page  
-- Shareable “Online OK on my device” cards  
-- Iterate top requested multiplayer titles  
+- [x] Online Ready tab (library)
+- [ ] Public online compatibility page  
+- [ ] Shareable “Online OK on my device” cards  
+- [ ] Iterate top requested multiplayer titles  
 
 ### Phase 4 — Harden (ongoing)
 - Proton 10/11+ online path stability  

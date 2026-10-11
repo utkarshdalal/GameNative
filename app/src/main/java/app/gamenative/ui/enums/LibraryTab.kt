@@ -3,6 +3,7 @@ package app.gamenative.ui.enums
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Explore
+import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.ui.graphics.vector.ImageVector
 import app.gamenative.R
@@ -45,6 +46,16 @@ enum class LibraryTab(
         showAmazon = true,
         installedOnly = false,
         icon = Icons.Rounded.Star,
+    ),
+    ONLINE_READY(
+        labelResId = R.string.tab_online_ready,
+        showCustom = false,
+        showSteam = true,
+        showGoG = false,
+        showEpic = false,
+        showAmazon = false,
+        installedOnly = false,
+        icon = Icons.Outlined.Public,
     ),
     STEAM(
         labelResId = R.string.tab_steam,
@@ -94,7 +105,7 @@ enum class LibraryTab(
     ;
 
     companion object {
-        val configurableEntries = listOf(RECOMMENDED, STEAM, GOG, EPIC, AMAZON)
+        val configurableEntries = listOf(RECOMMENDED, ONLINE_READY, STEAM, GOG, EPIC, AMAZON)
 
         /**
          * Tabs shown in the UI. Custom (LOCAL) games work on all flavors: legacy maps folders

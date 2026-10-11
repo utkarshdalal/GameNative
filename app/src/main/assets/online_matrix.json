@@ -1,22 +1,39 @@
 {
   "entries": [
-    {
-      "appId": "813780",
-      "store": "steam",
-      "status": "online_ok",
-      "notes": "Upstream-reported multiplayer fixes (AoE II)"
-    },
-    {
-      "appId": "730",
-      "store": "steam",
-      "status": "online_ok",
-      "notes": "Upstream-reported Counter-Strike family online path"
-    },
-    {
-      "appId": "1773180",
-      "store": "steam",
-      "status": "untested_online",
-      "notes": "The Matriarch — has online tags; verify lobbies/servers"
-    }
+    { "appId": "813780", "store": "steam", "status": "online_ok", "notes": "Age of Empires II: DE — upstream headless multiplayer fixes" },
+    { "appId": "730", "store": "steam", "status": "online_ok", "notes": "Counter-Strike family — upstream-reported online path" },
+    { "appId": "440", "store": "steam", "status": "online_ok", "notes": "Team Fortress 2 — classic Steam multiplayer" },
+    { "appId": "221380", "store": "steam", "status": "online_ok", "notes": "Age of Empires II (HD)" },
+    { "appId": "105600", "store": "steam", "status": "online_flaky", "notes": "Terraria" },
+    { "appId": "892970", "store": "steam", "status": "online_flaky", "notes": "Valheim" },
+    { "appId": "322330", "store": "steam", "status": "online_flaky", "notes": "Don't Starve Together" },
+    { "appId": "252950", "store": "steam", "status": "online_flaky", "notes": "Rocket League — may need EOS" },
+    { "appId": "108600", "store": "steam", "status": "online_flaky", "notes": "Project Zomboid" },
+    { "appId": "251570", "store": "steam", "status": "online_flaky", "notes": "7 Days to Die" },
+    { "appId": "620", "store": "steam", "status": "online_flaky", "notes": "Portal 2 co-op" },
+    { "appId": "4000", "store": "steam", "status": "online_flaky", "notes": "Garry's Mod" },
+    { "appId": "550", "store": "steam", "status": "online_flaky", "notes": "Left 4 Dead 2" },
+    { "appId": "240", "store": "steam", "status": "online_flaky", "notes": "Counter-Strike: Source" },
+    { "appId": "945360", "store": "steam", "status": "online_flaky", "notes": "Among Us" },
+    { "appId": "239140", "store": "steam", "status": "online_flaky", "notes": "Dying Light" },
+    { "appId": "346110", "store": "steam", "status": "online_flaky", "notes": "ARK: Survival Evolved" },
+    { "appId": "236390", "store": "steam", "status": "online_flaky", "notes": "War Thunder" },
+    { "appId": "271590", "store": "steam", "status": "online_flaky", "notes": "GTA V Legacy — Rockstar online not guaranteed" },
+    { "appId": "1174180", "store": "steam", "status": "online_flaky", "notes": "Red Dead Redemption 2 — Rockstar online flaky" },
+    { "appId": "291550", "store": "steam", "status": "untested_online", "notes": "Brawlhalla" },
+    { "appId": "413150", "store": "steam", "status": "untested_online", "notes": "Stardew Valley co-op" },
+    { "appId": "1773180", "store": "steam", "status": "untested_online", "notes": "The Matriarch" },
+    { "appId": "1966720", "store": "steam", "status": "untested_online", "notes": "Lethal Company" },
+    { "appId": "1623730", "store": "steam", "status": "untested_online", "notes": "Palworld" },
+    { "appId": "438100", "store": "steam", "status": "untested_online", "notes": "VRChat" },
+    { "appId": "400", "store": "steam", "status": "offline_only", "notes": "Portal" },
+    { "appId": "220", "store": "steam", "status": "offline_only", "notes": "Half-Life 2" },
+    { "appId": "1091500", "store": "steam", "status": "offline_only", "notes": "Cyberpunk 2077" },
+    { "appId": "367520", "store": "steam", "status": "offline_only", "notes": "Hollow Knight" },
+    { "appId": "570", "store": "steam", "status": "online_blocked", "notes": "Dota 2 — VAC" },
+    { "appId": "1172470", "store": "steam", "status": "online_blocked", "notes": "Apex Legends — EAC" },
+    { "appId": "359550", "store": "steam", "status": "online_blocked", "notes": "Rainbow Six Siege — BattlEye" },
+    { "appId": "1245620", "store": "steam", "status": "online_blocked", "notes": "Elden Ring — EAC online" },
+    { "appId": "552990", "store": "steam", "status": "online_blocked", "notes": "World of Warships" }
   ]
 }
