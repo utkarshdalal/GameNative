@@ -461,6 +461,16 @@ object ContainerUtils {
                 "cpuList" -> value?.let { updatedData.copy(cpuList = it as? String ?: updatedData.cpuList) } ?: updatedData
                 "cpuListWoW64" -> value?.let { updatedData.copy(cpuListWoW64 = it as? String ?: updatedData.cpuListWoW64) } ?: updatedData
                 "audioDriver" -> value?.let { updatedData.copy(audioDriver = it as? String ?: updatedData.audioDriver) } ?: updatedData
+                "inputType" -> value?.let {
+                    val api = (it as? Int)?.let { ordinal -> PreferredInputApi.values().getOrNull(ordinal) }
+                    when (api) {
+                        PreferredInputApi.AUTO -> updatedData.copy(enableXInput = false, enableDInput = false)
+                        PreferredInputApi.DINPUT -> updatedData.copy(enableXInput = false, enableDInput = true)
+                        PreferredInputApi.XINPUT -> updatedData.copy(enableXInput = true, enableDInput = false)
+                        PreferredInputApi.BOTH -> updatedData.copy(enableXInput = true, enableDInput = true)
+                        null -> updatedData
+                    }
+                } ?: updatedData
                 "wincomponents" -> value?.let { updatedData.copy(wincomponents = it as? String ?: updatedData.wincomponents) } ?: updatedData
                 "videoMemorySize" -> value?.let { updatedData.copy(videoMemorySize = it as? String ?: updatedData.videoMemorySize) } ?: updatedData
                 "launchBionicSteam" -> value?.let { updatedData.copy(launchBionicSteam = it as? Boolean ?: updatedData.launchBionicSteam) } ?: updatedData

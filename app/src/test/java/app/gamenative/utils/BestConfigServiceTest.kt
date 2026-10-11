@@ -364,6 +364,33 @@ class BestConfigServiceTest {
     }
 
     @Test
+    fun testImportedConfigAppliesDirectInputOnly() = runBlocking {
+        val configJson = """
+            {
+                "dxwrapper": "dxvk",
+                "dxwrapperConfig": "version=1.10.3",
+                "containerVariant": "bionic",
+                "wineVersion": "proton-9.0-arm64ec",
+                "inputType": 1
+            }
+        """.trimIndent()
+
+        val parsed = BestConfigService.parseConfigResult(
+            context,
+            Json.parseToJsonElement(configJson).jsonObject,
+            "exact_gpu_match",
+            true,
+        )
+        val updated = ContainerUtils.applyBestConfigMapToContainerData(
+            ContainerData(enableXInput = true, enableDInput = true),
+            parsed.config,
+        )
+
+        assertFalse(updated.enableXInput)
+        assertTrue(updated.enableDInput)
+    }
+
+    @Test
     fun testGlibcBox64VersionValidation() {
         // Modern flavor rejects glibc containers wholesale — this test only applies to legacy.
         assumeFalse("glibc not supported on modern", BuildConfig.MODERN_ANDROID)
@@ -1128,4 +1155,3 @@ class BestConfigServiceTest {
         }
     }
 }
-
