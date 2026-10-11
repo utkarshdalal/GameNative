@@ -51,12 +51,16 @@ jobs:
 
       - name: Inject dummy credentials
         run: |
-          cat <<EOF > local.properties
-          POSTHOG_API_KEY=dummy
-          POSTHOG_HOST=https://us.i.posthog.com
-          STEAMGRIDDB_API_KEY=
-          CLOUD_PROJECT_NUMBER=
-          EOF
+          # Non-empty placeholders required: empty secrets.gradle values emit illegal BuildConfig.java
+          SDK_DIR="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          printf '%s\n' \
+            "sdk.dir=${SDK_DIR}" \
+            "POSTHOG_API_KEY=dummy" \
+            "POSTHOG_HOST=https://us.i.posthog.com" \
+            "STEAMGRIDDB_API_KEY=unused" \
+            "CLOUD_PROJECT_NUMBER=0" \
+            > local.properties
+          cat local.properties
 
       - name: Install Android SDK packages
         run: |
