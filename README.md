@@ -29,17 +29,18 @@ Full plan: [PLAN.MD](PLAN.MD) · Online matrix seed: [docs/online/MATRIX.md](doc
 
 ## Status
 
-**Phase 0–3 complete (core growth loop)**
+**Phase 0–4 first pass complete**
 
-- Install dialog: **Online** vs **Offline**
-- Headless Steam for Online installs
+- Install dialog: **Online** vs **Offline** (blocked titles forced Offline)
+- Headless Steam + Proton 10 preference for Online installs; reasserted after gamefixes
 - Online status badges + **Online Ready** library tab
-- Post-session **Did online work?** prompt with fail reasons + copy debug
+- Post-session **Did online work?** prompt; local failures demote false `ONLINE OK`
 - Public list: [docs/online/COMPATIBILITY.md](docs/online/COMPATIBILITY.md)
 - Shareable **Online OK on my device** cards (game page + Settings)
 - Matrix seed (~47 titles) in `app/src/main/assets/online_matrix.json`
+- Weekly upstream sync: `tools/sync-upstream.ps1`
 
-**Next:** Phase 4 — harden Proton/EOS online paths, more verified titles.
+**Next:** more fork-verified Online OK titles; keep weekly upstream merges.
 
 ## What you get (inherited + fork direction)
 

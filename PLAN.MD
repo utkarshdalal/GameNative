@@ -242,11 +242,14 @@ This becomes marketing, SEO, and contributor bait.
 - [x] Shareable “Online OK on my device” cards (per-game + Settings summary)
 - [x] Expanded matrix (~47 titles); regenerate via `tools/generate_online_compatibility.py`
 
-### Phase 4 — Harden (ongoing)
-- Proton 10/11+ online path stability  
-- EOS / launcher online edge cases  
-- Reduce false `ONLINE OK`  
-- Stay close enough to upstream to pull fixes weekly  
+### Phase 4 — Harden (ongoing) ✅ (first pass)
+- [x] Online profile policy: Headless Steam + prefer Proton 10 (no force-down from 11+)
+- [x] Reassert Online flags after gamefixes on launch + preflight warnings
+- [x] EOS/TLS-friendly env (`HOSTNAME`, `SteamOfflineMode=0`, `OPENSSL_ia32cap`); SSL certs via Bionic launcher
+- [x] Local failure reports demote `ONLINE OK` → `FLAKY`; tags never invent `ONLINE OK`
+- [x] Blocked-install warning + force Offline profile
+- [x] Tighten matrix (CS/TF2 demoted to flaky until fork-verified)
+- [x] Weekly sync helper `tools/sync-upstream.ps1` + `docs/UPSTREAM_SYNC.md`
 
 ---
 

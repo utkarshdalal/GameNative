@@ -9,14 +9,14 @@
     {
       "appId": "730",
       "store": "steam",
-      "status": "online_ok",
-      "notes": "Counter-Strike family — upstream-reported online path"
+      "status": "online_flaky",
+      "notes": "Counter-Strike family — VAC online path; not fork-verified Online OK"
     },
     {
       "appId": "440",
       "store": "steam",
-      "status": "online_ok",
-      "notes": "Team Fortress 2 — classic Steam multiplayer"
+      "status": "online_flaky",
+      "notes": "Team Fortress 2 — Steam multiplayer often works; treat as flaky until fork-verified"
     },
     {
       "appId": "221380",

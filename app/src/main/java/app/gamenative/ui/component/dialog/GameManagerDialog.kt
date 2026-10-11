@@ -447,6 +447,20 @@ fun GameManagerDialog(
                                     thickness = 0.5.dp,
                                     color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
                                 )
+                            } else if (!isBaseGameInstalled &&
+                                onlineInfo.status == app.gamenative.online.OnlineStatus.ONLINE_BLOCKED
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.online_install_blocked_message),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                )
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    thickness = 0.5.dp,
+                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                                )
                             }
 
                             // Select All toggle
@@ -536,10 +550,12 @@ fun GameManagerDialog(
                                         val dlcIds = selectedAppIds
                                             .filter { selectedId -> selectedId.key in enabledAppIds.filter { enabledId -> enabledId.value } }
                                             .filter { selectedId -> selectedId.value }.keys.toList()
-                                        val profile = if (!isBaseGameInstalled && onlineInfo.showInstallProfileChoice) {
-                                            selectedInstallProfile
-                                        } else {
-                                            null
+                                        val profile = when {
+                                            isBaseGameInstalled -> null
+                                            onlineInfo.showInstallProfileChoice -> selectedInstallProfile
+                                            onlineInfo.status == app.gamenative.online.OnlineStatus.ONLINE_BLOCKED ->
+                                                InstallProfile.OFFLINE
+                                            else -> null
                                         }
                                         onInstall(dlcIds, profile)
                                     }

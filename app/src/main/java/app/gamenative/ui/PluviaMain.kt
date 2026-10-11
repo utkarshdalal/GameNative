@@ -2402,6 +2402,27 @@ fun preLaunchApp(
             Timber.tag("GameFixes").w(e, "Game fixes failed in preLaunchApp")
         }
 
+        // Online profile hardening must win over known-config / gamefix Steam flags.
+        try {
+            app.gamenative.online.InstallProfileApplier.reassertOnLaunchIfNeeded(context, container)
+            val steamAppIdForOnline = runCatching {
+                ContainerUtils.extractGameIdFromContainerId(appId)
+            }.getOrNull()
+            if (steamAppIdForOnline != null &&
+                app.gamenative.online.InstallProfileApplier.readFromContainer(container) ==
+                app.gamenative.online.InstallProfile.ONLINE
+            ) {
+                val status = app.gamenative.online.OnlineCapabilityDetector
+                    .resolveSteam(context, steamAppIdForOnline)
+                    .status
+                val warnings = app.gamenative.online.OnlineProfilePolicy
+                    .preflightWarnings(container, status)
+                warnings.forEach { Timber.tag("OnlinePreflight").w("%s: %s", appId, it) }
+            }
+        } catch (e: Exception) {
+            Timber.tag("OnlineProfile").w(e, "Failed to reassert online profile for $appId")
+        }
+
         val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
         val isLocalSavesOnly = ContainerUtils.isLocalSavesOnly(context, appId)
 

@@ -100,7 +100,8 @@
     <string name="online_install_offline_title">Установка Offline (рекомендуется)</string>
     <string name="online_install_offline_subtitle">Быстрее запуск · меньше RAM · соло / локально</string>
     <string name="online_install_online_title">Установка Online</string>
-    <string name="online_install_online_subtitle">Headless Steam · лобби / серверы</string>
+    <string name="online_install_online_subtitle">Headless Steam · предпочтителен Proton 10 · лобби / серверы</string>
+    <string name="online_install_blocked_message">Онлайн-мультиплеер для этой игры заблокирован (anti-cheat или нет поддержки). Установка пойдёт по Offline-пути.</string>
     <string name="online_badge_label">%1$s</string>
     <string name="tab_online_ready">Online Ready</string>
     <string name="online_ready_empty_title">Пока нет Online Ready игр</string>

@@ -15,3 +15,5 @@
 | `untested_online` | UNTESTED ONLINE |
 
 User “online worked” reports also appear under the **Online Ready** library tab and in share cards.
+
+Phase 4: local failure reports demote `online_ok` → `online_flaky` on-device. Store tags never invent `ONLINE OK`.

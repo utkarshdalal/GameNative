@@ -14,11 +14,10 @@ object InstallProfileApplier {
     fun apply(context: Context, container: Container, profile: InstallProfile) {
         when (profile) {
             InstallProfile.ONLINE -> {
-                // Headless Steam is the upstream online path that fixed multiplayer for several titles.
-                container.isLaunchRealSteam = true
-                container.isLaunchBionicSteam = false
-                container.steamType = Container.STEAM_TYPE_HEADLESS
-                container.isSteamOfflineMode = false
+                OnlineProfilePolicy.applySteamClientFlags(container)
+                OnlineProfilePolicy.mergeOnlineEnv(container)
+                OnlineProfilePolicy.preferProton10IfNeeded(container)
+                OnlineProfilePolicy.markPolicyApplied(container)
             }
             InstallProfile.OFFLINE -> {
                 container.isLaunchRealSteam = false
@@ -30,12 +29,13 @@ object InstallProfileApplier {
         container.saveData()
         InstallProfileStore.save(context, container.id, profile)
         Timber.i(
-            "Applied install profile=%s to container=%s (realSteam=%s bionic=%s type=%s)",
+            "Applied install profile=%s to container=%s (realSteam=%s bionic=%s type=%s wine=%s)",
             profile.storageKey,
             container.id,
             container.isLaunchRealSteam,
             container.isLaunchBionicSteam,
             container.steamType,
+            container.wineVersion,
         )
     }
 
@@ -43,6 +43,24 @@ object InstallProfileApplier {
     fun applyPendingIfAny(context: Context, container: Container) {
         val pending = InstallProfileStore.get(context, container.id) ?: return
         apply(context, container, pending)
+    }
+
+    /**
+     * Re-assert Online hardening on every launch so gamefixes/known-configs cannot silently
+     * disable Headless Steam or turn steamOfflineMode back on.
+     */
+    fun reassertOnLaunchIfNeeded(context: Context, container: Container) {
+        val profile = readFromContainer(container)
+            ?: InstallProfileStore.get(context, container.id)
+            ?: return
+        if (profile != InstallProfile.ONLINE) return
+        OnlineProfilePolicy.applySteamClientFlags(container)
+        OnlineProfilePolicy.mergeOnlineEnv(container)
+        OnlineProfilePolicy.preferProton10IfNeeded(container)
+        OnlineProfilePolicy.markPolicyApplied(container)
+        container.putExtra(EXTRA_KEY, profile.storageKey)
+        container.saveData()
+        Timber.i("Reasserted Online profile policy on launch for %s", container.id)
     }
 
     fun containerIdForSteam(steamAppId: Int): String = "STEAM_$steamAppId"

@@ -18,6 +18,14 @@ Remotes:
 
 ## Weekly sync (recommended)
 
+Helper (PowerShell, from repo root):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/sync-upstream.ps1
+```
+
+Manual:
+
 ```bash
 git checkout develop
 git fetch upstream

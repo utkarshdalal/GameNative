@@ -16,16 +16,14 @@ Install with **Online** or **Offline** when a game supports multiplayer. Badges 
 
 _Entries: 47_
 
-## ONLINE OK (4)
+## ONLINE OK (2)
 
 | App ID | Notes |
 |---|---|
 | [221380](https://store.steampowered.com/app/221380/) | Age of Empires II (HD) |
 | [813780](https://store.steampowered.com/app/813780/) | Age of Empires II: DE — upstream headless multiplayer fixes |
-| [730](https://store.steampowered.com/app/730/) | Counter-Strike family — upstream-reported online path |
-| [440](https://store.steampowered.com/app/440/) | Team Fortress 2 — classic Steam multiplayer |
 
-## ONLINE FLAKY (21)
+## ONLINE FLAKY (23)
 
 | App ID | Notes |
 |---|---|
@@ -33,6 +31,7 @@ _Entries: 47_
 | [945360](https://store.steampowered.com/app/945360/) | Among Us |
 | [346110](https://store.steampowered.com/app/346110/) | ARK: Survival Evolved |
 | [289070](https://store.steampowered.com/app/289070/) | Civilization VI |
+| [730](https://store.steampowered.com/app/730/) | Counter-Strike family — VAC online path; not fork-verified Online OK |
 | [240](https://store.steampowered.com/app/240/) | Counter-Strike: Source |
 | [322330](https://store.steampowered.com/app/322330/) | Don't Starve Together |
 | [239140](https://store.steampowered.com/app/239140/) | Dying Light |
@@ -46,6 +45,7 @@ _Entries: 47_
 | [1174180](https://store.steampowered.com/app/1174180/) | Red Dead Redemption 2 — Rockstar online flaky |
 | [252950](https://store.steampowered.com/app/252950/) | Rocket League — may need EOS |
 | [8930](https://store.steampowered.com/app/8930/) | Sid Meier's Civilization V |
+| [440](https://store.steampowered.com/app/440/) | Team Fortress 2 — Steam multiplayer often works; treat as flaky until fork-verified |
 | [105600](https://store.steampowered.com/app/105600/) | Terraria |
 | [304930](https://store.steampowered.com/app/304930/) | Unturned |
 | [892970](https://store.steampowered.com/app/892970/) | Valheim |
