@@ -117,7 +117,8 @@ jobs:
             TAG="${GITHUB_REF#refs/tags/}"
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "apk_name=gamenative-online-${TAG}.apk" >> "$GITHUB_OUTPUT"
+          # Tag already includes gamenative-online-v* prefix
+          echo "apk_name=${TAG}.apk" >> "$GITHUB_OUTPUT"
 
       - name: Stage APK
         run: |
