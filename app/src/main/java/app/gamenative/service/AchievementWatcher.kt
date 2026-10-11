@@ -157,12 +157,12 @@ class AchievementWatcher(
         // Get unlocked and stats
         val (allUnlocked, gseStatsDir) = SteamService.collectGseUnlocksAndStats(watchDirs)
 
-        val newToUpload = allUnlocked - uploadedNames
+        val newToUpload = allUnlocked.keys - uploadedNames
 
         Timber.tag("achievements").d("Real-time uploading ${newToUpload.size} new achievements (${allUnlocked.size} total) for appId=$appId")
         val result = SteamService.storeAchievementUnlocks(appId, configDirectory, allUnlocked, gseStatsDir ?: watchDirs.first().resolve("stats"))
         result.onSuccess {
-            uploadedNames.addAll(allUnlocked)
+            uploadedNames.addAll(allUnlocked.keys)
             Timber.tag("achievements").i("Real-time achievement upload succeeded for appId=$appId")
         }.onFailure { e ->
             Timber.tag("achievements").e(e, "Real-time achievement upload failed for appId=$appId, will retry on next unlock or at exit")
