@@ -29,15 +29,14 @@ Full plan: [PLAN.MD](PLAN.MD) · Online matrix seed: [docs/online/MATRIX.md](doc
 
 ## Status
 
-**Phase 0 complete (foundation)**
+**Phase 0 complete** · **Phase 1 core complete**
 
-- `develop` branch for fork work
-- Upstream remote + sync docs
-- App branding: **GameNative Online**
-- About / source links point at this fork
-- Core models: `OnlineCapability`, `OnlineStatus`, `InstallProfile`, `OnlineGameInfo`
+- Install dialog offers **Online** vs **Offline** when multiplayer is detected
+- Online install enables Headless Steam on the game container
+- Per-game online status badge on game details
+- Matrix seed in `app/src/main/assets/online_matrix.json`
 
-**Next:** Phase 1 — install-time Online / Offline UI wired to Steam online profiles.
+**Next:** Phase 2 — “Did online work?” prompts, fail-reason diagnostics, Online Ready tab.
 
 ## What you get (inherited + fork direction)
 

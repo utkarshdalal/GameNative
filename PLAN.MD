@@ -145,10 +145,10 @@ If the story needs 12 settings screens, we failed.
 ## Scope of v1 (must ship to feel different)
 
 ### Must have
-- [ ] Detect games with online multiplayer capability  
-- [ ] Install sheet: **Online** vs **Offline** when applicable  
-- [ ] Online install auto-applies Steam online client mode + sensible Proton/config  
-- [ ] Per-game Online badge in library + details  
+- [x] Detect games with online multiplayer capability  
+- [x] Install sheet: **Online** vs **Offline** when applicable  
+- [x] Online install auto-applies Steam online client mode + sensible Proton/config  
+- [x] Per-game Online badge in library + details  
 - [ ] Post-session prompt: “Did online work?” → feeds local/community status  
 - [ ] Basic failure reasons in Online mode  
 
@@ -221,11 +221,13 @@ This becomes marketing, SEO, and contributor bait.
 - [x] PLAN + public README pitch + seed matrix (`docs/online/MATRIX.md`)
 - Branch: all work on `develop`
 
-### Phase 1 — Install choice (weeks 2–3)
-- Detect online-capable games  
-- Install UI: Online vs Offline  
-- Wire Online profile → Steam client + config  
-- Persist profile on installed games  
+### Phase 1 — Install choice (weeks 2–3) ✅ (core)
+- [x] Detect online-capable games (matrix + store tags)
+- [x] Install UI: Online vs Offline in Steam GameManagerDialog
+- [x] Wire Online profile → Headless Steam on container create/install
+- [x] Persist profile (`InstallProfileStore` + container extra)
+- [x] Online status badge on game details
+- [ ] Post-session prompt / fail reasons (Phase 2)
 
 ### Phase 2 — Trust layer (weeks 3–5)
 - Badges everywhere  

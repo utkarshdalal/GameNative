@@ -1,5 +1,15 @@
 <resources>
     <string name="app_name">GameNative Online</string>
+
+    <!-- Online install profiles (fork) -->
+    <string name="online_install_detected_title">Online multiplayer detected</string>
+    <string name="online_install_status_label">Status: %1$s</string>
+    <string name="online_install_experimental_note">Online install is experimental and may fail on some devices or titles.</string>
+    <string name="online_install_offline_title">Offline install (Recommended)</string>
+    <string name="online_install_offline_subtitle">Faster boot · lower RAM · solo / local play</string>
+    <string name="online_install_online_title">Online install</string>
+    <string name="online_install_online_subtitle">Headless Steam · lobbies / servers</string>
+    <string name="online_badge_label">%1$s</string>
     <string name="login_user">User Login</string>
     <string name="login_2fa">Two Factor</string>
     <string name="home">Home</string>

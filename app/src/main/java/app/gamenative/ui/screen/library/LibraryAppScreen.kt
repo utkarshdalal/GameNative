@@ -162,10 +162,14 @@ import app.gamenative.data.CommunityCompatibilitySummary
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.StoreGameDetails
 import app.gamenative.service.SteamService
+import app.gamenative.online.OnlineCapability
+import app.gamenative.online.OnlineCapabilityDetector
+import app.gamenative.online.OnlineStatus
 import app.gamenative.ui.component.CommunityCompatibilitySection
 import app.gamenative.ui.component.GamepadAction
 import app.gamenative.ui.component.GamepadActionBar
 import app.gamenative.ui.component.GamepadButton
+import app.gamenative.ui.component.OnlineStatusBadge
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.DownloadDisplayDetails
@@ -1653,6 +1657,21 @@ internal fun AppScreenContent(
                     onViewReports = communityCompatibility.onViewReports,
                 )
                 Spacer(modifier = Modifier.height(16.dp))
+
+                val steamAppIdForOnline = remember(displayInfo.appId, displayInfo.gameId) {
+                    displayInfo.appId.removePrefix("STEAM_").toIntOrNull() ?: displayInfo.gameId
+                }
+                val onlineInfo = remember(steamAppIdForOnline, displayInfo.storeDetails) {
+                    OnlineCapabilityDetector.resolveSteam(
+                        context = context,
+                        steamAppId = steamAppIdForOnline,
+                        storeDetails = displayInfo.storeDetails,
+                    )
+                }
+                if (onlineInfo.capability != OnlineCapability.NONE || onlineInfo.status != OnlineStatus.OFFLINE_ONLY) {
+                    OnlineStatusBadge(status = onlineInfo.status)
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
 
                 if (displayInfo.storeDetails.hasOverview) {
                     StoreDetailsSection(

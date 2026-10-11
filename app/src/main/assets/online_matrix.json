@@ -1,0 +1,22 @@
+{
+  "entries": [
+    {
+      "appId": "813780",
+      "store": "steam",
+      "status": "online_ok",
+      "notes": "Upstream-reported multiplayer fixes (AoE II)"
+    },
+    {
+      "appId": "730",
+      "store": "steam",
+      "status": "online_ok",
+      "notes": "Upstream-reported Counter-Strike family online path"
+    },
+    {
+      "appId": "1773180",
+      "store": "steam",
+      "status": "untested_online",
+      "notes": "The Matriarch — has online tags; verify lobbies/servers"
+    }
+  ]
+}

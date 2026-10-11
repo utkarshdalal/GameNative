@@ -92,6 +92,16 @@
     <string name="app_filter_tool">Инструмент</string>
     <string name="app_library">Библиотека</string>
     <string name="app_name">GameNative Online</string>
+
+    <!-- Online install profiles (fork) -->
+    <string name="online_install_detected_title">Обнаружен онлайн-мультиплеер</string>
+    <string name="online_install_status_label">Статус: %1$s</string>
+    <string name="online_install_experimental_note">Онлайн-установка экспериментальная и может не сработать на части устройств или игр.</string>
+    <string name="online_install_offline_title">Установка Offline (рекомендуется)</string>
+    <string name="online_install_offline_subtitle">Быстрее запуск · меньше RAM · соло / локально</string>
+    <string name="online_install_online_title">Установка Online</string>
+    <string name="online_install_online_subtitle">Headless Steam · лобби / серверы</string>
+    <string name="online_badge_label">%1$s</string>
     <string name="appbar_scrolling_view_behavior">com.google.android.material.appbar.AppBarLayout$ScrollingViewBehavior</string>
     <string name="appearance">Внешний вид</string>
     <string name="audio_driver">Аудиодрайвер</string>

@@ -69,6 +69,9 @@ import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.enums.DialogType
+import app.gamenative.online.InstallProfile
+import app.gamenative.online.InstallProfileApplier
+import app.gamenative.online.InstallProfileStore
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.SteamUtils
@@ -1491,7 +1494,7 @@ class SteamAppScreen : BaseAppScreen() {
                     return@GameManagerDialog getGameDisplayInfo(context, libraryItem)
                 },
                 branch = gameManagerDialogState.branch,
-                onInstall = { dlcAppIds ->
+                onInstall = { dlcAppIds, installProfile ->
                     val branch = gameManagerDialogState.branch
                         ?: SteamService.getInstalledApp(gameId)?.branch
                         ?: "public"
@@ -1506,10 +1509,20 @@ class SteamAppScreen : BaseAppScreen() {
 
                     PostHog.capture(
                         event = "game_install_started",
-                        properties = mapOf("game_name" to (appInfo?.name ?: "")) +
-                            ConversionTracker.campaignAttribution(gameId),
+                        properties = mapOf(
+                            "game_name" to (appInfo?.name ?: ""),
+                            "install_profile" to (installProfile?.storageKey ?: "default"),
+                        ) + ConversionTracker.campaignAttribution(gameId),
                     )
                     CoroutineScope(Dispatchers.IO).launch {
+                        if (installProfile != null) {
+                            val containerId = InstallProfileApplier.containerIdForSteam(gameId)
+                            InstallProfileStore.save(context, containerId, installProfile)
+                            if (ContainerUtils.hasContainer(context, containerId)) {
+                                val container = ContainerUtils.getContainer(context, containerId)
+                                InstallProfileApplier.apply(context, container, installProfile)
+                            }
+                        }
                         SteamService.downloadApp(gameId, dlcAppIds, branch = branch, mode = SteamDownloadMode.INSTALL)
                     }
                 },

@@ -29,9 +29,11 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+import androidx.compose.ui.Modifier.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -45,13 +47,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import app.gamenative.BuildConfig
 import app.gamenative.R
 import app.gamenative.data.DepotInfo
 import app.gamenative.data.ManifestInfo
+import app.gamenative.online.InstallProfile
+import app.gamenative.online.OnlineCapabilityDetector
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamService.Companion.INVALID_APP_ID
 import app.gamenative.ui.component.LoadingScreen
+import app.gamenative.ui.component.OnlineInstallProfileSection
 import app.gamenative.ui.component.topbar.BackButton
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.internal.fakeAppInfo
@@ -81,7 +85,7 @@ fun GameManagerDialog(
     visible: Boolean,
     onGetDisplayInfo: @Composable (Context) -> GameDisplayInfo,
     branch: String? = null,
-    onInstall: (List<Int>) -> Unit,
+    onInstall: (List<Int>, InstallProfile?) -> Unit,
     onDismissRequest: () -> Unit
 ) {
     val context = LocalContext.current
@@ -94,6 +98,13 @@ fun GameManagerDialog(
 
     val displayInfo = onGetDisplayInfo(context)
     val gameId = displayInfo.gameId
+
+    var onlineInfo by remember(gameId) {
+        mutableStateOf(OnlineCapabilityDetector.resolveSteam(context, gameId, displayInfo.storeDetails))
+    }
+    var selectedInstallProfile by remember(gameId) {
+        mutableStateOf(InstallProfile.defaultFor(onlineInfo.status))
+    }
 
     val isBaseGameInstalled = remember(gameId) {
         SteamService.isAppInstalled(gameId)
@@ -111,8 +122,13 @@ fun GameManagerDialog(
         SteamService.getMainAppDlcIdsWithoutProperDepotDlcIds(gameId).toList()
     }
 
-    LaunchedEffect(visible) {
+    LaunchedEffect(visible, gameId, displayInfo.storeDetails) {
+        if (!visible) return@LaunchedEffect
         scrollState.animateScrollTo(0)
+
+        val resolved = OnlineCapabilityDetector.resolveSteam(context, gameId, displayInfo.storeDetails)
+        onlineInfo = resolved
+        selectedInstallProfile = InstallProfile.defaultFor(resolved.status)
 
         downloadableDepots.clear()
         allDownloadableApps.clear()
@@ -420,6 +436,19 @@ fun GameManagerDialog(
                                 )
                             }
 
+                            if (!isBaseGameInstalled && onlineInfo.showInstallProfileChoice) {
+                                OnlineInstallProfileSection(
+                                    onlineInfo = onlineInfo,
+                                    selectedProfile = selectedInstallProfile,
+                                    onProfileSelected = { selectedInstallProfile = it },
+                                )
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    thickness = 0.5.dp,
+                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                                )
+                            }
+
                             // Select All toggle
                             if (selectableAppIds.isNotEmpty()) {
                                 Row(
@@ -504,9 +533,15 @@ fun GameManagerDialog(
                                 Button(
                                     enabled = installButtonEnabled(),
                                     onClick = {
-                                        onInstall(selectedAppIds
+                                        val dlcIds = selectedAppIds
                                             .filter { selectedId -> selectedId.key in enabledAppIds.filter { enabledId -> enabledId.value } }
-                                            .filter { selectedId -> selectedId.value }.keys.toList())
+                                            .filter { selectedId -> selectedId.value }.keys.toList()
+                                        val profile = if (!isBaseGameInstalled && onlineInfo.showInstallProfileChoice) {
+                                            selectedInstallProfile
+                                        } else {
+                                            null
+                                        }
+                                        onInstall(dlcIds, profile)
                                     }
                                 ) {
                                     Text(stringResource(R.string.install))
@@ -545,7 +580,7 @@ fun Preview_GameManagerDialog() {
             onGetDisplayInfo = {
                 return@GameManagerDialog displayInfo
             },
-            onInstall = {},
+            onInstall = { _, _ -> },
             onDismissRequest = {}
         )
     }
