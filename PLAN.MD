@@ -236,11 +236,11 @@ This becomes marketing, SEO, and contributor bait.
 - [x] Seed matrix expanded (~35 titles in `online_matrix.json`)
 - [x] Local report persistence (`OnlineFeedbackStore`)
 
-### Phase 3 — Growth loop (weeks 5–8)
+### Phase 3 — Growth loop (weeks 5–8) ✅
 - [x] Online Ready tab (library)
-- [ ] Public online compatibility page  
-- [ ] Shareable “Online OK on my device” cards  
-- [ ] Iterate top requested multiplayer titles  
+- [x] Public online compatibility page (`docs/online/COMPATIBILITY.md`)
+- [x] Shareable “Online OK on my device” cards (per-game + Settings summary)
+- [x] Expanded matrix (~47 titles); regenerate via `tools/generate_online_compatibility.py`
 
 ### Phase 4 — Harden (ongoing)
 - Proton 10/11+ online path stability  

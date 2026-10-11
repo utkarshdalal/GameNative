@@ -1342,6 +1342,12 @@ https://gamenative.app
     <string name="settings_info_usage_analytics_subtitle">Мы никогда не отслеживаем личную информацию. Отключение останавливает несущественную аналитику, однако основные данные о производительности игр по-прежнему собираются как законный интерес для улучшения совместимости.</string>
     <string name="settings_info_fork_title">О GameNative Online</string>
     <string name="settings_info_fork_subtitle">Форк с упором на онлайн — при установке можно выбрать Online или Offline, если игра поддерживает мультиплеер. Открывает план проекта.</string>
+    <string name="settings_info_compatibility_title">Список онлайн-совместимости</string>
+    <string name="settings_info_compatibility_subtitle">Публичный список ONLINE OK / Flaky / Blocked для этого форка</string>
+    <string name="settings_info_share_ready_subtitle">Поделиться ONLINE OK из матрицы и играми, где онлайн сработал у вас</string>
+    <string name="online_share_status">Поделиться статусом онлайна</string>
+    <string name="online_share_ready_list">Поделиться списком Online Ready</string>
+    <string name="online_open_compatibility">Открыть список совместимости</string>
     <string name="settings_info_upstream_title">Оригинальный GameNative</string>
     <string name="settings_info_upstream_subtitle">Открыть исходный проект GameNative, на котором основан этот форк</string>
     <string name="settings_info_source_subtitle">Открыть этот форк на GitHub (GameNative Online)</string>

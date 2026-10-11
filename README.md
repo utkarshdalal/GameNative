@@ -29,15 +29,17 @@ Full plan: [PLAN.MD](PLAN.MD) · Online matrix seed: [docs/online/MATRIX.md](doc
 
 ## Status
 
-**Phase 0–2 complete (core)**
+**Phase 0–3 complete (core growth loop)**
 
 - Install dialog: **Online** vs **Offline**
 - Headless Steam for Online installs
 - Online status badges + **Online Ready** library tab
 - Post-session **Did online work?** prompt with fail reasons + copy debug
-- Matrix seed (~35 titles) in `app/src/main/assets/online_matrix.json`
+- Public list: [docs/online/COMPATIBILITY.md](docs/online/COMPATIBILITY.md)
+- Shareable **Online OK on my device** cards (game page + Settings)
+- Matrix seed (~47 titles) in `app/src/main/assets/online_matrix.json`
 
-**Next:** Phase 3 — public compatibility page, share cards, more verified titles.
+**Next:** Phase 4 — harden Proton/EOS online paths, more verified titles.
 
 ## What you get (inherited + fork direction)
 

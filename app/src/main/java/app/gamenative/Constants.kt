@@ -40,6 +40,8 @@ object Constants {
         const val UPSTREAM_GITHUB_LINK = "https://github.com/utkarshdalal/GameNative"
         const val PRIVACY_LINK = "https://github.com/Vanyc-00X/GameNative-Online/tree/develop/PrivacyPolicy"
         const val PLAN_LINK = "https://github.com/Vanyc-00X/GameNative-Online/blob/develop/PLAN.MD"
+        const val COMPATIBILITY_LINK =
+            "https://github.com/Vanyc-00X/GameNative-Online/blob/develop/docs/online/COMPATIBILITY.md"
         const val UPDATE_CHECK_URL = "https://api.gamenative.app/api/update-check"
     }
 }

@@ -1366,6 +1366,12 @@
     <string name="settings_info_title">Info</string>
     <string name="settings_info_fork_title">About GameNative Online</string>
     <string name="settings_info_fork_subtitle">Online-focused fork — install Online or Offline when a game supports multiplayer. Opens the project plan.</string>
+    <string name="settings_info_compatibility_title">Online compatibility list</string>
+    <string name="settings_info_compatibility_subtitle">Public ONLINE OK / Flaky / Blocked list for this fork</string>
+    <string name="settings_info_share_ready_subtitle">Share matrix ONLINE OK titles plus games you reported as working</string>
+    <string name="online_share_status">Share online status</string>
+    <string name="online_share_ready_list">Share Online Ready list</string>
+    <string name="online_open_compatibility">Open compatibility list</string>
     <string name="settings_info_send_tip_title">Become a member</string>
     <string name="settings_info_send_tip_subtitle">AI help getting your games running, early access to releases, and more</string>
     <string name="settings_info_ask_tip_title">Membership offers</string>

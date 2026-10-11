@@ -1,5 +1,6 @@
 package app.gamenative.ui.screen.settings
 
+import android.content.Intent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material3.Icon
@@ -9,11 +10,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import app.gamenative.Constants
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.online.OnlineShareHelper
+import app.gamenative.service.SteamService
 import app.gamenative.ui.component.dialog.LibrariesDialog
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
@@ -25,6 +29,7 @@ import com.alorma.compose.settings.ui.SettingsSwitch
 fun SettingsGroupInfo() {
     SettingsGroup() {
         val uriHandler = LocalUriHandler.current
+        val context = LocalContext.current
         var askForTip by rememberSaveable { mutableStateOf(!PrefManager.tipped) }
         var showLibrariesDialog by rememberSaveable { mutableStateOf(false) }
 
@@ -38,6 +43,38 @@ fun SettingsGroupInfo() {
             title = { Text(stringResource(R.string.settings_info_fork_title)) },
             subtitle = { Text(text = stringResource(R.string.settings_info_fork_subtitle)) },
             onClick = { uriHandler.openUri(Constants.Misc.PLAN_LINK) },
+        )
+
+        SettingsMenuLink(
+            colors = settingsTileColors(),
+            title = { Text(stringResource(R.string.settings_info_compatibility_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_info_compatibility_subtitle)) },
+            onClick = { uriHandler.openUri(Constants.Misc.COMPATIBILITY_LINK) },
+        )
+
+        SettingsMenuLink(
+            colors = settingsTileColors(),
+            title = { Text(stringResource(R.string.online_share_ready_list)) },
+            subtitle = { Text(text = stringResource(R.string.settings_info_share_ready_subtitle)) },
+            onClick = {
+                val matrix = app.gamenative.online.OnlineMatrixRepository.load(context)
+                val names = matrix.values.associate { info ->
+                    val name = info.notes?.substringBefore("—")?.substringBefore("-")?.trim()
+                        ?.takeIf { it.isNotBlank() }
+                        ?: SteamService.getAppInfoOf(info.appId.toIntOrNull() ?: -1)?.name
+                        ?: "App ${info.appId}"
+                    info.appId to name
+                }
+                val text = OnlineShareHelper.buildOnlineReadySummary(context, names)
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_SUBJECT, "GameNative Online — Online Ready")
+                    putExtra(Intent.EXTRA_TEXT, text)
+                }
+                context.startActivity(
+                    Intent.createChooser(intent, context.getString(R.string.online_share_ready_list)),
+                )
+            },
         )
 
         SettingsMenuLink(

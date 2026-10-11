@@ -162,9 +162,11 @@ import app.gamenative.data.CommunityCompatibilitySummary
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.StoreGameDetails
 import app.gamenative.service.SteamService
+import app.gamenative.Constants
 import app.gamenative.online.OnlineCapability
 import app.gamenative.online.OnlineCapabilityDetector
 import app.gamenative.online.OnlineFeedbackStore
+import app.gamenative.online.OnlineShareHelper
 import app.gamenative.online.OnlineStatus
 import app.gamenative.ui.component.CommunityCompatibilitySection
 import app.gamenative.ui.component.GamepadAction
@@ -172,6 +174,7 @@ import app.gamenative.ui.component.GamepadActionBar
 import app.gamenative.ui.component.GamepadButton
 import app.gamenative.ui.component.OnlineStatusBadge
 import app.gamenative.ui.component.focusRing
+import androidx.compose.ui.platform.LocalUriHandler
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.DownloadDisplayDetails
 import app.gamenative.ui.data.GameDisplayInfo
@@ -1670,6 +1673,7 @@ internal fun AppScreenContent(
                     )
                 }
                 if (onlineInfo.capability != OnlineCapability.NONE || onlineInfo.status != OnlineStatus.OFFLINE_ONLY) {
+                    val uriHandler = LocalUriHandler.current
                     OnlineStatusBadge(status = onlineInfo.status)
                     val lastOnlineReport = remember(steamAppIdForOnline) {
                         OnlineFeedbackStore.get(context, steamAppIdForOnline.toString())
@@ -1689,6 +1693,31 @@ internal fun AppScreenContent(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
                         )
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        TextButton(
+                            onClick = {
+                                context.startActivity(
+                                    OnlineShareHelper.shareIntent(
+                                        context = context,
+                                        steamAppId = steamAppIdForOnline,
+                                        gameName = displayInfo.name,
+                                    ),
+                                )
+                            },
+                        ) {
+                            Text(stringResource(R.string.online_share_status))
+                        }
+                        TextButton(
+                            onClick = { uriHandler.openUri(Constants.Misc.COMPATIBILITY_LINK) },
+                        ) {
+                            Text(stringResource(R.string.online_open_compatibility))
+                        }
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                 }
