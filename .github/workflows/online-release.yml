@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag (e.g. gamenative-online-v0.1.0)"
+        description: "Release tag (e.g. gamenative-online-v0.1.1)"
         required: true
-        default: "gamenative-online-v0.1.0"
+        default: "gamenative-online-v0.1.1"
 
 jobs:
   build-and-release:
@@ -25,6 +25,14 @@ jobs:
         run: |
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/local/share/boost /usr/share/swift
           df -h /
+
+      - name: Add swap
+        run: |
+          sudo fallocate -l 8G /mnt/swapfile.ci
+          sudo chmod 600 /mnt/swapfile.ci
+          sudo mkswap /mnt/swapfile.ci
+          sudo swapon /mnt/swapfile.ci
+          free -m
 
       - uses: actions/checkout@v4
 
@@ -56,10 +64,47 @@ jobs:
           if [ ! -x "$SDKMANAGER" ]; then
             SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
           fi
-          yes | "$SDKMANAGER" --install "build-tools;34.0.0" "ndk;27.3.13750724" || true
+          yes | "$SDKMANAGER" --licenses >/tmp/sdk-licenses.txt || true
+          yes | "$SDKMANAGER" --install \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;34.0.0" \
+            "ndk;27.3.13750724" \
+            "cmake;3.22.1" || true
 
       - name: Build Legacy Release APK
-        run: ./gradlew :app:assembleLegacyRelease --stacktrace
+        id: build
+        run: |
+          set -o pipefail
+          ./gradlew :app:assembleLegacyRelease \
+            -Pkotlin.daemon.jvmargs=-Xmx3g \
+            --stacktrace \
+            --no-daemon 2>&1 | tee gradle-release.log
+        continue-on-error: true
+
+      - name: Publish build log on failure
+        if: steps.build.outcome != 'success'
+        run: |
+          {
+            echo "## Gradle build failed"
+            echo ""
+            echo '```'
+            tail -n 120 gradle-release.log || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          # Surface last ERROR/e: lines as annotations (visible without log download)
+          grep -E "e: |FAILED|error:|What went wrong|FAILURE:" gradle-release.log | tail -n 40 | while IFS= read -r line; do
+            echo "::error::$line"
+          done
+          exit 1
+
+      - name: Upload gradle log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-release-log
+          path: gradle-release.log
+          if-no-files-found: ignore
 
       - name: Resolve tag name
         id: meta
@@ -75,6 +120,7 @@ jobs:
       - name: Stage APK
         run: |
           SRC=$(ls app/build/outputs/apk/legacy/release/*.apk | head -n 1)
+          test -n "$SRC"
           cp "$SRC" "${{ steps.meta.outputs.apk_name }}"
           ls -lh "${{ steps.meta.outputs.apk_name }}"
 
