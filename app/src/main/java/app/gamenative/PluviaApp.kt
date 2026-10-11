@@ -3,6 +3,7 @@ package app.gamenative
 import android.hardware.display.DisplayManager
 import android.os.Build
 import android.os.StrictMode
+import android.system.Os
 import android.util.DisplayMetrics
 import android.view.Display
 import androidx.compose.runtime.getValue
@@ -61,6 +62,9 @@ class PluviaApp : SplitCompatApplication() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+
+        // JNI evshim loads before a session exists; it must use this app's private files.
+        Os.setenv("EVSHIM_BASE_PATH", filesDir.absolutePath, true)
 
         preloadSystemLibraries()
 

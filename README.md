@@ -84,6 +84,8 @@ Most of the time you don't need this — if you just want to play, grab the rele
 
 Mouse-release routing uses `BUTTON_RELEASE`, not pointer-motion subscriptions, so a button-only X11 client still receives mouse-up after window geometry changes during an implicit grab. Owner-events fall back to the grab window when the normal recipient has no release subscription for the grabbing client, including after that client deselects events. Run the regression on macOS/Linux with `./gradlew :app:testLegacyDebugUnitTest --tests com.winlator.xserver.InputDeviceManagerButtonReleaseTest`, or on Windows PowerShell with `.\gradlew.bat :app:testLegacyDebugUnitTest --tests com.winlator.xserver.InputDeviceManagerButtonReleaseTest`.
 
+Side-by-side builds with a different application ID must keep controller shared memory inside their own app storage. Startup sets `EVSHIM_BASE_PATH` to `filesDir` before JNI loads, and the Wine launcher passes the same path in its explicit environment; neither side should access another package's private files. Use a release build for performance comparisons: debug builds enable extra logging and StrictMode and disable code optimization.
+
 ## Analytics & privacy
 
 GameNative uses [PostHog](https://posthog.com) for anonymous analytics. No personal information is ever collected — no names, emails, IPs or device identifiers.
