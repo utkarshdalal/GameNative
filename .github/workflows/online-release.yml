@@ -80,23 +80,6 @@ jobs:
             -Pkotlin.daemon.jvmargs=-Xmx3g \
             --stacktrace \
             --no-daemon 2>&1 | tee gradle-release.log
-        continue-on-error: true
-
-      - name: Publish build log on failure
-        if: steps.build.outcome != 'success'
-        run: |
-          {
-            echo "## Gradle build failed"
-            echo ""
-            echo '```'
-            tail -n 120 gradle-release.log || true
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-          # Surface last ERROR/e: lines as annotations (visible without log download)
-          grep -E "e: |FAILED|error:|What went wrong|FAILURE:" gradle-release.log | tail -n 40 | while IFS= read -r line; do
-            echo "::error::$line"
-          done
-          exit 1
 
       - name: Upload gradle log
         if: always()
@@ -105,6 +88,21 @@ jobs:
           name: gradle-release-log
           path: gradle-release.log
           if-no-files-found: ignore
+
+      - name: Publish build log on failure
+        if: failure()
+        run: |
+          {
+            echo "## Gradle build failed"
+            echo ""
+            echo '```'
+            tail -n 120 gradle-release.log || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          grep -E "e: |FAILED|error:|What went wrong|FAILURE:" gradle-release.log | tail -n 40 | while IFS= read -r line; do
+            echo "::error::$line"
+          done
+          exit 1
 
       - name: Resolve tag name
         id: meta
