@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">GameNative</string>
+    <string name="app_name">GameNative Online</string>
     <string name="login_user">User Login</string>
     <string name="login_2fa">Two Factor</string>
     <string name="home">Home</string>
@@ -1337,12 +1337,16 @@
 
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Info</string>
+    <string name="settings_info_fork_title">About GameNative Online</string>
+    <string name="settings_info_fork_subtitle">Online-focused fork — install Online or Offline when a game supports multiplayer. Opens the project plan.</string>
     <string name="settings_info_send_tip_title">Become a member</string>
     <string name="settings_info_send_tip_subtitle">AI help getting your games running, early access to releases, and more</string>
     <string name="settings_info_ask_tip_title">Membership offers</string>
     <string name="settings_info_ask_tip_subtitle">Show occasional offers to become a GameNative member</string>
     <string name="settings_info_source_title">Source code</string>
-    <string name="settings_info_source_subtitle">View the source code of this project</string>
+    <string name="settings_info_source_subtitle">View this fork on GitHub (GameNative Online)</string>
+    <string name="settings_info_upstream_title">Upstream GameNative</string>
+    <string name="settings_info_upstream_subtitle">Open the original GameNative project this fork is based on</string>
     <string name="settings_info_libraries_title">Libraries Used</string>
     <string name="settings_info_libraries_subtitle">See what technologies make GameNative possible</string>
     <string name="settings_info_privacy_title">Privacy Policy</string>
@@ -1441,7 +1445,7 @@
     <string name="container_storage_unknown_error">Unknown error</string>
 
     <!-- Login Screen -->
-    <string name="login_app_name">GameNative</string>
+    <string name="login_app_name">GameNative Online</string>
     <string name="login_privacy_policy">Privacy Policy</string>
     <string name="login_welcome_back">Welcome Back</string>
     <string name="login_subtitle">Sign in to access your Steam library</string>

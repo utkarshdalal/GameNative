@@ -1,5 +1,5 @@
 ﻿<resources>
-    <string name="app_name">GameNative</string>
+    <string name="app_name">GameNative Online</string>
     <string name="login_user">사용자 로그인</string>
     <string name="login_2fa">2단계 인증</string>
     <string name="home">홈</string>

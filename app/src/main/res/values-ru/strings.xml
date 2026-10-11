@@ -91,7 +91,7 @@
     <string name="app_filter_installed">Установлено</string>
     <string name="app_filter_tool">Инструмент</string>
     <string name="app_library">Библиотека</string>
-    <string name="app_name">GameNative</string>
+    <string name="app_name">GameNative Online</string>
     <string name="appbar_scrolling_view_behavior">com.google.android.material.appbar.AppBarLayout$ScrollingViewBehavior</string>
     <string name="appearance">Внешний вид</string>
     <string name="audio_driver">Аудиодрайвер</string>
@@ -780,7 +780,7 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="location">Местоположение</string>
     <string name="log_out">Выход</string>
     <string name="login_2fa">Двухфакторная аутентификация</string>
-    <string name="login_app_name">GameNative</string>
+    <string name="login_app_name">GameNative Online</string>
     <string name="login_or_sign_in_with">Или войдите через:</string>
     <string name="login_password">Пароль</string>
     <string name="login_password_hide">Скрыть пароль</string>
@@ -1313,7 +1313,11 @@ https://gamenative.app
     <string name="settings_info_privacy_title">Политика конфиденциальности</string>
     <string name="settings_info_usage_analytics_title">Аналитика использования</string>
     <string name="settings_info_usage_analytics_subtitle">Мы никогда не отслеживаем личную информацию. Отключение останавливает несущественную аналитику, однако основные данные о производительности игр по-прежнему собираются как законный интерес для улучшения совместимости.</string>
-    <string name="settings_info_source_subtitle">Просмотреть исходный код этого проекта</string>
+    <string name="settings_info_fork_title">О GameNative Online</string>
+    <string name="settings_info_fork_subtitle">Форк с упором на онлайн — при установке можно выбрать Online или Offline, если игра поддерживает мультиплеер. Открывает план проекта.</string>
+    <string name="settings_info_upstream_title">Оригинальный GameNative</string>
+    <string name="settings_info_upstream_subtitle">Открыть исходный проект GameNative, на котором основан этот форк</string>
+    <string name="settings_info_source_subtitle">Открыть этот форк на GitHub (GameNative Online)</string>
     <string name="settings_info_send_tip_title">Стать участником</string>
     <string name="settings_info_send_tip_subtitle">Помощь ИИ с запуском игр, ранний доступ к версиям и другое</string>
     <string name="settings_info_ask_tip_title">Предложения о членстве</string>

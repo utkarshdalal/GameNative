@@ -1,5 +1,5 @@
 ﻿<resources>
-    <string name="app_name">GameNative</string>
+    <string name="app_name">GameNative Online</string>
     <string name="login_user">Brugerlogin</string>
     <string name="login_2fa">Tofaktorgodkendelse</string>
     <string name="home">Hjem</string>

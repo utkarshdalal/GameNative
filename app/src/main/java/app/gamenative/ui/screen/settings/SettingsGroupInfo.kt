@@ -35,6 +35,13 @@ fun SettingsGroupInfo() {
 
         SettingsMenuLink(
             colors = settingsTileColors(),
+            title = { Text(stringResource(R.string.settings_info_fork_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_info_fork_subtitle)) },
+            onClick = { uriHandler.openUri(Constants.Misc.PLAN_LINK) },
+        )
+
+        SettingsMenuLink(
+            colors = settingsTileColors(),
             title = { Text(stringResource(R.string.settings_info_send_tip_title)) },
             subtitle = { Text(text = stringResource(R.string.settings_info_send_tip_subtitle)) },
             icon = { Icon(imageVector = Icons.Filled.MonetizationOn, contentDescription = "Tip") },
@@ -59,6 +66,13 @@ fun SettingsGroupInfo() {
             title = { Text(text = stringResource(R.string.settings_info_source_title)) },
             subtitle = { Text(text = stringResource(R.string.settings_info_source_subtitle)) },
             onClick = { uriHandler.openUri(Constants.Misc.GITHUB_LINK) },
+        )
+
+        SettingsMenuLink(
+            colors = settingsTileColors(),
+            title = { Text(text = stringResource(R.string.settings_info_upstream_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_info_upstream_subtitle)) },
+            onClick = { uriHandler.openUri(Constants.Misc.UPSTREAM_GITHUB_LINK) },
         )
 
         SettingsMenuLink(
