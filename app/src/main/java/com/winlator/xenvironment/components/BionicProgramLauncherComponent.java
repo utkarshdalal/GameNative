@@ -345,6 +345,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         envVars.put("LD_PRELOAD", ld_preload);
         envVars.put("EVSHIM_WINE", 1);
+        envVars.put("EVSHIM_BASE_PATH", context.getFilesDir().getAbsolutePath());
         envVars.put("EVSHIM_SHM_NAME", "controller-shm0");
 
         if (container != null && container.isFasterExternalLoading()) {
