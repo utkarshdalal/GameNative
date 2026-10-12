@@ -25,6 +25,7 @@ object ScMenuNav {
         Control(ScNavKey.TAB_PREV, TritonProtocol.BTN_LBUMPER, "LB", "Previous tab / action set"),
         Control(ScNavKey.TAB_NEXT, TritonProtocol.BTN_RBUMPER, "RB", "Next tab / action set"),
         Control(ScNavKey.HELP, TritonProtocol.BTN_Y, "Y", "Help"),
+        Control(ScNavKey.ALT, TritonProtocol.BTN_X, "X", "Backspace (on-screen keyboard)"),
         Control(ScNavKey.CLOSE, TritonProtocol.BTN_VIEW, "Start", "Close editor (back to game)"),
     )
 

@@ -2,10 +2,13 @@ package app.gamenative.ui.component.dialog
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -26,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -99,6 +103,9 @@ class ScNavState {
 
     fun activate() { activators[keyOf(line, col)]?.invoke() }
 
+    /** Move the selection to (l, c), e.g. when the row is tapped, so the highlight follows the finger. */
+    fun select(l: Int, c: Int) { line = l; col = c }
+
     fun isSelected(l: Int, c: Int) = line == l && col == c
 }
 
@@ -116,6 +123,8 @@ fun ScNavItem(
     modifier: Modifier = Modifier,
     /** Optional L/R handler so this cell adjusts itself with d-pad left/right (a slider) instead of changing columns. */
     onHorizontal: ((Int) -> Unit)? = null,
+    /** Highlight + ring shape. Match the content's own corners (e.g. a square-ish key) so its fill can't poke out. */
+    shape: Shape = RoundedCornerShape(16.dp),
     onActivate: () -> Unit,
     content: @Composable () -> Unit,
 ) {
@@ -131,11 +140,13 @@ fun ScNavItem(
     }
     val selected = state.isSelected(line, col)
     LaunchedEffect(selected) { if (selected) runCatching { bring.bringIntoView() } }
-    // Radius matches the chip buttons (16dp) so the highlight hugs their corners instead of leaving gaps.
-    val shape = RoundedCornerShape(16.dp)
     Box(
         modifier = modifier
             .bringIntoViewRequester(bring)
+            // Touch: a tap selects + activates the row. Chips/buttons/fields inside keep consuming their own taps.
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                state.select(line, col); latestActivate.value()
+            }
             // A subtle fill keeps the selection readable on plain rows (the QuickMenu items sit on their own cards).
             .then(if (selected) Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f), shape) else Modifier)
             // The QuickMenu's rotating gradient ring, driven synchronously by [selected] (see ScSelectionRing).
@@ -183,6 +194,8 @@ fun ScNavDialogColumn(
     /** When true, the content scrolls inside the [ScScrollbar] (the same auto-hiding accent bar the main bindings list
      *  uses) instead of the caller adding its own scroll modifier — keeps every SC dialog's scrollbar identical. */
     scrollable: Boolean = false,
+    /** Show the button legend footer ([ScNavLegend]). Off only for dialogs that draw their own. */
+    legend: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val keyHandling = Modifier
@@ -206,13 +219,23 @@ fun ScNavDialogColumn(
         ScNavDialogCapture(onBack = onBack)
         content()
     }
+    val footer: @Composable () -> Unit = {
+        if (legend) ScNavLegend(onBumper != null, onHelp != null, onClose != null, Modifier.fillMaxWidth().padding(top = 8.dp))
+    }
     if (scrollable) {
         val scroll = rememberScrollState()
-        ScScrollbar(scroll, modifier) {
-            // Inset the content from the right so the scrollbar (on the outer edge) doesn't overlap chips/rows.
-            Column(Modifier.verticalScroll(scroll).padding(end = 18.dp).then(keyHandling), content = body)
+        // The legend sits under the scroll area so it stays visible while the list scrolls.
+        Column(modifier) {
+            ScScrollbar(scroll, Modifier.weight(1f, fill = false)) {
+                // Inset the content from the right so the scrollbar (on the outer edge) doesn't overlap chips/rows.
+                Column(Modifier.verticalScroll(scroll).padding(end = 18.dp).then(keyHandling), content = body)
+            }
+            footer()
         }
     } else {
-        Column(modifier.then(keyHandling), content = body)
+        Column(modifier.then(keyHandling)) {
+            body()
+            footer()
+        }
     }
 }

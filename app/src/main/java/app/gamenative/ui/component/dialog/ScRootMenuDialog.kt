@@ -33,7 +33,7 @@ fun ScRootMenuDialog(title: String, items: List<Pair<String, () -> Unit>>, onBac
         ) {
             val nav = remember { ScNavState() }
             ScNavDialogColumn(nav, onBack = onBack, modifier = Modifier.padding(16.dp)) {
-                Text(title, style = MaterialTheme.typography.titleLarge)
+                ScBackTitle(title, onBack = onBack)
                 Spacer(Modifier.height(8.dp))
                 HorizontalDivider()
                 items.forEachIndexed { i, (label, action) ->

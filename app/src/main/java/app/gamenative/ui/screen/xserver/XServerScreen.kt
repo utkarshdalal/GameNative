@@ -2767,6 +2767,7 @@ fun XServerScreen(
                                         app.gamenative.steamcontroller.ScNavKey.TAB_NEXT -> KeyEvent.KEYCODE_BUTTON_R1
                                         app.gamenative.steamcontroller.ScNavKey.HELP -> KeyEvent.KEYCODE_BUTTON_Y // Y = Help
                                         app.gamenative.steamcontroller.ScNavKey.CLOSE -> KeyEvent.KEYCODE_BUTTON_START // Start = close editor
+                                        app.gamenative.steamcontroller.ScNavKey.ALT -> KeyEvent.KEYCODE_BUTTON_X // X = keyboard backspace
                                         // Triggers -> zoom in/out; the overlay placement editor listens for these to resize.
                                         app.gamenative.steamcontroller.ScNavKey.ZOOM_IN -> KeyEvent.KEYCODE_ZOOM_IN
                                         app.gamenative.steamcontroller.ScNavKey.ZOOM_OUT -> KeyEvent.KEYCODE_ZOOM_OUT

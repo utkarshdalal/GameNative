@@ -177,4 +177,40 @@ class ScConfigStoreRegistryTest {
         assertTrue(ScConfigStore.listConfigs(ctx, key).isEmpty())
         assertNotNull(ScConfigStore.forKey(ctx, key))
     }
+
+    @Test
+    fun `export round-trips a vdf config with its edit overlay into another game`() {
+        val id = ScConfigStore.importVdfConfig(ctx, key, vdfTwoSets, "Mine")!!
+        val edited = ScConfigStore.loadEditableConfig(ctx, key)!!
+        assertTrue(ScConfigStore.saveEditableConfig(ctx, key, edited))
+        val text = ScConfigStore.exportConfig(ctx, key, id)!!
+
+        val export = ScConfigStore.parseExport(text)
+        assertNotNull(export)
+        assertEquals("Mine", export!!.name)
+        assertEquals(ScConfigKind.VDF, export.kind)
+        assertNotNull(export.overlay)
+
+        val other = "GAME_OTHER"
+        val newId = ScConfigStore.importExport(ctx, other, export)
+        assertNotNull(newId)
+        assertEquals(newId, ScConfigStore.activeConfigId(ctx, other))
+        assertEquals("Mine", ScConfigStore.listConfigs(ctx, other).single().name)
+        assertEquals(ScConfigStore.forKey(ctx, key)!!.sets.keys, ScConfigStore.forKey(ctx, other)!!.sets.keys)
+        // Re-exporting the copy yields the same payload.
+        assertEquals(export.copy(), ScConfigStore.parseExport(ScConfigStore.exportConfig(ctx, other, newId!!)!!))
+    }
+
+    @Test
+    fun `export round-trips an authored config and a vdf is not mistaken for an export`() {
+        val cfg = ScEditableConfig(sets = listOf(ScEditableSet(id = "0", name = "Base")))
+        assertTrue(ScConfigStore.saveEditableConfig(ctx, key, cfg))
+        val id = ScConfigStore.activeConfigId(ctx, key)!!
+        val export = ScConfigStore.parseExport(ScConfigStore.exportConfig(ctx, key, id)!!)!!
+        assertEquals(ScConfigKind.AUTHORED, export.kind)
+        val newId = ScConfigStore.importExport(ctx, "GAME_OTHER", export)
+        assertNotNull(newId)
+        assertNull(ScConfigStore.parseExport(vdfTwoSets))
+        assertNull(ScConfigStore.parseExport("{\"format\":\"something-else\",\"name\":\"x\",\"kind\":\"VDF\",\"payload\":\"\"}"))
+    }
 }

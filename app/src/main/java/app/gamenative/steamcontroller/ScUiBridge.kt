@@ -36,7 +36,7 @@ interface ScUiBridge {
  *  DPAD_CENTER and back keycodes by the bridge implementation. [TAB_PREV]/[TAB_NEXT] (bumpers) flip between the
  *  command-picker tabs (Keyboard / Numpad / Mouse / Gamepad / …). [ZOOM_IN]/[ZOOM_OUT] (right/left trigger) resize
  *  the overlay in the placement editor; ignored elsewhere. */
-enum class ScNavKey { UP, DOWN, LEFT, RIGHT, SELECT, BACK, TAB_PREV, TAB_NEXT, HELP, CLOSE, ZOOM_IN, ZOOM_OUT }
+enum class ScNavKey { UP, DOWN, LEFT, RIGHT, SELECT, BACK, TAB_PREV, TAB_NEXT, HELP, CLOSE, ZOOM_IN, ZOOM_OUT, ALT }
 
 /** No-op bridge: no overlay attached / headless tests. */
 object NoOpScUiBridge : ScUiBridge {

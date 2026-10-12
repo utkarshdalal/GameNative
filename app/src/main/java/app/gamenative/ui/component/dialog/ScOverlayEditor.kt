@@ -6,19 +6,25 @@ import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -46,6 +52,8 @@ import app.gamenative.steamcontroller.ScMenuOverlayView
 import app.gamenative.steamcontroller.ScMenuSpec
 import app.gamenative.steamcontroller.ScOverlayLayout
 import app.gamenative.steamcontroller.ScOverlayStore
+import app.gamenative.steamcontroller.TritonProtocol
+import app.gamenative.ui.icons.InputIcons
 import app.gamenative.ui.util.SnackbarManager
 import kotlin.math.ceil
 import kotlin.math.sqrt
@@ -60,6 +68,7 @@ enum class ScOverlayTarget { MENU, KEYBOARD }
  * keyboard ([ScKeyboardOverlayView]) — each has its own store namespace. [storeKey] is the game's container/appId
  * for a per-game override, or [ScOverlayStore.DEFAULT_KEY] when [isShared] (the global default).
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ScOverlayEditorDialog(
     storeKey: String,
@@ -84,9 +93,11 @@ fun ScOverlayEditorDialog(
         sel != null -> ScOverlayStore.forMenu(context, storeKey, sel.name)
         else -> ScOverlayStore.forKey(context, storeKey)
     }
+    // Unsaved edits per menu: Done writes them all, Back/B drops them.
+    val drafts = remember { mutableStateMapOf<ScMenuLocation?, ScOverlayLayout>() }
     var layout by remember { mutableStateOf(stored(selectedMenu)) }
-    // Reload the layout when the selected menu changes (so each menu edits its own stored placement).
-    LaunchedEffect(selectedMenu) { layout = stored(selectedMenu) }
+    // Reload the layout when the selected menu changes (so each menu edits its own placement).
+    LaunchedEffect(selectedMenu) { layout = drafts[selectedMenu] ?: stored(selectedMenu) }
     val menuView = remember { if (keyboard) null else ScMenuOverlayView(context) }
     val kbView = remember { if (keyboard) ScKeyboardOverlayView(context) else null }
 
@@ -115,10 +126,6 @@ fun ScOverlayEditorDialog(
         }
     }
 
-    // Auto-save: persist to the current scope on every user change (drag/pinch/stick/trigger/reset) — no Save button.
-    // Loading a different menu's stored layout (the LaunchedEffect above) does NOT save, so opening + backing out never
-    // writes a spurious override. ponytail: saves each gesture frame; SharedPreferences.apply() coalesces — debounce
-    // only if it ever matters.
     fun saveLayout(sel: ScMenuLocation?, l: ScOverlayLayout) {
         when {
             keyboard -> ScOverlayStore.saveKeyboard(context, storeKey, l)
@@ -126,7 +133,8 @@ fun ScOverlayEditorDialog(
             else -> ScOverlayStore.save(context, storeKey, l)
         }
     }
-    fun applyLayout(l: ScOverlayLayout) { val c = l.clamped(); layout = c; saveLayout(selectedMenu, c) }
+    fun applyLayout(l: ScOverlayLayout) { val c = l.clamped(); layout = c; drafts[selectedMenu] = c }
+    val done = { drafts.forEach { (sel, l) -> saveLayout(sel, l) }; onDismiss() }
 
     // LB/RB cycle which menu you're placing (menuOptions from above). One entry = no cycle.
     val cycleMenu: (Int) -> Unit = { d ->
@@ -162,11 +170,12 @@ fun ScOverlayEditorDialog(
                         Key.ButtonR1 -> { cycleMenu(1); true }
                         // Y = Reset (a touch-only action promoted to a button, since the stick moves the overlay).
                         Key.ButtonY -> { doReset(); true }
+                        Key.ButtonStart -> { done(); true }
                         else -> false
                     }
                 },
         ) {
-            ScNavDialogCapture(onBack = onDismiss)  // B closes (the layout is already auto-saved)
+            ScNavDialogCapture(onBack = onDismiss)  // B = back without saving; Start/Done saves
             AndroidView(
                 // Non-focusable so the overlay View can't steal focus from the Compose root — otherwise the bridge's
                 // synthetic d-pad/zoom/bumper keys stop arriving (they only fire while the focusable Box holds focus).
@@ -186,8 +195,15 @@ fun ScOverlayEditorDialog(
                 },
             )
 
+            Box(
+                Modifier.align(Alignment.TopStart).padding(8.dp)
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.55f), CircleShape),
+            ) {
+                // The Dialog has no Surface, so the default content color is dark on this dark scrim; set it.
+                CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) { ScBackArrow(onDismiss) }
+            }
+
             // Bottom control panel — semi-transparent so the preview shows through; rounded to match the SC menus.
-            // Auto-saves, so no Save/Cancel; the legend shows the controller controls (touch drag/pinch also work).
             Column(
                 modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()
                     .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
@@ -205,17 +221,18 @@ fun ScOverlayEditorDialog(
                         modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
                     )
                 }
-                Text(
-                    buildString {
-                        append("Left stick: move   ·   LT / RT: smaller / bigger")
-                        if (menuOptions.size > 1) append("   ·   LB / RB: switch menu")
-                        append("   ·   Y: reset   ·   B: done")
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center,
+                FlowRow(
                     modifier = Modifier.fillMaxWidth(),
-                )
+                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    ScIconLegendHint(listOf(InputIcons.Xbox.stickL), "Move")
+                    ScIconLegendHint(listOf(InputIcons.Xbox.lt, InputIcons.Xbox.rt), "Smaller / bigger")
+                    if (menuOptions.size > 1) ScIconLegendHint(listOf(InputIcons.Xbox.lb, InputIcons.Xbox.rb), "Switch menu")
+                    ScLegendHint(TritonProtocol.BTN_Y, "Reset")
+                    ScLegendHint(TritonProtocol.BTN_VIEW, "Done")
+                    ScLegendHint(TritonProtocol.BTN_B, "Cancel")
+                }
                 Text(
                     "Or drag / pinch on screen.",
                     style = MaterialTheme.typography.bodySmall,
@@ -231,9 +248,11 @@ fun ScOverlayEditorDialog(
                     ScActionChip("Reset", onClick = doReset)
                     if (!isShared) {
                         // Revert this scope to its fallback: a per-menu selection → the whole-HUD placement; the whole
-                        // HUD → the global default; keyboard → the global keyboard default. Then close.
+                        // HUD → the global default; keyboard → the global keyboard default. Saves edits to the
+                        // other menus, then closes.
                         val perMenu = selectedMenu
                         val useDefault = {
+                            drafts.forEach { (sel, l) -> if (sel != perMenu) saveLayout(sel, l) }
                             when {
                                 keyboard -> ScOverlayStore.clearKeyboard(context, storeKey)
                                 perMenu != null -> ScOverlayStore.clearMenu(context, storeKey, perMenu.name)
@@ -244,6 +263,8 @@ fun ScOverlayEditorDialog(
                         }
                         ScActionChip(if (perMenu != null) "Use HUD default" else "Use global", onClick = useDefault)
                     }
+                    ScActionChip("Cancel", onClick = onDismiss)
+                    ScActionChip("Done", onClick = done, filled = true)
                 }
             }
         }
