@@ -433,7 +433,8 @@ private enum class TriggerSide(val label: String, val defaultAxis: String, val c
 /** Trigger row summary: what the trigger does (its stage commands and full-pull bind), with the analog axis as a
  *  suffix, so a trigger bound to a key reads as that key rather than "Axis: R2". */
 private fun summarizeTrigger(t: EditTrigger?, click: EditBinding?): String {
-    val bound = { b: EditBinding -> b.kind != OutputKind.NONE && b.kind != OutputKind.INHERIT }
+    // INHERIT counts: it's a kept advanced binding from a .vdf, and summarize() prints its description.
+    val bound = { b: EditBinding -> b.kind != OutputKind.NONE }
     val parts = mutableListOf<String>()
     if (t?.mode == TriggerEditMode.STAGED) {
         if (bound(t.soft)) parts += "Soft: ${summarize(t.soft)}"
@@ -447,6 +448,7 @@ private fun summarizeTrigger(t: EditTrigger?, click: EditBinding?): String {
         else -> null
     }
     return when {
+        t == null && parts.isNotEmpty() -> "Inherit (default) · Click: ${summarize(click!!)}"
         parts.isNotEmpty() -> parts.joinToString(" · ") + (axis?.let { " + $it" } ?: "")
         axis != null -> axis
         t == null -> "Inherit (default)"

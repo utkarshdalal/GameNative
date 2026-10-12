@@ -226,7 +226,8 @@ fun ScNavDialogColumn(
         val scroll = rememberScrollState()
         // The legend sits under the scroll area so it stays visible while the list scrolls.
         Column(modifier) {
-            ScScrollbar(scroll, Modifier.weight(1f, fill = false)) {
+            // ScScrollbar fills its slot, so the list takes the space left above the legend (as tall as before).
+            ScScrollbar(scroll, Modifier.weight(1f)) {
                 // Inset the content from the right so the scrollbar (on the outer edge) doesn't overlap chips/rows.
                 Column(Modifier.verticalScroll(scroll).padding(end = 18.dp).then(keyHandling), content = body)
             }

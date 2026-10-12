@@ -84,18 +84,10 @@ fun ScNavLegend(bumpers: Boolean, help: Boolean, close: Boolean, modifier: Modif
         horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-            ScDpadGlyph(size = 18.dp)
-            Text("Move", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+        ScIconLegendHint(listOf(InputIcons.Xbox.dpad), "Move")
         ScLegendHint(TritonProtocol.BTN_A, "Select")
         ScLegendHint(TritonProtocol.BTN_B, "Back")
-        if (bumpers) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                ScButtonGlyph(TritonProtocol.BTN_LBUMPER, size = 18.dp)
-                ScLegendHint(TritonProtocol.BTN_RBUMPER, "Switch")
-            }
-        }
+        if (bumpers) ScIconLegendHint(listOf(InputIcons.Xbox.lb, InputIcons.Xbox.rb), "Switch")
         if (help) ScLegendHint(TritonProtocol.BTN_Y, "Help")
         if (close) ScLegendHint(TritonProtocol.BTN_VIEW, "Close")
     }

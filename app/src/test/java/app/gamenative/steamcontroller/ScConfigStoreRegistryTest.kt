@@ -181,7 +181,13 @@ class ScConfigStoreRegistryTest {
     @Test
     fun `export round-trips a vdf config with its edit overlay into another game`() {
         val id = ScConfigStore.importVdfConfig(ctx, key, vdfTwoSets, "Mine")!!
-        val edited = ScConfigStore.loadEditableConfig(ctx, key)!!
+        // A real edit (A → F5) that must survive the trip.
+        val seeded = ScConfigStore.loadEditableConfig(ctx, key)!!
+        val edited = seeded.copy(
+            sets = seeded.sets.map {
+                if (it.id == "0") it.copy(profile = it.profile.copy(buttons = it.profile.buttons + ("A" to EditBinding(OutputKind.KEY, keys = listOf("KEY_F5"))))) else it
+            },
+        )
         assertTrue(ScConfigStore.saveEditableConfig(ctx, key, edited))
         val text = ScConfigStore.exportConfig(ctx, key, id)!!
 
@@ -197,6 +203,8 @@ class ScConfigStoreRegistryTest {
         assertEquals(newId, ScConfigStore.activeConfigId(ctx, other))
         assertEquals("Mine", ScConfigStore.listConfigs(ctx, other).single().name)
         assertEquals(ScConfigStore.forKey(ctx, key)!!.sets.keys, ScConfigStore.forKey(ctx, other)!!.sets.keys)
+        val out = ScConfigStore.forKey(ctx, other)!!.sets["0"]!!.buttons[ScSource.A.bit]?.output
+        assertTrue("the A → F5 edit survived", out is ScOutput.Key && (out as ScOutput.Key).keys == listOf(XKeycode.KEY_F5))
         // Re-exporting the copy yields the same payload.
         assertEquals(export.copy(), ScConfigStore.parseExport(ScConfigStore.exportConfig(ctx, other, newId!!)!!))
     }
@@ -210,7 +218,22 @@ class ScConfigStoreRegistryTest {
         assertEquals(ScConfigKind.AUTHORED, export.kind)
         val newId = ScConfigStore.importExport(ctx, "GAME_OTHER", export)
         assertNotNull(newId)
+        assertEquals(newId, ScConfigStore.activeConfigId(ctx, "GAME_OTHER"))
+        assertEquals(export, ScConfigStore.parseExport(ScConfigStore.exportConfig(ctx, "GAME_OTHER", newId!!)!!))
         assertNull(ScConfigStore.parseExport(vdfTwoSets))
+        // The format marker is required, not defaulted.
+        assertNull(ScConfigStore.parseExport("{\"name\":\"x\",\"kind\":\"VDF\",\"payload\":\"\"}"))
         assertNull(ScConfigStore.parseExport("{\"format\":\"something-else\",\"name\":\"x\",\"kind\":\"VDF\",\"payload\":\"\"}"))
+    }
+
+    @Test
+    fun `export with a BOM still parses and a blank name gets a label`() {
+        val cfg = ScEditableConfig(sets = listOf(ScEditableSet(id = "0", name = "Base")))
+        assertTrue(ScConfigStore.saveEditableConfig(ctx, key, cfg))
+        val text = ScConfigStore.exportConfig(ctx, key, ScConfigStore.activeConfigId(ctx, key)!!)!!
+        val export = ScConfigStore.parseExport("\uFEFF" + text)
+        assertNotNull(export)
+        val newId = ScConfigStore.importExport(ctx, "GAME_OTHER", export!!, name = "  ")!!
+        assertEquals("Imported", ScConfigStore.listConfigs(ctx, "GAME_OTHER").first { it.id == newId }.name)
     }
 }

@@ -22,7 +22,8 @@ data class ScConfigEntry(val id: String, val name: String, val kind: ScConfigKin
  */
 @Serializable
 data class ScConfigExport(
-    val format: String = ScConfigStore.EXPORT_FORMAT,
+    /** Required (no default) so a JSON object without the marker is never taken for an export. */
+    val format: String,
     val version: Int = 1,
     val name: String,
     val kind: ScConfigKind,
@@ -211,6 +212,7 @@ object ScConfigStore {
     fun importVdfConfig(context: Context, key: String, text: String, name: String = "Imported"): String? {
         val reg = registry(context, key)
         val newId = reg.nextId()
+        overlayPayload(context, key, newId).delete()  // a stale overlay from a failed import must not apply to this vdf
         if (!runCatching { vdfPayload(context, key, newId).writeText(text); true }.getOrDefault(false)) {
             Log.w(TAG, "importVdfConfig($key) write failed"); return null
         }
@@ -227,11 +229,11 @@ object ScConfigStore {
         val export = runCatching {
             when (entry.kind) {
                 ScConfigKind.VDF -> ScConfigExport(
-                    name = entry.name, kind = entry.kind,
+                    format = EXPORT_FORMAT, name = entry.name, kind = entry.kind,
                     payload = vdfPayload(context, key, id).readText(),
                     overlay = overlayPayload(context, key, id).takeIf { it.isFile }?.readText(),
                 )
-                ScConfigKind.AUTHORED -> ScConfigExport(name = entry.name, kind = entry.kind, payload = setsPayload(context, key, id).readText())
+                ScConfigKind.AUTHORED -> ScConfigExport(format = EXPORT_FORMAT, name = entry.name, kind = entry.kind, payload = setsPayload(context, key, id).readText())
             }
         }.onFailure { Log.w(TAG, "exportConfig($key,$id) failed: ${it.message}") }.getOrNull() ?: return null
         return json.encodeToString(ScConfigExport.serializer(), export)
@@ -239,8 +241,10 @@ object ScConfigStore {
 
     /** Parse [text] as an [ScConfigExport], or null if it isn't one (e.g. it's a Steam `.vdf`). */
     fun parseExport(text: String): ScConfigExport? {
-        if (!text.trimStart().startsWith("{")) return null
-        return runCatching { json.decodeFromString(ScConfigExport.serializer(), text) }.getOrNull()
+        // Also skip a UTF-8 BOM (Notepad adds one; it isn't whitespace).
+        val body = text.trimStart { it.isWhitespace() || it == '\uFEFF' }
+        if (!body.startsWith("{")) return null
+        return runCatching { json.decodeFromString(ScConfigExport.serializer(), body) }.getOrNull()
             ?.takeIf { it.format == EXPORT_FORMAT }
     }
 
@@ -254,6 +258,8 @@ object ScConfigStore {
         if (!valid) { Log.w(TAG, "importExport($key): invalid payload"); return null }
         val reg = registry(context, key)
         val newId = reg.nextId()
+        // nextId() can reuse an id whose files a failed import left behind; start clean so no stale overlay applies.
+        clearPayloads(context, key, newId)
         val ok = runCatching {
             when (export.kind) {
                 ScConfigKind.VDF -> {
@@ -264,9 +270,16 @@ object ScConfigStore {
             }
             true
         }.getOrDefault(false)
-        if (!ok) { Log.w(TAG, "importExport($key) write failed"); return null }
-        val updated = reg.copy(configs = reg.configs + ScConfigEntry(newId, name, export.kind), activeId = newId)
-        return if (writeRegistry(context, key, updated)) newId else null
+        if (!ok) { Log.w(TAG, "importExport($key) write failed"); clearPayloads(context, key, newId); return null }
+        val label = name.trim().ifBlank { "Imported" }
+        val updated = reg.copy(configs = reg.configs + ScConfigEntry(newId, label, export.kind), activeId = newId)
+        if (writeRegistry(context, key, updated)) return newId
+        clearPayloads(context, key, newId)
+        return null
+    }
+
+    private fun clearPayloads(context: Context, key: String, id: String) {
+        vdfPayload(context, key, id).delete(); overlayPayload(context, key, id).delete(); setsPayload(context, key, id).delete()
     }
 
     // --- Authored-config IO (editor) -------------------------------------------------------------------

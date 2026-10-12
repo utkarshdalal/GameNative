@@ -19,6 +19,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import app.gamenative.R
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
@@ -59,7 +61,7 @@ fun ScBackTitle(text: String, onBack: () -> Unit, style: TextStyle = MaterialThe
 @Composable
 fun ScBackArrow(onBack: () -> Unit) {
     IconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
-        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
     }
 }
 

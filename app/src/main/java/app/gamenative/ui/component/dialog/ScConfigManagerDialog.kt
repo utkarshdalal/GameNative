@@ -63,15 +63,18 @@ fun ScConfigManagerDialog(storeKey: String, onChanged: () -> Unit, onDismiss: ()
             val fileName = runCatching {
                 context.contentResolver.query(uri, null, null, null, null)?.use { c ->
                     val i = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-                    if (i >= 0 && c.moveToFirst()) c.getString(i)?.removeSuffix(".json")?.removeSuffix(".gnsc")?.removeSuffix(".vdf") else null
+                    if (i >= 0 && c.moveToFirst()) {
+                        c.getString(i)?.replace(Regex("""(\.gnsc)?\.json$|\.vdf$""", RegexOption.IGNORE_CASE), "")
+                    } else null
                 }
             }.getOrNull()?.trim()?.takeIf { it.isNotBlank() }
             // A GameNative export (from "Export active config") restores as-is, edits included.
-            ScConfigStore.parseExport(text)?.let { export ->
-                val name = fileName ?: export.name
+            withContext(Dispatchers.IO) { ScConfigStore.parseExport(text) }?.let { export ->
+                // An unrenamed file only carries the sanitized name ("Raid_ healer"); keep the exact stored one then.
+                val name = fileName?.takeIf { it != exportFileStem(export.name) } ?: export.name
                 val newId = withContext(Dispatchers.IO) { ScConfigStore.importExport(context, storeKey, export, name) }
                 version++; onChanged()
-                SnackbarManager.show(if (newId != null) "Imported $name — now active" else "Not a valid exported config")
+                SnackbarManager.show(if (newId != null) "Imported $name — now active" else "Could not import the config")
                 return@launch
             }
             val parsed = withContext(Dispatchers.IO) { ScConfigStore.validate(text) }
@@ -134,7 +137,7 @@ fun ScConfigManagerDialog(storeKey: String, onChanged: () -> Unit, onDismiss: ()
                     }
                     ScNavRow(nav, 4, "Export active config") {
                         exportingId = activeEntry.id
-                        exportLauncher.launch(activeEntry.name.replace(Regex("[^A-Za-z0-9 ._-]"), "_") + ".gnsc.json")
+                        exportLauncher.launch(exportFileStem(activeEntry.name) + ".gnsc.json")
                     }
                 }
                 ScNavRow(nav, 5, "Import config (Steam .vdf or export)") { importLauncher.launch(arrayOf("*/*")) }
@@ -193,3 +196,6 @@ private enum class NameActionKind { DUPLICATE, RENAME }
 
 /** A pending duplicate/rename name prompt for config [configId]. */
 private data class NameAction(val kind: NameActionKind, val configId: String, val initial: String)
+
+/** File-name-safe form of a config name, used for the export's suggested file name. */
+private fun exportFileStem(name: String): String = name.replace(Regex("[^A-Za-z0-9 ._-]"), "_")

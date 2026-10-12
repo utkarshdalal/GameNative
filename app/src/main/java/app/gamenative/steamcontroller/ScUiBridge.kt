@@ -35,7 +35,8 @@ interface ScUiBridge {
 /** Direction/selection intents emitted by the interpreter while a menu is captured; mapped to Android d-pad,
  *  DPAD_CENTER and back keycodes by the bridge implementation. [TAB_PREV]/[TAB_NEXT] (bumpers) flip between the
  *  command-picker tabs (Keyboard / Numpad / Mouse / Gamepad / …). [ZOOM_IN]/[ZOOM_OUT] (right/left trigger) resize
- *  the overlay in the placement editor; ignored elsewhere. */
+ *  the overlay in the placement editor; ignored elsewhere. [ALT] (X) is a spare action key: backspace in the on-screen
+ *  text keyboard; ignored elsewhere. */
 enum class ScNavKey { UP, DOWN, LEFT, RIGHT, SELECT, BACK, TAB_PREV, TAB_NEXT, HELP, CLOSE, ZOOM_IN, ZOOM_OUT, ALT }
 
 /** No-op bridge: no overlay attached / headless tests. */
