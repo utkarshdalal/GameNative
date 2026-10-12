@@ -90,6 +90,58 @@ class InputDeviceManagerButtonReleaseTest {
         }
     }
 
+    /** Wine may replace the implicit grab with its disabled but viewable clip window. */
+    @Test
+    fun `disabled explicit grab retains paired button delivery to the grabbing client`() {
+        val server = XServer(ScreenInfo(640, 480), false)
+        val output = RecordingOutput()
+        val client = XClient(server, null, output)
+        val game = server.windowManager.createWindow(
+            42, server.windowManager.rootWindow, 0, 0, 200, 200,
+            WindowAttributes.WindowClass.INPUT_ONLY, null, 0, client,
+        )
+        client.setEventListenerForWindow(game, Bitmask((Event.BUTTON_PRESS or Event.BUTTON_RELEASE).toLong()))
+        server.windowManager.mapWindow(game)
+        server.pointer.setPosition(10, 10)
+        server.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT)
+        assertEquals(4, output.buffer.get(0).toInt())
+
+        val foreignOutput = RecordingOutput()
+        val desktopClient = XClient(server, null, foreignOutput)
+        val clip = server.windowManager.createWindow(
+            43, server.windowManager.rootWindow, 0, 0, 1, 1,
+            WindowAttributes.WindowClass.INPUT_ONLY, null, 0, desktopClient,
+        )
+        desktopClient.setEventListenerForWindow(clip, Bitmask((Event.BUTTON_PRESS or Event.BUTTON_RELEASE).toLong()))
+        server.windowManager.mapWindow(clip)
+        clip.attributes.setEnabled(false)
+        server.grabManager.activatePointerGrab(
+            clip, false, Bitmask((Event.BUTTON_PRESS or Event.BUTTON_RELEASE or Event.POINTER_MOTION).toLong()), client, null,
+        )
+        server.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT)
+        assertEquals("The original mouse-down must be paired despite the disabled grab window", 5, output.buffer.get(32).toInt())
+        assertEquals(43, output.buffer.getInt(44))
+        assertEquals(0x100, output.buffer.getShort(60).toInt())
+
+        server.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT)
+        server.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT)
+        assertEquals("Subsequent presses must use the active grab listener", 4, output.buffer.get(64).toInt())
+        assertEquals(5, output.buffer.get(96).toInt())
+        server.injectPointerMove(20, 20)
+        assertEquals("Pointer motion must also honor the disabled active grab", 6, output.buffer.get(128).toInt())
+        assertEquals(43, output.buffer.getInt(140))
+
+        server.grabManager.activatePointerGrab(clip, false, Bitmask(Event.BUTTON_RELEASE.toLong()), client, null)
+        server.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT)
+        server.injectPointerMove(30, 30)
+        assertEquals("Unselected press and motion events must be discarded", 160, output.buffer.position())
+        server.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT)
+        assertEquals(5, output.buffer.get(160).toInt())
+        assertEquals("Only selected events reach the grab client", 192, output.buffer.position())
+        assertEquals("The window owner must not receive the grab client's buttons", 0, foreignOutput.buffer.position())
+        assertEquals("Explicit grabs survive the last button release", clip, server.grabManager.window)
+    }
+
     /** In-memory little-endian X11 stream for checking exact event fields. */
     private class RecordingOutput : XOutputStream(1024) {
         init {
