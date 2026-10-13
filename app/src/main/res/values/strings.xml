@@ -2696,6 +2696,16 @@
     <string name="lsfg_performance_mode_desc">Reduces quality for higher throughput</string>
     <!-- Bionic FG (AI) Frame Generation -->
     <string name="steam_invite_tab_title">Invite</string>
+    <string name="steam_overlay_title">Steam Friends</string>
+    <string name="steam_overlay_close">Close</string>
+    <string name="steam_overlay_refresh">Refresh</string>
+    <string name="steam_overlay_no_friends">No friends to show yet. Make sure Steam Online is running.</string>
+    <string name="steam_overlay_action_invite">Invite</string>
+    <string name="steam_overlay_action_join">Join</string>
+    <string name="steam_invite_incoming_body">invited you to play</string>
+    <string name="steam_invite_joining">Joining…</string>
+    <string name="steam_invite_dismiss">Dismiss</string>
+    <string name="steam_friend_playing_same_game">started playing this game</string>
     <string name="steam_invite_header">%1$d friends</string>
     <string name="steam_invite_joinable">In this game — tap to join</string>
     <string name="steam_invite_unavailable">Steam client not ready</string>

@@ -546,11 +546,16 @@ fun QuickMenu(
         }
     }
 
-    // Created here rather than plumbed through XServerScreen: that composable
-    // sits at the dex verifier's register limit and any extra locals there
-    // trip a VerifyError at class load (dex methods over 255 registers hit a
-    // broken D8 codegen path).
-    val inviteMenu = remember(container?.id) { SteamInviteState.createIfAvailable(container) }
+    // Shared with SteamFriendsOverlay (not plumbed through XServerScreen — register limit).
+    LaunchedEffect(container?.id) {
+        SteamFriendsOverlayController.bind(container)
+        val steamAppId = container?.id
+            ?.removePrefix("STEAM_")
+            ?.toIntOrNull()
+            ?: 0
+        app.gamenative.service.FriendPlayingWatcher.bind(steamAppId)
+    }
+    val inviteMenu = SteamFriendsOverlayController.inviteState
     var showGyroSettingsDialog by rememberSaveable(container?.id) { mutableStateOf(false) }
     var showControlProfiles by rememberSaveable(container?.id) { mutableStateOf(false) }
     var lastControllerFocusRequester by remember(container?.id) { mutableStateOf<FocusRequester?>(null) }
@@ -603,19 +608,26 @@ fun QuickMenu(
     val inviteTabFocusRequester = remember { FocusRequester() }
     val inviteItemFocusRequester = remember { FocusRequester() }
 
-    // The game's own "Invite friends" button reaches us as an engine callback the bionic host
-    // captures. Open on the invite tab rather than drawing a separate panel, so controller focus
-    // and back-to-dismiss behave like the rest of the menu.
+    // Poll overlay invite requests + friends starting the same game.
     if (inviteMenu != null) {
-        LaunchedEffect(inviteMenu) {
+        LaunchedEffect(container?.id, inviteMenu) {
             while (true) {
-                if (!isVisible && inviteMenu.consumeGameInviteRequest()) {
-                    selectedTab = QuickMenuTab.INVITE
-                    PrefManager.quickMenuLastTab = selectedTab
-                    SteamInviteState.openedForGameRequest = true
-                    onRequestOpen()
+                if (!isVisible && !SteamFriendsOverlayController.visible) {
+                    if (SteamFriendsOverlayController.pollAndShowIfGameRequested()) {
+                        selectedTab = QuickMenuTab.INVITE
+                        PrefManager.quickMenuLastTab = selectedTab
+                    }
                 }
-                delay(1000)
+                runCatching { app.gamenative.service.FriendPlayingWatcher.tick() }
+                delay(400)
+            }
+        }
+    } else {
+        // Still watch friends when invite UI isn't available but host may come up later.
+        LaunchedEffect(container?.id) {
+            while (true) {
+                runCatching { app.gamenative.service.FriendPlayingWatcher.tick() }
+                delay(5000)
             }
         }
     }
@@ -876,6 +888,10 @@ fun QuickMenu(
                                         onSelected = {
                                             selectedTab = QuickMenuTab.INVITE
                                             PrefManager.quickMenuLastTab = selectedTab
+                                            // Dedicated friends overlay (invite / join).
+                                            SteamFriendsOverlayController.bind(container)
+                                            SteamFriendsOverlayController.show(forGameRequest = false)
+                                            onDismiss()
                                         },
                                         modifier = Modifier.width(56.dp),
                                         focusRequester = inviteTabFocusRequester,
@@ -1280,8 +1296,6 @@ private fun SteamInviteQuickMenuTab(
     val accentColor = PluviaTheme.colors.accentPurple
     val scope = rememberCoroutineScope()
 
-    // Keep polling while the tab is up: a friend joining our lobby is the only signal Steam
-    // gives us that an invite was acted on, so the rows would otherwise go stale.
     LaunchedEffect(Unit) {
         state.refresh()
         while (true) {
@@ -1297,15 +1311,34 @@ private fun SteamInviteQuickMenuTab(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         QuickMenuSectionHeader(
-            title = when {
+            title = stringResource(R.string.steam_overlay_title),
+            subtitle = when {
                 state.isLoading -> stringResource(R.string.main_loading)
                 state.hostUnavailable -> stringResource(R.string.steam_invite_unavailable)
                 else -> stringResource(R.string.steam_invite_header, state.friends.size)
             },
-            subtitle = state.lastError?.let { stringResource(it) },
         )
 
-        state.friends.forEachIndexed { index, friend ->
+        QuickMenuDetailRow(
+            title = stringResource(R.string.steam_overlay_title),
+            subtitle = stringResource(R.string.steam_invite_tab_title),
+            accentColor = accentColor,
+            onActivate = {
+                SteamFriendsOverlayController.show(forGameRequest = false)
+            },
+            focusRequester = focusRequester,
+        )
+
+        state.lastError?.let { err ->
+            Text(
+                text = stringResource(err),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+        }
+
+        state.friends.forEach { friend ->
             QuickMenuDetailRow(
                 title = friend.name,
                 subtitle = stringResource(
@@ -1320,11 +1353,9 @@ private fun SteamInviteQuickMenuTab(
                 accentColor = accentColor,
                 onActivate = {
                     scope.launch {
-                        // Someone already in this game gets joined, not invited.
                         if (friend.isJoinable) state.join(friend) else state.invite(friend.steamId)
                     }
                 },
-                focusRequester = if (index == 0) focusRequester else null,
             )
         }
     }

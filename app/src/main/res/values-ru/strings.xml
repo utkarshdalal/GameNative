@@ -2576,6 +2576,16 @@ https://gamenative.app
     <string name="nexus_archive_memory_error">Архиву требуется больше памяти, чем разрешено Android. Повторите попытку после обновления GameNative или выберите файл меньшего размера.</string>
     <!-- Bionic FG (AI) Frame Generation -->
     <string name="steam_invite_tab_title">Пригласить</string>
+    <string name="steam_overlay_title">Друзья Steam</string>
+    <string name="steam_overlay_close">Закрыть</string>
+    <string name="steam_overlay_refresh">Обновить</string>
+    <string name="steam_overlay_no_friends">Пока нет друзей. Убедитесь, что запущен Steam Online.</string>
+    <string name="steam_overlay_action_invite">Пригласить</string>
+    <string name="steam_overlay_action_join">Войти</string>
+    <string name="steam_invite_incoming_body">приглашает вас в игру</string>
+    <string name="steam_invite_joining">Вход…</string>
+    <string name="steam_invite_dismiss">Отклонить</string>
+    <string name="steam_friend_playing_same_game">запустил эту же игру</string>
     <string name="steam_invite_header">Друзей: %1$d</string>
     <string name="steam_invite_joinable">В этой игре — нажмите, чтобы присоединиться</string>
     <string name="steam_invite_unavailable">Клиент Steam не готов</string>

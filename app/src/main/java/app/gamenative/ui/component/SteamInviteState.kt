@@ -4,7 +4,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import app.gamenative.R
-import app.gamenative.SteamBootstrap
 import app.gamenative.service.SteamOverlayClient
 import com.winlator.container.Container
 import timber.log.Timber
@@ -86,14 +85,21 @@ class SteamInviteState private constructor() {
 
     /**
      * True when the game has asked for its invite dialog -- i.e. the player pressed the game's
-     * own "Invite friends" button. Consumes the request and pre-loads the friend list so the tab
-     * is populated by the time it opens.
+     * own "Invite friends" button. Consumes the request and pre-loads the friend list so the
+     * overlay is populated by the time it opens.
+     *
+     * Works for Bionic and Headless/Wine Steam hosts via [SteamOverlayClient] (not only
+     * [app.gamenative.SteamBootstrap], which is Bionic-only).
      */
     suspend fun consumeGameInviteRequest(): Boolean {
-        if (SteamBootstrap.getProcessStatus() !is SteamBootstrap.ProcessStatus.Ready) return false
+        if (!SteamOverlayClient.isAvailable()) return false
 
         val request = SteamOverlayClient.pollOverlayRequest() ?: return false
-        if (!request.isInviteRequest) {
+        // Invite dialogs and generic overlay open requests both surface friends UI.
+        val openFriends = request.isInviteRequest ||
+            request.dialog.contains("overlay", ignoreCase = true) ||
+            request.dialog.contains("friends", ignoreCase = true)
+        if (!openFriends) {
             Timber.d("SteamInviteState: ignoring overlay request '${request.dialog}'")
             return false
         }
@@ -107,13 +113,20 @@ class SteamInviteState private constructor() {
 
     companion object {
         /**
-         * Set while the menu is open because the game asked for it, so the host screen can skip
-         * suspending the game. An invite dialog must not pause: the game has to keep running to
-         * receive the peer that's joining.
+         * Set while the friends overlay / invite menu is open because the game asked for it,
+         * so the host screen can skip suspending the game. An invite dialog must not pause:
+         * the game has to keep running to receive the peer that's joining.
          */
         @Volatile
         var openedForGameRequest: Boolean = false
-        fun createIfAvailable(container: Container?): SteamInviteState? =
-            if (container != null && (container.isLaunchBionicSteam || container.isLaunchHeadlessSteam)) SteamInviteState() else null
+
+        fun createIfAvailable(container: Container?): SteamInviteState? {
+            if (container == null) return null
+            // Online / Bionic / Headless Steam host exposes the overlay command socket.
+            val steamOnlinePath = container.isLaunchBionicSteam ||
+                container.isLaunchHeadlessSteam ||
+                (container.isLaunchRealSteam && !container.isSteamOfflineMode)
+            return if (steamOnlinePath) SteamInviteState() else null
+        }
     }
 }

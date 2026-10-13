@@ -156,7 +156,7 @@ If the story needs 12 settings screens, we failed.
 - [ ] “Online Ready” library tab  
 - [ ] Rebuild game as Online/Offline without full reinstall when possible  
 - [ ] Public web/list of Online OK titles for the fork  
-- [ ] Invite/join UX polish on top of upstream overlay work  
+- [x] Invite/join UX polish on top of upstream overlay work (Steam Friends overlay)  
 
 ### Explicit non-goals (for now)
 - Bypassing anti-cheat  
@@ -282,7 +282,8 @@ Release naming idea:
 
 - `gamenative-online-v0.1.0` — Install profiles + badges  
 - `gamenative-online-v0.1.4` — Online Ready filter + store category detection  
-- `gamenative-online-v0.1.5` — Auto on-screen controls at install (KBM/FPS/RTS/Gamepad + Steam Input)  
+- `gamenative-online-v0.1.5` — Auto on-screen controls at install (KBM/FPS/RTS/Gamepad + Steam Input)
+- `gamenative-online-v0.1.6` — Steam friends overlay (invite/join), prominent LMB, notify when friend starts same game  
 - `v0.2.0` — diagnostics + Online Ready tab  
 - `v0.3.0` — public online matrix + top-game fixes  
 

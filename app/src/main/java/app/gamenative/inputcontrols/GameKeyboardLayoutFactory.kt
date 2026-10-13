@@ -108,30 +108,31 @@ object GameKeyboardLayoutFactory {
                     "MOUSE_MOVE_DOWN",
                     "MOUSE_MOVE_LEFT",
                 ),
-                x = 0.82,
-                y = 0.58,
-                scale = 1.9,
+                x = 0.84,
+                y = 0.48,
+                scale = 1.7,
                 text = "LOOK",
             ),
         )
+        // Large primary click — right-thumb zone under look pad.
+        put(button("LMB", "MOUSE_LEFT_BUTTON", 0.78, 0.72, scale = 1.55))
+        put(button("RMB", "MOUSE_RIGHT_BUTTON", 0.90, 0.62, scale = 1.2))
         putActionButtons(
             defaults = listOf(
-                Slot("E", "KEY_E", 0.78, 0.82, scale = 1.15),
-                Slot("F", "KEY_F", 0.88, 0.78),
-                Slot("SPC", "KEY_SPACE", 0.70, 0.88),
+                Slot("E", "KEY_E", 0.68, 0.86, scale = 1.15),
+                Slot("F", "KEY_F", 0.88, 0.84),
+                Slot("SPC", "KEY_SPACE", 0.58, 0.88),
                 Slot("SHF", "KEY_SHIFT_L", 0.05, 0.55, toggle = true),
                 Slot("CTL", "KEY_CTRL_L", 0.05, 0.68, toggle = true),
                 Slot("R", "KEY_R", 0.92, 0.88),
-                Slot("Q", "KEY_Q", 0.68, 0.72),
+                Slot("Q", "KEY_Q", 0.58, 0.72),
                 Slot("TAB", "KEY_TAB", 0.05, 0.22),
                 Slot("ESC", "KEY_ESC", 0.95, 0.08),
-                Slot("LMB", "MOUSE_LEFT_BUTTON", 0.72, 0.55, scale = 1.1),
-                Slot("RMB", "MOUSE_RIGHT_BUTTON", 0.82, 0.42),
                 Slot("I", "KEY_I", 0.15, 0.22),
                 Slot("M", "KEY_M", 0.25, 0.22),
             ),
             discovered = discovered,
-            moveBindings = move.toSet(),
+            moveBindings = move.toSet() + setOf("MOUSE_LEFT_BUTTON", "MOUSE_RIGHT_BUTTON"),
         )
     }
 
@@ -157,14 +158,15 @@ object GameKeyboardLayoutFactory {
                 ),
             ),
         )
+        // Large fire button for thumb; RMB stays smaller for aim/alt-fire.
+        put(button("LMB", "MOUSE_LEFT_BUTTON", 0.88, 0.70, scale = 1.55))
+        put(button("RMB", "MOUSE_RIGHT_BUTTON", 0.96, 0.58, scale = 1.15))
         putActionButtons(
             defaults = listOf(
-                Slot("LMB", "MOUSE_LEFT_BUTTON", 0.89, 0.65),
-                Slot("RMB", "MOUSE_RIGHT_BUTTON", 0.96, 0.60),
-                Slot("E", "KEY_E", 0.78, 0.78, scale = 1.1),
-                Slot("F", "KEY_F", 0.86, 0.86),
-                Slot("SPC", "KEY_SPACE", 0.94, 0.74),
-                Slot("R", "KEY_R", 0.90, 0.86),
+                Slot("E", "KEY_E", 0.76, 0.80, scale = 1.1),
+                Slot("F", "KEY_F", 0.84, 0.88),
+                Slot("SPC", "KEY_SPACE", 0.94, 0.78),
+                Slot("R", "KEY_R", 0.90, 0.88),
                 Slot("SHF", "KEY_SHIFT_L", 0.04, 0.65, toggle = true),
                 Slot("CTL", "KEY_CTRL_L", 0.04, 0.78, toggle = true),
                 Slot("Q", "KEY_Q", 0.12, 0.55),
@@ -172,7 +174,8 @@ object GameKeyboardLayoutFactory {
                 Slot("TAB", "KEY_TAB", 0.05, 0.20),
             ),
             discovered = discovered,
-            moveBindings = discovered?.move?.toSet().orEmpty(),
+            moveBindings = discovered?.move?.toSet().orEmpty() +
+                setOf("MOUSE_LEFT_BUTTON", "MOUSE_RIGHT_BUTTON"),
         )
         put(
             element(
@@ -245,8 +248,8 @@ object GameKeyboardLayoutFactory {
         put(button("TAB", "KEY_TAB", 0.07, 0.49))
         put(button("SPC", "KEY_SPACE", 0.88, 0.78))
         put(button("E", "KEY_E", 0.78, 0.70))
-        put(button("LMB", "MOUSE_LEFT_BUTTON", 0.82, 0.55, scale = 1.2))
-        put(button("RMB", "MOUSE_RIGHT_BUTTON", 0.92, 0.62))
+        put(button("LMB", "MOUSE_LEFT_BUTTON", 0.84, 0.58, scale = 1.45))
+        put(button("RMB", "MOUSE_RIGHT_BUTTON", 0.94, 0.68, scale = 1.15))
         put(
             element(
                 type = "TRACKPAD",

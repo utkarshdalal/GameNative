@@ -26,7 +26,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import app.gamenative.R
 import app.gamenative.service.SteamOverlayClient
 import app.gamenative.ui.util.GameInviteNotificationManager
 import kotlinx.coroutines.launch
@@ -34,10 +36,7 @@ import timber.log.Timber
 
 /**
  * Shows an incoming Steam game invite over the running game, with an accept action that hands
- * the join to the bionic Steam client.
- *
- * Unlike [AchievementOverlay] this does not auto-dismiss: it is a prompt, so it stays until the
- * user answers it.
+ * the join to the Steam host (Bionic or Headless).
  */
 @Composable
 fun BoxScope.GameInviteOverlay() {
@@ -47,8 +46,6 @@ fun BoxScope.GameInviteOverlay() {
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    // The app's own Steam session doesn't keep friend personas, so resolve the display name
-    // from the running client instead; falling back to the id is fine.
     LaunchedEffect(invite?.fromSteamId) {
         inviterName = null
         val id = invite?.fromSteamId ?: return@LaunchedEffect
@@ -85,7 +82,7 @@ fun BoxScope.GameInviteOverlay() {
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = "invited you to play",
+                    text = stringResource(R.string.steam_invite_incoming_body),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -110,13 +107,19 @@ fun BoxScope.GameInviteOverlay() {
                             }
                         },
                     ) {
-                        Text(if (busy) "Joining…" else "Join")
+                        Text(
+                            if (busy) {
+                                stringResource(R.string.steam_invite_joining)
+                            } else {
+                                stringResource(R.string.steam_overlay_action_join)
+                            },
+                        )
                     }
                     TextButton(
                         enabled = !busy,
                         onClick = { GameInviteNotificationManager.clear() },
                     ) {
-                        Text("Dismiss")
+                        Text(stringResource(R.string.steam_invite_dismiss))
                     }
                 }
             }

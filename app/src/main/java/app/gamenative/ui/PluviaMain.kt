@@ -88,7 +88,9 @@ import app.gamenative.utils.ConversionTracker
 import com.posthog.PostHog
 import app.gamenative.ui.component.AchievementOverlay
 import app.gamenative.ui.component.ConnectionStatusBanner
+import app.gamenative.ui.component.FriendPlayingOverlay
 import app.gamenative.ui.component.GameInviteOverlay
+import app.gamenative.ui.component.SteamFriendsOverlay
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.api.AccountApi
@@ -2339,6 +2341,8 @@ fun PluviaMain(
 
             AchievementOverlay()
             GameInviteOverlay()
+            FriendPlayingOverlay()
+            SteamFriendsOverlay()
         }
     }
 }

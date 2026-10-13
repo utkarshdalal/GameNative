@@ -684,7 +684,9 @@ fun XServerScreen(
     var fpsLimiterEnabled by rememberSaveable(container.id) { mutableStateOf(initialFpsLimiterEnabled(container)) }
     var fpsLimiterTarget by rememberSaveable(container.id) { mutableIntStateOf(initialFpsLimiterTarget(container)) }
 
-    val gyroOverlaySuppressed = showQuickMenu || keepPausedForEditor || showElementEditor ||
+    val gyroOverlaySuppressed = showQuickMenu ||
+        app.gamenative.ui.component.SteamFriendsOverlayController.visible ||
+        keepPausedForEditor || showElementEditor ||
         physicalControllerDialogMode != PHYSICAL_CONTROLLER_DIALOG_NONE ||
         showTouchGestureDialog || showShooterModeDialog ||
         showPlayingBlockedDialog || isEditMode
@@ -3181,9 +3183,13 @@ fun XServerScreen(
             immersiveHooks = immersiveHooks,
             onAnimationComplete = { isMenuVisible ->
                 if (isMenuVisible) {
-                    // An invite dialog the game asked for must not suspend it -- the game has to
-                    // keep running to receive the peer that's joining.
-                    if (!SteamInviteState.openedForGameRequest) pauseForOverlayIfAllowed()
+                    // Invite / friends overlay from the game must not suspend — the session
+                    // has to keep running so peers can join.
+                    if (!SteamInviteState.openedForGameRequest &&
+                        !app.gamenative.ui.component.SteamFriendsOverlayController.openedForGameRequest
+                    ) {
+                        pauseForOverlayIfAllowed()
+                    }
                 } else {
                     SteamInviteState.openedForGameRequest = false
                     if (shouldForceResumeOnMenuClose) {
