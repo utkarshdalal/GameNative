@@ -5741,6 +5741,14 @@ private suspend fun setupWineSystemFiles(
         container.putExtra("wincomponents", wincomponents)
         containerDataChanged = true
     }
+    // every launch, not only on a wincomponents change: containers made before the Wine 10 CLSID fix still
+    // carry the winegstreamer.dll value, and a Wine version change moves the right DLL under the same toggle
+    WineUtils.setWinComponentRegistryKeys(
+        File(imageFs.rootDir, ImageFs.WINEPREFIX + "/system.reg"),
+        "wmdecoder",
+        KeyValueSet(wincomponents).firstOrNull { it[0] == "wmdecoder" }?.get(1) == "1",
+        hasBuiltinWmDecoderDlls(imageFs),
+    )
 
     // OpenAL audio: extract native DLLs if WINEDLLOVERRIDES mentions openal32 or soft_oal
     val dllOverrides = EnvVars(container.envVars).get("WINEDLLOVERRIDES")
@@ -6131,6 +6139,10 @@ private fun restoreOriginalDllFiles(
         }
     }
 }
+private fun hasBuiltinWmDecoderDlls(imageFs: ImageFs): Boolean =
+    File(imageFs.getWinePath(), "lib/wine/i386-windows/wmvdecod.dll").exists() &&
+        File(imageFs.getWinePath(), "lib/wine/i386-windows/wmadmod.dll").exists()
+
 private suspend fun extractWinComponentFiles(
     context: Context,
     firstTimeBoot: Boolean,
@@ -6209,7 +6221,7 @@ private suspend fun extractWinComponentFiles(
                 }
             }
             WineUtils.overrideWinComponentDlls(context, container, identifier, useNative)
-            WineUtils.setWinComponentRegistryKeys(systemRegFile, identifier, useNative)
+            WineUtils.setWinComponentRegistryKeys(systemRegFile, identifier, useNative, hasBuiltinWmDecoderDlls(imageFs))
         }
 
         if (!dlls.isEmpty()) restoreOriginalDllFiles(context, container, containerManager, imageFs, *dlls.toTypedArray())
