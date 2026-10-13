@@ -459,6 +459,9 @@ object SupportApi {
                 cpuProfile.asRequestBody("application/json".toMediaType()),
             )
         }
+        DebugReportUtils.exitTraceBeside(logFile)?.let { trace ->
+            builder.addFormDataPart("exit_trace", DebugReportUtils.EXIT_TRACE_FILE, trace.asRequestBody("text/plain".toMediaType()))
+        }
         return builder
     }
 

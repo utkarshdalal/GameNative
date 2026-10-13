@@ -8,6 +8,7 @@ import app.gamenative.ui.screen.support.SupportComponentApplier
 import app.gamenative.ui.screen.support.SupportPatchApplier
 import app.gamenative.ui.screen.support.SupportSuggestionApplier
 import com.winlator.core.GPUInformation
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -25,6 +26,12 @@ object DebugReportUtils {
     private const val PERF_FILE = "perf.json"
     private const val LOGCAT_FILE = "logcat.gz"
     const val CPU_PROFILE_FILE = "cpu_profile.json"
+    const val EXIT_TRACE_FILE = "exit_trace.txt"
+    private const val EXIT_WINDOW_MS = 48L * 60 * 60 * 1000
+
+    /** Reports built at startup from debug runs the previous process never finished (see [recoverInterruptedRuns]). */
+    @Volatile
+    var recovery: Deferred<List<String>>? = null
 
     @Volatile
     private var logcatProcess: Process? = null
@@ -50,6 +57,11 @@ object DebugReportUtils {
 
     fun cpuProfileBeside(perfFile: File?): File? =
         perfFile?.parentFile?.let { cpuProfileFile(it) }?.takeIf { it.exists() }
+
+    fun exitTraceFile(reportDir: File): File = File(reportDir, EXIT_TRACE_FILE)
+
+    fun exitTraceBeside(logFile: File?): File? =
+        logFile?.parentFile?.let { exitTraceFile(it) }?.takeIf { it.exists() }
 
     private fun rawLogcatFile(context: Context, appId: String): File =
         File(context.getExternalFilesDir(null), "wine_logs/debug_run_$appId.logcat")
@@ -117,7 +129,34 @@ object DebugReportUtils {
         reportDir.deleteRecursively()
     }
 
-    suspend fun createPendingReport(context: Context, appId: String): File? = withContext(Dispatchers.IO) {
+    /**
+     * A debug run leaves wine_logs/debug_run_<appId>.log on disk and only [createPendingReport] removes it,
+     * so a leftover at process start means the last process died mid-run (the game took the app down).
+     * Build the report from what survived; the header carries Android's exit record and `interrupted`.
+     */
+    suspend fun recoverInterruptedRuns(context: Context): List<String> = withContext(Dispatchers.IO) {
+        val dir = File(context.getExternalFilesDir(null), "wine_logs")
+        val leftovers = dir.listFiles()
+            ?.filter { it.isFile && it.name.startsWith("debug_run_") && it.name.endsWith(".log") && it.length() > 0L }
+            ?: emptyList()
+        val recovered = mutableListOf<String>()
+        for (log in leftovers) {
+            val appId = log.name.removePrefix("debug_run_").removeSuffix(".log")
+            val created = try {
+                createPendingReport(context, appId, interrupted = true)
+            } catch (e: Exception) {
+                Timber.w(e, "DebugReportUtils: failed to recover interrupted run for %s", appId)
+                null
+            }
+            if (created != null) {
+                Timber.w("DebugReportUtils: recovered interrupted debug run for %s -> %s", appId, created.name)
+                recovered += appId
+            }
+        }
+        recovered
+    }
+
+    suspend fun createPendingReport(context: Context, appId: String, interrupted: Boolean = false): File? = withContext(Dispatchers.IO) {
         var reportDir: File? = null
         val perf = PerfSampler.stop()
         stopLogcatCapture()
@@ -145,6 +184,20 @@ object DebugReportUtils {
 
             compressLog(claimedLog, logFile(dir))
             val header = buildHeader(context, appId, DebugRunParamsHolder.get(appId))
+            if (interrupted) header.put("interrupted", true)
+            val exits = AppExitRecorder.recentExits(context, System.currentTimeMillis() - EXIT_WINDOW_MS)
+            if (exits.isNotEmpty()) {
+                header.put("appExits", JSONArray(exits))
+                exits.firstOrNull { it.optBoolean("hard") }
+                    ?.let { AppExitRecorder.traceFor(context, it) }
+                    ?.let { trace ->
+                        try {
+                            trace.copyTo(exitTraceFile(dir), overwrite = true)
+                        } catch (e: Exception) {
+                            Timber.w(e, "DebugReportUtils: Failed to copy exit trace")
+                        }
+                    }
+            }
             if (perf != null) {
                 perfFile(dir).writeText(perf.perf.toString())
                 header.put("perf", perf.verdict)

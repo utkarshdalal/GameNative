@@ -319,6 +319,13 @@ class MainViewModel @Inject constructor(
             )
         }
 
+        // A debug run the previous process never finished: offer its recovered report once.
+        viewModelScope.launch {
+            val recovered = DebugReportUtils.recovery ?: return@launch
+            DebugReportUtils.recovery = null
+            recovered.await().firstOrNull()?.let { _uiEvent.send(MainUiEvent.ShowDebugReportDialog(it)) }
+        }
+
         // Register event handlers
         PluviaApp.events.on<AndroidEvent.BackPressed, Unit>(onBackPressed)
         PluviaApp.events.on<AndroidEvent.ExternalGameLaunch, Unit>(onExternalGameLaunch)
