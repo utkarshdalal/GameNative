@@ -1083,6 +1083,24 @@ class BestConfigServiceTest {
     }
 
     @Test
+    fun arm64EcBox64SelectionUsesWowBox64Only() {
+        assertFalse(BestConfigService.usesNativeBox64("proton-10.0-arm64ec-2"))
+        assertTrue(BestConfigService.usesWowBox64("proton-10.0-arm64ec-2", "Box64"))
+    }
+
+    @Test
+    fun arm64EcFexSelectionUsesNeitherBox64Profile() {
+        assertFalse(BestConfigService.usesNativeBox64("proton-11.0-arm64ec"))
+        assertFalse(BestConfigService.usesWowBox64("proton-11.0-arm64ec", "FEXCore"))
+    }
+
+    @Test
+    fun x86_64WineUsesNativeBox64Only() {
+        assertTrue(BestConfigService.usesNativeBox64("proton-9.0-x86_64"))
+        assertFalse(BestConfigService.usesWowBox64("proton-9.0-x86_64", "Box64"))
+    }
+
+    @Test
     fun fallbackFilter_keepsRuntimeVariantButRemovesGpuSpecificSettings() {
         val config = Json.parseToJsonElement(
             """{
@@ -1128,4 +1146,3 @@ class BestConfigServiceTest {
         }
     }
 }
-
