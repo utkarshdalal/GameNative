@@ -178,7 +178,7 @@ import app.gamenative.ui.component.GamepadButton
 import app.gamenative.ui.component.OnlineInstallProfileSection
 import app.gamenative.ui.component.OnlineStatusBadge
 import app.gamenative.utils.ContainerUtils
-import android.widget.Toast
+import app.gamenative.ui.util.SnackbarManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import app.gamenative.ui.component.focusRing
@@ -1770,11 +1770,7 @@ internal fun AppScreenContent(
                                             InstallProfileApplier.apply(context, container, profile)
                                         }
                                     }
-                                    Toast.makeText(
-                                        context,
-                                        context.getString(R.string.online_switch_applied),
-                                        Toast.LENGTH_SHORT,
-                                    ).show()
+                                    SnackbarManager.show(context.getString(R.string.online_switch_applied))
                                 }
                             },
                             titleRes = R.string.online_switch_title,
@@ -1828,11 +1824,7 @@ internal fun AppScreenContent(
                                         )
                                     }
                                 }
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.control_layout_applied),
-                                    Toast.LENGTH_SHORT,
-                                ).show()
+                                SnackbarManager.show(context.getString(R.string.control_layout_applied))
                             }
                         },
                         titleRes = R.string.control_layout_switch_title,
