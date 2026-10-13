@@ -836,6 +836,16 @@ class LibraryViewModel @Inject constructor(
                         true
                     }
                 }
+                .filter { item ->
+                    if (!currentState.appInfoSortType.contains(AppFilter.ONLINE)) {
+                        true
+                    } else {
+                        app.gamenative.online.OnlineCapabilityDetector.offersOnlineInstall(
+                            context,
+                            item.id,
+                        )
+                    }
+                }
                 .toList()
 
             // Apply the Steam collection filter — union/OR, fail-open (see SteamCollectionFilter).

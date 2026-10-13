@@ -14,7 +14,7 @@ Install with **Online** or **Offline** when a game supports multiplayer. Badges 
 | OFFLINE ONLY | Treat as single-player / no online path here |
 | ONLINE BLOCKED | Anti-cheat or unsupported — do not expect online |
 
-_Entries: 47_
+_Entries: 49_
 
 ## ONLINE OK (2)
 
@@ -51,12 +51,14 @@ _Entries: 47_
 | [892970](https://store.steampowered.com/app/892970/) | Valheim |
 | [236390](https://store.steampowered.com/app/236390/) | War Thunder |
 
-## UNTESTED ONLINE (9)
+## UNTESTED ONLINE (11)
 
 | App ID | Notes |
 |---|---|
+| [3588490](https://store.steampowered.com/app/3588490/) | Bogos Binted? — Online Co-op / Online PvP |
 | [291550](https://store.steampowered.com/app/291550/) | Brawlhalla |
 | [1422450](https://store.steampowered.com/app/1422450/) | Deadlock |
+| [4001890](https://store.steampowered.com/app/4001890/) | How to Fish — Online Co-op |
 | [1966720](https://store.steampowered.com/app/1966720/) | Lethal Company |
 | [1203220](https://store.steampowered.com/app/1203220/) | NARAKA: BLADEPOINT |
 | [1623730](https://store.steampowered.com/app/1623730/) | Palworld |

@@ -104,8 +104,8 @@
     <string name="online_install_blocked_message">Онлайн-мультиплеер для этой игры заблокирован (anti-cheat или нет поддержки). Установка пойдёт по Offline-пути.</string>
     <string name="online_badge_label">%1$s</string>
     <string name="tab_online_ready">Online Ready</string>
-    <string name="online_ready_empty_title">Пока нет Online Ready игр</string>
-    <string name="online_ready_empty_message">Здесь появляются игры со статусом ONLINE OK или те, где вы отметили, что онлайн сработал. Установите с профилем Online и сыграйте, чтобы помочь списку.</string>
+    <string name="online_ready_empty_title">Пока нет игр с онлайном</string>
+    <string name="online_ready_empty_message">Сюда попадают Steam-игры с Online Co-op / Multi-player (OK, Flaky или Untested). Открой страницу игры, чтобы подтянуть категории из Steam, или включи фильтр Online в настройках библиотеки.</string>
     <string name="online_feedback_title">Онлайн-мультиплеер сработал?</string>
     <string name="online_feedback_subtitle">Вы установили %1$s с профилем Online. Это помогает держать список Online Ready честным.</string>
     <string name="online_feedback_worked">Да, сработало</string>
@@ -1925,6 +1925,7 @@ https://gamenative.app
     <string name="export_files_no_container">Запустите игру один раз, чтобы создать её контейнер, затем экспортируйте файлы.</string>
     <string name="export_files_failed_header">Не удалось экспортировать эти файлы:</string>
     <string name="app_filter_vr">VR-игра</string>
+    <string name="app_filter_online">Онлайн-мультиплеер</string>
     <string name="option_manage_mods">Управление модами Nexus</string>
     <string name="nexus_search_clear">Очистить поиск</string>
     <string name="nexus_filter_all">Все</string>

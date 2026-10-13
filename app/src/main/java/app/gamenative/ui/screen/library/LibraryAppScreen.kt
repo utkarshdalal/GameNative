@@ -1665,8 +1665,17 @@ internal fun AppScreenContent(
                 val steamAppIdForOnline = remember(displayInfo.appId, displayInfo.gameId) {
                     displayInfo.appId.removePrefix("STEAM_").toIntOrNull() ?: displayInfo.gameId
                 }
-                val onlineInfo = remember(steamAppIdForOnline, displayInfo.storeDetails) {
-                    OnlineCapabilityDetector.resolveSteam(
+                var onlineInfo by remember(steamAppIdForOnline, displayInfo.storeDetails) {
+                    mutableStateOf(
+                        OnlineCapabilityDetector.resolveSteam(
+                            context = context,
+                            steamAppId = steamAppIdForOnline,
+                            storeDetails = displayInfo.storeDetails,
+                        ),
+                    )
+                }
+                LaunchedEffect(steamAppIdForOnline, displayInfo.storeDetails) {
+                    onlineInfo = OnlineCapabilityDetector.resolveSteamRefreshing(
                         context = context,
                         steamAppId = steamAppIdForOnline,
                         storeDetails = displayInfo.storeDetails,

@@ -126,7 +126,15 @@ fun GameManagerDialog(
         if (!visible) return@LaunchedEffect
         scrollState.animateScrollTo(0)
 
-        val resolved = OnlineCapabilityDetector.resolveSteam(context, gameId, displayInfo.storeDetails)
+        // Refresh from Steam store categories when matrix/tags are missing so Online install
+        // appears for multiplayer titles not yet in the seeded matrix.
+        val resolved = withContext(Dispatchers.IO) {
+            OnlineCapabilityDetector.resolveSteamRefreshing(
+                context,
+                gameId,
+                displayInfo.storeDetails,
+            )
+        }
         onlineInfo = resolved
         selectedInstallProfile = InstallProfile.defaultFor(resolved.status)
 

@@ -5,19 +5,22 @@ import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 
 /**
- * Games shown under the Online Ready library tab.
- * Uses local report demotion so false ONLINE OK does not stay listed after failures.
+ * Games shown under the Online Ready library tab / Online library filter.
+ * Includes Online OK, Flaky, and Untested (not Blocked / Offline-only).
  */
 object OnlineReadyFilter {
     fun isOnlineReady(context: Context, item: LibraryItem): Boolean {
+        return offersOnlineInstall(context, item)
+    }
+
+    /** Filter: titles that should show Online/Offline install choice. */
+    fun offersOnlineInstall(context: Context, item: LibraryItem): Boolean {
         if (item.gameSource != GameSource.STEAM) return false
         val steamId = item.appId.removePrefix("STEAM_").ifBlank { item.gameId.toString() }
         val report = OnlineFeedbackStore.get(context, steamId, store = "steam")
         if (report?.worked == true) return true
-        if (report?.worked == false) return false
         val appIdInt = steamId.toIntOrNull() ?: return false
-        val info = OnlineCapabilityDetector.resolveSteam(context, appIdInt)
-        return info.status == OnlineStatus.ONLINE_OK
+        return OnlineCapabilityDetector.offersOnlineInstall(context, appIdInt)
     }
 
     fun debugReportLine(context: Context, steamAppId: Int): String {

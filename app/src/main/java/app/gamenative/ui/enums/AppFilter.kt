@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.InstallMobile
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.VideogameAsset
+import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material.icons.rounded.Star
@@ -97,11 +98,11 @@ enum class AppFilter(
         displayTextRes = R.string.app_filter_vr,
         icon = Icons.Filled.VrHeadset,
     ),
-    // ALPHABETIC(
-    //     code = 0x20,
-    //     displayText = "Alphabetic",
-    //     icon = Icons.Default.SortByAlpha,
-    // ),
+    ONLINE(
+        code = 0x4000,
+        displayTextRes = R.string.app_filter_online,
+        icon = Icons.Outlined.Public,
+    ),
     ;
 
     companion object {

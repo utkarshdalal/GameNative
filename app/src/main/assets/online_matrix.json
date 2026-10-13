@@ -281,6 +281,18 @@
       "store": "steam",
       "status": "online_blocked",
       "notes": "Call of Duty — anti-cheat"
+    },
+    {
+      "appId": "3588490",
+      "store": "steam",
+      "status": "untested_online",
+      "notes": "Bogos Binted? — Online Co-op / Online PvP"
+    },
+    {
+      "appId": "4001890",
+      "store": "steam",
+      "status": "untested_online",
+      "notes": "How to Fish — Online Co-op"
     }
   ]
 }

@@ -12,8 +12,8 @@
     <string name="online_install_blocked_message">Online multiplayer is blocked for this title (anti-cheat or unsupported). Install will use the Offline path.</string>
     <string name="online_badge_label">%1$s</string>
     <string name="tab_online_ready">Online Ready</string>
-    <string name="online_ready_empty_title">No Online Ready games yet</string>
-    <string name="online_ready_empty_message">Games marked ONLINE OK in the matrix, or that you reported as working online, show up here. Install with the Online profile and play to contribute.</string>
+    <string name="online_ready_empty_title">No online multiplayer games yet</string>
+    <string name="online_ready_empty_message">Steam games with Online Co-op / Multi-player show here (OK, Flaky, or Untested). Open a game page once to refresh store categories, or use the Online filter in library options.</string>
     <string name="online_feedback_title">Did online multiplayer work?</string>
     <string name="online_feedback_subtitle">You installed %1$s with the Online profile. This helps the Online Ready list stay honest.</string>
     <string name="online_feedback_worked">Yes, it worked</string>
@@ -887,6 +887,7 @@
     <string name="filter_five_star_gpu">5-star reviews on GPU</string>
     <string name="filter_proven_gpu">Proven on your GPU</string>
     <string name="app_filter_vr">VR game</string>
+    <string name="app_filter_online">Online multiplayer</string>
 
     <!-- Login & Connection -->
     <string name="connecting_to_steam">Connecting to Steam…</string>
