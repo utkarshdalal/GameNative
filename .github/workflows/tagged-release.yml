@@ -9,6 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: github.repository == 'utkarshdalal/GameNative'  # GameNativeDuo: upstream-only job
 
     steps:
       - name: Free disk space

@@ -10,6 +10,7 @@ permissions:
 jobs:
   close-non-contributors:
     runs-on: ubuntu-latest
+    if: github.repository == 'utkarshdalal/GameNative'  # GameNativeDuo: upstream-only job
     steps:
       - uses: actions/github-script@v7
         with:

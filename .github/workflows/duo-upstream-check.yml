@@ -1,0 +1,67 @@
+name: Duo upstream merge check
+
+# Nightly early warning: tries merging upstream GameNative's master into devkit and building the
+# result. Nothing is pushed; a failed run means the next upstream sync needs attention.
+# Scheduled runs only fire from the repository's default branch, so make devkit the default branch.
+
+on:
+  schedule:
+    - cron: '17 7 * * *'
+  workflow_dispatch:
+
+jobs:
+  merge-check:
+    if: github.repository != 'utkarshdalal/GameNative'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/local/share/boost /usr/share/swift
+
+      - uses: actions/checkout@v4
+        with:
+          ref: devkit
+          fetch-depth: 0
+
+      - name: Merge upstream master into devkit (locally)
+        run: |
+          git config user.name "duo-ci"
+          git config user.email "duo-ci@users.noreply.github.com"
+          git remote add upstream https://github.com/utkarshdalal/GameNative.git
+          git fetch --no-tags upstream master
+          behind=$(git rev-list --count HEAD..upstream/master)
+          echo "devkit is $behind upstream commits behind" >> "$GITHUB_STEP_SUMMARY"
+          if ! git merge --no-edit upstream/master; then
+            echo "::error::Upstream master no longer merges cleanly into devkit"
+            echo "Conflicting files:" >> "$GITHUB_STEP_SUMMARY"
+            git diff --name-only --diff-filter=U | sed 's/^/- /' >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      - name: Add swap
+        run: |
+          sudo fallocate -l 8G /mnt/swapfile.ci
+          sudo chmod 600 /mnt/swapfile.ci
+          sudo mkswap /mnt/swapfile.ci
+          sudo swapon /mnt/swapfile.ci
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Dummy build-time credentials
+        run: |
+          cat <<EOF > local.properties
+          POSTHOG_API_KEY=dummy
+          POSTHOG_HOST=https://us.i.posthog.com
+          EOF
+
+      - name: Build the merged result
+        run: ./gradlew -Pkotlin.daemon.jvmargs=-Xmx3g :app:assembleModernDebug
