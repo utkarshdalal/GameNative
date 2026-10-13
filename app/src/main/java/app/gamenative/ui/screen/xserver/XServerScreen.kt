@@ -107,6 +107,7 @@ import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
 import app.gamenative.ui.enums.Orientation
 import java.util.EnumSet
+import app.gamenative.duo.DualScreenHost
 import app.gamenative.externaldisplay.ExternalDisplayInputController
 import app.gamenative.externaldisplay.ExternalDisplaySwapController
 import app.gamenative.externaldisplay.SwapInputOverlayView
@@ -2889,6 +2890,7 @@ fun XServerScreen(
                 } else {
                     null
                 }
+            DualScreenHost.attach(context, mainRoot, container, xServerView.getxServer()) // GameNativeDuo
             mainRoot.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
                 override fun onViewAttachedToWindow(v: View) {}
 
