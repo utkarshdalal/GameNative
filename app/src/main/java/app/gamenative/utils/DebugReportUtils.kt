@@ -33,6 +33,17 @@ object DebugReportUtils {
     @Volatile
     var recovery: Deferred<List<String>>? = null
 
+    // Recovery may run in a background process Android restarts on its own (a service), which can die before
+    // the user opens the app; the offer therefore also lives on disk until a view model picks it up.
+    private fun pendingOfferFile(context: Context): File = File(context.filesDir, "exit_info/pending_offer")
+
+    fun takePendingOffer(context: Context): String? {
+        val file = pendingOfferFile(context)
+        val appId = try { file.takeIf { it.exists() }?.readText()?.trim() } catch (e: Exception) { null }
+        file.delete()
+        return appId?.takeIf { it.isNotEmpty() }
+    }
+
     @Volatile
     private var logcatProcess: Process? = null
     private const val LOG_HEAD_BYTES = 1L * 1024 * 1024
@@ -153,6 +164,13 @@ object DebugReportUtils {
                 recovered += appId
             }
         }
+        recovered.firstOrNull()?.let { appId ->
+            try {
+                pendingOfferFile(context).apply { parentFile?.mkdirs() }.writeText(appId)
+            } catch (e: Exception) {
+                Timber.w(e, "DebugReportUtils: failed to persist the recovery offer")
+            }
+        }
         recovered
     }
 
@@ -185,7 +203,7 @@ object DebugReportUtils {
             }
 
             compressLog(claimedLog, logFile(dir))
-            val header = buildHeader(context, appId, DebugRunParamsHolder.get(appId))
+            val header = buildHeader(context, appId, DebugRunParamsHolder.get(appId), interrupted)
             if (interrupted) header.put("interrupted", true)
             val exits = AppExitRecorder.recentExits(context, System.currentTimeMillis() - EXIT_WINDOW_MS)
             if (exits.isNotEmpty()) {
@@ -245,7 +263,7 @@ object DebugReportUtils {
         }
     }
 
-    private fun buildHeader(context: Context, appId: String, runParams: DebugRunParams?): JSONObject {
+    private fun buildHeader(context: Context, appId: String, runParams: DebugRunParams?, interrupted: Boolean = false): JSONObject {
         val container = ContainerUtils.getContainer(context, appId)
 
         val gpu = try {
@@ -255,9 +273,10 @@ object DebugReportUtils {
             "Unknown GPU"
         }
 
-        val avgFps = container.getSessionMetadata("avg_fps", "").toFloatOrNull()
-        val sessionLengthSec = container.getSessionMetadata("session_length_sec", "").toIntOrNull()
-        val totalFrames = container.getSessionMetadata("total_frames", "").toLongOrNull()
+        // the session figures are written at a normal exit, so after a kill they still describe the previous session
+        val avgFps = if (interrupted) null else container.getSessionMetadata("avg_fps", "").toFloatOrNull()
+        val sessionLengthSec = if (interrupted) null else container.getSessionMetadata("session_length_sec", "").toIntOrNull()
+        val totalFrames = if (interrupted) null else container.getSessionMetadata("total_frames", "").toLongOrNull()
 
         return JSONObject().apply {
             put("gameName", ContainerUtils.resolveGameName(appId))

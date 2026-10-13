@@ -44,6 +44,7 @@ import app.gamenative.utils.WineProcessSnapshotHelper
 import com.materialkolor.PaletteStyle
 import com.winlator.xserver.Window
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.AppProcessInfo
 import java.io.File
 import java.nio.file.Paths
@@ -68,6 +69,7 @@ import timber.log.Timber
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
+    @ApplicationContext private val appContext: Context,
     private val savedStateHandle: SavedStateHandle,
     private val appTheme: IAppTheme,
     private val libraryPlayHistoryDao: LibraryPlayHistoryDao,
@@ -321,11 +323,12 @@ class MainViewModel @Inject constructor(
 
         // A debug run the previous process never finished: offer its recovered report once.
         viewModelScope.launch {
-            val recovered = DebugReportUtils.recovery ?: return@launch
-            val appIds = recovered.await()
-            if (DebugReportUtils.recovery !== recovered) return@launch
-            DebugReportUtils.recovery = null
-            appIds.firstOrNull()?.let { _uiEvent.send(MainUiEvent.ShowDebugReportDialog(it)) }
+            DebugReportUtils.recovery?.let { recovered ->
+                recovered.await()
+                if (DebugReportUtils.recovery === recovered) DebugReportUtils.recovery = null
+            }
+            withContext(Dispatchers.IO) { DebugReportUtils.takePendingOffer(appContext) }
+                ?.let { _uiEvent.send(MainUiEvent.ShowDebugReportDialog(it)) }
         }
 
         // Register event handlers
