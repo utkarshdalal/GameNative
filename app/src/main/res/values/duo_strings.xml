@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- GameNativeDuo-only strings. Kept in their own file so upstream merges never conflict. -->
+<resources>
+    <string name="duo_app_name" translatable="false">GameNative Duo</string>
+</resources>

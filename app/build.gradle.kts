@@ -56,7 +56,9 @@ android {
     }
 
     defaultConfig {
-        applicationId = "app.gamenative"
+        // GameNativeDuo: own applicationId so it installs alongside official GameNative.
+        // Keep the "app.gamenative" prefix: prebuilt native libs match on that substring.
+        applicationId = "app.gamenative.duo"
 
         minSdk = 26
 
