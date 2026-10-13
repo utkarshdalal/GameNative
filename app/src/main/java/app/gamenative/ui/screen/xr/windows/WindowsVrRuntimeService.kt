@@ -44,7 +44,14 @@ class WindowsVrRuntimeService(context: Context) : Closeable {
             }
             diagnostics.record("launch", "Preparing Windows OpenXR payload")
             val prepared = payloadManager.prepare(container)
-            if (active.openCompositeEnabled) payloadManager.installOpenComposite(container)
+            if (active.openCompositeEnabled) {
+                try {
+                    payloadManager.installOpenComposite(container)
+                } catch (e: Exception) {
+                    diagnostics.record("opencomposite", "skipped: ${e.message ?: e.javaClass.simpleName}")
+                    Timber.w(e, "OpenComposite unavailable, continuing with native OpenXR")
+                }
+            }
             if (controlServer == null) {
                 val server = WindowsVrControlServer(active, diagnostics, snapshots)
                 try {
