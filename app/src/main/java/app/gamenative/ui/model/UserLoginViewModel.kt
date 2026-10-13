@@ -31,10 +31,16 @@ class UserLoginViewModel : ViewModel() {
     val snackEvents = _snackEvents.receiveAsFlow()
 
     private val submitChannel = Channel<String>()
+    private var useGuardTotp: Boolean = false
 
     private val authenticator = object : IAuthenticator {
         override fun acceptDeviceConfirmation(): CompletableFuture<Boolean> {
             Timber.tag("UserLoginViewModel").i("Two-Factor, device confirmation")
+
+            if (useGuardTotp) {
+                useGuardTotp = false
+                return CompletableFuture.completedFuture(false)
+            }
 
             _loginState.update { currentState ->
                 currentState.copy(
@@ -248,6 +254,7 @@ class UserLoginViewModel : ViewModel() {
             if (username.isEmpty() && password.isEmpty()) {
                 return@with
             }
+            SteamService.stopLoginWithQr()
 
             viewModelScope.launch {
                 SteamService.startLoginWithCredentials(
@@ -318,6 +325,21 @@ class UserLoginViewModel : ViewModel() {
     fun setTwoFactorCode(twoFactorCode: String) {
         _loginState.update { currentState ->
             currentState.copy(twoFactorCode = twoFactorCode)
+        }
+    }
+
+    fun useGuardTotp() {
+        useGuardTotp = true
+
+        with(_loginState.value) {
+            viewModelScope.launch {
+                SteamService.startLoginWithCredentials(
+                    username = username,
+                    password = password,
+                    rememberSession = rememberSession,
+                    authenticator = authenticator,
+                )
+            }
         }
     }
 

@@ -24,6 +24,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -57,11 +59,18 @@ fun SettingsListDropdown(
     var isDropdownExpanded by remember { mutableStateOf(false) }
     val selectedText = if (value >= 0 && value < items.size) items[value] else fallbackDisplay
 
+    // Keep a handle on the anchor tile so we can return focus to it when the menu
+    // closes. Without this, dismissing the popup leaves focus cleared and D-pad /
+    // controller navigation has nowhere to go.
+    val focusRequester = remember { FocusRequester() }
+
     SettingsTileScaffold(
-        modifier = Modifier.clickable(
-            enabled = enabled,
-            onClick = { isDropdownExpanded = true },
-        ).then(modifier),
+        modifier = Modifier
+            .focusRequester(focusRequester)
+            .clickable(
+                enabled = enabled,
+                onClick = { isDropdownExpanded = true },
+            ).then(modifier),
         enabled = enabled,
         title = title,
         subtitle = {
@@ -93,7 +102,10 @@ fun SettingsListDropdown(
     ) {
         DropdownMenu(
             expanded = isDropdownExpanded,
-            onDismissRequest = { isDropdownExpanded = false },
+            onDismissRequest = {
+                isDropdownExpanded = false
+                focusRequester.requestFocus()
+            },
         ) {
             items.forEachIndexed { index, text ->
                 val isMuted = itemMuted?.getOrNull(index) == true
@@ -108,6 +120,7 @@ fun SettingsListDropdown(
                     onClick = {
                         onItemSelected(index)
                         isDropdownExpanded = false
+                        focusRequester.requestFocus()
                     },
                 )
             }

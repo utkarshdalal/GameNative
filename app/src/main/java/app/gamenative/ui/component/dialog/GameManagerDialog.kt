@@ -48,6 +48,7 @@ import androidx.compose.ui.window.DialogProperties
 import app.gamenative.BuildConfig
 import app.gamenative.R
 import app.gamenative.data.DepotInfo
+import app.gamenative.data.ManifestInfo
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamService.Companion.INVALID_APP_ID
 import app.gamenative.ui.component.LoadingScreen
@@ -63,6 +64,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.collections.orEmpty
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 data class InstallSizeInfo(
     val downloadSize: String,
@@ -77,6 +80,7 @@ data class InstallSizeInfo(
 fun GameManagerDialog(
     visible: Boolean,
     onGetDisplayInfo: @Composable (Context) -> GameDisplayInfo,
+    branch: String? = null,
     onInstall: (List<Int>) -> Unit,
     onDismissRequest: () -> Unit
 ) {
@@ -91,8 +95,11 @@ fun GameManagerDialog(
     val displayInfo = onGetDisplayInfo(context)
     val gameId = displayInfo.gameId
 
-    val installedApp = remember(gameId) {
-        SteamService.getInstalledApp(gameId)
+    val isBaseGameInstalled = remember(gameId) {
+        SteamService.isAppInstalled(gameId)
+    }
+    val installedApp = remember(gameId, isBaseGameInstalled) {
+        if (isBaseGameInstalled) SteamService.getInstalledApp(gameId) else null
     }
     val installedDlcIds = installedApp?.dlcDepots.orEmpty()
 
@@ -111,7 +118,7 @@ fun GameManagerDialog(
         allDownloadableApps.clear()
 
         // Get Downloadable Depots
-        val allPossibleDownloadableDepots = SteamService.getDownloadableDepots(gameId)
+        val allPossibleDownloadableDepots = withContext(Dispatchers.IO) { SteamService.getDownloadableDepots(gameId) }
         downloadableDepots.putAll(allPossibleDownloadableDepots)
 
         // Get Optional DLC IDs
@@ -130,13 +137,13 @@ fun GameManagerDialog(
                 .toMap()
             .forEach { (_, depotInfo) ->
                 allDownloadableApps.add(Pair(depotInfo.dlcAppId, depotInfo))
-                val installed = SteamService.getInstalledApp(depotInfo.dlcAppId)
+                val installed = SteamService.isAppInstalled(depotInfo.dlcAppId)
                 selectedAppIds[depotInfo.dlcAppId] =
-                        installed != null || // For installed Base Game and Indirect DLC App
+                        installed || // For installed Base Game and Indirect DLC App
                         installedDlcIds.contains(depotInfo.dlcAppId) || // For installed DLC from Main Depot
                         ( !indirectDlcAppIds.contains(depotInfo.dlcAppId) && !optionalDlcIds.contains(depotInfo.dlcAppId) ) // Not in indirect DLC and not in optional DLC ids
 
-                enabledAppIds[depotInfo.dlcAppId] = !installedDlcIds.contains(depotInfo.dlcAppId) && installed == null
+                enabledAppIds[depotInfo.dlcAppId] = !installedDlcIds.contains(depotInfo.dlcAppId) && !installed
             }
 
         allDownloadableApps.sortBy { it.first }
@@ -161,6 +168,13 @@ fun GameManagerDialog(
         return "DLC ${depotInfo.dlcAppId}"
     }
 
+    val selectedBranch = branch ?: installedApp?.branch ?: "public"
+
+    fun manifestFor(depot: DepotInfo): ManifestInfo? =
+        depot.manifests[selectedBranch]
+            ?: depot.encryptedManifests[selectedBranch]
+            ?: depot.manifests["public"]
+
     fun getSizeInfo(dlcAppId: Int): Pair<String, String> {
         if (dlcAppId == INVALID_APP_ID || dlcAppId == gameId) {
             val depotsForBaseGame = downloadableDepots.filter { (_, depot) ->
@@ -168,10 +182,10 @@ fun GameManagerDialog(
             }
 
             val installBytes = depotsForBaseGame.values.sumOf {
-                it.manifests["public"]?.size ?: 0
+                manifestFor(it)?.size ?: 0
             }
             val downloadBytes = depotsForBaseGame.values.sumOf {
-                SteamUtils.getDownloadBytes(it.manifests["public"])
+                SteamUtils.getDownloadBytes(manifestFor(it))
             }
 
             return Pair(
@@ -185,10 +199,10 @@ fun GameManagerDialog(
         }
 
         val installBytes = depotsForDlc.values.sumOf {
-            it.manifests["public"]?.size ?: 0
+            manifestFor(it)?.size ?: 0
         }
         val downloadBytes = depotsForDlc.values.sumOf {
-            SteamUtils.getDownloadBytes(it.manifests["public"])
+            SteamUtils.getDownloadBytes(manifestFor(it))
         }
 
         return Pair(
@@ -198,23 +212,23 @@ fun GameManagerDialog(
     }
 
     fun getInstallSizeInfo(): InstallSizeInfo {
-        val availableBytes = StorageUtils.getAvailableSpace(SteamService.defaultStoragePath)
+        val availableBytes = StorageUtils.getAvailableSpaceForUncreatedPath(SteamService.getAppDirPath(gameId))
 
-        val baseGameInstallBytes = if (installedApp == null) {
+        val baseGameInstallBytes = if (!isBaseGameInstalled) {
             downloadableDepots
                 .filter { (_, depot) ->
                     depot.dlcAppId == INVALID_APP_ID
-                }.values.sumOf { it.manifests["public"]?.size ?: 0 }
+                }.values.sumOf { manifestFor(it)?.size ?: 0 }
         } else {
             0L
         }
 
-        val baseGameDownloadBytes = if (installedApp == null) {
+        val baseGameDownloadBytes = if (!isBaseGameInstalled) {
             downloadableDepots
                 .filter { (_, depot) ->
                     depot.dlcAppId == INVALID_APP_ID
                 }.values.sumOf {
-                    SteamUtils.getDownloadBytes(it.manifests["public"])
+                    SteamUtils.getDownloadBytes(manifestFor(it))
                 }
         } else {
             0L
@@ -224,14 +238,14 @@ fun GameManagerDialog(
             .filter { (_, depot) ->
                 selectedAppIds[depot.dlcAppId] == true && enabledAppIds[depot.dlcAppId] == true
             }
-            .values.sumOf { it.manifests["public"]?.size ?: 0 }
+            .values.sumOf { manifestFor(it)?.size ?: 0 }
 
         val selectedDownloadBytes = downloadableDepots
             .filter { (_, depot) ->
                 selectedAppIds[depot.dlcAppId] == true && enabledAppIds[depot.dlcAppId] == true
             }
             .values.sumOf {
-                SteamUtils.getDownloadBytes(it.manifests["public"])
+                SteamUtils.getDownloadBytes(manifestFor(it))
             }
 
         return InstallSizeInfo(
@@ -273,7 +287,7 @@ fun GameManagerDialog(
             return false
         }
 
-        if (installedApp != null) {
+        if (isBaseGameInstalled) {
             val installed = installedDlcIds.toSet() - mainAppDlcIdsWithoutProperDepotDlcIds.toSet()
             val realSelectedAppIds = selectedAppIds.filter { it.value }.keys - installed
             return (realSelectedAppIds.size - 1) > 0 // -1 for main app
@@ -397,6 +411,15 @@ fun GameManagerDialog(
                         Column(
                             modifier = Modifier.fillMaxWidth()
                         ) {
+                            if (branch != null && branch != "public") {
+                                Text(
+                                    text = "Installing the \"$branch\" branch",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                )
+                            }
+
                             // Select All toggle
                             if (selectableAppIds.isNotEmpty()) {
                                 Row(

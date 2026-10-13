@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -12,9 +13,11 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -23,12 +26,13 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.data.LibraryItem
 import app.gamenative.ui.enums.PaneType
+import app.gamenative.ui.theme.PluviaTheme
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-private val DYNAMIC_BACKDROP_BLUR_RADIUS = 12.dp
+private val DYNAMIC_BACKDROP_BLUR_RADIUS = 7.dp
 
 @Composable
 internal fun LibraryDynamicBackdrop(
@@ -37,11 +41,23 @@ internal fun LibraryDynamicBackdrop(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val scrimColor = MaterialTheme.colorScheme.scrim
+    val desaturate = remember {
+        ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0.25f) })
+    }
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black),
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.background,
+                        PluviaTheme.colors.surfacePanel,
+                        MaterialTheme.colorScheme.background,
+                    ),
+                ),
+            ),
     ) {
         Crossfade(
             targetState = appInfo,
@@ -76,11 +92,13 @@ internal fun LibraryDynamicBackdrop(
                                 scaleX = 1.06f
                                 scaleY = 1.06f
                             }
+                            .alpha(0.38f)
                             .blur(DYNAMIC_BACKDROP_BLUR_RADIUS),
                         imageModel = { currentImageUrl },
                         imageOptions = ImageOptions(
                             contentScale = ContentScale.Crop,
                             contentDescription = null,
+                            colorFilter = desaturate,
                         ),
                         loading = {},
                         failure = {
@@ -97,36 +115,12 @@ internal fun LibraryDynamicBackdrop(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.18f)),
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
                 .background(
                     brush = Brush.verticalGradient(
                         colorStops = arrayOf(
-                            0.0f to Color.Black.copy(alpha = 0.74f),
-                            0.16f to Color.Black.copy(alpha = 0.52f),
-                            0.38f to Color.Black.copy(alpha = 0.24f),
-                            0.62f to Color.Black.copy(alpha = 0.34f),
-                            1.0f to Color.Black.copy(alpha = 0.72f),
-                        ),
-                    ),
-                ),
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = Brush.horizontalGradient(
-                        colorStops = arrayOf(
-                            0.0f to Color.Black.copy(alpha = 0.34f),
-                            0.14f to Color.Black.copy(alpha = 0.16f),
-                            0.5f to Color.Transparent,
-                            0.86f to Color.Black.copy(alpha = 0.16f),
-                            1.0f to Color.Black.copy(alpha = 0.34f),
+                            0.0f to scrimColor.copy(alpha = 0.48f),
+                            0.4f to scrimColor.copy(alpha = 0.48f),
+                            1.0f to scrimColor.copy(alpha = 0.62f),
                         ),
                     ),
                 ),

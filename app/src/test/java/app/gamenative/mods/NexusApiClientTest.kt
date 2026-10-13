@@ -1,0 +1,717 @@
+package app.gamenative.mods
+
+import kotlinx.coroutines.runBlocking
+import okhttp3.OkHttpClient
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
+import org.json.JSONObject
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+
+class NexusApiClientTest {
+    private lateinit var server: MockWebServer
+    private lateinit var okHttpClient: OkHttpClient
+    private lateinit var client: NexusApiClient
+
+    @Before
+    fun setUp() {
+        server = MockWebServer()
+        server.start()
+        okHttpClient = OkHttpClient()
+        client = NexusApiClient(
+            client = okHttpClient,
+            baseUrl = server.url("/v1").toString().trimEnd('/'),
+            nexusBaseUrl = server.url("").toString().trimEnd('/'),
+            graphUrls = listOf(server.url("/graphql").toString()),
+            accessTokenProvider = { _, _ -> "test-access-token" },
+        )
+    }
+
+    @After
+    fun tearDown() {
+        okHttpClient.dispatcher.executorService.shutdown()
+        okHttpClient.connectionPool.evictAll()
+        okHttpClient.cache?.close()
+        server.shutdown()
+    }
+
+    @Test
+    fun getModFiles_parsesFilesAndHeadersRequest() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "files": [
+                        {
+                          "file_id": 55,
+                          "name": "Main file",
+                          "file_name": "main.zip",
+                          "version": "1.2",
+                          "category_id": 1,
+                          "category_name": "MAIN",
+                          "is_primary": true,
+                          "size": 2048,
+                          "uploaded_timestamp": 123,
+                          "uploaded_time": "2024-01-02T03:04:05.000Z"
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val files = client.getModFiles("skyrimspecialedition", 123)
+
+        assertEquals(1, files.size)
+        assertEquals(55L, files.single().fileId)
+        assertEquals("main.zip", files.single().fileName)
+        assertEquals(2048L * 1024L, files.single().sizeBytes)
+        assertEquals(1, files.single().categoryId)
+        assertEquals("MAIN", files.single().categoryName)
+        assertEquals(true, files.single().isPrimary)
+        assertEquals("2024-01-02T03:04:05.000Z", files.single().uploadedTime)
+        val request = server.takeRequest()
+        assertEquals("Bearer test-access-token", request.headers["Authorization"])
+        assertEquals(null, request.headers["APIKEY"])
+        assertEquals("GameNative", request.headers["Application-Name"])
+    }
+
+    @Test
+    fun missingAccessToken_failsBeforeSendingRequest() = runBlocking {
+        val disconnectedClient = NexusApiClient(
+            client = okHttpClient,
+            baseUrl = server.url("/v1").toString().trimEnd('/'),
+            nexusBaseUrl = server.url("").toString().trimEnd('/'),
+            graphUrls = listOf(server.url("/graphql").toString()),
+        )
+
+        val error = runCatching {
+            disconnectedClient.getModInfo("fallout4", 1)
+        }.exceptionOrNull()
+
+        assertTrue(error is NexusApiException)
+        assertEquals(NexusApiErrorReason.AUTHENTICATION, (error as NexusApiException).reason)
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun getCurrentUser_usesOAuthAccountWithoutLegacyValidationRequest() = runBlocking {
+        var accessTokenCalls = 0
+        val accountClient = NexusApiClient(
+            client = okHttpClient,
+            baseUrl = server.url("/v1").toString().trimEnd('/'),
+            nexusBaseUrl = server.url("").toString().trimEnd('/'),
+            graphUrls = listOf(server.url("/graphql").toString()),
+            accessTokenProvider = { _, _ ->
+                accessTokenCalls += 1
+                "unused-token"
+            },
+            accountProvider = {
+                NexusOAuthAccount(
+                    id = "51448566",
+                    name = "Recovered Modder",
+                    membershipRoles = listOf("member", "lifetime"),
+                )
+            },
+        )
+
+        val user = accountClient.getCurrentUser()
+
+        assertEquals("Recovered Modder", user.name)
+        assertEquals(51_448_566L, user.userId)
+        assertTrue(user.isPremium)
+        assertEquals(0, accessTokenCalls)
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun getCurrentUser_missingOAuthAccountFailsWithoutNetworkRequest() = runBlocking {
+        val accountClient = NexusApiClient(
+            client = okHttpClient,
+            baseUrl = server.url("/v1").toString().trimEnd('/'),
+            nexusBaseUrl = server.url("").toString().trimEnd('/'),
+            graphUrls = listOf(server.url("/graphql").toString()),
+            accessTokenProvider = { _, _ -> "unused-token" },
+            accountProvider = { null },
+        )
+
+        val error = runCatching { accountClient.getCurrentUser() }.exceptionOrNull()
+
+        assertTrue(error is NexusApiException)
+        assertEquals(NexusApiErrorReason.AUTHENTICATION, (error as NexusApiException).reason)
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun unauthorized_forcesRefreshAndRetriesExactlyOnce() = runBlocking {
+        var forceRefreshCalls = 0
+        var rejectedAccessToken: String? = null
+        val retryingClient = NexusApiClient(
+            client = okHttpClient,
+            baseUrl = server.url("/v1").toString().trimEnd('/'),
+            nexusBaseUrl = server.url("").toString().trimEnd('/'),
+            graphUrls = listOf(server.url("/graphql").toString()),
+            accessTokenProvider = { forceRefresh, rejectedToken ->
+                if (forceRefresh) {
+                    forceRefreshCalls += 1
+                    rejectedAccessToken = rejectedToken
+                    "refreshed-token"
+                } else {
+                    "stale-token"
+                }
+            },
+        )
+        server.enqueue(MockResponse().setResponseCode(401).setBody("{}"))
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"mod_id":1,"name":"Retry worked","summary":"","version":"1"}""",
+            ),
+        )
+
+        val mod = retryingClient.getModInfo("fallout4", 1)
+
+        assertEquals("Retry worked", mod.name)
+        assertEquals(1, forceRefreshCalls)
+        assertEquals("stale-token", rejectedAccessToken)
+        assertEquals("Bearer stale-token", server.takeRequest().headers["Authorization"])
+        assertEquals("Bearer refreshed-token", server.takeRequest().headers["Authorization"])
+        assertEquals(2, server.requestCount)
+    }
+
+    @Test
+    fun unauthorized_retriesOnceEvenWhenRefreshReturnsSameToken() = runBlocking {
+        var forceRefreshCalls = 0
+        val retryingClient = NexusApiClient(
+            client = okHttpClient,
+            baseUrl = server.url("/v1").toString().trimEnd('/'),
+            nexusBaseUrl = server.url("").toString().trimEnd('/'),
+            graphUrls = listOf(server.url("/graphql").toString()),
+            accessTokenProvider = { forceRefresh, _ ->
+                if (forceRefresh) forceRefreshCalls += 1
+                "same-token"
+            },
+        )
+        server.enqueue(MockResponse().setResponseCode(401).setBody("{}"))
+        server.enqueue(MockResponse().setResponseCode(401).setBody("{}"))
+
+        val error = runCatching { retryingClient.getModInfo("fallout4", 1) }.exceptionOrNull()
+
+        assertTrue(error is NexusApiException)
+        assertEquals(1, forceRefreshCalls)
+        assertEquals(2, server.requestCount)
+    }
+
+    @Test
+    fun rateLimitResponse_throwsNexusApiException() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(429)
+                .addHeader("x-rl-hourly-remaining", "0")
+                .addHeader("x-rl-daily-remaining", "10")
+                .setBody("{}"),
+        )
+
+        val error = runCatching {
+            client.getModInfo("fallout4", 1)
+        }.exceptionOrNull()
+
+        assertTrue(error is NexusApiException)
+        val nexusError = error as NexusApiException
+        assertEquals(429, nexusError.statusCode)
+        assertEquals(0, nexusError.hourlyRemaining)
+        assertEquals(10, nexusError.dailyRemaining)
+    }
+
+    @Test
+    fun getDownloadLinks_404_throwsClearUnavailableMessage() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(404)
+                .setBody("{}"),
+        )
+
+        val error = runCatching {
+            client.getDownloadLinks("fallout4", 1, 2)
+        }.exceptionOrNull()
+
+        assertTrue(error is NexusApiException)
+        assertEquals("This Nexus file is no longer downloadable", error?.message)
+    }
+
+    @Test
+    fun getDownloadLinks_freeAccount403_requiresWebsiteAuthorization() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(403)
+                .setBody("{}"),
+        )
+
+        val error = runCatching {
+            client.getDownloadLinks(
+                gameDomain = "newvegas",
+                modId = 58_277,
+                fileId = 123_456,
+                isPremiumAccount = false,
+            )
+        }.exceptionOrNull()
+
+        assertTrue(error is NexusApiException)
+        assertEquals(
+            NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_REQUIRED,
+            (error as NexusApiException).reason,
+        )
+        assertTrue(NexusImportState.requiresWebsiteAuthorization(error))
+    }
+
+    @Test
+    fun getDownloadLinks_unknownAccount403_remainsForbidden() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(403)
+                .setBody("{}"),
+        )
+
+        val error = runCatching {
+            client.getDownloadLinks(
+                gameDomain = "newvegas",
+                modId = 58_277,
+                fileId = 123_456,
+            )
+        }.exceptionOrNull()
+
+        assertTrue(error is NexusApiException)
+        assertEquals(NexusApiErrorReason.FORBIDDEN, (error as NexusApiException).reason)
+        assertFalse(NexusImportState.requiresWebsiteAuthorization(error))
+    }
+
+    @Test
+    fun getCollectionRevision_usesGraphQLCollectionEndpoint() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "data": {
+                        "collection": { "name": "Test Collection" },
+                        "collectionRevision": {
+                          "revisionNumber": 5,
+                          "modFiles": [
+                            {
+                              "fileId": 1000,
+                              "optional": false,
+                              "file": {
+                                "fileId": 1000,
+                                "name": "main.zip",
+                                "sizeInBytes": 73400320,
+                                "version": "1.0",
+                                "mod": {
+                                  "modId": 100,
+                                  "name": "Main Mod",
+                                  "game": { "domainName": "skyrimspecialedition" }
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val collection = client.getCollectionRevision(
+            NexusCollectionReference("skyrimspecialedition", "test", 5),
+        )
+
+        assertEquals("Test Collection", collection.name)
+        assertEquals(5, collection.revision)
+        assertEquals(listOf(100L), collection.files.map { it.modId })
+        assertEquals(listOf(1000L), collection.files.map { it.fileId })
+        assertEquals(listOf(73400320L), collection.files.map { it.sizeBytes })
+        assertTrue(collection.files.single().required)
+        val request = server.takeRequest()
+        assertEquals("/graphql", request.path)
+        assertEquals("Bearer test-access-token", request.headers["Authorization"])
+        val requestBody = JSONObject(request.body.readUtf8())
+        assertTrue(requestBody.getString("query").contains("collectionRevision"))
+        assertFalse(requestBody.getJSONObject("variables").getBoolean("viewAdultContent"))
+    }
+
+    @Test
+    fun getCollectionRevision_adultContentBlockInPartialResponseDoesNotFallBack() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "errors": [
+                        {
+                          "message": "Unrelated warning",
+                          "extensions": { "code": "OTHER" }
+                        },
+                        {
+                          "message": "Adult content blocked",
+                          "path": ["collectionRevision"],
+                          "extensions": { "code": "ADULT_CONTENT_BLOCKED" }
+                        }
+                      ],
+                      "data": {
+                        "collection": { "name": "Hidden Collection" },
+                        "collectionRevision": {
+                          "revisionNumber": 1,
+                          "modFiles": []
+                        }
+                      }
+                    }
+                    """.trimIndent(),
+                ),
+        )
+        server.enqueue(MockResponse().setResponseCode(403).setBody("{}"))
+
+        val error = runCatching {
+            client.getCollectionRevision(
+                NexusCollectionReference("fallout4", "adult-collection", 1),
+            )
+        }.exceptionOrNull()
+
+        assertTrue(error is NexusApiException)
+        val nexusError = error as NexusApiException
+        assertEquals(403, nexusError.statusCode)
+        assertEquals(NexusApiErrorReason.ADULT_CONTENT_BLOCKED, nexusError.reason)
+        assertEquals("Adult content blocked", nexusError.message)
+        assertEquals(1, server.requestCount)
+        assertEquals("/graphql", server.takeRequest().path)
+    }
+
+    @Test
+    fun getCollectionRevision_fallsBackToLegacyRestShape() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(500)
+                .setBody("{}"),
+        )
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "collection": {
+                        "name": "Test Collection"
+                      },
+                      "revision": {
+                        "revision_number": 5,
+                        "mods": [
+                          {
+                            "mod_id": 100,
+                            "file_id": 1000,
+                            "mod_name": "Main Mod",
+                            "file_name": "main.zip",
+                            "position": 1,
+                            "dependencies": [
+                              { "mod_id": 50 }
+                            ]
+                          },
+                          {
+                            "mod_id": 50,
+                            "file_id": 500,
+                            "mod_name": "Required Mod",
+                            "file_name": "required.zip",
+                            "position": 2
+                          }
+                        ]
+                      }
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val collection = client.getCollectionRevision(
+            NexusCollectionReference("skyrimspecialedition", "test", 5),
+        )
+
+        assertEquals("Test Collection", collection.name)
+        assertEquals(5, collection.revision)
+        assertEquals(listOf(50L, 100L), collection.files.map { it.modId })
+        assertEquals(listOf(500L, 1000L), collection.files.map { it.fileId })
+        assertEquals("/graphql", server.takeRequest().path)
+        assertEquals("/v1/games/skyrimspecialedition/collections/test/revisions/5.json", server.takeRequest().path)
+    }
+
+    @Test
+    fun getCollectionRevision_usesManifestWhenGraphQLModFilesAreTruncated() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "data": {
+                        "collection": { "name": "Big Collection" },
+                        "collectionRevision": {
+                          "downloadLink": "/collection.json",
+                          "modCount": 2,
+                          "revisionNumber": 8,
+                          "modFiles": [
+                            {
+                              "fileId": 1000,
+                              "file": {
+                                "fileId": 1000,
+                                "name": "first.zip",
+                                "mod": {
+                                  "modId": 100,
+                                  "name": "First",
+                                  "game": { "domainName": "skyrimspecialedition" }
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                    """.trimIndent(),
+                ),
+        )
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "mods": [
+                        {
+                          "name": "First",
+                          "source": {
+                            "game": "skyrimspecialedition",
+                            "modId": 100,
+                            "fileId": 1000,
+                            "logicalFileName": "first.zip",
+                            "sizeBytes": 41943040
+                          }
+                        },
+                        {
+                          "name": "Second",
+                          "optional": true,
+                          "instructions": "Copy this to the game root folder",
+                          "source": {
+                            "game": "skyrimspecialedition",
+                            "modId": 200,
+                            "fileId": 2000,
+                            "logicalFileName": "second.zip",
+                            "size": "30 MB"
+                          }
+                        },
+                        {
+                          "name": "External ENB binaries",
+                          "instructions": "Download manually from https://enbdev.com and place files in the game folder",
+                          "destination": "Game Directory"
+                        }
+                      ],
+                      "pluginLoadOrder": ["First.esm", "Second.esp"],
+                      "rules": [
+                        { "type": "before", "source": "First", "target": "Second" }
+                      ],
+                      "manualSteps": [
+                        { "title": "Run tool", "text": "Run Nemesis after installing animations" }
+                      ]
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val collection = client.getCollectionRevision(
+            NexusCollectionReference("skyrimspecialedition", "test", 8),
+        )
+
+        assertEquals("Big Collection", collection.name)
+        assertEquals(8, collection.revision)
+        assertEquals(listOf(100L, 200L, 0L), collection.files.map { it.modId })
+        assertEquals(listOf(41943040L, 30L * 1024L * 1024L, 0L), collection.files.map { it.sizeBytes })
+        assertEquals(listOf(true, false, true), collection.files.map { it.required })
+        assertEquals(
+            listOf(
+                NexusCollectionInstallClassification.AUTO_INSTALLABLE,
+                NexusCollectionInstallClassification.NEEDS_PLACEMENT,
+                NexusCollectionInstallClassification.EXTERNAL_MANUAL,
+            ),
+            collection.files.map { it.classification },
+        )
+        assertEquals(listOf("First.esm", "Second.esp"), collection.manifestInfo.rules.pluginLoadOrder)
+        assertTrue(collection.manifestInfo.rules.ruleSources.any { it.path == "pluginLoadOrder" })
+        assertTrue(collection.manifestInfo.rules.ruleSources.any { it.path == "rules" && "source" in it.itemKeys })
+        assertEquals(1, collection.manifestInfo.manualSteps.size)
+        assertEquals("/graphql", server.takeRequest().path)
+        assertEquals("/collection.json", server.takeRequest().path)
+    }
+
+    @Test
+    fun getCollectionRevision_keepsManifestRulesWhenGraphQLModFilesAreComplete() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "data": {
+                        "collection": { "name": "Rule Collection" },
+                        "collectionRevision": {
+                          "downloadLink": "/rules-collection.json",
+                          "modCount": 1,
+                          "revisionNumber": 9,
+                          "modFiles": [
+                            {
+                              "fileId": 1000,
+                              "file": {
+                                "fileId": 1000,
+                                "name": "first.zip",
+                                "mod": {
+                                  "modId": 100,
+                                  "name": "First",
+                                  "game": { "domainName": "skyrimspecialedition" }
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                    """.trimIndent(),
+                ),
+        )
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "mods": [
+                        {
+                          "name": "First",
+                          "source": {
+                            "game": "skyrimspecialedition",
+                            "modId": 100,
+                            "fileId": 1000,
+                            "logicalFileName": "first.zip"
+                          }
+                        }
+                      ],
+                      "pluginLoadOrder": ["First.esp"],
+                      "rules": [
+                        { "type": "after", "source": "First", "target": "Base" }
+                      ]
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val collection = client.getCollectionRevision(
+            NexusCollectionReference("skyrimspecialedition", "test", 9),
+        )
+
+        assertEquals(listOf(100L), collection.files.map { it.modId })
+        assertEquals(listOf("First.esp"), collection.manifestInfo.rules.pluginLoadOrder)
+        assertEquals(2, collection.manifestInfo.rules.ruleSources.size)
+        assertEquals("/graphql", server.takeRequest().path)
+        assertEquals("/rules-collection.json", server.takeRequest().path)
+    }
+
+    @Test
+    fun nexusFileSelector_sortsCurrentFilesAndHidesOldFiles() {
+        val files = listOf(
+            NexusModFile(
+                fileId = 1,
+                name = "Old",
+                version = "1.0",
+                fileName = "old.zip",
+                sizeBytes = 1,
+                uploadedTimestamp = 300,
+                categoryId = 4,
+                categoryName = "OLD_VERSION",
+            ),
+            NexusModFile(
+                fileId = 2,
+                name = "Optional",
+                version = "1.1",
+                fileName = "optional.zip",
+                sizeBytes = 1,
+                uploadedTimestamp = 400,
+                categoryId = 3,
+                categoryName = "OPTIONAL",
+            ),
+            NexusModFile(
+                fileId = 3,
+                name = "Main",
+                version = "1.2",
+                fileName = "main.zip",
+                sizeBytes = 1,
+                uploadedTimestamp = 200,
+                categoryId = 1,
+                categoryName = "MAIN",
+                isPrimary = true,
+            ),
+        )
+
+        assertEquals(listOf(3L, 2L), NexusFileSelector.currentFiles(files).map { it.fileId })
+        assertEquals(listOf(1L), NexusFileSelector.olderFiles(files).map { it.fileId })
+    }
+
+    @Test
+    fun collectionPlanner_keepsMultipleFilesFromSameMod() {
+        val files = listOf(
+            NexusCollectionFile(
+                gameDomain = "skyrimspecialedition",
+                modId = 100,
+                fileId = 1,
+                position = 1,
+            ),
+            NexusCollectionFile(
+                gameDomain = "skyrimspecialedition",
+                modId = 100,
+                fileId = 2,
+                position = 2,
+            ),
+            NexusCollectionFile(
+                gameDomain = "skyrimspecialedition",
+                modId = 200,
+                fileId = 3,
+                position = 3,
+                dependencyModIds = listOf(100),
+            ),
+        )
+
+        val ordered = NexusCollectionPlanner.orderedFiles(files)
+
+        assertEquals(listOf(1L, 2L, 3L), ordered.map { it.fileId })
+    }
+
+    @Test
+    fun collectionPlanner_ignoresDependencyModIdsFromOtherGameDomains() {
+        val files = listOf(
+            NexusCollectionFile(
+                gameDomain = "skyrimspecialedition",
+                modId = 200,
+                fileId = 2,
+                position = 0,
+                dependencyModIds = listOf(100),
+            ),
+            NexusCollectionFile(
+                gameDomain = "fallout4",
+                modId = 100,
+                fileId = 1,
+                position = 1,
+            ),
+        )
+
+        val ordered = NexusCollectionPlanner.orderedFiles(files)
+
+        assertEquals(listOf(2L, 1L), ordered.map { it.fileId })
+    }
+}

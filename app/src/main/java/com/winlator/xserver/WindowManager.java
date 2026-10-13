@@ -5,6 +5,7 @@ import android.util.SparseArray;
 import com.winlator.xconnector.XInputStream;
 import com.winlator.xserver.errors.BadIdChoice;
 import com.winlator.xserver.errors.BadMatch;
+import com.winlator.xserver.errors.BadValue;
 import com.winlator.xserver.errors.XRequestError;
 import com.winlator.xserver.events.ConfigureNotify;
 import com.winlator.xserver.events.ConfigureRequest;
@@ -42,6 +43,8 @@ public class WindowManager extends XResourceManager {
         default void onUpdateWindowAttributes(Window window, Bitmask mask) {}
 
         default void onModifyWindowProperty(Window window, Property property) {}
+
+        default void onDestroyWindow(Window window) {}
     }
 
     public WindowManager(ScreenInfo screenInfo, DrawableManager drawableManager) {
@@ -203,16 +206,29 @@ public class WindowManager extends XResourceManager {
             window.setContent(newContent);
         }
 
+        boolean moved = window.getX() != x || window.getY() != y;
+
         if (resized || window.getX() != x || window.getY() != y) {
             window.setX(x);
             window.setY(y);
             window.setWidth(width);
             window.setHeight(height);
             triggerOnUpdateWindowGeometry(window, resized);
+
+            if (moved) {
+                notifyChildGeometryUpdate(window);
+            }
         }
 
         if (resized && window.isInputOutput() && window.attributes.isMapped()) {
             window.sendEvent(new Expose(window));
+        }
+    }
+
+    private void notifyChildGeometryUpdate(Window parent) {
+        for (Window child : parent.getChildren()) {
+            triggerOnUpdateWindowGeometry(child, false);
+            notifyChildGeometryUpdate(child);
         }
     }
 
@@ -229,7 +245,7 @@ public class WindowManager extends XResourceManager {
         triggerOnChangeWindowZOrder(window);
     }
 
-    public void configureWindow(Window window, Bitmask valueMask, XInputStream inputStream) {
+    public void configureWindow(Window window, Bitmask valueMask, XInputStream inputStream) throws XRequestError {
         short x = window.getX();
         short y = window.getY();
         short width = window.getWidth();
@@ -264,6 +280,9 @@ public class WindowManager extends XResourceManager {
             }
         }
 
+        if (width <= 0) throw new BadValue(width);
+        if (height <= 0) throw new BadValue(height);
+
         Window parent = window.getParent();
         boolean overrideRedirect = window.attributes.isOverrideRedirect();
         if (!parent.hasEventListenerFor(Event.SUBSTRUCTURE_REDIRECT) || overrideRedirect) {
@@ -279,10 +298,17 @@ public class WindowManager extends XResourceManager {
         else parent.sendEvent(Event.SUBSTRUCTURE_REDIRECT, new ConfigureRequest(parent, window, window.previousSibling(), x, y, width, height, borderWidth, stackMode, valueMask));
     }
 
-    public void reparentWindow(Window window, Window newParent) {
+    public void reparentWindow(Window window, Window newParent, short x, short y) {
         Window oldParent = window.getParent();
         if (oldParent != null) oldParent.removeChild(window);
         newParent.addChild(window);
+
+        window.setX(x);
+        window.setY(y);
+
+        triggerOnUpdateWindowGeometry(window, false);
+        notifyChildGeometryUpdate(window);
+        triggerOnChangeWindowZOrder(window);
     }
 
     public Window findPointWindow(short rootX, short rootY) {

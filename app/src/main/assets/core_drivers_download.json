@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "updatedAt": "2026-06-03",
+  "components": [
+    {
+      "id": "Adreno_805_adpkg",
+      "name": "Adreno_805_adpkg.zip",
+      "url": "https://downloads.gamenative.app/core_drivers/Adreno_805_adpkg.zip"
+    },
+    {
+      "id": "Adreno_819.2_adpkg",
+      "name": "Adreno_819.2_adpkg.zip",
+      "url": "https://downloads.gamenative.app/core_drivers/Adreno_819.2_adpkg.zip"
+    },
+    {
+      "id": "SD8Elite_2-842.6",
+      "name": "SD8Elite_2-842.6.zip",
+      "url": "https://downloads.gamenative.app/core_drivers/SD8Elite_2-842.6.zip"
+    },
+    {
+      "id": "SD8Elite_800.35",
+      "name": "SD8Elite_800.35.zip",
+      "url": "https://downloads.gamenative.app/core_drivers/SD8Elite_800.35.zip"
+    },
+    {
+      "id": "SD8Elite_800.51",
+      "name": "SD8Elite_800.51.zip",
+      "url": "https://downloads.gamenative.app/core_drivers/SD8Elite_800.51.zip"
+    }
+  ]
+}

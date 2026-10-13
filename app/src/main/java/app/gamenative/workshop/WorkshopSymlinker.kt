@@ -41,14 +41,25 @@ class WorkshopSymlinker {
         activeItemDirs: Map<Long, File>,
         workshopContentBase: File,
         itemTitles: Map<Long, String> = emptyMap(),
+        flatFileExtensions: Set<String> = emptySet(),
     ): SyncResult {
+        val normalizedFlatFileExtensions = flatFileExtensions.mapTo(mutableSetOf()) {
+            it.lowercase().removePrefix(".")
+        }
         return when (strategy) {
             is WorkshopModPathStrategy.Standard -> {
                 Timber.tag(TAG).d("Strategy is Standard — no filesystem manipulation needed")
                 SyncResult(0, activeItemDirs.size, 0, emptyMap())
             }
             is WorkshopModPathStrategy.SymlinkIntoDir ->
-                syncIntoAllDirs(strategy.effectiveDirs, activeItemDirs, workshopContentBase, true, itemTitles)
+                syncIntoAllDirs(
+                    strategy.effectiveDirs,
+                    activeItemDirs,
+                    workshopContentBase,
+                    true,
+                    itemTitles,
+                    normalizedFlatFileExtensions,
+                )
             is WorkshopModPathStrategy.CopyIntoDir ->
                 syncIntoAllDirs(strategy.effectiveDirs, activeItemDirs, workshopContentBase, false, itemTitles)
         }
@@ -63,12 +74,20 @@ class WorkshopSymlinker {
         workshopContentBase: File,
         useSymlinks: Boolean,
         itemTitles: Map<Long, String> = emptyMap(),
+        flatFileExtensions: Set<String> = emptySet(),
     ): SyncResult {
         var totalCreated = 0; var totalSkipped = 0; var totalRemoved = 0
         val allErrors = mutableMapOf<String, String>()
 
         for (dir in targetDirs) {
-            val r = syncIntoOneDir(dir, activeItemDirs, workshopContentBase, useSymlinks, itemTitles)
+            val r = syncIntoOneDir(
+                dir,
+                activeItemDirs,
+                workshopContentBase,
+                useSymlinks,
+                itemTitles,
+                flatFileExtensions,
+            )
             totalCreated += r.created; totalSkipped += r.skipped; totalRemoved += r.removed
             r.errors.forEach { (k, v) -> allErrors["${dir.name}/$k"] = v }
         }
@@ -86,6 +105,7 @@ class WorkshopSymlinker {
         workshopContentBase: File,
         useSymlinks: Boolean,
         itemTitles: Map<Long, String> = emptyMap(),
+        flatFileExtensions: Set<String> = emptySet(),
     ): SyncResult {
         Timber.tag(TAG).i(
             "syncIntoOneDir: ${targetDir.absolutePath} " +
@@ -114,15 +134,19 @@ class WorkshopSymlinker {
         // mods/<modTitle>/file.mod.zip, not mods/file.mod.zip.
         if (useSymlinks) {
             val isModContainerDir = targetDir.name.lowercase() in MOD_CONTAINER_NAMES
+            val forceFlatFiles = flatFileExtensions.isNotEmpty()
             val allSingleFile = !isModContainerDir && activeItemDirs.values.all { srcDir ->
                 val children = srcDir.listFiles()
                     ?.filter { !it.name.startsWith(".") }
                     ?: emptyList()
                 children.size == 1 && children.single().isFile
             }
-            if (allSingleFile) {
+            if (forceFlatFiles || allSingleFile) {
                 return syncFlatFilesIntoDir(
-                    targetDir, activeItemDirs, workshopContentBase,
+                    targetDir,
+                    activeItemDirs,
+                    workshopContentBase,
+                    flatFileExtensions,
                 )
             }
         }
@@ -214,6 +238,7 @@ class WorkshopSymlinker {
         targetDir: File,
         activeItemDirs: Map<Long, File>,
         workshopContentBase: File,
+        allowedExtensions: Set<String> = emptySet(),
     ): SyncResult {
         Timber.tag(TAG).i(
             "syncFlatFilesIntoDir: ${targetDir.absolutePath} (${activeItemDirs.size} items)"
@@ -226,7 +251,11 @@ class WorkshopSymlinker {
         val expectedFiles = linkedMapOf<String, File>() // filename → source file
         for ((id, sourceDir) in activeItemDirs.entries.sortedBy { it.key }) {
             sourceDir.listFiles()
-                ?.filter { it.isFile && !it.name.startsWith(".") }
+                ?.filter {
+                    it.isFile &&
+                        !it.name.startsWith(".") &&
+                        (allowedExtensions.isEmpty() || it.extension.lowercase() in allowedExtensions)
+                }
                 ?.forEach { f ->
                     if (f.name in expectedFiles) {
                         Timber.tag(TAG).w(
@@ -237,6 +266,11 @@ class WorkshopSymlinker {
                         expectedFiles[f.name] = f
                     }
                 }
+        }
+        if (allowedExtensions.isNotEmpty() && expectedFiles.isEmpty()) {
+            Timber.tag(TAG).w(
+                "No flat-file payloads with extensions $allowedExtensions found for ${activeItemDirs.size} items"
+            )
         }
 
         // Remove stale file symlinks that we created (point into workshopContentBase)

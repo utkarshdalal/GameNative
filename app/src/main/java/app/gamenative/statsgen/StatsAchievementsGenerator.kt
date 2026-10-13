@@ -1,5 +1,6 @@
 package app.gamenative.statsgen
 
+import `in`.dragonbra.javasteam.steam.handlers.steamuserstats.callback.UserStatsCallback
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -22,7 +23,7 @@ class StatsAchievementsGenerator {
         return sb.toString()
     }
 
-    fun generateStatsAchievements(schema: ByteArray, configDirectory: String): ProcessingResult {
+    fun generateStatsAchievements(schema: ByteArray, userStats: UserStatsCallback, configDirectory: String): ProcessingResult {
         val parsedSchema = vdfParser.binaryLoads(schema)
         val achievementsOut = mutableListOf<Achievement>()
         val statsOut = mutableListOf<Stat>()
@@ -150,11 +151,26 @@ class StatsAchievementsGenerator {
             }
         }
 
+        // Use expandedAchievements from JavaSteam and match achievements with the correct timestamp
+        val expandedByName = userStats.getExpandedAchievements().filter { it.name != null }.associateBy { it.name!! }
+        val achievementsWithTimestamps = achievementsOut.map { ach ->
+            val expanded = expandedByName[ach.name]
+            if (expanded != null && expanded.isUnlocked) {
+                ach.copy(
+                    unlocked = true,
+                    unlockTimestamp = expanded.unlockTimestamp,
+                    formattedUnlockTime = expanded.getFormattedUnlockTime()
+                )
+            } else {
+                ach
+            }
+        }
+
         var copyDefaultUnlockedImg = false
         var copyDefaultLockedImg = false
         val outputAchievements = mutableListOf<Map<String, Any>>()
 
-        for (ach in achievementsOut) {
+        for (ach in achievementsWithTimestamps) {
             val outputAch = mutableMapOf<String, Any>()
             outputAch["name"] = ach.name
             outputAch["displayName"] = ach.displayName ?: emptyMap<String, String>()
@@ -186,9 +202,9 @@ class StatsAchievementsGenerator {
                 outputAch["progress"] = ach.progress
             }
 
-            ach.unlocked?.let { outputAch["unlocked"] = it }
-            ach.unlockTimestamp?.let { outputAch["unlockTimestamp"] = it }
-            ach.formattedUnlockTime?.let { outputAch["formattedUnlockTime"] = it }
+            // Seed the earned & earn_time to defaults. We set this correctly in the GSE file.
+            outputAch["earned"] = false
+            outputAch["earn_time"] = 0
 
             outputAchievements.add(outputAch)
         }
@@ -251,7 +267,7 @@ class StatsAchievementsGenerator {
 
             val orderedKeys = listOf(
                 "hidden", "displayName", "description", "icon", "icon_gray", "name",
-                "unlocked", "unlockTimestamp", "formattedUnlockTime"
+                "earned", "earn_time", "formattedUnlockTime"
             )
 
             for ((index, ach) in outputAchievements.withIndex()) {
@@ -284,10 +300,10 @@ class StatsAchievementsGenerator {
                                     jsonBuilder.append("\"$escapedText\"")
                                 }
                             }
-                            "hidden", "unlockTimestamp" -> {
+                            "hidden", "earn_time" -> {
                                 jsonBuilder.append("    \"$key\": $value")
                             }
-                            "unlocked" -> {
+                            "earned" -> {
                                 jsonBuilder.append("    \"$key\": ${value.toString().lowercase()}")
                             }
                             else -> {
@@ -339,7 +355,7 @@ class StatsAchievementsGenerator {
         }
 
         return ProcessingResult(
-            achievements = achievementsOut,
+            achievements = achievementsWithTimestamps,
             stats = statsOut,
             copyDefaultUnlockedImg = copyDefaultUnlockedImg,
             copyDefaultLockedImg = copyDefaultLockedImg,

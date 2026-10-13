@@ -21,15 +21,18 @@ import app.gamenative.utils.LsfgVkManager;
 import com.winlator.box86_64.Box86_64Preset;
 import com.winlator.box86_64.Box86_64PresetManager;
 import com.winlator.container.Container;
+import com.winlator.container.ContainerOverlay;
 import com.winlator.container.Shortcut;
 import com.winlator.contents.ContentProfile;
 import com.winlator.contents.ContentsManager;
 import com.winlator.core.Callback;
 import com.winlator.core.DefaultVersion;
+import com.winlator.core.envvars.EnvVarRedaction;
 import com.winlator.core.envvars.EnvVars;
 import com.winlator.core.FileUtils;
 import com.winlator.core.GPUInformation;
 import com.winlator.core.ProcessHelper;
+import com.winlator.core.SharedComponents;
 import com.winlator.core.TarCompressorUtils;
 import com.winlator.core.WineInfo;
 import com.winlator.fexcore.FEXCorePreset;
@@ -37,7 +40,6 @@ import com.winlator.fexcore.FEXCorePresetManager;
 import com.winlator.sysvshm.SysVSHMConnectionHandler;
 import com.winlator.sysvshm.SysVSHMRequestHandler;
 import com.winlator.sysvshm.SysVSharedMemory;
-import com.winlator.winhandler.WinHandler;
 import com.winlator.xconnector.UnixSocketConfig;
 import com.winlator.xconnector.XConnectorEpoll;
 import com.winlator.xenvironment.ImageFs;
@@ -47,10 +49,12 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
+import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 
+import app.gamenative.BuildConfig;
 import app.gamenative.PluviaApp;
 import app.gamenative.events.AndroidEvent;
 import app.gamenative.service.SteamService;
@@ -81,6 +85,26 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
     public Container getContainer() { return this.container; }
     public void setContainer(Container container) { this.container = container; }
+
+    // Resolve which libredirect shim to preload. Normally the flavor default
+    // (PRELOAD_BIONIC_SO). When the container disables libredirect, modern falls
+    // back to the W^X-only minimal shim (still required to run Wine on a strict
+    // W^X kernel) and legacy preloads nothing. Returns null to preload nothing.
+    private String resolveLibredirectPreload(ImageFs imageFs) {
+        if (container != null && container.isDisableLibredirect()) {
+            if (BuildConfig.MODERN_ANDROID) {
+                return imageFs.getLibDir() + "/libredirect-bionic-wx-minimal.so";
+            }
+            return null;
+        }
+        return imageFs.getLibDir() + "/" + BuildConfig.PRELOAD_BIONIC_SO;
+    }
+
+    /** Numeric Steam appid for the game in this container (e.g. "221380").
+     *  Set from XServerScreen before start(); only consumed in real-Steam mode
+     *  to publish SteamGameId / SteamAppId for the steam_helper handshake. */
+    private String steamAppId;
+    public void setSteamAppId(String steamAppId) { this.steamAppId = steamAppId; }
 
     public BionicProgramLauncherComponent(ContentsManager contentsManager, ContentProfile wineProfile) {
         this.contentsManager = contentsManager;
@@ -180,10 +204,10 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
     private int execGuestProgram() {
 
-        // Always pre-create all 4 mem files so controllers can be hot-plugged during gameplay.
-        // Unused gamepads just read zeroes (no-op in evshim).
-        final int enabledPlayerCount = WinHandler.MAX_PLAYERS;
-        for (int i = 0; i < enabledPlayerCount; i++) {
+        final int MAX_PLAYERS = 4;
+
+        // Get the number of enabled players directly from ControllerManager.
+        for (int i = 0; i < MAX_PLAYERS; i++) {
             String memPath;
             if (i == 0) {
                 // Player 1 uses the original, non-numbered path that is known to work.
@@ -225,7 +249,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         EnvVars envVars = new EnvVars();
 
         // Use the ControllerManager's dynamic count for the environment variable
-        envVars.put("EVSHIM_MAX_PLAYERS", String.valueOf(enabledPlayerCount));
+        envVars.put("EVSHIM_MAX_PLAYERS", String.valueOf(MAX_PLAYERS));
         if (true) {
             envVars.put("EVSHIM_SHM_ID", 1);
         }
@@ -244,6 +268,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("HOME", imageFs.home_path);
         envVars.put("USER", ImageFs.USER);
         envVars.put("TMPDIR", rootDir.getPath() + "/usr/tmp");
+        new File(imageFs.home_path + "/.wine/drive_c" + rootDir.getPath() + "/usr/tmp").mkdirs();
         envVars.put("DISPLAY", ":0");
 
         String winePath = imageFs.getWinePath() + "/bin";
@@ -252,8 +277,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         envVars.put("PATH", winePath + ":" +
                 rootDir.getPath() + "/usr/bin");
+        if (BuildConfig.MODERN_ANDROID) envVars.put("REDIRECT_EXEC__PROC_SELF_EXE", winePath + "/wine");
 
-        envVars.put("LD_LIBRARY_PATH", rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64");
+        String ldLibraryPath = rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64";
+        if (BuildConfig.MODERN_ANDROID) ldLibraryPath += ":" + imageFs.getWinePath() + "/lib";
+        envVars.put("LD_LIBRARY_PATH", ldLibraryPath);
         envVars.put("ANDROID_SYSVSHM_SERVER", rootDir.getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
         envVars.put("FONTCONFIG_PATH", rootDir.getPath() + "/usr/etc/fonts");
 
@@ -271,6 +299,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("OPENSSL_CONF", rootDir.getPath() + "/usr/etc/tls/openssl.cnf");
         envVars.put("SSL_CERT_FILE", rootDir.getPath() + "/usr/etc/tls/cert.pem");
         envVars.put("SSL_CERT_DIR", rootDir.getPath() + "/usr/etc/tls/certs");
+        // Wine's crypt32 imports this bundle into the Windows ROOT certificate store. Without it
+        // the store only holds Wine's built-in Microsoft roots: Android 14+ moved the system CAs
+        // to an APEX path Wine does not scan, so TLS verification fails for anything that trusts
+        // via the Windows store (e.g. the EOS SDK's websockets, winhttp/wininet callers).
+        envVars.put("WINE_ADDITIONAL_CERTS_DIR", rootDir.getPath() + "/usr/etc/tls/cert.pem");
         envVars.put("WINE_X11FORCEGLX", "1");
         envVars.put("WINE_GST_NO_GL", "1");
         envVars.put("SteamGameId", "0");
@@ -282,7 +315,14 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
             // Check if the dnsServers list is not empty before getting an item
             if (!dnsServers.isEmpty()) {
-                primaryDNS = dnsServers.get(0).toString().substring(1);
+                InetAddress selectedDNS = dnsServers.get(0);
+                for (InetAddress dnsServer : dnsServers) {
+                    if (dnsServer instanceof Inet4Address) {
+                        selectedDNS = dnsServer;
+                        break;
+                    }
+                }
+                primaryDNS = selectedDNS.getHostAddress();
             }
         }
         envVars.put("ANDROID_RESOLV_DNS", primaryDNS);
@@ -290,18 +330,41 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         String ld_preload = "";
         String sysvPath = imageFs.getLibDir() + "/libandroid-sysvshm.so";
-        String evshimPath = imageFs.getLibDir() + "/libevshim.so";
-        String replacePath = imageFs.getLibDir() + "/libredirect-bionic.so";
+        String evshimPath = context.getApplicationInfo().nativeLibraryDir + "/libevshim.so";
+        String replacePath = resolveLibredirectPreload(imageFs);
 
         if (new File(sysvPath).exists()) ld_preload += sysvPath;
 
 
         ld_preload += ":" + evshimPath;
-        ld_preload += ":" + replacePath;
+        String dnsV4MappedPath = context.getApplicationInfo().nativeLibraryDir + "/libgamenative_dns_v4mapped.so";
+        if (new File(dnsV4MappedPath).exists()) {
+            ld_preload += ":" + dnsV4MappedPath;
+        }
+        if (replacePath != null) ld_preload += ":" + replacePath;
 
         envVars.put("LD_PRELOAD", ld_preload);
-
+        envVars.put("EVSHIM_WINE", 1);
         envVars.put("EVSHIM_SHM_NAME", "controller-shm0");
+
+        if (container != null && container.isFasterExternalLoading()) {
+            String ffpGameDir = null;
+            for (String[] drive : Container.drivesIterator(container.getDrives())) {
+                if (drive[0].equals("A")) {
+                    try {
+                        ffpGameDir = new File(drive[1]).getCanonicalPath();
+                    } catch (IOException e) {
+                        ffpGameDir = drive[1];
+                    }
+                    break;
+                }
+            }
+            if (ffpGameDir != null && ffpGameDir.startsWith("/storage/")
+                    && !ffpGameDir.startsWith("/storage/emulated/")) {
+                envVars.put("FFP_ENABLE", "1");
+                envVars.put("FFP_MARKERS", "/steamapps/common/;/dosdevices/a:");
+            }
+        }
 
         // Check for specific shared memory libraries
 //        if ((new File(imageFs.getLibDir(), "libandroid-sysvshm.so")).exists()){
@@ -310,18 +373,48 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         //String nativeDir = context.getApplicationInfo().nativeLibraryDir; // e.g. /data/app/…/lib/arm64
 
+        // Bionic-Steam mode: env vars required by Proton's lsteamclient.dll +
+        // native libsteamclient.so bridge (loader path, IPC endpoint, VDF root).
+        if (container != null && container.isLaunchBionicSteam()) {
+            addRealSteamEnvVars(envVars, imageFs);
+            // Boot the native libsteamclient.so inside *this* (Android) process
+            // so Wine-side lsteamclient.dll has something to connect to.
+            bootstrapNativeSteamClient(envVars, imageFs);
+        }
+
         // Merge any additional environment variables from external sources
         if (this.envVars != null) {
             envVars.putAll(this.envVars);
+        }
+
+        if (BuildConfig.XR_BUILD) {
+            String shimPath = context.getApplicationInfo().nativeLibraryDir + "/libkgslshim.so";
+            if (new File(shimPath).exists()) {
+                String cur = envVars.get("LD_PRELOAD");
+                envVars.put("LD_PRELOAD", cur.isEmpty() ? shimPath : shimPath + ":" + cur);
+            }
         }
 
         if (LsfgVkManager.isSupported(container)) {
             LsfgVkManager.ensureRuntimeInstalled(environment.getContext(), container);
             LsfgVkManager.writeConfig(container);
             LsfgVkManager.applyLaunchEnv(container, envVars);
+            if (LsfgVkManager.isArmed(container)) {
+                final android.content.Context lsfgContext = environment.getContext();
+                new Thread(() -> LsfgVkManager.prepareNativeCache(lsfgContext, container),
+                    "lsfg-native-cache").start();
+            }
         }
 
-        Log.d("BionicProgramLauncherComponent", "env vars are " + envVars.toString());
+        try {
+            ContainerOverlay.applyBionicLaunchEnv(context, container, envVars);
+        }
+        catch (IllegalStateException e) {
+            Log.e("BionicProgramLauncherComponent", e.getMessage());
+            return -1;
+        }
+
+        Log.d("BionicProgramLauncherComponent", "env vars are " + EnvVarRedaction.redact(envVars));
 
         String emulator = container.getEmulator();
 
@@ -417,7 +510,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             contentsManager.applyContent(wowboxprofile);
         } else {
             Log.d("Extraction", "Extracting box64Version: " + wowbox64Version);
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(), "wowbox64/wowbox64-" + wowbox64Version + ".tzst", system32dir);
+            SharedComponents.extractAndLink(environment.getContext(), "wowbox64-" + wowbox64Version, TarCompressorUtils.Type.ZSTD, "wowbox64/wowbox64-" + wowbox64Version + ".tzst", system32dir, null);
         }
         container.putExtra("box64Version", wowbox64Version);
         containerDataChanged = true;
@@ -427,7 +520,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             contentsManager.applyContent(fexprofile);
         } else {
             Log.d("Extraction", "Extracting fexcoreVersion: " + fexcoreVersion);
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(), "fexcore/fexcore-" + fexcoreVersion + ".tzst", system32dir);
+            SharedComponents.extractAndLink(environment.getContext(), "fexcore-" + fexcoreVersion, TarCompressorUtils.Type.ZSTD, "fexcore/fexcore-" + fexcoreVersion + ".tzst", system32dir, null);
         }
         container.putExtra("fexcoreVersion", fexcoreVersion);
 
@@ -452,15 +545,177 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("BOX64_RCFILE", box64RCFile.getPath());
     }
 
+    /**
+     * Sets env vars required when launching with the real Steam client
+     * (Proton's steam.exe + lsteamclient.dll talking to the native libsteamclient.so).
+     *
+     * Three groups:
+     *   A. WINESTEAMCLIENTPATH{,64} — where lsteamclient.dll dlopens the native bridge.
+     *   B. _STEAM_SETENV_MANAGER + friends — bootstrap-gate handshake checked by
+     *      libsteamclient.so's init_process_env_manager_from_dll, plus the IPC endpoint
+     *      overrides resolved in its endpoint string parser.
+     *   C. SteamPath / SteamUser / SteamClientLaunch — Wine-side identity expected by
+     *      steam_helper (steam.exe) and Steamworks games inside the prefix.
+     *
+     * STEAM_BASE_FOLDER points the native .so at the Linux-side directory that mirrors
+     * the Windows `C:\Program Files (x86)\Steam` install, so its `<base>/config/config.vdf`
+     * read lands on the file SteamTokenLogin.phase1SteamConfig() writes.
+     */
+    private void addRealSteamEnvVars(EnvVars envVars, ImageFs imageFs) {
+        String steamRootLinux = imageFs.wineprefix + "/drive_c/Program Files (x86)/Steam";
+        String breakpadDir = imageFs.getRootDir().getPath() + "/usr/tmp/breakpad";
+        new File(breakpadDir).mkdirs();
+
+        // A. lsteamclient.dll loader paths -> native Linux client/bridge .so
+        envVars.put("WINESTEAMCLIENTPATH64", steamRootLinux + "/linux64/steamclient.so");
+        envVars.put("WINESTEAMCLIENTPATH",   steamRootLinux + "/linux32/steamclient.so");
+
+        // B. libsteamclient.so bootstrap-gate handshake (all required together)
+        envVars.put("_STEAM_SETENV_MANAGER", "1");
+        envVars.put("BREAKPAD_DUMP_LOCATION", breakpadDir);
+        envVars.put("STEAM_BASE_FOLDER", steamRootLinux);
+        envVars.put("ENABLE_VK_LAYER_VALVE_steam_overlay_1", "0");
+        // ISteamUtils::IsOverlayEnabled() is not engine state -- it resolves in-process to
+        // `getenv("SteamOS") ? true : dlsym(RTLD_DEFAULT, "IsOverlayEnabled")`. No overlay
+        // module is loaded here (the bionic asset set ships none), so without this it returns
+        // false and games that gate their invite/host UI on it refuse to open it.
+        envVars.put("SteamOS", "1");
+        envVars.put("STEAMVIDEOTOKEN", "1");
+
+        // IPC endpoints; override defaults if the MCP-hosted .so listens elsewhere
+        envVars.put("Steam3Master",       "127.0.0.1:57343");
+        envVars.put("SteamClientService", "127.0.0.1:57344");
+
+        // C. Wine-side Steam identity for steam_helper / games
+        String username = app.gamenative.PrefManager.INSTANCE.getUsername();
+        if (username != null && !username.isEmpty()) {
+            envVars.put("SteamUser", username);
+            // Mirrors what the real Steam client publishes; some Steamworks
+            // games (and steam_helper itself) read SteamAppUser as a fallback.
+            envVars.put("SteamAppUser", username);
+        }
+        envVars.put("SteamClientLaunch", "1");
+        envVars.put("SteamEnv", "1");
+        envVars.put("SteamPath", "C:\\Program Files (x86)\\Steam");
+        envVars.put("ValvePlatformMutex", "c:\\Program Files (x86)\\Steam/");
+
+        long steamId64 = app.gamenative.PrefManager.INSTANCE.getSteamUserSteamId64();
+        if (steamId64 != 0L) {
+            envVars.put("STEAMID", Long.toString(steamId64));
+        }
+
+        // Override the SteamGameId=0 set above with the actual Steam appid for
+        // this container, and publish the matching SteamAppId. Steamworks games
+        // (and the steam.exe / steam_helper handshake) require both to be set
+        // to the running game's appid for the IPC bridge to attach correctly.
+        if (steamAppId != null && !steamAppId.isEmpty()) {
+            envVars.put("SteamGameId", steamAppId);
+            envVars.put("SteamAppId", steamAppId);
+        }
+    }
+
+    /**
+     * Loads libsteamclient.so into the Android process (via JNI -> dlopen) and
+     * brings it up to a connected SteamClient + pipe + global-user state, so
+     * Proton's lsteamclient.dll inside the Wine subprocess we launch next has
+     * a live IPC peer.
+     *
+     * HOME handling: the native init calls setenv("HOME", ...) on the Android
+     * process. The Wine subprocess we spawn afterwards is invoked with an
+     * explicit envp via ProcessHelper.exec(...), which already contains the
+     * project's own HOME (imageFs.home_path) — so the value we set here does
+     * NOT leak into Wine.
+     */
+    private void bootstrapNativeSteamClient(EnvVars envVars, ImageFs imageFs) {
+        // HOME for libsteamclient.so points at the parent of `Steam/`; the .so
+        // resolves <HOME>/Steam/config/config.vdf etc. relative to it.
+        String nativeHome = imageFs.wineprefix + "/drive_c/Program Files (x86)";
+        // The Android-Steam build of libsteamclient.so ships inside our imagefs
+        // (e.g. /data/data/app.gamenative/files/imagefs/usr/lib/libsteamclient.so).
+        String libPath = new File(imageFs.getLibDir(), "libsteamclient.so").getAbsolutePath();
+
+        File libFile = new File(libPath);
+        if (!libFile.exists()) {
+            Log.w("BionicProgramLauncherComponent",
+                  "libsteamclient.so not found at " + libPath + "; skipping native bootstrap");
+            return;
+        }
+
+        java.util.HashMap<String, String> extra = new java.util.HashMap<>();
+        // bootstrap-gate handshake vars libsteamclient.so checks during init
+        String[] passthrough = new String[] {
+                "_STEAM_SETENV_MANAGER",
+                "BREAKPAD_DUMP_LOCATION",
+                "STEAM_BASE_FOLDER",
+                "ENABLE_VK_LAYER_VALVE_steam_overlay_1",
+                "STEAMVIDEOTOKEN",
+                "SteamUser",
+                "SteamOS",
+        };
+        for (String key : passthrough) {
+            String val = envVars.get(key);
+            if (val != null && !val.isEmpty()) {
+                extra.put(key, val);
+            }
+        }
+
+        // Credentials for the explicit refresh-token logon path inside the .so.
+        // PrefManager.username is the Steam account login name; refreshToken is
+        // the JWT-style token Steam issued during our app login; steamUserSteamId64
+        // is the 64-bit SteamID. If any are missing we fall back to whatever
+        // cached auto-logon libsteamclient.so can do on its own.
+        String accountName  = app.gamenative.PrefManager.INSTANCE.getUsername();
+        String refreshToken = app.gamenative.PrefManager.INSTANCE.getRefreshToken();
+        long   steamId64    = app.gamenative.PrefManager.INSTANCE.getSteamUserSteamId64();
+
+        try {
+            int rc = app.gamenative.SteamBootstrap.INSTANCE.start(
+                    environment.getContext(),
+                    libPath,
+                    nativeHome,
+                    envVars.get("Steam3Master"),
+                    envVars.get("SteamClientService"),
+                    extra,
+                    accountName,
+                    refreshToken,
+                    steamId64);
+            Log.i("BionicProgramLauncherComponent", "SteamBootstrap.start rc=" + rc);
+
+            // Once the engine is logged on, kick PICS + encrypted-ticket
+            // pre-warm for the app we're about to launch. The Wine-side
+            // lsteamclient.dll has no path to drive these itself before the
+            // game asks for an ownership ticket, so without this the launch
+            // typically stalls at "Validating Subscriptions". Best-effort:
+            // skipped silently if rc != 0 or steamAppId isn't a valid AppID.
+            if (rc == 0 && steamAppId != null && !steamAppId.isEmpty()) {
+                try {
+                    int appIdInt = Integer.parseInt(steamAppId);
+                    Log.i("BionicProgramLauncherComponent",
+                          "SteamBootstrap.prepareApp(" + appIdInt + ")");
+                    app.gamenative.SteamBootstrap.INSTANCE.prepareApp(appIdInt);
+                } catch (NumberFormatException nfe) {
+                    Log.w("BionicProgramLauncherComponent",
+                          "steamAppId=" + steamAppId + " is not numeric; "
+                          + "skipping SteamBootstrap.prepareApp");
+                }
+            }
+        } catch (Throwable t) {
+            Log.e("BionicProgramLauncherComponent", "SteamBootstrap.start threw", t);
+        }
+    }
+
     public String execShellCommand(String command) {
         return execShellCommand(command, true);
     }
 
     public String execShellCommand(String command, boolean includeStderr) {
+        return execShellCommand(command, includeStderr, null, null);
+    }
+
+    public String execShellCommand(String command, boolean includeStderr, EnvVars extraEnv, String[] unsetEnv) {
         Context context = environment.getContext();
         ImageFs imageFs = ImageFs.find(context);
         File rootDir = imageFs.getRootDir();
-        StringBuilder output = new StringBuilder();
         EnvVars envVars = new EnvVars();
         addBox64EnvVars(envVars, false);
 
@@ -474,8 +729,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         Log.d("BionicProgramLauncherComponent", "WinePath is " + winePath);
 
         envVars.put("PATH", winePath + ":" + rootDir.getPath() + "/usr/bin");
+        if (BuildConfig.MODERN_ANDROID) envVars.put("REDIRECT_EXEC__PROC_SELF_EXE", winePath + "/wine");
 
-        envVars.put("LD_LIBRARY_PATH", rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64");
+        String ldLibraryPath = rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64";
+        if (BuildConfig.MODERN_ANDROID) ldLibraryPath += ":" + imageFs.getWinePath() + "/lib";
+        envVars.put("LD_LIBRARY_PATH", ldLibraryPath);
         envVars.put("ANDROID_SYSVSHM_SERVER", rootDir.getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
         envVars.put("WINE_NO_DUPLICATE_EXPLORER", "1");
         envVars.put("PREFIX", rootDir.getPath() + "/usr");
@@ -484,16 +742,25 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         String ld_preload = "";
         String sysvPath = imageFs.getLibDir() + "/libandroid-sysvshm.so";
-        String replacePath = imageFs.getLibDir() + "/libredirect-bionic.so";
+        String replacePath = resolveLibredirectPreload(imageFs);
 
         if (new File(sysvPath).exists()) ld_preload += sysvPath;
 
-        ld_preload += ":" + replacePath;
+        if (replacePath != null) ld_preload += ":" + replacePath;
 
         envVars.put("LD_PRELOAD", ld_preload);
 
         String emulator = container.getEmulator();
         if (this.envVars != null) envVars.putAll(this.envVars);
+        try {
+            ContainerOverlay.applyBionicLaunchEnv(context, container, envVars);
+        }
+        catch (IllegalStateException e) {
+            Log.e("BionicProgramLauncherComponent", e.getMessage());
+            return "";
+        }
+        if (extraEnv != null) envVars.putAll(extraEnv);
+        if (unsetEnv != null) for (String name : unsetEnv) envVars.remove(name);
 
         String finalCommand = getFinalCommand(winePath, emulator, envVars, imageFs.getBinDir(), command);
 
@@ -502,29 +769,9 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             FileUtils.chmod(box64File, 0755);
         }
 
-        // Execute the command and capture its output
-        try {
-            Log.d("BionicProgramLauncherComponent", "Shell command is " + finalCommand);
-            java.lang.Process process = Runtime.getRuntime().exec(finalCommand, envVars.toStringArray(), workingDir != null ? workingDir : imageFs.getRootDir());
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-
-            String line;
-            while ((line = reader.readLine()) != null) {
-                output.append(line).append("\n");
-            }
-            if (includeStderr) {
-                while ((line = errorReader.readLine()) != null) {
-                    output.append(line).append("\n");
-                }
-            }
-            process.waitFor();
-        } catch (Exception e) {
-            output.append("Error: ").append(e.getMessage());
-        }
-
-        // Format output: trim trailing whitespace/newlines
-        return output.toString().trim();
+        Log.d("BionicProgramLauncherComponent", "Shell command is " + finalCommand);
+        return ProcessHelper.execWithOutput(finalCommand, envVars.toStringArray(),
+                workingDir != null ? workingDir : imageFs.getRootDir(), includeStderr);
     }
 
     public void restartWineServer() {

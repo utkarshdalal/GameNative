@@ -23,10 +23,6 @@ private val vcRedistMap: Map<String, String> = mapOf(
     "A:\\_CommonRedist\\vcredist\\2017\\vc_redist.x64.exe" to "/install /passive /norestart",
     "A:\\_CommonRedist\\vcredist\\2019\\vc_redist.x86.exe" to "/install /passive /norestart",
     "A:\\_CommonRedist\\vcredist\\2019\\vc_redist.x64.exe" to "/install /passive /norestart",
-    "A:\\_CommonRedist\\vcredist\\2022\\vc_redist.x86.exe" to "/install /passive /norestart",
-    "A:\\_CommonRedist\\vcredist\\2022\\vc_redist.x64.exe" to "/install /passive /norestart",
-    "A:\\_CommonRedist\\vcredist\\2022\\VC_redist.x86.exe" to "/install /passive /norestart",
-    "A:\\_CommonRedist\\vcredist\\2022\\VC_redist.x64.exe" to "/install /passive /norestart",
     "A:\\redist\\vcredist_x86.exe" to "",
     "A:\\redist\\vcredist_x64.exe" to "",
     "A:\\_CommonRedist\\MSVC2005\\vcredist_x86.exe" to "/Q",
@@ -45,8 +41,6 @@ private val vcRedistMap: Map<String, String> = mapOf(
     "A:\\_CommonRedist\\MSVC2017_x64\\VC_redist.x64.exe" to "/install /passive /norestart",
     "A:\\_CommonRedist\\MSVC2019\\VC_redist.x86.exe" to "/install /passive /norestart",
     "A:\\_CommonRedist\\MSVC2019_x64\\VC_redist.x64.exe" to "/install /passive /norestart",
-    "A:\\_CommonRedist\\MSVC2022\\VC_redist.x86.exe" to "/install /passive /norestart",
-    "A:\\_CommonRedist\\MSVC2022_x64\\VC_redist.x64.exe" to "/install /passive /norestart",
     "A:\\_CommonRedist\\VC_redist.x86.exe" to "/install /passive /norestart",
     "A:\\_CommonRedist\\VC_redist.x64.exe" to "/install /passive /norestart",
 )
@@ -78,6 +72,17 @@ object VcRedistStep : PreInstallStep {
             val hostFile = File(gameDir, rest.replace('\\', '/'))
             if (!hostFile.isFile) continue
             parts.add(if (args.isEmpty()) winPath else "$winPath $args")
+        }
+        val covered = vcRedistMap.keys.map { it.lowercase() }.toSet()
+        File(gameDir, "_CommonRedist/vcredist").listFiles()?.sortedBy { it.name }?.forEach { yearDir ->
+            if (!yearDir.isDirectory || (yearDir.name.toIntOrNull() ?: 0) >= 2022) return@forEach
+            yearDir.listFiles()?.sortedBy { it.name }?.forEach { exe ->
+                val name = exe.name.lowercase()
+                if (!exe.isFile || !name.endsWith(".exe") || !(name.startsWith("vc_redist") || name.startsWith("vcredist"))) return@forEach
+                val winPath = "A:\\_CommonRedist\\vcredist\\${yearDir.name}\\${exe.name}"
+                if (winPath.lowercase() in covered) return@forEach
+                parts.add("$winPath /install /passive /norestart")
+            }
         }
         return if (parts.isEmpty()) null else parts.joinToString(" & ")
     }

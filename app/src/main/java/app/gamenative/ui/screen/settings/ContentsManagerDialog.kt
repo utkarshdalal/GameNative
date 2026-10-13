@@ -267,7 +267,8 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             ContentProfile.ContentType.CONTENT_TYPE_VKD3D,
                             ContentProfile.ContentType.CONTENT_TYPE_BOX64,
                             ContentProfile.ContentType.CONTENT_TYPE_WOWBOX64,
-                            ContentProfile.ContentType.CONTENT_TYPE_FEXCORE
+                            ContentProfile.ContentType.CONTENT_TYPE_FEXCORE,
+                            ContentProfile.ContentType.CONTENT_TYPE_WRAPPER
                         )
                         ContentProfile.ContentType.values().filter { it in allowed }.forEach { t ->
                             DropdownMenuItem(

@@ -12,14 +12,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.ElevatedButton
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -30,6 +33,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -41,6 +46,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.enums.LoginResult
+import app.gamenative.ui.component.LoadingScreen
 import app.gamenative.ui.data.UserLoginState
 import app.gamenative.ui.theme.PluviaTheme
 
@@ -49,8 +55,11 @@ fun TwoFactorAuthScreenContent(
     userLoginState: UserLoginState,
     message: String,
     onSetTwoFactor: (String) -> Unit,
+    onUseGuardTotp: () -> Unit,
     onLogin: () -> Unit,
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -69,20 +78,35 @@ fun TwoFactorAuthScreenContent(
 
         if (userLoginState.loginResult == LoginResult.DeviceConfirm) {
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            Spacer(modifier = Modifier.height(16.dp))
+            TextButton(
+                onClick = onUseGuardTotp
+            ) {
+                Text(stringResource(R.string.steam_2fa_use_guard_totp))
+            }
         } else if (userLoginState.loginResult == LoginResult.EmailAuth ||
             userLoginState.loginResult == LoginResult.DeviceAuth
         ) {
             TwoFactorTextField(
                 twoFactorText = userLoginState.twoFactorCode,
                 onTwoFactorTextChange = onSetTwoFactor,
+                onLogin = onLogin,
             )
             Spacer(modifier = Modifier.height(24.dp))
-            ElevatedButton(
+            Button(
                 enabled = userLoginState.twoFactorCode.length == 5,
-                onClick = onLogin,
+                onClick = {
+                    keyboardController?.hide()
+                    onLogin()
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                ),
                 content = {
                     Text(
                         text = stringResource(R.string.two_factor_login),
@@ -90,6 +114,8 @@ fun TwoFactorAuthScreenContent(
                     )
                 },
             )
+        } else {
+            LoadingScreen()
         }
     }
 }
@@ -99,8 +125,10 @@ fun TwoFactorAuthScreenContent(
 private fun TwoFactorTextField(
     twoFactorText: String,
     onTwoFactorTextChange: (String) -> Unit,
+    onLogin: () -> Unit,
 ) {
     val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     LaunchedEffect(true) {
         focusRequester.requestFocus()
@@ -118,6 +146,10 @@ private fun TwoFactorTextField(
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(focusRequester)
+                .dpadFocusEscape(
+                    focusManager = LocalFocusManager.current,
+                    keyboardController = LocalSoftwareKeyboardController.current,
+                )
                 .border(
                     width = 1.dp,
                     color = MaterialTheme.colorScheme.outline,
@@ -137,6 +169,13 @@ private fun TwoFactorTextField(
             },
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Done,
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    keyboardController?.hide()
+                    if (twoFactorText.length >= 5) onLogin()
+                },
             ),
             shape = RoundedCornerShape(8.dp),
             colors = OutlinedTextFieldDefaults.colors(
@@ -187,6 +226,9 @@ private fun Preview_TwoFactorAuthScreen(
                     },
                     onSetTwoFactor = { value ->
                         currentState = currentState.copy(twoFactorCode = value)
+                    },
+                    onUseGuardTotp = {
+                        currentState = currentState.copy(twoFactorCode = "")
                     },
                     onLogin = {
                         currentState = currentState.copy(twoFactorCode = "")

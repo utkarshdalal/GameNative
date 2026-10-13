@@ -9,11 +9,11 @@ import android.view.Display
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.FrameLayout
-import com.winlator.widget.XServerView
+import android.view.View
 
 class ExternalDisplaySwapController(
     private val context: Context,
-    private val xServerViewProvider: () -> XServerView?,
+    private val xServerViewProvider: () -> View?,
     private val internalGameHostProvider: () -> ViewGroup?,
     private val onGameOnExternalChanged: (Boolean) -> Unit = {},
 ) {

@@ -1,0 +1,105 @@
+package app.gamenative.mods
+
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+
+data class ModDownloadInfo(
+    val installId: String,
+    val appId: String,
+    val displayName: String,
+    val progress: Float = 0f,
+    val status: String = "",
+    val downloadedBytes: Long = 0L,
+    val totalBytes: Long = 0L,
+)
+
+internal enum class ModImportStartResult {
+    STARTED,
+    CANCELED_BEFORE_START,
+    ALREADY_ACTIVE,
+}
+
+object ModDownloadRegistry {
+    private val downloads = MutableStateFlow<Map<String, ModDownloadInfo>>(emptyMap())
+    private val canceledImports = mutableSetOf<String>()
+
+    fun observeDownloads(): StateFlow<Map<String, ModDownloadInfo>> = downloads.asStateFlow()
+
+    fun get(installId: String): ModDownloadInfo? = downloads.value[installId]
+
+    /**
+     * Atomically acquires ownership of an import without disturbing an existing owner.
+     * Local document imports use this before reading or mutating their shared staging state.
+     */
+    internal fun tryStart(
+        installId: String,
+        appId: String,
+        displayName: String,
+    ): ModImportStartResult = synchronized(canceledImports) {
+        if (downloads.value.containsKey(installId)) {
+            return@synchronized ModImportStartResult.ALREADY_ACTIVE
+        }
+        if (canceledImports.remove(installId)) {
+            return@synchronized ModImportStartResult.CANCELED_BEFORE_START
+        }
+        val info = ModDownloadInfo(
+            installId = installId,
+            appId = appId,
+            displayName = displayName,
+            status = "Starting",
+        )
+        downloads.update { current -> current + (installId to info) }
+        ModImportStartResult.STARTED
+    }
+
+    /** Returns false when cancellation arrived before the service registered the import. */
+    fun start(installId: String, appId: String, displayName: String): Boolean =
+        synchronized(canceledImports) {
+            val canceledBeforeStart = canceledImports.remove(installId)
+            val info = ModDownloadInfo(
+                installId = installId,
+                appId = appId,
+                displayName = displayName,
+                status = "Starting",
+            )
+            downloads.update { current -> current + (installId to info) }
+            !canceledBeforeStart
+        }
+
+    fun update(
+        installId: String,
+        progress: Float,
+        status: String,
+        downloadedBytes: Long = 0L,
+        totalBytes: Long = 0L,
+    ) {
+        downloads.update { currentDownloads ->
+            val current = currentDownloads[installId] ?: return@update currentDownloads
+            val updated = current.copy(
+                progress = progress.coerceIn(0f, 1f),
+                status = status,
+                downloadedBytes = downloadedBytes,
+                totalBytes = totalBytes,
+            )
+            currentDownloads + (installId to updated)
+        }
+    }
+
+    fun finish(installId: String) {
+        synchronized(canceledImports) {
+            downloads.update { current -> current - installId }
+            canceledImports.remove(installId)
+        }
+    }
+
+    fun requestCancel(installId: String) {
+        synchronized(canceledImports) {
+            canceledImports += installId
+        }
+    }
+
+    fun isCancelRequested(installId: String): Boolean =
+        synchronized(canceledImports) { installId in canceledImports }
+}

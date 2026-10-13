@@ -3,6 +3,7 @@ package app.gamenative.service.epic
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.IBinder
 import app.gamenative.data.DownloadInfo
 import app.gamenative.data.EpicCredentials
@@ -14,6 +15,11 @@ import app.gamenative.utils.MarkerUtils
 import app.gamenative.enums.Marker
 import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
+import app.gamenative.PrefManager
+import app.gamenative.R
+import app.gamenative.data.GameSource
+import app.gamenative.service.download.GameDownloadService
+import app.gamenative.service.download.NativeTreeDelete
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.service.NotificationHelper
 import com.winlator.container.Container
@@ -24,6 +30,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 import javax.inject.Inject
 import kotlinx.coroutines.*
 import app.gamenative.ui.util.SnackbarManager
+import app.gamenative.utils.LocaleHelper
 import timber.log.Timber
 
 /**
@@ -31,6 +38,13 @@ import timber.log.Timber
  */
 @AndroidEntryPoint
 class EpicService : Service() {
+
+    override fun attachBaseContext(newBase: Context) {
+        PrefManager.init(newBase)
+        val languageCode = PrefManager.appLanguage
+        val context = LocaleHelper.applyLanguage(newBase, languageCode)
+        super.attachBaseContext(context)
+    }
 
     companion object {
         private var instance: EpicService? = null
@@ -158,6 +172,8 @@ class EpicService : Service() {
 
         private fun setSyncInProgress(inProgress: Boolean) {
             syncInProgress = inProgress
+            if (inProgress) getInstance()?.notifierOrNull?.showSyncing(NotificationHelper.NOTIFICATION_ID_EPIC)
+            else getInstance()?.notifierOrNull?.showIdle(NotificationHelper.NOTIFICATION_ID_EPIC)
         }
 
         fun isSyncInProgress(): Boolean = syncInProgress
@@ -222,6 +238,10 @@ class EpicService : Service() {
         }
 
         suspend fun deleteGame(context: Context, appId: Int): Result<Unit> {
+            // join the close-time upload before touching the install dir -- see CloseSyncTracker.
+            app.gamenative.service.cloud.CloseSyncTracker.awaitIdle(
+                app.gamenative.service.cloud.CloseSyncTracker.keyOf(app.gamenative.data.GameSource.EPIC, appId),
+            )
             val instance = getInstance()
             if (instance == null) {
                 return Result.failure(Exception("Service not available"))
@@ -234,10 +254,13 @@ class EpicService : Service() {
                     return Result.failure(Exception("Game not found: $appId"))
                 }
 
+                // Remove download from GameDownloadService
+                GameDownloadService.removeDownload(context, GameSource.EPIC, appId.toString())
+
                 val path = if (game.installPath.isNotEmpty()) game.installPath else EpicConstants.getGameInstallPath(context, game.appName)
                 if (File(path).exists()) {
                     Timber.tag("Epic").i("Deleting installation folder: $path")
-                    val deleted = File(path).deleteRecursively()
+                    val deleted = NativeTreeDelete.deleteTreeFast(File(path))
                     if (deleted) {
                         Timber.tag("Epic").i("Successfully deleted installation folder")
                     } else {
@@ -246,6 +269,9 @@ class EpicService : Service() {
                     MarkerUtils.removeMarker(path, Marker.DOWNLOAD_COMPLETE_MARKER)
                     MarkerUtils.removeMarker(path, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                 }
+
+                // Drop any leftover chunk cache (kept on failed downloads for resume)
+                NativeTreeDelete.deleteTreeFast(EpicDownloadManager.chunkCacheDirFor(context, path))
 
                 // Uninstall from database (keeps the entry but marks as not installed)
                 instance.epicManager.uninstall(appId)
@@ -261,7 +287,7 @@ class EpicService : Service() {
 
                 // Trigger library refresh event
                 app.gamenative.PluviaApp.events.emitJava(
-                    app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(appId)
+                    app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(appId, app.gamenative.data.GameSource.EPIC)
                 )
 
                 Timber.tag("Epic").i("Game uninstalled: $appId")
@@ -363,6 +389,15 @@ class EpicService : Service() {
             }
         }
 
+        fun updateInstallPath(appId: Int, path: String) {
+            runBlocking(Dispatchers.IO) {
+                val game = getInstance()?.epicManager?.getGameById(appId) ?: return@runBlocking
+                if (game.installPath != path) {
+                    getInstance()?.epicManager?.updateGame(game.copy(installPath = path))
+                }
+            }
+        }
+
         suspend fun getInstalledExe(appId: Int): String {
             return getInstance()?.epicManager?.getInstalledExe(appId) ?: ""
         }
@@ -387,6 +422,10 @@ class EpicService : Service() {
                 ?: Result.failure(Exception("Service not available"))
         }
 
+        suspend fun backfillInstallState(context: Context, appId: Int, installPath: String, containerLanguage: String): EpicInstallState? {
+            return getInstance()?.epicManager?.backfillInstallState(context, appId, installPath, containerLanguage)
+        }
+
         suspend fun fetchManifestSizes(context: Context, appId: Int): EpicManager.ManifestSizes {
             return getInstance()?.epicManager?.fetchManifestSizes(context, appId)
                 ?: EpicManager.ManifestSizes(installSize = 0L, downloadSize = 0L)
@@ -405,7 +444,7 @@ class EpicService : Service() {
                 return Result.success(instance.activeDownloads[appId]!!)
             }
 
-            // Create DownloadInfo before launching coroutine to avoid race condition
+            // Create DownloadInfo before claiming (avoids holding the lock during I/O)
             val downloadInfo = DownloadInfo(
                 jobCount = 1,
                 gameId = appId,
@@ -419,7 +458,22 @@ class EpicService : Service() {
             }
 
             instance.activeDownloads[appId] = downloadInfo
-            downloadInfo.setActive(true)
+            // Seed an initial status and emit the start event now — not only deep in the
+            // download manager — so a resumed screen swaps to the fresh DownloadInfo and
+            // shows a status immediately.
+            downloadInfo.updateStatusMessage(context.getString(R.string.download_preparing))
+            PluviaApp.events.emitJava(AndroidEvent.DownloadStatusChanged(appId, true))
+            instance.notifierOrNull?.trackDownload(downloadInfo, game.title ?: "", NotificationHelper.NOTIFICATION_ID_EPIC)
+
+            // Register with centralized queue and auto-pause other downloads
+            GameDownloadService.registerDownload(
+                gameSource = GameSource.EPIC,
+                gameId = appId.toString(),
+                downloadInfo = downloadInfo,
+                dlcGameIds = dlcGameIds,
+                installPath = installPath,
+                containerLanguage = containerLanguage
+            )
 
             // Start download in background
             val job = instance.scope.launch {
@@ -441,6 +495,9 @@ class EpicService : Service() {
 
                     if (result.isSuccess) {
                         Timber.i("[Download] Completed successfully for game $gameId")
+
+                        // Transfer is complete - unregister from GameDownloadService
+                        GameDownloadService.unregisterDownload(context, GameSource.EPIC, appId.toString())
 
                         // Download cloud saves so they're ready before first launch.
                         // Status message keeps isDownloading() true so Play stays hidden during sync.
@@ -468,13 +525,11 @@ class EpicService : Service() {
 
                         SnackbarManager.show("Download completed successfully!")
                         downloadInfo.setProgress(1.0f)
-                        downloadInfo.setActive(false)
                     } else {
                         val error = result.exceptionOrNull()
                         Timber.e(error, "[Download] Failed for game $gameId")
-                        downloadInfo.setProgress(-1.0f)
-                        downloadInfo.setActive(false)
 
+                        downloadInfo.setProgress(1.0f)
                         SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
                     }
                 } catch (e: CancellationException) {
@@ -488,12 +543,10 @@ class EpicService : Service() {
                     downloadInfo.updateStatusMessage(null)
                     PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId, false))
                     downloadInfo.setProgress(-1.0f)
-                    downloadInfo.setActive(false)
-
                     SnackbarManager.show("Download error: ${e.message ?: "Unknown error"}")
                 } finally {
                     instance.activeDownloads.remove(appId)
-                    Timber.d("[Download] Finished for game $gameId, progress: ${downloadInfo.getProgress()}, active: ${downloadInfo.isActive()}")
+                    Timber.d("[Download] Finished for game $gameId, progress: ${downloadInfo.getProgress()}")
                 }
             }
             downloadInfo.setDownloadJob(job)
@@ -528,15 +581,16 @@ class EpicService : Service() {
 
         suspend fun buildLaunchParameters(
             context: Context,
+            container: Container,
             game: EpicGame,
             offline: Boolean = false,
             languageCode: String = "en-US"
         ): Result<List<String>> {
-            return EpicGameLauncher.buildLaunchParameters(context, game, offline, languageCode)
+            return EpicGameLauncher.buildLaunchParameters(context, container, game, offline, languageCode)
         }
 
-        fun cleanupLaunchTokens(context: Context) {
-            EpicGameLauncher.cleanupOwnershipTokens(context)
+        fun cleanupLaunchTokens(context: Context, container: Container? = null) {
+            EpicGameLauncher.cleanupOwnershipTokens(context, container)
         }
 
         // ==========================================================================
@@ -566,12 +620,6 @@ class EpicService : Service() {
                 context, container, forceReinstall, onProgress,
             )
         }
-
-        /**
-         * Returns true if the EOS overlay is installed in [container].
-         */
-        fun isOverlayInstalled(container: Container): Boolean =
-            getInstance()?.epicOverlayManager?.isOverlayInstalled(container) ?: false
 
         /**
          * Remove the EOS overlay from [container] and clear its registry entry.
@@ -605,6 +653,8 @@ class EpicService : Service() {
 
     private lateinit var notificationHelper: NotificationHelper
 
+    private val notifierOrNull: NotificationHelper? get() = if (::notificationHelper.isInitialized) notificationHelper else null
+
     @Inject
     lateinit var epicManager: EpicManager
 
@@ -637,8 +687,17 @@ class EpicService : Service() {
 
         val instance = getInstance()
         // Start as foreground service
-        val notification = notificationHelper.createForegroundNotification("Connected")
-        startForeground(1, notification)
+        val notification = notificationHelper.createServiceNotification(NotificationHelper.NOTIFICATION_ID_EPIC, "Connected")
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                startForeground(NotificationHelper.NOTIFICATION_ID_EPIC, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            } else {
+                startForeground(NotificationHelper.NOTIFICATION_ID_EPIC, notification)
+            }
+            notificationHelper.markActive(NotificationHelper.NOTIFICATION_ID_EPIC)
+        } catch (e: Exception) {
+            Timber.tag("EPIC").w(e, "startForeground not allowed, continuing as a background service")
+        }
 
         // Determine if we should sync based on the action
         val shouldSync = when (intent?.action) {
@@ -706,6 +765,12 @@ class EpicService : Service() {
         return START_STICKY
     }
 
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        super.onTimeout(startId, fgsType)
+        Timber.tag("EPIC").w("Foreground service timeout reached, restarting...")
+        stopSelf()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         Timber.tag("Epic").i("[EpicService] Service destroyed")
@@ -717,7 +782,7 @@ class EpicService : Service() {
 
         scope.cancel() // Cancel any ongoing operations
         stopForeground(STOP_FOREGROUND_REMOVE)
-        notificationHelper.cancel()
+        notificationHelper.cancel(NotificationHelper.NOTIFICATION_ID_EPIC)
         instance = null
     }
 

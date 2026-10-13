@@ -1,0 +1,1028 @@
+package app.gamenative.service.download
+
+import app.gamenative.data.DepotInfo
+import app.gamenative.R
+import app.gamenative.data.DownloadInfo
+import app.gamenative.data.SteamApp
+import app.gamenative.service.SteamService
+import app.gamenative.utils.DepotManifestFiles
+import app.gamenative.utils.LocaleHelper
+import app.gamenative.utils.SteamUtils
+import app.gamenative.utils.generateSteamApp
+import `in`.dragonbra.javasteam.enums.EResult
+import `in`.dragonbra.javasteam.steam.cdn.Server
+import `in`.dragonbra.javasteam.steam.handlers.steamapps.PICSRequest
+import `in`.dragonbra.javasteam.steam.handlers.steamapps.SteamApps
+import `in`.dragonbra.javasteam.steam.handlers.steamcontent.SteamContent
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.suspendCancellableCoroutine
+import org.json.JSONArray
+import org.json.JSONObject
+import timber.log.Timber
+import android.content.Context
+import android.content.Intent
+import app.gamenative.data.GameSource
+import app.gamenative.service.amazon.AmazonService
+import app.gamenative.service.epic.EpicService
+import app.gamenative.service.gog.GOGService
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.concurrent.Volatile
+
+/**
+ * Single entry point for ALL store game downloads in GameNative.
+ *
+ * Every real download pipeline runs in Rust inside `libgndownload.so`
+ * (`app/src/main/cpp/gn-download/rust`); this service is the only Kotlin↔native boundary:
+ *
+ * - [downloadSteamApp] — Steam CDN depot downloads. JavaSteam stays the CM client: depot keys,
+ *   manifest request codes and the CDN server list are resolved here through `SteamApps` /
+ *   `SteamContent`, then the Rust engine (ported from Bannerlator's `bl-steam-client` depot
+ *   pipeline) fetches manifests + chunks, decrypts/decompresses/verifies and writes files.
+ *   The on-disk store lives in `.DepotDownloader/` (`completed/` = the installed record,
+ *   `target/` = the run in flight — see DepotManifestFiles), the location JavaSteam's
+ *   DepotDownloader used, so in-progress downloads resume across the swap.
+ * - [downloadGogChunks] / [downloadEpicChunks] / [downloadAmazonFiles] — the byte-fetching
+ *   engines for the other stores; the store managers keep manifest/auth/post-install logic.
+ */
+object GameDownloadService {
+
+    private const val TAG = "GameDownloadService"
+
+    private const val CDN_AUTH_TOKEN_TIMEOUT_MS = 30_000L
+
+    /** Thrown when a native download run finishes with `success = false` (not a cancel). */
+    class DownloadFailedException(message: String) : Exception(message)
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // Steam
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Downloads (or, for [SteamDownloadMode.UPDATE] / [SteamDownloadMode.VERIFY], re-checks)
+     * [selectedDepots] of [appId] into
+     * [installDir], reporting progress into [downloadInfo] exactly like the old
+     * `DepotDownloader` listener did (per-depot delta bytes + per-depot fraction).
+     *
+     * Depots Steam refuses to serve (no manifest gid for the branch, depot key denied —
+     * e.g. a DLC the account doesn't own) are skipped, not fatal.
+     *
+     * Returns a [SteamRunOutcome]: how many depots were handed to the engine (0 = every depot was
+     * already current, nothing to do) and which ones it could not resolve, so the caller records
+     * only the depots this run actually handled (an unresolved depot must NOT be marked downloaded —
+     * it would be filtered out as "already downloaded" forever after).
+     * Throws [DownloadFailedException] when not a single depot was servable, and
+     * [kotlinx.coroutines.CancellationException] when the calling job is cancelled.
+     */
+    suspend fun downloadSteamApp(
+        appId: Int,
+        selectedDepots: Map<Int, DepotInfo>,
+        branch: String,
+        branchPassword: String?,
+        installDir: String,
+        mode: SteamDownloadMode,
+        /**
+         * Per-depot manifest this app recorded as installed. [SteamDownloadMode.VERIFY] pins to
+         * it, and [SteamDownloadMode.UPDATE] uses it to skip depots whose current manifest is
+         * already the installed one (nothing to do there).
+         */
+        installedGids: Map<Int, ULong>,
+        depotIdToIndex: Map<Int, Int>,
+        downloadInfo: DownloadInfo,
+        maxWorkers: Int,
+        processWorkers: Int,
+        parentScope: CoroutineScope,
+    ): SteamRunOutcome {
+        val steamClient = SteamService.instance?.steamClient
+            ?: throw DownloadFailedException("Steam client not available")
+        val steamApps = steamClient.getHandler(SteamApps::class.java)
+            ?: throw DownloadFailedException("SteamApps handler not available")
+        val steamContent = steamClient.getHandler(SteamContent::class.java)
+            ?: throw DownloadFailedException("SteamContent handler not available")
+
+        // ── 1. Resolve the CDN server list (JavaSteam CM call) ──────────────────
+        val servers = resolveCdnServers(steamContent, parentScope)
+        if (servers.isEmpty()) throw DownloadFailedException("No CDN servers available")
+
+        // ── 2. Resolve per-depot (gid, depot key, manifest request code) ────────
+        val depotsJson = JSONArray()
+        val resolvedDepotIds = mutableListOf<Int>()
+        val resolutions = coroutineScope {
+            selectedDepots.toSortedMap().map { (depotId, depot) ->
+                async {
+                    resolveDepotForDownload(
+                        steamApps, steamContent, appId, depotId, depot, branch, branchPassword,
+                        mode, installedGids, parentScope,
+                    )
+                }
+            }.awaitAll()
+        }
+        // "Up to date" is an outcome, not a failure: an update whose depots all already match the
+        // current manifests must finish successfully (nothing was wrong, there was nothing to do).
+        val upToDate = resolutions.count { it is DepotResolution.UpToDate }
+        val resolvedDepots = resolutions.filterIsInstance<DepotResolution.Resolved>()
+            .map { it.depot }
+        for (resolved in resolvedDepots) {
+            depotsJson.put(
+                JSONObject()
+                    .put("depot_id", resolved.depotId)
+                    // gid/code are uint64 in Steam's protocol but signed Longs here; send them
+                    // as unsigned decimal strings so high-bit values survive JSON → Rust.
+                    .put("manifest_id", java.lang.Long.toUnsignedString(resolved.gid))
+                    .put("depot_key_hex", resolved.depotKeyHex)
+                    .put("manifest_request_code", java.lang.Long.toUnsignedString(resolved.requestCode)),
+            )
+            resolvedDepotIds.add(resolved.depotId)
+        }
+        if (depotsJson.length() == 0) {
+            // Nothing to download AND at least one depot was confirmed current: the update has no
+            // work to do. The remaining selected depots are "unavailable" (key denied, no gid on
+            // this branch — a DLC the account does not own, say), which the resolver already logged
+            // and which were skipped-and-continued before this change too; failing the run here
+            // would turn a no-op update into an error.
+            if (upToDate > 0) {
+                val unavailable = selectedDepots.size - upToDate
+                Timber.tag(TAG).i(
+                    "Update: $upToDate depot(s) already at the current manifest" +
+                        (if (unavailable > 0) ", $unavailable unavailable (see the log)" else "") +
+                        " — nothing to do",
+                )
+                return SteamRunOutcome(
+                    depotsRun = 0,
+                    unavailableDepotIds = resolutions
+                        .filterIsInstance<DepotResolution.Unavailable>()
+                        .map { it.depotId },
+                )
+            }
+            // Every depot was skipped and none was confirmed current, so say WHY rather than
+            // guessing: a VERIFY whose depots have no recorded manifest is a user action ("run
+            // Update"), while a denied depot key is an entitlement problem that retrying or
+            // updating will not fix the same way.
+            val reasons = resolutions
+                .filterIsInstance<DepotResolution.Unavailable>()
+                .map { it.reason }
+                .distinct()
+            if (mode == SteamDownloadMode.VERIFY && installedGids.isEmpty()) {
+                throw DownloadFailedException(
+                    "Verify: no installed manifest recorded for " +
+                        "${selectedDepots.size} depot(s) — use Update to fetch the current version",
+                )
+            }
+            throw DownloadFailedException(
+                "No entitled depots to download " +
+                    "(all ${selectedDepots.size} selected depot(s) skipped: " +
+                    reasons.joinToString("; ").ifEmpty { "${selectedDepots.keys.sorted()}" } + ")",
+            )
+        }
+
+        // Files this app has patched (DRM): each has a backup sibling, so its bytes are NOT the
+        // manifest's even when the old and new manifests agree on path, size and hash. Without this
+        // list the update delta would trust a patched exe/dll, leave it on disk, and the cleanup
+        // below would then delete the only copy of the original it could be restored from.
+        val patchedPaths = SteamUtils.drmPatchedPaths(installDir)
+        if (patchedPaths.isNotEmpty()) {
+            Timber.i("Steam download: ${patchedPaths.size} DRM-patched file(s) forced through revalidation")
+        }
+
+        val plan = JSONObject()
+            .put("install_dir", installDir)
+            .put("ca_bundle_path", "")
+            // fresh = walk the depot even when the store already records the requested build, and
+            // re-hash its existing chunks against the manifest (a chunk that matches is kept, a
+            // mismatch is re-fetched). UPDATE and VERIFY both want that and differ in WHAT they
+            // re-validate: UPDATE trusts the files its delta proves unchanged (no jobs, nothing
+            // hashed) and re-hashes the rest, while VERIFY re-hashes everything against the build the
+            // store records as installed (see SteamDownloadMode).
+            .put("fresh", mode != SteamDownloadMode.INSTALL)
+            .put("untrusted_paths", JSONArray(patchedPaths))
+            .put("max_workers", maxWorkers)
+            .put("process_workers", processWorkers)
+            .put("pipeline_logs", SHOW_PIPELINE_LOGS)
+            .put("servers", serversToJson(servers))
+            .put("depots", depotsJson)
+            .toString()
+
+        // ── 3. Run the native engine, mapping callbacks onto DownloadInfo ────────
+        runNativeSteamDownload(
+            plan = plan,
+            appId = appId,
+            branch = branch,
+            steamContent = steamContent,
+            depotIdToIndex = depotIdToIndex,
+            depotIdToOwningAppId = selectedDepots.mapValues { (_, depot) ->
+                when {
+                    depot.dlcAppId != SteamService.INVALID_APP_ID -> depot.dlcAppId
+                    depot.depotFromApp != SteamService.INVALID_APP_ID -> depot.depotFromApp
+                    else -> appId
+                }
+            },
+            downloadInfo = downloadInfo,
+            parentScope = parentScope,
+        )
+
+        // Stale DRM backups (`*.original.exe` / `*.unpacked.exe` / `steam_api*.dll.orig`) hold the
+        // PREVIOUS build, so once the download restored pristine files a later restore pass would
+        // overwrite the fresh ones with stale copies. Every backup belongs to a file listed in
+        // `patchedPaths`, and the engine never trusts those, so this run rewrote all of them — which
+        // is the only condition under which deleting the backups is safe (a run with nothing to do
+        // leaves the patched files on disk, so their backups are still the only way back).
+        if (resolvedDepots.isNotEmpty()) {
+            SteamUtils.clearStaleDrmBackups(installDir)
+        }
+
+        for (resolved in resolvedDepots) {
+            DepotManifestFiles.decryptFilenames(
+                DepotManifestFiles.manifestFile(installDir, resolved.depotId, resolved.gid),
+                resolved.depotKey,
+            )
+        }
+
+        return SteamRunOutcome(
+            depotsRun = resolvedDepots.size,
+            unavailableDepotIds = resolutions
+                .filterIsInstance<DepotResolution.Unavailable>()
+                .map { it.depotId },
+        )
+    }
+
+    private suspend fun runNativeSteamDownload(
+        plan: String,
+        appId: Int,
+        branch: String,
+        steamContent: SteamContent,
+        depotIdToIndex: Map<Int, Int>,
+        depotIdToOwningAppId: Map<Int, Int>,
+        downloadInfo: DownloadInfo,
+        parentScope: CoroutineScope,
+    ) {
+        // Track cumulative per-depot bytes to calculate deltas (same unit the engine reports:
+        // decompressed chunk bytes written; totalExpectedBytes is the uncompressed depot size
+        // set in SteamService — same unit, so the bar reaches 100% exactly at completion).
+        val depotCumulativeBytes = ConcurrentHashMap<Int, Long>()
+        // First progress callback ends the "Preparing depots" key-prep phase (owner-pinned, so a
+        // late callback from an unwound run cannot wipe a newer attempt's message).
+        val keyPrepCleared = AtomicBoolean(false)
+        // Set while the engine is re-hashing on-disk chunks (resume/verify): the status row
+        // shows "Verifying Files (k/N)" via onVerifying. Cleared on the first real download
+        // progress. Verified bytes intentionally don't move the byte counter (see onProgress).
+        val verifyStatusActive = AtomicBoolean(false)
+
+        val listener = object : NativeSteamDownloadListener {
+            override fun onVerifying(path: String, current: Int, total: Int) {
+                verifyStatusActive.set(true)
+                val svc = SteamService.instance ?: return
+                downloadInfo.updateStatusMessage(
+                    svc.getString(R.string.download_verifying_files_progress, current, total),
+                )
+            }
+
+            override fun onProgress(
+                depotId: Int,
+                depotDone: Long,
+                depotTotal: Long,
+                depotsDone: Int,
+                depotsTotal: Int,
+                verifying: Boolean,
+            ) {
+                if (keyPrepCleared.compareAndSet(false, true)) {
+                    SteamService.clearDepotKeyPrep(downloadInfo.gameId, owner = downloadInfo)
+                }
+                if (!verifying && verifyStatusActive.compareAndSet(true, false)) {
+                    // Verify sweep finished, real chunks are flowing — drop the verify status.
+                    downloadInfo.updateStatusMessage(null)
+                }
+                if (verifying) {
+                    // Verified-existing bytes: these were already counted in the persisted
+                    // snapshot this run resumed from. Crediting them again double-counts and
+                    // the bar races to 100% while remaining chunks are still downloading.
+                    // Only track the high-water so later real downloads delta from it.
+                    // (Verify PROGRESS is reported through onVerifying's file counters.)
+                    depotCumulativeBytes.merge(depotId, depotDone, ::maxOf)
+                } else {
+                    // Parallel callbacks can arrive out of order; read-check-set must be
+                    // atomic or two threads credit overlapping deltas. Clamp to the
+                    // high-water so a late, smaller depotDone credits nothing.
+                    val delta = synchronized(depotCumulativeBytes) {
+                        val previous = depotCumulativeBytes[depotId] ?: 0L
+                        val newHigh = maxOf(previous, depotDone)
+                        depotCumulativeBytes[depotId] = newHigh
+                        newHigh - previous
+                    }
+                    if (delta > 0L) {
+                        downloadInfo.updateBytesDownloaded(delta, System.currentTimeMillis())
+                    }
+                }
+                if (depotTotal > 0L) {
+                    depotIdToIndex[depotId]?.let { index ->
+                        downloadInfo.setProgress(
+                            (depotDone.toFloat() / depotTotal.toFloat()).coerceIn(0f, 1f),
+                            index,
+                        )
+                    }
+                }
+                downloadInfo.persistProgressSnapshot()
+            }
+
+            override fun refreshManifestRequestCode(depotId: Int, manifestId: Long): Long {
+                // Manifest request codes are app-scoped like depot keys: use the
+                // depot's owning app (DLC depots fail under the parent app id).
+                val owningAppId = depotIdToOwningAppId[depotId] ?: appId
+                return try {
+                    kotlinx.coroutines.runBlocking {
+                        fetchManifestRequestCode(
+                            steamContent, depotId, owningAppId, manifestId, branch, this,
+                        )
+                    }
+                } catch (e: Exception) {
+                    Timber.tag(TAG).w(e, "refreshManifestRequestCode failed for depot $depotId")
+                    0L
+                }
+            }
+
+            override fun getCdnAuthToken(depotId: Int, host: String): String? {
+                // CDN auth tokens are app-scoped like depot keys: use the depot's owning
+                // app (DLC depots fail under the parent app id).
+                val owningAppId = depotIdToOwningAppId[depotId] ?: appId
+                return try {
+                    kotlinx.coroutines.runBlocking {
+                        val auth = kotlinx.coroutines.withTimeoutOrNull(CDN_AUTH_TOKEN_TIMEOUT_MS) {
+                            steamContent.getCDNAuthToken(
+                                app = owningAppId,
+                                depot = depotId,
+                                hostName = host,
+                                parentScope = this,
+                            ).await()
+                        }
+                        if (auth == null) {
+                            Timber.tag(TAG).w("getCDNAuthToken timed out for depot $depotId host $host")
+                            null
+                        } else if (auth.result == EResult.OK && auth.token.isNotEmpty()) {
+                            Timber.tag(TAG).i("CDN auth token issued for depot $depotId host $host (expires ${auth.expiration})")
+                            auth.token
+                        } else {
+                            Timber.tag(TAG).w("getCDNAuthToken for depot $depotId host $host: ${auth.result}")
+                            null
+                        }
+                    }
+                } catch (e: Exception) {
+                    Timber.tag(TAG).w(e, "getCdnAuthToken failed for depot $depotId host $host")
+                    null
+                }
+            }
+
+            override fun onComplete(
+                success: Boolean,
+                error: String,
+                bytesWritten: Long,
+                depotsCompleted: Int,
+                depotsSkipped: Int,
+            ) = Unit // handled by the suspension below
+        }
+
+        // The handle owns a registry slot in native; release it exactly once no matter
+        // how the run ends (success, failure, or cancellation).
+        var handle = 0L
+        try {
+            suspendCancellableCoroutine { cont ->
+                val completionListener = object : NativeSteamDownloadListener by listener {
+                    override fun onComplete(
+                        success: Boolean,
+                        error: String,
+                        bytesWritten: Long,
+                        depotsCompleted: Int,
+                        depotsSkipped: Int,
+                    ) {
+                        if (success) {
+                            Timber.tag(TAG).i(
+                                "Steam download for app $appId complete: $bytesWritten bytes, " +
+                                    "$depotsCompleted depots completed, $depotsSkipped skipped",
+                            )
+                            if (cont.isActive) cont.resume(Unit)
+                        } else {
+                            if (cont.isActive) {
+                                cont.resumeWithException(DownloadFailedException(error.ifEmpty { "download failed" }))
+                            }
+                        }
+                    }
+                }
+
+                handle = NativeSteamDownload.start(plan, completionListener)
+                if (handle == 0L) {
+                    if (cont.isActive) {
+                        cont.resumeWithException(
+                            DownloadFailedException("native Steam engine failed to start"),
+                        )
+                    }
+                    return@suspendCancellableCoroutine
+                }
+                cont.invokeOnCancellation {
+                    NativeSteamDownload.cancel(handle)
+                }
+            }
+        } finally {
+            if (handle != 0L) {
+                NativeSteamDownload.release(handle)
+            }
+        }
+    }
+
+    private suspend fun resolveCdnServers(
+        steamContent: SteamContent,
+        parentScope: CoroutineScope,
+    ): List<Server> {
+        return try {
+            val cellId = runCatching { app.gamenative.PrefManager.cellId }.getOrDefault(0)
+            steamContent.getServersForSteamPipe(
+                cellId = cellId.takeIf { it > 0 },
+                maxNumServers = 20,
+                parentScope = parentScope,
+            ).await()
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "GetServersForSteamPipe failed")
+            emptyList()
+        }
+    }
+
+    private fun serversToJson(servers: List<Server>): JSONArray {
+        val out = JSONArray()
+        for (server in servers) {
+            val host = server.host ?: continue
+            if (host.isEmpty() || server.steamChinaOnly) continue
+            out.put(
+                JSONObject()
+                    .put("host", host)
+                    .put("vhost", server.vHost ?: "")
+                    .put("type", server.type ?: "")
+                    .put("cell_id", server.cellId)
+                    .put("steam_china_only", false)
+                    .put(
+                        "https_support",
+                        if (server.protocol == Server.ConnectionProtocol.HTTPS) "mandatory" else "",
+                    ),
+            )
+        }
+        return out
+    }
+
+    private suspend fun fetchManifestRequestCode(
+        steamContent: SteamContent,
+        depotId: Int,
+        appId: Int,
+        manifestId: Long,
+        branch: String,
+        parentScope: CoroutineScope,
+    ): Long {
+        return try {
+            steamContent.getManifestRequestCode(
+                depotId = depotId,
+                appId = appId,
+                manifestId = manifestId,
+                branch = branch,
+                branchPasswordHash = null,
+                parentScope = parentScope,
+            ).await()
+        } catch (e: Exception) {
+            Timber.tag(TAG).w(e, "getManifestRequestCode failed for depot $depotId")
+            0L
+        }
+    }
+
+    // Cache of owning-app PICS data for shared depots (e.g. Steamworks Common
+    // Redistributables app 228980), keyed by app id. Shared between depots in one run.
+    // Synchronized: depot resolution runs concurrently (async per depot), lookups overlap.
+    private val owningAppInfoCache = java.util.Collections.synchronizedMap(HashMap<Int, SteamApp?>())
+
+    /**
+     * Resolves the manifest gid for [depot] on [branch], including password-protected beta
+     * branches (via `checkAppBetaPassword` + `picsGetPrivateBeta`, mirroring the old
+     * DepotDownloader's private-beta depot-section path).
+     */
+    /**
+     * What a Steam run actually did, so the caller can tell "nothing to do" from "did work" and
+     * knows which depots it could NOT handle (they must not be recorded as downloaded).
+     */
+    data class SteamRunOutcome(
+        /** Depots handed to the engine (0 = nothing needed doing). */
+        val depotsRun: Int,
+        /** Depots the run could not resolve at all (key denied, no gid): not installed by us. */
+        val unavailableDepotIds: List<Int>,
+    )
+
+    /**
+     * Why a depot did (or did not) make it into the run. `UpToDate` is a successful outcome —
+     * [SteamDownloadMode.UPDATE] skips a depot whose current manifest is already the installed one
+     * — and is counted separately so an all-up-to-date update is not reported as a failure.
+     */
+    private sealed interface DepotResolution {
+        class Resolved(val depot: ResolvedDepot) : DepotResolution
+        data object UpToDate : DepotResolution
+        class Unavailable(val depotId: Int, val reason: String) : DepotResolution
+    }
+
+    private class ResolvedDepot(
+        val depotId: Int,
+        val gid: Long,
+        val depotKey: ByteArray,
+        val requestCode: Long,
+    ) {
+        val depotKeyHex: String get() = depotKey.toHex()
+    }
+
+    private suspend fun resolveDepotForDownload(
+        steamApps: SteamApps,
+        steamContent: SteamContent,
+        appId: Int,
+        depotId: Int,
+        depot: DepotInfo,
+        branch: String,
+        branchPassword: String?,
+        mode: SteamDownloadMode,
+        installedGids: Map<Int, ULong>,
+        parentScope: CoroutineScope,
+    ): DepotResolution {
+        // VERIFY pins to the manifest the app recorded as installed — never PICS' current one, so
+        // verifying repairs the build the user has instead of silently upgrading it. The request
+        // code below is then issued for THAT gid; the depot key is per depot, not per manifest.
+        val gid = if (mode == SteamDownloadMode.VERIFY) {
+            val installed = installedGids[depotId]?.toLong() ?: 0L
+            if (installed == 0L) {
+                Timber.tag(TAG).w("Verify: depot $depotId has no installed manifest — skipped")
+            } else {
+                Timber.tag(TAG).i(
+                    "Verify: depot $depotId pinned to installed manifest " +
+                        java.lang.Long.toUnsignedString(installed),
+                )
+            }
+            installed
+        } else {
+            val current = resolveManifestGid(steamApps, appId, depotId, depot, branch, branchPassword)
+            // UPDATE: a depot whose current manifest IS the installed one has nothing to do. It is
+            // still selected (so its files stay checked when something else in it changed), but
+            // walking it would re-hash the whole depot against the very manifest it already
+            // matches — Valve's client calls this "up to date" and skips it.
+            if (mode == SteamDownloadMode.UPDATE &&
+                current != 0L &&
+                installedGids[depotId]?.toLong() == current
+            ) {
+                Timber.tag(TAG).i(
+                    "Update: depot $depotId already at manifest " +
+                        java.lang.Long.toUnsignedString(current) + " — up to date, skipped",
+                )
+                return DepotResolution.UpToDate
+            }
+            current
+        }
+        if (gid == 0L) {
+            Timber.tag(TAG).w("Skipping depot $depotId: no manifest gid for branch $branch")
+            return DepotResolution.Unavailable(depotId, "no manifest gid for branch $branch")
+        }
+
+        // Depot keys are granted to the app that OWNS the depot, not necessarily
+        // the app being downloaded: DLC depots (e.g. Vampire Survivors' 2230761,
+        // owned by DLC app 2230760) are refused with FileNotFound when requested
+        // as the parent app, even though the account owns the DLC. Ask the owning
+        // app first (dlcAppId, then depotfromapp), fall back to the parent app.
+        val owningAppId = when {
+            depot.dlcAppId != SteamService.INVALID_APP_ID -> depot.dlcAppId
+            depot.depotFromApp != SteamService.INVALID_APP_ID -> depot.depotFromApp
+            else -> appId
+        }
+        var keyCallback = steamApps.getDepotDecryptionKey(depotId, owningAppId).await()
+        if ((keyCallback.result != EResult.OK || keyCallback.depotKey.size != 32) && owningAppId != appId) {
+            Timber.tag(TAG).d("Depot $depotId key denied as owning app $owningAppId (${keyCallback.result}), retrying as $appId")
+            keyCallback = steamApps.getDepotDecryptionKey(depotId, appId).await()
+        }
+        if (keyCallback.result != EResult.OK || keyCallback.depotKey.size != 32) {
+            val dlcNote = if (depot.dlcAppId != SteamService.INVALID_APP_ID) {
+                " (depot belongs to DLC app ${depot.dlcAppId} — not owned by this account?)"
+            } else {
+                ""
+            }
+            Timber.tag(TAG).w("Skipping depot $depotId: depot key denied (${keyCallback.result})$dlcNote")
+            return DepotResolution.Unavailable(
+                depotId,
+                "depot key denied (${keyCallback.result})$dlcNote",
+            )
+        }
+
+        val requestCode = fetchManifestRequestCode(
+            steamContent, depotId, owningAppId, gid, branch, parentScope,
+        )
+        return DepotResolution.Resolved(
+            ResolvedDepot(depotId, gid, keyCallback.depotKey, requestCode),
+        )
+    }
+
+    private suspend fun resolveManifestGid(
+        steamApps: SteamApps,
+        appId: Int,
+        depotId: Int,
+        depot: DepotInfo,
+        branch: String,
+        branchPassword: String?,
+    ): Long {
+        depot.manifests[branch]?.gid?.takeIf { it != 0L }?.let { return it }
+
+        // Shared depot carrying no manifests of its own (e.g. depot 228990 Steamworks
+        // Common Redistributables, listed under the game with sharedinstall + no
+        // manifest section): the manifest data lives in the OWNING app's depot
+        // section. JavaSteam's getSteam3DepotManifest recurses into depotfromapp for
+        // exactly this case — the depot must be resolved, never skipped.
+        if (depot.manifests.isEmpty()) {
+            val owningAppId = when {
+                depot.depotFromApp != SteamService.INVALID_APP_ID -> depot.depotFromApp
+                depot.dlcAppId != SteamService.INVALID_APP_ID -> depot.dlcAppId
+                else -> appId
+            }
+            if (owningAppId != appId) {
+                resolveOwningAppManifestGid(steamApps, owningAppId, depotId, branch)
+                    ?.let { return it }
+            }
+        }
+
+        if (branch.equals("public", ignoreCase = true)) {
+            return 0L
+        }
+
+        // Non-passworded branch with no gid → nothing to do.
+        if (branchPassword.isNullOrBlank()) {
+            // Last-resort: public manifest (keeps the old weight-calculation fallback alive).
+            return depot.manifests["public"]?.gid ?: 0L
+        }
+
+        // Passworded branch: decrypt via the private beta depot section.
+        return try {
+            val keys = SteamService.checkPrivateBranchPassword(appId, branchPassword)
+            val branchKey = keys[branch] ?: keys.values.firstOrNull() ?: return 0L
+            val accessToken = steamApps.picsGetAccessTokens(appId).await()
+                .appTokens[appId] ?: 0L
+            val privateBeta = steamApps.picsGetPrivateBeta(
+                appId, accessToken, branch, branchKey,
+            ).await()
+            val gidNode = privateBeta.depotSection[depotId.toString()]["manifests"][branch]["gid"]
+            gidNode.asUnsignedLong()?.toLong() ?: 0L
+        } catch (e: Exception) {
+            Timber.tag(TAG).w(e, "private beta gid resolution failed for depot $depotId")
+            0L
+        }
+    }
+
+    /**
+     * Resolves a shared depot's manifest gid from its OWNING app's depot section —
+     * JavaSteam's `getSteam3DepotManifest` recursion for depots with no `manifests`
+     * node but a `depotfromapp`. Reads the local app-info DB first; on a miss, makes
+     * one live PICS request for the owning app (cached per run).
+     */
+    private suspend fun resolveOwningAppManifestGid(
+        steamApps: SteamApps,
+        owningAppId: Int,
+        depotId: Int,
+        branch: String,
+    ): Long? {
+        val owningApp = owningAppInfoCache.getOrPut(owningAppId) {
+            SteamService.getAppInfoOf(owningAppId) ?: fetchAppInfoLive(steamApps, owningAppId)
+        } ?: return null
+        val manifests = owningApp.depots[depotId]?.manifests ?: return null
+        val gid = manifests[branch]?.gid ?: manifests["public"]?.gid ?: return null
+        return gid.takeIf { it != 0L }?.also {
+            Timber.tag(TAG).i("Depot $depotId: manifest gid $it resolved via owning app $owningAppId")
+        }
+    }
+
+    /** One live PICS fetch for an app missing from the local DB (shared redist apps). */
+    private suspend fun fetchAppInfoLive(
+        steamApps: SteamApps,
+        appId: Int,
+    ): SteamApp? = try {
+        steamApps.picsGetProductInfo(
+            apps = listOf(PICSRequest(id = appId)),
+            packages = emptyList(),
+        ).await().results.firstOrNull()?.apps?.values?.firstOrNull()
+            ?.keyValues?.generateSteamApp()
+    } catch (e: Exception) {
+        Timber.tag(TAG).w(e, "live PICS fetch failed for owning app $appId")
+        null
+    }
+
+    private fun ByteArray.toHex(): String {
+        val digits = "0123456789abcdef"
+        val out = StringBuilder(size * 2)
+        for (b in this) {
+            out.append(digits[(b.toInt() shr 4) and 0xf])
+            out.append(digits[b.toInt() and 0xf])
+        }
+        return out.toString()
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // GOG
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    /** True when the native GOG engine is loaded. */
+    fun isGogNativeAvailable(): Boolean = NativeGogDownload.isAvailable()
+
+    /** Starts a native GOG chunk-download loop (base install, DLC, or redist assembly). */
+    fun downloadGogChunks(
+        kind: Int,
+        depotManifests: Array<String>,
+        cdnBases: Array<String>,
+        installDir: String,
+        skipPaths: Array<String>,
+        maxWorkers: Int,
+        processWorkers: Int,
+        sortLargestFirst: Boolean,
+        label: String,
+        listener: NativeGogDownloadListener,
+    ): Long = NativeGogDownload.start(
+        kind, depotManifests, cdnBases, installDir, skipPaths, "",
+        maxWorkers, processWorkers, sortLargestFirst, label, listener,
+    )
+
+    fun cancelGogDownload(handle: Long) = NativeGogDownload.cancel(handle)
+
+    fun releaseGogDownload(handle: Long) = NativeGogDownload.release(handle)
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // Epic
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    /** Blocking Epic chunk fetch for `pendingFileIdx` (fills `<installDir>/.chunks`). */
+    fun downloadEpicChunks(
+        manifest: ByteArray,
+        installDir: String,
+        cdnPrefixes: Array<String>,
+        pendingFileIdx: IntArray,
+        expectedChunks: Int,
+        expectedBytes: Long,
+        maxWorkers: Int,
+        processWorkers: Int,
+        cancel: AtomicBoolean?,
+        listener: NativeEpicDownload.Listener,
+    ): NativeEpicDownload.Result = NativeEpicDownload.run(
+        manifest, installDir, cdnPrefixes, pendingFileIdx, expectedChunks, expectedBytes, "",
+        maxWorkers, processWorkers, cancel, listener,
+    )
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // Amazon
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    /** Blocking Amazon file-download run. `planJson` = `[{relPath, url, size, sha256hex}]`. */
+    fun downloadAmazonFiles(
+        planJson: String,
+        installDir: String,
+        maxWorkers: Int,
+        processWorkers: Int,
+        isCancelled: NativeAmazonCancelCheck?,
+        listener: NativeAmazonDownloadListener,
+    ): NativeAmazonDownload.RunResult = NativeAmazonDownload.runBlocking(
+        planJson, installDir, "", maxWorkers, processWorkers, isCancelled, listener,
+    )
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Download queue (one active download across Steam/Epic/GOG/Amazon, queue-
+    // managed auto-pause/resume, wake-lock while transferring). Merged from the
+    // former GameDownloadService object.
+    // ═════════════════════════════════════════════════════════════════════════
+
+    data class DownloadEntry(
+        val gameSource: GameSource,
+        val gameId: String,
+        val downloadInfo: DownloadInfo?,
+        val dlcGameIds: List<Int>,
+        val installPath: String?,
+        val containerLanguage: String?,
+    )
+
+    @Volatile
+    private var currentDownloadingKey: String? = null
+    private val downloadQueue = CopyOnWriteArrayList<String>()
+    private val registeredDownloads = ConcurrentHashMap<String, DownloadEntry>()
+
+    /**
+     * Gate for native engine pipeline logs (throughput / fetch-window / cdn-probe / write-stall
+     * lines). Always on: these lines are the only way to diagnose a user's download after the
+     * fact, and every capture the app offers is logcat-based — the settings "Save logcat" tail
+     * (`logcat -d --pid=<app>`, so the native tags come along), the crash report, and the support
+     * bundle's unfiltered `logcat -v threadtime`. Steam emits them from Rust via android_log (tag
+     * GN_STEAM_DL); the flag travels in the plan JSON; Epic/GOG/Amazon forward their lines over
+     * JNI `onLog`, gated at the Timber call sites in their managers (INFO, because ReleaseTree
+     * drops Debug/Verbose).
+     */
+    val SHOW_PIPELINE_LOGS = true
+
+    /**
+     * Serializes every queue state transition (pause-all + register, remove + resume).
+     * Without it, two concurrent registrations can each scan before either inserts and
+     * BOTH stay active, breaking the one-at-a-time contract.
+     */
+    private val queueLock = Any()
+
+    /**
+     * Runs the deferred queue-resume store startups (DB / container / disk work — Epic
+     * even `runBlocking`s a Room query), so they never run on the caller's thread of
+     * unregister/remove (which can be the main thread) and never inside [queueLock].
+     */
+    private val queueScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    private fun makeKey(gameSource: GameSource, gameId: String): String {
+        return "${gameSource.name}_$gameId"
+    }
+
+    /**
+     * Register a new download. This will auto-pause all other active downloads.
+     * Should only be called by Each Service once (4 callees)
+     */
+    fun registerDownload(
+        gameSource: GameSource,
+        gameId: String,
+        downloadInfo: DownloadInfo,
+        dlcGameIds: List<Int> = emptyList(),
+        installPath: String? = null,
+        containerLanguage: String? = null,
+    ) {
+        val key = makeKey(gameSource, gameId)
+
+        synchronized(queueLock) {
+            // Auto-pause all other active downloads. Skip entries whose transfer is
+            // already done and which are only syncing saves (post-install). Enqueued
+            // placeholders have no DownloadInfo yet — nothing to pause.
+            registeredDownloads.forEach { (existingKey, entry) ->
+                if (existingKey != key && currentDownloadingKey != key && entry.downloadInfo?.isPostInstallSyncing() != true) {
+                    Timber.i("[GameDownloadService] Auto-pausing ${entry.gameSource} download for ${entry.gameId}")
+                    entry.downloadInfo?.cancel(message = "Paused for new download")
+                }
+            }
+
+            // Register / Update the download hash map
+            registeredDownloads[key] = DownloadEntry(
+                gameSource = gameSource,
+                gameId = gameId,
+                downloadInfo = downloadInfo,
+                dlcGameIds = dlcGameIds,
+                installPath = installPath,
+                containerLanguage = containerLanguage
+            )
+
+            // Add to the queue if it is not there
+            if (!downloadQueue.contains(key)) {
+                downloadQueue.add(key)
+            }
+
+            // Always set current download key
+            currentDownloadingKey = key
+            Timber.i("[GameDownloadService] Registered $gameSource download for $gameId")
+        }
+    }
+
+    /**
+     * Enqueue a download WITHOUT starting it: registers a placeholder entry (no
+     * DownloadInfo yet) at the END of the queue so it survives as a pending item and
+     * is resumed by [resumeNextDownload] when the downloads ahead of it finish.
+     * Cancels nothing and never touches [currentDownloadingKey]. When the queue
+     * reaches the entry, the store's download entry point runs and its
+     * [registerDownload] call replaces the placeholder with the real DownloadInfo.
+     * Used by "Resume all" after an app kill, when the in-memory queue was lost.
+     */
+    fun enqueueDownload(
+        gameSource: GameSource,
+        gameId: String,
+        dlcGameIds: List<Int> = emptyList(),
+        installPath: String? = null,
+        containerLanguage: String? = null,
+    ) {
+        val key = makeKey(gameSource, gameId)
+
+        synchronized(queueLock) {
+            if (registeredDownloads.containsKey(key)) {
+                return // already registered (queued or running) — keep the live entry
+            }
+            registeredDownloads[key] = DownloadEntry(
+                gameSource = gameSource,
+                gameId = gameId,
+                downloadInfo = null,
+                dlcGameIds = dlcGameIds,
+                installPath = installPath,
+                containerLanguage = containerLanguage
+            )
+            if (!downloadQueue.contains(key)) {
+                downloadQueue.add(key)
+            }
+            Timber.i("[GameDownloadService] Enqueued $gameSource download for $gameId")
+        }
+    }
+
+    /**
+     * Unregister a download when it completed.
+     * Should only be called by Each Service once (4 callees)
+     * Automatically resumes the next paused download if available.
+     */
+    fun unregisterDownload(context: Context, gameSource: GameSource, gameId: String) {
+        val key = makeKey(gameSource, gameId)
+
+        synchronized(queueLock) {
+            registeredDownloads.remove(key)
+            downloadQueue.remove(key)
+            Timber.i("[GameDownloadService] Unregistered $gameSource download for $gameId")
+        }
+
+        // Off the caller's thread and OUTSIDE queueLock: store startups do DB /
+        // container / disk work (Epic even `runBlocking`s a Room query), so running
+        // one here would ANR a main-thread caller and stall every other queue call.
+        queueScope.launch { resumeNextDownload(context.applicationContext) }
+    }
+
+    /**
+     * Remove download when pressing delete button
+     * Should only be called by Each Service once (4 callees)
+     */
+    fun removeDownload(context: Context, gameSource: GameSource, gameId: String) {
+        val key = makeKey(gameSource, gameId)
+        var shouldResume = false
+
+        synchronized(queueLock) {
+            // If currentEntry is downloading, cancel it, and resume
+            if (currentDownloadingKey == key) {
+                val currentEntry = registeredDownloads[currentDownloadingKey]
+                currentEntry?.downloadInfo?.cancel()
+                shouldResume = true
+            }
+
+            registeredDownloads.remove(key)
+            downloadQueue.remove(key)
+            Timber.i("[GameDownloadService] Removed $gameSource download for $gameId")
+        }
+
+        // Same threading rule as unregisterDownload: never on the caller, never in-lock.
+        if (shouldResume) {
+            queueScope.launch { resumeNextDownload(context.applicationContext) }
+        }
+    }
+
+    /**
+     * Resume next pending download. The claim (queue head -> current) is atomic under
+     * [queueLock]; the store startup itself runs unlocked on the caller's coroutine.
+     */
+    private fun resumeNextDownload(context: Context) {
+        // The queue relaunches with the bare application context, which follows the OS locale;
+        // wrap it so store managers resolve status strings in the app's configured language.
+        val context = LocaleHelper.applyLanguage(context, app.gamenative.PrefManager.appLanguage)
+        val nextEntry: DownloadEntry?
+        synchronized(queueLock) {
+            val nextKey = downloadQueue.firstOrNull()
+            nextEntry = nextKey?.let { registeredDownloads[it] }
+            if (nextEntry != null) {
+                currentDownloadingKey = nextKey
+            }
+        }
+
+        if (nextEntry != null) {
+            Timber.i("[GameDownloadService] Resuming ${nextEntry.gameSource} download for ${nextEntry.gameId}")
+            when (nextEntry.gameSource) {
+                // Resuming a queued entry: the download RECORD remembers the mode the entry was
+                // started with (UPDATE/VERIFY), so a queued verify does not come back as an update.
+                GameSource.STEAM -> SteamService.downloadApp(
+                    appId = nextEntry.gameId.toInt(),
+                    mode = SteamService.resumeModeFor(nextEntry.gameId.toInt()),
+                )
+                GameSource.AMAZON -> AmazonService.downloadGame(
+                    context = context,
+                    productId = nextEntry.gameId,
+                    installPath = nextEntry.installPath!!
+                )
+                GameSource.GOG -> GOGService.downloadGame(
+                    context = context,
+                    gameId = nextEntry.gameId,
+                    installPath = nextEntry.installPath!!,
+                    containerLanguage = nextEntry.containerLanguage!!
+                )
+                GameSource.EPIC -> EpicService.downloadGame(
+                    context = context,
+                    appId = nextEntry.gameId.toInt(),
+                    dlcGameIds = nextEntry.dlcGameIds,
+                    installPath = nextEntry.installPath!!,
+                    containerLanguage = nextEntry.containerLanguage!!
+                )
+                // Do Nothing for Custom Game
+                GameSource.CUSTOM_GAME -> {}
+            }
+        }
+    }
+
+
+    fun isPaused(gameSource: GameSource, gameId: String) : Boolean {
+        val key = makeKey(gameSource, gameId)
+        return registeredDownloads.contains(key) && currentDownloadingKey != key
+    }
+}

@@ -113,7 +113,7 @@ import app.gamenative.ui.theme.PluviaTheme
  * Modifier that allows D-pad up/down and B-button to escape focus from a text field,
  * which otherwise consumes these events for cursor movement.
  */
-private fun Modifier.dpadFocusEscape(
+fun Modifier.dpadFocusEscape(
     focusManager: FocusManager,
     keyboardController: androidx.compose.ui.platform.SoftwareKeyboardController?,
     onUp: (() -> Unit)? = { focusManager.moveFocus(FocusDirection.Up) },
@@ -263,15 +263,19 @@ fun UserLoginScreen(
     }
 
     LaunchedEffect(userLoginState.loginScreen, userLoginState.isLoggingIn, connectionState, userLoginState.isQrFailed) {
-        if (
-            connectionState == ConnectionState.CONNECTED &&
-            userLoginState.loginScreen != LoginScreen.TWO_FACTOR &&
-            userLoginState.isLoggingIn.not()
-        ) {
-            if (userLoginState.loginScreen != LoginScreen.QR) {
-                viewModel.onShowLoginScreen(LoginScreen.QR)
-            } else if (userLoginState.isQrFailed) {
-                viewModel.onQrRetry()
+        if (connectionState == ConnectionState.CONNECTED && userLoginState.isLoggingIn.not()) {
+            if (userLoginState.loginScreen != LoginScreen.TWO_FACTOR) {
+                if (userLoginState.loginScreen != LoginScreen.QR) {
+                    viewModel.onShowLoginScreen(LoginScreen.QR)
+                } else if (userLoginState.isQrFailed) {
+                    viewModel.onQrRetry()
+                }
+            } else if (userLoginState.loginResult == LoginResult.Failed) {
+                if (userLoginState.lastTwoFactorMethod == "steam_guard") {
+                    viewModel.onCredentialLogin()
+                } else {
+                    viewModel.useGuardTotp()
+                }
             }
         }
     }
@@ -294,6 +298,7 @@ fun UserLoginScreen(
         onTwoFactorLogin = viewModel::submit,
         onQrRetry = viewModel::onQrRetry,
         onSetTwoFactor = viewModel::setTwoFactorCode,
+        onUseGuardTotp = viewModel::useGuardTotp,
         onRetryConnection = onRetryConnection,
         onContinueOffline = onContinueOffline,
         onLaunchGog = { gogOAuthLauncher.launch(Intent(context, GOGOAuthActivity::class.java)) },
@@ -316,6 +321,7 @@ private fun UserLoginScreenContent(
     onTwoFactorLogin: () -> Unit,
     onQrRetry: () -> Unit,
     onSetTwoFactor: (String) -> Unit,
+    onUseGuardTotp: () -> Unit,
     onRetryConnection: () -> Unit,
     onContinueOffline: () -> Unit,
     onLaunchGog: () -> Unit,
@@ -448,6 +454,7 @@ private fun UserLoginScreenContent(
                                             else -> ""
                                         },
                                         onSetTwoFactor = onSetTwoFactor,
+                                        onUseGuardTotp = onUseGuardTotp,
                                         onLogin = onTwoFactorLogin,
                                     )
                                 } else {
@@ -977,6 +984,7 @@ private fun Preview_UserLoginScreen(
                 onTwoFactorLogin = { },
                 onQrRetry = { },
                 onSetTwoFactor = { },
+                onUseGuardTotp = { },
                 onShowLoginScreen = { },
                 onRetryConnection = { },
                 onContinueOffline = { },
@@ -1013,6 +1021,7 @@ private fun Preview_UserLoginScreen_Landscape(
                 onTwoFactorLogin = { },
                 onQrRetry = { },
                 onSetTwoFactor = { },
+                onUseGuardTotp = { },
                 onShowLoginScreen = { },
                 onRetryConnection = { },
                 onContinueOffline = { },

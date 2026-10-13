@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
@@ -22,9 +23,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
+import app.gamenative.ui.theme.PluviaBackground
 import com.winlator.inputcontrols.Binding
+import com.winlator.inputcontrols.BindingCombo
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.ExternalControllerBinding
+import java.util.Locale
+import kotlinx.coroutines.launch
 
 /**
  * Data classes for controller configuration
@@ -67,7 +72,7 @@ internal fun PhysicalControllerConfigSection(
                     for (binding in defaultController.getControllerBindings()) {
                         val newBinding = ExternalControllerBinding()
                         newBinding.setKeyCode(binding.getKeyCodeForAxis())
-                        newBinding.setBinding(binding.getBinding())
+                        newBinding.setBindingCombo(binding.getBindingCombo())
                         ctrl.addControllerBinding(newBinding)
                     }
 
@@ -102,21 +107,22 @@ internal fun PhysicalControllerConfigSection(
     // Create a snapshot of original bindings for cancel behavior
     val originalBindings = remember {
         controller?.getControllerBindings()?.map {
-            it.getKeyCodeForAxis() to it.getBinding()
+            it.getKeyCodeForAxis() to it.getBindingCombo()
         }?.toMap() ?: emptyMap()
     }
 
     // Working copy of bindings (memory only until Save is clicked)
-    val workingBindings = remember { mutableStateMapOf<Int, com.winlator.inputcontrols.Binding?>() }
+    val workingBindings = remember { mutableStateMapOf<Int, BindingCombo?>() }
 
     // Initialize working copy with current bindings
     LaunchedEffect(controller) {
         controller?.getControllerBindings()?.forEach {
-            workingBindings[it.getKeyCodeForAxis()] = it.getBinding()
+            workingBindings[it.getKeyCodeForAxis()] = it.getBindingCombo()
         }
     }
 
-    var selectedCategory by remember { mutableStateOf(0) } // 0 = Face, 1 = Shoulder, 2 = Menu, 3 = Thumbstick, 4 = Left Stick, 5 = Right Stick, 6 = D-Pad
+    // 0 = Face, 1 = Shoulder, 2 = Menu, 3 = Thumbstick, 4 = Left Stick, 5 = Right Stick, 6 = D-Pad
+    var selectedCategory by remember { mutableStateOf(0) }
     var showBindingDialog by remember { mutableStateOf<Pair<Int, String>?>(null) }
     var refreshKey by remember { mutableIntStateOf(0) }
 
@@ -188,21 +194,21 @@ internal fun PhysicalControllerConfigSection(
         )
     }
 
+    fun restoreOriginalBindings() {
+        controller?.let { ctrl ->
+            ctrl.getControllerBindings().toList().forEach(ctrl::removeControllerBinding)
+            for ((keyCode, binding) in originalBindings) {
+                val restoredBinding = ExternalControllerBinding()
+                restoredBinding.setKeyCode(keyCode)
+                restoredBinding.setBindingCombo(binding)
+                ctrl.addControllerBinding(restoredBinding)
+            }
+        }
+    }
+
     Dialog(
         onDismissRequest = {
-            // Cancel: Restore original bindings
-            controller?.let { ctrl ->
-                val existingBindings = ctrl.getControllerBindings().toList()
-                for (binding in existingBindings) {
-                    ctrl.removeControllerBinding(binding)
-                }
-                for ((keyCode, binding) in originalBindings) {
-                    val newBinding = ExternalControllerBinding()
-                    newBinding.setKeyCode(keyCode)
-                    newBinding.setBinding(binding)
-                    ctrl.addControllerBinding(newBinding)
-                }
-            }
+            restoreOriginalBindings()
             onDismiss()
         },
         properties = DialogProperties(
@@ -224,22 +230,10 @@ internal fun PhysicalControllerConfigSection(
                     },
                     navigationIcon = {
                         IconButton(onClick = {
-                            // Cancel: Restore original bindings
-                            controller?.let { ctrl ->
-                                val existingBindings = ctrl.getControllerBindings().toList()
-                                for (binding in existingBindings) {
-                                    ctrl.removeControllerBinding(binding)
-                                }
-                                for ((keyCode, binding) in originalBindings) {
-                                    val newBinding = ExternalControllerBinding()
-                                    newBinding.setKeyCode(keyCode)
-                                    newBinding.setBinding(binding)
-                                    ctrl.addControllerBinding(newBinding)
-                                }
-                            }
+                            restoreOriginalBindings()
                             onDismiss()
                         }) {
-                            Icon(Icons.Default.Close, null)
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
                         }
                     },
                     actions = {
@@ -255,13 +249,13 @@ internal fun PhysicalControllerConfigSection(
                                 if (defaultControllers.isNotEmpty()) {
                                     val defaultController = defaultControllers[0]
                                     for (binding in defaultController.getControllerBindings()) {
-                                        workingBindings[binding.getKeyCodeForAxis()] = binding.getBinding()
+                                        workingBindings[binding.getKeyCodeForAxis()] = binding.getBindingCombo()
                                     }
                                 }
                             }
 
                             // Ensure Home/Guide/PS button is always set to OPEN_NAVIGATION_MENU
-                            workingBindings[KeyEvent.KEYCODE_BUTTON_MODE] = com.winlator.inputcontrols.Binding.OPEN_NAVIGATION_MENU
+                            workingBindings[KeyEvent.KEYCODE_BUTTON_MODE] = BindingCombo.of(com.winlator.inputcontrols.Binding.OPEN_NAVIGATION_MENU)
                             Log.d("gncontrol", "Set Home button (KEYCODE_BUTTON_MODE) to OPEN_NAVIGATION_MENU")
 
                             refreshKey++
@@ -270,9 +264,10 @@ internal fun PhysicalControllerConfigSection(
                         }
 
                         // Save button
-                        IconButton(onClick = {
+                        IconButton(onClick = saveBindings@{
                             Log.d("gncontrol", "=== Save: Applying ${workingBindings.size} bindings ===")
-                            controller?.let { ctrl ->
+
+                            val saved = controller?.let { ctrl ->
                                 val existingBindings = ctrl.getControllerBindings().toList()
                                 for (binding in existingBindings) {
                                     ctrl.removeControllerBinding(binding)
@@ -282,7 +277,7 @@ internal fun PhysicalControllerConfigSection(
                                     if (binding != null) {
                                         val newBinding = ExternalControllerBinding()
                                         newBinding.setKeyCode(keyCode)
-                                        newBinding.setBinding(binding)
+                                        newBinding.setBindingCombo(binding)
                                         ctrl.addControllerBinding(newBinding)
                                     }
                                 }
@@ -294,8 +289,12 @@ internal fun PhysicalControllerConfigSection(
                                 }
 
                                 profile.save()
-                                Log.d("gncontrol", "Saved profile ${profile.name}")
+                            } ?: false
+                            if (!saved) {
+                                Log.e("gncontrol", "Failed to save profile ${profile.name}")
+                                return@saveBindings
                             }
+                            Log.d("gncontrol", "Saved profile ${profile.name}")
                             onSave()
                         }) {
                             Icon(Icons.Default.Save, null)
@@ -380,6 +379,7 @@ internal fun PhysicalControllerConfigSection(
                             isSelected = selectedCategory == 6,
                             onClick = { selectedCategory = 6 }
                         )
+
                         }
                     }
 
@@ -537,9 +537,11 @@ internal fun PhysicalControllerConfigSection(
 
         ControllerBindingDialog(
             buttonName = label,
-            currentBinding = currentBinding,
+            currentBinding = currentBinding?.primaryBinding,
+            currentBindingCombo = currentBinding,
             onDismiss = { showBindingDialog = null },
-            onBindingSelected = { binding ->
+            onBindingSelected = {},
+            onBindingComboSelected = { binding ->
                 if (binding != null) {
                     workingBindings[keyCode] = binding
                     Log.d("gncontrol", "Updated binding for keyCode $keyCode to $binding")
@@ -584,7 +586,7 @@ private fun CategoryButton(
 private fun ControllerBindingItem(
     label: String,
     keyCode: Int,
-    workingBindings: Map<Int, com.winlator.inputcontrols.Binding?>,
+    workingBindings: Map<Int, BindingCombo?>,
     onClick: () -> Unit
 ) {
     val binding = workingBindings[keyCode]
@@ -620,6 +622,308 @@ private fun ControllerBindingItem(
     }
 }
 
+private data class StickTuningState(
+    val deadzone: Float,
+    val sensitivity: Float,
+    val deadzoneMode: ControlsProfile.StickDeadzoneMode,
+    val directionMode: ControlsProfile.StickDigitalMode,
+)
+
+private data class PhysicalStickTuningState(
+    val left: StickTuningState,
+    val right: StickTuningState,
+) {
+    fun applyTo(profile: ControlsProfile) {
+        profile.leftStickDeadzone = left.deadzone
+        profile.leftStickSensitivity = left.sensitivity
+        profile.leftStickDeadzoneMode = left.deadzoneMode
+        profile.leftStickDigitalMode = left.directionMode
+        profile.rightStickDeadzone = right.deadzone
+        profile.rightStickSensitivity = right.sensitivity
+        profile.rightStickDeadzoneMode = right.deadzoneMode
+        profile.rightStickDigitalMode = right.directionMode
+    }
+
+    companion object {
+        fun from(profile: ControlsProfile) = PhysicalStickTuningState(
+            left = StickTuningState(
+                deadzone = profile.leftStickDeadzone,
+                sensitivity = profile.leftStickSensitivity,
+                deadzoneMode = profile.leftStickDeadzoneMode,
+                directionMode = profile.leftStickDigitalMode,
+            ),
+            right = StickTuningState(
+                deadzone = profile.rightStickDeadzone,
+                sensitivity = profile.rightStickSensitivity,
+                deadzoneMode = profile.rightStickDeadzoneMode,
+                directionMode = profile.rightStickDigitalMode,
+            ),
+        )
+
+        fun defaults(): PhysicalStickTuningState {
+            val defaults = StickTuningState(
+                deadzone = ControlsProfile.DEFAULT_STICK_DEADZONE,
+                sensitivity = ControlsProfile.DEFAULT_STICK_SENSITIVITY,
+                deadzoneMode = ControlsProfile.DEFAULT_STICK_DEADZONE_MODE,
+                directionMode = ControlsProfile.DEFAULT_STICK_DIGITAL_MODE,
+            )
+            return PhysicalStickTuningState(left = defaults, right = defaults)
+        }
+    }
+}
+
+internal fun applyAndSavePhysicalControllerTuning(
+    profile: ControlsProfile,
+    applyTuning: () -> Unit,
+    onSave: () -> Boolean,
+): Boolean {
+    val previousTuning = PhysicalStickTuningState.from(profile)
+    val wasConfigured = profile.isStickTuningConfigured
+    applyTuning()
+    if (onSave()) return true
+
+    previousTuning.applyTo(profile)
+    profile.restoreStickTuningConfigured(wasConfigured)
+    return false
+}
+
+/** Full-screen stick tuning page opened from the Physical Controller quick-menu gear. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun PhysicalControllerSettingsDialog(
+    profile: ControlsProfile,
+    onDismiss: () -> Unit,
+    onSave: () -> Boolean,
+) {
+    var tuning by remember(profile) { mutableStateOf(PhysicalStickTuningState.from(profile)) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val saveFailedMessage = stringResource(R.string.physical_controller_settings_save_failed)
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = false,
+        ),
+    ) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = PluviaBackground,
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = {
+                        Text(
+                            text = stringResource(R.string.physical_controller_settings_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onDismiss) {
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { tuning = PhysicalStickTuningState.defaults() }) {
+                            Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.reset))
+                        }
+                        IconButton(onClick = {
+                            val saved = applyAndSavePhysicalControllerTuning(
+                                profile = profile,
+                                applyTuning = { tuning.applyTo(profile) },
+                                onSave = onSave,
+                            )
+                            if (!saved) {
+                                tuning = PhysicalStickTuningState.from(profile)
+                                scope.launch { snackbarHostState.showSnackbar(saveFailedMessage) }
+                            }
+                        }) {
+                            Icon(Icons.Default.Check, contentDescription = stringResource(R.string.save))
+                        }
+                    },
+                )
+            },
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .padding(padding)
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 16.dp),
+            ) {
+                StickTuningSection(
+                    tuning = tuning,
+                    onTuningChange = { tuning = it },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Deadzone and sensitivity tuning for the physical controller's analog sticks.
+ *
+ * These values are applied to the raw stick axes before they reach the virtual gamepad state, so
+ * they carry through to the guest game (including while shooter mode is active).
+ */
+@Composable
+private fun StickTuningSection(
+    tuning: PhysicalStickTuningState,
+    onTuningChange: (PhysicalStickTuningState) -> Unit,
+) {
+    val deadzoneDescription = stringResource(R.string.stick_deadzone_description)
+    val sensitivityDescription = stringResource(R.string.stick_sensitivity_description)
+    val directionDescription = stringResource(R.string.stick_direction_mode_description)
+    val deadzoneOptions = listOf(
+        ControlsProfile.StickDeadzoneMode.AXIAL to stringResource(R.string.stick_deadzone_axial),
+        ControlsProfile.StickDeadzoneMode.CIRCULAR to stringResource(R.string.stick_deadzone_circular),
+        ControlsProfile.StickDeadzoneMode.HYBRID to stringResource(R.string.stick_deadzone_hybrid),
+    )
+    val directionOptions = listOf(
+        ControlsProfile.StickDigitalMode.UNRESTRICTED to stringResource(R.string.stick_direction_unrestricted),
+        ControlsProfile.StickDigitalMode.FOUR_WAY to stringResource(R.string.stick_direction_four_way),
+        ControlsProfile.StickDigitalMode.EIGHT_WAY to stringResource(R.string.stick_direction_eight_way),
+    )
+
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        StickTuningControls(
+            title = stringResource(R.string.left_stick),
+            deadzoneLabel = stringResource(R.string.left_stick_deadzone),
+            deadzoneShapeLabel = stringResource(R.string.left_stick_deadzone_shape),
+            sensitivityLabel = stringResource(R.string.left_stick_sensitivity),
+            directionLabel = stringResource(R.string.left_stick_direction_mode),
+            tuning = tuning.left,
+            deadzoneDescription = deadzoneDescription,
+            sensitivityDescription = sensitivityDescription,
+            directionDescription = directionDescription,
+            deadzoneOptions = deadzoneOptions,
+            directionOptions = directionOptions,
+            onTuningChange = { onTuningChange(tuning.copy(left = it)) },
+        )
+        StickTuningControls(
+            title = stringResource(R.string.right_stick),
+            deadzoneLabel = stringResource(R.string.right_stick_deadzone),
+            deadzoneShapeLabel = stringResource(R.string.right_stick_deadzone_shape),
+            sensitivityLabel = stringResource(R.string.right_stick_sensitivity),
+            directionLabel = stringResource(R.string.right_stick_direction_mode),
+            tuning = tuning.right,
+            deadzoneDescription = deadzoneDescription,
+            sensitivityDescription = sensitivityDescription,
+            directionDescription = directionDescription,
+            deadzoneOptions = deadzoneOptions,
+            directionOptions = directionOptions,
+            onTuningChange = { onTuningChange(tuning.copy(right = it)) },
+        )
+    }
+}
+
+@Composable
+private fun StickTuningControls(
+    title: String,
+    deadzoneLabel: String,
+    deadzoneShapeLabel: String,
+    sensitivityLabel: String,
+    directionLabel: String,
+    tuning: StickTuningState,
+    deadzoneDescription: String,
+    sensitivityDescription: String,
+    directionDescription: String,
+    deadzoneOptions: List<Pair<ControlsProfile.StickDeadzoneMode, String>>,
+    directionOptions: List<Pair<ControlsProfile.StickDigitalMode, String>>,
+    onTuningChange: (StickTuningState) -> Unit,
+) {
+    SettingsDialogSectionHeader(title)
+    StickAdjustmentSlider(
+        label = deadzoneLabel,
+        description = deadzoneDescription,
+        value = tuning.deadzone,
+        displayValue = String.format(Locale.getDefault(), "%.0f%%", tuning.deadzone * 100),
+        valueRange = ControlsProfile.MIN_STICK_DEADZONE..ControlsProfile.MAX_STICK_DEADZONE,
+        steps = DEADZONE_SLIDER_STEPS,
+        onValueChange = { onTuningChange(tuning.copy(deadzone = it)) },
+    )
+    StickModeSelector(
+        label = deadzoneShapeLabel,
+        description = stickDeadzoneModeDescription(tuning.deadzoneMode),
+        selected = tuning.deadzoneMode,
+        options = deadzoneOptions,
+        onSelected = { onTuningChange(tuning.copy(deadzoneMode = it)) },
+    )
+    StickAdjustmentSlider(
+        label = sensitivityLabel,
+        description = sensitivityDescription,
+        value = tuning.sensitivity,
+        displayValue = String.format(Locale.getDefault(), "%.2f×", tuning.sensitivity),
+        valueRange = ControlsProfile.MIN_STICK_SENSITIVITY..ControlsProfile.MAX_STICK_SENSITIVITY,
+        steps = SENSITIVITY_SLIDER_STEPS,
+        onValueChange = { onTuningChange(tuning.copy(sensitivity = it)) },
+    )
+    StickModeSelector(
+        label = directionLabel,
+        description = directionDescription,
+        selected = tuning.directionMode,
+        options = directionOptions,
+        onSelected = { onTuningChange(tuning.copy(directionMode = it)) },
+    )
+}
+
+@Composable
+private fun stickDeadzoneModeDescription(mode: ControlsProfile.StickDeadzoneMode): String {
+    val description = when (mode) {
+        ControlsProfile.StickDeadzoneMode.AXIAL -> R.string.stick_deadzone_axial_description
+        ControlsProfile.StickDeadzoneMode.CIRCULAR -> R.string.stick_deadzone_circular_description
+        ControlsProfile.StickDeadzoneMode.HYBRID -> R.string.stick_deadzone_hybrid_description
+    }
+    return stringResource(description)
+}
+
+@Composable
+private fun <T> StickModeSelector(
+    label: String,
+    description: String,
+    selected: T,
+    options: List<Pair<T, String>>,
+    onSelected: (T) -> Unit,
+) {
+    SettingsDropdownBlock(
+        title = label,
+        subtitle = description,
+        value = selected,
+        values = options.map { it.first },
+        labels = options.map { it.second },
+        onValueChange = onSelected,
+    )
+}
+
+@Composable
+private fun StickAdjustmentSlider(
+    label: String,
+    description: String,
+    value: Float,
+    displayValue: String,
+    valueRange: ClosedFloatingPointRange<Float>,
+    steps: Int,
+    onValueChange: (Float) -> Unit
+) {
+    SettingsSliderBlock(
+        title = label,
+        subtitle = description,
+        value = value,
+        valueRange = valueRange,
+        valueText = displayValue,
+        onValueChange = onValueChange,
+        steps = steps,
+    )
+}
+
+// 0% .. 100% in 1% increments leaves 99 stops between the two endpoints
+private const val DEADZONE_SLIDER_STEPS = 99
+// 0.10 .. 3.0 in 0.10 increments leaves 28 stops between the two endpoints
+private const val SENSITIVITY_SLIDER_STEPS = 28
+
 /**
  * Quick preset buttons for physical controller stick/dpad bindings
  */
@@ -629,7 +933,7 @@ private fun PhysicalControlPresets(
     leftStickAxes: List<AnalogConfig>,
     rightStickAxes: List<AnalogConfig>,
     dpadButtons: List<ButtonConfig>,
-    workingBindings: MutableMap<Int, Binding?>,
+    workingBindings: MutableMap<Int, BindingCombo?>,
     onPresetsApplied: () -> Unit = {}
 ) {
     Card(
@@ -793,7 +1097,7 @@ private fun applyPhysicalPreset(
     leftStickAxes: List<AnalogConfig>,
     rightStickAxes: List<AnalogConfig>,
     dpadButtons: List<ButtonConfig>,
-    workingBindings: MutableMap<Int, com.winlator.inputcontrols.Binding?>
+    workingBindings: MutableMap<Int, BindingCombo?>
 ) {
     // Define bindings for each preset (Up, Down, Left, Right order for sticks; Up, Down, Left, Right for dpad buttons)
     val bindings = when (preset) {
@@ -860,7 +1164,7 @@ private fun applyPhysicalPreset(
     // Apply bindings
     keyCodes.forEachIndexed { index, keyCode ->
         if (keyCode != 0 && index < bindings.size) {
-            workingBindings[keyCode] = bindings[index]
+            workingBindings[keyCode] = BindingCombo.of(bindings[index])
         }
     }
 }
@@ -900,8 +1204,8 @@ private fun copyElementsIfNeeded(context: android.content.Context, destProfile: 
                     if (element.has("bindings")) {
                         val bindings = element.getJSONArray("bindings")
                         for (j in 0 until bindings.length()) {
-                            val binding = bindings.getString(j)
-                            if (binding.startsWith("GAMEPAD_")) {
+                            val binding = BindingCombo.fromJsonValue(bindings.get(j))
+                            if (binding.containsGamepadBinding()) {
                                 hasGamepadBindings = true
                                 break
                             }

@@ -1,5 +1,6 @@
 package app.gamenative.ui.data
 
+import app.gamenative.data.BootAdItem
 import app.gamenative.enums.AppTheme
 import app.gamenative.ui.enums.ConnectionState
 import app.gamenative.ui.screen.PluviaScreen
@@ -20,8 +21,12 @@ data class MainState(
     val launchedAppId: String = "",
     val bootToContainer: Boolean = false,
     val testGraphics: Boolean = false,
+    val diagnostics: Boolean = false,
+    val debugRun: Boolean = false,
     val showBootingSplash: Boolean = false,
     val bootingSplashText: String = "Booting...",
+    val bootingSplashHeroImageUrl: String = "",
+    val bootAd: BootAdItem? = null,
 
     // Connection state for background reconnection
     // Default to DISCONNECTED - service will start and set to CONNECTING

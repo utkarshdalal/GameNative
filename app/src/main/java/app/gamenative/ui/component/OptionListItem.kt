@@ -120,6 +120,7 @@ fun OptionListItem(
     icon: ImageVector? = null,
     focusRequester: FocusRequester = remember { FocusRequester() },
     showCheckmark: Boolean = true,
+    trailingText: String? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
@@ -168,6 +169,15 @@ fun OptionListItem(
                 color = style.contentColor,
                 modifier = Modifier.weight(1f)
             )
+
+            if (trailingText != null) {
+                Text(
+                    text = trailingText,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(end = if (showCheckmark && selected) 8.dp else 0.dp),
+                )
+            }
 
             if (showCheckmark && selected) {
                 Icon(

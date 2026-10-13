@@ -1,5 +1,7 @@
 package com.winlator.core.envvars
 
+import org.intellij.lang.annotations.Identifier
+
 data class EnvVarInfo(
     val identifier: String,
     val selectionType: EnvVarSelectionType = EnvVarSelectionType.NONE,
@@ -258,38 +260,72 @@ data class EnvVarInfo(
             "VKD3D_THREAD_COUNT" to EnvVarInfo(
                 identifier = "VKD3D_THREAD_COUNT",
             ),
+            // Shader cache saves in a folder instead of pipeline
             "VKD3D_SHADER_CACHE_PATH" to EnvVarInfo(
                 identifier = "VKD3D_SHADER_CACHE_PATH",
+            ),
+            // 0 to 16 values can be used to trade latency for smooth fps
+            "VKD3D_SWAPCHAIN_LATENCY_FRAMES" to EnvVarInfo(
+                identifier = "VKD3D_SWAPCHAIN_LATENCY_FRAMES",
+            ),
+            "VKD3D_CONFIG" to EnvVarInfo(
+                identifier = "VKD3D_CONFIG",
+                selectionType = EnvVarSelectionType.SUGGESTIONS,
+                possibleValues = listOf(
+                    "no_upload_hvv,nodxr", //prevents free use of vram as memory, disables Ray Tracing
+                    "skip_application_workarounds", //disables x86 fixes that are mostly not in android
+                    "no_upload_hvv,nodxr,skip_application_workarounds", //combination of the above two
+                ),
             ),
             "DXVK_CONFIG" to EnvVarInfo(
                 identifier = "DXVK_CONFIG",
             ),
-            "VKD3D_CONFIG" to EnvVarInfo(
-                identifier = "VKD3D_CONFIG",
+            // New var for DXVK 2.5.x FPS regressions as per Leegao, ahead of new builds
+            "DXVK_DISABLE_TIMELINE_SEMAPHORES" to EnvVarInfo(
+                identifier = "DXVK_DISABLE_TIMELINE_SEMAPHORES",
+                selectionType = EnvVarSelectionType.TOGGLE,
+                possibleValues = listOf("0", "1")
             ),
             "MESA_VK_PRESENT_MODE" to EnvVarInfo(
                 identifier = "MESA_VK_PRESENT_MODE",
             ),
-            "DXVK_FILTER_DEVICE_NAME" to EnvVarInfo(
-                identifier = "DXVK_FILTER_DEVICE_NAME",
-                selectionType = EnvVarSelectionType.MULTI_SELECT,
-                possibleValues = listOf(
-                    "NVIDIA GeForce GTX 1080",
-                    "NVIDIA GeForce RTX 3060",
-                    "AMD Radeon RX 580",
-                    "Radeon HD 7900 Series",
-                ),
-            ),
             // Wine DLL overrides — user types freely or picks a common preset
-            // More common DLL overrides can be added in future. Only audio related for now
             "WINEDLLOVERRIDES" to EnvVarInfo(
                 identifier = "WINEDLLOVERRIDES",
                 selectionType = EnvVarSelectionType.SUGGESTIONS,
                 possibleValues = listOf(
+                    // Category header: Audio
+                    "---Audio",
                     "openal32=native,builtin",
                     "soft_oal=native",
                     "openal32=native,builtin;soft_oal=native",
                     "xaudio2_7=native,builtin",
+                    // Category header: Input
+                    "---Input",
+                    "dinput8=n,b",
+                    "dinput8=n,b;dinput=n,b",
+                    "xinput1_3=n,b;xinput1_4=n,b",
+                    "xinput9_1_0=n,b;windows.gaming.input=n,b",
+                    "xinput1_1=n,b;xinput1_2=n,b",
+                    // Category header: Network
+                    "---Network",
+                    "wininet=n,b",
+                ),
+            ),
+            // "ONE UI" BUG VARIABLE - seen in a lot of Samsung and A8xx
+            "FD_DEV_FEATURES" to EnvVarInfo(
+                identifier = "FD_DEV_FEATURES",
+                selectionType = EnvVarSelectionType.SUGGESTIONS,
+                possibleValues = listOf(
+                    "enable_tp_ubwc_flag_hint=1",
+                ),
+            ),
+            // Releases unused memory in background threads, per sec, reducing micro-stutters
+            "MALLOC_CONF" to EnvVarInfo(
+                identifier = "MALLOC_CONF",
+                selectionType = EnvVarSelectionType.SUGGESTIONS,
+                possibleValues = listOf(
+                    "background_thread:true,dirty_decay_ms:1000",
                 ),
             ),
         )

@@ -180,6 +180,10 @@ public class WineRegistryEditor implements Closeable {
         setRawValue(key, name, str);
     }
 
+    public void setExpandStringValue(String key, String name, String value) {
+        setRawValue(key, name, "str(2):\"" + escape(value != null ? value : "") + "\"");
+    }
+
     public void setStringValues(String key, String[]... items) {
         String[][] escapedItems = new String[items.length][];
         for (int i = 0; i < items.length; i++) {

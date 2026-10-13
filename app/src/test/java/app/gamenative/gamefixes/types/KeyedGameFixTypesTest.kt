@@ -32,4 +32,13 @@ class KeyedGameFixTypesTest {
         assertEquals(GameSource.GOG, fix.gameSource)
         assertEquals("2147483047", fix.gameId)
     }
+
+    @Test
+    fun keyedVulkanExtensionBlacklistFix_exposesSourceAndId_forRegistryLookup() {
+        val fix = STEAM_Fix_658920
+
+        assertTrue(fix is KeyedVulkanExtensionBlacklistFix)
+        assertEquals(GameSource.STEAM, fix.gameSource)
+        assertEquals("658920", fix.gameId)
+    }
 }

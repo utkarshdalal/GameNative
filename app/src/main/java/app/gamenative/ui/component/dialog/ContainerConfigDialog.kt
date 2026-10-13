@@ -36,6 +36,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +45,8 @@ import app.gamenative.ui.component.NoExtractOutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -58,6 +61,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringArrayResource
@@ -71,6 +81,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.tooling.preview.Preview
+import app.gamenative.BuildConfig
 import app.gamenative.R
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.ui.component.dialog.state.MessageDialogState
@@ -90,12 +101,15 @@ import app.gamenative.utils.ManifestData
 import app.gamenative.utils.ManifestEntry
 import app.gamenative.utils.ManifestInstaller
 import app.gamenative.service.SteamService
+import app.gamenative.service.download.SteamDownloadMode
 import app.gamenative.utils.ManifestComponentHelper.VersionOptionList
 import app.gamenative.utils.ManifestRepository
+import app.gamenative.utils.PaddingUtils
 import com.winlator.contents.ContentProfile
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
 import com.alorma.compose.settings.ui.SettingsSwitch
+import com.winlator.box86_64.Box86_64Preset
 import com.winlator.box86_64.Box86_64PresetManager
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
@@ -106,7 +120,9 @@ import com.winlator.core.DefaultVersion
 import com.winlator.core.GPUHelper
 import com.winlator.core.WineInfo
 import com.winlator.core.WineInfo.MAIN_WINE_VERSION
+import com.winlator.core.WineThemeManager
 import com.winlator.fexcore.FEXCoreManager
+import com.winlator.fexcore.FEXCorePreset
 import com.winlator.fexcore.FEXCorePresetManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineScope
@@ -125,6 +141,8 @@ internal fun winComponentsItemTitleRes(string: String): Int {
     return when (string) {
         "direct3d" -> R.string.direct3d
         "directsound" -> R.string.directsound
+        "directinput8" -> R.string.directinput8
+        "directinput" -> R.string.directinput
         "directmusic" -> R.string.directmusic
         "directplay" -> R.string.directplay
         "directshow" -> R.string.directshow
@@ -134,6 +152,125 @@ internal fun winComponentsItemTitleRes(string: String): Int {
         "opengl" -> R.string.opengl
         else -> throw IllegalArgumentException("No string res found for Win Components title: $string")
     }
+}
+
+private data class ContainerConfigDialogStaticData(
+    val screenSizes: List<String>,
+    val baseGraphicsDrivers: List<String>,
+    val dxWrappers: List<String>,
+    val displayRenderers: List<String>,
+    val dxvkVersionsBase: List<String>,
+    val vkd3dVersionsBase: List<String>,
+    val audioDrivers: List<String>,
+    val gpuCards: Map<Int, ContainerUtils.GpuInfo>,
+    val presentModes: List<String>,
+    val rendererPresentModes: List<String>,
+    val resourceTypes: List<String>,
+    val bcnEmulationEntries: List<String>,
+    val bcnEmulationTypeEntries: List<String>,
+    val sharpnessEffects: List<String>,
+    val sharpnessDisplayItems: List<String>,
+    val renderingModes: List<String>,
+    val videoMemSizes: List<String>,
+    val mouseWarps: List<String>,
+    val externalDisplayModes: List<String>,
+    val winCompOpts: List<String>,
+    val box64Versions: List<String>,
+    val wowBox64VersionsBase: List<String>,
+    val box64BionicVersionsBase: List<String>,
+    val box64Presets: List<Box86_64Preset>,
+    val fexcoreVersionsBase: List<String>,
+    val fexcorePresets: List<FEXCorePreset>,
+    val fexcoreTSOPresets: List<String>,
+    val fexcoreX87Presets: List<String>,
+    val fexcoreMultiblockValues: List<String>,
+    val startupSelectionEntries: List<String>,
+    val turnipVersions: List<String>,
+    val virglVersions: List<String>,
+    val zinkVersions: List<String>,
+    val vortekVersions: List<String>,
+    val adrenoVersions: List<String>,
+    val sd8EliteVersions: List<String>,
+    val containerVariants: List<String>,
+    val bionicWineEntriesBase: List<String>,
+    val glibcWineEntriesBase: List<String>,
+    val emulatorEntries: List<String>,
+    val bionicGraphicsDrivers: List<String>,
+    val baseWrapperVersions: List<String>,
+    val languages: List<String>,
+)
+
+@Composable
+private fun rememberContainerConfigDialogStaticData(): ContainerConfigDialogStaticData {
+    val context = LocalContext.current
+    val sharpnessEffects = stringArrayResource(R.array.vkbasalt_sharpness_entries).toList()
+    val sharpnessEffectLabels = stringArrayResource(R.array.vkbasalt_sharpness_labels).toList()
+    val containerVariants = stringArrayResource(R.array.container_variant_entries).toList()
+        .let { variants ->
+            if (BuildConfig.MODERN_ANDROID) {
+                variants.filterNot { it.equals(Container.GLIBC, ignoreCase = true) }
+            } else {
+                variants
+            }
+        }
+
+    return ContainerConfigDialogStaticData(
+        screenSizes = stringArrayResource(R.array.screen_size_entries).toList(),
+        baseGraphicsDrivers = stringArrayResource(R.array.graphics_driver_entries).toList(),
+        dxWrappers = stringArrayResource(R.array.dxwrapper_entries).toList(),
+        displayRenderers = stringArrayResource(R.array.displayrenderers_entries).toList(),
+        dxvkVersionsBase = stringArrayResource(R.array.dxvk_version_entries).toList(),
+        vkd3dVersionsBase = stringArrayResource(R.array.vkd3d_version_entries).toList(),
+        audioDrivers = stringArrayResource(R.array.audio_driver_entries).toList(),
+        gpuCards = ContainerUtils.getGPUCards(context),
+        presentModes = stringArrayResource(R.array.present_mode_entries).toList(),
+        rendererPresentModes = listOf("fifo", "mailbox"),
+        resourceTypes = stringArrayResource(R.array.resource_type_entries).toList(),
+        bcnEmulationEntries = stringArrayResource(R.array.bcn_emulation_entries).toList(),
+        bcnEmulationTypeEntries = stringArrayResource(R.array.bcn_emulation_type_entries).toList(),
+        sharpnessEffects = sharpnessEffects,
+        sharpnessDisplayItems = if (sharpnessEffectLabels.size == sharpnessEffects.size) sharpnessEffectLabels else sharpnessEffects,
+        renderingModes = stringArrayResource(R.array.offscreen_rendering_modes).toList(),
+        videoMemSizes = stringArrayResource(R.array.video_memory_size_entries).toList(),
+        mouseWarps = stringArrayResource(R.array.mouse_warp_override_entries).toList(),
+        externalDisplayModes = listOf(
+            stringResource(R.string.external_display_mode_off),
+            stringResource(R.string.external_display_mode_touchpad),
+            stringResource(R.string.external_display_mode_keyboard),
+            stringResource(R.string.external_display_mode_hybrid),
+        ),
+        winCompOpts = stringArrayResource(R.array.win_component_entries).toList(),
+        box64Versions = stringArrayResource(R.array.box64_version_entries).toList(),
+        wowBox64VersionsBase = stringArrayResource(R.array.wowbox64_version_entries).toList(),
+        box64BionicVersionsBase = stringArrayResource(R.array.box64_bionic_version_entries).toList(),
+        box64Presets = Box86_64PresetManager.getPresets("box64", context),
+        fexcoreVersionsBase = stringArrayResource(R.array.fexcore_version_entries).toList(),
+        fexcorePresets = FEXCorePresetManager.getPresets(context),
+        fexcoreTSOPresets = stringArrayResource(R.array.fexcore_preset_entries).toList(),
+        fexcoreX87Presets = stringArrayResource(R.array.x87mode_preset_entries).toList(),
+        fexcoreMultiblockValues = stringArrayResource(R.array.multiblock_values).toList(),
+        startupSelectionEntries = stringArrayResource(R.array.startup_selection_entries).toList(),
+        turnipVersions = stringArrayResource(R.array.turnip_version_entries).toList(),
+        virglVersions = stringArrayResource(R.array.virgl_version_entries).toList(),
+        zinkVersions = stringArrayResource(R.array.zink_version_entries).toList(),
+        vortekVersions = stringArrayResource(R.array.vortek_version_entries).toList(),
+        adrenoVersions = stringArrayResource(R.array.adreno_version_entries).toList(),
+        sd8EliteVersions = stringArrayResource(R.array.sd8elite_version_entries).toList(),
+        containerVariants = containerVariants,
+        bionicWineEntriesBase = stringArrayResource(R.array.bionic_wine_entries).toList(),
+        glibcWineEntriesBase = stringArrayResource(R.array.glibc_wine_entries).toList(),
+        emulatorEntries = stringArrayResource(R.array.emulator_entries).toList(),
+        bionicGraphicsDrivers = stringArrayResource(R.array.bionic_graphics_driver_entries).toList(),
+        baseWrapperVersions = ManifestComponentHelper.bundledGraphicsDriverBase(
+            stringArrayResource(R.array.wrapper_graphics_driver_version_entries).toList(),
+        ),
+        languages = listOf(
+            "arabic", "bulgarian", "schinese", "tchinese", "czech", "danish", "dutch", "english",
+            "finnish", "french", "german", "greek", "hungarian", "italian", "japanese", "koreana",
+            "norwegian", "polish", "portuguese", "brazilian", "romanian", "russian", "spanish",
+            "latam", "swedish", "thai", "turkish", "ukrainian", "vietnamese",
+        ),
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -163,60 +300,56 @@ fun ContainerConfigDialog(
         }
         var config by configState
 
-        val screenSizes = stringArrayResource(R.array.screen_size_entries).toList()
-        val baseGraphicsDrivers = stringArrayResource(R.array.graphics_driver_entries).toList()
+        val staticData = rememberContainerConfigDialogStaticData()
+        val screenSizes = staticData.screenSizes
+        val baseGraphicsDrivers = staticData.baseGraphicsDrivers
         val graphicsDriversRef = remember { mutableStateOf(baseGraphicsDrivers.toMutableList()) }
         var graphicsDrivers by graphicsDriversRef
-        val dxWrappers = stringArrayResource(R.array.dxwrapper_entries).toList()
-        // Start with defaults from resources
-        val dxvkVersionsBase = stringArrayResource(R.array.dxvk_version_entries).toList()
-        val vkd3dVersionsBase = stringArrayResource(R.array.vkd3d_version_entries).toList()
-        val audioDrivers = stringArrayResource(R.array.audio_driver_entries).toList()
-        val gpuCards = ContainerUtils.getGPUCards(context)
-        val presentModes = stringArrayResource(R.array.present_mode_entries).toList()
-        val resourceTypes = stringArrayResource(R.array.resource_type_entries).toList()
-        val bcnEmulationEntries = stringArrayResource(R.array.bcn_emulation_entries).toList()
-        val bcnEmulationTypeEntries = stringArrayResource(R.array.bcn_emulation_type_entries).toList()
-        val sharpnessEffects = stringArrayResource(R.array.vkbasalt_sharpness_entries).toList()
-        val sharpnessEffectLabels = stringArrayResource(R.array.vkbasalt_sharpness_labels).toList()
-        val sharpnessDisplayItems =
-            if (sharpnessEffectLabels.size == sharpnessEffects.size) sharpnessEffectLabels else sharpnessEffects
-        val renderingModes = stringArrayResource(R.array.offscreen_rendering_modes).toList()
-        val videoMemSizes = stringArrayResource(R.array.video_memory_size_entries).toList()
-        val mouseWarps = stringArrayResource(R.array.mouse_warp_override_entries).toList()
-        val externalDisplayModes = listOf(
-            stringResource(R.string.external_display_mode_off),
-            stringResource(R.string.external_display_mode_touchpad),
-            stringResource(R.string.external_display_mode_keyboard),
-            stringResource(R.string.external_display_mode_hybrid),
-        )
-        val winCompOpts = stringArrayResource(R.array.win_component_entries).toList()
-        val box64Versions = stringArrayResource(R.array.box64_version_entries).toList()
-        val wowBox64VersionsBase = stringArrayResource(R.array.wowbox64_version_entries).toList()
-        val box64BionicVersionsBase = stringArrayResource(R.array.box64_bionic_version_entries).toList()
-        val box64Presets = Box86_64PresetManager.getPresets("box64", context)
-        val fexcoreVersionsBase = stringArrayResource(R.array.fexcore_version_entries).toList()
-        val fexcorePresets = FEXCorePresetManager.getPresets(context)
-        val fexcoreTSOPresets = stringArrayResource(R.array.fexcore_preset_entries).toList()
-        val fexcoreX87Presets = stringArrayResource(R.array.x87mode_preset_entries).toList()
-        val fexcoreMultiblockValues = stringArrayResource(R.array.multiblock_values).toList()
-        val startupSelectionEntries = stringArrayResource(R.array.startup_selection_entries).toList()
-        val turnipVersions = stringArrayResource(R.array.turnip_version_entries).toList()
-        val virglVersions = stringArrayResource(R.array.virgl_version_entries).toList()
-        val zinkVersions = stringArrayResource(R.array.zink_version_entries).toList()
-        val vortekVersions = stringArrayResource(R.array.vortek_version_entries).toList()
-        val adrenoVersions = stringArrayResource(R.array.adreno_version_entries).toList()
-        val sd8EliteVersions = stringArrayResource(R.array.sd8elite_version_entries).toList()
-        val containerVariants = stringArrayResource(R.array.container_variant_entries).toList()
-        val bionicWineEntriesBase = stringArrayResource(R.array.bionic_wine_entries).toList()
-        val glibcWineEntriesBase = stringArrayResource(R.array.glibc_wine_entries).toList()
+        val dxWrappers = staticData.dxWrappers
+        val displayRenderers = staticData.displayRenderers
+        // Start with defaults from resources (modern: un-greyed comes from on-disk + manifest)
+        val dxvkVersionsBase = ManifestComponentHelper.bundledDxWrapperBase(staticData.dxvkVersionsBase)
+        val vkd3dVersionsBase = ManifestComponentHelper.bundledDxWrapperBase(staticData.vkd3dVersionsBase)
+        val audioDrivers = staticData.audioDrivers
+        val gpuCards = staticData.gpuCards
+        val presentModes = staticData.presentModes
+        val rendererPresentModes = staticData.rendererPresentModes
+        val resourceTypes = staticData.resourceTypes
+        val bcnEmulationEntries = staticData.bcnEmulationEntries
+        val bcnEmulationTypeEntries = staticData.bcnEmulationTypeEntries
+        val sharpnessEffects = staticData.sharpnessEffects
+        val sharpnessDisplayItems = staticData.sharpnessDisplayItems
+        val renderingModes = staticData.renderingModes
+        val videoMemSizes = staticData.videoMemSizes
+        val mouseWarps = staticData.mouseWarps
+        val externalDisplayModes = staticData.externalDisplayModes
+        val winCompOpts = staticData.winCompOpts
+        val box64Versions = staticData.box64Versions
+        val wowBox64VersionsBase = staticData.wowBox64VersionsBase
+        val box64BionicVersionsBase = staticData.box64BionicVersionsBase
+        val box64Presets = staticData.box64Presets
+        val fexcoreVersionsBase = staticData.fexcoreVersionsBase
+        val fexcorePresets = staticData.fexcorePresets
+        val fexcoreTSOPresets = staticData.fexcoreTSOPresets
+        val fexcoreX87Presets = staticData.fexcoreX87Presets
+        val fexcoreMultiblockValues = staticData.fexcoreMultiblockValues
+        val startupSelectionEntries = staticData.startupSelectionEntries
+        val turnipVersions = staticData.turnipVersions
+        val virglVersions = staticData.virglVersions
+        val zinkVersions = staticData.zinkVersions
+        val vortekVersions = staticData.vortekVersions
+        val adrenoVersions = staticData.adrenoVersions
+        val sd8EliteVersions = staticData.sd8EliteVersions
+        val containerVariants = staticData.containerVariants
+        val bionicWineEntriesBase = staticData.bionicWineEntriesBase
+        val glibcWineEntriesBase = staticData.glibcWineEntriesBase
         val bionicWineEntriesRef = remember { mutableStateOf(bionicWineEntriesBase) }
         var bionicWineEntries by bionicWineEntriesRef
         val glibcWineEntriesRef = remember { mutableStateOf(glibcWineEntriesBase) }
         var glibcWineEntries by glibcWineEntriesRef
-        val emulatorEntries = stringArrayResource(R.array.emulator_entries).toList()
-        val bionicGraphicsDrivers = stringArrayResource(R.array.bionic_graphics_driver_entries).toList()
-        val baseWrapperVersions = stringArrayResource(R.array.wrapper_graphics_driver_version_entries).toList()
+        val emulatorEntries = staticData.emulatorEntries
+        val bionicGraphicsDrivers = staticData.bionicGraphicsDrivers
+        val baseWrapperVersions = staticData.baseWrapperVersions
         val wrapperVersionsRef = remember { mutableStateOf(baseWrapperVersions) }
         var wrapperVersions by wrapperVersionsRef
         val dxvkVersionsAllRef = remember { mutableStateOf(dxvkVersionsBase) }
@@ -240,37 +373,7 @@ fun ContainerConfigDialog(
             }
         }
 
-        val languages = listOf(
-            "arabic",
-            "bulgarian",
-            "schinese",
-            "tchinese",
-            "czech",
-            "danish",
-            "dutch",
-            "english",
-            "finnish",
-            "french",
-            "german",
-            "greek",
-            "hungarian",
-            "italian",
-            "japanese",
-            "koreana",
-            "norwegian",
-            "polish",
-            "portuguese",
-            "brazilian",
-            "romanian",
-            "russian",
-            "spanish",
-            "latam",
-            "swedish",
-            "thai",
-            "turkish",
-            "ukrainian",
-            "vietnamese",
-        )
+        val languages = staticData.languages
         val availability = componentAvailability
         val manifestData = availability?.manifest ?: ManifestData.empty()
         val installedLists = availability?.installed
@@ -299,6 +402,11 @@ fun ContainerConfigDialog(
         val installedWine = installedLists?.wine.orEmpty()
         val installedProton = installedLists?.proton.orEmpty()
         val installedWrapperDrivers = availability?.installedDrivers.orEmpty()
+        val installedWrappers = installedLists?.wrapper.orEmpty()
+
+        val bionicGraphicsDriversMerged = remember(bionicGraphicsDrivers, installedWrappers) {
+            (bionicGraphicsDrivers + installedWrappers.map { "Wrapper-$it" }).distinct()
+        }
 
         val dxvkOptions = remember(dxvkVersionsBase, installedDxvk, manifestDxvk) {
             ManifestComponentHelper.buildVersionOptionList(dxvkVersionsBase, installedDxvk, manifestDxvk)
@@ -442,7 +550,7 @@ fun ContainerConfigDialog(
 
         fun launchSteamAppDownload(appId: Int, label: String, onDownloaded: () -> Unit) {
             if (manifestInstallInProgress) return
-            val downloadInfo = SteamService.downloadApp(appId) ?: run {
+            val downloadInfo = SteamService.downloadApp(appId, SteamDownloadMode.UPDATE) ?: run {
                 onDownloaded()
                 return
             }
@@ -558,7 +666,7 @@ fun ContainerConfigDialog(
 
         // Bionic-specific state
         val bionicDriverIndexRef = rememberSaveable {
-            val idx = bionicGraphicsDrivers.indexOfFirst { StringUtils.parseIdentifier(it) == config.graphicsDriver }
+            val idx = bionicGraphicsDriversMerged.indexOfFirst { StringUtils.parseIdentifier(it) == config.graphicsDriver }
             mutableIntStateOf(if (idx >= 0) idx else 0)
         }
         var bionicDriverIndex by bionicDriverIndexRef
@@ -566,6 +674,8 @@ fun ContainerConfigDialog(
         var wrapperVersionIndex by wrapperVersionIndexRef
         val presentModeIndexRef = rememberSaveable { mutableIntStateOf(0) }
         var presentModeIndex by presentModeIndexRef
+        val rendererPresentModeIndexRef = rememberSaveable { mutableIntStateOf(0) }
+        var rendererPresentModeIndex by rendererPresentModeIndexRef
         val resourceTypeIndexRef = rememberSaveable { mutableIntStateOf(0) }
         var resourceTypeIndex by resourceTypeIndexRef
         val bcnEmulationIndexRef = rememberSaveable { mutableIntStateOf(0) }
@@ -587,17 +697,24 @@ fun ContainerConfigDialog(
         var sharpnessLevel by sharpnessLevelRef
         val sharpnessDenoiseRef = rememberSaveable { mutableIntStateOf(config.sharpnessDenoise.coerceIn(0, 100)) }
         var sharpnessDenoise by sharpnessDenoiseRef
+        val vibrationIntensityRef = rememberSaveable { mutableIntStateOf(config.vibrationIntensity.coerceIn(0, 100)) }
+        var vibrationIntensity by vibrationIntensityRef
         val adrenotoolsTurnipCheckedRef = rememberSaveable {
             val cfg = KeyValueSet(config.graphicsDriverConfig)
             mutableStateOf(cfg.get("adrenotoolsTurnip", "1") != "0")
         }
         var adrenotoolsTurnipChecked by adrenotoolsTurnipCheckedRef
-        LaunchedEffect(config.graphicsDriverConfig) {
+        LaunchedEffect(config.graphicsDriverConfig, config.rendererPresentMode) {
             val cfg = KeyValueSet(config.graphicsDriverConfig)
             val presentMode = cfg.get("presentMode", "mailbox")
             val defaultPresentIdx = presentModes.indexOfFirst { it.equals("mailbox", true) }.takeIf { it >= 0 } ?: 0
             presentModeIndex =
                 presentModes.indexOfFirst { it.equals(presentMode, true) }.let { if (it >= 0) it else defaultPresentIdx }
+
+            val storedRendererPm = config.rendererPresentMode.ifEmpty { "fifo" }
+            val defaultRendererPresentIdx = rendererPresentModes.indexOfFirst { it.equals("fifo", true) }.takeIf { it >= 0 } ?: 0
+            rendererPresentModeIndex =
+                rendererPresentModes.indexOfFirst { it.equals(storedRendererPm, true) }.let { if (it >= 0) it else defaultRendererPresentIdx }
 
             val resourceType = cfg.get("resourceType", "auto")
             val defaultResourceIdx = resourceTypes.indexOfFirst { it.equals("auto", true) }.takeIf { it >= 0 } ?: 0
@@ -628,12 +745,21 @@ fun ContainerConfigDialog(
             sharpnessDenoise = config.sharpnessDenoise.coerceIn(0, 100)
         }
 
+        LaunchedEffect(config.vibrationIntensity) {
+            vibrationIntensity = config.vibrationIntensity.coerceIn(0, 100)
+        }
+
         LaunchedEffect(versionsLoaded, wrapperOptions, config.graphicsDriverConfig) {
             if (!versionsLoaded) return@LaunchedEffect
             val cfg = KeyValueSet(config.graphicsDriverConfig)
             val ver = cfg.get("version", DefaultVersion.WRAPPER)
             val newIdx = wrapperOptions.ids.indexOfFirst { it.equals(ver, true) }.coerceAtLeast(0)
             if (wrapperVersionIndex != newIdx) wrapperVersionIndex = newIdx
+        }
+
+        LaunchedEffect(bionicGraphicsDriversMerged, config.graphicsDriver) {
+            val newIdx = bionicGraphicsDriversMerged.indexOfFirst { StringUtils.parseIdentifier(it) == config.graphicsDriver }
+            if (newIdx >= 0 && bionicDriverIndex != newIdx) bionicDriverIndex = newIdx
         }
 
         val screenSizeIndexRef = rememberSaveable {
@@ -695,6 +821,10 @@ fun ContainerConfigDialog(
         }
         val dxWrapperIndexRef = rememberSaveable {
             val driverIndex = dxWrappers.indexOfFirst { StringUtils.parseIdentifier(it) == config.dxwrapper }
+            mutableIntStateOf(if (driverIndex >= 0) driverIndex else 0)
+        }
+        val displayRendererIndexRef = rememberSaveable {
+            val driverIndex = displayRenderers.indexOfFirst { StringUtils.parseIdentifier(it) == config.displayRenderer }
             mutableIntStateOf(if (driverIndex >= 0) driverIndex else 0)
         }
         var dxWrapperIndex by dxWrapperIndexRef
@@ -935,9 +1065,6 @@ fun ContainerConfigDialog(
         val nonzeroResolutionError = stringResource(
             R.string.container_config_custom_resolution_error_nonzero
         )
-        val aspectResolutionError = stringResource(
-            R.string.container_config_custom_resolution_error_aspect
-        )
 
         val state = ContainerConfigState(
             config = configState,
@@ -956,6 +1083,7 @@ fun ContainerConfigDialog(
             bionicDriverIndex = bionicDriverIndexRef,
             wrapperVersionIndex = wrapperVersionIndexRef,
             presentModeIndex = presentModeIndexRef,
+            rendererPresentModeIndex = rendererPresentModeIndexRef,
             resourceTypeIndex = resourceTypeIndexRef,
             bcnEmulationIndex = bcnEmulationIndexRef,
             bcnEmulationTypeIndex = bcnEmulationTypeIndexRef,
@@ -965,6 +1093,7 @@ fun ContainerConfigDialog(
             sharpnessEffectIndex = sharpnessEffectIndexRef,
             sharpnessLevel = sharpnessLevelRef,
             sharpnessDenoise = sharpnessDenoiseRef,
+            vibrationIntensity = vibrationIntensityRef,
             adrenotoolsTurnipChecked = adrenotoolsTurnipCheckedRef,
             emulator64Index = emulator64IndexRef,
             emulator32Index = emulator32IndexRef,
@@ -973,6 +1102,7 @@ fun ContainerConfigDialog(
             customScreenHeight = customScreenHeightRef,
             graphicsDriverIndex = graphicsDriverIndexRef,
             dxWrapperIndex = dxWrapperIndexRef,
+            displayRendererIndex = displayRendererIndexRef,
             dxvkVersionIndex = dxvkVersionIndexRef,
             graphicsDriverVersionIndex = graphicsDriverVersionIndexRef,
             audioDriverIndex = audioDriverIndexRef,
@@ -990,10 +1120,12 @@ fun ContainerConfigDialog(
             screenSizes = screenSizes,
             baseGraphicsDrivers = baseGraphicsDrivers,
             dxWrappers = dxWrappers,
+            displayRenderers = displayRenderers,
             dxvkVersionsBase = dxvkVersionsBase,
             vkd3dVersionsBase = vkd3dVersionsBase,
             audioDrivers = audioDrivers,
             presentModes = presentModes,
+            rendererPresentModes = rendererPresentModes,
             resourceTypes = resourceTypes,
             bcnEmulationEntries = bcnEmulationEntries,
             bcnEmulationTypeEntries = bcnEmulationTypeEntries,
@@ -1022,7 +1154,7 @@ fun ContainerConfigDialog(
             bionicWineEntriesBase = bionicWineEntriesBase,
             glibcWineEntriesBase = glibcWineEntriesBase,
             emulatorEntries = emulatorEntries,
-            bionicGraphicsDrivers = bionicGraphicsDrivers,
+            bionicGraphicsDrivers = bionicGraphicsDriversMerged,
             baseWrapperVersions = baseWrapperVersions,
             languages = languages,
             dxvkOptions = dxvkOptions,
@@ -1136,22 +1268,52 @@ fun ContainerConfigDialog(
                         stringResource(R.string.container_config_tab_drives),
                         stringResource(R.string.container_config_tab_advanced)
                     )
+
+                    // Let controller shoulder buttons cycle through the tabs: R1/R2
+                    // forward, L1/L2 back (both wrap). The handler lives on the content
+                    // container (not a focusable wrapper, which would break up/down
+                    // traversal), so it fires whenever focus is anywhere in the tabs or
+                    // content below.
+                    val firstTabFocusRequester = remember { FocusRequester() }
+                    // Seed focus onto the first tab when the dialog opens so the gamepad
+                    // can navigate immediately instead of needing a button press first.
+                    LaunchedEffect(Unit) { runCatching { firstTabFocusRequester.requestFocus() } }
+
                     Column(
                         modifier = Modifier
+                            .onPreviewKeyEvent { event ->
+                                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                                when (event.key) {
+                                    Key.ButtonR1, Key.ButtonR2 -> {
+                                        selectedTab = (selectedTab + 1) % tabs.size
+                                        true
+                                    }
+                                    Key.ButtonL1, Key.ButtonL2 -> {
+                                        selectedTab = (selectedTab - 1 + tabs.size) % tabs.size
+                                        true
+                                    }
+                                    else -> false
+                                }
+                            }
                             .padding(
-                                top = app.gamenative.utils.PaddingUtils.statusBarAwarePadding().calculateTopPadding() + paddingValues.calculateTopPadding(),
+                                top = PaddingUtils.statusBarAwarePadding().calculateTopPadding() + paddingValues.calculateTopPadding(),
                                 bottom = 32.dp + paddingValues.calculateBottomPadding(),
                                 start = paddingValues.calculateStartPadding(LayoutDirection.Ltr),
                                 end = paddingValues.calculateEndPadding(LayoutDirection.Ltr),
                             )
                             .fillMaxSize(),
                     ) {
-                        androidx.compose.material3.ScrollableTabRow(selectedTabIndex = selectedTab, edgePadding = 0.dp) {
+                        ScrollableTabRow(selectedTabIndex = selectedTab, edgePadding = 0.dp) {
                             tabs.forEachIndexed { index, label ->
-                                androidx.compose.material3.Tab(
+                                Tab(
                                     selected = selectedTab == index,
                                     onClick = { selectedTab = index },
                                     text = { Text(text = label) },
+                                    modifier = if (index == 0) {
+                                        Modifier.focusRequester(firstTabFocusRequester)
+                                    } else {
+                                        Modifier
+                                    },
                                 )
                             }
                         }
@@ -1160,8 +1322,8 @@ fun ContainerConfigDialog(
                                 .verticalScroll(scrollState)
                                 .weight(1f),
                         ) {
-                            if (selectedTab == 0) GeneralTabContent(state, nonzeroResolutionError, aspectResolutionError)
-                            if (selectedTab == 1) GraphicsTabContent(state)
+                            if (selectedTab == 0) GeneralTabContent(state, nonzeroResolutionError)
+                            if (selectedTab == 1) GraphicsTabContent(state, default)
                             if (selectedTab == 2) EmulationTabContent(state)
                             if (selectedTab == 3) ControllerTabContent(state, default)
                             if (selectedTab == 4) WineTabContent(state)
@@ -1191,28 +1353,29 @@ private fun Preview_ContainerConfigDialog() {
             dxwrapper = "dxvk",
             dxwrapperConfig = "",
             audioDriver = "alsa",
-            wincomponents = "direct3d=1,directsound=1,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=0",
+            wincomponents = "direct3d=1,directsound=1,directinput8=0,directinput=0,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=0",
             drives = "",
             execArgs = "",
             executablePath = "",
             installPath = "",
             showFPS = false,
             launchRealSteam = false,
+            launchBionicSteam = false,
             allowSteamUpdates = false,
-            steamType = "normal",
+            steamType = Container.STEAM_TYPE_HEADLESS,
             cpuList = "0,1,2,3",
             cpuListWoW64 = "0,1,2,3",
             wow64Mode = true,
             startupSelection = 1,
-            box86Version = com.winlator.core.DefaultVersion.BOX86,
-            box64Version = com.winlator.core.DefaultVersion.BOX64,
-            box86Preset = com.winlator.box86_64.Box86_64Preset.COMPATIBILITY,
-            box64Preset = com.winlator.box86_64.Box86_64Preset.COMPATIBILITY,
-            desktopTheme = com.winlator.core.WineThemeManager.DEFAULT_DESKTOP_THEME,
+            box86Version = DefaultVersion.BOX86,
+            box64Version = DefaultVersion.BOX64,
+            box86Preset = Box86_64Preset.COMPATIBILITY,
+            box64Preset = Box86_64Preset.COMPATIBILITY,
+            desktopTheme = WineThemeManager.DEFAULT_DESKTOP_THEME,
             containerVariant = "glibc",
-            wineVersion = com.winlator.core.WineInfo.MAIN_WINE_VERSION.identifier(),
+            wineVersion = MAIN_WINE_VERSION.identifier(),
             emulator = "FEXCore",
-            fexcoreVersion = com.winlator.core.DefaultVersion.FEXCORE,
+            fexcoreVersion = DefaultVersion.FEXCORE,
             fexcoreTSOMode = "Fast",
             fexcoreX87Mode = "Fast",
             fexcoreMultiBlock = "Disabled",
@@ -1243,6 +1406,8 @@ internal fun ExecutablePathDropdown(
     var expanded by remember { mutableStateOf(false) }
     var executables by remember { mutableStateOf<List<String>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
+    var showCustomPathDialog by remember { mutableStateOf(false) }
+    var customPathText by remember { mutableStateOf("") }
     val context = LocalContext.current
 
     // Load executables from A: drive when component is first created
@@ -1274,11 +1439,24 @@ internal fun ExecutablePathDropdown(
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor(),
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                // A focused text field also swallows the center/enter (gamepad A) key,
+                // so the anchor never opens via controller. Intercept it here and toggle
+                // the menu. (Up/down focus-escape is handled in NoExtractOutlinedTextField.)
+                .onPreviewKeyEvent { event ->
+                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                    when (event.key) {
+                        Key.DirectionCenter, Key.Enter, Key.NumPadEnter, Key.Spacebar, Key.ButtonA -> {
+                            expanded = !expanded
+                            true
+                        }
+                        else -> false
+                    }
+                },
             singleLine = true
         )
 
-        if (!isLoading && executables.isNotEmpty()) {
+        if (!isLoading) {
             ExposedDropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false }
@@ -1306,7 +1484,40 @@ internal fun ExecutablePathDropdown(
                         }
                     )
                 }
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.container_config_executable_path_custom)) },
+                    onClick = {
+                        customPathText = value
+                        showCustomPathDialog = true
+                        expanded = false
+                    }
+                )
             }
         }
+    }
+
+    if (showCustomPathDialog) {
+        AlertDialog(
+            onDismissRequest = { showCustomPathDialog = false },
+            title = { Text(stringResource(R.string.container_config_executable_path_custom)) },
+            text = {
+                NoExtractOutlinedTextField(
+                    value = customPathText,
+                    onValueChange = { customPathText = it },
+                    placeholder = { Text(stringResource(R.string.container_config_executable_path_custom_placeholder)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onValueChange(customPathText.trim())
+                    showCustomPathDialog = false
+                }) { Text(stringResource(R.string.ok)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCustomPathDialog = false }) { Text(stringResource(R.string.cancel)) }
+            }
+        )
     }
 }

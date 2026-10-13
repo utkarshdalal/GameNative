@@ -71,6 +71,56 @@ object CustomGameScanner {
         }
 
     /**
+     * Destination for imported custom games: CustomGames under the public install root of the
+     * configured install volume, falling back to the app sandbox. On the primary volume app-internal
+     * storage is used: every /storage/emulated path, Android/data included on fuse-bpf devices,
+     * goes through the MediaProvider FUSE daemon, which aborts when wine walks a game folder.
+     */
+    val importRootPath: String
+        get() {
+            val external = PrefManager.externalStoragePath
+            if (PrefManager.useExternalStorage && external.isNotBlank() && File(external).isDirectory) {
+                val dir = File(external, "CustomGames")
+                if (StorageUtils.ensureInstallRoot(dir)) return dir.absolutePath
+            }
+            val appDir = DownloadService.baseExternalAppDirPath
+            if (appDir.isNotEmpty() && !isPrimaryEmulatedVolume(appDir)) {
+                val publicRoot = StorageUtils.publicInstallRoot(File(appDir))
+                if (publicRoot != null) {
+                    val dir = File(publicRoot, "CustomGames")
+                    if (StorageUtils.ensureInstallRoot(dir)) return dir.absolutePath
+                }
+            }
+            return if (isPrimaryEmulatedVolume(appDir)) internalRootPath else defaultRootPath
+        }
+
+    private val internalRootPath: String
+        get() = File(DownloadService.baseDataDirPath, "CustomGames").apply { mkdirs() }.absolutePath
+
+    /**
+     * Roots whose immediate subfolders are treated as custom games: the public GameNative
+     * roots on every volume plus the app's own sandbox folders.
+     */
+    val scanRootPaths: List<String>
+        get() {
+            val roots = LinkedHashSet<String>()
+            val appDir = DownloadService.baseExternalAppDirPath
+            if (appDir.isNotEmpty()) {
+                StorageUtils.publicInstallRoot(File(appDir))?.let { roots.add(File(it, "CustomGames").absolutePath) }
+                roots.add(File(appDir, "CustomGames").absolutePath)
+            }
+            val external = PrefManager.externalStoragePath
+            if (external.isNotBlank()) {
+                roots.add(File(external, "CustomGames").absolutePath)
+            }
+            DownloadService.externalVolumePaths
+                .filterNot { it.contains("/Android/data/") }
+                .forEach { roots.add(File(it, "CustomGames").absolutePath) }
+            roots.add(File(DownloadService.baseDataDirPath, "CustomGames").absolutePath)
+            return roots.toList()
+        }
+
+    /**
      * Ensures the default CustomGames folder exists by creating it if it doesn't.
      * This should be called when the library screen loads to guarantee the folder exists
      * even if there are no custom games yet.
@@ -224,6 +274,67 @@ object CustomGameScanner {
         return fromHeuristic
     }
 
+    /**
+     * Finds a user-supplied cover image for a Custom Game's CAPSULE (vertical box-art) view.
+     *
+     * Priority: "coverv" (capsule-specific) first, then the generic "cover".
+     * Only the game's MAIN folder is searched — child folders are intentionally ignored.
+     * Supported extensions, in preference order: png, jpg, jpeg, webp.
+     *
+     * @return a file:// URI string usable directly as an image URL, or null if none exists.
+     */
+    fun findCapsuleCoverForCustomGame(appId: String): String? {
+        val folderPath = getFolderPathFromAppId(appId) ?: return null
+        return findCapsuleCoverInFolder(File(folderPath))
+    }
+
+    /** Folder-based variant of [findCapsuleCoverForCustomGame]. */
+    fun findCapsuleCoverInFolder(folder: File): String? =
+        findCoverByBaseNames(folder, listOf("coverv", "cover"))
+
+    /**
+     * Finds a user-supplied cover image for a Custom Game's HERO (horizontal banner) view.
+     *
+     * Priority: "coverh" (hero-specific) first, then the generic "cover".
+     * Only the game's MAIN folder is searched — child folders are intentionally ignored.
+     * Supported extensions, in preference order: png, jpg, jpeg, webp.
+     *
+     * @return a file:// URI string usable directly as an image URL, or null if none exists.
+     */
+    fun findHeroCoverForCustomGame(appId: String): String? {
+        val folderPath = getFolderPathFromAppId(appId) ?: return null
+        return findHeroCoverInFolder(File(folderPath))
+    }
+
+    /** Folder-based variant of [findHeroCoverForCustomGame]. */
+    fun findHeroCoverInFolder(folder: File): String? =
+        findCoverByBaseNames(folder, listOf("coverh", "cover"))
+
+    /**
+     * Scans ONLY the top level of [folder] for a file whose name matches one of [baseNames]
+     * (case-insensitive) with a supported image extension. [baseNames] are tried in order, so
+     * earlier entries take priority (e.g. "coverv" before the generic "cover"). Within a single
+     * base name, extensions are preferred png > jpg/jpeg > webp.
+     *
+     * @return a file:// URI string, or null if no matching file exists.
+     */
+    private fun findCoverByBaseNames(folder: File, baseNames: List<String>): String? {
+        if (!folder.exists() || !folder.isDirectory) return null
+        val extensions = listOf("png", "jpg", "jpeg", "webp")
+        val files = folder.listFiles { f -> f.isFile } ?: return null
+        for (base in baseNames) {
+            val match = files.filter { file ->
+                extensions.any { ext -> file.name.equals("$base.$ext", ignoreCase = true) }
+            }.minByOrNull { file ->
+                // Rank by extension preference so e.g. cover.png wins over cover.jpg.
+                val ext = file.name.substringAfterLast('.', "").lowercase()
+                extensions.indexOf(ext).let { if (it == -1) Int.MAX_VALUE else it }
+            }
+            if (match != null) return Uri.fromFile(match).toString()
+        }
+        return null
+    }
+
     // Shared helper for .ico/.png heuristic
     private fun findNearbyImageIcon(folder: File, uniqueExeRel: String?): String? {
         fun File.icoFiles(): List<File> = this.listFiles { f ->
@@ -304,8 +415,9 @@ object CustomGameScanner {
      * When container has a configured path, verifies the file exists to avoid launching stale/missing paths.
      */
     fun getLaunchExecutable(container: Container): String {
-        val gameFolderPath = ContainerUtils.getADrivePath(container.drives) ?: return ""
         val exe = container.executablePath
+        if (ContainerUtils.isAbsoluteWindowsPath(exe)) return exe
+        val gameFolderPath = ContainerUtils.getADrivePath(container.drives) ?: return ""
         if (exe.isNotEmpty()) {
             val fullPath = File(gameFolderPath, exe.replace('\\', File.separatorChar))
             if (fullPath.exists() && fullPath.isFile) return exe
@@ -452,25 +564,84 @@ object CustomGameScanner {
         val items = mutableListOf<LibraryItem>()
         var indexCounter = indexOffsetStart
         val q = query.trim()
+        val existingAppIds = mutableSetOf<String>()
 
-        val manualFolders = PrefManager.customGameManualFolders
-        if (manualFolders.isNotEmpty()) {
-            val existingAppIds = mutableSetOf<String>()
-            for (manualPath in manualFolders) {
-                // Filter by query if provided
-                if (q.isNotEmpty()) {
-                    val folderName = File(manualPath).name
-                    if (!folderName.contains(q, ignoreCase = true)) continue
-                }
+        for (folderPath in candidateFolders()) {
+            // Filter by query if provided
+            if (q.isNotEmpty()) {
+                val folderName = File(folderPath).name
+                if (!folderName.contains(q, ignoreCase = true)) continue
+            }
 
-                val manualItem = createLibraryItemFromFolder(manualPath)
-                if (manualItem != null && existingAppIds.add(manualItem.appId)) {
-                    items.add(manualItem.copy(index = indexCounter++))
-                }
+            val item = createLibraryItemFromFolder(folderPath)
+            if (item != null && existingAppIds.add(item.appId)) {
+                items.add(item.copy(index = indexCounter++))
             }
         }
 
         return items
+    }
+
+    private const val PRIMARY_EMULATED_PREFIX = "/storage/emulated/"
+
+    fun isPrimaryEmulatedVolume(path: String): Boolean = path.startsWith(PRIMARY_EMULATED_PREFIX)
+
+    /**
+     * Moves a custom game from the primary volume's shared CustomGames roots (public and
+     * Android/data) into app-internal storage. Only folders with a stored id in .gamenative are
+     * moved, since otherwise the id is derived from the folder path and the game would lose its
+     * container.
+     */
+    fun migrateToInternalStorage(folderPath: String?): String? {
+        if (folderPath.isNullOrBlank() || !isPrimaryEmulatedVolume(folderPath)) return folderPath
+        val appDir = DownloadService.baseExternalAppDirPath
+        if (appDir.isEmpty()) return folderPath
+        val sharedRoots = listOfNotNull(
+            StorageUtils.publicInstallRoot(File(appDir))?.let { File(it, "CustomGames") },
+            File(appDir, "CustomGames"),
+        )
+        val src = File(folderPath)
+        if (src.parentFile !in sharedRoots || !src.isDirectory) return folderPath
+        if (GameMetadataManager.getAppId(src) == null) return folderPath
+        val dst = File(internalRootPath, src.name)
+        if (dst.exists()) {
+            Timber.tag("CustomGameScanner").w("Cannot migrate $folderPath; ${dst.absolutePath} already exists")
+            return folderPath
+        }
+        val moved = src.renameTo(dst) || runCatching {
+            src.copyRecursively(dst)
+            src.deleteRecursively()
+            true
+        }.getOrElse { e ->
+            Timber.tag("CustomGameScanner").w(e, "Copy of $folderPath failed")
+            dst.deleteRecursively()
+            false
+        }
+        return if (moved) {
+            Timber.tag("CustomGameScanner").i("Migrated custom game $folderPath to ${dst.absolutePath}")
+            invalidateCache()
+            dst.absolutePath
+        } else {
+            Timber.tag("CustomGameScanner").w("Could not migrate $folderPath; leaving in place")
+            folderPath
+        }
+    }
+
+    /**
+     * Whether [folderPath] is inside an app-managed CustomGames root and therefore ours to
+     * delete when the game is removed, unlike folders mapped in place.
+     */
+    fun isManagedFolder(folderPath: String): Boolean =
+        scanRootPaths.any { folderPath.startsWith("$it/") }
+
+    /** Manually added folders plus every immediate subfolder of the scan roots. */
+    private fun candidateFolders(): Set<String> {
+        val folders = LinkedHashSet<String>()
+        folders.addAll(PrefManager.customGameManualFolders)
+        for (root in scanRootPaths) {
+            File(root).listFiles { f -> f.isDirectory }?.forEach { folders.add(it.absolutePath) }
+        }
+        return folders
     }
 
     private fun handleCustomGameDetection(folder: File, appId: String, idPart: Int) {
@@ -509,7 +680,7 @@ object CustomGameScanner {
             return null
         }
 
-        if (SteamService.instance != null) {
+        if (SteamService.instance != null && PrefManager.importCustomGameAsSteamGame) {
             val steamApps = SteamService.findSteamAppWithInstallDir(dirName = folder.name)
             if (steamApps?.size == 1) {
                 val steamApp = steamApps[0]
@@ -610,7 +781,7 @@ object CustomGameScanner {
      */
     private fun getOrRebuildCache(): Map<Int, String> {
         return CustomGameCache.getOrRebuildCache(
-            getManualFolders = { PrefManager.customGameManualFolders },
+            getManualFolders = { candidateFolders() },
             readGameIdFromFile = { folder -> readGameIdFromFile(folder) },
         )
     }
@@ -639,17 +810,25 @@ object CustomGameScanner {
      * If generated, stores it in the file for future use.
      */
     private fun getOrGenerateGameId(folder: File): Int {
-        // First, try to read from .gamenative file
+        // Use the stored id unless another live folder owns it, e.g. an imported copy whose
+        // .gamenative was copied along with the game files
         val storedId = readGameIdFromFile(folder)
         if (storedId != null) {
-            return storedId
+            val owner = getOrRebuildCache()[storedId]
+            if (owner == null || owner == folder.absolutePath || !File(owner).isDirectory) {
+                return storedId
+            }
         }
 
-        // If not found, generate from folder name (same logic as before)
         var candidateId = abs(folder.absolutePath.hashCode()).let { if (it == 0) 1 else it }
 
-        // Check for collisions and make it unique if needed
-        val existingIds = getAllExistingGameIds(excludeFolder = folder)
+        // On a stored-id collision the colliding id must stay reserved for its owner, so
+        // nothing is excluded from the taken set
+        val existingIds = if (storedId != null) {
+            getOrRebuildCache().keys.toSet()
+        } else {
+            getAllExistingGameIds(excludeFolder = folder)
+        }
         if (candidateId in existingIds) {
             // ID collision detected, find a unique ID by incrementing
             Timber.tag("CustomGameScanner").d("ID collision detected for ${folder.absolutePath}: $candidateId, finding unique ID")

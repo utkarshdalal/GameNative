@@ -1,8 +1,12 @@
 package app.gamenative.utils
 
 import `in`.dragonbra.javasteam.depotdownloader.BaseCaseInsensitiveFileSystem
+import `in`.dragonbra.javasteam.depotdownloader.DepotDownloader
+import okio.FileMetadata
 import okio.FileSystem
 import okio.Path
+import okio.Sink
+import okio.Source
 import timber.log.Timber
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
@@ -27,6 +31,7 @@ import java.util.concurrent.ConcurrentHashMap
 class CaseInsensitiveFileSystem(
     delegate: FileSystem = SYSTEM,
     val showDebugLog: Boolean = false,
+    private val chunkStagingRedirect: Path? = null,
 ) : BaseCaseInsensitiveFileSystem(delegate) {
 
     // parent → (lowercase segment → resolved child). bounded by directory count.
@@ -43,6 +48,78 @@ class CaseInsensitiveFileSystem(
 
     private companion object {
         val DIRECTORY_OPS = setOf("createDirectory", "createDirectories", "deleteRecursively")
+        val CHUNK_DIR_SEGMENTS = listOf(DepotDownloader.CONFIG_DIR, "staging", "chunks")
+        const val REDIRECT_MIN_FREE_BYTES = 1L shl 30
+    }
+
+    private fun chunkRedirectTarget(path: Path): Path? {
+        val redirectRoot = chunkStagingRedirect ?: return null
+        val segments = path.segments
+        val start = (0..segments.size - CHUNK_DIR_SEGMENTS.size).firstOrNull { i ->
+            CHUNK_DIR_SEGMENTS.indices.all { j -> segments[i + j] == CHUNK_DIR_SEGMENTS[j] }
+        } ?: return null
+        return segments.drop(start + CHUNK_DIR_SEGMENTS.size).fold(redirectRoot) { acc, segment -> acc / segment }
+    }
+
+    private fun chunkRedirectForWrite(path: Path): Path? {
+        val target = chunkRedirectTarget(path) ?: return null
+        return target.takeIf { chunkStagingRedirect!!.toFile().usableSpace > REDIRECT_MIN_FREE_BYTES }
+    }
+
+    override fun sink(file: Path, mustCreate: Boolean): Sink {
+        if (chunkRedirectTarget(file) != null) {
+            val target = chunkRedirectForWrite(file) ?: file
+            target.parent?.let { delegate.createDirectories(it) }
+            return delegate.sink(target, mustCreate)
+        }
+        return super.sink(file, mustCreate)
+    }
+
+    override fun source(file: Path): Source {
+        chunkRedirectTarget(file)?.let { target ->
+            if (delegate.metadataOrNull(target) != null) return delegate.source(target)
+        }
+        return super.source(file)
+    }
+
+    override fun metadataOrNull(path: Path): FileMetadata? {
+        chunkRedirectTarget(path)?.let { target ->
+            delegate.metadataOrNull(target)?.let { return it }
+        }
+        return super.metadataOrNull(path)
+    }
+
+    override fun delete(path: Path, mustExist: Boolean) {
+        chunkRedirectTarget(path)?.let { target ->
+            if (delegate.metadataOrNull(target) != null) {
+                delegate.delete(target, mustExist)
+                return
+            }
+        }
+        super.delete(path, mustExist)
+    }
+
+    override fun createDirectory(dir: Path, mustCreate: Boolean) {
+        if (chunkRedirectTarget(dir) != null) {
+            val target = chunkRedirectForWrite(dir) ?: dir
+            delegate.createDirectories(target)
+            return
+        }
+        super.createDirectory(dir, mustCreate)
+    }
+
+    override fun deleteRecursively(fileOrDirectory: Path, mustExist: Boolean) {
+        val target = chunkRedirectTarget(fileOrDirectory)
+        if (target != null) {
+            if (delegate.metadataOrNull(target) != null) {
+                delegate.deleteRecursively(target)
+            }
+            if (delegate.metadataOrNull(fileOrDirectory) != null) {
+                delegate.deleteRecursively(fileOrDirectory)
+            }
+            return
+        }
+        super.deleteRecursively(fileOrDirectory, mustExist)
     }
 
     override fun onPathParameter(path: Path, functionName: String, parameterName: String): Path {

@@ -186,7 +186,6 @@ object AmazonSdkManager {
 
     private fun downloadFile(url: String, destFile: File): Boolean = try {
         destFile.parentFile?.mkdirs()
-        val tmpFile = File(destFile.parentFile, "${destFile.name}.tmp")
 
         val request = Request.Builder()
             .url(url)
@@ -195,17 +194,23 @@ object AmazonSdkManager {
 
         Net.http.newCall(request).execute().use { response ->
             if (response.isSuccessful) {
-                response.body?.byteStream()?.use { input ->
-                    tmpFile.outputStream().use { output ->
-                        input.copyTo(output, bufferSize = 8192)
+                // Direct write to the destination (no temp file); a write failure deletes
+                // the partial, a pre-write failure keeps any pre-existing file.
+                var started = false
+                try {
+                    response.body?.byteStream()?.use { input ->
+                        destFile.outputStream().use { output ->
+                            started = true
+                            input.copyTo(output, bufferSize = 8192)
+                        }
                     }
+                    true
+                } catch (e: Exception) {
+                    if (started) destFile.delete()
+                    throw e
                 }
-                if (destFile.exists()) destFile.delete()
-                tmpFile.renameTo(destFile)
-                true
             } else {
                 Timber.tag(TAG).e("downloadFile: HTTP ${response.code} for $url")
-                tmpFile.delete()
                 false
             }
         }

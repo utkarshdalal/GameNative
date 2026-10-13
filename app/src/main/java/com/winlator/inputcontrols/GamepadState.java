@@ -28,12 +28,44 @@ public class GamepadState {
     public void writeTo(ByteBuffer buffer) {
         buffer.putShort(buttons);
         buffer.put(getPovHat());
-        buffer.putShort((short)(thumbLX * Short.MAX_VALUE));
-        buffer.putShort((short)(thumbLY * Short.MAX_VALUE));
-        buffer.putShort((short)(thumbRX * Short.MAX_VALUE));
-        buffer.putShort((short)(thumbRY * Short.MAX_VALUE));
+        buffer.putShort(encodeThumbAxis(thumbLX));
+        buffer.putShort(encodeThumbAxis(thumbLY));
+        buffer.putShort(encodeThumbAxis(thumbRX));
+        buffer.putShort(encodeThumbAxis(thumbRY));
         buffer.put((byte)(triggerL * 255));
         buffer.put((byte)(triggerR * 255));
+    }
+
+    public static short encodeThumbAxis(float value) {
+        return (short)(value * Short.MAX_VALUE);
+    }
+
+    /** Updates one stick and reports whether its serialized 16-bit value changed. */
+    public boolean updateThumbstick(boolean rightStick, float x, float y) {
+        float previousX = rightStick ? thumbRX : thumbLX;
+        float previousY = rightStick ? thumbRY : thumbLY;
+        if (rightStick) {
+            thumbRX = x;
+            thumbRY = y;
+        }
+        else {
+            thumbLX = x;
+            thumbLY = y;
+        }
+        return encodeThumbAxis(previousX) != encodeThumbAxis(x)
+                || encodeThumbAxis(previousY) != encodeThumbAxis(y);
+    }
+
+    /** Copies only one stick, preserving the destination's other controls. */
+    public void copyThumbstick(GamepadState other, boolean rightStick) {
+        if (rightStick) {
+            thumbRX = other.thumbRX;
+            thumbRY = other.thumbRY;
+        }
+        else {
+            thumbLX = other.thumbLX;
+            thumbLY = other.thumbLY;
+        }
     }
 
     public void setPressed(int buttonIdx, boolean pressed) {

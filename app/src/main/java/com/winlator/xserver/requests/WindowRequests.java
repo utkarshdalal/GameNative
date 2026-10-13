@@ -124,7 +124,8 @@ public abstract class WindowRequests {
     public static void reparentWindow(XClient client, XInputStream inputStream, XOutputStream outputStream) throws XRequestError {
         int windowId = inputStream.readInt();
         int parentId = inputStream.readInt();
-        inputStream.skip(4);
+        short x = inputStream.readShort();
+        short y = inputStream.readShort();
 
         Window window = client.xServer.windowManager.getWindow(windowId);
         if (window == null) throw new BadWindow(windowId);
@@ -132,7 +133,7 @@ public abstract class WindowRequests {
         Window parent = client.xServer.windowManager.getWindow(parentId);
         if (parent == null) throw new BadWindow(parentId);
 
-        client.xServer.windowManager.reparentWindow(window, parent);
+        client.xServer.windowManager.reparentWindow(window, parent, x, y);
     }
 
     public static void mapWindow(XClient client, XInputStream inputStream, XOutputStream outputStream) throws XRequestError {
@@ -347,13 +348,11 @@ public abstract class WindowRequests {
         }
 
         if (dstWindow == null) {
-            client.xServer.pointer.setX(client.xServer.pointer.getX() + dstX);
-            client.xServer.pointer.setY(client.xServer.pointer.getY() + dstY);
+            client.xServer.pointer.setPosition(client.xServer.pointer.getX() + dstX, client.xServer.pointer.getY() + dstY);
         }
         else {
             short[] localPoint = dstWindow.localPointToRoot(dstX, dstY);
-            client.xServer.pointer.setX(localPoint[0]);
-            client.xServer.pointer.setY(localPoint[1]);
+            client.xServer.pointer.setPosition(localPoint[0], localPoint[1]);
         }
     }
 

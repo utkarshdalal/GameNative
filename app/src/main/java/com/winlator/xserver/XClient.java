@@ -13,6 +13,7 @@ import java.util.ArrayList;
 
 public class XClient implements XResourceManager.OnResourceLifecycleListener {
     public final XServer xServer;
+    public com.winlator.xconnector.Client connectorClient;
     private boolean authenticated = false;
     public final Integer resourceIDBase;
     private short sequenceNumber = 0;
@@ -104,7 +105,8 @@ public class XClient implements XResourceManager.OnResourceLifecycleListener {
         }
 
         XInput2Extension xi2 = xServer.getExtension(XInput2Extension.MAJOR_OPCODE);
-        xi2.onClientDisconnected(this);
+        if (xi2 != null)
+            xi2.onClientDisconnected(this);
     }
 
     public void generateSequenceNumber() {

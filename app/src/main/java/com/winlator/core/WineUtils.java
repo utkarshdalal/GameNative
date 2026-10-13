@@ -208,25 +208,16 @@ public abstract class WineUtils {
     }
 
     public static void overrideWinComponentDlls(Context context, Container container, String identifier, boolean useNative) {
-        final String dllOverridesKey = "Software\\Wine\\DllOverrides";
         File userRegFile = new File(container.getRootDir(), ".wine/user.reg");
 
         try (WineRegistryEditor registryEditor = new WineRegistryEditor(userRegFile)) {
             JSONObject wincomponentsJSONObject = new JSONObject(FileUtils.readString(context, "wincomponents/wincomponents.json"));
-            JSONArray dlnames = wincomponentsJSONObject.getJSONArray(identifier);
-            for (int i = 0; i < dlnames.length(); i++) {
-                String dlname = dlnames.getString(i);
-                if (useNative) {
-                    registryEditor.setStringValue(dllOverridesKey, dlname, "native,builtin");
-                }
-                else registryEditor.removeValue(dllOverridesKey, dlname);
-            }
+            applyDllOverrides(registryEditor, wincomponentsJSONObject, identifier, useNative);
         }
         catch (JSONException e) {}
     }
 
     public static void overrideWinComponentDlls(Context context, Container container, String wincomponents) {
-        final String dllOverridesKey = "Software\\Wine\\DllOverrides";
         File userRegFile = new File(container.getRootDir(), ".wine/user.reg");
         Iterator<String[]> oldWinComponentsIter = new KeyValueSet(container.getExtra("wincomponents", Container.FALLBACK_WINCOMPONENTS)).iterator();
 
@@ -242,14 +233,7 @@ public abstract class WineUtils {
                 String identifier = wincomponent[0];
                 boolean useNative = wincomponent[1].equals("1");
 
-                JSONArray dlnames = wincomponentsJSONObject.getJSONArray(identifier);
-                for (int i = 0; i < dlnames.length(); i++) {
-                    String dlname = dlnames.getString(i);
-                    if (useNative) {
-                        registryEditor.setStringValue(dllOverridesKey, dlname, "native,builtin");
-                    }
-                    else registryEditor.removeValue(dllOverridesKey, dlname);
-                }
+                applyDllOverrides(registryEditor, wincomponentsJSONObject, identifier, useNative);
             }
         }
         catch (JSONException e) {
@@ -257,7 +241,26 @@ public abstract class WineUtils {
         }
     }
 
-    public static void setWinComponentRegistryKeys(File systemRegFile, String identifier, boolean useNative) {
+    private static void applyDllOverrides(WineRegistryEditor registryEditor, JSONObject wincomponentsJSONObject, String identifier, boolean useNative) {
+        final String dllOverridesKey = "Software\\Wine\\DllOverrides";
+        try {
+            JSONArray dlnames = wincomponentsJSONObject.getJSONArray(identifier);
+            for (int i = 0; i < dlnames.length(); i++) {
+                String dlname = dlnames.getString(i);
+                if (useNative) {
+                    registryEditor.setStringValue(dllOverridesKey, dlname, "native,builtin");
+                }
+                else if ( dlname.equals("dinput") || dlname.equals("dinput8")) {
+                    registryEditor.setStringValue(dllOverridesKey, dlname, "builtin,native");
+                }
+                else registryEditor.removeValue(dllOverridesKey, dlname);
+            }
+        } catch (JSONException e) {
+            Log.e("WineUtils", "Failed to apply DLL overrides for identifier: " + identifier, e);
+        }
+    }
+
+    public static void setWinComponentRegistryKeys(File systemRegFile, String identifier, boolean useNative, boolean builtinWmDecoderDlls) {
         if (identifier.equals("directsound")) {
             try (WineRegistryEditor registryEditor = new WineRegistryEditor(systemRegFile)) {
                 final String key64 = "Software\\Classes\\CLSID\\{083863F1-70DE-11D0-BD40-00A0C911CE86}\\Instance\\{E30629D1-27E5-11CE-875D-00608CB78066}";
@@ -368,6 +371,11 @@ public abstract class WineUtils {
         else if (identifier.equals("wmdecoder")) {
             try (WineRegistryEditor registryEditor = new WineRegistryEditor(systemRegFile)) {
                 if (useNative) {
+                    registryEditor.setStringValue("Software\\Classes\\Wow6432Node\\CLSID\\{2EEB4ADF-4578-4D10-BCA7-BB955F56320A}\\InprocServer32", null, "C:\\windows\\system32\\wmadmod.dll");
+                    registryEditor.setStringValue("Software\\Classes\\Wow6432Node\\CLSID\\{82D353DF-90BD-4382-8BC2-3F6192B76E34}\\InprocServer32", null, "C:\\windows\\system32\\wmvdecod.dll");
+                }
+                else if (builtinWmDecoderDlls) {
+                    // Wine 10+ registers these CLSIDs in wmadmod/wmvdecod, not in winegstreamer.dll
                     registryEditor.setStringValue("Software\\Classes\\Wow6432Node\\CLSID\\{2EEB4ADF-4578-4D10-BCA7-BB955F56320A}\\InprocServer32", null, "C:\\windows\\system32\\wmadmod.dll");
                     registryEditor.setStringValue("Software\\Classes\\Wow6432Node\\CLSID\\{82D353DF-90BD-4382-8BC2-3F6192B76E34}\\InprocServer32", null, "C:\\windows\\system32\\wmvdecod.dll");
                 }

@@ -193,6 +193,7 @@ public abstract class TarCompressorUtils {
                         FileUtils.symlink(entry.getLinkName(), file.getAbsolutePath());
                     }
                     else {
+                        if (file.exists() && !file.isDirectory()) file.delete();
                         try (BufferedOutputStream outStream = new BufferedOutputStream(new FileOutputStream(file), StreamUtils.BUFFER_SIZE)) {
                             if (!StreamUtils.copy(tar, outStream)) return false;
                         }

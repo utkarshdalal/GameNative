@@ -17,50 +17,13 @@ object GameCompatibilityCache {
     private val inMemoryCache = mutableMapOf<String, GameCompatibilityService.GameCompatibilityResponse>()
     private val timestamps = mutableMapOf<String, Long>()
     private var cacheLoaded = false
+    internal val json = Json { ignoreUnknownKeys = true }
 
     @Serializable
     data class CachedCompatibilityResponse(
-        val response: GameCompatibilityResponseData,
+        val response: GameCompatibilityService.GameCompatibilityResponse,
         val timestamp: Long
     )
-
-    @Serializable
-    data class GameCompatibilityResponseData(
-        val gameName: String,
-        val totalPlayableCount: Int,
-        val gpuPlayableCount: Int,
-        val avgRating: Float,
-        val hasBeenTried: Boolean,
-        val isNotWorking: Boolean
-    )
-
-    /**
-     * Converts GameCompatibilityService.GameCompatibilityResponse to serializable format
-     */
-    private fun GameCompatibilityService.GameCompatibilityResponse.toData(): GameCompatibilityResponseData {
-        return GameCompatibilityResponseData(
-            gameName = this.gameName,
-            totalPlayableCount = this.totalPlayableCount,
-            gpuPlayableCount = this.gpuPlayableCount,
-            avgRating = this.avgRating,
-            hasBeenTried = this.hasBeenTried,
-            isNotWorking = this.isNotWorking
-        )
-    }
-
-    /**
-     * Converts serializable format back to GameCompatibilityService.GameCompatibilityResponse
-     */
-    private fun GameCompatibilityResponseData.toResponse(): GameCompatibilityService.GameCompatibilityResponse {
-        return GameCompatibilityService.GameCompatibilityResponse(
-            gameName = this.gameName,
-            totalPlayableCount = this.totalPlayableCount,
-            gpuPlayableCount = this.gpuPlayableCount,
-            avgRating = this.avgRating,
-            hasBeenTried = this.hasBeenTried,
-            isNotWorking = this.isNotWorking
-        )
-    }
 
     /**
      * Loads cache from persistent storage into memory.
@@ -76,12 +39,13 @@ object GameCompatibilityCache {
                 return
             }
 
-            val cacheMap = Json.decodeFromString<Map<String, CachedCompatibilityResponse>>(cacheJson)
+            val cacheMap = json.decodeFromString<Map<String, CachedCompatibilityResponse>>(cacheJson)
+                .filterValues { it.response.state != null }
 
             // Load all entries into memory (no expiration check here - lazy expiration)
             // Store both response and timestamp for expiration checking
             cacheMap.forEach { (gameName, cached) ->
-                inMemoryCache[gameName] = cached.response.toResponse()
+                inMemoryCache[gameName] = cached.response
                 timestamps[gameName] = cached.timestamp
             }
 
@@ -101,9 +65,9 @@ object GameCompatibilityCache {
             val now = System.currentTimeMillis()
             val cacheMap = inMemoryCache.mapValues { (gameName, response) ->
                 val timestamp = timestamps[gameName] ?: now
-                CachedCompatibilityResponse(response.toData(), timestamp)
+                CachedCompatibilityResponse(response, timestamp)
             }
-            val cacheJson = Json.encodeToString(cacheMap)
+            val cacheJson = json.encodeToString(cacheMap)
             PrefManager.gameCompatibilityCache = cacheJson
             Timber.tag("GameCompatibilityCache").d("Saved ${cacheMap.size} entries to persistent storage")
         } catch (e: Exception) {
@@ -115,6 +79,7 @@ object GameCompatibilityCache {
      * Gets cached compatibility response for a game, if available and not expired.
      * Uses lazy expiration - checks expiration on access.
      */
+    @Synchronized
     fun getCached(gameName: String): GameCompatibilityService.GameCompatibilityResponse? {
         loadCache()
 
@@ -137,6 +102,7 @@ object GameCompatibilityCache {
     /**
      * Caches a compatibility response for a game.
      */
+    @Synchronized
     fun cache(gameName: String, response: GameCompatibilityService.GameCompatibilityResponse) {
         loadCache()
         val now = System.currentTimeMillis()
@@ -149,6 +115,7 @@ object GameCompatibilityCache {
     /**
      * Caches multiple compatibility responses at once.
      */
+    @Synchronized
     fun cacheAll(responses: Map<String, GameCompatibilityService.GameCompatibilityResponse>) {
         loadCache()
         val now = System.currentTimeMillis()
@@ -163,6 +130,7 @@ object GameCompatibilityCache {
     /**
      * Checks if a game's compatibility is cached and not expired.
      */
+    @Synchronized
     fun isCached(gameName: String): Boolean {
         loadCache()
         return getCached(gameName) != null
@@ -171,6 +139,7 @@ object GameCompatibilityCache {
     /**
      * Clears the entire cache (both memory and persistent storage).
      */
+    @Synchronized
     fun clear() {
         inMemoryCache.clear()
         timestamps.clear()
@@ -181,6 +150,7 @@ object GameCompatibilityCache {
     /**
      * Gets the current cache size.
      */
+    @Synchronized
     fun size(): Int {
         loadCache()
         return inMemoryCache.size

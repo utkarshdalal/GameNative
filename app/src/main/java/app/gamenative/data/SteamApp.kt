@@ -152,7 +152,18 @@ data class SteamApp(
 
     @ColumnInfo(name = "workshop_download_pending", defaultValue = "0")
     val workshopDownloadPending: Boolean = false,
+
+    @ColumnInfo(name = "is_vr_only", defaultValue = "0")
+    val isVrOnly: Boolean = false,
+    @ColumnInfo(name = "is_vr_supported", defaultValue = "0")
+    val isVrSupported: Boolean = false,
+
+    @ColumnInfo(name = "eulas", defaultValue = "'[]'")
+    val eulas: List<EulaInfo> = emptyList(),
 ) {
+    val isVrGame: Boolean
+        get() = isVrOnly || isVrSupported
+
     val logoUrl: String
         get() = "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/$id/$logoHash.jpg"
     val logoSmallUrl: String

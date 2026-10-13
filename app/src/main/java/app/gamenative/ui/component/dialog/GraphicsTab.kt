@@ -15,6 +15,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.component.settings.SettingsListDropdown
+import app.gamenative.ui.component.settings.SettingsListDropdownSearchable
 import app.gamenative.ui.component.settings.SettingsMultiListDropdown
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
@@ -29,7 +30,7 @@ import com.winlator.core.envvars.EnvVars
 import kotlin.math.roundToInt
 
 @Composable
-fun GraphicsTabContent(state: ContainerConfigState) {
+fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
     val config = state.config.value
     SettingsGroup() {
         if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
@@ -45,7 +46,7 @@ fun GraphicsTabContent(state: ContainerConfigState) {
                 },
             )
             // Bionic: Graphics Driver Version (stored in graphicsDriverConfig.version; list from manifest + installed)
-            SettingsListDropdown(
+            SettingsListDropdownSearchable(
                 colors = settingsTileColors(),
                 title = { Text(text = stringResource(R.string.graphics_driver_version)) },
                 value = state.wrapperVersionIndex.value.coerceIn(0, (state.wrapperOptions.labels.size - 1).coerceAtLeast(0)),
@@ -61,7 +62,7 @@ fun GraphicsTabContent(state: ContainerConfigState) {
                             cfg.put("version", state.wrapperOptions.labels[idx])
                             state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
                         }
-                        return@SettingsListDropdown
+                        return@SettingsListDropdownSearchable
                     }
                     state.wrapperVersionIndex.value = idx
                     val cfg = KeyValueSet(config.graphicsDriverConfig)
@@ -69,6 +70,40 @@ fun GraphicsTabContent(state: ContainerConfigState) {
                     state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
                 },
             )
+            // Wrapper-gamenative only: BCn transcoder (CPU/GPU) and texture quality (low/high).
+            // Both are stored in graphicsDriverConfig and turned into WRAPPER_* env vars on boot.
+            if (config.graphicsDriver.equals("wrapper-gamenative", ignoreCase = true)) {
+                val transcoderValue = KeyValueSet(config.graphicsDriverConfig).get("transcoder", "cpu")
+                SettingsListDropdown(
+                    colors = settingsTileColors(),
+                    title = { Text(text = stringResource(R.string.transcoder)) },
+                    value = if (transcoderValue.equals("gpu", ignoreCase = true)) 1 else 0,
+                    items = listOf(
+                        stringResource(R.string.transcoder_cpu),
+                        stringResource(R.string.transcoder_gpu),
+                    ),
+                    onItemSelected = { idx ->
+                        val cfg = KeyValueSet(config.graphicsDriverConfig)
+                        cfg.put("transcoder", if (idx == 1) "gpu" else "cpu")
+                        state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
+                    },
+                )
+                val qualityValue = KeyValueSet(config.graphicsDriverConfig).get("quality", "low")
+                SettingsListDropdown(
+                    colors = settingsTileColors(),
+                    title = { Text(text = stringResource(R.string.wrapper_quality)) },
+                    value = if (qualityValue.equals("high", ignoreCase = true)) 1 else 0,
+                    items = listOf(
+                        stringResource(R.string.wrapper_quality_low),
+                        stringResource(R.string.wrapper_quality_high),
+                    ),
+                    onItemSelected = { idx ->
+                        val cfg = KeyValueSet(config.graphicsDriverConfig)
+                        cfg.put("quality", if (idx == 1) "high" else "low")
+                        state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
+                    },
+                )
+            }
             DxWrapperSection(state)
             // Bionic: Exposed Vulkan Extensions (same UI as Vortek)
             SettingsMultiListDropdown(
@@ -135,6 +170,51 @@ fun GraphicsTabContent(state: ContainerConfigState) {
                     val cfg = KeyValueSet(config.graphicsDriverConfig)
                     cfg.put("presentMode", state.presentModes[idx])
                     state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
+                },
+            )
+            if (app.gamenative.BuildConfig.XR_BUILD && !default) {
+                val xrRates = listOf(72, 90, 120)
+                SettingsListDropdown(
+                    colors = settingsTileColors(),
+                    title = { Text(text = stringResource(R.string.xr_refresh_rate)) },
+                    value = xrRates.indexOf(config.xrRefreshRate).coerceAtLeast(0),
+                    items = xrRates.map { "$it Hz" },
+                    onItemSelected = { idx ->
+                        state.config.value = config.copy(xrRefreshRate = xrRates[idx])
+                    },
+                )
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Text(text = stringResource(R.string.xr_render_scale))
+                    Slider(
+                        value = config.xrRenderScale.toFloat(),
+                        onValueChange = { newValue ->
+                            val stepped = ((newValue.roundToInt() + 2) / 5 * 5).coerceIn(25, 100)
+                            state.config.value = config.copy(xrRenderScale = stepped)
+                        },
+                        valueRange = 25f..100f,
+                    )
+                    Text(text = "${config.xrRenderScale}%")
+                }
+                if (config.windowsVrEnabled) {
+                    SettingsSwitch(
+                        colors = settingsTileColorsAlt(),
+                        title = { Text(text = stringResource(R.string.xr_open_composite_toggle)) },
+                        subtitle = { Text(text = stringResource(R.string.xr_open_composite_toggle_desc)) },
+                        state = config.openCompositeEnabled,
+                        onCheckedChange = { checked ->
+                            state.config.value = config.copy(openCompositeEnabled = checked)
+                        },
+                    )
+                }
+            }
+            SettingsListDropdown(
+                colors = settingsTileColors(),
+                title = { Text(text = stringResource(R.string.renderer_present_modes)) },
+                value = state.rendererPresentModeIndex.value.coerceIn(0, state.rendererPresentModes.lastIndex.coerceAtLeast(0)),
+                items = state.rendererPresentModes,
+                onItemSelected = { idx ->
+                    state.rendererPresentModeIndex.value = idx
+                    state.config.value = config.copy(rendererPresentMode = state.rendererPresentModes[idx])
                 },
             )
             SettingsListDropdown(
@@ -323,7 +403,7 @@ fun GraphicsTabContent(state: ContainerConfigState) {
         // Frame Generation (LSFG) — hooks the Vulkan swapchain for
         // transparent frame generation. Only effective on Bionic containers
         // with a Vortek/Adreno graphics driver.
-        LsfgSection(state)
+        if (!default) LsfgSection(state)
 
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
@@ -336,10 +416,31 @@ fun GraphicsTabContent(state: ContainerConfigState) {
         )
     }
 }
-
 @Composable
 private fun DxWrapperSection(state: ContainerConfigState) {
     val config = state.config.value
+    SettingsListDropdown(
+        colors = settingsTileColorsAlt(),
+        title = { Text(text = stringResource(R.string.display_renderer)) },
+        value = state.displayRendererIndex.value,
+        items = state.displayRenderers,
+        onItemSelected = {
+            state.displayRendererIndex.value = it
+            state.config.value = config.copy(displayRenderer = StringUtils.parseIdentifier(state.displayRenderers[it]))
+        },
+    )
+    // Show color correction toggle only for ASurfaceRenderer (SurfaceFlinger)
+    if (StringUtils.parseIdentifier(state.displayRenderers.getOrNull(state.displayRendererIndex.value).orEmpty()) == "surfaceflinger") {
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.sf_compat_mode)) },
+            subtitle = { Text(text = stringResource(R.string.sf_compat_mode_description)) },
+            state = config.sfCompatMode,
+            onCheckedChange = {
+                state.config.value = config.copy(sfCompatMode = it)
+            },
+        )
+    }
     SettingsListDropdown(
         colors = settingsTileColors(),
         title = { Text(text = stringResource(R.string.dx_wrapper)) },
@@ -473,7 +574,11 @@ private fun LsfgSection(state: ContainerConfigState) {
                     subtitle = { Text(text = stringResource(R.string.lsfg_description)) },
                     state = config.lsfgEnabled,
                     onCheckedChange = {
-                        state.config.value = config.copy(lsfgEnabled = it)
+                        state.config.value = if (it) {
+                            config.copy(lsfgEnabled = true)
+                        } else {
+                            config.copy(lsfgEnabled = false)
+                        }
                     },
                 )
             }

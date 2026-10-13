@@ -3,6 +3,7 @@ package app.gamenative.ui.util
 import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -24,6 +25,7 @@ import app.gamenative.R
 import app.gamenative.ui.theme.PluviaTheme
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
+import com.skydoves.landscapist.coil.CoilImageState
 
 @Composable
 internal fun ListItemImage(
@@ -34,6 +36,7 @@ internal fun ListItemImage(
     contentScale: ContentScale = ContentScale.Fit,
     image: () -> Any?,
     onFailure: () -> Unit = {},
+    onSuccess: (() -> Unit)? = null,
 ) {
     CoilImage(
         modifier = modifier
@@ -44,8 +47,11 @@ internal fun ListItemImage(
             contentScale = contentScale,
             contentDescription = contentDescription,
         ),
+        onImageStateChanged = { state ->
+            if (state is CoilImageState.Success) onSuccess?.invoke()
+        },
         loading = {
-            CircularProgressIndicator()
+            CircularProgressIndicator(modifier = Modifier.wrapContentSize())
         },
         failure = {
             onFailure()

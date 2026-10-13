@@ -5,6 +5,7 @@ import app.gamenative.Constants
 import java.text.Normalizer
 
 private val REGEX_UNACCENT = "\\p{M}+".toRegex()
+private val REGEX_FILENAME_UNSAFE = Regex("[^a-zA-Z0-9_-]")
 
 
 /**
@@ -24,5 +25,9 @@ fun CharSequence.unaccent(): String {
     return REGEX_UNACCENT.replace(temp, "")
 }
 
-// This doesn't belong here, but i'm tired.
-fun Long.getProfileUrl(): String = "${Constants.Persona.PROFILE_URL}$this/"
+/**
+ * Replaces any character that isn't ASCII alphanumeric, underscore, or hyphen with an
+ * underscore. Intended for turning identifiers (app names, namespaces, catalog ids)
+ * into safe filename components.
+ */
+fun String.sanitizeForFilename(): String = REGEX_FILENAME_UNSAFE.replace(this, "_")

@@ -13,7 +13,9 @@ public class XClientConnectionHandler implements ConnectionHandler {
     @Override
     public void handleNewConnection(Client client) {
         client.createIOStreams();
-        client.setTag(new XClient(xServer, client.getInputStream(), client.getOutputStream()));
+        XClient xClient = new XClient(xServer, client.getInputStream(), client.getOutputStream());
+        xClient.connectorClient = client;
+        client.setTag(xClient);
     }
 
     @Override

@@ -20,11 +20,12 @@ public class EnvVars implements Iterable<String> {
 
     public void putAll(String values) {
         if (values == null || values.isEmpty()) return;
-        String[] parts = values.split(" ");
-        for (String part : parts) {
+        for (String part : splitOnUnescapedSpaces(values)) {
             int index = part.indexOf("=");
-            String name = part.substring(0, index);
-            String value = part.substring(index+1);
+            // tolerate stray tokens (legacy data corrupted by old unescaped serializer)
+            if (index < 0) continue;
+            String name = unescape(part.substring(0, index));
+            String value = unescape(part.substring(index + 1));
             data.put(name, value);
         }
     }
@@ -53,22 +54,24 @@ public class EnvVars implements Iterable<String> {
         return data.isEmpty();
     }
 
+    // canonical persistence form: escape so putAll round-trips losslessly
     @NonNull
     @Override
     public String toString() {
-        return String.join(" ", toStringArray());
-    }
-
-    public String toEscapedString() {
-        String result = "";
+        StringBuilder sb = new StringBuilder();
         for (String key : data.keySet()) {
-            if (!result.isEmpty()) result += " ";
-            String value = data.get(key);
-            result += key+"="+value.replace(" ", "\\ ");
+            if (sb.length() > 0) sb.append(' ');
+            sb.append(escape(key)).append('=').append(escape(data.get(key)));
         }
-        return result;
+        return sb.toString();
     }
 
+    // for shell composition (env KEY=val ... cmd) — same escape rules
+    public String toEscapedString() {
+        return toString();
+    }
+
+    // for execve envp — values must be raw, no escaping
     public String[] toStringArray() {
         String[] stringArray = new String[data.size()];
         int index = 0;
@@ -80,5 +83,43 @@ public class EnvVars implements Iterable<String> {
     @Override
     public Iterator<String> iterator() {
         return data.keySet().iterator();
+    }
+
+    private static String escape(String s) {
+        // escape backslash FIRST so we don't double-escape the slashes we add for spaces
+        return s.replace("\\", "\\\\").replace(" ", "\\ ");
+    }
+
+    private static String unescape(String s) {
+        StringBuilder sb = new StringBuilder(s.length());
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '\\' && i + 1 < s.length()) {
+                sb.append(s.charAt(++i));
+            } else {
+                sb.append(c);
+            }
+        }
+        return sb.toString();
+    }
+
+    private static java.util.List<String> splitOnUnescapedSpaces(String s) {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        StringBuilder cur = new StringBuilder();
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '\\' && i + 1 < s.length()) {
+                cur.append(c).append(s.charAt(++i));
+            } else if (c == ' ') {
+                if (cur.length() > 0) {
+                    out.add(cur.toString());
+                    cur.setLength(0);
+                }
+            } else {
+                cur.append(c);
+            }
+        }
+        if (cur.length() > 0) out.add(cur.toString());
+        return out;
     }
 }

@@ -3,6 +3,7 @@ package app.gamenative.ui.screen.settings
 import android.content.res.Configuration
 import android.os.Environment
 import android.os.storage.StorageManager
+import java.io.File
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -23,15 +24,22 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Login
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.collectAsState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringResource
+import app.gamenative.BuildConfig
 import app.gamenative.R
 import app.gamenative.PrefManager
 import app.gamenative.enums.AppTheme
@@ -44,12 +52,16 @@ import kotlinx.serialization.json.Json
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import app.gamenative.ui.theme.PluviaTheme
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import app.gamenative.ui.component.settings.SettingsListDropdown
+import app.gamenative.ui.component.settings.SettingsMultiListDropdown
 import app.gamenative.ui.component.ACHIEVEMENT_NOTIFICATION_POSITION
+import app.gamenative.ui.enums.LibraryTab
 import androidx.compose.ui.viewinterop.AndroidView
 import android.widget.ImageView
 import app.gamenative.utils.IconSwitcher
@@ -86,9 +98,36 @@ import app.gamenative.ui.screen.auth.GOGOAuthActivity
 import app.gamenative.ui.screen.auth.AmazonOAuthActivity
 import app.gamenative.service.amazon.AmazonAuthManager
 import app.gamenative.utils.PlatformOAuthHandlers
+import app.gamenative.utils.StorageUtils
+import app.gamenative.data.GameSource
+import app.gamenative.sync.FrontendSyncManager
 import app.gamenative.ui.util.PlatformAuthUiHelpers
 import app.gamenative.ui.util.SnackbarManager
 
+/** Icon button that triggers [FrontendSyncManager.resyncAll] and shows a spinner while syncing. */
+@Composable
+private fun FrontendSyncResyncButton() {
+    val isSyncing by FrontendSyncManager.isSyncing.collectAsState()
+    val resyncLabel = stringResource(R.string.frontend_sync_resync_all)
+    IconButton(
+        onClick = { FrontendSyncManager.resyncAll() },
+        modifier = Modifier.semantics { contentDescription = resyncLabel },
+    ) {
+        if (isSyncing) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(24.dp),
+                strokeWidth = 2.dp,
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Default.Sync,
+                contentDescription = stringResource(R.string.frontend_sync_resync_all),
+            )
+        }
+    }
+}
+
+/** Settings group covering interface preferences: theme, downloads, frontend sync, language, and icons. */
 @Composable
 fun SettingsGroupInterface(
     appTheme: AppTheme,
@@ -115,9 +154,12 @@ fun SettingsGroupInterface(
 
     // Controller/gamepad hints visibility
     var showGamepadHints by rememberSaveable { mutableStateOf(PrefManager.showGamepadHints) }
+    var showRecommendations by rememberSaveable { mutableStateOf(PrefManager.showRecommendations) }
+    var libraryTabs by remember { mutableStateOf(PrefManager.libraryTabs) }
 
     // Achievements
     var showAchievementNotifications by rememberSaveable { mutableStateOf(PrefManager.achievementShowNotification) }
+    var playAchievementSound by rememberSaveable { mutableStateOf(PrefManager.achievementPlaySound) }
 
     // Language selection dialog
     var openLanguageDialog by rememberSaveable { mutableStateOf(false) }
@@ -166,6 +208,8 @@ fun SettingsGroupInterface(
     // Epic logout confirmation dialog state
     var showEpicLogoutDialog by rememberSaveable { mutableStateOf(false) }
     var epicLogoutLoading by rememberSaveable { mutableStateOf(false) }
+
+    var showFrontendSyncDialog by rememberSaveable { mutableStateOf(false) }
 
     val coroutineScope = rememberCoroutineScope()
     // Use Activity lifecycle scope for the OAuth result callback so it stays valid after
@@ -219,6 +263,15 @@ fun SettingsGroupInterface(
             onCheckedChange = {
                 showAchievementNotifications = it
                 PrefManager.achievementShowNotification = it
+            },
+        )
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_achievement_play_sound)) },
+            state = playAchievementSound,
+            onCheckedChange = {
+                playAchievementSound = it
+                PrefManager.achievementPlaySound = it
             },
         )
         // Achievement notification position
@@ -277,6 +330,70 @@ fun SettingsGroupInterface(
             },
         )
 
+        // Steam Controller (2026 "Triton") support is opt-in: when on, every game launch connects to the controller
+        // over BLE, which needs the runtime Bluetooth permissions (manifest entries alone don't grant them on API
+        // 31+). Turning the switch on requests them and only sticks if they're granted — so the launch path can
+        // never reach a Bluetooth call ungranted, and users without the hardware run exactly as before.
+        // Shown as on only if the permissions are ALSO still granted: the user can revoke "Nearby devices" in
+        // Android settings at any time, and the launch path refuses to start the transport without them — a switch
+        // that still reads "on" would be claiming a feature that silently can't run.
+        var steamControllerEnabled by rememberSaveable {
+            mutableStateOf(
+                PrefManager.steamControllerEnabled &&
+                    app.gamenative.steamcontroller.TritonBle.hasPermissions(context),
+            )
+        }
+        val setSteamControllerEnabled: (Boolean) -> Unit = { enabled ->
+            steamControllerEnabled = enabled
+            PrefManager.steamControllerEnabled = enabled
+        }
+        val bluetoothPermissionLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestMultiplePermissions(),
+        ) { result ->
+            // NOT result.values.all { it }: a cancelled request (dialog dismissed, activity interrupted)
+            // comes back as an EMPTY map, and all{} on an empty collection is true — which would switch the
+            // feature on with nothing granted, the same "switch claims a feature that can't run" state the
+            // conjunction above exists to prevent. Ask the system what is actually held.
+            val granted = app.gamenative.steamcontroller.TritonBle.hasPermissions(context)
+            setSteamControllerEnabled(granted)
+            if (!granted) {
+                // Android stops showing the dialog once a permission is permanently denied — requestPermissions
+                // then returns "denied" instantly and tapping the switch again looks like it does nothing. In that
+                // state the only route left is the app's own settings page, so say so and go there.
+                val activity = generateSequence(context) { (it as? android.content.ContextWrapper)?.baseContext }
+                    .filterIsInstance<android.app.Activity>()
+                    .firstOrNull()
+                val canAskAgain = activity != null && app.gamenative.steamcontroller.TritonBle.REQUIRED_PERMISSIONS.any {
+                    androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(activity, it)
+                }
+                if (canAskAgain) {
+                    SnackbarManager.show(context.getString(R.string.settings_interface_steam_controller_denied))
+                } else {
+                    SnackbarManager.show(context.getString(R.string.settings_interface_steam_controller_denied_forever))
+                    runCatching {
+                        context.startActivity(
+                            Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = android.net.Uri.parse("package:${context.packageName}")
+                            },
+                        )
+                    }.onFailure { Timber.w(it, "Could not open app settings for the Bluetooth permission") }
+                }
+            }
+        }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_interface_steam_controller_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_interface_steam_controller_subtitle)) },
+            state = steamControllerEnabled,
+            onCheckedChange = { enabled ->
+                if (!enabled || app.gamenative.steamcontroller.TritonBle.hasPermissions(context)) {
+                    setSteamControllerEnabled(enabled)
+                } else {
+                    bluetoothPermissionLauncher.launch(app.gamenative.steamcontroller.TritonBle.REQUIRED_PERMISSIONS)
+                }
+            },
+        )
+
         var warnBeforeExit by rememberSaveable { mutableStateOf(PrefManager.warnBeforeExit) }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
@@ -300,27 +417,111 @@ fun SettingsGroupInterface(
             },
         )
 
-        var showRecommendations by rememberSaveable { mutableStateOf(PrefManager.showRecommendations) }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.settings_interface_show_recommendations_title)) },
             subtitle = { Text(text = stringResource(R.string.settings_interface_show_recommendations_subtitle)) },
             state = showRecommendations,
-            onCheckedChange = {
-                showRecommendations = it
-                PrefManager.showRecommendations = it
+            onCheckedChange = { enabled ->
+                showRecommendations = enabled
+                PrefManager.showRecommendations = enabled
                 PluviaApp.events.emit(AndroidEvent.RecommendationToggleChanged)
                 if (PrefManager.usageAnalyticsEnabled) {
                     com.posthog.PostHog.capture(
                         event = "\$set",
-                        properties = mapOf("\$set" to mapOf("recommendation_enabled" to it)),
+                        properties = mapOf("\$set" to mapOf("recommendation_enabled" to enabled)),
                     )
-                    if (!it) {
+                    if (!enabled) {
                         com.posthog.PostHog.capture("recommendation_disabled")
                     }
                 }
             },
         )
+
+        var showHiddenGamesByDefault by rememberSaveable { mutableStateOf(PrefManager.showHiddenGamesByDefault) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_interface_show_hidden_games_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_interface_show_hidden_games_subtitle)) },
+            state = showHiddenGamesByDefault,
+            onCheckedChange = {
+                showHiddenGamesByDefault = it
+                PrefManager.showHiddenGamesByDefault = it
+                PluviaApp.events.emit(AndroidEvent.HiddenGamesSettingChanged(showHiddenGamesByDefault = it))
+            },
+        )
+
+        var hideAiFeatures by rememberSaveable { mutableStateOf(PrefManager.hideAiFeatures) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_hide_ai_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_hide_ai_subtitle)) },
+            state = hideAiFeatures,
+            onCheckedChange = {
+                hideAiFeatures = it
+                PrefManager.hideAiFeatures = it
+            },
+        )
+
+        var bootScreenAds by rememberSaveable { mutableStateOf(PrefManager.bootScreenAdsEnabled) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_info_boot_ads_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_info_boot_ads_subtitle)) },
+            state = bootScreenAds,
+            onCheckedChange = {
+                bootScreenAds = it
+                PrefManager.bootScreenAdsEnabled = it
+            },
+        )
+
+        var bootScreenRecs by rememberSaveable { mutableStateOf(PrefManager.bootScreenRecommendationsEnabled) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_info_boot_recs_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_info_boot_recs_subtitle)) },
+            state = bootScreenRecs,
+            onCheckedChange = {
+                bootScreenRecs = it
+                PrefManager.bootScreenRecommendationsEnabled = it
+            },
+        )
+
+        val configurableLibraryTabs = LibraryTab.configurableEntries
+        val selectedLibraryTabIndices = configurableLibraryTabs.mapIndexedNotNull { index, tab ->
+            index.takeIf { tab in libraryTabs }
+        }
+        SettingsMultiListDropdown(
+            colors = settingsTileColorsAlt(),
+            values = selectedLibraryTabIndices,
+            items = configurableLibraryTabs.map { stringResource(it.labelResId) },
+            fallbackDisplay = stringResource(R.string.settings_interface_library_tabs_none),
+            onItemSelected = { index ->
+                val selectedTab = configurableLibraryTabs[index]
+                val selectedTabs = libraryTabs.toMutableSet()
+                if (!selectedTabs.add(selectedTab)) selectedTabs.remove(selectedTab)
+                libraryTabs = LibraryTab.entries.filter {
+                    it !in LibraryTab.configurableEntries || it in selectedTabs
+                }
+                PrefManager.libraryTabs = libraryTabs
+                PluviaApp.events.emit(AndroidEvent.LibraryTabsChanged(libraryTabs))
+            },
+            title = { Text(text = stringResource(R.string.settings_interface_library_tabs_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_interface_library_tabs_subtitle)) },
+        )
+
+        if (!BuildConfig.MODERN_ANDROID) {
+            val anyFrontendSyncConfigured by FrontendSyncManager.anyConfigured.collectAsState()
+            SettingsMenuLink(
+                colors = settingsTileColorsAlt(),
+                title = { Text(text = stringResource(R.string.settings_interface_frontend_sync_title)) },
+                subtitle = { Text(text = stringResource(R.string.settings_interface_frontend_sync_subtitle)) },
+                action = if (anyFrontendSyncConfigured) {
+                    { FrontendSyncResyncButton() }
+                } else null,
+                onClick = { showFrontendSyncDialog = true },
+            )
+        }
 
         // Language selection
         SettingsMenuLink(
@@ -365,6 +566,23 @@ fun SettingsGroupInterface(
                 )
             }
         }
+    }
+
+    // Custom Game Settings
+    SettingsGroup(
+        modifier = Modifier.background(Color.Transparent),
+        title = { Text(text = stringResource(R.string.settings_interface_custom_games)) },
+    ) {
+        var importCustomGameAsSteamGame by rememberSaveable { mutableStateOf(PrefManager.importCustomGameAsSteamGame) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_interface_custom_game_import_as_steam)) },
+            state = importCustomGameAsSteamGame,
+            onCheckedChange = {
+                importCustomGameAsSteamGame = it
+                PrefManager.importCustomGameAsSteamGame = it
+            },
+        )
     }
 
     // Platform integrations now live in the System Menu. The detailed
@@ -446,18 +664,24 @@ fun SettingsGroupInterface(
         val ctx = LocalContext.current
         val sm = ctx.getSystemService(StorageManager::class.java)
 
-        // All writable volumes: primary first, then every SD / USB
-        val dirs = remember {
-            ctx.getExternalFilesDirs(null)
-                .filterNotNull()
-                .filter { Environment.getExternalStorageState(it) == Environment.MEDIA_MOUNTED }
-                .filter { sm.getStorageVolume(it)?.isPrimary != true }
+        // All writable install target volumes (SD / USB / adopted primary storage).
+        // getExternalFilesDirs misses USB OTG on most devices, so StorageUtils also
+        // enumerates StorageManager.storageVolumes and synthesizes the per-app files dir.
+        // Runs off the composition thread because synthesizing the USB candidate
+        // may need mkdirs() on first plug-in.
+        val externalStorageFallbackLabel = stringResource(R.string.storage_external)
+        val dirs by produceState(initialValue = emptyList<File>(), ctx) {
+            value = withContext(Dispatchers.IO) {
+                StorageUtils.getAllExternalFilesDirs(ctx)
+                    .filter { Environment.getExternalStorageState(it) == Environment.MEDIA_MOUNTED }
+                    .filter { StorageUtils.isExternalInstallTarget(sm, it) }
+            }
         }
 
         // Labels the user sees
         val labels = remember(dirs) {
             dirs.map { dir ->
-                sm.getStorageVolume(dir)?.getDescription(ctx) ?: dir.name
+                sm?.getStorageVolume(dir)?.getDescription(ctx) ?: externalStorageFallbackLabel
             }
         }
         var useExternalStorage by rememberSaveable { mutableStateOf(PrefManager.useExternalStorage) }
@@ -476,16 +700,18 @@ fun SettingsGroupInterface(
                 useExternalStorage = it
                 PrefManager.useExternalStorage = it
                 if (it && dirs.isNotEmpty()) {
-                    PrefManager.externalStoragePath = dirs[0].absolutePath
+                    PrefManager.externalStoragePath = StorageUtils.preferredInstallRoot(dirs[0])
                 }
             },
         )
         if (useExternalStorage) {
             // Currently selected item
-            var selectedIndex by rememberSaveable {
+            var selectedIndex by rememberSaveable(dirs) {
                 mutableStateOf(
-                    dirs.indexOfFirst { it.absolutePath == PrefManager.externalStoragePath }
-                        .takeIf { it >= 0 } ?: 0,
+                    dirs.indexOfFirst { dir ->
+                        dir.absolutePath == PrefManager.externalStoragePath ||
+                            StorageUtils.publicInstallRoot(dir)?.absolutePath == PrefManager.externalStoragePath
+                    }.takeIf { it >= 0 } ?: 0,
                 )
             }
             SettingsListDropdown(
@@ -494,7 +720,7 @@ fun SettingsGroupInterface(
                 value = selectedIndex,
                 onItemSelected = { idx ->
                     selectedIndex = idx
-                    PrefManager.externalStoragePath = dirs[idx].absolutePath
+                    PrefManager.externalStoragePath = StorageUtils.preferredInstallRoot(dirs[idx])
                 },
                 colors = settingsTileColorsAlt(),
             )
@@ -648,6 +874,10 @@ fun SettingsGroupInterface(
         message = stringResource(R.string.settings_language_changing),
     )
 
+    if (showFrontendSyncDialog) {
+        FrontendSyncDialog(onDismiss = { showFrontendSyncDialog = false })
+    }
+
     // GOG/Epic/Amazon login and logout flows (including loading dialogs and
     // confirmations) are now owned by the System Menu and shared helpers.
 
@@ -713,4 +943,3 @@ private fun Preview_SettingsScreen() {
         )
     }
 }
-

@@ -47,12 +47,12 @@ import app.gamenative.ui.util.loadScreenEffectsConfig
 import app.gamenative.ui.util.persistScreenEffectsConfig
 import com.alorma.compose.settings.ui.SettingsSwitch
 import com.winlator.container.Container
-import com.winlator.renderer.GLRenderer
+import com.winlator.renderer.VulkanRenderer
 import kotlinx.coroutines.delay
 
 @Composable
 fun ScreenEffectDialog(
-    renderer: GLRenderer,
+    renderer: VulkanRenderer,
     onDismiss: () -> Unit,
     container: Container? = null,
 ) {

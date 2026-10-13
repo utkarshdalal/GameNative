@@ -36,9 +36,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
 import app.gamenative.PrefManager
 import app.gamenative.data.GameCompatibilityStatus
+import app.gamenative.data.CommunityCompatibilitySummary
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.ui.enums.PaneType
+import app.gamenative.ui.data.GameCardStats
 import app.gamenative.ui.icons.Amazon
 import app.gamenative.ui.icons.Steam
 import app.gamenative.ui.internal.fakeAppInfo
@@ -69,8 +71,11 @@ internal fun AppItem(
     isRefreshing: Boolean = false,
     imageRefreshCounter: Long = 0L,
     compatibilityStatus: GameCompatibilityStatus? = null,
+    communityCompatibility: CommunityCompatibilitySummary? = null,
+    gameStats: GameCardStats? = null,
     showFocusGlow: Boolean = true,
     enableFocusScale: Boolean = true,
+    animateStats: Boolean = true,
 ) {
     val context = LocalContext.current
     var hideText by remember { mutableStateOf(true) }
@@ -120,6 +125,8 @@ internal fun AppItem(
             onFocusChanged = { isFocused = it },
             isRefreshing = isRefreshing,
             compatibilityStatus = compatibilityStatus,
+            communityCompatibility = communityCompatibility,
+            gameStats = gameStats,
             context = context,
         )
 
@@ -139,9 +146,16 @@ internal fun AppItem(
                 hideText = false
                 alpha = 0.1f
             },
+            onImageLoaded = {
+                hideText = true
+                alpha = 1f
+            },
             compatibilityStatus = compatibilityStatus,
+            communityCompatibility = communityCompatibility,
+            gameStats = gameStats,
             showFocusGlow = showFocusGlow,
             context = context,
+            animateStats = animateStats,
         )
     }
 }

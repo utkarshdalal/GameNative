@@ -2,10 +2,13 @@ package app.gamenative
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.graphics.Color.TRANSPARENT
+import android.hardware.input.InputManager
 import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
@@ -30,15 +33,27 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import coil.intercept.Interceptor
 import coil.request.CachePolicy
+import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import app.gamenative.events.AndroidEvent
+import app.gamenative.mods.NexusAuthManager
+import app.gamenative.mods.NexusDownloadLinkInbox
+import app.gamenative.mods.NexusIntegrationStatus
+import app.gamenative.mods.NexusNxmSubmission
+import app.gamenative.mods.NexusPendingDownloadStore
+import app.gamenative.ui.screen.library.appscreen.BaseAppScreen
 import app.gamenative.service.SteamService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.ui.PluviaMain
+import app.gamenative.ui.trackAiDebug
 import app.gamenative.ui.enums.Orientation
+import app.gamenative.ui.screen.support.SupportSession
+import app.gamenative.ui.util.LocalSnackbarHostController
+import app.gamenative.ui.util.SnackbarHostController
 import app.gamenative.utils.AnimatedPngDecoder
 import app.gamenative.data.GameSource
+import app.gamenative.powercontrol.PowerManager
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.IconDecoder
 import app.gamenative.utils.IntentLaunchManager
@@ -49,7 +64,12 @@ import com.skydoves.landscapist.coil.LocalCoilImageLoader
 import com.winlator.core.AppUtils
 import com.winlator.inputcontrols.ControllerManager
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import java.util.EnumSet
 import kotlin.math.abs
 import okio.Path.Companion.toOkioPath
@@ -57,12 +77,27 @@ import timber.log.Timber
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-
     companion object {
+        private val nxmIntentMutex = Mutex()
+
         private var totalIndex = 0
 
         private var currentOrientationChangeValue: Int = 0
         private var availableOrientations: EnumSet<Orientation> = EnumSet.of(Orientation.UNSPECIFIED)
+
+        fun isHeadset(context: Context): Boolean =
+            context.packageManager.hasSystemFeature("android.hardware.vr.headtracking") ||
+                Build.MANUFACTURER.equals("Oculus", true) ||
+                Build.MANUFACTURER.equals("Meta", true) ||
+                Build.MANUFACTURER.equals("Pico", true)
+
+        fun isMetaQuest(): Boolean =
+            Build.MANUFACTURER.equals("Oculus", true) ||
+                Build.MANUFACTURER.equals("Meta", true) ||
+                Build.BRAND.equals("oculus", true)
+
+        const val ACTION_OPEN_SUPPORT = "app.gamenative.OPEN_SUPPORT_CONVERSATION"
+        const val EXTRA_SUPPORT_CONVERSATION = "support_conversation_id"
 
         // Store pending launch request to be processed after UI is ready
         @Volatile
@@ -121,11 +156,34 @@ class MainActivity : ComponentActivity() {
         finishAndRemoveTask()
     }
 
+    private var controllerInputManager: InputManager? = null
+    private val controllerDeviceListener = object : InputManager.InputDeviceListener {
+        override fun onInputDeviceAdded(deviceId: Int) {
+            ControllerManager.getInstance().onDeviceConnected(deviceId)
+        }
+
+        override fun onInputDeviceRemoved(deviceId: Int) {
+            ControllerManager.getInstance().onDeviceDisconnected(deviceId)
+        }
+
+        override fun onInputDeviceChanged(deviceId: Int) {
+            ControllerManager.getInstance().onDeviceConnected(deviceId)
+        }
+    }
+
     private var index = totalIndex++
 
     // Add a property to keep a reference to the orientation sensor listener
     private var orientationSensorListener: OrientationEventListener? = null
     private var desiredSystemUiVisible: Boolean = false
+
+    // Cover-art image loader; held so we can drop its GPU-backed bitmap cache when
+    // the library is backgrounded (e.g. while a game is running) to free memory.
+    private var appImageLoader: ImageLoader? = null
+
+    private fun releaseImageCaches() {
+        appImageLoader?.memoryCache?.clear()
+    }
 
     override fun attachBaseContext(newBase: Context) {
         // Initialize PrefManager to read language setting
@@ -145,6 +203,20 @@ class MainActivity : ComponentActivity() {
         )
         super.onCreate(savedInstanceState)
 
+        app.gamenative.launch.installLaunchReadiness(applicationContext, lifecycleScope)
+
+        if (isHeadset(this)) {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            android.view.InputDevice.getDeviceIds().forEach { id ->
+                val d = android.view.InputDevice.getDevice(id) ?: return@forEach
+                val axes = d.motionRanges.joinToString(",") { mr -> "axis=${mr.axis}(min=${mr.min},max=${mr.max})" }
+                Timber.tag("HeadsetInput").i(
+                    "id=$id name='${d.name}' sources=0x%08x vendor=0x%04x product=0x%04x isGamepad=%b axes=[$axes]",
+                    d.sources, d.vendorId, d.productId, d.sources and android.view.InputDevice.SOURCE_GAMEPAD == android.view.InputDevice.SOURCE_GAMEPAD
+                )
+            }
+        }
+
         // stale keepAlive from a prior crash/swipe — no container is actually running
         if (SteamService.keepAlive && PluviaApp.xEnvironment == null) {
             Timber.w("onCreate: clearing stale keepAlive — no container running")
@@ -155,7 +227,9 @@ class MainActivity : ComponentActivity() {
         applyImmersiveMode()
 
         // Initialize the controller management system
-        ControllerManager.getInstance().init(getApplicationContext())
+        ControllerManager.getInstance().init(applicationContext)
+        controllerInputManager = getSystemService(Context.INPUT_SERVICE) as InputManager
+        controllerInputManager?.registerInputDeviceListener(controllerDeviceListener, null)
 
         ContainerUtils.setContainerDefaults(applicationContext)
 
@@ -179,7 +253,7 @@ class MainActivity : ComponentActivity() {
             }
 
             LaunchedEffect(Unit) {
-                if (!hasNotificationPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (!BuildConfig.MODERN_XR && !hasNotificationPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
             }
@@ -219,9 +293,14 @@ class MainActivity : ComponentActivity() {
                         add(AnimatedPngDecoder.Factory())
                     }
                     .build()
+                    .also { appImageLoader = it }
             }
 
-            CompositionLocalProvider(LocalCoilImageLoader provides imageLoader) {
+            val snackbarController = remember { SnackbarHostController() }
+            CompositionLocalProvider(
+                LocalCoilImageLoader provides imageLoader,
+                LocalSnackbarHostController provides snackbarController,
+            ) {
                 PluviaMain()
             }
         }
@@ -236,6 +315,45 @@ class MainActivity : ComponentActivity() {
         // recents re-delivers the same intent with this flag — don't re-launch
         if (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) {
             Timber.d("[IntentLaunch]: Ignoring intent re-delivered from recents")
+            return
+        }
+        if (intent.action == Intent.ACTION_VIEW &&
+            intent.data?.scheme.equals("gamenative", ignoreCase = true) &&
+            intent.data?.host.equals("discord-linked", ignoreCase = true)
+        ) {
+            val token = intent.data?.getQueryParameter("token").orEmpty()
+            val state = intent.data?.getQueryParameter("state").orEmpty()
+            // Do not retain the token-bearing link as the Activity's launch intent.
+            setIntent(Intent(this, MainActivity::class.java).setAction(Intent.ACTION_MAIN))
+            val expectedNonce = PrefManager.discordOauthNonce
+            if (token.isNotEmpty() && expectedNonce.isNotEmpty() && state == expectedNonce) {
+                PrefManager.discordOauthNonce = ""
+                PrefManager.discordRelayToken = token
+                PrefManager.discordLinkedName = intent.data?.getQueryParameter("name").orEmpty()
+                PrefManager.discordMergePending = true
+                trackAiDebug("ai_debug_discord_linked")
+                SnackbarManager.show(getString(R.string.debug_report_discord_linked))
+            } else if (token.isNotEmpty()) {
+                Timber.w("[IntentLaunch]: Rejecting discord-linked token with mismatched state")
+            }
+            return
+        }
+        if (intent.action == ACTION_OPEN_SUPPORT) {
+            val conversationId = intent.getStringExtra(EXTRA_SUPPORT_CONVERSATION)
+            setIntent(Intent(this, MainActivity::class.java).setAction(Intent.ACTION_MAIN))
+            if (!conversationId.isNullOrEmpty()) SupportSession.pendingConversationId.value = conversationId
+            return
+        }
+        if (intent.action == Intent.ACTION_VIEW && intent.data?.scheme.equals("nxm", ignoreCase = true)) {
+            val rawNxmUrl = intent.dataString.orEmpty()
+            // Do not retain a signed NXM grant as the Activity's launch intent. Android can
+            // otherwise replay it after a configuration change or process recreation.
+            setIntent(Intent(this, MainActivity::class.java).setAction(Intent.ACTION_MAIN))
+            lifecycleScope.launch {
+                withContext(NonCancellable) {
+                    nxmIntentMutex.withLock { handleNxmIntent(rawNxmUrl) }
+                }
+            }
             return
         }
         Timber.d("[IntentLaunch]: handleLaunchIntent called with action=${intent.action}, isNewIntent=$isNewIntent")
@@ -271,6 +389,70 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private suspend fun handleNxmIntent(rawNxmUrl: String) {
+        if (!NexusIntegrationStatus.ONLINE_ACCESS_AVAILABLE) {
+            Timber.i("[NexusDownload]: Ignoring NXM callback while online Nexus access is disabled")
+            SnackbarManager.show(getString(R.string.nexus_integration_temporarily_unavailable))
+            return
+        }
+        if (!NexusAuthManager.hasStoredSession()) {
+            // A signed NXM grant is short lived and account-bound. Do not restore or consume
+            // it while disconnected: the user must reconnect and request a fresh grant.
+            Timber.i("[NexusDownload]: Ignoring NXM callback while the Nexus account is disconnected")
+            SnackbarManager.show(getString(R.string.nexus_oauth_sign_in_required))
+            return
+        }
+        val restoredDownloads = withContext(Dispatchers.IO) {
+            NexusPendingDownloadStore.restore(this@MainActivity)
+        }
+        restoredDownloads.forEach { NexusDownloadLinkInbox.expect(it) }
+        when (val submission = NexusDownloadLinkInbox.submitIntent(rawNxmUrl)) {
+            is NexusNxmSubmission.Expected -> {
+                BaseAppScreen.requestManageMods(submission.appId)
+                withContext(Dispatchers.IO) {
+                    NexusPendingDownloadStore.removeMatching(this@MainActivity, submission.reference)
+                }
+                Timber.i(
+                    "[NexusDownload]: Received expected NXM callback for %s/%d/%s",
+                    submission.reference.gameDomain,
+                    submission.reference.modId,
+                    submission.reference.fileId,
+                )
+                SnackbarManager.show(getString(R.string.nexus_nxm_callback_received))
+            }
+            is NexusNxmSubmission.BrowserFirst -> {
+                Timber.i(
+                    "[NexusDownload]: Routed browser-first NXM callback for %s/%d/%s",
+                    submission.reference.gameDomain,
+                    submission.reference.modId,
+                    submission.reference.fileId,
+                )
+            }
+            NexusNxmSubmission.Expired -> {
+                Timber.i("[NexusDownload]: Ignoring expired NXM callback")
+                SnackbarManager.show(getString(R.string.nexus_authorization_expired))
+            }
+            NexusNxmSubmission.NoActiveTarget -> {
+                Timber.i("[NexusDownload]: Browser-first NXM callback has no active target")
+                SnackbarManager.show(getString(R.string.nexus_nxm_no_active_target))
+            }
+            NexusNxmSubmission.AmbiguousTarget -> {
+                Timber.w("[NexusDownload]: Browser-first NXM callback has multiple active targets")
+                SnackbarManager.show(getString(R.string.nexus_nxm_ambiguous_target))
+            }
+            NexusNxmSubmission.DeliveryFailed -> {
+                Timber.w("[NexusDownload]: Could not deliver NXM callback to the active target")
+                SnackbarManager.show(getString(R.string.download_failed_try_again))
+            }
+            NexusNxmSubmission.Replayed,
+            NexusNxmSubmission.Malformed,
+            -> {
+                Timber.w("[NexusDownload]: Ignoring malformed, unsigned, or replayed NXM callback")
+                SnackbarManager.show(getString(R.string.nexus_invalid_nxm_callback))
+            }
+        }
+    }
+
     override fun onDestroy() {
         // emit before super so Compose DisposableEffects (which unregister
         // listeners during super.onDestroy's lifecycle transition) still fire
@@ -286,6 +468,9 @@ class MainActivity : ComponentActivity() {
         }
 
         super.onDestroy()
+
+        controllerInputManager?.unregisterInputDeviceListener(controllerDeviceListener)
+        controllerInputManager = null
 
         PluviaApp.events.off<AndroidEvent.SetSystemUIVisibility, Unit>(onSetSystemUi)
         PluviaApp.events.off<AndroidEvent.StartOrientator, Unit>(onStartOrientator)
@@ -332,7 +517,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        PowerManager.resume()
         PluviaApp.isActivityInForeground = true
+
+        lifecycleScope.launch { app.gamenative.launch.LaunchReadiness.refresh() }
         // Re-apply immersive mode to ensure fullscreen persists
         if (!desiredSystemUiVisible) {
             applyImmersiveMode()
@@ -348,7 +536,13 @@ class MainActivity : ComponentActivity() {
                     Timber.d("Game resume skipped due to suspend policy=never")
                 }
                 PluviaApp.isOverlayPaused -> {
-                    if (PluviaApp.isManualSuspendMode()) {
+                    if (PluviaApp.isBootingSplashShowing) {
+                        // The Resume overlay sits under the booting splash, so the user could
+                        // never press it; nothing is being played yet, so just carry on booting.
+                        PluviaApp.xEnvironment?.onResume()
+                        PluviaApp.isOverlayPaused = false
+                        Timber.d("Game resumed automatically: still booting behind the splash")
+                    } else if (PluviaApp.isManualSuspendMode()) {
                         Timber.d("Game remains suspended until user presses Resume")
                     }
                 }
@@ -378,6 +572,12 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onPause() {
+        if (PluviaApp.isImmersiveActivityResumed) {
+            Timber.d("Launcher paused behind the immersive activity; game stays in the foreground")
+            super.onPause()
+            return
+        }
+        PowerManager.pause()
         PluviaApp.isActivityInForeground = false
         if (hasReadyGameLifecycleState("pause")) {
             when {
@@ -402,12 +602,29 @@ class MainActivity : ComponentActivity() {
     }
 
     // Add cleanup when app is backgrounded
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        // TRIM_MEMORY_UI_HIDDEN fires when the app's UI goes fully hidden; the higher
+        // levels fire under system memory pressure. In all these cases free the
+        // cover-art cache so the running game has more headroom.
+        if (level >= ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
+            releaseImageCaches()
+        }
+    }
+
     override fun onStop() {
         super.onStop()
         orientationSensorListener?.disable()
         orientationSensorListener = null
         // enable auto-stop behavior if backgrounded
         SteamService.autoStopWhenIdle = true
+
+        // Library UI is no longer visible (e.g. a game is now in the foreground) —
+        // drop the cover-art bitmap cache so its GPU memory is reclaimed for the game.
+        // Not on a config change (rotation), where we want to keep it warm.
+        if (!isChangingConfigurations && hasReadyGameLifecycleState("stop")) {
+            releaseImageCaches()
+        }
 
         Timber.d(
             "onStop - Index: %d, Connected: %b, Logged-In: %b, Changing-Config: %b, Keep Alive: %b, Is Importing: %b",
@@ -470,9 +687,17 @@ class MainActivity : ComponentActivity() {
         //  Idealy, compose handles back presses automaticially in which we can override it in certain composables.
         //  Since LibraryScreen uses its own navigation system, this will need to be re-worked accordingly.
         if (!eventDispatched) {
-            if (event.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
-                if (SteamService.keepAlive){
+            if (event.keyCode == KeyEvent.KEYCODE_BACK && SteamService.keepAlive) {
+                if (event.action == KeyEvent.ACTION_DOWN) {
                     PluviaApp.events.emit(AndroidEvent.BackPressed)
+                    eventDispatched = true
+                } else if (BuildConfig.MODERN_ANDROID && event.action == KeyEvent.ACTION_UP) {
+                    // Modern only: swallow BACK UP so super.dispatchKeyEvent doesn't
+                    // forward it to OnBackPressedDispatcher, which would double-fire
+                    // XServerScreen's BackHandler and immediately dismiss the quick
+                    // menu the DOWN event just opened.
+                    // Legacy must NOT swallow UP — master relies on UP falling through
+                    // so any KeyEvent consumers (controller code, etc.) see it.
                     eventDispatched = true
                 }
             }
@@ -571,6 +796,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun setOrientationTo(orientation: Int, conformTo: EnumSet<Orientation>) {
+        if (isHeadset(this)) {
+            if (requestedOrientation != ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE) {
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            }
+            return
+        }
         // Log.d("MainActivity$index", "Setting orientation to conform")
 
         // reverse direction of orientation

@@ -27,11 +27,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -128,6 +131,32 @@ private fun SettingsScreenContent(
                     iconTint = PluviaTheme.colors.accentCyan,
                 ) {
                     SettingsGroupEmulation()
+                }
+
+                SettingsSection(
+                    title = stringResource(R.string.gamenative_account_title),
+                    icon = Icons.Default.AccountCircle,
+                    iconTint = PluviaTheme.colors.accentPurple,
+                ) {
+                    SettingsGroupGameNativeAccount()
+                }
+
+                // Game launcher accounts section
+                SettingsSection(
+                    title = stringResource(R.string.settings_accounts_title),
+                    icon = Icons.Default.ManageAccounts,
+                    iconTint = PluviaTheme.colors.accentCyan,
+                ) {
+                    SettingsGroupAccounts()
+                }
+
+                // Performance section
+                SettingsSection(
+                    title = stringResource(R.string.settings_performance_title),
+                    icon = Icons.Default.Speed,
+                    iconTint = PluviaTheme.colors.accentWarning,
+                ) {
+                    SettingsGroupPerformance()
                 }
 
                 // Interface section

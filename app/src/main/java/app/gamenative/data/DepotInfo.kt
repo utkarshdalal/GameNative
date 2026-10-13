@@ -1,8 +1,10 @@
 package app.gamenative.data
 
 import app.gamenative.db.serializers.OsEnumSetSerializer
+import app.gamenative.db.serializers.SteamRealmSerializer
 import app.gamenative.enums.OS
 import app.gamenative.enums.OSArch
+import app.gamenative.enums.SteamRealm
 import app.gamenative.service.SteamService
 import java.util.EnumSet
 import kotlinx.serialization.Serializable
@@ -20,7 +22,8 @@ data class DepotInfo(
     val manifests: Map<String, ManifestInfo>,
     val encryptedManifests: Map<String, ManifestInfo>,
     val language: String = "",
-    val realm: String = "",
+    @Serializable(with = SteamRealmSerializer::class)
+    val realm: SteamRealm = SteamRealm.Unknown,
     val systemDefined: Boolean = false,
     val steamDeck: Boolean = false,
 ) {
