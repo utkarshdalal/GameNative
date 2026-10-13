@@ -344,6 +344,9 @@ class SteamService : Service(), IChallengeUrlChanged {
     /** steamId64 → display name for family members when known */
     private val familyMemberNames: ConcurrentHashMap<Long, String> = ConcurrentHashMap()
 
+    // EParentalFeature.Library: when this bit is set in enabled_features the whole library is allowed.
+    private val PARENTAL_FEATURE_LIBRARY = 11
+
     sealed class ParentalState {
         data object Loading : ParentalState()
         data object Unrestricted : ParentalState()
@@ -4763,7 +4766,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                         steamid = sessionSteamId.convertToUInt64()
                     }.build()
 
-                    _steamParental!!.getParentalSettings(request).await().let {
+                    val parental = _steamParental ?: return@launch
+                    parental.getParentalSettings(request).await().let {
                         // verify session is still the same after await
                         if (steamClient?.steamID != sessionSteamId) return@launch
 
@@ -4773,8 +4777,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                         }
 
                         val settings = it.body.settings
-                        if (!settings.isEnabled) {
-                            Timber.i("Parental controls not enabled.")
+                        val libraryUnlocked = (settings.enabledFeatures and (1 shl PARENTAL_FEATURE_LIBRARY)) != 0
+                        if (!settings.isEnabled || libraryUnlocked) {
+                            Timber.i("Parental controls not restricting the library (enabled=${settings.isEnabled}, features=${settings.enabledFeatures}).")
                             parentalState = ParentalState.Unrestricted
                             PrefManager.parentalAllowedAppIds = null
                         } else {

@@ -1342,23 +1342,22 @@ object PrefManager {
             setPref(CUSTOM_GAMES_COUNT, value)
         }
 
-    // cached parental control allowed app IDs, comma-separated ("[]" = empty set, "" = null/unset)
+    // cached parental control allowed app IDs for the last logged-in account.
+    // Stored as "<steamid64>|<comma-separated ids>" so a different account never inherits them.
     private val PARENTAL_ALLOWED_APP_IDS = stringPreferencesKey("parental_allowed_app_ids")
     var parentalAllowedAppIds: Set<Int>?
         get() {
             val raw = getPref(PARENTAL_ALLOWED_APP_IDS, "")
-            return when {
-                raw.isEmpty() -> null
-                raw == "[]" -> emptySet()
-                else -> raw.split(',').mapNotNull { it.toIntOrNull() }.toSet()
-            }
+            val sep = raw.indexOf('|')
+            if (sep < 0) return null
+            if (raw.substring(0, sep).toLongOrNull() != steamUserSteamId64) return null
+            return raw.substring(sep + 1).split(',').mapNotNull { it.toIntOrNull() }.toSet()
         }
         set(value) {
-            setPref(PARENTAL_ALLOWED_APP_IDS, when {
-                value == null -> ""
-                value.isEmpty() -> "[]"
-                else -> value.joinToString(",")
-            })
+            setPref(
+                PARENTAL_ALLOWED_APP_IDS,
+                if (value == null) "" else "$steamUserSteamId64|${value.joinToString(",")}",
+            )
         }
 
     private val STEAM_GAMES_COUNT = intPreferencesKey("steam_games_count")
