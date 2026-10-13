@@ -1828,6 +1828,7 @@ fun XServerScreen(
     }
     val onGuestProgramTerminated: (AndroidEvent.GuestProgramTerminated) -> Unit = {
         Timber.i("onGuestProgramTerminated")
+        stopSteamHostStatusWatch()
         exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack, "guest_terminated")
     }
     val onForceCloseApp: (SteamEvent.ForceCloseApp) -> Unit = {
@@ -4199,6 +4200,45 @@ private fun runSteamHostCegPass(
     }
 }
 
+private val steamHostStatusWatchActive = AtomicBoolean(false)
+
+private fun steamHostStatusFile(imageFs: ImageFs) =
+    File(imageFs.wineprefix, "drive_c/Program Files (x86)/Steam/steamhost_status")
+
+private fun startSteamHostStatusWatch(context: Context, imageFs: ImageFs) {
+    val file = steamHostStatusFile(imageFs)
+    file.delete()
+    if (!steamHostStatusWatchActive.compareAndSet(false, true)) return
+    thread(name = "steamhost-status") {
+        val startedAt = System.currentTimeMillis()
+        var last = ""
+        try {
+            while (steamHostStatusWatchActive.get() && System.currentTimeMillis() - startedAt < 10 * 60_000L) {
+                val status = runCatching { file.readText().trim() }.getOrDefault("")
+                if (status != last) {
+                    last = status
+                    val text = when (status.substringBefore(' ')) {
+                        "logon" -> context.getString(R.string.steam_logging_in)
+                        "connecting" -> context.getString(R.string.steam_connecting)
+                        "retry" -> context.getString(R.string.steam_retrying_login)
+                        "launching" -> "Launching game..."
+                        else -> null
+                    }
+                    if (text != null) PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(text))
+                    if (status.startsWith("launched") || status.startsWith("failed")) break
+                }
+                Thread.sleep(500)
+            }
+        } finally {
+            steamHostStatusWatchActive.set(false)
+        }
+    }
+}
+
+private fun stopSteamHostStatusWatch() {
+    steamHostStatusWatchActive.set(false)
+}
+
 private fun cegSplashText(progressFile: File, startedAt: Long): String {
     val elapsed = (System.currentTimeMillis() - startedAt) / 1000
     val fields = runCatching { progressFile.readText().trim().split(' ') }.getOrNull()
@@ -4442,6 +4482,7 @@ private fun setupXEnvironment(
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing prerequisites..."))
             } else if (container.isLaunchHeadlessSteam && gameSource == GameSource.STEAM && !bootToContainer) {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(context.getString(R.string.steam_starting)))
+                startSteamHostStatusWatch(context, imageFs)
             } else {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Launching game..."))
             }
@@ -4568,6 +4609,7 @@ private fun setupXEnvironment(
             val nextRemaining = remaining.drop(1)
             if (nextRemaining.isEmpty() && container.isLaunchHeadlessSteam && gameSource == GameSource.STEAM && !bootToContainer) {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(context.getString(R.string.steam_starting)))
+                startSteamHostStatusWatch(context, ImageFs.find(context))
             } else if (nextRemaining.isEmpty()) {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Launching game..."))
             } else {
