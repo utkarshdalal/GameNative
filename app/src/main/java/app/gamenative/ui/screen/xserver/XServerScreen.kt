@@ -6208,8 +6208,13 @@ private suspend fun extractWinComponentFiles(
                 }
             }
             WineUtils.overrideWinComponentDlls(context, container, identifier, useNative)
-            WineUtils.setWinComponentRegistryKeys(systemRegFile, identifier, useNative)
+            val builtinWmDecoderDlls = File(imageFs.getWinePath(), "lib/wine/i386-windows/wmvdecod.dll").exists()
+            WineUtils.setWinComponentRegistryKeys(systemRegFile, identifier, useNative, builtinWmDecoderDlls)
         }
+
+        // containers made before the Wine 10 CLSID fix still carry the winegstreamer.dll value
+        val wmdecoderNative = KeyValueSet(wincomponents).firstOrNull { it[0] == "wmdecoder" }?.get(1) == "1"
+        WineUtils.setWinComponentRegistryKeys(systemRegFile, "wmdecoder", wmdecoderNative, File(imageFs.getWinePath(), "lib/wine/i386-windows/wmvdecod.dll").exists())
 
         if (!dlls.isEmpty()) restoreOriginalDllFiles(context, container, containerManager, imageFs, *dlls.toTypedArray())
     } catch (e: JSONException) {
