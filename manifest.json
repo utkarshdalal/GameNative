@@ -1,8 +1,14 @@
 {
   "version": 1,
-  "updatedAt": "2026-10-06",
+  "updatedAt": "2026-10-13",
   "items": {
     "driver": [
+      {
+        "id": "Turnip Gen8 V37",
+        "name": "Turnip_Gen8_V37",
+        "url": "https://downloads.gamenative.app/drivers/Turnip_Gen8_V37.zip",
+        "variant": "bionic"
+      },
       {
         "id": "Turnip Gen8 V34",
         "name": "Turnip_Gen8_V34",
@@ -729,6 +735,12 @@
         "id": "2.4.1",
         "name": "DXVK 2.4.1",
         "url": "https://downloads.gamenative.app/dxwrapper/dxvk-2.4.1.tzst",
+        "variant": "bionic"
+      },
+      {
+        "id": "2.4.1-wowfix-1",
+        "name": "DXVK 2.4.1 wowfix (ARM64 only)",
+        "url": "https://downloads.gamenative.app/dxwrapper/dxvk-2.4.1-wowfix.wcp",
         "variant": "bionic"
       },
       {
