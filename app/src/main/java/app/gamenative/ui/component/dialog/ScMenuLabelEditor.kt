@@ -90,7 +90,7 @@ fun ScMenuLabelEditorDialog(
                 }
             }
             ScNavDialogColumn(nav, onBack = onDismiss, modifier = Modifier.padding(16.dp)) {
-                Text(if (scoped) "Rename slots" else "Menu labels", style = MaterialTheme.typography.titleLarge)
+                ScBackTitle(if (scoped) "Rename slots" else "Menu labels", onBack = onDismiss)
                 Text(
                     "Rename radial / touch-menu slots shown on the overlay. Leave blank to keep the default.",
                     style = MaterialTheme.typography.bodySmall,

@@ -59,23 +59,51 @@ fun ScConfigManagerDialog(storeKey: String, onChanged: () -> Unit, onDismiss: ()
                 runCatching { context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() } }.getOrNull()
             }
             if (text.isNullOrBlank()) { SnackbarManager.show("Could not read the selected file"); return@launch }
+            // The config is named after the file you picked ("Raid healer.gnsc.json" → "Raid healer"), like a document.
+            val fileName = withContext(Dispatchers.IO) {
+                runCatching {
+                    context.contentResolver.query(uri, null, null, null, null)?.use { c ->
+                        val i = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                        if (i >= 0 && c.moveToFirst()) {
+                            c.getString(i)?.replace(Regex("""(\.gnsc)?\.json$|\.vdf$""", RegexOption.IGNORE_CASE), "")
+                        } else null
+                    }
+                }.getOrNull()
+            }?.trim()?.takeIf { it.isNotBlank() }
+            // A GameNative export (from "Export active config") restores as-is, edits included.
+            withContext(Dispatchers.IO) { ScConfigStore.parseExport(text) }?.let { export ->
+                // An unrenamed file only carries the sanitized name ("Raid_ healer"); keep the exact stored one then.
+                val name = fileName?.takeIf { it != exportFileStem(export.name) } ?: export.name
+                val newId = withContext(Dispatchers.IO) { ScConfigStore.importExport(context, storeKey, export, name) }
+                version++; onChanged()
+                SnackbarManager.show(if (newId != null) "Imported $name — now active" else "Could not import the config")
+                return@launch
+            }
             val parsed = withContext(Dispatchers.IO) { ScConfigStore.validate(text) }
-            if (parsed == null) { SnackbarManager.show("Not a valid Steam Controller .vdf config"); return@launch }
-            // Name the config from the vdf's top-level `title` (e.g. "testGyroect123"), falling back to the file name,
-            // then a generic label — instead of the old "Imported (.vdf)" (which doubled the "(.vdf)" list suffix).
+            if (parsed == null) { SnackbarManager.show("Not a Steam .vdf or exported GameNative config"); return@launch }
+            // Fallback when the file name is unavailable: the vdf's top-level `title`, then a generic label.
             val title = Regex("\"title\"\\s+\"([^\"#][^\"]*)\"").find(text)?.groupValues?.getOrNull(1)?.trim()
-            val fileName = runCatching {
-                context.contentResolver.query(uri, null, null, null, null)?.use { c ->
-                    val i = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-                    if (i >= 0 && c.moveToFirst()) c.getString(i)?.substringBeforeLast('.') else null
-                }
-            }.getOrNull()
-            val name = title?.takeIf { it.isNotBlank() } ?: fileName?.takeIf { it.isNotBlank() } ?: "Imported"
+            val name = fileName ?: title?.takeIf { it.isNotBlank() } ?: "Imported"
             val newId = withContext(Dispatchers.IO) { ScConfigStore.importVdfConfig(context, storeKey, text, name) }
             version++; onChanged()
             SnackbarManager.show(
                 if (newId != null) "Imported ${parsed.sets.size} action set(s) — now active" else "Could not save the imported config",
             )
+        }
+    }
+
+    // Export: the config id waiting for the user to pick a destination file.
+    var exportingId by remember { mutableStateOf<String?>(null) }
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri: Uri? ->
+        val id = exportingId
+        exportingId = null
+        if (uri == null || id == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                val text = ScConfigStore.exportConfig(context, storeKey, id) ?: return@withContext false
+                runCatching { context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(text) } != null }.getOrDefault(false)
+            }
+            SnackbarManager.show(if (ok) "Exported" else "Could not export the config")
         }
     }
 
@@ -87,7 +115,7 @@ fun ScConfigManagerDialog(storeKey: String, onChanged: () -> Unit, onDismiss: ()
         ) {
             val nav = remember { ScNavState() }
             ScNavDialogColumn(nav, onBack = onDismiss, modifier = Modifier.padding(16.dp)) {
-                Text("Manage configs", style = MaterialTheme.typography.titleLarge)
+                ScBackTitle("Manage configs", onBack = onDismiss)
                 Text(
                     if (activeEntry == null) "No saved config — using the built-in default mapping."
                     else "${configs.size} saved · active: ${activeEntry.name}",
@@ -109,10 +137,14 @@ fun ScConfigManagerDialog(storeKey: String, onChanged: () -> Unit, onDismiss: ()
                             version++; onChanged(); SnackbarManager.show("Deleted ${activeEntry.name}")
                         }
                     }
+                    ScNavRow(nav, 4, "Export active config") {
+                        exportingId = activeEntry.id
+                        exportLauncher.launch(exportFileStem(activeEntry.name) + ".gnsc.json")
+                    }
                 }
-                ScNavRow(nav, 4, "Import config (.vdf)") { importLauncher.launch(arrayOf("*/*")) }
+                ScNavRow(nav, 5, "Import config (Steam .vdf or export)") { importLauncher.launch(arrayOf("*/*")) }
                 if (hasLabels) {
-                    ScNavRow(nav, 5, "Remove custom menu labels") {
+                    ScNavRow(nav, 6, "Remove custom menu labels") {
                         if (ScConfigStore.removeLabels(context, storeKey)) {
                             version++; onChanged(); SnackbarManager.show("Removed custom menu labels")
                         }
@@ -121,7 +153,7 @@ fun ScConfigManagerDialog(storeKey: String, onChanged: () -> Unit, onDismiss: ()
 
                 HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
                 Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End) {
-                    ScNavItem(nav, line = 6, onActivate = onDismiss) { ScActionChip("Done", onClick = onDismiss, filled = true) }
+                    ScNavItem(nav, line = 7, onActivate = onDismiss) { ScActionChip("Done", onClick = onDismiss, filled = true) }
                 }
             }
         }
@@ -166,3 +198,6 @@ private enum class NameActionKind { DUPLICATE, RENAME }
 
 /** A pending duplicate/rename name prompt for config [configId]. */
 private data class NameAction(val kind: NameActionKind, val configId: String, val initial: String)
+
+/** File-name-safe form of a config name, used for the export's suggested file name. */
+private fun exportFileStem(name: String): String = name.replace(Regex("[^A-Za-z0-9 ._-]"), "_")

@@ -2,6 +2,8 @@ package app.gamenative.ui.component.dialog
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
@@ -49,6 +51,46 @@ fun ScButtonGlyph(buttonBit: Int, modifier: Modifier = Modifier, size: Dp = 24.d
 @Composable
 fun ScDpadGlyph(modifier: Modifier = Modifier, size: Dp = 24.dp) {
     Image(painter = painterResource(InputIcons.Xbox.dpad), contentDescription = null, modifier = modifier.size(size))
+}
+
+/** A compact "glyph + label" pair for a dialog's button-legend footer. */
+@Composable
+fun ScLegendHint(buttonBit: Int, text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+        ScButtonGlyph(buttonBit, size = 18.dp)
+        Text(text, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** Like [ScLegendHint] but for glyphs that aren't a single button bit (a stick, a trigger pair): [icons] are
+ *  [InputIcons] drawables shown side by side before [text]. */
+@Composable
+fun ScIconLegendHint(icons: List<Int>, text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+        icons.forEach { Image(painter = painterResource(it), contentDescription = null, modifier = Modifier.size(18.dp)) }
+        Text(text, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/**
+ * The button legend under an SC dialog: d-pad Move, A Select, B Back, plus LB/RB, Y and Start only when the dialog
+ * handles them, so it can never advertise a button that does nothing there. Wraps on narrow screens.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun ScNavLegend(bumpers: Boolean, help: Boolean, close: Boolean, modifier: Modifier = Modifier) {
+    FlowRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        ScIconLegendHint(listOf(InputIcons.Xbox.dpad), "Move")
+        ScLegendHint(TritonProtocol.BTN_A, "Select")
+        ScLegendHint(TritonProtocol.BTN_B, "Back")
+        if (bumpers) ScIconLegendHint(listOf(InputIcons.Xbox.lb, InputIcons.Xbox.rb), "Switch")
+        if (help) ScLegendHint(TritonProtocol.BTN_Y, "Help")
+        if (close) ScLegendHint(TritonProtocol.BTN_VIEW, "Close")
+    }
 }
 
 /** One "glyph — description" row for the menu-nav help list, rendered from a fixed [ScMenuNav.Control]. */

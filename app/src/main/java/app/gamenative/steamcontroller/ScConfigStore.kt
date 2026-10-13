@@ -15,6 +15,22 @@ enum class ScConfigKind { VDF, AUTHORED }
 @Serializable
 data class ScConfigEntry(val id: String, val name: String, val kind: ScConfigKind)
 
+/**
+ * A config as exported to a file: the registry entry's [name]/[kind] plus its payload files verbatim, so an export
+ * round-trips losslessly between games and devices. [payload] is the raw `.vdf` text (VDF) or the `.sets.json` text
+ * (AUTHORED); [overlay] is a VDF config's `.overlay.json` edit layer, if it has one.
+ */
+@Serializable
+data class ScConfigExport(
+    /** Required (no default) so a JSON object without the marker is never taken for an export. */
+    val format: String,
+    val version: Int = 1,
+    val name: String,
+    val kind: ScConfigKind,
+    val payload: String,
+    val overlay: String? = null,
+)
+
 /** A game's saved-config registry: the ordered [configs] list + which one is [activeId] (loaded on boot). */
 @Serializable
 data class ScConfigRegistry(val activeId: String = "", val configs: List<ScConfigEntry> = emptyList()) {
@@ -45,6 +61,8 @@ object ScConfigStore {
 
     /** Key for the shared config applied to any game without its own registry. */
     const val DEFAULT_KEY = "_default"
+    /** Marker in an exported config file, so import can tell it from a Steam `.vdf`. */
+    const val EXPORT_FORMAT = "gamenative-steam-controller-config"
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
@@ -194,6 +212,7 @@ object ScConfigStore {
     fun importVdfConfig(context: Context, key: String, text: String, name: String = "Imported"): String? {
         val reg = registry(context, key)
         val newId = reg.nextId()
+        overlayPayload(context, key, newId).delete()  // a stale overlay from a failed import must not apply to this vdf
         if (!runCatching { vdfPayload(context, key, newId).writeText(text); true }.getOrDefault(false)) {
             Log.w(TAG, "importVdfConfig($key) write failed"); return null
         }
@@ -202,6 +221,65 @@ object ScConfigStore {
             activeId = newId,
         )
         return if (writeRegistry(context, key, updated)) newId else null
+    }
+
+    /** Serialize config [id] of [key] as an [ScConfigExport] JSON string, or null if it doesn't exist / can't be read. */
+    fun exportConfig(context: Context, key: String, id: String): String? {
+        val entry = registry(context, key).configs.firstOrNull { it.id == id } ?: return null
+        val export = runCatching {
+            when (entry.kind) {
+                ScConfigKind.VDF -> ScConfigExport(
+                    format = EXPORT_FORMAT, name = entry.name, kind = entry.kind,
+                    payload = vdfPayload(context, key, id).readText(),
+                    overlay = overlayPayload(context, key, id).takeIf { it.isFile }?.readText(),
+                )
+                ScConfigKind.AUTHORED -> ScConfigExport(format = EXPORT_FORMAT, name = entry.name, kind = entry.kind, payload = setsPayload(context, key, id).readText())
+            }
+        }.onFailure { Log.w(TAG, "exportConfig($key,$id) failed: ${it.message}") }.getOrNull() ?: return null
+        return json.encodeToString(ScConfigExport.serializer(), export)
+    }
+
+    /** Parse [text] as an [ScConfigExport], or null if it isn't one (e.g. it's a Steam `.vdf`). */
+    fun parseExport(text: String): ScConfigExport? {
+        // Also skip a UTF-8 BOM (Notepad adds one; it isn't whitespace).
+        val body = text.trimStart { it.isWhitespace() || it == '\uFEFF' }
+        if (!body.startsWith("{")) return null
+        return runCatching { json.decodeFromString(ScConfigExport.serializer(), body) }.getOrNull()
+            ?.takeIf { it.format == EXPORT_FORMAT }
+    }
+
+    /** Add an exported config to [key] as a new, active config. Payloads are validated first. Returns the new id. */
+    fun importExport(context: Context, key: String, export: ScConfigExport, name: String = export.name): String? {
+        val valid = when (export.kind) {
+            ScConfigKind.VDF -> validate(export.payload) != null &&
+                (export.overlay == null || runCatching { json.decodeFromString(ScEditableConfig.serializer(), export.overlay) }.isSuccess)
+            ScConfigKind.AUTHORED -> runCatching { json.decodeFromString(ScEditableConfig.serializer(), export.payload) }.isSuccess
+        }
+        if (!valid) { Log.w(TAG, "importExport($key): invalid payload"); return null }
+        val reg = registry(context, key)
+        val newId = reg.nextId()
+        // nextId() can reuse an id whose files a failed import left behind; start clean so no stale overlay applies.
+        clearPayloads(context, key, newId)
+        val ok = runCatching {
+            when (export.kind) {
+                ScConfigKind.VDF -> {
+                    vdfPayload(context, key, newId).writeText(export.payload)
+                    export.overlay?.let { overlayPayload(context, key, newId).writeText(it) }
+                }
+                ScConfigKind.AUTHORED -> setsPayload(context, key, newId).writeText(export.payload)
+            }
+            true
+        }.getOrDefault(false)
+        if (!ok) { Log.w(TAG, "importExport($key) write failed"); clearPayloads(context, key, newId); return null }
+        val label = name.trim().ifBlank { "Imported" }
+        val updated = reg.copy(configs = reg.configs + ScConfigEntry(newId, label, export.kind), activeId = newId)
+        if (writeRegistry(context, key, updated)) return newId
+        clearPayloads(context, key, newId)
+        return null
+    }
+
+    private fun clearPayloads(context: Context, key: String, id: String) {
+        vdfPayload(context, key, id).delete(); overlayPayload(context, key, id).delete(); setsPayload(context, key, id).delete()
     }
 
     // --- Authored-config IO (editor) -------------------------------------------------------------------
