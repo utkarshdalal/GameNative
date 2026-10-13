@@ -9,6 +9,10 @@ import java.io.IOException
 import java.io.OutputStreamWriter
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.ConcurrentHashMap
+import java.util.regex.Pattern
+import java.util.regex.PatternSyntaxException
+import java.util.stream.Collectors
 import java.util.stream.Stream
 import kotlin.io.path.exists
 import kotlin.io.path.isDirectory
@@ -16,6 +20,8 @@ import kotlin.io.path.name
 import timber.log.Timber
 
 object FileUtils {
+
+    private const val MAX_UFS_RELATIVE_PATH_LENGTH = 199
 
     /**
      * Calculate the total size of a directory recursively
@@ -133,79 +139,105 @@ object FileUtils {
         }
     }
 
-    /**
-     * Same as [String.indexOf], except `?` in [part] stands for any single character.
-     * Steam UFS patterns use it (e.g. FFXII_???), and it cannot appear in a file name.
-     */
-    private fun indexOfPart(fileName: String, part: String, startIndex: Int): Int {
-        if (!part.contains('?')) return fileName.indexOf(part, startIndex, ignoreCase = true)
-        for (offset in startIndex..(fileName.length - part.length)) {
-            val found = part.indices.all { i ->
-                part[i] == '?' || part[i].equals(fileName[offset + i], ignoreCase = true)
+    private val ufsPatternCache = ConcurrentHashMap<String, Pattern>()
+
+    private fun compileUfsPattern(pattern: String): Pattern {
+        val regex = StringBuilder()
+        var i = 0
+        while (i < pattern.length) {
+            when (val c = pattern[i]) {
+                '*' -> regex.append(".*")
+                '?' -> regex.append('.')
+                '[' -> {
+                    var j = i + 1
+                    if (j < pattern.length && (pattern[j] == '!' || pattern[j] == '^')) j++
+                    if (j < pattern.length && pattern[j] == ']') j++
+                    while (j < pattern.length && pattern[j] != ']') j++
+                    if (j >= pattern.length) {
+                        regex.append(Pattern.quote(c.toString()))
+                    } else {
+                        var k = i + 1
+                        regex.append('[')
+                        if (pattern[k] == '!' || pattern[k] == '^') {
+                            regex.append('^')
+                            k++
+                        }
+                        while (k < j) {
+                            appendClassChar(regex, pattern[k])
+                            if (k + 2 < j && pattern[k + 1] == '-') {
+                                regex.append('-')
+                                appendClassChar(regex, pattern[k + 2])
+                                k += 3
+                            } else {
+                                k++
+                            }
+                        }
+                        regex.append(']')
+                        i = j
+                    }
+                }
+                else -> regex.append(Pattern.quote(c.toString()))
             }
-            if (found) return offset
+            i++
         }
-        return -1
+        val flags = Pattern.CASE_INSENSITIVE or Pattern.UNICODE_CASE or Pattern.DOTALL
+        return try {
+            Pattern.compile(regex.toString(), flags)
+        } catch (e: PatternSyntaxException) {
+            Pattern.compile(Pattern.quote(pattern), flags)
+        }
     }
 
-    fun findFiles(rootPath: Path, pattern: String, includeDirectories: Boolean = false): Stream<Path> {
-        val patternParts = pattern.split("*").filter { it.isNotEmpty() }
-        Timber.i("$pattern -> $patternParts")
-        if (!Files.exists(rootPath)) return emptyList<Path>().stream()
-        return Files.list(rootPath).filter { path ->
-            if (path.isDirectory() && !includeDirectories) {
-                false
-            } else {
-                val fileName = path.name
-                Timber.i("Checking $fileName for pattern $pattern")
-                var startIndex = 0
-                !patternParts.map {
-                    val index = indexOfPart(fileName, it, startIndex)
-                    if (index >= 0) {
-                        startIndex = index + it.length
-                    }
-                    index
-                }.any { it < 0 }
-            }
-        }
+    private fun appendClassChar(regex: StringBuilder, c: Char) {
+        if (!c.isLetterOrDigit()) regex.append('\\')
+        regex.append(c)
     }
+
+    fun matchesUfsPattern(fileName: String, pattern: String): Boolean {
+        if (pattern == "*" || pattern == "*.*") return true
+        return ufsPatternCache.getOrPut(pattern) { compileUfsPattern(pattern) }.matcher(fileName).matches()
+    }
+
+    fun findFiles(rootPath: Path, pattern: String): Stream<Path> =
+        findFilesRecursive(rootPath, pattern, recursive = false)
 
     fun findFilesRecursive(
         rootPath: Path,
         pattern: String,
-        maxDepth: Int = -1,
-        includeDirectories: Boolean = false,
+        recursive: Boolean,
     ): Stream<Path> {
-        val patternParts = pattern.split("*").filter { it.isNotEmpty() }
-        Timber.i("$pattern -> $patternParts (recursive, depth=$maxDepth)")
-        if (!Files.exists(rootPath)) return emptyList<Path>().stream()
-
+        if (!Files.isDirectory(rootPath)) return Stream.empty()
         val results = mutableListOf<Path>()
 
-        fun matches(fileName: String): Boolean {
-            var startIndex = 0
-            for (part in patternParts) {
-                val index = indexOfPart(fileName, part, startIndex)
-                if (index < 0) return false
-                startIndex = index + part.length
+        fun scan(dir: Path, relativeDir: String) {
+            if (relativeDir.length > MAX_UFS_RELATIVE_PATH_LENGTH) return
+            val entries = try {
+                Files.list(dir).use { it.collect(Collectors.toList()) }
+            } catch (e: Exception) {
+                Timber.w(e, "Failed to list $dir")
+                return
             }
-            return true
+            entries.sortBy { it.name }
+            val subdirectories = mutableListOf<Path>()
+            for (entry in entries) {
+                val name = entry.name
+                if (name == "." || name == "..") continue
+                val relativePath = if (relativeDir.isEmpty()) name else "$relativeDir/$name"
+                if (Files.isDirectory(entry)) {
+                    if (recursive && !Files.isSymbolicLink(entry)) subdirectories.add(entry)
+                    continue
+                }
+                if (name.equals("steam_autocloud.vdf", ignoreCase = true)) continue
+                if (relativePath.length > MAX_UFS_RELATIVE_PATH_LENGTH) continue
+                if (matchesUfsPattern(name, pattern)) results.add(entry)
+            }
+            for (subdirectory in subdirectories) {
+                val name = subdirectory.name
+                scan(subdirectory, if (relativeDir.isEmpty()) name else "$relativeDir/$name")
+            }
         }
 
-        walkThroughPath(rootPath, maxDepth) { path ->
-            if (path.isDirectory()) {
-                if (includeDirectories && matches(path.name)) {
-                    results.add(path)
-                }
-            } else {
-                val fileName = path.name
-                Timber.i("Checking $fileName for pattern $pattern (recursive)")
-                if (matches(fileName)) {
-                    results.add(path)
-                }
-            }
-        }
-
+        scan(rootPath, "")
         return results.stream()
     }
 

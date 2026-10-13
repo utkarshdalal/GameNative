@@ -63,7 +63,7 @@ object XAudioUtils {
             val dxSetupFile = FileUtils.findFilesRecursive(
                 rootPath = appDir.toPath(),
                 pattern = "DXSETUP.exe",
-                maxDepth = 5,
+                recursive = true,
             ).findFirst().orElse(null)
 
             if (dxSetupFile != null) {
