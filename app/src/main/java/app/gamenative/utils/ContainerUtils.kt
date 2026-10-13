@@ -992,6 +992,9 @@ object ContainerUtils {
                 launchBionicSteam = false,
                 steamType = Container.STEAM_TYPE_HEADLESS,
             )
+            if (isVrGame(appId, gameSource)) {
+                containerData = containerData.copy(windowsVrEnabled = true, openCompositeEnabled = true)
+            }
         }
 
         if (Build.MANUFACTURER.equals("samsung", ignoreCase = true) && GPUInformation.isAdreno740(context)) {
@@ -1228,6 +1231,11 @@ object ContainerUtils {
                 Timber.w("[ContainerDeletion] Dirs present on disk but NOT loaded by ContainerManager (corrupt/empty config): $unloadedIds")
             }
         }
+    }
+
+    private fun isVrGame(appId: String, gameSource: GameSource): Boolean {
+        if (gameSource != GameSource.STEAM) return false
+        return runCatching { SteamService.getAppInfoOf(extractGameIdFromContainerId(appId))?.isVrGame }.getOrNull() == true
     }
 
     /**

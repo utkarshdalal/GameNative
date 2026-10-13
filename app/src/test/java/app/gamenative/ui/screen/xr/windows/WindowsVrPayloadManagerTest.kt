@@ -63,6 +63,15 @@ class WindowsVrPayloadManagerTest {
         assertArrayEquals(fakePe(0x14c), secondDll.readBytes())
     }
 
+    @Test
+    fun installOpenComposite_skipsWhenTheGameHasNoOpenVrDll() {
+        File(gameRoot, "native").apply { mkdirs() }
+
+        assertFalse(manager.installOpenComposite(container))
+        assertFalse(File(containerRoot, ".wine/drive_c/gamenative-xr/opencomposite.targets").exists())
+        manager.restore()
+    }
+
     private fun fakePe(machine: Int): ByteArray {
         val bytes = ByteArray(0x100)
         bytes[0] = 'M'.code.toByte()
