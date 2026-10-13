@@ -388,13 +388,8 @@ class PhysicalControllerHandler(
         sourceDeviceId: Int,
     ) {
         if (isActionDown) {
-            val contribution = if (offset != 0f) {
-                offset
-            } else if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_UP) {
-                -1f
-            } else {
-                1f
-            }
+            val direction = if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_UP) -1f else 1f
+            val contribution = if (offset != 0f) Math.abs(offset) * direction else direction
             mouseMoveContributions[MouseMoveSource(sourceDeviceId, sourceKeyCode, binding)] = contribution
             createMouseMoveTimer()
         } else {
