@@ -68,6 +68,13 @@ object DebugReportApi {
                     cpuProfile.asRequestBody("application/json".toMediaType()),
                 )
             }
+            DebugReportUtils.exitTraceBeside(logFile)?.let { trace ->
+                bodyBuilder.addFormDataPart(
+                    "exit_trace",
+                    DebugReportUtils.EXIT_TRACE_FILE,
+                    trace.asRequestBody("text/plain".toMediaType()),
+                )
+            }
             val body = bodyBuilder.build()
 
             val integrityToken = PlayIntegrity.requestToken(headerString.toByteArray())
