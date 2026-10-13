@@ -61,7 +61,7 @@ object DebugReportUtils {
     fun exitTraceFile(reportDir: File): File = File(reportDir, EXIT_TRACE_FILE)
 
     fun exitTraceBeside(logFile: File?): File? =
-        logFile?.parentFile?.let { exitTraceFile(it) }?.takeIf { it.exists() }
+        logFile?.parentFile?.let { exitTraceFile(it) }?.takeIf { it.exists() && it.length() > 0L }
 
     private fun rawLogcatFile(context: Context, appId: String): File =
         File(context.getExternalFilesDir(null), "wine_logs/debug_run_$appId.logcat")
@@ -158,10 +158,12 @@ object DebugReportUtils {
 
     suspend fun createPendingReport(context: Context, appId: String, interrupted: Boolean = false): File? = withContext(Dispatchers.IO) {
         var reportDir: File? = null
-        val perf = PerfSampler.stop()
-        stopLogcatCapture()
+        var claimedLog: File? = null
+        val wineLog = wineLogFile(context, appId)
+        // a recovered run belongs to a dead process: leave any live run's sampler and logcat capture alone
+        val perf = if (interrupted) null else PerfSampler.stop()
+        if (!interrupted) stopLogcatCapture()
         try {
-            val wineLog = wineLogFile(context, appId)
             if (!wineLog.exists() || wineLog.length() == 0L) {
                 Timber.w("DebugReportUtils: No debug run log found for $appId")
                 return@withContext null
@@ -173,7 +175,7 @@ object DebugReportUtils {
             reportDir = dir
             dir.mkdirs()
 
-            val claimedLog = File(dir, "raw.log")
+            claimedLog = File(dir, "raw.log")
             if (!wineLog.renameTo(claimedLog)) {
                 val sizeBefore = wineLog.length()
                 wineLog.copyTo(claimedLog, overwrite = true)
@@ -188,8 +190,7 @@ object DebugReportUtils {
             val exits = AppExitRecorder.recentExits(context, System.currentTimeMillis() - EXIT_WINDOW_MS)
             if (exits.isNotEmpty()) {
                 header.put("appExits", JSONArray(exits))
-                exits.firstOrNull { it.optBoolean("hard") }
-                    ?.let { AppExitRecorder.traceFor(context, it) }
+                exits.asSequence().filter { it.optBoolean("hard") }.mapNotNull { AppExitRecorder.traceFor(context, it) }.firstOrNull()
                     ?.let { trace ->
                         try {
                             trace.copyTo(exitTraceFile(dir), overwrite = true)
@@ -220,6 +221,7 @@ object DebugReportUtils {
             dir
         } catch (e: Exception) {
             Timber.e(e, "DebugReportUtils: Failed to create pending report for $appId")
+            claimedLog?.takeIf { it.exists() && !wineLog.exists() }?.renameTo(wineLog)
             reportDir?.deleteRecursively()
             null
         } finally {

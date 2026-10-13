@@ -23,6 +23,7 @@ object AppExitRecorder {
     private const val MAX_RECORDS = 10
     private const val TRACE_HEAD_BYTES = 64 * 1024
     private const val TRACE_TAIL_BYTES = 192 * 1024
+    private const val PROTO_MAX_BYTES = 8 * 1024 * 1024
 
     private val HARD_REASONS = setOf(
         ApplicationExitInfo.REASON_SIGNALED,
@@ -150,18 +151,159 @@ object AppExitRecorder {
         if (info.reason != ApplicationExitInfo.REASON_CRASH_NATIVE && info.reason != ApplicationExitInfo.REASON_ANR) return null
         return try {
             info.traceInputStream?.use { stream ->
-                val bytes = stream.readBytes()
-                if (bytes.size <= TRACE_HEAD_BYTES + TRACE_TAIL_BYTES) {
-                    String(bytes)
+                // Android 12+ hands out a native-crash tombstone as a protobuf, not text
+                if (info.reason == ApplicationExitInfo.REASON_CRASH_NATIVE && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    val bytes = readBounded(stream, PROTO_MAX_BYTES) ?: return "[tombstone larger than $PROTO_MAX_BYTES bytes, not kept]"
+                    ProtoDump.dump(bytes, TRACE_HEAD_BYTES + TRACE_TAIL_BYTES)
                 } else {
-                    String(bytes, 0, TRACE_HEAD_BYTES) +
-                        "\n\n[... ${bytes.size - TRACE_HEAD_BYTES - TRACE_TAIL_BYTES} bytes skipped ...]\n\n" +
-                        String(bytes, bytes.size - TRACE_TAIL_BYTES, TRACE_TAIL_BYTES)
+                    readHeadTail(stream)
                 }
             }
         } catch (e: Exception) {
             Timber.w(e, "AppExitRecorder: failed to read exit trace")
             null
+        }
+    }
+
+    private fun readBounded(stream: java.io.InputStream, max: Int): ByteArray? {
+        val out = java.io.ByteArrayOutputStream()
+        val buf = ByteArray(16 * 1024)
+        while (true) {
+            val n = stream.read(buf)
+            if (n <= 0) break
+            if (out.size() + n > max) return null
+            out.write(buf, 0, n)
+        }
+        return out.toByteArray()
+    }
+
+    /** Keeps the first [TRACE_HEAD_BYTES] and the last [TRACE_TAIL_BYTES] of a stream of any size. */
+    private fun readHeadTail(stream: java.io.InputStream): String {
+        val head = java.io.ByteArrayOutputStream()
+        val tail = ByteArray(TRACE_TAIL_BYTES)
+        var tailLen = 0
+        var tailPos = 0
+        var total = 0L
+        val buf = ByteArray(16 * 1024)
+        while (true) {
+            val n = stream.read(buf)
+            if (n <= 0) break
+            total += n
+            var off = 0
+            if (head.size() < TRACE_HEAD_BYTES) {
+                val take = minOf(n, TRACE_HEAD_BYTES - head.size())
+                head.write(buf, 0, take)
+                off = take
+            }
+            for (i in off until n) {
+                tail[tailPos] = buf[i]
+                tailPos = (tailPos + 1) % tail.size
+                if (tailLen < tail.size) tailLen++
+            }
+        }
+        val headText = String(head.toByteArray())
+        if (total <= TRACE_HEAD_BYTES) return headText
+        val skipped = total - TRACE_HEAD_BYTES - tailLen
+        val ordered = ByteArray(tailLen)
+        val startIdx = if (tailLen < tail.size) 0 else tailPos
+        for (i in 0 until tailLen) ordered[i] = tail[(startIdx + i) % tail.size]
+        val tailText = String(ordered)
+        return if (skipped > 0) "$headText\n\n[... $skipped bytes skipped ...]\n\n$tailText" else headText + tailText
+    }
+
+    /**
+     * Schema-free protobuf dump: field numbers with their values, nested messages indented. Enough for the
+     * tombstone's signal, abort message, causes and backtraces to read as text without the Tombstone schema.
+     */
+    private object ProtoDump {
+        fun dump(bytes: ByteArray, limit: Int): String {
+            val sb = StringBuilder()
+            sb.append("[tombstone protobuf, ").append(bytes.size).append(" bytes; fields by number, strings as text]\n")
+            message(bytes, 0, bytes.size, 0, sb, limit)
+            if (sb.length > limit) {
+                sb.setLength(limit)
+                sb.append("\n[... truncated ...]\n")
+            }
+            return sb.toString()
+        }
+
+        private fun message(b: ByteArray, from: Int, to: Int, depth: Int, sb: StringBuilder, limit: Int): Boolean {
+            var i = from
+            while (i < to) {
+                if (sb.length > limit) return true
+                val (tag, i1) = varint(b, i, to) ?: return false
+                i = i1
+                val field = (tag ushr 3).toInt()
+                val indent = "  ".repeat(depth)
+                when ((tag and 7L).toInt()) {
+                    0 -> {
+                        val (v, i2) = varint(b, i, to) ?: return false
+                        i = i2
+                        sb.append(indent).append(field).append(": ").append(v).append('\n')
+                    }
+                    1 -> {
+                        if (i + 8 > to) return false
+                        var v = 0L
+                        for (k in 0 until 8) v = v or ((b[i + k].toLong() and 0xff) shl (8 * k))
+                        i += 8
+                        sb.append(indent).append(field).append(": 0x").append(java.lang.Long.toHexString(v)).append('\n')
+                    }
+                    5 -> {
+                        if (i + 4 > to) return false
+                        var v = 0L
+                        for (k in 0 until 4) v = v or ((b[i + k].toLong() and 0xff) shl (8 * k))
+                        i += 4
+                        sb.append(indent).append(field).append(": 0x").append(java.lang.Long.toHexString(v)).append('\n')
+                    }
+                    2 -> {
+                        val (len, i2) = varint(b, i, to) ?: return false
+                        val s = i2
+                        val e = s + len.toInt()
+                        if (len < 0 || e > to) return false
+                        i = e
+                        if (len == 0L) {
+                            sb.append(indent).append(field).append(": \"\"\n")
+                        } else if (isText(b, s, e)) {
+                            sb.append(indent).append(field).append(": \"").append(String(b, s, (e - s), Charsets.UTF_8)).append("\"\n")
+                        } else {
+                            val mark = sb.length
+                            sb.append(indent).append(field).append(" {\n")
+                            val ok = depth < 8 && message(b, s, e, depth + 1, sb, limit)
+                            if (ok) {
+                                sb.append(indent).append("}\n")
+                            } else {
+                                sb.setLength(mark)
+                                sb.append(indent).append(field).append(": <").append(e - s).append(" bytes>\n")
+                            }
+                        }
+                    }
+                    else -> return false
+                }
+            }
+            return i == to
+        }
+
+        private fun isText(b: ByteArray, s: Int, e: Int): Boolean {
+            for (k in s until e) {
+                val c = b[k].toInt() and 0xff
+                if (c < 0x20 && c != 0x0a && c != 0x0d && c != 0x09) return false
+                if (c == 0x7f) return false
+            }
+            return true
+        }
+
+        private fun varint(b: ByteArray, from: Int, to: Int): Pair<Long, Int>? {
+            var i = from
+            var shift = 0
+            var v = 0L
+            while (i < to && shift < 64) {
+                val c = b[i].toInt() and 0xff
+                v = v or ((c and 0x7f).toLong() shl shift)
+                i++
+                if (c and 0x80 == 0) return v to i
+                shift += 7
+            }
+            return null
         }
     }
 

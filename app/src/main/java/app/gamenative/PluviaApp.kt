@@ -91,7 +91,7 @@ class PluviaApp : SplitCompatApplication() {
             try {
                 AppExitRecorder.record(applicationContext)
                 DebugReportUtils.recoverInterruptedRuns(applicationContext)
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 Timber.w(e, "[PluviaApp]: exit record / run recovery failed")
                 emptyList()
             }
