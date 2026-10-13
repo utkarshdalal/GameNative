@@ -60,14 +60,16 @@ fun ScConfigManagerDialog(storeKey: String, onChanged: () -> Unit, onDismiss: ()
             }
             if (text.isNullOrBlank()) { SnackbarManager.show("Could not read the selected file"); return@launch }
             // The config is named after the file you picked ("Raid healer.gnsc.json" → "Raid healer"), like a document.
-            val fileName = runCatching {
-                context.contentResolver.query(uri, null, null, null, null)?.use { c ->
-                    val i = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-                    if (i >= 0 && c.moveToFirst()) {
-                        c.getString(i)?.replace(Regex("""(\.gnsc)?\.json$|\.vdf$""", RegexOption.IGNORE_CASE), "")
-                    } else null
-                }
-            }.getOrNull()?.trim()?.takeIf { it.isNotBlank() }
+            val fileName = withContext(Dispatchers.IO) {
+                runCatching {
+                    context.contentResolver.query(uri, null, null, null, null)?.use { c ->
+                        val i = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                        if (i >= 0 && c.moveToFirst()) {
+                            c.getString(i)?.replace(Regex("""(\.gnsc)?\.json$|\.vdf$""", RegexOption.IGNORE_CASE), "")
+                        } else null
+                    }
+                }.getOrNull()
+            }?.trim()?.takeIf { it.isNotBlank() }
             // A GameNative export (from "Export active config") restores as-is, edits included.
             withContext(Dispatchers.IO) { ScConfigStore.parseExport(text) }?.let { export ->
                 // An unrenamed file only carries the sanitized name ("Raid_ healer"); keep the exact stored one then.
