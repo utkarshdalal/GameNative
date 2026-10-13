@@ -42,6 +42,7 @@ import com.winlator.sysvshm.SysVSHMRequestHandler;
 import com.winlator.sysvshm.SysVSharedMemory;
 import com.winlator.xconnector.UnixSocketConfig;
 import com.winlator.xconnector.XConnectorEpoll;
+import com.winlator.core.AppPaths;
 import com.winlator.xenvironment.ImageFs;
 
 import java.io.BufferedReader;
@@ -211,10 +212,10 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             String memPath;
             if (i == 0) {
                 // Player 1 uses the original, non-numbered path that is known to work.
-                memPath = "/data/data/app.gamenative/files/imagefs/tmp/gamepad.mem";
+                memPath = AppPaths.IMAGEFS_DIR + "/tmp/gamepad.mem";
             } else {
                 // Players 2, 3, 4 use a 1-based index.
-                memPath = "/data/data/app.gamenative/files/imagefs/tmp/gamepad" + i + ".mem";
+                memPath = AppPaths.IMAGEFS_DIR + "/tmp/gamepad" + i + ".mem";
             }
 
             File memFile = new File(memPath);
@@ -250,6 +251,9 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         // Use the ControllerManager's dynamic count for the environment variable
         envVars.put("EVSHIM_MAX_PLAYERS", String.valueOf(MAX_PLAYERS));
+        // evshim falls back to /data/data/app.gamenative/files when this is unset; WinHandler creates
+        // gamepad_shm under this app's own files dir, so point evshim there explicitly.
+        envVars.put("EVSHIM_BASE_PATH", AppPaths.FILES_DIR);
         if (true) {
             envVars.put("EVSHIM_SHM_ID", 1);
         }

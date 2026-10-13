@@ -4,6 +4,7 @@ import android.os.Environment;
 import android.util.Log;
 
 import com.winlator.box86_64.Box86_64Preset;
+import com.winlator.core.AppPaths;
 import com.winlator.core.DefaultVersion;
 import com.winlator.core.envvars.EnvVars;
 import com.winlator.core.FileUtils;
@@ -50,14 +51,14 @@ public class Container {
     public static final String DEFAULT_WINCOMPONENTS = "direct3d=1,directsound=1,directinput8=0,directinput=0,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=0";
     public static final String FALLBACK_WINCOMPONENTS = "direct3d=1,directsound=1,directinput8=0,directinput=0,directmusic=1,directshow=1,directplay=1,vcrun2010=1,wmdecoder=1,opengl=0";
     public static final String[] MEDIACONV_ENV_VARS = {
-            "MEDIACONV_AUDIO_DUMP_FILE=/data/data/app.gamenative/files/imagefs/home/xuser/audio.dmp",
-            "MEDIACONV_VIDEO_DUMP_FILE=/data/data/app.gamenative/files/imagefs/home/xuser/video.dmp",
-            "MEDIACONV_VIDEO_TRANSCODED_FILE=/data/data/app.gamenative/files/imagefs/home/xuser/transcoded.mkv",
-            "MEDIACONV_AUDIO_TRANSCODED_FILE=/data/data/app.gamenative/files/imagefs/home/xuser/transcoded.wav",
-            "MEDIACONV_BLANK_AUDIO_FILE=/data/data/app.gamenative/files/imagefs/home/xuser/blank.wav",
-            "MEDIACONV_BLANK_VIDEO_FILE=/data/data/app.gamenative/files/imagefs/home/xuser/blank.mkv",
+            "MEDIACONV_AUDIO_DUMP_FILE=" + AppPaths.IMAGEFS_DIR + "/home/xuser/audio.dmp",
+            "MEDIACONV_VIDEO_DUMP_FILE=" + AppPaths.IMAGEFS_DIR + "/home/xuser/video.dmp",
+            "MEDIACONV_VIDEO_TRANSCODED_FILE=" + AppPaths.IMAGEFS_DIR + "/home/xuser/transcoded.mkv",
+            "MEDIACONV_AUDIO_TRANSCODED_FILE=" + AppPaths.IMAGEFS_DIR + "/home/xuser/transcoded.wav",
+            "MEDIACONV_BLANK_AUDIO_FILE=" + AppPaths.IMAGEFS_DIR + "/home/xuser/blank.wav",
+            "MEDIACONV_BLANK_VIDEO_FILE=" + AppPaths.IMAGEFS_DIR + "/home/xuser/blank.mkv",
     };
-    public static final String DEFAULT_DRIVES = "D:"+Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)+"E:/data/data/app.gamenative/storage";
+    public static final String DEFAULT_DRIVES = "D:"+Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)+"E:" + AppPaths.STORAGE_DIR;
     public static final String DEFAULT_VARIANT = DefaultVersion.VARIANT;
     public static final String DEFAULT_WINE_VERSION = DefaultVersion.WINE_VERSION;
     public static final byte STARTUP_SELECTION_NORMAL = 0;
@@ -258,7 +259,7 @@ public class Container {
     }
 
     public void setEnvVars(String envVars) {
-        this.envVars = envVars != null ? envVars : "";
+        this.envVars = envVars != null ? AppPaths.rewrite(envVars) : "";
     }
 
     public String getGraphicsDriver() {
@@ -350,7 +351,7 @@ public class Container {
     }
 
     public void setDrives(String drives) {
-        this.drives = drives;
+        this.drives = AppPaths.rewrite(drives);
     }
 
     public String getLC_ALL() {
