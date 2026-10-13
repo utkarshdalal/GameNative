@@ -1006,6 +1006,7 @@ object ContainerUtils {
         if (customConfig?.dxwrapper != null) {
             applyToContainer(context, container, containerData)
             app.gamenative.online.InstallProfileApplier.applyPendingIfAny(context, container)
+            applyPendingControlLayout(context, container, appId)
             SessionReport.markConfigApplied(container, if (bestConfigMap.isNullOrEmpty()) "default" else "known")
             return container
         }
@@ -1057,8 +1058,18 @@ object ContainerUtils {
         applyToContainer(context, container, containerData)
         // Online/Offline install choice (saved at install time) wins over Steam client defaults.
         app.gamenative.online.InstallProfileApplier.applyPendingIfAny(context, container)
+        applyPendingControlLayout(context, container, appId)
         SessionReport.markConfigApplied(container, if (bestConfigMap.isNullOrEmpty()) "default" else "known")
         return container
+    }
+
+    private fun applyPendingControlLayout(context: Context, container: Container, appId: String) {
+        val steamAppId = runCatching { extractGameIdFromContainerId(appId) }.getOrNull()
+        app.gamenative.inputcontrols.AutoControlSetup.applyPendingIfAny(
+            context = context,
+            container = container,
+            steamAppId = steamAppId,
+        )
     }
 
     fun getOrCreateContainer(context: Context, appId: String): Container {

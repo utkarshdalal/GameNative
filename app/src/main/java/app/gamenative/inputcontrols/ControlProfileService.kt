@@ -247,6 +247,44 @@ object ControlProfileService {
         }
     }
 
+    /**
+     * Installs a generated on-screen layout as this game's working profile
+     * (not a library entry). Used by automatic keyboard/mouse control setup.
+     */
+    fun applyGeneratedOnScreenProfile(
+        context: Context,
+        container: Container,
+        manager: InputControlsManager,
+        generated: JSONObject,
+    ): ControlsProfile {
+        val sourceSections = setOf(ControlProfileSection.ON_SCREEN)
+        if (!sectionsOf(generated).containsAll(sourceSections)) {
+            throw IllegalArgumentException("Generated profile must include on-screen controls")
+        }
+        validate(generated)
+        val selected = selectedProfile(container, manager)
+            ?: throw IOException("Unable to create a working control profile")
+        val workingJson = workingProfileJson(context, container, manager, selected)
+        val workingId = workingJson.getInt("id")
+        copySections(generated, workingJson, sourceSections)
+        workingJson.put("name", generated.getString("name"))
+        workingJson.put(ControlsProfile.KEY_AUTO_FIT_LAYOUT, true)
+        workingJson.put(KEY_SCHEMA_VERSION, SCHEMA_VERSION)
+        workingJson.put(KEY_LISTED, false)
+        workingJson.put(KEY_GAME_OWNER_ID, container.id)
+        workingJson.put(KEY_INCLUDED_SECTIONS, sectionArray(allStoredSections(workingJson)))
+        // Generated layouts are not library sources — clear inherited ON_SCREEN attribution.
+        val sources = sectionSourcesOf(workingJson).toMutableMap()
+        sources.remove(ControlProfileSection.ON_SCREEN)
+        writeSectionSources(workingJson, sources)
+        if (sources.values.toSet().size != 1) workingJson.remove(KEY_LIBRARY_PROFILE_ID)
+        saveWorkingProfile(context, container, workingJson)
+        manager.reloadProfiles()
+        return requireNotNull(manager.getProfile(workingId)) {
+            "Unable to reload the generated control profile"
+        }
+    }
+
     fun createBlank(
         context: Context,
         manager: InputControlsManager,

@@ -30,8 +30,10 @@ fun OnlineInstallProfileSection(
     selectedProfile: InstallProfile,
     onProfileSelected: (InstallProfile) -> Unit,
     modifier: Modifier = Modifier,
+    titleRes: Int = R.string.online_install_detected_title,
+    requireInstallChoice: Boolean = true,
 ) {
-    if (!onlineInfo.showInstallProfileChoice) return
+    if (requireInstallChoice && !onlineInfo.showInstallProfileChoice) return
 
     Column(
         modifier = modifier
@@ -39,7 +41,7 @@ fun OnlineInstallProfileSection(
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Text(
-            text = stringResource(R.string.online_install_detected_title),
+            text = stringResource(titleRes),
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
             color = MaterialTheme.colorScheme.onSurface,
         )

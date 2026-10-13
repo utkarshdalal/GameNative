@@ -2630,7 +2630,7 @@ fun XServerScreen(
 
                     val customProfile = if (profileId != 0) manager?.getProfile(profileId) else null
 
-                    val targetProfile = if (customProfile != null) {
+                    val resolvedFallback = if (customProfile != null) {
                         // Use the custom profile associated with this container
                         Timber.d("Using CUSTOM profile: ${customProfile.name} (ID: ${customProfile.id})")
                         customProfile
@@ -2639,6 +2639,21 @@ fun XServerScreen(
                         val fallback = manager?.getProfile(0) ?: profiles.getOrNull(2) ?: profiles.first()
                         Timber.d("Using DEFAULT profile: ${fallback.name} (ID: ${fallback.id})")
                         fallback
+                    }
+
+                    // Auto control setup: if there are no on-screen buttons, apply KBM/FPS/RTS or Virtual Gamepad.
+                    val steamAppIdForControls = runCatching {
+                        ContainerUtils.extractGameIdFromContainerId(appId)
+                    }.getOrNull()
+                    val targetProfile = if (manager != null) {
+                        app.gamenative.inputcontrols.AutoControlSetup.ensureOnScreenControls(
+                            context = context,
+                            container = container,
+                            manager = manager,
+                            steamAppId = steamAppIdForControls,
+                        ) ?: resolvedFallback
+                    } else {
+                        resolvedFallback
                     }
                     Timber.d("Profile loaded successfully: ${targetProfile.name}")
 
@@ -2921,17 +2936,25 @@ fun XServerScreen(
                         // 2. Else if physical controller detected → hide
                         // 3. Else if physical mouse/keyboard detected → hide
                         // 4. Else → show
+                        val forceShowFromAutoSetup =
+                            app.gamenative.inputcontrols.AutoControlSetup.shouldForceShowControls(container)
                         val shouldShowControls = when {
                             container.isTouchscreenMode -> false
                             hasPhysicalController -> false
+                            // After automatic control setup, show buttons even if a keyboard/mouse
+                            // is reported (common on Android) — still hide for real gamepads.
+                            forceShowFromAutoSetup -> true
                             hasPhysicalKeyboard || hasPhysicalMouse -> false
                             else -> true
                         }
 
                         if (shouldShowControls) {
-                            Timber.d("Auto-showing onscreen controls")
+                            Timber.d("Auto-showing onscreen controls (forceAuto=%s)", forceShowFromAutoSetup)
                             showInputControls(profile, xServerView.getxServer().winHandler, container)
                             areControlsVisible = true
+                            if (forceShowFromAutoSetup) {
+                                app.gamenative.inputcontrols.AutoControlSetup.clearForceShowFlag(container)
+                            }
                         } else {
                             Timber.d("Hiding onscreen controls")
                             hideInputControls()

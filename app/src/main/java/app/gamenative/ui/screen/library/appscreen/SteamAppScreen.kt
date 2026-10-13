@@ -1494,7 +1494,7 @@ class SteamAppScreen : BaseAppScreen() {
                     return@GameManagerDialog getGameDisplayInfo(context, libraryItem)
                 },
                 branch = gameManagerDialogState.branch,
-                onInstall = { dlcAppIds, installProfile ->
+                onInstall = { dlcAppIds, installProfile, controlLayout ->
                     val branch = gameManagerDialogState.branch
                         ?: SteamService.getInstalledApp(gameId)?.branch
                         ?: "public"
@@ -1512,15 +1512,33 @@ class SteamAppScreen : BaseAppScreen() {
                         properties = mapOf(
                             "game_name" to (appInfo?.name ?: ""),
                             "install_profile" to (installProfile?.storageKey ?: "default"),
+                            "control_layout" to (controlLayout?.storageKey ?: "unchanged"),
                         ) + ConversionTracker.campaignAttribution(gameId),
                     )
                     CoroutineScope(Dispatchers.IO).launch {
+                        val containerId = InstallProfileApplier.containerIdForSteam(gameId)
                         if (installProfile != null) {
-                            val containerId = InstallProfileApplier.containerIdForSteam(gameId)
                             InstallProfileStore.save(context, containerId, installProfile)
                             if (ContainerUtils.hasContainer(context, containerId)) {
                                 val container = ContainerUtils.getContainer(context, containerId)
                                 InstallProfileApplier.apply(context, container, installProfile)
+                            }
+                        }
+                        if (controlLayout != null) {
+                            app.gamenative.inputcontrols.ControlLayoutStore.save(
+                                context,
+                                containerId,
+                                controlLayout,
+                            )
+                            if (ContainerUtils.hasContainer(context, containerId)) {
+                                val container = ContainerUtils.getContainer(context, containerId)
+                                app.gamenative.inputcontrols.AutoControlSetup.applyLayout(
+                                    context = context,
+                                    container = container,
+                                    choice = controlLayout,
+                                    steamAppId = gameId,
+                                    force = true,
+                                )
                             }
                         }
                         SteamService.downloadApp(gameId, dlcAppIds, branch = branch, mode = SteamDownloadMode.INSTALL)

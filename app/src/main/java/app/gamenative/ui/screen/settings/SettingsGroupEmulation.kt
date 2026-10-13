@@ -13,10 +13,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.inputcontrols.ControlLayoutChoice
 import app.gamenative.ui.component.dialog.Box64PresetsDialog
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.component.dialog.FEXCorePresetsDialog
 import app.gamenative.ui.component.dialog.OrientationDialog
+import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
@@ -101,6 +103,42 @@ fun SettingsGroupEmulation() {
                 autoApplyKnownConfig = it
                 PrefManager.autoApplyKnownConfig = it
             },
+        )
+        var autoControlSetup by rememberSaveable { mutableStateOf(PrefManager.autoControlSetup) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            state = autoControlSetup,
+            title = { Text(text = stringResource(R.string.settings_emulation_auto_control_setup_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_emulation_auto_control_setup_subtitle)) },
+            onCheckedChange = {
+                autoControlSetup = it
+                PrefManager.autoControlSetup = it
+            },
+        )
+        val controlLayoutChoices = ControlLayoutChoice.entries
+        val controlLayoutLabels = listOf(
+            stringResource(R.string.control_layout_auto_title),
+            stringResource(R.string.control_layout_kbm_title),
+            stringResource(R.string.control_layout_fps_title),
+            stringResource(R.string.control_layout_rts_title),
+            stringResource(R.string.control_layout_gamepad_title),
+        )
+        var defaultControlLayoutIndex by rememberSaveable {
+            mutableStateOf(
+                controlLayoutChoices.indexOf(PrefManager.defaultControlLayout).coerceAtLeast(0),
+            )
+        }
+        SettingsListDropdown(
+            colors = settingsTileColorsAlt(),
+            enabled = autoControlSetup,
+            value = defaultControlLayoutIndex,
+            items = controlLayoutLabels,
+            onItemSelected = { idx ->
+                defaultControlLayoutIndex = idx
+                PrefManager.defaultControlLayout = controlLayoutChoices[idx]
+            },
+            title = { Text(text = stringResource(R.string.settings_emulation_default_control_layout_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_emulation_default_control_layout_subtitle)) },
         )
         SettingsMenuLink(
             colors = settingsTileColors(),

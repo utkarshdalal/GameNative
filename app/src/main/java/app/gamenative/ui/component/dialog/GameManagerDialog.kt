@@ -50,10 +50,13 @@ import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.data.DepotInfo
 import app.gamenative.data.ManifestInfo
+import app.gamenative.PrefManager
+import app.gamenative.inputcontrols.ControlLayoutChoice
 import app.gamenative.online.InstallProfile
 import app.gamenative.online.OnlineCapabilityDetector
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamService.Companion.INVALID_APP_ID
+import app.gamenative.ui.component.ControlLayoutChoiceSection
 import app.gamenative.ui.component.LoadingScreen
 import app.gamenative.ui.component.OnlineInstallProfileSection
 import app.gamenative.ui.component.topbar.BackButton
@@ -85,11 +88,12 @@ fun GameManagerDialog(
     visible: Boolean,
     onGetDisplayInfo: @Composable (Context) -> GameDisplayInfo,
     branch: String? = null,
-    onInstall: (List<Int>, InstallProfile?) -> Unit,
+    onInstall: (List<Int>, InstallProfile?, ControlLayoutChoice?) -> Unit,
     onDismissRequest: () -> Unit
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
+    PrefManager.init(context)
 
     val downloadableDepots = remember { mutableStateMapOf<Int, DepotInfo>() }
     val allDownloadableApps = remember { mutableStateListOf<Pair<Int, DepotInfo>>() }
@@ -104,6 +108,9 @@ fun GameManagerDialog(
     }
     var selectedInstallProfile by remember(gameId) {
         mutableStateOf(InstallProfile.defaultFor(onlineInfo.status))
+    }
+    var selectedControlLayout by remember(gameId) {
+        mutableStateOf(PrefManager.defaultControlLayout)
     }
 
     val isBaseGameInstalled = remember(gameId) {
@@ -471,6 +478,18 @@ fun GameManagerDialog(
                                 )
                             }
 
+                            if (!isBaseGameInstalled && PrefManager.autoControlSetup) {
+                                ControlLayoutChoiceSection(
+                                    selected = selectedControlLayout,
+                                    onSelected = { selectedControlLayout = it },
+                                )
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    thickness = 0.5.dp,
+                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                                )
+                            }
+
                             // Select All toggle
                             if (selectableAppIds.isNotEmpty()) {
                                 Row(
@@ -565,7 +584,15 @@ fun GameManagerDialog(
                                                 InstallProfile.OFFLINE
                                             else -> null
                                         }
-                                        onInstall(dlcIds, profile)
+                                        onInstall(
+                                            dlcIds,
+                                            profile,
+                                            if (!isBaseGameInstalled && PrefManager.autoControlSetup) {
+                                                selectedControlLayout
+                                            } else {
+                                                null
+                                            },
+                                        )
                                     }
                                 ) {
                                     Text(stringResource(R.string.install))
@@ -604,7 +631,7 @@ fun Preview_GameManagerDialog() {
             onGetDisplayInfo = {
                 return@GameManagerDialog displayInfo
             },
-            onInstall = { _, _ -> },
+            onInstall = { _, _, _ -> },
             onDismissRequest = {}
         )
     }

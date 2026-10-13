@@ -190,10 +190,11 @@ Two install profiles per eligible game:
 - Store `install_profile=online|offline` on the game record  
 
 ### C. UI touchpoints
-1. Install confirmation dialog / bottom sheet  
-2. Game details page (badge + “Switch to Online/Offline”)  
-3. Library filters  
+1. Install confirmation dialog / bottom sheet ✅  
+2. Game details page (badge + “Switch to Online/Offline”) ✅  
+3. Library filters ✅  
 4. First-run tip: what Online install means  
+5. Automatic control setup (on-screen buttons at launch) ✅
 
 ### D. Telemetry / reports (privacy-safe)
 Opt-in or align with upstream analytics policy:
@@ -280,6 +281,8 @@ Suggested public targets for first release wave:
 Release naming idea:
 
 - `gamenative-online-v0.1.0` — Install profiles + badges  
+- `gamenative-online-v0.1.4` — Online Ready filter + store category detection  
+- `gamenative-online-v0.1.5` — Auto on-screen controls at install (KBM/FPS/RTS/Gamepad + Steam Input)  
 - `v0.2.0` — diagnostics + Online Ready tab  
 - `v0.3.0` — public online matrix + top-game fixes  
 

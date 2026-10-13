@@ -1745,6 +1745,20 @@ object PrefManager {
         get() = getPref(AUTO_APPLY_KNOWN_CONFIG, true)
         set(value) = setPref(AUTO_APPLY_KNOWN_CONFIG, value)
 
+    // Auto-pick on-screen control layout (virtual buttons) when launching a game
+    private val AUTO_CONTROL_SETUP = booleanPreferencesKey("auto_control_setup")
+    var autoControlSetup: Boolean
+        get() = getPref(AUTO_CONTROL_SETUP, true)
+        set(value) = setPref(AUTO_CONTROL_SETUP, value)
+
+    // Default on-screen layout offered at install (auto / kbm / fps / rts / gamepad)
+    private val DEFAULT_CONTROL_LAYOUT = stringPreferencesKey("default_control_layout")
+    var defaultControlLayout: app.gamenative.inputcontrols.ControlLayoutChoice
+        get() = app.gamenative.inputcontrols.ControlLayoutChoice.fromStorageKey(
+            getPref(DEFAULT_CONTROL_LAYOUT, app.gamenative.inputcontrols.ControlLayoutChoice.AUTO.storageKey),
+        ) ?: app.gamenative.inputcontrols.ControlLayoutChoice.AUTO
+        set(value) = setPref(DEFAULT_CONTROL_LAYOUT, value.storageKey)
+
     // Game compatibility cache (JSON string)
     private val GAME_COMPATIBILITY_CACHE = stringPreferencesKey("game_compatibility_cache")
     var gameCompatibilityCache: String

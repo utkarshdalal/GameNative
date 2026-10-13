@@ -163,6 +163,9 @@ import app.gamenative.data.LibraryItem
 import app.gamenative.data.StoreGameDetails
 import app.gamenative.service.SteamService
 import app.gamenative.Constants
+import app.gamenative.online.InstallProfile
+import app.gamenative.online.InstallProfileApplier
+import app.gamenative.online.InstallProfileStore
 import app.gamenative.online.OnlineCapability
 import app.gamenative.online.OnlineCapabilityDetector
 import app.gamenative.online.OnlineFeedbackStore
@@ -172,7 +175,12 @@ import app.gamenative.ui.component.CommunityCompatibilitySection
 import app.gamenative.ui.component.GamepadAction
 import app.gamenative.ui.component.GamepadActionBar
 import app.gamenative.ui.component.GamepadButton
+import app.gamenative.ui.component.OnlineInstallProfileSection
 import app.gamenative.ui.component.OnlineStatusBadge
+import app.gamenative.utils.ContainerUtils
+import android.widget.Toast
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import app.gamenative.ui.component.focusRing
 import androidx.compose.ui.platform.LocalUriHandler
 import app.gamenative.ui.data.AppMenuOption
@@ -1728,6 +1736,108 @@ internal fun AppScreenContent(
                             Text(stringResource(R.string.online_open_compatibility))
                         }
                     }
+                    if (isInstalled && onlineInfo.showInstallProfileChoice) {
+                        val containerId = remember(steamAppIdForOnline) {
+                            InstallProfileApplier.containerIdForSteam(steamAppIdForOnline)
+                        }
+                        var selectedInstallProfile by remember(containerId) {
+                            mutableStateOf(
+                                InstallProfileStore.get(context, containerId)
+                                    ?: runCatching {
+                                        if (ContainerUtils.hasContainer(context, containerId)) {
+                                            InstallProfileApplier.readFromContainer(
+                                                ContainerUtils.getContainer(context, containerId),
+                                            )
+                                        } else {
+                                            null
+                                        }
+                                    }.getOrNull()
+                                    ?: InstallProfile.defaultFor(onlineInfo.status),
+                            )
+                        }
+                        val profileSwitchScope = rememberCoroutineScope()
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OnlineInstallProfileSection(
+                            onlineInfo = onlineInfo,
+                            selectedProfile = selectedInstallProfile,
+                            onProfileSelected = { profile ->
+                                selectedInstallProfile = profile
+                                profileSwitchScope.launch {
+                                    withContext(Dispatchers.IO) {
+                                        InstallProfileStore.save(context, containerId, profile)
+                                        if (ContainerUtils.hasContainer(context, containerId)) {
+                                            val container = ContainerUtils.getContainer(context, containerId)
+                                            InstallProfileApplier.apply(context, container, profile)
+                                        }
+                                    }
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.online_switch_applied),
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                                }
+                            },
+                            titleRes = R.string.online_switch_title,
+                            requireInstallChoice = false,
+                            modifier = Modifier.padding(horizontal = 0.dp),
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+                if (isInstalled && PrefManager.autoControlSetup) {
+                    val containerId = remember(steamAppIdForOnline) {
+                        InstallProfileApplier.containerIdForSteam(steamAppIdForOnline)
+                    }
+                    var selectedControlLayout by remember(containerId) {
+                        mutableStateOf(
+                            app.gamenative.inputcontrols.ControlLayoutStore.get(context, containerId)
+                                ?: runCatching {
+                                    if (ContainerUtils.hasContainer(context, containerId)) {
+                                        app.gamenative.inputcontrols.AutoControlSetup.readChoice(
+                                            context,
+                                            ContainerUtils.getContainer(context, containerId),
+                                        )
+                                    } else {
+                                        null
+                                    }
+                                }.getOrNull()
+                                ?: PrefManager.defaultControlLayout,
+                        )
+                    }
+                    val controlSwitchScope = rememberCoroutineScope()
+                    Spacer(modifier = Modifier.height(8.dp))
+                    app.gamenative.ui.component.ControlLayoutChoiceSection(
+                        selected = selectedControlLayout,
+                        onSelected = { choice ->
+                            selectedControlLayout = choice
+                            controlSwitchScope.launch {
+                                withContext(Dispatchers.IO) {
+                                    app.gamenative.inputcontrols.ControlLayoutStore.save(
+                                        context,
+                                        containerId,
+                                        choice,
+                                    )
+                                    if (ContainerUtils.hasContainer(context, containerId)) {
+                                        val container = ContainerUtils.getContainer(context, containerId)
+                                        app.gamenative.inputcontrols.AutoControlSetup.applyLayout(
+                                            context = context,
+                                            container = container,
+                                            choice = choice,
+                                            steamAppId = steamAppIdForOnline,
+                                            force = true,
+                                        )
+                                    }
+                                }
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.control_layout_applied),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                            }
+                        },
+                        titleRes = R.string.control_layout_switch_title,
+                        modifier = Modifier.padding(horizontal = 0.dp),
+                    )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
 
