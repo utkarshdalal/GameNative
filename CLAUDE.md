@@ -7,8 +7,9 @@ and grows into a **devkit** others can build bottom-screen tools and per-game mo
 ## Target device: AYN Thor
 
 - Snapdragon 8 Gen 2 (Adreno 740), Android 13. Build the `modern` flavour.
-- Top screen: 6" 1920x1080 AMOLED, 120 Hz. Android's **default** display. The game runs here.
-- Bottom screen: 3.92" 1240x1080 AMOLED, 60 Hz, touch. Android reports it as a **secondary
+- Top screen: 6" 1920x1080 AMOLED, 120 Hz. Android's **default** display (#0 "Built-in Screen"). The game runs here.
+- Bottom screen: 3.92" 1240x1080 AMOLED, touch; reported as #4 "Screen-2", 1080x1240 portrait, **60 and 120 Hz** modes
+  (runs at 120 by default; render at 60 to save power). Android reports it as a **secondary
   (presentation) display**. Other dual-screen devices (AYANEO Pocket DS, Retroid Dual Screen) are reversed,
   so code says "top/bottom" through device profiles, never raw display IDs.
 - Ground truth for display layout: run a game, then `adb logcat -s GNDuo` or pull
@@ -37,6 +38,7 @@ Upstream lands ~4-5 commits/day; `XServerScreen.kt` (~6,800 lines) changes almos
 | `com/winlator/container/Container.java` | `AppPaths` for default drives/MEDIACONV paths; `setDrives`/`setEnvVars` rewrite old paths |
 | `com/winlator/core/DXVKHelper.java`, `WineUtils.java` | `AppPaths` instead of `/data/data/app.gamenative` |
 | `xenvironment/components/BionicProgramLauncherComponent.java` | `AppPaths` for gamepad mem files; sets `EVSHIM_BASE_PATH` |
+| `com/winlator/winhandler/WinHandler.java` | sets `EVSHIM_BASE_PATH` in the app process before `loadLibrary("evshim")` (else the controller is dead) |
 | `.github/workflows/{app-release-signed,tagged-release,issues-contributors-only}.yml` | jobs guarded to run only in upstream repo |
 
 ## Why `app.gamenative.duo` and `AppPaths`
@@ -81,7 +83,7 @@ no CPU frame copies, data over pixels, idle at 0 fps when nothing changes.
 ./gradlew :app:assembleModernDebug          # APK: app/build/outputs/apk/modern/debug/
 ./gradlew :app:installModernDebug           # build + install on the connected device
 adb logcat -s GNDuo                         # devkit logs
-./gradlew :app:lintKotlin                   # style check
+./gradlew :app:lintKotlinMain 2>&1 | grep duo/   # style check for our code (upstream has ~10k violations, so the full task always fails)
 ```
 
 - CI: `.github/workflows/duo-debug-build.yml` builds the APK on pushes to `devkit`/`duo/**` (artifact on the run);
@@ -89,6 +91,8 @@ adb logcat -s GNDuo                         # devkit logs
 - All builds sign with `duo/debug.keystore` (debug-only, deliberately committed) so CI and local APKs update
   each other. For local builds: `cp duo/debug.keystore ~/.android/debug.keystore` (back up your own first).
 - A `local.properties` with dummy `POSTHOG_API_KEY`/`POSTHOG_HOST` is enough to build.
+- Official GameNative can be installed alongside and logs the same tags (`evshim`, `WinHandler`, ...). Check
+  which app a log line comes from: `adb logcat --pid=$(adb shell pidof app.gamenative.duo)`.
 
 ## Known issues / open questions
 

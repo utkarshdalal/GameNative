@@ -169,6 +169,7 @@ public class WinHandler {
     }
 
     static {
+        try { android.system.Os.setenv("EVSHIM_BASE_PATH", com.winlator.core.AppPaths.FILES_DIR, true); } catch (Exception ignored) {} // GameNativeDuo: evshim's load-time init falls back to app.gamenative's dir
         System.loadLibrary("evshim");
     }
 
