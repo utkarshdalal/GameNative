@@ -4,3 +4,11 @@
 [submodule "app/src/main/cpp/lsfg-vk-android"]
 	path = app/src/main/cpp/lsfg-vk-android
 	url = https://github.com/GameNative/lsfg-vk-android.git
+[submodule "iq80-leveldb/upstream"]
+	path = iq80-leveldb/upstream
+	url = https://github.com/jeremybernstein/leveldb.git
+	branch = gamenative
+[submodule "snappy-java/upstream"]
+	path = snappy-java/upstream
+	url = https://github.com/jeremybernstein/snappy-java.git
+	branch = gamenative

@@ -69,6 +69,7 @@ import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.asyncIsolated
 import app.gamenative.utils.CURRENT_UFS_PARSE_VERSION
 import app.gamenative.utils.generateSteamApp
+import app.gamenative.utils.parseLaunchArguments
 import app.gamenative.workshop.WorkshopManager
 import com.winlator.container.Container
 import com.winlator.xenvironment.ImageFs
@@ -122,6 +123,7 @@ import `in`.dragonbra.javasteam.steam.handlers.steamuser.callback.LoggedOnCallba
 import `in`.dragonbra.javasteam.steam.handlers.steamuser.callback.PlayingSessionStateCallback
 import `in`.dragonbra.javasteam.steam.handlers.steamuserstats.Stats
 import `in`.dragonbra.javasteam.steam.handlers.steamuserstats.SteamUserStats
+import `in`.dragonbra.javasteam.steam.handlers.steamuserstats.callback.UserStatsCallback
 import `in`.dragonbra.javasteam.steam.handlers.steamworkshop.SteamWorkshop
 import `in`.dragonbra.javasteam.steam.steamclient.AsyncJobFailedException
 import `in`.dragonbra.javasteam.steam.steamclient.SteamClient
@@ -277,6 +279,9 @@ class SteamService : Service(), IChallengeUrlChanged {
     private var _steamUserStats: SteamUserStats? = null
     private var _steamFamilyGroups: FamilyGroups? = null
     private var _steamPlayer: Player? = null
+
+    // for GreenworksCloudClient, so greenworks shares SteamAutoCloud's handler without loosening _steamCloud.
+    internal fun steamCloudHandler(): SteamCloud? = _steamCloud
 
     private var _loginResult: LoginResult = LoginResult.Failed
 
@@ -473,6 +478,19 @@ class SteamService : Service(), IChallengeUrlChanged {
                 depotKeyPrep.remove(appId)
                 prep.owner.updateStatusMessage(null)
             }
+        }
+
+        // parallel-indexed with SteamApp.config.launch. NOT persisted to Room (would need a schema bump);
+        // repopulated from PICS on every login.
+        private val launchArgumentsCache: ConcurrentHashMap<Int, List<String>> = ConcurrentHashMap()
+
+        // first .exe launch entry for [os]; null when uncached or no match.
+        fun getLaunchArgumentsForOs(appId: Int, os: OS = OS.windows): String? {
+            val args = launchArgumentsCache[appId] ?: return null
+            val launches = getAppInfoOf(appId)?.config?.launch ?: return null
+            val idx = launches.indexOfFirst { os in it.configOS && it.executable.endsWith(".exe", ignoreCase = true) }
+            if (idx < 0 || idx >= args.size) return null
+            return args[idx].takeIf { it.isNotEmpty() }
         }
 
         internal fun notifyDownloadStarted(appId: Int) {
@@ -3187,6 +3205,8 @@ class SteamService : Service(), IChallengeUrlChanged {
             prefixToPath: (String) -> String,
             isOffline: Boolean = false,
             onProgress: ((message: String, progress: Float) -> Unit)? = null,
+            // html5 leveldb-backed titles opt in; see SteamAutoCloud.syncUserFiles.
+            chromiumProfileSync: Boolean = false,
         ): Deferred<PostSyncInfo> = parentScope.asyncIsolated {
             if (isOffline || !isConnected) {
                 return@asyncIsolated PostSyncInfo(SyncResult.UpToDate)
@@ -3219,6 +3239,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                             parentScope = parentScope,
                                             prefixToPath = prefixToPath,
                                             onProgress = onProgress,
+                                            chromiumProfileSync = chromiumProfileSync,
                                         ).await()
 
                                         postSyncInfo?.let { info ->
@@ -3338,7 +3359,13 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
-        suspend fun closeApp(context: Context, appId: Int, isOffline: Boolean, prefixToPath: (String) -> String) = withContext(Dispatchers.IO) {
+        suspend fun closeApp(
+            context: Context,
+            appId: Int,
+            isOffline: Boolean,
+            chromiumProfileSync: Boolean = false,
+            prefixToPath: (String) -> String,
+        ) = withContext(Dispatchers.IO) {
             async {
                 if (isOffline || !isConnected) {
                     instance?.addPendingSyncApp(appId)
@@ -3371,6 +3398,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                                 steamCloud = steamCloud,
                                                 parentScope = this,
                                                 prefixToPath = prefixToPath,
+                                                chromiumProfileSync = chromiumProfileSync,
                                             ).await()
 
                                             steamCloud.signalAppExitSyncDone(
@@ -3935,6 +3963,17 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
+        // null when offline or the request fails.
+        suspend fun fetchUserStatsForApp(appId: Int): UserStatsCallback? {
+            val service = instance ?: return null
+            val steamUser = service._steamUser ?: return null
+            val steamId = steamUser.steamID ?: return null
+            val handler = service._steamUserStats ?: return null
+            return runCatching { handler.getUserStats(appId, steamId).await() }
+                .onFailure { Timber.tag("SteamService").w(it, "fetchUserStatsForApp failed for appId=$appId") }
+                .getOrNull()
+        }
+
         suspend fun generateAchievements(appId: Int, configDirectory: String) {
             val steamUser = instance!!._steamUser!!
             val userStats = instance?._steamUserStats!!.getUserStats(appId, steamUser.steamID!!).await()
@@ -3959,12 +3998,55 @@ class SteamService : Service(), IChallengeUrlChanged {
             // Seed the GSE Saves file with the real earned state from Steam to avoid re-trigger notifications
             val context = instance!!.applicationContext
             val gseDirs = getGseSaveDirs(context, appId)
-            seedGseSaveAchievements(gseDirs, result.achievements)
+            seedGseSaveAchievements(gseDirs, result.achievements, achievementResetTimes(userStats, nameToBlockBit))
+        }
+
+        // unlockTime[] survives a reset; only stats[].statValue is live. timestamp set + live bit clear = reset.
+        // returns name -> the discarded unlock time.
+        internal fun achievementResetTimes(
+            userStats: UserStatsCallback,
+            nameToBlockBit: Map<String, Pair<Int, Int>>,
+        ): Map<String, Long> {
+            val liveStats = userStats.stats.associate { it.statId to it.statValue }
+            val blocks = userStats.achievementBlocks.associateBy { it.achievementId }
+            val resets = mutableMapOf<String, Long>()
+            for ((name, blockBit) in nameToBlockBit) {
+                val (blockId, bitIndex) = blockBit
+                val live = liveStats[blockId] ?: continue
+                val unlockTime = blocks[blockId]?.unlockTime?.getOrNull(bitIndex) ?: 0
+                if (unlockTime > 0 && (live and (1 shl bitIndex)) == 0) resets[name] = unlockTime.toLong()
+            }
+            return resets
+        }
+
+        // a newer local unlock was earned again after the reset.
+        internal fun isPreResetUnlock(localTime: Long, resetAt: Long?): Boolean = resetAt != null && localTime <= resetAt
+
+        // filtered here, not only at launch: an offline launch skips seeding and reaches this with the stale flag on disk.
+        internal fun achievementPushBitmasks(
+            userStats: UserStatsCallback,
+            nameToBlockBit: Map<String, Pair<Int, Int>>,
+            localUnlocks: Map<String, Long>,
+        ): Map<Int, Int> {
+            val blockIds = nameToBlockBit.values.mapTo(HashSet()) { it.first }
+            val bitmasks = userStats.stats.filter { it.statId in blockIds }.associateTo(mutableMapOf()) { it.statId to it.statValue }
+            val resets = achievementResetTimes(userStats, nameToBlockBit)
+            for ((name, localTime) in localUnlocks) {
+                if (isPreResetUnlock(localTime, resets[name])) continue
+                val (blockId, bitIndex) = nameToBlockBit[name] ?: continue
+                bitmasks[blockId] = bitmasks.getOrDefault(blockId, 0) or (1 shl bitIndex)
+            }
+            return bitmasks
         }
 
         // Seed the GSE achievements file to ensure that we don't get early unlock triggers (Games such as Brotato do re-triggers on launch).
         // merges results with ones from Steam Servers so we don't overwrite offline achievements.
-        private fun seedGseSaveAchievements(dirs: List<File>, achievements: List<app.gamenative.statsgen.Achievement>) {
+        // resets: name -> unlock time Steam discarded; a pre-reset local flag is cleared, not merged.
+        private fun seedGseSaveAchievements(
+            dirs: List<File>,
+            achievements: List<app.gamenative.statsgen.Achievement>,
+            resets: Map<String, Long>,
+        ) {
             if (achievements.isEmpty()) return
             for (dir in dirs) {
                 try {
@@ -3987,10 +4069,11 @@ class SteamService : Service(), IChallengeUrlChanged {
                         val existing = if (merged.has(ach.name)) merged.getJSONObject(ach.name) else JSONObject()
                         val localEarned = existing.optBoolean("earned", false)
                         val steamEarned = ach.unlocked ?: false
-                        val earned = localEarned || steamEarned
                         val localTime = existing.optLong("earned_time", 0L)
                         val steamTime = (ach.unlockTimestamp ?: 0).toLong()
-                        val earnedTime = maxOf(localTime, steamTime)
+                        val preReset = !steamEarned && isPreResetUnlock(localTime, resets[ach.name])
+                        val earned = !preReset && (localEarned || steamEarned)
+                        val earnedTime = if (preReset) 0L else maxOf(localTime, steamTime)
                         existing.put("earned", earned)
                         existing.put("earned_time", earnedTime)
                         merged.put(ach.name, existing)
@@ -4026,10 +4109,11 @@ class SteamService : Service(), IChallengeUrlChanged {
          * Scans GSE save directories for unlocked achievements and a stats directory.
          * Shared by [syncAchievementsFromGoldberg] and [AchievementWatcher].
          *
-         * @return pair of (unlocked achievement names, first stats directory found or null)
+         * @return pair of (unlocked achievement name -> earned_time, first stats directory found or null).
+         * the same achievement can sit in both GSE save locations; the newest earned_time wins.
          */
-        fun collectGseUnlocksAndStats(gseDirs: List<File>): Pair<Set<String>, File?> {
-            val unlocked = mutableSetOf<String>()
+        fun collectGseUnlocksAndStats(gseDirs: List<File>): Pair<Map<String, Long>, File?> {
+            val unlocked = mutableMapOf<String, Long>()
             var statsDir: File? = null
             for (dir in gseDirs) {
                 val achFile = File(dir, "achievements.json")
@@ -4039,7 +4123,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                         for (name in json.keys()) {
                             val entry = json.optJSONObject(name) ?: continue
                             if (entry.optBoolean("earned", false)) {
-                                unlocked.add(name)
+                                unlocked[name] = maxOf(unlocked[name] ?: 0L, entry.optLong("earned_time", 0L))
                             }
                         }
                     } catch (e: Exception) {
@@ -4100,13 +4184,25 @@ class SteamService : Service(), IChallengeUrlChanged {
                 return coldclientSettings.absolutePath
             }
 
+            // html5 containers have neither; Html5AchievementSeed generates the mapping here instead.
+            // without this the close-time sync can't find it and never pushes html5 unlocks.
+            val gseSettings = getGseSaveDirs(context, appId).firstOrNull()?.let { gseSteamSettingsDir(it) }
+            if (gseSettings != null && File(gseSettings, "achievement_name_to_block.json").exists()) {
+                return gseSettings.absolutePath
+            }
+
             return null
         }
+
+        // steam_settings for titles with no game-side one (html5). NOT the GSE saves dir itself:
+        // generateAchievements writes its schema as achievements.json, which would overwrite the
+        // earned-state achievements.json GSE keeps there.
+        fun gseSteamSettingsDir(gseDir: File): File = File(gseDir, "steam_settings")
 
         suspend fun storeAchievementUnlocks(
             appId: Int,
             configDirectory: String,
-            unlockedNames: Set<String>,
+            unlocked: Map<String, Long>,
             gseStatsDir: File
         ): Result<Unit> = runCatching {
             val steamUser = instance!!._steamUser!!
@@ -4119,7 +4215,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             // Build achievement name-to-block mapping from on-disk file
             val mappingFile = File(configDirectory, "achievement_name_to_block.json")
-            if (mappingFile.exists() && unlockedNames.isNotEmpty()) {
+            if (mappingFile.exists() && unlocked.isNotEmpty()) {
                 val mappingJson = JSONObject(mappingFile.readText(Charsets.UTF_8))
                 val nameToBlockBit = mutableMapOf<String, Pair<Int, Int>>()
                 for (key in mappingJson.keys()) {
@@ -4129,24 +4225,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     }
                 }
 
-                // Seed with current achievement bitmasks from server
-                for (block in userStats.achievementBlocks ?: emptyList()) {
-                    val blockId = (block.achievementId as? Number)?.toInt() ?: continue
-                    var bitmask = 0
-                    val unlockTimes = block.unlockTime ?: emptyList()
-                    for (i in unlockTimes.indices) {
-                        val t = unlockTimes[i]
-                        if ((t as? Number)?.toLong() != 0L) bitmask = bitmask or (1 shl i)
-                    }
-                    allStats[blockId] = bitmask
-                }
-
-                // Merge in newly unlocked achievements
-                for (name in unlockedNames) {
-                    val (blockId, bitIndex) = nameToBlockBit[name] ?: continue
-                    val current = allStats.getOrDefault(blockId, 0)
-                    allStats[blockId] = current or (1 shl bitIndex)
-                }
+                allStats.putAll(achievementPushBitmasks(userStats, nameToBlockBit, unlocked))
             }
 
             // Merge GSE stat files using schema from getUserStats for name->id mapping
@@ -5333,6 +5412,9 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                             ensureActive()
                             val steamAppsMap = picsCallback.apps.values.mapNotNull { app ->
+                                // EVERY pass, not gated by changeNumber: the cache isn't persisted, so a warm login needs it too.
+                                launchArgumentsCache[app.id] = app.keyValues.parseLaunchArguments()
+
                                 val appFromDb = appDao.findApp(app.id)
                                 val packageId = appFromDb?.packageId ?: INVALID_PKG_ID
                                 val packageFromDb = if (packageId != INVALID_PKG_ID) licenseDao.findLicense(packageId) else null
