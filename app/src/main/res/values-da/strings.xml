@@ -565,6 +565,9 @@
     <string name="achievement_position_bottom_right">Nederst til højre</string>
     <string name="launch_steam_client_description">Headless anbefales\nPåkrævet til EA, Rockstar, Ubisoft og andre launchere\nAktiverer multiplayer og løser DRM- og controllerproblemer</string>
     <string name="steam_starting">Starter Steam…</string>
+    <string name="steam_logging_in">Logger ind på Steam…</string>
+    <string name="steam_connecting">Forbinder til Steam-servere… dette kan tage et minut på et langsomt netværk</string>
+    <string name="steam_retrying_login">Prøver Steam-login igen…</string>
     <string name="launch_bionic_steam">Aktivér eksperimentel Bionic Steam</string>
     <string name="allow_steam_updates">Tillad Steam-opdateringer</string>
     <string name="allow_steam_updates_description">Opdaterer Steam til nyeste version. Reducerer ydelsen markant.</string>
