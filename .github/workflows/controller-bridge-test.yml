@@ -1,0 +1,30 @@
+name: Controller bridge test
+
+on:
+  push:
+    branches: [ "fix/controller-routing-unassigned-slot", "test/controller-native-bridge" ]
+  workflow_dispatch:
+
+jobs:
+  sdl-controller-buttons:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Java headers
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - name: Install SDL2 headers
+        run: sudo apt-get update && sudo apt-get install -y libsdl2-dev
+      - name: Test real virtual controller buttons
+        run: |
+          TEST_DIR=app/src/main/cpp/evshim/tests
+          cc -std=gnu11 -O0 -g -I"$TEST_DIR/include" \
+            -I"$JAVA_HOME/include" -I"$JAVA_HOME/include/linux" \
+            "$TEST_DIR/controller_buttons.c" -o "$RUNNER_TEMP/controller-buttons" \
+            $(sdl2-config --cflags --libs) -ldl -lpthread
+          mkdir -p "$RUNNER_TEMP/controller-state"
+          SDL_VIDEODRIVER=dummy EVSHIM_BASE_PATH="$RUNNER_TEMP/controller-state" \
+            "$RUNNER_TEMP/controller-buttons"
