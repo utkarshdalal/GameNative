@@ -284,7 +284,7 @@ private const val DEFAULT_FPS_LIMITER_MAX_HZ = 60
 private const val DEFAULT_FPS_LIMITER_TARGET_HZ = 60
 private const val FPS_LIMITER_ENABLED_EXTRA = "fpsLimiterEnabled"
 private const val FPS_LIMITER_TARGET_EXTRA = "fpsLimiterTarget"
-private const val PHYSICAL_CONTROLLER_DIALOG_NONE = 0
+internal const val PHYSICAL_CONTROLLER_DIALOG_NONE = 0
 private const val PHYSICAL_CONTROLLER_DIALOG_BINDINGS = 1
 private const val PHYSICAL_CONTROLLER_DIALOG_SETTINGS = 2
 
@@ -295,7 +295,7 @@ private fun initialFpsLimiterTarget(container: Container): Int =
     parsePositiveFpsLimit(container.getExtra(FPS_LIMITER_TARGET_EXTRA))
         ?: DEFAULT_FPS_LIMITER_TARGET_HZ
 
-private fun detectMaxRefreshRateHz(context: Context, attachedView: View?): Int {
+internal fun detectMaxRefreshRateHz(context: Context, attachedView: View?): Int {
     val display = attachedView?.display
         ?: context.display
         ?: ContextCompat.getSystemService(context, DisplayManager::class.java)?.getDisplay(Display.DEFAULT_DISPLAY)
@@ -507,7 +507,6 @@ fun XServerScreen(
     var firstTimeBoot = false
     var needsUnpacking = false
     var containerVariantChanged = false
-    var frameRating by remember { mutableStateOf<FrameRating?>(null) }
     var frameRatingWindowId = -1
     var vkbasaltConfig = ""
     var taskAffinityMask = 0
@@ -521,6 +520,7 @@ fun XServerScreen(
     val container = remember(appId) {
         ContainerUtils.getContainer(context, appId)
     }
+    val ui = remember { XServerScreenState(container, context) }
     val activity = remember(context) { BrightnessManager.findActivity(context) }
 
     DisposableEffect(activity) {
@@ -588,12 +588,6 @@ fun XServerScreen(
     //     Log.d("XServerScreen", "Remembering xEnvironment as $result")
     //     result
     // }
-    var touchMouse by remember {
-        val result = mutableStateOf<TouchMouse?>(null)
-        Timber.i("Remembering touchMouse as $result")
-        result
-    }
-    var keyboard by remember { mutableStateOf<Keyboard?>(null) }
     // var pointerEventListener by remember { mutableStateOf<Callback<MotionEvent>?>(null) }
 
     val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
@@ -603,94 +597,47 @@ fun XServerScreen(
 
     var currentAppInfo = SteamService.getAppInfoOf(gameId)
 
-    var xServerView: XServerRendererView? by remember {
-        val result = mutableStateOf<XServerRendererView?>(null)
-        Timber.i("Remembering xServerView as $result")
-        result
-    }
 
-    var swapInputOverlay: SwapInputOverlayView? by remember { mutableStateOf(null) }
-    var imeInputReceiver: app.gamenative.externaldisplay.IMEInputReceiver? by remember { mutableStateOf(null) }
 
-    var win32AppWorkarounds: Win32AppWorkarounds? by remember { mutableStateOf(null) }
-    var physicalControllerHandler: PhysicalControllerHandler? by remember { mutableStateOf(null) }
     val sc = remember { app.gamenative.steamcontroller.ScSessionState() }
-    var exitWatchJob: Job? by remember { mutableStateOf(null) }
     val keyboardEscMenuHandler = remember(scope) { KeyboardEscMenuHandler(scope) }
 
     DisposableEffect(Unit) {
         onDispose {
             PluviaApp.radialMenuCoordinator?.detach()
             PluviaApp.radialMenuCoordinator = null
-            physicalControllerHandler?.cleanup()
-            physicalControllerHandler = null
+            ui.physicalControllerHandler?.cleanup()
+            ui.physicalControllerHandler = null
             sc.mapper?.stop()
             sc.mapper = null
-            exitWatchJob?.cancel()
-            exitWatchJob = null
+            ui.exitWatchJob?.cancel()
+            ui.exitWatchJob = null
             keyboardEscMenuHandler.cancel()
         }
     }
     var isKeyboardVisible = false
-    var areControlsVisible by remember { mutableStateOf(false) }
-    var isDisableMouseInput by remember(container.id) { mutableStateOf(container.isDisableMouseInput) }
-    var isEditMode by remember { mutableStateOf(false) }
-    var gameRoot by remember { mutableStateOf<View?>(null) }
-    var windowModificationListener by remember { mutableStateOf<WindowManager.OnWindowModificationListener?>(null) }
     // Snapshot of element positions before entering edit mode (for cancel behavior)
-    var elementPositionsSnapshot by remember { mutableStateOf<Map<com.winlator.inputcontrols.ControlElement, Pair<Int, Int>>>(emptyMap()) }
-    var showElementEditor by remember { mutableStateOf(false) }
-    var elementToEdit by remember { mutableStateOf<com.winlator.inputcontrols.ControlElement?>(null) }
-    var physicalControllerDialogMode by remember { mutableIntStateOf(PHYSICAL_CONTROLLER_DIALOG_NONE) }
     var showPlayingBlockedDialog by rememberSaveable { mutableStateOf(false) }
     var playingBlockedRemoteName by rememberSaveable { mutableStateOf<String?>(null) }
-    var showTouchGestureDialog by remember { mutableStateOf(false) }
-    var showShooterModeDialog by remember(container.id) { mutableStateOf(false) }
-    var isTouchscreenModeActive by remember { mutableStateOf(container.isTouchscreenMode) }
-    var isShooterModeActive by remember(container.id) { mutableStateOf(container.isShooterMode) }
-    var currentGestureConfig by remember {
-        mutableStateOf(app.gamenative.data.TouchGestureConfig.fromJson(container.getGestureConfig()))
-    }
-    var currentShooterConfig by remember(container.id) {
-        mutableStateOf(ShooterModeConfig.fromJson(container.getShooterConfig()))
-    }
     fun shouldShowMouseCursor(): Boolean {
         return !container.isDisableMouseInput &&
-            (!container.isTouchscreenMode || currentGestureConfig.showCursorInTouchscreenMode)
+            (!container.isTouchscreenMode || ui.currentGestureConfig.showCursorInTouchscreenMode)
     }
     fun applyMouseCursorVisibility() {
-        xServerView?.renderer?.setCursorVisible(shouldShowMouseCursor())
+        ui.xServerView?.renderer?.setCursorVisible(shouldShowMouseCursor())
     }
     val clickHighlightPoints = remember { mutableStateListOf<app.gamenative.ui.component.HighlightPoint>() }
-    var debugGestureName by remember { mutableStateOf("") }
-    var debugGestureKey by remember { mutableIntStateOf(0) }
-    var keyboardRequestedFromOverlay by remember { mutableStateOf(false) }
-    var shouldForceResumeOnMenuClose by remember { mutableStateOf(false) }
-    var showQuickMenu by remember { mutableStateOf(false) }
-    var quickMenuToolsVisible by remember { mutableStateOf(false) }
-    var quickMenuWineProcesses by remember { mutableStateOf<List<ProcessInfo>>(emptyList()) }
-    var quickMenuWineProcessesLoading by remember { mutableStateOf(false) }
-    var hasPhysicalController by remember { mutableStateOf(false) }
-    var controllerSlotStatusVersion by remember { mutableIntStateOf(0) }
-    var keepPausedForEditor by remember { mutableStateOf(false) }
-    var hasPhysicalKeyboard by remember { mutableStateOf(false) }
-    var hasPhysicalMouse by remember { mutableStateOf(false) }
-    var usingScreenMirror by remember { mutableStateOf(false) }
-    var hasInternalTouchpad by remember { mutableStateOf(false) }
-    var hasUpdatedScreenGamepad by remember { mutableStateOf(false) }
-    var isPerformanceHudEnabled by remember { mutableStateOf(PrefManager.showFps) }
     val shouldTrackDisplayedFrames = remember { AtomicBoolean(false) }
-    var detectedMaxRefreshRateHz by remember { mutableIntStateOf(detectMaxRefreshRateHz(context, null)) }
     var fpsLimiterEnabled by rememberSaveable(container.id) { mutableStateOf(initialFpsLimiterEnabled(container)) }
     var fpsLimiterTarget by rememberSaveable(container.id) { mutableIntStateOf(initialFpsLimiterTarget(container)) }
 
-    val gyroOverlaySuppressed = showQuickMenu || keepPausedForEditor || showElementEditor ||
-        physicalControllerDialogMode != PHYSICAL_CONTROLLER_DIALOG_NONE ||
-        showTouchGestureDialog || showShooterModeDialog ||
-        showPlayingBlockedDialog || isEditMode
+    val gyroOverlaySuppressed = ui.showQuickMenu || ui.keepPausedForEditor || ui.showElementEditor ||
+        ui.physicalControllerDialogMode != PHYSICAL_CONTROLLER_DIALOG_NONE ||
+        ui.showTouchGestureDialog || ui.showShooterModeDialog ||
+        showPlayingBlockedDialog || ui.isEditMode
     SyncGyroOverlaySuppression(
         suppressed = gyroOverlaySuppressed,
-        viewKey = xServerView,
+        viewKey = ui.xServerView,
     )
 
     // LSFG tab in QuickMenu only visible when enabled in container settings
@@ -706,70 +653,17 @@ fun XServerScreen(
         container.saveData()
     }
 
-    fun loadPerformanceHudConfig(): PerformanceHudConfig {
-        return PerformanceHudConfig(
-            showFrameRate = PrefManager.performanceHudShowFrameRate,
-            showCpuUsage = PrefManager.performanceHudShowCpuUsage,
-            showGpuUsage = PrefManager.performanceHudShowGpuUsage,
-            showRamUsage = PrefManager.performanceHudShowRamUsage,
-            showBatteryLevel = PrefManager.performanceHudShowBatteryLevel,
-            showPowerDraw = PrefManager.performanceHudShowPowerDraw,
-            showBatteryRuntime = PrefManager.performanceHudShowBatteryRuntime,
-            showBatteryTemperature = PrefManager.performanceHudShowBatteryTemperature,
-            showClockTime = PrefManager.performanceHudShowClockTime,
-            showCpuTemperature = PrefManager.performanceHudShowCpuTemperature,
-            showGpuTemperature = PrefManager.performanceHudShowGpuTemperature,
-            showFrameRateGraph = PrefManager.performanceHudShowFrameRateGraph,
-            showCpuUsageGraph = PrefManager.performanceHudShowCpuUsageGraph,
-            showGpuUsageGraph = PrefManager.performanceHudShowGpuUsageGraph,
-            backgroundOpacity = PrefManager.performanceHudBackgroundOpacity,
-            colorIntensity = PrefManager.performanceHudColorIntensity,
-            showTextOutline = PrefManager.performanceHudShowTextOutline,
-            size = PerformanceHudSize.fromPrefValue(PrefManager.performanceHudSize),
-        )
-    }
-
-    var performanceHudConfig by remember { mutableStateOf(loadPerformanceHudConfig()) }
-    var performanceHudView by remember { mutableStateOf<PerformanceHudView?>(null) }
-    var performanceHudHost by remember { mutableStateOf<FrameLayout?>(null) }
-    var isDraggingPerformanceHud by remember { mutableStateOf(false) }
-    var isTrackingPerformanceHudTouch by remember { mutableStateOf(false) }
-    var performanceHudTouchDownRawX by remember { mutableStateOf(0f) }
-    var performanceHudTouchDownRawY by remember { mutableStateOf(0f) }
-    var performanceHudDragOffsetX by remember { mutableStateOf(0f) }
-    var performanceHudDragOffsetY by remember { mutableStateOf(0f) }
     val performanceHudTouchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
 
-    fun persistPerformanceHudConfig(config: PerformanceHudConfig) {
-        PrefManager.performanceHudShowFrameRate = config.showFrameRate
-        PrefManager.performanceHudShowCpuUsage = config.showCpuUsage
-        PrefManager.performanceHudShowGpuUsage = config.showGpuUsage
-        PrefManager.performanceHudShowRamUsage = config.showRamUsage
-        PrefManager.performanceHudShowBatteryLevel = config.showBatteryLevel
-        PrefManager.performanceHudShowPowerDraw = config.showPowerDraw
-        PrefManager.performanceHudShowBatteryRuntime = config.showBatteryRuntime
-        PrefManager.performanceHudShowBatteryTemperature = config.showBatteryTemperature
-        PrefManager.performanceHudShowClockTime = config.showClockTime
-        PrefManager.performanceHudShowCpuTemperature = config.showCpuTemperature
-        PrefManager.performanceHudShowGpuTemperature = config.showGpuTemperature
-        PrefManager.performanceHudShowFrameRateGraph = config.showFrameRateGraph
-        PrefManager.performanceHudShowCpuUsageGraph = config.showCpuUsageGraph
-        PrefManager.performanceHudShowGpuUsageGraph = config.showGpuUsageGraph
-        PrefManager.performanceHudBackgroundOpacity = config.backgroundOpacity
-        PrefManager.performanceHudColorIntensity = config.colorIntensity
-        PrefManager.performanceHudShowTextOutline = config.showTextOutline
-        PrefManager.performanceHudSize = config.size.prefValue
-    }
-
     fun applyPerformanceHudConfig(config: PerformanceHudConfig) {
-        performanceHudConfig = config
+        ui.performanceHudConfig = config
         persistPerformanceHudConfig(config)
-        performanceHudView?.setConfig(config)
+        ui.performanceHudView?.setConfig(config)
     }
 
-    LaunchedEffect(xServerView?.renderer) {
+    LaunchedEffect(ui.xServerView?.renderer) {
         val screenEffectsConfig = loadScreenEffectsConfig(container)
-        when (val renderer = xServerView?.renderer) {
+        when (val renderer = ui.xServerView?.renderer) {
             is VulkanRenderer -> {
                 applyScreenEffectsConfig(renderer, screenEffectsConfig)
                 if (isLsfgAvailable) LsfgVkManager.applyNativeRuntime(renderer, container, context)
@@ -787,8 +681,8 @@ fun XServerScreen(
         // releases mix stale pixmaps under multiplied present traffic
         // (measured as constant multi-exposure ghosting on the X11/turnip
         // present path).
-        xServerView?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
-        xServerView?.getxServer()
+        ui.xServerView?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
+        ui.xServerView?.getxServer()
             ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
             ?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
         // Not disarmed with LSFG: the layer only multiplies Vulkan-swapchain
@@ -821,7 +715,7 @@ fun XServerScreen(
     }
 
     fun applyFpsLimiterTarget(target: Int) {
-        val sanitized = target.coerceAtLeast(5).coerceAtMost(detectedMaxRefreshRateHz)
+        val sanitized = target.coerceAtLeast(5).coerceAtMost(ui.detectedMaxRefreshRateHz)
         fpsLimiterTarget = sanitized
         if (fpsLimiterEnabled) {
             applyFpsLimiterToEngines(effectiveFpsLimit())
@@ -848,7 +742,7 @@ fun XServerScreen(
         applyLsfgSettings()
     }
 
-    LaunchedEffect(xServerView) {
+    LaunchedEffect(ui.xServerView) {
         // Adaptive-cap steps route through the LSFG limiter; the X-server
         // limiters must stay at 0 under LSFG.
         PowerManager.fpsCapApplier = applier@{ capFps: Int ->
@@ -858,8 +752,8 @@ fun XServerScreen(
             ShmFramePacer.setFrameRateLimit(capFps)
             true
         }
-        val detectedMax = detectMaxRefreshRateHz(context, xServerView as? View)
-        detectedMaxRefreshRateHz = detectedMax
+        val detectedMax = detectMaxRefreshRateHz(context, ui.xServerView as? View)
+        ui.detectedMaxRefreshRateHz = detectedMax
         val clampedTarget = fpsLimiterTarget.coerceAtMost(detectedMax).coerceAtLeast(5)
         if (clampedTarget != fpsLimiterTarget) {
             fpsLimiterTarget = clampedTarget
@@ -868,8 +762,8 @@ fun XServerScreen(
     }
 
     fun restorePerformanceHudPosition() {
-        val host = performanceHudHost ?: return
-        val hud = performanceHudView ?: return
+        val host = ui.performanceHudHost ?: return
+        val hud = ui.performanceHudView ?: return
         if (host.width <= 0 || host.height <= 0 || hud.width <= 0 || hud.height <= 0) return
 
         val maxX = (host.width - hud.width).coerceAtLeast(0).toFloat()
@@ -886,8 +780,8 @@ fun XServerScreen(
     }
 
     fun movePerformanceHud(rawX: Float, rawY: Float, save: Boolean) {
-        val host = performanceHudHost ?: return
-        val hud = performanceHudView ?: return
+        val host = ui.performanceHudHost ?: return
+        val hud = ui.performanceHudView ?: return
         if (host.width <= 0 || host.height <= 0 || hud.width <= 0 || hud.height <= 0) return
 
         val hostLocation = IntArray(2)
@@ -895,8 +789,8 @@ fun XServerScreen(
         val maxX = (host.width - hud.width).coerceAtLeast(0).toFloat()
         val maxY = (host.height - hud.height).coerceAtLeast(0).toFloat()
 
-        hud.x = (rawX - hostLocation[0] - performanceHudDragOffsetX).coerceIn(0f, maxX)
-        hud.y = (rawY - hostLocation[1] - performanceHudDragOffsetY).coerceIn(0f, maxY)
+        hud.x = (rawX - hostLocation[0] - ui.performanceHudDragOffsetX).coerceIn(0f, maxX)
+        hud.y = (rawY - hostLocation[1] - ui.performanceHudDragOffsetY).coerceIn(0f, maxY)
 
         if (save) {
             PrefManager.performanceHudXFraction = if (maxX > 0f) hud.x / maxX else 0f
@@ -905,21 +799,21 @@ fun XServerScreen(
     }
 
     fun removePerformanceHud() {
-        isDraggingPerformanceHud = false
-        isTrackingPerformanceHudTouch = false
-        performanceHudView?.let { hud ->
+        ui.isDraggingPerformanceHud = false
+        ui.isTrackingPerformanceHudTouch = false
+        ui.performanceHudView?.let { hud ->
             (hud.parent as? ViewGroup)?.removeView(hud)
         }
-        performanceHudView = null
+        ui.performanceHudView = null
     }
 
     fun togglePerformanceHudLayout() {
-        val hud = performanceHudView ?: return
+        val hud = ui.performanceHudView ?: return
         val compactMode = !hud.isCompactMode()
         hud.setCompactMode(compactMode)
         PrefManager.performanceHudCompactMode = compactMode
         hud.post {
-            if (performanceHudView === hud && !isDraggingPerformanceHud) {
+            if (ui.performanceHudView === hud && !ui.isDraggingPerformanceHud) {
                 restorePerformanceHudPosition()
             }
         }
@@ -930,15 +824,15 @@ fun XServerScreen(
             removePerformanceHud()
             return
         }
-        if (performanceHudView != null) {
+        if (ui.performanceHudView != null) {
             return
         }
 
-        val targetLayout = performanceHudHost ?: return
+        val targetLayout = ui.performanceHudHost ?: return
         val hud = PerformanceHudView(
             context = context,
             fpsProvider = {
-                val raw = frameRating?.currentFPS ?: 0f
+                val raw = ui.frameRating?.currentFPS ?: 0f
                 if (isLsfgAvailable && lsfgMultiplier >= 2) {
                     // Only trust the layer's own measurement; multiplying raw
                     // fabricates fps for games the layer never attaches to
@@ -948,7 +842,7 @@ fun XServerScreen(
                     raw
                 }
             },
-            initialConfig = performanceHudConfig,
+            initialConfig = ui.performanceHudConfig,
             initialCompactMode = PrefManager.performanceHudCompactMode,
         )
         val layoutParams = FrameLayout.LayoutParams(
@@ -959,12 +853,12 @@ fun XServerScreen(
         }
 
         targetLayout.addView(hud, layoutParams)
-        performanceHudView = hud
+        ui.performanceHudView = hud
         hud.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-            if (!isDraggingPerformanceHud) restorePerformanceHudPosition()
+            if (!ui.isDraggingPerformanceHud) restorePerformanceHudPosition()
         }
         targetLayout.post {
-            if (performanceHudView === hud) restorePerformanceHudPosition()
+            if (ui.performanceHudView === hud) restorePerformanceHudPosition()
         }
         hud.bringToFront()
     }
@@ -982,7 +876,7 @@ fun XServerScreen(
         // Stop the X-server key auto-repeat (a main-thread Handler) BEFORE suspending the guest. Otherwise, if a key
         // is still "held" when the guest is SIGSTOPped, the auto-repeat's next blocking ClientSocket.write to the
         // non-draining guest hangs the UI thread -> ANR (seen when opening the SC editor with a key still down).
-        runCatching { xServerView?.getxServer()?.inputDeviceManager?.onGuestSuspended() }
+        runCatching { ui.xServerView?.getxServer()?.inputDeviceManager?.onGuestSuspended() }
         PluviaApp.xEnvironment?.onPause()
         PluviaApp.isOverlayPaused = true
         PluviaApp.inputControlsView?.setGyroGameplayActive(false)
@@ -1014,13 +908,13 @@ fun XServerScreen(
         if (!neverSuspend) {
             PluviaApp.xEnvironment?.onResume()
         }
-        keepPausedForEditor = false
+        ui.keepPausedForEditor = false
         clearOverlayPauseState()
     }
 
     fun startExitWatchForUnmappedGameWindow(window: Window) {
-        val winHandler = xServerView?.getxServer()?.winHandler ?: return
-        if (exitWatchJob?.isActive == true) return
+        val winHandler = ui.xServerView?.getxServer()?.winHandler ?: return
+        if (ui.exitWatchJob?.isActive == true) return
         val rockstarExecutable = realSteamRockstarDirectory?.let(RockstarHelperDeployment::gameExecutable)
         val targetExecutable = extractExecutableBasename(
             rockstarExecutable ?: if (container.isLaunchRealSteam && realSteamGameExecutable.isNotEmpty()) realSteamGameExecutable else container.executablePath,
@@ -1028,7 +922,7 @@ fun XServerScreen(
         if (!windowMatchesExecutable(window, targetExecutable)) return
         Timber.i("Exit watch started for $targetExecutable (unmapped class=${window.className})")
 
-        exitWatchJob = CoroutineScope(Dispatchers.IO).launch {
+        ui.exitWatchJob = CoroutineScope(Dispatchers.IO).launch {
             val allowlist = buildEssentialProcessAllowlist(container.isLaunchRealSteam)
             val previousListener = winHandler.getOnGetProcessInfoListener()
             val lock = Any()
@@ -1078,7 +972,7 @@ fun XServerScreen(
                             withContext(Dispatchers.Main) {
                                 exit(
                                     winHandler,
-                                    frameRating,
+                                    ui.frameRating,
                                     currentAppInfo,
                                     container,
                                     appId,
@@ -1103,7 +997,7 @@ fun XServerScreen(
     }
 
     val tryCapturePointer: () -> Boolean = {
-        if (!showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode &&
+        if (!ui.showElementEditor && !ui.keepPausedForEditor && !ui.showQuickMenu && !ui.isEditMode &&
             !container.isTouchscreenMode) {
             PluviaApp.touchpadView?.postDelayed({
                 val view = PluviaApp.touchpadView
@@ -1120,12 +1014,12 @@ fun XServerScreen(
 
     fun scanForExternalDevices() {
         val deviceIds = InputDevice.getDeviceIds()
-        hasPhysicalKeyboard = deviceIds.any { id ->
+        ui.hasPhysicalKeyboard = deviceIds.any { id ->
             val device = InputDevice.getDevice(id) ?: return@any false
             val isExternal = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) device.isExternal else true
             Keyboard.isKeyboardDevice(device) && !device.isVirtual && isExternal
         }
-        hasPhysicalMouse = deviceIds.any { id ->
+        ui.hasPhysicalMouse = deviceIds.any { id ->
             val device = InputDevice.getDevice(id) ?: return@any false
             val isMouse = device.supportsSource(InputDevice.SOURCE_MOUSE) || device.supportsSource(InputDevice.SOURCE_MOUSE_RELATIVE) ||
                           device.supportsSource(InputDevice.SOURCE_TOUCHPAD)
@@ -1134,12 +1028,12 @@ fun XServerScreen(
         }
         val controllerManager = ControllerManager.getInstance()
         controllerManager.autoAssignConnectedDevices()
-        hasPhysicalController = controllerManager.getDetectedDevices().isNotEmpty()
-        controllerSlotStatusVersion++
-        xServerView?.getxServer()?.winHandler?.refreshControllerMappingsForHotplug()
+        ui.hasPhysicalController = controllerManager.getDetectedDevices().isNotEmpty()
+        ui.controllerSlotStatusVersion++
+        ui.xServerView?.getxServer()?.winHandler?.refreshControllerMappingsForHotplug()
 
-        if (!usingScreenMirror &&
-            !hasInternalTouchpad && !hasPhysicalMouse && !hasPhysicalKeyboard && !hasPhysicalController &&
+        if (!ui.usingScreenMirror &&
+            !ui.hasInternalTouchpad && !ui.hasPhysicalMouse && !ui.hasPhysicalKeyboard && !ui.hasPhysicalController &&
             !container.isTouchscreenMode) {
             val manager = PluviaApp.inputControlsManager
             val profiles = manager?.getProfiles(false) ?: listOf()
@@ -1154,11 +1048,11 @@ fun XServerScreen(
                     null
                 } ?: manager?.getProfile(0) ?: profiles.getOrNull(2) ?: profiles.first()
 
-                if (!showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode) {
+                if (!ui.showElementEditor && !ui.keepPausedForEditor && !ui.showQuickMenu && !ui.isEditMode) {
                     Timber.d("No external devices attached, showing on-screen controls")
-                    if (!areControlsVisible) {
-                        showInputControls(targetProfile, xServerView!!.getxServer().winHandler, container)
-                        areControlsVisible = true
+                    if (!ui.areControlsVisible) {
+                        showInputControls(targetProfile, ui.xServerView!!.getxServer().winHandler, container)
+                        ui.areControlsVisible = true
                     }
 
                     PluviaApp.touchpadView?.postDelayed({
@@ -1171,7 +1065,7 @@ fun XServerScreen(
                         }
                     }, 100)
                 }
-                hasUpdatedScreenGamepad = false
+                ui.hasUpdatedScreenGamepad = false
             }
         }
     }
@@ -1182,72 +1076,72 @@ fun XServerScreen(
         val isExternal = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) device.isExternal else true
         if (!device.isVirtual && isExternal) {
             if (Keyboard.isKeyboardDevice(device)) {
-                hasPhysicalKeyboard = true
-                if (!showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode &&
+                ui.hasPhysicalKeyboard = true
+                if (!ui.showElementEditor && !ui.keepPausedForEditor && !ui.showQuickMenu && !ui.isEditMode &&
                     !container.isTouchscreenMode &&
-                    !hasUpdatedScreenGamepad) {
-                    hasUpdatedScreenGamepad = true
+                    !ui.hasUpdatedScreenGamepad) {
+                    ui.hasUpdatedScreenGamepad = true
 
                     hideInputControls()
-                    areControlsVisible = false
+                    ui.areControlsVisible = false
                 }
             }
             val isMouse = device.supportsSource(InputDevice.SOURCE_MOUSE) ||
                     device.supportsSource(InputDevice.SOURCE_MOUSE_RELATIVE) ||
                     device.supportsSource(InputDevice.SOURCE_TOUCHPAD)
             if (isMouse) {
-                hasPhysicalMouse = true
-                if (!hasUpdatedScreenGamepad && tryCapturePointer()) {
-                    hasUpdatedScreenGamepad = true
+                ui.hasPhysicalMouse = true
+                if (!ui.hasUpdatedScreenGamepad && tryCapturePointer()) {
+                    ui.hasUpdatedScreenGamepad = true
 
                     hideInputControls()
-                    areControlsVisible = false
+                    ui.areControlsVisible = false
                 }
             }
         }
         val isGamepad = ExternalController.isGameController(device)
         if (isGamepad) {
             ControllerManager.getInstance().onDeviceConnected(device.id)
-            controllerSlotStatusVersion++
-            xServerView?.getxServer()?.winHandler?.setCurrentController(device.id)
-            xServerView?.getxServer()?.winHandler?.refreshControllerMappingsForHotplug()
-            if (!showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode &&
+            ui.controllerSlotStatusVersion++
+            ui.xServerView?.getxServer()?.winHandler?.setCurrentController(device.id)
+            ui.xServerView?.getxServer()?.winHandler?.refreshControllerMappingsForHotplug()
+            if (!ui.showElementEditor && !ui.keepPausedForEditor && !ui.showQuickMenu && !ui.isEditMode &&
                 !container.isTouchscreenMode &&
-                !hasUpdatedScreenGamepad) {
-                hasUpdatedScreenGamepad = true
+                !ui.hasUpdatedScreenGamepad) {
+                ui.hasUpdatedScreenGamepad = true
 
                 hideInputControls()
-                areControlsVisible = false
+                ui.areControlsVisible = false
             }
         }
     }
 
     val dismissOverlayMenu: () -> Unit = {
-        if (!keyboardRequestedFromOverlay) {
-            imeInputReceiver?.hideKeyboard()
+        if (!ui.keyboardRequestedFromOverlay) {
+            ui.imeInputReceiver?.hideKeyboard()
         }
-        shouldForceResumeOnMenuClose = keyboardRequestedFromOverlay && manualResumeMode && !keepPausedForEditor
-        keyboardRequestedFromOverlay = false
-        showQuickMenu = false
+        ui.shouldForceResumeOnMenuClose = ui.keyboardRequestedFromOverlay && manualResumeMode && !ui.keepPausedForEditor
+        ui.keyboardRequestedFromOverlay = false
+        ui.showQuickMenu = false
     }
 
-    LaunchedEffect(showQuickMenu, quickMenuToolsVisible, xServerView) {
+    LaunchedEffect(ui.showQuickMenu, ui.quickMenuToolsVisible, ui.xServerView) {
         // Piggybacks on this effect rather than its own LaunchedEffect(showQuickMenu) — this
         // composable is at the dex 255-register limit. Extra fires from the other keys repeat
         // the same value; the activity's handler is idempotent.
-        immersiveHooks?.onQuickMenuVisibilityChanged?.invoke(showQuickMenu)
-        if (!showQuickMenu || !quickMenuToolsVisible) {
-            quickMenuWineProcesses = emptyList()
-            quickMenuWineProcessesLoading = false
+        immersiveHooks?.onQuickMenuVisibilityChanged?.invoke(ui.showQuickMenu)
+        if (!ui.showQuickMenu || !ui.quickMenuToolsVisible) {
+            ui.quickMenuWineProcesses = emptyList()
+            ui.quickMenuWineProcessesLoading = false
             return@LaunchedEffect
         }
 
-        quickMenuWineProcessesLoading = true
-        while (showQuickMenu && quickMenuToolsVisible) {
-            quickMenuWineProcesses = withContext(Dispatchers.IO) {
+        ui.quickMenuWineProcessesLoading = true
+        while (ui.showQuickMenu && ui.quickMenuToolsVisible) {
+            ui.quickMenuWineProcesses = withContext(Dispatchers.IO) {
                 WineProcessSnapshotHelper.readFromProc()
             }
-            quickMenuWineProcessesLoading = false
+            ui.quickMenuWineProcessesLoading = false
             delay(QUICK_MENU_PROCESS_POLL_INTERVAL_MS)
         }
     }
@@ -1263,7 +1157,7 @@ fun XServerScreen(
                         (anchor.display?.displayId ?: Display.DEFAULT_DISPLAY) != Display.DEFAULT_DISPLAY
 
                     if (isExternalDisplaySession) {
-                        imeInputReceiver?.showKeyboard() ?: imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
+                        ui.imeInputReceiver?.showKeyboard() ?: imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
                     } else {
                         imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
                     }
@@ -1280,13 +1174,13 @@ fun XServerScreen(
     val onQuickMenuItemSelected: (Int) -> Boolean = { itemId ->
         when (itemId) {
             QuickMenuAction.KEYBOARD -> {
-                keyboardRequestedFromOverlay = true
+                ui.keyboardRequestedFromOverlay = true
                 showSoftKeyboard(view, "onscreen_keyboard_enabled")
                 true
             }
 
             QuickMenuAction.INPUT_CONTROLS -> {
-                if (areControlsVisible) {
+                if (ui.areControlsVisible) {
                     if (PrefManager.usageAnalyticsEnabled) PostHog.capture(event = "onscreen_controller_disabled")
                     hideInputControls()
                 } else {
@@ -1303,10 +1197,10 @@ fun XServerScreen(
                             null
                         } ?: manager?.getProfile(0) ?: profiles.getOrNull(2) ?: profiles.first()
 
-                        showInputControls(targetProfile, xServerView!!.getxServer().winHandler, container)
+                        showInputControls(targetProfile, ui.xServerView!!.getxServer().winHandler, container)
                     }
                 }
-                areControlsVisible = !areControlsVisible
+                ui.areControlsVisible = !ui.areControlsVisible
                 true
             }
 
@@ -1319,37 +1213,37 @@ fun XServerScreen(
                     false
                 }
                 else {
-                    val wasTouchscreenMode = isTouchscreenModeActive
-                    currentGestureConfig = app.gamenative.data.TouchGestureConfig.fromJson(container.gestureConfig)
-                    currentShooterConfig = ShooterModeConfig.fromJson(container.shooterConfig)
-                    isTouchscreenModeActive = container.isTouchscreenMode
-                    isShooterModeActive = container.isShooterMode
+                    val wasTouchscreenMode = ui.isTouchscreenModeActive
+                    ui.currentGestureConfig = app.gamenative.data.TouchGestureConfig.fromJson(container.gestureConfig)
+                    ui.currentShooterConfig = ShooterModeConfig.fromJson(container.shooterConfig)
+                    ui.isTouchscreenModeActive = container.isTouchscreenMode
+                    ui.isShooterModeActive = container.isShooterMode
 
                     PluviaApp.touchpadView?.setSensitivity(profile.cursorSpeed)
-                    PluviaApp.touchpadView?.setTouchscreenMode(isTouchscreenModeActive)
-                    PluviaApp.touchpadView?.setGestureConfig(currentGestureConfig)
+                    PluviaApp.touchpadView?.setTouchscreenMode(ui.isTouchscreenModeActive)
+                    PluviaApp.touchpadView?.setGestureConfig(ui.currentGestureConfig)
                     PluviaApp.inputControlsView?.setGyroSettings(GyroSettings.fromContainer(container))
-                    PluviaApp.inputControlsView?.setContainerShooterMode(isShooterModeActive)
-                    PluviaApp.inputControlsView?.setShooterModeConfig(currentShooterConfig)
+                    PluviaApp.inputControlsView?.setContainerShooterMode(ui.isShooterModeActive)
+                    PluviaApp.inputControlsView?.setShooterModeConfig(ui.currentShooterConfig)
                     PluviaApp.radialMenuCoordinator?.setProfile(profile)
 
-                    val winHandler = xServerView?.getxServer()?.winHandler
-                    if (isTouchscreenModeActive) {
-                        if (areControlsVisible) hideInputControls()
-                        areControlsVisible = false
+                    val winHandler = ui.xServerView?.getxServer()?.winHandler
+                    if (ui.isTouchscreenModeActive) {
+                        if (ui.areControlsVisible) hideInputControls()
+                        ui.areControlsVisible = false
                         loadInputControlsProfilePreservingVisibility(profile, winHandler)
                     }
                     else if (winHandler != null && shouldShowControlsAfterProfileApply(
-                            wereControlsVisible = areControlsVisible,
+                            wereControlsVisible = ui.areControlsVisible,
                             wasTouchscreenMode = wasTouchscreenMode,
-                            isTouchscreenMode = isTouchscreenModeActive,
-                            isShooterMode = isShooterModeActive,
-                            hasOtherInputDevice = hasPhysicalController || hasPhysicalKeyboard ||
-                                hasPhysicalMouse || hasInternalTouchpad,
+                            isTouchscreenMode = ui.isTouchscreenModeActive,
+                            isShooterMode = ui.isShooterModeActive,
+                            hasOtherInputDevice = ui.hasPhysicalController || ui.hasPhysicalKeyboard ||
+                                ui.hasPhysicalMouse || ui.hasInternalTouchpad,
                         )
                     ) {
                         showInputControls(profile, winHandler, container)
-                        areControlsVisible = true
+                        ui.areControlsVisible = true
                     }
                     else {
                         loadInputControlsProfilePreservingVisibility(profile, winHandler)
@@ -1360,13 +1254,13 @@ fun XServerScreen(
             }
 
             QuickMenuAction.DISABLE_MOUSE -> {
-                val newValue = !isDisableMouseInput
-                isDisableMouseInput = newValue
+                val newValue = !ui.isDisableMouseInput
+                ui.isDisableMouseInput = newValue
                 container.setDisableMouseInput(newValue)
                 container.saveData()
                 PluviaApp.touchpadView?.setTouchscreenMouseDisabled(newValue)
                 if (newValue) {
-                    xServerView?.renderer?.setCursorVisible(false)
+                    ui.xServerView?.renderer?.setCursorVisible(false)
                 } else {
                     applyMouseCursorVisibility()
                 }
@@ -1375,7 +1269,7 @@ fun XServerScreen(
 
             QuickMenuAction.EDIT_CONTROLS -> {
                 if (PrefManager.usageAnalyticsEnabled) PostHog.capture(event = "edit_controls_in_game")
-                keepPausedForEditor = true
+                ui.keepPausedForEditor = true
 
                 // Get or create profile for this container
                 val manager = PluviaApp.inputControlsManager ?: InputControlsManager(context)
@@ -1400,10 +1294,10 @@ fun XServerScreen(
                         profile.elements.forEach { element ->
                             snapshot[element] = Pair(element.x.toInt(), element.y.toInt())
                         }
-                        elementPositionsSnapshot = snapshot
+                        ui.elementPositionsSnapshot = snapshot
                     }
 
-                    isEditMode = true
+                    ui.isEditMode = true
                     PluviaApp.inputControlsView?.setEditMode(true)
                     PluviaApp.inputControlsView?.let { icView ->
                         // Wait for view to be laid out before loading elements
@@ -1412,9 +1306,9 @@ fun XServerScreen(
                         }
                     }
 
-                    if (!areControlsVisible) {
-                        showInputControls(activeProfile, xServerView!!.getxServer().winHandler, container)
-                        areControlsVisible = true
+                    if (!ui.areControlsVisible) {
+                        showInputControls(activeProfile, ui.xServerView!!.getxServer().winHandler, container)
+                        ui.areControlsVisible = true
                     }
                 }
                 true
@@ -1424,19 +1318,19 @@ fun XServerScreen(
                 val newMode = !container.isTouchscreenMode
                 container.setTouchscreenMode(newMode)
                 container.saveData()
-                isTouchscreenModeActive = newMode
+                ui.isTouchscreenModeActive = newMode
 
                 // Notify TouchpadView of the mode change
                 PluviaApp.touchpadView?.setTouchscreenMode(newMode)
 
                 if (newMode) {
                     // Apply gesture config when enabling
-                    PluviaApp.touchpadView?.setGestureConfig(currentGestureConfig)
+                    PluviaApp.touchpadView?.setGestureConfig(ui.currentGestureConfig)
 
                     // Hide on-screen controls (mirrors startup priority logic)
-                    if (areControlsVisible) {
+                    if (ui.areControlsVisible) {
                         hideInputControls()
-                        areControlsVisible = false
+                        ui.areControlsVisible = false
                     }
 
                     applyMouseCursorVisibility()
@@ -1445,11 +1339,11 @@ fun XServerScreen(
 
                     // Re-evaluate whether to show on-screen controls
                     // (same logic as scanForExternalDevices startup path)
-                    if (!hasPhysicalController && !hasPhysicalKeyboard &&
-                        !hasPhysicalMouse && !hasInternalTouchpad) {
+                    if (!ui.hasPhysicalController && !ui.hasPhysicalKeyboard &&
+                        !ui.hasPhysicalMouse && !ui.hasInternalTouchpad) {
                         val manager = PluviaApp.inputControlsManager
                         val profiles = manager?.getProfiles(false) ?: listOf()
-                        if (profiles.isNotEmpty() && !areControlsVisible) {
+                        if (profiles.isNotEmpty() && !ui.areControlsVisible) {
                             val profileIdStr = container.getExtra("profileId", "0")
                             val profileId = profileIdStr.toIntOrNull() ?: 0
                             val targetProfile = if (profileId != 0) {
@@ -1457,8 +1351,8 @@ fun XServerScreen(
                             } else {
                                 null
                             } ?: manager?.getProfile(0) ?: profiles.getOrNull(2) ?: profiles.first()
-                            showInputControls(targetProfile, xServerView!!.getxServer().winHandler, container)
-                            areControlsVisible = true
+                            showInputControls(targetProfile, ui.xServerView!!.getxServer().winHandler, container)
+                            ui.areControlsVisible = true
                         }
                     }
                 }
@@ -1469,11 +1363,11 @@ fun XServerScreen(
                 val newMode = !container.isShooterMode
                 container.setShooterMode(newMode)
                 container.saveData()
-                isShooterModeActive = newMode
-                if (newMode && !areControlsVisible) {
+                ui.isShooterModeActive = newMode
+                if (newMode && !ui.areControlsVisible) {
                     val manager = PluviaApp.inputControlsManager
                     val profiles = manager?.getProfiles(false) ?: listOf()
-                    val winHandler = xServerView?.getxServer()?.winHandler
+                    val winHandler = ui.xServerView?.getxServer()?.winHandler
                     if (profiles.isNotEmpty() && winHandler != null) {
                         val profileId = container.getExtra("profileId", "0").toIntOrNull() ?: 0
                         val targetProfile = if (profileId != 0) {
@@ -1482,31 +1376,31 @@ fun XServerScreen(
                             null
                         } ?: manager?.getProfile(0) ?: profiles.getOrNull(2) ?: profiles.first()
                         showInputControls(targetProfile, winHandler, container)
-                        areControlsVisible = true
+                        ui.areControlsVisible = true
                     }
                 }
                 PluviaApp.inputControlsView?.setContainerShooterMode(newMode)
-                PluviaApp.inputControlsView?.setShooterModeConfig(currentShooterConfig)
+                PluviaApp.inputControlsView?.setShooterModeConfig(ui.currentShooterConfig)
                 false
             }
 
             QuickMenuAction.EDIT_PHYSICAL_CONTROLLER -> {
                 if (PrefManager.usageAnalyticsEnabled) PostHog.capture(event = "edit_physical_controller_from_menu")
-                keepPausedForEditor = true
-                physicalControllerDialogMode = PHYSICAL_CONTROLLER_DIALOG_BINDINGS
+                ui.keepPausedForEditor = true
+                ui.physicalControllerDialogMode = PHYSICAL_CONTROLLER_DIALOG_BINDINGS
                 true
             }
 
             QuickMenuAction.PHYSICAL_CONTROLLER_SETTINGS -> {
-                physicalControllerDialogMode = PHYSICAL_CONTROLLER_DIALOG_SETTINGS
+                ui.physicalControllerDialogMode = PHYSICAL_CONTROLLER_DIALOG_SETTINGS
                 false
             }
 
             // Steam Controller live editors: open the editor; on close they persist + call TritonMapper.reload()
             // so the change applies to the running game with no relaunch.
-            QuickMenuAction.SC_ROOT -> { keepPausedForEditor = true; sc.showRoot = true; true }
-            QuickMenuAction.SC_BINDINGS -> { keepPausedForEditor = true; sc.showBindings = true; true }
-            QuickMenuAction.SC_LAYOUT -> { keepPausedForEditor = true; sc.showLayout = true; true }
+            QuickMenuAction.SC_ROOT -> { ui.keepPausedForEditor = true; sc.showRoot = true; true }
+            QuickMenuAction.SC_BINDINGS -> { ui.keepPausedForEditor = true; sc.showBindings = true; true }
+            QuickMenuAction.SC_LAYOUT -> { ui.keepPausedForEditor = true; sc.showLayout = true; true }
 
             QuickMenuAction.RADIAL_MENU -> {
                 if (PrefManager.usageAnalyticsEnabled) PostHog.capture(event = "edit_radial_menu_from_menu")
@@ -1514,8 +1408,8 @@ fun XServerScreen(
             }
 
             QuickMenuAction.PERFORMANCE_HUD -> {
-                val enabled = !isPerformanceHudEnabled
-                isPerformanceHudEnabled = enabled
+                val enabled = !ui.isPerformanceHudEnabled
+                ui.isPerformanceHudEnabled = enabled
                 PrefManager.showFps = enabled
                 updatePerformanceHud(enabled)
                 if (PrefManager.usageAnalyticsEnabled) {
@@ -1539,14 +1433,14 @@ fun XServerScreen(
                         }
                     },
                 )
-                imeInputReceiver?.hideKeyboard()
+                ui.imeInputReceiver?.hideKeyboard()
                 // Resume processes before exiting so they can receive SIGTERM cleanly.
                 // Don't resume audio to avoid resume->suspend race condition causing ANR.
                 if (PluviaApp.isOverlayPaused && !neverSuspend) {
                     PluviaApp.xEnvironment?.resumeGameProcesses()
                 }
                 clearOverlayPauseState()
-                exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack, "quick_menu")
+                exit(ui.xServerView!!.getxServer().winHandler, ui.frameRating, currentAppInfo, container, appId, onExit, navigateBack, "quick_menu")
                 true
             }
 
@@ -1560,7 +1454,7 @@ fun XServerScreen(
 
         if (imeVisible) {
             if (PrefManager.usageAnalyticsEnabled) PostHog.capture(event = "onscreen_keyboard_disabled")
-            imeInputReceiver?.hideKeyboard()
+            ui.imeInputReceiver?.hideKeyboard()
             view.post {
                 if (Build.VERSION.SDK_INT >= 30) {
                     view.windowInsetsController?.hide(WindowInsets.Type.ime())
@@ -1572,7 +1466,7 @@ fun XServerScreen(
             return@gameBack
         }
 
-        if (showQuickMenu) {
+        if (ui.showQuickMenu) {
             dismissOverlayMenu()
             return@gameBack
         }
@@ -1581,7 +1475,7 @@ fun XServerScreen(
 
         val controllerManager = ControllerManager.getInstance()
         controllerManager.scanForDevices()
-        hasPhysicalController = controllerManager.getDetectedDevices().isNotEmpty()
+        ui.hasPhysicalController = controllerManager.getDetectedDevices().isNotEmpty()
         PluviaApp.touchpadView?.postDelayed({
             val view = PluviaApp.touchpadView
             if (view != null) {
@@ -1592,7 +1486,7 @@ fun XServerScreen(
             }
         }, 100)
 
-        showQuickMenu = true
+        ui.showQuickMenu = true
     }
 
     DisposableEffect(Unit) {
@@ -1607,7 +1501,7 @@ fun XServerScreen(
             }
 
             override fun onInputDeviceRemoved(deviceId: Int) {
-                physicalControllerHandler?.onInputDeviceRemoved(deviceId)
+                ui.physicalControllerHandler?.onInputDeviceRemoved(deviceId)
                 ControllerManager.getInstance().onDeviceDisconnected(deviceId)
                 scanForExternalDevices()
             }
@@ -1639,14 +1533,14 @@ fun XServerScreen(
     DisposableEffect(container) {
         registerBackAction(gameBack)
         immersiveHooks?.registerToggle?.invoke {
-            Timber.i("toggleQuickMenu: invoked, showQuickMenu=%b", showQuickMenu)
-            if (showQuickMenu) {
+            Timber.i("toggleQuickMenu: invoked, showQuickMenu=%b", ui.showQuickMenu)
+            if (ui.showQuickMenu) {
                 dismissOverlayMenu()
             } else {
                 val imeVisible = ViewCompat.getRootWindowInsets(view)
                     ?.isVisible(WindowInsetsCompat.Type.ime()) == true
                 if (imeVisible) {
-                    imeInputReceiver?.hideKeyboard()
+                    ui.imeInputReceiver?.hideKeyboard()
                     view.post {
                         if (Build.VERSION.SDK_INT >= 30) {
                             view.windowInsetsController?.hide(WindowInsets.Type.ime())
@@ -1659,7 +1553,7 @@ fun XServerScreen(
                 PluviaApp.touchpadView?.postDelayed({
                     PluviaApp.touchpadView?.releasePointerCapture()
                 }, 100)
-                showQuickMenu = true
+                ui.showQuickMenu = true
             }
         }
         if (isLsfgAvailable) {
@@ -1669,9 +1563,9 @@ fun XServerScreen(
             Timber.d("XServerScreen leaving, clearing back action")
             LsfgVkManager.stopVsyncClock()
             removePerformanceHud()
-            performanceHudHost = null
-            imeInputReceiver?.hideKeyboard()
-            imeInputReceiver = null
+            ui.performanceHudHost = null
+            ui.imeInputReceiver?.hideKeyboard()
+            ui.imeInputReceiver = null
             if (!SteamService.keepAlive) {
                 PluviaApp.clearActiveSuspendState()
             } else if (!manualResumeMode) {
@@ -1685,7 +1579,7 @@ fun XServerScreen(
     // Event handlers defined in composable scope to capture latest state on each recomposition
     val onActivityDestroyed: (AndroidEvent.ActivityDestroyed) -> Unit = {
         Timber.i("onActivityDestroyed")
-        exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack, "activity_destroyed")
+        exit(ui.xServerView!!.getxServer().winHandler, ui.frameRating, currentAppInfo, container, appId, onExit, navigateBack, "activity_destroyed")
     }
     val onKeyEvent: (AndroidEvent.KeyEvent) -> Boolean = {
         val isKeyboard = Keyboard.isKeyboardDevice(it.event.device)
@@ -1694,8 +1588,8 @@ fun XServerScreen(
         val waitingForManualResume =
             manualResumeMode &&
                 PluviaApp.isOverlayPaused &&
-                !showQuickMenu &&
-                !keepPausedForEditor
+                !ui.showQuickMenu &&
+                !ui.keepPausedForEditor
         // logD("onKeyEvent(${it.event.device.sources})\n\tisGamepad: $isGamepad\n\tisKeyboard: $isKeyboard\n\t${it.event}")
 
         if (waitingForManualResume) {
@@ -1710,12 +1604,12 @@ fun XServerScreen(
                 }
                 else -> false
             }
-        } else if ((showElementEditor || keepPausedForEditor || showQuickMenu || isEditMode) && (isGamepad || isKeyboard)) {
-            val escPressed = !keepPausedForEditor &&
+        } else if ((ui.showElementEditor || ui.keepPausedForEditor || ui.showQuickMenu || ui.isEditMode) && (isGamepad || isKeyboard)) {
+            val escPressed = !ui.keepPausedForEditor &&
                 isKeyboard &&
                 it.event.keyCode == KeyEvent.KEYCODE_ESCAPE
             if (escPressed) {
-                keyboardEscMenuHandler.handleOverlayEsc(it.event, keyboard)
+                keyboardEscMenuHandler.handleOverlayEsc(it.event, ui.keyboard)
                 if (it.event.action == KeyEvent.ACTION_DOWN && it.event.repeatCount == 0) {
                     if (BuildConfig.MODERN_ANDROID) {
                         (context as? ComponentActivity)?.onBackPressedDispatcher?.onBackPressed()
@@ -1731,7 +1625,7 @@ fun XServerScreen(
         } else {
             var handled = false
             if (isGamepad) {
-                val winHandler = xServerView!!.getxServer().winHandler
+                val winHandler = ui.xServerView!!.getxServer().winHandler
                 if (it.event.action == KeyEvent.ACTION_DOWN && it.event.repeatCount == 0 &&
                     ControllerManager.getInstance().noteGamepadButton(it.event.device.id)
                 ) {
@@ -1742,7 +1636,7 @@ fun XServerScreen(
                     handled = winHandler.onKeyEvent(it.event)
                 } else {
                     winHandler.setCurrentController(it.event.device.id)
-                    handled = physicalControllerHandler?.onKeyEvent(it.event) == true
+                    handled = ui.physicalControllerHandler?.onKeyEvent(it.event) == true
                     if (!handled) handled = PluviaApp.inputControlsView?.onKeyEvent(it.event) == true
                     // Final fallback to WinHandler passthrough
                     if (!handled) handled = winHandler.onKeyEvent(it.event)
@@ -1754,23 +1648,23 @@ fun XServerScreen(
                     it.event.action == KeyEvent.ACTION_DOWN &&
                     it.event.repeatCount == 0
                 if (isShiftEscPressed &&
-                    !showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode) {
+                    !ui.showElementEditor && !ui.keepPausedForEditor && !ui.showQuickMenu && !ui.isEditMode) {
                     keyboardEscMenuHandler.cancel()
                     gameBack()
                     handled = true
                 } else if (isPhysicalKeyboard && keyboardEscMenuHandler.isEsc(it.event) &&
-                    !showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode) {
+                    !ui.showElementEditor && !ui.keepPausedForEditor && !ui.showQuickMenu && !ui.isEditMode) {
                     handled = keyboardEscMenuHandler.handleGameEsc(
                         event = it.event,
-                        keyboard = keyboard,
-                        canOpenMenu = { !showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode },
+                        keyboard = ui.keyboard,
+                        canOpenMenu = { !ui.showElementEditor && !ui.keepPausedForEditor && !ui.showQuickMenu && !ui.isEditMode },
                         openMenu = gameBack,
                     )
                 } else {
                     if (it.event.device?.isVirtual == true) {
-                        handled = keyboard?.onVirtualKeyEvent(it.event) == true
+                        handled = ui.keyboard?.onVirtualKeyEvent(it.event) == true
                     } else {
-                        handled = keyboard?.onKeyEvent(it.event) == true
+                        handled = ui.keyboard?.onKeyEvent(it.event) == true
                     }
                 }
             }
@@ -1781,20 +1675,20 @@ fun XServerScreen(
     val onMotionEvent: (AndroidEvent.MotionEvent) -> Boolean = {
         val isGamepad = ExternalController.isGameController(it.event?.device)
 
-        if ((showElementEditor || keepPausedForEditor || showQuickMenu || isEditMode) && isGamepad) {
+        if ((ui.showElementEditor || ui.keepPausedForEditor || ui.showQuickMenu || ui.isEditMode) && isGamepad) {
             // Let Compose consume any gamepad motion while menu is visible.
             false
         } else {
             var handled = false
             if (isGamepad && it.event != null) {
-                val winHandler = xServerView!!.getxServer().winHandler
+                val winHandler = ui.xServerView!!.getxServer().winHandler
                 ControllerManager.getInstance().noteGamepadActivity(it.event)
                 val assignedSlot = ControllerManager.getInstance().getSlotForDevice(it.event.device.id)
                 if (assignedSlot > 0) {
                     handled = winHandler.onGenericMotionEvent(it.event)
                 } else {
                     winHandler.setCurrentController(it.event.device.id)
-                    handled = physicalControllerHandler?.onGenericMotionEvent(it.event!!) == true
+                    handled = ui.physicalControllerHandler?.onGenericMotionEvent(it.event!!) == true
                     if (!handled) handled = PluviaApp.inputControlsView?.onGenericMotionEvent(it.event) == true
                     // Final fallback to WinHandler passthrough
                     if (!handled) handled = winHandler.onGenericMotionEvent(it.event)
@@ -1807,12 +1701,12 @@ fun XServerScreen(
                     if (device.supportsSource(InputDevice.SOURCE_TOUCHPAD) &&
                         !isExternal) {
                         // Samsung DeX Touchpad app
-                        hasInternalTouchpad = true
-                        if (!showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode &&
-                            !hasUpdatedScreenGamepad) {
-                            hasUpdatedScreenGamepad = true
+                        ui.hasInternalTouchpad = true
+                        if (!ui.showElementEditor && !ui.keepPausedForEditor && !ui.showQuickMenu && !ui.isEditMode &&
+                            !ui.hasUpdatedScreenGamepad) {
+                            ui.hasUpdatedScreenGamepad = true
                             hideInputControls()
-                            areControlsVisible = false
+                            ui.areControlsVisible = false
                         }
                     }
                     tryCapturePointer()
@@ -1820,8 +1714,8 @@ fun XServerScreen(
             }
             val event = it.event
             val device = event?.device
-            if (!usingScreenMirror && device?.name == "scrcpy") {
-                usingScreenMirror = true
+            if (!ui.usingScreenMirror && device?.name == "scrcpy") {
+                ui.usingScreenMirror = true
             }
             handled
         }
@@ -1829,11 +1723,11 @@ fun XServerScreen(
     val onGuestProgramTerminated: (AndroidEvent.GuestProgramTerminated) -> Unit = {
         Timber.i("onGuestProgramTerminated")
         SteamHostStatusWatch.stop()
-        exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack, "guest_terminated")
+        exit(ui.xServerView!!.getxServer().winHandler, ui.frameRating, currentAppInfo, container, appId, onExit, navigateBack, "guest_terminated")
     }
     val onForceCloseApp: (SteamEvent.ForceCloseApp) -> Unit = {
         Timber.i("onForceCloseApp")
-        exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack, "force_close")
+        exit(ui.xServerView!!.getxServer().winHandler, ui.frameRating, currentAppInfo, container, appId, onExit, navigateBack, "force_close")
     }
     val onPlayingBlocked: (SteamEvent.PlayingBlocked) -> Unit = { event ->
         if (isOffline || container.isSteamOfflineMode()) {
@@ -1868,8 +1762,8 @@ fun XServerScreen(
         }
     }
 
-    DisposableEffect(lifecycleOwner, xServerView) {
-        val currentXServerView = xServerView
+    DisposableEffect(lifecycleOwner, ui.xServerView) {
+        val currentXServerView = ui.xServerView
         val currentXServerViewAsView = currentXServerView as? View
         if (currentXServerView == null || currentXServerViewAsView == null) {
             onDispose { }
@@ -1905,7 +1799,7 @@ fun XServerScreen(
                         Timber.d("Synchronizing XServerView renderer for lifecycle event: $event")
                         syncRendererToCurrentLifecycleState()
                         if (event == Lifecycle.Event.ON_RESUME) {
-                            xServerView?.getxServer()?.winHandler?.reassertPrimaryController()
+                            ui.xServerView?.getxServer()?.winHandler?.reassertPrimaryController()
                         }
                     }
                     else -> Unit
@@ -1929,8 +1823,8 @@ fun XServerScreen(
         }
     }
 
-    DisposableEffect(lifecycleOwner, performanceHudView) {
-        val hud = performanceHudView
+    DisposableEffect(lifecycleOwner, ui.performanceHudView) {
+        val hud = ui.performanceHudView
         if (hud != null) {
             if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
                 hud.resume()
@@ -1969,7 +1863,7 @@ fun XServerScreen(
             .fillMaxSize()
             .pointerHoverIcon(PointerIcon.Default)
             .pointerInteropFilter { event ->
-                val hud = performanceHudView
+                val hud = ui.performanceHudView
                 if (hud != null) {
                     when (event.actionMasked) {
                         MotionEvent.ACTION_DOWN -> {
@@ -1982,27 +1876,27 @@ fun XServerScreen(
                                         event.rawY >= hudLocation[1] &&
                                         event.rawY <= hudLocation[1] + hud.height
                                 if (insideHud) {
-                                    performanceHudTouchDownRawX = event.rawX
-                                    performanceHudTouchDownRawY = event.rawY
-                                    performanceHudDragOffsetX = event.rawX - hudLocation[0]
-                                    performanceHudDragOffsetY = event.rawY - hudLocation[1]
-                                    isTrackingPerformanceHudTouch = true
-                                    isDraggingPerformanceHud = false
+                                    ui.performanceHudTouchDownRawX = event.rawX
+                                    ui.performanceHudTouchDownRawY = event.rawY
+                                    ui.performanceHudDragOffsetX = event.rawX - hudLocation[0]
+                                    ui.performanceHudDragOffsetY = event.rawY - hudLocation[1]
+                                    ui.isTrackingPerformanceHudTouch = true
+                                    ui.isDraggingPerformanceHud = false
                                     return@pointerInteropFilter true
                                 }
                             }
                         }
                         MotionEvent.ACTION_MOVE -> {
-                            if (isTrackingPerformanceHudTouch) {
-                                if (!isDraggingPerformanceHud) {
-                                    val deltaX = event.rawX - performanceHudTouchDownRawX
-                                    val deltaY = event.rawY - performanceHudTouchDownRawY
+                            if (ui.isTrackingPerformanceHudTouch) {
+                                if (!ui.isDraggingPerformanceHud) {
+                                    val deltaX = event.rawX - ui.performanceHudTouchDownRawX
+                                    val deltaY = event.rawY - ui.performanceHudTouchDownRawY
                                     val distanceSquared = (deltaX * deltaX) + (deltaY * deltaY)
                                     if (distanceSquared >= performanceHudTouchSlop * performanceHudTouchSlop) {
-                                        isDraggingPerformanceHud = true
+                                        ui.isDraggingPerformanceHud = true
                                     }
                                 }
-                                if (isDraggingPerformanceHud) {
+                                if (ui.isDraggingPerformanceHud) {
                                     movePerformanceHud(event.rawX, event.rawY, save = false)
                                     return@pointerInteropFilter true
                                 }
@@ -2011,32 +1905,32 @@ fun XServerScreen(
                         MotionEvent.ACTION_POINTER_DOWN,
                         MotionEvent.ACTION_POINTER_UP,
                         -> {
-                            if (isTrackingPerformanceHudTouch || isDraggingPerformanceHud) {
-                                isTrackingPerformanceHudTouch = false
-                                isDraggingPerformanceHud = false
+                            if (ui.isTrackingPerformanceHudTouch || ui.isDraggingPerformanceHud) {
+                                ui.isTrackingPerformanceHudTouch = false
+                                ui.isDraggingPerformanceHud = false
                                 return@pointerInteropFilter true
                             }
                         }
                         MotionEvent.ACTION_UP -> {
-                            if (isTrackingPerformanceHudTouch) {
-                                if (isDraggingPerformanceHud) {
+                            if (ui.isTrackingPerformanceHudTouch) {
+                                if (ui.isDraggingPerformanceHud) {
                                     movePerformanceHud(event.rawX, event.rawY, save = true)
                                 } else {
                                     hud.performClick()
                                     togglePerformanceHudLayout()
                                 }
-                                isTrackingPerformanceHudTouch = false
-                                isDraggingPerformanceHud = false
+                                ui.isTrackingPerformanceHudTouch = false
+                                ui.isDraggingPerformanceHud = false
                                 return@pointerInteropFilter true
                             }
                         }
                         MotionEvent.ACTION_CANCEL -> {
-                            if (isTrackingPerformanceHudTouch || isDraggingPerformanceHud) {
-                                if (isDraggingPerformanceHud) {
+                            if (ui.isTrackingPerformanceHudTouch || ui.isDraggingPerformanceHud) {
+                                if (ui.isDraggingPerformanceHud) {
                                     movePerformanceHud(event.rawX, event.rawY, save = true)
                                 }
-                                isTrackingPerformanceHudTouch = false
-                                isDraggingPerformanceHud = false
+                                ui.isTrackingPerformanceHudTouch = false
+                                ui.isDraggingPerformanceHud = false
                                 return@pointerInteropFilter true
                             }
                         }
@@ -2046,15 +1940,15 @@ fun XServerScreen(
                 val radialMenuHandled = PluviaApp.radialMenuCoordinator?.onHostTouchEvent(event) == true
                 if (radialMenuHandled) return@pointerInteropFilter true
 
-                val overlayHandled = swapInputOverlay
+                val overlayHandled = ui.swapInputOverlay
                     ?.takeIf { it.visibility == View.VISIBLE }
                     ?.dispatchTouchEvent(event) == true
                 if (overlayHandled) return@pointerInteropFilter true
 
                 if (isPortrait) {
-                    gameRoot?.dispatchTouchEvent(event)
+                    ui.gameRoot?.dispatchTouchEvent(event)
                 } else {
-                    val controlsHandled = if (areControlsVisible) {
+                    val controlsHandled = if (ui.areControlsVisible) {
                         PluviaApp.inputControlsView?.onTouchEvent(event) ?: false
                     } else {
                         false
@@ -2086,7 +1980,7 @@ fun XServerScreen(
             } else {
                 mainRoot as FrameLayout
             }
-            performanceHudHost = frameLayout
+            ui.performanceHudHost = frameLayout
             val appId = appId
             val usrGlibc: Boolean = container.getContainerVariant().equals(Container.GLIBC, ignoreCase = true)
             val mouseDragCompatibility = GameInputCompatibility.needsMouseDragCompatibility(appId, usrGlibc)
@@ -2110,7 +2004,7 @@ fun XServerScreen(
                 XServerView(context, xServerToUse, container.displayRenderer)
             }
             val xServerView = xServerViewInstance.apply {
-                xServerView = this
+                ui.xServerView = this
                 setFrameRateLimit(if (fpsLimiterEnabled) fpsLimiterTarget else 0)
                 val renderer = this.renderer
                 if (!useGLRenderer && renderer is VulkanRenderer) {
@@ -2132,7 +2026,7 @@ fun XServerScreen(
                     if (shouldTrackDisplayedFrames.get()) {
                         val frameTime = SystemClock.elapsedRealtime()
                         (context as? Activity)?.runOnUiThread {
-                            frameRating?.update(frameTime)
+                            ui.frameRating?.update(frameTime)
                         }
                     }
                 }
@@ -2152,7 +2046,7 @@ fun XServerScreen(
                         val isExternalDisplaySession =
                             (anchor.display?.displayId ?: android.view.Display.DEFAULT_DISPLAY) != android.view.Display.DEFAULT_DISPLAY
                         if (isExternalDisplaySession) {
-                            imeInputReceiver?.showKeyboard()
+                            ui.imeInputReceiver?.showKeyboard()
                                 ?: imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
                         } else {
                             imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
@@ -2164,7 +2058,7 @@ fun XServerScreen(
                 PluviaApp.touchpadView?.setClickHighlightListener(object : com.winlator.widget.TouchpadView.ClickHighlightListener {
                     override fun onClickAt(screenX: Float, screenY: Float) {
                         PluviaApp.touchpadView?.post {
-                            if (currentGestureConfig.showClickHighlight) {
+                            if (ui.currentGestureConfig.showClickHighlight) {
                                 clickHighlightPoints.add(
                                     app.gamenative.ui.component.HighlightPoint(
                                         screenX, screenY,
@@ -2176,9 +2070,9 @@ fun XServerScreen(
                     }
                     override fun onGestureTriggered(gestureName: String) {
                         PluviaApp.touchpadView?.post {
-                            if (currentGestureConfig.showGestureDebugOverlay) {
-                                debugGestureName = gestureName
-                                debugGestureKey++
+                            if (ui.currentGestureConfig.showGestureDebugOverlay) {
+                                ui.debugGestureName = gestureName
+                                ui.debugGestureKey++
                             }
                         }
                     }
@@ -2202,12 +2096,12 @@ fun XServerScreen(
                     isClickable = false
                 }
                 frameLayout.addView(imeReceiver)
-                imeInputReceiver = imeReceiver
+                ui.imeInputReceiver = imeReceiver
 
                 getxServer().winHandler = WinHandler(getxServer(), this)
-                win32AppWorkarounds = Win32AppWorkarounds(getxServer())
-                touchMouse = TouchMouse(getxServer())
-                keyboard = Keyboard(getxServer())
+                ui.win32AppWorkarounds = Win32AppWorkarounds(getxServer())
+                ui.touchMouse = TouchMouse(getxServer())
+                ui.keyboard = Keyboard(getxServer())
                 if (!bootToContainer) {
                     renderer.setUnviewableWMClasses("explorer.exe")
                     // TODO: make 'force fullscreen' be an option of the app being launched
@@ -2220,7 +2114,7 @@ fun XServerScreen(
                     // on the compositor. I may be wrong though.
                 }
                 // Remove any previous listener before adding a new one (handles key(isPortrait) recreation)
-                windowModificationListener?.let {
+                ui.windowModificationListener?.let {
                     getxServer().windowManager.removeOnWindowModificationListener(it)
                 }
                 val wmListener = object : WindowManager.OnWindowModificationListener {
@@ -2243,7 +2137,7 @@ fun XServerScreen(
                         }
 
                         private fun refreshFrameRatingTracking(reason: String) {
-                            val rating = frameRating ?: return
+                            val rating = ui.frameRating ?: return
                             if (!getxServer().isFlatPresentationEnabled) return
                             val topmost = findTopmostApplicationWindow(getxServer().windowManager.rootWindow)
                             val nextId = topmost?.id ?: -1
@@ -2292,7 +2186,7 @@ fun XServerScreen(
                             if (window.id == frameRatingWindowId) {
                                 val frameTime = SystemClock.elapsedRealtime()
                                 (context as? Activity)?.runOnUiThread {
-                                    frameRating?.update(frameTime)
+                                    ui.frameRating?.update(frameTime)
                                 }
                             }
                         }
@@ -2314,7 +2208,7 @@ fun XServerScreen(
                                         "\n\tchildrenSize: ${window.children.size}",
                             )
                             refreshFrameRatingTracking("map-window")
-                            win32AppWorkarounds?.applyWindowWorkarounds(window)
+                            ui.win32AppWorkarounds?.applyWindowWorkarounds(window)
                             onWindowMapped?.invoke(context, window)
                         }
 
@@ -2344,7 +2238,7 @@ fun XServerScreen(
                         }
                     }
                 getxServer().windowManager.addOnWindowModificationListener(wmListener)
-                windowModificationListener = wmListener
+                ui.windowModificationListener = wmListener
                 mainRoot.tag = XServerViewReleaseBinding(this, wmListener, screenWidth = screenWidth)
 
                 if (PluviaApp.xEnvironment == null) {
@@ -2381,7 +2275,7 @@ fun XServerScreen(
 
                             taskAffinityMask = ProcessHelper.getAffinityMask(container.getCPUList(true)).toShort().toInt()
                             taskAffinityMaskWoW64 = ProcessHelper.getAffinityMask(container.getCPUListWoW64(true)).toShort().toInt()
-                            win32AppWorkarounds?.setTaskAffinityMasks(taskAffinityMask, taskAffinityMaskWoW64)
+                            ui.win32AppWorkarounds?.setTaskAffinityMasks(taskAffinityMask, taskAffinityMaskWoW64)
                             val appliedVariantSeen = container.getExtra("appliedContainerVariant")
                             val appliedWineVersionSeen = container.getExtra("appliedWineVersion")
                             val markersAvail = appliedVariantSeen.isNotEmpty() && appliedWineVersionSeen.isNotEmpty()
@@ -2442,7 +2336,7 @@ fun XServerScreen(
                                 setupWineSystemFiles(
                                     context,
                                     firstTimeBoot,
-                                    xServerView!!.getxServer().screenInfo,
+                                    ui.xServerView!!.getxServer().screenInfo,
                                     xServerState,
                                     container,
                                     containerManager,
@@ -2480,7 +2374,7 @@ fun XServerScreen(
                                 envVars,
                                 container,
                                 appLaunchInfo,
-                                xServerView!!.getxServer(),
+                                ui.xServerView!!.getxServer(),
                                 containerVariantChanged,
                                 onGameLaunchError,
                                 isOffline,
@@ -2494,7 +2388,7 @@ fun XServerScreen(
                                 PerfSampler.start(
                                     context,
                                     fpsProvider = {
-                                        val raw = frameRating?.currentFPS ?: 0f
+                                        val raw = ui.frameRating?.currentFPS ?: 0f
                                         if (isLsfgAvailable && lsfgMultiplier >= 2) {
                                             LsfgVkManager.readMeasuredFps(container) ?: raw
                                         } else {
@@ -2599,9 +2493,9 @@ fun XServerScreen(
                 container = container,
                 xServer = xServerView.getxServer(),
                 showKeyboard = showSoftKeyboard,
-                openQuickMenu = { showQuickMenu = true },
+                openQuickMenu = { ui.showQuickMenu = true },
                 onSettingsVisibilityChanged = { visible ->
-                    keepPausedForEditor = visible
+                    ui.keepPausedForEditor = visible
                     if (!visible) resumeIfAllowedAfterOverlay()
                 },
             )
@@ -2655,7 +2549,7 @@ fun XServerScreen(
                     PluviaApp.radialMenuCoordinator?.setProfile(targetProfile)
 
                     val radialMenuCoordinator = PluviaApp.radialMenuCoordinator
-                    physicalControllerHandler = PhysicalControllerHandler(
+                    ui.physicalControllerHandler = PhysicalControllerHandler(
                         targetProfile,
                         xServerView.getxServer(),
                         gameBack,
@@ -2673,7 +2567,7 @@ fun XServerScreen(
                             updatePhysicalStickAndGetMixedValue(binding, isDown, offset, sourceKeyCode)
                         },
                     )
-                    radialMenuCoordinator?.bindPhysicalControllerHandler(physicalControllerHandler)
+                    radialMenuCoordinator?.bindPhysicalControllerHandler(ui.physicalControllerHandler)
 
                     // Steam Controller (2026 "Triton") driver over BLE. Opt-in (Settings) and only once the
                     // Bluetooth permissions are actually granted, so anyone without the hardware pays nothing: no
@@ -2723,9 +2617,9 @@ fun XServerScreen(
                         val scCursor = app.gamenative.ui.component.dialog.ScCursorController(context)
                         val scUiBridge = object : app.gamenative.steamcontroller.ScUiBridge {
                             override fun isMenuCapturing(): Boolean =
-                                showQuickMenu || keepPausedForEditor || showElementEditor || isEditMode
+                                ui.showQuickMenu || ui.keepPausedForEditor || ui.showElementEditor || ui.isEditMode
                             override fun openQuickMenu() {
-                                scMainHandler.post { if (!showQuickMenu) gameBack() }
+                                scMainHandler.post { if (!ui.showQuickMenu) gameBack() }
                             }
                             override fun moveCursor(dx: Int, dy: Int) {
                                 scMainHandler.post {
@@ -2808,7 +2702,7 @@ fun XServerScreen(
 
                 // Set container-level shooter mode
                 setContainerShooterMode(container.isShooterMode)
-                setShooterModeConfig(currentShooterConfig)
+                setShooterModeConfig(ui.currentShooterConfig)
             }
             PluviaApp.inputControlsView = icView
 
@@ -2838,7 +2732,7 @@ fun XServerScreen(
                 setMode(ExternalDisplayInputController.Mode.OFF)
             }
             frameLayout.addView(overlay)
-            swapInputOverlay = overlay
+            ui.swapInputOverlay = overlay
 
             val externalDisplayController =
                 if (!swapEnabled && configuredExternalMode != ExternalDisplayInputController.Mode.OFF) {
@@ -2925,30 +2819,30 @@ fun XServerScreen(
                         // 4. Else → show
                         val shouldShowControls = when {
                             container.isTouchscreenMode -> false
-                            hasPhysicalController -> false
-                            hasPhysicalKeyboard || hasPhysicalMouse -> false
+                            ui.hasPhysicalController -> false
+                            ui.hasPhysicalKeyboard || ui.hasPhysicalMouse -> false
                             else -> true
                         }
 
                         if (shouldShowControls) {
                             Timber.d("Auto-showing onscreen controls")
                             showInputControls(profile, xServerView.getxServer().winHandler, container)
-                            areControlsVisible = true
+                            ui.areControlsVisible = true
                         } else {
                             Timber.d("Hiding onscreen controls")
                             hideInputControls()
-                            areControlsVisible = false
+                            ui.areControlsVisible = false
                         }
                     } else {
                         Timber.w("Profile has no elements - cannot auto-show controls")
                     }
                 }
             }
-            frameRating = FrameRating(context)
-            frameRating?.setVisibility(View.GONE)
-            xServerView.renderer.setFrameRating(frameRating)
+            ui.frameRating = FrameRating(context)
+            ui.frameRating?.setVisibility(View.GONE)
+            xServerView.renderer.setFrameRating(ui.frameRating)
 
-            if (isPerformanceHudEnabled) {
+            if (ui.isPerformanceHudEnabled) {
                 frameLayout.post {
                     updatePerformanceHud(true)
                 }
@@ -2967,7 +2861,7 @@ fun XServerScreen(
             // xServerView
         },
         update = { view ->
-            gameRoot = view
+            ui.gameRoot = view
             val binding = view.tag as? XServerViewReleaseBinding
             val gameHost = binding?.gameHost
             if (binding != null && gameHost != null) {
@@ -2982,9 +2876,9 @@ fun XServerScreen(
         },
         onRelease = { view ->
             PluviaApp.inputControlsView?.setGyroForeground(false)
-            gameRoot = null
+            ui.gameRoot = null
             removePerformanceHud()
-            performanceHudHost = null
+            ui.performanceHudHost = null
             shouldTrackDisplayedFrames.set(false)
             ShmFramePacer.setFrameRateLimit(0)
 
@@ -3006,15 +2900,15 @@ fun XServerScreen(
         }
 
         // Click highlight overlay (gesture overhaul)
-        if (currentGestureConfig.showClickHighlight && clickHighlightPoints.isNotEmpty()) {
+        if (ui.currentGestureConfig.showClickHighlight && clickHighlightPoints.isNotEmpty()) {
             app.gamenative.ui.component.ClickHighlightOverlay(points = clickHighlightPoints)
         }
 
         // Debug gesture name overlay (gesture overhaul)
-        if (currentGestureConfig.showGestureDebugOverlay && debugGestureName.isNotEmpty()) {
-            LaunchedEffect(debugGestureKey) {
+        if (ui.currentGestureConfig.showGestureDebugOverlay && ui.debugGestureName.isNotEmpty()) {
+            LaunchedEffect(ui.debugGestureKey) {
                 kotlinx.coroutines.delay(1200)
-                debugGestureName = ""
+                ui.debugGestureName = ""
             }
             androidx.compose.foundation.layout.Box(
                 modifier = Modifier
@@ -3023,7 +2917,7 @@ fun XServerScreen(
                 contentAlignment = Alignment.TopCenter,
             ) {
                 androidx.compose.material3.Text(
-                    text = debugGestureName,
+                    text = ui.debugGestureName,
                     color = androidx.compose.ui.graphics.Color.White,
                     fontSize = 18.sp,
                     modifier = Modifier
@@ -3037,7 +2931,7 @@ fun XServerScreen(
         }
 
         // Floating toolbar for edit mode (always visible in edit mode)
-        if (isEditMode && areControlsVisible) {
+        if (ui.isEditMode && ui.areControlsVisible) {
             EditModeToolbar(
                 onAdd = {
                     if (PluviaApp.inputControlsView?.addElement() == true) {
@@ -3048,8 +2942,8 @@ fun XServerScreen(
                 onEdit = {
                     val selectedElement = PluviaApp.inputControlsView?.getSelectedElement()
                     if (selectedElement != null) {
-                        elementToEdit = selectedElement
-                        showElementEditor = true
+                        ui.elementToEdit = selectedElement
+                        ui.showElementEditor = true
                     }
                 },
                 onDelete = {
@@ -3060,29 +2954,29 @@ fun XServerScreen(
                     PluviaApp.inputControlsView?.profile?.save()
                     PluviaApp.inputControlsView?.onControlsProfileContentChanged(false)
                     // Clear snapshot since changes were accepted
-                    elementPositionsSnapshot = emptyMap()
+                    ui.elementPositionsSnapshot = emptyMap()
                     // Exit edit mode
-                    isEditMode = false
+                    ui.isEditMode = false
                     PluviaApp.inputControlsView?.setEditMode(false)
                     // Force redraw on next frame to ensure grid is removed
                     PluviaApp.inputControlsView?.post {
                         PluviaApp.inputControlsView?.invalidate()
                     }
-                    keepPausedForEditor = false
+                    ui.keepPausedForEditor = false
                     resumeIfAllowedAfterOverlay()
                 },
                 onClose = {
                     // Restore element positions from snapshot (cancel behavior)
-                    if (elementPositionsSnapshot.isNotEmpty()) {
-                        elementPositionsSnapshot.forEach { (element, position) ->
+                    if (ui.elementPositionsSnapshot.isNotEmpty()) {
+                        ui.elementPositionsSnapshot.forEach { (element, position) ->
                             element.setX(position.first)
                             element.setY(position.second)
                         }
-                        elementPositionsSnapshot = emptyMap()
+                        ui.elementPositionsSnapshot = emptyMap()
                     }
 
                     // Exit edit mode without saving
-                    isEditMode = false
+                    ui.isEditMode = false
                     PluviaApp.inputControlsView?.setEditMode(false)
                     // Force redraw on next frame to ensure grid is removed
                     PluviaApp.inputControlsView?.post {
@@ -3090,22 +2984,22 @@ fun XServerScreen(
                         PluviaApp.inputControlsView?.profile?.save()
                         PluviaApp.inputControlsView?.invalidate()
                     }
-                    keepPausedForEditor = false
+                    ui.keepPausedForEditor = false
                     resumeIfAllowedAfterOverlay()
                 },
             )
         }
 
         QuickMenu(
-            isVisible = showQuickMenu,
+            isVisible = ui.showQuickMenu,
             onDismiss = dismissOverlayMenu,
             onItemSelected = onQuickMenuItemSelected,
-            renderer = xServerView?.renderer as? VulkanRenderer,
-            glRenderer = xServerView?.renderer as? GLRenderer,
+            renderer = ui.xServerView?.renderer as? VulkanRenderer,
+            glRenderer = ui.xServerView?.renderer as? GLRenderer,
             container = container,
-            wineProcesses = quickMenuWineProcesses,
-            isWineProcessesLoading = quickMenuWineProcessesLoading,
-            onToolsVisibilityChanged = { quickMenuToolsVisible = it },
+            wineProcesses = ui.quickMenuWineProcesses,
+            isWineProcessesLoading = ui.quickMenuWineProcessesLoading,
+            onToolsVisibilityChanged = { ui.quickMenuToolsVisible = it },
             onEndWineProcess = { process ->
                 val killed = runCatching {
                     ProcessHelper.killProcess(process.pid)
@@ -3114,36 +3008,36 @@ fun XServerScreen(
                 }.isSuccess
 
                 if (killed) {
-                    quickMenuWineProcesses = quickMenuWineProcesses.filterNot { it.pid == process.pid }
+                    ui.quickMenuWineProcesses = ui.quickMenuWineProcesses.filterNot { it.pid == process.pid }
                 }
             },
             performance = PerformanceQuickMenuState(
-                hudEnabled = isPerformanceHudEnabled,
-                hudConfig = performanceHudConfig,
+                hudEnabled = ui.isPerformanceHudEnabled,
+                hudConfig = ui.performanceHudConfig,
                 fpsLimiterEnabled = fpsLimiterEnabled,
                 fpsLimiterTarget = fpsLimiterTarget,
-                fpsLimiterMax = detectedMaxRefreshRateHz,
+                fpsLimiterMax = ui.detectedMaxRefreshRateHz,
                 onHudConfigChanged = ::applyPerformanceHudConfig,
                 onFpsLimiterEnabledChanged = ::applyFpsLimiterEnabled,
                 onFpsLimiterChanged = ::applyFpsLimiterTarget,
             ),
-            hasPhysicalController = hasPhysicalController,
+            hasPhysicalController = ui.hasPhysicalController,
             isSteamControllerLive = sc.isLive,
-            isTouchscreenModeActive = isTouchscreenModeActive,
+            isTouchscreenModeActive = ui.isTouchscreenModeActive,
             onTouchGestureSettingsClick = {
-                currentGestureConfig = app.gamenative.data.TouchGestureConfig.fromJson(container.gestureConfig)
-                showTouchGestureDialog = true
+                ui.currentGestureConfig = app.gamenative.data.TouchGestureConfig.fromJson(container.gestureConfig)
+                ui.showTouchGestureDialog = true
             },
-            isShooterModeActive = isShooterModeActive,
+            isShooterModeActive = ui.isShooterModeActive,
             onShooterModeSettingsClick = {
-                currentShooterConfig = ShooterModeConfig.fromJson(container.shooterConfig)
-                showShooterModeDialog = true
+                ui.currentShooterConfig = ShooterModeConfig.fromJson(container.shooterConfig)
+                ui.showShooterModeDialog = true
             },
             activeToggleIds = buildSet {
-                if (areControlsVisible) add(QuickMenuAction.INPUT_CONTROLS)
-                if (isTouchscreenModeActive) add(QuickMenuAction.TOUCHSCREEN_MODE)
-                if (isShooterModeActive) add(QuickMenuAction.SHOOTER_MODE)
-                if (isDisableMouseInput) add(QuickMenuAction.DISABLE_MOUSE)
+                if (ui.areControlsVisible) add(QuickMenuAction.INPUT_CONTROLS)
+                if (ui.isTouchscreenModeActive) add(QuickMenuAction.TOUCHSCREEN_MODE)
+                if (ui.isShooterModeActive) add(QuickMenuAction.SHOOTER_MODE)
+                if (ui.isDisableMouseInput) add(QuickMenuAction.DISABLE_MOUSE)
             },
             // LSFG hot-reload (tab only visible when enabled in container settings)
             lsfg = LsfgQuickMenuState(
@@ -3155,7 +3049,7 @@ fun XServerScreen(
                 onFlowScaleChanged = ::applyLsfgFlowScale,
                 onPerformanceModeChanged = ::applyLsfgPerformanceMode,
             ),
-            onRequestOpen = { showQuickMenu = true },
+            onRequestOpen = { ui.showQuickMenu = true },
             // Immersive tab (tab only visible when hosted by ImmersiveXrActivity)
             immersiveHooks = immersiveHooks,
             onAnimationComplete = { isMenuVisible ->
@@ -3165,85 +3059,85 @@ fun XServerScreen(
                     if (!SteamInviteState.openedForGameRequest) pauseForOverlayIfAllowed()
                 } else {
                     SteamInviteState.openedForGameRequest = false
-                    if (shouldForceResumeOnMenuClose) {
+                    if (ui.shouldForceResumeOnMenuClose) {
                         forceResumeIfSuspended()
-                        shouldForceResumeOnMenuClose = false
-                    } else if (sc.isLive && !keepPausedForEditor && !isExiting.get()) {
+                        ui.shouldForceResumeOnMenuClose = false
+                    } else if (sc.isLive && !ui.keepPausedForEditor && !isExiting.get()) {
                         // A BLE Steam Controller can't press the manual-resume button (it isn't an Android input
                         // device), so closing the menu with it would otherwise leave the game stuck paused. The
                         // controller user closing the menu = ready to play, so resume regardless of manual policy.
                         // Skip while exiting — EXIT_GAME already resumed + began teardown; a second onResume() here
                         // (fired by the close animation) races the teardown and can freeze the app.
                         forceResumeIfSuspended()
-                    } else if (!keepPausedForEditor) {
+                    } else if (!ui.keepPausedForEditor) {
                         resumeIfAllowedAfterOverlay()
                     }
                 }
             },
         )
 
-        if (showQuickMenu && PrefManager.showControllerDebugMenu) {
+        if (ui.showQuickMenu && PrefManager.showControllerDebugMenu) {
             ControllerSlotStatusOverlay(
                 container = container,
-                areControlsVisible = areControlsVisible,
-                refreshKey = controllerSlotStatusVersion,
+                areControlsVisible = ui.areControlsVisible,
+                refreshKey = ui.controllerSlotStatusVersion,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(16.dp),
             )
         }
 
-        if (manualResumeMode && PluviaApp.isOverlayPaused && !showQuickMenu && !keepPausedForEditor) {
+        if (manualResumeMode && PluviaApp.isOverlayPaused && !ui.showQuickMenu && !ui.keepPausedForEditor) {
             ManualResumeOverlay(onResume = ::resumeFromManualButton, immersive = immersiveHooks != null)
         }
     }
 
     // Element Editor Dialog
-    if (showElementEditor && elementToEdit != null && PluviaApp.inputControlsView != null) {
+    if (ui.showElementEditor && ui.elementToEdit != null && PluviaApp.inputControlsView != null) {
         app.gamenative.ui.component.dialog.ElementEditorDialog(
-            element = elementToEdit!!,
+            element = ui.elementToEdit!!,
             view = PluviaApp.inputControlsView!!,
             onDismiss = {
-                showElementEditor = false
+                ui.showElementEditor = false
                 // Keep edit mode active so user can edit other elements
             },
             onSave = {
-                showElementEditor = false
+                ui.showElementEditor = false
                 // Keep edit mode active so user can edit other elements
             }
         )
     }
 
     // Touch Gesture Settings Dialog
-    if (showTouchGestureDialog) {
+    if (ui.showTouchGestureDialog) {
         app.gamenative.ui.component.dialog.TouchGestureSettingsDialog(
-            gestureConfig = currentGestureConfig,
-            onDismiss = { showTouchGestureDialog = false },
+            gestureConfig = ui.currentGestureConfig,
+            onDismiss = { ui.showTouchGestureDialog = false },
             onSave = { newConfig ->
-                currentGestureConfig = newConfig
+                ui.currentGestureConfig = newConfig
                 container.setGestureConfig(newConfig.toJson())
                 container.saveData()
                 PluviaApp.touchpadView?.setGestureConfig(newConfig)
                 applyMouseCursorVisibility()
-                showTouchGestureDialog = false
+                ui.showTouchGestureDialog = false
             },
         )
     }
 
-    if (showShooterModeDialog) {
+    if (ui.showShooterModeDialog) {
         app.gamenative.ui.component.dialog.ShooterModeSettingsDialog(
-            shooterConfig = currentShooterConfig,
+            shooterConfig = ui.currentShooterConfig,
             defaultJoystickOpacity = PrefManager.getFloat(
                 "controls_opacity",
                 InputControlsView.DEFAULT_OVERLAY_OPACITY,
             ),
-            onDismiss = { showShooterModeDialog = false },
+            onDismiss = { ui.showShooterModeDialog = false },
             onSave = { newConfig ->
-                currentShooterConfig = newConfig
+                ui.currentShooterConfig = newConfig
                 container.setShooterConfig(newConfig.toJson())
                 container.saveData()
                 PluviaApp.inputControlsView?.setShooterModeConfig(newConfig)
-                showShooterModeDialog = false
+                ui.showShooterModeDialog = false
             },
         )
     }
@@ -3270,7 +3164,7 @@ fun XServerScreen(
                 TextButton(onClick = {
                     showPlayingBlockedDialog = false
                     playingBlockedRemoteName = null
-                    exit(xServerView?.getxServer()?.winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack, "playing_blocked")
+                    exit(ui.xServerView?.getxServer()?.winHandler, ui.frameRating, currentAppInfo, container, appId, onExit, navigateBack, "playing_blocked")
                 }) {
                     Text(text = stringResource(R.string.cancel))
                 }
@@ -3279,7 +3173,7 @@ fun XServerScreen(
     }
 
     // Physical Controller bindings editor or stick settings page
-    if (physicalControllerDialogMode != PHYSICAL_CONTROLLER_DIALOG_NONE) {
+    if (ui.physicalControllerDialogMode != PHYSICAL_CONTROLLER_DIALOG_NONE) {
         // Get profile from container settings, not from InputControlsView
         // (InputControlsView.profile is null when on-screen controls are hidden)
         val manager = PluviaApp.inputControlsManager ?: InputControlsManager(context)
@@ -3291,12 +3185,12 @@ fun XServerScreen(
         }
 
         if (profile != null) {
-            when (physicalControllerDialogMode) {
+            when (ui.physicalControllerDialogMode) {
                 PHYSICAL_CONTROLLER_DIALOG_BINDINGS -> {
                     androidx.compose.ui.window.Dialog(
                         onDismissRequest = {
-                            physicalControllerDialogMode = PHYSICAL_CONTROLLER_DIALOG_NONE
-                            keepPausedForEditor = false
+                            ui.physicalControllerDialogMode = PHYSICAL_CONTROLLER_DIALOG_NONE
+                            ui.keepPausedForEditor = false
                             resumeIfAllowedAfterOverlay()
                         }
                     ) {
@@ -3308,8 +3202,8 @@ fun XServerScreen(
                             app.gamenative.ui.component.dialog.PhysicalControllerConfigSection(
                                 profile = profile,
                                 onDismiss = {
-                                    physicalControllerDialogMode = PHYSICAL_CONTROLLER_DIALOG_NONE
-                                    keepPausedForEditor = false
+                                    ui.physicalControllerDialogMode = PHYSICAL_CONTROLLER_DIALOG_NONE
+                                    ui.keepPausedForEditor = false
                                     resumeIfAllowedAfterOverlay()
                                 },
                                 onSave = {
@@ -3327,8 +3221,8 @@ fun XServerScreen(
                                     // unintentionally showing controls that were hidden for a controller.
                                     PluviaApp.inputControlsView?.setProfilePreservingOverlayVisibility(profile)
                                     PluviaApp.radialMenuCoordinator?.setProfile(profile)
-                                    physicalControllerDialogMode = PHYSICAL_CONTROLLER_DIALOG_NONE
-                                    keepPausedForEditor = false
+                                    ui.physicalControllerDialogMode = PHYSICAL_CONTROLLER_DIALOG_NONE
+                                    ui.keepPausedForEditor = false
                                     resumeIfAllowedAfterOverlay()
                                 }
                             )
@@ -3340,7 +3234,7 @@ fun XServerScreen(
                     app.gamenative.ui.component.dialog.PhysicalControllerSettingsDialog(
                         profile = profile,
                         onDismiss = {
-                            physicalControllerDialogMode = PHYSICAL_CONTROLLER_DIALOG_NONE
+                            ui.physicalControllerDialogMode = PHYSICAL_CONTROLLER_DIALOG_NONE
                         },
                         onSave = saveSettings@{
                             if (!profile.save()) {
@@ -3349,7 +3243,7 @@ fun XServerScreen(
                             }
                             PluviaApp.inputControlsView?.setProfilePreservingOverlayVisibility(profile)
                             PluviaApp.radialMenuCoordinator?.setProfile(profile)
-                            physicalControllerDialogMode = PHYSICAL_CONTROLLER_DIALOG_NONE
+                            ui.physicalControllerDialogMode = PHYSICAL_CONTROLLER_DIALOG_NONE
                             true
                         },
                     )
@@ -3366,14 +3260,14 @@ fun XServerScreen(
         appId = appId,
         sc = sc,
         onFullDismiss = {
-            keepPausedForEditor = false
+            ui.keepPausedForEditor = false
             runCatching { sc.mapper?.reload() }
             // A BLE Steam Controller can't press the manual-resume button, so force-resume for SC sessions (otherwise
             // closing an editor in manual-suspend policy would leave the game stuck paused).
             if (sc.isLive) forceResumeIfSuspended() else resumeIfAllowedAfterOverlay()
         },
         // Back from the SC hub returns to the QuickMenu (not the game): keep paused, show the QuickMenu again.
-        onRootBack = { keepPausedForEditor = false; showQuickMenu = true },
+        onRootBack = { ui.keepPausedForEditor = false; ui.showQuickMenu = true },
     )
 
     // var ranSetup by rememberSaveable { mutableStateOf(false) }
