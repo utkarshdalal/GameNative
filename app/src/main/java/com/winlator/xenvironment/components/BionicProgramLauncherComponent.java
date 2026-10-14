@@ -650,8 +650,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                 "ENABLE_VK_LAYER_VALVE_steam_overlay_1",
                 "STEAMVIDEOTOKEN",
                 "SteamUser",
-                "SteamOS",
         };
+        // Keep SteamOS in the explicit Wine child environment so Steamworks games see
+        // overlay support, but do not install it in the Android host process. Native
+        // Steam otherwise inherits it into Linux launch helpers and tries to preload
+        // gameoverlayrenderer.so into /bin/sh, which is not shipped by the bionic image.
         for (String key : passthrough) {
             String val = envVars.get(key);
             if (val != null && !val.isEmpty()) {
