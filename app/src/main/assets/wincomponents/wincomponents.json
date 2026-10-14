@@ -7,7 +7,13 @@
     "directshow" : ["amstream", "qasf", "qcap", "qdvd", "qedit", "quartz"],
     "directplay" : ["dplaysvr.exe", "dplayx", "dpmodemx", "dpnet", "dpnhpast", "dpnhupnp", "dpnsvr.exe", "dpwsockx"],
     "xaudio" : ["x3daudio1_0", "x3daudio1_1", "x3daudio1_2", "x3daudio1_3", "x3daudio1_4", "x3daudio1_5", "x3daudio1_6", "x3daudio1_7", "xactengine2_0", "xactengine2_1", "xactengine2_2", "xactengine2_3", "xactengine2_4", "xactengine2_5", "xactengine2_6", "xactengine2_7", "xactengine2_8", "xactengine2_9", "xactengine2_10", "xactengine3_0", "xactengine3_1", "xactengine3_2", "xactengine3_3", "xactengine3_4", "xactengine3_5", "xactengine3_6", "xactengine3_7", "xapofx1_0", "xapofx1_1", "xapofx1_2", "xapofx1_3", "xapofx1_4", "xapofx1_5", "xaudio2_0", "xaudio2_1", "xaudio2_2", "xaudio2_3", "xaudio2_4", "xaudio2_5", "xaudio2_6", "xaudio2_7"],
+    "vcrun2005" : ["atl80", "msvcm80", "msvcp80", "msvcr80", "vcomp"],
+    "vcrun2008" : ["atl90", "msvcm90", "msvcp90", "msvcr90", "vcomp90"],
     "vcrun2010" : ["msvcp100", "msvcr100", "vcomp100", "atl100"],
+    "vcrun2012" : ["atl110", "msvcp110", "msvcr110", "vccorlib110", "vcomp110"],
+    "vcrun2013" : ["msvcp120", "msvcr120", "vcamp120", "vccorlib120", "vcomp120"],
+    "vcrun2022" : ["concrt140", "msvcp140", "msvcp140_1", "msvcp140_2", "msvcp140_atomic_wait", "msvcp140_codecvt_ids", "vcamp140", "vccorlib140", "vcomp140", "vcruntime140", "vcruntime140_1"],
     "wmdecoder" : ["wmvcore", "wmasf", "wmadmod", "wmvdecod"],
-    "opengl" : ["libgallium_wgl", "opengl32"]
+    "opengl" : ["libgallium_wgl", "opengl32"],
+    "physx" : []
 }

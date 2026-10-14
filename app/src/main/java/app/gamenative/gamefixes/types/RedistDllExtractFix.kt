@@ -147,6 +147,57 @@ internal object LibarchiveCabEntryExtractor : CabEntryExtractor {
         }
     }
 
+    /**
+     * Writes every regular entry of [cabinet] into [destinationDir] under index-based names and
+     * returns each entry's leaf name with its written file; stops once [maxBytes] would be exceeded.
+     */
+    fun extractAll(cabinet: File, destinationDir: File, maxBytes: Long): List<Pair<String, File>> {
+        val archive = try {
+            Archive.readNew()
+        } catch (e: LinkageError) {
+            throw IOException("Cabinet extraction is not available on this device", e)
+        }
+        val written = ArrayList<Pair<String, File>>()
+        var remaining = maxBytes
+        try {
+            Archive.setCharset(archive, Charsets.UTF_8.name().toByteArray(Charsets.UTF_8))
+            Archive.readSupportFilterAll(archive)
+            Archive.readSupportFormatCab(archive)
+            Archive.readOpenFileName(archive, cabinet.absolutePath.toByteArray(Charsets.UTF_8), BLOCK_BYTES.toLong())
+            destinationDir.mkdirs()
+            while (remaining > 0) {
+                val entry = try {
+                    Archive.readNextHeader(archive)
+                } catch (e: ArchiveException) {
+                    if (e.code != Archive.ERRNO_EOF) Timber.w(e, "Stopped reading ${cabinet.name} after ${written.size} entries")
+                    break
+                }
+                if (entry == 0L) break
+                val type = ArchiveEntry.filetype(entry)
+                if (type != ArchiveEntry.AE_IFREG && type != 0) continue
+                val name = leafName(entry)
+                val destination = File(destinationDir, "entry-${written.size}")
+                val bytes = try {
+                    FileOutputStream(destination).use { output -> copyEntry(archive, output, remaining) }
+                } catch (e: ArchiveException) {
+                    Timber.w(e, "Cannot unpack '$name' from ${cabinet.name}")
+                    destination.delete()
+                    break
+                }
+                if (bytes < 0) {
+                    destination.delete()
+                    break
+                }
+                remaining -= bytes
+                written.add(name to destination)
+            }
+            return written
+        } finally {
+            runCatching { Archive.readClose(archive) }
+            runCatching { Archive.readFree(archive) }
+        }
+    }
+
     private fun leafName(entry: Long): String {
         val name = ArchiveEntry.pathnameUtf8(entry)
             ?: ArchiveEntry.pathname(entry)?.toString(Charsets.ISO_8859_1)
@@ -154,8 +205,9 @@ internal object LibarchiveCabEntryExtractor : CabEntryExtractor {
         return name.replace('\\', '/').substringAfterLast('/')
     }
 
-    private fun copyEntry(archive: Long, output: FileOutputStream) {
+    private fun copyEntry(archive: Long, output: FileOutputStream, maxBytes: Long = Long.MAX_VALUE): Long {
         val buffer = ByteBuffer.allocateDirect(BLOCK_BYTES)
+        var total = 0L
         while (true) {
             buffer.clear()
             try {
@@ -164,11 +216,14 @@ internal object LibarchiveCabEntryExtractor : CabEntryExtractor {
                 if (e.code == Archive.ERRNO_EOF) break else throw e
             }
             if (buffer.position() <= 0) break
+            total += buffer.position()
+            if (total > maxBytes) return -1
             buffer.flip()
             while (buffer.hasRemaining()) {
                 output.channel.write(buffer)
             }
         }
+        return total
     }
 }
 
@@ -186,6 +241,7 @@ internal object CabArchive {
     private const val MAX_TABLE_BYTES = 256 * 1024
     private const val SCAN_CHUNK_BYTES = 1 shl 20
     private const val COPY_CHUNK_BYTES = 1 shl 16
+    private const val CONTINUED_FOLDER = 0xFFFD
 
     data class Location(val offset: Long, val length: Long, val entryNames: List<String>)
 
@@ -195,6 +251,89 @@ internal object CabArchive {
             .asSequence()
             .mapNotNull { offset -> header(source, offset, length) }
             .firstOrNull { location -> location.entryNames.any { it.equals(entryName, ignoreCase = true) } }
+    }
+
+    fun locateAll(file: File): List<Location> = RandomAccessFile(file, "r").use { source ->
+        val length = source.length()
+        signatureOffsets(source, length).mapNotNull { offset -> header(source, offset, length) }
+    }
+
+    private class FileEntry(val folder: Int, val offset: Long, val size: Long, val name: String, val bytes: ByteArray)
+
+    /**
+     * Rewrites the CFFILE table of [cabinet] in place when several entries alias the same data or
+     * are out of order, which libarchive rejects ("Invalid CAB header"). One entry is kept per data
+     * range and the table is padded to its old length. Returns true when the table was rewritten.
+     */
+    fun normalizeFileTable(cabinet: File): Boolean = RandomAccessFile(cabinet, "rw").use { file ->
+        val length = file.length()
+        if (length < HEADER_BYTES) return false
+        val header = ByteArray(HEADER_BYTES)
+        file.seek(0)
+        file.readFully(header)
+        if (!header.copyOfRange(0, 4).contentEquals(SIGNATURE)) return false
+        val cabinetBytes = minOf(readU32(header, 8), length)
+        val tableOffset = readU32(header, 16)
+        val fileCount = readU16(header, 28)
+        if (tableOffset < HEADER_BYTES || tableOffset >= cabinetBytes || fileCount < 1) return false
+        val table = ByteArray(minOf(cabinetBytes - tableOffset, MAX_TABLE_BYTES.toLong()).toInt())
+        file.seek(tableOffset)
+        file.readFully(table)
+
+        val entries = ArrayList<FileEntry>(fileCount)
+        var cursor = 0
+        repeat(fileCount) {
+            val start = cursor + ENTRY_HEADER_BYTES
+            if (start >= table.size) return false
+            var end = start
+            while (end < table.size && table[end] != 0.toByte()) end++
+            if (end >= table.size || end - start > MAX_NAME_BYTES) return false
+            val folder = readU16(table, cursor + 8)
+            if (folder >= CONTINUED_FOLDER) return false
+            entries += FileEntry(
+                folder,
+                readU32(table, cursor + 4),
+                readU32(table, cursor),
+                String(table, start, end - start, Charsets.ISO_8859_1),
+                table.copyOfRange(cursor, end + 1),
+            )
+            cursor = end + 1
+        }
+        if (isContiguous(entries)) return false
+
+        val kept = entries
+            .groupBy { Triple(it.folder, it.offset, it.size) }
+            .values
+            .map { aliases -> aliases.minWith(compareBy<FileEntry>({ it.name.length }, { it.name })) }
+            .sortedWith(compareBy({ it.folder }, { it.offset }))
+        if (!isContiguous(kept)) return false
+
+        val rewritten = ByteArray(cursor)
+        var position = 0
+        for (entry in kept) {
+            entry.bytes.copyInto(rewritten, position)
+            position += entry.bytes.size
+        }
+        file.seek(tableOffset)
+        file.write(rewritten)
+        file.seek(28)
+        file.write(byteArrayOf(kept.size.toByte(), (kept.size ushr 8).toByte()))
+        true
+    }
+
+    private fun isContiguous(entries: List<FileEntry>): Boolean {
+        var folder = -1
+        var expected = 0L
+        for (entry in entries) {
+            if (entry.folder < folder) return false
+            if (entry.folder != folder) {
+                folder = entry.folder
+                expected = 0L
+            }
+            if (entry.offset != expected) return false
+            expected += entry.size
+        }
+        return true
     }
 
     fun slice(source: File, location: Location, destination: File) {
