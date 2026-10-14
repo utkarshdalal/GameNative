@@ -1195,4 +1195,25 @@ class KeyValueUtilsTest {
         )!!
         assertEquals(null, kv.vrClassification())
     }
+
+    @Test
+    fun installScriptIsReadFromConfigThenExtendedThenCommonExtended() {
+        fun app(body: String) = KeyValue.loadFromString(
+            """
+            "appinfo"
+            {
+                "appid" "49520"
+                $body
+            }
+            """.trimIndent(),
+        )!!.generateSteamApp()
+
+        assertEquals(
+            "installscript.vdf",
+            app(""" "config" { "installscript" "installscript.vdf" } "extended" { "installscript" "other.vdf" } """).installScript,
+        )
+        assertEquals("extended.vdf", app(""" "config" { "installscript" "" } "extended" { "installscript" "extended.vdf" } """).installScript)
+        assertEquals("common.vdf", app(""" "common" { "extended" { "installscript" "common.vdf" } } """).installScript)
+        assertEquals("", app(""" "common" { "name" "x" } """).installScript)
+    }
 }

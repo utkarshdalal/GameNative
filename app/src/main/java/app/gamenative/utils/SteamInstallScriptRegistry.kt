@@ -17,6 +17,9 @@ import java.io.File
  *
  * Completion is tracked by a marker in the game directory (cleared by verify) and a stamp in
  * the prefix, so the values are re-applied when either the install or the prefix is recreated.
+ *
+ * Every Run Process step and every common Steam redistributable is also marked as already run,
+ * so Steam never launches vcredist, DXSETUP or other redistributable installers under Wine.
  */
 object SteamInstallScriptRegistry {
     enum class Hive { HKLM, HKCU }
@@ -30,9 +33,69 @@ object SteamInstallScriptRegistry {
         val data: String,
     )
 
+    data class VcRuntimeVersion(val major: Int, val minor: Int, val build: Int) : Comparable<VcRuntimeVersion> {
+        override fun compareTo(other: VcRuntimeVersion): Int =
+            compareValuesBy(this, other, { it.major }, { it.minor }, { it.build })
+
+        val text: String get() = "v$major.$minor.$build.00"
+
+        companion object {
+            fun fromFileVersion(fileVersion: Long) = VcRuntimeVersion(
+                (fileVersion ushr 48).toInt(),
+                ((fileVersion ushr 32) and 0xFFFF).toInt(),
+                ((fileVersion ushr 16) and 0xFFFF).toInt(),
+            )
+        }
+    }
+
+    data class RunProcessStep(
+        val script: File,
+        val name: String,
+        val processKey: String,
+        val path: String,
+        val file: File?,
+        val hasRunKey: String?,
+        val requirementOs: Map<String, String>,
+    ) {
+        val requires64BitWindows: Boolean?
+            get() = requirementOs.entries.firstOrNull { it.key.equals("Is64BitWindows", ignoreCase = true) }?.value?.let { it == "1" }
+    }
+
     private const val GAME_DRIVE_ROOT = "A:\\"
     private const val DEFAULT_LANGUAGE = "english"
     private const val USER_PROFILE = "C:\\users\\${ImageFs.USER}"
+    private const val RUN_PROCESS_STAMP = ".steam_install_script_run_process"
+    private const val STEAM_APPS_KEY = "Software\\Valve\\Steam\\Apps"
+    private const val COMMON_REDIST_DIR = "_CommonRedist"
+    private const val INSTALL_SCRIPT_NAME = "installscript.vdf"
+    private const val COMMON_REDIST_SCAN_DEPTH = 3
+    private const val REDIST_MARKS_VERSION = 2
+    private const val REDIST_MARKS_STAMP = ".steam_redist_marks_v$REDIST_MARKS_VERSION"
+    private const val COMMON_REDIST_KEY = "Software\\Valve\\Steam\\Apps\\CommonRedist"
+    private const val VC_RUNTIMES_KEY = "Software\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes"
+    internal val DEFAULT_VC_RUNTIME = VcRuntimeVersion(14, 44, 35211)
+    private val VC_RUNTIME_ARCHES = listOf("x86", "x64", "arm64")
+
+    internal val COMMON_REDIST_MARKS: List<Pair<String, String>> = listOf(
+        "DirectX\\Jun2010" to "dxsetup",
+        ".NET\\4.8" to "4.8",
+        "vcredist\\2008" to "x86 SP1",
+        "vcredist\\2008" to "x64 SP1",
+        "vcredist\\2010" to "x86",
+        "vcredist\\2010" to "x64",
+        "vcredist\\2013" to "x86 12.0.30501",
+        "vcredist\\2013" to "x64 12.0.30501",
+        "vcredist\\2015" to "x86 Update 3 14.0.24215.0",
+        "vcredist\\2015" to "x64 Update 3 14.0.24215.0",
+        "vcredist\\2017" to "x86 14.10.25008.0",
+        "vcredist\\2017" to "x64 14.10.25008.0",
+        "vcredist\\2019" to "x86 14.28.29334.0",
+        "vcredist\\2019" to "x64 14.28.29334.0",
+        "vcredist\\2022" to "x86 14.51.36247.0",
+        "vcredist\\2022" to "x64 14.51.36247.0",
+    )
+
+    private val PROCESS_KEY_PATTERN = Regex("(?i)^process\\s*(\\d+)$")
     private val TOKEN_PATTERN = Regex("(?i)%([A-Z_]+)%([\\\\/]?)")
 
     private fun tokens(installDir: String): Map<String, String> = mapOf(
@@ -47,30 +110,258 @@ object SteamInstallScriptRegistry {
     )
 
     fun applyForLaunch(container: Container, appId: String) {
-        if (ContainerUtils.extractGameSourceFromContainerId(appId) != GameSource.STEAM) return
-        val numericAppId = ContainerUtils.extractGameIdFromContainerId(appId) ?: return
-        val gameDir = PreInstallSteps.getGameDir(container) ?: return
-        val app = SteamService.getAppInfoOf(numericAppId) ?: return
-        val scriptName = app.installScript.trim()
-        if (scriptName.isEmpty()) return
-
         val prefixDir = File(container.rootDir, ".wine")
-        val prefixStamp = File(prefixDir, "${Marker.STEAM_INSTALL_SCRIPT_INSTALLED.fileName}_$numericAppId")
+        try {
+            writeRedistMarks(prefixDir)
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to write Steam redistributable marks")
+        }
+        if (ContainerUtils.extractGameSourceFromContainerId(appId) != GameSource.STEAM) return
+        try {
+            applyInstallScript(container, appId, prefixDir)
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to apply Steam install script for $appId")
+        }
+    }
+
+    private fun applyInstallScript(container: Container, appId: String, prefixDir: File) {
+        val numericAppId = ContainerUtils.extractGameIdFromContainerId(appId)
+        val gameDir = PreInstallSteps.getGameDir(container) ?: return
+        val scriptName = SteamService.getAppInfoOf(numericAppId)?.installScript
+        val scriptFile = gameScriptFile(gameDir, scriptName)
+        try {
+            if (scriptFile != null) applyRegistrySection(container, numericAppId, gameDir, prefixDir, scriptFile)
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to apply install-script registry for app $numericAppId")
+        }
+        try {
+            applyRunProcessMarks(prefixDir, gameDir, numericAppId, scriptFile)
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to apply run-process marks for app $numericAppId")
+        }
+    }
+
+    private fun applyRegistrySection(container: Container, appId: Int, gameDir: File, prefixDir: File, scriptFile: File) {
+        val prefixStamp = File(prefixDir, "${Marker.STEAM_INSTALL_SCRIPT_INSTALLED.fileName}_$appId")
         if (MarkerUtils.hasMarker(gameDir.absolutePath, Marker.STEAM_INSTALL_SCRIPT_INSTALLED) && prefixStamp.isFile) return
 
-        val scriptFile = resolveChildCaseInsensitive(gameDir, scriptName)
-        if (scriptFile == null) {
-            Timber.w("Install script $scriptName not found in ${gameDir.absolutePath}")
-            return
-        }
         val entries = parse(scriptFile.readText(), GAME_DRIVE_ROOT, container.language)
         write(prefixDir, entries)
-        Timber.i("Applied ${entries.size} install-script registry values for app $numericAppId")
+        Timber.i("Applied ${entries.size} install-script registry values for app $appId")
 
         MarkerUtils.addMarker(gameDir.absolutePath, Marker.STEAM_INSTALL_SCRIPT_INSTALLED)
         prefixDir.mkdirs()
         runCatching { prefixStamp.createNewFile() }
     }
+
+    internal fun applyRunProcessMarks(prefixDir: File, gameDir: File, appId: Int, scriptFile: File?): Boolean {
+        val scripts = (listOfNotNull(scriptFile) + findCommonRedistScripts(gameDir)).distinct()
+        if (scripts.isEmpty()) return false
+        if (!File(prefixDir, "system.reg").isFile) {
+            Timber.w("Skipping run-process marks, no system.reg in ${prefixDir.absolutePath}")
+            return false
+        }
+        val stamp = File(prefixDir, "${RUN_PROCESS_STAMP}_$appId")
+        val signature = scripts.joinToString("\n") { "${it.relativeTo(gameDir).path}:${it.length()}:${it.lastModified()}" }
+        if (stamp.isFile && runCatching { stamp.readText() }.getOrNull() == signature) return false
+
+        val entries = scripts.flatMap { script ->
+            runCatching { parseRunProcessMarks(script.readText(), appId) }
+                .onFailure { Timber.w(it, "Failed to read ${script.absolutePath}") }
+                .getOrDefault(emptyList())
+        }.distinct()
+        write(prefixDir, entries)
+        stamp.writeText(signature)
+        Timber.i("Applied ${entries.size} run-process marks from ${scripts.size} install scripts for app $appId")
+        return true
+    }
+
+    internal fun gameScriptFile(gameDir: File, scriptName: String?): File? {
+        val name = scriptName?.trim().orEmpty().ifEmpty { INSTALL_SCRIPT_NAME }
+        return resolveChildCaseInsensitive(gameDir, name).also {
+            if (it == null && name != INSTALL_SCRIPT_NAME) Timber.w("Install script $name not found in ${gameDir.absolutePath}")
+        }
+    }
+
+    fun runProcessSteps(gameDir: File, scriptName: String?): List<RunProcessStep> {
+        val gameScript = gameScriptFile(gameDir, scriptName)
+        val scripts = (listOfNotNull(gameScript) + findCommonRedistScripts(gameDir)).distinct()
+        return scripts.flatMap { script ->
+            runCatching { parseRunProcessSteps(script.readText(), script, gameDir) }
+                .onFailure { Timber.w(it, "Failed to read ${script.absolutePath}") }
+                .getOrDefault(emptyList())
+        }
+    }
+
+    internal fun parseRunProcessSteps(vdf: String, script: File, gameDir: File): List<RunProcessStep> {
+        val root = runCatching { KeyValue.loadFromString(vdf) }.getOrNull() ?: return emptyList()
+        val runProcess = root["InstallScript"]["Run Process"].takeUnless { it === KeyValue.INVALID }
+            ?: root["Run Process"].takeUnless { it === KeyValue.INVALID }
+            ?: return emptyList()
+        val tokens = tokens(GAME_DRIVE_ROOT)
+        val steps = mutableListOf<RunProcessStep>()
+        for (step in runProcess.children) {
+            val stepName = step.name?.trim().orEmpty()
+            if (stepName.isEmpty() || step.children.isEmpty()) continue
+            val requirementOs = step["Requirement_OS"].children
+                .filter { it.name != null && it.value != null }
+                .associate { it.name!! to it.value!!.trim() }
+            val processes = step.children
+                .mapNotNull { child ->
+                    val index = PROCESS_KEY_PATTERN.find(child.name?.trim().orEmpty())?.groupValues?.get(1)?.toIntOrNull()
+                    val value = child.value?.trim()?.trim('"')?.takeIf { it.isNotEmpty() }
+                    if (index == null || value == null) null else Triple(index, child.name!!.trim(), value)
+                }
+                .sortedBy { it.first }
+            for ((_, key, value) in processes) {
+                val path = expandTokens(value, tokens)
+                steps += RunProcessStep(
+                    script = script,
+                    name = stepName,
+                    processKey = key,
+                    path = path,
+                    file = hostFileFor(gameDir, path),
+                    hasRunKey = step.stringValue("HasRunKey"),
+                    requirementOs = requirementOs,
+                )
+            }
+        }
+        return steps
+    }
+
+    private fun hostFileFor(gameDir: File, windowsPath: String): File? {
+        val relative = when {
+            windowsPath.startsWith(GAME_DRIVE_ROOT, ignoreCase = true) -> windowsPath.substring(GAME_DRIVE_ROOT.length)
+            windowsPath.length >= 2 && windowsPath[1] == ':' -> return null
+            windowsPath.startsWith("\\") || windowsPath.startsWith("/") -> return null
+            else -> windowsPath
+        }
+        return resolveChildCaseInsensitive(gameDir, relative)
+    }
+
+    internal fun findCommonRedistScripts(gameDir: File): List<File> {
+        val redistDir = gameDir.listFiles()
+            ?.firstOrNull { it.isDirectory && it.name.equals(COMMON_REDIST_DIR, ignoreCase = true) }
+            ?: return emptyList()
+        return redistDir.walkTopDown()
+            .maxDepth(COMMON_REDIST_SCAN_DEPTH + 1)
+            .filter { it.isFile && it.name.equals(INSTALL_SCRIPT_NAME, ignoreCase = true) }
+            .sortedBy { it.path }
+            .toList()
+    }
+
+    internal fun writeRedistMarks(prefixDir: File): Boolean {
+        val stamp = File(prefixDir, REDIST_MARKS_STAMP)
+        if (stamp.isFile) return false
+        if (!File(prefixDir, "system.reg").isFile) {
+            Timber.w("Skipping Steam redistributable marks, no system.reg in ${prefixDir.absolutePath}")
+            return false
+        }
+        val entries = commonRedistMarkEntries()
+        write(prefixDir, entries)
+        raiseVcRuntimeVersion(prefixDir, DEFAULT_VC_RUNTIME)
+        stamp.createNewFile()
+        Timber.i("Wrote ${entries.size} Steam redistributable marks")
+        return true
+    }
+
+    internal fun redistMarkEntries(): List<Entry> =
+        commonRedistMarkEntries() + vcRuntimeKeys().flatMap { vcRuntimeEntries(it, DEFAULT_VC_RUNTIME) }
+
+    private fun commonRedistMarkEntries(): List<Entry> =
+        COMMON_REDIST_MARKS.flatMap { (subKey, valueName) ->
+            bothViews("$COMMON_REDIST_KEY\\$subKey").map { view -> Entry(Hive.HKLM, view, valueName, ValueType.DWORD, "1") }
+        }
+
+    internal fun vcRuntimeKeys(): List<String> = VC_RUNTIME_ARCHES.flatMap { bothViews("$VC_RUNTIMES_KEY\\$it") }
+
+    internal fun vcRuntimeEntries(key: String, version: VcRuntimeVersion): List<Entry> = listOf(
+        Entry(Hive.HKLM, key, "Installed", ValueType.DWORD, "1"),
+        Entry(Hive.HKLM, key, "Major", ValueType.DWORD, version.major.toString()),
+        Entry(Hive.HKLM, key, "Minor", ValueType.DWORD, version.minor.toString()),
+        Entry(Hive.HKLM, key, "Bld", ValueType.DWORD, version.build.toString()),
+        Entry(Hive.HKLM, key, "Rbld", ValueType.DWORD, "0"),
+        Entry(Hive.HKLM, key, "Version", ValueType.STRING, version.text),
+    )
+
+    /**
+     * Raises the VC++ 2015-2022 runtime keys of every architecture, in both registry views, to
+     * [version]. A key that already records the same or a higher version is left alone.
+     */
+    fun raiseVcRuntimeVersion(prefixDir: File, version: VcRuntimeVersion): Boolean {
+        val systemReg = File(prefixDir, "system.reg")
+        if (!systemReg.isFile) return false
+        val stale = WineRegistryEditor(systemReg).use { editor ->
+            vcRuntimeKeys().filter { key -> installedVcRuntime(editor, key)?.let { it < version } ?: true }
+        }
+        if (stale.isEmpty()) return false
+        write(prefixDir, stale.flatMap { vcRuntimeEntries(it, version) })
+        Timber.i("Raised ${stale.size} VC runtime keys to ${version.text}")
+        return true
+    }
+
+    private fun installedVcRuntime(editor: WineRegistryEditor, key: String): VcRuntimeVersion? {
+        val major = editor.getDwordValue(key, "Major") ?: return null
+        return VcRuntimeVersion(major, editor.getDwordValue(key, "Minor") ?: 0, editor.getDwordValue(key, "Bld") ?: 0)
+    }
+
+    internal fun parseRunProcessMarks(vdf: String, appId: Int): List<Entry> {
+        val root = runCatching { KeyValue.loadFromString(vdf) }.getOrNull() ?: return emptyList()
+        val runProcess = root["InstallScript"]["Run Process"].takeUnless { it === KeyValue.INVALID }
+            ?: root["Run Process"].takeUnless { it === KeyValue.INVALID }
+            ?: return emptyList()
+
+        val entries = mutableListOf<Entry>()
+        for (step in runProcess.children) {
+            val stepName = step.name?.trim().orEmpty()
+            if (stepName.isEmpty() || step.children.isEmpty()) continue
+            val valueName = step.stringValue("RunKeyName") ?: stepName
+            val minimum = step.stringValue("MinimumHasRunValue")
+                ?.let { runCatching { java.lang.Long.decode(it).toInt() }.getOrNull() }
+                ?: 1
+            val value = maxOf(1, minimum).toString()
+
+            for (key in bothViews("$STEAM_APPS_KEY\\$appId")) {
+                entries += Entry(Hive.HKLM, key, valueName, ValueType.DWORD, value)
+            }
+
+            step.stringValue("HasRunKey")?.let { hasRunKey ->
+                val split = splitHive(hasRunKey)
+                if (split == null) {
+                    Timber.d("Skipping unsupported HasRunKey $hasRunKey for step $stepName")
+                } else {
+                    for (key in viewsFor(split.first, split.second)) {
+                        entries += Entry(split.first, key, valueName, ValueType.DWORD, value)
+                    }
+                }
+            }
+
+            step.stringValue("HasRunStringKey")?.let { stringKey ->
+                val split = splitHive(stringKey)
+                if (split == null) {
+                    Timber.d("Skipping unsupported HasRunStringKey $stringKey for step $stepName")
+                    return@let
+                }
+                val (hive, path) = split
+                val data = step["HasRunStringValue"].value ?: "true"
+                val separator = path.lastIndexOf('\\')
+                if (separator > 0) {
+                    val parent = path.substring(0, separator)
+                    val leaf = path.substring(separator + 1)
+                    for (key in viewsFor(hive, parent)) {
+                        entries += Entry(hive, key, leaf, ValueType.STRING, data)
+                    }
+                }
+            }
+        }
+        return entries.distinct()
+    }
+
+    private fun KeyValue.stringValue(name: String): String? =
+        this[name].value?.trim()?.takeIf { it.isNotEmpty() }
+
+    private fun viewsFor(hive: Hive, path: String): List<String> =
+        if (hive == Hive.HKLM) bothViews(path) else listOf(path)
 
     internal fun parse(vdf: String, installDir: String, language: String = DEFAULT_LANGUAGE): List<Entry> {
         val root = runCatching { KeyValue.loadFromString(vdf) }.getOrNull() ?: return emptyList()
@@ -166,6 +457,17 @@ object SteamInstallScriptRegistry {
         if (segments.size < 2 || !segments[0].equals("Software", ignoreCase = true)) return path
         if (segments[1].equals("Wow6432Node", ignoreCase = true)) return path
         return (listOf(segments[0], "Wow6432Node") + segments.drop(1)).joinToString("\\")
+    }
+
+    private fun bothViews(path: String): List<String> {
+        val segments = path.split('\\').filter { it.isNotEmpty() }
+        if (segments.isEmpty() || !segments[0].equals("Software", ignoreCase = true)) return listOf(path)
+        val rest = segments.drop(1).let { if (it.firstOrNull().equals("Wow6432Node", ignoreCase = true)) it.drop(1) else it }
+        if (rest.isEmpty()) return listOf(path)
+        return listOf(
+            (listOf("Software", "Wow6432Node") + rest).joinToString("\\"),
+            (listOf("Software") + rest).joinToString("\\"),
+        )
     }
 
     private fun expandTokens(value: String, tokens: Map<String, String>): String =

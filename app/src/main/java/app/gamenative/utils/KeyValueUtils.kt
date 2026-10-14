@@ -139,7 +139,9 @@ fun KeyValue.generateSteamApp(): SteamApp {
         dlcAvailableOnStore = this["common"]["extended"]["dlcavailableonstore"].asBoolean(),
         optionalDlc = this["common"]["extended"]["optionaldlc"].asBoolean(),
         gameDir = this["common"]["extended"]["gamedir"].value.orEmpty(),
-        installScript = this["common"]["extended"]["installscript"].value.orEmpty(),
+        installScript = listOf(this["config"], this["extended"], this["common"]["extended"])
+            .firstNotNullOfOrNull { it["installscript"].value?.trim()?.takeIf { name -> name.isNotEmpty() } }
+            .orEmpty(),
         noServers = this["common"]["extended"]["noservers"].asBoolean(),
         order = this["common"]["extended"]["order"].asBoolean(),
         primaryCache = this["common"]["extended"]["primarycache"].asInteger(),
