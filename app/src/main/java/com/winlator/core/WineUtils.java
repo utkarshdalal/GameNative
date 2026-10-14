@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Locale;
 
 import app.gamenative.PrefManager;
+import app.gamenative.utils.PhysXLayout;
 import timber.log.Timber;
 
 public abstract class WineUtils {
@@ -261,7 +262,10 @@ public abstract class WineUtils {
     }
 
     public static void setWinComponentRegistryKeys(File systemRegFile, String identifier, boolean useNative, boolean builtinWmDecoderDlls) {
-        if (identifier.equals("directsound")) {
+        if (identifier.equals(PhysXLayout.COMPONENT)) {
+            PhysXLayout.applyRegistry(systemRegFile, useNative);
+        }
+        else if (identifier.equals("directsound")) {
             try (WineRegistryEditor registryEditor = new WineRegistryEditor(systemRegFile)) {
                 final String key64 = "Software\\Classes\\CLSID\\{083863F1-70DE-11D0-BD40-00A0C911CE86}\\Instance\\{E30629D1-27E5-11CE-875D-00608CB78066}";
                 final String key32 = "Software\\Classes\\Wow6432Node\\CLSID\\{083863F1-70DE-11D0-BD40-00A0C911CE86}\\Instance\\{E30629D1-27E5-11CE-875D-00608CB78066}";
