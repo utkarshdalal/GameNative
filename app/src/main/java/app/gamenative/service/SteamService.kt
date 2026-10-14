@@ -351,6 +351,13 @@ class SteamService : Service(), IChallengeUrlChanged {
         data object Loading : ParentalState()
         data object Unrestricted : ParentalState()
         data class Restricted(val allowedAppIds: Set<Int>) : ParentalState()
+
+        // null = show everything. Loading falls back to the per-account cache so a known child stays filtered before the RPC returns
+        fun resolveAllowedAppIds(cached: () -> Set<Int>?): Set<Int>? = when (this) {
+            is Restricted -> allowedAppIds
+            is Loading -> cached()
+            is Unrestricted -> null
+        }
     }
 
     @Volatile

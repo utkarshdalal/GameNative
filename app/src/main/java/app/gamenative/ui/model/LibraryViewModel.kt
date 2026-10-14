@@ -798,11 +798,7 @@ class LibraryViewModel @Inject constructor(
                 return status == GameCompatibilityStatus.COMPATIBLE || status == GameCompatibilityStatus.GPU_COMPATIBLE
             }
 
-            val allowedApps = when (val state = SteamService.parentalControlState) {
-                is SteamService.ParentalState.Restricted -> state.allowedAppIds
-                is SteamService.ParentalState.Loading -> PrefManager.parentalAllowedAppIds
-                is SteamService.ParentalState.Unrestricted -> null
-            }
+            val allowedApps = SteamService.parentalControlState.resolveAllowedAppIds { PrefManager.parentalAllowedAppIds }
 
             val steamOwnerTypeFiltered: List<SteamApp> = appList
                 .asSequence()
