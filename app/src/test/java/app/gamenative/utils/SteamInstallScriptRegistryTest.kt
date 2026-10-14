@@ -215,8 +215,6 @@ class SteamInstallScriptRegistryTest {
                 Entry(Hive.HKLM, APPS_KEY_64, "EADesktopSetup", ValueType.DWORD, "3"),
                 Entry(Hive.HKLM, "Software\\Wow6432Node\\Electronic Arts\\EA Desktop", "EADesktopSetup", ValueType.DWORD, "3"),
                 Entry(Hive.HKLM, "Software\\Electronic Arts\\EA Desktop", "EADesktopSetup", ValueType.DWORD, "3"),
-                Entry(Hive.HKLM, APPS_KEY_32, "NoKey", ValueType.DWORD, "1"),
-                Entry(Hive.HKLM, APPS_KEY_64, "NoKey", ValueType.DWORD, "1"),
             ),
             entries,
         )
@@ -735,7 +733,125 @@ class SteamInstallScriptRegistryTest {
         assertTrue(SteamInstallScriptRegistry.VcRuntimeVersion(14, 44, 1) > SteamInstallScriptRegistry.VcRuntimeVersion(14, 42, 34438))
     }
 
-    private fun runProcessScript(step: String, hasRunKey: String) = """
+    private fun marksFor(step: String, gameDir: File? = null): List<String> {
+        val vdf = """
+            "InstallScript"
+            {
+                "Run Process"
+                {
+                    $step
+                }
+            }
+        """.trimIndent()
+        return SteamInstallScriptRegistry.parseRunProcessMarks(vdf, APP_ID, gameDir)
+            .filter { it.key == APPS_KEY_64 }
+            .mapNotNull { it.name }
+    }
+
+    @Test
+    fun parseRunProcessMarks_marksRedistributableSteps() {
+        val marked = marksFor(
+            """
+            "VC2022"
+            {
+                "process 1" "%INSTALLDIR%\\_CommonRedist\\vcredist\\2022\\VC_redist.x64.exe"
+                "command 1" "/install /quiet /norestart"
+            }
+            "DirectX"
+            {
+                "process 1" "%INSTALLDIR%\\_CommonRedist\\DirectX\\Jun2010\\DXSETUP.exe"
+            }
+            "Framework"
+            {
+                "process 1" "%INSTALLDIR%\\Redist\\NDP472-KB4054530-x86-x64-AllOS-ENU.exe"
+            }
+            "Origin"
+            {
+                "process 1" "%INSTALLDIR%\\__Installer\\Origin\\redist\\internal\\OriginThinSetup.exe"
+            }
+            "ByCommand"
+            {
+                "process 1" "%WINDIR%\\system32\\msiexec.exe"
+                "command 1" "/i %INSTALLDIR%\\Redist\\PhysX_9.13.0604_SystemSoftware.msi /quiet"
+            }
+            """,
+        )
+
+        assertEquals(listOf("VC2022", "DirectX", "Framework", "Origin", "ByCommand"), marked)
+    }
+
+    @Test
+    fun parseRunProcessMarks_leavesOtherProcessesUnmarked() {
+        val marked = marksFor(
+            """
+            "Register"
+            {
+                "HasRunKey" "HKLM\\Software\\Studio\\Game"
+                "process 1" "%INSTALLDIR%\\setup.exe"
+                "command 1" "/register"
+            }
+            "Vc"
+            {
+                "process 1" "%INSTALLDIR%\\vcredist_x86.exe"
+            }
+            """,
+        )
+
+        assertEquals(listOf("Vc"), marked)
+    }
+
+    @Test
+    fun parseRunProcessMarks_marksStepsWithoutAProcess() {
+        val marked = marksFor(
+            """
+            "KeyOnly"
+            {
+                "HasRunKey" "HKLM\\Software\\Studio\\Game"
+                "MinimumHasRunValue" "2"
+            }
+            "EmptyProcess"
+            {
+                "process 1" ""
+                "HasRunKey" "HKLM\\Software\\Studio\\Other"
+            }
+            """,
+        )
+
+        assertEquals(listOf("KeyOnly", "EmptyProcess"), marked)
+    }
+
+    @Test
+    fun parseRunProcessMarks_marksCmdStepsByTheInstallerTheyStart() {
+        val gameDir = File(prefixDir, "game")
+        File(gameDir, "Prereqs").mkdirs()
+        File(gameDir, "Prereqs/Microsoft Visual C++ 2022 x86.cmd")
+            .writeText("start /w \"\" \"%~dp0\\VC_redist.x86.exe\" /q /norestart\r\n")
+        File(gameDir, "tools").mkdirs()
+        File(gameDir, "tools/register.cmd").writeText("@echo off\r\nregsvr32 /s \"%~dp0\\game.dll\"\r\n")
+        val steps = """
+            "VC 2022 x86"
+            {
+                "process 1" "%INSTALLDIR%\\Prereqs\\Microsoft Visual C++ 2022 x86.cmd"
+            }
+            "Register"
+            {
+                "process 1" "%INSTALLDIR%\\tools\\register.cmd"
+            }
+            "Missing"
+            {
+                "process 1" "%INSTALLDIR%\\tools\\missing.cmd"
+            }
+        """
+
+        assertEquals(listOf("VC 2022 x86"), marksFor(steps, gameDir))
+        assertEquals(emptyList<String>(), marksFor(steps, null))
+    }
+
+    private fun runProcessScript(
+        step: String,
+        hasRunKey: String,
+        process: String = "%INSTALLDIR%\\_CommonRedist\\vcredist\\2019\\VC_redist.x64.exe",
+    ) = """
         "InstallScript"
         {
             "Run Process"
@@ -743,7 +859,7 @@ class SteamInstallScriptRegistryTest {
                 "$step"
                 {
                     "HasRunKey" "${hasRunKey.replace("\\", "\\\\")}"
-                    "process 1" "%INSTALLDIR%\\setup.exe"
+                    "process 1" "${process.replace("\\", "\\\\")}"
                 }
             }
         }

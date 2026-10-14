@@ -96,6 +96,13 @@ object SteamInstallScriptRegistry {
     )
 
     private val PROCESS_KEY_PATTERN = Regex("(?i)^process\\s*(\\d+)$")
+    private val COMMAND_KEY_PATTERN = Regex("(?i)^command\\s*(\\d+)$")
+    private val REDIST_PROCESS = Regex(
+        "(?i)vc_redist|vcredist|msvc|dxsetup|dxwebsetup|directx|dotnet|netfx|ndp4|\\.net|xna|physx|oalinst|openal|" +
+            "eaappinstaller|eadesktop|originsetup|originthinsetup|\\\\__installer\\\\origin\\\\|uplay|ubisoftconnect|" +
+            "ubisoft game launcher|rockstar-games-launcher",
+    )
+    private const val MAX_SCRIPT_BYTES = 64 * 1024
     private val TOKEN_PATTERN = Regex("(?i)%([A-Z_]+)%([\\\\/]?)")
 
     private fun tokens(installDir: String): Map<String, String> = mapOf(
@@ -166,7 +173,7 @@ object SteamInstallScriptRegistry {
         if (stamp.isFile && runCatching { stamp.readText() }.getOrNull() == signature) return false
 
         val entries = scripts.flatMap { script ->
-            runCatching { parseRunProcessMarks(script.readText(), appId) }
+            runCatching { parseRunProcessMarks(script.readText(), appId, gameDir) }
                 .onFailure { Timber.w(it, "Failed to read ${script.absolutePath}") }
                 .getOrDefault(emptyList())
         }.distinct()
@@ -305,7 +312,37 @@ object SteamInstallScriptRegistry {
         return VcRuntimeVersion(major, editor.getDwordValue(key, "Minor") ?: 0, editor.getDwordValue(key, "Bld") ?: 0)
     }
 
-    internal fun parseRunProcessMarks(vdf: String, appId: Int): List<Entry> {
+    /**
+     * True for steps Steam would satisfy with a redistributable or launcher install: a `process N`
+     * or `command N` naming one, a .cmd whose body names one, or a step that runs no process.
+     */
+    internal fun isRedistStep(step: KeyValue, gameDir: File?): Boolean {
+        val processes = step.children.filter { PROCESS_KEY_PATTERN.matches(it.name?.trim().orEmpty()) }
+            .mapNotNull { it.value?.trim()?.trim('"')?.takeIf { value -> value.isNotEmpty() } }
+        if (processes.isEmpty()) return true
+        val commands = step.children.filter { COMMAND_KEY_PATTERN.matches(it.name?.trim().orEmpty()) }.mapNotNull { it.value }
+        if ((processes + commands).any { REDIST_PROCESS.containsMatchIn(it.replace('/', '\\')) }) return true
+        return processes
+            .filter { it.endsWith(".cmd", ignoreCase = true) }
+            .any { process ->
+                val script = gameDir?.let { hostFileFor(it, expandTokens(process, tokens(GAME_DRIVE_ROOT))) } ?: return@any false
+                val body = runCatching {
+                    script.inputStream().use { input ->
+                        val buffer = ByteArray(MAX_SCRIPT_BYTES)
+                        var total = 0
+                        while (total < buffer.size) {
+                            val read = input.read(buffer, total, buffer.size - total)
+                            if (read <= 0) break
+                            total += read
+                        }
+                        String(buffer, 0, total, Charsets.ISO_8859_1)
+                    }
+                }.getOrNull()
+                body != null && REDIST_PROCESS.containsMatchIn(body.replace('/', '\\'))
+            }
+    }
+
+    internal fun parseRunProcessMarks(vdf: String, appId: Int, gameDir: File? = null): List<Entry> {
         val root = runCatching { KeyValue.loadFromString(vdf) }.getOrNull() ?: return emptyList()
         val runProcess = root["InstallScript"]["Run Process"].takeUnless { it === KeyValue.INVALID }
             ?: root["Run Process"].takeUnless { it === KeyValue.INVALID }
@@ -315,6 +352,10 @@ object SteamInstallScriptRegistry {
         for (step in runProcess.children) {
             val stepName = step.name?.trim().orEmpty()
             if (stepName.isEmpty() || step.children.isEmpty()) continue
+            if (!isRedistStep(step, gameDir)) {
+                Timber.d("Leaving install-script step $stepName unmarked, it does not install a redistributable")
+                continue
+            }
             val valueName = step.stringValue("RunKeyName") ?: stepName
             val minimum = step.stringValue("MinimumHasRunValue")
                 ?.let { runCatching { java.lang.Long.decode(it).toInt() }.getOrNull() }
