@@ -520,7 +520,7 @@ fun XServerScreen(
     val container = remember(appId) {
         ContainerUtils.getContainer(context, appId)
     }
-    val ui = remember(container.id) { XServerScreenState(container, context) }
+    val ui = remember { XServerScreenState(container, context) }
     val activity = remember(context) { BrightnessManager.findActivity(context) }
 
     DisposableEffect(activity) {
