@@ -170,17 +170,33 @@ object SteamInstallScriptRegistry {
         }
         val stamp = File(prefixDir, "${RUN_PROCESS_STAMP}_$appId")
         val signature = scripts.joinToString("\n") { "${it.relativeTo(gameDir).path}:${it.length()}:${it.lastModified()}" }
-        if (stamp.isFile && runCatching { stamp.readText() }.getOrNull() == signature) return false
-
         val entries = scripts.flatMap { script ->
             runCatching { parseRunProcessMarks(script.readText(), appId, gameDir) }
                 .onFailure { Timber.w(it, "Failed to read ${script.absolutePath}") }
                 .getOrDefault(emptyList())
         }.distinct()
+        // the stamp alone is not proof: a wineserver flush can drop marks that were edited into
+        // system.reg, so a stamped prefix is only skipped while every mark is still present
+        if (stamp.isFile && runCatching { stamp.readText() }.getOrNull() == signature && allPresent(prefixDir, entries)) return false
+
         write(prefixDir, entries, keepHigherDwords = true)
         stamp.writeText(signature)
         Timber.i("Applied ${entries.size} run-process marks from ${scripts.size} install scripts for app $appId")
         return true
+    }
+
+    private fun allPresent(prefixDir: File, entries: List<Entry>): Boolean {
+        val regFile = File(prefixDir, "system.reg")
+        val hklm = entries.filter { it.hive == Hive.HKLM }
+        if (hklm.isEmpty()) return true
+        return WineRegistryEditor(regFile).use { editor ->
+            hklm.all { entry ->
+                when (entry.type) {
+                    ValueType.DWORD -> editor.getDwordValue(entry.key, entry.name) != null
+                    else -> editor.getStringValue(entry.key, entry.name) != null
+                }
+            }
+        }
     }
 
     internal fun gameScriptFile(gameDir: File, scriptName: String?): File? {

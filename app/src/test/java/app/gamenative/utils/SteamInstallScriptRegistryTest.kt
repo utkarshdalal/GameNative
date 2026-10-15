@@ -798,6 +798,27 @@ class SteamInstallScriptRegistryTest {
         }
     }
 
+    @Test
+    fun applyRunProcessMarks_reappliesWhenAStampedMarkIsMissing() {
+        val gameDir = File(prefixDir, "game").apply { mkdirs() }
+        val script = File(gameDir, "installscript.vdf").apply {
+            writeText(runProcessScript("VCRedist", "HKLM\\Software\\Valve\\Steam\\Apps\\$APP_ID"))
+        }
+        val systemReg = File(prefixDir, "system.reg")
+        systemReg.writeText("WINE REGISTRY Version 2\n\n")
+
+        assertTrue(SteamInstallScriptRegistry.applyRunProcessMarks(prefixDir, gameDir, APP_ID, script))
+        assertFalse(SteamInstallScriptRegistry.applyRunProcessMarks(prefixDir, gameDir, APP_ID, script))
+
+        WineRegistryEditor(systemReg).use { editor -> editor.removeValue(APPS_KEY_32, "VCRedist") }
+
+        assertTrue(SteamInstallScriptRegistry.applyRunProcessMarks(prefixDir, gameDir, APP_ID, script))
+        WineRegistryEditor(systemReg).use { editor ->
+            assertEquals(1, editor.getDwordValue(APPS_KEY_32, "VCRedist"))
+            assertEquals(1, editor.getDwordValue(APPS_KEY_64, "VCRedist"))
+        }
+    }
+
     private fun marksFor(step: String, gameDir: File? = null): List<String> {
         val vdf = """
             "InstallScript"
