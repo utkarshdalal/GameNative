@@ -1,5 +1,6 @@
 package app.gamenative.utils
 
+import app.gamenative.db.converters.AppConverter
 import app.gamenative.enums.PathType
 import `in`.dragonbra.javasteam.types.KeyValue
 import org.junit.Assert.assertEquals
@@ -88,13 +89,13 @@ class KeyValueUtilsTest {
         assertEquals(PathType.WinAppDataRoaming, patterns[0].root)
         assertEquals("blue-revolver-final", patterns[0].path)
         assertEquals("save2.lua", patterns[0].pattern)
-        assertEquals(0, patterns[0].recursive)
+        assertFalse(patterns[0].recursive)
         assertEquals(PathType.GameInstall, patterns[0].uploadRoot)
 
         assertEquals(PathType.WinAppDataRoaming, patterns[1].root)
         assertEquals("blue-revolver-double-action", patterns[1].path)
         assertEquals("brda_save.sav", patterns[1].pattern)
-        assertEquals(0, patterns[1].recursive)
+        assertFalse(patterns[1].recursive)
         assertEquals(PathType.GameInstall, patterns[1].uploadRoot)
     }
 
@@ -143,7 +144,7 @@ class KeyValueUtilsTest {
         assertEquals(PathType.WinAppDataRoaming, patterns[0].root)
         assertEquals("MyGame/saves", patterns[0].path)
         assertEquals("*.sav", patterns[0].pattern)
-        assertEquals(0, patterns[0].recursive)
+        assertFalse(patterns[0].recursive)
         assertEquals(PathType.GameInstall, patterns[0].uploadRoot)
     }
 
@@ -192,7 +193,7 @@ class KeyValueUtilsTest {
         assertEquals(PathType.WinAppDataRoaming, patterns[0].root)
         assertEquals("MyGame/saves", patterns[0].path)
         assertEquals("*.sav", patterns[0].pattern)
-        assertEquals(0, patterns[0].recursive)
+        assertFalse(patterns[0].recursive)
         assertEquals(PathType.GameInstall, patterns[0].uploadRoot)
     }
 
@@ -341,12 +342,12 @@ class KeyValueUtilsTest {
         assertEquals(PathType.WinAppDataLocalLow, patterns[0].root)
         assertEquals("Nolla_Games_Noita", patterns[0].path)
         assertEquals("save00/world/*.bin", patterns[0].pattern)
-        assertEquals(1, patterns[0].recursive)
+        assertTrue(patterns[0].recursive)
         assertEquals(PathType.WinAppDataLocalLow, patterns[0].uploadRoot)
         assertEquals(PathType.WinAppDataLocalLow, patterns[1].root)
         assertEquals("Nolla_Games_Noita", patterns[1].path)
         assertEquals("save00/*.xml", patterns[1].pattern)
-        assertEquals(0, patterns[1].recursive)
+        assertFalse(patterns[1].recursive)
         assertEquals(PathType.WinAppDataLocalLow, patterns[1].uploadRoot)
     }
 
@@ -426,13 +427,13 @@ class KeyValueUtilsTest {
         assertEquals(PathType.WinAppDataLocalLow, patterns[0].root)
         assertEquals("Massive Monster/Cult Of The Lamb/saves", patterns[0].path)
         assertEquals("*.json", patterns[0].pattern)
-        assertEquals(1, patterns[0].recursive)
+        assertTrue(patterns[0].recursive)
         assertEquals(PathType.GameInstall, patterns[0].uploadRoot)
 
         assertEquals(PathType.WinAppDataLocalLow, patterns[1].root)
         assertEquals("Massive Monster/Cult Of The Lamb/saves", patterns[1].path)
         assertEquals("*.mp", patterns[1].pattern)
-        assertEquals(1, patterns[1].recursive)
+        assertTrue(patterns[1].recursive)
         assertEquals(PathType.GameInstall, patterns[1].uploadRoot)
     }
 
@@ -480,7 +481,7 @@ class KeyValueUtilsTest {
         assertEquals(PathType.WinMyDocuments, patterns[0].root)
         assertEquals("Saved Games/Hades", patterns[0].path)
         assertEquals("Profile*.sav", patterns[0].pattern)
-        assertEquals(0, patterns[0].recursive)
+        assertFalse(patterns[0].recursive)
         assertEquals(PathType.WinMyDocuments, patterns[0].uploadRoot)
     }
 
@@ -529,7 +530,7 @@ class KeyValueUtilsTest {
         assertEquals(PathType.WinAppDataRoaming, patterns[0].root)
         assertEquals("MyGame/saves", patterns[0].path)
         assertEquals("*.sav", patterns[0].pattern)
-        assertEquals(0, patterns[0].recursive)
+        assertFalse(patterns[0].recursive)
         assertEquals(PathType.GameInstall, patterns[0].uploadRoot)
     }
 
@@ -602,7 +603,7 @@ class KeyValueUtilsTest {
         assertEquals(PathType.WinAppDataRoaming, patterns[0].root)
         assertEquals("Godot/app_userdata/The Roottrees are Dead", patterns[0].path)
         assertEquals("*.save", patterns[0].pattern)
-        assertEquals(0, patterns[0].recursive)
+        assertFalse(patterns[0].recursive)
         assertEquals(PathType.GameInstall, patterns[0].uploadRoot)
         assertEquals("", patterns[0].uploadPath)
     }
@@ -643,7 +644,7 @@ class KeyValueUtilsTest {
         assertEquals(true, patterns[0].root.isWindows)
         assertEquals("Documents/StellarBlade/{64BitSteamID}", patterns[0].path)
         assertEquals("*.sav", patterns[0].pattern)
-        assertEquals(0, patterns[0].recursive)
+        assertFalse(patterns[0].recursive)
         assertEquals(PathType.Root, patterns[0].uploadRoot)
     }
 
@@ -1100,6 +1101,57 @@ class KeyValueUtilsTest {
         assertEquals("saves", patterns[0].path)
         assertEquals("*.sav", patterns[0].pattern)
         assertEquals(PathType.WinMyDocuments, patterns[0].uploadRoot)
+    }
+
+    private fun ufsApp(ufs: String) = KeyValue.loadFromString(
+        """
+            "appinfo"
+            {
+                "appid"     "55555"
+                "ufs"
+                {
+                    $ufs
+                }
+            }
+        """.trimIndent(),
+    )!!.generateSteamApp()
+
+    @Test
+    fun recursiveAcceptsNonZeroIntegerOrTrue() {
+        val app = ufsApp(
+            """
+            "savefiles"
+            {
+                "0" { "root" "WinMyDocuments" "path" "a" "pattern" "*" "recursive" "1" }
+                "1" { "root" "WinMyDocuments" "path" "b" "pattern" "*" "recursive" "2" }
+                "2" { "root" "WinMyDocuments" "path" "c" "pattern" "*" "recursive" "True" }
+                "3" { "root" "WinMyDocuments" "path" "d" "pattern" "*" "recursive" "0" }
+                "4" { "root" "WinMyDocuments" "path" "e" "pattern" "*" "recursive" "false" }
+                "5" { "root" "WinMyDocuments" "path" "f" "pattern" "*" }
+            }
+            """,
+        )
+
+        assertEquals(
+            listOf(true, true, true, false, false, false),
+            app.ufs.saveFilePatterns.map { it.recursive },
+        )
+    }
+
+    @Test
+    fun storedUfsWithLegacyIntRecursiveStillDecodes() {
+        val converter = AppConverter()
+        val ufs = converter.toUFS(
+            """{"quota":10,"saveFilePatterns":[""" +
+                """{"root":"GameInstall","path":"a","pattern":"*","recursive":1},""" +
+                """{"root":"GameInstall","path":"b","pattern":"*","recursive":0},""" +
+                """{"root":"GameInstall","path":"c","pattern":"*"}]}""",
+        )
+
+        assertEquals(listOf(true, false, false), ufs.saveFilePatterns.map { it.recursive })
+
+        val roundTripped = converter.toUFS(converter.fromUFS(ufs))
+        assertEquals(ufs, roundTripped)
     }
 
     private fun vrApp(common: String) = KeyValue.loadFromString(

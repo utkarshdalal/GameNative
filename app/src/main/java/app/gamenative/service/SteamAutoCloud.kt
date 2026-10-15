@@ -382,7 +382,7 @@ object SteamAutoCloud {
                     val filePaths = FileUtils.findFilesRecursive(
                         rootPath = basePath,
                         pattern = userFile.pattern,
-                        maxDepth = 5,
+                        recursive = userFile.recursive,
                     ).collect(Collectors.toList())
                     val files = buildList {
                         for (path in filePaths) {
@@ -421,16 +421,16 @@ object SteamAutoCloud {
                 }
             }
 
-            // Scan SteamUserData root recursively (depth 5)
+            // Scan SteamUserData root recursively
             val rootType = PathType.SteamUserData
             val basePath = Paths.get(prefixToPath(rootType.toString()))
 
-            Timber.i("Scanning $basePath recursively (depth 5) under ${rootType.name}")
+            Timber.i("Scanning $basePath recursively under ${rootType.name}")
 
             val steamUserDataPaths = FileUtils.findFilesRecursive(
                 rootPath = basePath,
                 pattern = "*",
-                maxDepth = 5,
+                recursive = true,
             ).collect(Collectors.toList())
             val files = buildList {
                 for (path in steamUserDataPaths) {
