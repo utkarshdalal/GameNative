@@ -65,6 +65,7 @@ import java.util.Date
 import java.util.Locale
 import kotlin.collections.orEmpty
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 data class InstallSizeInfo(
@@ -112,7 +113,10 @@ fun GameManagerDialog(
     }
 
     LaunchedEffect(visible) {
-        scrollState.animateScrollTo(0)
+        // Keep the scroll off the critical path: on D-pad devices (Android TV) the focus
+        // system scrolls the dialog as it opens, cancelling this animation and killing the
+        // depot load below, which left the dialog at 0 B with Install disabled.
+        launch { scrollState.scrollTo(0) }
 
         downloadableDepots.clear()
         allDownloadableApps.clear()
