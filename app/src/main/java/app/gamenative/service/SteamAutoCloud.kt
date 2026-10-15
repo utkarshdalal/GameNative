@@ -7,6 +7,7 @@ import app.gamenative.data.PostSyncInfo
 import app.gamenative.data.SaveFilePattern
 import app.gamenative.data.SteamApp
 import app.gamenative.data.SteamFileHashCache
+import app.gamenative.data.UFS
 import app.gamenative.data.UserFileInfo
 import app.gamenative.data.UserFilesDownloadResult
 import app.gamenative.data.UserFilesUploadResult
@@ -23,9 +24,13 @@ import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.asyncIsolated
 import `in`.dragonbra.javasteam.enums.EOSType
 import `in`.dragonbra.javasteam.enums.EResult
+import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesCloudSteamclient.CCloud_ClientDeleteFile_Request
+import `in`.dragonbra.javasteam.rpc.service.Cloud
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.AppFileChangeList
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.AppFileInfo
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.SteamCloud
+import `in`.dragonbra.javasteam.steam.handlers.steamunifiedmessages.SteamUnifiedMessages
+import `in`.dragonbra.javasteam.steam.steamclient.SteamClient
 import `in`.dragonbra.javasteam.types.KeyValue
 import java.io.BufferedInputStream
 import java.io.FileOutputStream
@@ -107,6 +112,46 @@ object SteamAutoCloud {
         ?.let { (cloudKey, localPath) ->
             Paths.get(localPath, cloudPrefix.removePrefix(cloudKey).trimStart('/')).pathString
         }
+
+    internal fun normalizeCloudKey(key: String): String =
+        key.replace('\\', '/')
+            .replace(Regex("/{2,}"), "/")
+            .replace(Regex("^(%[^%]+%)/"), "$1")
+            .trimStart('/')
+            .lowercase()
+
+    internal suspend fun forgetCloudFile(steamClient: SteamClient?, appId: Int, filename: String): Boolean {
+        val unifiedMessages = steamClient?.getHandler(SteamUnifiedMessages::class.java) ?: return false
+        val request = CCloud_ClientDeleteFile_Request.newBuilder()
+            .setAppid(appId)
+            .setFilename(filename)
+            .setIsExplicitDelete(false)
+            .build()
+        val response = unifiedMessages.createService(Cloud::class.java).clientDeleteFile(request).toFuture().await()
+        return response.result == EResult.OK
+    }
+
+    internal fun selectOverQuotaFiles(
+        files: List<UserFileInfo>,
+        ufs: UFS,
+        sizeOf: (UserFileInfo) -> Long,
+    ): List<UserFileInfo> {
+        if (ufs.maxNumFiles <= 0 && ufs.quota <= 0) return emptyList()
+        var count = 0
+        var bytes = 0L
+        var overBudget = false
+        return files
+            .filter { it.root != PathType.SteamUserData }
+            .sortedByDescending { it.timestamp }
+            .filter { file ->
+                if (!overBudget) {
+                    count++
+                    bytes += sizeOf(file)
+                    overBudget = (ufs.maxNumFiles > 0 && count > ufs.maxNumFiles) || (ufs.quota > 0 && bytes > ufs.quota)
+                }
+                overBudget
+            }
+    }
 
     internal data class HashLookupResult(
         val sha: ByteArray,
@@ -296,6 +341,19 @@ object SteamAutoCloud {
             Paths.get(getFilePrefix(file, fileList), file.filename).pathString
         }
 
+        val getRemoteFileName: (AppFileInfo, AppFileChangeList) -> String = { file, fileList ->
+            val prefix = if (file.hasPathPrefixIndex && file.pathPrefixIndex < fileList.pathPrefixes.size) {
+                fileList.pathPrefixes[file.pathPrefixIndex]
+            } else {
+                ""
+            }
+            if (prefix.isEmpty() || prefix.endsWith('/') || prefix.endsWith('%')) {
+                "$prefix${file.filename}"
+            } else {
+                "$prefix/${file.filename}"
+            }
+        }
+
         val hashCacheHits = AtomicInteger(0)
         val hashCacheMisses = AtomicInteger(0)
         val hashCacheDao = steamInstance.db.steamFileHashCacheDao()
@@ -363,7 +421,7 @@ object SteamAutoCloud {
                 }
             }
 
-        val getLocalUserFilesAsPrefixMap: suspend () -> Map<String, List<UserFileInfo>> = {
+        val scanLocalUserFiles: suspend () -> Map<String, List<UserFileInfo>> = {
             val savePatterns = appInfo.ufs.saveFilePatterns.filter { userFile -> userFile.root.isWindows }
 
             val result = mutableMapOf<String, MutableList<UserFileInfo>>()
@@ -478,6 +536,18 @@ object SteamAutoCloud {
             )
 
             result
+        }
+
+        val splitOverQuotaFiles: (Map<String, List<UserFileInfo>>) -> Pair<Map<String, List<UserFileInfo>>, List<UserFileInfo>> = { files ->
+            val overQuota = selectOverQuotaFiles(files.values.flatten(), appInfo.ufs) { file ->
+                runCatching { Files.size(file.getAbsPath(prefixToPath)) }.getOrDefault(0L)
+            }
+            val overQuotaKeys = overQuota.map { it.prefixPath }.toSet()
+            files.mapValues { (_, list) -> list.filter { it.prefixPath !in overQuotaKeys } } to overQuota
+        }
+
+        val getLocalUserFilesAsPrefixMap: suspend () -> Map<String, List<UserFileInfo>> = {
+            splitOverQuotaFiles(scanLocalUserFiles()).first
         }
 
         val fileChangeListToUserFiles: (AppFileChangeList) -> List<UserFileInfo> = { appFileListChange ->
@@ -835,11 +905,19 @@ object SteamAutoCloud {
             // retrieve existing user files from local storage
             val localUserFilesMap: Map<String, List<UserFileInfo>>
             val allLocalUserFiles: List<UserFileInfo>
+            val overQuotaLocalFiles: List<UserFileInfo>
 
             microsecInitCaches = measureTime {
-                localUserFilesMap = getLocalUserFilesAsPrefixMap()
+                val (managedFiles, overQuotaFiles) = splitOverQuotaFiles(scanLocalUserFiles())
+                localUserFilesMap = managedFiles
+                overQuotaLocalFiles = overQuotaFiles
                 allLocalUserFiles = localUserFilesMap.map { it.value }.flatten()
             }.inWholeMicroseconds
+
+            val overQuotaKeys = overQuotaLocalFiles.map { it.prefixPath }.toSet()
+            if (overQuotaKeys.isNotEmpty()) {
+                Timber.i("${overQuotaKeys.size} file(s) over quota for ${appInfo.id}, not syncing: $overQuotaKeys")
+            }
 
             val effectiveLocalChangeNumber = if (cacheIsAbsentOrEmpty && allLocalUserFiles.isNotEmpty()) {
                 Timber.w("Cache absent/empty but local files exist — forcing full cloud fetch (storedCn=$localAppChangeNumber)")
@@ -916,6 +994,8 @@ object SteamAutoCloud {
                         val result = getFilesDiff(allLocalUserFiles, it?.userFileInfo ?: emptyList())
 
                         result.second
+                    }.let { changes ->
+                        changes.copy(filesDeleted = changes.filesDeleted.filter { it.prefixPath !in overQuotaKeys })
                     }
 
                     uploadsRequired = fileChanges.filesCreated.isNotEmpty() || fileChanges.filesModified.isNotEmpty()
@@ -939,6 +1019,20 @@ object SteamAutoCloud {
                                 changeNumbersDao.insert(appInfo.id, uploadResult.appChangeNumber)
                             }
                         }
+
+                        val overQuotaCloudKeys = overQuotaKeys.map { normalizeCloudKey(it) }.toSet()
+                        appFileListChange.files.forEach { file ->
+                            val remoteName = getRemoteFileName(file, appFileListChange)
+                            if (normalizeCloudKey(remoteName) !in overQuotaCloudKeys) return@forEach
+                            try {
+                                val forgotten = forgetCloudFile(steamInstance.steamClient, appInfo.id, remoteName)
+                                Timber.i("Forgot over-quota cloud file $remoteName: $forgotten")
+                            } catch (e: java.util.concurrent.CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                Timber.w(e, "Failed to forget over-quota cloud file $remoteName")
+                            }
+                        }
                     } else {
                         syncResult = SyncResult.UpdateFail
                     }
@@ -957,7 +1051,7 @@ object SteamAutoCloud {
                 parentScope.asyncIsolated {
                     // Lowercased absolute paths, mirroring the silent-rehydrate comparison, since
                     // Steam Cloud and wine may disagree on case.
-                    val knownKeys = (allLocalUserFiles + (cachedFileList?.userFileInfo ?: emptyList()))
+                    val knownKeys = (allLocalUserFiles + overQuotaLocalFiles + (cachedFileList?.userFileInfo ?: emptyList()))
                         .map { it.getAbsPath(prefixToPath).toString().lowercase() }
                         .toSet()
                     val neverSynced = appFileListChange.files.filter {
