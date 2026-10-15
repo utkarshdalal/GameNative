@@ -2136,6 +2136,10 @@ fun XServerScreen(
                             return null
                         }
 
+                        private fun refreshTouchTransform() {
+                            PluviaApp.touchpadView?.let { view -> view.post { view.refreshTransform() } }
+                        }
+
                         private fun refreshFrameRatingTracking(reason: String) {
                             val rating = ui.frameRating ?: return
                             if (!getxServer().isFlatPresentationEnabled) return
@@ -2198,6 +2202,7 @@ fun XServerScreen(
                         }
 
                         override fun onMapWindow(window: Window) {
+                            if (getxServer().isDesktopWindow(window)) refreshTouchTransform()
                             if (window.isApplicationWindow()) runCatching { windowActivity.onWindowMapped(window) }
                             Timber.i(
                                 "onMapWindow:" +
@@ -2213,6 +2218,7 @@ fun XServerScreen(
                         }
 
                         override fun onUnmapWindow(window: Window) {
+                            if (getxServer().isDesktopWindow(window)) refreshTouchTransform()
                             runCatching { windowActivity.onWindowUnmapped(window) }
                             Timber.i(
                                 "onUnmapWindow:" +
@@ -2232,6 +2238,7 @@ fun XServerScreen(
                         }
 
                         override fun onUpdateWindowGeometry(window: Window, resized: Boolean) {
+                            if (resized && getxServer().isDesktopWindow(window)) refreshTouchTransform()
                             if (window.id == frameRatingWindowId || window.isApplicationWindow()) {
                                 refreshFrameRatingTracking(if (resized) "geometry-resize" else "geometry-move")
                             }
@@ -6124,6 +6131,8 @@ private suspend fun extractWinComponentFiles(
     }
 }
 
+private const val DEFAULT_SPOOFED_GPU = "NVIDIA GeForce GTX 680"
+
 private suspend fun extractGraphicsDriverFiles(
     context: Context,
     graphicsDriver: String,
@@ -6405,9 +6414,10 @@ private suspend fun extractGraphicsDriverFiles(
         val blacklistedExtensions: String? = graphicsDriverConfig.get("blacklistedExtensions")
         envVars.put("WRAPPER_EXTENSION_BLACKLIST", blacklistedExtensions)
 
-        val gpuName = graphicsDriverConfig.get("gpuName")
+        val configuredGpuName = graphicsDriverConfig.get("gpuName")
+        val gpuName = if (configuredGpuName == "Device") DEFAULT_SPOOFED_GPU else configuredGpuName
         if (gpuName != "Device") {
-            envVars.put("WRAPPER_DEVICE_NAME", gpuName)
+            envVars.put("WRAPPER_DEVICE_NAME", GPUInformation.getCardNameFromGPUName(context, gpuName))
             envVars.put("WRAPPER_DEVICE_ID", GPUInformation.getDeviceIdFromGPUName(context, gpuName))
             envVars.put("WRAPPER_VENDOR_ID", GPUInformation.getVendorIdFromGPUName(context, gpuName))
         }
