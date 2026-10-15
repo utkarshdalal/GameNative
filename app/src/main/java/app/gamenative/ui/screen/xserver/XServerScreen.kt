@@ -6131,6 +6131,8 @@ private suspend fun extractWinComponentFiles(
     }
 }
 
+private const val DEFAULT_SPOOFED_GPU = "NVIDIA GeForce GTX 680"
+
 private suspend fun extractGraphicsDriverFiles(
     context: Context,
     graphicsDriver: String,
@@ -6412,7 +6414,8 @@ private suspend fun extractGraphicsDriverFiles(
         val blacklistedExtensions: String? = graphicsDriverConfig.get("blacklistedExtensions")
         envVars.put("WRAPPER_EXTENSION_BLACKLIST", blacklistedExtensions)
 
-        val gpuName = graphicsDriverConfig.get("gpuName")
+        val configuredGpuName = graphicsDriverConfig.get("gpuName")
+        val gpuName = if (configuredGpuName == "Device") DEFAULT_SPOOFED_GPU else configuredGpuName
         if (gpuName != "Device") {
             envVars.put("WRAPPER_DEVICE_NAME", GPUInformation.getCardNameFromGPUName(context, gpuName))
             envVars.put("WRAPPER_DEVICE_ID", GPUInformation.getDeviceIdFromGPUName(context, gpuName))
