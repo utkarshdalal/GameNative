@@ -3341,4 +3341,115 @@ class SteamAutoCloudTest {
 
         assertNull(resolved)
     }
+
+    private fun runPatternUploadSync(
+        ufs: UFS,
+        roots: Map<String, File>,
+    ): List<String> = runBlocking {
+        val cn = 5L
+        db.appChangeNumbersDao().deleteByAppId(steamAppId)
+        db.appFileChangeListsDao().deleteByAppId(steamAppId)
+        db.appChangeNumbersDao().insert(app.gamenative.data.ChangeNumbers(steamAppId, cn))
+        db.appFileChangeListsDao().insert(steamAppId, listOf(
+            app.gamenative.data.UserFileInfo(
+                root = PathType.WinMyDocuments,
+                path = "__stale__",
+                filename = "__placeholder__",
+                timestamp = 0L,
+                sha = ByteArray(20) { 0 },
+            )
+        ))
+
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(makeCloudFileChangeList(cn))
+
+        val mockUploadBatchResponse = mock<`in`.dragonbra.javasteam.steam.handlers.steamcloud.AppUploadBatchResponse>()
+        whenever(mockUploadBatchResponse.batchID).thenReturn(1)
+        whenever(mockUploadBatchResponse.appChangeNumber).thenReturn(cn + 1)
+
+        val uploaded = mutableListOf<String>()
+        every {
+            mockSteamCloud.beginAppUploadBatch(any(), any(), any(), any(), any(), any(), any())
+        } answers {
+            @Suppress("UNCHECKED_CAST")
+            uploaded.addAll(args[2] as List<String>)
+            CompletableFuture.completedFuture(mockUploadBatchResponse)
+        }
+
+        val appUnderTest = db.steamAppDao().findApp(steamAppId)!!.copy(ufs = ufs)
+        SteamAutoCloud.syncUserFiles(
+            appInfo = appUnderTest,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.None,
+            prefixToPath = { prefix ->
+                (roots[prefix.removePrefix("%").removeSuffix("%")] ?: File(tempDir, "unmapped")).absolutePath
+            },
+        ).await()
+
+        uploaded.toList()
+    }
+
+    @Test
+    fun excludeRemovesMatchesFromEarlierRulesButNotLaterOnes() {
+        val docs = File(tempDir, "docs")
+        File(docs, "Game").mkdirs()
+        listOf("a.sav", "a.bak", "b.sav").forEach { File(docs, "Game/$it").writeBytes(it.toByteArray()) }
+
+        val uploaded = runPatternUploadSync(
+            UFS(
+                saveFilePatterns = listOf(
+                    SaveFilePattern(PathType.WinMyDocuments, "Game", "*.sav"),
+                    SaveFilePattern(PathType.WinMyDocuments, "Game", "*.bak", exclude = "a.*"),
+                    SaveFilePattern(PathType.WinMyDocuments, "Game", "a.bak"),
+                ),
+            ),
+            mapOf("WinMyDocuments" to docs),
+        )
+
+        assertEquals(
+            setOf("%WinMyDocuments%Game/b.sav", "%WinMyDocuments%Game/a.bak"),
+            uploaded.toSet(),
+        )
+    }
+
+    @Test
+    fun siblingsOfMatchedFilesAreUploaded() {
+        val docs = File(tempDir, "docs")
+        File(docs, "Game").mkdirs()
+        listOf("slot1.sav", "slot1.png", "slot2.sav", "other.png").forEach {
+            File(docs, "Game/$it").writeBytes(it.toByteArray())
+        }
+
+        val uploaded = runPatternUploadSync(
+            UFS(saveFilePatterns = listOf(SaveFilePattern(PathType.WinMyDocuments, "Game", "*.sav", siblings = listOf("png")))),
+            mapOf("WinMyDocuments" to docs),
+        )
+
+        assertEquals(
+            setOf("%WinMyDocuments%Game/slot1.sav", "%WinMyDocuments%Game/slot1.png", "%WinMyDocuments%Game/slot2.sav"),
+            uploaded.toSet(),
+        )
+    }
+
+    @Test
+    fun ignoreExternalFilesSkipsPatternScanButKeepsSteamUserData() {
+        val docs = File(tempDir, "docs")
+        val userdata = File(tempDir, "userdata-remote")
+        File(docs, "Game").mkdirs()
+        userdata.mkdirs()
+        File(docs, "Game/a.sav").writeBytes("a".toByteArray())
+        File(userdata, "remote.dat").writeBytes("remote".toByteArray())
+
+        val uploaded = runPatternUploadSync(
+            UFS(
+                ignoreExternalFiles = true,
+                saveFilePatterns = listOf(SaveFilePattern(PathType.WinMyDocuments, "Game", "*.sav")),
+            ),
+            mapOf("WinMyDocuments" to docs, "SteamUserData" to userdata),
+        )
+
+        assertEquals(listOf("%SteamUserData%remote.dat"), uploaded)
+    }
 }

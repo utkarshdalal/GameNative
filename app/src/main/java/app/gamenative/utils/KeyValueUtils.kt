@@ -29,7 +29,7 @@ import java.util.Locale
 import timber.log.Timber
 
 // Bumping re-parses the whole SteamApp row from PICS on next login and also triggers the root-override cloud requery.
-const val CURRENT_UFS_PARSE_VERSION = 7
+const val CURRENT_UFS_PARSE_VERSION = 8
 
 /**
  * Extension functions relating to [KeyValue] as the receiver type.
@@ -206,6 +206,8 @@ fun KeyValue.generateSteamApp(): SteamApp {
                 val isWindowsOverride = os.equals("Windows", ignoreCase = true) ||
                     oslist.split(",").any { it.trim().equals("windows", ignoreCase = true) }
                 if (!isWindowsOverride) return@mapNotNull null
+                val osCompare = rootOverride["oscompare"].value
+                if (osCompare != null && osCompare != "=" && osCompare != "<") return@mapNotNull null
                 val pathTransforms = rootOverride["pathtransforms"].children.map { transform ->
                     transform["find"].value.orEmpty() to transform["replace"].value.orEmpty()
                 }
@@ -217,12 +219,41 @@ fun KeyValue.generateSteamApp(): SteamApp {
                 )
             }
 
+            val rootsRequiringPath = setOf(
+                PathType.WinMyDocuments,
+                PathType.WinAppDataLocal,
+                PathType.WinAppDataRoaming,
+                PathType.WinAppDataLocalLow,
+                PathType.WinSavedGames,
+                PathType.WinProgramData,
+                PathType.LinuxHome,
+                PathType.LinuxXdgDataHome,
+                PathType.LinuxXdgConfigHome,
+                PathType.MacHome,
+                PathType.MacAppSupport,
+                PathType.Root,
+            )
+            val invalidPatternChars = charArrayOf('\\', '/', ':', '"', '<', '>', '|')
+
             UFS(
                 quota = this["ufs"]["quota"].asInteger(),
                 maxNumFiles = this["ufs"]["maxnumfiles"].asInteger(),
+                ignoreExternalFiles = this["ufs"]["ignoreexternalfiles"].asInteger() != 0,
                 saveFilePatterns = this["ufs"]["savefiles"].children.mapNotNull { saveFile ->
-                    val platforms = saveFile["platforms"].children.map { it.value?.lowercase() }
-                    if (platforms.isNotEmpty() && "windows" !in platforms) return@mapNotNull null
+                    val platformsKey = saveFile["platforms"]
+                    if (platformsKey !== KeyValue.INVALID) {
+                        val platforms = platformsKey.children.mapNotNull { it.value?.lowercase() }
+                        if ("windows" !in platforms && "all" !in platforms) return@mapNotNull null
+                    }
+
+                    val pattern = saveFile["pattern"].value.orEmpty()
+                    if (pattern.isEmpty() || pattern.indexOfAny(invalidPatternChars) >= 0) return@mapNotNull null
+                    val exclude = saveFile["exclude"].value
+                        ?.takeIf { it.isNotEmpty() && it.indexOfAny(invalidPatternChars) < 0 }
+                    val siblings = saveFile["siblings"].value.orEmpty()
+                        .split(',')
+                        .map { it.trim().lowercase() }
+                        .filter { it.isNotEmpty() }
 
                     val originalRoot = PathType.from(saveFile["root"].value)
                     // Treat "." and "/" as empty: both mean "root of this path type" with no
@@ -232,30 +263,40 @@ fun KeyValue.generateSteamApp(): SteamApp {
                     val originalPath = saveFile["path"].value.orEmpty().let { if (it == "." || it == "/") "" else it }
                     val rootRemap = rootOverrides.find { it.fromRoot == originalRoot }
 
+                    val effectiveRoot = rootRemap?.toRoot ?: originalRoot
+                    val effectivePath = rootRemap?.let { rootOverride ->
+                        var p = if (rootOverride.addPath.isNotEmpty()) {
+                            // Normalize backslashes: Steam's Windows addpath values use '\' as a
+                            // separator (e.g. "Godot\app_userdata\The Roottrees are Dead"), which
+                            // is valid on Windows but must be converted to '/' for Wine on Android.
+                            val normalizedAddPath = rootOverride.addPath.replace('\\', '/').trimEnd('/')
+                            // Only join with originalPath when it's non-empty; otherwise the plain
+                            // addpath is the full directory (e.g. The Roottrees are Dead has an
+                            // empty savefile path — appending "/" would produce a spurious trailing
+                            // slash that breaks file-system lookups).
+                            if (originalPath.isNotEmpty()) "$normalizedAddPath/${originalPath.trimStart('/')}"
+                            else normalizedAddPath
+                        } else {
+                            originalPath
+                        }
+                        rootOverride.pathTransforms.forEach { (find, replace) -> p = p.replace(find, replace) }
+                        p
+                    } ?: originalPath
+                    val isSteamCloudDocuments = rootRemap == null &&
+                        saveFile["root"].value.orEmpty().trim('%').equals("SteamCloudDocuments", ignoreCase = true)
+                    if (!isSteamCloudDocuments && effectiveRoot in rootsRequiringPath && effectivePath.trim('/', '\\').isEmpty()) {
+                        return@mapNotNull null
+                    }
+
                     SaveFilePattern(
-                        root = rootRemap?.toRoot ?: originalRoot,
-                        path = rootRemap?.let { rootOverride ->
-                            var p = if (rootOverride.addPath.isNotEmpty()) {
-                                // Normalize backslashes: Steam's Windows addpath values use '\' as a
-                                // separator (e.g. "Godot\app_userdata\The Roottrees are Dead"), which
-                                // is valid on Windows but must be converted to '/' for Wine on Android.
-                                val normalizedAddPath = rootOverride.addPath.replace('\\', '/').trimEnd('/')
-                                // Only join with originalPath when it's non-empty; otherwise the plain
-                                // addpath is the full directory (e.g. The Roottrees are Dead has an
-                                // empty savefile path — appending "/" would produce a spurious trailing
-                                // slash that breaks file-system lookups).
-                                if (originalPath.isNotEmpty()) "$normalizedAddPath/${originalPath.trimStart('/')}"
-                                else normalizedAddPath
-                            } else {
-                                originalPath
-                            }
-                            rootOverride.pathTransforms.forEach { (find, replace) -> p = p.replace(find, replace) }
-                            p
-                        } ?: originalPath,
-                        pattern = saveFile["pattern"].value.orEmpty(),
+                        root = effectiveRoot,
+                        path = effectivePath,
+                        pattern = pattern,
                         recursive = saveFile["recursive"].asInteger(0),
                         uploadRoot = originalRoot,
                         uploadPath = originalPath,
+                        exclude = exclude,
+                        siblings = siblings,
                     )
                 },
             )

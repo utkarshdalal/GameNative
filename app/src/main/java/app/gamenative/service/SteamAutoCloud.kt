@@ -108,6 +108,12 @@ object SteamAutoCloud {
             Paths.get(localPath, cloudPrefix.removePrefix(cloudKey).trimStart('/')).pathString
         }
 
+    private data class ScannedSaveFile(
+        val pattern: SaveFilePattern,
+        val basePath: Path,
+        val path: Path,
+    )
+
     internal data class HashLookupResult(
         val sha: ByteArray,
         val wasCacheHit: Boolean,
@@ -364,11 +370,18 @@ object SteamAutoCloud {
             }
 
         val getLocalUserFilesAsPrefixMap: suspend () -> Map<String, List<UserFileInfo>> = {
-            val savePatterns = appInfo.ufs.saveFilePatterns.filter { userFile -> userFile.root.isWindows }
+            val savePatterns = if (appInfo.ufs.ignoreExternalFiles) {
+                Timber.i("ignoreexternalfiles is set for ${appInfo.id}, skipping AutoCloud pattern scan")
+                emptyList()
+            } else {
+                appInfo.ufs.saveFilePatterns.filter { userFile -> userFile.root.isWindows }
+            }
 
             val result = mutableMapOf<String, MutableList<UserFileInfo>>()
 
             if (savePatterns.isNotEmpty()) {
+                val scannedFiles = mutableListOf<ScannedSaveFile>()
+
                 savePatterns.forEach { userFile ->
                     if (userFile.root == PathType.SteamUserData) {
                         // skip handling, use the logic below to scan SteamUserData
@@ -376,49 +389,72 @@ object SteamAutoCloud {
                     }
 
                     val basePath = Paths.get(prefixToPath(userFile.root.toString()), userFile.substitutedPath)
+                    result.getOrPut(Paths.get(userFile.prefix).pathString) { mutableListOf() }
 
                     Timber.i("Looking for saves in $basePath with pattern ${userFile.pattern} (prefix ${userFile.prefix})")
 
-                    val filePaths = FileUtils.findFilesRecursive(
+                    FileUtils.findFilesRecursive(
                         rootPath = basePath,
                         pattern = userFile.pattern,
                         maxDepth = 5,
-                    ).collect(Collectors.toList())
-                    val files = buildList {
-                        for (path in filePaths) {
-                            val hashLookup = getCachedShaOrHash(
-                                appId = appInfo.id,
-                                path = path,
-                                hashCacheDao = hashCacheDao,
-                            )
-                            if (hashLookup.wasCacheHit) {
-                                hashCacheHits.incrementAndGet()
-                            } else {
-                                hashCacheMisses.incrementAndGet()
-                            }
-                            val sha = hashLookup.sha
+                    ).forEach { path -> scannedFiles.add(ScannedSaveFile(userFile, basePath, path)) }
 
-                            Timber.i("Found ${path.pathString}\n\tin ${userFile.prefix}\n\twith sha [${sha.joinToString(", ")}]")
+                    userFile.exclude?.let { exclude ->
+                        val excluded = FileUtils.findFilesRecursive(
+                            rootPath = basePath,
+                            pattern = exclude,
+                            maxDepth = 5,
+                        ).map { it.toAbsolutePath().normalize() }.collect(Collectors.toSet())
+                        scannedFiles.removeAll { it.path.toAbsolutePath().normalize() in excluded }
+                    }
+                }
 
-                            val relativePath = basePath.relativize(path).pathString
-
-                            add(UserFileInfo(
-                                root = userFile.root,
-                                path = userFile.substitutedPath,
-                                filename = relativePath,
-                                timestamp = Files.getLastModifiedTime(path).toMillis(),
-                                sha = sha,
-                                cloudRoot = userFile.uploadRoot,
-                                cloudPath = userFile.uploadPath
-                            ))
+                val knownPaths = scannedFiles.map { it.path.toAbsolutePath().normalize() }.toMutableSet()
+                scannedFiles.toList().forEach { scanned ->
+                    if (scanned.pattern.siblings.isEmpty()) return@forEach
+                    val stem = scanned.path.name.substringBeforeLast('.')
+                    scanned.pattern.siblings.forEach { extension ->
+                        val sibling = scanned.path.resolveSibling("$stem.$extension")
+                        if (Files.isRegularFile(sibling) && knownPaths.add(sibling.toAbsolutePath().normalize())) {
+                            scannedFiles.add(scanned.copy(path = sibling))
                         }
                     }
+                }
 
-                    Timber.i("Found ${files.size} file(s) in $basePath for pattern ${userFile.pattern}")
+                scannedFiles.forEach { scanned ->
+                    val userFile = scanned.pattern
+                    val path = scanned.path
+                    val hashLookup = getCachedShaOrHash(
+                        appId = appInfo.id,
+                        path = path,
+                        hashCacheDao = hashCacheDao,
+                    )
+                    if (hashLookup.wasCacheHit) {
+                        hashCacheHits.incrementAndGet()
+                    } else {
+                        hashCacheMisses.incrementAndGet()
+                    }
+                    val sha = hashLookup.sha
+
+                    Timber.i("Found ${path.pathString}\n\tin ${userFile.prefix}\n\twith sha [${sha.joinToString(", ")}]")
+
+                    val relativePath = scanned.basePath.relativize(path).pathString
 
                     val prefixKey = Paths.get(userFile.prefix).pathString
-                    result.getOrPut(prefixKey) { mutableListOf() }.addAll(files)
+                    result.getOrPut(prefixKey) { mutableListOf() }.add(
+                        UserFileInfo(
+                            root = userFile.root,
+                            path = userFile.substitutedPath,
+                            filename = relativePath,
+                            timestamp = Files.getLastModifiedTime(path).toMillis(),
+                            sha = sha,
+                            cloudRoot = userFile.uploadRoot,
+                            cloudPath = userFile.uploadPath
+                        ),
+                    )
                 }
+
+                Timber.i("Found ${scannedFiles.size} file(s) for ${savePatterns.size} pattern(s)")
             }
 
             // Scan SteamUserData root recursively (depth 5)
