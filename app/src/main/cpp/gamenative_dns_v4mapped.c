@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #define DNS_LOG(format, ...) \
@@ -337,6 +338,29 @@ void freeaddrinfo(struct addrinfo *result)
 }
 
 /*
+ * Applications poll gethostname(), and the substitution is the same address
+ * every time, so the container log only needs to show it occasionally.  The
+ * interval is per process and shared without a lock: a caller that races the
+ * window can only add one duplicate line.
+ */
+#define DNS_REPORT_INTERVAL_SECONDS 30
+
+static void report_gethostname_override(uint32_t address, const char *hostname)
+{
+    static uint64_t last_report;
+    struct timespec now;
+    char text[INET_ADDRSTRLEN];
+
+    if (!inet_ntop(AF_INET, &address, text, sizeof(text)))
+        return;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    if (last_report != 0 && (uint64_t)now.tv_sec < last_report + DNS_REPORT_INTERVAL_SECONDS)
+        return;
+    last_report = (uint64_t)now.tv_sec;
+    DNS_LOG("gethostname -> %s (hostname was %s)", text, hostname);
+}
+
+/*
  * Android's hostname is "localhost", which resolves to 127.0.0.1.  When that
  * is the answer, report the device's routable address instead: connecting a
  * UDP socket reveals the source address the kernel would use, without the
@@ -387,7 +411,7 @@ int gethostname(char *name, size_t len)
     if (strlen(address) + 1 > len)
         return 0;
 
+    report_gethostname_override(probe.sin_addr.s_addr, name[0] ? name : "(empty)");
     memcpy(name, address, strlen(address) + 1);
-    DNS_LOG("gethostname -> %s (hostname was localhost)", address);
     return 0;
 }
