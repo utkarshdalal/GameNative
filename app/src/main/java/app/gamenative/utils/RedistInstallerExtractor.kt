@@ -355,9 +355,8 @@ object RedistInstallerExtractor {
     }
 
     fun unrealLayoutInstallers(gameDir: File): List<File> {
-        val redist = UNREAL_REDIST_PATH.fold<String, File?>(gameDir) { dir, name -> dir?.let { childDir(it, name) } }
-            ?: return emptyList()
-        return redist.listFiles().orEmpty()
+        val redistDirs = UNREAL_REDIST_PATH.fold(listOf(gameDir)) { dirs, name -> dirs.flatMap { childDirs(it, name) } }
+        return redistDirs.flatMap { it.listFiles().orEmpty().asList() }
             .filter { it.isFile && it.name.lowercase() in UNREAL_INSTALLERS }
             .sortedBy { it.name.lowercase() }
     }
@@ -559,6 +558,9 @@ object RedistInstallerExtractor {
 
     private fun childDir(parent: File, name: String): File? =
         parent.listFiles()?.firstOrNull { it.isDirectory && it.name.equals(name, ignoreCase = true) }
+
+    private fun childDirs(parent: File, name: String): List<File> =
+        parent.listFiles().orEmpty().filter { it.isDirectory && it.name.equals(name, ignoreCase = true) }
 
     private fun versionString(version: Long): String =
         listOf(version ushr 48, (version ushr 32) and 0xFFFF, (version ushr 16) and 0xFFFF, version and 0xFFFF)
