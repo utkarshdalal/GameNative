@@ -3127,7 +3127,15 @@ class SteamService : Service(), IChallengeUrlChanged {
                                         ?: gameProcess.processes.firstOrNull()?.processId
                                         ?: 0
 
-                                    val userAccountId = userSteamId!!.accountID.toInt()
+                                    val userAccountId = userSteamId?.accountID?.toInt()
+                                        ?: PrefManager.steamUserAccountId.takeIf { it != 0 }
+                                        ?: run {
+                                            Timber.w(
+                                                "Skipping game process notification for appId=%d: Steam account ID is unavailable",
+                                                gameProcess.appId,
+                                            )
+                                            return@mapNotNull null
+                                        }
                                     val preferredLender = instance?.preferredLenderByAppId?.get(gameProcess.appId)
                                         ?: PrefManager.preferredFamilyLenders[gameProcess.appId]
                                     val preferredAccountId = preferredLender?.let { SteamID(it).accountID.toInt() }
