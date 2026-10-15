@@ -4092,13 +4092,19 @@ private fun runSteamHostCegPass(
     }
     try {
         Timber.i("Running steamhost CEG pass for $steamAppId")
-        val output = launcher.execShellCommand("wine cmd /c C:\\steamhost_ceg.bat && wineserver -k")
+        val output = launcher.execShellCommand("wine cmd /c C:\\steamhost_ceg.bat")
         Timber.i("Result of steamhost CEG pass $output")
     } catch (e: Exception) {
         Timber.e(e, "steamhost CEG pass failed to run")
     } finally {
         pollProgress.set(false)
         launcher.envVars.remove("STEAMHOST_CEG_ONLY")
+    }
+    try {
+        launcher.execShellCommand("wineserver -k")
+        launcher.execShellCommand("wineserver -w")
+    } catch (e: Exception) {
+        Timber.w(e, "wineserver -k after steamhost CEG pass (non-fatal)")
     }
     val result = runCatching { resultFile.readText().trim() }.getOrDefault("")
     Timber.i("steamhost CEG pass result: '$result'")
