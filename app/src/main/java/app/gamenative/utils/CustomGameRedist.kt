@@ -18,7 +18,9 @@ object CustomGameRedist {
     }
 
     fun resolve(gameDir: File): RedistPlan {
-        if (hasSteamInstallScript(gameDir)) return RedistPlan.EMPTY
+        if (hasSteamInstallScript(gameDir)) {
+            return RedistPlan(emptySet(), RedistInstallerExtractor.scriptStepInstallers(gameDir, null))
+        }
         val components = linkedSetOf<String>()
         val installers = mutableListOf<File>()
         val commonRedist = RedistPaths.child(gameDir, "_CommonRedist")?.takeIf { it.isDirectory }

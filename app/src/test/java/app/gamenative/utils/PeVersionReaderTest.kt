@@ -2,6 +2,7 @@ package app.gamenative.utils
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -88,6 +89,9 @@ class PeVersionReaderTest {
         val image = SyntheticPe.build(PeVersionReader.MACHINE_AMD64, intArrayOf(14, 0, 0, 0), mapOf("OriginalFilename" to "a.dll"))
 
         assertNull(PeVersionReader.read(image.copyOf(0x50)))
-        assertNull(PeVersionReader.read(image.copyOf(0x270))?.fileVersion)
+        val truncatedResource = PeVersionReader.read(image.copyOf(0x270))
+        assertNotNull(truncatedResource)
+        assertEquals(PeVersionReader.MACHINE_AMD64, truncatedResource!!.machine)
+        assertNull(truncatedResource.fileVersion)
     }
 }

@@ -14,8 +14,8 @@ class EpicRedistPrereqsTest {
     val tmp = TemporaryFolder()
 
     @Test
-    fun `unreal prerequisite setup maps to vcrun2022 and direct3d`() {
-        val expected = setOf("vcrun2022", "direct3d")
+    fun `unreal prerequisite setup maps to vcrun2022 direct3d and xaudio`() {
+        val expected = setOf("vcrun2022", "direct3d", "xaudio")
         assertEquals(
             expected,
             EpicRedistPrereqs.componentsFor("", "Engine/Extras/Redist/en-us/UE4PrereqSetup_x64.exe"),
@@ -91,7 +91,7 @@ class EpicRedistPrereqsTest {
         touch(game, "Launcher/setup.exe")
 
         val mapped = EpicRedistPrereqs.plan(game, listOf("id"), "", "Engine/Extras/Redist/en-us/UEPrereqSetup_x64.exe")
-        assertEquals(setOf("vcrun2022", "direct3d"), mapped.components)
+        assertEquals(setOf("vcrun2022", "direct3d", "xaudio"), mapped.components)
         assertEquals(listOf(setup), mapped.installers)
 
         val unmapped = EpicRedistPrereqs.plan(game, listOf("id"), "Custom Launcher Setup", "Launcher/setup.exe")

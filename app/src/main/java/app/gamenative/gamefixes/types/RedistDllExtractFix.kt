@@ -240,6 +240,7 @@ internal object CabArchive {
     private const val MAX_NAME_BYTES = 256
     private const val MAX_TABLE_BYTES = 256 * 1024
     private const val SCAN_CHUNK_BYTES = 1 shl 20
+    private const val MAX_SIGNATURES = 4096
     private const val COPY_CHUNK_BYTES = 1 shl 16
     private const val CONTINUED_FOLDER = 0xFFFD
 
@@ -366,6 +367,7 @@ internal object CabArchive {
             var index = indexOf(buffer, SIGNATURE, 0)
             while (index >= 0) {
                 offsets.add(base - carry.size + index)
+                if (offsets.size >= MAX_SIGNATURES) return offsets
                 index = indexOf(buffer, SIGNATURE, index + 1)
             }
             val keep = minOf(SIGNATURE.size - 1, buffer.size)

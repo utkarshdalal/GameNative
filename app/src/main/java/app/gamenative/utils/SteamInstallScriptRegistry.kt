@@ -98,7 +98,7 @@ object SteamInstallScriptRegistry {
     private val PROCESS_KEY_PATTERN = Regex("(?i)^process\\s*(\\d+)$")
     private val COMMAND_KEY_PATTERN = Regex("(?i)^command\\s*(\\d+)$")
     private val REDIST_PROCESS = Regex(
-        "(?i)vc_redist|vcredist|msvc|dxsetup|dxwebsetup|directx|dotnet|netfx|ndp4|\\.net|xna|physx|oalinst|openal|" +
+        "(?i)vc_redist|vcredist|msvc|ue4?prereqsetup|dxsetup|dxwebsetup|directx|dotnet|netfx|ndp4|\\.net|xna|physx|oalinst|openal|" +
             "eaappinstaller|eadesktop|originsetup|originthinsetup|\\\\__installer\\\\origin\\\\|uplay|ubisoftconnect|" +
             "ubisoft game launcher|rockstar-games-launcher",
     )
@@ -170,9 +170,13 @@ object SteamInstallScriptRegistry {
         }
         val stamp = File(prefixDir, "${RUN_PROCESS_STAMP}_$appId")
         val signature = scripts.joinToString("\n") { "${it.relativeTo(gameDir).path}:${it.length()}:${it.lastModified()}" }
+        var unreadable = false
         val entries = scripts.flatMap { script ->
             runCatching { parseRunProcessMarks(script.readText(), appId, gameDir) }
-                .onFailure { Timber.w(it, "Failed to read ${script.absolutePath}") }
+                .onFailure {
+                    unreadable = true
+                    Timber.w(it, "Failed to read ${script.absolutePath}")
+                }
                 .getOrDefault(emptyList())
         }.distinct()
         // the stamp alone is not proof: a wineserver flush can drop marks that were edited into
@@ -180,24 +184,37 @@ object SteamInstallScriptRegistry {
         if (stamp.isFile && runCatching { stamp.readText() }.getOrNull() == signature && allPresent(prefixDir, entries)) return false
 
         write(prefixDir, entries, keepHigherDwords = true)
-        stamp.writeText(signature)
+        if (!unreadable) stamp.writeText(signature)
         Timber.i("Applied ${entries.size} run-process marks from ${scripts.size} install scripts for app $appId")
         return true
     }
 
-    private fun allPresent(prefixDir: File, entries: List<Entry>): Boolean {
-        val regFile = File(prefixDir, "system.reg")
-        val hklm = entries.filter { it.hive == Hive.HKLM }
-        if (hklm.isEmpty()) return true
-        return WineRegistryEditor(regFile).use { editor ->
-            hklm.all { entry ->
-                when (entry.type) {
-                    ValueType.DWORD -> editor.getDwordValue(entry.key, entry.name) != null
-                    else -> editor.getStringValue(entry.key, entry.name) != null
-                }
-            }
-        }
+    private fun allPresent(prefixDir: File, entries: List<Entry>): Boolean =
+        Hive.entries.all { hive -> allPresentIn(prefixDir, hive, entries.filter { it.hive == hive }) }
+
+    private fun allPresentIn(prefixDir: File, hive: Hive, entries: List<Entry>): Boolean {
+        if (entries.isEmpty()) return true
+        val regFile = File(prefixDir, if (hive == Hive.HKLM) "system.reg" else "user.reg")
+        if (!regFile.isFile) return false
+        return WineRegistryEditor(regFile).use { editor -> entries.all { isPresent(editor, it) } }
     }
+
+    private fun isPresent(editor: WineRegistryEditor, entry: Entry): Boolean = when (entry.type) {
+        ValueType.DWORD -> {
+            val required = unsignedDword(entry.data)
+            val stored = storedDword(editor, entry.key, entry.name)
+            required == null || (stored != null && stored >= required)
+        }
+        ValueType.STRING -> editor.getStringValue(entry.key, entry.name) == entry.data
+        ValueType.EXPAND_STRING -> editor.getStringValue(entry.key, entry.name) != null
+    }
+
+    private fun dwordOf(data: String): Int? = runCatching { java.lang.Long.decode(data.trim()).toInt() }.getOrNull()
+
+    private fun unsignedDword(data: String): Long? = dwordOf(data)?.let { it.toLong() and 0xFFFFFFFFL }
+
+    internal fun storedDword(editor: WineRegistryEditor, key: String, name: String?): Long? =
+        runCatching { editor.getDwordValue(key, name) }.getOrNull()?.let { it.toLong() and 0xFFFFFFFFL }
 
     internal fun gameScriptFile(gameDir: File, scriptName: String?): File? {
         val name = scriptName?.trim().orEmpty().ifEmpty { INSTALL_SCRIPT_NAME }
@@ -273,6 +290,13 @@ object SteamInstallScriptRegistry {
             .toList()
     }
 
+    /** A re-extracted prefix template brings fresh registry files; every mark stamp must go with them. */
+    fun clearPrefixStamps(prefixDir: File) {
+        prefixDir.listFiles().orEmpty()
+            .filter { it.name.startsWith(".steam_redist_marks_v") || it.name.startsWith(".steam_install_script_") }
+            .forEach { it.delete() }
+    }
+
     internal fun writeRedistMarks(prefixDir: File): Boolean {
         val stamp = File(prefixDir, REDIST_MARKS_STAMP)
         if (stamp.isFile) return false
@@ -333,29 +357,39 @@ object SteamInstallScriptRegistry {
      * or `command N` naming one, a .cmd whose body names one, or a step that runs no process.
      */
     internal fun isRedistStep(step: KeyValue, gameDir: File?): Boolean {
-        val processes = step.children.filter { PROCESS_KEY_PATTERN.matches(it.name?.trim().orEmpty()) }
-            .mapNotNull { it.value?.trim()?.trim('"')?.takeIf { value -> value.isNotEmpty() } }
+        val processes = indexedValues(step, PROCESS_KEY_PATTERN).filterValues { it.isNotEmpty() }
         if (processes.isEmpty()) return true
-        val commands = step.children.filter { COMMAND_KEY_PATTERN.matches(it.name?.trim().orEmpty()) }.mapNotNull { it.value }
-        if ((processes + commands).any { REDIST_PROCESS.containsMatchIn(it.replace('/', '\\')) }) return true
-        return processes
-            .filter { it.endsWith(".cmd", ignoreCase = true) }
-            .any { process ->
-                val script = gameDir?.let { hostFileFor(it, expandTokens(process, tokens(GAME_DRIVE_ROOT))) } ?: return@any false
-                val body = runCatching {
-                    script.inputStream().use { input ->
-                        val buffer = ByteArray(MAX_SCRIPT_BYTES)
-                        var total = 0
-                        while (total < buffer.size) {
-                            val read = input.read(buffer, total, buffer.size - total)
-                            if (read <= 0) break
-                            total += read
-                        }
-                        String(buffer, 0, total, Charsets.ISO_8859_1)
-                    }
-                }.getOrNull()
-                body != null && REDIST_PROCESS.containsMatchIn(body.replace('/', '\\'))
+        val commands = indexedValues(step, COMMAND_KEY_PATTERN)
+        return processes.all { (index, process) ->
+            namesRedist(process) || commands[index]?.let(::namesRedist) == true || batchStartsRedist(process, gameDir)
+        }
+    }
+
+    private fun namesRedist(text: String): Boolean = REDIST_PROCESS.containsMatchIn(text.replace('/', '\\'))
+
+    private fun indexedValues(step: KeyValue, pattern: Regex): Map<Int, String> =
+        step.children.mapNotNull { child ->
+            val index = pattern.find(child.name?.trim().orEmpty())?.groupValues?.get(1)?.toIntOrNull()
+            val value = child.value?.trim()?.trim('"')
+            if (index == null || value == null) null else index to value
+        }.toMap()
+
+    private fun batchStartsRedist(process: String, gameDir: File?): Boolean {
+        if (!process.endsWith(".cmd", ignoreCase = true) && !process.endsWith(".bat", ignoreCase = true)) return false
+        val script = gameDir?.let { hostFileFor(it, expandTokens(process, tokens(GAME_DRIVE_ROOT))) } ?: return false
+        val body = runCatching {
+            script.inputStream().use { input ->
+                val buffer = ByteArray(MAX_SCRIPT_BYTES)
+                var total = 0
+                while (total < buffer.size) {
+                    val read = input.read(buffer, total, buffer.size - total)
+                    if (read <= 0) break
+                    total += read
+                }
+                String(buffer, 0, total, Charsets.ISO_8859_1)
             }
+        }.getOrNull()
+        return body != null && namesRedist(body)
     }
 
     internal fun parseRunProcessMarks(vdf: String, appId: Int, gameDir: File? = null): List<Entry> {
@@ -464,10 +498,10 @@ object SteamInstallScriptRegistry {
                         ValueType.STRING -> editor.setStringValue(entry.key, entry.name, entry.data)
                         ValueType.EXPAND_STRING -> editor.setExpandStringValue(entry.key, entry.name, entry.data)
                         ValueType.DWORD -> {
-                            val value = runCatching { java.lang.Long.decode(entry.data).toInt() }.getOrNull()
+                            val value = dwordOf(entry.data)
                             if (value == null) {
                                 Timber.w("Skipping non-numeric dword ${entry.key}\\${entry.name}=${entry.data}")
-                            } else if (keepHigherDwords && (editor.getDwordValue(entry.key, entry.name) ?: Int.MIN_VALUE) > value) {
+                            } else if (keepHigherDwords && (storedDword(editor, entry.key, entry.name) ?: -1L) > (value.toLong() and 0xFFFFFFFFL)) {
                                 Timber.d("Keeping ${entry.key}\\${entry.name}, already above $value")
                             } else {
                                 editor.setDwordValue(entry.key, entry.name, value)

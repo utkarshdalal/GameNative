@@ -819,6 +819,26 @@ class SteamInstallScriptRegistryTest {
         }
     }
 
+    @Test
+    fun clearPrefixStamps_removesEveryMarkStampSoAFreshPrefixIsRemarked() {
+        val systemReg = File(prefixDir, "system.reg")
+        systemReg.writeText("WINE REGISTRY Version 2\n\n")
+        assertTrue(SteamInstallScriptRegistry.writeRedistMarks(prefixDir))
+        File(prefixDir, ".steam_install_script_run_process_$APP_ID").writeText("x")
+        File(prefixDir, ".steam_install_script_installed_$APP_ID").writeText("")
+        File(prefixDir, "user.reg").writeText("WINE REGISTRY Version 2\n\n")
+
+        systemReg.writeText("WINE REGISTRY Version 2\n\n")
+        SteamInstallScriptRegistry.clearPrefixStamps(prefixDir)
+
+        assertFalse(prefixDir.listFiles().orEmpty().any { it.name.startsWith(".steam_") })
+        assertTrue(File(prefixDir, "user.reg").isFile)
+        assertTrue(SteamInstallScriptRegistry.writeRedistMarks(prefixDir))
+        WineRegistryEditor(systemReg).use { editor ->
+            assertEquals(1, editor.getDwordValue("Software\\Wow6432Node\\Valve\\Steam\\Apps\\CommonRedist\\DirectX\\Jun2010", "dxsetup"))
+        }
+    }
+
     private fun marksFor(step: String, gameDir: File? = null): List<String> {
         val vdf = """
             "InstallScript"
@@ -931,6 +951,121 @@ class SteamInstallScriptRegistryTest {
 
         assertEquals(listOf("VC 2022 x86"), marksFor(steps, gameDir))
         assertEquals(emptyList<String>(), marksFor(steps, null))
+    }
+
+    @Test
+    fun parseRunProcessMarks_leavesMixedStepsUnmarkedAndPairsCommandsWithTheirProcess() {
+        val marked = marksFor(
+            """
+            "Mixed"
+            {
+                "process 1" "%INSTALLDIR%\\_CommonRedist\\vcredist\\2022\\VC_redist.x64.exe"
+                "process 2" "%INSTALLDIR%\\setup.exe"
+            }
+            "BothArches"
+            {
+                "process 1" "%INSTALLDIR%\\_CommonRedist\\vcredist\\2022\\VC_redist.x86.exe"
+                "process 2" "%INSTALLDIR%\\_CommonRedist\\vcredist\\2022\\VC_redist.x64.exe"
+            }
+            "OtherCommand"
+            {
+                "process 1" "%INSTALLDIR%\\setup.exe"
+                "process 2" "%WINDIR%\\system32\\msiexec.exe"
+                "command 2" "/i %INSTALLDIR%\\Redist\\PhysX_9.13.0604_SystemSoftware.msi /quiet"
+            }
+            "UnrealPrereqs"
+            {
+                "process 1" "%INSTALLDIR%\\Engine\\Extras\\Redist\\en-us\\UE4PrereqSetup_x64.exe"
+            }
+            "UnrealPrereqsNew"
+            {
+                "process 1" "%INSTALLDIR%\\Engine\\Extras\\Redist\\en-us\\UEPrereqSetup_x64.exe"
+            }
+            """,
+        )
+
+        assertEquals(listOf("BothArches", "UnrealPrereqs", "UnrealPrereqsNew"), marked)
+    }
+
+    @Test
+    fun parseRunProcessMarks_marksBatStepsByTheInstallerTheyStart() {
+        val gameDir = File(prefixDir, "game")
+        File(gameDir, "Prereqs").mkdirs()
+        File(gameDir, "Prereqs/vc.bat").writeText("start /w \"\" \"%~dp0\\vcredist_x86.exe\" /q\r\n")
+        val steps = """
+            "Vc"
+            {
+                "process 1" "%INSTALLDIR%\\Prereqs\\vc.bat"
+            }
+        """
+
+        assertEquals(listOf("Vc"), marksFor(steps, gameDir))
+    }
+
+    @Test
+    fun applyRunProcessMarks_keepsDwordsWithTheHighBitSet() {
+        val gameDir = File(prefixDir, "game").apply { mkdirs() }
+        val script = File(gameDir, "installscript.vdf").apply {
+            writeText(runProcessScript("VCRedist", "HKLM\\Software\\Studio\\Game"))
+        }
+        val systemReg = File(prefixDir, "system.reg")
+        systemReg.writeText("WINE REGISTRY Version 2\n\n")
+        WineRegistryEditor(systemReg).use { editor ->
+            editor.setCreateKeyIfNotExist(true)
+            editor.setDwordValue("Software\\Studio\\Game", "VCRedist", 0x80000001.toInt())
+        }
+
+        assertTrue(SteamInstallScriptRegistry.applyRunProcessMarks(prefixDir, gameDir, APP_ID, script))
+        assertFalse(SteamInstallScriptRegistry.applyRunProcessMarks(prefixDir, gameDir, APP_ID, script))
+
+        WineRegistryEditor(systemReg).use { editor ->
+            assertTrue(SteamInstallScriptRegistry.storedDword(editor, "Software\\Studio\\Game", "VCRedist")!! >= 0x80000000L)
+            assertEquals(1, editor.getDwordValue("Software\\Wow6432Node\\Studio\\Game", "VCRedist"))
+        }
+    }
+
+    @Test
+    fun applyRunProcessMarks_reappliesWhenAStampedMarkWasLoweredOrAUserMarkIsMissing() {
+        val gameDir = File(prefixDir, "game").apply { mkdirs() }
+        val script = File(gameDir, "installscript.vdf").apply {
+            writeText(runProcessScript("VCRedist", "HKCU\\Software\\Studio\\Game"))
+        }
+        val systemReg = File(prefixDir, "system.reg")
+        systemReg.writeText("WINE REGISTRY Version 2\n\n")
+        val userReg = File(prefixDir, "user.reg")
+
+        assertTrue(SteamInstallScriptRegistry.applyRunProcessMarks(prefixDir, gameDir, APP_ID, script))
+        assertFalse(SteamInstallScriptRegistry.applyRunProcessMarks(prefixDir, gameDir, APP_ID, script))
+
+        WineRegistryEditor(userReg).use { editor -> editor.removeValue("Software\\Studio\\Game", "VCRedist") }
+        assertTrue(SteamInstallScriptRegistry.applyRunProcessMarks(prefixDir, gameDir, APP_ID, script))
+        WineRegistryEditor(userReg).use { editor -> assertEquals(1, editor.getDwordValue("Software\\Studio\\Game", "VCRedist")) }
+
+        WineRegistryEditor(systemReg).use { editor -> editor.setDwordValue(APPS_KEY_64, "VCRedist", 0) }
+        assertTrue(SteamInstallScriptRegistry.applyRunProcessMarks(prefixDir, gameDir, APP_ID, script))
+        WineRegistryEditor(systemReg).use { editor -> assertEquals(1, editor.getDwordValue(APPS_KEY_64, "VCRedist")) }
+    }
+
+    @Test
+    fun applyRunProcessMarks_doesNotStampWhenAScriptCannotBeRead() {
+        val gameDir = File(prefixDir, "game").apply { mkdirs() }
+        val script = File(gameDir, "installscript.vdf").apply {
+            writeText(runProcessScript("VCRedist", "HKLM\\Software\\Studio\\Game"))
+        }
+        val unreadable = File(gameDir, "_CommonRedist/vcredist/2022/installscript.vdf").apply {
+            parentFile!!.mkdirs()
+            writeText(runProcessScript("2022", "HKLM\\Software\\Valve\\Steam\\Apps\\CommonRedist\\vcredist\\2022"))
+            setReadable(false)
+        }
+        File(prefixDir, "system.reg").writeText("WINE REGISTRY Version 2\n\n")
+
+        try {
+            org.junit.Assume.assumeFalse(unreadable.canRead())
+            assertTrue(SteamInstallScriptRegistry.applyRunProcessMarks(prefixDir, gameDir, APP_ID, script))
+            assertFalse(File(prefixDir, ".steam_install_script_run_process_$APP_ID").exists())
+        } finally {
+            unreadable.setReadable(true)
+        }
     }
 
     private fun runProcessScript(

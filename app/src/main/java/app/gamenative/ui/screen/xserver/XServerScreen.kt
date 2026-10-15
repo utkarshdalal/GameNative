@@ -2336,6 +2336,7 @@ fun XServerScreen(
                             Timber.i("Doing things once")
                             val envVars = EnvVars()
                             immersiveHooks?.windowsVr?.beforeWineSystemSetup(container)
+                            RedistInstallerExtractor.clearCache()
                             RedistComponents.applyForLaunch(container, appId)
 
                             runBlocking {
@@ -5782,6 +5783,7 @@ private suspend fun applyGeneralPatches(
         }
     }
     WineUtils.applySystemTweaks(context, wineInfo)
+    SteamInstallScriptRegistry.clearPrefixStamps(File(container.rootDir, ".wine"))
     container.putExtra("graphicsDriver", null)
     container.putExtra("desktopTheme", null)
     container.putExtra("xaudioDllsExtracted", null)
@@ -6096,7 +6098,7 @@ private suspend fun extractWinComponentFiles(
 
             // Note: GameNative do not bundle directinput and directinput8 dlls, need to skip them and use wine/proton dll instead
             if (useNative && (identifier != "directinput8" && identifier != "directinput")) {
-                val placed = RedistInstallerExtractor.placeComponent(context, container, identifier, windowsDir) ||
+                val placed = (onExtractFileListener == null && RedistInstallerExtractor.placeComponent(context, container, identifier, windowsDir)) ||
                     WinComponentInstall.attempt(identifier) {
                         // Download or use cached/bundled wincomponent
                         val componentFile = WinComponentDownloader.ensureWinComponentAvailable(

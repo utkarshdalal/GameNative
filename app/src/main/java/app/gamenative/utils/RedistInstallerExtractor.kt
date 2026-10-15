@@ -90,19 +90,12 @@ object RedistInstallerExtractor {
 
     private val inventories = ConcurrentHashMap<String, List<InventoryEntry>>()
     private val contentKeys = ConcurrentHashMap<String, String>()
-    private val vc2022InstallerVersions = ConcurrentHashMap.newKeySet<Long>()
     private const val VC2022_FAMILY = "vcrun2022"
     private val VC_RUNTIME_DLLS = listOf("msvcp140.dll", "vcruntime140.dll")
 
     fun clearCache() {
         inventories.clear()
         contentKeys.clear()
-        vc2022InstallerVersions.clear()
-    }
-
-    private fun observeInstaller(info: PeVersionReader.Info?) {
-        val version = info?.fileVersion ?: return
-        if (info.majorVersion == FAMILY_MAJOR_VERSIONS.getValue(VC2022_FAMILY)) vc2022InstallerVersions += version
     }
 
     internal fun vcRuntimeVersionFor(fileVersions: Collection<Long>): SteamInstallScriptRegistry.VcRuntimeVersion? {
@@ -114,9 +107,8 @@ object RedistInstallerExtractor {
     }
 
     /**
-     * After vcrun2022 was placed (from a game installer or the hosted archive), records the highest
-     * VC++ 2015-2022 version seen this launch in the prefix's VC Runtimes keys, so bootstrappers
-     * comparing them against their bundled vc_redist do not prompt.
+     * After vcrun2022 was placed (from a game installer or the hosted archive), raises the prefix's
+     * VC Runtimes keys to the highest VC++ 2015-2022 version among the placed runtime DLLs.
      */
     fun recordVcRuntime(identifier: String, windowsDir: File, prefixDir: File) {
         if (identifier != VC2022_FAMILY) return
@@ -125,7 +117,7 @@ object RedistInstallerExtractor {
                 .flatMap { dir -> VC_RUNTIME_DLLS.map { File(File(windowsDir, dir), it) } }
                 .filter { it.isFile }
                 .mapNotNull { PeVersionReader.read(it)?.fileVersion }
-            val version = vcRuntimeVersionFor(placed + vc2022InstallerVersions) ?: return
+            val version = vcRuntimeVersionFor(placed) ?: return
             SteamInstallScriptRegistry.raiseVcRuntimeVersion(prefixDir, version)
         } catch (e: Exception) {
             Timber.w(e, "Failed to record the VC runtime version")
@@ -159,7 +151,7 @@ object RedistInstallerExtractor {
             val components = JSONObject(FileUtils.readString(context, COMPONENTS_ASSET))
             val allowedByFamily = FAMILY_MAJOR_VERSIONS.keys.associateWith { allowedDlls(components, it) }
             val workDir = File(context.cacheDir, WORK_DIR_NAME)
-            val placed = place(
+            val placed = placeCandidates(
                 installers,
                 identifier,
                 allowedByFamily,
@@ -167,12 +159,20 @@ object RedistInstallerExtractor {
                 workDir,
                 unpacker = LibarchiveCabEntryExtractor::extractAll,
             )
-            if (placed.isEmpty()) {
-                Timber.i("Redistributable installers gave no $identifier DLLs, using hosted archive")
-                false
-            } else {
-                Timber.i("Placed $identifier from game installers: ${placed.joinToString()}")
-                true
+            val names = placed.map { it.name.removeSuffix(".dll") }.distinct()
+            when {
+                placed.isEmpty() -> {
+                    Timber.i("Redistributable installers gave no $identifier DLLs, using hosted archive")
+                    false
+                }
+                !coversBothArchitectures(placed) -> {
+                    Timber.i("Redistributable installers gave $identifier DLLs for one architecture only (${names.joinToString()}), using hosted archive")
+                    false
+                }
+                else -> {
+                    Timber.i("Placed $identifier from game installers: ${names.joinToString()}")
+                    true
+                }
             }
         } catch (e: Exception) {
             Timber.w(e, "Extracting $identifier from game installers failed, using hosted archive")
@@ -214,7 +214,6 @@ object RedistInstallerExtractor {
         for (installer in installers) {
             val info = PeVersionReader.read(installer) ?: continue
             if (isNotAVcRuntime(installer.name, info)) continue
-            observeInstaller(info)
             val family = vcFamily(info)
                 ?: if (installer.length() <= MAX_INSTALLER_BYTES) nestedFamily(installer, workDir, unpacker) else null
             if (family == null) {
@@ -371,6 +370,9 @@ object RedistInstallerExtractor {
             .toSet()
     }
 
+    internal fun coversBothArchitectures(placed: List<Candidate>): Boolean =
+        placed.map { it.machine }.toSet().containsAll(listOf(PeVersionReader.MACHINE_AMD64, PeVersionReader.MACHINE_I386))
+
     internal fun place(
         installers: List<File>,
         family: String,
@@ -379,7 +381,20 @@ object RedistInstallerExtractor {
         workDir: File,
         cache: MutableMap<String, List<InventoryEntry>> = inventories,
         unpacker: CabinetUnpacker,
-    ): List<String> {
+    ): List<String> =
+        placeCandidates(installers, family, allowedByFamily, windowsDir, workDir, cache, unpacker)
+            .map { it.name.removeSuffix(".dll") }
+            .distinct()
+
+    private fun placeCandidates(
+        installers: List<File>,
+        family: String,
+        allowedByFamily: Map<String, Set<String>>,
+        windowsDir: File,
+        workDir: File,
+        cache: MutableMap<String, List<InventoryEntry>> = inventories,
+        unpacker: CabinetUnpacker,
+    ): List<Candidate> {
         val major = FAMILY_MAJOR_VERSIONS[family] ?: return emptyList()
         val allowed = allowedByFamily[family].orEmpty()
         if (allowed.isEmpty()) return emptyList()
@@ -395,7 +410,6 @@ object RedistInstallerExtractor {
                 continue
             }
             val installerInfo = PeVersionReader.read(installer)
-            observeInstaller(installerInfo)
             val installerMajor = installerInfo?.majorVersion
             if (installerMajor != null && installerMajor in FAMILY_MAJOR_VERSIONS.values && installerMajor != major) {
                 Timber.d("Skipping ${installer.name}, version $installerMajor is not $family")
@@ -420,7 +434,7 @@ object RedistInstallerExtractor {
             destination.writeBytes(candidate.bytes)
             Timber.d("Placed ${candidate.name} ${versionString(candidate.version)} into $dir")
         }
-        return selected.map { it.name.removeSuffix(".dll") }.distinct()
+        return selected
     }
 
     private fun inventory(installer: File, stems: Set<String>, workDir: File, unpacker: CabinetUnpacker): List<InventoryEntry> {

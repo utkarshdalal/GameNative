@@ -27,6 +27,6 @@ object GOGManifestUtils {
 
     fun readDependencies(installDir: File): List<String>? {
         val array = readLocalManifest(installDir)?.optJSONArray(KEY_DEPENDENCIES) ?: return null
-        return List(array.length()) { array.optString(it) }.filter { it.isNotBlank() }
+        return List(array.length()) { array.optString(it) }.filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }
     }
 }

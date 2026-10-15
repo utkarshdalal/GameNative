@@ -1,5 +1,7 @@
 package app.gamenative.utils
 
+import app.gamenative.data.GameSource
+import app.gamenative.service.gog.GOGManifestUtils
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Rule
@@ -30,5 +32,17 @@ class RedistPlanTest {
         assertEquals(target, RedistPaths.resolve(game, "_commonredist\\directx\\dxsetup.exe"))
         assertNull(RedistPaths.resolve(game, "_CommonRedist/../_CommonRedist/DirectX/DXSETUP.exe"))
         assertNull(RedistPaths.resolve(game, "_CommonRedist/OpenAL/oalinst.exe"))
+    }
+
+    @Test
+    fun `gog manifest with no dependencies falls back to the commonredist folders`() {
+        val game = tmp.newFolder("gog")
+        File(game, GOGManifestUtils.MANIFEST_FILE_NAME).writeText("""{"dependencies":["", " "]}""")
+        val vc = File(game, "_CommonRedist/MSVC2019_x64/VC_redist.x64.exe").apply { parentFile.mkdirs(); writeText("x") }
+
+        assertNull(GOGManifestUtils.readDependencies(game))
+        val plan = RedistComponents.planFor(GameSource.GOG, game)!!
+        assertEquals(setOf("vcrun2022"), plan.components)
+        assertEquals(listOf(vc), plan.installers)
     }
 }

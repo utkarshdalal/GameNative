@@ -70,4 +70,5 @@ but some titles (GOG releases, older UE3 games) load `soft_oal.dll` directly.
 
 oalinst.exe is never run. When a game ships it (`_CommonRedist/OpenAL`, `redist/`),
 `OpenALRedist.applyForLaunch` adds `openal32=native,builtin` to the container's
-`WINEDLLOVERRIDES`, which extracts this archive at launch.
+`WINEDLLOVERRIDES` unless an `openal32` or `soft_oal` override is already set, so a
+user's own choice from the table above is kept. Either way the archive is extracted at launch.

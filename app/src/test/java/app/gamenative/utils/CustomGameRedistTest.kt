@@ -16,21 +16,49 @@ class CustomGameRedistTest {
     private fun touch(root: File, path: String): File =
         File(root, path).apply { parentFile.mkdirs(); writeText("x") }
 
-    @Test
-    fun `root install script defers to the steam script path`() {
-        val game = tmp.newFolder("game")
-        touch(game, "installscript.vdf")
-        touch(game, "_CommonRedist/vcredist/2019/VC_redist.x64.exe")
-
-        assertTrue(CustomGameRedist.hasSteamInstallScript(game))
-        assertEquals(RedistPlan.EMPTY, CustomGameRedist.resolve(game))
+    private fun script(file: File, stepName: String, process: String) = file.apply {
+        parentFile.mkdirs()
+        writeText(
+            """
+            "InstallScript"
+            {
+                "Run Process"
+                {
+                    "$stepName"
+                    {
+                        "process 1" "%INSTALLDIR%\\$process"
+                    }
+                }
+            }
+            """.trimIndent(),
+        )
     }
 
     @Test
-    fun `commonredist install script within three levels defers to the steam script path`() {
+    fun `root install script supplies the installers its run process steps name`() {
         val game = tmp.newFolder("game")
-        touch(game, "_CommonRedist/DirectX/Jun2010/installscript.vdf")
-        touch(game, "_CommonRedist/DirectX/Jun2010/DXSETUP.exe")
+        script(File(game, "installscript.vdf"), "VC 2019 x64", "_CommonRedist\\\\vcredist\\\\2019\\\\VC_redist.x64.exe")
+        val x64 = touch(game, "_CommonRedist/vcredist/2019/VC_redist.x64.exe")
+        touch(game, "_CommonRedist/vcredist/2013/vcredist_x64.exe")
+
+        assertTrue(CustomGameRedist.hasSteamInstallScript(game))
+        assertEquals(RedistPlan(emptySet(), listOf(x64)), CustomGameRedist.resolve(game))
+    }
+
+    @Test
+    fun `commonredist install script within three levels supplies its installers`() {
+        val game = tmp.newFolder("game")
+        script(File(game, "_CommonRedist/DirectX/Jun2010/installscript.vdf"), "DirectX", "_CommonRedist\\\\DirectX\\\\Jun2010\\\\DXSETUP.exe")
+        val dx = touch(game, "_CommonRedist/DirectX/Jun2010/DXSETUP.exe")
+
+        assertEquals(RedistPlan(emptySet(), listOf(dx)), CustomGameRedist.resolve(game))
+    }
+
+    @Test
+    fun `install script without run process steps gives no installers`() {
+        val game = tmp.newFolder("game")
+        touch(game, "installscript.vdf")
+        touch(game, "_CommonRedist/vcredist/2019/VC_redist.x64.exe")
 
         assertEquals(RedistPlan.EMPTY, CustomGameRedist.resolve(game))
     }

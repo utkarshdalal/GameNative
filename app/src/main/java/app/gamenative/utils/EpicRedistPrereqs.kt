@@ -12,7 +12,7 @@ object EpicRedistPrereqs {
         val isUnreal = UNREAL_SETUP.any { it in text } ||
             ("unreal engine" in name && "prerequisite" in name)
         return when {
-            isUnreal -> setOf("vcrun2022", "direct3d")
+            isUnreal -> setOf("vcrun2022", "direct3d", "xaudio")
             "vcredist" in path || "vc_redist" in path || "visual c++" in name ->
                 setOf(VcRedistYears.findIn(text) ?: "vcrun2022")
             "dxsetup" in path || "directx" in text -> setOf("direct3d", "xaudio")

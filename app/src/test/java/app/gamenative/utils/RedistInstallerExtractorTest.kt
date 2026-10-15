@@ -661,6 +661,17 @@ class RedistInstallerExtractorTest {
     }
 
     @Test
+    fun gameInstallersMustSupplyBothArchitectures() {
+        val x64 = candidate("msvcp140.dll", PeVersionReader.MACHINE_AMD64, 14, 44)
+        val x86 = candidate("msvcp140.dll", PeVersionReader.MACHINE_I386, 14, 44)
+
+        assertTrue(RedistInstallerExtractor.coversBothArchitectures(listOf(x64, x86)))
+        assertFalse(RedistInstallerExtractor.coversBothArchitectures(listOf(x64)))
+        assertFalse(RedistInstallerExtractor.coversBothArchitectures(listOf(x86)))
+        assertFalse(RedistInstallerExtractor.coversBothArchitectures(emptyList()))
+    }
+
+    @Test
     fun vcRuntimeVersionIsTheHighestVc14Version() {
         fun version(major: Long, minor: Long, build: Long) = (major shl 48) or (minor shl 32) or (build shl 16)
 
@@ -675,7 +686,7 @@ class RedistInstallerExtractorTest {
     }
 
     @Test
-    fun recordVcRuntimeUsesThePlacedDllsAndTheInstallersSeen() {
+    fun recordVcRuntimeUsesOnlyThePlacedDlls() {
         RedistInstallerExtractor.clearCache()
         val prefixDir = temporary.newFolder("prefix")
         val systemReg = File(prefixDir, "system.reg").apply { writeText("WINE REGISTRY Version 2\n\n") }
@@ -699,8 +710,8 @@ class RedistInstallerExtractorTest {
         assertEquals(setOf("vcrun2022"), RedistInstallerExtractor.familiesOf(listOf(bundle), File(temporary.root, "probe")) { _, _, _ -> emptyList() })
         RedistInstallerExtractor.recordVcRuntime("vcrun2022", prefixWindows, prefixDir)
         WineRegistryEditor(systemReg).use { editor ->
-            assertEquals("v14.42.34438.00", editor.getStringValue(key, "Version"))
-            assertEquals(34438, editor.getDwordValue("Software\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\x64", "Bld"))
+            assertEquals("v14.42.1.00", editor.getStringValue(key, "Version"))
+            assertEquals(1, editor.getDwordValue("Software\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\x64", "Bld"))
         }
         RedistInstallerExtractor.clearCache()
     }
