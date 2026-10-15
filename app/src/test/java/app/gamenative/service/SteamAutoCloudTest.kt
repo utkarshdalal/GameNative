@@ -43,6 +43,7 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
@@ -3340,5 +3341,142 @@ class SteamAutoCloudTest {
         )
 
         assertNull(resolved)
+    }
+
+    private data class PatternSyncOutcome(
+        val result: PostSyncInfo?,
+        val uploaded: List<String>,
+        val forgotten: List<String>,
+    )
+
+    private fun runPatternUploadSync(
+        ufs: UFS,
+        roots: Map<String, File>,
+        cloudFiles: List<AppFileInfo> = emptyList(),
+        pathPrefixes: List<String> = emptyList(),
+        cachedFiles: List<app.gamenative.data.UserFileInfo> = listOf(
+            app.gamenative.data.UserFileInfo(
+                root = PathType.WinMyDocuments,
+                path = "__stale__",
+                filename = "__placeholder__",
+                timestamp = 0L,
+                sha = ByteArray(20) { 0 },
+            ),
+        ),
+    ): PatternSyncOutcome = runBlocking {
+        val cn = 5L
+        db.appChangeNumbersDao().deleteByAppId(steamAppId)
+        db.appFileChangeListsDao().deleteByAppId(steamAppId)
+        db.appChangeNumbersDao().insert(app.gamenative.data.ChangeNumbers(steamAppId, cn))
+        db.appFileChangeListsDao().insert(steamAppId, cachedFiles)
+
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(makeCloudFileChangeList(cn, cloudFiles, pathPrefixes))
+
+        val mockUploadBatchResponse = mock<`in`.dragonbra.javasteam.steam.handlers.steamcloud.AppUploadBatchResponse>()
+        whenever(mockUploadBatchResponse.batchID).thenReturn(1)
+        whenever(mockUploadBatchResponse.appChangeNumber).thenReturn(cn + 1)
+
+        val uploaded = mutableListOf<String>()
+        every {
+            mockSteamCloud.beginAppUploadBatch(any(), any(), any(), any(), any(), any(), any())
+        } answers {
+            @Suppress("UNCHECKED_CAST")
+            uploaded.addAll(args[2] as List<String>)
+            CompletableFuture.completedFuture(mockUploadBatchResponse)
+        }
+
+        val forgotten = mutableListOf<String>()
+        mockkObject(SteamAutoCloud)
+        coEvery { SteamAutoCloud.forgetCloudFile(any(), any(), any()) } answers {
+            forgotten.add(thirdArg())
+            true
+        }
+
+        val appUnderTest = db.steamAppDao().findApp(steamAppId)!!.copy(ufs = ufs)
+        val result = try {
+            SteamAutoCloud.syncUserFiles(
+                appInfo = appUnderTest,
+                clientId = clientId,
+                steamInstance = mockSteamService,
+                steamCloud = mockSteamCloud,
+                preferredSave = SaveLocation.None,
+                prefixToPath = { prefix ->
+                    (roots[prefix.removePrefix("%").removeSuffix("%")] ?: File(tempDir, "unmapped")).absolutePath
+                },
+            ).await()
+        } finally {
+            unmockkObject(SteamAutoCloud)
+        }
+
+        PatternSyncOutcome(result, uploaded.toList(), forgotten.toList())
+    }
+
+    @Test
+    fun windowsHomeRuleUploadsWindowsHomeKeyAndForgetsReplacedRootKey() {
+        val home = File(tempDir, "home")
+        File(home, "Saves").mkdirs()
+        val content = "home save".toByteArray()
+        File(home, "Saves/x.sav").writeBytes(content)
+        val roots = mapOf("WindowsHome" to home, "Root" to home)
+
+        val outcome = runPatternUploadSync(
+            UFS(saveFilePatterns = listOf(SaveFilePattern(PathType.WindowsHome, "Saves", "*.sav"))),
+            roots,
+            cloudFiles = listOf(cloudFile("x.sav", content)),
+            pathPrefixes = listOf("%Root%Saves/"),
+        )
+
+        assertEquals(listOf("%WindowsHome%Saves/x.sav"), outcome.uploaded)
+        assertEquals(listOf("%Root%Saves/x.sav"), outcome.forgotten)
+
+        val legacy = runPatternUploadSync(
+            UFS(saveFilePatterns = listOf(SaveFilePattern(PathType.Root, "Saves", "*.sav"))),
+            roots,
+        )
+        assertEquals(listOf("%WindowsHome%Saves/x.sav"), legacy.uploaded)
+        assertFalse(legacy.uploaded.any { it.startsWith("%Root%") })
+    }
+
+    @Test
+    fun steamCloudDocumentsRuleWithEmptyPathUploadsItsOwnKeyAndForgetsWinMyDocumentsDuplicate() {
+        val docs = File(tempDir, "docs")
+        docs.mkdirs()
+        val content = "cloud docs save".toByteArray()
+        File(docs, "s.sav").writeBytes(content)
+
+        val outcome = runPatternUploadSync(
+            UFS(saveFilePatterns = listOf(SaveFilePattern(PathType.SteamCloudDocuments, "", "*.sav"))),
+            mapOf("SteamCloudDocuments" to docs, "WinMyDocuments" to docs),
+            cloudFiles = listOf(cloudFile("s.sav", content)),
+            pathPrefixes = listOf("%WinMyDocuments%"),
+        )
+
+        assertEquals(listOf("%SteamCloudDocuments%s.sav"), outcome.uploaded)
+        assertEquals(listOf("%WinMyDocuments%s.sav"), outcome.forgotten)
+    }
+
+    @Test
+    fun staleRootKeyKnownOnlyFromCachedFileListIsStillForgotten() {
+        val home = File(tempDir, "home")
+        File(home, "Saves").mkdirs()
+        File(home, "Saves/x.sav").writeBytes("changed home save".toByteArray())
+
+        val outcome = runPatternUploadSync(
+            UFS(saveFilePatterns = listOf(SaveFilePattern(PathType.WindowsHome, "Saves", "*.sav"))),
+            mapOf("WindowsHome" to home, "Root" to home),
+            cachedFiles = listOf(
+                app.gamenative.data.UserFileInfo(
+                    root = PathType.Root,
+                    path = "Saves",
+                    filename = "x.sav",
+                    timestamp = 0L,
+                    sha = ByteArray(20) { 0 },
+                ),
+            ),
+        )
+
+        assertEquals(listOf("%WindowsHome%Saves/x.sav"), outcome.uploaded)
+        assertEquals(listOf("%Root%Saves/x.sav"), outcome.forgotten)
     }
 }

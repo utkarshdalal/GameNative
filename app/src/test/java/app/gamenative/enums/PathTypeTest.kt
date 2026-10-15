@@ -84,6 +84,36 @@ class PathTypeTest {
     }
 
     @Test
+    fun `WindowsHome resolves to user home and SteamCloudDocuments to Documents`() {
+        assertEquals(
+            PathType.Root.toAbsPath(container, appId, accountId),
+            PathType.WindowsHome.toAbsPath(container, appId, accountId),
+        )
+        assertEquals(
+            PathType.WinMyDocuments.toAbsPath(container, appId, accountId),
+            PathType.SteamCloudDocuments.toAbsPath(container, appId, accountId),
+        )
+    }
+
+    @Test
+    fun `Steam root names parse to their own path types`() {
+        assertEquals(PathType.WindowsHome, PathType.from("WindowsHome"))
+        assertEquals(PathType.WindowsHome, PathType.from("%WindowsHome%"))
+        assertEquals(PathType.SteamCloudDocuments, PathType.from("SteamCloudDocuments"))
+        assertEquals(PathType.SteamCloudDocuments, PathType.from("%steamclouddocuments%"))
+        assertEquals(PathType.Root, PathType.from("root_mod"))
+        assertEquals(PathType.SteamUserData, PathType.from("SteamUserBaseStorage"))
+    }
+
+    @Test
+    fun `legacy Root uses WindowsHome as its cloud name`() {
+        assertEquals("WindowsHome", PathType.Root.cloudName)
+        assertEquals("WindowsHome", PathType.WindowsHome.cloudName)
+        assertEquals("SteamCloudDocuments", PathType.SteamCloudDocuments.cloudName)
+        assertEquals("WinMyDocuments", PathType.WinMyDocuments.cloudName)
+    }
+
+    @Test
     fun `paths are rooted in the container not a global shared directory`() {
         val otherRoot = "/data/test/other-container"
         val otherContainer = Container("other-id").apply { setRootDir(File(otherRoot)) }
@@ -106,6 +136,8 @@ class PathTypeTest {
             PathType.WinSavedGames,
             PathType.WinProgramData,
             PathType.Root,
+            PathType.WindowsHome,
+            PathType.SteamCloudDocuments,
         ).forEach { assertTrue("${it.name} should be isWindows", it.isWindows) }
     }
 

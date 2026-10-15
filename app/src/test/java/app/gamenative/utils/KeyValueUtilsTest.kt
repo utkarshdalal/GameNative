@@ -609,7 +609,7 @@ class KeyValueUtilsTest {
 
     /**
      * Stellar Blade (App ID 3489700) has a save pattern with `root: WindowsHome`, which is the
-     * Windows user home directory (C:\users\xuser\ in Wine). It must be recognized as PathType.Root
+     * Windows user home directory (C:\users\xuser\ in Wine). It must be recognized as PathType.WindowsHome
      * and pass the isWindows filter so the pattern is not silently dropped.
      */
     @Test
@@ -639,21 +639,21 @@ class KeyValueUtilsTest {
 
         val patterns = steamApp.ufs.saveFilePatterns
         assertEquals(1, patterns.size)
-        assertEquals(PathType.Root, patterns[0].root)
+        assertEquals(PathType.WindowsHome, patterns[0].root)
         assertEquals(true, patterns[0].root.isWindows)
         assertEquals("Documents/StellarBlade/{64BitSteamID}", patterns[0].path)
         assertEquals("*.sav", patterns[0].pattern)
         assertEquals(0, patterns[0].recursive)
-        assertEquals(PathType.Root, patterns[0].uploadRoot)
+        assertEquals(PathType.WindowsHome, patterns[0].uploadRoot)
     }
 
     /**
      * Sonic Mania (App ID 584400) has a save pattern with `root: SteamCloudDocuments`, which is
-     * Steam's name for the user's Documents folder (WinMyDocuments in Wine). It must be recognized
-     * and pass the isWindows filter so the pattern is not silently dropped.
+     * Steam's name for the user's Documents folder (WinMyDocuments in Wine). It must keep its own
+     * root so the cloud key stays %SteamCloudDocuments% and pass the isWindows filter.
      */
     @Test
-    fun sonicManiaSteamCloudDocumentsRootIsRecognizedAsWinMyDocuments() {
+    fun sonicManiaSteamCloudDocumentsRootIsRecognized() {
         val kvString = """
             "appinfo"
             {
@@ -679,11 +679,11 @@ class KeyValueUtilsTest {
 
         val patterns = steamApp.ufs.saveFilePatterns
         assertEquals(1, patterns.size)
-        assertEquals(PathType.WinMyDocuments, patterns[0].root)
+        assertEquals(PathType.SteamCloudDocuments, patterns[0].root)
         assertEquals(true, patterns[0].root.isWindows)
         assertEquals("SavesDir", patterns[0].path)
         assertEquals("*.sav", patterns[0].pattern)
-        assertEquals(PathType.WinMyDocuments, patterns[0].uploadRoot)
+        assertEquals(PathType.SteamCloudDocuments, patterns[0].uploadRoot)
     }
 
     /**
