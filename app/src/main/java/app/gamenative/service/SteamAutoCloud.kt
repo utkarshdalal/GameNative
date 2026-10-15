@@ -28,6 +28,7 @@ import `in`.dragonbra.javasteam.steam.handlers.steamcloud.AppFileInfo
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.SteamCloud
 import `in`.dragonbra.javasteam.types.KeyValue
 import java.io.BufferedInputStream
+import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.RandomAccessFile
@@ -37,6 +38,7 @@ import java.nio.file.FileSystemException
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.Date
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.stream.Collectors
 import java.util.zip.ZipInputStream
@@ -107,6 +109,14 @@ object SteamAutoCloud {
         ?.let { (cloudKey, localPath) ->
             Paths.get(localPath, cloudPrefix.removePrefix(cloudKey).trimStart('/')).pathString
         }
+
+    internal fun resolveLocalRelativePath(rootDir: String, relativePath: String): String {
+        val exact = Paths.get(rootDir, relativePath)
+        if (Files.isDirectory(exact)) return relativePath
+        val rootFile = File(rootDir)
+        val resolved = FileUtils.resolveCaseInsensitive(rootFile, relativePath).toPath()
+        return if (resolved == exact) relativePath else rootFile.toPath().relativize(resolved).pathString
+    }
 
     internal data class HashLookupResult(
         val sha: ByteArray,
@@ -250,6 +260,8 @@ object SteamAutoCloud {
                 }
         }
 
+        val resolvedDownloadDirs = ConcurrentHashMap<String, String>()
+
         val convertPrefixes: (AppFileChangeList) -> List<String> = { fileList ->
             val pathTypePairs = getPathTypePairs(fileList)
 
@@ -261,6 +273,15 @@ object SteamAutoCloud {
                 val cloudPrefix = prefix.trimEnd('/')
                 resolveCloudPrefixToLocal(cloudPrefix, cloudPrefixToLocalPath)
                     ?: run {
+                        val rootToken = EMBEDDED_ROOT_TOKEN.find(prefix)?.value
+                        val rootDir = pathTypePairs.firstOrNull { it.first == rootToken }?.second
+                        if (rootToken != null && rootDir != null) {
+                            val relativePath = cloudPrefix.removePrefix(rootToken).trimStart('/')
+                            return@run resolvedDownloadDirs.getOrPut(Paths.get(rootDir, relativePath).pathString) {
+                                Paths.get(rootDir, resolveLocalRelativePath(rootDir, relativePath)).pathString
+                            }
+                        }
+
                         var modified = prefix
 
                         val prefixContainsNoPlaceholder = findPlaceholderWithin(prefix).none()
@@ -375,7 +396,9 @@ object SteamAutoCloud {
                         return@forEach
                     }
 
-                    val basePath = Paths.get(prefixToPath(userFile.root.toString()), userFile.substitutedPath)
+                    val rootDir = prefixToPath(userFile.root.toString())
+                    val localPath = resolveLocalRelativePath(rootDir, userFile.substitutedPath)
+                    val basePath = Paths.get(rootDir, localPath)
 
                     Timber.i("Looking for saves in $basePath with pattern ${userFile.pattern} (prefix ${userFile.prefix})")
 
@@ -404,7 +427,7 @@ object SteamAutoCloud {
 
                             add(UserFileInfo(
                                 root = userFile.root,
-                                path = userFile.substitutedPath,
+                                path = localPath,
                                 filename = relativePath,
                                 timestamp = Files.getLastModifiedTime(path).toMillis(),
                                 sha = sha,
