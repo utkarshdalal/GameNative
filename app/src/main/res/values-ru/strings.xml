@@ -977,6 +977,7 @@ https://gamenative.app
     <string name="open_file">Открыть файл</string>
     <string name="open_navigation_menu">Открыть меню навигации</string>
     <string name="opengl">OpenGL</string>
+    <string name="physx">PhysX</string>
     <string name="options">Настройки</string>
     <string name="options_panel_close">Закрыть настройки</string>
     <string name="options_panel_title">Настройки</string>
@@ -1586,7 +1587,13 @@ https://gamenative.app
     <string name="v7_preference_off">ВЫКЛЮЧЕНО</string>
     <string name="v7_preference_on">ВКЛЮЧЕНО</string>
     <string name="value">Значение</string>
+    <string name="vcrun2005">Visual C++ 2005</string>
+    <string name="vcrun2008">Visual C++ 2008</string>
     <string name="vcrun2010">Visual C++ 2010</string>
+    <string name="vcrun2012">Visual C++ 2012</string>
+    <string name="vcrun2013">Visual C++ 2013</string>
+    <string name="vcrun2022">Visual C++ 2015-2022</string>
+    <string name="xaudio">XAudio</string>
     <string name="video_memory_size">Размер видеопамяти</string>
     <string name="vkd3d_feature_level">Уровень функций VKD3D</string>
     <string name="vulkan_version">Версия Vulkan</string>

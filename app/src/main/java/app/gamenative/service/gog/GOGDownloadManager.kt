@@ -640,6 +640,7 @@ class GOGDownloadManager @Inject constructor(
                 put("scriptInterpreter", gameManifest.scriptInterpreter)
                 put("products", productsArray)
                 put("supportCommands", supportCommandsArray)
+                put("dependencies", JSONArray(gameManifest.dependencies))
                 put("buildId", buildId)
                 put("versionName", versionName)
                 put("language", language)
