@@ -161,6 +161,11 @@ public class WineRegistryEditor implements Closeable {
         }
     }
 
+    public boolean hasKey(String key) {
+        resetLastParentKeyPositionIfNeed(key);
+        return getKeyLocation(key) != null;
+    }
+
     public String getStringValue(String key, String name) {
         return getStringValue(key, name, null);
     }

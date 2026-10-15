@@ -21,4 +21,6 @@ interface PreInstallStep {
         gameDir: File,
         gameDirPath: String,
     ): String?
+
+    fun onCompleted(container: Container, gameDir: File) {}
 }
