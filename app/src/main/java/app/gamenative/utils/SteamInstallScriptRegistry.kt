@@ -177,7 +177,7 @@ object SteamInstallScriptRegistry {
                 .onFailure { Timber.w(it, "Failed to read ${script.absolutePath}") }
                 .getOrDefault(emptyList())
         }.distinct()
-        write(prefixDir, entries)
+        write(prefixDir, entries, keepHigherDwords = true)
         stamp.writeText(signature)
         Timber.i("Applied ${entries.size} run-process marks from ${scripts.size} install scripts for app $appId")
         return true
@@ -427,7 +427,12 @@ object SteamInstallScriptRegistry {
         return entries
     }
 
-    internal fun write(prefixDir: File, entries: List<Entry>) {
+    /**
+     * [keepHigherDwords] leaves a DWORD alone when the registry already holds a larger value, so a
+     * run-process mark written from a script's MinimumHasRunValue never lowers a version another
+     * component (PhysX, VC runtimes) has put there.
+     */
+    internal fun write(prefixDir: File, entries: List<Entry>, keepHigherDwords: Boolean = false) {
         for (hive in Hive.entries) {
             val hiveEntries = entries.filter { it.hive == hive }
             if (hiveEntries.isEmpty()) continue
@@ -446,6 +451,8 @@ object SteamInstallScriptRegistry {
                             val value = runCatching { java.lang.Long.decode(entry.data).toInt() }.getOrNull()
                             if (value == null) {
                                 Timber.w("Skipping non-numeric dword ${entry.key}\\${entry.name}=${entry.data}")
+                            } else if (keepHigherDwords && (editor.getDwordValue(entry.key, entry.name) ?: Int.MIN_VALUE) > value) {
+                                Timber.d("Keeping ${entry.key}\\${entry.name}, already above $value")
                             } else {
                                 editor.setDwordValue(entry.key, entry.name, value)
                             }

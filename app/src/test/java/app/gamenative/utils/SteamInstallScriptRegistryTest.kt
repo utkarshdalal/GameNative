@@ -733,6 +733,71 @@ class SteamInstallScriptRegistryTest {
         assertTrue(SteamInstallScriptRegistry.VcRuntimeVersion(14, 44, 1) > SteamInstallScriptRegistry.VcRuntimeVersion(14, 42, 34438))
     }
 
+    @Test
+    fun parseRunProcessMarks_marksArkhamPhysxDirectxAndVcSteps() {
+        val marked = marksFor(
+            """
+            "PhysX Version"
+            {
+                "HasRunKey" "HKEY_LOCAL_MACHINE\\SOFTWARE\\AGEIA Technologies"
+                "Process 1" "%INSTALLDIR%\\redist\\PhysX_9.08.14_9.09.0814_SystemSoftware.exe"
+                "Command 1" "/quiet"
+                "MinimumHasRunValue" "9090814"
+            }
+            "DirectX"
+            {
+                "Process 1" "%INSTALLDIR%\\redist\\DirectX\\DXSETUP.exe"
+                "Command 1" "/silent"
+            }
+            "VCRedist"
+            {
+                "Process 1" "%INSTALLDIR%\\redist\\vcredist_x86.exe"
+                "Command 1" "/q:a"
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(listOf("PhysX Version", "DirectX", "VCRedist"), marked)
+    }
+
+    @Test
+    fun applyRunProcessMarks_doesNotLowerAnExistingVersionValue() {
+        val gameDir = File(prefixDir, "game").apply { mkdirs() }
+        val script = File(gameDir, "installscript.vdf").apply {
+            writeText(
+                """
+                "InstallScript"
+                {
+                    "Run Process"
+                    {
+                        "PhysX Version"
+                        {
+                            "HasRunKey" "HKEY_LOCAL_MACHINE\\SOFTWARE\\AGEIA Technologies"
+                            "Process 1" "%INSTALLDIR%\\redist\\PhysX.exe"
+                            "MinimumHasRunValue" "9090814"
+                        }
+                    }
+                }
+                """.trimIndent(),
+            )
+        }
+        val systemReg = File(prefixDir, "system.reg")
+        systemReg.writeText("WINE REGISTRY Version 2\n\n")
+        WineRegistryEditor(systemReg).use { editor ->
+            editor.setCreateKeyIfNotExist(true)
+            editor.setDwordValue("Software\\AGEIA Technologies", "PhysX Version", 9231019)
+            editor.setDwordValue("Software\\Wow6432Node\\AGEIA Technologies", "PhysX Version", 1)
+        }
+
+        assertTrue(SteamInstallScriptRegistry.applyRunProcessMarks(prefixDir, gameDir, APP_ID, script))
+
+        WineRegistryEditor(systemReg).use { editor ->
+            assertEquals(9231019, editor.getDwordValue("Software\\AGEIA Technologies", "PhysX Version"))
+            assertEquals(9090814, editor.getDwordValue("Software\\Wow6432Node\\AGEIA Technologies", "PhysX Version"))
+            assertEquals(9090814, editor.getDwordValue(APPS_KEY_64, "PhysX Version"))
+        }
+    }
+
     private fun marksFor(step: String, gameDir: File? = null): List<String> {
         val vdf = """
             "InstallScript"
