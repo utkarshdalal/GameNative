@@ -340,4 +340,20 @@ public class XServer {
         return false;
     }
 
+    public boolean isDesktopWindow(Window window) {
+        return window != null && window.getParent() == windowManager.rootWindow && !window.attributes.isOverrideRedirect() && window.getClassName().contains("explorer.exe");
+    }
+
+    public ScreenInfo getEffectiveScreenInfo() {
+        try (XLock lock = lock(Lockable.WINDOW_MANAGER)) {
+            for (Window child : windowManager.rootWindow.getChildren()) {
+                if (!child.attributes.isMapped() || !isDesktopWindow(child)) continue;
+                short width = child.getWidth(), height = child.getHeight();
+                boolean fits = width >= 320 && height >= 200 && width <= screenInfo.width && height <= screenInfo.height;
+                if (fits && (width < screenInfo.width || height < screenInfo.height)) return new ScreenInfo(width, height);
+                break;
+            }
+        }
+        return screenInfo;
+    }
 }
