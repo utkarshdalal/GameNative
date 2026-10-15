@@ -6414,7 +6414,7 @@ private suspend fun extractGraphicsDriverFiles(
 
         val gpuName = graphicsDriverConfig.get("gpuName")
         if (gpuName != "Device") {
-            envVars.put("WRAPPER_DEVICE_NAME", gpuName)
+            envVars.put("WRAPPER_DEVICE_NAME", GPUInformation.getCardNameFromGPUName(context, gpuName))
             envVars.put("WRAPPER_DEVICE_ID", GPUInformation.getDeviceIdFromGPUName(context, gpuName))
             envVars.put("WRAPPER_VENDOR_ID", GPUInformation.getVendorIdFromGPUName(context, gpuName))
         }

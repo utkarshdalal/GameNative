@@ -32,38 +32,37 @@ public abstract class GPUInformation {
         System.loadLibrary("extras");
     }
 
-    public static String getDeviceIdFromGPUName(Context context, String gpuName) {
-        String gpuNameList = FileUtils.readString(context, "gpu_cards.json");
-        String deviceId = "";
+    private static JSONObject findCard(Context context, String gpuName) {
+        if (gpuName == null || gpuName.isEmpty()) return null;
         try {
-            JSONArray jsonArray = new JSONArray(gpuNameList);
+            JSONArray jsonArray = new JSONArray(FileUtils.readString(context, "gpu_cards.json"));
+            JSONObject partial = null;
             for (int i = 0; i < jsonArray.length(); i++) {
                 JSONObject jobj = jsonArray.getJSONObject(i);
-                if (jobj.getString("name").contains(gpuName)) {
-                    deviceId = jobj.getString("deviceID");
-                }
+                String name = jobj.getString("name");
+                if (name.equals(gpuName) || jobj.getString("deviceID").equals(gpuName)) return jobj;
+                if (name.contains(gpuName)) partial = jobj;
             }
+            return partial;
         }
         catch (JSONException e) {
+            return null;
         }
-        return deviceId;
+    }
+
+    public static String getCardNameFromGPUName(Context context, String gpuName) {
+        JSONObject card = findCard(context, gpuName);
+        return card != null ? card.optString("name", gpuName) : gpuName;
+    }
+
+    public static String getDeviceIdFromGPUName(Context context, String gpuName) {
+        JSONObject card = findCard(context, gpuName);
+        return card != null ? card.optString("deviceID", "") : "";
     }
 
     public static String getVendorIdFromGPUName(Context context, String gpuName) {
-        String gpuNameList = FileUtils.readString(context, "gpu_cards.json");
-        String vendorId = "";
-        try {
-            JSONArray jsonArray = new JSONArray(gpuNameList);
-            for (int i = 0; i < jsonArray.length(); i++) {
-                JSONObject jobj = jsonArray.getJSONObject(i);
-                if (jobj.getString("name").contains(gpuName)) {
-                    vendorId = jobj.getString("vendorID");
-                }
-            }
-        }
-        catch (JSONException e) {
-        }
-        return vendorId;
+        JSONObject card = findCard(context, gpuName);
+        return card != null ? card.optString("vendorID", "") : "";
     }
 
     private static ArrayMap<String, String> loadGPUInformation(Context context) {
