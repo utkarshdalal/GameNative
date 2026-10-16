@@ -4314,6 +4314,7 @@ private fun setupXEnvironment(
         envVars.remove("DXVK_FRAME_RATE")
         envVars.remove("VKD3D_FRAME_RATE")
         if (!envVars.has("WINEESYNC")) envVars.put("WINEESYNC", "1")
+        if (!envVars.has("_JAVA_OPTIONS")) envVars.put("_JAVA_OPTIONS", "-XX:+IgnoreUnrecognizedVMOptions -XX:+UnlockExperimentalVMOptions -XX:-UseZGC")
         if (debugRun) {
             DebugRunParamsHolder.get(appId)?.let { DebugRunParams.applyToDebugEnv(envVars, appId, it) }
             PerfSampler.armCpuProfile(DebugRunParamsHolder.get(appId)?.attach?.contains(DebugRunParams.ATTACH_CPU) == true)
@@ -4358,7 +4359,7 @@ private fun setupXEnvironment(
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing prerequisites..."))
             } else if (container.isLaunchHeadlessSteam && gameSource == GameSource.STEAM && !bootToContainer) {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(context.getString(R.string.steam_starting)))
-                SteamHostStatusWatch.start(context, imageFs)
+                SteamHostStatusWatch.start(context, imageFs, onGameLaunchError)
             } else {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Launching game..."))
             }
@@ -4485,7 +4486,7 @@ private fun setupXEnvironment(
             val nextRemaining = remaining.drop(1)
             if (nextRemaining.isEmpty() && container.isLaunchHeadlessSteam && gameSource == GameSource.STEAM && !bootToContainer) {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(context.getString(R.string.steam_starting)))
-                SteamHostStatusWatch.start(context, ImageFs.find(context))
+                SteamHostStatusWatch.start(context, ImageFs.find(context), onGameLaunchError)
             } else if (nextRemaining.isEmpty()) {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Launching game..."))
             } else {
@@ -5091,12 +5092,16 @@ private fun getWineStartCommand(
             envVars.put("STEAMHOST_GAME_CMD", gameCmd)
             envVars.put("STEAMHOST_GAME_DIR", gameDir)
             envVars.put("STEAMHOST_INSTALL_DIR", "$steamRoot\\steamapps\\common\\$gameFolderName")
+            val exeRel = exePath.replace('\\', '/').trim('/')
+            val launchOption = (SteamService.getWindowsLaunchInfos(gameId).firstOrNull { it.executable.trim('/').equals(exeRel, ignoreCase = true) } ?: appLaunchInfo)
+                ?.option?.takeIf { it >= 0 }
+            if (launchOption != null) envVars.put("STEAMHOST_LAUNCH_OPTION", launchOption.toString())
             if (isRockstar) {
                 val launcher = "$steamRoot\\steamapps\\common\\$gameFolderName\\$normalizedExe"
                 envVars.put("STEAMHOST_LAUNCH_PARAMS", "-forceLauncherPath \"$launcher\" -skipInstallers")
             }
             if (SteamUtils.isSteamInputEnabled(container, gameId)) envVars.put("STEAMHOST_STEAMINPUT", "1")
-            Timber.i("Real-Steam via steamhost: game=$gameCmd dir=$gameDir")
+            Timber.i("Real-Steam via steamhost: game=$gameCmd dir=$gameDir option=$launchOption")
             "\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\""
         } else {
             var executablePath = ""
