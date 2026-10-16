@@ -293,10 +293,11 @@ class KeyValueUtilsTest {
     }
 
     /**
-     * Savefiles with an explicit `platforms { "Windows" }` block (Noita-style) should be included.
+     * Noita's savefile patterns contain a directory part. Steam rejects any pattern containing
+     * a path separator, so these rules are dropped even though their platform is Windows.
      */
     @Test
-    fun noitaExplicitWindowsPlatformIsIncluded() {
+    fun noitaPatternsWithDirectoryPartAreDropped() {
         val kvString = """
             "appinfo"
             {
@@ -336,18 +337,7 @@ class KeyValueUtilsTest {
         val kv = KeyValue.loadFromString(kvString)!!
         val steamApp = kv.generateSteamApp()
 
-        val patterns = steamApp.ufs.saveFilePatterns
-        assertEquals(2, patterns.size)
-        assertEquals(PathType.WinAppDataLocalLow, patterns[0].root)
-        assertEquals("Nolla_Games_Noita", patterns[0].path)
-        assertEquals("save00/world/*.bin", patterns[0].pattern)
-        assertEquals(1, patterns[0].recursive)
-        assertEquals(PathType.WinAppDataLocalLow, patterns[0].uploadRoot)
-        assertEquals(PathType.WinAppDataLocalLow, patterns[1].root)
-        assertEquals("Nolla_Games_Noita", patterns[1].path)
-        assertEquals("save00/*.xml", patterns[1].pattern)
-        assertEquals(0, patterns[1].recursive)
-        assertEquals(PathType.WinAppDataLocalLow, patterns[1].uploadRoot)
+        assertEquals(0, steamApp.ufs.saveFilePatterns.size)
     }
 
     /**
@@ -1101,6 +1091,242 @@ class KeyValueUtilsTest {
         assertEquals("*.sav", patterns[0].pattern)
         assertEquals(PathType.WinMyDocuments, patterns[0].uploadRoot)
     }
+
+    private fun ufsApp(ufs: String) = KeyValue.loadFromString(
+        """
+            "appinfo"
+            {
+                "appid"     "55555"
+                "ufs"
+                {
+                    $ufs
+                }
+            }
+        """.trimIndent(),
+    )!!.generateSteamApp()
+
+    @Test
+    fun platformsKeyAppliesRuleOnlyForWindowsOrAll() {
+        val app = ufsApp(
+            """
+            "savefiles"
+            {
+                "0"
+                {
+                    "root"      "WinMyDocuments"
+                    "path"      "absent"
+                    "pattern"   "*.sav"
+                }
+                "1"
+                {
+                    "root"      "WinMyDocuments"
+                    "path"      "all"
+                    "pattern"   "*.sav"
+                    "platforms"
+                    {
+                        "1"     "All"
+                    }
+                }
+                "2"
+                {
+                    "root"      "WinMyDocuments"
+                    "path"      "windows"
+                    "pattern"   "*.sav"
+                    "platforms"
+                    {
+                        "1"     "Linux"
+                        "2"     "WINDOWS"
+                    }
+                }
+                "3"
+                {
+                    "root"      "WinMyDocuments"
+                    "path"      "mac"
+                    "pattern"   "*.sav"
+                    "platforms"
+                    {
+                        "1"     "MacOS"
+                    }
+                }
+            }
+            """,
+        )
+
+        assertEquals(listOf("absent", "all", "windows"), app.ufs.saveFilePatterns.map { it.path })
+    }
+
+
+    @Test
+    fun missingOrInvalidPatternDropsRule() {
+        val app = ufsApp(
+            """
+            "savefiles"
+            {
+                "0" { "root" "WinMyDocuments" "path" "missing" }
+                "1" { "root" "WinMyDocuments" "path" "empty" "pattern" "" }
+                "2" { "root" "WinMyDocuments" "path" "colon" "pattern" "c:*.sav" }
+                "3" { "root" "WinMyDocuments" "path" "pipe" "pattern" "a|b" }
+                "4" { "root" "WinMyDocuments" "path" "quote" "pattern" "a\"b" }
+                "5" { "root" "WinMyDocuments" "path" "angle" "pattern" "<a>" }
+                "6" { "root" "WinMyDocuments" "path" "backslash" "pattern" "dir\\*.sav" }
+                "7" { "root" "WinMyDocuments" "path" "valid" "pattern" "[sS]ave?.dat" }
+            }
+            """,
+        )
+
+        assertEquals(listOf("valid"), app.ufs.saveFilePatterns.map { it.path })
+    }
+
+
+    @Test
+    fun excludeSiblingsAndIgnoreExternalFilesAreParsed() {
+        val app = ufsApp(
+            """
+            "ignoreexternalfiles"   "1"
+            "savefiles"
+            {
+                "0"
+                {
+                    "root"      "WinMyDocuments"
+                    "path"      "saves"
+                    "pattern"   "*.sav"
+                    "exclude"   "*.tmp"
+                    "siblings"  " PNG, meta ,,JSON "
+                }
+                "1"
+                {
+                    "root"      "WinMyDocuments"
+                    "path"      "other"
+                    "pattern"   "*.dat"
+                    "exclude"   "bad/name"
+                }
+            }
+            """,
+        )
+
+        assertTrue(app.ufs.ignoreExternalFiles)
+        val patterns = app.ufs.saveFilePatterns
+        assertEquals(2, patterns.size)
+        assertEquals("*.tmp", patterns[0].exclude)
+        assertEquals(listOf("png", "meta", "json"), patterns[0].siblings)
+        assertEquals(null, patterns[1].exclude)
+        assertEquals(emptyList<String>(), patterns[1].siblings)
+    }
+
+
+    @Test
+    fun ignoreExternalFilesDefaultsToFalse() {
+        val app = ufsApp(
+            """
+            "ignoreexternalfiles"   "0"
+            "savefiles"
+            {
+                "0" { "root" "WinMyDocuments" "path" "saves" "pattern" "*.sav" }
+            }
+            """,
+        )
+
+        assertFalse(app.ufs.ignoreExternalFiles)
+    }
+
+
+    @Test
+    fun emptyPathIsDroppedForRootsThatRequireAPath() {
+        val app = ufsApp(
+            """
+            "savefiles"
+            {
+                "0" { "root" "WinMyDocuments" "path" "" "pattern" "docs.sav" }
+                "1" { "root" "WinAppDataRoaming" "path" "/" "pattern" "roaming.sav" }
+                "2" { "root" "WindowsHome" "path" "." "pattern" "home.sav" }
+                "3" { "root" "WinSavedGames" "path" "//" "pattern" "saved.sav" }
+                "4" { "root" "gameinstall" "path" "" "pattern" "install.sav" }
+                "5" { "root" "SteamUserData" "path" "" "pattern" "userdata.sav" }
+                "6" { "root" "SteamCloudDocuments" "path" "" "pattern" "clouddocs.sav" }
+                "7" { "root" "SteamUserBaseStorage" "path" "." "pattern" "steambase.sav" }
+                "8" { "root" "Root" "path" "" "pattern" "legacyroot.sav" }
+            }
+            """,
+        )
+
+        assertEquals(
+            listOf("install.sav", "userdata.sav", "clouddocs.sav", "steambase.sav"),
+            app.ufs.saveFilePatterns.map { it.pattern },
+        )
+        assertEquals(PathType.WinMyDocuments, app.ufs.saveFilePatterns[2].uploadRoot)
+        assertEquals(PathType.SteamUserData, app.ufs.saveFilePatterns[3].uploadRoot)
+    }
+
+
+    @Test
+    fun emptyPathIsDroppedWhenRootOverrideHasNoAddPath() {
+        val app = ufsApp(
+            """
+            "savefiles"
+            {
+                "0" { "root" "gameinstall" "path" "" "pattern" "*.sav" }
+            }
+            "rootoverrides"
+            {
+                "0"
+                {
+                    "root"          "gameinstall"
+                    "os"            "Windows"
+                    "oscompare"     "="
+                    "useinstead"    "WinAppDataRoaming"
+                    "addpath"       "/"
+                }
+            }
+            """,
+        )
+
+        assertEquals(0, app.ufs.saveFilePatterns.size)
+    }
+
+
+    @Test
+    fun rootOverrideWithUnsupportedOsCompareIsSkipped() {
+        val app = ufsApp(
+            """
+            "savefiles"
+            {
+                "0" { "root" "gameinstall" "path" "saves" "pattern" "*.sav" }
+            }
+            "rootoverrides"
+            {
+                "0"
+                {
+                    "root"          "gameinstall"
+                    "os"            "Windows"
+                    "oscompare"     ">"
+                    "useinstead"    "WinMyDocuments"
+                    "addpath"       "Skipped"
+                }
+                "1"
+                {
+                    "root"          "gameinstall"
+                    "os"            "windows"
+                    "oscompare"     "<"
+                    "useinstead"    "WinAppDataRoaming"
+                    "addpath"       "Used"
+                }
+                "2"
+                {
+                    "root"          "gameinstall"
+                    "os"            "Windows"
+                    "useinstead"    "WinAppDataLocal"
+                    "addpath"       "Later"
+                }
+            }
+            """,
+        )
+
+        val patterns = app.ufs.saveFilePatterns
+        assertEquals(1, patterns.size)
+        assertEquals(PathType.WinAppDataRoaming, patterns[0].root)
+        assertEquals("Used/saves", patterns[0].path)
+    }
+
 
     private fun vrApp(common: String) = KeyValue.loadFromString(
         """

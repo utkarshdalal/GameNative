@@ -13,6 +13,8 @@ data class SaveFilePattern(
     val recursive: Int = 0,
     val uploadRoot: PathType = root,
     val uploadPath: String = path,
+    val exclude: String? = null,
+    val siblings: List<String> = emptyList(),
 ) {
     val prefix: String
         get() = "%${root.name}%$path"
