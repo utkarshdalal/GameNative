@@ -23,6 +23,7 @@ object InstallProfileApplier {
                 container.isLaunchRealSteam = false
                 container.isLaunchBionicSteam = false
                 // Leave steamOfflineMode alone — DRM / tickets still need a working Steam path for many SP titles.
+                OnlineProfilePolicy.clearOnlineOnlyEnv(container)
             }
         }
         container.putExtra(EXTRA_KEY, profile.storageKey)
@@ -54,9 +55,11 @@ object InstallProfileApplier {
             ?: InstallProfileStore.get(context, container.id)
             ?: return
         if (profile != InstallProfile.ONLINE) return
+        // Reassert Steam client flags / online env only. Do NOT rewrite wineVersion here —
+        // preferProton10IfNeeded at install is enough; forcing Proton 10 every launch breaks
+        // titles pinned to a known-config Proton build (black screen / hang).
         OnlineProfilePolicy.applySteamClientFlags(container)
         OnlineProfilePolicy.mergeOnlineEnv(container)
-        OnlineProfilePolicy.preferProton10IfNeeded(container)
         OnlineProfilePolicy.markPolicyApplied(container)
         container.putExtra(EXTRA_KEY, profile.storageKey)
         container.saveData()

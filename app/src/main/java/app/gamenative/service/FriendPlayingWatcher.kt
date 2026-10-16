@@ -7,6 +7,8 @@ import timber.log.Timber
 /**
  * Polls the Steam overlay host for friends who start playing the current app.
  * First successful sample seeds the set (no spam for people already in-game).
+ *
+ * Skips work while the host is down so launch-time IO is not flooded with connect timeouts.
  */
 object FriendPlayingWatcher {
     @Volatile
@@ -26,6 +28,7 @@ object FriendPlayingWatcher {
             appId = steamAppId
             seeded = false
             knownPlaying.clear()
+            SteamOverlayClient.invalidateAvailability()
             Timber.d("FriendPlayingWatcher: bound appId=%s", steamAppId)
         }
     }
@@ -34,15 +37,19 @@ object FriendPlayingWatcher {
         appId = 0
         seeded = false
         knownPlaying.clear()
+        SteamOverlayClient.invalidateAvailability()
     }
 
-    suspend fun tick() {
+    /**
+     * @return suggested delay until the next poll (ms). Longer while the host is unavailable.
+     */
+    suspend fun tick(): Long {
         val currentApp = appId
-        if (currentApp <= 0) return
-        if (!SteamOverlayClient.isAvailable()) return
+        if (currentApp <= 0) return 10_000L
+        if (!SteamOverlayClient.isAvailable()) return 8_000L
 
         val friends = SteamOverlayClient.listFriends()
-        if (friends.isEmpty()) return
+        if (friends.isEmpty()) return 5_000L
 
         val playingNow = friends.filter { it.isPlaying(currentApp) }
         val playingIds = playingNow.map { it.steamId }.toSet()
@@ -51,7 +58,7 @@ object FriendPlayingWatcher {
             knownPlaying.clear()
             knownPlaying.addAll(playingIds)
             seeded = true
-            return
+            return 3_000L
         }
 
         val newlyPlaying = playingNow.filter { it.steamId !in knownPlaying }
@@ -75,5 +82,6 @@ object FriendPlayingWatcher {
 
         knownPlaying.clear()
         knownPlaying.addAll(playingIds)
+        return 3_000L
     }
 }

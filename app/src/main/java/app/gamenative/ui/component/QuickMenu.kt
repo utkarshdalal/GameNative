@@ -609,25 +609,37 @@ fun QuickMenu(
     val inviteItemFocusRequester = remember { FocusRequester() }
 
     // Poll overlay invite requests + friends starting the same game.
+    // Keep invite poll snappy once the host is up; back off hard while it is down so
+    // Headless Steam boot is not flooded with TCP connect timeouts (long loading / jank).
     if (inviteMenu != null) {
         LaunchedEffect(container?.id, inviteMenu) {
             while (true) {
-                if (!isVisible && !SteamFriendsOverlayController.visible) {
+                val hostUp = runCatching {
+                    app.gamenative.service.SteamOverlayClient.isAvailable()
+                }.getOrDefault(false)
+                if (hostUp && !isVisible && !SteamFriendsOverlayController.visible) {
                     if (SteamFriendsOverlayController.pollAndShowIfGameRequested()) {
                         selectedTab = QuickMenuTab.INVITE
                         PrefManager.quickMenuLastTab = selectedTab
                     }
                 }
-                runCatching { app.gamenative.service.FriendPlayingWatcher.tick() }
-                delay(400)
+                val nextDelay = if (hostUp) {
+                    runCatching { app.gamenative.service.FriendPlayingWatcher.tick() }
+                        .getOrDefault(3_000L)
+                } else {
+                    8_000L
+                }
+                delay(nextDelay.coerceAtLeast(1_000L))
             }
         }
     } else {
-        // Still watch friends when invite UI isn't available but host may come up later.
+        // Offline / non-Steam path: rare probes only (host almost never exists).
         LaunchedEffect(container?.id) {
             while (true) {
-                runCatching { app.gamenative.service.FriendPlayingWatcher.tick() }
-                delay(5000)
+                val nextDelay = runCatching {
+                    app.gamenative.service.FriendPlayingWatcher.tick()
+                }.getOrDefault(10_000L)
+                delay(nextDelay.coerceAtLeast(5_000L))
             }
         }
     }

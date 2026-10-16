@@ -717,6 +717,7 @@ class MainViewModel @Inject constructor(
                 bootingSplashTimeoutJob = null
                 setShowBootingSplash(false)
                 PluviaApp.events.emit(AndroidEvent.ClearBootingSplash)
+                app.gamenative.service.FriendPlayingWatcher.clear()
                 // Check if we have a temporary override before doing anything
                 val hadTemporaryOverride = IntentLaunchManager.hasTemporaryOverride(appId)
 
@@ -994,8 +995,14 @@ class MainViewModel @Inject constructor(
                 gameWindowSeen = true
             }
             val windowClass = window.className.trim().lowercase()
-            if (bootAwaitingGameWindow && (windowClass.isEmpty() || windowClass == "explorer.exe")) {
-                Timber.tag("BootAdTrace").i("ignoring shell window map: %s", window.className)
+            // Headless Online boot maps Steam/steamhost windows long before the game renders.
+            // Clearing the splash on those leaves a black screen during auth/bootstrap.
+            if (bootAwaitingGameWindow &&
+                (windowClass.isEmpty() ||
+                    windowClass == "explorer.exe" ||
+                    WineProcessSnapshotHelper.isSystemProcessName(window.className))
+            ) {
+                Timber.tag("BootAdTrace").i("ignoring shell/steam window map: %s", window.className)
             } else {
                 bootAwaitingGameWindow = false
                 bootingSplashTimeoutJob?.cancel()

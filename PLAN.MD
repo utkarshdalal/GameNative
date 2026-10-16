@@ -283,7 +283,8 @@ Release naming idea:
 - `gamenative-online-v0.1.0` — Install profiles + badges  
 - `gamenative-online-v0.1.4` — Online Ready filter + store category detection  
 - `gamenative-online-v0.1.5` — Auto on-screen controls at install (KBM/FPS/RTS/Gamepad + Steam Input)
-- `gamenative-online-v0.1.6` — Steam friends overlay (invite/join), prominent LMB, notify when friend starts same game  
+- `gamenative-online-v0.1.6` — Steam friends overlay (invite/join), prominent LMB, notify when friend starts same game
+- `gamenative-online-v0.1.7` — Fix Online/Headless black screen & long loading (splash gate, Proton reassert, overlay poll)  
 - `v0.2.0` — diagnostics + Online Ready tab  
 - `v0.3.0` — public online matrix + top-game fixes  
 

@@ -10,17 +10,27 @@ import java.io.InputStreamReader
 
 /**
  * Talks to the bionic Steam host process (libsteambootstrap) over its abstract-namespace
- * command socket.
+ * command socket, or to the Headless/Wine steamhost over localhost TCP.
  *
- * Only meaningful while a game is running in bionic-Steam mode: the host owns the logged-in
- * Valve client, and these calls are the app's only route to the friends list, to sending a
- * game invite, and to making the engine deliver a join to the running game.
+ * Only meaningful while a game is running with an Online Steam host: these calls are the
+ * app's route to the friends list, invites, and join handoff.
  */
 object SteamOverlayClient {
 
     private const val SOCKET_NAME = "gamenative-steam-overlay"
-    private const val TIMEOUT_MS = 4000
+    /** Full request timeout once connected (LIST can be large). */
+    private const val TIMEOUT_MS = 2500
+    /** Cheap availability probe — must stay short so boot polling cannot stall IO. */
+    private const val PING_TIMEOUT_MS = 350
     private const val TCP_PORT = 57349
+    /** Remember host-up/down briefly so launch loops do not thrash TCP connect(). */
+    private const val AVAILABILITY_CACHE_MS = 2500L
+
+    @Volatile
+    private var cachedAvailable: Boolean? = null
+
+    @Volatile
+    private var cachedAvailableAt: Long = 0L
 
     data class Friend(
         val steamId: Long,
@@ -52,8 +62,23 @@ object SteamOverlayClient {
     const val REL_IN_OUR_LOBBY = 1
     const val REL_JOINABLE = 2
 
-    /** Whether the host process is up and serving. Cheap enough to poll before showing UI. */
-    suspend fun isAvailable(): Boolean = request("PING")?.firstOrNull() == "PONG"
+    /** Whether the host process is up and serving. Cached briefly to avoid connect storms. */
+    suspend fun isAvailable(): Boolean {
+        val now = System.currentTimeMillis()
+        cachedAvailable?.let { cached ->
+            if (now - cachedAvailableAt < AVAILABILITY_CACHE_MS) return cached
+        }
+        val ok = request("PING", connectTimeoutMs = PING_TIMEOUT_MS)?.firstOrNull() == "PONG"
+        cachedAvailable = ok
+        cachedAvailableAt = now
+        return ok
+    }
+
+    /** Drop cached availability (e.g. after game exit). */
+    fun invalidateAvailability() {
+        cachedAvailable = null
+        cachedAvailableAt = 0L
+    }
 
     suspend fun self(): SelfInfo? {
         val line = request("SELF")?.firstOrNull() ?: return null
@@ -130,11 +155,6 @@ object SteamOverlayClient {
         )
     }
 
-    /**
-     * Runs one command and collects the reply. Multi-record replies are terminated by a lone
-     * "."; single-record replies are one line. Returns null if the host is unreachable or
-     * answered with an error.
-     */
     /** Bionic host: abstract Unix socket. Real Steam host (steam.exe under Wine): localhost TCP. */
     private class HostConn(
         val input: java.io.InputStream,
@@ -144,7 +164,7 @@ object SteamOverlayClient {
         override fun close() = closer()
     }
 
-    private fun openHost(): HostConn {
+    private fun openHost(connectTimeoutMs: Int): HostConn {
         try {
             val local = LocalSocket()
             local.connect(LocalSocketAddress(SOCKET_NAME, LocalSocketAddress.Namespace.ABSTRACT))
@@ -152,15 +172,18 @@ object SteamOverlayClient {
             return HostConn(local.inputStream, local.outputStream) { local.close() }
         } catch (e: Exception) {
             val tcp = java.net.Socket()
-            tcp.connect(java.net.InetSocketAddress("127.0.0.1", TCP_PORT), TIMEOUT_MS)
+            tcp.connect(java.net.InetSocketAddress("127.0.0.1", TCP_PORT), connectTimeoutMs)
             tcp.soTimeout = TIMEOUT_MS
             return HostConn(tcp.getInputStream(), tcp.getOutputStream()) { tcp.close() }
         }
     }
 
-    private suspend fun request(command: String): List<String>? = withContext(Dispatchers.IO) {
+    private suspend fun request(
+        command: String,
+        connectTimeoutMs: Int = TIMEOUT_MS,
+    ): List<String>? = withContext(Dispatchers.IO) {
         try {
-            openHost().use { conn ->
+            openHost(connectTimeoutMs).use { conn ->
                 conn.output.write("$command\n".toByteArray())
                 conn.output.flush()
 

@@ -45,6 +45,21 @@ object OnlineProfilePolicy {
         container.envVars = env.toString()
     }
 
+    /** Strip Online-only env nudges when switching back to Offline install. */
+    fun clearOnlineOnlyEnv(container: Container) {
+        val env = EnvVars(container.envVars)
+        var changed = false
+        ONLINE_ENV.keys.forEach { key ->
+            if (env.has(key) && env.get(key) == ONLINE_ENV[key]) {
+                env.remove(key)
+                changed = true
+            }
+        }
+        if (changed) {
+            container.envVars = env.toString()
+        }
+    }
+
     /**
      * Prefer a Proton 10.* wineVersion when the container is still on a non-10 build.
      * Does not force a downgrade from proton-11+ if already set — only upgrades empty/legacy

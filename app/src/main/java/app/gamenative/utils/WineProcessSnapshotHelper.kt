@@ -27,12 +27,20 @@ object WineProcessSnapshotHelper {
         "winebrowser",
         "steam",
         "steamwebhelper",
+        "steamhost32",
+        "steamhost64",
+        "gameoverlayui",
+        "gameoverlayui64",
+        "steamerrorreporter",
+        "steamservice",
     )
 
     fun isSystemProcessName(name: String): Boolean {
         val normalized = normalizeProcessName(name)
         if (normalized.isEmpty()) return true
-        return normalized in buildEssentialProcessAllowlist() || normalized in systemWindowProcesses
+        if (normalized in buildEssentialProcessAllowlist() || normalized in systemWindowProcesses) return true
+        // Headless Steam host / Valve helpers often appear as steamhost*.exe mid-boot.
+        return normalized.startsWith("steamhost") || normalized.startsWith("gameoverlayui")
     }
 
     fun readFromProc(): List<ProcessInfo> {
