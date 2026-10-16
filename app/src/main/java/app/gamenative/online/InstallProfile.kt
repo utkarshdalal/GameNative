@@ -4,7 +4,7 @@ package app.gamenative.online
  * Install-time choice for how a game should be configured.
  *
  * Offline prioritizes boot speed and stability.
- * Online enables the Steam online client path (Bionic / Headless) and related settings.
+ * Online enables the Steam online client path (Bionic Steam) and related settings.
  */
 enum class InstallProfile(val storageKey: String) {
     OFFLINE("offline"),

@@ -679,7 +679,11 @@ class MainViewModel @Inject constructor(
             delay(100)
 
             val container = apiJob.await()
-            if (container.isLaunchHeadlessSteam && !bootAwaitingGameWindow) {
+            // Keep splash until the real game window/process for Online Steam paths
+            // (Bionic or Headless). Clearing on explorer/Steam first → black screen.
+            if ((container.isLaunchHeadlessSteam || container.isLaunchBionicSteam) &&
+                !bootAwaitingGameWindow
+            ) {
                 bootAwaitingGameWindow = true
                 startBootGameExitWatch(context, appId)
             }
@@ -979,9 +983,40 @@ class MainViewModel @Inject constructor(
             delay(200)
             val running = WineProcessSnapshotHelper.readFromProc().any { it.name.lowercase().endsWith(exe) }
             if (running && seenAt == 0L) seenAt = System.currentTimeMillis()
-            if (seenAt != 0L && (!running || System.currentTimeMillis() - seenAt >= BOOT_GAME_SEEN_GRACE_MS)) {
+            // Clear splash once the game process has been alive long enough — not on first
+            // fleeting spawn (steamhost can flash the exe name before graphics come up).
+            if (seenAt != 0L && running && System.currentTimeMillis() - seenAt >= BOOT_GAME_SEEN_GRACE_MS) {
                 PluviaApp.events.emit(AndroidEvent.ClearBootingSplash)
                 return@launch
+            }
+            // Game died after being seen → let normal exit watch handle session end; keep splash
+            // only until ClearBootingSplash / exit clears bootAwaitingGameWindow.
+            if (seenAt != 0L && !running) {
+                Timber.tag("BootAdTrace").i("game exe %s exited while splash waiting", exe)
+                PluviaApp.events.emit(AndroidEvent.ClearBootingSplash)
+                return@launch
+            }
+        }
+    }
+
+    /** Same idea as XServerScreen.windowMatchesExecutable — kept local (register / layering). */
+    private fun windowMatchesGameExecutable(window: Window, executablePath: String): Boolean {
+        if (executablePath.isBlank()) return false
+        val target = executablePath
+            .substringAfterLast('\\')
+            .substringAfterLast('/')
+            .lowercase()
+            .removeSuffix(".exe")
+        if (target.isBlank()) return false
+        val candidates = listOf(window.name, window.className)
+        return candidates.any { raw ->
+            raw.split('\u0000').any { part ->
+                val normalized = part
+                    .substringAfterLast('\\')
+                    .substringAfterLast('/')
+                    .lowercase()
+                    .removeSuffix(".exe")
+                normalized == target
             }
         }
     }
@@ -995,14 +1030,32 @@ class MainViewModel @Inject constructor(
                 gameWindowSeen = true
             }
             val windowClass = window.className.trim().lowercase()
-            // Headless Online boot maps Steam/steamhost windows long before the game renders.
-            // Clearing the splash on those leaves a black screen during auth/bootstrap.
-            if (bootAwaitingGameWindow &&
-                (windowClass.isEmpty() ||
+            // While waiting for the real game (Headless Online / boot card), only clear the
+            // splash when the mapped window matches the game executable. Steam/host/shell
+            // windows map first and clearing on them leaves a black screen.
+            if (bootAwaitingGameWindow) {
+                val exePath = runCatching {
+                    ContainerUtils.getContainer(context, appId).executablePath
+                }.getOrNull().orEmpty()
+                val matchesGame = windowMatchesGameExecutable(window, exePath)
+                val isShellOrSteam = windowClass.isEmpty() ||
                     windowClass == "explorer.exe" ||
-                    WineProcessSnapshotHelper.isSystemProcessName(window.className))
-            ) {
-                Timber.tag("BootAdTrace").i("ignoring shell/steam window map: %s", window.className)
+                    WineProcessSnapshotHelper.isSystemProcessName(window.className)
+                if (!matchesGame || isShellOrSteam) {
+                    Timber.tag("BootAdTrace").i(
+                        "keeping splash (map=%s exe=%s matches=%s shellOrSteam=%s)",
+                        window.className,
+                        exePath,
+                        matchesGame,
+                        isShellOrSteam,
+                    )
+                } else {
+                    bootAwaitingGameWindow = false
+                    bootingSplashTimeoutJob?.cancel()
+                    bootingSplashTimeoutJob = null
+                    setShowBootingSplash(false)
+                    PluviaApp.events.emit(AndroidEvent.ClearBootingSplash)
+                }
             } else {
                 bootAwaitingGameWindow = false
                 bootingSplashTimeoutJob?.cancel()

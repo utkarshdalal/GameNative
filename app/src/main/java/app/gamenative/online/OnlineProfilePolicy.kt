@@ -5,7 +5,8 @@ import com.winlator.core.envvars.EnvVars
 
 /**
  * Hardening rules for Online install / launch profiles.
- * Prefer Proton 10 + Headless Steam; keep TLS/DNS-friendly env for EOS and Steam networking.
+ * Prefer Proton 10 + **Bionic Steam** (native libsteamclient) for Online — Headless steamhost
+ * commonly leaves users on a black screen for long stretches after "loading".
  *
  * Note: BionicProgramLauncherComponent already injects SSL_CERT_* / WINE_ADDITIONAL_CERTS_DIR
  * at process start. Here we only persist container-level nudges that survive gamefixes.
@@ -13,7 +14,8 @@ import com.winlator.core.envvars.EnvVars
 object OnlineProfilePolicy {
     const val PREFERRED_PROTON_PREFIX = "proton-10"
     const val EXTRA_POLICY_VERSION = "onlineProfilePolicyVersion"
-    const val POLICY_VERSION = "4"
+    /** v5: Online uses Bionic Steam instead of Headless steamhost (black-screen fix). */
+    const val POLICY_VERSION = "5"
 
     /**
      * Env keys that help Steam/EOS TLS and hostname edge cases on Android Wine.
@@ -29,9 +31,10 @@ object OnlineProfilePolicy {
     )
 
     fun applySteamClientFlags(container: Container) {
-        container.isLaunchRealSteam = true
-        container.isLaunchBionicSteam = false
-        container.steamType = Container.STEAM_TYPE_HEADLESS
+        // Bionic launches the game exe directly with a native Steam client — far less
+        // "Steam is starting…" black-screen time than Headless steamhost.
+        container.isLaunchBionicSteam = true
+        container.isLaunchRealSteam = false
         container.isSteamOfflineMode = false
     }
 
@@ -99,8 +102,11 @@ object OnlineProfilePolicy {
         if (container.isSteamOfflineMode) {
             warnings += "steamOfflineMode is on; Online profile should disable it."
         }
-        if (!container.isLaunchRealSteam || !container.isLaunchHeadlessSteam) {
-            warnings += "Headless Steam is not fully enabled for Online profile."
+        if (!container.isLaunchBionicSteam) {
+            warnings += "Bionic Steam is not enabled for Online profile."
+        }
+        if (container.isLaunchHeadlessSteam) {
+            warnings += "Headless Steam is still on; Online profile prefers Bionic to avoid black screens."
         }
         val wine = container.wineVersion.orEmpty()
         if (wine.contains("proton-9", ignoreCase = true) ||

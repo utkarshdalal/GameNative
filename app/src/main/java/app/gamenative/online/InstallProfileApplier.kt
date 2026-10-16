@@ -30,12 +30,12 @@ object InstallProfileApplier {
         container.saveData()
         InstallProfileStore.save(context, container.id, profile)
         Timber.i(
-            "Applied install profile=%s to container=%s (realSteam=%s bionic=%s type=%s wine=%s)",
+            "Applied install profile=%s to container=%s (realSteam=%s bionic=%s headless=%s wine=%s)",
             profile.storageKey,
             container.id,
             container.isLaunchRealSteam,
             container.isLaunchBionicSteam,
-            container.steamType,
+            container.isLaunchHeadlessSteam,
             container.wineVersion,
         )
     }
