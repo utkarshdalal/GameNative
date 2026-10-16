@@ -4134,11 +4134,6 @@ private fun cegSplashText(progressFile: File, startedAt: Long): String {
     return "Preparing game executable... $progress$files (${elapsed}s)"
 }
 
-private fun gameDirHasJavaRuntime(container: Container): Boolean {
-    val gameDir = Container.drivesIterator(container.drives).firstOrNull { it[0] == "A" }?.get(1)?.let { File(it) } ?: return false
-    return gameDir.walkTopDown().maxDepth(3).any { it.isFile && (it.name.equals("jvm.dll", true) || it.name.equals("java.exe", true)) }
-}
-
 private fun setupXEnvironment(
     context: Context,
     appId: String,
@@ -4319,7 +4314,7 @@ private fun setupXEnvironment(
         envVars.remove("DXVK_FRAME_RATE")
         envVars.remove("VKD3D_FRAME_RATE")
         if (!envVars.has("WINEESYNC")) envVars.put("WINEESYNC", "1")
-        if (!envVars.has("_JAVA_OPTIONS") && gameDirHasJavaRuntime(container)) envVars.put("_JAVA_OPTIONS", "-XX:+IgnoreUnrecognizedVMOptions -XX:+UnlockExperimentalVMOptions -XX:-UseZGC")
+        if (!envVars.has("_JAVA_OPTIONS")) envVars.put("_JAVA_OPTIONS", "-XX:+IgnoreUnrecognizedVMOptions -XX:+UnlockExperimentalVMOptions -XX:-UseZGC")
         if (debugRun) {
             DebugRunParamsHolder.get(appId)?.let { DebugRunParams.applyToDebugEnv(envVars, appId, it) }
             PerfSampler.armCpuProfile(DebugRunParamsHolder.get(appId)?.attach?.contains(DebugRunParams.ATTACH_CPU) == true)
