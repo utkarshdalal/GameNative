@@ -23,6 +23,8 @@ enum class PathType {
     MacAppSupport,
     None,
     Root,
+    WindowsHome,
+    SteamCloudDocuments,
     ;
 
     /**
@@ -37,7 +39,7 @@ enum class PathType {
                 root,
                 ".wine/drive_c/Program Files (x86)/Steam/userdata/$accountId/$appId/remote",
             ).toString()
-            WinMyDocuments -> Paths.get(
+            WinMyDocuments, SteamCloudDocuments -> Paths.get(
                 root,
                 ".wine/drive_c/users",
                 ImageFs.USER,
@@ -71,7 +73,7 @@ enum class PathType {
                 root,
                 ".wine/drive_c/ProgramData/",
             ).toString()
-            Root -> Paths.get(
+            Root, WindowsHome -> Paths.get(
                 root,
                 ".wine/drive_c/users",
                 ImageFs.USER,
@@ -96,9 +98,14 @@ enum class PathType {
             WinSavedGames,
             WinProgramData,
             Root,
+            WindowsHome,
+            SteamCloudDocuments,
             -> true
             else -> false
         }
+
+    val cloudName: String
+        get() = if (this == Root) WindowsHome.name else name
 
     companion object {
         val DEFAULT = SteamUserData
@@ -268,8 +275,6 @@ enum class PathType {
                 -> SteamUserData
                 "%${WinMyDocuments.name.lowercase()}%",
                 WinMyDocuments.name.lowercase(),
-                "steamclouddocuments",
-                "%steamclouddocuments%",
                 -> WinMyDocuments
                 "%${WinAppDataLocal.name.lowercase()}%",
                 WinAppDataLocal.name.lowercase(),
@@ -303,11 +308,15 @@ enum class PathType {
                 -> MacAppSupport
                 "%${Root.name.lowercase()}%",
                 Root.name.lowercase(),
-                "windowshome",
-                "%windowshome%",
                 "%root_mod%",
                 "root_mod",
                 -> Root
+                "%${WindowsHome.name.lowercase()}%",
+                WindowsHome.name.lowercase(),
+                -> WindowsHome
+                "%${SteamCloudDocuments.name.lowercase()}%",
+                SteamCloudDocuments.name.lowercase(),
+                -> SteamCloudDocuments
                 else -> {
                     if (keyValue != null) {
                         Timber.w("Could not identify $keyValue as PathType")
