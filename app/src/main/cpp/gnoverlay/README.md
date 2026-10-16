@@ -12,6 +12,7 @@ whiteouts in upper, and directory listings merge both. Wine is not modified.
 | `GN_OVERLAY_UPPER` | Absolute host path of the per-game layer prefix, e.g. `/data/user/0/app.gamenative/files/imagefs_shared/home/xuser-STEAM_204360/.wine` |
 | `GN_OVERLAY_LOWER` | Absolute host path of the base prefix, e.g. `/data/user/0/app.gamenative/files/imagefs_shared/proton/proton-10.0-4-x86_64/base_prefix/.wine` |
 | `GN_OVERLAY_ALIASES` | Colon-separated extra absolute prefixes that also mean UPPER (symlinked spellings, guest spelling `/home/xuser/.wine`) |
+| `GN_OVERLAY_HIDE` | Colon-separated entry names dropped from every directory listing, overlay or not (the app passes its `.DepotDownloader:.DownloadInfo` metadata directories); the entries stay reachable by path |
 | `GN_OVERLAY_DEBUG=1` | Verbose log to stderr and logcat (tag `gnoverlay`); never stdout |
 | `GN_OVERLAY_LOG` | With debug, also append the log to this file |
 
@@ -87,7 +88,9 @@ line (when either var is set, or debug is on) and every hook passes through.
   `readdir64_r`, `rewinddir` (re-snapshots), `telldir`, `seekdir`, `closedir`, `dirfd` and
   `scandir` understand it; real `DIR*` pass through. Wine's ntdll reads directories with
   `opendir`/`readdir` and wineserver with `fdopendir`/`readdir`. Raw `getdents64` is not
-  intercepted.
+  intercepted. Names listed in `GN_OVERLAY_HIDE` are skipped by `readdir` and friends on real
+  `DIR*` too, so a game that walks its install directory never sees the app's metadata
+  directories (Alan Wake's pack scan overran a 32-slot string ring because of them).
 - `realpath` returns the canonical path in upper spelling, even for files that live in lower.
 
 ## Exported hooks (62)
