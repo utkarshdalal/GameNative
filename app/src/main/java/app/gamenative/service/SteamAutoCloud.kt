@@ -7,6 +7,7 @@ import app.gamenative.data.PostSyncInfo
 import app.gamenative.data.SaveFilePattern
 import app.gamenative.data.SteamApp
 import app.gamenative.data.SteamFileHashCache
+import app.gamenative.data.UFS
 import app.gamenative.data.UserFileInfo
 import app.gamenative.data.UserFilesDownloadResult
 import app.gamenative.data.UserFilesUploadResult
@@ -23,11 +24,16 @@ import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.asyncIsolated
 import `in`.dragonbra.javasteam.enums.EOSType
 import `in`.dragonbra.javasteam.enums.EResult
+import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesCloudSteamclient.CCloud_ClientDeleteFile_Request
+import `in`.dragonbra.javasteam.rpc.service.Cloud
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.AppFileChangeList
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.AppFileInfo
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.SteamCloud
+import `in`.dragonbra.javasteam.steam.handlers.steamunifiedmessages.SteamUnifiedMessages
+import `in`.dragonbra.javasteam.steam.steamclient.SteamClient
 import `in`.dragonbra.javasteam.types.KeyValue
 import java.io.BufferedInputStream
+import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.RandomAccessFile
@@ -37,6 +43,7 @@ import java.nio.file.FileSystemException
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.Date
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.stream.Collectors
 import java.util.zip.ZipInputStream
@@ -106,6 +113,91 @@ object SteamAutoCloud {
         .maxByOrNull { (cloudKey, _) -> cloudKey.length }
         ?.let { (cloudKey, localPath) ->
             Paths.get(localPath, cloudPrefix.removePrefix(cloudKey).trimStart('/')).pathString
+        }
+
+    private data class ScannedSaveFile(
+        val pattern: SaveFilePattern,
+        val localPath: String,
+        val basePath: Path,
+        val path: Path,
+    )
+
+    internal fun resolveLocalRelativePath(rootDir: String, relativePath: String): String {
+        val exact = Paths.get(rootDir, relativePath)
+        if (Files.isDirectory(exact)) return relativePath
+        val rootFile = File(rootDir)
+        val resolved = FileUtils.resolveCaseInsensitive(rootFile, relativePath).toPath()
+        return if (resolved == exact) relativePath else rootFile.toPath().relativize(resolved).pathString
+    }
+
+    internal fun normalizeCloudKey(key: String): String =
+        key.replace('\\', '/')
+            .replace(Regex("/{2,}"), "/")
+            .replace(Regex("^(%[^%]+%)/"), "$1")
+            .trimStart('/')
+            .lowercase()
+
+    internal fun staleCloudKeyReplacement(remoteName: String, patterns: List<SaveFilePattern>): String? {
+        val token = EMBEDDED_ROOT_TOKEN.find(remoteName)?.value ?: return null
+        val rest = remoteName.removePrefix(token)
+        if (token.equals("%${PathType.Root.name}%", ignoreCase = true)) {
+            return "%${PathType.WindowsHome.name}%$rest"
+        }
+        if (!token.equals("%${PathType.WinMyDocuments.name}%", ignoreCase = true)) return null
+        val relative = normalizeCloudKey(rest)
+        val uploadPathOf: (SaveFilePattern) -> String = { pattern ->
+            normalizeCloudKey(
+                pattern.uploadPath
+                    .replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
+                    .replace("{Steam3AccountID}", SteamUtils.getSteam3AccountId().toString()),
+            ).trimEnd('/')
+        }
+        val myDocumentsPaths = patterns.filter { it.uploadRoot == PathType.WinMyDocuments }.map(uploadPathOf).toSet()
+        val replaced = patterns
+            .filter { it.uploadRoot == PathType.SteamCloudDocuments }
+            .map(uploadPathOf)
+            .any { path -> path !in myDocumentsPaths && (path.isEmpty() || relative.startsWith("$path/")) }
+        return if (replaced) "%${PathType.SteamCloudDocuments.name}%$rest" else null
+    }
+
+    internal suspend fun forgetCloudFile(steamClient: SteamClient?, appId: Int, filename: String): Boolean {
+        val unifiedMessages = steamClient?.getHandler(SteamUnifiedMessages::class.java) ?: return false
+        val request = CCloud_ClientDeleteFile_Request.newBuilder()
+            .setAppid(appId)
+            .setFilename(filename)
+            .setIsExplicitDelete(false)
+            .build()
+        val response = unifiedMessages.createService(Cloud::class.java).clientDeleteFile(request).toFuture().await()
+        return response.result == EResult.OK
+    }
+
+    internal fun selectOverQuotaFiles(
+        files: List<UserFileInfo>,
+        ufs: UFS,
+        sizeOf: (UserFileInfo) -> Long,
+    ): List<UserFileInfo> {
+        if (ufs.maxNumFiles <= 0 && ufs.quota <= 0) return emptyList()
+        var count = 0
+        var bytes = 0L
+        var overBudget = false
+        return files
+            .filter { it.root != PathType.SteamUserData }
+            .sortedByDescending { it.timestamp }
+            .filter { file ->
+                if (!overBudget) {
+                    count++
+                    bytes += sizeOf(file)
+                    overBudget = (ufs.maxNumFiles > 0 && count > ufs.maxNumFiles) || (ufs.quota > 0 && bytes > ufs.quota)
+                }
+                overBudget
+            }
+    }
+
+    private fun cloudRootTokens(root: PathType): List<String> =
+        if (root == PathType.WindowsHome || root == PathType.Root) {
+            listOf("%${PathType.WindowsHome.name}%", "%${PathType.Root.name}%")
+        } else {
+            listOf("%${root.cloudName}%")
         }
 
     internal data class HashLookupResult(
@@ -199,7 +291,8 @@ object SteamAutoCloud {
         // placeholders to the local root so downloads land in the right directory.
         val uploadRootRemap: Map<String, String> = appInfo.ufs.saveFilePatterns
             .filter { it.uploadRoot != it.root }
-            .associate { "%${it.uploadRoot.name}%" to it.root.name }
+            .flatMap { p -> cloudRootTokens(p.uploadRoot).map { it to p.root.name } }
+            .toMap()
 
         // Full-prefix remap for patterns where addPath shifts the local subfolder relative to
         // the cloud path. E.g. cloud "%GameInstall%saves" must land at "<WinAppDataRoaming>/MyGame/saves",
@@ -207,20 +300,22 @@ object SteamAutoCloud {
         val cloudPrefixToLocalPath: Map<String, String> = appInfo.ufs.saveFilePatterns
             .filter { it.uploadPath != it.path }
             .flatMap { p ->
-                val localPath = Paths.get(prefixToPath(p.root.name), p.substitutedPath).pathString
+                val rootDir = prefixToPath(p.root.name)
+                val localPath = Paths.get(rootDir, resolveLocalRelativePath(rootDir, p.substitutedPath)).pathString
                 val cloudPath = p.uploadPath
                     .replace("\\", "/")
                     .replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
                     .replace("{Steam3AccountID}", SteamUtils.getSteam3AccountId().toString())
                     .trim('/')
-                val cloudRoot = "%${p.uploadRoot.name}%"
-                val cloudPrefixes = if (cloudPath.isBlank()) {
-                    listOf(cloudRoot)
-                } else {
-                    listOf(
-                        "$cloudRoot$cloudPath",
-                        "$cloudRoot/$cloudPath",
-                    )
+                val cloudPrefixes = cloudRootTokens(p.uploadRoot).flatMap { cloudRoot ->
+                    if (cloudPath.isBlank()) {
+                        listOf(cloudRoot)
+                    } else {
+                        listOf(
+                            "$cloudRoot$cloudPath",
+                            "$cloudRoot/$cloudPath",
+                        )
+                    }
                 }
                 cloudPrefixes.map { cloudKey ->
                     cloudKey to localPath
@@ -250,6 +345,8 @@ object SteamAutoCloud {
                 }
         }
 
+        val resolvedDownloadDirs = ConcurrentHashMap<String, String>()
+
         val convertPrefixes: (AppFileChangeList) -> List<String> = { fileList ->
             val pathTypePairs = getPathTypePairs(fileList)
 
@@ -261,6 +358,15 @@ object SteamAutoCloud {
                 val cloudPrefix = prefix.trimEnd('/')
                 resolveCloudPrefixToLocal(cloudPrefix, cloudPrefixToLocalPath)
                     ?: run {
+                        val rootToken = EMBEDDED_ROOT_TOKEN.find(prefix)?.value
+                        val rootDir = pathTypePairs.firstOrNull { it.first == rootToken }?.second
+                        if (rootToken != null && rootDir != null) {
+                            val relativePath = cloudPrefix.removePrefix(rootToken).trimStart('/')
+                            return@run resolvedDownloadDirs.getOrPut(Paths.get(rootDir, relativePath).pathString) {
+                                Paths.get(rootDir, resolveLocalRelativePath(rootDir, relativePath)).pathString
+                            }
+                        }
+
                         var modified = prefix
 
                         val prefixContainsNoPlaceholder = findPlaceholderWithin(prefix).none()
@@ -295,6 +401,21 @@ object SteamAutoCloud {
         val getFilePrefixPath: (AppFileInfo, AppFileChangeList) -> String = { file, fileList ->
             Paths.get(getFilePrefix(file, fileList), file.filename).pathString
         }
+
+        val getRemoteFileName: (AppFileInfo, AppFileChangeList) -> String = { file, fileList ->
+            val prefix = if (file.hasPathPrefixIndex && file.pathPrefixIndex < fileList.pathPrefixes.size) {
+                fileList.pathPrefixes[file.pathPrefixIndex]
+            } else {
+                ""
+            }
+            if (prefix.isEmpty() || prefix.endsWith('/') || prefix.endsWith('%')) {
+                "$prefix${file.filename}"
+            } else {
+                "$prefix/${file.filename}"
+            }
+        }
+
+        val uploadedCloudKeys = mutableSetOf<String>()
 
         val hashCacheHits = AtomicInteger(0)
         val hashCacheMisses = AtomicInteger(0)
@@ -364,61 +485,93 @@ object SteamAutoCloud {
             }
 
         val getLocalUserFilesAsPrefixMap: suspend () -> Map<String, List<UserFileInfo>> = {
-            val savePatterns = appInfo.ufs.saveFilePatterns.filter { userFile -> userFile.root.isWindows }
+            val savePatterns = if (appInfo.ufs.ignoreExternalFiles) {
+                Timber.i("ignoreexternalfiles is set for ${appInfo.id}, skipping AutoCloud pattern scan")
+                emptyList()
+            } else {
+                appInfo.ufs.saveFilePatterns.filter { userFile -> userFile.root.isWindows }
+            }
 
             val result = mutableMapOf<String, MutableList<UserFileInfo>>()
 
             if (savePatterns.isNotEmpty()) {
+                val scannedFiles = mutableListOf<ScannedSaveFile>()
+
                 savePatterns.forEach { userFile ->
                     if (userFile.root == PathType.SteamUserData) {
                         // skip handling, use the logic below to scan SteamUserData
                         return@forEach
                     }
 
-                    val basePath = Paths.get(prefixToPath(userFile.root.toString()), userFile.substitutedPath)
+                    val rootDir = prefixToPath(userFile.root.toString())
+                    val localPath = resolveLocalRelativePath(rootDir, userFile.substitutedPath)
+                    val basePath = Paths.get(rootDir, localPath)
+                    result.getOrPut(Paths.get(userFile.prefix).pathString) { mutableListOf() }
 
                     Timber.i("Looking for saves in $basePath with pattern ${userFile.pattern} (prefix ${userFile.prefix})")
 
-                    val filePaths = FileUtils.findFilesRecursive(
+                    FileUtils.findFilesRecursive(
                         rootPath = basePath,
                         pattern = userFile.pattern,
-                        maxDepth = 5,
-                    ).collect(Collectors.toList())
-                    val files = buildList {
-                        for (path in filePaths) {
-                            val hashLookup = getCachedShaOrHash(
-                                appId = appInfo.id,
-                                path = path,
-                                hashCacheDao = hashCacheDao,
-                            )
-                            if (hashLookup.wasCacheHit) {
-                                hashCacheHits.incrementAndGet()
-                            } else {
-                                hashCacheMisses.incrementAndGet()
-                            }
-                            val sha = hashLookup.sha
+                        recursive = userFile.recursive,
+                    ).forEach { path -> scannedFiles.add(ScannedSaveFile(userFile, localPath, basePath, path)) }
 
-                            Timber.i("Found ${path.pathString}\n\tin ${userFile.prefix}\n\twith sha [${sha.joinToString(", ")}]")
+                    userFile.exclude?.let { exclude ->
+                        val excluded = FileUtils.findFilesRecursive(
+                            rootPath = basePath,
+                            pattern = exclude,
+                            recursive = userFile.recursive,
+                        ).map { it.toAbsolutePath().normalize() }.collect(Collectors.toSet())
+                        scannedFiles.removeAll { it.path.toAbsolutePath().normalize() in excluded }
+                    }
+                }
 
-                            val relativePath = basePath.relativize(path).pathString
-
-                            add(UserFileInfo(
-                                root = userFile.root,
-                                path = userFile.substitutedPath,
-                                filename = relativePath,
-                                timestamp = Files.getLastModifiedTime(path).toMillis(),
-                                sha = sha,
-                                cloudRoot = userFile.uploadRoot,
-                                cloudPath = userFile.uploadPath
-                            ))
+                val knownPaths = scannedFiles.map { it.path.toAbsolutePath().normalize() }.toMutableSet()
+                scannedFiles.toList().forEach { scanned ->
+                    if (scanned.pattern.siblings.isEmpty()) return@forEach
+                    val stem = scanned.path.name.substringBeforeLast('.')
+                    scanned.pattern.siblings.forEach { extension ->
+                        val sibling = scanned.path.resolveSibling("$stem.$extension")
+                        if (Files.isRegularFile(sibling) && knownPaths.add(sibling.toAbsolutePath().normalize())) {
+                            scannedFiles.add(scanned.copy(path = sibling))
                         }
                     }
+                }
 
-                    Timber.i("Found ${files.size} file(s) in $basePath for pattern ${userFile.pattern}")
+                scannedFiles.forEach { scanned ->
+                    val userFile = scanned.pattern
+                    val path = scanned.path
+                    val hashLookup = getCachedShaOrHash(
+                        appId = appInfo.id,
+                        path = path,
+                        hashCacheDao = hashCacheDao,
+                    )
+                    if (hashLookup.wasCacheHit) {
+                        hashCacheHits.incrementAndGet()
+                    } else {
+                        hashCacheMisses.incrementAndGet()
+                    }
+                    val sha = hashLookup.sha
+
+                    Timber.i("Found ${path.pathString}\n\tin ${userFile.prefix}\n\twith sha [${sha.joinToString(", ")}]")
+
+                    val relativePath = scanned.basePath.relativize(path).pathString
 
                     val prefixKey = Paths.get(userFile.prefix).pathString
-                    result.getOrPut(prefixKey) { mutableListOf() }.addAll(files)
+                    result.getOrPut(prefixKey) { mutableListOf() }.add(
+                        UserFileInfo(
+                            root = userFile.root,
+                            path = scanned.localPath,
+                            filename = relativePath,
+                            timestamp = Files.getLastModifiedTime(path).toMillis(),
+                            sha = sha,
+                            cloudRoot = userFile.uploadRoot,
+                            cloudPath = userFile.uploadPath
+                        ),
+                    )
                 }
+
+                Timber.i("Found ${scannedFiles.size} file(s) for ${savePatterns.size} pattern(s)")
             }
 
             // Scan SteamUserData root recursively (depth 5)
@@ -430,7 +583,7 @@ object SteamAutoCloud {
             val steamUserDataPaths = FileUtils.findFilesRecursive(
                 rootPath = basePath,
                 pattern = "*",
-                maxDepth = 5,
+                recursive = true,
             ).collect(Collectors.toList())
             val files = buildList {
                 for (path in steamUserDataPaths) {
@@ -468,7 +621,7 @@ object SteamAutoCloud {
             mapOf(Paths.get("%${rootType.name}%").pathString to files)
 
             if (files.isNotEmpty()) {
-                val prefixKey = "%${rootType.name}%"
+                val prefixKey = "%${rootType.cloudName}%"
                 result.getOrPut(prefixKey) { mutableListOf() }.addAll(files)
             }
 
@@ -775,6 +928,10 @@ object SteamAutoCloud {
                     ).await()
 
                     Timber.i("File ${file.prefixPath} commit success: $commitSuccess")
+
+                    if (uploadFileSuccess && commitSuccess) {
+                        uploadedCloudKeys.add(normalizeCloudKey(file.prefixPath))
+                    }
                 }
 
                 steamCloud.completeAppUploadBatch(
@@ -912,10 +1069,23 @@ object SteamAutoCloud {
                 parentScope.asyncIsolated {
                     Timber.i("Uploading local user files")
 
+                    val overQuotaFiles = selectOverQuotaFiles(allLocalUserFiles, appInfo.ufs) { file ->
+                        runCatching { Files.size(file.getAbsPath(prefixToPath)) }.getOrDefault(0L)
+                    }
+                    val overQuotaKeys = overQuotaFiles.map { it.prefixPath }.toSet()
+                    if (overQuotaFiles.isNotEmpty()) {
+                        Timber.i("${overQuotaFiles.size} file(s) over quota for ${appInfo.id}, not uploading: $overQuotaKeys")
+                    }
+
                     val fileChanges = steamInstance.fileChangeListsDao.getByAppId(appInfo.id).let {
                         val result = getFilesDiff(allLocalUserFiles, it?.userFileInfo ?: emptyList())
 
                         result.second
+                    }.let { changes ->
+                        changes.copy(
+                            filesModified = changes.filesModified.filter { it.prefixPath !in overQuotaKeys },
+                            filesCreated = changes.filesCreated.filter { it.prefixPath !in overQuotaKeys },
+                        )
                     }
 
                     uploadsRequired = fileChanges.filesCreated.isNotEmpty() || fileChanges.filesModified.isNotEmpty()
@@ -937,6 +1107,25 @@ object SteamAutoCloud {
                             db.withTransaction {
                                 fileChangeListsDao.insert(appInfo.id, allLocalUserFiles)
                                 changeNumbersDao.insert(appInfo.id, uploadResult.appChangeNumber)
+                            }
+                        }
+
+                        val overQuotaCloudKeys = overQuotaKeys.map { normalizeCloudKey(it) }.toSet()
+                        appFileListChange.files.forEach { file ->
+                            val remoteName = getRemoteFileName(file, appFileListChange)
+                            val reason = when {
+                                normalizeCloudKey(remoteName) in overQuotaCloudKeys -> "over quota"
+                                staleCloudKeyReplacement(remoteName, appInfo.ufs.saveFilePatterns)
+                                    ?.let { normalizeCloudKey(it) in uploadedCloudKeys } == true -> "replaced by engine root name"
+                                else -> return@forEach
+                            }
+                            try {
+                                val forgotten = forgetCloudFile(steamInstance.steamClient, appInfo.id, remoteName)
+                                Timber.i("Forgot cloud file $remoteName ($reason): $forgotten")
+                            } catch (e: java.util.concurrent.CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                Timber.w(e, "Failed to forget cloud file $remoteName ($reason)")
                             }
                         }
                     } else {

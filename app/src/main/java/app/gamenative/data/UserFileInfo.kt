@@ -29,7 +29,7 @@ data class UserFileInfo(
                 cloudPath.isBlank() || cloudPath == "." -> ""
                 else -> cloudPath
             }
-            return Paths.get("%${cloudRoot.name}%$pathForPrefix").pathString
+            return Paths.get("%${cloudRoot.cloudName}%$pathForPrefix").pathString
                 .replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
                 .replace("{Steam3AccountID}", SteamUtils.getSteam3AccountId().toString())
         }

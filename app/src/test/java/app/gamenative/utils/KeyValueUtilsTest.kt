@@ -1,5 +1,6 @@
 package app.gamenative.utils
 
+import app.gamenative.db.converters.AppConverter
 import app.gamenative.enums.PathType
 import `in`.dragonbra.javasteam.types.KeyValue
 import org.junit.Assert.assertEquals
@@ -88,13 +89,13 @@ class KeyValueUtilsTest {
         assertEquals(PathType.WinAppDataRoaming, patterns[0].root)
         assertEquals("blue-revolver-final", patterns[0].path)
         assertEquals("save2.lua", patterns[0].pattern)
-        assertEquals(0, patterns[0].recursive)
+        assertFalse(patterns[0].recursive)
         assertEquals(PathType.GameInstall, patterns[0].uploadRoot)
 
         assertEquals(PathType.WinAppDataRoaming, patterns[1].root)
         assertEquals("blue-revolver-double-action", patterns[1].path)
         assertEquals("brda_save.sav", patterns[1].pattern)
-        assertEquals(0, patterns[1].recursive)
+        assertFalse(patterns[1].recursive)
         assertEquals(PathType.GameInstall, patterns[1].uploadRoot)
     }
 
@@ -143,7 +144,7 @@ class KeyValueUtilsTest {
         assertEquals(PathType.WinAppDataRoaming, patterns[0].root)
         assertEquals("MyGame/saves", patterns[0].path)
         assertEquals("*.sav", patterns[0].pattern)
-        assertEquals(0, patterns[0].recursive)
+        assertFalse(patterns[0].recursive)
         assertEquals(PathType.GameInstall, patterns[0].uploadRoot)
     }
 
@@ -192,7 +193,7 @@ class KeyValueUtilsTest {
         assertEquals(PathType.WinAppDataRoaming, patterns[0].root)
         assertEquals("MyGame/saves", patterns[0].path)
         assertEquals("*.sav", patterns[0].pattern)
-        assertEquals(0, patterns[0].recursive)
+        assertFalse(patterns[0].recursive)
         assertEquals(PathType.GameInstall, patterns[0].uploadRoot)
     }
 
@@ -293,10 +294,11 @@ class KeyValueUtilsTest {
     }
 
     /**
-     * Savefiles with an explicit `platforms { "Windows" }` block (Noita-style) should be included.
+     * Noita's savefile patterns contain a directory part. Steam rejects any pattern containing
+     * a path separator, so these rules are dropped even though their platform is Windows.
      */
     @Test
-    fun noitaExplicitWindowsPlatformIsIncluded() {
+    fun noitaPatternsWithDirectoryPartAreDropped() {
         val kvString = """
             "appinfo"
             {
@@ -336,18 +338,7 @@ class KeyValueUtilsTest {
         val kv = KeyValue.loadFromString(kvString)!!
         val steamApp = kv.generateSteamApp()
 
-        val patterns = steamApp.ufs.saveFilePatterns
-        assertEquals(2, patterns.size)
-        assertEquals(PathType.WinAppDataLocalLow, patterns[0].root)
-        assertEquals("Nolla_Games_Noita", patterns[0].path)
-        assertEquals("save00/world/*.bin", patterns[0].pattern)
-        assertEquals(1, patterns[0].recursive)
-        assertEquals(PathType.WinAppDataLocalLow, patterns[0].uploadRoot)
-        assertEquals(PathType.WinAppDataLocalLow, patterns[1].root)
-        assertEquals("Nolla_Games_Noita", patterns[1].path)
-        assertEquals("save00/*.xml", patterns[1].pattern)
-        assertEquals(0, patterns[1].recursive)
-        assertEquals(PathType.WinAppDataLocalLow, patterns[1].uploadRoot)
+        assertEquals(0, steamApp.ufs.saveFilePatterns.size)
     }
 
     /**
@@ -426,13 +417,13 @@ class KeyValueUtilsTest {
         assertEquals(PathType.WinAppDataLocalLow, patterns[0].root)
         assertEquals("Massive Monster/Cult Of The Lamb/saves", patterns[0].path)
         assertEquals("*.json", patterns[0].pattern)
-        assertEquals(1, patterns[0].recursive)
+        assertTrue(patterns[0].recursive)
         assertEquals(PathType.GameInstall, patterns[0].uploadRoot)
 
         assertEquals(PathType.WinAppDataLocalLow, patterns[1].root)
         assertEquals("Massive Monster/Cult Of The Lamb/saves", patterns[1].path)
         assertEquals("*.mp", patterns[1].pattern)
-        assertEquals(1, patterns[1].recursive)
+        assertTrue(patterns[1].recursive)
         assertEquals(PathType.GameInstall, patterns[1].uploadRoot)
     }
 
@@ -480,7 +471,7 @@ class KeyValueUtilsTest {
         assertEquals(PathType.WinMyDocuments, patterns[0].root)
         assertEquals("Saved Games/Hades", patterns[0].path)
         assertEquals("Profile*.sav", patterns[0].pattern)
-        assertEquals(0, patterns[0].recursive)
+        assertFalse(patterns[0].recursive)
         assertEquals(PathType.WinMyDocuments, patterns[0].uploadRoot)
     }
 
@@ -529,7 +520,7 @@ class KeyValueUtilsTest {
         assertEquals(PathType.WinAppDataRoaming, patterns[0].root)
         assertEquals("MyGame/saves", patterns[0].path)
         assertEquals("*.sav", patterns[0].pattern)
-        assertEquals(0, patterns[0].recursive)
+        assertFalse(patterns[0].recursive)
         assertEquals(PathType.GameInstall, patterns[0].uploadRoot)
     }
 
@@ -602,14 +593,14 @@ class KeyValueUtilsTest {
         assertEquals(PathType.WinAppDataRoaming, patterns[0].root)
         assertEquals("Godot/app_userdata/The Roottrees are Dead", patterns[0].path)
         assertEquals("*.save", patterns[0].pattern)
-        assertEquals(0, patterns[0].recursive)
+        assertFalse(patterns[0].recursive)
         assertEquals(PathType.GameInstall, patterns[0].uploadRoot)
         assertEquals("", patterns[0].uploadPath)
     }
 
     /**
      * Stellar Blade (App ID 3489700) has a save pattern with `root: WindowsHome`, which is the
-     * Windows user home directory (C:\users\xuser\ in Wine). It must be recognized as PathType.Root
+     * Windows user home directory (C:\users\xuser\ in Wine). It must be recognized as PathType.WindowsHome
      * and pass the isWindows filter so the pattern is not silently dropped.
      */
     @Test
@@ -639,21 +630,21 @@ class KeyValueUtilsTest {
 
         val patterns = steamApp.ufs.saveFilePatterns
         assertEquals(1, patterns.size)
-        assertEquals(PathType.Root, patterns[0].root)
+        assertEquals(PathType.WindowsHome, patterns[0].root)
         assertEquals(true, patterns[0].root.isWindows)
         assertEquals("Documents/StellarBlade/{64BitSteamID}", patterns[0].path)
         assertEquals("*.sav", patterns[0].pattern)
-        assertEquals(0, patterns[0].recursive)
-        assertEquals(PathType.Root, patterns[0].uploadRoot)
+        assertFalse(patterns[0].recursive)
+        assertEquals(PathType.WindowsHome, patterns[0].uploadRoot)
     }
 
     /**
      * Sonic Mania (App ID 584400) has a save pattern with `root: SteamCloudDocuments`, which is
-     * Steam's name for the user's Documents folder (WinMyDocuments in Wine). It must be recognized
-     * and pass the isWindows filter so the pattern is not silently dropped.
+     * Steam's name for the user's Documents folder (WinMyDocuments in Wine). It must keep its own
+     * root so the cloud key stays %SteamCloudDocuments% and pass the isWindows filter.
      */
     @Test
-    fun sonicManiaSteamCloudDocumentsRootIsRecognizedAsWinMyDocuments() {
+    fun sonicManiaSteamCloudDocumentsRootIsRecognized() {
         val kvString = """
             "appinfo"
             {
@@ -679,11 +670,11 @@ class KeyValueUtilsTest {
 
         val patterns = steamApp.ufs.saveFilePatterns
         assertEquals(1, patterns.size)
-        assertEquals(PathType.WinMyDocuments, patterns[0].root)
+        assertEquals(PathType.SteamCloudDocuments, patterns[0].root)
         assertEquals(true, patterns[0].root.isWindows)
         assertEquals("SavesDir", patterns[0].path)
         assertEquals("*.sav", patterns[0].pattern)
-        assertEquals(PathType.WinMyDocuments, patterns[0].uploadRoot)
+        assertEquals(PathType.SteamCloudDocuments, patterns[0].uploadRoot)
     }
 
     /**
@@ -973,7 +964,7 @@ class KeyValueUtilsTest {
     }
 
     @Test
-    fun steamUserBaseStorageRootIsRecognizedAsSteamUserData() {
+    fun steamUserBaseStorageRootIsRecognized() {
         val kvString = """
             "appinfo"
             {
@@ -1000,11 +991,11 @@ class KeyValueUtilsTest {
 
         val patterns = steamApp.ufs.saveFilePatterns
         assertEquals(1, patterns.size)
-        assertEquals(PathType.SteamUserData, patterns[0].root)
+        assertEquals(PathType.SteamUserBaseStorage, patterns[0].root)
         assertEquals(true, patterns[0].root.isWindows)
         assertEquals("saves", patterns[0].path)
         assertEquals("*.dat", patterns[0].pattern)
-        assertEquals(PathType.SteamUserData, patterns[0].uploadRoot)
+        assertEquals(PathType.SteamUserBaseStorage, patterns[0].uploadRoot)
     }
 
     /**
@@ -1100,6 +1091,342 @@ class KeyValueUtilsTest {
         assertEquals("saves", patterns[0].path)
         assertEquals("*.sav", patterns[0].pattern)
         assertEquals(PathType.WinMyDocuments, patterns[0].uploadRoot)
+    }
+
+    private fun ufsApp(ufs: String) = KeyValue.loadFromString(
+        """
+            "appinfo"
+            {
+                "appid"     "55555"
+                "ufs"
+                {
+                    $ufs
+                }
+            }
+        """.trimIndent(),
+    )!!.generateSteamApp()
+
+    @Test
+    fun platformsKeyAppliesRuleOnlyForWindowsOrAll() {
+        val app = ufsApp(
+            """
+            "savefiles"
+            {
+                "0"
+                {
+                    "root"      "WinMyDocuments"
+                    "path"      "absent"
+                    "pattern"   "*.sav"
+                }
+                "1"
+                {
+                    "root"      "WinMyDocuments"
+                    "path"      "all"
+                    "pattern"   "*.sav"
+                    "platforms"
+                    {
+                        "1"     "All"
+                    }
+                }
+                "2"
+                {
+                    "root"      "WinMyDocuments"
+                    "path"      "windows"
+                    "pattern"   "*.sav"
+                    "platforms"
+                    {
+                        "1"     "Linux"
+                        "2"     "WINDOWS"
+                    }
+                }
+                "3"
+                {
+                    "root"      "WinMyDocuments"
+                    "path"      "mac"
+                    "pattern"   "*.sav"
+                    "platforms"
+                    {
+                        "1"     "MacOS"
+                    }
+                }
+            }
+            """,
+        )
+
+        assertEquals(listOf("absent", "all", "windows"), app.ufs.saveFilePatterns.map { it.path })
+    }
+
+    @Test
+    fun recursiveAcceptsNonZeroIntegerOrTrue() {
+        val app = ufsApp(
+            """
+            "savefiles"
+            {
+                "0" { "root" "WinMyDocuments" "path" "a" "pattern" "*" "recursive" "1" }
+                "1" { "root" "WinMyDocuments" "path" "b" "pattern" "*" "recursive" "2" }
+                "2" { "root" "WinMyDocuments" "path" "c" "pattern" "*" "recursive" "True" }
+                "3" { "root" "WinMyDocuments" "path" "d" "pattern" "*" "recursive" "0" }
+                "4" { "root" "WinMyDocuments" "path" "e" "pattern" "*" "recursive" "false" }
+                "5" { "root" "WinMyDocuments" "path" "f" "pattern" "*" }
+            }
+            """,
+        )
+
+        assertEquals(
+            listOf(true, true, true, false, false, false),
+            app.ufs.saveFilePatterns.map { it.recursive },
+        )
+    }
+
+    @Test
+    fun missingOrInvalidPatternDropsRule() {
+        val app = ufsApp(
+            """
+            "savefiles"
+            {
+                "0" { "root" "WinMyDocuments" "path" "missing" }
+                "1" { "root" "WinMyDocuments" "path" "empty" "pattern" "" }
+                "2" { "root" "WinMyDocuments" "path" "colon" "pattern" "c:*.sav" }
+                "3" { "root" "WinMyDocuments" "path" "pipe" "pattern" "a|b" }
+                "4" { "root" "WinMyDocuments" "path" "quote" "pattern" "a\"b" }
+                "5" { "root" "WinMyDocuments" "path" "angle" "pattern" "<a>" }
+                "6" { "root" "WinMyDocuments" "path" "backslash" "pattern" "dir\\*.sav" }
+                "7" { "root" "WinMyDocuments" "path" "valid" "pattern" "[sS]ave?.dat" }
+            }
+            """,
+        )
+
+        assertEquals(listOf("valid"), app.ufs.saveFilePatterns.map { it.path })
+    }
+
+    @Test
+    fun excludeSiblingsAndIgnoreExternalFilesAreParsed() {
+        val app = ufsApp(
+            """
+            "ignoreexternalfiles"   "1"
+            "savefiles"
+            {
+                "0"
+                {
+                    "root"      "WinMyDocuments"
+                    "path"      "saves"
+                    "pattern"   "*.sav"
+                    "exclude"   "*.tmp"
+                    "siblings"  " PNG, meta ,,JSON "
+                }
+                "1"
+                {
+                    "root"      "WinMyDocuments"
+                    "path"      "other"
+                    "pattern"   "*.dat"
+                    "exclude"   "bad/name"
+                }
+            }
+            """,
+        )
+
+        assertTrue(app.ufs.ignoreExternalFiles)
+        val patterns = app.ufs.saveFilePatterns
+        assertEquals(2, patterns.size)
+        assertEquals("*.tmp", patterns[0].exclude)
+        assertEquals(listOf("png", "meta", "json"), patterns[0].siblings)
+        assertEquals(null, patterns[1].exclude)
+        assertEquals(emptyList<String>(), patterns[1].siblings)
+    }
+
+    @Test
+    fun ignoreExternalFilesDefaultsToFalse() {
+        val app = ufsApp(
+            """
+            "ignoreexternalfiles"   "0"
+            "savefiles"
+            {
+                "0" { "root" "WinMyDocuments" "path" "saves" "pattern" "*.sav" }
+            }
+            """,
+        )
+
+        assertFalse(app.ufs.ignoreExternalFiles)
+    }
+
+    @Test
+    fun emptyPathIsDroppedForRootsThatRequireAPath() {
+        val app = ufsApp(
+            """
+            "savefiles"
+            {
+                "0" { "root" "WinMyDocuments" "path" "" "pattern" "docs.sav" }
+                "1" { "root" "WinAppDataRoaming" "path" "/" "pattern" "roaming.sav" }
+                "2" { "root" "WindowsHome" "path" "." "pattern" "home.sav" }
+                "3" { "root" "WinSavedGames" "path" "//" "pattern" "saved.sav" }
+                "4" { "root" "gameinstall" "path" "" "pattern" "install.sav" }
+                "5" { "root" "SteamUserData" "path" "" "pattern" "userdata.sav" }
+                "6" { "root" "SteamCloudDocuments" "path" "" "pattern" "clouddocs.sav" }
+                "7" { "root" "SteamUserBaseStorage" "path" "." "pattern" "steambase.sav" }
+                "8" { "root" "Root" "path" "" "pattern" "legacyroot.sav" }
+            }
+            """,
+        )
+
+        assertEquals(
+            listOf("install.sav", "userdata.sav", "clouddocs.sav", "steambase.sav"),
+            app.ufs.saveFilePatterns.map { it.pattern },
+        )
+        assertEquals(PathType.SteamCloudDocuments, app.ufs.saveFilePatterns[2].uploadRoot)
+        assertEquals(PathType.SteamUserBaseStorage, app.ufs.saveFilePatterns[3].uploadRoot)
+    }
+
+    @Test
+    fun emptyPathIsDroppedWhenRootOverrideHasNoAddPath() {
+        val app = ufsApp(
+            """
+            "savefiles"
+            {
+                "0" { "root" "gameinstall" "path" "" "pattern" "*.sav" }
+            }
+            "rootoverrides"
+            {
+                "0"
+                {
+                    "root"          "gameinstall"
+                    "os"            "Windows"
+                    "oscompare"     "="
+                    "useinstead"    "WinAppDataRoaming"
+                    "addpath"       "/"
+                }
+            }
+            """,
+        )
+
+        assertEquals(0, app.ufs.saveFilePatterns.size)
+    }
+
+    @Test
+    fun rootOverrideWithUnsupportedOsCompareIsSkipped() {
+        val app = ufsApp(
+            """
+            "savefiles"
+            {
+                "0" { "root" "gameinstall" "path" "saves" "pattern" "*.sav" }
+            }
+            "rootoverrides"
+            {
+                "0"
+                {
+                    "root"          "gameinstall"
+                    "os"            "Windows"
+                    "oscompare"     ">"
+                    "useinstead"    "WinMyDocuments"
+                    "addpath"       "Skipped"
+                }
+                "1"
+                {
+                    "root"          "gameinstall"
+                    "os"            "windows"
+                    "oscompare"     "<"
+                    "useinstead"    "WinAppDataRoaming"
+                    "addpath"       "Used"
+                }
+                "2"
+                {
+                    "root"          "gameinstall"
+                    "os"            "Windows"
+                    "useinstead"    "WinAppDataLocal"
+                    "addpath"       "Later"
+                }
+            }
+            """,
+        )
+
+        val patterns = app.ufs.saveFilePatterns
+        assertEquals(1, patterns.size)
+        assertEquals(PathType.WinAppDataRoaming, patterns[0].root)
+        assertEquals("Used/saves", patterns[0].path)
+    }
+
+    @Test
+    fun rootOverrideWithUnknownUseInsteadIsSkipped() {
+        val app = ufsApp(
+            """
+            "savefiles"
+            {
+                "0" { "root" "gameinstall" "path" "saves" "pattern" "*.sav" }
+            }
+            "rootoverrides"
+            {
+                "0"
+                {
+                    "root"          "gameinstall"
+                    "os"            "Windows"
+                    "useinstead"    "NotARoot"
+                    "addpath"       "Skipped"
+                }
+                "1"
+                {
+                    "root"          "gameinstall"
+                    "os"            "Windows"
+                    "useinstead"    "WinAppDataLocal"
+                    "addpath"       "\\Used\\Dir\\"
+                }
+            }
+            """,
+        )
+
+        val patterns = app.ufs.saveFilePatterns
+        assertEquals(1, patterns.size)
+        assertEquals(PathType.WinAppDataLocal, patterns[0].root)
+        assertEquals("Used/Dir/saves", patterns[0].path)
+    }
+
+    @Test
+    fun pathTransformsAreNormalizedAndStored() {
+        val app = ufsApp(
+            """
+            "savefiles"
+            {
+                "0" { "root" "gameinstall" "path" "saves/slot" "pattern" "*.sav" }
+            }
+            "rootoverrides"
+            {
+                "0"
+                {
+                    "root"          "gameinstall"
+                    "os"            "Windows"
+                    "useinstead"    "WinAppDataLocalLow"
+                    "pathtransforms"
+                    {
+                        "0" { "find" "" "replace" "ignored" }
+                        "1" { "find" "\\saves\\" "replace" "/Studio\\Game" }
+                        "2" { "find" "slot" "replace" "Slot" }
+                    }
+                }
+            }
+            """,
+        )
+
+        val patterns = app.ufs.saveFilePatterns
+        assertEquals(1, patterns.size)
+        assertEquals(listOf("saves/" to "Studio/Game/", "slot" to "Slot"), patterns[0].pathTransforms)
+        assertEquals("Studio/Game/Slot", patterns[0].path)
+        assertEquals("saves/slot", patterns[0].uploadPath)
+    }
+
+    @Test
+    fun storedUfsWithLegacyIntRecursiveStillDecodes() {
+        val converter = AppConverter()
+        val ufs = converter.toUFS(
+            """{"quota":10,"saveFilePatterns":[""" +
+                """{"root":"GameInstall","path":"a","pattern":"*","recursive":1},""" +
+                """{"root":"GameInstall","path":"b","pattern":"*","recursive":0},""" +
+                """{"root":"GameInstall","path":"c","pattern":"*"}]}""",
+        )
+
+        assertEquals(listOf(true, false, false), ufs.saveFilePatterns.map { it.recursive })
+        assertFalse(ufs.ignoreExternalFiles)
+        assertEquals(null, ufs.saveFilePatterns[0].exclude)
+
+        val roundTripped = converter.toUFS(converter.fromUFS(ufs.copy(ignoreExternalFiles = true)))
+        assertEquals(ufs.copy(ignoreExternalFiles = true), roundTripped)
     }
 
     private fun vrApp(common: String) = KeyValue.loadFromString(
