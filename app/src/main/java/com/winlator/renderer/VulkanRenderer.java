@@ -22,6 +22,7 @@ import com.winlator.xserver.XLock;
 import com.winlator.xserver.XServer;
 
 import java.util.ArrayList;
+import java.util.Locale;
 
 public class VulkanRenderer implements WindowManager.OnWindowModificationListener,
                                        Pointer.OnPointerMotionListener,
@@ -161,7 +162,8 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private native void nativeSetCursorVisible(long handle, boolean visible);
     private native void nativeUpdateCursorImage(long handle, java.nio.ByteBuffer pixels,
         short width, short height, short hotX, short hotY);
-    private native void nativeSetRenderList(long handle, long[] ids, int[] xs, int[] ys, int count);
+    private native void nativeSetRenderList(long handle, long[] ids, int[] xs, int[] ys,
+        boolean[] forceFullscreen, int count);
     private native void nativeRemoveWindow(long handle, long id);
 
     private native void nativeInitScanout(long handle);
@@ -457,10 +459,48 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                     }
                 }
             }
-            if (viewable) list.add(new RenderableWindow(window.getContent(), x, y));
+            if (viewable) {
+                boolean forceFullscreen = false;
+                if (forceFullscreenWMClass != null) {
+                    short width = window.getWidth();
+                    short height = window.getHeight();
+                    if (width >= 320 && height >= 200 &&
+                        width < effectiveScreen.width && height < effectiveScreen.height) {
+                        Window parent = window.getParent();
+                        boolean parentHasWMClass = parent != null && matchesForcedWindowClass(parent);
+                        boolean hasWMClass = matchesForcedWindowClass(window);
+                        if (hasWMClass) {
+                            forceFullscreen = !parentHasWMClass && window.getChildCount() == 0;
+                        } else if (parent != null) {
+                            short borderX = (short)(parent.getWidth() - width);
+                            short borderY = (short)(parent.getHeight() - height);
+                            if (parent.getChildCount() == 1 && borderX > 0 && borderY > 0 && borderX <= 12) {
+                                forceFullscreen = true;
+                                removeRenderableWindow(list, parent);
+                            }
+                        }
+                    }
+                }
+                list.add(new RenderableWindow(window.getContent(), x, y, forceFullscreen));
+            }
         }
         for (Window child : window.getChildren())
             collectWindows(list, child, child.getX() + x, child.getY() + y);
+    }
+
+    private boolean matchesForcedWindowClass(Window window) {
+        String wmClass = window.getClassName();
+        return wmClass != null && wmClass.toLowerCase(Locale.ROOT)
+            .contains(forceFullscreenWMClass.toLowerCase(Locale.ROOT));
+    }
+
+    private void removeRenderableWindow(ArrayList<RenderableWindow> list, Window window) {
+        for (int i = 0; i < list.size(); i++) {
+            if (list.get(i).content == window.getContent()) {
+                list.remove(i);
+                break;
+            }
+        }
     }
 
     private void pushRenderList(ArrayList<RenderableWindow> list) {
@@ -483,31 +523,41 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
             }
             int n = ns.size();
             long[] ids = new long[n]; int[] xs = new int[n]; int[] ys = new int[n];
+            boolean[] forceFullscreen = new boolean[n];
             for (int i = 0; i < n; i++) {
-                ids[i] = did(ns.get(i).content); xs[i] = ns.get(i).rootX; ys[i] = ns.get(i).rootY;
+                RenderableWindow rw = ns.get(i);
+                ids[i] = did(rw.content); xs[i] = rw.rootX; ys[i] = rw.rootY;
+                forceFullscreen[i] = rw.forceFullscreen;
             }
-            nativeSetRenderList(nativeHandle, ids, xs, ys, n);
+            nativeSetRenderList(nativeHandle, ids, xs, ys, forceFullscreen, n);
             return;
         }
         if (fullscreen) {
             int n = list.size() - start;
-            if (n <= 0) { nativeSetRenderList(nativeHandle, new long[0], new int[0], new int[0], 0); return; }
+            if (n <= 0) {
+                nativeSetRenderList(nativeHandle, new long[0], new int[0], new int[0], new boolean[0], 0);
+                return;
+            }
             long[] ids = new long[n]; int[] xs = new int[n]; int[] ys = new int[n];
+            boolean[] forceFullscreen = new boolean[n];
             for (int i = 0; i < n; i++) {
                 RenderableWindow rw = list.get(start + i);
                 ids[i] = did(rw.content); xs[i] = rw.rootX; ys[i] = rw.rootY;
+                forceFullscreen[i] = rw.forceFullscreen;
             }
-            nativeSetRenderList(nativeHandle, ids, xs, ys, n);
+            nativeSetRenderList(nativeHandle, ids, xs, ys, forceFullscreen, n);
             return;
         }
 
         int n = list.size() - start;
         long[] ids = new long[n]; int[] xs = new int[n]; int[] ys = new int[n];
+        boolean[] forceFullscreen = new boolean[n];
         for (int i = 0; i < n; i++) {
             RenderableWindow rw = list.get(start + i);
             ids[i] = did(rw.content); xs[i] = rw.rootX; ys[i] = rw.rootY;
+            forceFullscreen[i] = rw.forceFullscreen;
         }
-        nativeSetRenderList(nativeHandle, ids, xs, ys, n);
+        nativeSetRenderList(nativeHandle, ids, xs, ys, forceFullscreen, n);
     }
 
     private void sendCursorToNative(Cursor cursor) {

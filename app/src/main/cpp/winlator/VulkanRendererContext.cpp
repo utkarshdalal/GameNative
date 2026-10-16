@@ -885,10 +885,10 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, VkFramebuffer targe
         if (d.ds==VK_NULL_HANDLE) continue;
         vk_.CmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeLayout, 0, 1, &d.ds, 0, nullptr);
         WindowPushConstants pc{};
-        pc.ndcX0=(ox+(float)d.x*sx)/cw*2.f-1.f;
-        pc.ndcY0=(oy+(float)d.y*sy)/ch*2.f-1.f;
-        pc.ndcX1=(ox+(float)(d.x+d.w)*sx)/cw*2.f-1.f;
-        pc.ndcY1=(oy+(float)(d.y+d.h)*sy)/ch*2.f-1.f;
+        pc.ndcX0=(ox+(float)d.dstX*sx)/cw*2.f-1.f;
+        pc.ndcY0=(oy+(float)d.dstY*sy)/ch*2.f-1.f;
+        pc.ndcX1=(ox+(float)(d.dstX+d.dstW)*sx)/cw*2.f-1.f;
+        pc.ndcY1=(oy+(float)(d.dstY+d.dstH)*sy)/ch*2.f-1.f;
         pc.useTexAlpha = 0;
         pc.effectId = activeEffectId;
         pc.sharpness = activeSharpness;
@@ -898,8 +898,8 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, VkFramebuffer targe
         pc.brightness = activeBrightness;
         pc.contrast = activeContrast;
         pc.gamma = activeGamma;
-        pc.outW = std::max(1.0f, (float)d.w * sx / cw * (float)tgtExt.width);
-        pc.outH = std::max(1.0f, (float)d.h * sy / ch * (float)tgtExt.height);
+        pc.outW = std::max(1.0f, (float)d.dstW * sx / cw * (float)tgtExt.width);
+        pc.outH = std::max(1.0f, (float)d.dstH * sy / ch * (float)tgtExt.height);
         vk_.CmdPushConstants(cb, pipeLayout, VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
         vk_.CmdDraw(cb, 4, 1, 0, 0);
     }
@@ -1294,6 +1294,16 @@ ok=true;}catch(...){}
             WinTex& wt=it->second;
             if (wt.ds==VK_NULL_HANDLE) continue;
             DrawEntry de{wt.img,wt.ds,VK_NULL_HANDLE,re.x,re.y,wt.w,wt.h};
+            de.dstX=de.x; de.dstY=de.y; de.dstW=de.w; de.dstH=de.h;
+            if (re.forceFullscreen && wt.w > 0 && wt.h > 0) {
+                int newHeight=std::min(containerHeight,
+                    (int)(((float)containerWidth / (float)wt.w) * (float)wt.h));
+                int newWidth=(int)(((float)newHeight / (float)wt.h) * (float)wt.w);
+                de.dstX=(containerWidth-newWidth)/2;
+                de.dstY=(containerHeight-newHeight)/2;
+                de.dstW=newWidth;
+                de.dstH=newHeight;
+            }
             de.isAHB=wt.isAHB;
             if (wt.needsTransition) { de.needsTransition=true; wt.needsTransition=false; }
             if (wt.dirty && !wt.isAHB && wt.stg!=VK_NULL_HANDLE) {
@@ -1678,10 +1688,11 @@ void VulkanRendererContext::updateWindowContentAHB(int64_t id, AHardwareBuffer* 
     needsRender.store(true); dirtyCV.notify_one();
 }
 
-void VulkanRendererContext::setRenderList(const int64_t* ids, const int* xs, const int* ys, int count) {
+void VulkanRendererContext::setRenderList(const int64_t* ids, const int* xs, const int* ys,
+    const uint8_t* forceFullscreen, int count) {
     std::lock_guard<std::mutex> lk(renderMutex);
     renderList.resize(count);
-    for (int i=0;i<count;i++) renderList[i]={ids[i],xs[i],ys[i]};
+    for (int i=0;i<count;i++) renderList[i]={ids[i],xs[i],ys[i],forceFullscreen[i]!=0};
     needsRender.store(true); dirtyCV.notify_one();
 }
 
