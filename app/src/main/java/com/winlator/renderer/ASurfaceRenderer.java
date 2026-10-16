@@ -676,7 +676,16 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     private boolean isFullscreenWindow(Window window) {
         if (forceFullscreenWMClass != null) {
             String wc = window.getClassName();
-            return wc != null && wc.contains(forceFullscreenWMClass);
+            return containsIgnoreCase(wc, forceFullscreenWMClass);
+        }
+        return false;
+    }
+
+    private static boolean containsIgnoreCase(String value, String query) {
+        if (value == null || query == null) return false;
+        int queryLength = query.length();
+        for (int i = 0; i <= value.length() - queryLength; i++) {
+            if (value.regionMatches(true, i, query, 0, queryLength)) return true;
         }
         return false;
     }
