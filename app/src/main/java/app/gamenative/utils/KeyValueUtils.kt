@@ -29,7 +29,7 @@ import java.util.Locale
 import timber.log.Timber
 
 // Bumping re-parses the whole SteamApp row from PICS on next login and also triggers the root-override cloud requery.
-const val CURRENT_UFS_PARSE_VERSION = 7
+const val CURRENT_UFS_PARSE_VERSION = 8
 
 /**
  * Extension functions relating to [KeyValue] as the receiver type.
@@ -182,6 +182,7 @@ fun KeyValue.generateSteamApp(): SteamApp {
                     configOS = OS.from(it["config"]["oslist"].value),
                     configArch = OSArch.from(it["config"]["osarch"].value),
                     arguments = it["arguments"].value.orEmpty(),
+                    option = it.name?.toIntOrNull() ?: -1,
                 )
             },
             steamControllerTemplateIndex = this["config"]["steamcontrollertemplateindex"].asInteger(),
