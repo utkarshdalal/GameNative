@@ -213,7 +213,7 @@ object SteamSaveTransfer {
             val userDataPath = Paths.get(userDataRoot)
             val userDataFiles = findPatternFiles(
                 userDataPath,
-                SaveFilePattern(root = PathType.SteamUserData, path = "", pattern = "*", recursive = 5),
+                SaveFilePattern(root = PathType.SteamUserData, path = "", pattern = "*", recursive = true),
             )
             if (userDataFiles.isNotEmpty()) {
                 result += ResolvedSaveRoot(
@@ -261,11 +261,10 @@ object SteamSaveTransfer {
 
     private fun findPatternFiles(basePath: Path, pattern: SaveFilePattern): List<Path> {
         if (!Files.exists(basePath)) return emptyList()
-        val depth = if (pattern.recursive > 0) pattern.recursive else 5
         return FileUtils.findFilesRecursive(
             rootPath = basePath,
             pattern = pattern.pattern,
-            maxDepth = depth,
+            recursive = true,
         )
             .filter { Files.isRegularFile(it) }
             .collect(Collectors.toList())

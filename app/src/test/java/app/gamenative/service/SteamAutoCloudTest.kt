@@ -145,16 +145,19 @@ class SteamAutoCloudTest {
                 root = PathType.WinMyDocuments,
                 path = "My Games/TestGame/Steam/76561198025127569",
                 pattern = "Capture*.sav",
+                recursive = true,
             ),
             SaveFilePattern(
                 root = PathType.WinMyDocuments,
                 path = "My Games/TestGame/Steam/76561198025127569",
                 pattern = "*SaveData*.sav",
+                recursive = true,
             ),
             SaveFilePattern(
                 root = PathType.WinMyDocuments,
                 path = "My Games\\TestGame\\Steam\\76561198025127569",
                 pattern = "SystemData_0.sav",
+                recursive = true,
             ),
         )
 
@@ -910,12 +913,12 @@ class SteamAutoCloudTest {
         subdir5.mkdirs()
         File(subdir5, "level5.sav").writeBytes("level5".toByteArray())
 
-        // Depth 6 (should NOT be found - beyond maxDepth=5)
+        // Depth 6
         val subdir6 = File(subdir5, "subdir6")
         subdir6.mkdirs()
         File(subdir6, "level6.sav").writeBytes("level6".toByteArray())
 
-        // Depth 7 (should NOT be found - beyond maxDepth=5)
+        // Depth 7
         val subdir7 = File(subdir6, "subdir7")
         subdir7.mkdirs()
         File(subdir7, "level7.sav").writeBytes("level7".toByteArray())
@@ -926,6 +929,7 @@ class SteamAutoCloudTest {
                 root = PathType.WinMyDocuments,
                 path = "My Games/TestGame/Steam/76561198025127569",
                 pattern = "*.sav",
+                recursive = true,
             ),
         )
 
@@ -990,12 +994,11 @@ class SteamAutoCloudTest {
             prefixToPath = prefixToPath,
         ).await()
 
-        // Verify result - should find files at depths 0-4 (5 files); depth 5 (subdir5) is
-        // the last directory walked but maxDepth=5 does not recurse into its subdirectories.
+        // Verify result - recursion has no depth limit, so files at depths 0-7 are found
         assertNotNull("Result should not be null", result)
-        assertEquals("Should upload 5 files (depths 0-4, maxDepth=5)", 5, result!!.filesUploaded)
+        assertEquals("Should upload 8 files (depths 0-7)", 8, result!!.filesUploaded)
         assertTrue("Uploads should be completed", result.uploadsCompleted)
-        assertEquals("Should have 5 files managed", 5, result.filesManaged)
+        assertEquals("Should have 8 files managed", 8, result.filesManaged)
 
         // Verify files at depths 0-5 exist
         assertTrue("Level 0 file should exist", File(basePath, "level0.sav").exists())
@@ -1004,10 +1007,8 @@ class SteamAutoCloudTest {
         assertTrue("Level 3 file should exist", File(subdir3, "level3.sav").exists())
         assertTrue("Level 4 file should exist", File(subdir4, "level4.sav").exists())
 
-        // Verify files at depths 6-7 exist on disk but were NOT included in upload
         assertTrue("Level 6 file should exist on disk", File(subdir6, "level6.sav").exists())
         assertTrue("Level 7 file should exist on disk", File(subdir7, "level7.sav").exists())
-        // But they should not be in the managed files count (verified by filesManaged == 6)
     }
 
     @Test
@@ -1563,7 +1564,7 @@ class SteamAutoCloudTest {
                 root = PathType.WinAppDataLocalLow,
                 path = "Two Point Studios/Two Point Museum/Cloud/75264032",
                 pattern = "*",
-                recursive = 1,
+                recursive = true,
                 uploadRoot = PathType.WinAppDataLocalLow,
                 uploadPath = "75264032",
             ),
@@ -1664,7 +1665,7 @@ class SteamAutoCloudTest {
                             root = PathType.WinAppDataLocalLow,
                             path = "Two Point Studios/Two Point Museum/Cloud/75264032",
                             pattern = "*",
-                            recursive = 1,
+                            recursive = true,
                             uploadRoot = PathType.WinAppDataLocalLow,
                             uploadPath = "75264032",
                         ),
@@ -2040,7 +2041,7 @@ class SteamAutoCloudTest {
             val basePath = java.nio.file.Paths.get(prefixToPath(pattern.root.toString()), pattern.substitutedPath)
             if (!java.nio.file.Files.exists(basePath)) return@forEach
 
-            app.gamenative.utils.FileUtils.findFilesRecursive(basePath, pattern.pattern, 5).forEach { filePath ->
+            app.gamenative.utils.FileUtils.findFilesRecursive(basePath, pattern.pattern, true).forEach { filePath ->
                 val relativePath = basePath.relativize(filePath).toString()
                 cachedFiles.add(
                     app.gamenative.data.UserFileInfo(
@@ -3340,5 +3341,78 @@ class SteamAutoCloudTest {
         )
 
         assertNull(resolved)
+    }
+
+    private fun runPatternUploadSync(
+        ufs: UFS,
+        roots: Map<String, File>,
+    ): List<String> = runBlocking {
+        val cn = 5L
+        db.appChangeNumbersDao().deleteByAppId(steamAppId)
+        db.appFileChangeListsDao().deleteByAppId(steamAppId)
+        db.appChangeNumbersDao().insert(app.gamenative.data.ChangeNumbers(steamAppId, cn))
+        db.appFileChangeListsDao().insert(steamAppId, listOf(
+            app.gamenative.data.UserFileInfo(
+                root = PathType.WinMyDocuments,
+                path = "__stale__",
+                filename = "__placeholder__",
+                timestamp = 0L,
+                sha = ByteArray(20) { 0 },
+            )
+        ))
+
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(makeCloudFileChangeList(cn))
+
+        val mockUploadBatchResponse = mock<`in`.dragonbra.javasteam.steam.handlers.steamcloud.AppUploadBatchResponse>()
+        whenever(mockUploadBatchResponse.batchID).thenReturn(1)
+        whenever(mockUploadBatchResponse.appChangeNumber).thenReturn(cn + 1)
+
+        val uploaded = mutableListOf<String>()
+        every {
+            mockSteamCloud.beginAppUploadBatch(any(), any(), any(), any(), any(), any(), any())
+        } answers {
+            @Suppress("UNCHECKED_CAST")
+            uploaded.addAll(args[2] as List<String>)
+            CompletableFuture.completedFuture(mockUploadBatchResponse)
+        }
+
+        val appUnderTest = db.steamAppDao().findApp(steamAppId)!!.copy(ufs = ufs)
+        SteamAutoCloud.syncUserFiles(
+            appInfo = appUnderTest,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.None,
+            prefixToPath = { prefix ->
+                (roots[prefix.removePrefix("%").removeSuffix("%")] ?: File(tempDir, "unmapped")).absolutePath
+            },
+        ).await()
+
+        uploaded.toList()
+    }
+
+    @Test
+    fun scanHonoursRecursiveFlag() {
+        val docs = File(tempDir, "docs")
+        File(docs, "Game/sub").mkdirs()
+        File(docs, "Game/top.sav").writeBytes("top".toByteArray())
+        File(docs, "Game/sub/deep.sav").writeBytes("deep".toByteArray())
+        val roots = mapOf("WinMyDocuments" to docs)
+
+        val flat = runPatternUploadSync(
+            UFS(saveFilePatterns = listOf(SaveFilePattern(PathType.WinMyDocuments, "Game", "*.sav", recursive = false))),
+            roots,
+        )
+        assertEquals(listOf("%WinMyDocuments%Game/top.sav"), flat)
+
+        val deep = runPatternUploadSync(
+            UFS(saveFilePatterns = listOf(SaveFilePattern(PathType.WinMyDocuments, "Game", "*.sav", recursive = true))),
+            roots,
+        )
+        assertEquals(
+            setOf("%WinMyDocuments%Game/top.sav", "%WinMyDocuments%Game/sub/deep.sav"),
+            deep.toSet(),
+        )
     }
 }
