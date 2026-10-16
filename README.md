@@ -71,6 +71,18 @@ If you'd like to chip in, you can support the project on [Ko-fi](https://ko-fi.c
 
 Want to help out? Message us to get into the **#development** channel on [Discord](https://discord.gg/2hKv4VfZfE), or open a thread there. Things we're currently looking for help with live on our [Trello board](https://trello.com/b/vGRkFoAM/open-source-board).
 
+### Fix a game that doesn't work
+
+Every night we publish the list of games that don't run in GameNative, built from real usage data, at [GameNative/gamenative-compat](https://github.com/GameNative/gamenative-compat). Each broken game has [an open issue](https://github.com/GameNative/gamenative-compat/issues?q=is%3Aopen+label%3Adoes-not-work) with the numbers behind it: how many players hit it, what they report, whether the game window ever renders.
+
+If you want to take one on:
+
+1. Pick a game from the list and open its issue. Check the comments to see whether someone is already on it, then leave a comment saying you are taking it.
+2. Work out why it fails. Most fixes land in this repo, in [proton-wine](https://github.com/GameNative/proton-wine), in [FEX](https://github.com/GameNative/FEX), in the GPU driver wrappers or in the per-game config.
+3. Open a pull request in the right repo, then comment on the game's issue with a link to it. Once the fix ships and players start getting the game to run, the issue closes itself.
+
+Own a broken game and want to donate a key so someone can fix it? Email [support@gamenative.app](mailto:support@gamenative.app).
+
 ### Building
 
 Most of the time you don't need this — if you just want to play, grab the release above. This is for contributors.
