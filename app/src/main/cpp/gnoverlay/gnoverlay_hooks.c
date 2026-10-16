@@ -263,6 +263,7 @@ __attribute__((constructor)) static void gnoverlay_ctor(void)
     const char *dbg = getenv("GN_OVERLAY_DEBUG");
     gno_init(&o, getenv("GN_OVERLAY_UPPER"), getenv("GN_OVERLAY_LOWER"), getenv("GN_OVERLAY_ALIASES"),
              dbg && !strcmp(dbg, "1"), getenv("GN_OVERLAY_LOG"));
+    gno_set_hidden(getenv("GN_OVERLAY_HIDE"));
 }
 
 #define RESOLVE(dirfd, path, passexpr, errval)                            \
@@ -682,18 +683,27 @@ EXPORT DIR *fdopendir(int fd)
 EXPORT struct dirent *readdir(DIR *d)
 {
     if (gno_is_dir(d)) return gno_readdir((gno_dir *)d);
-    return R(readdir)(d);
+    struct dirent *e;
+    while ((e = R(readdir)(d)) && gno_hidden_name(e->d_name)) {}
+    return e;
 }
 
 EXPORT struct dirent64 *readdir64(DIR *d)
 {
     if (gno_is_dir(d)) return (struct dirent64 *)gno_readdir((gno_dir *)d);
-    return R(readdir64)(d);
+    struct dirent64 *e;
+    while ((e = R(readdir64)(d)) && gno_hidden_name(e->d_name)) {}
+    return e;
 }
 
 EXPORT int readdir_r(DIR *d, struct dirent *entry, struct dirent **result)
 {
-    if (!gno_is_dir(d)) return R(readdir_r)(d, entry, result);
+    if (!gno_is_dir(d)) {
+        int rc;
+        do rc = R(readdir_r)(d, entry, result);
+        while (rc == 0 && *result && gno_hidden_name((*result)->d_name));
+        return rc;
+    }
     struct dirent *e = gno_readdir((gno_dir *)d);
     if (e) {
         memcpy(entry, e, sizeof(*e));
@@ -706,7 +716,12 @@ EXPORT int readdir_r(DIR *d, struct dirent *entry, struct dirent **result)
 
 EXPORT int readdir64_r(DIR *d, struct dirent64 *entry, struct dirent64 **result)
 {
-    if (!gno_is_dir(d)) return R(readdir64_r)(d, entry, result);
+    if (!gno_is_dir(d)) {
+        int rc;
+        do rc = R(readdir64_r)(d, entry, result);
+        while (rc == 0 && *result && gno_hidden_name((*result)->d_name));
+        return rc;
+    }
     return readdir_r(d, (struct dirent *)entry, (struct dirent **)result);
 }
 
