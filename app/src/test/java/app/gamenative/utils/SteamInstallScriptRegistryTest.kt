@@ -486,6 +486,33 @@ class SteamInstallScriptRegistryTest {
     }
 
     @Test
+    fun writeRedistMarks_reappliesWhenAStampedMarkIsMissing() {
+        val systemReg = File(prefixDir, "system.reg")
+        systemReg.writeText("WINE REGISTRY Version 2\n\n")
+
+        assertTrue(SteamInstallScriptRegistry.writeRedistMarks(prefixDir))
+        assertFalse(SteamInstallScriptRegistry.writeRedistMarks(prefixDir))
+
+        WineRegistryEditor(systemReg).use { editor ->
+            editor.removeValue(
+                "Software\\Wow6432Node\\Valve\\Steam\\Apps\\CommonRedist\\DirectX\\Jun2010",
+                "dxsetup",
+            )
+        }
+
+        assertTrue(SteamInstallScriptRegistry.writeRedistMarks(prefixDir))
+        WineRegistryEditor(systemReg).use { editor ->
+            assertEquals(
+                1,
+                editor.getDwordValue(
+                    "Software\\Wow6432Node\\Valve\\Steam\\Apps\\CommonRedist\\DirectX\\Jun2010",
+                    "dxsetup",
+                ),
+            )
+        }
+    }
+
+    @Test
     fun writeRedistMarks_skipsPrefixWithoutSystemReg() {
         assertFalse(SteamInstallScriptRegistry.writeRedistMarks(prefixDir))
         assertFalse(File(prefixDir, "system.reg").exists())

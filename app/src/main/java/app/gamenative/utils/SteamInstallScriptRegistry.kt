@@ -299,12 +299,14 @@ object SteamInstallScriptRegistry {
 
     internal fun writeRedistMarks(prefixDir: File): Boolean {
         val stamp = File(prefixDir, REDIST_MARKS_STAMP)
-        if (stamp.isFile) return false
         if (!File(prefixDir, "system.reg").isFile) {
             Timber.w("Skipping Steam redistributable marks, no system.reg in ${prefixDir.absolutePath}")
             return false
         }
         val entries = commonRedistMarkEntries()
+        // A wineserver flush can replace system.reg after these values were written. The stamp
+        // records that we attempted the write, but only the registry proves Steam can see it.
+        if (stamp.isFile && allPresent(prefixDir, entries)) return false
         write(prefixDir, entries)
         raiseVcRuntimeVersion(prefixDir, DEFAULT_VC_RUNTIME)
         stamp.createNewFile()
