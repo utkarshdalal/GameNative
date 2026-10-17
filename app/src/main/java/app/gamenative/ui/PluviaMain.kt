@@ -185,7 +185,7 @@ private var workshopUpdateDeferred: CompletableDeferred<Boolean>? = null
 private var steamUpdateDeferred: CompletableDeferred<Boolean>? = null
 
 /** Valve Windows client tree (build 1788652215, 2026-09-03) + headless steam.exe for Real Steam mode; see extractSteamFiles. */
-const val REAL_STEAM_CLIENT_ARCHIVE = "steamhost-20261015.2.tzst"
+const val REAL_STEAM_CLIENT_ARCHIVE = "steamhost-20261017.tzst"
 
 private fun NavHostController.navigateFromLoginIfNeeded(
     targetRoute: String,
