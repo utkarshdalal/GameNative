@@ -43,6 +43,7 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
@@ -3340,5 +3341,180 @@ class SteamAutoCloudTest {
         )
 
         assertNull(resolved)
+    }
+
+    private data class PatternSyncOutcome(
+        val result: PostSyncInfo?,
+        val uploaded: List<String>,
+        val forgotten: List<String>,
+    )
+
+    private fun runPatternUploadSync(
+        ufs: UFS,
+        roots: Map<String, File>,
+        cloudFiles: List<AppFileInfo> = emptyList(),
+        pathPrefixes: List<String> = emptyList(),
+    ): PatternSyncOutcome = runBlocking {
+        val cn = 5L
+        db.appChangeNumbersDao().deleteByAppId(steamAppId)
+        db.appFileChangeListsDao().deleteByAppId(steamAppId)
+        db.appChangeNumbersDao().insert(app.gamenative.data.ChangeNumbers(steamAppId, cn))
+        db.appFileChangeListsDao().insert(steamAppId, listOf(
+            app.gamenative.data.UserFileInfo(
+                root = PathType.WinMyDocuments,
+                path = "__stale__",
+                filename = "__placeholder__",
+                timestamp = 0L,
+                sha = ByteArray(20) { 0 },
+            )
+        ))
+
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(makeCloudFileChangeList(cn, cloudFiles, pathPrefixes))
+
+        val mockUploadBatchResponse = mock<`in`.dragonbra.javasteam.steam.handlers.steamcloud.AppUploadBatchResponse>()
+        whenever(mockUploadBatchResponse.batchID).thenReturn(1)
+        whenever(mockUploadBatchResponse.appChangeNumber).thenReturn(cn + 1)
+
+        val uploaded = mutableListOf<String>()
+        every {
+            mockSteamCloud.beginAppUploadBatch(any(), any(), any(), any(), any(), any(), any())
+        } answers {
+            @Suppress("UNCHECKED_CAST")
+            uploaded.addAll(args[2] as List<String>)
+            CompletableFuture.completedFuture(mockUploadBatchResponse)
+        }
+
+        val forgotten = mutableListOf<String>()
+        mockkObject(SteamAutoCloud)
+        coEvery { SteamAutoCloud.forgetCloudFile(any(), any(), any()) } answers {
+            forgotten.add(thirdArg())
+            true
+        }
+
+        val appUnderTest = db.steamAppDao().findApp(steamAppId)!!.copy(ufs = ufs)
+        val result = try {
+            SteamAutoCloud.syncUserFiles(
+                appInfo = appUnderTest,
+                clientId = clientId,
+                steamInstance = mockSteamService,
+                steamCloud = mockSteamCloud,
+                preferredSave = SaveLocation.None,
+                prefixToPath = { prefix ->
+                    (roots[prefix.removePrefix("%").removeSuffix("%")] ?: File(tempDir, "unmapped")).absolutePath
+                },
+            ).await()
+        } finally {
+            unmockkObject(SteamAutoCloud)
+        }
+
+        PatternSyncOutcome(result, uploaded.toList(), forgotten.toList())
+    }
+
+    @Test
+    fun quotaTrimKeepsNewestFilesAndForgetsOlderCloudCopies() {
+        val docs = File(tempDir, "docs")
+        File(docs, "Game").mkdirs()
+        val now = System.currentTimeMillis()
+        val oldContent = "old-save".toByteArray()
+        listOf("old.sav" to 3_000_000L, "mid.sav" to 2_000_000L, "new.sav" to 1_000_000L).forEach { (name, age) ->
+            val file = File(docs, "Game/$name")
+            file.writeBytes(if (name == "old.sav") oldContent else name.toByteArray())
+            file.setLastModified(now - age)
+        }
+
+        val outcome = runPatternUploadSync(
+            UFS(
+                quota = 1000,
+                maxNumFiles = 2,
+                saveFilePatterns = listOf(SaveFilePattern(PathType.WinMyDocuments, "Game", "*.sav")),
+            ),
+            mapOf("WinMyDocuments" to docs),
+            cloudFiles = listOf(cloudFile("old.sav", oldContent)),
+            pathPrefixes = listOf("%WinMyDocuments%Game/"),
+        )
+
+        assertEquals(setOf("%WinMyDocuments%Game/new.sav", "%WinMyDocuments%Game/mid.sav"), outcome.uploaded.toSet())
+        assertEquals(listOf("%WinMyDocuments%Game/old.sav"), outcome.forgotten)
+        assertTrue("Over-quota file stays on disk", File(docs, "Game/old.sav").exists())
+    }
+
+    @Test
+    fun selectOverQuotaFiles_trimsOldestByByteQuotaAndIgnoresSteamUserData() {
+        fun file(name: String, timestamp: Long, root: PathType = PathType.WinMyDocuments) =
+            app.gamenative.data.UserFileInfo(root, "Game", name, timestamp, ByteArray(20))
+
+        val files = listOf(
+            file("a.sav", 1),
+            file("b.sav", 3),
+            file("c.sav", 2),
+            file("api.dat", 0, PathType.SteamUserData),
+        )
+
+        val overQuota = SteamAutoCloud.selectOverQuotaFiles(files, UFS(quota = 25)) { 10L }
+
+        assertEquals(listOf("a.sav"), overQuota.map { it.filename })
+        assertTrue(SteamAutoCloud.selectOverQuotaFiles(files, UFS()) { 10L }.isEmpty())
+    }
+
+    @Test
+    fun quotaTrimmedFileIsNotCachedAndSurvivesLaterCloudAheadSync() {
+        val docs = File(tempDir, "docs")
+        File(docs, "Game").mkdirs()
+        val now = System.currentTimeMillis()
+        val oldContent = "old-save".toByteArray()
+        val newContent = "new-save".toByteArray()
+        File(docs, "Game/old.sav").apply {
+            writeBytes(oldContent)
+            setLastModified(now - 2_000_000L)
+        }
+        File(docs, "Game/new.sav").apply {
+            writeBytes(newContent)
+            setLastModified(now - 1_000_000L)
+        }
+        val ufs = UFS(
+            maxNumFiles = 1,
+            saveFilePatterns = listOf(SaveFilePattern(PathType.WinMyDocuments, "Game", "*.sav")),
+        )
+        val roots = mapOf("WinMyDocuments" to docs)
+
+        val first = runPatternUploadSync(
+            ufs,
+            roots,
+            cloudFiles = listOf(cloudFile("old.sav", oldContent)),
+            pathPrefixes = listOf("%WinMyDocuments%Game/"),
+        )
+        assertEquals(listOf("%WinMyDocuments%Game/new.sav"), first.uploaded)
+        assertEquals(listOf("%WinMyDocuments%Game/old.sav"), first.forgotten)
+
+        val cached = runBlocking { db.appFileChangeListsDao().getByAppId(steamAppId) }!!.userFileInfo
+        assertEquals(listOf("new.sav"), cached.map { it.filename })
+
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(
+                makeCloudFileChangeList(8L, listOf(cloudFile("new.sav", newContent)), listOf("%WinMyDocuments%Game/")),
+            )
+        stubSingleFileDownload(newContent)
+
+        val second = runBlocking {
+            SteamAutoCloud.syncUserFiles(
+                appInfo = db.steamAppDao().findApp(steamAppId)!!.copy(ufs = ufs),
+                clientId = clientId,
+                steamInstance = mockSteamService,
+                steamCloud = mockSteamCloud,
+                preferredSave = SaveLocation.None,
+                prefixToPath = { prefix ->
+                    (roots[prefix.removePrefix("%").removeSuffix("%")] ?: File(tempDir, "unmapped")).absolutePath
+                },
+            ).await()
+        }
+
+        assertEquals(SyncResult.Success, second!!.syncResult)
+        assertTrue("Over-quota file stays on disk after a cloud-ahead sync", File(docs, "Game/old.sav").exists())
+        assertArrayEquals(oldContent, File(docs, "Game/old.sav").readBytes())
+        assertTrue(File(docs, "Game/new.sav").exists())
+        assertEquals(8L, runBlocking { db.appChangeNumbersDao().getByAppId(steamAppId) }!!.changeNumber)
+        val cachedAfter = runBlocking { db.appFileChangeListsDao().getByAppId(steamAppId) }!!.userFileInfo
+        assertFalse(cachedAfter.any { it.filename == "old.sav" })
     }
 }
