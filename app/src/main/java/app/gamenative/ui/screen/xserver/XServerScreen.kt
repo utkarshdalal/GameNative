@@ -5913,7 +5913,11 @@ private suspend fun extractDXWrapperFiles(
         "dxgi.dll",
         "ddraw.dll",
     )
-    val splitDxWrapper = dxwrapper.split("-")[0]
+    val splitDxWrapper = if (dxwrapper == "cnc-ddraw" || dxwrapper.startsWith("cnc-ddraw-")) {
+        "cnc-ddraw"
+    } else {
+        dxwrapper.substringBefore('-')
+    }
     if (firstTimeBoot && splitDxWrapper != "vkd3d" && !container.isOverlay) cloneOriginalDllFiles(imageFs, *dlls)
     val rootDir = imageFs.getRootDir()
     val windowsDir = File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows")
