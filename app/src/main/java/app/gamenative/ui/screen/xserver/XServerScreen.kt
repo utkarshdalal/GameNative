@@ -6166,7 +6166,6 @@ private suspend fun extractWinComponentFiles(
     return failed
 }
 
-private const val DEFAULT_SPOOFED_GPU = "NVIDIA GeForce GTX 680"
 
 private suspend fun extractGraphicsDriverFiles(
     context: Context,
@@ -6450,11 +6449,12 @@ private suspend fun extractGraphicsDriverFiles(
         envVars.put("WRAPPER_EXTENSION_BLACKLIST", blacklistedExtensions)
 
         val configuredGpuName = graphicsDriverConfig.get("gpuName")
-        val gpuName = if (configuredGpuName == "Device") DEFAULT_SPOOFED_GPU else configuredGpuName
-        if (gpuName != "Device") {
-            envVars.put("WRAPPER_DEVICE_NAME", GPUInformation.getCardNameFromGPUName(context, gpuName))
-            envVars.put("WRAPPER_DEVICE_ID", GPUInformation.getDeviceIdFromGPUName(context, gpuName))
-            envVars.put("WRAPPER_VENDOR_ID", GPUInformation.getVendorIdFromGPUName(context, gpuName))
+        val gpuVendorId = GPUInformation.getVendorIdFromGPUName(context, configuredGpuName)
+        val gpuDeviceId = GPUInformation.getDeviceIdFromGPUName(context, configuredGpuName)
+        if (gpuVendorId.isNotEmpty() && gpuVendorId != "0" && gpuDeviceId.isNotEmpty() && gpuDeviceId != "0") {
+            envVars.put("WRAPPER_DEVICE_NAME", GPUInformation.getCardNameFromGPUName(context, configuredGpuName))
+            envVars.put("WRAPPER_DEVICE_ID", gpuDeviceId)
+            envVars.put("WRAPPER_VENDOR_ID", gpuVendorId)
         }
 
         val maxDeviceMemory: String? = graphicsDriverConfig.get("maxDeviceMemory", "0")

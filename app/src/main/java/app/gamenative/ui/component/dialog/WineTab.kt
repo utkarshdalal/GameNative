@@ -20,6 +20,7 @@ fun WineTabContent(state: ContainerConfigState) {
         SettingsListDropdownSearchable(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.renderer)) },
+            subtitle = { Text(text = stringResource(R.string.gpu_override_warning)) },
             value = state.gpuNameIndex.value,
             items = state.gpuCards.values.map { it.name },
             onItemSelected = {
