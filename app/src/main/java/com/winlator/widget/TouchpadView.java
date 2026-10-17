@@ -29,6 +29,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class TouchpadView extends View implements View.OnCapturedPointerListener {
     private static final byte MAX_FINGERS = 4;
@@ -73,6 +75,12 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private boolean pressExecuted;
     private final boolean capturePointerOnExternalMouse;
     private boolean pointerCaptureRequested;
+    private final Object capturedPointerMoveLock = new Object();
+    private ExecutorService capturedPointerMoveExecutor;
+    private int pendingCapturedPointerDx;
+    private int pendingCapturedPointerDy;
+    private boolean capturedPointerMoveQueued;
+    private int capturedPointerMoveGeneration;
 
     // Suppress spurious left-click after two-finger right-click tap
     private boolean suppressNextLeftTap;
@@ -231,7 +239,32 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         // state. Avoids leaking pressed buttons/keys when the view is removed
         // mid-gesture (e.g., game exit while a hold is active).
         cancelTouchInput();
+        synchronized (capturedPointerMoveLock) {
+            capturedPointerMoveGeneration++;
+            pendingCapturedPointerDx = 0;
+            pendingCapturedPointerDy = 0;
+            capturedPointerMoveQueued = false;
+            if (capturedPointerMoveExecutor != null) {
+                capturedPointerMoveExecutor.shutdownNow();
+                capturedPointerMoveExecutor = null;
+            }
+        }
         super.onDetachedFromWindow();
+    }
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        synchronized (capturedPointerMoveLock) {
+            capturedPointerMoveGeneration++;
+            if (capturedPointerMoveExecutor == null || capturedPointerMoveExecutor.isShutdown()) {
+                capturedPointerMoveExecutor = Executors.newSingleThreadExecutor(runnable -> {
+                    Thread thread = new Thread(runnable, "CapturedPointerMove");
+                    thread.setDaemon(true);
+                    return thread;
+                });
+            }
+        }
     }
 
     // Left/right click drag tracking
@@ -2264,10 +2297,14 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     }
 
     public boolean onExternalMouseEvent(MotionEvent event) {
+        if (!event.isFromSource(InputDevice.SOURCE_MOUSE)) return false;
+        return handleExternalMouseAction(event.getAction(), event.getActionButton(),
+                event.getAxisValue(MotionEvent.AXIS_VSCROLL));
+    }
+
+    private boolean handleExternalMouseAction(int action, int actionButton, float scrollY) {
         boolean handled = false;
-        if (event.isFromSource(InputDevice.SOURCE_MOUSE)) {
-            int actionButton = event.getActionButton();
-            switch (event.getAction()) {
+            switch (action) {
                 case MotionEvent.ACTION_BUTTON_PRESS:
                     if (actionButton == MotionEvent.BUTTON_PRIMARY) {
                         if (xServer.isRelativeMouseMovement())
@@ -2307,7 +2344,6 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                     handled = true;
                     break;
                 case MotionEvent.ACTION_SCROLL:
-                    float scrollY = event.getAxisValue(MotionEvent.AXIS_VSCROLL);
                     if (scrollY <= -1.0f) {
                         if (xServer.isRelativeMouseMovement())
                             xServer.getWinHandler().mouseEvent(MouseEventFlags.WHEEL, 0, 0, (int)scrollY);
@@ -2326,7 +2362,6 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                     handled = true;
                     break;
             }
-        }
         return handled;
     }
 
@@ -2361,11 +2396,76 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
             dx += event.getAxisValue(MotionEvent.AXIS_RELATIVE_X);
             dy += event.getAxisValue(MotionEvent.AXIS_RELATIVE_Y);
-            this.xServer.injectPointerMoveDelta(Mathf.roundPoint(dx), Mathf.roundPoint(dy));
+            enqueueCapturedPointerMove(Mathf.roundPoint(dx), Mathf.roundPoint(dy));
             return true;
         }
         event.setSource(event.getSource() | InputDevice.SOURCE_MOUSE);
+        final int action = event.getAction();
+        if (action == MotionEvent.ACTION_BUTTON_PRESS ||
+            action == MotionEvent.ACTION_BUTTON_RELEASE ||
+            action == MotionEvent.ACTION_SCROLL) {
+            enqueueCapturedPointerAction(action, event.getActionButton(),
+                    event.getAxisValue(MotionEvent.AXIS_VSCROLL));
+            return true;
+        }
         return onExternalMouseEvent(event);
+    }
+
+    private void enqueueCapturedPointerAction(int action, int actionButton, float scrollY) {
+        synchronized (capturedPointerMoveLock) {
+            if (capturedPointerMoveExecutor == null || capturedPointerMoveExecutor.isShutdown()) return;
+
+            final int generation = capturedPointerMoveGeneration;
+            capturedPointerMoveExecutor.execute(() -> {
+                synchronized (capturedPointerMoveLock) {
+                    if (generation != capturedPointerMoveGeneration) return;
+                }
+                handleExternalMouseAction(action, actionButton, scrollY);
+            });
+        }
+    }
+
+    private void enqueueCapturedPointerMove(int dx, int dy) {
+        if (dx == 0 && dy == 0) return;
+
+        synchronized (capturedPointerMoveLock) {
+            if (capturedPointerMoveExecutor == null || capturedPointerMoveExecutor.isShutdown()) return;
+
+            pendingCapturedPointerDx += dx;
+            pendingCapturedPointerDy += dy;
+            if (capturedPointerMoveQueued) return;
+
+            capturedPointerMoveQueued = true;
+            final int generation = capturedPointerMoveGeneration;
+            capturedPointerMoveExecutor.execute(() -> drainCapturedPointerMoves(generation));
+        }
+    }
+
+    private void drainCapturedPointerMoves(int generation) {
+        final int dx;
+        final int dy;
+        synchronized (capturedPointerMoveLock) {
+            if (generation != capturedPointerMoveGeneration) return;
+            dx = pendingCapturedPointerDx;
+            dy = pendingCapturedPointerDy;
+            pendingCapturedPointerDx = 0;
+            pendingCapturedPointerDy = 0;
+        }
+
+        // XOutputStream flushes to a blocking AF_UNIX socket. Keep that
+        // write off Android's input thread and coalesce motion while the
+        // X client is temporarily not consuming events.
+        xServer.injectPointerMoveDelta(dx, dy);
+
+        synchronized (capturedPointerMoveLock) {
+            if (generation != capturedPointerMoveGeneration) return;
+            if (pendingCapturedPointerDx != 0 || pendingCapturedPointerDy != 0) {
+                capturedPointerMoveExecutor.execute(() -> drainCapturedPointerMoves(generation));
+            }
+            else {
+                capturedPointerMoveQueued = false;
+            }
+        }
     }
 
     public void setSimTouchScreen(boolean simTouchScreen) {
