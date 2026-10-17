@@ -1,5 +1,7 @@
 package app.gamenative.powercontrol
 
+import app.gamenative.powercontrol.drivers.PServerDriver.CpuCluster
+
 sealed class PowerControlUiState {
     object Loading : PowerControlUiState()
     data class Success(
@@ -8,7 +10,20 @@ sealed class PowerControlUiState {
         val cpuInfo: CpuDisplayInfo?,
         val gpuInfo: GpuDisplayInfo?,
         val ramInfo: RamDisplayInfo?,
+        val cpuTopology: CpuTopologyDisplayInfo? = null,
     ) : PowerControlUiState()
+}
+
+/** Discovered CPU cores per cluster, for the colored Manual pinning checkboxes. */
+data class CpuTopologyDisplayInfo(val coresByCluster: Map<CpuCluster, List<Int>>) {
+    /** Clusters the device has, efficiency first. */
+    val presentClusters: List<CpuCluster> = CpuCluster.entries.filter { !coresByCluster[it].isNullOrEmpty() }
+
+    /** Every core, in index order for display. */
+    val cores: List<Int> = coresByCluster.values.flatten().sorted()
+
+    val clusterByCore: Map<Int, CpuCluster> =
+        coresByCluster.flatMap { (cluster, clusterCores) -> clusterCores.map { it to cluster } }.toMap()
 }
 
 data class CpuDisplayInfo(

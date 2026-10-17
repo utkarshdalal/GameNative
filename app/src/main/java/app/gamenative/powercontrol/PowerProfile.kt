@@ -15,15 +15,29 @@ enum class AutoTuningStrategy(@param:StringRes val displayNameRes: Int, @param:S
     CONSERVATIVE(R.string.power_control_strategy_conservative, R.string.power_control_strategy_conservative_desc)
 }
 
+enum class GamePinningMode(@param:StringRes val displayNameRes: Int, @param:StringRes val descriptionRes: Int) {
+    AUTO(R.string.power_control_game_pinning_mode_auto, R.string.power_control_game_pinning_mode_auto_desc),
+    MANUAL(R.string.power_control_game_pinning_mode_manual, R.string.power_control_game_pinning_mode_manual_desc),
+    OFF(R.string.power_control_game_pinning_mode_off, R.string.power_control_game_pinning_mode_off_desc)
+}
+
+enum class AutoTuningMode(@param:StringRes val displayNameRes: Int, @param:StringRes val descriptionRes: Int) {
+    AUTO(R.string.power_control_auto_tuning_mode_auto, R.string.power_control_auto_tuning_mode_auto_desc),
+    MANUAL(R.string.power_control_auto_tuning_mode_manual, R.string.power_control_auto_tuning_mode_manual_desc),
+    OFF(R.string.power_control_auto_tuning_mode_off, R.string.power_control_auto_tuning_mode_off_desc)
+}
+
 @Serializable
 data class PowerProfile(
     var enablePowerControl: Boolean = PrefManager.powerControlDefaultEnabled,
     var adaptiveFpsCapEnabled: Boolean = DeviceGate.isDeviceSupported(),
-    var enableAutoTuning: Boolean = false,
+    var autoTuningMode: AutoTuningMode = AutoTuningMode.AUTO,
     var enablePerClusterTuning: Boolean = false,
     var tuningStrategy: AutoTuningStrategy = AutoTuningStrategy.BALANCED,
     var enableFanControl: Boolean = false,
-    var enableGamePinning: Boolean = false,
+    var gamePinningMode: GamePinningMode = GamePinningMode.AUTO,
+    var manualGamePinCores: String = "",
+    var manualBackgroundPinCores: String = "",
     var name: String,
     var governor: CpuGovernor,
     var minCpuFreq: Long,
@@ -94,7 +108,7 @@ object PowerProfiles {
 
         // Use Driver default profile and fill default values, for default profiles, automatic updates are disabled
         val defaultProfile = PowerManager.getDriverDefaultProfile().copy(
-            enableAutoTuning = false,
+            autoTuningMode = AutoTuningMode.MANUAL,
             enablePerClusterTuning = false,
         )
 

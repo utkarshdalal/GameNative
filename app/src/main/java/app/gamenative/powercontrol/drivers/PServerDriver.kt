@@ -6,6 +6,8 @@ import android.os.DeadObjectException
 import android.os.IBinder
 import android.os.Parcel
 import app.gamenative.PrefManager
+import app.gamenative.powercontrol.AutoTuningMode
+import app.gamenative.powercontrol.GamePinningMode
 import app.gamenative.powercontrol.PowerBaseline
 import app.gamenative.powercontrol.PowerBaselineEntry
 import app.gamenative.powercontrol.PowerBaselineScripts
@@ -28,6 +30,12 @@ import java.util.concurrent.Executors
 class PServerDriver(private val context: Context? = null) : PerformanceDriver() {
 
     companion object {
+        /** Thread IDs per `taskset` command, so it stays short enough for PServer. */
+        private const val TASKSET_TIDS_PER_COMMAND = 12
+
+        /** How long start() waits for a pending stop() cleanup. */
+        private const val STOP_JOIN_TIMEOUT_MS = 2000L
+
         private const val TAG = "PServerDriver"
         private const val POWER_TAG = "PowerControl"
         private const val FAN_TAG = "PowerFan"
@@ -303,7 +311,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
                 Timber.tag(TAG).e("Failed to execute batch script: ${execResult.exceptionOrNull()?.message}")
             } else {
                 // When using auto-tuning, this log can spam around, suppress it
-                if (PowerManager.currentProfile?.enableAutoTuning == false) {
+                if (PowerManager.currentProfile?.autoTuningMode != AutoTuningMode.AUTO) {
                     Timber.tag(TAG).d("Successfully executed ${batchCommands.size} batched commands")
                 }
             }
@@ -337,11 +345,18 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
      * Validates CPU frequency scaling support and discovers CPU policies.
      */
     override fun start() {
-        // Interrupt any ongoing stop() cleanup to prevent executor shutdown race
+        // Wait for a pending stop() cleanup: past its restore, an interrupt no longer keeps it from clearing the new baseline.
         stopThread?.let { thread ->
             if (thread.isAlive) {
-                Timber.tag(TAG).d("Interrupting previous stop() cleanup thread")
-                thread.interrupt()
+                try {
+                    thread.join(STOP_JOIN_TIMEOUT_MS)
+                } catch (_: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                }
+                if (thread.isAlive) {
+                    Timber.tag(TAG).w("Previous stop() cleanup still running after ${STOP_JOIN_TIMEOUT_MS}ms, interrupting it")
+                    thread.interrupt()
+                }
             }
         }
         stopThread = null
@@ -372,9 +387,12 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
                     return@Thread
                 }
 
+                // Released explicitly too, in case the session has no baseline.
+                runCatching { holdCoresActive(emptyList()) }
                 val restored = restoreRecordedBaseline()
 
                 if (restored) {
+                    synchronized(this) { heldCoreCtl.clear() }
                     killBabysitter()
                     deleteBaselineArtifacts()
                     sessionBaseline = null
@@ -492,7 +510,8 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     }
 
     private fun readBaselineEntries(): List<PowerBaselineEntry> {
-        val paths = baselinePaths()
+        // core_ctl min_cpus rides along, so a crash can't leave a cluster held active.
+        val paths = baselinePaths() + coreCtlMinPaths().values
         if (paths.isEmpty()) return emptyList()
 
         val output = executeAsRoot(PowerBaselineScripts.buildReadCommand(paths)).getOrNull()
@@ -664,6 +683,37 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         Timber.tag(POWER_TAG).i(
             "Clean restore executed: ${if (success) "success" else "failure"} " +
                 "(entries=${sessionBaseline?.entries?.size ?: 0}, extraFiles=${modifiedSysfsFiles.size}, script=$scriptPath)"
+        )
+        return success
+    }
+
+    /**
+     * Restores CPU governor/min/max and GPU min/max power level to their baseline, writable
+     * again; does not touch pinning, fan control, or the rest of the baseline ([stop] still does).
+     */
+    override fun releaseFrequencyControl(): Boolean {
+        val baseline = sessionBaseline
+        if (baseline == null) {
+            Timber.tag(POWER_TAG).w("No session baseline recorded, cannot release frequency control")
+            return false
+        }
+
+        val relevantPaths = baselinePaths().toSet()
+        val entries = baseline.entries.filter { it.path in relevantPaths }
+        if (entries.isEmpty()) {
+            Timber.tag(POWER_TAG).w("Baseline has no CPU/GPU frequency entries to release")
+            return false
+        }
+
+        beginUpdate()
+        for (entry in entries) {
+            batchCommands.add("echo '${entry.value}' > '${entry.path}'")
+            batchFilePaths.add(entry.path)
+        }
+
+        val success = commitInternal(skipPermissionLock = true)
+        Timber.tag(POWER_TAG).i(
+            "Released CPU/GPU frequency control back to the OS: ${if (success) "success" else "failure"} (${entries.size} paths)"
         )
         return success
     }
@@ -1303,9 +1353,9 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         val defaultProfile = PowerProfile(
             enablePowerControl = PrefManager.powerControlDefaultEnabled,
             adaptiveFpsCapEnabled = isTestedDevice,
-            enableAutoTuning = isTestedDevice,
+            autoTuningMode = if (isTestedDevice) AutoTuningMode.AUTO else AutoTuningMode.MANUAL,
             enablePerClusterTuning = isTestedDevice,
-            enableGamePinning = isTestedDevice,
+            gamePinningMode = if (isTestedDevice) GamePinningMode.AUTO else GamePinningMode.OFF,
             enableFanControl = isTestedDevice,
             name = PerformancePreset.BALANCED.displayName,
             governor = CpuGovernor.SCHEDUTIL,
@@ -1571,14 +1621,22 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         return cpuClusters.size
     }
 
+    /** Every discovered core, efficiency cluster first; empty when cluster discovery failed. */
+    fun getAllCpuCores(): List<Int> = CpuCluster.entries.flatMap { getCpuCoresByCluster(it) }
+
+    /** Discovered cores per cluster, only the clusters this device has; empty when discovery failed. */
+    fun getCpuClusters(): Map<CpuCluster, List<Int>> = cpuClusters.filterValues { it.isNotEmpty() }
+
     /**
      * Pin a process to specific CPU cores using taskset.
      *
      * @param pid Process ID to pin
      * @param cpuMask CPU affinity mask (e.g., "0xff" for CPUs 0-7, "0x80" for CPU 7 only)
+     * @param allThreads Every thread of the process instead of just the one [pid] names
      * @return true if successful
      */
-    fun setCpuAffinity(pid: Int, cpuMask: String): Boolean {
+    fun setCpuAffinity(pid: Int, cpuMask: String, allThreads: Boolean = false): Boolean {
+        if (allThreads) return setThreadsAffinity(pid, cpuMask)
         return try {
             val command = "taskset -p $cpuMask $pid"
             val result = executeAsRoot(command)
@@ -1597,13 +1655,96 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     }
 
     /**
+     * Every thread of [pid], one `taskset -p` per thread: `taskset -a` run through PServer only reaches the main
+     * thread. The thread list comes from this side, since the process runs under the app's UID, and goes out in
+     * chunks, since PServer drops a long command without a word. True only when every chunk ran and no thread was
+     * refused.
+     */
+    private fun setThreadsAffinity(pid: Int, cpuMask: String): Boolean {
+        val tids = File("/proc/$pid/task").list()?.mapNotNull { it.toIntOrNull() }.orEmpty().ifEmpty { listOf(pid) }
+        val failures = ArrayList<String>()
+        for (chunk in tids.chunked(TASKSET_TIDS_PER_COMMAND)) {
+            val command = "for t in ${chunk.joinToString(" ")}; do " +
+                "r=\$(taskset -p $cpuMask \$t 2>&1) || echo \"fail \$t \$r\"; done; echo done"
+            val result = executeAsRoot(command)
+            val output = result.getOrNull().orEmpty()
+            if (result.isFailure || !output.lines().any { it.trim() == "done" }) {
+                val reason = result.exceptionOrNull()?.message ?: output.take(200)
+                Timber.tag(TAG).e("taskset over ${chunk.size} threads of PID $pid didn't run (${command.length} chars): $reason")
+                return false
+            }
+            // A thread that exited since the list was read isn't a refusal.
+            failures += output.lines().filter { it.startsWith("fail ") && !it.contains("No such process") }
+        }
+        if (failures.isEmpty()) {
+            Timber.tag(TAG).i("Set CPU affinity for PID $pid (${tids.size} threads) to mask $cpuMask")
+            return true
+        }
+        Timber.tag(TAG).w(
+            "taskset refused ${failures.size} of ${tids.size} threads of PID $pid for mask $cpuMask: " +
+                failures.take(3).joinToString(" | ").take(300)
+        )
+        return false
+    }
+
+    /** core_ctl `min_cpus` of each cluster that has one, keyed by the cluster's policy. */
+    private fun coreCtlMinPaths(): Map<CpuPolicy, String> = cpuPolicies
+        .associateWith { "/sys/devices/system/cpu/cpu${it.cpuCores.minOrNull() ?: 0}/core_ctl/min_cpus" }
+        .filterValues { File(it).exists() }
+
+    /** Original `min_cpus` of the clusters [holdCoresActive] raised, by path. */
+    private val heldCoreCtl = HashMap<String, String>()
+
+    /**
+     * Keeps Qualcomm core_ctl from pausing all of [cores] at once: pausing a CPU resets every thread allowed only
+     * paused CPUs to all of them, which undoes a pin. When core_ctl could pause every one of [cores] (each cluster's
+     * share is at most its size minus `min_cpus`), `min_cpus` of the clusters holding them is raised to their size;
+     * otherwise, and for an empty [cores], every raised value goes back. The session baseline restores it too.
+     * @return the changes made, for the log, or null when nothing changed
+     */
+    @Synchronized
+    fun holdCoresActive(cores: Collection<Int>): String? {
+        val paths = coreCtlMinPaths()
+        if (paths.isEmpty()) return null
+        val original = paths.mapValues { (_, path) ->
+            (heldCoreCtl[path] ?: readSysfsFile(path)?.trim())?.toIntOrNull()
+        }
+        val wanted = cores.toSet()
+        // One game core core_ctl can never pause is enough to keep the pin.
+        val alwaysActive = paths.keys.any { policy ->
+            val min = original[policy] ?: return@any false
+            policy.cpuCores.count { it in wanted } > policy.cpuCores.size - min
+        }
+        val hold = if (wanted.isEmpty() || alwaysActive) {
+            emptySet()
+        } else {
+            paths.keys.filter { policy -> policy.cpuCores.any { it in wanted } }.toSet()
+        }
+        val changes = ArrayList<String>()
+        for ((policy, path) in paths) {
+            val min = original[policy] ?: continue
+            val target = if (policy in hold) policy.cpuCores.size else min
+            val current = readSysfsFile(path)?.trim()?.toIntOrNull()
+            if (current == target) continue
+            if (executeAsRoot("echo $target > '$path'").isFailure) {
+                changes += "cpu${policy.cpuCores.minOrNull()} min_cpus $current->$target failed"
+                continue
+            }
+            if (policy in hold) heldCoreCtl.getOrPut(path) { min.toString() } else heldCoreCtl.remove(path)
+            changes += "cpu${policy.cpuCores.minOrNull()} min_cpus $current->$target"
+        }
+        return changes.takeIf { it.isNotEmpty() }?.joinToString(prefix = "core_ctl: ")
+    }
+
+    /**
      * Pin a process to specific CPU cores by core list.
      *
      * @param pid Process ID to pin
      * @param cpuList List of CPU core numbers (e.g., listOf(3, 4, 5, 6, 7))
+     * @param allThreads Every thread of the process instead of just the one [pid] names
      * @return true if successful
      */
-    fun setCpuAffinityByCores(pid: Int, cpuList: List<Int>): Boolean {
+    fun setCpuAffinityByCores(pid: Int, cpuList: List<Int>, allThreads: Boolean = false): Boolean {
         if (cpuList.isEmpty()) {
             Timber.tag(TAG).w("Empty CPU list provided")
             return false
@@ -1614,7 +1755,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         val mask = cpuList.fold(0) { acc, cpu -> acc or (1 shl cpu) }
         val hexMask = getTasksetMask(mask)
 
-        return setCpuAffinity(pid, hexMask)
+        return setCpuAffinity(pid, hexMask, allThreads)
     }
 
     /**
