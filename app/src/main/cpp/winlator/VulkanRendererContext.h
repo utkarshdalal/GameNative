@@ -166,7 +166,8 @@ public:
     void updateWindowContentAHB(int64_t id, AHardwareBuffer* ahb, short w, short h, int x, int y);
     void updateCursorImage(void* pixels, short w, short h, short hotX, short hotY);
     void setCursorVisible(bool visible);
-    void setRenderList(const int64_t* ids, const int* xs, const int* ys, int count);
+    void setRenderList(const int64_t* ids, const int* xs, const int* ys,
+        const uint8_t* forceFullscreen, int count);
     void removeWindow(int64_t id);
     void clearBackbuffer() {}
     void beginBatch() {}
@@ -225,12 +226,13 @@ private:
         AHardwareBuffer*     ahb            = nullptr;
     };
 
-    struct RenderEntry { int64_t id; int x, y; };
+    struct RenderEntry { int64_t id; int x, y; bool forceFullscreen; };
     struct DrawEntry {
         VkImage         img            = VK_NULL_HANDLE;
         VkDescriptorSet ds             = VK_NULL_HANDLE;
         VkBuffer        upload         = VK_NULL_HANDLE;
         int             x=0, y=0, w=0, h=0;
+        int             dstX=0, dstY=0, dstW=0, dstH=0;
         bool            needsTransition = false;
         bool            isAHB          = false;
     };
