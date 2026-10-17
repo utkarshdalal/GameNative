@@ -15,6 +15,7 @@ import timber.log.Timber;
 
 import com.winlator.core.AppUtils;
 import com.winlator.inputcontrols.Binding;
+import com.winlator.inputcontrols.ControlsProfile;
 import com.winlator.math.Mathf;
 import com.winlator.math.XForm;
 import com.winlator.renderer.ViewTransformation;
@@ -243,7 +244,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         this.capturePointerOnExternalMouse = capturePointerOnExternalMouse;
         this.fingers = new Finger[4];
         this.numFingers = (byte) 0;
-        this.sensitivity = 1.0f;
+        this.sensitivity = ControlsProfile.DEFAULT_CURSOR_SPEED;
         this.pointerButtonLeftEnabled = true;
         this.pointerButtonRightEnabled = true;
         this.moveCursorToTouchpoint = false;

@@ -102,6 +102,7 @@ import app.gamenative.R
 import app.gamenative.data.GyroSettings
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.ui.component.dialog.GyroSettingsDialog
+import app.gamenative.ui.component.dialog.OnScreenControllerSettingsDialog
 import app.gamenative.ui.component.dialog.ControlProfileLibraryDialog
 import app.gamenative.ui.component.quickMenus.PowerControlQuickMenuTab
 import app.gamenative.ui.data.PerformanceHudConfig
@@ -110,6 +111,7 @@ import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.adaptivePanelWidth
 import app.gamenative.utils.MathUtils.normalizedProgress
 import com.winlator.container.Container
+import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.renderer.GLRenderer
 import com.winlator.renderer.VulkanRenderer
 import com.winlator.winhandler.ProcessInfo
@@ -552,6 +554,9 @@ fun QuickMenu(
     // broken D8 codegen path).
     val inviteMenu = remember(container?.id) { SteamInviteState.createIfAvailable(container) }
     var showGyroSettingsDialog by rememberSaveable(container?.id) { mutableStateOf(false) }
+    var onScreenControllerSettingsProfile by remember(container?.id) {
+        mutableStateOf<ControlsProfile?>(null)
+    }
     var showControlProfiles by rememberSaveable(container?.id) { mutableStateOf(false) }
     var lastControllerFocusRequester by remember(container?.id) { mutableStateOf<FocusRequester?>(null) }
     var controlProfileReturnFocusRequester by remember(container?.id) { mutableStateOf<FocusRequester?>(null) }
@@ -1135,7 +1140,9 @@ fun QuickMenu(
                                                     },
                                                     focusRequester = if (index == 0) controllerItemFocusRequester else null,
                                                     onFocused = { lastControllerFocusRequester = it },
-                                                    secondaryIcon = if (item.id == QuickMenuAction.EDIT_PHYSICAL_CONTROLLER)
+                                                    secondaryIcon = if (item.id == QuickMenuAction.INPUT_CONTROLS && item.id in activeToggleIds)
+                                                        Icons.Default.Settings
+                                                    else if (item.id == QuickMenuAction.EDIT_PHYSICAL_CONTROLLER)
                                                         Icons.Default.Settings
                                                     else if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && touchscreenEnabled)
                                                         Icons.Default.Settings
@@ -1144,7 +1151,9 @@ fun QuickMenu(
                                                     else if (item.id == QuickMenuAction.GYRO && gyroEnabled)
                                                         Icons.Default.Settings
                                                     else null,
-                                                    secondaryContentDescriptionResId = if (item.id == QuickMenuAction.EDIT_PHYSICAL_CONTROLLER)
+                                                    secondaryContentDescriptionResId = if (item.id == QuickMenuAction.INPUT_CONTROLS && item.id in activeToggleIds)
+                                                        R.string.on_screen_controller_settings
+                                                    else if (item.id == QuickMenuAction.EDIT_PHYSICAL_CONTROLLER)
                                                         R.string.physical_controller_settings_title
                                                     else if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && touchscreenEnabled)
                                                         R.string.gesture_settings_title
@@ -1153,7 +1162,9 @@ fun QuickMenu(
                                                     else if (item.id == QuickMenuAction.GYRO && gyroEnabled)
                                                         R.string.gyro_settings_title
                                                     else null,
-                                                    onSecondaryClick = if (item.id == QuickMenuAction.EDIT_PHYSICAL_CONTROLLER)
+                                                    onSecondaryClick = if (item.id == QuickMenuAction.INPUT_CONTROLS && item.id in activeToggleIds)
+                                                        ({ onScreenControllerSettingsProfile = PluviaApp.inputControlsView?.profile })
+                                                    else if (item.id == QuickMenuAction.EDIT_PHYSICAL_CONTROLLER)
                                                         ({ onItemSelected(QuickMenuAction.PHYSICAL_CONTROLLER_SETTINGS) })
                                                     else if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && touchscreenEnabled)
                                                         onTouchGestureSettingsClick
@@ -1192,6 +1203,19 @@ fun QuickMenu(
                 gyroMenu.persistSettings(settings)
                 showGyroSettingsDialog = false
                 if (onItemSelected(QuickMenuAction.EDIT_CONTROLS)) onDismiss()
+            },
+        )
+    }
+
+    onScreenControllerSettingsProfile?.let { profile ->
+        OnScreenControllerSettingsDialog(
+            initialCursorSpeed = profile.cursorSpeed,
+            onDismiss = { onScreenControllerSettingsProfile = null },
+            onSave = { speed ->
+                profile.cursorSpeed = speed
+                profile.save()
+                PluviaApp.touchpadView?.setSensitivity(profile.cursorSpeed)
+                onScreenControllerSettingsProfile = null
             },
         )
     }

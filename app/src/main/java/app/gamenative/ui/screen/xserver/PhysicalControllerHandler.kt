@@ -365,7 +365,7 @@ class PhysicalControllerHandler(
                         if (mouseMoveOffset.x == 0f && mouseMoveOffset.y == 0f) return@synchronized
 
                         // Look up cursor speed dynamically so it updates when profile changes
-                        val cursorSpeed = profile?.cursorSpeed ?: 1f
+                        val cursorSpeed = profile?.cursorSpeed ?: ControlsProfile.DEFAULT_CURSOR_SPEED
                         val scaledX = mouseMoveOffset.x * 10 * cursorSpeed + mouseMoveRemainder.x
                         val scaledY = mouseMoveOffset.y * 10 * cursorSpeed + mouseMoveRemainder.y
                         val deltaX = scaledX.toInt()
