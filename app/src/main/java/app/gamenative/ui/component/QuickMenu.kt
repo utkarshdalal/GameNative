@@ -1251,7 +1251,16 @@ fun QuickMenu(
                     when (selectedTab) {
                         QuickMenuTab.HUD -> hudItemFocusRequester.requestFocus()
                         QuickMenuTab.LSFG -> lsfgItemFocusRequester.requestFocus()
-                        QuickMenuTab.INVITE -> inviteItemFocusRequester.requestFocus()
+                        QuickMenuTab.INVITE -> {
+                            // The invite list starts empty while Steam refreshes it, so the item
+                            // requester is not attached to a row yet. Keep focus on the attached
+                            // tab button until there is a friend row to receive it.
+                            if (inviteMenu?.friends?.isNotEmpty() == true) {
+                                inviteItemFocusRequester.requestFocus()
+                            } else {
+                                inviteTabFocusRequester.requestFocus()
+                            }
+                        }
                         QuickMenuTab.EFFECTS -> effectsItemFocusRequester.requestFocus()
                         QuickMenuTab.POWER -> powerItemFocusRequester.requestFocus()
                         QuickMenuTab.TOOLS -> toolsItemFocusRequester.requestFocus()
