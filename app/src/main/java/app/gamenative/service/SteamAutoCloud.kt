@@ -208,11 +208,7 @@ object SteamAutoCloud {
             .filter { it.uploadPath != it.path }
             .flatMap { p ->
                 val localPath = Paths.get(prefixToPath(p.root.name), p.substitutedPath).pathString
-                val cloudPath = p.uploadPath
-                    .replace("\\", "/")
-                    .replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
-                    .replace("{Steam3AccountID}", SteamUtils.getSteam3AccountId().toString())
-                    .trim('/')
+                val cloudPath = SteamUtils.substituteSteamIdPlaceholders(p.uploadPath.replace("\\", "/")).trim('/')
                 val cloudRoot = "%${p.uploadRoot.name}%"
                 val cloudPrefixes = if (cloudPath.isBlank()) {
                     listOf(cloudRoot)
@@ -1427,8 +1423,7 @@ object SteamAutoCloud {
                     fileInfo.filename
                 } else {
                     "${fileInfo.cloudPath}/${fileInfo.filename}".replace("\\", "/")
-                }.replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
-                    .replace("{Steam3AccountID}", SteamUtils.getSteam3AccountId().toString())
+                }.let { SteamUtils.substituteSteamIdPlaceholders(it) }
             }.forEach { fileInfo ->
                 val fileSize = try {
                     Files.size(fileInfo.getAbsPath(prefixToPath))
@@ -1444,8 +1439,7 @@ object SteamAutoCloud {
                     fileInfo.filename
                 } else {
                     "${fileInfo.cloudPath}/${fileInfo.filename}".replace("\\", "/")
-                }.replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
-                    .replace("{Steam3AccountID}", SteamUtils.getSteam3AccountId().toString())
+                }.let { SteamUtils.substituteSteamIdPlaceholders(it) }
 
                 val fileEntry = KeyValue(cloudFilePath)
                 fileEntry.children.add(KeyValue("root", "0"))
