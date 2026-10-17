@@ -195,7 +195,7 @@ object IntentLaunchManager {
         return issues
     }
 
-    private fun parseContainerConfig(jsonString: String): ContainerData {
+    internal fun parseContainerConfig(jsonString: String): ContainerData {
         if (jsonString.length > MAX_CONFIG_JSON_SIZE) {
             throw IllegalArgumentException("Container configuration JSON too large (max ${MAX_CONFIG_JSON_SIZE / 1000}KB)")
         }
@@ -238,7 +238,7 @@ object IntentLaunchManager {
             box64Preset = if (json.has("box64Preset")) json.getString("box64Preset") else "",
             desktopTheme = if (json.has("desktopTheme")) json.getString("desktopTheme") else "",
             csmt = if (json.has("csmt")) json.getBoolean("csmt") else true,
-            videoPciDeviceID = if (json.has("videoPciDeviceID")) json.getInt("videoPciDeviceID") else 1728,
+            videoPciDeviceID = if (json.has("videoPciDeviceID")) json.getInt("videoPciDeviceID") else 0,
             offScreenRenderingMode = if (json.has("offScreenRenderingMode")) json.getString("offScreenRenderingMode") else "fbo",
             strictShaderMath = if (json.has("strictShaderMath")) json.getBoolean("strictShaderMath") else true,
             videoMemorySize = if (json.has("videoMemorySize")) json.getString("videoMemorySize") else "2048",
@@ -269,7 +269,7 @@ object IntentLaunchManager {
         return config
     }
 
-    private fun mergeConfigurations(base: ContainerData, override: ContainerData): ContainerData {
+    internal fun mergeConfigurations(base: ContainerData, override: ContainerData): ContainerData {
         // Quick return if no actual overrides
         if (override == base) return base
 
@@ -325,7 +325,7 @@ object IntentLaunchManager {
             box64Preset = override.box64Preset.ifEmpty { base.box64Preset },
             desktopTheme = override.desktopTheme.ifEmpty { base.desktopTheme },
             csmt = if (override.csmt != true) override.csmt else base.csmt,
-            videoPciDeviceID = if (override.videoPciDeviceID != 1728) override.videoPciDeviceID else base.videoPciDeviceID,
+            videoPciDeviceID = if (override.videoPciDeviceID != 0) override.videoPciDeviceID else base.videoPciDeviceID,
             offScreenRenderingMode = if (override.offScreenRenderingMode != "fbo") {
                 override.offScreenRenderingMode
             } else {
