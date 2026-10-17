@@ -66,4 +66,22 @@ class CloudKeyPlaceholderTest {
         assertEquals("%WinMyDocuments%Square Enix/Just Cause 3/Saves/76561198000000001/save.dat", file.prefixPath)
         assertEquals("Square Enix/Just Cause 3/Saves/76561198000000001/", file.substitutedPath)
     }
+
+    @Test
+    fun cachedEntriesWithOldKeySpellingsProduceTheSameKeysAsFreshScans() {
+        fun entry(cloudPath: String) = UserFileInfo(
+            root = PathType.GameInstall,
+            path = cloudPath,
+            filename = "profile0.ojs",
+            timestamp = 0L,
+            sha = ByteArray(0),
+            cloudPath = cloudPath,
+        )
+        assertEquals(entry("save/{64BitSteamID}").prefixPath, entry("save/{64BitSteamID}/.").prefixPath)
+        assertEquals(
+            entry("Square Enix/Just Cause 3/Saves/{64BitSteamID}/").prefixPath,
+            entry("Square Enix\\Just Cause 3\\Saves\\{64BitSteamID}\\").prefixPath,
+        )
+        assertEquals("%GameInstall%save/76561198000000001/profile0.ojs", entry("save/{64BitSteamID}/.").prefixPath)
+    }
 }

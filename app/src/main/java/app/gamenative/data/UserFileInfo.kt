@@ -27,7 +27,7 @@ data class UserFileInfo(
         get() {
             val pathForPrefix = when {
                 cloudPath.isBlank() || cloudPath == "." -> ""
-                else -> cloudPath.replace("\\", "/")
+                else -> cloudPath.replace("\\", "/").removeSuffix("/.")
             }
             return SteamUtils.substituteSteamIdPlaceholders(Paths.get("%${cloudRoot.name}%$pathForPrefix").pathString)
         }
