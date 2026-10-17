@@ -63,6 +63,7 @@ import com.posthog.PostHog
 import com.skydoves.landscapist.coil.LocalCoilImageLoader
 import com.winlator.core.AppUtils
 import com.winlator.inputcontrols.ControllerManager
+import com.winlator.inputcontrols.ExternalController
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -688,7 +689,12 @@ class MainActivity : ComponentActivity() {
         //  Since LibraryScreen uses its own navigation system, this will need to be re-worked accordingly.
         if (!eventDispatched) {
             if (event.keyCode == KeyEvent.KEYCODE_BACK && SteamService.keepAlive) {
-                if (event.action == KeyEvent.ACTION_DOWN) {
+                if (event.device?.let(ExternalController::isGameController) == true) {
+                    // Some handheld controllers emit Android BACK for a button chord. The event
+                    // has already been offered to the active game above; do not turn an unhandled
+                    // gamepad event into app navigation and unexpectedly open the Quick Menu.
+                    eventDispatched = true
+                } else if (event.action == KeyEvent.ACTION_DOWN) {
                     PluviaApp.events.emit(AndroidEvent.BackPressed)
                     eventDispatched = true
                 } else if (BuildConfig.MODERN_ANDROID && event.action == KeyEvent.ACTION_UP) {
