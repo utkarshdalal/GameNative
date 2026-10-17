@@ -15,6 +15,7 @@ import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
+import android.os.SystemClock;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
@@ -128,6 +129,8 @@ public class InputControlsView extends View {
     private boolean containerShooterModeRuntime = false; // runtime toggle state
 
     private final GyroController gyroController;
+    private final GyroInputPriority gyroInputPriority = new GyroInputPriority();
+    private volatile int gyroPriority = GyroSettings.PRIORITY_COMBINED;
     private volatile boolean gyroEnabled;
     private volatile int gyroMode = GyroSettings.MODE_DISABLED;
     private volatile boolean gyroActive;
@@ -187,6 +190,11 @@ public class InputControlsView extends View {
             public void onGyroActiveChanged(boolean active) {
                 gyroActive = active;
                 postInvalidateOnAnimation();
+            }
+
+            @Override
+            public boolean shouldSendGyroMouseMovement() {
+                return gyroInputPriority.allowGyroMouse(SystemClock.uptimeMillis());
             }
         });
         lookThroughTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
@@ -429,10 +437,12 @@ public class InputControlsView extends View {
                 this.profile = preserveOverlayVisibility && !overlayProfileVisible ? null : profile;
                 this.gyroProfile = profile;
                 GamepadState state = profile.getGamepadState();
-                baseThumbLX = Mathf.clamp(state.thumbLX - gyroThumbLX, -1f, 1f);
-                baseThumbLY = Mathf.clamp(state.thumbLY - gyroThumbLY, -1f, 1f);
-                baseThumbRX = Mathf.clamp(state.thumbRX - gyroThumbRX, -1f, 1f);
-                baseThumbRY = Mathf.clamp(state.thumbRY - gyroThumbRY, -1f, 1f);
+                if (profileChanged || gyroPriority == GyroSettings.PRIORITY_COMBINED) {
+                    baseThumbLX = Mathf.clamp(state.thumbLX - gyroThumbLX, -1f, 1f);
+                    baseThumbLY = Mathf.clamp(state.thumbLY - gyroThumbLY, -1f, 1f);
+                    baseThumbRX = Mathf.clamp(state.thumbRX - gyroThumbRX, -1f, 1f);
+                    baseThumbRY = Mathf.clamp(state.thumbRY - gyroThumbRY, -1f, 1f);
+                }
                 deselectAllElements();
             }
             else {
@@ -500,6 +510,8 @@ public class InputControlsView extends View {
         if (settings == null) return;
         GyroSettings normalized = settings.normalized();
         gyroMode = normalized.getMode();
+        gyroPriority = normalized.getInputPriority();
+        gyroInputPriority.setSettings(normalized);
         gyroEnabled = gyroMode != GyroSettings.MODE_DISABLED;
         gyroController.setSettings(normalized);
     }
@@ -555,6 +567,15 @@ public class InputControlsView extends View {
 
     public void setTouchpadView(TouchpadView touchpadView) {
         this.touchpadView = touchpadView;
+        if (touchpadView != null) touchpadView.setMouseMovementListener(this::onTouchMouseMovement);
+    }
+
+    public void setPhysicalMouseMoving(Object source, boolean moving) {
+        gyroInputPriority.setManualMouseMoving(source, moving);
+    }
+
+    private void onTouchMouseMovement(float x, float y) {
+        gyroInputPriority.onTouchMouseMovement(x, y, SystemClock.uptimeMillis());
     }
 
     public XServer getXServer() {
@@ -1369,6 +1390,7 @@ public class InputControlsView extends View {
                 scaledDy = lookSmoothY;
             }
 
+            onTouchMouseMovement(scaledDx, scaledDy);
             lookAccumX += scaledDx;
             lookAccumY += scaledDy;
             int moveX = (int)lookAccumX;
@@ -1807,10 +1829,12 @@ public class InputControlsView extends View {
             }
             else if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_RIGHT) {
                 mouseMoveOffset.x = isActionDown ? (offset != 0 ? offset : (binding == Binding.MOUSE_MOVE_LEFT ? -1 : 1)) : 0;
+                gyroInputPriority.setManualMouseMoving(mouseMoveOffset, mouseMoveOffset.x != 0f || mouseMoveOffset.y != 0f);
                 if (isActionDown) createMouseMoveTimer();
             }
             else if (binding == Binding.MOUSE_MOVE_DOWN || binding == Binding.MOUSE_MOVE_UP) {
                 mouseMoveOffset.y = isActionDown ? (offset != 0 ? offset : (binding == Binding.MOUSE_MOVE_UP ? -1 : 1)) : 0;
+                gyroInputPriority.setManualMouseMoving(mouseMoveOffset, mouseMoveOffset.x != 0f || mouseMoveOffset.y != 0f);
                 if (isActionDown) createMouseMoveTimer();
             }
             else {
@@ -1833,81 +1857,68 @@ public class InputControlsView extends View {
 
     /** Records a non-gyro stick contribution and returns it blended with the gyro value. */
     public synchronized float updateBaseStickAndGetMixedValue(Binding binding, boolean isActionDown, float offset) {
-        float base;
-        float gyro;
-        switch (binding) {
-            case GAMEPAD_LEFT_THUMB_UP:
-            case GAMEPAD_LEFT_THUMB_DOWN:
-                baseThumbLY = updateBaseAxis(baseThumbLY, binding == Binding.GAMEPAD_LEFT_THUMB_UP,
-                        isActionDown, offset);
-                base = baseThumbLY;
-                gyro = gyroThumbLY;
-                break;
-            case GAMEPAD_LEFT_THUMB_LEFT:
-            case GAMEPAD_LEFT_THUMB_RIGHT:
-                baseThumbLX = updateBaseAxis(baseThumbLX, binding == Binding.GAMEPAD_LEFT_THUMB_LEFT,
-                        isActionDown, offset);
-                base = baseThumbLX;
-                gyro = gyroThumbLX;
-                break;
-            case GAMEPAD_RIGHT_THUMB_UP:
-            case GAMEPAD_RIGHT_THUMB_DOWN:
-                baseThumbRY = updateBaseAxis(baseThumbRY, binding == Binding.GAMEPAD_RIGHT_THUMB_UP,
-                        isActionDown, offset);
-                base = baseThumbRY;
-                gyro = gyroThumbRY;
-                break;
-            case GAMEPAD_RIGHT_THUMB_LEFT:
-            case GAMEPAD_RIGHT_THUMB_RIGHT:
-                baseThumbRX = updateBaseAxis(baseThumbRX, binding == Binding.GAMEPAD_RIGHT_THUMB_LEFT,
-                        isActionDown, offset);
-                base = baseThumbRX;
-                gyro = gyroThumbRX;
-                break;
-            default:
-                return 0f;
-        }
-        return isGyroStickTarget(binding)
-                ? Mathf.clamp(base + gyro, -1f, 1f)
-                : (isActionDown ? offset : 0f);
+        return updateStickAndGetMixedValue(binding, isActionDown, offset, false, 0);
     }
 
     /** Records a physical stick contribution using the source axis' raw direction. */
     public synchronized float updatePhysicalStickAndGetMixedValue(
             Binding binding, boolean isActionDown, float offset, int sourceKeyCode) {
+        return updateStickAndGetMixedValue(binding, isActionDown, offset, true, sourceKeyCode);
+    }
+
+    private float updateStickAndGetMixedValue(
+            Binding binding, boolean isActionDown, float offset, boolean physical, int sourceKeyCode) {
         float base;
         float gyro;
         switch (binding) {
             case GAMEPAD_LEFT_THUMB_UP:
             case GAMEPAD_LEFT_THUMB_DOWN:
-                baseThumbLY = updatePhysicalBaseAxis(baseThumbLY, isActionDown, offset, sourceKeyCode);
+                baseThumbLY = physical ? updatePhysicalBaseAxis(baseThumbLY, isActionDown, offset, sourceKeyCode)
+                        : updateBaseAxis(baseThumbLY, binding == Binding.GAMEPAD_LEFT_THUMB_UP, isActionDown, offset);
                 base = baseThumbLY;
                 gyro = gyroThumbLY;
                 break;
             case GAMEPAD_LEFT_THUMB_LEFT:
             case GAMEPAD_LEFT_THUMB_RIGHT:
-                baseThumbLX = updatePhysicalBaseAxis(baseThumbLX, isActionDown, offset, sourceKeyCode);
+                baseThumbLX = physical ? updatePhysicalBaseAxis(baseThumbLX, isActionDown, offset, sourceKeyCode)
+                        : updateBaseAxis(baseThumbLX, binding == Binding.GAMEPAD_LEFT_THUMB_LEFT, isActionDown, offset);
                 base = baseThumbLX;
                 gyro = gyroThumbLX;
                 break;
             case GAMEPAD_RIGHT_THUMB_UP:
             case GAMEPAD_RIGHT_THUMB_DOWN:
-                baseThumbRY = updatePhysicalBaseAxis(baseThumbRY, isActionDown, offset, sourceKeyCode);
+                baseThumbRY = physical ? updatePhysicalBaseAxis(baseThumbRY, isActionDown, offset, sourceKeyCode)
+                        : updateBaseAxis(baseThumbRY, binding == Binding.GAMEPAD_RIGHT_THUMB_UP, isActionDown, offset);
                 base = baseThumbRY;
                 gyro = gyroThumbRY;
                 break;
             case GAMEPAD_RIGHT_THUMB_LEFT:
             case GAMEPAD_RIGHT_THUMB_RIGHT:
-                baseThumbRX = updatePhysicalBaseAxis(baseThumbRX, isActionDown, offset, sourceKeyCode);
+                baseThumbRX = physical ? updatePhysicalBaseAxis(baseThumbRX, isActionDown, offset, sourceKeyCode)
+                        : updateBaseAxis(baseThumbRX, binding == Binding.GAMEPAD_RIGHT_THUMB_LEFT, isActionDown, offset);
                 base = baseThumbRX;
                 gyro = gyroThumbRX;
                 break;
             default:
                 return 0f;
         }
-        return isGyroStickTarget(binding)
-                ? Mathf.clamp(base + gyro, -1f, 1f)
-                : (isActionDown ? offset : 0f);
+        return resolveBaseStickOutput(binding, isActionDown, offset, base, gyro);
+    }
+
+    private float resolveBaseStickOutput(Binding binding, boolean isActionDown, float offset, float base, float gyro) {
+        if (!isGyroStickTarget(binding)) return isActionDown ? offset : 0f;
+        if (gyroPriority == GyroSettings.PRIORITY_COMBINED) return Mathf.clamp(base + gyro, -1f, 1f);
+        boolean rightStick = gyroMode == GyroSettings.MODE_RIGHT_STICK;
+        // Priority affects the whole stick. Refresh the other axis even if gyro is unchanged.
+        refreshMixedStick(rightStick, false);
+        return mixStickAxis(rightStick, base, gyro);
+    }
+
+    private float mixStickAxis(boolean rightStick, float base, float gyro) {
+        int priority = gyroMode == (rightStick ? GyroSettings.MODE_RIGHT_STICK : GyroSettings.MODE_LEFT_STICK)
+                ? gyroPriority : GyroSettings.PRIORITY_COMBINED;
+        boolean baseMoving = rightStick ? baseThumbRX != 0f || baseThumbRY != 0f : baseThumbLX != 0f || baseThumbLY != 0f;
+        return GyroInputPriority.mixStickAxis(priority, base, gyro, baseMoving);
     }
 
     private static float updateBaseAxis(float current, boolean negativeDirection, boolean isActionDown, float offset) {
@@ -1964,6 +1975,7 @@ public class InputControlsView extends View {
 
     private void updateGyroMouse(int x, int y) {
         if (xServer == null || (x == 0 && y == 0)) return;
+        if (!gyroInputPriority.allowGyroMouse(SystemClock.uptimeMillis())) return;
         if (xServer.isRelativeMouseMovement()) {
             xServer.getWinHandler().mouseEvent(MouseEventFlags.MOVE, x, y, 0);
         }
@@ -1973,23 +1985,23 @@ public class InputControlsView extends View {
     }
 
     private synchronized void updateGyroStick(boolean rightStick, float x, float y) {
-        if (gyroProfile == null) return;
-        GamepadState state = gyroProfile.getGamepadState();
-        final float mixedX;
-        final float mixedY;
         if (rightStick) {
             gyroThumbRX = x;
             gyroThumbRY = y;
-            mixedX = Mathf.clamp(baseThumbRX + gyroThumbRX, -1f, 1f);
-            mixedY = Mathf.clamp(baseThumbRY + gyroThumbRY, -1f, 1f);
         }
         else {
             gyroThumbLX = x;
             gyroThumbLY = y;
-            mixedX = Mathf.clamp(baseThumbLX + gyroThumbLX, -1f, 1f);
-            mixedY = Mathf.clamp(baseThumbLY + gyroThumbLY, -1f, 1f);
         }
-        if (!state.updateThumbstick(rightStick, mixedX, mixedY)) return;
+        refreshMixedStick(rightStick, true);
+    }
+
+    private void refreshMixedStick(boolean rightStick, boolean send) {
+        if (gyroProfile == null) return;
+        GamepadState state = gyroProfile.getGamepadState();
+        float mixedX = rightStick ? mixStickAxis(true, baseThumbRX, gyroThumbRX) : mixStickAxis(false, baseThumbLX, gyroThumbLX);
+        float mixedY = rightStick ? mixStickAxis(true, baseThumbRY, gyroThumbRY) : mixStickAxis(false, baseThumbLY, gyroThumbLY);
+        if (!state.updateThumbstick(rightStick, mixedX, mixedY) || !send) return;
 
         WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
         if (winHandler != null) {
@@ -2001,6 +2013,7 @@ public class InputControlsView extends View {
     }
 
     private synchronized void resetThumbContributions() {
+        gyroInputPriority.reset();
         ControlsProfile outgoingProfile = gyroProfile;
         baseThumbLX = 0f;
         baseThumbLY = 0f;
