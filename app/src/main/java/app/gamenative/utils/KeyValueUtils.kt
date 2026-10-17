@@ -29,7 +29,7 @@ import java.util.Locale
 import timber.log.Timber
 
 // Bumping re-parses the whole SteamApp row from PICS on next login and also triggers the root-override cloud requery.
-const val CURRENT_UFS_PARSE_VERSION = 8
+const val CURRENT_UFS_PARSE_VERSION = 9
 
 /**
  * Extension functions relating to [KeyValue] as the receiver type.
@@ -223,14 +223,14 @@ fun KeyValue.generateSteamApp(): SteamApp {
                 maxNumFiles = this["ufs"]["maxnumfiles"].asInteger(),
                 saveFilePatterns = this["ufs"]["savefiles"].children.mapNotNull { saveFile ->
                     val platforms = saveFile["platforms"].children.map { it.value?.lowercase() }
-                    if (platforms.isNotEmpty() && "windows" !in platforms) return@mapNotNull null
+                    if (platforms.isNotEmpty() && "windows" !in platforms && "all" !in platforms) return@mapNotNull null
 
                     val originalRoot = PathType.from(saveFile["root"].value)
                     // Treat "." and "/" as empty: both mean "root of this path type" with no
                     // subdirectory. Keeping the literal value causes addpath joins to produce
                     // "MyGame/." or "MyGame/" and stores uploadPath = "." or "/" which breaks
                     // cloud key lookups in SteamAutoCloud (e.g. Danganronpa 2 uses path="/").
-                    val originalPath = saveFile["path"].value.orEmpty().let { if (it == "." || it == "/") "" else it }
+                    val originalPath = saveFile["path"].value.orEmpty().let { if (it == "." || it == "/") "" else it.removeSuffix("/.") }
                     val rootRemap = rootOverrides.find { it.fromRoot == originalRoot }
 
                     SaveFilePattern(
