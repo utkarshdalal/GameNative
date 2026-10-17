@@ -195,7 +195,7 @@ object IntentLaunchManager {
         return issues
     }
 
-    private fun parseContainerConfig(jsonString: String): ContainerData {
+    internal fun parseContainerConfig(jsonString: String): ContainerData {
         if (jsonString.length > MAX_CONFIG_JSON_SIZE) {
             throw IllegalArgumentException("Container configuration JSON too large (max ${MAX_CONFIG_JSON_SIZE / 1000}KB)")
         }
@@ -269,7 +269,7 @@ object IntentLaunchManager {
         return config
     }
 
-    private fun mergeConfigurations(base: ContainerData, override: ContainerData): ContainerData {
+    internal fun mergeConfigurations(base: ContainerData, override: ContainerData): ContainerData {
         // Quick return if no actual overrides
         if (override == base) return base
 
