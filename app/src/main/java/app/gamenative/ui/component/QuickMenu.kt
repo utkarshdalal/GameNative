@@ -623,6 +623,7 @@ fun QuickMenu(
     val immersiveScrollState = rememberScrollState()
     val immersiveTabFocusRequester = remember { FocusRequester() }
     val exitFocusRequester = remember { FocusRequester() }
+    var exitRailFocused by remember { mutableStateOf(false) }
     val immersiveItemFocusRequester = remember { FocusRequester() }
 
     val visibleState = remember { MutableTransitionState(false) }
@@ -653,48 +654,68 @@ fun QuickMenu(
         }
     }
 
+    val tabRailRequester: (QuickMenuTab) -> FocusRequester? = { tab ->
+        when (tab) {
+            QuickMenuTab.HUD -> hudTabFocusRequester
+            QuickMenuTab.POWER -> powerTabFocusRequester
+            QuickMenuTab.LSFG -> lsfgTabFocusRequester
+            QuickMenuTab.INVITE -> inviteTabFocusRequester
+            QuickMenuTab.EFFECTS -> effectsTabFocusRequester
+            QuickMenuTab.CONTROLLER -> controllerTabFocusRequester
+            QuickMenuTab.TOOLS -> toolsTabFocusRequester
+            QuickMenuTab.IMMERSIVE -> immersiveTabFocusRequester
+            else -> null
+        }
+    }
+    val requestRailFocus: (FocusRequester, String) -> Unit = { requester, label ->
+        focusTabRailScope.launch {
+            repeat(3) { attempt ->
+                try {
+                    requester.requestFocus()
+                    Timber.i("QuickMenu: requestFocusTabRail succeeded for %s on attempt=%d", label, attempt)
+                    return@launch
+                } catch (e: IllegalStateException) {
+                    Timber.w(e, "QuickMenu: requestFocusTabRail failed for %s on attempt=%d", label, attempt)
+                    delay(80)
+                }
+            }
+            Timber.w("QuickMenu: requestFocusTabRail never succeeded for %s after 3 attempts", label)
+        }
+    }
+    // LB/RB walk the rail: every available tab, then the Exit button, then wrap. Landing on Exit
+    // moves focus there (A then activates it); leaving Exit puts focus back on the new tab.
+    val cycleTab: (Boolean) -> Unit = { forward ->
+        val currentIndex = availableTabs.indexOf(selectedTab).takeIf { it >= 0 } ?: 0
+        val lastIndex = availableTabs.size - 1
+        when {
+            exitRailFocused -> {
+                val nextTab = if (forward) availableTabs.first() else availableTabs.last()
+                selectedTab = nextTab
+                PrefManager.quickMenuLastTab = nextTab
+                tabRailRequester(nextTab)?.let { requestRailFocus(it, "tab=$nextTab") }
+            }
+            (forward && currentIndex == lastIndex) || (!forward && currentIndex == 0) -> {
+                requestRailFocus(exitFocusRequester, "exit")
+            }
+            else -> {
+                val nextTab = availableTabs[if (forward) currentIndex + 1 else currentIndex - 1]
+                selectedTab = nextTab
+                PrefManager.quickMenuLastTab = nextTab
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         immersiveHooks?.registerFocusExit?.invoke {
             runCatching { exitFocusRequester.requestFocus() }
         }
         immersiveHooks?.registerFocusTabRail?.invoke {
-            val requester = when (selectedTab) {
-                QuickMenuTab.HUD -> hudTabFocusRequester
-                QuickMenuTab.LSFG -> lsfgTabFocusRequester
-                QuickMenuTab.EFFECTS -> effectsTabFocusRequester
-                QuickMenuTab.CONTROLLER -> controllerTabFocusRequester
-                QuickMenuTab.TOOLS -> toolsTabFocusRequester
-                QuickMenuTab.IMMERSIVE -> immersiveTabFocusRequester
-                else -> null
-            }
-            if (requester == null) return@invoke
-            focusTabRailScope.launch {
-                repeat(3) { attempt ->
-                    try {
-                        requester.requestFocus()
-                        Timber.i("QuickMenu: requestFocusTabRail succeeded for tab=%s on attempt=%d", selectedTab, attempt)
-                        return@launch
-                    } catch (e: IllegalStateException) {
-                        Timber.w(e, "QuickMenu: requestFocusTabRail failed for tab=%s on attempt=%d", selectedTab, attempt)
-                        delay(80)
-                    }
-                }
-                Timber.w("QuickMenu: requestFocusTabRail never succeeded for tab=%s after 3 attempts", selectedTab)
-            }
+            tabRailRequester(selectedTab)?.let { requestRailFocus(it, "tab=$selectedTab") }
         }
     }
 
     LaunchedEffect(availableTabs) {
-        immersiveHooks?.registerCycleTab?.invoke { forward ->
-            val currentIndex = availableTabs.indexOf(selectedTab).takeIf { it >= 0 } ?: 0
-            val nextTab = if (forward) {
-                availableTabs[(currentIndex + 1) % availableTabs.size]
-            } else {
-                availableTabs[(currentIndex - 1 + availableTabs.size) % availableTabs.size]
-            }
-            selectedTab = nextTab
-            PrefManager.quickMenuLastTab = nextTab
-        }
+        immersiveHooks?.registerCycleTab?.invoke(cycleTab)
     }
 
     CompositionLocalProvider(
@@ -714,15 +735,13 @@ fun QuickMenu(
                 }
                 if (keyEvent.nativeKeyEvent.action != KeyEvent.ACTION_DOWN) return@onPreviewKeyEvent false
                 Timber.i("QuickMenu: onPreviewKeyEvent keyCode=%d selectedTab=%d", keyEvent.nativeKeyEvent.keyCode, selectedTab)
-                val currentIndex = availableTabs.indexOf(selectedTab).takeIf { it >= 0 } ?: 0
-                val nextTab = if (immersiveHooks == null) null else when (keyEvent.nativeKeyEvent.keyCode) {
-                    KeyEvent.KEYCODE_BUTTON_L1 -> availableTabs[(currentIndex - 1 + availableTabs.size) % availableTabs.size]
-                    KeyEvent.KEYCODE_BUTTON_R1 -> availableTabs[(currentIndex + 1) % availableTabs.size]
+                val forward = if (immersiveHooks == null) null else when (keyEvent.nativeKeyEvent.keyCode) {
+                    KeyEvent.KEYCODE_BUTTON_L1 -> false
+                    KeyEvent.KEYCODE_BUTTON_R1 -> true
                     else -> null
                 }
-                if (nextTab != null) {
-                    selectedTab = nextTab
-                    PrefManager.quickMenuLastTab = nextTab
+                if (forward != null) {
+                    cycleTab(forward)
                     true
                 } else {
                     false
@@ -949,6 +968,7 @@ fun QuickMenu(
                                 },
                                 modifier = Modifier.width(56.dp),
                                 focusRequester = exitFocusRequester,
+                                onFocusChanged = { exitRailFocused = it },
                             )
                         }
 
@@ -2170,6 +2190,7 @@ private fun QuickMenuRailActionButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester? = null,
+    onFocusChanged: ((Boolean) -> Unit)? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     // Flat mode keeps master's explicit focusable(); the immersive path drops it to
@@ -2178,6 +2199,7 @@ private fun QuickMenuRailActionButton(
     val isFocused by interactionSource.collectIsFocusedAsState()
     LaunchedEffect(isFocused) {
         inputBypass.reportActivate(interactionSource, if (isFocused) onClick else null)
+        onFocusChanged?.invoke(isFocused)
     }
     val accentColor = if (item.accentColor != Color.Unspecified) {
         item.accentColor
