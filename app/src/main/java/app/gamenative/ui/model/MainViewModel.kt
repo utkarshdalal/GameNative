@@ -1015,7 +1015,7 @@ class MainViewModel @Inject constructor(
                     val processes = mutableListOf<AppProcessInfo>()
                     var currentWindow: Window = window
                     do {
-                        var parentWindow: Window? = window.parent
+                        var parentWindow: Window? = currentWindow.parent
                         val process = if (parentWindow != null && parentWindow.className.lowercase() != "explorer.exe") {
                             val processId = currentWindow.processId
                             val parentProcessId = parentWindow.processId
