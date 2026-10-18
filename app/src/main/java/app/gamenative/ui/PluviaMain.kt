@@ -1620,6 +1620,7 @@ fun PluviaMain(
                     DebugReportUtils.perfFile(reportDir),
                     DebugReportUtils.logcatFile(reportDir),
                     DebugReportUtils.cpuProfileFile(reportDir),
+                    DebugReportUtils.exitTraceFile(reportDir),
                 )
                     .filter { it.exists() }
                 if (files.isNotEmpty()) {
