@@ -876,6 +876,12 @@
         "name": "Proton 11.0-2 ARM64ec",
         "url": "https://downloads.gamenative.app/proton-11.0-2-arm64ec.wcp",
         "variant": "bionic"
+      },
+      {
+        "id": "proton-11.0-2.3-arm64ec-1",
+        "name": "Proton 11.0-2.3 ARM64ec",
+        "url": "https://downloads.gamenative.app/proton-11.0-2.3-arm64ec.wcp",
+        "variant": "bionic"
       }
     ],
     "fexcore": [
