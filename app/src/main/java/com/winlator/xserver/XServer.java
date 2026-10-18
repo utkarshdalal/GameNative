@@ -46,6 +46,7 @@ public class XServer {
     private WinHandler winHandler;
     private final EnumMap<Lockable, ReentrantLock> locks = new EnumMap<>(Lockable.class);
     private volatile boolean relativeMouseMovement = false;
+    private volatile ScreenInfo effectiveScreenInfo;
     private final boolean mouseDragCompatibilityEnabled;
     private boolean simulateTouchScreen = false;
     private final boolean runningFromGlibc;
@@ -75,6 +76,24 @@ public class XServer {
 
         DesktopHelper.attachTo(this);
         setupExtensions();
+
+        effectiveScreenInfo = screenInfo;
+        windowManager.addOnWindowModificationListener(new WindowManager.OnWindowModificationListener() {
+            @Override
+            public void onMapWindow(Window window) {
+                if (isDesktopWindow(window)) effectiveScreenInfo = computeEffectiveScreenInfo();
+            }
+
+            @Override
+            public void onUnmapWindow(Window window) {
+                if (isDesktopWindow(window)) effectiveScreenInfo = computeEffectiveScreenInfo();
+            }
+
+            @Override
+            public void onUpdateWindowGeometry(Window window, boolean resized) {
+                if (resized && isDesktopWindow(window)) effectiveScreenInfo = computeEffectiveScreenInfo();
+            }
+        });
     }
 
     public boolean isRelativeMouseMovement() {
@@ -197,8 +216,9 @@ public class XServer {
         }
 
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
+            ScreenInfo screen = getEffectiveScreenInfo();
             int minX = 0, minY = 0;
-            int maxX = screenInfo.width - 1, maxY = screenInfo.height - 1;
+            int maxX = screen.width - 1, maxY = screen.height - 1;
             short clampedX = 0, clampedY = 0;
 
             // ClipCursor
@@ -218,28 +238,15 @@ public class XServer {
                 // Do NOT remove without confirming no regressions with:
                 // - Games that rely on XWarpPointer (see WindowRequests.java:warpPointer)
                 // - Games that call ClipCursor and happen to work well with this workaround
-                short softMarginX = (short)(screenInfo.width * 0.05f);
-                short softMarginY = (short)(screenInfo.height * 0.05f);
-                short x = (short)Mathf.clamp(pointer.getX() + dx, -softMarginX, screenInfo.width - 1 + softMarginX);
-                short y = (short)Mathf.clamp(pointer.getY() + dy, -softMarginY, screenInfo.height - 1 + softMarginY);
+                short softMarginX = (short)(screen.width * 0.05f);
+                short softMarginY = (short)(screen.height * 0.05f);
+                short x = (short)Mathf.clamp(pointer.getX() + dx, -softMarginX, maxX + softMarginX);
+                short y = (short)Mathf.clamp(pointer.getY() + dy, -softMarginY, maxY + softMarginY);
 
                 pointer.setPosition(x, y);
 
-                clampedX = x;
-                clampedY = y;
-
-                if (x < 0) {
-                    clampedX = 0;
-                }
-                else if (x > screenInfo.width - 1) {
-                    clampedX = (short) (screenInfo.width - 1);
-                }
-                if (y < 0) {
-                    clampedY = 0;
-                }
-                else if (y > screenInfo.height - 1) {
-                    clampedY = (short) (screenInfo.height - 1);
-                }
+                clampedX = (short)Mathf.clamp(x, 0, maxX);
+                clampedY = (short)Mathf.clamp(y, 0, maxY);
 
                 pointer.setX(clampedX);
                 pointer.setY(clampedY);
@@ -345,6 +352,11 @@ public class XServer {
     }
 
     public ScreenInfo getEffectiveScreenInfo() {
+        if (locks.get(Lockable.WINDOW_MANAGER).isHeldByCurrentThread()) effectiveScreenInfo = computeEffectiveScreenInfo();
+        return effectiveScreenInfo;
+    }
+
+    private ScreenInfo computeEffectiveScreenInfo() {
         try (XLock lock = lock(Lockable.WINDOW_MANAGER)) {
             for (Window child : windowManager.rootWindow.getChildren()) {
                 if (!child.attributes.isMapped() || !isDesktopWindow(child)) continue;
