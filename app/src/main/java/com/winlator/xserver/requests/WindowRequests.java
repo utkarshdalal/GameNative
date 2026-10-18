@@ -346,8 +346,9 @@ public abstract class WindowRequests {
             // (see XServer.java:injectPointerMoveDelta)
             short x = localPoint[0];
             short y = localPoint[1];
-            short softMarginX = (short)(client.xServer.screenInfo.width * 0.05f);
-            short softMarginY = (short)(client.xServer.screenInfo.height * 0.05f);
+            ScreenInfo screen = client.xServer.getEffectiveScreenInfo();
+            short softMarginX = (short)(screen.width * 0.05f);
+            short softMarginY = (short)(screen.height * 0.05f);
             boolean isContained = x >= srcX - softMarginX && y >= srcY - softMarginY &&
                                   x < (srcX + srcWidth + softMarginX) && y < (srcY + srcHeight + softMarginY);
             if (!isContained) return;
