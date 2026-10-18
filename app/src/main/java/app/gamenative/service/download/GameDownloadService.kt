@@ -335,13 +335,13 @@ object GameDownloadService {
             }
 
             override fun refreshManifestRequestCode(depotId: Int, manifestId: Long): Long {
-                // Manifest request codes are app-scoped like depot keys: use the
-                // depot's owning app (DLC depots fail under the parent app id).
+                // Same app question as the initial resolve: the owning app first, then the app
+                // being downloaded (a content app's depot has no branch of its own).
                 val owningAppId = depotIdToOwningAppId[depotId] ?: appId
                 return try {
                     kotlinx.coroutines.runBlocking {
-                        fetchManifestRequestCode(
-                            steamContent, depotId, owningAppId, manifestId, branch, this,
+                        requestManifestCode(
+                            steamContent, depotId, manifestId, branch, owningAppId, appId, this,
                         )
                     }
                 } catch (e: Exception) {
@@ -473,6 +473,43 @@ object GameDownloadService {
             )
         }
         return out
+    }
+
+    /**
+     * A manifest request code is issued for (app, depot, manifest, branch), and the app to ask with
+     * is not always the depot's owner:
+     *
+     * - a DLC or shared depot needs its OWN app (its own branch section is where the gid lives);
+     * - a depot listed under the app being downloaded but owned by a content app (BioShock
+     *   Remastered's 1523211, `depotfromapp=1523210`) gets its key from the owner but its CODE from
+     *   the app whose branch it was resolved from — content apps have no public branch, so asking
+     *   there yields 0.
+     *
+     * A zero code is not harmless: the CDN answers 401 to every host, which surfaces as an auth
+     * failure and a storm of pointless `getCDNAuthToken` calls. Try the owning app first (keys need
+     * it), then the app being downloaded, and say which one answered.
+     */
+    private suspend fun requestManifestCode(
+        steamContent: SteamContent,
+        depotId: Int,
+        manifestId: Long,
+        branch: String,
+        owningAppId: Int,
+        appId: Int,
+        parentScope: CoroutineScope,
+    ): Long {
+        val candidates = if (owningAppId != appId) listOf(owningAppId, appId) else listOf(appId)
+        for (candidate in candidates) {
+            val code = fetchManifestRequestCode(
+                steamContent, depotId, candidate, manifestId, branch, parentScope,
+            )
+            if (code != 0L) {
+                Timber.tag(TAG).i("Depot $depotId: manifest request code from app $candidate")
+                return code
+            }
+        }
+        Timber.tag(TAG).w("Depot $depotId: no manifest request code (tried apps $candidates)")
+        return 0L
     }
 
     private suspend fun fetchManifestRequestCode(
@@ -616,9 +653,17 @@ object GameDownloadService {
             )
         }
 
-        val requestCode = fetchManifestRequestCode(
-            steamContent, depotId, owningAppId, gid, branch, parentScope,
+        val requestCode = requestManifestCode(
+            steamContent, depotId, gid, branch, owningAppId, appId, parentScope,
         )
+        if (requestCode == 0L) {
+            // Without a code every CDN host answers 401, which the engine can only report as an
+            // auth failure — skip this depot with the real reason instead of failing the run.
+            return DepotResolution.Unavailable(
+                depotId,
+                "no manifest request code (apps tried: $owningAppId, $appId)",
+            )
+        }
         return DepotResolution.Resolved(
             ResolvedDepot(depotId, gid, keyCallback.depotKey, requestCode),
         )

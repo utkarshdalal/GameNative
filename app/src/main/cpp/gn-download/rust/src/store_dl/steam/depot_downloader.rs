@@ -196,6 +196,8 @@ pub fn fetch_manifest_with_retry(
     let mut retry_server: Option<usize> = None;
     let mut rotation = 0usize;
     let mut faults = 0u32;
+    // One request-code refresh per call, before any host is written off for "auth".
+    let mut code_refreshed = false;
     loop {
         if cancel.is_some_and(|c| c.load(Ordering::Relaxed)) {
             last.error = "cancelled".to_string();
@@ -238,14 +240,32 @@ pub fn fetch_manifest_with_retry(
             return last; // permanent: the manifest is not on this CDN, rotating won't help
         }
         if auth_status(status) {
-            if let Some(refresher) = auth_refresher {
-                if !tokens.contains_key(&server_idx) {
-                    if let Some(fresh) = refresher(depot_id, &servers[server_idx].host) {
-                        tokens.insert(server_idx, fresh);
+            let mut recovered = false;
+            // A manifest 401/403 is usually a request code that is missing, expired or was issued
+            // for the wrong app — not a host-level auth failure (a manifest request carries the
+            // code; chunk requests carry tokens). Ask for a fresh code ONCE per call and retry with
+            // it before the per-host token dance: without this, one bad code reads as "every CDN
+            // host rejected auth" after N pointless token round trips and hides the real cause.
+            if !code_refreshed {
+                code_refreshed = true;
+                if let Some(fresh) = code_refresher.and_then(|refresh| refresh(depot_id, manifest_id)) {
+                    if fresh != 0 && fresh != request_code {
+                        request_code = fresh;
                         retry_server = Some(server_idx);
-                        continue; // immediate same-host retry with the fresh token
+                        recovered = true;
                     }
                 }
+            }
+            // The code could not be improved: fall back to a host-level token, once per host.
+            if !recovered && !tokens.contains_key(&server_idx) {
+                if let Some(fresh) = auth_refresher.and_then(|refresh| refresh(depot_id, &servers[server_idx].host)) {
+                    tokens.insert(server_idx, fresh);
+                    retry_server = Some(server_idx);
+                    recovered = true;
+                }
+            }
+            if recovered {
+                continue; // immediate same-host retry with whatever was refreshed
             }
             auth_failed.insert(server_idx);
             if auth_failed.len() == servers.len() {
