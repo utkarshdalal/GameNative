@@ -798,7 +798,7 @@ fun PluviaMain(
                         } else {
                             context.getString(R.string.pitch_session_title, gameName)
                         },
-                        message = context.getString(R.string.main_thank_you_message),
+                        message = Membership.pitchMessage(context),
                         confirmBtnText = context.getString(R.string.main_join_kofi),
                         dismissBtnText = context.getString(R.string.close),
                     )
@@ -2055,7 +2055,7 @@ fun PluviaMain(
                                     visible = true,
                                     type = DialogType.SUPPORT,
                                     title = context.getString(R.string.main_thank_you_title),
-                                    message = context.getString(R.string.main_thank_you_message),
+                                    message = Membership.pitchMessage(context),
                                     confirmBtnText = context.getString(R.string.main_join_kofi),
                                     dismissBtnText = context.getString(R.string.close),
                                 )

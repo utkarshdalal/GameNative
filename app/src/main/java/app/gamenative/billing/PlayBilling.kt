@@ -40,6 +40,7 @@ object PlayBilling {
     }
 
     val hasActivePlan = mutableStateOf(false)
+    val cachedPlans = mutableStateOf<List<Plan>>(emptyList())
 
     private var playInstall: Boolean? = null
 
@@ -86,6 +87,7 @@ object PlayBilling {
         if (!configured) return
         try {
             onCustomerInfo(Purchases.sharedInstance.awaitCustomerInfo())
+            plans()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -103,6 +105,7 @@ object PlayBilling {
                 Plan(tier = tier, price = pkg.product.price.formatted, pkg = pkg)
             }
             .distinctBy { it.tier }
+            .also { cachedPlans.value = it }
     }
 
     suspend fun purchase(activity: Activity, plan: Plan): PurchaseOutcome {

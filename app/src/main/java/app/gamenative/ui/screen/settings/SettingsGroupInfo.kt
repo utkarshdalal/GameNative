@@ -1,7 +1,6 @@
 package app.gamenative.ui.screen.settings
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -38,22 +37,12 @@ fun SettingsGroupInfo() {
         if (!Membership.isMember()) {
             SettingsMenuLink(
                 colors = settingsTileColors(),
-                title = { Text(stringResource(R.string.membership_plans_title)) },
-                subtitle = { Text(text = stringResource(R.string.settings_info_become_member_subtitle)) },
+                title = { Text(stringResource(R.string.settings_info_send_tip_title)) },
+                subtitle = { Text(text = stringResource(R.string.settings_info_send_tip_subtitle)) },
                 icon = { Icon(imageVector = Icons.Filled.Star, contentDescription = null) },
                 onClick = { Membership.plansRequested.value = true },
             )
         }
-
-        SettingsMenuLink(
-            colors = settingsTileColors(),
-            title = { Text(stringResource(R.string.settings_info_send_tip_title)) },
-            subtitle = { Text(text = stringResource(R.string.settings_info_send_tip_subtitle)) },
-            icon = { Icon(imageVector = Icons.Filled.MonetizationOn, contentDescription = "Tip") },
-            onClick = {
-                uriHandler.openUri(Constants.Misc.KO_FI_LINK)
-            },
-        )
 
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
