@@ -1893,7 +1893,10 @@ fun PluviaMain(
                     membershipSignInVisible = false
                     if (!Membership.isMember()) membershipPlansVisible = true
                 },
-                onDismiss = { membershipSignInVisible = false },
+                onDismiss = {
+                    membershipSignInVisible = false
+                    membershipPlansVisible = true
+                },
             )
 
             debugPaywallReason?.let { reason ->
