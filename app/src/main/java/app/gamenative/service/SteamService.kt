@@ -3133,6 +3133,12 @@ class SteamService : Service(), IChallengeUrlChanged {
         suspend fun notifyRunningProcesses(vararg gameProcesses: GameProcessInfo) = withContext(Dispatchers.IO) {
             instance?.let { steamInstance ->
                 if (isConnected) {
+                    val currentUserSteamId = userSteamId
+                    if (currentUserSteamId == null) {
+                        Timber.w("Skipping running-process notification because the Steam user ID is unavailable")
+                        return@withContext
+                    }
+
                     val gamesPlayed = gameProcesses.mapNotNull { gameProcess ->
                         getAppInfoOf(gameProcess.appId)?.let { appInfo ->
                             getPkgInfoOf(gameProcess.appId)?.let { pkgInfo ->
@@ -3143,7 +3149,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                         ?: gameProcess.processes.firstOrNull()?.processId
                                         ?: 0
 
-                                    val userAccountId = userSteamId!!.accountID.toInt()
+                                    val userAccountId = currentUserSteamId.accountID.toInt()
                                     val preferredLender = instance?.preferredLenderByAppId?.get(gameProcess.appId)
                                         ?: PrefManager.preferredFamilyLenders[gameProcess.appId]
                                     val preferredAccountId = preferredLender?.let { SteamID(it).accountID.toInt() }
