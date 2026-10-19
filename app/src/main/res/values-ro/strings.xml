@@ -1102,6 +1102,16 @@
     <string name="support_checkout_no_browser">Nu s-a găsit niciun browser pentru a deschide pagina de plată. Scanează codul cu alt dispozitiv.</string>
     <string name="support_checkout_failed">Pagina de plată nu a putut fi deschisă. Verifică-ți conexiunea și încearcă din nou.</string>
     <string name="support_checkout_done">Gata</string>
+    <string name="main_thank_you_message_play">Devino membru astăzi. Membrii primesc:\n\n• Ajutor cu AI pentru a-ți face jocurile să funcționeze\n• Acces anticipat la versiuni noi\n• Roluri premium și canale exclusive pe Discord\n• …și altele\n\nDe la %1$s/lună</string>
+    <string name="support_plan_pro_title_priced">%1$s/lună · Pro</string>
+    <string name="support_plan_basic_title_priced">%1$s/lună · Basic</string>
+    <string name="membership_plans_pitch">Membrii primesc ajutor cu AI pentru a-și face jocurile să funcționeze, acces anticipat la versiuni noi și roluri premium pe Discord.</string>
+    <string name="membership_plans_title">Devino membru</string>
+    <string name="support_already_member">Ești deja membru? Conectează-te</string>
+    <string name="support_checkout_expired">Această plată a expirat. Dacă ai plătit deja, conectează-te cu e-mailul folosit și planul va apărea.</string>
+    <string name="support_play_unavailable">Facturarea Google Play nu este disponibilă acum. Încearcă din nou mai târziu.</string>
+    <string name="support_checkout_waiting_guest">După plată, conectează-te pe acea pagină pentru a-ți crea contul. Planul se activează aici automat.</string>
+    <string name="gamenative_account_managed_play">Planul tău vine de pe Google Play. Gestionează-l în Magazinul Play.</string>
     <string name="support_already_subscribed">Acest cont are deja un abonament. Îți poți schimba planul pe pagina de facturare.</string>
     <string name="support_plan_active">Planul tău este activ.</string>
     <string name="support_plan_pending">Planul tău încă este configurat. Încearcă din nou peste un minut.</string>
@@ -2076,8 +2086,6 @@
     <string name="debug_paywall_tier10_body">3 remedieri personalizate pe lună, răspunsuri mai rapide, primul la rând.</string>
     <string name="debug_paywall_cancel_anytime">Anulează oricând. Se aplică limite de utilizare corectă.</string>
     <string name="debug_paywall_costs_note">Abonamentele acoperă costurile serviciului AI care face posibilă această funcție.</string>
-    <string name="debug_paywall_subscribe">Abonează-te pe Discord</string>
-    <string name="debug_paywall_kofi_alt">Abonează-te pe Ko-fi</string>
     <string name="debug_paywall_already">Ești deja susținător?</string>
     <string name="debug_paywall_send_now">M-am abonat, trimite acum</string>
     <string name="debug_paywall_not_now">Nu acum</string>

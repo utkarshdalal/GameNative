@@ -1118,6 +1118,16 @@
     <string name="support_checkout_no_browser">Aucun navigateur n\'a été trouvé pour ouvrir la page de paiement. Scannez plutôt le code avec un autre appareil.</string>
     <string name="support_checkout_failed">La page de paiement n\'a pas pu être ouverte. Vérifiez votre connexion et réessayez.</string>
     <string name="support_checkout_done">Terminé</string>
+    <string name="main_thank_you_message_play">Devenez membre dès aujourd\'hui. Les membres bénéficient de :\n\n• Aide par IA pour faire fonctionner vos jeux\n• Accès anticipé aux nouvelles versions\n• Rôles premium et salons exclusifs sur Discord\n• …et plus encore\n\nÀ partir de %1$s/mois</string>
+    <string name="support_plan_pro_title_priced">%1$s/mois · Pro</string>
+    <string name="support_plan_basic_title_priced">%1$s/mois · Basic</string>
+    <string name="membership_plans_pitch">Les membres bénéficient d\'une aide par IA pour faire fonctionner leurs jeux, d\'un accès anticipé aux nouvelles versions et de rôles premium sur Discord.</string>
+    <string name="membership_plans_title">Devenir membre</string>
+    <string name="support_already_member">Déjà membre ? Se connecter</string>
+    <string name="support_checkout_expired">Ce paiement a expiré. Si vous avez déjà payé, connectez-vous avec l\'e-mail utilisé et votre abonnement apparaîtra.</string>
+    <string name="support_play_unavailable">La facturation Google Play n\'est pas disponible pour le moment. Réessayez plus tard.</string>
+    <string name="support_checkout_waiting_guest">Après le paiement, connectez-vous sur cette page pour créer votre compte. Votre abonnement s\'active ici tout seul.</string>
+    <string name="gamenative_account_managed_play">Votre offre vient de Google Play. Gérez-la dans le Play Store.</string>
     <string name="support_already_subscribed">Ce compte a déjà un abonnement. Vous pouvez changer d\'abonnement sur la page de facturation.</string>
     <string name="support_plan_active">Votre abonnement est actif.</string>
     <string name="support_plan_pending">Votre abonnement est en cours de mise en place. Réessayez dans une minute.</string>
@@ -2115,8 +2125,6 @@
     <string name="debug_paywall_tier10_body">3 correctifs personnalisés par mois, des réponses plus rapides, en tête de file.</string>
     <string name="debug_paywall_cancel_anytime">Annulable à tout moment. Des limites d\'usage raisonnable s\'appliquent.</string>
     <string name="debug_paywall_costs_note">Les abonnements couvrent les coûts du service AI qui rend cette fonction possible.</string>
-    <string name="debug_paywall_subscribe">Abonnez-vous sur Discord</string>
-    <string name="debug_paywall_kofi_alt">Abonnez-vous sur Ko-fi</string>
     <string name="debug_paywall_already">Déjà supporter ?</string>
     <string name="debug_paywall_send_now">Je me suis abonné, envoyer maintenant</string>
     <string name="debug_paywall_not_now">Pas maintenant</string>

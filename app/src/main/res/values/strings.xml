@@ -1196,6 +1196,7 @@
     <string name="gamenative_account_manage_subscription_none">There is no subscription on this account to manage.</string>
     <string name="gamenative_account_managed_discord">Your plan comes from Discord. Manage it on Discord.</string>
     <string name="gamenative_account_managed_kofi">Your plan comes from Ko-fi. Manage it on Ko-fi.</string>
+    <string name="gamenative_account_managed_play">Your plan comes from Google Play. Manage it in the Play Store.</string>
     <string name="gamenative_account_manage_subscription_failed">The billing page could not be opened. Please try again later.</string>
     <string name="gamenative_account_sign_out">Sign out</string>
     <string name="gamenative_account_sign_out_subtitle">Sign out of your GameNative account on this device.</string>
@@ -1279,6 +1280,14 @@
     <string name="support_checkout_no_browser">No browser was found to open the checkout page. Scan the code with another device instead.</string>
     <string name="support_checkout_failed">The checkout page could not be opened. Check your connection and try again.</string>
     <string name="support_checkout_done">Done</string>
+    <string name="support_plan_pro_title_priced">%1$s/month · Pro</string>
+    <string name="support_plan_basic_title_priced">%1$s/month · Basic</string>
+    <string name="support_checkout_waiting_guest">After you pay, sign in on that page to create your account. Your plan activates here by itself.</string>
+    <string name="support_play_unavailable">Google Play billing is not available right now. Try again later.</string>
+    <string name="support_checkout_expired">This checkout timed out. If you already paid, sign in with the email you used and your plan appears.</string>
+    <string name="support_already_member">Already a member? Sign in</string>
+    <string name="membership_plans_title">Become a member</string>
+    <string name="membership_plans_pitch">Members get AI help getting games running, early access to new releases, and premium roles on Discord.</string>
     <string name="support_already_subscribed">This account already has a subscription. You can change your plan on the billing page.</string>
     <string name="support_plan_active">Your plan is active.</string>
     <string name="support_plan_pending">Your plan is still being set up. Please try again in a minute.</string>
@@ -1534,6 +1543,7 @@
     <string name="main_recent_crash_title">Recent Crash</string>
     <string name="main_recent_crash_message">Sorry about that!\nIt would be nice to know about the recent issue you\'ve had.\nYou can view and export the most recent crash log in the app\'s settings and attach it as a Github issue in the project\'s repository.\nLink to the Github repo is also in settings!</string>
     <string name="main_thank_you_title">Enjoying GameNative?</string>
+    <string name="main_thank_you_message_play">Become a member today. Members get:\n\n• AI help getting your games running\n• Early access to new releases\n• Premium roles and exclusive channels on Discord\n• …and more\n\nFrom %1$s/month</string>
     <string name="main_thank_you_message">Become a member today. Members get:\n\n• AI help getting your games running\n• Early access to new releases\n• Premium roles and exclusive channels on Discord\n• …and more\n\nFrom $5/month</string>
     <string name="main_join_kofi">Become a member</string>
     <string name="pitch_session_title">Enjoying %1$s?</string>
@@ -2059,8 +2069,6 @@
     <string name="debug_paywall_tier10_body">3 custom fixes a month, faster answers, first in the queue.</string>
     <string name="debug_paywall_cancel_anytime">Cancel anytime. Fair-use limits apply.</string>
     <string name="debug_paywall_costs_note">Subscriptions cover the AI service costs that make this feature possible.</string>
-    <string name="debug_paywall_subscribe">Subscribe on Discord</string>
-    <string name="debug_paywall_kofi_alt">Subscribe on Ko-fi</string>
     <string name="debug_paywall_already">Already a supporter?</string>
     <string name="debug_paywall_send_now">I’ve subscribed, send now</string>
     <string name="debug_paywall_not_now">Not now</string>

@@ -1111,6 +1111,16 @@
     <string name="support_checkout_no_browser">Nie znaleziono przeglądarki do otwarcia strony płatności. Zamiast tego zeskanuj kod innym urządzeniem.</string>
     <string name="support_checkout_failed">Nie udało się otworzyć strony płatności. Sprawdź połączenie i spróbuj ponownie.</string>
     <string name="support_checkout_done">Gotowe</string>
+    <string name="main_thank_you_message_play">Zostań członkiem już dziś. Członkowie otrzymują:\n\n• Pomoc AI w uruchamianiu gier\n• Wcześniejszy dostęp do nowych wydań\n• Role premium i ekskluzywne kanały na Discordzie\n• …i więcej\n\nOd %1$s/mies.</string>
+    <string name="support_plan_pro_title_priced">%1$s/miesiąc · Pro</string>
+    <string name="support_plan_basic_title_priced">%1$s/miesiąc · Basic</string>
+    <string name="membership_plans_pitch">Członkowie otrzymują pomoc AI w uruchamianiu gier, wcześniejszy dostęp do nowych wydań i role premium na Discordzie.</string>
+    <string name="membership_plans_title">Zostań członkiem</string>
+    <string name="support_already_member">Masz już członkostwo? Zaloguj się</string>
+    <string name="support_checkout_expired">Ta płatność wygasła. Jeśli już zapłaciłeś, zaloguj się użytym adresem e-mail, a plan się pojawi.</string>
+    <string name="support_play_unavailable">Płatności Google Play są teraz niedostępne. Spróbuj ponownie później.</string>
+    <string name="support_checkout_waiting_guest">Po opłaceniu zaloguj się na tej stronie, aby utworzyć konto. Plan aktywuje się tutaj automatycznie.</string>
+    <string name="gamenative_account_managed_play">Twój plan pochodzi z Google Play. Zarządzaj nim w Sklepie Play.</string>
     <string name="support_already_subscribed">To konto ma już subskrypcję. Plan możesz zmienić na stronie rozliczeń.</string>
     <string name="support_plan_active">Twój plan jest aktywny.</string>
     <string name="support_plan_pending">Twój plan jest jeszcze konfigurowany. Spróbuj ponownie za minutę.</string>
@@ -2099,8 +2109,6 @@
     <string name="debug_paywall_tier10_body">3 własne poprawki miesięcznie, szybsze odpowiedzi, pierwszeństwo w kolejce.</string>
     <string name="debug_paywall_cancel_anytime">Anuluj w dowolnym momencie. Obowiązują limity uczciwego użytkowania.</string>
     <string name="debug_paywall_costs_note">Subskrypcje pokrywają koszty usługi AI, dzięki której ta funkcja działa.</string>
-    <string name="debug_paywall_subscribe">Subskrybuj przez Discord</string>
-    <string name="debug_paywall_kofi_alt">Subskrybuj przez Ko-fi</string>
     <string name="debug_paywall_already">Jesteś już supporterem?</string>
     <string name="debug_paywall_send_now">Mam już subskrypcję, wyślij teraz</string>
     <string name="debug_paywall_not_now">Nie teraz</string>

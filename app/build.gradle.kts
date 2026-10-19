@@ -73,6 +73,7 @@ android {
 
         buildConfigField("String", "POSTHOG_API_KEY", "\"${secret("POSTHOG_API_KEY")}\"")
         buildConfigField("String", "POSTHOG_HOST",  "\"${secret("POSTHOG_HOST")}\"")
+        buildConfigField("String", "REVENUECAT_API_KEY", "\"${secret("REVENUECAT_API_KEY").ifEmpty { "goog_iCoffJTvTFYjqalcgCdtXDErPQa" }}\"")
         buildConfigField("String", "STEAMGRIDDB_API_KEY", "\"${secret("STEAMGRIDDB_API_KEY")}\"")
         buildConfigField("String", "CLOUD_PROJECT_NUMBER", "\"${secret("CLOUD_PROJECT_NUMBER")}\"")
         val iconValue = "@mipmap/ic_launcher"
@@ -418,6 +419,7 @@ dependencies {
 
     // Chrome Custom Tabs for GOG OAuth
     implementation("androidx.browser:browser:1.8.0")
+    implementation("com.revenuecat.purchases:purchases:10.15.1")
     implementation("androidx.documentfile:documentfile:1.0.1")
 
     // JavaSteam

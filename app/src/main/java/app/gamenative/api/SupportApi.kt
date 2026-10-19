@@ -60,6 +60,7 @@ object SupportApi {
     const val REASON_ALREADY_ANSWERED = "already_answered"
     const val REASON_FIX_QUOTA = "fix_quota"
     const val REASON_FIX_UPGRADE = "fix_upgrade"
+    const val REASON_MEMBERSHIP = "membership"
 
     const val STAGE_QUEUED = "queued"
     const val STAGE_ANALYSING = "analysing"
