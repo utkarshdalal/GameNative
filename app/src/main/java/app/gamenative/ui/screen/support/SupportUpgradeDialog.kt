@@ -153,6 +153,7 @@ fun SupportUpgradeDialog(
             } catch (e: Exception) {
                 emptyList()
             }
+            if (playPlans.isNullOrEmpty() && phase == PHASE_CHOOSE) phase = PHASE_FAILED
         }
     }
 
