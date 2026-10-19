@@ -1284,6 +1284,7 @@
     <string name="support_checkout_expired">This checkout timed out. If you already paid, sign in with the email you used and your plan appears.</string>
     <string name="support_already_member">Already a member? Sign in</string>
     <string name="membership_plans_title">Become a member</string>
+    <string name="settings_info_become_member_subtitle">AI help for your games, early access and more</string>
     <string name="membership_plans_pitch">Members get AI help getting games running, early access to new releases, and premium roles on Discord.</string>
     <string name="support_already_subscribed">This account already has a subscription. You can change your plan on the billing page.</string>
     <string name="support_plan_active">Your plan is active.</string>

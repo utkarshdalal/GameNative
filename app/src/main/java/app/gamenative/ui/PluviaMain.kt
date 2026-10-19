@@ -424,6 +424,13 @@ fun PluviaMain(
     var membershipPlansVisible by rememberSaveable { mutableStateOf(false) }
     var membershipSignInVisible by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) { Membership.refresh() }
+    val plansRequested by Membership.plansRequested
+    LaunchedEffect(plansRequested) {
+        if (plansRequested) {
+            Membership.plansRequested.value = false
+            membershipPlansVisible = true
+        }
+    }
     var debugAccountPrompt by rememberSaveable { mutableStateOf<String?>(null) }
     var aiDebugOfferAppId by rememberSaveable { mutableStateOf("") }
     var aiDebugOfferTrigger by rememberSaveable { mutableStateOf("") }

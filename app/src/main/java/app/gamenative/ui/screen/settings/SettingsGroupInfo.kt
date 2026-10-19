@@ -2,6 +2,7 @@ package app.gamenative.ui.screen.settings
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MonetizationOn
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -14,6 +15,7 @@ import androidx.compose.ui.res.stringResource
 import app.gamenative.Constants
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.billing.Membership
 import app.gamenative.ui.component.dialog.LibrariesDialog
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
@@ -32,6 +34,16 @@ fun SettingsGroupInfo() {
             visible = showLibrariesDialog,
             onDismissRequest = { showLibrariesDialog = false },
         )
+
+        if (!Membership.isMember()) {
+            SettingsMenuLink(
+                colors = settingsTileColors(),
+                title = { Text(stringResource(R.string.membership_plans_title)) },
+                subtitle = { Text(text = stringResource(R.string.settings_info_become_member_subtitle)) },
+                icon = { Icon(imageVector = Icons.Filled.Star, contentDescription = null) },
+                onClick = { Membership.plansRequested.value = true },
+            )
+        }
 
         SettingsMenuLink(
             colors = settingsTileColors(),

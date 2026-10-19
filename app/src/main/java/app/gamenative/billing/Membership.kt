@@ -4,8 +4,10 @@ import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import app.gamenative.api.AccountApi
 import app.gamenative.api.ApiResult
+import androidx.compose.runtime.mutableStateOf
 
 object Membership {
+    val plansRequested = mutableStateOf(false)
     private val PAID_TIERS = setOf("basic", "pro", "patron")
 
     fun isPaidTier(tier: String?): Boolean = tier in PAID_TIERS
