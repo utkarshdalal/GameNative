@@ -512,28 +512,27 @@ object GameDownloadService {
         parentScope: CoroutineScope,
     ): Long? {
         val candidates = if (owningAppId != appId) listOf(owningAppId, appId) else listOf(appId)
-        val answers = mutableListOf<Pair<Int, Long?>>()
-        for (candidate in candidates) {
-            answers += candidate to fetchManifestRequestCode(
+        val resolved = firstManifestRequestCode(candidates) { candidate ->
+            fetchManifestRequestCode(
                 steamContent, depotId, candidate, manifestId, branch, parentScope,
             )
-            // Stop at the first code: the fallback app must not add a Steam round trip per depot.
-            // A zero or a failed request is not final until every candidate has been asked.
-            val code = pickManifestRequestCode(answers)
-            if (code != null && code != 0L) {
-                Timber.tag(TAG).i("Depot $depotId: manifest request code from app $candidate")
-                return code
-            }
         }
-        return if (pickManifestRequestCode(answers) == null) {
-            Timber.tag(TAG).w(
-                "Depot $depotId: could not ask for a manifest request code (apps $candidates) " +
-                    "— trying without one",
-            )
-            null
-        } else {
-            Timber.tag(TAG).w("Depot $depotId: no manifest request code (tried apps $candidates)")
-            0L
+        return when {
+            resolved.code == null -> {
+                Timber.tag(TAG).w(
+                    "Depot $depotId: could not ask for a manifest request code (apps $candidates) " +
+                        "— trying without one",
+                )
+                null
+            }
+            resolved.code != 0L -> {
+                Timber.tag(TAG).i("Depot $depotId: manifest request code from app ${resolved.from}")
+                resolved.code
+            }
+            else -> {
+                Timber.tag(TAG).w("Depot $depotId: no manifest request code (tried apps $candidates)")
+                0L
+            }
         }
     }
 
@@ -1112,4 +1111,30 @@ object GameDownloadService {
 internal fun pickManifestRequestCode(answers: List<Pair<Int, Long?>>): Long? {
     answers.firstOrNull { it.second != null && it.second != 0L }?.let { return it.second }
     return if (answers.isNotEmpty() && answers.all { it.second == 0L }) 0L else null
+}
+
+/** A code, the app that issued it (null when there is none), and how the lookup ended. */
+internal data class ManifestRequestCode(val code: Long?, val from: Int?)
+
+/**
+ * Ask the candidate apps in order and stop at the first usable answer: a later candidate costs a
+ * Steam round trip on the critical path of every depot resolution and every mid-run refresh. A zero
+ * or a failed request is not final on its own, so the loop keeps going until a code appears or every
+ * candidate has answered; the verdict is then [pickManifestRequestCode]'s.
+ */
+internal suspend fun firstManifestRequestCode(
+    candidates: List<Int>,
+    lookup: suspend (Int) -> Long?,
+): ManifestRequestCode {
+    val answers = mutableListOf<Pair<Int, Long?>>()
+    for (candidate in candidates) {
+        answers += candidate to lookup(candidate)
+        val code = pickManifestRequestCode(answers)
+        if (code != null && code != 0L) {
+            return ManifestRequestCode(code, candidate)
+        }
+    }
+    // Reached only when no candidate issued a code: the answer is either a definitive 0 (every
+    // candidate said 0) or `null` (a request failed), and neither has an issuing app.
+    return ManifestRequestCode(pickManifestRequestCode(answers), null)
 }

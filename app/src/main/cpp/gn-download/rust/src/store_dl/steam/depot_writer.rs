@@ -1676,6 +1676,8 @@ struct DepotFiles {
     /// Sum of already-present bytes on disk (clamped to each file's size) — for the free-space guard.
     already_present_bytes: u64,
     trusted_chunks: std::collections::HashSet<(u32, u32)>,
+    /// Install root, so a file's parent directory is proven to be inside it before the first open.
+    base: String,
 }
 
 /// Normalize manifest file paths to case-insensitive (Windows / Android-storage) semantics:
@@ -1770,6 +1772,7 @@ impl DepotFiles {
         }
         Self {
             slots,
+            base: target_dir.to_string(),
             already_present_bytes: already_present,
             trusted_chunks: std::collections::HashSet::new(),
         }
@@ -1831,7 +1834,7 @@ impl DepotFiles {
             if !slot.blocking_dir {
                 continue;
             }
-            ensure_parent_within(target_dir, &slot.path)?;
+            ensure_ancestor_within(target_dir, &slot.path)?;
             // A symlink to a directory is not a directory: unlink the link, do not recurse through
             // it (the file opened through it would have failed with EISDIR, so it still has to go).
             let is_link = fs::symlink_metadata(&slot.path)
@@ -1900,7 +1903,7 @@ impl DepotFiles {
             .ok_or_else(|| "write_depot: bad file index".to_string())?;
         let mut st = slot.state.lock().expect("slot state poisoned");
         if !st.opened {
-            make_parent_dirs(Path::new(&slot.path))?;
+            make_parent_dirs(Path::new(&slot.path), &self.base)?;
             let file = OpenOptions::new()
                 .create(true)
                 .write(true)
@@ -1960,7 +1963,7 @@ impl DepotFiles {
                     .map_err(|err| format!("write_depot: final sync '{}': {err}", slot.path))?;
             } else if !st.opened {
                 // 0-chunk regular file (never touched by a worker): ensure it exists at exact size.
-                make_parent_dirs(Path::new(&slot.path))?;
+                make_parent_dirs(Path::new(&slot.path), &self.base)?;
                 let file = OpenOptions::new()
                     .create(true)
                     .write(true)
@@ -3746,12 +3749,14 @@ fn create_directory(path: &str, target_dir: &str) -> Result<(), String> {
     // quietly replace. Two cases are still replaced: a dangling link, which `create_dir_all` cannot
     // get past, and a link whose target is OUTSIDE the install tree — keeping that one would let
     // the manifest's files be written beyond the root, which every removal path already refuses.
+    // Checked before the stat and before `create_dir_all`: the entry may not exist at all, while an
+    // ancestor is a link out of the tree — `create_dir_all` would then create the directory there.
+    ensure_ancestor_within(target_dir, path)?;
     let resolved = fs::metadata(path); // follows links
     let is_dir = resolved.as_ref().map(|meta| meta.is_dir()).unwrap_or(false);
     let dangling = resolved.is_err() && fs::symlink_metadata(path).is_ok();
     let keep = is_dir && resolves_inside(target_dir, path)?;
     if !keep && (resolved.is_ok() || dangling) {
-        ensure_parent_within(target_dir, path)?;
         fs::remove_file(path).map_err(|err| format!("write_depot: unlink '{path}': {err}"))?;
     }
     fs::create_dir_all(path).map_err(|err| format!("write_depot: mkdir '{path}': {err}"))
@@ -3759,10 +3764,9 @@ fn create_directory(path: &str, target_dir: &str) -> Result<(), String> {
 
 fn create_symlink(path: &str, target: &str, target_dir: &str) -> Result<(), String> {
     let path_ref = Path::new(path);
-    make_parent_dirs(path_ref)?;
+    make_parent_dirs(path_ref, target_dir)?;
     if let Ok(meta) = fs::symlink_metadata(path_ref) {
         // Same rule as the other two: whatever occupies the name, the manifest's kind wins.
-        ensure_parent_within(target_dir, path)?;
         if meta.is_dir() {
             fs::remove_dir_all(path_ref)
                 .map_err(|err| format!("write_depot: rmdir '{path}': {err}"))?;
@@ -3785,29 +3789,46 @@ fn resolves_inside(root: &str, path: &str) -> Result<bool, String> {
     Ok(resolved.starts_with(&root))
 }
 
-/// A recursive removal must not be redirected outside the install directory by a symlinked
+/// A creation or a removal must not be redirected outside the install directory by a symlinked
 /// ancestor: `path_is_safe` validated the manifest's relative spelling, which cannot see a link on
-/// disk. The parent is resolved (following links) and has to stay under the resolved install root.
-/// Only called when the entry about to be removed actually exists, so its parent exists too.
-fn ensure_parent_within(target_dir: &str, path: &str) -> Result<(), String> {
-    let Some(parent) = Path::new(path).parent() else {
-        return Err(format!("write_depot: refusing to replace '{path}': no parent"));
-    };
-    let root = fs::canonicalize(target_dir)
-        .map_err(|err| format!("write_depot: resolve '{target_dir}': {err}"))?;
-    let parent = fs::canonicalize(parent)
-        .map_err(|err| format!("write_depot: resolve the parent of '{path}': {err}"))?;
-    if parent == root || parent.starts_with(&root) {
+/// disk. The NEAREST ANCESTOR THAT EXISTS is resolved (following links) and has to stay under the
+/// resolved install root; the components below it do not exist yet, so none of them can be a link.
+/// Checking only an existing direct parent would miss `alias/newdir` when `alias` is a link out of
+/// the tree and the manifest never declares `alias` itself.
+fn ensure_ancestor_within(target_dir: &str, path: &str) -> Result<(), String> {
+    // An install dir that does not exist yet cannot redirect anything: every component inside it is
+    // about to be created, so none of them can be a link.
+    let Ok(root) = fs::canonicalize(target_dir) else {
         return Ok(());
+    };
+    let mut ancestor = Path::new(path).parent();
+    while let Some(candidate) = ancestor {
+        if candidate.as_os_str().is_empty() {
+            break;
+        }
+        if let Ok(resolved) = fs::canonicalize(candidate) {
+            return if resolved.starts_with(&root) {
+                Ok(())
+            } else {
+                Err(format!(
+                    "write_depot: refusing '{path}': '{}' resolves outside the install dir",
+                    candidate.display()
+                ))
+            };
+        }
+        ancestor = candidate.parent();
     }
     Err(format!(
-        "write_depot: refusing to replace '{path}': its parent resolves outside the install dir"
+        "write_depot: refusing '{path}': no ancestor resolves inside the install dir"
     ))
 }
 
-fn make_parent_dirs(path: &Path) -> Result<(), String> {
+fn make_parent_dirs(path: &Path, target_dir: &str) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         if !parent.as_os_str().is_empty() {
+            // A file whose parent directory the manifest does not declare is created through the
+            // same check: mkdir follows a link, and so would the open that follows it.
+            ensure_ancestor_within(target_dir, &path.to_string_lossy())?;
             fs::create_dir_all(parent)
                 .map_err(|err| format!("write_depot: mkdir '{}': {err}", parent.display()))?;
         }
@@ -4601,8 +4622,45 @@ rename, a missing hash and a new file all fall through to the normal walk"
         let _ = fs::remove_dir_all(&outside);
     }
 
+    /// A directory entry that does not exist yet can still escape: the manifest need never declare
+    /// `alias`, so the only thing between `alias/newdir` and the disk is the link itself.
+    #[test]
+    fn a_new_directory_under_an_escaping_ancestor_is_refused() {
+        let root = std::env::temp_dir().join(format!("gnalias-{}", std::process::id()));
+        let outside = std::env::temp_dir().join(format!("gnaliasout-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        let _ = fs::remove_dir_all(&outside);
+        fs::create_dir_all(&root).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        std::os::unix::fs::symlink(&outside, root.join("alias")).unwrap();
+        let manifest = ContentManifest {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
+                filenames_encrypted: false,
+                ..Default::default()
+            },
+            files: vec![crate::store_dl::steam::content_manifest::FileMapping {
+                filename: "alias/newdir".into(),
+                flags: DEPOT_FILE_FLAG_DIRECTORY,
+                ..Default::default()
+            }],
+            signature: Vec::new(),
+        };
+        let base = root.to_str().unwrap();
+        let plan = plan_depot_write(&manifest, &[1u8; 32], 4, base, 4).unwrap();
+        let result = create_depot_layout(&plan, base);
+        assert!(result.error.contains("outside the install dir"), "{}", result.error);
+        assert!(
+            !outside.join("newdir").exists(),
+            "nothing may be created through the link"
+        );
+        let _ = fs::remove_dir_all(&root);
+        let _ = fs::remove_dir_all(&outside);
+    }
+
     /// A symlink that resolves to a directory is another depot's entry (or the user's): an ordinary
-    /// update must keep it. Only a file (or a dangling link) in a directory's place is replaced.
+    /// update must keep it — but only while it stays inside the install tree (see
+    /// `a_directory_link_that_escapes_the_install_dir_is_replaced`). A file or a dangling link in a
+    /// directory's place is replaced.
     #[test]
     fn a_symlink_to_a_directory_is_left_alone() {
         let dir = std::env::temp_dir().join(format!("gnsymlink-{}", std::process::id()));
