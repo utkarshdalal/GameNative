@@ -1,0 +1,28 @@
+diff --git a/src/import_parsers.rs b/src/import_parsers.rs
+index c03556d..c25c1cb 100644
+--- a/src/import_parsers.rs
++++ b/src/import_parsers.rs
+@@ -68,12 +68,21 @@ pub fn handle_credentials_import(args: &crate::Args) -> (String, String, String)
+         return token.dissolve();
+     }
+ 
+-    let access_token = args.access_token.clone().expect("Access token is required");
++    let access_token = args
++        .access_token
++        .clone()
++        .or_else(|| std::env::var("COMET_ACCESS_TOKEN").ok())
++        .expect("Access token is required");
+     let refresh_token = args
+         .refresh_token
+         .clone()
++        .or_else(|| std::env::var("COMET_REFRESH_TOKEN").ok())
+         .expect("Refresh token is required");
+-    let galaxy_user_id = args.user_id.clone().expect("User id is required");
++    let galaxy_user_id = args
++        .user_id
++        .clone()
++        .or_else(|| std::env::var("COMET_USER_ID").ok())
++        .expect("User id is required");
+ 
+     (access_token, refresh_token, galaxy_user_id)
+ }

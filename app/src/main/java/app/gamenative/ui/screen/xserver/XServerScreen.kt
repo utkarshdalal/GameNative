@@ -120,6 +120,7 @@ import app.gamenative.service.rockstar.RockstarLaunchSupport
 import app.gamenative.service.epic.EpicOverlayManager
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
+import app.gamenative.service.gog.GogGalaxyService
 import app.gamenative.ui.component.LsfgQuickMenuState
 import app.gamenative.ui.component.PerformanceQuickMenuState
 import app.gamenative.ui.component.QuickMenu
@@ -4717,6 +4718,13 @@ private fun getWineStartCommand(
             gameSource = GameSource.GOG
         )
 
+        if (GogGalaxyService.isActive(context, offline)) {
+            GogGalaxyService.preparePrefix(context, container)
+            GogGalaxyService.start(context)
+        } else {
+            GogGalaxyService.stop()
+        }
+
         val gogCommand = GOGService.getGogWineStartCommand(
             libraryItem = libraryItem,
             container = container,
@@ -5232,6 +5240,7 @@ private fun exit(
     }
     PluviaApp.shutdownEnvironment()
     EaLaunchSupport.stop()
+    GogGalaxyService.stop(blocking = false)
 
     // Bionic-Steam mode brought up libsteamclient.so inside this Android process
     // (see BionicProgramLauncherComponent.bootstrapNativeSteamClient). Tear it
