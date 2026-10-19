@@ -2076,8 +2076,6 @@
     <string name="debug_paywall_tier10_body">3 remedieri personalizate pe lună, răspunsuri mai rapide, primul la rând.</string>
     <string name="debug_paywall_cancel_anytime">Anulează oricând. Se aplică limite de utilizare corectă.</string>
     <string name="debug_paywall_costs_note">Abonamentele acoperă costurile serviciului AI care face posibilă această funcție.</string>
-    <string name="debug_paywall_subscribe">Abonează-te pe Discord</string>
-    <string name="debug_paywall_kofi_alt">Abonează-te pe Ko-fi</string>
     <string name="debug_paywall_already">Ești deja susținător?</string>
     <string name="debug_paywall_send_now">M-am abonat, trimite acum</string>
     <string name="debug_paywall_not_now">Nu acum</string>

@@ -92,6 +92,7 @@ import app.gamenative.ui.component.GameInviteOverlay
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.api.AccountApi
+import app.gamenative.billing.Membership
 import app.gamenative.api.DebugReportApi
 import app.gamenative.api.SupportApi
 import app.gamenative.ui.component.dialog.AI_HELP_PATH_APP
@@ -420,6 +421,9 @@ fun PluviaMain(
         mutableStateOf(DebugReportDialogState(false))
     }
     var debugPaywallReason by rememberSaveable { mutableStateOf<String?>(null) }
+    var membershipPlansVisible by rememberSaveable { mutableStateOf(false) }
+    var membershipSignInVisible by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) { Membership.refresh() }
     var debugAccountPrompt by rememberSaveable { mutableStateOf<String?>(null) }
     var aiDebugOfferAppId by rememberSaveable { mutableStateOf("") }
     var aiDebugOfferTrigger by rememberSaveable { mutableStateOf("") }
@@ -1006,9 +1010,9 @@ fun PluviaMain(
 
         DialogType.SUPPORT -> {
             onConfirmClick = {
-                uriHandler.openUri(Constants.Misc.KO_FI_LINK)
                 trackMembershipPrompt("membership_prompt_clicked", membershipPitchTrigger)
                 msgDialogState = MessageDialogState(visible = false)
+                membershipPlansVisible = true
             }
             onDismissRequest = {
                 msgDialogState = MessageDialogState(visible = false)
@@ -1872,6 +1876,26 @@ fun PluviaMain(
                 onDismiss = { debugAccountPrompt = null },
             )
 
+            SupportUpgradeDialog(
+                visible = membershipPlansVisible,
+                reason = SupportApi.REASON_MEMBERSHIP,
+                onPlanChanged = { membershipPlansVisible = false },
+                onDismiss = { membershipPlansVisible = false },
+                onSignIn = {
+                    membershipPlansVisible = false
+                    membershipSignInVisible = true
+                },
+            )
+
+            AccountSignInDialog(
+                visible = membershipSignInVisible,
+                onSignedIn = {
+                    membershipSignInVisible = false
+                    if (!Membership.isMember()) membershipPlansVisible = true
+                },
+                onDismiss = { membershipSignInVisible = false },
+            )
+
             debugPaywallReason?.let { reason ->
                 Box(modifier = Modifier.zIndex(5f)) {
                     DebugPaywallScreen(
@@ -1880,12 +1904,9 @@ fun PluviaMain(
                         reason = reason,
                         hasDiscordToken = discordTokenPresent,
                         onSubscribe = {
-                            trackAiDebug("ai_debug_paywall_subscribe_clicked", mapOf("store" to "discord", "reason" to reason))
-                            uriHandler.openUri(Constants.Misc.DISCORD_SHOP_LINK)
-                        },
-                        onSubscribeKofi = {
-                            trackAiDebug("ai_debug_paywall_subscribe_clicked", mapOf("store" to "kofi", "reason" to reason))
-                            uriHandler.openUri(Constants.Misc.KO_FI_LINK)
+                            trackAiDebug("ai_debug_paywall_subscribe_clicked", mapOf("store" to "plans", "reason" to reason))
+                            debugPaywallReason = null
+                            membershipPlansVisible = true
                         },
                         onConnectDiscord = openDiscordConnect,
                         onRetry = {
@@ -2011,7 +2032,7 @@ fun PluviaMain(
                                     message = context.getString(R.string.main_recent_crash_message),
                                     confirmBtnText = context.getString(R.string.ok),
                                 )
-                            } else if (!(PrefManager.tipped || BuildConfig.GOLD) &&
+                            } else if (!Membership.isMember() &&
                                 PrefManager.hasAttemptedGameLaunch &&
                                 !MainViewModel.gamePlayedThisSession &&
                                 System.currentTimeMillis() - PrefManager.lastLaunchPitchTime >= LAUNCH_PITCH_COOLDOWN_MS

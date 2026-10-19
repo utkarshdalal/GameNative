@@ -2023,8 +2023,6 @@ https://gamenative.app
     <string name="debug_paywall_tier10_body">3 индивидуальных исправления в месяц, более быстрые ответы, первое место в очереди.</string>
     <string name="debug_paywall_cancel_anytime">Отмена в любой момент. Действуют лимиты добросовестного использования.</string>
     <string name="debug_paywall_costs_note">Подписки покрывают расходы на сервис AI, благодаря которому работает эта функция.</string>
-    <string name="debug_paywall_subscribe">Подпишитесь в Discord</string>
-    <string name="debug_paywall_kofi_alt">Подпишитесь в Ko-fi</string>
     <string name="debug_paywall_already">Уже саппортер?</string>
     <string name="debug_paywall_send_now">Я оформил подписку, отправить сейчас</string>
     <string name="debug_paywall_not_now">Не сейчас</string>

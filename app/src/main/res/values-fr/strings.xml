@@ -2115,8 +2115,6 @@
     <string name="debug_paywall_tier10_body">3 correctifs personnalisés par mois, des réponses plus rapides, en tête de file.</string>
     <string name="debug_paywall_cancel_anytime">Annulable à tout moment. Des limites d\'usage raisonnable s\'appliquent.</string>
     <string name="debug_paywall_costs_note">Les abonnements couvrent les coûts du service AI qui rend cette fonction possible.</string>
-    <string name="debug_paywall_subscribe">Abonnez-vous sur Discord</string>
-    <string name="debug_paywall_kofi_alt">Abonnez-vous sur Ko-fi</string>
     <string name="debug_paywall_already">Déjà supporter ?</string>
     <string name="debug_paywall_send_now">Je me suis abonné, envoyer maintenant</string>
     <string name="debug_paywall_not_now">Pas maintenant</string>

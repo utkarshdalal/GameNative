@@ -1967,8 +1967,6 @@
     <string name="debug_paywall_tier10_body">3 tilpassede rettelser om måneden, hurtigere svar, først i køen.</string>
     <string name="debug_paywall_cancel_anytime">Opsig når som helst. Fair use-grænser gælder.</string>
     <string name="debug_paywall_costs_note">Abonnementer dækker AI-tjenesteomkostningerne, der gør denne funktion mulig.</string>
-    <string name="debug_paywall_subscribe">Abonnér på Discord</string>
-    <string name="debug_paywall_kofi_alt">Abonnér på Ko-fi</string>
     <string name="debug_paywall_already">Allerede supporter?</string>
     <string name="debug_paywall_send_now">Jeg har tegnet abonnement, send nu</string>
     <string name="debug_paywall_not_now">Ikke nu</string>

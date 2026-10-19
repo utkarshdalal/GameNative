@@ -2060,8 +2060,6 @@
     <string name="debug_paywall_tier10_body">カスタム修正は月 3 回、より速い返信、キューで最優先。</string>
     <string name="debug_paywall_cancel_anytime">いつでも解約できます。フェアユース上限が適用されます。</string>
     <string name="debug_paywall_costs_note">サブスクリプションは、この機能を支える AI サービスの費用に充てられます。</string>
-    <string name="debug_paywall_subscribe">Discord で登録する</string>
-    <string name="debug_paywall_kofi_alt">Ko-fi で登録する</string>
     <string name="debug_paywall_already">すでにサポーターですか？</string>
     <string name="debug_paywall_send_now">加入済みです。今すぐ送信</string>
     <string name="debug_paywall_not_now">今はしない</string>

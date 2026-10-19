@@ -2095,8 +2095,6 @@
     <string name="debug_paywall_tier10_body">3 soluciones personalizadas al mes, respuestas más rápidas, primero en la cola.</string>
     <string name="debug_paywall_cancel_anytime">Cancela cuando quieras. Se aplican límites de uso justo.</string>
     <string name="debug_paywall_costs_note">Las suscripciones cubren los costes del servicio de AI que hace posible esta función.</string>
-    <string name="debug_paywall_subscribe">Suscríbete en Discord</string>
-    <string name="debug_paywall_kofi_alt">Suscríbete en Ko-fi</string>
     <string name="debug_paywall_already">¿Ya eres supporter?</string>
     <string name="debug_paywall_send_now">Ya me he suscrito, enviar ahora</string>
     <string name="debug_paywall_not_now">Ahora no</string>

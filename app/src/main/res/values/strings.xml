@@ -1269,7 +1269,7 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Pro reports skip the queue.</string>
     <string name="support_limit_title">Daily fair-use limit reached</string>
-    <string name="support_upgrade_reason_required">AI replies need a GameNative subscription. If you already subscribe on Discord or Ko-fi, connect Discord in Settings.</string>
+    <string name="support_upgrade_reason_required">AI replies need a GameNative plan.</string>
     <string name="support_see_plans">See plans</string>
     <string name="support_plan_basic_title">$5/month · Basic</string>
     <string name="support_plan_basic_body">Get your games running, or running better.</string>
@@ -1279,6 +1279,10 @@
     <string name="support_checkout_no_browser">No browser was found to open the checkout page. Scan the code with another device instead.</string>
     <string name="support_checkout_failed">The checkout page could not be opened. Check your connection and try again.</string>
     <string name="support_checkout_done">Done</string>
+    <string name="support_checkout_expired">This checkout timed out. If you already paid, sign in with the email you used and your plan appears.</string>
+    <string name="support_already_member">Already a member? Sign in</string>
+    <string name="membership_plans_title">Become a member</string>
+    <string name="membership_plans_pitch">Members get AI help getting games running, early access to new releases, and premium roles on Discord.</string>
     <string name="support_already_subscribed">This account already has a subscription. You can change your plan on the billing page.</string>
     <string name="support_plan_active">Your plan is active.</string>
     <string name="support_plan_pending">Your plan is still being set up. Please try again in a minute.</string>
@@ -2059,8 +2063,6 @@
     <string name="debug_paywall_tier10_body">3 custom fixes a month, faster answers, first in the queue.</string>
     <string name="debug_paywall_cancel_anytime">Cancel anytime. Fair-use limits apply.</string>
     <string name="debug_paywall_costs_note">Subscriptions cover the AI service costs that make this feature possible.</string>
-    <string name="debug_paywall_subscribe">Subscribe on Discord</string>
-    <string name="debug_paywall_kofi_alt">Subscribe on Ko-fi</string>
     <string name="debug_paywall_already">Already a supporter?</string>
     <string name="debug_paywall_send_now">I’ve subscribed, send now</string>
     <string name="debug_paywall_not_now">Not now</string>

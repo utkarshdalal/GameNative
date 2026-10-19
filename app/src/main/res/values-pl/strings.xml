@@ -2099,8 +2099,6 @@
     <string name="debug_paywall_tier10_body">3 własne poprawki miesięcznie, szybsze odpowiedzi, pierwszeństwo w kolejce.</string>
     <string name="debug_paywall_cancel_anytime">Anuluj w dowolnym momencie. Obowiązują limity uczciwego użytkowania.</string>
     <string name="debug_paywall_costs_note">Subskrypcje pokrywają koszty usługi AI, dzięki której ta funkcja działa.</string>
-    <string name="debug_paywall_subscribe">Subskrybuj przez Discord</string>
-    <string name="debug_paywall_kofi_alt">Subskrybuj przez Ko-fi</string>
     <string name="debug_paywall_already">Jesteś już supporterem?</string>
     <string name="debug_paywall_send_now">Mam już subskrypcję, wyślij teraz</string>
     <string name="debug_paywall_not_now">Nie teraz</string>

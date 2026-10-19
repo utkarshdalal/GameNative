@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import app.gamenative.BuildConfig
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
+import app.gamenative.billing.Membership
 import app.gamenative.data.BootAdRepository
 import app.gamenative.data.GameProcessInfo
 import app.gamenative.data.GameSource
@@ -100,7 +101,7 @@ class MainViewModel @Inject constructor(
     private var pendingWarmPitch: Pair<String, Boolean>? = null
 
     private fun warmPitchAllowed(): Boolean {
-        if (PrefManager.tipped || BuildConfig.GOLD) return false
+        if (Membership.isMember()) return false
         return System.currentTimeMillis() - PrefManager.lastWarmPitchTime >= WARM_PITCH_COOLDOWN_MS
     }
 

@@ -2088,8 +2088,6 @@
     <string name="debug_paywall_tier10_body">3 correzioni personalizzate al mese, risposte più rapide, in cima alla coda.</string>
     <string name="debug_paywall_cancel_anytime">Annulla quando vuoi. Si applicano limiti di uso corretto.</string>
     <string name="debug_paywall_costs_note">Gli abbonamenti coprono i costi del servizio AI che rende possibile questa funzione.</string>
-    <string name="debug_paywall_subscribe">Abbonati su Discord</string>
-    <string name="debug_paywall_kofi_alt">Abbonati su Ko-fi</string>
     <string name="debug_paywall_already">Sei già supporter?</string>
     <string name="debug_paywall_send_now">Mi sono abbonato, invia ora</string>
     <string name="debug_paywall_not_now">Non ora</string>

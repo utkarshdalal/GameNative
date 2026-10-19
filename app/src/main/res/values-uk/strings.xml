@@ -2095,8 +2095,6 @@
     <string name="debug_paywall_tier10_body">3 індивідуальні виправлення на місяць, швидші відповіді, перше місце в черзі.</string>
     <string name="debug_paywall_cancel_anytime">Скасувати можна будь-коли. Діють ліміти чесного використання.</string>
     <string name="debug_paywall_costs_note">Підписки покривають витрати на сервіс AI, завдяки якому працює ця функція.</string>
-    <string name="debug_paywall_subscribe">Підпишіться в Discord</string>
-    <string name="debug_paywall_kofi_alt">Підпишіться в Ko-fi</string>
     <string name="debug_paywall_already">Уже прихильник?</string>
     <string name="debug_paywall_send_now">Я оформив підписку, надіслати зараз</string>
     <string name="debug_paywall_not_now">Не зараз</string>

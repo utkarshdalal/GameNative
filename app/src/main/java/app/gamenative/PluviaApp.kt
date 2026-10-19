@@ -33,6 +33,7 @@ import com.google.android.play.core.splitcompat.SplitCompatApplication
 import com.posthog.PersonProfiles
 
 // Add PostHog imports
+import app.gamenative.billing.PlayBilling
 import com.posthog.android.PostHogAndroid
 import com.posthog.PostHogPropertiesSanitizer
 import com.posthog.android.PostHogAndroidConfig
@@ -99,6 +100,7 @@ class PluviaApp : SplitCompatApplication() {
 
         // Init our datastore preferences.
         PrefManager.init(this)
+        PlayBilling.init(this)
         NexusAuthManager.initialize(this)
         FrontendSyncManager.init(this)
 
