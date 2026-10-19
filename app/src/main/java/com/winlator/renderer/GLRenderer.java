@@ -442,8 +442,8 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
                     if (width >= 320 && height >= 200 && width < effectiveScreen.width && height < effectiveScreen.height) {
                         Window parent = window.getParent();
-                        boolean parentHasWMClass = parent.getClassName().contains(forceFullscreenWMClass);
-                        boolean hasWMClass = window.getClassName().contains(forceFullscreenWMClass);
+                        boolean parentHasWMClass = containsIgnoreCase(parent.getClassName(), forceFullscreenWMClass);
+                        boolean hasWMClass = containsIgnoreCase(window.getClassName(), forceFullscreenWMClass);
                         if (hasWMClass) {
                             forceFullscreen = !parentHasWMClass && window.getChildCount() == 0;
                         }
@@ -466,6 +466,15 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         for (Window child : window.getChildren()) {
             collectRenderableWindows(child, child.getX() + x, child.getY() + y);
         }
+    }
+
+    private static boolean containsIgnoreCase(String value, String query) {
+        if (value == null || query == null) return false;
+        int queryLength = query.length();
+        for (int i = 0; i <= value.length() - queryLength; i++) {
+            if (value.regionMatches(true, i, query, 0, queryLength)) return true;
+        }
+        return false;
     }
 
     private void removeRenderableWindow(Window window) {
