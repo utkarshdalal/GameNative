@@ -193,10 +193,15 @@ keeps "resume = refresh" honest.
   case-insensitive volume can hold only one, so the run keeps the **file** and drops the losing
   directory together with everything under it (logged `depot-clash path=… kept=file depot=…`): a
   directory is only a container, and the file is the form the game reads — it is also what a Windows
-  install converges on, since the directory cannot be created over the file. The write path applies
-  the same rule in both directions (a directory in a file's way is removed, and a file in a
-  directory's way is unlinked), so an install left in the wrong shape by an earlier attempt repairs
-  itself instead of failing with `EEXIST`/`EISDIR`.
+  install converges on, since the directory cannot be created over the file. Depots the store records
+  as installed take part in that decision even when this press does not select them, so a run can
+  never replace a file an installed depot owns. The write path applies the same rule in both
+  directions — a directory in a file's way is removed (after the free-space preflight, so a failed
+  preflight leaves the old tree; refused when a symlinked ancestor would take the removal outside
+  the install dir) and a file in a directory's way is unlinked — so an install left in the wrong
+  shape by an earlier attempt repairs itself instead of failing with `EEXIST`/`EISDIR`. A file the
+  delta calls unchanged is only trusted when it is still the regular file of the manifest's size on
+  disk; a deleted, truncated or directory-shadowed path is revalidated like any other change.
 - **Manifest & key freshness**: the requested build's manifest is fetched on every press (a cached
   `target/` file is never reused), and a manifest whose metadata does not match the depot/gid it is
   filed under is never trusted as a diff base — the run fetches instead. Depot keys are requested via

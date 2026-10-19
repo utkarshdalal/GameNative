@@ -1656,6 +1656,14 @@ struct FileSlot {
     trusted: AtomicBool,
     /// Every chunk of this file is a trusted chunk already within its pre-existing length.
     chunks_all_trusted: bool,
+    /// A directory occupies this regular file's path: it has to go before the file can be written.
+    /// Recorded here (the `stat` is already done) and removed later, once the free-space preflight
+    /// has passed — a failed preflight must leave the old tree intact.
+    blocking_dir: bool,
+    /// The path is the regular file of this manifest's size, so "unchanged" can be believed. A
+    /// deleted file, a directory in its place or a different length is not that file: those keep
+    /// their chunk jobs and are revalidated (see `mark_trusted`).
+    shape_ok: bool,
 }
 
 /// Per-depot open-file table. Handles are opened lazily on first touch and closed as soon as the
@@ -1721,21 +1729,19 @@ impl DepotFiles {
                     join_target_path(target_dir, &rel)
                 }
             };
-            let preexisting = if is_regular {
-                let existing = fs::metadata(&path);
-                // A directory sitting where the manifest declares a file is the losing side of a
-                // cross-depot name clash (or an older layout that had one here). The file is what
-                // the game can use and what the plan says, so it has to go — otherwise the first
-                // write fails with EISDIR and takes the depot with it. Reuses this stat, no extra
-                // syscall; only ever for a path this manifest declares as a regular file.
-                if existing.as_ref().map(|meta| meta.is_dir()).unwrap_or(false) {
-                    let _ = fs::remove_dir_all(&path);
-                    0
-                } else {
-                    existing.map(|meta| meta.len()).unwrap_or(0)
+            // One stat decides three things: how much is already on disk (free-space accounting),
+            // whether a directory stands where this file must go (it has to be cleared before the
+            // write, or the open fails with EISDIR — a cross-depot name clash or a stale layout),
+            // and whether the bytes can be believed when the update delta calls this file unchanged
+            // (a missing file, a directory in its place or a different length cannot).
+            let (preexisting, blocking_dir, shape_ok) = if is_regular {
+                match fs::metadata(&path) {
+                    Ok(meta) if meta.is_dir() => (0, true, false),
+                    Ok(meta) => (meta.len(), false, meta.is_file() && meta.len() == file.size),
+                    Err(_) => (0, false, false),
                 }
             } else {
-                0
+                (0, false, false)
             };
             if is_regular {
                 already_present += preexisting.min(file.size);
@@ -1758,6 +1764,8 @@ impl DepotFiles {
                 path,
                 mode,
                 is_regular,
+                blocking_dir,
+                shape_ok,
             });
         }
         Self {
@@ -1791,11 +1799,54 @@ impl DepotFiles {
     fn mark_trusted(&self, trusted: &[u32]) {
         for &idx in trusted {
             if let Some(slot) = self.slots.get(idx as usize) {
+                // "Unchanged according to the manifests" is not enough: the bytes have to still be
+                // the regular file of the manifest's size on disk. A deleted path, a directory in
+                // its place or a truncated file keeps its chunk jobs and is revalidated — otherwise
+                // the run would skip its jobs and finalize would skip the file, leaving it missing.
+                if !slot.shape_ok {
+                    continue;
+                }
                 slot.trusted.store(true, Ordering::Relaxed);
                 // Nothing will decrement this: the file is not part of this run's job list.
                 slot.remaining.store(0, Ordering::Relaxed);
             }
         }
+    }
+
+    /// Indices of the files this run may leave alone (the trusted set as actually applied).
+    fn trusted_indices(&self) -> Vec<u32> {
+        self.slots
+            .iter()
+            .enumerate()
+            .filter(|(_, slot)| slot.trusted.load(Ordering::Relaxed))
+            .map(|(idx, _)| idx as u32)
+            .collect()
+    }
+
+    /// Removes directories standing where this run must write a regular file. Deliberately separate
+    /// from [`Self::prepare`]: the free-space preflight runs in between, and a failed preflight has
+    /// to leave the old tree in place rather than trade it for a file that never gets written.
+    fn clear_blocking_dirs(&self, target_dir: &str) -> Result<(), String> {
+        for slot in &self.slots {
+            if !slot.blocking_dir {
+                continue;
+            }
+            ensure_parent_within(target_dir, &slot.path)?;
+            // A symlink to a directory is not a directory: unlink the link, do not recurse through
+            // it (the file opened through it would have failed with EISDIR, so it still has to go).
+            let is_link = fs::symlink_metadata(&slot.path)
+                .map(|meta| meta.file_type().is_symlink())
+                .unwrap_or(false);
+            let removed = if is_link {
+                fs::remove_file(&slot.path)
+            } else {
+                fs::remove_dir_all(&slot.path)
+            };
+            removed.map_err(|err| {
+                format!("write_depot: replace directory '{}': {err}", slot.path)
+            })?;
+        }
+        Ok(())
     }
 
     fn mark_trusted_chunks(&mut self, manifest: &ContentManifest, pairs: &[(u32, u32)]) {
@@ -2205,18 +2256,6 @@ pub fn write_depot_sequential(
         Err(error) => return error,
     };
 
-    // Update delta: drop the jobs of files the previous manifest proves unchanged, so this run
-    // never re-hashes or re-downloads them (Steam's own update behaviour).
-    if let Some(trusted) = options.trusted_files {
-        if !trusted.is_empty() {
-            // A set, not a linear scan: a big depot has ~10^5 chunk jobs and can have as many
-            // trusted files, and this filter runs before a single byte moves.
-            let trusted: std::collections::HashSet<u32> = trusted.iter().copied().collect();
-            plan.chunk_jobs.retain(|job| !trusted.contains(&job.file_idx));
-            plan.worker_count = clamp_worker_count(options.max_workers, plan.chunk_jobs.len());
-        }
-    }
-
     let mut files = DepotFiles::prepare(manifest, &plan, target_dir);
     if let Some(trusted_chunks) = options.trusted_chunks {
         if !trusted_chunks.is_empty() {
@@ -2225,6 +2264,20 @@ pub fn write_depot_sequential(
     }
     if let Some(trusted) = options.trusted_files {
         files.mark_trusted(trusted);
+    }
+    // Update delta: drop the jobs of files the previous manifest proves unchanged, so this run never
+    // re-hashes or re-downloads them (Steam's own update behaviour). Applied AFTER `prepare`, and by
+    // the set it actually trusted: a file the delta called unchanged but whose shape on disk is not
+    // that file (deleted, a directory in its place, a different length) must keep its jobs.
+    if options.trusted_files.is_some() {
+        // A set, not a linear scan: a big depot has ~10^5 chunk jobs and can have as many trusted
+        // files, and this filter runs before a single byte moves.
+        let trusted: std::collections::HashSet<u32> =
+            files.trusted_indices().into_iter().collect();
+        if !trusted.is_empty() {
+            plan.chunk_jobs.retain(|job| !trusted.contains(&job.file_idx));
+            plan.worker_count = clamp_worker_count(options.max_workers, plan.chunk_jobs.len());
+        }
     }
 
     // Free-space guard using the EXACT manifest sizes (ground truth), minus what is already on disk.
@@ -2255,7 +2308,13 @@ pub fn write_depot_sequential(
         }
     }
 
-    let layout = create_depot_layout(&plan);
+    // Preflight passed: now the directories standing in a file's place can go. Any failure here is
+    // the run's failure, not a silent EISDIR later.
+    if let Err(error) = files.clear_blocking_dirs(target_dir) {
+        return DepotWriteResult::fail(error);
+    }
+
+    let layout = create_depot_layout(&plan, target_dir);
     if !layout.ok() {
         return layout;
     }
@@ -3309,11 +3368,11 @@ async fn run_async_fetch_driver(
     drop(inflight);
 }
 
-pub fn create_depot_layout(plan: &DepotWritePlan) -> DepotWriteResult {
+pub fn create_depot_layout(plan: &DepotWritePlan, target_dir: &str) -> DepotWriteResult {
     for action in &plan.actions {
         let result = match action {
-            DepotFileAction::Directory { path } => create_directory(path),
-            DepotFileAction::Symlink { path, target } => create_symlink(path, target),
+            DepotFileAction::Directory { path } => create_directory(path, target_dir),
+            DepotFileAction::Symlink { path, target } => create_symlink(path, target, target_dir),
             // Regular files are NOT pre-created: on FUSE/sdcardfs, one create+chmod
             // roundtrip per manifest file stalls the download start for large depots and
             // makes a later delete walk thousands of entries. [`DepotFiles::acquire`]
@@ -3679,24 +3738,28 @@ fn join_target_path(target_dir: &str, rel: &str) -> String {
     }
 }
 
-fn create_directory(path: &str) -> Result<(), String> {
-    // The manifest declares a directory here, so a FILE of that (case-folded) name is stale — the
+fn create_directory(path: &str, target_dir: &str) -> Result<(), String> {
+    // The manifest declares a directory here. A FILE of that (case-folded) name is stale — the
     // losing side of a name clash, or a layout that had a file there — and `create_dir_all` would
-    // fail with EEXIST. The manifest wins.
-    if fs::symlink_metadata(path)
-        .map(|meta| !meta.is_dir())
-        .unwrap_or(false)
-    {
+    // fail with EEXIST. A symlink that RESOLVES to a directory is left alone: `create_dir_all`
+    // accepts it and the link may be another depot's entry, which an ordinary update must not
+    // quietly replace. Only a dangling link is removed, since `create_dir_all` cannot get past it.
+    let resolved = fs::metadata(path); // follows links
+    let is_dir = resolved.as_ref().map(|meta| meta.is_dir()).unwrap_or(false);
+    let dangling = resolved.is_err() && fs::symlink_metadata(path).is_ok();
+    if !is_dir && (resolved.is_ok() || dangling) {
+        ensure_parent_within(target_dir, path)?;
         fs::remove_file(path).map_err(|err| format!("write_depot: unlink '{path}': {err}"))?;
     }
     fs::create_dir_all(path).map_err(|err| format!("write_depot: mkdir '{path}': {err}"))
 }
 
-fn create_symlink(path: &str, target: &str) -> Result<(), String> {
+fn create_symlink(path: &str, target: &str, target_dir: &str) -> Result<(), String> {
     let path_ref = Path::new(path);
     make_parent_dirs(path_ref)?;
     if let Ok(meta) = fs::symlink_metadata(path_ref) {
         // Same rule as the other two: whatever occupies the name, the manifest's kind wins.
+        ensure_parent_within(target_dir, path)?;
         if meta.is_dir() {
             fs::remove_dir_all(path_ref)
                 .map_err(|err| format!("write_depot: rmdir '{path}': {err}"))?;
@@ -3707,6 +3770,26 @@ fn create_symlink(path: &str, target: &str) -> Result<(), String> {
     }
     create_platform_symlink(target, path_ref)
         .map_err(|err| format!("write_depot: symlink '{path}': {err}"))
+}
+
+/// A recursive removal must not be redirected outside the install directory by a symlinked
+/// ancestor: `path_is_safe` validated the manifest's relative spelling, which cannot see a link on
+/// disk. The parent is resolved (following links) and has to stay under the resolved install root.
+/// Only called when the entry about to be removed actually exists, so its parent exists too.
+fn ensure_parent_within(target_dir: &str, path: &str) -> Result<(), String> {
+    let Some(parent) = Path::new(path).parent() else {
+        return Err(format!("write_depot: refusing to replace '{path}': no parent"));
+    };
+    let root = fs::canonicalize(target_dir)
+        .map_err(|err| format!("write_depot: resolve '{target_dir}': {err}"))?;
+    let parent = fs::canonicalize(parent)
+        .map_err(|err| format!("write_depot: resolve the parent of '{path}': {err}"))?;
+    if parent == root || parent.starts_with(&root) {
+        return Ok(());
+    }
+    Err(format!(
+        "write_depot: refusing to replace '{path}': its parent resolves outside the install dir"
+    ))
 }
 
 fn make_parent_dirs(path: &Path) -> Result<(), String> {
@@ -3781,7 +3864,7 @@ mod tests {
             signature: Vec::new(),
         };
         let plan = plan_depot_write(&manifest, &[1u8; 32], 1, dir.to_str().unwrap(), 4).unwrap();
-        let result = create_depot_layout(&plan);
+        let result = create_depot_layout(&plan, dir.to_str().unwrap());
         assert!(result.ok(), "{}", result.error);
         assert!(dir.join("Game").is_dir());
         assert!(dir.join("Game/Data/Sub").is_dir(), "nested dir created under on-disk case");
@@ -4362,7 +4445,8 @@ rename, a missing hash and a new file all fall through to the normal walk"
         let dir = std::env::temp_dir().join(format!("gntrusted-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
-        fs::write(dir.join("kept.bin"), b"already the right bytes").unwrap();
+        let payload = b"already the right bytes";
+        fs::write(dir.join("kept.bin"), payload).unwrap();
         let manifest = ContentManifest {
             metadata: crate::store_dl::steam::content_manifest::Metadata {
                 filenames_encrypted: false,
@@ -4370,7 +4454,7 @@ rename, a missing hash and a new file all fall through to the normal walk"
             },
             files: vec![crate::store_dl::steam::content_manifest::FileMapping {
                 filename: "kept.bin".into(),
-                size: 24,
+                size: payload.len() as u64,
                 chunks: vec![ChunkData {
                     offset: 0,
                     cb_original: 24,
@@ -4386,7 +4470,7 @@ rename, a missing hash and a new file all fall through to the normal walk"
         files.mark_trusted(&[0]);
         // Finalize must be a no-op: the file is neither truncated nor re-created.
         files.finalize_remaining().unwrap();
-        assert_eq!(fs::read(dir.join("kept.bin")).unwrap(), b"already the right bytes");
+        assert_eq!(fs::read(dir.join("kept.bin")).unwrap(), payload);
         // The drain assertion accepts it (cursor 0 / size 24 is legitimate for a trusted file).
         let writers = vec![Mutex::new(OrderedWriter::default())];
         assert_pipeline_drained(&files, &writers).unwrap();
@@ -4419,9 +4503,160 @@ rename, a missing hash and a new file all fall through to the normal walk"
         let base = dir.to_str().unwrap();
         let plan = plan_depot_write(&manifest, &[1u8; 32], 4, base, 4).unwrap();
         let files = DepotFiles::prepare(&manifest, &plan, base);
+        assert!(
+            dir.join("master.dat").is_dir(),
+            "prepare must not remove it: a failed free-space preflight has to leave the tree intact"
+        );
+        files.clear_blocking_dirs(base).unwrap();
         files.finalize_remaining().unwrap();
         assert!(dir.join("master.dat").is_file(), "the file must replace the directory");
         assert_eq!(fs::metadata(dir.join("master.dat")).unwrap().len(), 5);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// "Unchanged according to the manifests" is not permission to skip a file that is no longer
+    /// that file on disk: a deleted path, a directory in its place or a different length keeps its
+    /// chunk jobs (the trusted set is applied after the shape check for exactly this reason).
+    #[test]
+    fn trust_requires_the_file_to_still_be_that_file() {
+        let dir = std::env::temp_dir().join(format!("gntrustshape-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("a.bin"), b"12345").unwrap();          // right length
+        fs::write(dir.join("b.bin"), b"123").unwrap();            // truncated
+        fs::create_dir_all(dir.join("c.bin/sub")).unwrap();       // a directory in its place
+        let manifest = ContentManifest {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
+                filenames_encrypted: false,
+                ..Default::default()
+            },
+            files: ["a.bin", "b.bin", "c.bin", "d.bin"]
+                .iter()
+                .map(|name| crate::store_dl::steam::content_manifest::FileMapping {
+                    filename: (*name).into(),
+                    size: 5,
+                    ..Default::default()
+                })
+                .collect(),
+            signature: Vec::new(),
+        };
+        let base = dir.to_str().unwrap();
+        let plan = plan_depot_write(&manifest, &[1u8; 32], 4, base, 4).unwrap();
+        let files = DepotFiles::prepare(&manifest, &plan, base);
+        files.mark_trusted(&[0, 1, 2, 3]);
+        assert_eq!(files.trusted_indices(), vec![0], "only the intact file may be trusted");
+        assert!(!files.is_trusted(1), "a truncated file must be revalidated");
+        assert!(!files.is_trusted(2), "a directory is not that file");
+        assert!(!files.is_trusted(3), "a missing file must be re-created");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// A recursive removal must not be redirected outside the install directory by a symlinked
+    /// ancestor: the manifest path is safe, the link on disk is not.
+    #[test]
+    fn a_symlinked_ancestor_cannot_redirect_a_removal_outside_the_install_dir() {
+        let root = std::env::temp_dir().join(format!("gncontain-{}", std::process::id()));
+        let outside = std::env::temp_dir().join(format!("gncontain-out-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        let _ = fs::remove_dir_all(&outside);
+        fs::create_dir_all(&root).unwrap();
+        fs::create_dir_all(outside.join("master.dat")).unwrap();
+        fs::write(outside.join("master.dat/precious.bin"), b"keep me").unwrap();
+        std::os::unix::fs::symlink(&outside, root.join("linked")).unwrap();
+        let manifest = ContentManifest {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
+                filenames_encrypted: false,
+                ..Default::default()
+            },
+            files: vec![crate::store_dl::steam::content_manifest::FileMapping {
+                filename: "linked/master.dat".into(),
+                size: 5,
+                ..Default::default()
+            }],
+            signature: Vec::new(),
+        };
+        let base = root.to_str().unwrap();
+        let plan = plan_depot_write(&manifest, &[1u8; 32], 4, base, 4).unwrap();
+        let files = DepotFiles::prepare(&manifest, &plan, base);
+        let error = files.clear_blocking_dirs(base).unwrap_err();
+        assert!(error.contains("outside the install dir"), "{error}");
+        assert!(
+            outside.join("master.dat/precious.bin").is_file(),
+            "the external tree must survive"
+        );
+        let _ = fs::remove_dir_all(&root);
+        let _ = fs::remove_dir_all(&outside);
+    }
+
+    /// A symlink that resolves to a directory is another depot's entry (or the user's): an ordinary
+    /// update must keep it. Only a file (or a dangling link) in a directory's place is replaced.
+    #[test]
+    fn a_symlink_to_a_directory_is_left_alone() {
+        let dir = std::env::temp_dir().join(format!("gnsymlink-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("real")).unwrap();
+        std::os::unix::fs::symlink("real", dir.join("sound")).unwrap();
+        fs::write(dir.join("dangling-file"), b"x").unwrap();
+        let manifest = ContentManifest {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
+                filenames_encrypted: false,
+                ..Default::default()
+            },
+            files: vec![
+                crate::store_dl::steam::content_manifest::FileMapping {
+                    filename: "sound".into(),
+                    flags: DEPOT_FILE_FLAG_DIRECTORY,
+                    ..Default::default()
+                },
+                crate::store_dl::steam::content_manifest::FileMapping {
+                    filename: "dangling".into(),
+                    flags: DEPOT_FILE_FLAG_DIRECTORY,
+                    ..Default::default()
+                },
+            ],
+            signature: Vec::new(),
+        };
+        let base = dir.to_str().unwrap();
+        let plan = plan_depot_write(&manifest, &[1u8; 32], 4, base, 4).unwrap();
+        assert!(create_depot_layout(&plan, base).ok());
+        assert!(
+            fs::symlink_metadata(dir.join("sound"))
+                .map(|m| m.file_type().is_symlink())
+                .unwrap_or(false),
+            "the link must not be replaced by a real directory"
+        );
+        assert!(dir.join("dangling").is_dir(), "a missing directory is created");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// A directory standing where a symlink entry goes is replaced by the link.
+    #[test]
+    fn a_directory_in_the_way_of_a_symlink_is_cleared() {
+        let dir = std::env::temp_dir().join(format!("gnsymlinkdir-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("link/inside")).unwrap();
+        fs::create_dir_all(dir.join("target")).unwrap();
+        let manifest = ContentManifest {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
+                filenames_encrypted: false,
+                ..Default::default()
+            },
+            files: vec![crate::store_dl::steam::content_manifest::FileMapping {
+                filename: "link".into(),
+                linktarget: "target".into(),
+                ..Default::default()
+            }],
+            signature: Vec::new(),
+        };
+        let base = dir.to_str().unwrap();
+        let plan = plan_depot_write(&manifest, &[1u8; 32], 4, base, 4).unwrap();
+        assert!(create_depot_layout(&plan, base).ok());
+        assert!(
+            fs::symlink_metadata(dir.join("link"))
+                .map(|m| m.file_type().is_symlink())
+                .unwrap_or(false),
+            "the manifest's symlink replaces the directory"
+        );
         let _ = fs::remove_dir_all(&dir);
     }
 
@@ -4446,7 +4681,7 @@ rename, a missing hash and a new file all fall through to the normal walk"
         };
         let base = dir.to_str().unwrap();
         let plan = plan_depot_write(&manifest, &[1u8; 32], 4, base, 4).unwrap();
-        assert!(create_depot_layout(&plan).ok());
+        assert!(create_depot_layout(&plan, base).ok());
         assert!(dir.join("sound").is_dir(), "the directory must replace the file");
         let _ = fs::remove_dir_all(&dir);
     }
@@ -4685,7 +4920,7 @@ rename, a missing hash and a new file all fall through to the normal walk"
             signature: Vec::new(),
         };
         let plan = plan_depot_write(&manifest, &[1u8; 32], 1, dir.to_str().unwrap(), 4).unwrap();
-        let result = create_depot_layout(&plan);
+        let result = create_depot_layout(&plan, dir.to_str().unwrap());
         assert!(result.ok(), "{}", result.error);
         let path = dir.join("bin/game.dat");
         assert!(dir.join("bin").is_dir());

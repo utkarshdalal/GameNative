@@ -546,8 +546,11 @@ pub fn download_resolved_depots_with_cancel_progress(
 
     // Depots of one install can disagree about a path's TYPE (see the function). Decide that here,
     // before anything else consumes the manifests: the probe sample, the sweep's ownership set and
-    // every write plan below must all see the same file set.
-    drop_paths_shadowed_by_files(&mut resolved, log);
+    // every write plan below must all see the same file set. Depots the resume check skipped are
+    // part of the decision too — their files are already on disk, and a run must never unlink a
+    // file an installed depot owns (its manifest is the record of what that depot put there).
+    let installed: Vec<(u32, ContentManifest)> = installed_manifest_paths(&cfg, &log);
+    drop_paths_shadowed_by_files(&mut resolved, &installed, log);
 
     // ── CDN probe: rank the ASSIGNED servers and promote predicted foreign caches that
     // measurably beat the assigned-set median. The on-disk cache seeds the ranking (and any
@@ -821,6 +824,36 @@ chunks_trusted={}",
     result
 }
 
+/// The file sets of the depots the resume check skipped because they are already installed, loaded
+/// from the store's `completed/` record. Their manifests need no network and no identity guesswork:
+/// the gid is the requested one by definition (`decide_depot_resume` only skips an exact match), and
+/// a depot whose manifest cannot be read is simply left out (the clash decision then cannot protect
+/// its files, which the log says).
+fn installed_manifest_paths(
+    cfg: &DepotConfigStore,
+    log: &Option<crate::store_dl::steam::depot_writer::DepotLogCallback<'_>>,
+) -> Vec<(u32, ContentManifest)> {
+    let mut installed = Vec::new();
+    // EVERY depot the store records as installed, including ones this press never selected (an
+    // INSTALL filters already-downloaded depots out in Kotlin, so they are not in the plan at all).
+    // The completed manifests are already filename-decrypted on disk, so no depot key is needed;
+    // one that cannot be read is reported rather than silently ignored.
+    for (depot_id, manifest_id) in cfg.installed_depots() {
+        match load_cached_manifest(cfg, depot_id, manifest_id, &[]) {
+            Some(manifest) => installed.push((depot_id, manifest)),
+            None => {
+                if let Some(log) = log {
+                    log(&format!(
+                        "depot-clash depot={depot_id} installed but its manifest is unreadable — its \
+paths cannot protect against a name clash"
+                    ));
+                }
+            }
+        }
+    }
+    installed
+}
+
 /// Folds away a depot set that cannot exist on one filesystem: the same case-folded path declared
 /// as a FILE by one depot and as a DIRECTORY by another.
 ///
@@ -837,6 +870,7 @@ chunks_trusted={}",
 /// written anyway — and the count is logged. A run with no clash is never modified.
 fn drop_paths_shadowed_by_files(
     resolved: &mut Vec<(&ResolvedDepotSpec, ContentManifest)>,
+    installed: &[(u32, ContentManifest)],
     log: Option<crate::store_dl::steam::depot_writer::DepotLogCallback<'_>>,
 ) {
     let fold = crate::store_dl::steam::depot_writer::folded_entry_key;
@@ -846,6 +880,15 @@ fn drop_paths_shadowed_by_files(
         for file in &manifest.files {
             if (file.flags & DEPOT_FILE_FLAG_DIRECTORY) == 0 {
                 files.entry(fold(&file.filename)).or_insert(depot.depot_id);
+            }
+        }
+    }
+    // Files an already-installed depot owns count as "provided by a file" too: the run would
+    // otherwise happily replace one with a directory (deleting content the store still records).
+    for (depot_id, manifest) in installed {
+        for file in &manifest.files {
+            if (file.flags & DEPOT_FILE_FLAG_DIRECTORY) == 0 {
+                files.entry(fold(&file.filename)).or_insert(*depot_id);
             }
         }
     }
@@ -864,18 +907,19 @@ fn drop_paths_shadowed_by_files(
             }
         }
     }
-    if shadowed.is_empty() {
-        return;
-    }
-    let prefixes: Vec<String> = shadowed.keys().map(|dir| format!("{dir}/")).collect();
+    // No early return when `shadowed` is empty: a manifest need not declare the directory
+    // explicitly, so `master.dat/x.pak` can be the only entry below a file (`has_file_ancestor`).
     for (depot, manifest) in resolved.iter_mut() {
         let before = manifest.files.len();
         manifest.files.retain(|file| {
             let key = fold(&file.filename);
-            if (file.flags & DEPOT_FILE_FLAG_DIRECTORY) != 0 && shadowed.contains_key(&key) {
+            if (file.flags & DEPOT_FILE_FLAG_DIRECTORY) != 0 && files.contains_key(&key) {
                 return false;
             }
-            !prefixes.iter().any(|prefix| key.starts_with(prefix))
+            // Anything BELOW a file cannot be written either — and the manifest need not declare
+            // the directory explicitly (`master.dat/x.pak` can appear on its own). Walk the entry's
+            // ancestors instead of comparing against a prefix list: O(depth), not O(files).
+            !has_file_ancestor(&key, &files)
         });
         let dropped = before - manifest.files.len();
         if dropped > 0 {
@@ -934,6 +978,7 @@ fn a_file_shadows_a_directory_of_the_same_folded_path() {
     let file_depot = spec(38415);
     let dir_depot = spec(38414);
     let legacy_depot = spec(38411);
+    let only_child = spec(38416);
     let mut resolved = vec![
         (&file_depot, manifest(&[("master.dat", 0), ("critter.dat", 0)])),
         (
@@ -949,10 +994,33 @@ fn a_file_shadows_a_directory_of_the_same_folded_path() {
             manifest(&[("MASTER.DAT", dir_flag), ("DATA/proto/critters", 0)]),
         ),
     ];
-    drop_paths_shadowed_by_files(&mut resolved, None);
+    drop_paths_shadowed_by_files(&mut resolved, &[], None);
     assert_eq!(names(&resolved[0].1), ["master.dat", "critter.dat"]);
     assert_eq!(names(&resolved[1].1), ["data/worldmap.dat"]);
     assert_eq!(names(&resolved[2].1), ["DATA/proto/critters"]);
+
+    // A child under the file needs no explicit directory entry to be recognised: `master.dat`
+    // is a file here, so `master.dat/x.pak` cannot be written and goes with it.
+    let mut resolved = vec![
+        (&file_depot, manifest(&[("master.dat", 0)])),
+        (&only_child, manifest(&[("master.dat/x.pak", 0), ("other.bin", 0)])),
+    ];
+    drop_paths_shadowed_by_files(&mut resolved, &[], None);
+    assert_eq!(names(&resolved[1].1), ["other.bin"]);
+
+    // A file an INSTALLED depot owns is a file for this decision too: the run must not replace
+    // it with a directory (that would delete content the store still records as installed).
+    let installed_manifest = manifest(&[("master.dat", 0)]);
+    let mut resolved = vec![(
+        &dir_depot,
+        manifest(&[("master.dat", dir_flag), ("master.dat/x.pak", 0), ("data/a.bin", 0)]),
+    )];
+    drop_paths_shadowed_by_files(
+        &mut resolved,
+        &[(38415, installed_manifest)],
+        None,
+    );
+    assert_eq!(names(&resolved[0].1), ["data/a.bin"]);
 
     // No clash: the same folder in one depot and an unrelated file elsewhere is untouched.
     let only_dir = spec(38414);
@@ -960,12 +1028,26 @@ fn a_file_shadows_a_directory_of_the_same_folded_path() {
         (&file_depot, manifest(&[("master.dat", 0)])),
         (&only_dir, manifest(&[("sound/music", dir_flag), ("master.dat.bak", 0)])),
     ];
-    drop_paths_shadowed_by_files(&mut resolved, None);
+    drop_paths_shadowed_by_files(&mut resolved, &[], None);
     assert_eq!(
         names(&resolved[1].1),
         ["sound/music", "master.dat.bak"],
         "only an exact folded-path clash drops anything"
     );
+}
+
+/// True when any ancestor directory of `key` is itself a file in `files`
+/// (`master.dat/x.pak` under a file `master.dat`).
+fn has_file_ancestor(key: &str, files: &HashMap<String, u32>) -> bool {
+    let mut from = 0;
+    while let Some(offset) = key[from..].find('/') {
+        let cut = from + offset;
+        if files.contains_key(&key[..cut]) {
+            return true;
+        }
+        from = cut + 1;
+    }
+    false
 }
 
 /// The files this run must NOT touch: the previous build's manifest proves their bytes already match,
