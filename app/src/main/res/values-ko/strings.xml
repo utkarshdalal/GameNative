@@ -2777,8 +2777,6 @@
     <string name="disable_libredirect_subtitle">성능이 향상될 수 있지만 예기치 않은 문제가 발생할 수도 있습니다</string>
     <string name="disable_epic_overlay_title">Epic 오버레이 비활성화</string>
     <string name="disable_epic_overlay_subtitle">EOS 오버레이와 CEF 렌더러를 비활성화하여 일부 게임에서 메모리 부족으로 인한 충돌을 방지합니다</string>
-    <string name="disable_gog_galaxy_service_title">Disable GOG Galaxy service</string>
-    <string name="disable_gog_galaxy_service_subtitle">Stops GOG games from using the bundled Galaxy service for sign-in, achievements and multiplayer</string>
     <string name="binding_mode_simultaneous">동시</string>
     <string name="binding_mode_sequence">순차</string>
     <string name="binding_sequence_delay_ms">순차 지연 (ms)</string>

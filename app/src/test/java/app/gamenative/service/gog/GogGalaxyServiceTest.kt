@@ -75,20 +75,6 @@ class GogGalaxyServiceTest {
     }
 
     @Test
-    fun removeRegistry_dropsOnlyOurKeys() {
-        systemReg.writeText(SYSTEM_REG_FIXTURE)
-        assertTrue(GogGalaxyService.writeRegistry(systemReg))
-
-        assertTrue(GogGalaxyService.removeRegistry(systemReg))
-
-        val text = systemReg.readText()
-        assertFalse(text.contains("GalaxyCommunication"))
-        assertFalse(text.contains("GalaxyClient"))
-        assertTrue(text.contains(""""Start"=dword:00000002"""))
-        assertFalse(GogGalaxyService.removeRegistry(systemReg))
-    }
-
-    @Test
     fun writeRegistry_skipsMissingSystemReg() {
         assertFalse(GogGalaxyService.writeRegistry(systemReg))
         assertFalse(systemReg.exists())

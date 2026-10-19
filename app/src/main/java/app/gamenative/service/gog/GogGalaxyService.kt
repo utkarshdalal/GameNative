@@ -43,9 +43,8 @@ object GogGalaxyService {
         Net.http.newBuilder().callTimeout(5, TimeUnit.SECONDS).build()
     }
 
-    fun isActive(context: Context, container: Container, offline: Boolean): Boolean =
+    fun isActive(context: Context, offline: Boolean): Boolean =
         !offline &&
-            !container.isDisableGogGalaxyService &&
             File(context.applicationInfo.nativeLibraryDir, COMET_LIB).exists() &&
             hasUsableCredentials(context)
 
@@ -73,17 +72,6 @@ object GogGalaxyService {
                 Timber.tag(TAG).i("Registered GalaxyCommunication service in prefix")
             }
         }.onFailure { Timber.tag(TAG).e(it, "Failed to prepare prefix for Galaxy service") }
-    }
-
-    fun unregisterPrefix(container: Container) {
-        runCatching {
-            val wineDir = File(container.rootDir, ".wine")
-            val exe = File(wineDir, SERVICE_EXE_RELATIVE)
-            if (exe.isFile && exe.length() > REAL_SERVICE_MIN_SIZE) return
-            if (removeRegistry(File(wineDir, "system.reg"))) {
-                Timber.tag(TAG).i("Removed GalaxyCommunication service registration from prefix")
-            }
-        }.onFailure { Timber.tag(TAG).e(it, "Failed to unregister Galaxy service") }
     }
 
     fun start(context: Context) {
@@ -179,16 +167,6 @@ object GogGalaxyService {
             editor.setDwordValue(SERVICE_KEY, "PreshutdownTimeout", SERVICE_PRESHUTDOWN_TIMEOUT)
             editor.setStringValue(CLIENT_PATHS_KEY, "client", CLIENT_PATH)
             true
-        }
-    }
-
-    internal fun removeRegistry(systemReg: File): Boolean {
-        if (!systemReg.isFile) return false
-        return WineRegistryEditor(systemReg).use { editor ->
-            if (editor.getExpandStringValue(SERVICE_KEY, "ImagePath") != SERVICE_IMAGE_PATH) return@use false
-            val removedService = editor.removeKey(SERVICE_KEY, true)
-            val removedPaths = editor.removeKey(CLIENT_PATHS_KEY, true)
-            removedService || removedPaths
         }
     }
 

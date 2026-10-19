@@ -4283,8 +4283,6 @@ private fun setupXEnvironment(
                 // The EOS overlay needs RpcSs/BITS; services were forced to normal
                 // in setupWineSystemFiles, so don't kill services.exe here.
                 Timber.d("Keeping services.exe alive for EOS overlay despite aggressive startup selection")
-            } else if (gameSource == GameSource.GOG && GogGalaxyService.isActive(context, container, offline)) {
-                Timber.d("Keeping services.exe alive for the GOG Galaxy service despite aggressive startup selection")
             } else {
                 xServer.winHandler.killProcess("services.exe");
             }
@@ -4720,12 +4718,11 @@ private fun getWineStartCommand(
             gameSource = GameSource.GOG
         )
 
-        if (GogGalaxyService.isActive(context, container, offline)) {
+        if (GogGalaxyService.isActive(context, offline)) {
             GogGalaxyService.preparePrefix(context, container)
             GogGalaxyService.start(context)
         } else {
             GogGalaxyService.stop()
-            GogGalaxyService.unregisterPrefix(container)
         }
 
         val gogCommand = GOGService.getGogWineStartCommand(
