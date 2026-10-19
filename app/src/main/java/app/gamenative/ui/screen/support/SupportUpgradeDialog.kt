@@ -307,6 +307,7 @@ fun SupportUpgradeDialog(
                             showBasic = showBasic,
                             noBrowser = noBrowser,
                             guestExpired = guestExpired,
+                            guestCheckout = guestDeviceCode.isNotEmpty(),
                             playPlans = if (playEnabled) playPlans ?: emptyList() else null,
                             onSignIn = if (signedIn) null else onSignIn,
                             portalMessage = portalMessage,
@@ -338,6 +339,7 @@ fun SupportUpgradeDialog(
                         showBasic = showBasic,
                         noBrowser = noBrowser,
                         guestExpired = guestExpired,
+                        guestCheckout = guestDeviceCode.isNotEmpty(),
                         playPlans = if (playEnabled) playPlans ?: emptyList() else null,
                         onSignIn = if (signedIn) null else onSignIn,
                         portalMessage = portalMessage,
@@ -472,6 +474,7 @@ private fun UpgradeBody(
     showBasic: Boolean,
     noBrowser: Boolean,
     guestExpired: Boolean,
+    guestCheckout: Boolean,
     playPlans: List<PlayBilling.Plan>?,
     onSignIn: (() -> Unit)?,
     portalMessage: Int?,
@@ -549,7 +552,11 @@ private fun UpgradeBody(
                 Text(text = stringResource(R.string.support_checkout_scan), style = MaterialTheme.typography.bodyMedium)
                 Text(
                     text = stringResource(
-                        if (guestExpired) R.string.support_checkout_expired else R.string.support_checkout_waiting,
+                        when {
+                            guestExpired -> R.string.support_checkout_expired
+                            guestCheckout -> R.string.support_checkout_waiting_guest
+                            else -> R.string.support_checkout_waiting
+                        },
                     ),
                     style = MaterialTheme.typography.bodySmall,
                     color = if (guestExpired) PluviaTheme.colors.accentDanger else PluviaTheme.colors.textMuted,
