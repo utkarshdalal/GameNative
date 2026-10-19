@@ -2058,7 +2058,23 @@ class SteamService : Service(), IChallengeUrlChanged {
         fun getLaunchExecutable(appId: String, container: Container): String {
             if (container.isLaunchRealSteam || container.isLaunchBionicSteam) return "steam"
             val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
+            dropMissingExecutable(gameId, container)
             return container.executablePath.ifEmpty { getInstalledExe(gameId) }
+        }
+
+        /**
+         * Clears a container executable that is not in the install dir (a shared config can name
+         * a file only its author had) so the launch falls back to auto-detection.
+         */
+        fun dropMissingExecutable(gameId: Int, container: Container) {
+            val exe = container.executablePath
+            if (exe.isEmpty() || ContainerUtils.isAbsoluteWindowsPath(exe)) return
+            val appDir = getAppDirPath(gameId)
+            if (appDir.isEmpty() || !File(appDir).isDirectory) return
+            if (File(appDir, exe.replace('\\', '/')).isFile) return
+            Timber.w("Container executable '$exe' is not under $appDir; re-detecting")
+            container.executablePath = ""
+            container.saveData()
         }
 
         suspend fun deleteApp(appId: Int): Boolean = withContext(Dispatchers.IO) {

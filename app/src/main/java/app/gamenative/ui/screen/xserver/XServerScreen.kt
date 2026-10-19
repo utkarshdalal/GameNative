@@ -4672,6 +4672,7 @@ private fun getWineStartCommand(
 
     if (isSteamGame) {
         // Steam-specific setup
+        SteamService.dropMissingExecutable(gameId, container)
         if (container.executablePath.isEmpty()){
             container.executablePath = SteamService.getInstalledExe(gameId)
             container.saveData()
