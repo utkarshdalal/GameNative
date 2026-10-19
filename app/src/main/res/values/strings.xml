@@ -1280,6 +1280,7 @@
     <string name="support_checkout_failed">The checkout page could not be opened. Check your connection and try again.</string>
     <string name="support_checkout_done">Done</string>
     <string name="support_checkout_waiting_guest">After you pay, sign in on that page to create your account. Your plan activates here by itself.</string>
+    <string name="support_play_unavailable">Google Play billing is not available right now. Try again later.</string>
     <string name="support_checkout_expired">This checkout timed out. If you already paid, sign in with the email you used and your plan appears.</string>
     <string name="support_already_member">Already a member? Sign in</string>
     <string name="membership_plans_title">Become a member</string>

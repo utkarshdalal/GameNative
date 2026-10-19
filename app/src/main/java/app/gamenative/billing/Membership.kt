@@ -3,6 +3,7 @@ package app.gamenative.billing
 import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import app.gamenative.api.AccountApi
+import app.gamenative.api.ApiResult
 
 object Membership {
     private val PAID_TIERS = setOf("basic", "pro", "patron")
@@ -15,8 +16,15 @@ object Membership {
             isPaidTier(AccountApi.account.value?.tier) ||
             PlayBilling.hasActivePlan.value
 
+    fun tierKnown(): Boolean = !PrefManager.gameNativeSignedIn.value || AccountApi.account.value != null
+
+    fun canPitch(): Boolean = tierKnown() && !isMember()
+
     suspend fun refresh() {
         PlayBilling.refresh()
-        if (AccountApi.loadSignedInState()) AccountApi.fetchAccount()
+        if (AccountApi.loadSignedInState()) {
+            val result = AccountApi.fetchAccount()
+            if (result is ApiResult.Success) PlayBilling.linkAccount(result.data.id)
+        }
     }
 }

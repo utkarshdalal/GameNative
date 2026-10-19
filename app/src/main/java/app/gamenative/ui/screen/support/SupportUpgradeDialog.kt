@@ -131,6 +131,7 @@ fun SupportUpgradeDialog(
     val signedIn by PrefManager.gameNativeSignedIn
     val playEnabled = remember { PlayBilling.enabled(context) }
     var playPlans by remember { mutableStateOf<List<PlayBilling.Plan>?>(null) }
+    var playUnavailable by remember { mutableStateOf(false) }
     var guestDeviceCode by rememberSaveable { mutableStateOf("") }
     var guestIntervalMs by rememberSaveable { mutableStateOf(3000L) }
     var guestDeadline by rememberSaveable { mutableStateOf(0L) }
@@ -143,17 +144,29 @@ fun SupportUpgradeDialog(
     }
 
     LaunchedEffect(Unit) {
+        if (reason == SupportApi.REASON_MEMBERSHIP && Membership.isMember()) {
+            SnackbarManager.show(context.getString(R.string.support_plan_active))
+            currentOnDismiss()
+            return@LaunchedEffect
+        }
         if (signedIn && startTier.isEmpty()) {
             val result = AccountApi.fetchAccount()
             if (result is ApiResult.Success) startTier = result.data.tier
         }
+    }
+
+    LaunchedEffect(playPlans == null) {
         if (playEnabled && playPlans == null) {
-            playPlans = try {
+            val loaded = try {
                 PlayBilling.plans()
             } catch (e: Exception) {
                 emptyList()
             }
-            if (playPlans.isNullOrEmpty() && phase == PHASE_CHOOSE) phase = PHASE_FAILED
+            playPlans = loaded
+            if (loaded.isEmpty() && phase == PHASE_CHOOSE) {
+                playUnavailable = true
+                phase = PHASE_FAILED
+            }
         }
     }
 
@@ -309,6 +322,7 @@ fun SupportUpgradeDialog(
                             noBrowser = noBrowser,
                             guestExpired = guestExpired,
                             guestCheckout = guestDeviceCode.isNotEmpty(),
+                            playUnavailable = playUnavailable,
                             playPlans = if (playEnabled) playPlans ?: emptyList() else null,
                             onSignIn = if (signedIn) null else onSignIn,
                             portalMessage = portalMessage,
@@ -317,7 +331,11 @@ fun SupportUpgradeDialog(
                             onChoose = choose,
                             onOpenCheckout = { noBrowser = !openAccountUrl(context, checkoutUrl) },
                             onManage = manage,
-                            onRetry = { phase = PHASE_CHOOSE },
+                            onRetry = {
+                                playUnavailable = false
+                                playPlans = null
+                                phase = PHASE_CHOOSE
+                            },
                             onDismiss = onDismiss,
                         )
                     }
@@ -341,6 +359,7 @@ fun SupportUpgradeDialog(
                         noBrowser = noBrowser,
                         guestExpired = guestExpired,
                         guestCheckout = guestDeviceCode.isNotEmpty(),
+                        playUnavailable = playUnavailable,
                         playPlans = if (playEnabled) playPlans ?: emptyList() else null,
                         onSignIn = if (signedIn) null else onSignIn,
                         portalMessage = portalMessage,
@@ -349,7 +368,11 @@ fun SupportUpgradeDialog(
                         onChoose = choose,
                         onOpenCheckout = { noBrowser = !openAccountUrl(context, checkoutUrl) },
                         onManage = manage,
-                        onRetry = { phase = PHASE_CHOOSE },
+                        onRetry = {
+                            playUnavailable = false
+                            playPlans = null
+                            phase = PHASE_CHOOSE
+                        },
                         onDismiss = onDismiss,
                     )
                 }
@@ -476,6 +499,7 @@ private fun UpgradeBody(
     noBrowser: Boolean,
     guestExpired: Boolean,
     guestCheckout: Boolean,
+    playUnavailable: Boolean,
     playPlans: List<PlayBilling.Plan>?,
     onSignIn: (() -> Unit)?,
     portalMessage: Int?,
@@ -599,7 +623,7 @@ private fun UpgradeBody(
             }
             else -> {
                 Text(
-                    text = stringResource(R.string.support_checkout_failed),
+                    text = stringResource(if (playUnavailable) R.string.support_play_unavailable else R.string.support_checkout_failed),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(bottom = 16.dp),
                 )
