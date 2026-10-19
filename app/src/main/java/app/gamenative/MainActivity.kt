@@ -166,13 +166,13 @@ class MainActivity : ComponentActivity() {
             val next = LauncherOrientation.nextState(
                 LauncherOrientation.stored(),
                 LauncherOrientation.naturalPortrait(this),
+                LauncherOrientation.currentlyPortrait(this),
             )
             LauncherOrientation.store(next)
 
-            // Apply the launcher's own choice immediately. setOrientationTo keeps it applied
-            // while the launcher is in front, but must not be the only writer: it also carries
-            // the in-game allowed-orientation math, which would swallow the press if a
-            // container is still alive or the allowed set is not "auto".
+            // Apply the choice immediately rather than relying on setOrientationTo alone: it
+            // also carries the in-game allowed-orientation math, which would ignore the press
+            // whenever the last orientation request was not the launcher's auto set.
             val target = LauncherOrientation.launcherTarget()
             if (requestedOrientation != target) {
                 requestedOrientation = target
@@ -838,11 +838,11 @@ class MainActivity : ComponentActivity() {
         }
         // Log.d("MainActivity$index", "Setting orientation to conform")
 
-        // No container running means the launcher owns the screen: apply the orientation the
-        // user picked from the System menu (or auto/UNSPECIFIED for the 5th state). This is
-        // deliberately independent of the allowed-orientation set, which the game path fills
-        // in and which otherwise clamps the launcher to landscape-only.
-        if (PluviaApp.xEnvironment == null) {
+        // The launcher owns the screen only while the last orientation request was its own
+        // auto set. Games request a concrete set, including portrait-mode containers and the
+        // request MainViewModel sends at launch time, before the container exists - so gating on
+        // "no container running" would swallow those during setup.
+        if (LauncherOrientation.isAuto(conformTo)) {
             val target = LauncherOrientation.launcherTarget()
             if (requestedOrientation != target) {
                 requestedOrientation = target

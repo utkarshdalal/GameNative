@@ -6,7 +6,10 @@ import android.content.res.Configuration
 import android.view.Surface
 import androidx.compose.runtime.mutableStateOf
 import app.gamenative.MainActivity
+import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
+import app.gamenative.ui.enums.Orientation
+import java.util.EnumSet
 
 /**
  * Launcher screen rotation driven by the System menu's rotate button.
@@ -60,11 +63,28 @@ object LauncherOrientation {
         @Suppress("DEPRECATION")
         val rotation = activity.windowManager.defaultDisplay.rotation
         val sideways = rotation == Surface.ROTATION_90 || rotation == Surface.ROTATION_270
-        val currentlyPortrait =
-            activity.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
-        return if (sideways) !currentlyPortrait else currentlyPortrait
+        return if (sideways) !currentlyPortrait(activity) else currentlyPortrait(activity)
     }
+
+    /**
+     * True when the screen is currently portrait-shaped. Reliable on every panel, unlike
+     * `display.rotation`, which is relative to the panel's natural orientation.
+     */
+    fun currentlyPortrait(activity: Activity): Boolean =
+        activity.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+
+    /** True for the two portrait-shaped orientations. */
+    fun isPortraitOrientation(value: Int): Boolean =
+        value == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT ||
+            value == ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT
+
+    /**
+     * True when the caller does not enforce any orientation, i.e. the launcher owns the screen.
+     * Games always request a concrete set, including portrait-mode containers.
+     */
+    fun isAuto(conformTo: EnumSet<Orientation>): Boolean =
+        conformTo.isEmpty() || (conformTo.size == 1 && conformTo.contains(Orientation.UNSPECIFIED))
 
     /**
      * Orientation the launcher itself should hold: the stored lock, or
@@ -96,18 +116,33 @@ object LauncherOrientation {
             value == ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
 
     /**
-     * Next state of the rotate button. Unknown stored values restart at the first entry, so a
-     * press always changes something.
+     * Next state of the rotate button.
+     *
+     * While the launcher is locked the press walks the ring. From auto (or an unknown value) it
+     * enters at the first entry whose shape differs from what is on screen: with system rotation
+     * locked to a non-natural orientation, always entering at `ring[0]` could otherwise request
+     * the orientation already displayed and look like a dead press.
      */
-    fun nextState(current: Int, naturalPortrait: Boolean): Int {
+    fun nextState(current: Int, naturalPortrait: Boolean, portraitOnScreen: Boolean): Int {
         val states = ring(naturalPortrait)
         val index = states.indexOf(current)
-        return if (index < 0) states[0] else states[(index + 1) % states.size]
+
+        // A locked launcher owns the request, so the screen follows it and the walk is a plain
+        // ring step. Auto has no orientation of its own, so it enters at a fresh entry instead.
+        if (index >= 0 && isConcrete(current)) return states[(index + 1) % states.size]
+
+        val entry = states.firstOrNull {
+            isConcrete(it) && isPortraitOrientation(it) != portraitOnScreen
+        }
+        return entry ?: states[0]
     }
 
     /** Applies the stored orientation before the first frame, to avoid a rotation flash. */
     fun applyStored(activity: Activity) {
         if (MainActivity.isHeadset(activity)) return
+
+        // A container can outlive an activity recreation; it keeps owning the orientation then.
+        if (PluviaApp.xEnvironment != null) return
 
         val target = launcherTarget()
         if (activity.requestedOrientation != target) {
