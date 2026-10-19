@@ -340,9 +340,11 @@ object GameDownloadService {
                 val owningAppId = depotIdToOwningAppId[depotId] ?: appId
                 return try {
                     kotlinx.coroutines.runBlocking {
+                        // 0 = "nothing better to offer": a failed lookup is not a code, and the
+                        // engine reads 0 as "keep the current one and try a host token".
                         requestManifestCode(
                             steamContent, depotId, manifestId, branch, owningAppId, appId, this,
-                        )
+                        ) ?: 0L
                     }
                 } catch (e: Exception) {
                     Timber.tag(TAG).w(e, "refreshManifestRequestCode failed for depot $depotId")
@@ -488,6 +490,16 @@ object GameDownloadService {
      * A zero code is not harmless: the CDN answers 401 to every host, which surfaces as an auth
      * failure and a storm of pointless `getCDNAuthToken` calls. Try the owning app first (keys need
      * it), then the app being downloaded, and say which one answered.
+     *
+     * The three outcomes are NOT interchangeable:
+     *
+     * - a nonzero code — use it;
+     * - 0, answered by Steam for every app asked — the depot really has no code for this build, so
+     *   the depot is skipped and the reason is logged (every host would answer 401 otherwise);
+     * - null, no app answered because the request itself failed — that is a transient error, not
+     *   evidence of anything. The depot is still tried, without a code: a manifest already on disk
+     *   needs none, and if the CDN does need one the depot fails with the real error instead of
+     *   quietly dropping out of the install.
      */
     private suspend fun requestManifestCode(
         steamContent: SteamContent,
@@ -497,19 +509,32 @@ object GameDownloadService {
         owningAppId: Int,
         appId: Int,
         parentScope: CoroutineScope,
-    ): Long {
+    ): Long? {
         val candidates = if (owningAppId != appId) listOf(owningAppId, appId) else listOf(appId)
-        for (candidate in candidates) {
-            val code = fetchManifestRequestCode(
+        val answers = candidates.map { candidate ->
+            candidate to fetchManifestRequestCode(
                 steamContent, depotId, candidate, manifestId, branch, parentScope,
             )
-            if (code != 0L) {
-                Timber.tag(TAG).i("Depot $depotId: manifest request code from app $candidate")
-                return code
+        }
+        val code = pickManifestRequestCode(answers)
+        return when {
+            code == null -> {
+                Timber.tag(TAG).w(
+                    "Depot $depotId: could not ask for a manifest request code (apps $candidates failed) " +
+                        "— trying without one",
+                )
+                null
+            }
+            code != 0L -> {
+                val from = answers.first { it.second == code }.first
+                Timber.tag(TAG).i("Depot $depotId: manifest request code from app $from")
+                code
+            }
+            else -> {
+                Timber.tag(TAG).w("Depot $depotId: no manifest request code (tried apps $candidates)")
+                0L
             }
         }
-        Timber.tag(TAG).w("Depot $depotId: no manifest request code (tried apps $candidates)")
-        return 0L
     }
 
     private suspend fun fetchManifestRequestCode(
@@ -519,7 +544,7 @@ object GameDownloadService {
         manifestId: Long,
         branch: String,
         parentScope: CoroutineScope,
-    ): Long {
+    ): Long? {
         return try {
             steamContent.getManifestRequestCode(
                 depotId = depotId,
@@ -530,8 +555,8 @@ object GameDownloadService {
                 parentScope = parentScope,
             ).await()
         } catch (e: Exception) {
-            Timber.tag(TAG).w(e, "getManifestRequestCode failed for depot $depotId")
-            0L
+            Timber.tag(TAG).w(e, "getManifestRequestCode failed for depot $depotId (app $appId)")
+            null
         }
     }
 
@@ -665,7 +690,10 @@ object GameDownloadService {
             )
         }
         return DepotResolution.Resolved(
-            ResolvedDepot(depotId, gid, keyCallback.depotKey, requestCode),
+            // A failed lookup (`null`) is not a depot without a code: 0 asks the engine to try
+            // without a code segment. A cached manifest still opens; a CDN fetch that needs the
+            // code fails with the auth error instead of the depot silently missing from the install.
+            ResolvedDepot(depotId, gid, keyCallback.depotKey, requestCode ?: 0L),
         )
     }
 
@@ -1070,4 +1098,17 @@ object GameDownloadService {
         val key = makeKey(gameSource, gameId)
         return registeredDownloads.contains(key) && currentDownloadingKey != key
     }
+}
+
+/**
+ * Combine what each candidate app answered for a manifest request code (null = the request failed).
+ *
+ * The first nonzero code wins, in candidate order. Otherwise 0 only means "this depot has no code
+ * for this build" when some app actually answered 0 — if every request failed the answer is null,
+ * which the caller must not treat as a skip. Kept pure so the three cases stay covered without a
+ * Steam client.
+ */
+internal fun pickManifestRequestCode(answers: List<Pair<Int, Long?>>): Long? {
+    answers.firstOrNull { it.second != null && it.second != 0L }?.let { return it.second }
+    return if (answers.any { it.second != null }) 0L else null
 }

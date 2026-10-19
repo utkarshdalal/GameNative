@@ -164,6 +164,35 @@ pub fn retry_backoff_millis(attempt: u32) -> u64 {
     }
 }
 
+/// What a manifest 401/403 should try next.
+///
+/// Order is the point: a manifest request carries the request code, so a bad code — missing,
+/// expired, or issued for the wrong app — reads as "this host rejected auth". So the code is
+/// refreshed ONCE per fetch before any host is written off, then a host token is requested once per
+/// host, and only after both does the host count as rejecting auth. Keeping this rule out of the
+/// fetch loop is what makes it testable: the loop cannot run without HTTP and a real CDN.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ManifestAuthStep {
+    RefreshCode,
+    RefreshToken,
+    RejectHost,
+}
+
+pub fn manifest_auth_step(code_refreshed: bool, host_token_requested: bool) -> ManifestAuthStep {
+    if !code_refreshed {
+        ManifestAuthStep::RefreshCode
+    } else if !host_token_requested {
+        ManifestAuthStep::RefreshToken
+    } else {
+        ManifestAuthStep::RejectHost
+    }
+}
+
+/// A refreshed request code is only worth a retry when it is present and actually different.
+pub fn refreshed_request_code(current: u64, fresh: Option<u64>) -> Option<u64> {
+    fresh.filter(|code| *code != 0 && *code != current)
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn fetch_manifest_with_retry(
     cdn: &CdnClient,
@@ -241,27 +270,36 @@ pub fn fetch_manifest_with_retry(
         }
         if auth_status(status) {
             let mut recovered = false;
-            // A manifest 401/403 is usually a request code that is missing, expired or was issued
-            // for the wrong app — not a host-level auth failure (a manifest request carries the
-            // code; chunk requests carry tokens). Ask for a fresh code ONCE per call and retry with
-            // it before the per-host token dance: without this, one bad code reads as "every CDN
-            // host rejected auth" after N pointless token round trips and hides the real cause.
-            if !code_refreshed {
-                code_refreshed = true;
-                if let Some(fresh) = code_refresher.and_then(|refresh| refresh(depot_id, manifest_id)) {
-                    if fresh != 0 && fresh != request_code {
-                        request_code = fresh;
-                        retry_server = Some(server_idx);
-                        recovered = true;
+            // Code first, then a host token, then give up on this host — see `manifest_auth_step`.
+            // `code_refreshed` is set BEFORE the refresher runs, so one fetch spends at most one
+            // code attempt whatever the refresher returns; the token is still tried in the same
+            // pass when the code could not be improved.
+            loop {
+                match manifest_auth_step(code_refreshed, tokens.contains_key(&server_idx)) {
+                    ManifestAuthStep::RefreshCode => {
+                        code_refreshed = true;
+                        match code_refresher
+                            .and_then(|refresh| refresh(depot_id, manifest_id))
+                            .and_then(|fresh| refreshed_request_code(request_code, Some(fresh)))
+                        {
+                            Some(fresh) => {
+                                request_code = fresh;
+                                recovered = true;
+                                break;
+                            }
+                            None => continue,
+                        }
                     }
-                }
-            }
-            // The code could not be improved: fall back to a host-level token, once per host.
-            if !recovered && !tokens.contains_key(&server_idx) {
-                if let Some(fresh) = auth_refresher.and_then(|refresh| refresh(depot_id, &servers[server_idx].host)) {
-                    tokens.insert(server_idx, fresh);
-                    retry_server = Some(server_idx);
-                    recovered = true;
+                    ManifestAuthStep::RefreshToken => {
+                        if let Some(fresh) = auth_refresher
+                            .and_then(|refresh| refresh(depot_id, &servers[server_idx].host))
+                        {
+                            tokens.insert(server_idx, fresh);
+                            recovered = true;
+                        }
+                        break;
+                    }
+                    ManifestAuthStep::RejectHost => break,
                 }
             }
             if recovered {
@@ -1165,6 +1203,38 @@ mod tests {
     use crate::store_dl::steam::content_manifest::{END_OF_MANIFEST_MAGIC, METADATA_MAGIC, PAYLOAD_MAGIC};
     use crate::store_dl::steam::proto_wire::Writer;
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn a_401_refreshes_the_request_code_before_asking_for_a_host_token() {
+        // The first auth failure of a fetch always goes after the code, never after a token: a
+        // manifest request carries the code, so a stale one looks exactly like a host rejecting auth.
+        assert_eq!(
+            manifest_auth_step(false, false),
+            ManifestAuthStep::RefreshCode,
+            "no token requested yet — the code is the suspected cause"
+        );
+        // The refresher returned nothing usable, so the SAME pass still asks for a host token.
+        assert_eq!(manifest_auth_step(true, false), ManifestAuthStep::RefreshToken);
+        // Token requested and code already tried: this host really rejected the credentials.
+        assert_eq!(manifest_auth_step(true, true), ManifestAuthStep::RejectHost);
+    }
+
+    #[test]
+    fn the_request_code_is_refreshed_at_most_once_per_fetch() {
+        // `code_refreshed` is set before the refresher runs, so whatever it returns the next 401
+        // can only fall through to the token: the one-shot limit costs the code nothing.
+        assert_eq!(manifest_auth_step(true, false), ManifestAuthStep::RefreshToken);
+        assert_eq!(manifest_auth_step(true, true), ManifestAuthStep::RejectHost);
+    }
+
+    #[test]
+    fn a_refreshed_code_is_only_retried_when_it_is_new() {
+        assert_eq!(refreshed_request_code(42, None), None, "no refresher wired up");
+        assert_eq!(refreshed_request_code(42, Some(0)), None, "no code issued");
+        assert_eq!(refreshed_request_code(42, Some(42)), None, "unchanged, retrying changes nothing");
+        assert_eq!(refreshed_request_code(42, Some(43)), Some(43));
+        assert_eq!(refreshed_request_code(0, Some(7)), Some(7), "none → one is an improvement");
+    }
 
     #[test]
     fn filters_non_china_servers_with_hosts() {
