@@ -360,6 +360,7 @@ object ContainerUtils {
             loadMods = container.isLoadMods(),
             epicOfflineMode = container.isEpicOfflineMode(),
             disableEpicOverlay = container.isDisableEpicOverlay,
+            disableGogGalaxyService = container.isDisableGogGalaxyService,
             useLegacyDRM = container.isUseLegacyDRM(),
             unpackFiles = container.isUnpackFiles(),
             suspendPolicy = container.suspendPolicy,
@@ -572,6 +573,7 @@ object ContainerUtils {
         container.setLoadMods(containerData.loadMods)
         container.setEpicOfflineMode(containerData.epicOfflineMode)
         container.setDisableEpicOverlay(containerData.disableEpicOverlay)
+        container.setDisableGogGalaxyService(containerData.disableGogGalaxyService)
         container.setUseLegacyDRM(containerData.useLegacyDRM)
         container.setUnpackFiles(containerData.unpackFiles)
         container.setSuspendPolicy(containerData.suspendPolicy)

@@ -120,6 +120,7 @@ import app.gamenative.service.rockstar.RockstarLaunchSupport
 import app.gamenative.service.epic.EpicOverlayManager
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
+import app.gamenative.service.gog.GogGalaxyService
 import app.gamenative.ui.component.LsfgQuickMenuState
 import app.gamenative.ui.component.PerformanceQuickMenuState
 import app.gamenative.ui.component.QuickMenu
@@ -4282,6 +4283,8 @@ private fun setupXEnvironment(
                 // The EOS overlay needs RpcSs/BITS; services were forced to normal
                 // in setupWineSystemFiles, so don't kill services.exe here.
                 Timber.d("Keeping services.exe alive for EOS overlay despite aggressive startup selection")
+            } else if (gameSource == GameSource.GOG && GogGalaxyService.isActive(context, container, offline)) {
+                Timber.d("Keeping services.exe alive for the GOG Galaxy service despite aggressive startup selection")
             } else {
                 xServer.winHandler.killProcess("services.exe");
             }
@@ -4716,6 +4719,14 @@ private fun getWineStartCommand(
             name = "", // Name not needed for launch command
             gameSource = GameSource.GOG
         )
+
+        if (GogGalaxyService.isActive(context, container, offline)) {
+            GogGalaxyService.preparePrefix(context, container)
+            GogGalaxyService.start(context)
+        } else {
+            GogGalaxyService.stop()
+            GogGalaxyService.unregisterPrefix(container)
+        }
 
         val gogCommand = GOGService.getGogWineStartCommand(
             libraryItem = libraryItem,
@@ -5232,6 +5243,7 @@ private fun exit(
     }
     PluviaApp.shutdownEnvironment()
     EaLaunchSupport.stop()
+    GogGalaxyService.stop(blocking = false)
 
     // Bionic-Steam mode brought up libsteamclient.so inside this Android process
     // (see BionicProgramLauncherComponent.bootstrapNativeSteamClient). Tear it

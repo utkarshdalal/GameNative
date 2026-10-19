@@ -1,0 +1,48 @@
+diff --git a/src/api/handlers/communication_service.rs b/src/api/handlers/communication_service.rs
+index 838e170..211f160 100644
+--- a/src/api/handlers/communication_service.rs
++++ b/src/api/handlers/communication_service.rs
+@@ -952,10 +952,13 @@ async fn start_game_session(
+ 
+     #[cfg(unix)]
+     {
+-        let pipe_name = format!(
+-            "/tmp/Galaxy-{}-CommunicationService-Overlay",
+-            request.game_pid()
+-        );
++        let pipe_name = std::env::temp_dir()
++            .join(format!(
++                "Galaxy-{}-CommunicationService-Overlay",
++                request.game_pid()
++            ))
++            .to_string_lossy()
++            .into_owned();
+         context
+             .register_overlay_listener(request.game_pid(), pipe_name)
+             .await;
+diff --git a/src/import_parsers/heroic.rs b/src/import_parsers/heroic.rs
+index 50d9fc4..7ab3909 100644
+--- a/src/import_parsers/heroic.rs
++++ b/src/import_parsers/heroic.rs
+@@ -10,7 +10,7 @@ pub struct HeroicAuthConfig {
+     pub fields: HashMap<String, serde_json::Value>,
+ }
+ 
+-#[cfg(target_os = "linux")]
++#[cfg(any(target_os = "linux", target_os = "android"))]
+ fn get_config_path() -> Option<path::PathBuf> {
+     let home_dir = env::var("HOME").unwrap();
+     let home_dir = path::Path::new(&home_dir);
+diff --git a/src/paths.rs b/src/paths.rs
+index c4dc952..5ab18b6 100644
+--- a/src/paths.rs
++++ b/src/paths.rs
+@@ -1,7 +1,7 @@
+ use std::env;
+ use std::path::PathBuf;
+ 
+-#[cfg(target_os = "linux")]
++#[cfg(any(target_os = "linux", target_os = "android"))]
+ lazy_static! {
+     static ref DATA_PATH: PathBuf = match env::var("XDG_DATA_HOME") {
+         Ok(path) => {

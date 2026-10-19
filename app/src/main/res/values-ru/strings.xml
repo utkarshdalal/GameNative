@@ -2716,6 +2716,8 @@ https://gamenative.app
     <string name="disable_libredirect_subtitle">Может повысить производительность, но также может вызвать непредвиденные проблемы</string>
     <string name="disable_epic_overlay_title">Отключить оверлей Epic</string>
     <string name="disable_epic_overlay_subtitle">Отключает оверлей EOS и рендерер CEF, чтобы предотвратить вылеты из-за нехватки памяти в некоторых играх</string>
+    <string name="disable_gog_galaxy_service_title">Disable GOG Galaxy service</string>
+    <string name="disable_gog_galaxy_service_subtitle">Stops GOG games from using the bundled Galaxy service for sign-in, achievements and multiplayer</string>
     <string name="binding_mode_simultaneous">Одновременно</string>
     <string name="binding_mode_sequence">Последовательно</string>
     <string name="binding_sequence_delay_ms">Задержка последовательности (мс)</string>

@@ -134,6 +134,7 @@ public class Container {
     private boolean fasterExternalLoading;
     private boolean disableLibredirect;
     private boolean disableEpicOverlay;
+    private boolean disableGogGalaxyService;
 
     // Preferred game language for Goldberg force_language.txt
     private String language = "english";
@@ -452,6 +453,14 @@ public class Container {
 
     public void setDisableEpicOverlay(boolean disableEpicOverlay) {
         this.disableEpicOverlay = disableEpicOverlay;
+    }
+
+    public boolean isDisableGogGalaxyService() {
+        return disableGogGalaxyService;
+    }
+
+    public void setDisableGogGalaxyService(boolean disableGogGalaxyService) {
+        this.disableGogGalaxyService = disableGogGalaxyService;
     }
 
     public String getLanguage() {
@@ -821,6 +830,7 @@ public class Container {
             data.put("fasterExternalLoading", fasterExternalLoading);
             data.put("disableLibredirect", disableLibredirect);
             data.put("disableEpicOverlay", disableEpicOverlay);
+            data.put("disableGogGalaxyService", disableGogGalaxyService);
             // Disable mouse input flag
             data.put("disableMouseInput", disableMouseInput);
             // Touchscreen mode flag
@@ -1060,6 +1070,9 @@ public class Container {
                     break;
                 case "disableEpicOverlay" :
                     setDisableEpicOverlay(data.getBoolean(key));
+                    break;
+                case "disableGogGalaxyService" :
+                    setDisableGogGalaxyService(data.getBoolean(key));
                     break;
                 case "disableMouseInput" :
                     setDisableMouseInput(data.getBoolean(key));
