@@ -1722,7 +1722,18 @@ impl DepotFiles {
                 }
             };
             let preexisting = if is_regular {
-                fs::metadata(&path).map(|m| m.len()).unwrap_or(0)
+                let existing = fs::metadata(&path);
+                // A directory sitting where the manifest declares a file is the losing side of a
+                // cross-depot name clash (or an older layout that had one here). The file is what
+                // the game can use and what the plan says, so it has to go — otherwise the first
+                // write fails with EISDIR and takes the depot with it. Reuses this stat, no extra
+                // syscall; only ever for a path this manifest declares as a regular file.
+                if existing.as_ref().map(|meta| meta.is_dir()).unwrap_or(false) {
+                    let _ = fs::remove_dir_all(&path);
+                    0
+                } else {
+                    existing.map(|meta| meta.len()).unwrap_or(0)
+                }
             } else {
                 0
             };
@@ -3669,14 +3680,30 @@ fn join_target_path(target_dir: &str, rel: &str) -> String {
 }
 
 fn create_directory(path: &str) -> Result<(), String> {
+    // The manifest declares a directory here, so a FILE of that (case-folded) name is stale — the
+    // losing side of a name clash, or a layout that had a file there — and `create_dir_all` would
+    // fail with EEXIST. The manifest wins.
+    if fs::symlink_metadata(path)
+        .map(|meta| !meta.is_dir())
+        .unwrap_or(false)
+    {
+        fs::remove_file(path).map_err(|err| format!("write_depot: unlink '{path}': {err}"))?;
+    }
     fs::create_dir_all(path).map_err(|err| format!("write_depot: mkdir '{path}': {err}"))
 }
 
 fn create_symlink(path: &str, target: &str) -> Result<(), String> {
     let path_ref = Path::new(path);
     make_parent_dirs(path_ref)?;
-    if path_ref.exists() {
-        fs::remove_file(path_ref).map_err(|err| format!("write_depot: unlink '{path}': {err}"))?;
+    if let Ok(meta) = fs::symlink_metadata(path_ref) {
+        // Same rule as the other two: whatever occupies the name, the manifest's kind wins.
+        if meta.is_dir() {
+            fs::remove_dir_all(path_ref)
+                .map_err(|err| format!("write_depot: rmdir '{path}': {err}"))?;
+        } else {
+            fs::remove_file(path_ref)
+                .map_err(|err| format!("write_depot: unlink '{path}': {err}"))?;
+        }
     }
     create_platform_symlink(target, path_ref)
         .map_err(|err| format!("write_depot: symlink '{path}': {err}"))
@@ -4366,6 +4393,61 @@ rename, a missing hash and a new file all fall through to the normal walk"
         // The same file, NOT trusted, is what the assertion is there to catch.
         let files2 = DepotFiles::prepare(&manifest, &plan, base);
         assert!(assert_pipeline_drained(&files2, &writers).is_err());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// The winning side of a name clash has to be able to land: a directory of the file's name must
+    /// not fail the write with EISDIR, whichever depot ran first or whatever an older layout left.
+    #[test]
+    fn a_directory_in_the_way_of_a_file_is_cleared() {
+        let dir = std::env::temp_dir().join(format!("gnclashfile-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("master.dat/sub")).unwrap();
+        fs::write(dir.join("master.dat/sub/leftover.bin"), b"old").unwrap();
+        let manifest = ContentManifest {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
+                filenames_encrypted: false,
+                ..Default::default()
+            },
+            files: vec![crate::store_dl::steam::content_manifest::FileMapping {
+                filename: "master.dat".into(),
+                size: 5,
+                ..Default::default()
+            }],
+            signature: Vec::new(),
+        };
+        let base = dir.to_str().unwrap();
+        let plan = plan_depot_write(&manifest, &[1u8; 32], 4, base, 4).unwrap();
+        let files = DepotFiles::prepare(&manifest, &plan, base);
+        files.finalize_remaining().unwrap();
+        assert!(dir.join("master.dat").is_file(), "the file must replace the directory");
+        assert_eq!(fs::metadata(dir.join("master.dat")).unwrap().len(), 5);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// The other direction: the manifest now declares a directory where a stale file sits.
+    #[test]
+    fn a_file_in_the_way_of_a_directory_is_cleared() {
+        let dir = std::env::temp_dir().join(format!("gnclashdir-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("sound"), b"stale file").unwrap();
+        let manifest = ContentManifest {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
+                filenames_encrypted: false,
+                ..Default::default()
+            },
+            files: vec![crate::store_dl::steam::content_manifest::FileMapping {
+                filename: "sound".into(),
+                flags: DEPOT_FILE_FLAG_DIRECTORY,
+                ..Default::default()
+            }],
+            signature: Vec::new(),
+        };
+        let base = dir.to_str().unwrap();
+        let plan = plan_depot_write(&manifest, &[1u8; 32], 4, base, 4).unwrap();
+        assert!(create_depot_layout(&plan).ok());
+        assert!(dir.join("sound").is_dir(), "the directory must replace the file");
         let _ = fs::remove_dir_all(&dir);
     }
 

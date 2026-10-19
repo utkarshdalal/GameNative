@@ -6,7 +6,7 @@ use crate::store_dl::steam::depot_writer::{
 };
 use crate::store_dl::steam::pb::ccontentserverdirectory::CContentServerDirectoryServerInfo;
 use std::fs;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
@@ -544,6 +544,11 @@ pub fn download_resolved_depots_with_cancel_progress(
         resolved.push((depot, manifest));
     }
 
+    // Depots of one install can disagree about a path's TYPE (see the function). Decide that here,
+    // before anything else consumes the manifests: the probe sample, the sweep's ownership set and
+    // every write plan below must all see the same file set.
+    drop_paths_shadowed_by_files(&mut resolved, log);
+
     // ── CDN probe: rank the ASSIGNED servers and promote predicted foreign caches that
     // measurably beat the assigned-set median. The on-disk cache seeds the ranking (and any
     // cached winners) synchronously so even the first chunks follow the last known order, and
@@ -814,6 +819,153 @@ chunks_trusted={}",
     }
 
     result
+}
+
+/// Folds away a depot set that cannot exist on one filesystem: the same case-folded path declared
+/// as a FILE by one depot and as a DIRECTORY by another.
+///
+/// Fallout 2 is the real case. "Fallout 2 Depot New Base" (38414) declares `master.dat` as a
+/// directory, while "Fallout 2 Depot New English" (38415) ships `master.dat` as a 317.74 MiB file —
+/// both depots are in every package, so both are installed. On a case-insensitive volume the two
+/// cannot coexist, and whichever is laid down second fails: `mkdir` returns EEXIST over the file,
+/// or the file's open returns EISDIR over the directory, and the whole depot fails with it.
+///
+/// The FILE wins. A directory is only a container, and the file is the form a game can read (the
+/// Fallout engine opens `master.dat` as an archive; Valve's own Windows client ends up with the
+/// file because the directory cannot be created over it). The losing directory is dropped together
+/// with everything under it — in every depot of the run, since a child of that path could not be
+/// written anyway — and the count is logged. A run with no clash is never modified.
+fn drop_paths_shadowed_by_files(
+    resolved: &mut Vec<(&ResolvedDepotSpec, ContentManifest)>,
+    log: Option<crate::store_dl::steam::depot_writer::DepotLogCallback<'_>>,
+) {
+    let fold = crate::store_dl::steam::depot_writer::folded_entry_key;
+    // Every path the run provides as a regular file, and the first depot that provides it.
+    let mut files: HashMap<String, u32> = HashMap::new();
+    for (depot, manifest) in resolved.iter() {
+        for file in &manifest.files {
+            if (file.flags & DEPOT_FILE_FLAG_DIRECTORY) == 0 {
+                files.entry(fold(&file.filename)).or_insert(depot.depot_id);
+            }
+        }
+    }
+    if files.is_empty() {
+        return;
+    }
+    // Directory entries those files shadow, and which depots declare them.
+    let mut shadowed: BTreeMap<String, Vec<u32>> = BTreeMap::new();
+    for (depot, manifest) in resolved.iter() {
+        for file in &manifest.files {
+            if (file.flags & DEPOT_FILE_FLAG_DIRECTORY) != 0 {
+                let key = fold(&file.filename);
+                if files.contains_key(&key) {
+                    shadowed.entry(key).or_default().push(depot.depot_id);
+                }
+            }
+        }
+    }
+    if shadowed.is_empty() {
+        return;
+    }
+    let prefixes: Vec<String> = shadowed.keys().map(|dir| format!("{dir}/")).collect();
+    for (depot, manifest) in resolved.iter_mut() {
+        let before = manifest.files.len();
+        manifest.files.retain(|file| {
+            let key = fold(&file.filename);
+            if (file.flags & DEPOT_FILE_FLAG_DIRECTORY) != 0 && shadowed.contains_key(&key) {
+                return false;
+            }
+            !prefixes.iter().any(|prefix| key.starts_with(prefix))
+        });
+        let dropped = before - manifest.files.len();
+        if dropped > 0 {
+            if let Some(log) = log {
+                log(&format!(
+                    "depot-clash depot={} dropped {dropped} entr{} under a directory a file shadows",
+                    depot.depot_id,
+                    if dropped == 1 { "y" } else { "ies" }
+                ));
+            }
+        }
+    }
+    for (path, dir_depots) in &shadowed {
+        if let Some(log) = log {
+            let file_depot = files.get(path).copied().unwrap_or(0);
+            log(&format!(
+                "depot-clash path={path} kept=file depot={file_depot} dropped=directory depot={dir_depots:?}"
+            ));
+        }
+    }
+}
+
+/// Fallout 2's shape: one depot declares `master.dat` as a DIRECTORY (with a child), another
+/// ships it as a file. They cannot coexist, so the file wins and the losing directory goes —
+/// together with its subtree, in every depot — and nothing else is touched.
+#[test]
+fn a_file_shadows_a_directory_of_the_same_folded_path() {
+    let spec = |depot_id: u32| ResolvedDepotSpec {
+        depot_id,
+        manifest_id: 1,
+        depot_key: vec![1u8; 32],
+        manifest_request_code: 0,
+    };
+    let manifest = |files: &[(&str, u32)]| ContentManifest {
+        metadata: crate::store_dl::steam::content_manifest::Metadata {
+            filenames_encrypted: false,
+            ..Default::default()
+        },
+        files: files
+            .iter()
+            .map(|(name, flags)| crate::store_dl::steam::content_manifest::FileMapping {
+                filename: (*name).into(),
+                flags: *flags,
+                ..Default::default()
+            })
+            .collect(),
+        signature: Vec::new(),
+    };
+    let names = |manifest: &ContentManifest| -> Vec<String> {
+        manifest.files.iter().map(|f| f.filename.clone()).collect()
+    };
+    let dir_flag = DEPOT_FILE_FLAG_DIRECTORY;
+
+    // 38415 (the file) runs first: 38414's directory, its child, and the legacy depot's
+    // upper-case copy of the same folder all go; unrelated entries stay.
+    let file_depot = spec(38415);
+    let dir_depot = spec(38414);
+    let legacy_depot = spec(38411);
+    let mut resolved = vec![
+        (&file_depot, manifest(&[("master.dat", 0), ("critter.dat", 0)])),
+        (
+            &dir_depot,
+            manifest(&[
+                ("master.dat", dir_flag),
+                ("master.dat/x.pak", 0),
+                ("data/worldmap.dat", 0),
+            ]),
+        ),
+        (
+            &legacy_depot,
+            manifest(&[("MASTER.DAT", dir_flag), ("DATA/proto/critters", 0)]),
+        ),
+    ];
+    drop_paths_shadowed_by_files(&mut resolved, None);
+    assert_eq!(names(&resolved[0].1), ["master.dat", "critter.dat"]);
+    assert_eq!(names(&resolved[1].1), ["data/worldmap.dat"]);
+    assert_eq!(names(&resolved[2].1), ["DATA/proto/critters"]);
+
+    // No clash: the same folder in one depot and an unrelated file elsewhere is untouched.
+    let only_dir = spec(38414);
+    let mut resolved = vec![
+        (&file_depot, manifest(&[("master.dat", 0)])),
+        (&only_dir, manifest(&[("sound/music", dir_flag), ("master.dat.bak", 0)])),
+    ];
+    drop_paths_shadowed_by_files(&mut resolved, None);
+    assert_eq!(
+        names(&resolved[1].1),
+        ["sound/music", "master.dat.bak"],
+        "only an exact folded-path clash drops anything"
+    );
 }
 
 /// The files this run must NOT touch: the previous build's manifest proves their bytes already match,
