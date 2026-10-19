@@ -198,7 +198,9 @@ keeps "resume = refresh" honest.
   never replace a file an installed depot owns. The write path applies the same rule in both
   directions — a directory in a file's way is removed (after the free-space preflight, so a failed
   preflight leaves the old tree; refused when a symlinked ancestor would take the removal outside
-  the install dir) and a file in a directory's way is unlinked — so an install left in the wrong
+  the install dir) and a file in a directory's way is unlinked. A directory entry that is a symlink
+  is kept only while it resolves inside the install tree — otherwise it is replaced, so a link
+  cannot redirect the manifest's files beyond the root. An install left in the wrong
   shape by an earlier attempt repairs itself instead of failing with `EEXIST`/`EISDIR`. A file the
   delta calls unchanged is only trusted when it is still the regular file of the manifest's size on
   disk; a deleted, truncated or directory-shadowed path is revalidated like any other change.

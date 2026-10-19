@@ -3743,11 +3743,14 @@ fn create_directory(path: &str, target_dir: &str) -> Result<(), String> {
     // losing side of a name clash, or a layout that had a file there — and `create_dir_all` would
     // fail with EEXIST. A symlink that RESOLVES to a directory is left alone: `create_dir_all`
     // accepts it and the link may be another depot's entry, which an ordinary update must not
-    // quietly replace. Only a dangling link is removed, since `create_dir_all` cannot get past it.
+    // quietly replace. Two cases are still replaced: a dangling link, which `create_dir_all` cannot
+    // get past, and a link whose target is OUTSIDE the install tree — keeping that one would let
+    // the manifest's files be written beyond the root, which every removal path already refuses.
     let resolved = fs::metadata(path); // follows links
     let is_dir = resolved.as_ref().map(|meta| meta.is_dir()).unwrap_or(false);
     let dangling = resolved.is_err() && fs::symlink_metadata(path).is_ok();
-    if !is_dir && (resolved.is_ok() || dangling) {
+    let keep = is_dir && resolves_inside(target_dir, path)?;
+    if !keep && (resolved.is_ok() || dangling) {
         ensure_parent_within(target_dir, path)?;
         fs::remove_file(path).map_err(|err| format!("write_depot: unlink '{path}': {err}"))?;
     }
@@ -3770,6 +3773,16 @@ fn create_symlink(path: &str, target: &str, target_dir: &str) -> Result<(), Stri
     }
     create_platform_symlink(target, path_ref)
         .map_err(|err| format!("write_depot: symlink '{path}': {err}"))
+}
+
+/// Whether `path` resolves under `root`, both canonicalised. A directory entry that resolves
+/// outside the install tree is replaced rather than followed.
+fn resolves_inside(root: &str, path: &str) -> Result<bool, String> {
+    let root = fs::canonicalize(root)
+        .map_err(|err| format!("write_depot: resolve '{root}': {err}"))?;
+    let resolved = fs::canonicalize(path)
+        .map_err(|err| format!("write_depot: resolve '{path}': {err}"))?;
+    Ok(resolved.starts_with(&root))
 }
 
 /// A recursive removal must not be redirected outside the install directory by a symlinked
@@ -4457,7 +4470,7 @@ rename, a missing hash and a new file all fall through to the normal walk"
                 size: payload.len() as u64,
                 chunks: vec![ChunkData {
                     offset: 0,
-                    cb_original: 24,
+                    cb_original: payload.len() as u32,
                     ..Default::default()
                 }],
                 ..Default::default()
@@ -4596,7 +4609,8 @@ rename, a missing hash and a new file all fall through to the normal walk"
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(dir.join("real")).unwrap();
         std::os::unix::fs::symlink("real", dir.join("sound")).unwrap();
-        fs::write(dir.join("dangling-file"), b"x").unwrap();
+        // A link whose target does not exist: the only way to reach the dangling branch below.
+        std::os::unix::fs::symlink("nowhere", dir.join("dangling")).unwrap();
         let manifest = ContentManifest {
             metadata: crate::store_dl::steam::content_manifest::Metadata {
                 filenames_encrypted: false,
@@ -4625,8 +4639,51 @@ rename, a missing hash and a new file all fall through to the normal walk"
                 .unwrap_or(false),
             "the link must not be replaced by a real directory"
         );
-        assert!(dir.join("dangling").is_dir(), "a missing directory is created");
+        assert!(dir.join("dangling").is_dir(), "a dangling link is replaced by a directory");
+        assert!(
+            fs::symlink_metadata(dir.join("dangling"))
+                .map(|m| !m.file_type().is_symlink())
+                .unwrap_or(false),
+            "the dangling link must be gone, not merely shadowed"
+        );
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// A link to a directory may be kept only while it stays inside the install tree: following one
+    /// that points elsewhere would write the manifest's files outside the install directory.
+    #[test]
+    fn a_directory_link_that_escapes_the_install_dir_is_replaced() {
+        let root = std::env::temp_dir().join(format!("gnescape-{}", std::process::id()));
+        let outside = std::env::temp_dir().join(format!("gnoutside-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        let _ = fs::remove_dir_all(&outside);
+        fs::create_dir_all(&root).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        std::os::unix::fs::symlink(&outside, root.join("data")).unwrap();
+        let manifest = ContentManifest {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
+                filenames_encrypted: false,
+                ..Default::default()
+            },
+            files: vec![crate::store_dl::steam::content_manifest::FileMapping {
+                filename: "data".into(),
+                flags: DEPOT_FILE_FLAG_DIRECTORY,
+                ..Default::default()
+            }],
+            signature: Vec::new(),
+        };
+        let base = root.to_str().unwrap();
+        let plan = plan_depot_write(&manifest, &[1u8; 32], 4, base, 4).unwrap();
+        assert!(create_depot_layout(&plan, base).ok());
+        assert!(
+            fs::symlink_metadata(root.join("data"))
+                .map(|m| !m.file_type().is_symlink())
+                .unwrap_or(false),
+            "the escaping link must be replaced by a real directory"
+        );
+        assert!(!outside.join("data").exists());
+        let _ = fs::remove_dir_all(&root);
+        let _ = fs::remove_dir_all(&outside);
     }
 
     /// A directory standing where a symlink entry goes is replaced by the link.

@@ -37,7 +37,10 @@ class ManifestRequestCodeTest {
     }
 
     @Test
-    fun aFailedOwnerWithAZeroElsewhereIsStillADefinitiveAbsence() {
-        assertEquals(0L, pickManifestRequestCode(listOf(1523210 to null, 409710 to 0L)))
+    fun aFailedRequestIsNotOverruledByAZeroElsewhere() {
+        // The owner answered 0 but the other app could not be asked at all: not enough evidence to
+        // skip the depot, which is exactly the silent drop this path guards against.
+        assertNull(pickManifestRequestCode(listOf(1523210 to 0L, 409710 to null)))
+        assertNull(pickManifestRequestCode(listOf(1523210 to null, 409710 to 0L)))
     }
 }

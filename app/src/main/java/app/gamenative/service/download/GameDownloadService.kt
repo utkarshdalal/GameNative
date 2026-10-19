@@ -493,13 +493,14 @@ object GameDownloadService {
      *
      * The three outcomes are NOT interchangeable:
      *
-     * - a nonzero code — use it;
-     * - 0, answered by Steam for every app asked — the depot really has no code for this build, so
+     * - a nonzero code — use it, without asking the remaining apps (each lookup is a Steam round
+     *   trip on the critical path of every depot resolution);
+     * - 0, answered by Steam for EVERY app asked — the depot really has no code for this build, so
      *   the depot is skipped and the reason is logged (every host would answer 401 otherwise);
-     * - null, no app answered because the request itself failed — that is a transient error, not
-     *   evidence of anything. The depot is still tried, without a code: a manifest already on disk
-     *   needs none, and if the CDN does need one the depot fails with the real error instead of
-     *   quietly dropping out of the install.
+     * - null, at least one request failed and no app produced a code — a transient error is not
+     *   evidence of anything, and skipping is the outcome this path exists to avoid. The depot is
+     *   still tried, without a code: a manifest already on disk needs none, and if the CDN does
+     *   need one the depot fails with the real error instead of quietly dropping out of the install.
      */
     private suspend fun requestManifestCode(
         steamContent: SteamContent,
@@ -511,29 +512,28 @@ object GameDownloadService {
         parentScope: CoroutineScope,
     ): Long? {
         val candidates = if (owningAppId != appId) listOf(owningAppId, appId) else listOf(appId)
-        val answers = candidates.map { candidate ->
-            candidate to fetchManifestRequestCode(
+        val answers = mutableListOf<Pair<Int, Long?>>()
+        for (candidate in candidates) {
+            answers += candidate to fetchManifestRequestCode(
                 steamContent, depotId, candidate, manifestId, branch, parentScope,
             )
+            // Stop at the first code: the fallback app must not add a Steam round trip per depot.
+            // A zero or a failed request is not final until every candidate has been asked.
+            val code = pickManifestRequestCode(answers)
+            if (code != null && code != 0L) {
+                Timber.tag(TAG).i("Depot $depotId: manifest request code from app $candidate")
+                return code
+            }
         }
-        val code = pickManifestRequestCode(answers)
-        return when {
-            code == null -> {
-                Timber.tag(TAG).w(
-                    "Depot $depotId: could not ask for a manifest request code (apps $candidates failed) " +
-                        "— trying without one",
-                )
-                null
-            }
-            code != 0L -> {
-                val from = answers.first { it.second == code }.first
-                Timber.tag(TAG).i("Depot $depotId: manifest request code from app $from")
-                code
-            }
-            else -> {
-                Timber.tag(TAG).w("Depot $depotId: no manifest request code (tried apps $candidates)")
-                0L
-            }
+        return if (pickManifestRequestCode(answers) == null) {
+            Timber.tag(TAG).w(
+                "Depot $depotId: could not ask for a manifest request code (apps $candidates) " +
+                    "— trying without one",
+            )
+            null
+        } else {
+            Timber.tag(TAG).w("Depot $depotId: no manifest request code (tried apps $candidates)")
+            0L
         }
     }
 
@@ -1103,12 +1103,13 @@ object GameDownloadService {
 /**
  * Combine what each candidate app answered for a manifest request code (null = the request failed).
  *
- * The first nonzero code wins, in candidate order. Otherwise 0 only means "this depot has no code
- * for this build" when some app actually answered 0 — if every request failed the answer is null,
- * which the caller must not treat as a skip. Kept pure so the three cases stay covered without a
- * Steam client.
+ * The first nonzero code wins, in candidate order. Otherwise 0 — "this depot has no code for this
+ * build", which makes the caller skip it — is only concluded when EVERY candidate answered 0. One
+ * request that failed leaves the answer null, and the caller must not treat that as a skip: a
+ * transient failure silently dropping a depot is the bug this path guards against. Kept pure so the
+ * cases stay covered without a Steam client.
  */
 internal fun pickManifestRequestCode(answers: List<Pair<Int, Long?>>): Long? {
     answers.firstOrNull { it.second != null && it.second != 0L }?.let { return it.second }
-    return if (answers.any { it.second != null }) 0L else null
+    return if (answers.isNotEmpty() && answers.all { it.second == 0L }) 0L else null
 }
