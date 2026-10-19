@@ -1967,12 +1967,14 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             /* launch targets (lower-case) */
             val launchTargets = appInfo.config.launch
-                .mapNotNull { it.executable.lowercase() }.toSet() ?: emptySet()
+                .map { it.executable.lowercase() }
+                .distinct()
 
             Timber.i("Launch targets from appinfo: $launchTargets")
 
             /* ---------------------------------------------------------- */
             val flagged = mutableListOf<Pair<FileData, Long>>() // (file, depotSize)
+            val launchMatches = mutableMapOf<String, FileData>()
             var largestDepotSize = 0L
 
             // Use DepotDownloader to fetch manifests
@@ -2004,16 +2006,19 @@ class SteamService : Service(), IChallengeUrlChanged {
                 Timber.d("Using manifest for depot ${depot.depotId}  size=${mi.size}")
 
                 /* 1️⃣ exact launch entry that isn't a stub */
-                man?.files?.firstOrNull { f ->
-                    f.fileName.lowercase() in launchTargets && !f.isStub()
-                }?.let {
-                    Timber.i("Picked via launch entry: ${it.fileName}")
-                    return it.fileName.replace('\\', '/').toString()
+                man?.files?.forEach { f ->
+                    val name = f.fileName.lowercase()
+                    if (name in launchTargets && !f.isStub()) launchMatches.putIfAbsent(name, f)
                 }
 
                 /* collect for later */
                 man?.files?.filter { isExecutable(it.flags) || it.fileName.endsWith(".exe", true) }
                     ?.forEach { flagged += it to mi.size }
+            }
+
+            launchTargets.firstNotNullOfOrNull { launchMatches[it] }?.let {
+                Timber.i("Picked via launch entry: ${it.fileName}")
+                return it.fileName.replace('\\', '/').toString()
             }
 
             Timber.i("Flagged executable candidates: ${flagged.map { it.first.fileName }}")
