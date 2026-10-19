@@ -1280,6 +1280,16 @@ https://gamenative.app
     <string name="support_checkout_no_browser">Не найден браузер для открытия страницы оплаты. Отсканируйте код другим устройством.</string>
     <string name="support_checkout_failed">Не удалось открыть страницу оплаты. Проверьте соединение и попробуйте снова.</string>
     <string name="support_checkout_done">Готово</string>
+    <string name="main_thank_you_message_play">Станьте участником сегодня. Участники получают:\n\n• Помощь ИИ с запуском игр\n• Ранний доступ к новым версиям\n• Премиум-роли и эксклюзивные каналы в Discord\n• …и не только\n\nОт %1$s/мес.</string>
+    <string name="support_plan_pro_title_priced">%1$s/месяц · Pro</string>
+    <string name="support_plan_basic_title_priced">%1$s/месяц · Basic</string>
+    <string name="membership_plans_pitch">Участники получают помощь ИИ с запуском игр, ранний доступ к новым версиям и премиум-роли в Discord.</string>
+    <string name="membership_plans_title">Стать участником</string>
+    <string name="support_already_member">Уже участник? Войти</string>
+    <string name="support_checkout_expired">Время оплаты истекло. Если вы уже заплатили, войдите с использованным адресом эл. почты, и план появится.</string>
+    <string name="support_play_unavailable">Оплата через Google Play сейчас недоступна. Попробуйте позже.</string>
+    <string name="support_checkout_waiting_guest">После оплаты войдите на той странице, чтобы создать аккаунт. План активируется здесь автоматически.</string>
+    <string name="gamenative_account_managed_play">Ваш тариф предоставлен через Google Play. Управляйте им в Play Маркете.</string>
     <string name="support_already_subscribed">У этого аккаунта уже есть подписка. Сменить план можно на странице оплаты.</string>
     <string name="support_plan_active">Ваш план активен.</string>
     <string name="support_plan_pending">Ваш план ещё настраивается. Попробуйте снова через минуту.</string>

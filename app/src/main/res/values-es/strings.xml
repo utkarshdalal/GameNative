@@ -1108,6 +1108,16 @@
     <string name="support_checkout_no_browser">No se encontró un navegador para abrir la página de pago. Escanea el código con otro dispositivo.</string>
     <string name="support_checkout_failed">No se pudo abrir la página de pago. Revisa tu conexión e inténtalo de nuevo.</string>
     <string name="support_checkout_done">Listo</string>
+    <string name="main_thank_you_message_play">Hazte miembro hoy. Los miembros obtienen:\n\n• Ayuda con IA para hacer funcionar tus juegos\n• Acceso anticipado a nuevas versiones\n• Roles premium y canales exclusivos en Discord\n• …y más\n\nDesde %1$s/mes</string>
+    <string name="support_plan_pro_title_priced">%1$s/mes · Pro</string>
+    <string name="support_plan_basic_title_priced">%1$s/mes · Basic</string>
+    <string name="membership_plans_pitch">Los miembros obtienen ayuda con IA para hacer funcionar sus juegos, acceso anticipado a nuevas versiones y roles premium en Discord.</string>
+    <string name="membership_plans_title">Hazte miembro</string>
+    <string name="support_already_member">¿Ya eres miembro? Inicia sesión</string>
+    <string name="support_checkout_expired">Este pago expiró. Si ya pagaste, inicia sesión con el correo que usaste y tu plan aparecerá.</string>
+    <string name="support_play_unavailable">La facturación de Google Play no está disponible ahora. Inténtalo más tarde.</string>
+    <string name="support_checkout_waiting_guest">Después de pagar, inicia sesión en esa página para crear tu cuenta. Tu plan se activa aquí solo.</string>
+    <string name="gamenative_account_managed_play">Tu plan viene de Google Play. Gestiónalo en Play Store.</string>
     <string name="support_already_subscribed">Esta cuenta ya tiene una suscripción. Puedes cambiar tu plan en la página de facturación.</string>
     <string name="support_plan_active">Tu plan está activo.</string>
     <string name="support_plan_pending">Tu plan aún se está configurando. Inténtalo de nuevo en un minuto.</string>

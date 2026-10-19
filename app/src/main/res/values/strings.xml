@@ -1270,7 +1270,7 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Pro reports skip the queue.</string>
     <string name="support_limit_title">Daily fair-use limit reached</string>
-    <string name="support_upgrade_reason_required">AI replies need a GameNative plan.</string>
+    <string name="support_upgrade_reason_required">AI replies need a GameNative subscription. If you already subscribe on Discord or Ko-fi, connect Discord in Settings.</string>
     <string name="support_see_plans">See plans</string>
     <string name="support_plan_basic_title">$5/month · Basic</string>
     <string name="support_plan_basic_body">Get your games running, or running better.</string>
@@ -1280,6 +1280,8 @@
     <string name="support_checkout_no_browser">No browser was found to open the checkout page. Scan the code with another device instead.</string>
     <string name="support_checkout_failed">The checkout page could not be opened. Check your connection and try again.</string>
     <string name="support_checkout_done">Done</string>
+    <string name="support_plan_pro_title_priced">%1$s/month · Pro</string>
+    <string name="support_plan_basic_title_priced">%1$s/month · Basic</string>
     <string name="support_checkout_waiting_guest">After you pay, sign in on that page to create your account. Your plan activates here by itself.</string>
     <string name="support_play_unavailable">Google Play billing is not available right now. Try again later.</string>
     <string name="support_checkout_expired">This checkout timed out. If you already paid, sign in with the email you used and your plan appears.</string>

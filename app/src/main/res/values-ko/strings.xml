@@ -1100,6 +1100,16 @@
     <string name="support_checkout_no_browser">결제 페이지를 열 브라우저를 찾을 수 없습니다. 대신 다른 기기로 코드를 스캔하세요.</string>
     <string name="support_checkout_failed">결제 페이지를 열 수 없습니다. 연결을 확인한 후 다시 시도하세요.</string>
     <string name="support_checkout_done">완료</string>
+    <string name="main_thank_you_message_play">지금 멤버가 되세요. 멤버 혜택:\n\n• 게임 실행을 위한 AI 지원\n• 새 릴리스 조기 이용\n• Discord 프리미엄 역할 및 전용 채널\n• …그 외 다수\n\n월 %1$s부터</string>
+    <string name="support_plan_pro_title_priced">%1$s/월 · Pro</string>
+    <string name="support_plan_basic_title_priced">%1$s/월 · Basic</string>
+    <string name="membership_plans_pitch">멤버는 게임 실행을 위한 AI 지원, 새 릴리스 조기 이용, Discord 프리미엄 역할을 받습니다.</string>
+    <string name="membership_plans_title">멤버 되기</string>
+    <string name="support_already_member">이미 멤버인가요? 로그인</string>
+    <string name="support_checkout_expired">결제 시간이 만료되었습니다. 이미 결제했다면 사용한 이메일로 로그인하면 플랜이 표시됩니다.</string>
+    <string name="support_play_unavailable">지금은 Google Play 결제를 사용할 수 없습니다. 나중에 다시 시도하세요.</string>
+    <string name="support_checkout_waiting_guest">결제 후 해당 페이지에서 로그인하여 계정을 만드세요. 플랜은 여기에서 자동으로 활성화됩니다.</string>
+    <string name="gamenative_account_managed_play">요금제가 Google Play를 통해 제공됩니다. Play 스토어에서 관리하세요.</string>
     <string name="support_already_subscribed">이 계정에는 이미 구독이 있습니다. 결제 페이지에서 플랜을 변경할 수 있습니다.</string>
     <string name="support_plan_active">플랜이 활성화되었습니다.</string>
     <string name="support_plan_pending">플랜을 아직 설정하는 중입니다. 1분 후에 다시 시도하세요.</string>

@@ -551,7 +551,8 @@ private fun UpgradeBody(
                 } else {
                     if (showBasic) {
                         DialogButton(
-                            text = basicPrice?.let { "$it/month · Basic" } ?: stringResource(R.string.support_plan_basic_title),
+                            text = basicPrice?.let { stringResource(R.string.support_plan_basic_title_priced, it) }
+                                ?: stringResource(R.string.support_plan_basic_title),
                             subtitle = stringResource(R.string.support_plan_basic_body),
                             primary = false,
                             onClick = { onChoose("basic") },
@@ -560,7 +561,8 @@ private fun UpgradeBody(
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                     DialogButton(
-                        text = proPrice?.let { "$it/month · Pro" } ?: stringResource(R.string.debug_paywall_tier10_title),
+                        text = proPrice?.let { stringResource(R.string.support_plan_pro_title_priced, it) }
+                            ?: stringResource(R.string.debug_paywall_tier10_title),
                         subtitle = stringResource(R.string.debug_paywall_tier10_body),
                         onClick = { onChoose("pro") },
                         modifier = if (showBasic) Modifier else Modifier.focusRequester(firstFocus),

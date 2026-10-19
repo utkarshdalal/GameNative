@@ -1087,6 +1087,16 @@
     <string name="support_checkout_no_browser">找不到可開啟付款頁面的瀏覽器。請改用其他裝置掃描條碼。</string>
     <string name="support_checkout_failed">無法開啟付款頁面。請檢查網路連線後再試一次。</string>
     <string name="support_checkout_done">完成</string>
+    <string name="main_thank_you_message_play">立即成為會員。會員可享有：\n\n• AI 幫你解決遊戲執行問題\n• 新版本搶先體驗\n• Discord 進階身分組與專屬頻道\n• …還有更多\n\n每月 %1$s 起</string>
+    <string name="support_plan_pro_title_priced">%1$s/月 · Pro</string>
+    <string name="support_plan_basic_title_priced">%1$s/月 · Basic</string>
+    <string name="membership_plans_pitch">會員可獲得 AI 協助解決遊戲執行問題、新版本搶先體驗，以及 Discord 進階身分組。</string>
+    <string name="membership_plans_title">成為會員</string>
+    <string name="support_already_member">已經是會員？登入</string>
+    <string name="support_checkout_expired">此次付款已逾時。如果你已付款，請用付款時使用的電子郵件登入，方案就會顯示。</string>
+    <string name="support_play_unavailable">Google Play 結帳目前無法使用。請稍後再試。</string>
+    <string name="support_checkout_waiting_guest">付款後，請在該頁面登入以建立帳戶。你的方案會在這裡自動啟用。</string>
+    <string name="gamenative_account_managed_play">你的方案來自 Google Play。請在 Play 商店中管理。</string>
     <string name="support_already_subscribed">此帳戶已有訂閱。你可以在帳單頁面變更方案。</string>
     <string name="support_plan_active">你的方案已生效。</string>
     <string name="support_plan_pending">你的方案仍在設定中。請一分鐘後再試一次。</string>

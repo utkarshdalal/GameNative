@@ -916,6 +916,16 @@
     <string name="support_checkout_no_browser">Der blev ikke fundet en browser til at åbne betalingssiden. Scan koden med en anden enhed i stedet.</string>
     <string name="support_checkout_failed">Betalingssiden kunne ikke åbnes. Tjek din forbindelse, og prøv igen.</string>
     <string name="support_checkout_done">Færdig</string>
+    <string name="main_thank_you_message_play">Bliv medlem i dag. Medlemmer får:\n\n• AI-hjælp til at få dine spil til at køre\n• Tidlig adgang til nye udgivelser\n• Premium-roller og eksklusive kanaler på Discord\n• …og mere\n\nFra %1$s/måned</string>
+    <string name="support_plan_pro_title_priced">%1$s/måned · Pro</string>
+    <string name="support_plan_basic_title_priced">%1$s/måned · Basic</string>
+    <string name="membership_plans_pitch">Medlemmer får AI-hjælp til at få spil til at køre, tidlig adgang til nye udgivelser og premium-roller på Discord.</string>
+    <string name="membership_plans_title">Bliv medlem</string>
+    <string name="support_already_member">Allerede medlem? Log ind</string>
+    <string name="support_checkout_expired">Betalingen udløb. Hvis du allerede har betalt, så log ind med den e-mail, du brugte, og din plan vises.</string>
+    <string name="support_play_unavailable">Google Play-fakturering er ikke tilgængelig lige nu. Prøv igen senere.</string>
+    <string name="support_checkout_waiting_guest">Når du har betalt, skal du logge ind på den side for at oprette din konto. Din plan aktiveres her automatisk.</string>
+    <string name="gamenative_account_managed_play">Dit abonnement kommer fra Google Play. Administrer det i Play Butik.</string>
     <string name="support_already_subscribed">Denne konto har allerede et abonnement. Du kan ændre din plan på faktureringssiden.</string>
     <string name="support_plan_active">Din plan er aktiv.</string>
     <string name="support_plan_pending">Din plan er stadig ved at blive oprettet. Prøv igen om et minut.</string>

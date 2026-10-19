@@ -1092,6 +1092,16 @@
     <string name="support_checkout_no_browser">Non è stato trovato alcun browser per aprire la pagina di pagamento. Scansiona il codice con un altro dispositivo.</string>
     <string name="support_checkout_failed">Non è stato possibile aprire la pagina di pagamento. Controlla la connessione e riprova.</string>
     <string name="support_checkout_done">Fatto</string>
+    <string name="main_thank_you_message_play">Diventa membro oggi. I membri ottengono:\n\n• Aiuto con IA per far funzionare i tuoi giochi\n• Accesso anticipato alle nuove versioni\n• Ruoli premium e canali esclusivi su Discord\n• …e altro ancora\n\nDa %1$s/mese</string>
+    <string name="support_plan_pro_title_priced">%1$s/mese · Pro</string>
+    <string name="support_plan_basic_title_priced">%1$s/mese · Basic</string>
+    <string name="membership_plans_pitch">I membri ottengono aiuto con IA per far funzionare i giochi, accesso anticipato alle nuove versioni e ruoli premium su Discord.</string>
+    <string name="membership_plans_title">Diventa membro</string>
+    <string name="support_already_member">Sei già membro? Accedi</string>
+    <string name="support_checkout_expired">Questo pagamento è scaduto. Se hai già pagato, accedi con l\'e-mail usata e il tuo piano comparirà.</string>
+    <string name="support_play_unavailable">La fatturazione di Google Play non è disponibile al momento. Riprova più tardi.</string>
+    <string name="support_checkout_waiting_guest">Dopo il pagamento, accedi su quella pagina per creare il tuo account. Il piano si attiva qui da solo.</string>
+    <string name="gamenative_account_managed_play">Il tuo piano proviene da Google Play. Gestiscilo nel Play Store.</string>
     <string name="support_already_subscribed">Questo account ha già un abbonamento. Puoi cambiare piano nella pagina di fatturazione.</string>
     <string name="support_plan_active">Il tuo piano è attivo.</string>
     <string name="support_plan_pending">Il tuo piano è ancora in fase di attivazione. Riprova tra un minuto.</string>

@@ -1067,6 +1067,16 @@
     <string name="support_checkout_no_browser">Es wurde kein Browser zum Öffnen der Bezahlseite gefunden. Scanne den Code stattdessen mit einem anderen Gerät.</string>
     <string name="support_checkout_failed">Die Bezahlseite konnte nicht geöffnet werden. Prüfe deine Verbindung und versuche es erneut.</string>
     <string name="support_checkout_done">Fertig</string>
+    <string name="main_thank_you_message_play">Werde noch heute Mitglied. Mitglieder erhalten:\n\n• KI-Hilfe, um deine Spiele zum Laufen zu bringen\n• Frühzugang zu neuen Versionen\n• Premium-Rollen und exklusive Kanäle auf Discord\n• …und mehr\n\nAb %1$s/Monat</string>
+    <string name="support_plan_pro_title_priced">%1$s/Monat · Pro</string>
+    <string name="support_plan_basic_title_priced">%1$s/Monat · Basic</string>
+    <string name="membership_plans_pitch">Mitglieder erhalten KI-Hilfe, um Spiele zum Laufen zu bringen, Frühzugang zu neuen Versionen und Premium-Rollen auf Discord.</string>
+    <string name="membership_plans_title">Mitglied werden</string>
+    <string name="support_already_member">Schon Mitglied? Anmelden</string>
+    <string name="support_checkout_expired">Dieser Bezahlvorgang ist abgelaufen. Falls du schon bezahlt hast, melde dich mit der verwendeten E-Mail-Adresse an, dann erscheint dein Plan.</string>
+    <string name="support_play_unavailable">Google Play-Abrechnung ist gerade nicht verfügbar. Versuche es später noch einmal.</string>
+    <string name="support_checkout_waiting_guest">Melde dich nach dem Bezahlen auf dieser Seite an, um dein Konto zu erstellen. Dein Plan wird hier automatisch aktiviert.</string>
+    <string name="gamenative_account_managed_play">Dein Plan kommt von Google Play. Verwalte ihn im Play Store.</string>
     <string name="support_already_subscribed">Dieses Konto hat bereits ein Abo. Du kannst deinen Plan auf der Abrechnungsseite ändern.</string>
     <string name="support_plan_active">Dein Plan ist aktiv.</string>
     <string name="support_plan_pending">Dein Plan wird noch eingerichtet. Bitte versuche es in einer Minute erneut.</string>

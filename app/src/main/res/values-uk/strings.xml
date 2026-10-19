@@ -1097,6 +1097,16 @@
     <string name="support_checkout_no_browser">Не знайдено браузер для відкриття сторінки оплати. Відскануйте код іншим пристроєм.</string>
     <string name="support_checkout_failed">Не вдалося відкрити сторінку оплати. Перевірте з\'єднання та спробуйте ще раз.</string>
     <string name="support_checkout_done">Готово</string>
+    <string name="main_thank_you_message_play">Станьте учасником сьогодні. Учасники отримують:\n\n• Допомогу ШІ із запуском ігор\n• Ранній доступ до нових версій\n• Преміум-ролі та ексклюзивні канали в Discord\n• …та інше\n\nВід %1$s/міс.</string>
+    <string name="support_plan_pro_title_priced">%1$s/місяць · Pro</string>
+    <string name="support_plan_basic_title_priced">%1$s/місяць · Basic</string>
+    <string name="membership_plans_pitch">Учасники отримують допомогу ШІ із запуском ігор, ранній доступ до нових версій і преміум-ролі в Discord.</string>
+    <string name="membership_plans_title">Стати учасником</string>
+    <string name="support_already_member">Уже учасник? Увійти</string>
+    <string name="support_checkout_expired">Час оплати минув. Якщо ви вже заплатили, увійдіть з використаною електронною адресою, і план з\'явиться.</string>
+    <string name="support_play_unavailable">Оплата через Google Play зараз недоступна. Спробуйте пізніше.</string>
+    <string name="support_checkout_waiting_guest">Після оплати увійдіть на тій сторінці, щоб створити обліковий запис. План активується тут автоматично.</string>
+    <string name="gamenative_account_managed_play">Ваш тариф надано через Google Play. Керуйте ним у Play Маркеті.</string>
     <string name="support_already_subscribed">Цей обліковий запис уже має підписку. Змінити план можна на сторінці оплати.</string>
     <string name="support_plan_active">Ваш план активний.</string>
     <string name="support_plan_pending">Ваш план ще налаштовується. Спробуйте ще раз за хвилину.</string>

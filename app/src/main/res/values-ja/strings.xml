@@ -1069,6 +1069,16 @@
     <string name="support_checkout_no_browser">購入ページを開くブラウザが見つかりませんでした。代わりに別のデバイスでコードをスキャンしてください。</string>
     <string name="support_checkout_failed">購入ページを開けませんでした。接続を確認して、もう一度お試しください。</string>
     <string name="support_checkout_done">完了</string>
+    <string name="main_thank_you_message_play">今すぐメンバーになりましょう。メンバー特典:\n\n• ゲームを動かすための AI サポート\n• 新リリースへの早期アクセス\n• Discordのプレミアムロールと限定チャンネル\n• …その他多数\n\n月額%1$sから</string>
+    <string name="support_plan_pro_title_priced">%1$s/月 · Pro</string>
+    <string name="support_plan_basic_title_priced">%1$s/月 · Basic</string>
+    <string name="membership_plans_pitch">メンバーは、ゲームを動かすための AI サポート、新リリースへの早期アクセス、Discord のプレミアムロールを利用できます。</string>
+    <string name="membership_plans_title">メンバーになる</string>
+    <string name="support_already_member">すでにメンバーですか？サインイン</string>
+    <string name="support_checkout_expired">この購入手続きは期限切れです。すでに支払済みの場合は、使用したメールアドレスでサインインするとプランが表示されます。</string>
+    <string name="support_play_unavailable">Google Play の課金は現在利用できません。後でもう一度お試しください。</string>
+    <string name="support_checkout_waiting_guest">支払い後、そのページでサインインしてアカウントを作成してください。プランはここで自動的に有効になります。</string>
+    <string name="gamenative_account_managed_play">このプランは Google Play から提供されています。Play ストアで管理してください。</string>
     <string name="support_already_subscribed">このアカウントにはすでにサブスクリプションがあります。プランは請求ページで変更できます。</string>
     <string name="support_plan_active">プランが有効になりました。</string>
     <string name="support_plan_pending">プランはまだ準備中です。1 分後にもう一度お試しください。</string>
