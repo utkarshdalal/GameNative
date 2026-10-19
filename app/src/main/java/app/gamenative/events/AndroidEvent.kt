@@ -11,7 +11,7 @@ interface AndroidEvent<T> : Event<T> {
     data class SetAllowedOrientation(val orientations: EnumSet<Orientation>) : AndroidEvent<Unit>
     data object StartOrientator : AndroidEvent<Unit>
 
-    /** Rotates the launcher 90 degrees clockwise; handled by MainActivity's orientator. */
+    /** Advances the launcher orientation to the next state of its cycle; handled by MainActivity. */
     data object RotateLauncherOrientation : AndroidEvent<Unit>
     data object ActivityDestroyed : AndroidEvent<Unit>
     data object GuestProgramTerminated : AndroidEvent<Unit>
