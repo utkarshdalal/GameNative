@@ -1,6 +1,7 @@
 package app.gamenative
 
 import android.content.Context
+import android.content.pm.ActivityInfo
 import androidx.compose.runtime.mutableStateOf
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
@@ -1080,6 +1081,18 @@ object PrefManager {
         }
         set(value) {
             setPref(ALLOWED_ORIENTATION, Orientation.toInt(value))
+        }
+
+    /**
+     * Last orientation chosen with the System menu's rotate button, stored as an
+     * [android.content.pm.ActivityInfo] screen orientation value so it can be
+     * re-applied when the launcher starts.
+     */
+    private val LAUNCHER_ORIENTATION = intPreferencesKey("launcher_orientation")
+    var launcherOrientation: Int
+        get() = getPref(LAUNCHER_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED)
+        set(value) {
+            setPref(LAUNCHER_ORIENTATION, value)
         }
 
     private val TIPPED = booleanPreferencesKey("tipped")

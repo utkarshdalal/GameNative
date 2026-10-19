@@ -57,6 +57,7 @@ import app.gamenative.powercontrol.PowerManager
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.IconDecoder
 import app.gamenative.utils.IntentLaunchManager
+import app.gamenative.utils.LauncherOrientation
 import app.gamenative.utils.LocaleHelper
 import app.gamenative.ui.util.SnackbarManager
 import com.posthog.PostHog
@@ -152,6 +153,34 @@ class MainActivity : ComponentActivity() {
         startOrientator()
     }
 
+    /**
+     * Rotate button in the System menu: memory of the launcher orientation lives here so
+     * the sensor orientator, game requests and the button all share one code path.
+     * The ring starts one quarter turn after the device's natural orientation and ends on
+     * auto, so the first press always turns the picture and every press changes the state.
+     */
+    private val onRotateLauncherOrientation: (AndroidEvent.RotateLauncherOrientation) -> Unit = {
+        if (isHeadset(this)) {
+            Timber.d("RotateLauncherOrientation ignored: headset keeps a fixed landscape projection")
+        } else {
+            val next = LauncherOrientation.nextState(
+                LauncherOrientation.stored(),
+                LauncherOrientation.naturalPortrait(this),
+            )
+            LauncherOrientation.store(next)
+
+            // Apply the launcher's own choice immediately. setOrientationTo keeps it applied
+            // while the launcher is in front, but must not be the only writer: it also carries
+            // the in-game allowed-orientation math, which would swallow the press if a
+            // container is still alive or the allowed set is not "auto".
+            val target = LauncherOrientation.launcherTarget()
+            if (requestedOrientation != target) {
+                requestedOrientation = target
+            }
+            setOrientationTo(currentOrientationChangeValue, availableOrientations)
+        }
+    }
+
     private val onEndProcess: (AndroidEvent.EndProcess) -> Unit = {
         finishAndRemoveTask()
     }
@@ -217,6 +246,9 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // Restore the orientation picked with the System menu rotate button.
+        LauncherOrientation.applyStored(this)
+
         // stale keepAlive from a prior crash/swipe — no container is actually running
         if (SteamService.keepAlive && PluviaApp.xEnvironment == null) {
             Timber.w("onCreate: clearing stale keepAlive — no container running")
@@ -241,6 +273,7 @@ class MainActivity : ComponentActivity() {
         // startOrientator() // causes memory leak since activity restarted every orientation change
         PluviaApp.events.on<AndroidEvent.SetSystemUIVisibility, Unit>(onSetSystemUi)
         PluviaApp.events.on<AndroidEvent.StartOrientator, Unit>(onStartOrientator)
+        PluviaApp.events.on<AndroidEvent.RotateLauncherOrientation, Unit>(onRotateLauncherOrientation)
         PluviaApp.events.on<AndroidEvent.SetAllowedOrientation, Unit>(onSetAllowedOrientation)
         PluviaApp.events.on<AndroidEvent.EndProcess, Unit>(onEndProcess)
 
@@ -474,6 +507,7 @@ class MainActivity : ComponentActivity() {
 
         PluviaApp.events.off<AndroidEvent.SetSystemUIVisibility, Unit>(onSetSystemUi)
         PluviaApp.events.off<AndroidEvent.StartOrientator, Unit>(onStartOrientator)
+        PluviaApp.events.off<AndroidEvent.RotateLauncherOrientation, Unit>(onRotateLauncherOrientation)
         PluviaApp.events.off<AndroidEvent.SetAllowedOrientation, Unit>(onSetAllowedOrientation)
         PluviaApp.events.off<AndroidEvent.EndProcess, Unit>(onEndProcess)
 
@@ -803,6 +837,18 @@ class MainActivity : ComponentActivity() {
             return
         }
         // Log.d("MainActivity$index", "Setting orientation to conform")
+
+        // No container running means the launcher owns the screen: apply the orientation the
+        // user picked from the System menu (or auto/UNSPECIFIED for the 5th state). This is
+        // deliberately independent of the allowed-orientation set, which the game path fills
+        // in and which otherwise clamps the launcher to landscape-only.
+        if (PluviaApp.xEnvironment == null) {
+            val target = LauncherOrientation.launcherTarget()
+            if (requestedOrientation != target) {
+                requestedOrientation = target
+            }
+            return
+        }
 
         // reverse direction of orientation
         val adjustedOrientation = 360 - orientation
