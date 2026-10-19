@@ -1902,7 +1902,7 @@ fun PluviaMain(
                 },
                 onDismiss = {
                     membershipSignInVisible = false
-                    membershipPlansVisible = true
+                    if (!Membership.isMember()) membershipPlansVisible = true
                 },
             )
 

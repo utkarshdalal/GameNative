@@ -227,8 +227,14 @@ fun SupportUpgradeDialog(
                 }
                 when (PlayBilling.purchase(activity, plan)) {
                     PlayBilling.PurchaseOutcome.Success -> {
-                        if (signedIn) AccountApi.syncPlay()
-                        planActive()
+                        if (signedIn) {
+                            AccountApi.syncPlay()
+                            planActive()
+                        } else {
+                            SnackbarManager.show(context.getString(R.string.support_plan_active))
+                            currentOnPlanChanged()
+                            if (onSignIn != null) onSignIn() else currentOnDismiss()
+                        }
                     }
                     PlayBilling.PurchaseOutcome.Cancelled -> phase = PHASE_CHOOSE
                     is PlayBilling.PurchaseOutcome.Failed -> phase = PHASE_FAILED
