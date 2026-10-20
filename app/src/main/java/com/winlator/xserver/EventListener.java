@@ -1,5 +1,7 @@
 package com.winlator.xserver;
 
+import android.os.Looper;
+
 import com.winlator.xserver.events.Event;
 
 import java.io.IOException;
@@ -22,6 +24,11 @@ public class EventListener {
     }
 
     public void sendEvent(Event event) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            client.sendUiEvent(event);
+            return;
+        }
+
         try {
             event.send(client.getSequenceNumber(), client.getOutputStream());
         }

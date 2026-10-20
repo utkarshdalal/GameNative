@@ -10,6 +10,10 @@ import com.winlator.xserver.extensions.XInput2Extension;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public class XClient implements XResourceManager.OnResourceLifecycleListener {
     public final XServer xServer;
@@ -24,11 +28,25 @@ public class XClient implements XResourceManager.OnResourceLifecycleListener {
     private final XOutputStream outputStream;
     private final ArrayMap<Window, EventListener> eventListeners = new ArrayMap<>();
     private final ArrayList<XResource> resources = new ArrayList<>();
+    private final ThreadPoolExecutor uiEventExecutor;
 
     public XClient(XServer xServer, XInputStream inputStream, XOutputStream outputStream) {
         this.xServer = xServer;
         this.inputStream = inputStream;
         this.outputStream = outputStream;
+
+        uiEventExecutor = new ThreadPoolExecutor(
+                1,
+                1,
+                0L,
+                TimeUnit.MILLISECONDS,
+                new ArrayBlockingQueue<>(128),
+                runnable -> {
+                    Thread thread = new Thread(runnable, "XClientUiEvents");
+                    thread.setDaemon(true);
+                    return thread;
+                }
+        );
 
         try (XLock lock = xServer.lockAll()) {
             resourceIDBase = xServer.resourceIDs.get();
@@ -61,6 +79,23 @@ public class XClient implements XResourceManager.OnResourceLifecycleListener {
         }
     }
 
+    public void sendUiEvent(Event event) {
+        final short eventSequenceNumber = sequenceNumber;
+        try {
+            uiEventExecutor.execute(() -> {
+                try (XStreamLock ignored = outputStream.lock()) {
+                    event.send(eventSequenceNumber, outputStream);
+                }
+                catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+        }
+        catch (RejectedExecutionException ignored) {
+            // A stalled X client must not apply back-pressure to Android's UI thread.
+        }
+    }
+
     public boolean isInterestedIn(int eventId, Window window) {
         EventListener eventListener = eventListeners.get(window);
         return eventListener != null && eventListener.isInterestedIn(eventId);
@@ -75,6 +110,7 @@ public class XClient implements XResourceManager.OnResourceLifecycleListener {
     }
 
     public void freeResources() {
+        uiEventExecutor.shutdownNow();
         try (XLock lock = xServer.lockAll()) {
             while (!resources.isEmpty()) {
                 XResource resource = resources.remove(resources.size()-1);
