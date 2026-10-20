@@ -254,6 +254,7 @@ class PluviaApp : SplitCompatApplication() {
 
         private lateinit var instance: PluviaApp
         private var cachedDefaultScreenSize: String? = null
+        private var cachedNativeDisplaySize: String? = null
 
         // TODO: find a way to make this saveable, this is terrible (leak that memory baby)
         internal var xEnvironment: XEnvironment? = null
@@ -341,6 +342,53 @@ class PluviaApp : SplitCompatApplication() {
                 if (caps == null || caps.supportedHdrTypes.isEmpty()) null else caps
             } catch (e: Exception) {
                 Timber.e(e, "Failed to read display HDR capabilities")
+                null
+            }
+        }
+
+        /**
+         * The default display's real pixel size as "WxH" in landscape orientation (e.g. "2160x1080"),
+         * or null when it can't be read yet.
+         *
+         * Gamescope-only: this is the scanout geometry for -W/-H and GNDRM_SCANOUT. It is
+         * deliberately *not* [getDefaultScreenSize], which answers in aspect-ratio presets
+         * (1280x720 / 1280x800 / 1280x960) meant to be a container's internal desktop resolution —
+         * presenting at that preset makes gamescope render 720p and resample it onto the panel.
+         */
+        @JvmStatic
+        fun getNativeDisplaySize(): String? {
+            cachedNativeDisplaySize?.let { return it }
+
+            return try {
+                // instance is assigned first thing in onCreate; a caller before that (or a
+                // non-app process) must not cache a guess for the rest of the run.
+                if (!::instance.isInitialized) return null
+                val displayManager = instance.getSystemService(DISPLAY_SERVICE) as? DisplayManager
+                val display = displayManager?.getDisplay(Display.DEFAULT_DISPLAY) ?: return null
+
+                val width: Int
+                val height: Int
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    val mode = display.mode
+                    width = mode.physicalWidth
+                    height = mode.physicalHeight
+                } else {
+                    // API < 30 - Use deprecated Display API
+                    val displayMetrics = DisplayMetrics()
+                    @Suppress("DEPRECATION")
+                    display.getRealMetrics(displayMetrics)
+                    width = displayMetrics.widthPixels
+                    height = displayMetrics.heightPixels
+                }
+
+                // physicalWidth/Height follow the panel's native orientation, which is portrait on a
+                // phone. Scanout geometry is landscape (gamescope wants W > H), so order it that way.
+                val result = if (width >= height) "${width}x$height" else "${height}x$width"
+                cachedNativeDisplaySize = result
+                Timber.i("Native display size: %s (panel was %sx%s)", result, width, height)
+                result
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to get native display size")
                 null
             }
         }

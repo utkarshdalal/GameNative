@@ -701,8 +701,14 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         return args.toString();
     }
 
-    /** The real display size, from the app's cached default, or null if unparseable. */
+    /**
+     * The panel's real pixel size, or null if unreadable. This is what scanout needs: the
+     * container's screen size is an internal desktop resolution, so using it here would make
+     * gamescope present at 720p (or whatever preset) and resample onto the panel.
+     */
     private static int[] displaySize() {
+        int[] nativeSize = AppUtils.parseScreenSize(PluviaApp.getNativeDisplaySize());
+        if (nativeSize != null) return nativeSize;
         return AppUtils.parseScreenSize(PluviaApp.getDefaultScreenSize());
     }
 

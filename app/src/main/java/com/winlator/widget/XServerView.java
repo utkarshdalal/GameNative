@@ -64,8 +64,11 @@ public class XServerView extends SurfaceView implements SurfaceHolder.Callback, 
     @Override
     public void surfaceCreated(@NonNull SurfaceHolder holder) {
         if (isGamescopeMode()) {
-            // Seed from the configured default screen size (getWidth/Height may predate layout); surfaceChanged replaces it with the real holder size.
-            int[] defaultSize = AppUtils.parseScreenSize(PluviaApp.getDefaultScreenSize());
+            // Seed from the panel's real size (getWidth/Height may predate layout); surfaceChanged
+            // replaces it with the real holder size. The container preset is only a last resort:
+            // it's an internal desktop resolution, and seeding it starts the daemon at 720p.
+            int[] defaultSize = AppUtils.parseScreenSize(PluviaApp.getNativeDisplaySize());
+            if (defaultSize == null) defaultSize = AppUtils.parseScreenSize(PluviaApp.getDefaultScreenSize());
             if (defaultSize == null) {
                 defaultSize = new int[2];
                 defaultSize[0] = getWidth();
