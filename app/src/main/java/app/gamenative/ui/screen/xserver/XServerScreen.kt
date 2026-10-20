@@ -4313,6 +4313,7 @@ private fun setupXEnvironment(
         guestProgramLauncherComponent.isWoW64Mode = wow64Mode
         // Set steam type for selecting appropriate box64rc
         guestProgramLauncherComponent.setSteamType(container.getSteamType())
+        if (!container.isLaunchRealSteam && !container.isLaunchBionicSteam) envVars.put("PROTON_DISABLE_LSTEAMCLIENT", "1")
 
         envVars.putAll(container.envVars)
         if (container.isLoadMods && !bootToContainer && !testGraphics) ModDllOverrides.apply(container, envVars)
