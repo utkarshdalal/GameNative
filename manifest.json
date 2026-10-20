@@ -878,15 +878,15 @@
         "variant": "bionic"
       },
       {
-        "id": "proton-11.0-2.3-arm64ec-1",
-        "name": "Proton 11.0-2.3 ARM64ec",
-        "url": "https://downloads.gamenative.app/proton-11.0-2.3-arm64ec.wcp",
+        "id": "proton-11.0-2-x86_64-6",
+        "name": "Proton 11.0-2 x86-64 (6)",
+        "url": "https://downloads.gamenative.app/proton-11.0-2-x86_64-6.wcp",
         "variant": "bionic"
       },
       {
-        "id": "proton-11.0-2.4-arm64ec-1",
-        "name": "Proton 11.0-2.4 ARM64ec",
-        "url": "https://downloads.gamenative.app/proton-11.0-2.4-arm64ec.wcp",
+        "id": "proton-11.0-2-arm64ec-6",
+        "name": "Proton 11.0-2 ARM64ec (6)",
+        "url": "https://downloads.gamenative.app/proton-11.0-2-arm64ec-6.wcp",
         "variant": "bionic"
       }
     ],
@@ -913,6 +913,12 @@
         "id": "2601-217d039-0",
         "name": "FEX 2601-217d039",
         "url": "https://downloads.gamenative.app/FEXCore-2601-217d039.wcp",
+        "variant": "bionic"
+      },
+      {
+        "id": "2610-gn2-c674d0b-0",
+        "name": "FEX 2610-gn2-c674d0b",
+        "url": "https://downloads.gamenative.app/FEXCore-2610-gn2-c674d0b.wcp",
         "variant": "bionic"
       }
     ],
