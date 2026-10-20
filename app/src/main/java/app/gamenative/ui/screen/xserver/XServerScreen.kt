@@ -5618,14 +5618,10 @@ private suspend fun setupWineSystemFiles(
     val variantChanged = !markersMissing && container.containerVariant != appliedContainerVariant
     val wineVersionChanged = !markersMissing && container.wineVersion != appliedWineVersion
 
+    var patchesApplied = false
     if (firstBoot || imgVersionChanged || variantChanged || wineVersionChanged) {
         applyGeneralPatches(context, container, imageFs, xServerState.value.wineInfo, containerManager, onExtractFileListener)
-        // firstBoot alone is not enough: an image update clears appVersion on every container (see
-        // ImageFsInstaller.resetContainerImgVersions). A container that was already set up keeps the
-        // applied-variant/Wine markers, a genuinely new one does not.
-        if (firstBoot && markersMissing) {
-            WineUtils.applyComputerName(context, container)
-        }
+        patchesApplied = true
         container.putExtra("appliedContainerVariant", container.containerVariant)
         container.putExtra("appliedWineVersion", container.wineVersion)
         container.putExtra("appVersion", appVersion)
@@ -5640,6 +5636,13 @@ private suspend fun setupWineSystemFiles(
 
     check(ContainerOverlayMigrator.migrateIfNeeded(context, contentsManager, container)) {
         "No base prefix for ${container.wineVersion}, cannot launch thin container ${container.id}"
+    }
+
+    // Whenever the patch block ran, the prefix's system.reg came from a template again: applyGeneralPatches
+    // re-extracts the container pattern for full prefixes, and migrateIfNeeded (just above) copies the base
+    // prefix's reg files over a thin container's after a Wine switch. So the name is written after both.
+    if (patchesApplied) {
+        WineUtils.applyComputerName(context, container)
     }
 
     // Always refresh components files

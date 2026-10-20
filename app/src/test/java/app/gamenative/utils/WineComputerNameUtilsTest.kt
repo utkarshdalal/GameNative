@@ -9,9 +9,9 @@ import org.junit.Test
 class WineComputerNameUtilsTest {
     @Test
     fun androidIdGivesTheSha256BasedName() {
-        // First 12 hex characters of SHA-256("0123456789abcdef") / SHA-256("abc").
-        assertEquals("GN_9f9f5111f7b2", WineComputerNameUtils.fromAndroidId("0123456789abcdef"))
-        assertEquals("GN_ba7816bf8f01", WineComputerNameUtils.fromAndroidId("abc"))
+        // First 15 hex characters of SHA-256("0123456789abcdef") / SHA-256("abc").
+        assertEquals("9f9f5111f7b27a7", WineComputerNameUtils.fromAndroidId("0123456789abcdef"))
+        assertEquals("ba7816bf8f01cfe", WineComputerNameUtils.fromAndroidId("abc"))
     }
 
     @Test
@@ -21,19 +21,26 @@ class WineComputerNameUtilsTest {
     }
 
     @Test
+    fun nameIsPlainHexWithoutAGameNativePrefix() {
+        val name = WineComputerNameUtils.fromAndroidId("0123456789abcdef")
+
+        assertTrue(name.matches(Regex("[0-9a-f]{15}")))
+        assertFalse(name.contains("GN", ignoreCase = true))
+    }
+
+    @Test
     fun rawAndroidIdCharactersAreNotInTheName() {
         val id = "0123456789abcdef"
         val name = WineComputerNameUtils.fromAndroidId(id)
 
         assertFalse(name.contains(id.take(8)))
-        assertTrue(name.startsWith("GN_"))
     }
 
     @Test
     fun nullOrEmptyAndroidIdFallsBackToTheSameFixedName() {
-        // First 12 hex characters of SHA-256("UNKNOWN0000").
-        assertEquals("GN_2166a28f06a6", WineComputerNameUtils.fromAndroidId(null))
-        assertEquals("GN_2166a28f06a6", WineComputerNameUtils.fromAndroidId(""))
+        // First 15 hex characters of SHA-256("UNKNOWN0000").
+        assertEquals("2166a28f06a6b79", WineComputerNameUtils.fromAndroidId(null))
+        assertEquals("2166a28f06a6b79", WineComputerNameUtils.fromAndroidId(""))
     }
 
     @Test

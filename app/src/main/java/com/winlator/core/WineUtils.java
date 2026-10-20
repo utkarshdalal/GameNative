@@ -212,19 +212,19 @@ public abstract class WineUtils {
      * Writes the Wine "computer name" into this container's own registry (not the shared imagefs
      * template, since that is copied into new containers before this runs).
      *
-     * The name is always the same stable per-device value ("GN_" + first 12 chars of ANDROID_ID, under
-     * 15 chars for NetBIOS compatibility), so every container of this device reports the same machine.
-     * Only called on a container's first boot (see setupWineSystemFiles); existing containers keep
-     * whatever name they already have.
+     * The name is always the same stable per-device value (the first 15 hex chars of a SHA-256 of
+     * ANDROID_ID, the NetBIOS limit), so every container of this device reports the same machine.
+     * Called whenever the patch block of setupWineSystemFiles runs (first boot, image update, variant or
+     * Wine switch), because that is exactly when the prefix's system.reg is replaced by a template's.
+     *
+     * Only ComputerName is written. ActiveComputerName and the Tcpip hostname values are recreated
+     * from it by wineboot on every boot.
      */
     public static void applyComputerName(Context context, Container container) {
         String computerName = app.gamenative.utils.WineComputerNameUtils.defaultName(context);
         File systemRegFile = new File(container.getRootDir(), ".wine/system.reg");
         try (WineRegistryEditor registryEditor = new WineRegistryEditor(systemRegFile)) {
             registryEditor.setStringValue("System\\CurrentControlSet\\Control\\ComputerName\\ComputerName", "ComputerName", computerName);
-            registryEditor.setStringValue("System\\CurrentControlSet\\Control\\ComputerName\\ActiveComputerName", "ComputerName", computerName);
-            registryEditor.setStringValue("System\\CurrentControlSet\\Services\\Tcpip\\Parameters", "Hostname", computerName);
-            registryEditor.setStringValue("System\\CurrentControlSet\\Services\\Tcpip\\Parameters", "NV Hostname", computerName);
             // The name is derived from ANDROID_ID, so it is not logged.
             Timber.i("Applied the stable Wine computer name for container %s", container.id);
         } catch (Exception e) {
