@@ -1,5 +1,6 @@
 package app.gamenative.display
 
+import app.gamenative.BuildConfig
 import timber.log.Timber
 import java.io.File
 
@@ -26,7 +27,13 @@ object GamescopeScalingCommand {
             return E_MISSING
         }
         return runCatching {
-            val process = ProcessBuilder(binary.absolutePath, mode.value.toString())
+            // Modern Android refuses to exec from the app's data dir; go through the linker as ProcessHelper does.
+            val command = if (BuildConfig.MODERN_ANDROID) {
+                listOf("/system/bin/linker64", binary.absolutePath, mode.value.toString())
+            } else {
+                listOf(binary.absolutePath, mode.value.toString())
+            }
+            val process = ProcessBuilder(command)
                 .redirectErrorStream(true)
                 .apply {
                     environment()["LD_LIBRARY_PATH"] = File(gamescopeDir, "lib").absolutePath
