@@ -157,6 +157,9 @@ data class SteamApp(
     val isVrOnly: Boolean = false,
     @ColumnInfo(name = "is_vr_supported", defaultValue = "0")
     val isVrSupported: Boolean = false,
+
+    @ColumnInfo(name = "eulas", defaultValue = "'[]'")
+    val eulas: List<EulaInfo> = emptyList(),
 ) {
     val isVrGame: Boolean
         get() = isVrOnly || isVrSupported

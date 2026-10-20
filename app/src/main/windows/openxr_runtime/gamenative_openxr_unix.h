@@ -16,9 +16,10 @@ typedef unsigned long long gn_u64;
 typedef signed long long gn_i64;
 #endif
 
-#define GN_UNIX_ABI_VERSION 6u
+#define GN_UNIX_ABI_VERSION 7u
 #define GN_UNIX_MAX_SWAPCHAINS 32u
 #define GN_UNIX_MAX_IMAGES 4u
+#define GN_UNIX_MAX_VIEWS 3u
 
 enum gn_unix_call_code {
     GN_UNIX_INIT = 0,
@@ -134,7 +135,7 @@ struct gn_unix_control_transact_args {
 
 struct gn_unix_submit_stereo_args {
     gn_u32 view_count;
-    struct gn_unix_submit_view_args views[2];
+    struct gn_unix_submit_view_args views[GN_UNIX_MAX_VIEWS];
     gn_i32 result;
 };
 #pragma pack(pop)

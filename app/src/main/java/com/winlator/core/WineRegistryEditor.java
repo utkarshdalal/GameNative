@@ -184,6 +184,13 @@ public class WineRegistryEditor implements Closeable {
         setRawValue(key, name, "str(2):\"" + escape(value != null ? value : "") + "\"");
     }
 
+    public String getExpandStringValue(String key, String name) {
+        String value = getRawValue(key, name);
+        String prefix = "str(2):\"";
+        if (value == null || !value.startsWith(prefix) || !value.endsWith("\"") || value.length() < prefix.length() + 1) return null;
+        return value.substring(prefix.length(), value.length() - 1);
+    }
+
     public void setStringValues(String key, String[]... items) {
         String[][] escapedItems = new String[items.length][];
         for (int i = 0; i < items.length; i++) {
@@ -201,7 +208,7 @@ public class WineRegistryEditor implements Closeable {
 
     public Integer getDwordValue(String key, String name, Integer fallback) {
         String value = getRawValue(key, name);
-        return value != null ? Integer.decode("0x" + value.substring(6)) : fallback;
+        return value != null ? Integer.valueOf((int)Long.parseLong(value.substring(6), 16)) : fallback;
     }
 
     public void setDwordValue(String key, String name, int value) {

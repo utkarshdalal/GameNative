@@ -262,7 +262,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         setDefaultFocusHighlightEnabled(false);
         int screenWidth = AppUtils.getScreenWidth();
         int screenHeight = AppUtils.getScreenHeight();
-        ScreenInfo screenInfo = xServer.screenInfo;
+        ScreenInfo screenInfo = xServer.getEffectiveScreenInfo();
         updateXform(screenWidth, screenHeight, screenInfo.width, screenInfo.height);
         if (capturePointerOnExternalMouse) {
             setFocusableInTouchMode(true);
@@ -289,8 +289,14 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
-        ScreenInfo screenInfo = this.xServer.screenInfo;
+        ScreenInfo screenInfo = this.xServer.getEffectiveScreenInfo();
         updateXform(w, h, screenInfo.width, screenInfo.height);
+    }
+
+    public void refreshTransform() {
+        if (getWidth() <= 0 || getHeight() <= 0) return;
+        ScreenInfo screenInfo = this.xServer.getEffectiveScreenInfo();
+        updateXform(getWidth(), getHeight(), screenInfo.width, screenInfo.height);
     }
 
     private void updateXform(int outerWidth, int outerHeight, int innerWidth, int innerHeight) {

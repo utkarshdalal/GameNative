@@ -632,7 +632,8 @@ class DownloadsViewModel @Inject constructor(
         when (item.gameSource) {
             GameSource.STEAM -> {
                 val id = item.appId.toIntOrNull() ?: return
-                SteamService.downloadApp(id)
+                // Resuming from the downloads list: keep the mode the record was started with.
+                SteamService.downloadApp(id, SteamService.resumeModeFor(id))
             }
 
             GameSource.GOG -> {

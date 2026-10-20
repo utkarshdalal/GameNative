@@ -64,8 +64,8 @@ android {
         buildConfigField("boolean", "XR_BUILD", "false")
         buildConfigField("boolean", "MODERN_XR", "false")
 
-        versionCode = 23
-        versionName = "1.2.1"
+        versionCode = 24
+        versionName = "1.3.0"
 
         buildConfigField("boolean", "GOLD", "false")
         fun secret(name: String) =
@@ -73,6 +73,7 @@ android {
 
         buildConfigField("String", "POSTHOG_API_KEY", "\"${secret("POSTHOG_API_KEY")}\"")
         buildConfigField("String", "POSTHOG_HOST",  "\"${secret("POSTHOG_HOST")}\"")
+        buildConfigField("String", "REVENUECAT_API_KEY", "\"${secret("REVENUECAT_API_KEY").ifEmpty { "goog_iCoffJTvTFYjqalcgCdtXDErPQa" }}\"")
         buildConfigField("String", "STEAMGRIDDB_API_KEY", "\"${secret("STEAMGRIDDB_API_KEY")}\"")
         buildConfigField("String", "CLOUD_PROJECT_NUMBER", "\"${secret("CLOUD_PROJECT_NUMBER")}\"")
         val iconValue = "@mipmap/ic_launcher"
@@ -418,6 +419,7 @@ dependencies {
 
     // Chrome Custom Tabs for GOG OAuth
     implementation("androidx.browser:browser:1.8.0")
+    implementation("com.revenuecat.purchases:purchases:10.15.1")
     implementation("androidx.documentfile:documentfile:1.0.1")
 
     // JavaSteam
@@ -449,6 +451,7 @@ dependencies {
     implementation(libs.libarchive.android)
     implementation(libs.zstd.jni) { artifact { type = "aar" } }
     implementation(libs.xz)
+    implementation(libs.jzlib)
 
     // Jetpack Compose
     implementation(platform(libs.androidx.compose.bom))

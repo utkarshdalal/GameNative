@@ -19,7 +19,9 @@ import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.sync.FrontendSyncManager
 import app.gamenative.ui.screen.xserver.RadialMenuCoordinator
+import app.gamenative.utils.AppExitRecorder
 import app.gamenative.utils.ContainerMigrator
+import app.gamenative.utils.DebugReportUtils
 import app.gamenative.utils.DeviceInfo
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.PlayIntegrity
@@ -31,6 +33,7 @@ import com.google.android.play.core.splitcompat.SplitCompatApplication
 import com.posthog.PersonProfiles
 
 // Add PostHog imports
+import app.gamenative.billing.PlayBilling
 import com.posthog.android.PostHogAndroid
 import com.posthog.PostHogPropertiesSanitizer
 import com.posthog.android.PostHogAndroidConfig
@@ -46,6 +49,7 @@ import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 
 typealias NavChangedListener = NavController.OnDestinationChangedListener
@@ -83,8 +87,20 @@ class PluviaApp : SplitCompatApplication() {
         // Init our custom crash handler.
         CrashHandler.initialize(this)
 
+        // Android's record of why the last process died, then any debug run it never finished.
+        DebugReportUtils.recovery = appScope.async {
+            try {
+                AppExitRecorder.record(applicationContext)
+                DebugReportUtils.recoverInterruptedRuns(applicationContext)
+            } catch (e: Throwable) {
+                Timber.w(e, "[PluviaApp]: exit record / run recovery failed")
+                emptyList()
+            }
+        }
+
         // Init our datastore preferences.
         PrefManager.init(this)
+        PlayBilling.init(this)
         NexusAuthManager.initialize(this)
         FrontendSyncManager.init(this)
 

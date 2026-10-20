@@ -188,7 +188,7 @@ object SupportSuggestionApplier {
         recordFile.writeText(record.toString())
     }
 
-    private suspend fun applyEdits(
+    internal suspend fun applyEdits(
         context: Context,
         container: Container,
         live: ContainerData,

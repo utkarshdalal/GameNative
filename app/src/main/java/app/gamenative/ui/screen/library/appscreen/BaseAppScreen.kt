@@ -96,6 +96,11 @@ data class KnownConfigInstallState(
     val label: String,
 )
 
+internal fun canShowUpdatePending(
+    isInstalled: Boolean,
+    isDownloading: Boolean,
+): Boolean = isInstalled && !isDownloading
+
 internal suspend fun installMissingComponentsForConfig(
     context: Context,
     gameId: Int,
@@ -1462,7 +1467,7 @@ abstract class BaseAppScreen {
             downloadProgressState = getDownloadProgress(context, libraryItem)
             hasPartialDownloadState = hasPartialDownload(context, libraryItem)
             hasLeftoverInstallState = hasLeftoverInstall(context, libraryItem)
-            if (includeUpdatePending) {
+            if (includeUpdatePending && canShowUpdatePending(isInstalledState, currentlyDownloading)) {
                 isUpdatePendingState = try {
                     isUpdatePendingSuspend(context, libraryItem)
                 } catch (e: CancellationException) {
@@ -1471,6 +1476,11 @@ abstract class BaseAppScreen {
                     Timber.w(e, "Update check failed for ${libraryItem.appId}")
                     isUpdatePendingState
                 }
+            } else if (includeUpdatePending) {
+                // A first install writes temporary depot manifest IDs while downloading. Do not
+                // interpret those in-progress IDs as a second update, and clear any stale result
+                // from an earlier asynchronous refresh.
+                isUpdatePendingState = false
             }
         }
 
@@ -1816,7 +1826,8 @@ abstract class BaseAppScreen {
                 downloadProgress = downloadProgressState,
                 hasPartialDownload = hasPartialDownloadState,
                 hasLeftoverInstall = hasLeftoverInstallState,
-                isUpdatePending = isUpdatePendingState,
+                isUpdatePending = canShowUpdatePending(isInstalledState, isDownloadingState) &&
+                    isUpdatePendingState,
             ),
             downloadInfo = downloadInfo,
             immersiveMode = app.gamenative.ui.screen.library.ImmersiveModeUiState(

@@ -110,19 +110,19 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
     val refreshInstalled: () -> Unit = {
         installedProfiles.clear()
         try {
-            // Use a set to track unique profiles by type+verName to avoid duplicates
-            val seenProfiles = mutableSetOf<Pair<ContentProfile.ContentType, String>>()
+            // Use a set to track unique profiles by type+verName+verCode to avoid duplicates
+            val seenProfiles = mutableSetOf<Triple<ContentProfile.ContentType, String, Int>>()
             // Get both Wine and Proton profiles
             val wineList = mgr.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_WINE)
             val protonList = mgr.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_PROTON)
             Timber.tag("WineProtonManagerDialog").d("Wine profiles from manager: ${wineList?.size ?: 0}, Proton profiles: ${protonList?.size ?: 0}")
 
             if (wineList != null) {
-                val filtered = wineList.filter { it.remoteUrl == null && seenProfiles.add(Pair(it.type, it.verName)) }
+                val filtered = wineList.filter { it.remoteUrl == null && seenProfiles.add(Triple(it.type, it.verName, it.verCode)) }
                 installedProfiles.addAll(filtered)
             }
             if (protonList != null) {
-                val filtered = protonList.filter { it.remoteUrl == null && seenProfiles.add(Pair(it.type, it.verName)) }
+                val filtered = protonList.filter { it.remoteUrl == null && seenProfiles.add(Triple(it.type, it.verName, it.verCode)) }
                 installedProfiles.addAll(filtered)
             }
             Timber.tag("WineProtonManagerDialog").d("=== Total installed profiles after refresh: ${installedProfiles.size} ===")

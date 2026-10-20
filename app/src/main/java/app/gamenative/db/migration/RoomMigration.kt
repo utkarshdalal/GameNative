@@ -50,6 +50,16 @@ internal val ROOM_MIGRATION_V26_to_V27 = object : Migration(26, 27) {
     }
 }
 
+internal val ROOM_MIGRATION_V28_to_V29 = object : Migration(28, 29) {
+    override fun migrate(connection: SQLiteConnection) {
+        if (!connection.hasColumn("steam_app", "eulas")) {
+            connection.execSQL(
+                "ALTER TABLE `steam_app` ADD COLUMN `eulas` TEXT NOT NULL DEFAULT '[]'",
+            )
+        }
+    }
+}
+
 private fun SQLiteConnection.hasColumn(tableName: String, columnName: String): Boolean {
     prepare("PRAGMA table_info(`$tableName`)").use { statement ->
         while (statement.step()) {

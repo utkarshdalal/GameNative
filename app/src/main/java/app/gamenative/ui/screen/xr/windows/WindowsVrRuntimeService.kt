@@ -44,7 +44,14 @@ class WindowsVrRuntimeService(context: Context) : Closeable {
             }
             diagnostics.record("launch", "Preparing Windows OpenXR payload")
             val prepared = payloadManager.prepare(container)
-            if (active.openCompositeEnabled) payloadManager.installOpenComposite(container)
+            if (active.openCompositeEnabled) {
+                try {
+                    payloadManager.installOpenComposite(container)
+                } catch (e: Exception) {
+                    diagnostics.record("opencomposite", "skipped: ${e.message ?: e.javaClass.simpleName}")
+                    Timber.w(e, "OpenComposite unavailable, continuing with native OpenXR")
+                }
+            }
             if (controlServer == null) {
                 val server = WindowsVrControlServer(active, diagnostics, snapshots)
                 try {
@@ -80,6 +87,7 @@ class WindowsVrRuntimeService(context: Context) : Closeable {
         env.put("GAMENATIVE_XR_TRANSPORT", active.transportEndpoint)
         env.put("GAMENATIVE_XR_RUNTIME_DIR", active.runtimeDirectory)
         env.put("GAMENATIVE_XR_UNIX_LOG", payload.prefixDirectory.resolve("unix.log").path)
+        env.put("MESA_VK_WSI_HEADLESS_SWAPCHAIN", "1")
         val overrides = env.get("WINEDLLOVERRIDES").split(';')
             .map(String::trim)
             .filter(String::isNotEmpty)

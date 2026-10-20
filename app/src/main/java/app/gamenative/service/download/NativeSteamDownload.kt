@@ -65,9 +65,9 @@ interface NativeSteamDownloadListener {
  *
  * JavaSteam stays the CM client: [start] is fed depot keys, manifest request codes and the CDN
  * server list resolved via `SteamApps` / `SteamContent` on the Kotlin side; the Rust engine
- * fetches manifests + chunks from the CDN, decrypts/decompresses/verifies and writes files,
- * keeping the same `.DepotDownloader/` journal format as the old JavaSteam DepotDownloader so
- * downloads resume across the engine swap.
+ * fetches manifests + chunks from the CDN, decrypts/decompresses/verifies and writes files into the
+ * same `.DepotDownloader/` store the old JavaSteam DepotDownloader used, so an install that predates
+ * this engine keeps its recorded manifests.
  */
 object NativeSteamDownload {
 

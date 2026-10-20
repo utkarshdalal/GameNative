@@ -69,14 +69,19 @@ import app.gamenative.events.AndroidEvent
 import app.gamenative.gamefixes.GameFixesRegistry
 import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.SteamService
+import app.gamenative.service.download.SteamDownloadMode
 import app.gamenative.service.ea.EaCloudPreference
 import app.gamenative.service.ea.EaCloudSavesManager
 import app.gamenative.service.ea.EaLaunchSupport
 import app.gamenative.service.ea.EaLoginGate
+import app.gamenative.service.rockstar.RockstarCloudPreference
+import app.gamenative.service.rockstar.RockstarCloudSavesManager
 import app.gamenative.service.rockstar.RockstarLaunchSupport
 import app.gamenative.service.rockstar.RockstarHelperArchive
 import app.gamenative.service.rockstar.RockstarHelperDeployment
+import app.gamenative.service.rockstar.RockstarConstants
 import app.gamenative.service.rockstar.RockstarLoginGate
+import app.gamenative.service.rockstar.RockstarTitleMetadata
 import app.gamenative.service.rockstar.RockstarRuntime
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.utils.ConversionTracker
@@ -87,6 +92,7 @@ import app.gamenative.ui.component.GameInviteOverlay
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.api.AccountApi
+import app.gamenative.billing.Membership
 import app.gamenative.api.DebugReportApi
 import app.gamenative.api.SupportApi
 import app.gamenative.ui.component.dialog.AI_HELP_PATH_APP
@@ -105,6 +111,7 @@ import app.gamenative.ui.components.BootingSplash
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.enums.ConnectionState
 import app.gamenative.launch.LaunchReadiness
+import app.gamenative.launch.SteamAgreementGate
 import app.gamenative.ui.enums.DialogType
 import app.gamenative.ui.enums.Orientation
 import app.gamenative.ui.model.MainViewModel
@@ -114,6 +121,7 @@ import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.ui.screen.login.UserLoginScreen
 import app.gamenative.ui.screen.settings.SettingsScreen
 import app.gamenative.ui.screen.support.SnackbarActionContent
+import app.gamenative.ui.screen.support.SupportAppliedRun
 import app.gamenative.ui.screen.support.SupportReplyEffects
 import app.gamenative.ui.screen.support.SupportReportSubmitter
 import app.gamenative.ui.screen.support.SupportScreen
@@ -178,7 +186,7 @@ private var workshopUpdateDeferred: CompletableDeferred<Boolean>? = null
 private var steamUpdateDeferred: CompletableDeferred<Boolean>? = null
 
 /** Valve Windows client tree (build 1788652215, 2026-09-03) + headless steam.exe for Real Steam mode; see extractSteamFiles. */
-const val REAL_STEAM_CLIENT_ARCHIVE = "steamhost-20261005.tzst"
+const val REAL_STEAM_CLIENT_ARCHIVE = "steamhost-20261015.2.tzst"
 
 private fun NavHostController.navigateFromLoginIfNeeded(
     targetRoute: String,
@@ -353,6 +361,11 @@ private fun trackGameLaunched(appId: String) {
     )
 }
 
+private fun CoroutineScope.markAppliedReported(context: Context, state: DebugReportDialogState) {
+    if (state.phase != DebugReportDialogState.PHASE_COMPOSE && state.phase != DebugReportDialogState.PHASE_ERROR) return
+    launch(Dispatchers.IO) { SupportAppliedRun.markReported(context, state.appId) }
+}
+
 private fun startDebugRun(
     context: Context,
     viewModel: MainViewModel,
@@ -408,6 +421,16 @@ fun PluviaMain(
         mutableStateOf(DebugReportDialogState(false))
     }
     var debugPaywallReason by rememberSaveable { mutableStateOf<String?>(null) }
+    var membershipPlansVisible by rememberSaveable { mutableStateOf(false) }
+    var membershipSignInVisible by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) { Membership.refresh() }
+    val plansRequested by Membership.plansRequested
+    LaunchedEffect(plansRequested) {
+        if (plansRequested) {
+            Membership.plansRequested.value = false
+            membershipPlansVisible = true
+        }
+    }
     var debugAccountPrompt by rememberSaveable { mutableStateOf<String?>(null) }
     var aiDebugOfferAppId by rememberSaveable { mutableStateOf("") }
     var aiDebugOfferTrigger by rememberSaveable { mutableStateOf("") }
@@ -665,6 +688,7 @@ fun PluviaMain(
                         if (debugReportState.phase != DebugReportDialogState.PHASE_SENDING) {
                             debugReportState = debugReportState.copy(visible = false)
                             SteamService.keepAlive = false
+                            scope.markAppliedReported(context, debugReportState)
                         }
                     } else if (SteamService.keepAlive){
                         gameBackAction?.invoke() ?: run { navController.popBackStack() }
@@ -774,7 +798,7 @@ fun PluviaMain(
                         } else {
                             context.getString(R.string.pitch_session_title, gameName)
                         },
-                        message = context.getString(R.string.main_thank_you_message),
+                        message = Membership.pitchMessage(context),
                         confirmBtnText = context.getString(R.string.main_join_kofi),
                         dismissBtnText = context.getString(R.string.close),
                     )
@@ -791,6 +815,7 @@ fun PluviaMain(
                             appId = event.appId,
                             gameName = withContext(Dispatchers.IO) { ContainerUtils.resolveGameName(event.appId) },
                             deviceName = HardwareUtils.getMachineName(),
+                            issueText = withContext(Dispatchers.IO) { SupportAppliedRun.pending(context, event.appId)?.issueText }.orEmpty(),
                             preparing = true,
                         )
                         scope.launch {
@@ -992,9 +1017,9 @@ fun PluviaMain(
 
         DialogType.SUPPORT -> {
             onConfirmClick = {
-                uriHandler.openUri(Constants.Misc.KO_FI_LINK)
                 trackMembershipPrompt("membership_prompt_clicked", membershipPitchTrigger)
                 msgDialogState = MessageDialogState(visible = false)
+                membershipPlansVisible = true
             }
             onDismissRequest = {
                 msgDialogState = MessageDialogState(visible = false)
@@ -1057,6 +1082,42 @@ fun PluviaMain(
                     context = context,
                     appId = state.launchedAppId,
                     eaPreferredSave = SaveLocation.Local,
+                    setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                    setLoadingProgress = viewModel::setLoadingDialogProgress,
+                    setLoadingMessage = viewModel::setLoadingDialogMessage,
+                    setMessageDialogState = setMessageDialogState,
+                    onSuccess = viewModel::launchApp,
+                    isOffline = viewModel.isOffline.value,
+                    bootToContainer = state.bootToContainer,
+                )
+                msgDialogState = MessageDialogState(false)
+            }
+            onDismissRequest = {
+                msgDialogState = MessageDialogState(false)
+            }
+        }
+
+        DialogType.ROCKSTAR_SYNC_CONFLICT -> {
+            onConfirmClick = {
+                preLaunchApp(
+                    context = context,
+                    appId = state.launchedAppId,
+                    rockstarPreferredSave = SaveLocation.Remote,
+                    setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                    setLoadingProgress = viewModel::setLoadingDialogProgress,
+                    setLoadingMessage = viewModel::setLoadingDialogMessage,
+                    setMessageDialogState = setMessageDialogState,
+                    onSuccess = viewModel::launchApp,
+                    isOffline = viewModel.isOffline.value,
+                    bootToContainer = state.bootToContainer,
+                )
+                msgDialogState = MessageDialogState(false)
+            }
+            onDismissClick = {
+                preLaunchApp(
+                    context = context,
+                    appId = state.launchedAppId,
+                    rockstarPreferredSave = SaveLocation.Local,
                     setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
                     setLoadingProgress = viewModel::setLoadingDialogProgress,
                     setLoadingMessage = viewModel::setLoadingDialogMessage,
@@ -1453,6 +1514,8 @@ fun PluviaMain(
                 message = msgDialogState.message,
             )
 
+            SteamAgreementGate.Prompt()
+
             val scope = rememberCoroutineScope()
             var containerConfigForDialog by remember(openContainerConfigForAppId) { mutableStateOf<ContainerData?>(null) }
             LaunchedEffect(openContainerConfigForAppId) {
@@ -1563,7 +1626,12 @@ fun PluviaMain(
 
             val shareDebugLog: () -> Unit = {
                 val reportDir = File(debugReportState.reportDir)
-                val files = listOf(DebugReportUtils.logFile(reportDir), DebugReportUtils.perfFile(reportDir), DebugReportUtils.logcatFile(reportDir))
+                val files = listOf(
+                    DebugReportUtils.logFile(reportDir),
+                    DebugReportUtils.perfFile(reportDir),
+                    DebugReportUtils.logcatFile(reportDir),
+                    DebugReportUtils.cpuProfileFile(reportDir),
+                )
                     .filter { it.exists() }
                 if (files.isNotEmpty()) {
                     val uris = files.map { FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", it) }
@@ -1608,7 +1676,10 @@ fun PluviaMain(
                     when (val result = DebugReportApi.submit(header, logFile, PrefManager.discordRelayToken, perfFile, logcatFile)) {
                         is DebugReportApi.SubmitResult.Success -> {
                             trackAiDebug("ai_debug_report_result", mapOf("result" to "success", "path" to "discord"))
-                            withContext(Dispatchers.IO) { DebugReportUtils.deleteReport(dir) }
+                            withContext(Dispatchers.IO) {
+                                DebugReportUtils.deleteReport(dir)
+                                SupportAppliedRun.recordReportedRun(context, current.appId, header)
+                            }
                             debugReportState = debugReportState.copy(
                                 phase = DebugReportDialogState.PHASE_SUCCESS,
                                 threadUrl = result.threadUrl,
@@ -1654,7 +1725,12 @@ fun PluviaMain(
                     when (outcome) {
                         is SupportReportSubmitter.Outcome.Sent -> {
                             trackAiDebug("ai_debug_report_result", mapOf("result" to "success", "path" to "app"))
-                            withContext(Dispatchers.IO) { DebugReportUtils.deleteReport(File(current.reportDir)) }
+                            withContext(Dispatchers.IO) {
+                                val dir = File(current.reportDir)
+                                val header = DebugReportUtils.readHeader(dir)
+                                DebugReportUtils.deleteReport(dir)
+                                SupportAppliedRun.recordReportedRun(context, current.appId, header)
+                            }
                             debugReportState = debugReportState.copy(visible = false)
                             SteamService.keepAlive = false
                             SupportSession.pendingConversationId.value = outcome.conversationId
@@ -1784,6 +1860,7 @@ fun PluviaMain(
                 },
                 onDismiss = {
                     debugReportState = debugReportState.copy(visible = false)
+                    scope.markAppliedReported(context, debugReportState)
                     if (debugPaywallReason == null) {
                         SteamService.keepAlive = false
                     }
@@ -1806,6 +1883,29 @@ fun PluviaMain(
                 onDismiss = { debugAccountPrompt = null },
             )
 
+            SupportUpgradeDialog(
+                visible = membershipPlansVisible,
+                reason = SupportApi.REASON_MEMBERSHIP,
+                onPlanChanged = { membershipPlansVisible = false },
+                onDismiss = { membershipPlansVisible = false },
+                onSignIn = {
+                    membershipPlansVisible = false
+                    membershipSignInVisible = true
+                },
+            )
+
+            AccountSignInDialog(
+                visible = membershipSignInVisible,
+                onSignedIn = {
+                    membershipSignInVisible = false
+                    if (!Membership.isMember()) membershipPlansVisible = true
+                },
+                onDismiss = {
+                    membershipSignInVisible = false
+                    if (!Membership.isMember()) membershipPlansVisible = true
+                },
+            )
+
             debugPaywallReason?.let { reason ->
                 Box(modifier = Modifier.zIndex(5f)) {
                     DebugPaywallScreen(
@@ -1814,12 +1914,9 @@ fun PluviaMain(
                         reason = reason,
                         hasDiscordToken = discordTokenPresent,
                         onSubscribe = {
-                            trackAiDebug("ai_debug_paywall_subscribe_clicked", mapOf("store" to "discord", "reason" to reason))
-                            uriHandler.openUri(Constants.Misc.DISCORD_SHOP_LINK)
-                        },
-                        onSubscribeKofi = {
-                            trackAiDebug("ai_debug_paywall_subscribe_clicked", mapOf("store" to "kofi", "reason" to reason))
-                            uriHandler.openUri(Constants.Misc.KO_FI_LINK)
+                            trackAiDebug("ai_debug_paywall_subscribe_clicked", mapOf("store" to "plans", "reason" to reason))
+                            debugPaywallReason = null
+                            membershipPlansVisible = true
                         },
                         onConnectDiscord = openDiscordConnect,
                         onRetry = {
@@ -1945,7 +2042,7 @@ fun PluviaMain(
                                     message = context.getString(R.string.main_recent_crash_message),
                                     confirmBtnText = context.getString(R.string.ok),
                                 )
-                            } else if (!(PrefManager.tipped || BuildConfig.GOLD) &&
+                            } else if (Membership.canPitch() &&
                                 PrefManager.hasAttemptedGameLaunch &&
                                 !MainViewModel.gamePlayedThisSession &&
                                 System.currentTimeMillis() - PrefManager.lastLaunchPitchTime >= LAUNCH_PITCH_COOLDOWN_MS
@@ -1958,7 +2055,7 @@ fun PluviaMain(
                                     visible = true,
                                     type = DialogType.SUPPORT,
                                     title = context.getString(R.string.main_thank_you_title),
-                                    message = context.getString(R.string.main_thank_you_message),
+                                    message = Membership.pitchMessage(context),
                                     confirmBtnText = context.getString(R.string.main_join_kofi),
                                     dismissBtnText = context.getString(R.string.close),
                                 )
@@ -2209,6 +2306,7 @@ fun preLaunchApp(
     ignorePendingOperations: Boolean = false,
     preferredSave: SaveLocation = SaveLocation.None,
     eaPreferredSave: SaveLocation = SaveLocation.None,
+    rockstarPreferredSave: SaveLocation = SaveLocation.None,
     useTemporaryOverride: Boolean = false,
     skipCloudSync: Boolean = false,
     setLoadingDialogVisible: (Boolean) -> Unit,
@@ -2230,6 +2328,13 @@ fun preLaunchApp(
         if (LaunchReadiness.pending) {
             setLoadingDialogVisible(false)
             (context as? Activity)?.let { LaunchReadiness.resolve(it) }
+            return@launch
+        }
+
+        if (!bootToContainer && ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.STEAM &&
+            !SteamAgreementGate.confirm(context, gameId, isOffline, setLoadingDialogVisible)
+        ) {
+            setLoadingDialogVisible(false)
             return@launch
         }
 
@@ -2420,7 +2525,7 @@ fun preLaunchApp(
                     setMessageDialogState(MessageDialogState(false))
                     if (update) {
                         val dlcAppIds = SteamService.getInstalledApp(gameId)?.dlcDepots.orEmpty()
-                        SteamService.downloadApp(gameId, dlcAppIds, branch = branch, isUpdateOrVerify = true)
+                        SteamService.downloadApp(gameId, dlcAppIds, branch = branch, mode = SteamDownloadMode.UPDATE)
                     }
                     return@launch
                 }
@@ -2454,6 +2559,7 @@ fun preLaunchApp(
                     )
                     return@launch
                 }
+                app.gamenative.service.ea.EaSteamLinkGate.offerSteamLink(context)
             }
             /*
              * Rockstar titles sign in through Social Club, and the Windows stub needs the
@@ -2468,7 +2574,14 @@ fun preLaunchApp(
                 val rockstarGameDir = File(SteamService.getAppDirPath(gameId))
                 setLoadingMessage(context.getString(R.string.rockstar_preparing))
                 RockstarHelperArchive.downloadAndExtract(context) { setLoadingProgress(it) }
-                val signIn = RockstarLoginGate.ensureSignedIn(context, "launcher")
+                val activeTitle = RockstarTitleMetadata.find(rockstarGameDir)?.let { RockstarTitleMetadata.parse(it) }?.titleId
+                    ?.takeIf { it.matches(Regex("[a-z0-9_]{1,127}")) } ?: "launcher"
+                val activationMarker = File(
+                    RockstarHelperArchive.titleDir(rockstarGameDir),
+                    "${RockstarHelperDeployment.DIRECTORY}/${RockstarConstants.ACTIVATION_MARKER}",
+                )
+                val signIn = RockstarLoginGate.ensureSignedIn(context, activeTitle, gameId, activationMarker.isFile)
+                if (signIn.isSuccess && RockstarLoginGate.titleValidated) activationMarker.delete()
                 if (signIn.isFailure && RockstarLaunchSupport.hasUsableToken(File(SteamService.getAppDirPath(gameId)))) {
                     /* A token is already in place, so carry on rather than block a launch that works. */
                     Timber.tag("preLaunchApp").w("Rockstar sign-in did not complete; using the token already in the game directory")
@@ -2934,6 +3047,47 @@ fun preLaunchApp(
             }
         }
 
+        if (gameSource == GameSource.STEAM && (container.isLaunchHeadlessSteam || container.isLaunchBionicSteam) &&
+            !container.isLocalSavesOnly && !bootToContainer && !isOffline
+        ) {
+            try {
+                val rockstarGameDir = File(SteamService.getAppDirPath(gameId))
+                if (RockstarLaunchSupport.isRockstarTitle(rockstarGameDir)) {
+                    val rockstarPreference = when (rockstarPreferredSave) {
+                        SaveLocation.Local -> RockstarCloudPreference.LOCAL
+                        SaveLocation.Remote -> RockstarCloudPreference.REMOTE
+                        SaveLocation.None -> RockstarCloudPreference.NONE
+                    }
+                    val rockstarPull = RockstarCloudSavesManager.syncBeforeLaunch(context, container, rockstarGameDir, rockstarPreference)
+                    if (rockstarPull is RockstarCloudSavesManager.PullResult.Conflict) {
+                        Timber.tag("RockstarCloud").i("Cloud save conflict for $appId, prompting user")
+                        val localDate = Date(rockstarPull.localMillis).toString()
+                        val remoteDate = rockstarPull.remoteMillis?.let { Date(it).toString() }
+                            ?: context.getString(R.string.container_storage_source_unknown)
+                        setLoadingDialogVisible(false)
+                        setMessageDialogState(
+                            MessageDialogState(
+                                visible = true,
+                                type = DialogType.ROCKSTAR_SYNC_CONFLICT,
+                                title = context.getString(R.string.main_save_conflict_title),
+                                message = context.getString(R.string.main_save_conflict_message, localDate, remoteDate),
+                                dismissBtnText = context.getString(R.string.main_keep_local),
+                                confirmBtnText = context.getString(R.string.main_keep_remote),
+                            ),
+                        )
+                        return@launch
+                    }
+                    Timber.tag("RockstarCloud").i("Cloud save pull for $appId: $rockstarPull")
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                Timber.tag("RockstarCloud").w("Cloud save pull failed for $appId: ${e.javaClass.simpleName}")
+            }
+        } else {
+            runCatching { RockstarCloudSavesManager.forgetSession(File(SteamService.getAppDirPath(gameId))) }
+        }
+
         val postSyncInfo = SteamService.beginLaunchApp(
             appId = gameId,
             prefixToPath = prefixToPath,
@@ -2994,6 +3148,7 @@ fun preLaunchApp(
                         ignorePendingOperations = ignorePendingOperations,
                         preferredSave = preferredSave,
                         eaPreferredSave = eaPreferredSave,
+                        rockstarPreferredSave = rockstarPreferredSave,
                         useTemporaryOverride = useTemporaryOverride,
                         setLoadingDialogVisible = setLoadingDialogVisible,
                         setLoadingProgress = setLoadingProgress,

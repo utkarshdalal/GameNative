@@ -33,7 +33,7 @@ public class WineRequestComponent extends EnvironmentComponent {
     private boolean openWithAndroidBrowser = false;
 
     public WineRequestComponent() {
-        this.openWithAndroidBrowser = PrefManager.getBoolean("open_web_links_externally", false);
+        this.openWithAndroidBrowser = PrefManager.getBoolean("open_web_links_externally", true);
 
     }
 
@@ -91,7 +91,7 @@ public class WineRequestComponent extends EnvironmentComponent {
         inputStream.readFully(data);
         String url = new String(data, "UTF-8");
 
-        if (url.startsWith(EpicOAuthActivity.EPIC_AUTH_URL_PREFIX)) {
+        if (isEpicAccountUrl(url)) {
             // handled, start EpicOAuthActivity here, pass the url to EpicOAuthActivity
             Intent intent = new Intent();
             intent.setClass(context, EpicOAuthActivity.class);
@@ -107,6 +107,14 @@ public class WineRequestComponent extends EnvironmentComponent {
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startActivity(intent);
         }
+    }
+
+    private static boolean isEpicAccountUrl(String url) {
+        Uri uri = Uri.parse(url);
+        String host = uri.getHost();
+        String path = uri.getPath();
+        return host != null && (host.equals("epicgames.com") || host.equals("www.epicgames.com"))
+            && path != null && path.startsWith("/id/");
     }
 
 }

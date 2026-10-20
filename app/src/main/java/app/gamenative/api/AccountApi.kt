@@ -3,6 +3,7 @@ package app.gamenative.api
 import android.util.Base64
 import androidx.compose.runtime.mutableStateOf
 import app.gamenative.PrefManager
+import app.gamenative.billing.PlayBilling
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -25,6 +26,7 @@ object AccountApi {
         val tier: String,
         val tierSource: String?,
         val discordLinked: Boolean,
+        val discordName: String? = null,
         val trialAvailable: Boolean,
     )
 
@@ -35,6 +37,8 @@ object AccountApi {
         val expiresIn: Int,
         val interval: Int,
     )
+
+    data class GuestCheckout(val url: String, val start: DeviceStart)
 
     sealed class PollResult {
         data object Pending : PollResult()
@@ -96,6 +100,7 @@ object AccountApi {
             tier = json.optString("tier", "none").ifBlank { "none" },
             tierSource = if (json.isNull("tier_source")) null else json.optString("tier_source").ifBlank { null },
             discordLinked = json.optBoolean("discord_linked", false),
+            discordName = json.optString("discord_username").takeIf { !json.isNull("discord_username") && it.isNotBlank() },
             trialAvailable = json.optBoolean("trial_available", false),
         )
 
@@ -166,6 +171,36 @@ object AccountApi {
         }
     }
 
+    private fun parseDeviceStart(json: JSONObject): DeviceStart =
+        DeviceStart(
+            deviceCode = json.getString("device_code"),
+            userCode = json.optString("user_code"),
+            verificationUrl = json.getString("verification_url"),
+            expiresIn = json.optInt("expires_in", 600),
+            interval = json.optInt("interval", 3),
+        )
+
+    suspend fun createGuestCheckout(tier: String): ApiResult<GuestCheckout> = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url(url("/api/billing/checkout/guest"))
+                .post(jsonBody(JSONObject().put("tier", tier)))
+                .build()
+            val response = execute(request)
+            if (response.code != 200) {
+                Timber.tag(TAG).w("billing/checkout/guest HTTP ${response.code}: ${response.body}")
+                return@withContext ApiResult.HttpError(response.code, errorCode(response.body))
+            }
+            val json = JSONObject(response.body)
+            ApiResult.Success(GuestCheckout(url = json.getString("url"), start = parseDeviceStart(json)))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logFailure("billing/checkout/guest", e)
+            ApiResult.NetworkError(e)
+        }
+    }
+
     suspend fun startDeviceSignIn(): ApiResult<DeviceStart> = withContext(Dispatchers.IO) {
         try {
             val request = Request.Builder()
@@ -177,15 +212,7 @@ object AccountApi {
                 Timber.tag(TAG).w("device/start HTTP ${response.code}: ${response.body}")
                 return@withContext ApiResult.HttpError(response.code, errorCode(response.body))
             }
-            val json = JSONObject(response.body)
-            val start = DeviceStart(
-                deviceCode = json.getString("device_code"),
-                userCode = json.optString("user_code"),
-                verificationUrl = json.getString("verification_url"),
-                expiresIn = json.optInt("expires_in", 600),
-                interval = json.optInt("interval", 3),
-            )
-            ApiResult.Success(start)
+            ApiResult.Success(parseDeviceStart(JSONObject(response.body)))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -207,6 +234,7 @@ object AccountApi {
                     val tokens = Tokens(json.getString("access_token"), json.getString("refresh_token"))
                     val signedInAccount = json.optJSONObject("account")?.let { parseAccount(it) }
                     startSession(tokens, signedInAccount)
+                    signedInAccount?.let { PlayBilling.linkAccount(it.id) }
                     PollResult.SignedIn(signedInAccount)
                 }
                 202 -> PollResult.Pending
@@ -352,6 +380,11 @@ object AccountApi {
                     account.value = result.data
                 }
             }
+            withContext(Dispatchers.IO) {
+                if (!result.data.discordLinked && PrefManager.discordRelayToken.isNotEmpty()) {
+                    PrefManager.discordMergePending = true
+                }
+            }
         }
         return result
     }
@@ -363,6 +396,23 @@ object AccountApi {
             parse = { JSONObject(it).getString("url") },
         )
 
+    suspend fun syncPlay(): ApiResult<Account> {
+        val expectedSession = tokenMutex.withLock { session }
+        val result = authorizedCall(
+            name = "billing/play/sync",
+            build = { it.url(url("/api/billing/play/sync")).post(jsonBody(JSONObject())) },
+            parse = { parseAccount(JSONObject(it)) },
+        )
+        if (result is ApiResult.Success) {
+            tokenMutex.withLock {
+                if (session == expectedSession && tokenState is TokenState.Present) {
+                    account.value = result.data
+                }
+            }
+        }
+        return result
+    }
+
     suspend fun createPortal(): ApiResult<String> =
         authorizedCall(
             name = "billing/portal",
@@ -372,6 +422,7 @@ object AccountApi {
 
     suspend fun signOut(): Unit = withContext(Dispatchers.IO) {
         val refreshToken = clearTokens()?.refreshToken
+        PlayBilling.unlinkAccount()
         if (refreshToken.isNullOrEmpty()) return@withContext
         try {
             val request = Request.Builder()

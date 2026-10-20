@@ -3,6 +3,7 @@ package app.gamenative.utils
 import android.content.Context
 import android.os.Build
 import app.gamenative.BuildConfig
+import app.gamenative.MainActivity
 import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
@@ -979,10 +980,21 @@ object ContainerUtils {
             containerData
         }
 
-        if (BuildConfig.XR_BUILD) {
+        if (BuildConfig.XR_BUILD && MainActivity.isMetaQuest()) {
             val kvs = KeyValueSet(containerData.graphicsDriverConfig)
             kvs.put("adrenotoolsTurnip", "0")
             containerData = containerData.copy(graphicsDriverConfig = kvs.toString())
+        }
+
+        if (BuildConfig.XR_BUILD) {
+            containerData = containerData.copy(
+                launchRealSteam = true,
+                launchBionicSteam = false,
+                steamType = Container.STEAM_TYPE_HEADLESS,
+            )
+            if (isVrGame(appId, gameSource)) {
+                containerData = containerData.copy(windowsVrEnabled = true, openCompositeEnabled = true)
+            }
         }
 
         if (Build.MANUFACTURER.equals("samsung", ignoreCase = true) && GPUInformation.isAdreno740(context)) {
@@ -1219,6 +1231,11 @@ object ContainerUtils {
                 Timber.w("[ContainerDeletion] Dirs present on disk but NOT loaded by ContainerManager (corrupt/empty config): $unloadedIds")
             }
         }
+    }
+
+    private fun isVrGame(appId: String, gameSource: GameSource): Boolean {
+        if (gameSource != GameSource.STEAM) return false
+        return runCatching { SteamService.getAppInfoOf(extractGameIdFromContainerId(appId))?.isVrGame }.getOrNull() == true
     }
 
     /**

@@ -7,8 +7,9 @@ $bridge = Join-Path $payload "gamenative_xr_unixbridge.dll"
 $bridge32 = Join-Path $payload "gamenative_xr_unixbridge32.dll"
 $unixlib = Join-Path $payload "gamenative_xr_unixbridge.so"
 $openComposite = Join-Path $payload "opencomposite_x64.dll"
+$openComposite32 = Join-Path $payload "opencomposite_x86.dll"
 
-foreach ($file in @($runtime64, $runtime32, $bridge, $bridge32, $unixlib, $openComposite)) {
+foreach ($file in @($runtime64, $runtime32, $bridge, $bridge32, $unixlib, $openComposite, $openComposite32)) {
     if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw "Missing XR payload file: $file" }
 }
 
@@ -26,8 +27,9 @@ if ((Get-PeMachine $runtime64) -ne 0x8664) { throw "Windows OpenXR runtime is no
 if ((Get-PeMachine $runtime32) -ne 0x014c) { throw "Windows OpenXR runtime is not x86" }
 if ((Get-PeMachine $bridge32) -ne 0x014c) { throw "Wine OpenXR bridge companion is not x86" }
 if ((Get-PeMachine $openComposite) -ne 0x8664) { throw "OpenComposite adapter is not x64" }
+if ((Get-PeMachine $openComposite32) -ne 0x14c) { throw "OpenComposite adapter is not x86" }
 & (Join-Path $PSScriptRoot "verify-arm64x-wine-pair.ps1") -CompanionPath $bridge -UnixlibPath $unixlib | Out-Host
-$entries = foreach ($file in @($runtime64, $runtime32, $bridge, $bridge32, $unixlib, $openComposite)) {
+$entries = foreach ($file in @($runtime64, $runtime32, $bridge, $bridge32, $unixlib, $openComposite, $openComposite32)) {
     "$(Split-Path -Leaf $file) $((Get-FileHash -Algorithm SHA256 -LiteralPath $file).Hash.ToLowerInvariant())"
 }
 Set-Content -LiteralPath (Join-Path $payload "payload.version") -Value ((@("schema 4") + $entries) -join "`n")

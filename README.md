@@ -20,7 +20,7 @@
 [![License](https://img.shields.io/badge/license-GPL%203.0-blue?style=flat-square)](https://github.com/utkarshdalal/GameNative/blob/master/LICENSE)
 [![Ko-fi](https://img.shields.io/badge/ko--fi-support-FF5E5B?style=flat-square&logo=ko-fi&logoColor=white)](https://ko-fi.com/gamenative)
 
-[**Download**](https://github.com/utkarshdalal/GameNative/releases/download/v1.2.1/gamenative-v1.2.1.apk) · [**Discord**](https://discord.gg/2hKv4VfZfE) · [**Support on Ko-fi**](https://ko-fi.com/gamenative)
+[**Download**](https://github.com/utkarshdalal/GameNative/releases/download/v1.3.0/gamenative-v1.3.0.apk) · [**Discord**](https://discord.gg/2hKv4VfZfE) · [**Support on Ko-fi**](https://ko-fi.com/gamenative)
 
 <video src="https://github.com/user-attachments/assets/95b5397b-908a-44ef-a10a-dac7723580b0" autoplay loop muted playsinline width="100%"></video>
 
@@ -53,7 +53,7 @@ It's still early. Not every game runs yet, and some need tweaking to play well, 
 
 ## How to use
 
-1. Download the latest release [here](https://downloads.gamenative.app/releases//gamenative-v.apk)
+1. Download the latest release [here](https://downloads.gamenative.app/releases/1.3.0/gamenative-v1.3.0.apk)
 2. Install the APK on your Android device
 3. Log in to your Steam account
 4. Install your game
@@ -70,6 +70,18 @@ If you'd like to chip in, you can support the project on [Ko-fi](https://ko-fi.c
 ## Contributing
 
 Want to help out? Message us to get into the **#development** channel on [Discord](https://discord.gg/2hKv4VfZfE), or open a thread there. Things we're currently looking for help with live on our [Trello board](https://trello.com/b/vGRkFoAM/open-source-board).
+
+### Fix a game that doesn't work
+
+Every night we publish the list of games that don't run in GameNative, built from real usage data, at [GameNative/gamenative-compat](https://github.com/GameNative/gamenative-compat). Each broken game has [an open issue](https://github.com/GameNative/gamenative-compat/issues?q=is%3Aopen+label%3Adoes-not-work) with the numbers behind it: how many players hit it, what they report, whether the game window ever renders.
+
+If you want to take one on:
+
+1. Pick a game from the list and open its issue. Check the comments to see whether someone is already on it, then leave a comment saying you are taking it.
+2. Work out why it fails. Most fixes land in this repo, in [proton-wine](https://github.com/GameNative/proton-wine), in [FEX](https://github.com/GameNative/FEX), in the GPU driver wrappers or in the per-game config.
+3. Open a pull request in the right repo, then comment on the game's issue with a link to it. Once the fix ships and players start getting the game to run, the issue closes itself.
+
+Own a broken game and want to donate a key so someone can fix it? Email [support@gamenative.app](mailto:support@gamenative.app).
 
 ### Building
 

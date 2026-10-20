@@ -46,7 +46,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
       - name: Run unit tests (${{ matrix.variant }})
-        timeout-minutes: 30
+        timeout-minutes: 45
         run: |
           : > gradle.log
           tail -n +1 -F gradle.log &
