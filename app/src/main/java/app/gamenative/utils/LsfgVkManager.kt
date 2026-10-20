@@ -529,7 +529,7 @@ object LsfgVkManager {
 
         if (!isSupported(container)) {
             // Remove the manifest so the Vulkan loader can't find the layer
-            disableLayerInContainer(container)
+            disableLayer(container)
             return false
         }
 
@@ -538,7 +538,7 @@ object LsfgVkManager {
 
         if (!armed) {
             // Remove the manifest so the Vulkan loader can't find the layer
-            disableLayerInContainer(container)
+            disableLayer(container)
             Timber.tag(TAG).i("LSFG disabled (enabled=%s, dll=%s)",
                 container.getExtra(EXTRA_ARMED, "false"), dllPath ?: "null")
             return false
@@ -569,9 +569,12 @@ object LsfgVkManager {
 
     /**
      * Remove the layer manifest so the Vulkan loader can't discover it.
-     * Called when LSFG is disabled to ensure no stale layer is loaded.
+     * Called when LSFG is disabled — and for a gamescope session, where the layer
+     * must not be loadable at all (its failed device init kills gamescope's own
+     * vkCreateDevice on this driver's Turnip).
      */
-    private fun disableLayerInContainer(container: Container) {
+    @JvmStatic
+    fun disableLayer(container: Container) {
         val layerDir = File(container.rootDir, LAYER_RELATIVE_DIR)
         val manifest = File(layerDir, MANIFEST_FILENAME)
         if (manifest.exists()) {

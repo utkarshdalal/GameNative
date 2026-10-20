@@ -102,6 +102,17 @@ in the sense of GPL-3.0 §0 ("based on").
 
 ---
 
+## libgamenative_drm.so (Proprietary)
+
+**Component:** `libgamenative_drm.so`
+**Location:** `app/src/main/jniLibs/arm64-v8a/libgamenative_drm.so`
+**License:** Proprietary — all rights reserved by the GameNative maintainers.
+
+`libgamenative_drm.so` is the userspace DRM replacement developed by the GameNative
+maintainers for gamescope mode. It presents a DRM device to the compositor, publishes
+the composited frames to an Android `SurfaceControl` layer, and forwards injected input
+to the compositor's Wayland seat. Its source is not distributed with this application.
+
 ## Steam Client Bootstrap Shim (Source Withheld)
 
 **Component:** `libsteambootstrap.so`
@@ -440,6 +451,55 @@ LZMA SDK, which its author has placed in the public domain. They are built into
 runs to unpack a game's own Social Club installer (a 7z self-extractor) into the
 Wine prefix. The wrapper in `app/src/main/cpp/sevenzx/sevenzx.c` is part of this
 application and covered by its GPL-3.0 licence.
+
+## gamescope (Valve, with GameNative patches)
+
+**Component:** gamescope (the micro-compositor)
+**Author:** Valve Corporation
+**Source:** https://github.com/ValveSoftware/gamescope
+**License:** BSD 2-Clause
+
+The Gamescope display-server path in GameNative is built from Valve's gamescope
+with GameNative's own patches applied on top. The upstream project is licensed
+under the BSD 2-Clause licence, reproduced below.
+
+### License Text: BSD 2-Clause
+
+Copyright (c) 2013-2022, Valve Corporation
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+
+## XWayland
+
+**Component:** `Xwayland`
+**Location:** `app/src/main/assets/gamescope-gamenative-*.tzst` (`bin/Xwayland`)
+**Source:** https://gitlab.freedesktop.org/xorg/xserver
+**License:** MIT
+
+The gamescope payload carries an XWayland built for Android from the X.Org server, which
+provides the X server wine's `winex11.drv` connects to in gamescope mode. The licence text
+is `COPYING` in that source tree.
 
 ## Achievement Sound
 

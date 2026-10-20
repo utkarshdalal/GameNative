@@ -74,6 +74,20 @@ public abstract class AppUtils {
          imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
      }
 
+    /** Parses "WxH" to {w, h}, or null if unset or malformed. */
+    public static int[] parseScreenSize(String size) {
+        if (size == null) return null;
+        String[] parts = size.trim().split("x");
+        if (parts.length != 2) return null;
+        try {
+            int w = Integer.parseInt(parts[0].trim());
+            int h = Integer.parseInt(parts[1].trim());
+            return (w > 0 && h > 0) ? new int[] { w, h } : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     public static void hideSystemUI(final Activity activity) {
         hideSystemUI(activity, true);
     }

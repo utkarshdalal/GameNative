@@ -276,24 +276,6 @@ fun GeneralTabContent(
                     },
                 )
 
-                // Display Server: winlator X11 (default) or Gamescope.
-                val displayServerIds = listOf(Container.DEFAULT_DISPLAY_SERVER, Container.DISPLAY_SERVER_GAMESCOPE)
-                val displayServerLabels = listOf(
-                    stringResource(R.string.display_server_x11),
-                    stringResource(R.string.display_server_gamescope),
-                )
-                val dsIndex = displayServerIds.indexOf(config.displayServer).coerceAtLeast(0)
-                SettingsListDropdown(
-                    colors = settingsTileColors(),
-                    title = { Text(text = stringResource(R.string.display_server)) },
-                    value = dsIndex,
-                    items = displayServerLabels,
-                    onItemSelected = { idx ->
-                        if (idx >= 0 && idx < displayServerIds.size) {
-                            state.config.value = config.copy(displayServer = displayServerIds[idx])
-                        }
-                    },
-                )
             }
         }
         ExecutablePathDropdown(

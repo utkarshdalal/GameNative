@@ -11,6 +11,7 @@ import androidx.compose.runtime.setValue
 import androidx.navigation.NavController
 import app.gamenative.db.dao.AmazonGameDao
 import app.gamenative.db.dao.GOGGameDao
+import app.gamenative.display.GamescopeCommandQueue
 import app.gamenative.events.EventDispatcher
 import app.gamenative.mods.NexusAuthManager
 import app.gamenative.powercontrol.PowerManager
@@ -320,6 +321,9 @@ class PluviaApp : SplitCompatApplication() {
             activeSuspendPolicy = Container.SUSPEND_POLICY_MANUAL
             isOverlayPaused = false
             hasInitializedSuspendPolicyState = false
+            // Drop anything the gamescope queue still holds for the session that
+            // is ending; it must not leak into the next one.
+            GamescopeCommandQueue.reset()
         }
 
         fun hasValidSuspendPolicyState(): Boolean = hasInitializedSuspendPolicyState
@@ -328,6 +332,20 @@ class PluviaApp : SplitCompatApplication() {
 
         fun isManualSuspendMode(): Boolean = activeSuspendPolicy.equals(Container.SUSPEND_POLICY_MANUAL, ignoreCase = true)
 
+        /** The default display's HDR capabilities, or null when this panel reports no HDR types. */
+        @JvmStatic
+        fun getDisplayHdrCapabilities(): Display.HdrCapabilities? {
+            return try {
+                val displayManager = instance.getSystemService(DISPLAY_SERVICE) as? DisplayManager
+                val caps = displayManager?.getDisplay(Display.DEFAULT_DISPLAY)?.hdrCapabilities
+                if (caps == null || caps.supportedHdrTypes.isEmpty()) null else caps
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to read display HDR capabilities")
+                null
+            }
+        }
+
+        @JvmStatic
         fun getDefaultScreenSize(): String {
             cachedDefaultScreenSize?.let { return it }
 

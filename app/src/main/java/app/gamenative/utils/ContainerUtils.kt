@@ -170,6 +170,7 @@ object ContainerUtils {
             videoMemorySize = PrefManager.videoMemorySize,
             mouseWarpOverride = PrefManager.mouseWarpOverride,
             useDRI3 = PrefManager.useDRI3,
+            hdrEnabled = PrefManager.hdrEnabled,
             useSteamInput = PrefManager.useSteamInput,
             enableXInput = PrefManager.xinputEnabled,
 			enableDInput = PrefManager.dinputEnabled,
@@ -222,6 +223,7 @@ object ContainerUtils {
         PrefManager.videoMemorySize = containerData.videoMemorySize
         PrefManager.mouseWarpOverride = containerData.mouseWarpOverride
         PrefManager.useDRI3 = containerData.useDRI3
+        PrefManager.hdrEnabled = containerData.hdrEnabled
         PrefManager.disableMouseInput = containerData.disableMouseInput
         PrefManager.externalDisplayInputMode = containerData.externalDisplayMode
         PrefManager.externalDisplaySwap = containerData.externalDisplaySwap
@@ -383,6 +385,7 @@ object ContainerUtils {
             offScreenRenderingMode = offScreenRenderingMode,
             strictShaderMath = strictShaderMath,
             useDRI3 = container.isUseDRI3(),
+            hdrEnabled = container.isHdrEnabled(),
             videoMemorySize = videoMemorySize,
             mouseWarpOverride = mouseWarpOverride,
             sharpnessEffect = container.getExtra("sharpnessEffect", "None"),
@@ -633,6 +636,7 @@ object ContainerUtils {
         container.setInputType(api.ordinal)
         container.setDinputMapperType(containerData.dinputMapperType)
         container.setUseDRI3(containerData.useDRI3)
+        container.setHdrEnabled(containerData.hdrEnabled)
         Timber.d("Container set: preferredInputApi=%s, dinputMapperType=0x%02x", api, containerData.dinputMapperType)
 
         if (saveToDisk) {
@@ -955,6 +959,7 @@ object ContainerUtils {
                 offScreenRenderingMode = PrefManager.offScreenRenderingMode,
                 strictShaderMath = PrefManager.strictShaderMath,
                 useDRI3 = PrefManager.useDRI3,
+                hdrEnabled = PrefManager.hdrEnabled,
                 videoMemorySize = PrefManager.videoMemorySize,
                 mouseWarpOverride = PrefManager.mouseWarpOverride,
                 enableXInput = PrefManager.xinputEnabled,

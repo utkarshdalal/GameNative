@@ -200,7 +200,31 @@ public class XServer {
         return null;
     }
 
+    /** Optional input retarget (Gamescope mode): every Android-side capture point funnels through these five inject* methods, so this one seam retargets them all. */
+    public interface InputEventSink {
+        void pointerMove(int x, int y);
+        void pointerMoveDelta(int dx, int dy);
+        void pointerButton(Pointer.Button button, boolean pressed);
+        void keyPress(XKeycode xKeycode, int keysym);
+        void keyRelease(XKeycode xKeycode);
+    }
+
+    private InputEventSink inputEventSink;
+
+    public void setInputEventSink(InputEventSink sink) {
+        inputEventSink = sink;
+    }
+
+    public InputEventSink getInputEventSink() {
+        return inputEventSink;
+    }
+
     public void injectPointerMove(int x, int y) {
+        InputEventSink sink = inputEventSink;
+        if (sink != null) {
+            sink.pointerMove(x, y);
+            return;
+        }
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
             pointer.setPosition(x, y);
         }
@@ -208,6 +232,12 @@ public class XServer {
 
     public void injectPointerMoveDelta(int dx, int dy) {
         if (dx == 0 && dy == 0) return;
+
+        InputEventSink sink = inputEventSink;
+        if (sink != null) {
+            sink.pointerMoveDelta(dx, dy);
+            return;
+        }
 
         WinHandler handler = winHandler;
         if (relativeMouseMovement && handler != null) {
@@ -259,6 +289,11 @@ public class XServer {
     }
 
     public void injectPointerButtonPress(Pointer.Button buttonCode) {
+        InputEventSink sink = inputEventSink;
+        if (sink != null) {
+            sink.pointerButton(buttonCode, true);
+            return;
+        }
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
             pointer.setButton(buttonCode, true);
 
@@ -269,6 +304,11 @@ public class XServer {
     }
 
     public void injectPointerButtonRelease(Pointer.Button buttonCode) {
+        InputEventSink sink = inputEventSink;
+        if (sink != null) {
+            sink.pointerButton(buttonCode, false);
+            return;
+        }
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
             pointer.setButton(buttonCode, false);
 
@@ -283,12 +323,22 @@ public class XServer {
     }
 
     public void injectKeyPress(XKeycode xKeycode, int keysym) {
+        InputEventSink sink = inputEventSink;
+        if (sink != null) {
+            sink.keyPress(xKeycode, keysym);
+            return;
+        }
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
             keyboard.setKeyPress(xKeycode.getId(), keysym);
         }
     }
 
     public void injectKeyRelease(XKeycode xKeycode) {
+        InputEventSink sink = inputEventSink;
+        if (sink != null) {
+            sink.keyRelease(xKeycode);
+            return;
+        }
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
             keyboard.setKeyRelease(xKeycode.getId());
         }
