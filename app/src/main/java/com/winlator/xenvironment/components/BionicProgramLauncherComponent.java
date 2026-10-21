@@ -505,6 +505,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("LIBGL_DRIVERS_PATH", gsDir + "/lib/dri");
         envVars.put("MESA_LOADER_DRIVER_OVERRIDE", "zink");
         envVars.put("WLR_XWAYLAND", gsDir + "/bin/Xwayland");
+        envVars.put("XWAYLAND_NO_GLAMOR", "1");
 
         // wlroots binds the X11 sockets here; gamescope's libX11 would resolve ":0" to a build-host dir, so it gets the socket path.
         String x11SocketDir = rootDir.getPath() + "/usr/tmp";
