@@ -186,7 +186,7 @@ object SteamOverlayClient {
                 out
             }
         } catch (e: Exception) {
-            Timber.d("SteamOverlayClient: '$command' failed: ${e.message}")
+            if (command != "POLL") Timber.d("SteamOverlayClient: '$command' failed: ${e.message}")
             null
         }
     }
