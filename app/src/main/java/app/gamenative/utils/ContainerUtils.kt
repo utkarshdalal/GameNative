@@ -880,6 +880,7 @@ object ContainerUtils {
                                     bestConfig.matchType,
                                     true,
                                     bestConfig.matchedStore.equals(gameSource.name, ignoreCase = true),
+                                    forceApply = true,
                                     matchedGpu = bestConfig.matchedGpu,
                                 )
                                 if (parsedConfig != null && parsedConfig.isNotEmpty()) {
