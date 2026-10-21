@@ -505,7 +505,10 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("LIBGL_DRIVERS_PATH", gsDir + "/lib/dri");
         envVars.put("MESA_LOADER_DRIVER_OVERRIDE", "zink");
         envVars.put("WLR_XWAYLAND", gsDir + "/bin/Xwayland");
-        envVars.put("XWAYLAND_NO_GLAMOR", "1");
+
+        // Non-Adreno (system Vulkan driver): glamor over zink stalls Xwayland, and Vulkan guests present through the shim.
+        if (!new File("/dev/kgsl-3d0").exists())
+            envVars.put("XWAYLAND_NO_GLAMOR", "1");
 
         // wlroots binds the X11 sockets here; gamescope's libX11 would resolve ":0" to a build-host dir, so it gets the socket path.
         String x11SocketDir = rootDir.getPath() + "/usr/tmp";
@@ -515,6 +518,9 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         File sessionIcd = new File(context.getFilesDir(), "gamescope/share/vulkan/icd.d/adrenotools_gamescope.aarch64.json");
         envVars.put("VK_ICD_FILENAMES", sessionIcd.getAbsolutePath());
+
+        if (container != null && container.getGraphicsDriver() != null)
+            envVars.put("GNDRM_DRIVER_TYPE", container.getGraphicsDriver());
 
         // The guest image name for the session reaper's game-exit watch.
         String gameExecutable = container != null ? container.getExecutablePath() : "";
