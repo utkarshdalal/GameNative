@@ -6,6 +6,10 @@ import androidx.sqlite.execSQL
 
 private const val DROP_TABLE = "DROP TABLE IF EXISTS " // Trailing Space
 
+internal val ROOM_MIGRATION_V16_to_V17 = object : Migration(16, 17) {
+    override fun migrate(connection: SQLiteConnection) = Unit
+}
+
 internal val ROOM_MIGRATION_V7_to_V8 = object : Migration(7, 8) {
     override fun migrate(connection: SQLiteConnection) {
         // Dec 5, 2025: Friends and Chat features removed
