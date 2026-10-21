@@ -603,7 +603,7 @@ fun QuickMenu(
     val inviteTabFocusRequester = remember { FocusRequester() }
     val inviteItemFocusRequester = remember { FocusRequester() }
 
-    // The game's own "Invite friends" button reaches us as an engine callback the bionic host
+    // The game's own "Invite friends" button reaches us as an engine callback the Steam host
     // captures. Open on the invite tab rather than drawing a separate panel, so controller focus
     // and back-to-dismiss behave like the rest of the menu.
     if (inviteMenu != null) {
