@@ -1,0 +1,15 @@
+{
+  "engine": "pack:c3",
+  "entryPoint": "index.html",
+  "packShimPlacement": "prepend",
+  "wideViewport": true,
+  "patches": [
+    {"type": "response-body-replace", "pathPattern": "(scripts/(c3runtime|main|c3main)|c3runtime|c3main)\\.js$", "find": "exportType:\"nwjs\"", "replace": "exportType:\"html5\""},
+    {"type": "response-body-replace", "pathPattern": "scripts/c3runtime\\.js$", "find": "if(opts.lowLatency){attribs[\"desynchronized\"]=true;attribs[\"preserveDrawingBuffer\"]=", "replace": "if(opts.lowLatency){attribs[\"desynchronized\"]=false;attribs[\"preserveDrawingBuffer\"]="},
+    {"type": "response-body-replace", "pathPattern": "scripts/main\\.js$", "find": "this._isNWjs = (iRuntime.GetExportType() === \"nwjs\");", "replace": "this._isNWjs = true;"},
+    {"type": "response-body-replace", "pathPattern": "scripts/c3runtime\\.js$", "find": "GoToLayout(layout){if(this._runtime.IsLoading())return;", "replace": "GoToLayout(layout){if(this._runtime.IsLoading()){var __s=this,__l=layout;setTimeout(function(){C3.Plugins.System.Acts.GoToLayout.call(__s,__l)},100);return;}"}
+  ],
+  "shims": ["nw-noop"],
+  "workerShim": false,
+  "overlay": "c3-default-overlay"
+}

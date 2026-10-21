@@ -2,6 +2,7 @@
 activityCompose = "1.10.0" # https://mvnrepository.com/artifact/androidx.activity/activity-compose
 agp = "8.8.0" # https://mvnrepository.com/artifact/com.android.application/com.android.application.gradle.plugin
 apache-compress = "1.28.0" # https://mvnrepository.com/artifact/org.apache.commons/commons-compress
+androidx-webkit = "1.15.0" # https://mvnrepository.com/artifact/androidx.webkit/webkit
 apng = "3.0.2" # https://mvnrepository.com/artifact/com.github.penfeizhou.android.animation/apng
 composeBom = "2025.01.01" # https://mvnrepository.com/artifact/androidx.compose/compose-bom
 coreKtx = "1.15.0" # https://mvnrepository.com/artifact/androidx.core/core-ktx
@@ -35,6 +36,7 @@ mockwebserver = "5.1.0"
 navigation-compose = "2.8.6" # https://mvnrepository.com/artifact/androidx.navigation/navigation-compose
 orgJson = "20231013"
 protobuf = "4.31.1" # https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java
+rhino = "1.7.15" # https://mvnrepository.com/artifact/org.mozilla/rhino -- JVM JS engine for shim exec tests
 robolectric = "4.14" # https://mvnrepository.com/artifact/org.robolectric/robolectric
 room-runtime = "2.8.4" # https://mvnrepository.com/artifact/androidx.room/room-runtime
 runner = "1.6.2" # https://mvnrepository.com/artifact/androidx.test/runner
@@ -60,6 +62,7 @@ androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room-run
 androidx-room-paging = { module = "androidx.room:room-paging", version.ref = "room-runtime" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room-runtime" }
 androidx-room-testing = { module = "androidx.room:room-testing", version.ref = "room-runtime" }
+androidx-webkit = { module = "androidx.webkit:webkit", version.ref = "androidx-webkit" }
 
 # TODO: Remove 'version' once 1.8.0 is rolled into stable BOM, see https://developer.android.com/jetpack/androidx/releases/compose-ui
 #   This fixes `Placement happened before lookahead` crash when animating lists items.
@@ -107,6 +110,7 @@ mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mo
 mockito-kotlin = { group = "org.mockito.kotlin", name = "mockito-kotlin", version.ref = "mockitoKotlin" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 mockwebserver = { module = "com.squareup.okhttp3:mockwebserver", version.ref = "mockwebserver" }
+rhino = { group = "org.mozilla", name = "rhino", version.ref = "rhino" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 
 # Dependencies when locally building JavaSteam, check link below for current dependencies.
