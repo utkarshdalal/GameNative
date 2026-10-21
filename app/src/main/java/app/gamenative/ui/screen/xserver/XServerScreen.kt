@@ -6573,6 +6573,7 @@ private fun extractSteamFiles(
         val steamDir = steamExe.parentFile ?: return
         steamDir.mkdirs()
         val staleSessionFiles = listOf(
+            File(steamDir, ".gamenative_headless"),
             File(steamDir, "config/config.vdf"),
             File(steamDir, "config/loginusers.vdf"),
             File(steamDir, "local.vdf"),
