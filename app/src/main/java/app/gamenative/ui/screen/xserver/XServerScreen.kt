@@ -4201,6 +4201,14 @@ private fun setupXEnvironment(
     val enableWineDebug = PrefManager.enableWineDebug
     val enableBox86Logs = WinlatorPrefManager.getBoolean("enable_box86_64_logs", false)
     val wineDebugChannels = PrefManager.wineDebugChannels
+    // A support-card run already records and applies its own diagnostic channels. For a
+    // manually started Get AI help run, preserve the channels selected in Settings so the
+    // debug environment and report header describe the same capture.
+    if (debugRun && DebugRunParamsHolder.get(appId) == null) {
+        DebugRunParams.fromManualWineDebug(enableWineDebug, wineDebugChannels)?.let {
+            DebugRunParamsHolder.set(appId, it)
+        }
+    }
     // explicitly enable or disable Wine debug channels
     if (debugRun) {
         envVars.put("WINEDEBUG", "warn+seh,+loaddll,+process,+timestamp,+pid,+tid")
