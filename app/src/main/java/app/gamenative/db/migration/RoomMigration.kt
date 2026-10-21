@@ -6,6 +6,9 @@ import androidx.sqlite.execSQL
 
 private const val DROP_TABLE = "DROP TABLE IF EXISTS " // Trailing Space
 
+// v16 and v17 schemas are identical. This no-op bridges the upgrade path in place of the
+// generated AutoMigration, which re-adds `ufs_parse_version` (duplicate column on v16 installs).
+// Do not remove: without it, upgrading from v16 or earlier crashes on launch.
 internal val ROOM_MIGRATION_V16_to_V17 = object : Migration(16, 17) {
     override fun migrate(connection: SQLiteConnection) = Unit
 }
