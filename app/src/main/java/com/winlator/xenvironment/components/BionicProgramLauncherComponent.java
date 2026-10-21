@@ -346,6 +346,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("LD_PRELOAD", ld_preload);
         envVars.put("EVSHIM_WINE", 1);
         envVars.put("EVSHIM_SHM_NAME", "controller-shm0");
+        envVars.put("SDL_LINUX_JOYSTICK_CLASSIC", "1");
 
         if (container != null && container.isFasterExternalLoading()) {
             String ffpGameDir = null;
