@@ -13,7 +13,7 @@ float3 PS_Sharpen(float4 pos : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
     float3 w = tex2D(ReShade::BackBuffer, uv + float2(-px.x, 0.0)).rgb;
     float3 e = tex2D(ReShade::BackBuffer, uv + float2( px.x, 0.0)).rgb;
     float3 blur = (n + s + w + e) * 0.25;
-    return saturate(c + (c - blur) * Sharpness);
+    return c + (c - blur) * Sharpness;
 }
 
 technique Sharpen

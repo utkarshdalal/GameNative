@@ -40,15 +40,15 @@ float3 PS_NTSC(float4 pos : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
     float3 ycc = RgbToYiq(tex2D(ReShade::BackBuffer, uv).rgb);
     float3 lag = RgbToYiq(tex2D(ReShade::BackBuffer, uv - shift).rgb);
     float3 lead = RgbToYiq(tex2D(ReShade::BackBuffer, uv + shift).rgb);
+    // A little ringing on the luma, as a composite decoder leaves behind.
+    float ring = (ycc.x - (lag.x + lead.x) * 0.5) * 0.25 * Bleed;
     // Chroma is wideband-limited, luma keeps its detail.
-    float3 y = float3(ycc.x, (lag.y + ycc.y * 2.0 + lead.y) * 0.25, (lag.z + ycc.z * 2.0 + lead.z) * 0.25);
+    float3 y = float3(ycc.x + ring, (lag.y + ycc.y * 2.0 + lead.y) * 0.25, (lag.z + ycc.z * 2.0 + lead.z) * 0.25);
 
     float3 c = YiqToRgb(y);
     float scan = 0.5 + 0.5 * sin(uv.y * Lines * 3.14159265);
     c *= lerp(1.0, scan * 1.4, Scanlines);
-    // A little ringing on the luma, as a composite decoder leaves behind.
-    float ring = 0.02 * Bleed * sin(uv.y * Lines * 6.28318530);
-    return saturate(c + ring * (c - 0.5));
+    return saturate(c);
 }
 
 technique NTSC

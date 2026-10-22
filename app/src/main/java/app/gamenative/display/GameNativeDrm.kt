@@ -23,7 +23,7 @@ object GameNativeDrm {
      */
     @JvmStatic
     fun clearBootingSplash() {
-        PluviaApp.events.emit(AndroidEvent.ClearBootingSplash)
+        mainHandler.post { PluviaApp.events.emit(AndroidEvent.ClearBootingSplash) }
     }
 
     /**
@@ -60,7 +60,7 @@ object GameNativeDrm {
         this.frameRating = frameRating
     }
 
-    /** Main-thread handler the native per-frame upcall marshals through. */
+    /** Main-thread handler the native upcalls marshal UI events through. */
     private val mainHandler = Handler(Looper.getMainLooper())
 
     /**
@@ -69,8 +69,7 @@ object GameNativeDrm {
      */
     @JvmStatic
     fun onFramePublished() {
-        if (frameRating == null) return
-        mainHandler.post { frameRating?.update() }
+        frameRating?.update()
     }
 
     // -- input injector lifecycle -------------------------------------------

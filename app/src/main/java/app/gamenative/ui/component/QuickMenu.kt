@@ -112,7 +112,6 @@ import app.gamenative.ui.component.quickMenus.GamescopeQuickMenuTab
 import app.gamenative.ui.component.quickMenus.PowerControlQuickMenuTab
 import app.gamenative.ui.data.PerformanceHudConfig
 import app.gamenative.ui.data.PerformanceHudSize
-import app.gamenative.ui.screen.xserver.resolveDisplayX11
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.adaptivePanelWidth
 import app.gamenative.utils.MathUtils.normalizedProgress
@@ -397,6 +396,7 @@ fun QuickMenu(
     renderer: VulkanRenderer? = null,
     glRenderer: GLRenderer? = null,
     container: Container? = null,
+    isGamescopeSession: Boolean = false,
     wineProcesses: List<ProcessInfo> = emptyList(),
     isWineProcessesLoading: Boolean = false,
     onToolsVisibilityChanged: (Boolean) -> Unit = {},
@@ -572,7 +572,6 @@ fun QuickMenu(
         mutableStateOf(container?.let { app.gamenative.utils.LsfgVkManager.backend(it) } ?: "native")
     }
 
-    val isGamescopeSession = container != null && !resolveDisplayX11(container)
     // The effects tab drives the XServer renderer; a gamescope session applies its effects through
     // the gamescope tab instead.
     val hasEffectsTab = !isGamescopeSession && (renderer != null || glRenderer != null)
@@ -1051,14 +1050,14 @@ fun QuickMenu(
                                             onBackendChanged = { backend ->
                                                 lsfgBackend = backend
                                                 container?.let {
-                                                    app.gamenative.utils.LsfgQuickMenuHelper.applyBackend(it, backend)
+                                                    app.gamenative.utils.LsfgQuickMenuHelper.applyBackend(it, backend, !isGamescopeSession)
                                                 }
                                             },
                                             presentMode = lsfgPresentMode,
                                             onPresentModeChanged = { mode ->
                                                 lsfgPresentMode = mode
                                                 container?.let {
-                                                    app.gamenative.utils.LsfgQuickMenuHelper.applyPresentMode(it, mode)
+                                                    app.gamenative.utils.LsfgQuickMenuHelper.applyPresentMode(it, mode, !isGamescopeSession)
                                                 }
                                             },
                                             scrollState = lsfgScrollState,

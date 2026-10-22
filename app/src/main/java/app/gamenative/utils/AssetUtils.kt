@@ -4,6 +4,7 @@ import android.content.res.AssetManager
 import com.winlator.core.TarCompressorUtils
 import timber.log.Timber
 import java.io.File
+import java.nio.file.Files
 
 object AssetUtils {
     fun log() : Timber.Tree {
@@ -11,12 +12,15 @@ object AssetUtils {
     }
 
     /** Delete a tree even when an earlier payload left it read-only. */
-    private fun deleteTree(dir: File) {
+    internal fun deleteTree(dir: File) {
         if (!dir.exists()) return
-        dir.walkBottomUp().forEach {
-            it.setWritable(true, false)
-            it.setExecutable(true, false)
-        }
+        dir.walkBottomUp()
+            .onEnter { !Files.isSymbolicLink(it.toPath()) }
+            .filterNot { Files.isSymbolicLink(it.toPath()) }
+            .forEach {
+                it.setWritable(true, false)
+                it.setExecutable(true, false)
+            }
         dir.deleteRecursively()
     }
 

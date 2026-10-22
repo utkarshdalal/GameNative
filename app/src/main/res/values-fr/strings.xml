@@ -332,7 +332,7 @@
     <string name="display_server">Serveur d’affichage</string>
     <string name="display_server_x11">X11</string>
     <string name="display_server_gamescope">Gamescope</string>
-    <string name="gamescope_hdr">Sortie HDR (Beta)</string>
+    <string name="gamescope_hdr">Sortie HDR (Bêta)</string>
     <string name="gamescope_hdr_description">Activer la sortie HDR dans les sessions Gamescope</string>
     <string name="gamescope_tab_title">Gamescope</string>
     <string name="gamescope_scaling_mode">Mode de mise à l’échelle</string>
@@ -350,7 +350,7 @@
     <string name="gamescope_filter_integer">Entier</string>
     <string name="gamescope_filter_sgsr">SGSR</string>
     <string name="gamescope_scaling_sharpness">Netteté</string>
-    <string name="gamescope_reset_default">Réinitialiser par défaut</string>
+    <string name="gamescope_reset_default">Réinitialiser aux valeurs par défaut</string>
     <string name="gamescope_look">Effets de couleur</string>
     <string name="gamescope_look_off">Désactivé</string>
     <string name="gamescope_reshade">Effets ReShade</string>

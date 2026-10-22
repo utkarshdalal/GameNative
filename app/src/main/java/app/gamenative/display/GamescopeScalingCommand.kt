@@ -3,6 +3,7 @@ package app.gamenative.display
 import app.gamenative.BuildConfig
 import timber.log.Timber
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 /**
  * Applies a Scaling Mode live by running the payload's `bin/gn-scaling-mode` guest client,
@@ -15,6 +16,11 @@ object GamescopeScalingCommand {
 
     /** Returned when the process could not be started. */
     const val E_SPAWN: Int = -3
+
+    /** Returned when the client did not exit within [TIMEOUT_MS]. */
+    const val E_TIMEOUT: Int = -4
+
+    private const val TIMEOUT_MS = 3000L
 
     /**
      * Set [mode] on the session whose X socket is [x11DisplayPath], using the client under
@@ -41,10 +47,13 @@ object GamescopeScalingCommand {
                     environment()["DISPLAY"] = ":0"
                 }
                 .start()
-            // Drain before waiting: a bounded, short-lived client, but a full
-            // pipe would otherwise stall it.
+            if (!process.waitFor(TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+                process.destroyForcibly()
+                Timber.w("GamescopeScalingCommand: '%s' timed out", mode.id)
+                return@runCatching E_TIMEOUT
+            }
             val output = process.inputStream.bufferedReader().use { it.readText() }.trim()
-            val rc = process.waitFor()
+            val rc = process.exitValue()
             if (rc == 0) {
                 Timber.i("GamescopeScalingCommand: applied '%s' (rc=0) %s", mode.id, output)
             } else {

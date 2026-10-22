@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -80,6 +81,9 @@ internal fun QuickMenuTickSlider(
             interactionSource,
             if (isFocused && isAdjustmentLocked) decrease to increase else null,
         )
+    }
+    DisposableEffect(interactionSource) {
+        onDispose { inputBypass.reportAdjustment(interactionSource, null) }
     }
 
     Column(

@@ -35,9 +35,9 @@ float3 PS_Daltonize(float4 pos : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
 
     float3 error = c - sim;
     float3 shifted;
-    shifted.r = error.r * 0.0 + error.g * 0.7 + error.b * 0.7;
-    shifted.g = error.r * 0.7 + error.g * 0.0 + error.b * 0.7;
-    shifted.b = error.r * 0.7 + error.g * 0.7 + error.b * 0.0;
+    shifted.r = 0.0;
+    shifted.g = error.r * 0.7 + error.g;
+    shifted.b = error.r * 0.7 + error.b;
     return saturate(c + shifted * Strength);
 }
 

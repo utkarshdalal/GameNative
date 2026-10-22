@@ -31,6 +31,7 @@ import android.widget.TextView;
 // import com.winlator.R;
 
 import java.util.ArrayList;
+import java.util.Locale;
 
 public abstract class AppUtils {
 
@@ -77,7 +78,7 @@ public abstract class AppUtils {
     /** Parses "WxH" to {w, h}, or null if unset or malformed. */
     public static int[] parseScreenSize(String size) {
         if (size == null) return null;
-        String[] parts = size.trim().split("x");
+        String[] parts = size.trim().toLowerCase(Locale.ROOT).split("x", -1);
         if (parts.length != 2) return null;
         try {
             int w = Integer.parseInt(parts[0].trim());

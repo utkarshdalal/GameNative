@@ -92,6 +92,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.display.GamescopeInputSink
+import app.gamenative.display.GamescopePayload
 import app.gamenative.SteamBootstrap
 import app.gamenative.data.GameSource
 import app.gamenative.data.GyroSettings
@@ -671,16 +672,19 @@ fun XServerScreen(
 
     val performanceHudTouchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
     // Pre-install steps and opening the container run on X11; a game follows the container's choice.
-    val preInstallPending = container != null &&
-        PreInstallSteps.hasPendingSteps(
-            container,
-            appId,
-            ContainerUtils.extractGameSourceFromContainerId(appId),
+    val sessionDisplay = rememberSaveable(container.id, bootToContainer) {
+        if (bootToContainer || resolveDisplayX11(container) ||
+            PreInstallSteps.hasPendingSteps(
+                container,
+                appId,
+                ContainerUtils.extractGameSourceFromContainerId(appId),
+                hasContainerVariantChanged(container, ImageFs.find(context)),
+            )
         )
-    val sessionDisplay = if (preInstallPending || bootToContainer || resolveDisplayX11(container))
-        SessionDisplay.X11
-    else
-        SessionDisplay.GAMESCOPE
+            SessionDisplay.X11
+        else
+            SessionDisplay.GAMESCOPE
+    }
     val isX11Display = sessionDisplay == SessionDisplay.X11
     val isGamescopeSession = sessionDisplay == SessionDisplay.GAMESCOPE
 
@@ -745,6 +749,7 @@ fun XServerScreen(
         LsfgQuickMenuHelper.applySettings(
             container,
             LsfgQuickMenuHelper.Settings(lsfgMultiplier, lsfgFlowScale, lsfgPerformanceMode),
+            isX11Display = isX11Display,
             fpsLimit = effectiveFpsLimit(),
         )
     }
@@ -2037,13 +2042,13 @@ fun XServerScreen(
             val xServerViewInstance: XServerRendererView = if (useGLRenderer) {
                 XServerViewGL(context, xServerToUse)
             } else {
-                XServerView(context, xServerToUse, container.displayRenderer)
+                XServerView(context, xServerToUse, if (isGamescopeSession) "vulkan" else container.displayRenderer)
             }
 
             // Install (or clear, when reusing a cached XServer) the input retarget sink.
             when (sessionDisplay) {
                 SessionDisplay.X11 -> {
-                    (xServerViewInstance as XServerView).isGamescopeMode = false
+                    (xServerViewInstance as? XServerView)?.isGamescopeMode = false
                     xServerToUse.setInputEventSink(null)
                 }
                 SessionDisplay.GAMESCOPE -> {
@@ -2339,13 +2344,7 @@ fun XServerScreen(
                             taskAffinityMask = ProcessHelper.getAffinityMask(container.getCPUList(true)).toShort().toInt()
                             taskAffinityMaskWoW64 = ProcessHelper.getAffinityMask(container.getCPUListWoW64(true)).toShort().toInt()
                             ui.win32AppWorkarounds?.setTaskAffinityMasks(taskAffinityMask, taskAffinityMaskWoW64)
-                            val appliedVariantSeen = container.getExtra("appliedContainerVariant")
-                            val appliedWineVersionSeen = container.getExtra("appliedWineVersion")
-                            val markersAvail = appliedVariantSeen.isNotEmpty() && appliedWineVersionSeen.isNotEmpty()
-                            val variantMismatch = markersAvail && container.containerVariant != appliedVariantSeen
-                            val wineVersionMismatch = markersAvail && container.wineVersion != appliedWineVersionSeen
-                            val imgVersionMismatch = container.getExtra("imgVersion") != imageFs.getVersion().toString()
-                            containerVariantChanged = variantMismatch || wineVersionMismatch || imgVersionMismatch
+                            containerVariantChanged = hasContainerVariantChanged(container, imageFs)
                             firstTimeBoot = container.getExtra("appVersion").isEmpty() || containerVariantChanged
                             needsUnpacking = container.isNeedsUnpacking
                             Timber.i("First time boot: $firstTimeBoot")
@@ -2409,6 +2408,13 @@ fun XServerScreen(
                                     contentsManager,
                                     onExtractFileListener,
                                 )
+                            }
+                            if (isGamescopeSession) {
+                                runBlocking {
+                                    GamescopePayload.ensure(context) { progress ->
+                                        Timber.d("Downloading gamescope payload: ${(progress * 100).toInt()}%")
+                                    }
+                                }
                             }
                             extractArm64ecInputDLLs(context, container) // REQUIRED: Uses updated xinput1_3 main.c from x86_64 build, prevents crashes with 3+ players, avoids need for input shim dlls.
                             extractx86_64InputDlls(context, container)
@@ -3076,6 +3082,7 @@ fun XServerScreen(
             renderer = ui.xServerView?.renderer as? VulkanRenderer,
             glRenderer = ui.xServerView?.renderer as? GLRenderer,
             container = container,
+            isGamescopeSession = isGamescopeSession,
             wineProcesses = ui.quickMenuWineProcesses,
             isWineProcessesLoading = ui.quickMenuWineProcessesLoading,
             onToolsVisibilityChanged = { ui.quickMenuToolsVisible = it },
@@ -5914,6 +5921,16 @@ private suspend fun applyGeneralPatches(
     WinlatorPrefManager.putString("current_box64_version", "")
 }
 
+private fun hasContainerVariantChanged(container: Container, imageFs: ImageFs): Boolean {
+    val appliedVariantSeen = container.getExtra("appliedContainerVariant")
+    val appliedWineVersionSeen = container.getExtra("appliedWineVersion")
+    val markersAvail = appliedVariantSeen.isNotEmpty() && appliedWineVersionSeen.isNotEmpty()
+    val variantMismatch = markersAvail && container.containerVariant != appliedVariantSeen
+    val wineVersionMismatch = markersAvail && container.wineVersion != appliedWineVersionSeen
+    val imgVersionMismatch = container.getExtra("imgVersion") != imageFs.getVersion().toString()
+    return variantMismatch || wineVersionMismatch || imgVersionMismatch
+}
+
 /** Launch-time check that the container selects X11; */
 internal fun resolveDisplayX11(container: Container?): Boolean {
     return container == null || Container.isX11Display(container.containerVariant, container.displayServer)
@@ -5922,7 +5939,6 @@ internal fun resolveDisplayX11(container: Container?): Boolean {
 private fun refreshComponentsFiles(context: Context) {
     val extractionPairs = listOf(
         "pulseaudio-gamenative-20260919.tzst" to File(context.filesDir, "pulseaudio"),
-        "gamescope-gamenative-20261022.13.tzst" to File(context.filesDir, "gamescope"),
     )
 
     AssetUtils.extractComponentsWithVersionCheck(

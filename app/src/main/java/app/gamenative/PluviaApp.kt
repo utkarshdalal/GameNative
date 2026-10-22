@@ -254,7 +254,6 @@ class PluviaApp : SplitCompatApplication() {
 
         private lateinit var instance: PluviaApp
         private var cachedDefaultScreenSize: String? = null
-        private var cachedNativeDisplaySize: String? = null
 
         // TODO: find a way to make this saveable, this is terrible (leak that memory baby)
         internal var xEnvironment: XEnvironment? = null
@@ -357,11 +356,7 @@ class PluviaApp : SplitCompatApplication() {
          */
         @JvmStatic
         fun getNativeDisplaySize(): String? {
-            cachedNativeDisplaySize?.let { return it }
-
             return try {
-                // instance is assigned first thing in onCreate; a caller before that (or a
-                // non-app process) must not cache a guess for the rest of the run.
                 if (!::instance.isInitialized) return null
                 val displayManager = instance.getSystemService(DISPLAY_SERVICE) as? DisplayManager
                 val display = displayManager?.getDisplay(Display.DEFAULT_DISPLAY) ?: return null
@@ -384,7 +379,6 @@ class PluviaApp : SplitCompatApplication() {
                 // physicalWidth/Height follow the panel's native orientation, which is portrait on a
                 // phone. Scanout geometry is landscape (gamescope wants W > H), so order it that way.
                 val result = if (width >= height) "${width}x$height" else "${height}x$width"
-                cachedNativeDisplaySize = result
                 Timber.i("Native display size: %s (panel was %sx%s)", result, width, height)
                 result
             } catch (e: Exception) {

@@ -19,12 +19,13 @@ public class GamescopeServerComponent extends EnvironmentComponent {
     private static final long START_POLL_MS = 250;
 
     private final File xdgRunDir;
+    private final int sessionId;
     private volatile boolean stopped;
 
     public GamescopeServerComponent(File filesDir, ImageFs imageFs, Container container) {
         // Gamescope mode: no winlator X11 server (gamescope spawns its own XWayland); start the wayland
         // injector, stopped in exit().
-        GamescopeCommandQueue.beginSession(
+        sessionId = GamescopeCommandQueue.beginSession(
             GamescopeSettings.gamescopeDir(filesDir),
             GamescopeSettings.x11DisplayPath(imageFs.getRootDir()),
             GamescopeSettings.fromContainer(container)
@@ -50,7 +51,7 @@ public class GamescopeServerComponent extends EnvironmentComponent {
     private void awaitConnected() {
         for (int i = 0; i < START_POLL_TRIES && !stopped; i++) {
             if (gamescopeAnswered()) {
-                GamescopeCommandQueue.setApplicable(true);
+                GamescopeCommandQueue.setApplicable(sessionId, true);
                 return;
             }
             try {
@@ -87,7 +88,7 @@ public class GamescopeServerComponent extends EnvironmentComponent {
     public void pause() {
         // Not applicable while gamescope is frozen: setters only update the
         // desired state, and the resume re-apply sends the whole set.
-        GamescopeCommandQueue.setApplicable(false);
+        GamescopeCommandQueue.setApplicable(sessionId, false);
         GameNativeDrm.nativeInjectorSetSuspended(true);
     }
 
@@ -95,6 +96,6 @@ public class GamescopeServerComponent extends EnvironmentComponent {
         // Injector may touch the socket again: mark applicable, which re-applies
         // the full desired state so a command lost to the freeze cannot stick.
         GameNativeDrm.nativeInjectorSetSuspended(false);
-        GamescopeCommandQueue.setApplicable(true);
+        GamescopeCommandQueue.setApplicable(sessionId, true);
     }
 }

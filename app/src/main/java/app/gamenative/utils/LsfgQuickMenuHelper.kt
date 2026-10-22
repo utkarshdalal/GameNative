@@ -1,6 +1,5 @@
 package app.gamenative.utils
 
-import app.gamenative.ui.screen.xserver.resolveDisplayX11
 import com.winlator.container.Container
 import java.util.Locale
 import java.util.concurrent.Executors
@@ -44,20 +43,20 @@ object LsfgQuickMenuHelper {
     }
 
     /** Persist the backend and hot-apply it. */
-    fun applyBackend(container: Container, backend: String) {
+    fun applyBackend(container: Container, backend: String, isX11Display: Boolean) {
         applyExecutor.execute {
             container.putExtra(LsfgVkManager.EXTRA_BACKEND, backend)
             container.saveData()
-            applySettings(container, readSettings(container))
+            applySettings(container, readSettings(container), isX11Display)
         }
     }
 
     /** Persist the present mode and hot-apply it. */
-    fun applyPresentMode(container: Container, mode: String) {
+    fun applyPresentMode(container: Container, mode: String, isX11Display: Boolean) {
         applyExecutor.execute {
             container.putExtra(LsfgVkManager.EXTRA_PRESENT_MODE, mode)
             container.saveData()
-            applySettings(container, readSettings(container))
+            applySettings(container, readSettings(container), isX11Display)
         }
     }
 
@@ -67,7 +66,7 @@ object LsfgQuickMenuHelper {
     fun sanitizeFlowScale(flowScale: Float): Float =
         flowScale.coerceIn(0.25f, 1.0f)
 
-    fun applySettings(container: Container, settings: Settings, fpsLimit: Int? = null) {
+    fun applySettings(container: Container, settings: Settings, isX11Display: Boolean, fpsLimit: Int? = null) {
         val multiplier = sanitizeMultiplier(settings.multiplier)
         val flowScale = sanitizeFlowScale(settings.flowScale)
 
@@ -85,7 +84,7 @@ object LsfgQuickMenuHelper {
         val effectiveEnabled = LsfgVkManager.isArmed(container) && multiplier >= 2
         val effectiveMultiplier = if (effectiveEnabled) multiplier else 2
 
-        if (resolveDisplayX11(container)) {
+        if (isX11Display) {
             LsfgVkManager.updateConfigAtRuntime(
                 container,
                 effectiveEnabled,

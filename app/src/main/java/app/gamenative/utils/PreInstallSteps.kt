@@ -47,8 +47,7 @@ object PreInstallSteps {
         val gameDir = getGameDir(container) ?: return emptyList()
         val gameDirPath = gameDir.absolutePath
 
-        val prefixStamp = prefixStamp(container)
-        if (containerVariantChanged || (prefixStamp != null && !prefixStamp.exists())) resetMarkers(gameDirPath)
+        if (markersStale(container, containerVariantChanged)) resetMarkers(gameDirPath)
 
         val commands = mutableListOf<PreInstallCommand>()
 
@@ -81,9 +80,15 @@ object PreInstallSteps {
     }
 
     /** Whether any pre-install step would run for this launch; asked before the session's server is chosen. */
-    fun hasPendingSteps(container: Container, appId: String, gameSource: GameSource): Boolean {
+    fun hasPendingSteps(
+        container: Container,
+        appId: String,
+        gameSource: GameSource,
+        containerVariantChanged: Boolean,
+    ): Boolean {
         val gameDir = getGameDir(container) ?: return false
         val gameDirPath = gameDir.absolutePath
+        if (markersStale(container, containerVariantChanged, prefixMayNotExistYet = true)) resetMarkers(gameDirPath)
         return currentSteps().any { step ->
             step.appliesTo(container, gameSource, gameDirPath) &&
                 step.buildCommand(container, appId, gameSource, gameDir, gameDirPath) != null
@@ -116,6 +121,17 @@ object PreInstallSteps {
         val prefix = File(root, ".wine")
         if (!prefix.isDirectory) return null
         return File(prefix, ".gamenative_preinstall_done")
+    }
+
+    private fun markersStale(
+        container: Container,
+        containerVariantChanged: Boolean,
+        prefixMayNotExistYet: Boolean = false,
+    ): Boolean {
+        if (containerVariantChanged) return true
+        val stamp = prefixStamp(container)
+        if (stamp == null) return prefixMayNotExistYet && container.rootDir?.absolutePath?.isNotEmpty() == true
+        return !stamp.exists()
     }
 
     private fun touchPrefixStamp(container: Container) {

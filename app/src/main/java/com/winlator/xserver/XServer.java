@@ -222,7 +222,11 @@ public class XServer {
     public void injectPointerMove(int x, int y) {
         InputEventSink sink = inputEventSink;
         if (sink != null) {
-            sink.pointerMove(x, y);
+            try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
+                pointer.setX(x);
+                pointer.setY(y);
+                sink.pointerMove(x, y);
+            }
             return;
         }
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
@@ -235,7 +239,11 @@ public class XServer {
 
         InputEventSink sink = inputEventSink;
         if (sink != null) {
-            sink.pointerMoveDelta(dx, dy);
+            try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
+                pointer.setX(pointer.getX() + dx);
+                pointer.setY(pointer.getY() + dy);
+                sink.pointerMoveDelta(dx, dy);
+            }
             return;
         }
 
@@ -291,7 +299,10 @@ public class XServer {
     public void injectPointerButtonPress(Pointer.Button buttonCode) {
         InputEventSink sink = inputEventSink;
         if (sink != null) {
-            sink.pointerButton(buttonCode, true);
+            try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
+                pointer.getButtonMask().set(buttonCode.flag(), true);
+                sink.pointerButton(buttonCode, true);
+            }
             return;
         }
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
@@ -306,7 +317,10 @@ public class XServer {
     public void injectPointerButtonRelease(Pointer.Button buttonCode) {
         InputEventSink sink = inputEventSink;
         if (sink != null) {
-            sink.pointerButton(buttonCode, false);
+            try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
+                pointer.getButtonMask().set(buttonCode.flag(), false);
+                sink.pointerButton(buttonCode, false);
+            }
             return;
         }
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
@@ -325,7 +339,9 @@ public class XServer {
     public void injectKeyPress(XKeycode xKeycode, int keysym) {
         InputEventSink sink = inputEventSink;
         if (sink != null) {
-            sink.keyPress(xKeycode, keysym);
+            try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
+                sink.keyPress(xKeycode, keysym);
+            }
             return;
         }
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
@@ -336,7 +352,9 @@ public class XServer {
     public void injectKeyRelease(XKeycode xKeycode) {
         InputEventSink sink = inputEventSink;
         if (sink != null) {
-            sink.keyRelease(xKeycode);
+            try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
+                sink.keyRelease(xKeycode);
+            }
             return;
         }
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {

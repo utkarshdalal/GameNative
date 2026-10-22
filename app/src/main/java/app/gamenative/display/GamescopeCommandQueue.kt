@@ -2,6 +2,7 @@ package app.gamenative.display
 
 import timber.log.Timber
 import java.io.File
+import java.util.concurrent.Executors
 
 /**
  * The gamescope session's **desired state**, held app-side and re-applied idempotently
@@ -35,13 +36,21 @@ object GamescopeCommandQueue {
     /** Applicable = the injector is connected and the session is not frozen. */
     private var applicable = false
 
+    /** Bumped by [beginSession]; applicability and scaler results from an older session are ignored. */
+    private var session = 0
+
+    private val scalerExecutor = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "gamescope-scaler").apply { isDaemon = true }
+    }
+
     /**
      * Seed the desired state for a new session from [state], remember where the bundled LUTs live,
      * and record the session's X socket ([x11DisplayPath], the target of the live scaling-mode
      * client).
      */
     @JvmStatic
-    fun beginSession(gamescopeDir: File, x11DisplayPath: File, state: GamescopeState) {
+    fun beginSession(gamescopeDir: File, x11DisplayPath: File, state: GamescopeState): Int {
+        val id: Int
         synchronized(lock) {
             this.gamescopeDir = gamescopeDir
             this.x11DisplayPath = x11DisplayPath
@@ -53,8 +62,10 @@ object GamescopeCommandQueue {
             // this value; no spawn until it changes.
             spawnedScaler = state.scaler
             actions.clear()
+            applicable = false
+            id = ++session
         }
-        reapply()
+        return id
     }
 
     /**
@@ -62,9 +73,10 @@ object GamescopeCommandQueue {
      * suspended or torn down).
      */
     @JvmStatic
-    fun setApplicable(value: Boolean) {
+    fun setApplicable(sessionId: Int, value: Boolean) {
         var became = false
         synchronized(lock) {
+            if (sessionId != session) return
             if (value && !applicable) became = true
             applicable = value
         }
@@ -121,9 +133,8 @@ object GamescopeCommandQueue {
         val l: GamescopeLook?
         val fps: Int?
         val dir: File?
-        val xdp: File?
         val acts: List<GamescopeConVar>
-        val scalerToSpawn: GamescopeScalingMode?
+        val scalerChanged: Boolean
         synchronized(lock) {
             if (!applicable) return
             f = filter
@@ -131,13 +142,9 @@ object GamescopeCommandQueue {
             l = look
             fps = fpsLimit
             dir = gamescopeDir
-            xdp = x11DisplayPath
             acts = actions.values.toList()
             actions.clear()
-            // Spawn the scaler client only when the mode changed since it was last written; mark it written
-            // under the lock so concurrent re-applies cannot double-spawn.
-            scalerToSpawn = scaler?.takeIf { it != spawnedScaler }
-            if (scalerToSpawn != null) spawnedScaler = scalerToSpawn
+            scalerChanged = scaler != null && scaler != spawnedScaler
         }
         f?.let { exec(GamescopeConVar.SCALING_FILTER, it.id) }
         // The stored sharpness is in UI units; gamescope's convar wants the raw
@@ -149,10 +156,26 @@ object GamescopeCommandQueue {
             exec(GamescopeConVar.SET_LOOK, path)
         }
         fps?.let { GameNativeDrm.nativeSetFpsLimit(it) }
-        if (scalerToSpawn != null && dir != null && xdp != null) {
-            GamescopeScalingCommand.apply(dir, xdp, scalerToSpawn)
-        }
+        if (scalerChanged) scalerExecutor.execute(::applyScaler)
         acts.forEach { exec(it) }
+    }
+
+    private fun applyScaler() {
+        val mode: GamescopeScalingMode
+        val dir: File
+        val xdp: File
+        val id: Int
+        synchronized(lock) {
+            if (!applicable) return
+            mode = scaler?.takeIf { it != spawnedScaler } ?: return
+            dir = gamescopeDir ?: return
+            xdp = x11DisplayPath ?: return
+            id = session
+        }
+        if (GamescopeScalingCommand.apply(dir, xdp, mode) != 0) return
+        synchronized(lock) {
+            if (id == session) spawnedScaler = mode
+        }
     }
 
     private inline fun update(change: () -> Unit) {
@@ -169,7 +192,13 @@ object GamescopeCommandQueue {
         runCatching {
             GameNativeDrm.nativeGamescopeCommand(command)
         }
-            .onSuccess { Timber.i("GamescopeCommandQueue: applied '%s' (rc=%d)", command, it) }
+            .onSuccess { rc ->
+                if (rc == 0) {
+                    Timber.i("GamescopeCommandQueue: applied '%s'", command)
+                } else {
+                    Timber.w("GamescopeCommandQueue: '%s' rejected (rc=%d)", command, rc)
+                }
+            }
             .onFailure { Timber.w(it, "GamescopeCommandQueue: '%s' failed", action.id) }
     }
 }

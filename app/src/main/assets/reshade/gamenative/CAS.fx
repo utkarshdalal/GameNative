@@ -25,7 +25,7 @@ float3 PS_CAS(float4 pos : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
     float3 amp = sqrt(saturate(min(mn, 2.0 - mx) / max(mx, 1e-5)));
     float peak = -1.0 / lerp(8.0, 4.0, Sharpness);
     float3 k = amp * peak;
-    float3 blur = (n + s + w + e) * 0.25 + (nw + ne + sw + se) * 0.125 * 0.5;
+    float3 blur = (n + s + w + e) * 0.2 + (nw + ne + sw + se) * 0.05;
     return saturate(c + (c - blur) * (-k * 2.0));
 }
 

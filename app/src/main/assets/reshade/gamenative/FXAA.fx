@@ -31,11 +31,9 @@ float3 PS_FXAA(float4 pos : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
     float horizontal = abs(Luma(w) - Luma(e));
     float3 a = vertical < horizontal ? n : w;
     float3 b = vertical < horizontal ? s : e;
-    float2 dir = vertical < horizontal ? float2(0.0, px.y) : float2(px.x, 0.0);
-    float3 inner = tex2D(ReShade::BackBuffer, uv + dir).rgb;
     float3 blend = (a + b + m * 2.0) * 0.25;
     float edge = saturate((lmax - lmin) / max(lmax, 1e-5));
-    return lerp(m, blend * 0.5 + inner * 0.5, edge * 0.75);
+    return lerp(m, blend, edge * 0.75);
 }
 
 technique FXAA
