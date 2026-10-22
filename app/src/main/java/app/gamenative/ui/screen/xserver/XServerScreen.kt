@@ -6308,12 +6308,22 @@ private fun requestedGlBackend(container: Container, gamescopeSession: Boolean):
     if (!BuildConfig.MODERN_ANDROID || !container.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
         return Container.GL_BACKEND_XLIB
     }
-    if (requested == Container.GL_BACKEND_KOPPER) return Container.GL_BACKEND_KOPPER
-    if (!container.graphicsDriver.lowercase(Locale.ROOT).startsWith("wrapper")) return Container.GL_BACKEND_XLIB
-    if (!gamescopeSession && !container.isUseDRI3) return Container.GL_BACKEND_XLIB
+    val wrapperDriver = container.graphicsDriver.lowercase(Locale.ROOT).startsWith("wrapper")
     val protonMajor = PROTON_MAJOR_VERSION.find(container.wineVersion.lowercase(Locale.ROOT))
         ?.groupValues?.get(1)?.toIntOrNull()
-    return if (protonMajor != null && protonMajor >= 11) Container.GL_BACKEND_KOPPER else Container.GL_BACKEND_XLIB
+    val protonSupportsKopper = protonMajor != null && protonMajor >= 11
+    if (requested == Container.GL_BACKEND_KOPPER) {
+        if (wrapperDriver && protonSupportsKopper) return Container.GL_BACKEND_KOPPER
+        Timber.w(
+            "Kopper GL backend forced but unsupported (driver=%s, wine=%s), falling back to xlib",
+            container.graphicsDriver,
+            container.wineVersion,
+        )
+        return Container.GL_BACKEND_XLIB
+    }
+    if (!wrapperDriver) return Container.GL_BACKEND_XLIB
+    if (!gamescopeSession && !container.isUseDRI3) return Container.GL_BACKEND_XLIB
+    return if (protonSupportsKopper) Container.GL_BACKEND_KOPPER else Container.GL_BACKEND_XLIB
 }
 
 private fun resolveGlBackend(context: Context, container: Container, gamescopeSession: Boolean): String {
