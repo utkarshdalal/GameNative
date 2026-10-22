@@ -799,6 +799,11 @@
     <string name="max_device_memory">最大デバイスメモリ</string>
     <string name="frame_synchronization">フレーム同期</string>
     <string name="use_adrenotools_turnip">Adrenotools Turnipを使用する</string>
+    <string name="gl_backend">OpenGLバックエンド</string>
+    <string name="gl_backend_description">自動ではProton 11以降はKopper、それ以外はXlibを使用します</string>
+    <string name="gl_backend_auto">自動</string>
+    <string name="gl_backend_kopper">Kopper経由のZink (EGL)</string>
+    <string name="gl_backend_xlib">Xlib経由のZink (レガシー)</string>
     <string name="vulkan_version">Vulkanバージョン</string>
     <string name="image_cache_size">画像キャッシュサイズ</string>
     <string name="dx_wrapper">DXラッパー</string>

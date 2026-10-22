@@ -790,6 +790,11 @@
 	<string name="max_device_memory">Memorie maximă dispozitiv</string>
 	<string name="frame_synchronization">Sincronizare cadre</string>
 	<string name="use_adrenotools_turnip">Folosește Adrenotools Turnip</string>
+	<string name="gl_backend">Backend OpenGL</string>
+	<string name="gl_backend_description">Automat folosește Kopper pe Proton 11+ și Xlib în rest</string>
+	<string name="gl_backend_auto">Automat</string>
+	<string name="gl_backend_kopper">Zink prin Kopper (EGL)</string>
+	<string name="gl_backend_xlib">Zink prin Xlib (vechi)</string>
 	<string name="vulkan_version">Versiune Vulkan</string>
 	<string name="image_cache_size">Dimensiune cache imagini</string>
 	<string name="dx_wrapper">Wrapper DX</string>

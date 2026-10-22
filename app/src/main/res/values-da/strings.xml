@@ -618,6 +618,11 @@
     <string name="max_device_memory">Maksimal enhedshukommelse</string>
     <string name="frame_synchronization">Rammens synkronisering</string>
     <string name="use_adrenotools_turnip">Brug Adrenotools Turnip</string>
+    <string name="gl_backend">OpenGL-backend</string>
+    <string name="gl_backend_description">Automatisk bruger Kopper på Proton 11+ og ellers Xlib</string>
+    <string name="gl_backend_auto">Automatisk</string>
+    <string name="gl_backend_kopper">Zink via Kopper (EGL)</string>
+    <string name="gl_backend_xlib">Zink via Xlib (forældet)</string>
     <string name="vulkan_version">Vulkan-version</string>
     <string name="image_cache_size">Billedcache-størrelse</string>
     <string name="dx_wrapper">DX-wrapper</string>

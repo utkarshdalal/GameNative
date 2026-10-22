@@ -618,6 +618,11 @@
     <string name="max_device_memory">Memória Máxima do Dispositivo</string>
     <string name="frame_synchronization">Sincronização de Quadros</string>
     <string name="use_adrenotools_turnip">Usar Adrenotools Turnip</string>
+    <string name="gl_backend">Backend OpenGL</string>
+    <string name="gl_backend_description">Automático usa Kopper no Proton 11+ e Xlib nos demais casos</string>
+    <string name="gl_backend_auto">Automático</string>
+    <string name="gl_backend_kopper">Zink via Kopper (EGL)</string>
+    <string name="gl_backend_xlib">Zink via Xlib (legado)</string>
     <string name="vulkan_version">Versão do Vulkan</string>
     <string name="image_cache_size">Tamanho do Cache de Imagens</string>
     <string name="dx_wrapper">DX Wrapper</string>

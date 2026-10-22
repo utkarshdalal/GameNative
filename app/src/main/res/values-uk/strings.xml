@@ -784,6 +784,11 @@
     <string name="max_device_memory">Максимальна пам\'ять пристрою</string>
     <string name="frame_synchronization">Синхронізація кадрів</string>
     <string name="use_adrenotools_turnip">Використовувати Adrenotools Turnip</string>
+    <string name="gl_backend">Бекенд OpenGL</string>
+    <string name="gl_backend_description">Автоматичний режим використовує Kopper на Proton 11+ і Xlib в інших випадках</string>
+    <string name="gl_backend_auto">Автоматичний</string>
+    <string name="gl_backend_kopper">Zink через Kopper (EGL)</string>
+    <string name="gl_backend_xlib">Zink через Xlib (застарілий)</string>
     <string name="vulkan_version">Версія Vulkan</string>
     <string name="image_cache_size">Розмір кешу</string>
     <string name="dx_wrapper">DX Wrapper</string>

@@ -1618,6 +1618,11 @@ https://gamenative.app
     <string name="update_available">Доступно обновление</string>
     <string name="update_now">Обновить сейчас</string>
     <string name="use_adrenotools_turnip">Использовать Adrenotools Turnip</string>
+    <string name="gl_backend">Бэкенд OpenGL</string>
+    <string name="gl_backend_description">Автоматический режим использует Kopper на Proton 11+ и Xlib в остальных случаях</string>
+    <string name="gl_backend_auto">Автоматический</string>
+    <string name="gl_backend_kopper">Zink через Kopper (EGL)</string>
+    <string name="gl_backend_xlib">Zink через Xlib (устаревший)</string>
     <string name="use_dri3">Использовать DRI3</string>
     <string name="use_dri3_description">Отключение может исправить графические глюки на некоторых устройствах</string>
     <string name="use_legacy_renderer">Использовать устаревший рендерер</string>

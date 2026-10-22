@@ -776,6 +776,11 @@
     <string name="max_device_memory">最大内存容量</string>
     <string name="frame_synchronization">帧同步</string>
     <string name="use_adrenotools_turnip">使用 Adrenotools Turnip</string>
+    <string name="gl_backend">OpenGL 后端</string>
+    <string name="gl_backend_description">自动模式在 Proton 11+ 上使用 Kopper，其他情况使用 Xlib</string>
+    <string name="gl_backend_auto">自动</string>
+    <string name="gl_backend_kopper">通过 Kopper 的 Zink (EGL)</string>
+    <string name="gl_backend_xlib">通过 Xlib 的 Zink (旧版)</string>
     <string name="vulkan_version">Vulkan 版本</string>
     <string name="image_cache_size">图像缓存大小</string>
     <string name="dx_wrapper">DX 封装器</string>

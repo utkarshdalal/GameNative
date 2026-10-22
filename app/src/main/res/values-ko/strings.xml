@@ -793,6 +793,11 @@
     <string name="max_device_memory">최대 장치 메모리</string>
     <string name="frame_synchronization">프레임 동기화</string>
     <string name="use_adrenotools_turnip">Adrenotools Turnip 사용</string>
+    <string name="gl_backend">OpenGL 백엔드</string>
+    <string name="gl_backend_description">자동은 Proton 11 이상에서 Kopper를, 그 외에는 Xlib를 사용합니다</string>
+    <string name="gl_backend_auto">자동</string>
+    <string name="gl_backend_kopper">Kopper를 통한 Zink (EGL)</string>
+    <string name="gl_backend_xlib">Xlib를 통한 Zink (레거시)</string>
     <string name="vulkan_version">Vulkan 버전</string>
     <string name="image_cache_size">이미지 캐시 크기</string>
     <string name="dx_wrapper">DX Wrapper</string>
