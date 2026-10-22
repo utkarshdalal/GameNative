@@ -39,6 +39,7 @@ object SuggestionConfigKeys {
         "launchBionicSteam" to ConfigValueType.BOOLEAN,
         "launchRealSteam" to ConfigValueType.BOOLEAN,
         "steamType" to ConfigValueType.STRING,
+        "glBackend" to ConfigValueType.STRING,
     )
 
     val APPLICABLE_CONFIG_KEYS: Map<String, ConfigValueType> = BEST_CONFIG_KEYS
@@ -77,6 +78,7 @@ object SuggestionConfigKeys {
         "launchBionicSteam" -> data.launchBionicSteam.toString()
         "launchRealSteam" -> data.launchRealSteam.toString()
         "steamType" -> data.steamType
+        "glBackend" -> data.glBackend
         else -> null
     }
 

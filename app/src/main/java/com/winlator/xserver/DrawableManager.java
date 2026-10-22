@@ -3,7 +3,10 @@ package com.winlator.xserver;
 import android.util.SparseArray;
 
 import com.winlator.core.Callback;
+import com.winlator.renderer.GPUImage;
 import com.winlator.renderer.Texture;
+import com.winlator.renderer.VulkanRenderer;
+import com.winlator.renderer.XServerRenderer;
 import com.winlator.xenvironment.components.VortekRendererComponent;
 
 import java.util.Objects;
@@ -42,7 +45,13 @@ public class DrawableManager extends XResourceManager implements XResourceManage
 //            Objects.requireNonNull(texture);
 //            xServerView.queueEvent(() -> VortekRendererComponent.destroyTexture(texture));
 //        }
-        if (texture != null) xServer.getRenderer().getRendererView().queueEvent(texture::destroy);
+        if (texture != null) {
+            XServerRenderer renderer = xServer.getRenderer();
+            if (renderer instanceof VulkanRenderer && texture instanceof GPUImage) {
+                ((VulkanRenderer)renderer).releaseHardwareBuffer(((GPUImage)texture).getHardwareBufferPtr());
+            }
+            renderer.getRendererView().queueEvent(texture::destroy);
+        }
 
         Callback<Drawable> onDestroyListener = drawable.getOnDestroyListener();
         if (onDestroyListener != null) onDestroyListener.call(drawable);

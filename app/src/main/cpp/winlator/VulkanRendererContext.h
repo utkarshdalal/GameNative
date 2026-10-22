@@ -168,6 +168,7 @@ public:
     void setCursorVisible(bool visible);
     void setRenderList(const int64_t* ids, const int* xs, const int* ys, int count);
     void removeWindow(int64_t id);
+    void removeBuffer(AHardwareBuffer* ahb);
     void clearBackbuffer() {}
     void beginBatch() {}
     void endBatch() {}

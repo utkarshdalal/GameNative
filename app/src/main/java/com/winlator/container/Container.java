@@ -34,6 +34,10 @@ public class Container {
     public static final String EXTERNAL_DISPLAY_MODE_KEYBOARD = "keyboard";
     public static final String EXTERNAL_DISPLAY_MODE_HYBRID = "hybrid";
     public static final String DEFAULT_EXTERNAL_DISPLAY_MODE = EXTERNAL_DISPLAY_MODE_OFF;
+    public static final String GL_BACKEND_AUTO = "auto";
+    public static final String GL_BACKEND_KOPPER = "kopper";
+    public static final String GL_BACKEND_XLIB = "xlib";
+    public static final String DEFAULT_GL_BACKEND = GL_BACKEND_AUTO;
 
     public static final String DEFAULT_ENV_VARS = "WRAPPER_MAX_IMAGE_COUNT=0 ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform VKD3D_SHADER_MODEL=6_0 PULSE_LATENCY_MSEC=144";
     public static final String DEFAULT_SCREEN_SIZE_16_9 = "1280x720";
@@ -157,6 +161,7 @@ public class Container {
     private boolean externalDisplaySwap = false;
     // Prefer DRI3 WSI path
     private boolean useDRI3 = true;
+    private String glBackend = DEFAULT_GL_BACKEND;
     // Steam client flavour: headless (steamhost, no client UI) or the Valve GUI client under
     // one of the Box64 RC configs (normal, light, ultralight)
     private String steamType = DefaultVersion.STEAM_TYPE;
@@ -838,6 +843,7 @@ public class Container {
             data.put("externalDisplayMode", externalDisplayMode);
             data.put("externalDisplaySwap", externalDisplaySwap);
             data.put("useDRI3", useDRI3);
+            data.put("glBackend", glBackend);
             data.put("installPath", installPath);
             data.put("steamType", steamType);
             data.put("language", language);
@@ -1085,6 +1091,9 @@ public class Container {
                 case "useDRI3" :
                     setUseDRI3(data.getBoolean(key));
                     break;
+                case "glBackend" :
+                    setGlBackend(data.optString(key, DEFAULT_GL_BACKEND));
+                    break;
                 case "fexcoreVersion" :
                     setFEXCoreVersion(data.getString(key));
                     break;
@@ -1160,6 +1169,10 @@ public class Container {
                 else if (graphicsDriver.equals("llvmpipe")) {
                     data.put("graphicsDriver", "virgl");
                 }
+            }
+
+            if (!data.has("glBackend")) {
+                data.put("glBackend", DEFAULT_GL_BACKEND);
             }
 
             if (!data.has("wincomponents")) {
@@ -1383,5 +1396,13 @@ public class Container {
 
     public void setUseDRI3(boolean useDRI3) {
         this.useDRI3 = useDRI3;
+    }
+
+    public String getGlBackend() {
+        return glBackend;
+    }
+
+    public void setGlBackend(String glBackend) {
+        this.glBackend = glBackend != null && !glBackend.isEmpty() ? glBackend : DEFAULT_GL_BACKEND;
     }
 }

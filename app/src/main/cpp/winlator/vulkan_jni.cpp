@@ -157,6 +157,11 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_renderer_VulkanRenderer_nativeRemoveWindow(JNIEnv*, jobject, jlong handle, jlong id) {
     auto* r=reinterpret_cast<VulkanRendererContext*>(handle); if (r) r->removeWindow(id);
 }
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_renderer_VulkanRenderer_nativeRemoveBuffer(JNIEnv*, jobject, jlong handle, jlong ahbPtr) {
+    auto* r=reinterpret_cast<VulkanRendererContext*>(handle);
+    if (r&&ahbPtr) r->removeBuffer(reinterpret_cast<AHardwareBuffer*>(ahbPtr));
+}
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_renderer_VulkanRenderer_nativeInitScanout(JNIEnv*, jobject, jlong handle) {

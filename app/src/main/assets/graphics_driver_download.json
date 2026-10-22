@@ -128,6 +128,11 @@
       "url": "https://downloads.gamenative.app/graphics_driver/extra_libs.tzst"
     },
     {
+      "id": "mesa_kopper",
+      "name": "mesa-kopper-20261022.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/mesa-kopper-20261022.tzst"
+    },
+    {
       "id": "zink_dlls",
       "name": "zink_dlls.tzst",
       "url": "https://downloads.gamenative.app/graphics_driver/zink_dlls.tzst"

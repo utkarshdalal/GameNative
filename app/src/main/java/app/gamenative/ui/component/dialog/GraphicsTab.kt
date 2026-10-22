@@ -160,6 +160,20 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                     state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
                 },
             )
+            val glBackends = listOf(Container.GL_BACKEND_AUTO, Container.GL_BACKEND_KOPPER, Container.GL_BACKEND_XLIB)
+            SettingsListDropdown(
+                colors = settingsTileColors(),
+                title = { Text(text = stringResource(R.string.gl_backend)) },
+                value = glBackends.indexOf(config.glBackend.lowercase()).coerceAtLeast(0),
+                items = listOf(
+                    stringResource(R.string.gl_backend_auto),
+                    stringResource(R.string.gl_backend_kopper),
+                    stringResource(R.string.gl_backend_xlib),
+                ),
+                onItemSelected = { idx ->
+                    state.config.value = config.copy(glBackend = glBackends[idx])
+                },
+            )
             SettingsListDropdown(
                 colors = settingsTileColors(),
                 title = { Text(text = stringResource(R.string.present_modes)) },

@@ -969,6 +969,10 @@
     <string name="max_device_memory">Max Device Memory</string>
     <string name="frame_synchronization">Frame Synchronization</string>
     <string name="use_adrenotools_turnip">Use Adrenotools Turnip</string>
+    <string name="gl_backend">OpenGL Backend</string>
+    <string name="gl_backend_auto">Auto</string>
+    <string name="gl_backend_kopper">Kopper (EGL)</string>
+    <string name="gl_backend_xlib">Xlib (legacy)</string>
     <string name="vulkan_version">Vulkan Version</string>
     <string name="image_cache_size">Image Cache Size</string>
     <string name="dx_wrapper">DX Wrapper</string>

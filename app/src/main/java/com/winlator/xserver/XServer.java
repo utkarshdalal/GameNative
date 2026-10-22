@@ -313,7 +313,9 @@ public class XServer {
         registerExtension(new BigReqExtension(),    nextEventId, nextErrorId);
         registerExtension(new MITSHMExtension(),    nextEventId, nextErrorId);
         registerExtension(new DRI3Extension(),      nextEventId, nextErrorId);
-        registerExtension(new PresentExtension(),   nextEventId, nextErrorId);
+        PresentExtension presentExtension = new PresentExtension();
+        windowManager.addOnResourceLifecycleListener(presentExtension);
+        registerExtension(presentExtension,         nextEventId, nextErrorId);
         registerExtension(new SyncExtension(),      nextEventId, nextErrorId);
         if (supportsXInput2(runningFromGlibc)) {
             if (mouseDragCompatibilityEnabled) {

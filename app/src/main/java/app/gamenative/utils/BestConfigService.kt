@@ -1030,6 +1030,9 @@ object BestConfigService {
                 if (filteredJson.has("videoMemorySize") && !filteredJson.isNull("videoMemorySize")) {
                     resultMap["videoMemorySize"] = filteredJson.optString("videoMemorySize", PrefManager.videoMemorySize)
                 }
+                if (filteredJson.has("glBackend") && !filteredJson.isNull("glBackend")) {
+                    resultMap["glBackend"] = filteredJson.optString("glBackend", Container.DEFAULT_GL_BACKEND)
+                }
 
                 return ParsedConfigResult(resultMap, missingComponents)
             }
