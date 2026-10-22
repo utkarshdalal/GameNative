@@ -6297,8 +6297,8 @@ private enum class MesaKopperPackage(val componentId: String, val marker: String
     MALI("mesa_kopper_mali", "$MESA_KOPPER_LIB_DIR/libgallium-24.3.0-devel.so", null),
 }
 
-private fun mesaKopperPackage(context: Context): MesaKopperPackage =
-    if (GPUInformation.isAdrenoGPU(context)) MesaKopperPackage.GLVND else MesaKopperPackage.MALI
+@Suppress("UNUSED_PARAMETER")
+private fun mesaKopperPackage(context: Context): MesaKopperPackage = MesaKopperPackage.MALI
 
 private val PROTON_MAJOR_VERSION = Regex("""^proton-(\d+)""")
 
