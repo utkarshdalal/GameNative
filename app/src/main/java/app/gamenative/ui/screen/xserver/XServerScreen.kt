@@ -112,6 +112,7 @@ import app.gamenative.externaldisplay.ExternalDisplaySwapController
 import app.gamenative.externaldisplay.SwapInputOverlayView
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.service.AchievementWatcher
+import app.gamenative.service.SteamHostAchievementPoller
 import app.gamenative.service.SteamService
 import app.gamenative.service.ea.EaLaunchSupport
 import app.gamenative.service.epic.EpicConstants
@@ -4609,7 +4610,12 @@ private fun setupXEnvironment(
         throw e
     }
 
-    if (gameSource == GameSource.STEAM) {
+    if (gameSource == GameSource.STEAM && container.isLaunchHeadlessSteam) {
+        val gameIdInt = ContainerUtils.extractGameIdFromContainerId(appId)
+        if (gameIdInt != null && !bootToContainer) {
+            PluviaApp.steamHostAchievementPoller = SteamHostAchievementPoller(gameIdInt, context).also { it.start() }
+        }
+    } else if (gameSource == GameSource.STEAM) {
         Timber.tag("achievements").d("Setting up achievements for Steam appID=$appId...")
         val gameIdInt = ContainerUtils.extractGameIdFromContainerId(appId)
         val configDirectory = gameIdInt?.let { SteamService.findSteamSettingsDir(context, it) }
