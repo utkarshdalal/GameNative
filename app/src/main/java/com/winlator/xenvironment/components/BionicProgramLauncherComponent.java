@@ -570,6 +570,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("WINE_USE_EGL", "1");
         envVars.put("MESA_LOADER_DRIVER_OVERRIDE", "zink");
         envVars.put("LIBGL_KOPPER_DRI2", "1");
+        envVars.put("XWAYLAND_NO_GLAMOR", "1");
         envVars.remove("GALLIUM_DRIVER");
         envVars.remove("LIBGL_KOPPER_DISABLE");
     }
