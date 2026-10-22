@@ -3,6 +3,7 @@ package app.gamenative.gamefixes
 import android.content.Context
 import app.gamenative.data.GameSource
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.CustomGameScanner
 import app.gamenative.service.gog.GOGConstants
 import app.gamenative.service.gog.GOGService
 import app.gamenative.service.SteamService
@@ -56,6 +57,7 @@ object GameFixesRegistry {
         EPIC_Fix_59a0c86d02da42e8ba6444cb171e61bf,
         EPIC_Fix_864c7bc2c2394f7dbd1b534aa068ff56,
         EPIC_Fix_7f6bb22e14044be880ba254f683cd928,
+        CUSTOM_GAME_Fix_WowB_ARM64,
     ).associateBy { it.gameSource to it.gameId }
 
     private var fixesProvider: () -> Map<Pair<GameSource, String>, GameFix> = { fixes }
@@ -69,15 +71,27 @@ object GameFixesRegistry {
                 val game = EpicService.getEpicGameOf(gameId.toInt()) ?: return
                 game.catalogId
             }
+            // Custom game ids are a hash of the install folder, so key on the launch executable's file name.
+            GameSource.CUSTOM_GAME -> {
+                val exe = CustomGameScanner.getLaunchExecutable(container)
+                if (exe.isEmpty()) return
+                exe.substringAfterLast('\\').substringAfterLast('/').lowercase()
+            }
             else -> gameId
         }
         Timber.i("GameFixesRegistry: Applying fixes for game: $source $catalogId if available")
         val fix = fixesProvider()[source to catalogId] ?: return
-        val (installPath, installPathWindows) = resolvePaths(context, source, gameId) ?: return
+        val (installPath, installPathWindows) = resolvePaths(context, source, gameId, appId, container) ?: return
         fix.apply(context, catalogId, installPath, installPathWindows, container)
     }
 
-    private fun resolvePaths(context: Context, source: GameSource, gameId: String): Pair<String, String>? {
+    private fun resolvePaths(
+        context: Context,
+        source: GameSource,
+        gameId: String,
+        appId: String,
+        container: Container,
+    ): Pair<String, String>? {
         return when (source) {
             GameSource.GOG -> {
                 val game = runBlocking(Dispatchers.IO) { GOGService.getGOGGameOf(gameId) } ?: return null
@@ -95,6 +109,13 @@ object GameFixesRegistry {
                 val path = EpicService.getInstallPath(gameId.toInt()) ?: return null
                 if (path.isEmpty() || !File(path).exists()) return null
                 path to "$GAME_DRIVE_LETTER:\\"
+            }
+            GameSource.CUSTOM_GAME -> {
+                val path = CustomGameScanner.getFolderPathFromAppId(appId) ?: return null
+                if (path.isEmpty() || !File(path).exists()) return null
+                val letter = Container.drivesIterator(container.drives)
+                    .firstOrNull { it[1] == path }?.get(0) ?: GAME_DRIVE_LETTER
+                path to "$letter:\\"
             }
             else -> null
         }
