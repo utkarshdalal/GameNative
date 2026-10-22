@@ -49,4 +49,22 @@ class SteamAchievementResetTest {
     fun keepsOfflineUnlockSteamNeverSaw() {
         assertEquals(mapOf(1 to 0b101), push(mapOf("C" to 1800000000L)))
     }
+
+    // whole block reset: the stat is absent from stats[] but the timestamps survive.
+    @Test
+    fun treatsMissingBlockStatAsZero() {
+        val wholeBlockReset = mockk<UserStatsCallback>(relaxed = true).also {
+            every { it.stats } returns emptyList()
+            every { it.achievementBlocks } returns
+                listOf(AchievementBlocks(achievementId = 1, unlockTime = listOf(1714000001, resetAt.toInt(), 0)))
+        }
+        assertEquals(
+            mapOf("A" to 1714000001L, "B" to resetAt),
+            SteamService.achievementResetTimes(wholeBlockReset, mapping),
+        )
+        assertEquals(
+            emptyMap<Int, Int>(),
+            SteamService.achievementPushBitmasks(wholeBlockReset, mapping, mapOf("A" to 1714000001L, "B" to resetAt)),
+        )
+    }
 }

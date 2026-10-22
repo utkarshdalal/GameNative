@@ -3996,7 +3996,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             val resets = mutableMapOf<String, Long>()
             for ((name, blockBit) in nameToBlockBit) {
                 val (blockId, bitIndex) = blockBit
-                val live = liveStats[blockId] ?: continue
+                val live = liveStats[blockId] ?: 0
                 val unlockTime = blocks[blockId]?.unlockTime?.getOrNull(bitIndex) ?: 0
                 if (unlockTime > 0 && (live and (1 shl bitIndex)) == 0) resets[name] = unlockTime.toLong()
             }
