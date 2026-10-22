@@ -970,9 +970,10 @@
     <string name="frame_synchronization">Frame Synchronization</string>
     <string name="use_adrenotools_turnip">Use Adrenotools Turnip</string>
     <string name="gl_backend">OpenGL Backend</string>
+    <string name="gl_backend_description">Auto uses Kopper on Proton 11+ and Xlib otherwise</string>
     <string name="gl_backend_auto">Auto</string>
-    <string name="gl_backend_kopper">Kopper (EGL)</string>
-    <string name="gl_backend_xlib">Xlib (legacy)</string>
+    <string name="gl_backend_kopper">Zink via Kopper (EGL)</string>
+    <string name="gl_backend_xlib">Zink via Xlib (legacy)</string>
     <string name="vulkan_version">Vulkan Version</string>
     <string name="image_cache_size">Image Cache Size</string>
     <string name="dx_wrapper">DX Wrapper</string>

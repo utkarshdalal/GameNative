@@ -197,6 +197,7 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
             SettingsListDropdown(
                 colors = settingsTileColors(),
                 title = { Text(text = stringResource(R.string.gl_backend)) },
+                subtitle = { Text(text = stringResource(R.string.gl_backend_description)) },
                 value = glBackends.indexOf(config.glBackend.lowercase()).coerceAtLeast(0),
                 items = listOf(
                     stringResource(R.string.gl_backend_auto),
