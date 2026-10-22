@@ -82,6 +82,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     private Container container;
     private File workingDir;
     private String mesaKopperLibDir;
+    private String mesaKopperVendorJson;
 
     public void setWineInfo(WineInfo wineInfo) {
         this.wineInfo = wineInfo;
@@ -193,6 +194,10 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
     public void setMesaKopperLibDir(String mesaKopperLibDir) {
         this.mesaKopperLibDir = mesaKopperLibDir;
+    }
+
+    public void setMesaKopperVendorJson(String mesaKopperVendorJson) {
+        this.mesaKopperVendorJson = mesaKopperVendorJson;
     }
 
     public String getBox64Preset() {
@@ -565,9 +570,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         String gsDir = context.getFilesDir().getPath() + "/gamescope";
         String ldPath = envVars.get("LD_LIBRARY_PATH");
         envVars.put("LD_LIBRARY_PATH", ldPath.isEmpty() ? mesaKopperLibDir : mesaKopperLibDir + ":" + ldPath);
-        envVars.remove("__EGL_VENDOR_LIBRARY_DIRS");
-        envVars.put("__EGL_VENDOR_LIBRARY_FILENAMES", gsDir + "/share/glvnd/egl_vendor.d/50_mesa.json:"
-                + mesaKopperLibDir + "/egl_vendor.d/60_mesa_kopper.json");
+        if (mesaKopperVendorJson != null) {
+            envVars.remove("__EGL_VENDOR_LIBRARY_DIRS");
+            envVars.put("__EGL_VENDOR_LIBRARY_FILENAMES", gsDir + "/share/glvnd/egl_vendor.d/50_mesa.json:"
+                    + mesaKopperVendorJson);
+        }
         envVars.put("WINE_USE_EGL", "1");
         envVars.put("MESA_LOADER_DRIVER_OVERRIDE", "zink");
         envVars.put("LIBGL_KOPPER_DRI2", "1");

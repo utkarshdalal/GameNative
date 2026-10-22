@@ -133,6 +133,11 @@
       "url": "https://downloads.gamenative.app/graphics_driver/mesa-kopper-20261023.2.tzst"
     },
     {
+      "id": "mesa_kopper_mali",
+      "name": "mesa-kopper-mali-20261023.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/mesa-kopper-mali-20261023.tzst"
+    },
+    {
       "id": "zink_dlls",
       "name": "zink_dlls.tzst",
       "url": "https://downloads.gamenative.app/graphics_driver/zink_dlls.tzst"

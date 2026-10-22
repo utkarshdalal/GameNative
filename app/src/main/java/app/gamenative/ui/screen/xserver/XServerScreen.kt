@@ -4389,7 +4389,11 @@ private fun setupXEnvironment(
             envVars.remove("GALLIUM_DRIVER")
             envVars.remove("LIBGL_KOPPER_DISABLE")
             if (guestProgramLauncherComponent is BionicProgramLauncherComponent) {
-                guestProgramLauncherComponent.setMesaKopperLibDir(File(ImageFs.find(context).rootDir, MESA_KOPPER_LIB_DIR).path)
+                val imageFsRoot = ImageFs.find(context).rootDir
+                guestProgramLauncherComponent.setMesaKopperLibDir(File(imageFsRoot, MESA_KOPPER_LIB_DIR).path)
+                guestProgramLauncherComponent.setMesaKopperVendorJson(
+                    mesaKopperPackage(context).vendorJson?.let { File(imageFsRoot, it).path },
+                )
             }
         }
         if (container.isLoadMods && !bootToContainer && !testGraphics) ModDllOverrides.apply(container, envVars)
@@ -6286,9 +6290,16 @@ private suspend fun extractWinComponentFiles(
     return failed
 }
 
-private const val MESA_KOPPER_COMPONENT_ID = "mesa_kopper"
 private const val MESA_KOPPER_LIB_DIR = "usr/lib/mesa-kopper"
-private const val MESA_KOPPER_VENDOR_JSON = "$MESA_KOPPER_LIB_DIR/egl_vendor.d/60_mesa_kopper.json"
+
+private enum class MesaKopperPackage(val componentId: String, val marker: String, val vendorJson: String?) {
+    GLVND("mesa_kopper", "$MESA_KOPPER_LIB_DIR/egl_vendor.d/60_mesa_kopper.json", "$MESA_KOPPER_LIB_DIR/egl_vendor.d/60_mesa_kopper.json"),
+    MALI("mesa_kopper_mali", "$MESA_KOPPER_LIB_DIR/libgallium-24.3.0-devel.so", null),
+}
+
+private fun mesaKopperPackage(context: Context): MesaKopperPackage =
+    if (GPUInformation.isAdrenoGPU(context)) MesaKopperPackage.GLVND else MesaKopperPackage.MALI
+
 private val PROTON_MAJOR_VERSION = Regex("""^proton-(\d+)""")
 
 private fun requestedGlBackend(container: Container, gamescopeSession: Boolean): String {
@@ -6307,8 +6318,8 @@ private fun requestedGlBackend(container: Container, gamescopeSession: Boolean):
 
 private fun resolveGlBackend(context: Context, container: Container, gamescopeSession: Boolean): String {
     if (requestedGlBackend(container, gamescopeSession) != Container.GL_BACKEND_KOPPER) return Container.GL_BACKEND_XLIB
-    val kopperVendor = File(ImageFs.find(context).rootDir, MESA_KOPPER_VENDOR_JSON)
-    return if (kopperVendor.isFile) Container.GL_BACKEND_KOPPER else Container.GL_BACKEND_XLIB
+    val marker = File(ImageFs.find(context).rootDir, mesaKopperPackage(context).marker)
+    return if (marker.isFile) Container.GL_BACKEND_KOPPER else Container.GL_BACKEND_XLIB
 }
 
 private suspend fun extractGraphicsDriverFiles(
@@ -6525,22 +6536,25 @@ private suspend fun extractGraphicsDriverFiles(
                 .contains("turnip") && isAdrenotoolsTurnip == "0"
         ) envVars.put("VK_ICD_FILENAMES", imageFs.getShareDir().path + "/vulkan/icd.d/freedreno_icd.aarch64.json")
         else envVars.put("VK_ICD_FILENAMES", imageFs.getShareDir().path + "/vulkan/icd.d/wrapper_icd.aarch64.json")
+        val kopperPackage = mesaKopperPackage(context)
         if (requestedGlBackend(container, gamescopeSession) == Container.GL_BACKEND_KOPPER) {
             try {
-                if (ALWAYS_REEXTRACT || !File(rootDir, MESA_KOPPER_VENDOR_JSON).isFile) {
+                if (ALWAYS_REEXTRACT || !File(rootDir, kopperPackage.marker).isFile) {
                     FileUtils.delete(File(rootDir, MESA_KOPPER_LIB_DIR))
-                    extractGraphicsDriverComponent(context, MESA_KOPPER_COMPONENT_ID, rootDir!!)
+                    extractGraphicsDriverComponent(context, kopperPackage.componentId, rootDir!!)
                 }
             } catch (e: Exception) {
-                Timber.tag("GraphicsDriverExtraction").e(e, "Failed to install $MESA_KOPPER_COMPONENT_ID, using xlib GL")
+                Timber.tag("GraphicsDriverExtraction").e(e, "Failed to install ${kopperPackage.componentId}, using xlib GL")
             }
         }
         if (resolveGlBackend(context, container, gamescopeSession) == Container.GL_BACKEND_KOPPER) {
             envVars.put("MESA_LOADER_DRIVER_OVERRIDE", "zink")
             envVars.put("LIBGL_KOPPER_DRI2", "1")
             envVars.put("WINE_USE_EGL", "1")
-            envVars.put("__EGL_VENDOR_LIBRARY_FILENAMES", File(rootDir, MESA_KOPPER_VENDOR_JSON).path)
-            envVars.put("__GLX_VENDOR_LIBRARY_NAME", "mesa")
+            kopperPackage.vendorJson?.let {
+                envVars.put("__EGL_VENDOR_LIBRARY_FILENAMES", File(rootDir, it).path)
+                envVars.put("__GLX_VENDOR_LIBRARY_NAME", "mesa")
+            }
         } else {
             envVars.put("GALLIUM_DRIVER", "zink")
             envVars.put("LIBGL_KOPPER_DISABLE", "true")
