@@ -572,8 +572,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("LD_LIBRARY_PATH", ldPath.isEmpty() ? mesaKopperLibDir : mesaKopperLibDir + ":" + ldPath);
         if (mesaKopperVendorJson != null) {
             envVars.remove("__EGL_VENDOR_LIBRARY_DIRS");
-            envVars.put("__EGL_VENDOR_LIBRARY_FILENAMES", gsDir + "/share/glvnd/egl_vendor.d/50_mesa.json:"
-                    + mesaKopperVendorJson);
+            envVars.put("__EGL_VENDOR_LIBRARY_FILENAMES", mesaKopperVendorJson + ":"
+                    + gsDir + "/share/glvnd/egl_vendor.d/50_mesa.json");
         }
         envVars.put("WINE_USE_EGL", "1");
         envVars.put("MESA_LOADER_DRIVER_OVERRIDE", "zink");
