@@ -55,7 +55,10 @@ object ContainerUtils {
             DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
             DefaultVersion.DXVK = if (GPUInformation.isAdreno6xx(context)) "1.11.1-sarek" else "2.4.1-gplasync"
             DefaultVersion.VKD3D = "2.14.1"
-            DefaultVersion.WRAPPER = WRAPPER_TURNIP_CAPABLE
+            // The bundled Turnip package has no device-table entries for the
+            // Adreno 710/720/732 family, so use the device's system driver.
+            DefaultVersion.WRAPPER =
+                if (GPUInformation.isAdreno710_720_732(context)) "System" else WRAPPER_TURNIP_CAPABLE
             DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_HEADLESS
             DefaultVersion.ASYNC_CACHE = "1"
         } else if (GPUInformation.isAdrenoA12(context)) {
