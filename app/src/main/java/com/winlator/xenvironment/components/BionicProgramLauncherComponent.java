@@ -514,8 +514,17 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("LD_PRELOAD", preload.isEmpty()
                 ? gsDir + "/lib/libgndrm_shim.so"
                 : preload + ":" + gsDir + "/lib/libgndrm_shim.so");
+        // The shim pulls in libandroid.so; on Samsung that reaches libsqlite.so, which needs the system (BoringSSL) libcrypto.so, not imagefs's OpenSSL 3.
+        String gamescopeLibPath = gsDir + "/lib";
+        File systemCrypto = new File("/system/lib64/libcrypto.so");
+        if (systemCrypto.exists()) {
+            File systemLibDir = new File(context.getFilesDir(), "gamescope_system_libs");
+            systemLibDir.mkdirs();
+            FileUtils.symlink(systemCrypto, new File(systemLibDir, "libcrypto.so"));
+            gamescopeLibPath = systemLibDir.getPath() + ":" + gamescopeLibPath;
+        }
         String libPath = envVars.get("LD_LIBRARY_PATH");
-        envVars.put("LD_LIBRARY_PATH", libPath.isEmpty() ? gsDir + "/lib" : gsDir + "/lib:" + libPath);
+        envVars.put("LD_LIBRARY_PATH", libPath.isEmpty() ? gamescopeLibPath : gamescopeLibPath + ":" + libPath);
         // gamescope execvp's gamescopereaper and wlroots spawns xkbcomp.
         String path = envVars.get("PATH");
         envVars.put("PATH", path.isEmpty() ? gsDir + "/bin" : gsDir + "/bin:" + path);
