@@ -329,14 +329,34 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("WINE_NEW_NDIS", "1");
 
         String ld_preload = "";
+        // Some vendor libandroid.so builds (notably Xiaomi's) depend on a system
+        // libjpeg-hyper.so whose jsimd symbols are supplied by the matching system
+        // libjpeg.so.  Our imagefs also ships libjpeg.so, and LD_LIBRARY_PATH puts
+        // it first for Wine dependencies.  Scope this workaround to Bionic Steam
+        // launches on devices that actually ship libjpeg-hyper, so unrelated Bionic
+        // Wine processes keep their existing imagefs libjpeg resolution.
+        boolean hasVendorJpegHyper = new File("/system_ext/lib64/libjpeg-hyper.so").exists()
+                || new File("/system_ext/lib/libjpeg-hyper.so").exists()
+                || new File("/vendor/lib64/libjpeg-hyper.so").exists()
+                || new File("/vendor/lib/libjpeg-hyper.so").exists();
+        String systemJpegPath = Build.SUPPORTED_64_BIT_ABIS.length > 0
+                ? "/system/lib64/libjpeg.so"
+                : "/system/lib/libjpeg.so";
+        if (container != null && container.isLaunchBionicSteam()
+                && hasVendorJpegHyper && new File(systemJpegPath).exists()) {
+            ld_preload += systemJpegPath;
+        }
         String sysvPath = imageFs.getLibDir() + "/libandroid-sysvshm.so";
         String evshimPath = context.getApplicationInfo().nativeLibraryDir + "/libevshim.so";
         String replacePath = resolveLibredirectPreload(imageFs);
 
-        if (new File(sysvPath).exists()) ld_preload += sysvPath;
+        if (new File(sysvPath).exists()) {
+            if (!ld_preload.isEmpty()) ld_preload += ":";
+            ld_preload += sysvPath;
+        }
 
-
-        ld_preload += ":" + evshimPath;
+        if (!ld_preload.isEmpty()) ld_preload += ":";
+        ld_preload += evshimPath;
         String dnsV4MappedPath = context.getApplicationInfo().nativeLibraryDir + "/libgamenative_dns_v4mapped.so";
         if (new File(dnsV4MappedPath).exists()) {
             ld_preload += ":" + dnsV4MappedPath;
