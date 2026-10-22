@@ -20,6 +20,9 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Iterator;
 
+import app.gamenative.display.GameNativeDrm;
+import app.gamenative.display.GamescopeCommandQueue;
+import app.gamenative.display.GamescopeServerComponent;
 import app.gamenative.powercontrol.PowerManager;
 import app.gamenative.service.SteamService;
 
@@ -117,6 +120,9 @@ public class XEnvironment implements Iterable<EnvironmentComponent> {
     }
 
     public void pauseGameProcesses() {
+        GamescopeServerComponent gamescopeServerComponent = getComponent(GamescopeServerComponent.class);
+        if (gamescopeServerComponent != null) gamescopeServerComponent.pause();
+
         GuestProgramLauncherComponent guestProgramLauncherComponent = getComponent(GuestProgramLauncherComponent.class);
         if (guestProgramLauncherComponent != null) guestProgramLauncherComponent.suspendProcess();
         GlibcProgramLauncherComponent glibcProgramLauncherComponent = getComponent(GlibcProgramLauncherComponent.class);
@@ -132,5 +138,8 @@ public class XEnvironment implements Iterable<EnvironmentComponent> {
         if (glibcProgramLauncherComponent != null) glibcProgramLauncherComponent.resumeProcess();
         BionicProgramLauncherComponent bionicProgramLauncherComponent = getComponent(BionicProgramLauncherComponent.class);
         if (bionicProgramLauncherComponent != null) bionicProgramLauncherComponent.resumeProcess();
+
+        GamescopeServerComponent gamescopeServerComponent = getComponent(GamescopeServerComponent.class);
+        if (gamescopeServerComponent != null) gamescopeServerComponent.resume();
     }
 }

@@ -50,6 +50,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.Monitor
 import androidx.compose.material.icons.filled.Mouse
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.QueryStats
@@ -83,7 +84,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Brush
@@ -100,10 +104,12 @@ import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.GyroSettings
+import app.gamenative.display.GameNativeDrm
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.ui.component.dialog.GyroSettingsDialog
 import app.gamenative.ui.component.dialog.OnScreenControllerSettingsDialog
 import app.gamenative.ui.component.dialog.ControlProfileLibraryDialog
+import app.gamenative.ui.component.quickMenus.GamescopeQuickMenuTab
 import app.gamenative.ui.component.quickMenus.PowerControlQuickMenuTab
 import app.gamenative.ui.data.PerformanceHudConfig
 import app.gamenative.ui.data.PerformanceHudSize
@@ -117,6 +123,7 @@ import com.winlator.renderer.VulkanRenderer
 import com.winlator.winhandler.ProcessInfo
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.io.File
 import kotlin.math.roundToInt
 
 object QuickMenuAction {
@@ -150,6 +157,7 @@ private object QuickMenuTab {
     const val IMMERSIVE = 5
     const val INVITE = 6
     const val POWER = 7
+    const val GAMESCOPE = 8
 }
 
 private class GyroQuickMenuState(private val container: Container) {
@@ -390,6 +398,7 @@ fun QuickMenu(
     renderer: VulkanRenderer? = null,
     glRenderer: GLRenderer? = null,
     container: Container? = null,
+    isGamescopeSession: Boolean = false,
     wineProcesses: List<ProcessInfo> = emptyList(),
     isWineProcessesLoading: Boolean = false,
     onToolsVisibilityChanged: (Boolean) -> Unit = {},
@@ -568,6 +577,9 @@ fun QuickMenu(
         mutableStateOf(container?.let { app.gamenative.utils.LsfgVkManager.backend(it) } ?: "native")
     }
 
+    // The effects tab drives the XServer renderer; a gamescope session applies its effects through
+    // the gamescope tab instead.
+    val hasEffectsTab = !isGamescopeSession && (renderer != null || glRenderer != null)
     var selectedTab by rememberSaveable {
         mutableIntStateOf(
             when {
@@ -575,6 +587,8 @@ fun QuickMenu(
                 PrefManager.quickMenuLastTab == QuickMenuTab.INVITE && inviteMenu == null -> QuickMenuTab.HUD
                 PrefManager.quickMenuLastTab == QuickMenuTab.POWER -> QuickMenuTab.HUD
                 PrefManager.quickMenuLastTab == QuickMenuTab.IMMERSIVE && immersiveControls == null -> QuickMenuTab.HUD
+                PrefManager.quickMenuLastTab == QuickMenuTab.GAMESCOPE && !isGamescopeSession -> QuickMenuTab.HUD
+                PrefManager.quickMenuLastTab == QuickMenuTab.EFFECTS && !hasEffectsTab -> QuickMenuTab.HUD
                 else -> PrefManager.quickMenuLastTab
             }
         )
@@ -586,6 +600,7 @@ fun QuickMenu(
         QuickMenuTab.TOOLS -> R.string.task_manager
         QuickMenuTab.INVITE -> R.string.steam_invite_tab_title
         QuickMenuTab.POWER -> R.string.power_control
+        QuickMenuTab.GAMESCOPE -> R.string.gamescope_tab_title
         QuickMenuTab.IMMERSIVE -> R.string.quick_menu_tab_immersive
         else -> R.string.quick_menu_tab_controller
     }
@@ -625,6 +640,9 @@ fun QuickMenu(
         }
     }
     val powerItemFocusRequester = remember { FocusRequester() }
+    val gamescopeScrollState = rememberScrollState()
+    val gamescopeTabFocusRequester = remember { FocusRequester() }
+    val gamescopeItemFocusRequester = remember { FocusRequester() }
     val immersiveScrollState = rememberScrollState()
     val immersiveTabFocusRequester = remember { FocusRequester() }
     val exitFocusRequester = remember { FocusRequester() }
@@ -645,13 +663,14 @@ fun QuickMenu(
 
     // Only the tabs actually shown in the rail, in on-screen order — mirrors the conditions each
     // QuickMenuTabButton below is gated on (isLsfgAvailable, a renderer being available, etc).
-    val availableTabs = remember(isLsfgAvailable, renderer, glRenderer, immersiveControls, inviteMenu)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           {
+    val availableTabs = remember(isLsfgAvailable, hasEffectsTab, immersiveControls, inviteMenu, isGamescopeSession)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           {
         buildList {
             add(QuickMenuTab.HUD)
             add(QuickMenuTab.POWER)
+            if (isGamescopeSession) add(QuickMenuTab.GAMESCOPE)
             if (isLsfgAvailable) add(QuickMenuTab.LSFG)
             if (inviteMenu != null) add(QuickMenuTab.INVITE)
-            if (renderer != null || glRenderer != null) add(QuickMenuTab.EFFECTS)
+            if (hasEffectsTab) add(QuickMenuTab.EFFECTS)
             add(QuickMenuTab.CONTROLLER)
             add(QuickMenuTab.TOOLS)
             if (immersiveControls != null) add(QuickMenuTab.IMMERSIVE)
@@ -665,6 +684,7 @@ fun QuickMenu(
         immersiveHooks?.registerFocusTabRail?.invoke {
             val requester = when (selectedTab) {
                 QuickMenuTab.HUD -> hudTabFocusRequester
+                QuickMenuTab.GAMESCOPE -> gamescopeTabFocusRequester
                 QuickMenuTab.LSFG -> lsfgTabFocusRequester
                 QuickMenuTab.EFFECTS -> effectsTabFocusRequester
                 QuickMenuTab.CONTROLLER -> controllerTabFocusRequester
@@ -772,10 +792,13 @@ fun QuickMenu(
             ),
             modifier = Modifier.align(Alignment.CenterStart),
         ) {
-            val panelWidth = if (selectedTab == QuickMenuTab.POWER) {
-                adaptivePanelWidth(800.dp, 0.95f)
-            } else {
-                adaptivePanelWidth(400.dp)
+            val panelWidth = when (selectedTab) {
+                // PowerControl is the widest tab (multi-column readouts).
+                QuickMenuTab.POWER -> adaptivePanelWidth(800.dp, 0.95f)
+                // Gamescope is narrower than PowerControl but wide enough for the
+                // Scaling Filter's six tick labels to sit unclipped under their stops.
+                QuickMenuTab.GAMESCOPE -> adaptivePanelWidth(500.dp, 0.9f)
+                else -> adaptivePanelWidth(400.dp)
             }
 
             Surface(
@@ -858,6 +881,20 @@ fun QuickMenu(
                                     modifier = Modifier.width(56.dp),
                                     focusRequester = powerTabFocusRequester,
                                 )
+                                if (isGamescopeSession) {
+                                    QuickMenuTabButton(
+                                        icon = Icons.Default.Monitor,
+                                        contentDescriptionResId = R.string.gamescope_tab_title,
+                                        selected = selectedTab == QuickMenuTab.GAMESCOPE,
+                                        accentColor = PluviaTheme.colors.accentPurple,
+                                        onSelected = {
+                                            selectedTab = QuickMenuTab.GAMESCOPE
+                                            PrefManager.quickMenuLastTab = selectedTab
+                                        },
+                                        modifier = Modifier.width(56.dp),
+                                        focusRequester = gamescopeTabFocusRequester,
+                                    )
+                                }
                                 if (isLsfgAvailable) {
                                     QuickMenuTabButton(
                                         icon = Icons.Default.Speed,
@@ -886,7 +923,7 @@ fun QuickMenu(
                                         focusRequester = inviteTabFocusRequester,
                                     )
                                 }
-                                if (renderer != null || glRenderer != null) {
+                                if (hasEffectsTab) {
                                     QuickMenuTabButton(
                                         icon = Icons.Default.AutoFixHigh,
                                         contentDescriptionResId = R.string.screen_effects,
@@ -1014,17 +1051,18 @@ fun QuickMenu(
                                             onFlowScaleChanged = onLsfgFlowScaleChanged,
                                             onPerformanceModeChanged = onLsfgPerformanceModeChanged,
                                             backend = lsfgBackend,
+                                            showBackend = !isGamescopeSession,
                                             onBackendChanged = { backend ->
                                                 lsfgBackend = backend
                                                 container?.let {
-                                                    app.gamenative.utils.LsfgQuickMenuHelper.applyBackend(it, backend)
+                                                    app.gamenative.utils.LsfgQuickMenuHelper.applyBackend(it, backend, !isGamescopeSession)
                                                 }
                                             },
                                             presentMode = lsfgPresentMode,
                                             onPresentModeChanged = { mode ->
                                                 lsfgPresentMode = mode
                                                 container?.let {
-                                                    app.gamenative.utils.LsfgQuickMenuHelper.applyPresentMode(it, mode)
+                                                    app.gamenative.utils.LsfgQuickMenuHelper.applyPresentMode(it, mode, !isGamescopeSession)
                                                 }
                                             },
                                             scrollState = lsfgScrollState,
@@ -1079,6 +1117,15 @@ fun QuickMenu(
                                     QuickMenuTab.POWER -> {
                                         PowerControlQuickMenuTab(
                                             focusRequester = powerItemFocusRequester,
+                                            modifier = Modifier.fillMaxSize(),
+                                        )
+                                    }
+
+                                    QuickMenuTab.GAMESCOPE -> {
+                                        GamescopeQuickMenuTab(
+                                            container = container,
+                                            scrollState = gamescopeScrollState,
+                                            focusRequester = gamescopeItemFocusRequester,
                                             modifier = Modifier.fillMaxSize(),
                                         )
                                     }
@@ -1278,6 +1325,7 @@ fun QuickMenu(
                         QuickMenuTab.INVITE -> inviteItemFocusRequester.requestFocus()
                         QuickMenuTab.EFFECTS -> effectsItemFocusRequester.requestFocus()
                         QuickMenuTab.POWER -> powerItemFocusRequester.requestFocus()
+                        QuickMenuTab.GAMESCOPE -> gamescopeItemFocusRequester.requestFocus()
                         QuickMenuTab.TOOLS -> toolsItemFocusRequester.requestFocus()
                         QuickMenuTab.IMMERSIVE -> immersiveItemFocusRequester.requestFocus()
                         else -> controllerItemFocusRequester.requestFocus()
@@ -1788,6 +1836,8 @@ private fun LsfgQuickMenuTab(
     onPerformanceModeChanged: (Boolean) -> Unit,
     backend: String,
     onBackendChanged: (String) -> Unit,
+    /** Hidden for a gamescope session: the presenter owns the engine there, so there is no choice. */
+    showBackend: Boolean,
     presentMode: String,
     onPresentModeChanged: (String) -> Unit,
     scrollState: ScrollState,
@@ -1888,25 +1938,27 @@ private fun LsfgQuickMenuTab(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 // ── Backend (Legacy layer / Native renderer) ──────────────
-                QuickMenuSectionHeader(
-                    title = stringResource(R.string.lsfg_backend),
-                    subtitle = stringResource(R.string.lsfg_backend_desc),
-                )
-                Row(
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    listOf(
-                        "native" to stringResource(R.string.lsfg_backend_native),
-                        "legacy" to stringResource(R.string.lsfg_backend_legacy),
-                    ).forEach { (value, label) ->
-                        QuickMenuChoiceChip(
-                            text = label,
-                            selected = backend == value,
-                            accentColor = accentColor,
-                            onClick = { onBackendChanged(value) },
-                            modifier = Modifier.width(120.dp),
-                        )
+                if (showBackend) {
+                    QuickMenuSectionHeader(
+                        title = stringResource(R.string.lsfg_backend),
+                        subtitle = stringResource(R.string.lsfg_backend_desc),
+                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        listOf(
+                            "native" to stringResource(R.string.lsfg_backend_native),
+                            "legacy" to stringResource(R.string.lsfg_backend_legacy),
+                        ).forEach { (value, label) ->
+                            QuickMenuChoiceChip(
+                                text = label,
+                                selected = backend == value,
+                                accentColor = accentColor,
+                                onClick = { onBackendChanged(value) },
+                                modifier = Modifier.width(120.dp),
+                            )
+                        }
                     }
                 }
             }
@@ -2049,7 +2101,7 @@ private fun ImmersiveQuickMenuTab(
 }
 
 @Composable
-private fun QuickMenuSectionHeader(
+internal fun QuickMenuSectionHeader(
     title: String,
     subtitle: String? = null,
     modifier: Modifier = Modifier,
@@ -2264,7 +2316,7 @@ private fun QuickMenuRailActionButton(
 }
 
 @Composable
-private fun QuickMenuChoiceChip(
+internal fun QuickMenuChoiceChip(
     text: String,
     selected: Boolean,
     accentColor: Color,

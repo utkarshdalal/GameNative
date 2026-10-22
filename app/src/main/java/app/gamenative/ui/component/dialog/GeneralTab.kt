@@ -275,6 +275,7 @@ fun GeneralTabContent(
                         state.config.value = config.copy(wineVersion = selectedId.ifEmpty { state.bionicWineOptions.labels[idx] })
                     },
                 )
+
             }
         }
         ExecutablePathDropdown(
