@@ -81,7 +81,7 @@ GameNative's performance control system provides CPU and GPU tuning capabilities
    - Location: `PowerProfile.kt`
    - Serializable data class representing a complete performance configuration
    - Fields (all mutable `var`):
-     - `enableAutoTuning: Boolean` - Enable automatic performance tuning (default: false)
+     - `autoTuningMode: AutoTuningMode` - `AUTO` (continuous PID tuning), `MANUAL` (locked governor/frequencies), or `OFF` (frequency control handed back to the OS) - default: `AUTO`
      - `name: String` - Profile name (e.g., "Balanced", "Performance", "Custom")
      - `governor: CpuGovernor` - CPU governor enum
      - `minCpuFreq: Long` - Minimum CPU frequency/level
@@ -120,7 +120,7 @@ GameNative's performance control system provides CPU and GPU tuning capabilities
      - Usage high threshold: 85% (increase performance)
      - Performance range: 20-100%
    - **Tuning Cycle**: Runs every 2 seconds on background thread
-   - **Integration**: Enabled via `PowerProfile.enableAutoTuning` flag
+   - **Integration**: Runs while `PowerProfile.autoTuningMode == AutoTuningMode.AUTO`
 
 8. **PidController** (Control Theory)
    - Location: `autotuning/PidController.kt`
@@ -146,8 +146,8 @@ GameNative's performance control system provides CPU and GPU tuning capabilities
 - ✅ **CPU Pinning / Process Affinity Control**:
   - ~~Automatic app process pinning to efficiency cores~~ (Removed due to possible ANR happening)
   - Automatic PulseAudio pinning to dedicated performance core
-  - Wine game process pinning with retry logic
-  - Wine infrastructure pinning (wineserver, winhandler, services.exe)
+  - Wine game process pinning, kept in place by a watchdog
+  - Wine infrastructure pinning (wineserver and Wine's own processes), with a watchdog for late starters
   - Cluster-based core selection (EFFICIENCY, PERFORMANCE, PRIME)
   - Wine-aware PID discovery via `/proc/cmdline` scanning
 
@@ -217,26 +217,29 @@ The PServerDriver automatically handles CPU pinning when started/stopped:
 
 Game processes and Wine infrastructure are pinned via PowerManager methods:
 
+*Auto core split:* the background group (Wine, PulseAudio, the watchdogs) gets the whole EFFICIENCY
+cluster and the game every other core (RP6: 0-2 and 3-7). Without an efficiency cluster, or when it
+holds more than half the cores, the 2 lowest-frequency cores go to the background instead.
+
 *Game Process Pinning:*
 ```kotlin
-PowerManager.pinGameWithRetry(
-    processName = "DaveTheDiver.exe",
-    maxRetries = 10,
-    retryDelayMs = 1000
-)
+PowerManager.pinGameWithRetry(processName = "DaveTheDiver.exe")
 ```
-- Uses Wine-aware PID discovery (scans `/proc/cmdline` for `.exe` processes)
-- Retries up to 10 times with 1 second delay
-- Pins to PERFORMANCE + PRIME cores (CPUs 3-7 on typical devices)
-- Logs success/failure with attempt count
+- Finds the game by the executable its `/proc/<pid>/cmdline` runs, case-insensitively
+- A watchdog keeps it pinned for the whole session: every 2 seconds it checks every game thread's allowed
+  CPUs and re-pins the ones that left, through the winhandler and then root `taskset` per thread
+- On Qualcomm core_ctl, pausing a CPU moves threads allowed only paused CPUs onto all of them; when that
+  could hit every game core (e.g. the prime core alone), `min_cpus` of their clusters is raised while pinned
 
 *Wine Infrastructure Pinning:*
 ```kotlin
-PowerManager.pinWineInfrastructure()
+PowerManager.pinBackgroundProcesses()
 ```
-- **wineserver** → PERFORMANCE cores (CPUs 3-6) - Critical for Wine IPC
-- **winhandler.exe** → PERFORMANCE + PRIME cores (CPUs 4-7) - Window management
-- **services.exe** → First 2 PERFORMANCE cores (CPUs 3-4) - Windows services
+- wineserver, the Steam bootstrap and Wine's own processes (run from the Windows directory, or winhandler,
+  services, explorer, ...) go onto the background cores; other `.exe`s stay out, since a game started by a
+  launcher runs under another name
+- A watchdog re-checks the group every 5 seconds and pins processes started later
+- Both watchdogs run at the lowest priority on the background cores
 - Waits 2 seconds for Wine to fully initialize
 - Logs each process pinning result
 
@@ -307,15 +310,11 @@ val executableName = container.executablePath
     .takeIf { it.isNotEmpty() }
     ?.let { name ->
         val baseName = name.substringBefore(".exe", name)
-        PowerManager.pinGameWithRetry(
-            processName = "$baseName.exe",
-            maxRetries = 10,
-            retryDelayMs = 1000
-        )
+        PowerManager.pinGameWithRetry(processName = "$baseName.exe")
     }
 
 // Pin Wine infrastructure
-PowerManager.pinWineInfrastructure()
+PowerManager.pinBackgroundProcesses()
 ```
 
 **Expected Logs:**
@@ -820,12 +819,14 @@ else {
 3. **PowerManager** → Creates `PerformanceAutoTuner` with callbacks:
    - `onCpuFrequencyChange(freq)` → Calls `setMinCpuValue()` and `setMaxCpuValue()`
    - `onGpuLevelChange(level)` → Calls `setMinGpuPowerLevel()` and `setMaxGpuPowerLevel()`
-4. **PowerProfile** → `enableAutoTuning` flag controls auto-tuner lifecycle
+4. **PowerProfile** → `autoTuningMode` controls auto-tuner lifecycle
 
 **UI Behavior:**
-- When auto-tuning is enabled, manual CPU/GPU controls are hidden
-- Auto-tuning toggle is only shown when driver supports both CPU and GPU control
-- Profile name changes to "Custom" when auto-tuning is toggled
+- Auto-Tuning is a 3-state selector: **Auto** (PID tuner runs, manual CPU/GPU/governor controls hidden),
+  **Manual** (governor + CPU/GPU/RAM sliders shown, tuner stopped), **Off** (frequency control handed back
+  to the OS - governor selector and manual sliders are both hidden)
+- The 3-state selector is only shown when driver supports both CPU and GPU control
+- Profile name changes to "Custom" when auto-tuning mode is changed
 
 **Performance Characteristics:**
 

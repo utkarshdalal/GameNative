@@ -2429,8 +2429,6 @@ fun XServerScreen(
                                     val baseName = name.replace(Regex("\\.exe$", RegexOption.IGNORE_CASE), "")
                                     PowerManager.pinGameWithRetry(
                                         processName = "$baseName.exe",
-                                        maxRetries = 10,
-                                        retryDelayMs = 5000
                                     )
                                     Timber.tag("XServerScreen").i("Initiated CPU pinning for: $baseName.exe")
                                 }
