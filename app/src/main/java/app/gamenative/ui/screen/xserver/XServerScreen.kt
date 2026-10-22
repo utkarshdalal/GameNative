@@ -2411,8 +2411,13 @@ fun XServerScreen(
                             }
                             if (isGamescopeSession) {
                                 runBlocking {
+                                    var lastPercent = -1
                                     GamescopePayload.ensure(context) { progress ->
-                                        Timber.d("Downloading gamescope payload: ${(progress * 100).toInt()}%")
+                                        val percent = (progress * 100).toInt()
+                                        if (percent != lastPercent) {
+                                            lastPercent = percent
+                                            Timber.d("Downloading gamescope payload: $percent%")
+                                        }
                                     }
                                 }
                             }
