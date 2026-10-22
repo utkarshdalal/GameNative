@@ -154,7 +154,13 @@ public class WineInfo implements Parcelable {
         ContentProfile wineProfile = contentsManager.getProfileByEntryName(identifier);
 
         if (wineProfile != null && (wineProfile.type == ContentProfile.ContentType.CONTENT_TYPE_WINE || wineProfile.type == ContentProfile.ContentType.CONTENT_TYPE_PROTON)) {
-            identifier = identifier.substring(0, identifier.length() - 2).toLowerCase();
+            // Entry names are "<type>-<versionName>-<versionCode>" (ContentsManager.getEntryName).
+            // Strip the version-code suffix at the LAST dash: the old fixed 2-character cut only
+            // worked for single-digit codes, so an installed layer with versionCode >= 10 failed the
+            // regex below and silently fell back to the bundled main Wine.
+            int cut = identifier.lastIndexOf('-');
+            if (cut > 0) identifier = identifier.substring(0, cut);
+            identifier = identifier.toLowerCase();
         }
 
         Matcher matcher = pattern.matcher(identifier);

@@ -44,11 +44,21 @@ object SupportProgressText {
         }
     }
 
+    fun buildingLine(res: Resources, progress: SupportApi.Progress, nowWall: Long): String {
+        val minutes = elapsedMinutes(progress, nowWall)
+        return if (minutes == null) {
+            res.getString(R.string.support_progress_building)
+        } else {
+            res.getString(R.string.support_progress_building_elapsed, minutes)
+        }
+    }
+
     fun line(res: Resources, progress: SupportApi.Progress?, nowElapsed: Long, nowWall: Long): String? {
         if (progress == null) return null
         return when (progress.stage) {
             SupportApi.STAGE_QUEUED -> queuedLine(res, progress, nowElapsed)
             SupportApi.STAGE_ANALYSING -> analysingLine(res, progress, nowWall)
+            SupportApi.STAGE_BUILDING -> buildingLine(res, progress, nowWall)
             SupportApi.STAGE_FAILED -> res.getString(R.string.support_progress_failed)
             else -> null
         }
@@ -75,6 +85,7 @@ object SupportProgressText {
                     res.getString(R.string.support_stage_analysing_elapsed, minutes)
                 }
             }
+            SupportApi.STAGE_BUILDING -> res.getString(R.string.support_stage_building)
             SupportApi.STAGE_FAILED -> res.getString(R.string.support_stage_failed)
             else -> null
         }

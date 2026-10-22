@@ -14,7 +14,10 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import app.gamenative.data.EulaInfo
 import app.gamenative.data.GameSource
+import app.gamenative.data.SteamApp
+import app.gamenative.data.filterForCountry
 import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.enums.AppTheme
 import app.gamenative.ui.enums.AppFilter
@@ -115,6 +118,7 @@ object PrefManager {
                 pref.remove(STEAM_USER_STEAM_ID_64)
                 pref.remove(STEAM_USER_AVATAR_HASH)
                 pref.remove(STEAM_USER_NAME)
+                pref.remove(STEAM_IP_COUNTRY_CODE)
                 pref.remove(LAST_PICS_CHANGE_NUMBER)
                 pref.remove(STEAM_GAMES_COUNT)
                 pref.remove(PREFERRED_FAMILY_LENDERS_JSON)
@@ -863,6 +867,13 @@ object PrefManager {
             setPref(CELL_ID_MANUALLY_SET, value)
         }
 
+    private val STEAM_IP_COUNTRY_CODE = stringPreferencesKey("steam_ip_country_code")
+    var steamIpCountryCode: String
+        get() = getPref(STEAM_IP_COUNTRY_CODE, "")
+        set(value) {
+            setPref(STEAM_IP_COUNTRY_CODE, value)
+        }
+
     private val USER_NAME = stringPreferencesKey("user_name")
     var username: String
         get() = getPref(USER_NAME, "")
@@ -1135,6 +1146,20 @@ object PrefManager {
             setPref(DISCORD_OAUTH_NONCE, value)
         }
 
+    private val DISCORD_MERGE_PENDING = booleanPreferencesKey("discord_merge_pending")
+    var discordMergePending: Boolean
+        get() = getPref(DISCORD_MERGE_PENDING, false)
+        set(value) {
+            setPref(DISCORD_MERGE_PENDING, value)
+        }
+
+    private val DISCORD_LINKED_NAME = stringPreferencesKey("discord_linked_name")
+    var discordLinkedName: String
+        get() = getPref(DISCORD_LINKED_NAME, "")
+        set(value) {
+            setPref(DISCORD_LINKED_NAME, value)
+        }
+
     private val SUPPORT_LAST_SEEN = stringPreferencesKey("support_last_seen")
     var supportLastSeen: String
         get() = getPref(SUPPORT_LAST_SEEN, "")
@@ -1315,6 +1340,24 @@ object PrefManager {
         get() = getPref(CUSTOM_GAMES_COUNT, 0)
         set(value) {
             setPref(CUSTOM_GAMES_COUNT, value)
+        }
+
+    // cached parental control allowed app IDs for the last logged-in account.
+    // Stored as "<steamid64>|<comma-separated ids>" so a different account never inherits them.
+    private val PARENTAL_ALLOWED_APP_IDS = stringPreferencesKey("parental_allowed_app_ids")
+    var parentalAllowedAppIds: Set<Int>?
+        get() {
+            val raw = getPref(PARENTAL_ALLOWED_APP_IDS, "")
+            val sep = raw.indexOf('|')
+            if (sep < 0) return null
+            if (raw.substring(0, sep).toLongOrNull() != steamUserSteamId64) return null
+            return raw.substring(sep + 1).split(',').mapNotNull { it.toIntOrNull() }.toSet()
+        }
+        set(value) {
+            setPref(
+                PARENTAL_ALLOWED_APP_IDS,
+                if (value == null) "" else "$steamUserSteamId64|${value.joinToString(",")}",
+            )
         }
 
     private val STEAM_GAMES_COUNT = intPreferencesKey("steam_games_count")
@@ -1613,6 +1656,14 @@ object PrefManager {
             setPref(CUSTOM_GAME_MANUAL_FOLDERS, Json.encodeToString(value))
         }
 
+    // Steam Controller (2026 "Triton") BLE support. OFF by default: enabling it makes every game launch connect to
+    // the controller over BLE, which is pure overhead (and a runtime BT-permission prompt) for anyone without the
+    // hardware. The settings switch requests the Bluetooth permissions before it can be turned on.
+    private val STEAM_CONTROLLER_ENABLED = booleanPreferencesKey("steam_controller_enabled")
+    var steamControllerEnabled: Boolean
+        get() = getPref(STEAM_CONTROLLER_ENABLED, false)
+        set(value) = setPref(STEAM_CONTROLLER_ENABLED, value)
+
     private val FAVORITE_APP_IDS = stringPreferencesKey("favorite_app_ids")
     var favoriteAppIds: Set<String>
         get() {
@@ -1643,6 +1694,39 @@ object PrefManager {
                 }
             }
         }
+
+    private val ACCEPTED_STEAM_EULAS = stringPreferencesKey("accepted_steam_eulas")
+    val acceptedSteamEulas: Set<String>
+        get() {
+            val value = getPref(ACCEPTED_STEAM_EULAS, "[]")
+            return try {
+                Json.decodeFromString<Set<String>>(value)
+            } catch (e: Exception) {
+                emptySet()
+            }
+        }
+
+    fun getPendingSteamEulas(app: SteamApp): List<EulaInfo> {
+        if (app.eulas.isEmpty()) return emptyList()
+        val accepted = acceptedSteamEulas
+        return app.eulas
+            .filterForCountry(steamIpCountryCode)
+            .filter { it.acceptanceKey !in accepted }
+    }
+
+    fun markSteamEulasAccepted(eulas: List<EulaInfo>) {
+        if (eulas.isEmpty()) return
+        runBlocking {
+            dataStore.edit { pref ->
+                val current = try {
+                    Json.decodeFromString<Set<String>>(pref[ACCEPTED_STEAM_EULAS] ?: "[]")
+                } catch (e: Exception) {
+                    emptySet()
+                }
+                pref[ACCEPTED_STEAM_EULAS] = Json.encodeToString(current + eulas.map { it.acceptanceKey })
+            }
+        }
+    }
 
     // Add new setting for Wine debug logging
     private val ENABLE_WINE_DEBUG = booleanPreferencesKey("enable_wine_debug")
@@ -1790,6 +1874,32 @@ object PrefManager {
                 )
             }
         }
+
+    /**
+     * The [app.gamenative.service.download.SteamDownloadMode] an interrupted download of [appId]
+     * was started with, so a resume keeps its intent (a verify stays a verify instead of becoming
+     * an update). Deliberately NOT a database column: a new column means a schema version bump, and
+     * a version bump makes every build on an older version fail to open the database ("migration
+     * from N to N-1 was required") — which is exactly the state a developer switching between
+     * branches must not be trapped in. This is transient per-app state, so DataStore is its home.
+     */
+    fun steamDownloadMode(appId: Int): String? =
+        getPref(stringPreferencesKey("steam_dl_mode_$appId"), "").ifEmpty { null }
+
+    /**
+     * Records the mode and SUSPENDS until it is applied. The fire-and-forget [setPref] would return
+     * before the edit lands, and the run reads the value back on resume: a lost write silently
+     * turns an interrupted VERIFY (or INSTALL) into an UPDATE, which is the bug the mode split
+     * exists to prevent, so callers must not race it.
+     */
+    suspend fun setSteamDownloadMode(appId: Int, mode: String) {
+        dataStore.edit { pref -> pref[stringPreferencesKey("steam_dl_mode_$appId")] = mode }
+    }
+
+    /** Clears the recorded mode, suspending until it is applied (see above). */
+    suspend fun clearSteamDownloadMode(appId: Int) {
+        dataStore.edit { pref -> pref.remove(stringPreferencesKey("steam_dl_mode_$appId")) }
+    }
 
     fun setPreferredFamilyLender(appId: Int, lenderSteamId: Long?) {
         scope.launch {

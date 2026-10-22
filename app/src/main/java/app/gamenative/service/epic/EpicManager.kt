@@ -1149,9 +1149,13 @@ class EpicManager @Inject constructor(
                 val local = File(installDir, f.filename)
                 local.isFile && local.length() == f.fileSize
             }
+            val meta = manifest.meta.takeIf { matches }
             val state = EpicInstallState(
-                buildVersion = if (matches) manifest.meta?.buildVersion ?: "" else "",
+                buildVersion = meta?.buildVersion ?: "",
                 language = containerLanguage,
+                prereqIds = meta?.prereqIds.orEmpty(),
+                prereqName = meta?.prereqName.orEmpty(),
+                prereqPath = meta?.prereqPath.orEmpty(),
             )
             EpicInstallState.write(installPath, state)
             Timber.tag("Epic").i("Backfilled install state for ${game.appName}: matchesLatest=$matches version=${state.buildVersion}")

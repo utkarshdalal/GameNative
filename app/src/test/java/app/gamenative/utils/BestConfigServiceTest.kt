@@ -335,7 +335,7 @@ class BestConfigServiceTest {
     }
 
     @Test
-    fun testKnownConfigAppliesSteamClientAndSteamType() {
+    fun testKnownConfigAppliesSteamClientButNotSteamType() {
         val configJson = """
             {
                 "dxwrapper": "dxvk",
@@ -344,7 +344,7 @@ class BestConfigServiceTest {
                 "box64Version": "0.3.6",
                 "wineVersion": "proton-9.0-x86_64",
                 "launchRealSteam": true,
-                "steamType": "headless"
+                "steamType": "normal"
             }
         """.trimIndent()
 
@@ -352,10 +352,10 @@ class BestConfigServiceTest {
         val parsed = runBlocking { BestConfigService.parseConfigResult(context, bestConfig, "exact_gpu_match", true) }
 
         assertEquals(true, parsed.config["launchRealSteam"])
-        assertEquals("headless", parsed.config["steamType"])
+        assertFalse(parsed.config.containsKey("steamType"))
 
         val updated = ContainerUtils.applyBestConfigMapToContainerData(
-            containerData = ContainerData(launchRealSteam = false, steamType = Container.STEAM_TYPE_NORMAL),
+            containerData = ContainerData(launchRealSteam = false, steamType = Container.STEAM_TYPE_HEADLESS),
             bestConfigMap = parsed.config,
         )
 
@@ -651,6 +651,39 @@ class BestConfigServiceTest {
         val result = runBlocking { BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true) }
 
         assertTrue("Result should not be null", result!!.isEmpty())
+    }
+
+    @Test
+    fun testUnknownFexcorePreset_forceApplyDefaultsPresetAndKeepsOtherKeys() {
+        val configJson = """
+            {
+                "wineVersion": "proton-9.0-arm64ec",
+                "dxwrapper": "dxvk",
+                "dxwrapperConfig": "version=2.4.1,framerate=0,maxDeviceMemory=0,async=1,asyncCache=0",
+                "containerVariant": "bionic",
+                "box64Version": "0.3.6",
+                "emulator": "FEXCore",
+                "fexcorePreset": "CUSTOM-1",
+                "launchRealSteam": true,
+                "steamType": "headless"
+            }
+        """.trimIndent()
+
+        val bestConfig = Json.parseToJsonElement(configJson).jsonObject
+
+        val rejected = runBlocking { BestConfigService.parseConfigResult(context, bestConfig, "exact_gpu_match", true) }
+        assertTrue(rejected.config.isEmpty())
+        assertEquals(listOf("FEXCore preset CUSTOM-1"), rejected.missingComponents)
+
+        val forced = runBlocking {
+            BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true, forceApply = true)
+        }
+
+        assertNotNull(forced)
+        assertEquals(PrefManager.fexcorePreset, forced!!["fexcorePreset"])
+        assertEquals(true, forced["launchRealSteam"])
+        assertEquals("FEXCore", forced["emulator"])
+        assertEquals("proton-9.0-arm64ec", forced["wineVersion"])
     }
 
     /**
@@ -1083,6 +1116,24 @@ class BestConfigServiceTest {
     }
 
     @Test
+    fun arm64EcBox64SelectionUsesWowBox64Only() {
+        assertFalse(BestConfigService.usesNativeBox64("proton-10.0-arm64ec-2"))
+        assertTrue(BestConfigService.usesWowBox64("proton-10.0-arm64ec-2", "Box64"))
+    }
+
+    @Test
+    fun arm64EcFexSelectionUsesNeitherBox64Profile() {
+        assertFalse(BestConfigService.usesNativeBox64("proton-11.0-arm64ec"))
+        assertFalse(BestConfigService.usesWowBox64("proton-11.0-arm64ec", "FEXCore"))
+    }
+
+    @Test
+    fun x86_64WineUsesNativeBox64Only() {
+        assertTrue(BestConfigService.usesNativeBox64("proton-9.0-x86_64"))
+        assertFalse(BestConfigService.usesWowBox64("proton-9.0-x86_64", "Box64"))
+    }
+
+    @Test
     fun fallbackFilter_keepsRuntimeVariantButRemovesGpuSpecificSettings() {
         val config = Json.parseToJsonElement(
             """{
@@ -1128,4 +1179,3 @@ class BestConfigServiceTest {
         }
     }
 }
-

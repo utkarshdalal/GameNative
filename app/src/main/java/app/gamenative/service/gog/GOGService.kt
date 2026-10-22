@@ -476,6 +476,12 @@ class GOGService : Service() {
          * Delegates to GOGManager.deleteGame
          */
         suspend fun deleteGame(context: Context, libraryItem: LibraryItem): Result<Unit> {
+            // the close-time upload reads the dir we are about to delete; see CloseSyncTracker.
+            // derive the key the same way the reserve side does -- a container id can carry a
+            // duplicate suffix ("GOG_123(1)") that keyOf strips, and a raw id would then miss the wait.
+            app.gamenative.service.cloud.CloseSyncTracker.awaitIdle(
+                app.gamenative.service.cloud.CloseSyncTracker.keyOf(GameSource.GOG, libraryItem.gameId),
+            )
             return getInstance()?.gogManager?.deleteGame(context, libraryItem)
                 ?: Result.failure(Exception("Service not available"))
         }

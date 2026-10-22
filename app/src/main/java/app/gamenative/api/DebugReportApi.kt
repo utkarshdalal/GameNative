@@ -1,5 +1,6 @@
 package app.gamenative.api
 
+import app.gamenative.utils.DebugReportUtils
 import app.gamenative.utils.PlayIntegrity
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -60,6 +61,20 @@ object DebugReportApi {
                     logcatFile.asRequestBody("application/gzip".toMediaType()),
                 )
             }
+            DebugReportUtils.cpuProfileBeside(perfFile)?.let { cpuProfile ->
+                bodyBuilder.addFormDataPart(
+                    "cpu_profile",
+                    DebugReportUtils.CPU_PROFILE_FILE,
+                    cpuProfile.asRequestBody("application/json".toMediaType()),
+                )
+            }
+            DebugReportUtils.exitTraceBeside(logFile)?.let { trace ->
+                bodyBuilder.addFormDataPart(
+                    "exit_trace",
+                    DebugReportUtils.EXIT_TRACE_FILE,
+                    trace.asRequestBody("text/plain".toMediaType()),
+                )
+            }
             val body = bodyBuilder.build()
 
             val integrityToken = PlayIntegrity.requestToken(headerString.toByteArray())
@@ -68,6 +83,7 @@ object DebugReportApi {
                 .url("$RELAY_BASE_URL/api/debug-report")
                 .post(body)
                 .header("Authorization", "Bearer $relayToken")
+                .header(SupportApi.FEATURES_HEADER, SupportApi.FEATURES)
 
             if (integrityToken != null) {
                 builder.header("X-Integrity-Token", integrityToken)

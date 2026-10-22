@@ -101,6 +101,7 @@ import app.gamenative.utils.ManifestData
 import app.gamenative.utils.ManifestEntry
 import app.gamenative.utils.ManifestInstaller
 import app.gamenative.service.SteamService
+import app.gamenative.service.download.SteamDownloadMode
 import app.gamenative.utils.ManifestComponentHelper.VersionOptionList
 import app.gamenative.utils.ManifestRepository
 import app.gamenative.utils.PaddingUtils
@@ -146,9 +147,16 @@ internal fun winComponentsItemTitleRes(string: String): Int {
         "directplay" -> R.string.directplay
         "directshow" -> R.string.directshow
         "directx" -> R.string.directx
+        "vcrun2005" -> R.string.vcrun2005
+        "vcrun2008" -> R.string.vcrun2008
         "vcrun2010" -> R.string.vcrun2010
+        "vcrun2012" -> R.string.vcrun2012
+        "vcrun2013" -> R.string.vcrun2013
+        "vcrun2022" -> R.string.vcrun2022
+        "xaudio" -> R.string.xaudio
         "wmdecoder" -> R.string.wmdecoder
         "opengl" -> R.string.opengl
+        "physx" -> R.string.physx
         else -> throw IllegalArgumentException("No string res found for Win Components title: $string")
     }
 }
@@ -549,7 +557,7 @@ fun ContainerConfigDialog(
 
         fun launchSteamAppDownload(appId: Int, label: String, onDownloaded: () -> Unit) {
             if (manifestInstallInProgress) return
-            val downloadInfo = SteamService.downloadApp(appId) ?: run {
+            val downloadInfo = SteamService.downloadApp(appId, SteamDownloadMode.UPDATE) ?: run {
                 onDownloaded()
                 return
             }

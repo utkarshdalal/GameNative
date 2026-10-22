@@ -17,7 +17,7 @@ This README is the map of how the whole thing fits together.
 | `store_dl/steam/depot_downloader.rs` | Steam orchestration: manifests, depot keys, DLC/redist depots, cache validation |
 | `store_dl/steam/depot_writer.rs` | Steam depot pipeline: verify/resume, chunk dispatch, ordered writes, stall watchdog |
 | `store_dl/steam/cdn_client.rs` / `cdn_probe.rs` | Steam CDN client (manifest/chunk GETs) and throughput-based server probing (spawned lazily on the first downloaded byte) |
-| `store_dl/steam/depot_chunk.rs` / `crypto.rs` | Steam chunk decrypt + decompress (`content_manifest.rs`, `proto_wire.rs` + `pb/` parse the manifests; `depot_config.rs` keeps depot metadata + the resume journal) |
+| `store_dl/steam/depot_chunk.rs` / `crypto.rs` | Steam chunk decrypt + decompress (`content_manifest.rs`, `proto_wire.rs` + `pb/` parse the manifests; `depot_config.rs` is the manifest store — see §4) |
 | `store_dl/gog/` | GOG engine (gen1 range-GETs + gen2 chunked galaxy builds, multi-mirror CDN pool) |
 | `store_dl/epic/` | Epic engine (per-(file, part) fetching, streamed writes, selective verified resume) |
 | `store_dl/amazon.rs` | Amazon engine (whole-file streaming) |
@@ -63,6 +63,28 @@ on exFAT/FUSE SD cards forces the filesystem to zero-fill the gap, which wedges 
   creates only directories and symlinks — regular files are created on first write (and
   0-chunk files at finalize), so download start and later deletion stay cheap on
   FUSE/sdcardfs even for many-thousand-file depots.
+
+**Pre-pass cost (verify/update start-up).** Before a depot's first chunk, Steam resolves every
+manifest path to its on-disk spelling and stats every file — both before the first `onVerifying`
+status can be reported, so they are the window in which a verify/update looks "stuck" before the
+UI shows anything (the directory layout is created *after* that first `(0, N)` status). This is
+metadata-bound work, so it is exactly what device storage punishes.
+
+Two things keep it minimal. `DepotFiles::prepare` reuses the paths `plan_depot_write` already
+resolved instead of walking the tree a second time, and path resolution itself is cached:
+`CaseResolver` (`store_dl/mod.rs`) still checks each component with one `exists()` stat (the
+exact-spelling fast path that hits for every already-correct path), but a component that does
+**not** exist with the manifest's spelling is answered from a per-directory case-folded listing
+cached once per pass — where the old code scanned the parent directory again for every such
+component, i.e. once per new file of an update. Measured on a 40k-file tree, plan+prepare:
+
+| case | before | after |
+|---|---|---|
+| verify (every file already on disk) | 296 ms | 182 ms |
+| update (10% of the manifest is new) | 265 ms | 163 ms |
+
+…against a 48 ms floor for the one stat per file that cannot be avoided. The verify counter is
+published as soon as the candidate count is known — before the layout pass — as `(0, N)`.
 - **GOG** (`store_dl/gog/engine.rs`): chunks inflate into an in-memory buffer first
   (MD5-verified), then only *verified* chunks enter the file's `OrderedDrain`
   (`store_dl/ordered_drain.rs`) — the shared component implementing the Steam model
@@ -128,22 +150,66 @@ first sample).
 
 ## 4. Verify & update flow
 
-`isUpdateOrVerify` reuses what's already on disk instead of redownloading.
+UPDATE and VERIFY are separate modes (`SteamDownloadMode` in Kotlin) that reach the engine as
+`fresh` plus a per-depot manifest gid — the engine itself has no mode concept.
+
+### The manifest store (`.DepotDownloader/`)
+
+Two directories, because they answer two different questions:
+
+| Path | Meaning |
+|---|---|
+| `target/<depot>_<gid>.manifest` | what THIS press is installing. Fetched when the run resolves it, read from disk for the rest of the run, never reused by a later press: a resume re-reads what the CDN serves now instead of finishing a build that may have been superseded while the download sat paused. Replaced wholesale on each press. |
+| `completed/<depot>_<gid>.manifest` | the build the game directory IS. Written **only** by the promotion that follows a depot's successful write, and the only durable manifest state: the **file names are the installed record** (which depots, at which gid), so no pointer file can go stale and a half-written depot can never look installed. |
+| `<depot>_<gid>.inflight` | a target whose writes started and never finished. That depot is walked in full next time — an interrupted run may have half-rewritten a file the new target lists as unchanged, which the delta would otherwise trust. |
+
+Who reads what: the update delta and the removed-content sweep diff `completed/` (the tree) against
+`target/` (the destination); VERIFY asks for the installed gid, so its manifest is read from
+`completed/` and it needs **no fetch and no manifest request code at all**. A depot reading its own
+completed build (VERIFY, or an update whose target is already installed) promotes nothing: the record
+is already right. A press that begins for a depot clears its other `target/` manifests, which is what
+keeps "resume = refresh" honest.
 
 - **Steam**: existing files are verified chunk-by-chunk against the manifest (SHA-1 after
-  decrypt+decompress of what would be written — i.e. the *existing bytes* are hashed).
-  Chunks that match are "verify-skip": rather than moving the write cursor directly (which
-  could jump a gap after a mid-file mismatch and strand later arrivals — the cursor-jump bug
-  fixed in `838ed77ee`), a **Verified marker is parked in the file's pending queue at that
-  offset**, and the normal ordered drain walks over markers without writing. Before
-  finalize, `assert_pipeline_drained` requires every file's cursor == size and pending empty;
-  a violation fails the run as *not* resume-trust-safe, so the retry re-verifies everything.
-  Resume across runs uses persisted per-depot journal/progress state; a clean pause marker
-  lets a resumed run trust already-written prefixes. **GOG and Epic share this exact
+  decrypt+decompress of what would be written — i.e. the *existing bytes* are hashed) — the
+  write path never consults a journal, so "resume" always means re-hash. Chunks that match are
+  "verify-skip": rather than moving the write cursor directly (which could jump a gap after a
+  mid-file mismatch and strand later arrivals — the cursor-jump bug fixed in `838ed77ee`), a
+  **Verified marker is parked in the file's pending queue at that offset**, and the normal
+  ordered drain walks over markers without writing. Before finalize,
+  `assert_pipeline_drained` requires every file's cursor == size and pending empty; a violation
+  fails the run, so the retry re-verifies everything. **GOG and Epic share this exact
   Verified-marker model** via the shared `OrderedDrain` (below).
-- **Manifest & key freshness**: cached manifests are validated against current metadata and
-  self-healed (deleted + refetched) when stale or poisoned. Depot keys are requested via the
-  depot's **owning app** (shared redist depots like 228990 belong to a different app); shared
+- **Update delta**: `unchanged_files` (path + size + equal non-empty `sha_content`) gives the files
+  this run must not touch — no chunk jobs, no re-hash, no finalize. Two things override it: paths
+  the app reports as **DRM-patched** (`untrusted_paths`: a Steamless-unpacked exe or replaced
+  `steam_api*.dll` has a backup sibling, so its bytes are not the previous manifest's), and a depot
+  left `.inflight`. Removed content is swept only after that depot's writes succeeded, and only when
+  every other installed depot is part of the run (its manifest's filenames are needed to know which
+  paths another depot still owns).
+- **Cross-depot name clashes**: two depots of one install can disagree about a path's *type*. Fallout 2
+  is the case in the wild: "Fallout 2 Depot New Base" (38414) declares `master.dat` as a **directory**
+  while "New English" (38415) ships it as a 317 MB **file**, and every package grants both. A
+  case-insensitive volume can hold only one, so the run keeps the **file** and drops the losing
+  directory together with everything under it (logged `depot-clash path=… kept=file depot=…`): a
+  directory is only a container, and the file is the form the game reads — it is also what a Windows
+  install converges on, since the directory cannot be created over the file. Depots the store records
+  as installed take part in that decision even when this press does not select them, so a run can
+  never replace a file an installed depot owns. The write path applies the same rule in both
+  directions — a directory in a file's way is removed (after the free-space preflight, so a failed
+  preflight leaves the old tree; refused when a symlinked ancestor would take the removal outside
+  the install dir) and a file in a directory's way is unlinked. Every creation and removal resolves
+  the nearest existing ancestor and refuses it outside the install root, so a link anywhere above a
+  path — including above a directory the manifest never declares — cannot redirect the run; a
+  directory entry that is a symlink is kept only while it resolves inside the tree, and otherwise
+  replaced. An install left in the wrong
+  shape by an earlier attempt repairs itself instead of failing with `EEXIST`/`EISDIR`. A file the
+  delta calls unchanged is only trusted when it is still the regular file of the manifest's size on
+  disk; a deleted, truncated or directory-shadowed path is revalidated like any other change.
+- **Manifest & key freshness**: the requested build's manifest is fetched on every press (a cached
+  `target/` file is never reused), and a manifest whose metadata does not match the depot/gid it is
+  filed under is never trusted as a diff base — the run fetches instead. Depot keys are requested via
+  the depot's **owning app** (shared redist depots like 228990 belong to a different app); shared
   depots with no manifest gid for the branch are skipped by design.
 - **GOG**: completed+MD5-verified files are skipped wholesale — `file_verified` **requires**
   a manifest MD5 (deliberately stricter than Java's size-only fallback): a size-only pass

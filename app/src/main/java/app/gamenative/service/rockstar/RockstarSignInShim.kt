@@ -17,8 +17,12 @@ object RockstarSignInShim {
         .put("volume_serial", "1a2b3c4d")
         .put("cpu_info", "178bfbff")
 
-    fun script(filesDir: File, titleName: String, bridge: String, deviceName: String = "GAMENATIVE"): String =
-        fill(template(filesDir), fingerprint(deviceName).toString(), titleName, bridge)
+    fun script(
+        filesDir: File,
+        titleName: String,
+        bridge: String,
+        deviceName: String = "GAMENATIVE",
+    ): String = fill(template(filesDir), fingerprint(deviceName).toString(), titleName, bridge)
 
     internal fun fill(template: String, fingerprintJson: String, titleName: String, bridge: String): String =
         template.replace("@FP@", fingerprintJson).replace("@TITLE@", titleName).replace("@BRIDGE@", bridge)

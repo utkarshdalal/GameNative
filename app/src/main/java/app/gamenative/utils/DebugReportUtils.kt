@@ -3,11 +3,16 @@ package app.gamenative.utils
 import android.content.Context
 import android.os.Build
 import app.gamenative.BuildConfig
+import app.gamenative.filedetect.GameFileDetection
+import app.gamenative.ui.screen.support.SupportComponentApplier
+import app.gamenative.ui.screen.support.SupportPatchApplier
 import app.gamenative.ui.screen.support.SupportSuggestionApplier
 import com.winlator.core.GPUInformation
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
@@ -20,6 +25,24 @@ object DebugReportUtils {
     private const val LOG_FILE = "log.gz"
     private const val PERF_FILE = "perf.json"
     private const val LOGCAT_FILE = "logcat.gz"
+    const val CPU_PROFILE_FILE = "cpu_profile.json"
+    const val EXIT_TRACE_FILE = "exit_trace.txt"
+    private const val EXIT_WINDOW_MS = 48L * 60 * 60 * 1000
+
+    /** Reports built at startup from debug runs the previous process never finished (see [recoverInterruptedRuns]). */
+    @Volatile
+    var recovery: Deferred<List<String>>? = null
+
+    // Recovery may run in a background process Android restarts on its own (a service), which can die before
+    // the user opens the app; the offer therefore also lives on disk until a view model picks it up.
+    private fun pendingOfferFile(context: Context): File = File(context.filesDir, "exit_info/pending_offer")
+
+    fun takePendingOffer(context: Context): String? {
+        val file = pendingOfferFile(context)
+        val appId = try { file.takeIf { it.exists() }?.readText()?.trim() } catch (e: Exception) { null }
+        file.delete()
+        return appId?.takeIf { it.isNotEmpty() }
+    }
 
     @Volatile
     private var logcatProcess: Process? = null
@@ -40,6 +63,16 @@ object DebugReportUtils {
     fun perfFile(reportDir: File): File = File(reportDir, PERF_FILE)
 
     fun logcatFile(reportDir: File): File = File(reportDir, LOGCAT_FILE)
+
+    fun cpuProfileFile(reportDir: File): File = File(reportDir, CPU_PROFILE_FILE)
+
+    fun cpuProfileBeside(perfFile: File?): File? =
+        perfFile?.parentFile?.let { cpuProfileFile(it) }?.takeIf { it.exists() }
+
+    fun exitTraceFile(reportDir: File): File = File(reportDir, EXIT_TRACE_FILE)
+
+    fun exitTraceBeside(logFile: File?): File? =
+        logFile?.parentFile?.let { exitTraceFile(it) }?.takeIf { it.exists() && it.length() > 0L }
 
     private fun rawLogcatFile(context: Context, appId: String): File =
         File(context.getExternalFilesDir(null), "wine_logs/debug_run_$appId.logcat")
@@ -107,12 +140,48 @@ object DebugReportUtils {
         reportDir.deleteRecursively()
     }
 
-    suspend fun createPendingReport(context: Context, appId: String): File? = withContext(Dispatchers.IO) {
+    /**
+     * A debug run leaves wine_logs/debug_run_<appId>.log on disk and only [createPendingReport] removes it,
+     * so a leftover at process start means the last process died mid-run (the game took the app down).
+     * Build the report from what survived; the header carries Android's exit record and `interrupted`.
+     */
+    suspend fun recoverInterruptedRuns(context: Context): List<String> = withContext(Dispatchers.IO) {
+        val dir = File(context.getExternalFilesDir(null), "wine_logs")
+        val leftovers = dir.listFiles()
+            ?.filter { it.isFile && it.name.startsWith("debug_run_") && it.name.endsWith(".log") && it.length() > 0L }
+            ?: emptyList()
+        val recovered = mutableListOf<String>()
+        for (log in leftovers) {
+            val appId = log.name.removePrefix("debug_run_").removeSuffix(".log")
+            val created = try {
+                createPendingReport(context, appId, interrupted = true)
+            } catch (e: Exception) {
+                Timber.w(e, "DebugReportUtils: failed to recover interrupted run for %s", appId)
+                null
+            }
+            if (created != null) {
+                Timber.w("DebugReportUtils: recovered interrupted debug run for %s -> %s", appId, created.name)
+                recovered += appId
+            }
+        }
+        recovered.firstOrNull()?.let { appId ->
+            try {
+                pendingOfferFile(context).apply { parentFile?.mkdirs() }.writeText(appId)
+            } catch (e: Exception) {
+                Timber.w(e, "DebugReportUtils: failed to persist the recovery offer")
+            }
+        }
+        recovered
+    }
+
+    suspend fun createPendingReport(context: Context, appId: String, interrupted: Boolean = false): File? = withContext(Dispatchers.IO) {
         var reportDir: File? = null
-        val perf = PerfSampler.stop()
-        stopLogcatCapture()
+        var claimedLog: File? = null
+        val wineLog = wineLogFile(context, appId)
+        // a recovered run belongs to a dead process: leave any live run's sampler and logcat capture alone
+        val perf = if (interrupted) null else PerfSampler.stop()
+        if (!interrupted) stopLogcatCapture()
         try {
-            val wineLog = wineLogFile(context, appId)
             if (!wineLog.exists() || wineLog.length() == 0L) {
                 Timber.w("DebugReportUtils: No debug run log found for $appId")
                 return@withContext null
@@ -124,7 +193,7 @@ object DebugReportUtils {
             reportDir = dir
             dir.mkdirs()
 
-            val claimedLog = File(dir, "raw.log")
+            claimedLog = File(dir, "raw.log")
             if (!wineLog.renameTo(claimedLog)) {
                 val sizeBefore = wineLog.length()
                 wineLog.copyTo(claimedLog, overwrite = true)
@@ -134,10 +203,30 @@ object DebugReportUtils {
             }
 
             compressLog(claimedLog, logFile(dir))
-            val header = buildHeader(context, appId, DebugRunParamsHolder.get(appId))
+            val header = buildHeader(context, appId, DebugRunParamsHolder.get(appId), interrupted)
+            if (interrupted) header.put("interrupted", true)
+            val exits = AppExitRecorder.recentExits(context, System.currentTimeMillis() - EXIT_WINDOW_MS)
+            if (exits.isNotEmpty()) {
+                header.put("appExits", JSONArray(exits))
+                exits.asSequence().filter { it.optBoolean("hard") }.mapNotNull { AppExitRecorder.traceFor(context, it) }.firstOrNull()
+                    ?.let { trace ->
+                        try {
+                            trace.copyTo(exitTraceFile(dir), overwrite = true)
+                        } catch (e: Exception) {
+                            Timber.w(e, "DebugReportUtils: Failed to copy exit trace")
+                        }
+                    }
+            }
             if (perf != null) {
                 perfFile(dir).writeText(perf.perf.toString())
                 header.put("perf", perf.verdict)
+                perf.cpuProfile?.let { profile ->
+                    try {
+                        cpuProfileFile(dir).writeText(profile.toString())
+                    } catch (e: Exception) {
+                        Timber.w(e, "DebugReportUtils: Failed to write cpu profile")
+                    }
+                }
             }
             val rawLogcat = rawLogcatFile(context, appId)
             if (rawLogcat.exists() && rawLogcat.length() > 0L) {
@@ -150,6 +239,7 @@ object DebugReportUtils {
             dir
         } catch (e: Exception) {
             Timber.e(e, "DebugReportUtils: Failed to create pending report for $appId")
+            claimedLog?.takeIf { it.exists() && !wineLog.exists() }?.renameTo(wineLog)
             reportDir?.deleteRecursively()
             null
         } finally {
@@ -173,7 +263,7 @@ object DebugReportUtils {
         }
     }
 
-    private fun buildHeader(context: Context, appId: String, runParams: DebugRunParams?): JSONObject {
+    private fun buildHeader(context: Context, appId: String, runParams: DebugRunParams?, interrupted: Boolean = false): JSONObject {
         val container = ContainerUtils.getContainer(context, appId)
 
         val gpu = try {
@@ -183,8 +273,10 @@ object DebugReportUtils {
             "Unknown GPU"
         }
 
-        val avgFps = container.getSessionMetadata("avg_fps", "").toFloatOrNull()
-        val sessionLengthSec = container.getSessionMetadata("session_length_sec", "").toIntOrNull()
+        // the session figures are written at a normal exit, so after a kill they still describe the previous session
+        val avgFps = if (interrupted) null else container.getSessionMetadata("avg_fps", "").toFloatOrNull()
+        val sessionLengthSec = if (interrupted) null else container.getSessionMetadata("session_length_sec", "").toIntOrNull()
+        val totalFrames = if (interrupted) null else container.getSessionMetadata("total_frames", "").toLongOrNull()
 
         return JSONObject().apply {
             put("gameName", ContainerUtils.resolveGameName(appId))
@@ -199,10 +291,22 @@ object DebugReportUtils {
             put("configs", JSONObject(container.containerJson))
             if (avgFps != null) put("avgFps", avgFps.toDouble()) else put("avgFps", JSONObject.NULL)
             if (sessionLengthSec != null) put("sessionLengthSec", sessionLengthSec) else put("sessionLengthSec", JSONObject.NULL)
+            if (totalFrames != null) put("totalFrames", totalFrames) else put("totalFrames", JSONObject.NULL)
             put("runParams", (runParams ?: DebugRunParams()).toJson())
+            runCatching { GameFileDetection.properties(container) }.getOrNull()?.forEach { (key, value) ->
+                put(key, if (value is List<*>) JSONArray(value) else value)
+            }
             val appliedFile = SupportSuggestionApplier.appliedRecordFile(container)
             if (appliedFile.exists()) {
                 runCatching { JSONObject(appliedFile.readText()) }.getOrNull()?.let { put("appliedSuggestion", it) }
+            }
+            val patchFile = SupportPatchApplier.appliedRecordFile(container)
+            if (patchFile.exists()) {
+                runCatching { JSONObject(patchFile.readText()) }.getOrNull()?.let { put("appliedPatch", it) }
+            }
+            val componentFile = SupportComponentApplier.appliedRecordFile(container)
+            if (componentFile.exists()) {
+                runCatching { JSONObject(componentFile.readText()) }.getOrNull()?.let { put("appliedComponent", it) }
             }
         }
     }

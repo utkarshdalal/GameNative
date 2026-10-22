@@ -22,6 +22,7 @@ class GyroController implements SensorEventListener {
         void onGyroMouseDelta(int x, int y);
         void onGyroStick(float x, float y, boolean rightStick);
         void onGyroActiveChanged(boolean active);
+        default boolean shouldSendGyroMouseMovement() { return true; }
     }
 
     static final int SENSOR_PERIOD_US = 5_000;
@@ -238,21 +239,7 @@ class GyroController implements SensorEventListener {
         float[] rates = mapAndFilterRates(
                 event.values[0], event.values[1], event.values[2], rotation, event.timestamp);
         if (settings.getMode() == GyroSettings.MODE_MOUSE) {
-            if (settings.getSmoothingMilliseconds() > 0f) {
-                rates = smoothRates(rates[0], rates[1], event.timestamp);
-            }
-            if (lastTimestampNs == 0L) {
-                lastTimestampNs = event.timestamp;
-                return;
-            }
-            float seconds = (event.timestamp - lastTimestampNs) * 1.0e-9f;
-            lastTimestampNs = event.timestamp;
-            if (!(seconds > 0f) || seconds > MAX_MOUSE_EVENT_DELTA_SECONDS) return;
-
-            int[] delta = integrateMouse(rates[0], rates[1], seconds);
-            int deltaX = delta[0];
-            int deltaY = delta[1];
-            if (deltaX != 0 || deltaY != 0) listener.onGyroMouseDelta(deltaX, deltaY);
+            processMouseRates(rates[0], rates[1], event.timestamp);
             return;
         }
 
@@ -265,6 +252,27 @@ class GyroController implements SensorEventListener {
                 stick[1],
                 settings.getMode() == GyroSettings.MODE_RIGHT_STICK,
                 event.timestamp);
+    }
+
+    void processMouseRates(float rateX, float rateY, long timestampNs) {
+        if (!listener.shouldSendGyroMouseMovement()) {
+            lastTimestampNs = timestampNs;
+            mouseRemainderX = 0.0;
+            mouseRemainderY = 0.0;
+            hasSmoothedRates = false;
+            return;
+        }
+        float[] rates = settings.getSmoothingMilliseconds() > 0f
+                ? smoothRates(rateX, rateY, timestampNs) : new float[]{rateX, rateY};
+        if (lastTimestampNs == 0L) {
+            lastTimestampNs = timestampNs;
+            return;
+        }
+        float seconds = (timestampNs - lastTimestampNs) * 1.0e-9f;
+        lastTimestampNs = timestampNs;
+        if (!(seconds > 0f) || seconds > MAX_MOUSE_EVENT_DELTA_SECONDS) return;
+        int[] delta = integrateMouse(rates[0], rates[1], seconds);
+        if (delta[0] != 0 || delta[1] != 0) listener.onGyroMouseDelta(delta[0], delta[1]);
     }
 
     private void processTiltSteering(SensorEvent event, int rotation) {

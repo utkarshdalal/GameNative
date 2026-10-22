@@ -3,6 +3,7 @@ package app.gamenative.utils
 import app.gamenative.data.BranchInfo
 import app.gamenative.data.ConfigInfo
 import app.gamenative.data.DepotInfo
+import app.gamenative.data.EulaInfo
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryAssetsInfo
 import app.gamenative.data.LibraryCapsuleInfo
@@ -24,10 +25,11 @@ import app.gamenative.enums.SteamRealm
 import app.gamenative.service.SteamService.Companion.INVALID_APP_ID
 import `in`.dragonbra.javasteam.types.KeyValue
 import java.util.Date
+import java.util.Locale
 import timber.log.Timber
 
 // Bumping re-parses the whole SteamApp row from PICS on next login and also triggers the root-override cloud requery.
-const val CURRENT_UFS_PARSE_VERSION = 5
+const val CURRENT_UFS_PARSE_VERSION = 9
 
 /**
  * Extension functions relating to [KeyValue] as the receiver type.
@@ -137,7 +139,9 @@ fun KeyValue.generateSteamApp(): SteamApp {
         dlcAvailableOnStore = this["common"]["extended"]["dlcavailableonstore"].asBoolean(),
         optionalDlc = this["common"]["extended"]["optionaldlc"].asBoolean(),
         gameDir = this["common"]["extended"]["gamedir"].value.orEmpty(),
-        installScript = this["common"]["extended"]["installscript"].value.orEmpty(),
+        installScript = listOf(this["config"], this["extended"], this["common"]["extended"])
+            .firstNotNullOfOrNull { it["installscript"].value?.trim()?.takeIf { name -> name.isNotEmpty() } }
+            .orEmpty(),
         noServers = this["common"]["extended"]["noservers"].asBoolean(),
         order = this["common"]["extended"]["order"].asBoolean(),
         primaryCache = this["common"]["extended"]["primarycache"].asInteger(),
@@ -146,6 +150,19 @@ fun KeyValue.generateSteamApp(): SteamApp {
         visibleOnlyWhenInstalled = this["common"]["extended"]["visibleonlywheninstalled"].asBoolean(),
         visibleOnlyWhenSubscribed = this["common"]["extended"]["visibleonlywhensubscribed"].asBoolean(),
         launchEulaUrl = this["common"]["extended"]["launcheula"].value.orEmpty(),
+        eulas = this["common"]["eulas"].children.mapNotNull { eula ->
+            val id = eula["id"].value?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+            EulaInfo(
+                id = id,
+                name = eula["name"].value.orEmpty(),
+                url = eula["url"].value.orEmpty(),
+                version = eula["version"].value.orEmpty(),
+                countries = eula["countries"].value.orEmpty()
+                    .split(',')
+                    .map { it.trim().uppercase(Locale.ROOT) }
+                    .filter { it.isNotEmpty() },
+            )
+        },
         requireDefaultInstallFolder = this["common"]["config"]["requiredefaultinstallfolder"].asBoolean(),
         contentType = this["common"]["config"]["contentType"].asInteger(),
         installDir = this["common"]["config"]["installdir"].value.orEmpty(),
@@ -165,6 +182,7 @@ fun KeyValue.generateSteamApp(): SteamApp {
                     configOS = OS.from(it["config"]["oslist"].value),
                     configArch = OSArch.from(it["config"]["osarch"].value),
                     arguments = it["arguments"].value.orEmpty(),
+                    option = it.name?.toIntOrNull() ?: -1,
                 )
             },
             steamControllerTemplateIndex = this["config"]["steamcontrollertemplateindex"].asInteger(),
@@ -205,14 +223,14 @@ fun KeyValue.generateSteamApp(): SteamApp {
                 maxNumFiles = this["ufs"]["maxnumfiles"].asInteger(),
                 saveFilePatterns = this["ufs"]["savefiles"].children.mapNotNull { saveFile ->
                     val platforms = saveFile["platforms"].children.map { it.value?.lowercase() }
-                    if (platforms.isNotEmpty() && "windows" !in platforms) return@mapNotNull null
+                    if (platforms.isNotEmpty() && "windows" !in platforms && "all" !in platforms) return@mapNotNull null
 
                     val originalRoot = PathType.from(saveFile["root"].value)
                     // Treat "." and "/" as empty: both mean "root of this path type" with no
                     // subdirectory. Keeping the literal value causes addpath joins to produce
                     // "MyGame/." or "MyGame/" and stores uploadPath = "." or "/" which breaks
                     // cloud key lookups in SteamAutoCloud (e.g. Danganronpa 2 uses path="/").
-                    val originalPath = saveFile["path"].value.orEmpty().let { if (it == "." || it == "/") "" else it }
+                    val originalPath = saveFile["path"].value.orEmpty().let { if (it == "." || it == "/") "" else it.removeSuffix("/.") }
                     val rootRemap = rootOverrides.find { it.fromRoot == originalRoot }
 
                     SaveFilePattern(
