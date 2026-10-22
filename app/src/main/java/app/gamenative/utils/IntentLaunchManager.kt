@@ -57,7 +57,7 @@ object IntentLaunchManager {
             gameId = data.getQueryParameter("appid")?.toIntOrNull() ?: -1
             gameSource = data.getQueryParameter("gamesource")?.uppercase(java.util.Locale.ROOT)
             exe = data.getQueryParameter("exe")
-            execArgs = data.getQueryParameter("execArgs")
+            execArgs = data.getQueryParameter("exec_args")
             containerConfig = null
         } else {
             exe = intent.getStringExtra(EXTRA_EXE)

@@ -1884,9 +1884,9 @@ fun XServerScreen(
                                 hud.getLocationOnScreen(hudLocation)
                                 val insideHud =
                                     event.rawX >= hudLocation[0] &&
-                                            event.rawX <= hudLocation[0] + hud.width &&
-                                            event.rawY >= hudLocation[1] &&
-                                            event.rawY <= hudLocation[1] + hud.height
+                                        event.rawX <= hudLocation[0] + hud.width &&
+                                        event.rawY >= hudLocation[1] &&
+                                        event.rawY <= hudLocation[1] + hud.height
                                 if (insideHud) {
                                     ui.performanceHudTouchDownRawX = event.rawX
                                     ui.performanceHudTouchDownRawY = event.rawY
@@ -4305,10 +4305,9 @@ private fun setupXEnvironment(
         }
 
         var finalExecArgs: String
-        if (execArgs.isNullOrEmpty()){
-           finalExecArgs = container.execArgs
-        }
-        else{
+        if (execArgs.isNullOrEmpty()) {
+            finalExecArgs = container.execArgs
+        } else {
             finalExecArgs = execArgs
             for (drive in Container.drivesIterator(container.drives)) {
                 if (drive[1].isNotEmpty()) {

@@ -635,7 +635,7 @@ class MainViewModel @Inject constructor(
             // A new launch is a new impression: never reuse the previous launch's ad.
             bootAdHiddenAtMs = 0L
             setShowBootingSplash(true)
-            setExecArgs(execArgs);
+            setExecArgs(execArgs)
             bootAwaitingGameWindow = _state.value.bootAd != null
             if (bootAwaitingGameWindow) startBootGameExitWatch(context, appId)
             PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(PrefManager.allowedOrientation))
