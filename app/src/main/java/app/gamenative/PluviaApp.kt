@@ -315,6 +315,7 @@ class PluviaApp : SplitCompatApplication() {
             achievementWatcher = null
             steamHostAchievementPoller = null
             ActiveGameRegistry.clear()
+            SteamService.clearSuspendedGameState()
             SteamService.keepAlive = false
             SteamService.clearPlayingConflict()
             clearActiveSuspendState()
