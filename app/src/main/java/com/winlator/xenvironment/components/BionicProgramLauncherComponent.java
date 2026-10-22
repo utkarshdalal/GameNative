@@ -462,7 +462,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         if (gamescopeMode) {
             applyGamescopeEnv(context, envVars, rootDir);
-            if (mesaKopperLibDir != null) applyKopperGamescopeEnv(context, envVars);
+            if (mesaKopperLibDir != null) applyKopperGamescopeEnv(envVars);
         }
 
         Log.d("BionicProgramLauncherComponent", "env vars are " + EnvVarRedaction.redact(envVars));
@@ -566,15 +566,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                 + new File(gsDir, "bin/Xwayland").exists() + " xdg=" + xdgRunDir.getPath());
     }
 
-    private void applyKopperGamescopeEnv(Context context, EnvVars envVars) {
-        String gsDir = context.getFilesDir().getPath() + "/gamescope";
-        String ldPath = envVars.get("LD_LIBRARY_PATH");
-        envVars.put("LD_LIBRARY_PATH", ldPath.isEmpty() ? mesaKopperLibDir : mesaKopperLibDir + ":" + ldPath);
-        if (mesaKopperVendorJson != null) {
-            envVars.remove("__EGL_VENDOR_LIBRARY_DIRS");
-            envVars.put("__EGL_VENDOR_LIBRARY_FILENAMES", mesaKopperVendorJson + ":"
-                    + gsDir + "/share/glvnd/egl_vendor.d/50_mesa.json");
-        }
+    private void applyKopperGamescopeEnv(EnvVars envVars) {
         envVars.put("WINE_USE_EGL", "1");
         envVars.put("MESA_LOADER_DRIVER_OVERRIDE", "zink");
         envVars.put("LIBGL_KOPPER_DRI2", "1");
@@ -611,11 +603,26 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             command = binDir + "/box64 " + guestExecutable;
 
         if (isGamescope) {
+            if (mesaKopperLibDir != null) command = kopperWineEnvPrefix(envVars) + command;
             // -W/-H = output (Surface/mode) size, not the game size; --expose-wayland keeps gamescope's socket for KMS; XWayland (count 1) serves wine's X11.
             command = wrapWithGamescope(command);
         }
 
         return command;
+    }
+
+    private String kopperWineEnvPrefix(EnvVars envVars) {
+        String ldPath = envVars.get("LD_LIBRARY_PATH");
+        StringBuilder prefix = new StringBuilder("/system/bin/env");
+        if (mesaKopperVendorJson != null) prefix.append(" -u __EGL_VENDOR_LIBRARY_DIRS");
+        prefix.append(" LD_LIBRARY_PATH=").append(escapeSpaces(ldPath.isEmpty() ? mesaKopperLibDir : mesaKopperLibDir + ":" + ldPath));
+        if (mesaKopperVendorJson != null) prefix.append(" __EGL_VENDOR_LIBRARY_FILENAMES=").append(escapeSpaces(mesaKopperVendorJson));
+        if (BuildConfig.MODERN_ANDROID) prefix.append(" /system/bin/linker64");
+        return prefix.append(' ').toString();
+    }
+
+    private static String escapeSpaces(String value) {
+        return value.replace(" ", "\\ ");
     }
 
     /** Prefix {@code command} with the gamescope wrapper used for guest launches. */
