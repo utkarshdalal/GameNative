@@ -371,7 +371,7 @@ public abstract class ProcessHelper {
                 String idOutput = idReader.readLine();
                 if (idOutput != null) {
                     int startIndex = idOutput.indexOf('(');
-                    int endIndex = idOutput.indexOf(')');
+                    int endIndex = idOutput.indexOf(')', startIndex + 1);
                     if (startIndex != -1 && endIndex != -1) {
                         myUser = idOutput.substring(startIndex + 1, endIndex);
                     }
