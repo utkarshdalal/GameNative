@@ -4316,6 +4316,13 @@ private fun setupXEnvironment(
         if (!container.isLaunchRealSteam && !container.isLaunchBionicSteam) envVars.put("PROTON_DISABLE_LSTEAMCLIENT", "1")
 
         envVars.putAll(container.envVars)
+        if (resolveGlBackend(context, container) == Container.GL_BACKEND_KOPPER) {
+            envVars.remove("GALLIUM_DRIVER")
+            envVars.remove("LIBGL_KOPPER_DISABLE")
+            if (guestProgramLauncherComponent is BionicProgramLauncherComponent) {
+                guestProgramLauncherComponent.setMesaKopperLibDir(File(ImageFs.find(context).rootDir, MESA_KOPPER_LIB_DIR).path)
+            }
+        }
         if (container.isLoadMods && !bootToContainer && !testGraphics) ModDllOverrides.apply(container, envVars)
         immersiveHooks?.windowsVr?.afterContainerEnvironmentMerged(envVars, container)
         envVars.remove("DXVK_FRAME_RATE")
@@ -6194,6 +6201,30 @@ private suspend fun extractWinComponentFiles(
     return failed
 }
 
+private const val MESA_KOPPER_COMPONENT_ID = "mesa_kopper"
+private const val MESA_KOPPER_LIB_DIR = "usr/lib/mesa-kopper"
+private val PROTON_MAJOR_VERSION = Regex("""^proton-(\d+)""")
+
+private fun requestedGlBackend(container: Container): String {
+    val requested = container.glBackend.lowercase(Locale.ROOT)
+    if (requested == Container.GL_BACKEND_XLIB) return Container.GL_BACKEND_XLIB
+    if (!BuildConfig.MODERN_ANDROID || !container.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
+        return Container.GL_BACKEND_XLIB
+    }
+    if (requested == Container.GL_BACKEND_KOPPER) return Container.GL_BACKEND_KOPPER
+    if (!container.graphicsDriver.lowercase(Locale.ROOT).startsWith("wrapper")) return Container.GL_BACKEND_XLIB
+    if (!container.isUseDRI3) return Container.GL_BACKEND_XLIB
+    val protonMajor = PROTON_MAJOR_VERSION.find(container.wineVersion.lowercase(Locale.ROOT))
+        ?.groupValues?.get(1)?.toIntOrNull()
+    return if (protonMajor != null && protonMajor >= 11) Container.GL_BACKEND_KOPPER else Container.GL_BACKEND_XLIB
+}
+
+private fun resolveGlBackend(context: Context, container: Container): String {
+    if (requestedGlBackend(container) != Container.GL_BACKEND_KOPPER) return Container.GL_BACKEND_XLIB
+    val kopperDir = File(ImageFs.find(context).rootDir, MESA_KOPPER_LIB_DIR)
+    return if (kopperDir.isDirectory) Container.GL_BACKEND_KOPPER else Container.GL_BACKEND_XLIB
+}
+
 private suspend fun extractGraphicsDriverFiles(
     context: Context,
     graphicsDriver: String,
@@ -6407,8 +6438,25 @@ private suspend fun extractGraphicsDriverFiles(
                 .contains("turnip") && isAdrenotoolsTurnip == "0"
         ) envVars.put("VK_ICD_FILENAMES", imageFs.getShareDir().path + "/vulkan/icd.d/freedreno_icd.aarch64.json")
         else envVars.put("VK_ICD_FILENAMES", imageFs.getShareDir().path + "/vulkan/icd.d/wrapper_icd.aarch64.json")
-        envVars.put("GALLIUM_DRIVER", "zink")
-        envVars.put("LIBGL_KOPPER_DISABLE", "true")
+        if (requestedGlBackend(container) == Container.GL_BACKEND_KOPPER) {
+            try {
+                if (ALWAYS_REEXTRACT || !File(rootDir, MESA_KOPPER_LIB_DIR).isDirectory) {
+                    extractGraphicsDriverComponent(context, MESA_KOPPER_COMPONENT_ID, rootDir!!)
+                }
+            } catch (e: Exception) {
+                Timber.tag("GraphicsDriverExtraction").e(e, "Failed to install $MESA_KOPPER_COMPONENT_ID, using xlib GL")
+            }
+        }
+        if (resolveGlBackend(context, container) == Container.GL_BACKEND_KOPPER) {
+            envVars.put("MESA_LOADER_DRIVER_OVERRIDE", "zink")
+            envVars.put("LIBGL_KOPPER_DRI2", "1")
+            envVars.put("WINE_USE_EGL", "1")
+            envVars.put("__EGL_VENDOR_LIBRARY_FILENAMES", File(rootDir, "$MESA_KOPPER_LIB_DIR/egl_vendor.d/50_mesa.json").path)
+            envVars.put("__GLX_VENDOR_LIBRARY_NAME", "mesa")
+        } else {
+            envVars.put("GALLIUM_DRIVER", "zink")
+            envVars.put("LIBGL_KOPPER_DISABLE", "true")
+        }
 
         if (currentWrapperVersion.lowercase(Locale.getDefault()).contains("turnip")
             && GPUInformation.isAdreno710_720_732(context)) {

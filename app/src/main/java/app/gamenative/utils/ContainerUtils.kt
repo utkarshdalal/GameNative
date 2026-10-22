@@ -169,6 +169,7 @@ object ContainerUtils {
             videoMemorySize = PrefManager.videoMemorySize,
             mouseWarpOverride = PrefManager.mouseWarpOverride,
             useDRI3 = PrefManager.useDRI3,
+            glBackend = PrefManager.glBackend,
             useSteamInput = PrefManager.useSteamInput,
             enableXInput = PrefManager.xinputEnabled,
 			enableDInput = PrefManager.dinputEnabled,
@@ -220,6 +221,7 @@ object ContainerUtils {
         PrefManager.videoMemorySize = containerData.videoMemorySize
         PrefManager.mouseWarpOverride = containerData.mouseWarpOverride
         PrefManager.useDRI3 = containerData.useDRI3
+        PrefManager.glBackend = containerData.glBackend
         PrefManager.disableMouseInput = containerData.disableMouseInput
         PrefManager.externalDisplayInputMode = containerData.externalDisplayMode
         PrefManager.externalDisplaySwap = containerData.externalDisplaySwap
@@ -380,6 +382,7 @@ object ContainerUtils {
             offScreenRenderingMode = offScreenRenderingMode,
             strictShaderMath = strictShaderMath,
             useDRI3 = container.isUseDRI3(),
+            glBackend = container.glBackend,
             videoMemorySize = videoMemorySize,
             mouseWarpOverride = mouseWarpOverride,
             sharpnessEffect = container.getExtra("sharpnessEffect", "None"),
@@ -466,6 +469,7 @@ object ContainerUtils {
                 "launchBionicSteam" -> value?.let { updatedData.copy(launchBionicSteam = it as? Boolean ?: updatedData.launchBionicSteam) } ?: updatedData
                 "launchRealSteam" -> value?.let { updatedData.copy(launchRealSteam = it as? Boolean ?: updatedData.launchRealSteam) } ?: updatedData
                 "steamType" -> value?.let { updatedData.copy(steamType = (it as? String)?.takeIf { s -> s.isNotBlank() } ?: updatedData.steamType) } ?: updatedData
+                "glBackend" -> value?.let { updatedData.copy(glBackend = (it as? String)?.takeIf { s -> s.isNotBlank() } ?: updatedData.glBackend) } ?: updatedData
                 else -> updatedData
             }
         }
@@ -629,6 +633,7 @@ object ContainerUtils {
         container.setInputType(api.ordinal)
         container.setDinputMapperType(containerData.dinputMapperType)
         container.setUseDRI3(containerData.useDRI3)
+        container.setGlBackend(containerData.glBackend)
         Timber.d("Container set: preferredInputApi=%s, dinputMapperType=0x%02x", api, containerData.dinputMapperType)
 
         if (saveToDisk) {
@@ -951,6 +956,7 @@ object ContainerUtils {
                 offScreenRenderingMode = PrefManager.offScreenRenderingMode,
                 strictShaderMath = PrefManager.strictShaderMath,
                 useDRI3 = PrefManager.useDRI3,
+                glBackend = PrefManager.glBackend,
                 videoMemorySize = PrefManager.videoMemorySize,
                 mouseWarpOverride = PrefManager.mouseWarpOverride,
                 enableXInput = PrefManager.xinputEnabled,

@@ -653,9 +653,24 @@ bool VulkanRendererContext::importAHBToWinTex(WinTex& wt, AHardwareBuffer* ahb) 
     AHardwareBuffer_Desc desc{};
     AHardwareBuffer_describe(ahb,&desc);
 
+    const bool rgbaLabelled = desc.format==AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM &&
+                              fmtP.format==VK_FORMAT_R8G8B8A8_UNORM;
+    const VkFormat importFmt = rgbaLabelled ? VK_FORMAT_R8G8B8A8_UNORM
+                             : (swapRB ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_B8G8R8A8_UNORM);
+    const bool swizzleRB = rgbaLabelled && !swapRB;
+
     VkExternalFormatANDROID ef{};
     ef.sType=VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_ANDROID;
-    ef.externalFormat=swapRB ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_B8G8R8A8_UNORM;
+    ef.externalFormat=rgbaLabelled ? 0 : importFmt;
+
+    __android_log_print(ANDROID_LOG_INFO,WLOG_TAG,
+        "importAHB: ahb=%p %ux%u desc.format=%u desc.usage=0x%" PRIx64
+        " vk.format=%d vk.externalFormat=0x%" PRIx64 " vk.features=0x%x ycbcrModel=%d ycbcrRange=%d"
+        " rgbaLabelled=%d swapRB=%d -> fmt=%d extFmt=%" PRIu64 " swizzleRB=%d",
+        (void*)ahb,desc.width,desc.height,desc.format,(uint64_t)desc.usage,
+        (int)fmtP.format,(uint64_t)fmtP.externalFormat,(unsigned)fmtP.formatFeatures,
+        (int)fmtP.suggestedYcbcrModel,(int)fmtP.suggestedYcbcrRange,
+        (int)rgbaLabelled,(int)swapRB,(int)importFmt,(uint64_t)ef.externalFormat,(int)swizzleRB);
 
     VkExternalMemoryImageCreateInfo emi{};
     emi.sType=VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
@@ -666,7 +681,7 @@ bool VulkanRendererContext::importAHBToWinTex(WinTex& wt, AHardwareBuffer* ahb) 
     VkImageCreateInfo ii{};
     ii.sType=VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     ii.pNext=&emi; ii.imageType=VK_IMAGE_TYPE_2D;
-    ii.format=swapRB ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_B8G8R8A8_UNORM;
+    ii.format=importFmt;
     ii.extent={desc.width,desc.height,1};
     ii.mipLevels=1; ii.arrayLayers=1; ii.samples=VK_SAMPLE_COUNT_1_BIT;
     ii.tiling=VK_IMAGE_TILING_OPTIMAL; ii.usage=VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -695,14 +710,14 @@ bool VulkanRendererContext::importAHBToWinTex(WinTex& wt, AHardwareBuffer* ahb) 
 
     VkExternalFormatANDROID vef{};
     vef.sType=VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_ANDROID;
-    vef.externalFormat=swapRB ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_B8G8R8A8_UNORM;
+    vef.externalFormat=ef.externalFormat;
 
     VkImageViewCreateInfo vi{};
     vi.sType=VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     vi.pNext=&vef; vi.image=wt.img; vi.viewType=VK_IMAGE_VIEW_TYPE_2D;
-    vi.format=swapRB ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_B8G8R8A8_UNORM;
-    vi.components={VK_COMPONENT_SWIZZLE_IDENTITY,VK_COMPONENT_SWIZZLE_IDENTITY,
-                   VK_COMPONENT_SWIZZLE_IDENTITY,VK_COMPONENT_SWIZZLE_IDENTITY};
+    vi.format=importFmt;
+    vi.components={swizzleRB?VK_COMPONENT_SWIZZLE_B:VK_COMPONENT_SWIZZLE_IDENTITY,VK_COMPONENT_SWIZZLE_IDENTITY,
+                   swizzleRB?VK_COMPONENT_SWIZZLE_R:VK_COMPONENT_SWIZZLE_IDENTITY,VK_COMPONENT_SWIZZLE_IDENTITY};
     vi.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1};
     if (vk_.CreateImageView(device,&vi,nullptr,&wt.view)!=VK_SUCCESS){
         destroyWinTex(wt);
@@ -1715,6 +1730,38 @@ void VulkanRendererContext::removeWindow(int64_t id) {
 
     renderList.erase(std::remove_if(renderList.begin(),renderList.end(),
         [id](const RenderEntry& e){return e.id==id;}),renderList.end());
+    needsRender.store(true); dirtyCV.notify_one();
+}
+
+void VulkanRendererContext::removeBuffer(AHardwareBuffer* ahb) {
+    if (!ahb) return;
+    std::lock_guard<std::mutex> lk(renderMutex);
+
+    auto cit = ahbImportCache.find(ahb);
+    if (cit == ahbImportCache.end()) return;
+
+    for (auto it = texMap.begin(); it != texMap.end();) {
+        if (it->second.isAHB && it->second.ahb == ahb) {
+            it->second = {};
+            it = texMap.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
+    for (auto wit = windowAhbs.begin(); wit != windowAhbs.end();) {
+        auto& list = wit->second;
+        list.erase(std::remove(list.begin(), list.end(), ahb), list.end());
+        if (list.empty()) wit = windowAhbs.erase(wit);
+        else ++wit;
+    }
+
+    WinTex deferred = cit->second;
+    deferred.isAHB  = false;
+    deleteQueue.push_back(deferred);
+    AHardwareBuffer_release(ahb);
+    ahbImportCache.erase(cit);
+
     needsRender.store(true); dirtyCV.notify_one();
 }
 

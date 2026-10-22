@@ -75,6 +75,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     private final ContentProfile wineProfile;
     private Container container;
     private File workingDir;
+    private String mesaKopperLibDir;
 
     public void setWineInfo(WineInfo wineInfo) {
         this.wineInfo = wineInfo;
@@ -182,6 +183,10 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
     public void setEnvVars(EnvVars envVars) {
         this.envVars = envVars;
+    }
+
+    public void setMesaKopperLibDir(String mesaKopperLibDir) {
+        this.mesaKopperLibDir = mesaKopperLibDir;
     }
 
     public String getBox64Preset() {
@@ -385,6 +390,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         // Merge any additional environment variables from external sources
         if (this.envVars != null) {
             envVars.putAll(this.envVars);
+        }
+
+        if (mesaKopperLibDir != null) {
+            String ldPath = envVars.get("LD_LIBRARY_PATH");
+            envVars.put("LD_LIBRARY_PATH", ldPath.isEmpty() ? mesaKopperLibDir : mesaKopperLibDir + ":" + ldPath);
         }
 
         if (BuildConfig.XR_BUILD) {

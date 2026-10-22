@@ -742,6 +742,13 @@ object PrefManager {
             setPref(USE_DRI3, value)
         }
 
+    private val GL_BACKEND = stringPreferencesKey("glBackend")
+    var glBackend: String
+        get() = getPref(GL_BACKEND, "auto")
+        set(value) {
+            setPref(GL_BACKEND, value)
+        }
+
     private val VIDEO_MEMORY_SIZE = stringPreferencesKey("videoMemorySize")
     var videoMemorySize: String
         get() = getPref(VIDEO_MEMORY_SIZE, "2048")

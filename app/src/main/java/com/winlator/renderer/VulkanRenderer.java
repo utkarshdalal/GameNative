@@ -163,6 +163,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         short width, short height, short hotX, short hotY);
     private native void nativeSetRenderList(long handle, long[] ids, int[] xs, int[] ys, int count);
     private native void nativeRemoveWindow(long handle, long id);
+    private native void nativeRemoveBuffer(long handle, long ahbPtr);
 
     private native void nativeInitScanout(long handle);
     private native void nativeDetachSurface(long handle);
@@ -663,6 +664,23 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
             }
             if (screenOffsetYRelativeToCursor) updateTransform();
         }
+    }
+
+    private volatile boolean removeBufferSupported = true;
+
+    public void releaseHardwareBuffer(long ahbPtr) {
+        if (ahbPtr == 0 || !removeBufferSupported) return;
+        xServerView.queueEvent(() -> {
+            synchronized (lock) {
+                if (nativeHandle == 0 || !removeBufferSupported) return;
+                try {
+                    nativeRemoveBuffer(nativeHandle, ahbPtr);
+                }
+                catch (UnsatisfiedLinkError e) {
+                    removeBufferSupported = false;
+                }
+            }
+        });
     }
 
     @Override

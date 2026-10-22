@@ -19,6 +19,8 @@ import com.winlator.xserver.Pixmap;
 import com.winlator.xserver.Window;
 import com.winlator.xserver.XClient;
 import com.winlator.xserver.XLock;
+import com.winlator.xserver.XResource;
+import com.winlator.xserver.XResourceManager;
 import com.winlator.xserver.XServer;
 import com.winlator.xserver.errors.BadImplementation;
 import com.winlator.xserver.errors.BadMatch;
@@ -30,7 +32,7 @@ import com.winlator.xserver.events.PresentIdleNotify;
 
 import java.io.IOException;
 
-public class PresentExtension implements Extension {
+public class PresentExtension implements Extension, XResourceManager.OnResourceLifecycleListener {
     public static final byte MAJOR_OPCODE = -103;
     public enum Kind { PIXMAP, MSC_NOTIFY }
     public enum Mode { COPY, FLIP, SKIP }
@@ -272,6 +274,46 @@ public class PresentExtension implements Extension {
                 }
             }
         }
+    }
+
+    public void onClientDisconnected(XClient client) {
+        synchronized (events) {
+            for (int i = events.size() - 1; i >= 0; i--) {
+                if (events.valueAt(i).client == client) events.removeAt(i);
+            }
+        }
+        pendingIdles.values().removeIf(p -> !hasEventSelection(p.window));
+        cpuQueue.removeIf(p -> !hasEventSelection(p.window));
+    }
+
+    @Override
+    public void onFreeResource(XResource resource) {
+        if (!(resource instanceof Window)) return;
+        Window window = (Window)resource;
+        synchronized (events) {
+            for (int i = events.size() - 1; i >= 0; i--) {
+                if (events.valueAt(i).window == window) events.removeAt(i);
+            }
+        }
+        PendingIdle pending = pendingIdles.remove(window.id);
+        if (pending != null) releaseIdleFence(pending);
+        for (PendingIdle p : cpuQueue) {
+            if (p.window == window && cpuQueue.remove(p)) releaseIdleFence(p);
+        }
+        windowTimings.remove(window.id);
+    }
+
+    private void releaseIdleFence(PendingIdle pending) {
+        if (pending.idleFence != 0 && syncExtension != null) syncExtension.setTriggered(pending.idleFence);
+    }
+
+    private boolean hasEventSelection(Window window) {
+        synchronized (events) {
+            for (int i = 0; i < events.size(); i++) {
+                if (events.valueAt(i).window == window) return true;
+            }
+        }
+        return false;
     }
 
     private static void queryVersion(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
