@@ -80,7 +80,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import app.gamenative.R
-import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.ui.util.applyScreenEffectsConfig
 import app.gamenative.ui.util.loadScreenEffectsConfig
 import androidx.core.content.ContextCompat
@@ -92,6 +91,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
+import app.gamenative.display.GamescopeInputSink
 import app.gamenative.SteamBootstrap
 import app.gamenative.data.GameSource
 import app.gamenative.data.GyroSettings
@@ -103,6 +103,10 @@ import app.gamenative.filedetect.GameFileDetection
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.ShooterModeConfig
 import app.gamenative.data.SteamApp
+import app.gamenative.display.GameNativeDrm
+import app.gamenative.display.GamescopeCommandQueue
+import app.gamenative.display.GamescopeServerComponent
+import app.gamenative.display.GamescopeSettings
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
 import app.gamenative.ui.enums.Orientation
@@ -250,7 +254,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -292,6 +295,7 @@ private const val EXIT_PROCESS_RESPONSE_TIMEOUT_MS = 2_000L
 private const val QUICK_MENU_PROCESS_POLL_INTERVAL_MS = 2_000L
 private const val DEFAULT_FPS_LIMITER_MAX_HZ = 60
 private const val DEFAULT_FPS_LIMITER_TARGET_HZ = 60
+private const val FPS_LIMITER_MAX_MULTIPLIER = 2
 private const val FPS_LIMITER_ENABLED_EXTRA = "fpsLimiterEnabled"
 private const val FPS_LIMITER_TARGET_EXTRA = "fpsLimiterTarget"
 internal const val PHYSICAL_CONTROLLER_DIALOG_NONE = 0
@@ -481,6 +485,8 @@ private fun SyncGyroOverlaySuppression(suppressed: Boolean, viewKey: XServerRend
 
 // TODO logs in composables are 'unstable' which can cause recomposition (performance issues)
 
+internal enum class SessionDisplay { X11, GAMESCOPE }
+
 @Composable
 @OptIn(ExperimentalComposeUiApi::class)
 fun XServerScreen(
@@ -664,6 +670,32 @@ fun XServerScreen(
     }
 
     val performanceHudTouchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
+    // Pre-install steps and opening the container run on X11; a game follows the container's choice.
+    val preInstallPending = container != null &&
+        PreInstallSteps.hasPendingSteps(
+            container,
+            appId,
+            ContainerUtils.extractGameSourceFromContainerId(appId),
+        )
+    val sessionDisplay = if (preInstallPending || bootToContainer || resolveDisplayX11(container))
+        SessionDisplay.X11
+    else
+        SessionDisplay.GAMESCOPE
+    val isX11Display = sessionDisplay == SessionDisplay.X11
+    val isGamescopeSession = sessionDisplay == SessionDisplay.GAMESCOPE
+
+    // Use a central fpsProvider for 2 call sites
+    val fpsProvider: () -> Float = {
+        val raw = ui.frameRating?.currentFPS ?: 0f
+        if (isLsfgAvailable && lsfgMultiplier >= 2 && isX11Display) {
+            // Only trust the layer's own measurement; multiplying raw fabricates fps for games the layer never
+            // attaches to (SHM-presenting games have no Vulkan swapchain). Under gamescope the presenter
+            // generates, and every frame it publishes is counted in raw already.
+            LsfgVkManager.readMeasuredFps(container) ?: raw
+        } else {
+            raw
+        }
+    }
 
     fun applyPerformanceHudConfig(config: PerformanceHudConfig) {
         ui.performanceHudConfig = config
@@ -683,22 +715,23 @@ fun XServerScreen(
     }
 
     fun applyFpsLimiterToEngines(limit: Int) {
-        // With LSFG active the layer owns ALL pacing (vsync-locked via
-        // vsync.txt) and presents at limit * multiplier. Both the renderer's
-        // SurfaceControl frame-rate hint and the PresentExtension's scheduled
-        // idle-release pacing must stay off: the hint would clamp the display
-        // to the base rate, and the extension's Choreographer-scheduled pixmap
-        // releases mix stale pixmaps under multiplied present traffic
-        // (measured as constant multi-exposure ghosting on the X11/turnip
-        // present path).
-        ui.xServerView?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
-        ui.xServerView?.getxServer()
-            ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
-            ?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
-        // Not disarmed with LSFG: the layer only multiplies Vulkan-swapchain
-        // presents, so SHM-presenting games never pass through it and would
-        // otherwise run uncapped whenever LSFG is armed.
-        ShmFramePacer.setFrameRateLimit(limit)
+        if (isX11Display) {
+            // With LSFG active the layer owns ALL pacing (vsync-locked via vsync.txt) and presents at limit *
+            // multiplier.
+            ui.xServerView?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
+            ui.xServerView?.getxServer()
+                ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
+                ?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
+            // Not disarmed with LSFG: the layer only multiplies Vulkan-swapchain presents, so SHM-presenting
+            // games never pass through it and would otherwise run uncapped whenever LSFG is armed.
+            ShmFramePacer.setFrameRateLimit(limit)
+        } else {
+            // Gamescope owns the present path, so the cap goes to it instead of the X11 engines above.
+            // With frame generation active the presenter owns pacing, exactly as the layer does on X11:
+            // the cap is disarmed and the output rate becomes limit x multiplier.
+            GamescopeCommandQueue.setFpsLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
+        }
+
         PowerManager.targetFps = limit
         // keeps frame stats in base units while generated frames tick the ring
         PowerManager.frameSampleStride =
@@ -712,6 +745,7 @@ fun XServerScreen(
         LsfgQuickMenuHelper.applySettings(
             container,
             LsfgQuickMenuHelper.Settings(lsfgMultiplier, lsfgFlowScale, lsfgPerformanceMode),
+            fpsLimit = effectiveFpsLimit(),
         )
     }
 
@@ -762,7 +796,8 @@ fun XServerScreen(
             ShmFramePacer.setFrameRateLimit(capFps)
             true
         }
-        val detectedMax = detectMaxRefreshRateHz(context, ui.xServerView as? View)
+        // Scaled here, not in the resolver, which must keep returning the display's real rate.
+        val detectedMax = detectMaxRefreshRateHz(context, ui.xServerView as? View) * FPS_LIMITER_MAX_MULTIPLIER
         ui.detectedMaxRefreshRateHz = detectedMax
         val clampedTarget = fpsLimiterTarget.coerceAtMost(detectedMax).coerceAtLeast(5)
         if (clampedTarget != fpsLimiterTarget) {
@@ -841,17 +876,7 @@ fun XServerScreen(
         val targetLayout = ui.performanceHudHost ?: return
         val hud = PerformanceHudView(
             context = context,
-            fpsProvider = {
-                val raw = ui.frameRating?.currentFPS ?: 0f
-                if (isLsfgAvailable && lsfgMultiplier >= 2) {
-                    // Only trust the layer's own measurement; multiplying raw
-                    // fabricates fps for games the layer never attaches to
-                    // (SHM-presenting games have no Vulkan swapchain).
-                    LsfgVkManager.readMeasuredFps(container) ?: raw
-                } else {
-                    raw
-                }
-            },
+            fpsProvider = fpsProvider,
             initialConfig = ui.performanceHudConfig,
             initialCompactMode = PrefManager.performanceHudCompactMode,
         )
@@ -2003,16 +2028,37 @@ fun XServerScreen(
                 usrGlibc,
                 mouseDragCompatibility,
             )
+
             // VirGL containers always need GL (shared EGL context for the
             // VirGL passthrough). Default to the legacy GL renderer for all
             // other containers as well. Uncheck the per-container useLegacyRenderer
             // setting to switch to the Vulkan renderer.
-            val useGLRenderer = container.graphicsDriver == "virgl" || container.displayRenderer.equals("gl", true)
+            val useGLRenderer = isX11Display && (container.graphicsDriver == "virgl" || container.displayRenderer.equals("gl", true))
             val xServerViewInstance: XServerRendererView = if (useGLRenderer) {
                 XServerViewGL(context, xServerToUse)
             } else {
                 XServerView(context, xServerToUse, container.displayRenderer)
             }
+
+            // Install (or clear, when reusing a cached XServer) the input retarget sink.
+            when (sessionDisplay) {
+                SessionDisplay.X11 -> {
+                    (xServerViewInstance as XServerView).isGamescopeMode = false
+                    xServerToUse.setInputEventSink(null)
+                }
+                SessionDisplay.GAMESCOPE -> {
+                    (xServerViewInstance as XServerView).isGamescopeMode = true
+                    xServerToUse.setInputEventSink(GamescopeInputSink())
+                    // Ahead of nativeStart, which fixes the emulated mode's rate from this
+                    // view's surface callback, so the panel's real rate must be set first.
+                    GameNativeDrm.nativeSetPanelRefreshHz(detectMaxRefreshRateHz(context, xServerViewInstance as? View))
+                    // The presenter opens its frame-generation session on the first
+                    // present, from whatever the daemon holds: without this the daemon
+                    // has nothing until the first Quick Menu change.
+                    applyLsfgSettings()
+                }
+            }
+
             val xServerView = xServerViewInstance.apply {
                 ui.xServerView = this
                 setFrameRateLimit(if (fpsLimiterEnabled) fpsLimiterTarget else 0)
@@ -2377,6 +2423,7 @@ fun XServerScreen(
                                     envVars,
                                     firstTimeBoot,
                                     vkbasaltConfig,
+                                    isGamescopeSession,
                                 )
                             }
 
@@ -2395,6 +2442,7 @@ fun XServerScreen(
                                 appLaunchInfo,
                                 ui.xServerView!!.getxServer(),
                                 containerVariantChanged,
+                                sessionDisplay,
                                 onGameLaunchError,
                                 isOffline,
                                 immersiveHooks,
@@ -2406,14 +2454,7 @@ fun XServerScreen(
                             if (debugRun) {
                                 PerfSampler.start(
                                     context,
-                                    fpsProvider = {
-                                        val raw = ui.frameRating?.currentFPS ?: 0f
-                                        if (isLsfgAvailable && lsfgMultiplier >= 2) {
-                                            LsfgVkManager.readMeasuredFps(container) ?: raw
-                                        } else {
-                                            raw
-                                        }
-                                    },
+                                    fpsProvider = fpsProvider,
                                     drives = container.drives,
                                 )
                             }
@@ -2859,7 +2900,16 @@ fun XServerScreen(
             }
             ui.frameRating = FrameRating(context)
             ui.frameRating?.setVisibility(View.GONE)
-            xServerView.renderer.setFrameRating(ui.frameRating)
+
+            if (isX11Display) {
+                // X11 arm: the renderer's present callbacks tick this widget (unchanged).
+                xServerView.renderer.setFrameRating(ui.frameRating)
+            } else {
+                // Gamescope arm: the renderer never presents under gamescope, so the daemon's per-published-frame
+                // upcall ticks this widget instead — register it with the integration object that owns that
+                // upcall.
+                GameNativeDrm.setFrameRating(ui.frameRating)
+            }
 
             if (ui.isPerformanceHudEnabled) {
                 frameLayout.post {
@@ -2901,10 +2951,21 @@ fun XServerScreen(
             shouldTrackDisplayedFrames.set(false)
             ShmFramePacer.setFrameRateLimit(0)
 
+            // FrameRating teardown (gamescope)
+            if (!isX11Display) {
+                GameNativeDrm.setFrameRating(null)
+            }
+
             val releaseBinding = view.tag as? XServerViewReleaseBinding
             releaseBinding?.let { binding ->
                 // Remove the WindowManager listener associated with the released AndroidView.
                 binding.xServerView.renderer.setOnFrameRenderedListener(null)
+
+                // FrameRating teardown (x11)
+                if (isX11Display) {
+                    binding.xServerView.renderer.setFrameRating(null)
+                }
+
                 binding.xServerView.getxServer().windowManager.removeOnWindowModificationListener(binding.windowModificationListener)
                 binding.gameHostLayoutListener?.let { listener ->
                     (binding.gameHost?.parent as? View)?.removeOnLayoutChangeListener(listener)
@@ -4152,11 +4213,13 @@ private fun setupXEnvironment(
     appLaunchInfo: LaunchInfo?,
     xServer: XServer,
     containerVariantChanged: Boolean,
+    sessionDisplay: SessionDisplay,
     onGameLaunchError: ((String) -> Unit)? = null,
     offline: Boolean = false,
     immersiveHooks: app.gamenative.ui.screen.xr.ImmersiveSessionHooks? = null,
 ): XEnvironment {
     val session = guestSession.incrementAndGet()
+    val isX11Display = sessionDisplay == SessionDisplay.X11
     ProcessHelper.hardKillStaleWineProcesses()
 
     val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
@@ -4259,6 +4322,12 @@ private fun setupXEnvironment(
         )
     }
 
+    // The guest command/env follows the session arm, not the container's raw choice: an X11 session
+    // (open-container/setup) on a gamescope container must not wrap the command with gamescope or
+    // export its env.
+    (guestProgramLauncherComponent as? BionicProgramLauncherComponent)
+        ?.setGamescopeModeOverride(!isX11Display)
+
     var preInstallCommands: List<PreInstallSteps.PreInstallCommand> = emptyList()
     var gameExecutable = ""
 
@@ -4316,7 +4385,7 @@ private fun setupXEnvironment(
         if (!container.isLaunchRealSteam && !container.isLaunchBionicSteam) envVars.put("PROTON_DISABLE_LSTEAMCLIENT", "1")
 
         envVars.putAll(container.envVars)
-        if (resolveGlBackend(context, container) == Container.GL_BACKEND_KOPPER) {
+        if (resolveGlBackend(context, container, !isX11Display) == Container.GL_BACKEND_KOPPER) {
             envVars.remove("GALLIUM_DRIVER")
             envVars.remove("LIBGL_KOPPER_DISABLE")
             if (guestProgramLauncherComponent is BionicProgramLauncherComponent) {
@@ -4398,7 +4467,14 @@ private fun setupXEnvironment(
             UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.SYSVSHM_SERVER_PATH),
         ),
     )
-    environment.addComponent(XServerComponent(xServer, UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.XSERVER_PATH)))
+
+    when (sessionDisplay) {
+        SessionDisplay.X11 ->
+            environment.addComponent(XServerComponent(xServer, UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.XSERVER_PATH)))
+        SessionDisplay.GAMESCOPE ->
+            environment.addComponent(GamescopeServerComponent(context.filesDir, imageFs, container))
+    }
+
     environment.addComponent(NetworkInfoUpdateComponent())
 
     if (!container.isLaunchRealSteam && !container.isLaunchBionicSteam) {
@@ -5246,6 +5322,9 @@ private fun exit(
     } catch (e: Exception) {
         Timber.e(e, "winHandler.stop() failed during exit")
     }
+    // The gndrm daemon (gamescope display mode) is torn down only at session exit: a display power
+    // cycle retargets the surface in XServerView instead of stopping it.
+    GameNativeDrm.nativeStop()
     PluviaApp.shutdownEnvironment()
     EaLaunchSupport.stop()
     GogGalaxyService.stop(blocking = false)
@@ -5843,9 +5922,15 @@ private suspend fun applyGeneralPatches(
     WinlatorPrefManager.putString("current_box64_version", "")
 }
 
+/** Launch-time check that the container selects X11; */
+internal fun resolveDisplayX11(container: Container?): Boolean {
+    return container != null && container.displayServer.equals(Container.DISPLAY_SERVER_X11, ignoreCase = true)
+}
+
 private fun refreshComponentsFiles(context: Context) {
     val extractionPairs = listOf(
-        "pulseaudio-gamenative-20260919.tzst" to File(context.filesDir, "pulseaudio")
+        "pulseaudio-gamenative-20260919.tzst" to File(context.filesDir, "pulseaudio"),
+        "gamescope-gamenative-20261022.13.tzst" to File(context.filesDir, "gamescope"),
     )
 
     AssetUtils.extractComponentsWithVersionCheck(
@@ -6203,9 +6288,10 @@ private suspend fun extractWinComponentFiles(
 
 private const val MESA_KOPPER_COMPONENT_ID = "mesa_kopper"
 private const val MESA_KOPPER_LIB_DIR = "usr/lib/mesa-kopper"
+private const val MESA_KOPPER_VENDOR_JSON = "$MESA_KOPPER_LIB_DIR/egl_vendor.d/60_mesa_kopper.json"
 private val PROTON_MAJOR_VERSION = Regex("""^proton-(\d+)""")
 
-private fun requestedGlBackend(container: Container): String {
+private fun requestedGlBackend(container: Container, gamescopeSession: Boolean): String {
     val requested = container.glBackend.lowercase(Locale.ROOT)
     if (requested == Container.GL_BACKEND_XLIB) return Container.GL_BACKEND_XLIB
     if (!BuildConfig.MODERN_ANDROID || !container.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
@@ -6213,16 +6299,16 @@ private fun requestedGlBackend(container: Container): String {
     }
     if (requested == Container.GL_BACKEND_KOPPER) return Container.GL_BACKEND_KOPPER
     if (!container.graphicsDriver.lowercase(Locale.ROOT).startsWith("wrapper")) return Container.GL_BACKEND_XLIB
-    if (!container.isUseDRI3) return Container.GL_BACKEND_XLIB
+    if (!gamescopeSession && !container.isUseDRI3) return Container.GL_BACKEND_XLIB
     val protonMajor = PROTON_MAJOR_VERSION.find(container.wineVersion.lowercase(Locale.ROOT))
         ?.groupValues?.get(1)?.toIntOrNull()
     return if (protonMajor != null && protonMajor >= 11) Container.GL_BACKEND_KOPPER else Container.GL_BACKEND_XLIB
 }
 
-private fun resolveGlBackend(context: Context, container: Container): String {
-    if (requestedGlBackend(container) != Container.GL_BACKEND_KOPPER) return Container.GL_BACKEND_XLIB
-    val kopperDir = File(ImageFs.find(context).rootDir, MESA_KOPPER_LIB_DIR)
-    return if (kopperDir.isDirectory) Container.GL_BACKEND_KOPPER else Container.GL_BACKEND_XLIB
+private fun resolveGlBackend(context: Context, container: Container, gamescopeSession: Boolean): String {
+    if (requestedGlBackend(container, gamescopeSession) != Container.GL_BACKEND_KOPPER) return Container.GL_BACKEND_XLIB
+    val kopperVendor = File(ImageFs.find(context).rootDir, MESA_KOPPER_VENDOR_JSON)
+    return if (kopperVendor.isFile) Container.GL_BACKEND_KOPPER else Container.GL_BACKEND_XLIB
 }
 
 private suspend fun extractGraphicsDriverFiles(
@@ -6234,6 +6320,7 @@ private suspend fun extractGraphicsDriverFiles(
     envVars: EnvVars,
     firstTimeBoot: Boolean,
     vkbasaltConfig: String,
+    gamescopeSession: Boolean,
 ) {
     if (container.containerVariant.equals(Container.GLIBC)) {
         // Get the configured driver version or use default
@@ -6438,20 +6525,21 @@ private suspend fun extractGraphicsDriverFiles(
                 .contains("turnip") && isAdrenotoolsTurnip == "0"
         ) envVars.put("VK_ICD_FILENAMES", imageFs.getShareDir().path + "/vulkan/icd.d/freedreno_icd.aarch64.json")
         else envVars.put("VK_ICD_FILENAMES", imageFs.getShareDir().path + "/vulkan/icd.d/wrapper_icd.aarch64.json")
-        if (requestedGlBackend(container) == Container.GL_BACKEND_KOPPER) {
+        if (requestedGlBackend(container, gamescopeSession) == Container.GL_BACKEND_KOPPER) {
             try {
-                if (ALWAYS_REEXTRACT || !File(rootDir, MESA_KOPPER_LIB_DIR).isDirectory) {
+                if (ALWAYS_REEXTRACT || !File(rootDir, MESA_KOPPER_VENDOR_JSON).isFile) {
+                    FileUtils.delete(File(rootDir, MESA_KOPPER_LIB_DIR))
                     extractGraphicsDriverComponent(context, MESA_KOPPER_COMPONENT_ID, rootDir!!)
                 }
             } catch (e: Exception) {
                 Timber.tag("GraphicsDriverExtraction").e(e, "Failed to install $MESA_KOPPER_COMPONENT_ID, using xlib GL")
             }
         }
-        if (resolveGlBackend(context, container) == Container.GL_BACKEND_KOPPER) {
+        if (resolveGlBackend(context, container, gamescopeSession) == Container.GL_BACKEND_KOPPER) {
             envVars.put("MESA_LOADER_DRIVER_OVERRIDE", "zink")
             envVars.put("LIBGL_KOPPER_DRI2", "1")
             envVars.put("WINE_USE_EGL", "1")
-            envVars.put("__EGL_VENDOR_LIBRARY_FILENAMES", File(rootDir, "$MESA_KOPPER_LIB_DIR/egl_vendor.d/50_mesa.json").path)
+            envVars.put("__EGL_VENDOR_LIBRARY_FILENAMES", File(rootDir, MESA_KOPPER_VENDOR_JSON).path)
             envVars.put("__GLX_VENDOR_LIBRARY_NAME", "mesa")
         } else {
             envVars.put("GALLIUM_DRIVER", "zink")

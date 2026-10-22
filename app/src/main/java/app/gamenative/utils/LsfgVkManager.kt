@@ -7,6 +7,7 @@ import android.view.Choreographer
 import android.view.WindowManager
 import java.util.concurrent.Executors
 import app.gamenative.BuildConfig
+import app.gamenative.display.GameNativeDrm
 import app.gamenative.service.SteamService
 import com.winlator.container.Container
 import com.winlator.container.ContainerManager
@@ -81,6 +82,8 @@ object LsfgVkManager {
 
     const val BACKEND_LEGACY = "legacy"
     const val BACKEND_NATIVE = "native"
+    /** Frame generation inside the KMS presenter, for gamescope sessions. */
+    const val BACKEND_GAMENATIVE_DRM = "gamenative_drm"
 
     // FPS limiter extras (owned by XServerScreen)
     private const val EXTRA_FPS_LIMITER_ENABLED = "fpsLimiterEnabled"
@@ -152,12 +155,14 @@ object LsfgVkManager {
     }
 
     /** Get the multiplier (0=Off, 2-4, default 2). */
+    @JvmStatic
     fun multiplier(container: Container): Int {
         val raw = container.getExtra(EXTRA_MULTIPLIER, "2").toIntOrNull() ?: 2
         return if (raw == 0) 0 else raw.coerceIn(2, 4)
     }
 
     /** Get the flow scale (0.25-1.0, default 0.80). */
+    @JvmStatic
     fun flowScale(container: Container): Float =
         container.getExtra(EXTRA_FLOW_SCALE, "0.80").toFloatOrNull()?.coerceIn(0.25f, 1.0f) ?: 0.80f
 
@@ -180,7 +185,7 @@ object LsfgVkManager {
      */
     fun backend(container: Container): String =
         container.getExtra(EXTRA_BACKEND, BACKEND_NATIVE)
-            .takeIf { it == BACKEND_LEGACY } ?: BACKEND_NATIVE
+            .takeIf { it == BACKEND_LEGACY || it == BACKEND_GAMENATIVE_DRM } ?: BACKEND_NATIVE
 
     @JvmStatic
     fun isNativeBackend(container: Container): Boolean =
@@ -191,6 +196,7 @@ object LsfgVkManager {
      * phase-locks its schedule to the vsync grid published by
      * [startVsyncClock]; without that file it falls back to free-running.
      */
+    @JvmStatic
     fun fpsLimit(container: Container): Int {
         if (!parseBool(container.getExtra(EXTRA_FPS_LIMITER_ENABLED, "false"))) return 0
         return container.getExtra(EXTRA_FPS_LIMITER_TARGET, "0").toIntOrNull()?.coerceAtLeast(0) ?: 0
@@ -332,6 +338,42 @@ object LsfgVkManager {
         (context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager)
             ?.defaultDisplay?.refreshRate
     }.getOrNull()?.takeIf { it > 1f } ?: 60f
+
+    /**
+     * Push the container's LSFG settings to the KMS presenter.
+     *
+     * The X11 backends are applied to an object in this process ([applyNativeRuntime],
+     * [applyLaunchEnv]); this one has no object to hold — the engine runs in the
+     * guest, inside the ICD — so the settings go through the daemon's JNI bridge
+     * ([GameNativeDrm.nativeSetLsfgConfig]) and the shim asks the daemon for them
+     * over the scan-out channel.
+     */
+    fun applyDrmRuntime(
+        container: Container,
+        settings: LsfgQuickMenuHelper.Settings,
+        enabled: Boolean,
+        fpsLimit: Int,
+    ) {
+        GameNativeDrm.nativeSetLsfgConfig(
+            enabled,
+            settings.multiplier,
+            (settings.flowScale * 1000f).toInt(),
+            settings.performanceMode,
+            fpsLimit,
+            containerDllPath(container) ?: "",
+        )
+    }
+
+    /**
+     * The source cap for a gamescope session, read the way the session screen reads it:
+     * the limiter is on at 60 until the user changes it, and those extras are only
+     * written once the user does, so an unset limiter is 60 here, not off.
+     */
+    @JvmStatic
+    fun gamescopeFpsLimit(container: Container): Int {
+        if (!parseBool(container.getExtra(EXTRA_FPS_LIMITER_ENABLED, "true"))) return 0
+        return container.getExtra(EXTRA_FPS_LIMITER_TARGET, "").toIntOrNull()?.takeIf { it > 0 } ?: 60
+    }
 
     /** Push the container's LSFG settings into the host renderer's native pipeline. */
     @JvmStatic
@@ -529,7 +571,7 @@ object LsfgVkManager {
 
         if (!isSupported(container)) {
             // Remove the manifest so the Vulkan loader can't find the layer
-            disableLayerInContainer(container)
+            disableLayer(container)
             return false
         }
 
@@ -538,7 +580,7 @@ object LsfgVkManager {
 
         if (!armed) {
             // Remove the manifest so the Vulkan loader can't find the layer
-            disableLayerInContainer(container)
+            disableLayer(container)
             Timber.tag(TAG).i("LSFG disabled (enabled=%s, dll=%s)",
                 container.getExtra(EXTRA_ARMED, "false"), dllPath ?: "null")
             return false
@@ -569,9 +611,12 @@ object LsfgVkManager {
 
     /**
      * Remove the layer manifest so the Vulkan loader can't discover it.
-     * Called when LSFG is disabled to ensure no stale layer is loaded.
+     * Called when LSFG is disabled — and for a gamescope session, where the layer
+     * must not be loadable at all (its failed device init kills gamescope's own
+     * vkCreateDevice on this driver's Turnip).
      */
-    private fun disableLayerInContainer(container: Container) {
+    @JvmStatic
+    fun disableLayer(container: Container) {
         val layerDir = File(container.rootDir, LAYER_RELATIVE_DIR)
         val manifest = File(layerDir, MANIFEST_FILENAME)
         if (manifest.exists()) {

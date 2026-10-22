@@ -1,5 +1,6 @@
 package app.gamenative.utils
 
+import app.gamenative.ui.screen.xserver.resolveDisplayX11
 import com.winlator.container.Container
 import java.util.Locale
 import java.util.concurrent.Executors
@@ -66,7 +67,7 @@ object LsfgQuickMenuHelper {
     fun sanitizeFlowScale(flowScale: Float): Float =
         flowScale.coerceIn(0.25f, 1.0f)
 
-    fun applySettings(container: Container, settings: Settings) {
+    fun applySettings(container: Container, settings: Settings, fpsLimit: Int? = null) {
         val multiplier = sanitizeMultiplier(settings.multiplier)
         val flowScale = sanitizeFlowScale(settings.flowScale)
 
@@ -75,15 +76,53 @@ object LsfgQuickMenuHelper {
         container.putExtra(LsfgVkManager.EXTRA_PERFORMANCE_MODE, settings.performanceMode.toString())
         container.saveData()
 
-        val effectiveEnabled = multiplier >= 2
+        // The container's LSFG switch is the authority, not the multiplier. A
+        // container whose switch is off keeps a stored multiplier (it is only
+        // zeroed when the QuickMenu's own row turns generation off), so reading
+        // the multiplier alone arms a session the user disabled. This path runs
+        // at session start from the fps-limiter apply, which is how a title with
+        // LSFG off still ended up with generation running in the presenter.
+        val effectiveEnabled = LsfgVkManager.isArmed(container) && multiplier >= 2
         val effectiveMultiplier = if (effectiveEnabled) multiplier else 2
-        LsfgVkManager.updateConfigAtRuntime(
+
+        if (resolveDisplayX11(container)) {
+            LsfgVkManager.updateConfigAtRuntime(
+                container,
+                effectiveEnabled,
+                effectiveMultiplier,
+                flowScale,
+                settings.performanceMode,
+            )
+            LsfgVkManager.refreshNativeRuntime(container)
+        } else {
+            // A gamescope session has no renderer to push into: the presenter gets
+            // the new settings through the daemon. Synchronous, because the session
+            // screen sends them right before the daemon starts and the presenter opens
+            // its session from whatever the daemon holds at the first present.
+            val applied = Settings(effectiveMultiplier, flowScale, settings.performanceMode)
+            // `effectiveEnabled` carries "off": the presenter cannot infer it from
+            // the multiplier, which is clamped to 2 when disabled.
+            LsfgVkManager.applyDrmRuntime(
+                container,
+                applied,
+                effectiveEnabled,
+                fpsLimit ?: LsfgVkManager.gamescopeFpsLimit(container),
+            )
+        }
+    }
+
+    /** Push the container's saved settings to the presenter, for a launch. */
+    @JvmStatic
+    fun applyDrmSettings(container: Container) {
+        val settings = readSettings(container)
+        // Same authority as `applySettings`: a stored multiplier does not mean
+        // the user wants generation, so the switch decides.
+        val enabled = LsfgVkManager.isArmed(container) && settings.multiplier >= 2
+        LsfgVkManager.applyDrmRuntime(
             container,
-            effectiveEnabled,
-            effectiveMultiplier,
-            flowScale,
-            settings.performanceMode,
+            Settings(if (enabled) settings.multiplier else 2, settings.flowScale, settings.performanceMode),
+            enabled,
+            LsfgVkManager.gamescopeFpsLimit(container),
         )
-        LsfgVkManager.refreshNativeRuntime(container)
     }
 }

@@ -227,6 +227,13 @@ object PrefManager {
             setPref(RENDERER_PRESENT_MODE, value)
         }
 
+    private val DISPLAY_SERVER = stringPreferencesKey("display_server")
+    var displayServer: String
+        get() = getPref(DISPLAY_SERVER, Container.DISPLAY_SERVER_X11)
+        set(value) {
+            setPref(DISPLAY_SERVER, value)
+        }
+
     private val DISPLAY_RENDERER_MODE = stringPreferencesKey("display_renderer_mode")
     var displayRendererMode: String
         get() {
@@ -747,6 +754,13 @@ object PrefManager {
         get() = getPref(GL_BACKEND, "auto")
         set(value) {
             setPref(GL_BACKEND, value)
+        }
+
+    private val HDR_ENABLED = booleanPreferencesKey("hdrEnabled")
+    var hdrEnabled: Boolean
+        get() = getPref(HDR_ENABLED, false)
+        set(value) {
+            setPref(HDR_ENABLED, value)
         }
 
     private val VIDEO_MEMORY_SIZE = stringPreferencesKey("videoMemorySize")

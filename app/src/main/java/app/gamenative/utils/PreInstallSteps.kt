@@ -80,6 +80,16 @@ object PreInstallSteps {
         return commands
     }
 
+    /** Whether any pre-install step would run for this launch; asked before the session's server is chosen. */
+    fun hasPendingSteps(container: Container, appId: String, gameSource: GameSource): Boolean {
+        val gameDir = getGameDir(container) ?: return false
+        val gameDirPath = gameDir.absolutePath
+        return currentSteps().any { step ->
+            step.appliesTo(container, gameSource, gameDirPath) &&
+                step.buildCommand(container, appId, gameSource, gameDir, gameDirPath) != null
+        }
+    }
+
     fun markAllDone(container: Container) {
         val gameDir = getGameDir(container) ?: return
         val gameDirPath = gameDir.absolutePath
