@@ -1502,10 +1502,22 @@ fun XServerScreen(
 
     DisposableEffect(Unit) {
         val inputManager = context.getSystemService(Context.INPUT_SERVICE) as InputManager
+        val controllerManager = ControllerManager.getInstance()
+
+        // A newly added Android input device is assigned after ControllerManager's settle delay.
+        // The immediate hot-plug scan below therefore cannot always see that assignment. Refresh
+        // WinHandler again when the delayed assignment changes a slot so the Wine-side virtual pad
+        // is reattached without waiting for another Android input-device event.
+        val slotsChangedListener = ControllerManager.OnSlotsChangedListener {
+            view.post {
+                ui.controllerSlotStatusVersion++
+                ui.xServerView?.getxServer()?.winHandler?.refreshControllerMappingsForHotplug()
+            }
+        }
 
         val deviceListener = object : InputManager.InputDeviceListener {
             override fun onInputDeviceAdded(deviceId: Int) {
-                ControllerManager.getInstance().onDeviceConnected(deviceId)
+                controllerManager.onDeviceConnected(deviceId)
                 scanForExternalDevices()
                 val device = InputDevice.getDevice(deviceId) ?: return
                 evaluateDevice(device)
@@ -1513,24 +1525,26 @@ fun XServerScreen(
 
             override fun onInputDeviceRemoved(deviceId: Int) {
                 ui.physicalControllerHandler?.onInputDeviceRemoved(deviceId)
-                ControllerManager.getInstance().onDeviceDisconnected(deviceId)
+                controllerManager.onDeviceDisconnected(deviceId)
                 scanForExternalDevices()
             }
 
             override fun onInputDeviceChanged(deviceId: Int) {
-                ControllerManager.getInstance().onDeviceConnected(deviceId)
+                controllerManager.onDeviceConnected(deviceId)
                 scanForExternalDevices()
                 val device = InputDevice.getDevice(deviceId) ?: return
                 evaluateDevice(device)
             }
         }
 
+        controllerManager.addOnSlotsChangedListener(slotsChangedListener)
         inputManager.registerInputDeviceListener(deviceListener, null)
-        ControllerManager.getInstance().resetSessionActivity()
+        controllerManager.resetSessionActivity()
         scanForExternalDevices()
 
         onDispose {
             inputManager.unregisterInputDeviceListener(deviceListener)
+            controllerManager.removeOnSlotsChangedListener(slotsChangedListener)
         }
     }
 
