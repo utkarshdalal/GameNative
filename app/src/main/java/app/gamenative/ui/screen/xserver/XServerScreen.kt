@@ -5916,7 +5916,7 @@ private suspend fun applyGeneralPatches(
 
 /** Launch-time check that the container selects X11; */
 internal fun resolveDisplayX11(container: Container?): Boolean {
-    return container != null && container.displayServer.equals(Container.DISPLAY_SERVER_X11, ignoreCase = true)
+    return container == null || Container.isX11Display(container.containerVariant, container.displayServer)
 }
 
 private fun refreshComponentsFiles(context: Context) {

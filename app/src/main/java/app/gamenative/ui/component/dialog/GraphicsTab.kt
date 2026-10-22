@@ -33,7 +33,7 @@ import kotlin.math.roundToInt
 @Composable
 fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
     val config = state.config.value
-    val isX11Display = config.displayServer.equals(Container.DISPLAY_SERVER_X11, ignoreCase = true)
+    val isX11Display = Container.isX11Display(config.containerVariant, config.displayServer)
     SettingsGroup() {
         if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
             // Bionic: Graphics Driver (Wrapper/Wrapper-v2)
@@ -456,7 +456,7 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
 @Composable
 private fun DxWrapperSection(state: ContainerConfigState) {
     val config = state.config.value
-    val isX11Display = config.displayServer.equals(Container.DISPLAY_SERVER_X11, ignoreCase = true)
+    val isX11Display = Container.isX11Display(config.containerVariant, config.displayServer)
     if (isX11Display) {
         SettingsListDropdown(
             colors = settingsTileColorsAlt(),

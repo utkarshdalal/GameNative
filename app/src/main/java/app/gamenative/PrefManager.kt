@@ -229,7 +229,7 @@ object PrefManager {
 
     private val DISPLAY_SERVER = stringPreferencesKey("display_server")
     var displayServer: String
-        get() = getPref(DISPLAY_SERVER, Container.DISPLAY_SERVER_X11)
+        get() = getPref(DISPLAY_SERVER, Container.DEFAULT_DISPLAY_SERVER)
         set(value) {
             setPref(DISPLAY_SERVER, value)
         }
