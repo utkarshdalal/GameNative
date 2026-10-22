@@ -15,6 +15,7 @@ import com.winlator.core.DefaultVersion
 import com.winlator.core.GPUInformation
 import com.winlator.core.KeyValueSet
 import com.winlator.fexcore.FEXCorePresetManager
+import com.winlator.winhandler.WinHandler
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
@@ -1023,6 +1024,9 @@ object BestConfigService {
                 }
                 if (filteredJson.has("audioDriver") && !filteredJson.isNull("audioDriver")) {
                     resultMap["audioDriver"] = filteredJson.optString("audioDriver", PrefManager.audioDriver)
+                }
+                if (filteredJson.has("inputType") && !filteredJson.isNull("inputType")) {
+                    resultMap["inputType"] = filteredJson.optInt("inputType", WinHandler.PreferredInputApi.BOTH.ordinal)
                 }
                 if (filteredJson.has("wincomponents") && !filteredJson.isNull("wincomponents")) {
                     resultMap["wincomponents"] = filteredJson.optString("wincomponents", PrefManager.winComponents)
