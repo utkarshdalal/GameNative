@@ -925,6 +925,7 @@ object ContainerUtils {
                 graphicsDriverConfig = PrefManager.graphicsDriverConfig,
                 rendererPresentMode = PrefManager.rendererPresentMode,
                 displayRenderer = PrefManager.displayRendererMode,
+                displayServer = PrefManager.displayServer,
                 sfCompatMode = PrefManager.sfCompatMode,
                 dxwrapper = initialDxWrapper,
                 dxwrapperConfig = PrefManager.dxWrapperConfig,
