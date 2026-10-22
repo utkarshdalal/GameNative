@@ -21,6 +21,7 @@ import com.winlator.PrefManager;
 
 import app.gamenative.PluviaApp;
 import app.gamenative.display.GamescopeSettings;
+import app.gamenative.utils.LsfgQuickMenuHelper;
 import app.gamenative.utils.LsfgVkManager;
 import com.winlator.box86_64.Box86_64Preset;
 import com.winlator.box86_64.Box86_64PresetManager;
@@ -416,11 +417,16 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         if (LsfgVkManager.isSupported(container)) {
             LsfgVkManager.ensureRuntimeInstalled(environment.getContext(), container);
             LsfgVkManager.writeConfig(container);
-            // LSFG is an X11-arm feature. Under gamescope the compositor owns presentation and pacing, and the
-            // lsfg-vk layer's failed device init on this driver's Turnip takes gamescope's own vkCreateDevice
-            // down with it — so a gamescope session must not load the layer at all.
+            // A gamescope session must not load the lsfg-vk layer: its device init on this driver's
+            // Turnip takes gamescope's own vkCreateDevice with it. Frame generation runs in the KMS
+            // shim instead, configured through the daemon.
             if (gamescopeMode) {
                 LsfgVkManager.disableLayer(container);
+                // Sent again now that the DLL is in the container: the session screen's
+                // push can predate the first install, and the presenter needs the path.
+                if (LsfgVkManager.isArmed(container)) {
+                    LsfgQuickMenuHelper.applyDrmSettings(container);
+                }
             } else {
                 LsfgVkManager.applyLaunchEnv(container, envVars);
                 if (LsfgVkManager.isArmed(container)) {
@@ -697,7 +703,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         }
     }
 
-    /** "-W <w> -H <h> -w <w> -h <h>": -W/-H from the real display (matches the panel, no resample), -w/-h from the container screen size; either pair omitted if unknown. */
+    /** " -W <w> -H <h> -w <w> -h <h>": -W/-H from the real display (matches the panel, no resample), -w/-h from the container screen size; either pair omitted if unknown. */
     private String gamescopeModeGeometry() {
         int[] containerSize = AppUtils.parseScreenSize(container != null ? container.getScreenSize() : null);
         int[] output = displaySize();

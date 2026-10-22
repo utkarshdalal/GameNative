@@ -663,18 +663,6 @@ fun XServerScreen(
     var lsfgFlowScale by rememberSaveable(container.id) { mutableStateOf(initialLsfgSettings.flowScale) }
     var lsfgPerformanceMode by rememberSaveable(container.id) { mutableStateOf(initialLsfgSettings.performanceMode) }
 
-    // Use a central fpsProvider for 2 call sites
-    val fpsProvider: () -> Float = {
-        val raw = ui.frameRating?.currentFPS ?: 0f
-        if (isLsfgAvailable && lsfgMultiplier >= 2) {
-            // Only trust the layer's own measurement; multiplying raw fabricates fps for games the layer never
-            // attaches to (SHM-presenting games have no Vulkan swapchain).
-            LsfgVkManager.readMeasuredFps(container) ?: raw
-        } else {
-            raw
-        }
-    }
-
     fun persistFpsLimiterState() {
         container.putExtra(FPS_LIMITER_ENABLED_EXTRA, fpsLimiterEnabled)
         container.putExtra(FPS_LIMITER_TARGET_EXTRA, fpsLimiterTarget)
@@ -695,6 +683,19 @@ fun XServerScreen(
         SessionDisplay.GAMESCOPE
     val isX11Display = sessionDisplay == SessionDisplay.X11
     val isGamescopeSession = sessionDisplay == SessionDisplay.GAMESCOPE
+
+    // Use a central fpsProvider for 2 call sites
+    val fpsProvider: () -> Float = {
+        val raw = ui.frameRating?.currentFPS ?: 0f
+        if (isLsfgAvailable && lsfgMultiplier >= 2 && isX11Display) {
+            // Only trust the layer's own measurement; multiplying raw fabricates fps for games the layer never
+            // attaches to (SHM-presenting games have no Vulkan swapchain). Under gamescope the presenter
+            // generates, and every frame it publishes is counted in raw already.
+            LsfgVkManager.readMeasuredFps(container) ?: raw
+        } else {
+            raw
+        }
+    }
 
     fun applyPerformanceHudConfig(config: PerformanceHudConfig) {
         ui.performanceHudConfig = config
@@ -726,8 +727,9 @@ fun XServerScreen(
             ShmFramePacer.setFrameRateLimit(limit)
         } else {
             // Gamescope owns the present path, so the cap goes to it instead of the X11 engines above.
-            // Stored in the queue's desired state (one frame-rate domain) and re-applied with the rest.
-            GamescopeCommandQueue.setFpsLimit(limit)
+            // With frame generation active the presenter owns pacing, exactly as the layer does on X11:
+            // the cap is disarmed and the output rate becomes limit x multiplier.
+            GamescopeCommandQueue.setFpsLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
         }
 
         PowerManager.targetFps = limit
@@ -743,6 +745,7 @@ fun XServerScreen(
         LsfgQuickMenuHelper.applySettings(
             container,
             LsfgQuickMenuHelper.Settings(lsfgMultiplier, lsfgFlowScale, lsfgPerformanceMode),
+            fpsLimit = effectiveFpsLimit(),
         )
     }
 
@@ -2049,6 +2052,10 @@ fun XServerScreen(
                     // Ahead of nativeStart, which fixes the emulated mode's rate from this
                     // view's surface callback, so the panel's real rate must be set first.
                     GameNativeDrm.nativeSetPanelRefreshHz(detectMaxRefreshRateHz(context, xServerViewInstance as? View))
+                    // The presenter opens its frame-generation session on the first
+                    // present, from whatever the daemon holds: without this the daemon
+                    // has nothing until the first Quick Menu change.
+                    applyLsfgSettings()
                 }
             }
 
@@ -5915,7 +5922,7 @@ internal fun resolveDisplayX11(container: Container?): Boolean {
 private fun refreshComponentsFiles(context: Context) {
     val extractionPairs = listOf(
         "pulseaudio-gamenative-20260919.tzst" to File(context.filesDir, "pulseaudio"),
-        "gamescope-gamenative-20261021.tzst" to File(context.filesDir, "gamescope"),
+        "gamescope-gamenative-20261022.tzst" to File(context.filesDir, "gamescope"),
     )
 
     AssetUtils.extractComponentsWithVersionCheck(

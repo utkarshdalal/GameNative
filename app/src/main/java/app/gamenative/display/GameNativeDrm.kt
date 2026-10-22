@@ -83,6 +83,25 @@ object GameNativeDrm {
     @JvmStatic
     external fun nativeSetFpsLimit(fps: Int)
 
+    /**
+     * Frame-generation settings the KMS presenter applies: [enabled] is the user's switch — an
+     * explicit `false` stops generation where [multiplier] alone cannot — then [multiplier]
+     * (2-4), [flowPerMille] (flow scale x 1000), [performance] (lower-cost shader set) and
+     * [fpsLimit] (the cap on the **source** rate; the presenter presents at
+     * `fpsLimit * multiplier`, 0 = uncapped) — and [dllPath], the container's
+     * `Lossless.dll`, which the presenter needs because the container's
+     * environment does not reach the app's process.
+     */
+    @JvmStatic
+    external fun nativeSetLsfgConfig(
+        enabled: Boolean,
+        multiplier: Int,
+        flowPerMille: Int,
+        performance: Boolean,
+        fpsLimit: Int,
+        dllPath: String,
+    )
+
     /** Load and enable a ReShade effect by file name (e.g. "GNVibrance.fx"); applied by the injector. */
     @JvmStatic
     external fun nativeReshadeSetEffect(name: String)

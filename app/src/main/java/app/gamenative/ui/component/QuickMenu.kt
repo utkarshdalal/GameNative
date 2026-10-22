@@ -1047,6 +1047,7 @@ fun QuickMenu(
                                             onFlowScaleChanged = onLsfgFlowScaleChanged,
                                             onPerformanceModeChanged = onLsfgPerformanceModeChanged,
                                             backend = lsfgBackend,
+                                            showBackend = !isGamescopeSession,
                                             onBackendChanged = { backend ->
                                                 lsfgBackend = backend
                                                 container?.let {
@@ -1812,6 +1813,8 @@ private fun LsfgQuickMenuTab(
     onPerformanceModeChanged: (Boolean) -> Unit,
     backend: String,
     onBackendChanged: (String) -> Unit,
+    /** Hidden for a gamescope session: the presenter owns the engine there, so there is no choice. */
+    showBackend: Boolean,
     presentMode: String,
     onPresentModeChanged: (String) -> Unit,
     scrollState: ScrollState,
@@ -1912,25 +1915,27 @@ private fun LsfgQuickMenuTab(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 // ── Backend (Legacy layer / Native renderer) ──────────────
-                QuickMenuSectionHeader(
-                    title = stringResource(R.string.lsfg_backend),
-                    subtitle = stringResource(R.string.lsfg_backend_desc),
-                )
-                Row(
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    listOf(
-                        "native" to stringResource(R.string.lsfg_backend_native),
-                        "legacy" to stringResource(R.string.lsfg_backend_legacy),
-                    ).forEach { (value, label) ->
-                        QuickMenuChoiceChip(
-                            text = label,
-                            selected = backend == value,
-                            accentColor = accentColor,
-                            onClick = { onBackendChanged(value) },
-                            modifier = Modifier.width(120.dp),
-                        )
+                if (showBackend) {
+                    QuickMenuSectionHeader(
+                        title = stringResource(R.string.lsfg_backend),
+                        subtitle = stringResource(R.string.lsfg_backend_desc),
+                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        listOf(
+                            "native" to stringResource(R.string.lsfg_backend_native),
+                            "legacy" to stringResource(R.string.lsfg_backend_legacy),
+                        ).forEach { (value, label) ->
+                            QuickMenuChoiceChip(
+                                text = label,
+                                selected = backend == value,
+                                accentColor = accentColor,
+                                onClick = { onBackendChanged(value) },
+                                modifier = Modifier.width(120.dp),
+                            )
+                        }
                     }
                 }
             }
