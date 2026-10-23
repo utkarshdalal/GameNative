@@ -99,7 +99,7 @@ object LsfgVkManager {
     private const val ENV_PROCESS = "LSFG_PROCESS"
 
     // Current runtime version (bumped when the bundled .so changes)
-    private const val RUNTIME_VERSION = "v1.3.3-android-arm64-v8a"
+    private const val RUNTIME_VERSION = "v1.3.3-android-arm64-v8a-2"
 
     // Asset path for manifest (still in assets)
     private const val ASSET_DIR = "lsfg_vk/android_arm64_v8a"

@@ -32,31 +32,55 @@
 
 typedef uint64_t android_net_handle_t;
 
-static int (*android_res_nquery_fn)(android_net_handle_t, const char *, int, int,
-                                    uint32_t);
-static int (*android_res_nresult_fn)(int, int *, uint8_t *, size_t);
-static int (*android_getaddrinfofornetwork_fn)(android_net_handle_t,
-                                               const char *, const char *,
-                                               const struct addrinfo *,
-                                               struct addrinfo **);
+/*
+ * libandroid.so's resolver calls are thin wrappers over libnetd_client.so.
+ * libandroid itself pulls in ~200 system libraries that resolve their own
+ * dependencies through LD_LIBRARY_PATH, so they bind to imagefs libraries of
+ * the same name and fail to link on some OEM builds (Samsung's libsqlite needs
+ * BoringSSL's libcrypto, HyperOS's libjpeg-hyper needs the system libjpeg).
+ * libnetd_client.so's own dependencies share no names with imagefs.
+ */
+static int (*res_network_query_fn)(unsigned, const char *, int, int, uint32_t);
+static int (*res_network_result_fn)(int, int *, uint8_t *, size_t);
 static pthread_once_t android_resolver_once = PTHREAD_ONCE_INIT;
 
 static void resolve_android_resolver(void)
 {
-    void *handle = dlopen("libandroid.so", RTLD_NOW | RTLD_LOCAL);
+    void *handle = dlopen("libnetd_client.so", RTLD_NOW | RTLD_LOCAL);
 
     if (!handle)
     {
-        DNS_LOG("dlopen(libandroid.so) failed: %s", dlerror());
+        DNS_LOG("dlopen(libnetd_client.so) failed: %s", dlerror());
         return;
     }
 
-    android_res_nquery_fn = dlsym(handle, "android_res_nquery");
-    android_res_nresult_fn = dlsym(handle, "android_res_nresult");
-    android_getaddrinfofornetwork_fn =
-        dlsym(handle, "android_getaddrinfofornetwork");
-    if (!android_res_nquery_fn || !android_res_nresult_fn)
+    res_network_query_fn = dlsym(handle, "resNetworkQuery");
+    res_network_result_fn = dlsym(handle, "resNetworkResult");
+    if (!res_network_query_fn || !res_network_result_fn)
         DNS_LOG("Android async resolver symbols are unavailable");
+}
+
+/*
+ * Same behaviour as libandroid's versions.  Exported so Wine's Android dnsapi,
+ * which looks these up with dlsym() on its own libandroid.so handle, still
+ * finds them through the NULL (RTLD_DEFAULT) handle when that dlopen fails,
+ * instead of calling a NULL pointer.
+ */
+int android_res_nquery(android_net_handle_t network, const char *dname,
+                       int ns_class, int ns_type, uint32_t flags)
+{
+    pthread_once(&android_resolver_once, resolve_android_resolver);
+    if (!res_network_query_fn) return -ENOSYS;
+    if (network && (uint32_t)network != 0xcafed00d) return -ENONET;
+    return res_network_query_fn((unsigned)(network >> 32), dname, ns_class,
+                                ns_type, flags);
+}
+
+int android_res_nresult(int fd, int *rcode, uint8_t *answer, size_t anslen)
+{
+    pthread_once(&android_resolver_once, resolve_android_resolver);
+    if (!res_network_result_fn) return -ENOSYS;
+    return res_network_result_fn(fd, rcode, answer, anslen);
 }
 
 static int rcode_to_h_errno(int rcode)
@@ -82,14 +106,14 @@ int res_query(const char *name, int dns_class, int type,
     int fd, poll_result, rcode = 0, result;
 
     pthread_once(&android_resolver_once, resolve_android_resolver);
-    if (!android_res_nquery_fn || !android_res_nresult_fn)
+    if (!res_network_query_fn || !res_network_result_fn)
     {
         h_errno = NO_RECOVERY;
         errno = ENOSYS;
         return -1;
     }
 
-    fd = android_res_nquery_fn(0, name, dns_class, type, 0);
+    fd = android_res_nquery(0, name, dns_class, type, 0);
     if (fd < 0)
     {
         h_errno = TRY_AGAIN;
@@ -117,7 +141,7 @@ int res_query(const char *name, int dns_class, int type,
         return -1;
     }
 
-    result = android_res_nresult_fn(fd, &rcode, answer, (size_t)answer_length);
+    result = android_res_nresult(fd, &rcode, answer, (size_t)answer_length);
     if (result < 0 || rcode)
     {
         h_errno = result < 0 ? TRY_AGAIN : rcode_to_h_errno(rcode);
@@ -156,13 +180,7 @@ static int network_getaddrinfo(const char *node, const char *service,
                                const struct addrinfo *hints,
                                struct addrinfo **result)
 {
-    int ret;
-
-    pthread_once(&android_resolver_once, resolve_android_resolver);
-    if (android_getaddrinfofornetwork_fn)
-        ret = android_getaddrinfofornetwork_fn(0, node, service, hints, result);
-    else
-        ret = next_getaddrinfo(node, service, hints, result);
+    int ret = next_getaddrinfo(node, service, hints, result);
 
     if (node && (!hints || !(hints->ai_flags & AI_NUMERICHOST)))
         DNS_LOG("getaddrinfo(%s, family=%d, flags=0x%x) -> %d", node,
