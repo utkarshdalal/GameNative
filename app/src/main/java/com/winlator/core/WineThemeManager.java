@@ -41,7 +41,22 @@ public abstract class WineThemeManager {
         }
     }
 
+    // Game sessions get a black desktop: gamescope composites Wine's desktop
+    // surface, so the wallpaper would show through before the game's first frame
+    // and around its dialogs. The X11 renderers never draw explorer, so it is
+    // invisible there either way.
+    public static String gameSessionTheme(String value) {
+        ThemeInfo info = new ThemeInfo(value);
+        return info.theme + "," + BackgroundType.COLOR + ",#000000";
+    }
+
     public static void apply(Context context, ThemeInfo themeInfo, ScreenInfo screenInfo) {
+        apply(context, themeInfo, screenInfo, true);
+    }
+
+    // The desktop is named "shell", which makes explorer draw its taskbar and
+    // start menu; game sessions turn that off along with the standalone systray.
+    public static void apply(Context context, ThemeInfo themeInfo, ScreenInfo screenInfo, boolean enableShell) {
         File rootDir = ImageFs.find(context).getRootDir();
         File userRegFile = new File(rootDir, ImageFs.WINEPREFIX+"/user.reg");
         String background = Color.red(themeInfo.backgroundColor)+" "+Color.green(themeInfo.backgroundColor)+" "+Color.blue(themeInfo.backgroundColor);
@@ -53,6 +68,15 @@ public abstract class WineThemeManager {
                 registryEditor.setStringValue("Control Panel\\Desktop", "Wallpaper", ImageFs.CACHE_PATH+"/wallpaper.bmp");
             }
             else registryEditor.removeValue("Control Panel\\Desktop", "Wallpaper");
+
+            if (enableShell) {
+                registryEditor.removeValue("Software\\Wine\\Explorer\\Desktops\\shell", "EnableShell");
+                registryEditor.removeValue("Software\\Wine\\Explorer\\Desktops\\shell", "ShowSystray");
+            }
+            else {
+                registryEditor.setDwordValue("Software\\Wine\\Explorer\\Desktops\\shell", "EnableShell", 0);
+                registryEditor.setDwordValue("Software\\Wine\\Explorer\\Desktops\\shell", "ShowSystray", 0);
+            }
 
             if (themeInfo.theme == Theme.LIGHT) {
                 registryEditor.setStringValue("Control Panel\\Colors", "ActiveBorder", "245 245 245");

@@ -2423,6 +2423,7 @@ fun XServerScreen(
                                     envVars,
                                     contentsManager,
                                     onExtractFileListener,
+                                    gameSession = !bootToContainer,
                                 )
                             }
                             if (isGamescopeSession) {
@@ -5732,6 +5733,7 @@ private suspend fun setupWineSystemFiles(
     envVars: EnvVars,
     contentsManager: ContentsManager,
     onExtractFileListener: OnExtractFileListener?,
+    gameSession: Boolean,
 ) {
     val imageFs = ImageFs.find(context)
     val appVersion = AppUtils.getVersionCode(context).toString()
@@ -5866,10 +5868,11 @@ private suspend fun setupWineSystemFiles(
         cleanupBionicSteamAssets(imageFs)
     }
 
-    val desktopTheme = container.desktopTheme
-    if ((desktopTheme + "," + screenInfo) != container.getExtra("desktopTheme")) {
-        WineThemeManager.apply(context, WineThemeManager.ThemeInfo(desktopTheme), screenInfo)
-        container.putExtra("desktopTheme", desktopTheme + "," + screenInfo)
+    val desktopTheme = if (gameSession) WineThemeManager.gameSessionTheme(container.desktopTheme) else container.desktopTheme
+    val desktopThemeKey = desktopTheme + "," + screenInfo + if (gameSession) ",game" else ""
+    if (desktopThemeKey != container.getExtra("desktopTheme")) {
+        WineThemeManager.apply(context, WineThemeManager.ThemeInfo(desktopTheme), screenInfo, !gameSession)
+        container.putExtra("desktopTheme", desktopThemeKey)
         containerDataChanged = true
     }
 
