@@ -847,6 +847,13 @@
     <string name="base_app_images_fetched">Images fetched successfully</string>
     <string name="base_app_game_folder_not_found">Game folder not found</string>
     <string name="base_app_images_fetch_failed">Failed to fetch images: %s</string>
+    <string name="custom_game_match_description">Choose which game this is. GameNative uses its name to find known configs, community configs, compatibility ratings and artwork. Game files are not changed, and it stays a custom game.</string>
+    <string name="custom_game_matched_to">Matched to %1$s</string>
+    <string name="custom_game_match_no_results">No games found. Try a shorter name.</string>
+    <string name="custom_game_match_search_failed">Search failed: %1$s</string>
+    <string name="custom_game_match_remove">Remove match</string>
+    <string name="custom_game_match_removed">Match removed</string>
+    <string name="custom_game_match_save_failed">Could not save the match in the game folder</string>
     <string name="base_app_exported">Exported</string>
     <string name="base_app_export_failed">Failed to export: %s</string>
     <string name="base_app_export_cancelled">Export cancelled</string>
@@ -2070,6 +2077,7 @@
     <string name="option_force_download_remote">Force download remote saves</string>
     <string name="option_force_upload_local">Force upload local saves</string>
     <string name="option_fetch_game_images">Fetch game images</string>
+    <string name="option_match_game">Match game</string>
     <string name="option_test_graphics">Test graphics</string>
     <string name="option_play_with_diagnostics">Diagnostic Run</string>
     <string name="option_share_diagnostics">Share diagnostics</string>

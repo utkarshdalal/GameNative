@@ -691,6 +691,13 @@
     <string name="base_app_images_fetched">画像が正常に取得されました</string>
     <string name="base_app_game_folder_not_found">ゲームフォルダーが見つかりません</string>
     <string name="base_app_images_fetch_failed">画像の取得に失敗しました: %s</string>
+    <string name="custom_game_match_description">このゲームがどのゲームかを選択してください。GameNative はその名前を使って、既知の構成、コミュニティ設定、互換性評価、画像を検索します。ゲームファイルは変更されず、カスタムゲームのままです。</string>
+    <string name="custom_game_matched_to">%1$s に関連付け済み</string>
+    <string name="custom_game_match_no_results">ゲームが見つかりません。短い名前で試してください。</string>
+    <string name="custom_game_match_search_failed">検索に失敗しました: %1$s</string>
+    <string name="custom_game_match_remove">関連付けを解除</string>
+    <string name="custom_game_match_removed">関連付けを解除しました</string>
+    <string name="custom_game_match_save_failed">ゲームフォルダーに関連付けを保存できませんでした</string>
     <string name="base_app_exported">輸出済み</string>
     <string name="base_app_export_failed">エクスポートに失敗しました: %s</string>
     <string name="base_app_export_cancelled">エクスポートがキャンセルされました</string>
@@ -1838,6 +1845,7 @@
     <string name="option_force_download_remote">リモート保存を強制的にダウンロードする</string>
     <string name="option_force_upload_local">ローカル保存を強制的にアップロードする</string>
     <string name="option_fetch_game_images">ゲーム画像を取得する</string>
+    <string name="option_match_game">ゲームを関連付ける</string>
     <string name="option_test_graphics">テストグラフィックス</string>
     <string name="option_manage_dlc">DLCの管理</string>
     <string name="option_manage_workshop">ワークショップの管理</string>

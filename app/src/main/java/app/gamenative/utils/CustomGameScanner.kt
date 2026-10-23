@@ -569,8 +569,8 @@ object CustomGameScanner {
         for (folderPath in candidateFolders()) {
             // Filter by query if provided
             if (q.isNotEmpty()) {
-                val folderName = File(folderPath).name
-                if (!folderName.contains(q, ignoreCase = true)) continue
+                val folder = File(folderPath)
+                if (!folder.name.contains(q, ignoreCase = true) && !getGameName(folder).contains(q, ignoreCase = true)) continue
             }
 
             val item = createLibraryItemFromFolder(folderPath)
@@ -735,12 +735,19 @@ object CustomGameScanner {
         return LibraryItem(
             index = 0,
             appId = appId,
-            name = folder.name,
+            name = getGameName(folder),
             iconHash = "",
             isShared = false,
             gameSource = GameSource.CUSTOM_GAME,
         )
     }
+
+    /**
+     * Name of the custom game in [folder]: the game picked with "Match game" if there is one,
+     * otherwise the folder name. Config, compatibility and feedback lookups are keyed on it.
+     */
+    fun getGameName(folder: File): String =
+        GameMetadataManager.read(folder)?.matchedName ?: folder.name
 
     /**
      * Reads the game ID from the .gamenative file in the given folder.

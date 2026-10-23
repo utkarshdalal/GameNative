@@ -30,4 +30,6 @@ data class GameDisplayInfo(
     /** True while available Family library copies are being resolved off the main thread. */
     val isLoadingPreferredCopy: Boolean = false,
     val storeDetails: StoreGameDetails = StoreGameDetails(), // Description, reviews, tags, and media
+    /** GameNative game id when known, so community configs don't have to look the game up by name. */
+    val communityGameId: Int? = null,
 )

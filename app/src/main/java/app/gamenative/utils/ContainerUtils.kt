@@ -1340,7 +1340,7 @@ object ContainerUtils {
             GameSource.CUSTOM_GAME -> {
                 val customAppId = "${GameSource.CUSTOM_GAME.name}_$gameId"
                 CustomGameScanner.getFolderPathFromAppId(customAppId)
-                    ?.let { File(it).name }
+                    ?.let { CustomGameScanner.getGameName(File(it)) }
             }
         } ?: "Unknown"
     }

@@ -1558,6 +1558,13 @@
     <string name="base_app_images_fetched">Billeder hentet</string>
     <string name="base_app_game_folder_not_found">Spilmappe ikke fundet</string>
     <string name="base_app_images_fetch_failed">Kunne ikke hente billeder: %s</string>
+    <string name="custom_game_match_description">Vælg hvilket spil dette er. GameNative bruger dets navn til at finde kendte konfigurationer, fællesskabskonfigurationer, kompatibilitetsvurderinger og billeder. Spilfilerne ændres ikke, og det forbliver et tilpasset spil.</string>
+    <string name="custom_game_matched_to">Tilknyttet %1$s</string>
+    <string name="custom_game_match_no_results">Ingen spil fundet. Prøv et kortere navn.</string>
+    <string name="custom_game_match_search_failed">Søgningen mislykkedes: %1$s</string>
+    <string name="custom_game_match_remove">Fjern tilknytning</string>
+    <string name="custom_game_match_removed">Tilknytning fjernet</string>
+    <string name="custom_game_match_save_failed">Tilknytningen kunne ikke gemmes i spilmappen</string>
     <string name="base_app_exported">Eksporteret</string>
     <string name="base_app_export_failed">Kunne ikke eksportere: %s</string>
     <string name="base_app_export_cancelled">Eksport annulleret</string>
@@ -1718,6 +1725,7 @@
     <string name="option_force_download_remote">Gennemtving download af fjern-gemfiler</string>
     <string name="option_force_upload_local">Gennemtving upload af lokale gemfiler</string>
     <string name="option_fetch_game_images">Hent spilbilleder</string>
+    <string name="option_match_game">Tilknyt spil</string>
     <string name="option_test_graphics">Test grafik</string>
     <string name="option_manage_dlc">Administrér DLC</string>
     <string name="option_manage_workshop">Administrér Workshop</string>

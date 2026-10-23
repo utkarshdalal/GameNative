@@ -672,6 +672,13 @@
     <string name="base_app_images_fetched">映像獲取成功</string>
     <string name="base_app_game_folder_not_found">找不到遊戲文件夾</string>
     <string name="base_app_images_fetch_failed">無法獲取映像: %s</string>
+    <string name="custom_game_match_description">選擇這是哪款遊戲。GameNative 會使用它的名稱尋找已知配置、社群設定、相容性評分和圖片。遊戲檔案不會被變更，它仍是自訂遊戲。</string>
+    <string name="custom_game_matched_to">已配對到 %1$s</string>
+    <string name="custom_game_match_no_results">找不到遊戲。請嘗試較短的名稱。</string>
+    <string name="custom_game_match_search_failed">搜尋失敗：%1$s</string>
+    <string name="custom_game_match_remove">移除配對</string>
+    <string name="custom_game_match_removed">已移除配對</string>
+    <string name="custom_game_match_save_failed">無法將配對儲存到遊戲資料夾</string>
     <string name="base_app_exported">已導出</string>
     <string name="base_app_export_failed">無法導出: %s</string>
     <string name="base_app_export_cancelled">取消導出</string>
@@ -1816,6 +1823,7 @@
     <string name="option_submit_feedback">提交意見回饋</string>
     <string name="option_test_graphics">測試繪圖渲染</string>
     <string name="option_fetch_game_images">取得遊戲封面</string>
+    <string name="option_match_game">配對遊戲</string>
 
     <string name="container_config_custom_resolution_title">設定自訂解析度</string>
     <string name="container_config_custom_resolution_separator">x</string>

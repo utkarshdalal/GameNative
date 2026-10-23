@@ -11,16 +11,22 @@ import org.json.JSONObject
 data class GameMetadata(
     val appId: Int,
     val steamgriddbFetched: Boolean = false,
-    val releaseDate: Long? = null
+    val releaseDate: Long? = null,
+    /** Game picked with "Match game"; used instead of the folder name for display and config lookups. */
+    val matchedName: String? = null,
+    /** GameNative game id of [matchedName]. */
+    val matchedGameId: Int? = null,
 )
 
 /**
  * Utility for reading and writing game metadata to/from .gamenative files.
- * Consolidates all game metadata (appId, SteamGridDB fetch status, release date) into a single JSON file.
+ * Consolidates all game metadata (appId, SteamGridDB fetch status, release date, matched game) into a single JSON file.
  * Works for all game sources (Custom Games, Steam, and future sources).
  */
 object GameMetadataManager {
     private const val FILE_NAME = ".gamenative"
+    private const val MATCHED_NAME = "matchedName"
+    private const val MATCHED_GAME_ID = "matchedGameId"
 
     /**
      * Reads metadata from the .gamenative file in the given folder.
@@ -50,20 +56,7 @@ object GameMetadataManager {
                     }
                 }
                 
-                // Parse full metadata
-                val appId = json.optInt("appId", -1)
-                if (appId <= 0) {
-                    return null
-                }
-                
-                val steamgriddbFetched = json.optBoolean("steamgriddbFetched", false)
-                val releaseDate = json.optLong("releaseDate", -1).takeIf { it > 0 }
-                
-                GameMetadata(
-                    appId = appId,
-                    steamgriddbFetched = steamgriddbFetched,
-                    releaseDate = releaseDate
-                )
+                parse(json)
             } catch (e: Exception) {
                 // If not JSON, try parsing as plain integer (legacy format)
                 val appId = content.toIntOrNull()?.takeIf { it > 0 }
@@ -88,17 +81,21 @@ object GameMetadataManager {
     fun write(folder: File, metadata: GameMetadata) {
         val gamenativeFile = File(folder, FILE_NAME)
         try {
-            // Read existing metadata to merge
-            val existing = read(folder)
+            // Merge into the existing JSON so keys this class doesn't know survive. Not read(),
+            // which migrates legacy files by calling write() and would recurse.
+            val json = readJson(gamenativeFile) ?: JSONObject()
+            val existing = parse(json)
             val merged = existing?.let { existingMetadata ->
                 GameMetadata(
                     appId = metadata.appId, // appId always takes precedence
                     steamgriddbFetched = metadata.steamgriddbFetched || existingMetadata.steamgriddbFetched,
-                    releaseDate = metadata.releaseDate ?: existingMetadata.releaseDate
+                    releaseDate = metadata.releaseDate ?: existingMetadata.releaseDate,
+                    matchedName = metadata.matchedName ?: existingMetadata.matchedName,
+                    matchedGameId = metadata.matchedGameId ?: existingMetadata.matchedGameId,
                 )
             } ?: metadata
-            
-            val json = JSONObject().apply {
+
+            json.apply {
                 put("appId", merged.appId)
                 if (merged.steamgriddbFetched) {
                     put("steamgriddbFetched", true)
@@ -106,8 +103,14 @@ object GameMetadataManager {
                 if (merged.releaseDate != null) {
                     put("releaseDate", merged.releaseDate)
                 }
+                if (merged.matchedName != null) {
+                    put(MATCHED_NAME, merged.matchedName)
+                }
+                if (merged.matchedGameId != null) {
+                    put(MATCHED_GAME_ID, merged.matchedGameId)
+                }
             }
-            
+
             gamenativeFile.writeText(json.toString())
             Timber.tag("GameMetadataManager").d("Wrote metadata to ${gamenativeFile.absolutePath}: appId=${merged.appId}, fetched=${merged.steamgriddbFetched}, releaseDate=${merged.releaseDate}")
         } catch (e: Exception) {
@@ -137,6 +140,60 @@ object GameMetadataManager {
             )
         }
         write(folder, updated)
+    }
+
+    /**
+     * Stores the game picked with "Match game", or removes the match when [name] is null.
+     * The release date is dropped because it came from the previous name's SteamGridDB entry;
+     * fetching artwork for the new name sets it again.
+     * [appId] is only used when the file has no valid appId yet.
+     * Returns false if the file could not be written.
+     */
+    fun setMatch(folder: File, appId: Int, name: String?, gameId: Int?): Boolean {
+        val gamenativeFile = File(folder, FILE_NAME)
+        return try {
+            val json = readJson(gamenativeFile) ?: JSONObject()
+            if (json.optInt("appId", -1) <= 0) {
+                json.put("appId", appId)
+            }
+            json.remove(MATCHED_NAME)
+            json.remove(MATCHED_GAME_ID)
+            json.remove("releaseDate")
+            if (!name.isNullOrBlank()) {
+                json.put(MATCHED_NAME, name)
+                if (gameId != null && gameId > 0) {
+                    json.put(MATCHED_GAME_ID, gameId)
+                }
+            }
+            gamenativeFile.writeText(json.toString())
+            true
+        } catch (e: Exception) {
+            Timber.tag("GameMetadataManager").w(e, "Failed to save match to ${gamenativeFile.absolutePath}")
+            false
+        }
+    }
+
+    private fun readJson(gamenativeFile: File): JSONObject? {
+        if (!gamenativeFile.isFile) return null
+        return try {
+            JSONObject(gamenativeFile.readText())
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun parse(json: JSONObject): GameMetadata? {
+        val appId = json.optInt("appId", -1)
+        if (appId <= 0) {
+            return null
+        }
+        return GameMetadata(
+            appId = appId,
+            steamgriddbFetched = json.optBoolean("steamgriddbFetched", false),
+            releaseDate = json.optLong("releaseDate", -1).takeIf { it > 0 },
+            matchedName = json.optString(MATCHED_NAME).takeIf { it.isNotBlank() },
+            matchedGameId = json.optInt(MATCHED_GAME_ID, 0).takeIf { it > 0 },
+        )
     }
 
     /**

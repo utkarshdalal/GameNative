@@ -989,7 +989,7 @@ object ContainerStorageManager {
             GameSource.CUSTOM_GAME -> {
                 val folderPath = CustomGameScanner.getFolderPathFromAppId(normalizedContainerId)
                 ResolvedGame(
-                    name = folderPath?.let { File(it).name },
+                    name = folderPath?.let { CustomGameScanner.getGameName(File(it)) },
                     installPath = folderPath,
                     iconUrl = if (folderPath != null) {
                         LibraryItem(appId = normalizedContainerId, gameSource = GameSource.CUSTOM_GAME).clientIconUrl

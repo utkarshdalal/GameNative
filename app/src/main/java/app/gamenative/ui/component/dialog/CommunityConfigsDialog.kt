@@ -108,6 +108,7 @@ fun CommunityConfigsDialog(
     onApply: (CommunityConfigRun, String, CommunityConfigApplyOptions) -> Unit,
     initialHardwareScope: CommunityHardwareScope = CommunityHardwareScope.CURRENT_DEVICE,
     canApply: Boolean = true,
+    communityGameId: Int? = null,
     service: CommunityConfigService = CommunityConfigService.shared,
 ) {
     if (!visible) return
@@ -158,7 +159,7 @@ fun CommunityConfigsDialog(
             } catch (_: Exception) {
                 emptyList()
             }
-            val game = service.findGame(gameName)
+            val game = communityGameId?.let { CommunityGame(it, gameName) } ?: service.findGame(gameName)
             if (generation != requestGeneration) return@LaunchedEffect
 
             detectedGpu = gpu
