@@ -61,7 +61,7 @@ class WindowsVrPayloadManager(
         return PreparedPayload(prefixDirectory, manifest)
     }
 
-    fun installOpenComposite(container: Container) {
+    fun installOpenComposite(container: Container): Boolean {
         val gameRoot = launchedGameRoot(container) ?: error("OpenComposite requires the launched game's A: drive")
         check(gameRoot.isDirectory)
         val payloadDirectory = File(container.rootDir, ".wine/drive_c/gamenative-xr")
@@ -71,7 +71,10 @@ class WindowsVrPayloadManager(
         }
         val targets = cachedTargets ?: openCompositeTargets(scanOpenComposite(gameRoot))
         diagnostics.record("opencomposite", "targets=${targets.size} source=${if (cachedTargets != null) "cache" else "scan"}")
-        check(targets.isNotEmpty()) { "No x64 or x86 openvr_api.dll was found under the launched game" }
+        if (targets.isEmpty()) {
+            diagnostics.record("opencomposite", "skipped: no x64 or x86 openvr_api.dll under the launched game, using native OpenXR")
+            return false
+        }
         val adapters = targets.map { it.second }.distinct().associateWith(readAsset)
         val record = File(payloadDirectory, "opencomposite.targets")
         val directories = targets.map { checkNotNull(it.first.parentFile).canonicalPath }.distinct()
@@ -91,6 +94,7 @@ class WindowsVrPayloadManager(
             if (adapterName == "opencomposite_x86.dll") installVulkanInitConfig(directory)
             diagnostics.record("opencomposite", "installed path=${target.path} adapter=$adapterName")
         }
+        return true
     }
 
     fun restore() {

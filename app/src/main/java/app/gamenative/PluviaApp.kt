@@ -11,6 +11,7 @@ import androidx.compose.runtime.setValue
 import androidx.navigation.NavController
 import app.gamenative.db.dao.AmazonGameDao
 import app.gamenative.db.dao.GOGGameDao
+import app.gamenative.display.GamescopeCommandQueue
 import app.gamenative.events.EventDispatcher
 import app.gamenative.mods.NexusAuthManager
 import app.gamenative.powercontrol.PowerManager
@@ -19,7 +20,9 @@ import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.sync.FrontendSyncManager
 import app.gamenative.ui.screen.xserver.RadialMenuCoordinator
+import app.gamenative.utils.AppExitRecorder
 import app.gamenative.utils.ContainerMigrator
+import app.gamenative.utils.DebugReportUtils
 import app.gamenative.utils.DeviceInfo
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.PlayIntegrity
@@ -31,6 +34,7 @@ import com.google.android.play.core.splitcompat.SplitCompatApplication
 import com.posthog.PersonProfiles
 
 // Add PostHog imports
+import app.gamenative.billing.PlayBilling
 import com.posthog.android.PostHogAndroid
 import com.posthog.PostHogPropertiesSanitizer
 import com.posthog.android.PostHogAndroidConfig
@@ -46,6 +50,7 @@ import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 
 typealias NavChangedListener = NavController.OnDestinationChangedListener
@@ -83,8 +88,20 @@ class PluviaApp : SplitCompatApplication() {
         // Init our custom crash handler.
         CrashHandler.initialize(this)
 
+        // Android's record of why the last process died, then any debug run it never finished.
+        DebugReportUtils.recovery = appScope.async {
+            try {
+                AppExitRecorder.record(applicationContext)
+                DebugReportUtils.recoverInterruptedRuns(applicationContext)
+            } catch (e: Throwable) {
+                Timber.w(e, "[PluviaApp]: exit record / run recovery failed")
+                emptyList()
+            }
+        }
+
         // Init our datastore preferences.
         PrefManager.init(this)
+        PlayBilling.init(this)
         NexusAuthManager.initialize(this)
         FrontendSyncManager.init(this)
 
@@ -246,6 +263,7 @@ class PluviaApp : SplitCompatApplication() {
         var touchpadView: TouchpadView? = null
         var radialMenuCoordinator: RadialMenuCoordinator? = null
         var achievementWatcher: app.gamenative.service.AchievementWatcher? = null
+        var steamHostAchievementPoller: app.gamenative.service.SteamHostAchievementPoller? = null
 
         var isOverlayPaused by mutableStateOf(false)
         @Volatile
@@ -276,6 +294,8 @@ class PluviaApp : SplitCompatApplication() {
             // per-step catch so one failing teardown doesn't prevent the rest from running
             runCatching { achievementWatcher?.stop() }
                 .onFailure { Timber.e(it, "shutdownEnvironment: achievementWatcher.stop") }
+            runCatching { steamHostAchievementPoller?.stop() }
+                .onFailure { Timber.e(it, "shutdownEnvironment: steamHostAchievementPoller.stop") }
             runCatching { SteamService.clearCachedAchievements() }
                 .onFailure { Timber.e(it, "shutdownEnvironment: clearCachedAchievements") }
             runCatching { touchpadView?.releasePointerCapture() }
@@ -294,7 +314,9 @@ class PluviaApp : SplitCompatApplication() {
             touchpadView = null
             radialMenuCoordinator = null
             achievementWatcher = null
+            steamHostAchievementPoller = null
             ActiveGameRegistry.clear()
+            SteamService.clearSuspendedGameState()
             SteamService.keepAlive = false
             SteamService.clearPlayingConflict()
             clearActiveSuspendState()
@@ -304,6 +326,9 @@ class PluviaApp : SplitCompatApplication() {
             activeSuspendPolicy = Container.SUSPEND_POLICY_MANUAL
             isOverlayPaused = false
             hasInitializedSuspendPolicyState = false
+            // Drop anything the gamescope queue still holds for the session that
+            // is ending; it must not leak into the next one.
+            GamescopeCommandQueue.reset()
         }
 
         fun hasValidSuspendPolicyState(): Boolean = hasInitializedSuspendPolicyState
@@ -312,6 +337,62 @@ class PluviaApp : SplitCompatApplication() {
 
         fun isManualSuspendMode(): Boolean = activeSuspendPolicy.equals(Container.SUSPEND_POLICY_MANUAL, ignoreCase = true)
 
+        /** The default display's HDR capabilities, or null when this panel reports no HDR types. */
+        @JvmStatic
+        fun getDisplayHdrCapabilities(): Display.HdrCapabilities? {
+            return try {
+                val displayManager = instance.getSystemService(DISPLAY_SERVICE) as? DisplayManager
+                val caps = displayManager?.getDisplay(Display.DEFAULT_DISPLAY)?.hdrCapabilities
+                if (caps == null || caps.supportedHdrTypes.isEmpty()) null else caps
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to read display HDR capabilities")
+                null
+            }
+        }
+
+        /**
+         * The default display's real pixel size as "WxH" in landscape orientation (e.g. "2160x1080"),
+         * or null when it can't be read yet.
+         *
+         * Gamescope-only: this is the scanout geometry for -W/-H and GNDRM_SCANOUT. It is
+         * deliberately *not* [getDefaultScreenSize], which answers in aspect-ratio presets
+         * (1280x720 / 1280x800 / 1280x960) meant to be a container's internal desktop resolution —
+         * presenting at that preset makes gamescope render 720p and resample it onto the panel.
+         */
+        @JvmStatic
+        fun getNativeDisplaySize(): String? {
+            return try {
+                if (!::instance.isInitialized) return null
+                val displayManager = instance.getSystemService(DISPLAY_SERVICE) as? DisplayManager
+                val display = displayManager?.getDisplay(Display.DEFAULT_DISPLAY) ?: return null
+
+                val width: Int
+                val height: Int
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    val mode = display.mode
+                    width = mode.physicalWidth
+                    height = mode.physicalHeight
+                } else {
+                    // API < 30 - Use deprecated Display API
+                    val displayMetrics = DisplayMetrics()
+                    @Suppress("DEPRECATION")
+                    display.getRealMetrics(displayMetrics)
+                    width = displayMetrics.widthPixels
+                    height = displayMetrics.heightPixels
+                }
+
+                // physicalWidth/Height follow the panel's native orientation, which is portrait on a
+                // phone. Scanout geometry is landscape (gamescope wants W > H), so order it that way.
+                val result = if (width >= height) "${width}x$height" else "${height}x$width"
+                Timber.i("Native display size: %s (panel was %sx%s)", result, width, height)
+                result
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to get native display size")
+                null
+            }
+        }
+
+        @JvmStatic
         fun getDefaultScreenSize(): String {
             cachedDefaultScreenSize?.let { return it }
 

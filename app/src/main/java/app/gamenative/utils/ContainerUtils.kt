@@ -51,16 +51,19 @@ object ContainerUtils {
         // Override default driver and DXVK version based on Turnip capability
         if (GPUInformation.isTurnipCapable(context)) {
             DefaultVersion.VARIANT = Container.BIONIC
-            DefaultVersion.WINE_VERSION = "proton-10.0-arm64ec-2"
+            DefaultVersion.WINE_VERSION = "proton-11.0-2-arm64ec-7"
             DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
             DefaultVersion.DXVK = if (GPUInformation.isAdreno6xx(context)) "1.11.1-sarek" else "2.4.1-gplasync"
             DefaultVersion.VKD3D = "2.14.1"
-            DefaultVersion.WRAPPER = WRAPPER_TURNIP_CAPABLE
+            // The bundled Turnip package has no device-table entries for the
+            // Adreno 710/720/732 family, so use the device's system driver.
+            DefaultVersion.WRAPPER =
+                if (GPUInformation.isAdreno710_720_732(context)) "System" else WRAPPER_TURNIP_CAPABLE
             DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_HEADLESS
             DefaultVersion.ASYNC_CACHE = "1"
         } else if (GPUInformation.isAdrenoA12(context)) {
             DefaultVersion.VARIANT = Container.BIONIC
-            DefaultVersion.WINE_VERSION = "proton-10.0-arm64ec-2"
+            DefaultVersion.WINE_VERSION = "proton-11.0-2-arm64ec-7"
             DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
             DefaultVersion.DXVK = "2.4.1-gplasync"
             DefaultVersion.VKD3D = "2.14.1"
@@ -69,7 +72,7 @@ object ContainerUtils {
             DefaultVersion.ASYNC_CACHE = "1"
         } else if (GPUInformation.isAdreno8EliteGen5(context)) {
             DefaultVersion.VARIANT = Container.BIONIC
-            DefaultVersion.WINE_VERSION = "proton-10.0-arm64ec-2"
+            DefaultVersion.WINE_VERSION = "proton-11.0-2-arm64ec-7"
             DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
             DefaultVersion.DXVK = "2.4.1-gplasync"
             DefaultVersion.VKD3D = "2.14.1"
@@ -78,7 +81,7 @@ object ContainerUtils {
             DefaultVersion.ASYNC_CACHE = "1"
         } else if (GPUInformation.isAdreno8Elite(context)) {
             DefaultVersion.VARIANT = Container.BIONIC
-            DefaultVersion.WINE_VERSION = "proton-10.0-arm64ec-2"
+            DefaultVersion.WINE_VERSION = "proton-11.0-2-arm64ec-7"
             DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
             DefaultVersion.DXVK = "2.4.1-gplasync"
             DefaultVersion.VKD3D = "2.14.1"
@@ -87,7 +90,7 @@ object ContainerUtils {
             DefaultVersion.ASYNC_CACHE = "1"
         } else {
             DefaultVersion.VARIANT = Container.BIONIC
-            DefaultVersion.WINE_VERSION = "proton-10.0-arm64ec-2"
+            DefaultVersion.WINE_VERSION = "proton-11.0-2-arm64ec-7"
             DefaultVersion.DEFAULT_GRAPHICS_DRIVER =
                 if (GPUInformation.isAdrenoGPU(context)) "Wrapper" else "Wrapper-gamenative"
             DefaultVersion.DXVK = "async-1.10.3"
@@ -95,6 +98,9 @@ object ContainerUtils {
             DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_HEADLESS
             DefaultVersion.ASYNC_CACHE = "0"
         }
+        DefaultVersion.DISPLAY_SERVER = Container.defaultDisplayServer(
+            GPUInformation.getRenderer(context).orEmpty().contains("adreno", ignoreCase = true),
+        )
     }
 
     fun getGPUCards(context: Context): Map<Int, GpuInfo> {
@@ -121,6 +127,7 @@ object ContainerUtils {
             graphicsDriverConfig = PrefManager.graphicsDriverConfig,
             rendererPresentMode = PrefManager.rendererPresentMode,
             displayRenderer = PrefManager.displayRendererMode,
+            displayServer = PrefManager.displayServer,
             sfCompatMode = PrefManager.sfCompatMode,
             dxwrapper = PrefManager.dxWrapper,
             dxwrapperConfig = PrefManager.dxWrapperConfig,
@@ -169,6 +176,7 @@ object ContainerUtils {
             videoMemorySize = PrefManager.videoMemorySize,
             mouseWarpOverride = PrefManager.mouseWarpOverride,
             useDRI3 = PrefManager.useDRI3,
+            hdrEnabled = PrefManager.hdrEnabled,
             useSteamInput = PrefManager.useSteamInput,
             enableXInput = PrefManager.xinputEnabled,
 			enableDInput = PrefManager.dinputEnabled,
@@ -193,6 +201,7 @@ object ContainerUtils {
         PrefManager.graphicsDriverConfig = containerData.graphicsDriverConfig
         PrefManager.rendererPresentMode = containerData.rendererPresentMode
         PrefManager.displayRendererMode = containerData.displayRenderer
+        PrefManager.displayServer = containerData.displayServer
         PrefManager.sfCompatMode = containerData.sfCompatMode
         PrefManager.dxWrapper = containerData.dxwrapper
         PrefManager.dxWrapperConfig = containerData.dxwrapperConfig
@@ -220,6 +229,7 @@ object ContainerUtils {
         PrefManager.videoMemorySize = containerData.videoMemorySize
         PrefManager.mouseWarpOverride = containerData.mouseWarpOverride
         PrefManager.useDRI3 = containerData.useDRI3
+        PrefManager.hdrEnabled = containerData.hdrEnabled
         PrefManager.disableMouseInput = containerData.disableMouseInput
         PrefManager.externalDisplayInputMode = containerData.externalDisplayMode
         PrefManager.externalDisplaySwap = containerData.externalDisplaySwap
@@ -318,6 +328,7 @@ object ContainerUtils {
             graphicsDriverConfig = container.graphicsDriverConfig,
             rendererPresentMode = container.rendererPresentMode,
             displayRenderer = container.displayRenderer,
+            displayServer = container.displayServer,
             xrRefreshRate = container.xrRefreshRate,
             xrRenderScale = container.xrRenderScale,
             sfCompatMode = container.sfCompatMode,
@@ -380,6 +391,7 @@ object ContainerUtils {
             offScreenRenderingMode = offScreenRenderingMode,
             strictShaderMath = strictShaderMath,
             useDRI3 = container.isUseDRI3(),
+            hdrEnabled = container.isHdrEnabled(),
             videoMemorySize = videoMemorySize,
             mouseWarpOverride = mouseWarpOverride,
             sharpnessEffect = container.getExtra("sharpnessEffect", "None"),
@@ -461,6 +473,16 @@ object ContainerUtils {
                 "cpuList" -> value?.let { updatedData.copy(cpuList = it as? String ?: updatedData.cpuList) } ?: updatedData
                 "cpuListWoW64" -> value?.let { updatedData.copy(cpuListWoW64 = it as? String ?: updatedData.cpuListWoW64) } ?: updatedData
                 "audioDriver" -> value?.let { updatedData.copy(audioDriver = it as? String ?: updatedData.audioDriver) } ?: updatedData
+                "inputType" -> value?.let {
+                    val api = (it as? Int)?.let { ordinal -> PreferredInputApi.values().getOrNull(ordinal) }
+                    when (api) {
+                        PreferredInputApi.AUTO -> updatedData.copy(enableXInput = false, enableDInput = false)
+                        PreferredInputApi.DINPUT -> updatedData.copy(enableXInput = false, enableDInput = true)
+                        PreferredInputApi.XINPUT -> updatedData.copy(enableXInput = true, enableDInput = false)
+                        PreferredInputApi.BOTH -> updatedData.copy(enableXInput = true, enableDInput = true)
+                        null -> updatedData
+                    }
+                } ?: updatedData
                 "wincomponents" -> value?.let { updatedData.copy(wincomponents = it as? String ?: updatedData.wincomponents) } ?: updatedData
                 "videoMemorySize" -> value?.let { updatedData.copy(videoMemorySize = it as? String ?: updatedData.videoMemorySize) } ?: updatedData
                 "launchBionicSteam" -> value?.let { updatedData.copy(launchBionicSteam = it as? Boolean ?: updatedData.launchBionicSteam) } ?: updatedData
@@ -516,6 +538,7 @@ object ContainerUtils {
         container.graphicsDriverConfig = containerData.graphicsDriverConfig
         container.rendererPresentMode = containerData.rendererPresentMode
         container.displayRenderer = containerData.displayRenderer
+        container.displayServer = containerData.displayServer
         container.xrRefreshRate = containerData.xrRefreshRate
         container.xrRenderScale = containerData.xrRenderScale
         container.sfCompatMode = containerData.sfCompatMode
@@ -629,6 +652,7 @@ object ContainerUtils {
         container.setInputType(api.ordinal)
         container.setDinputMapperType(containerData.dinputMapperType)
         container.setUseDRI3(containerData.useDRI3)
+        container.setHdrEnabled(containerData.hdrEnabled)
         Timber.d("Container set: preferredInputApi=%s, dinputMapperType=0x%02x", api, containerData.dinputMapperType)
 
         if (saveToDisk) {
@@ -880,6 +904,7 @@ object ContainerUtils {
                                     bestConfig.matchType,
                                     true,
                                     bestConfig.matchedStore.equals(gameSource.name, ignoreCase = true),
+                                    forceApply = true,
                                     matchedGpu = bestConfig.matchedGpu,
                                 )
                                 if (parsedConfig != null && parsedConfig.isNotEmpty()) {
@@ -916,6 +941,7 @@ object ContainerUtils {
                 graphicsDriverConfig = PrefManager.graphicsDriverConfig,
                 rendererPresentMode = PrefManager.rendererPresentMode,
                 displayRenderer = PrefManager.displayRendererMode,
+                displayServer = PrefManager.displayServer,
                 sfCompatMode = PrefManager.sfCompatMode,
                 dxwrapper = initialDxWrapper,
                 dxwrapperConfig = PrefManager.dxWrapperConfig,
@@ -950,6 +976,7 @@ object ContainerUtils {
                 offScreenRenderingMode = PrefManager.offScreenRenderingMode,
                 strictShaderMath = PrefManager.strictShaderMath,
                 useDRI3 = PrefManager.useDRI3,
+                hdrEnabled = PrefManager.hdrEnabled,
                 videoMemorySize = PrefManager.videoMemorySize,
                 mouseWarpOverride = PrefManager.mouseWarpOverride,
                 enableXInput = PrefManager.xinputEnabled,
@@ -992,6 +1019,9 @@ object ContainerUtils {
                 launchBionicSteam = false,
                 steamType = Container.STEAM_TYPE_HEADLESS,
             )
+            if (isVrGame(appId, gameSource)) {
+                containerData = containerData.copy(windowsVrEnabled = true, openCompositeEnabled = true)
+            }
         }
 
         if (Build.MANUFACTURER.equals("samsung", ignoreCase = true) && GPUInformation.isAdreno740(context)) {
@@ -1228,6 +1258,11 @@ object ContainerUtils {
                 Timber.w("[ContainerDeletion] Dirs present on disk but NOT loaded by ContainerManager (corrupt/empty config): $unloadedIds")
             }
         }
+    }
+
+    private fun isVrGame(appId: String, gameSource: GameSource): Boolean {
+        if (gameSource != GameSource.STEAM) return false
+        return runCatching { SteamService.getAppInfoOf(extractGameIdFromContainerId(appId))?.isVrGame }.getOrNull() == true
     }
 
     /**

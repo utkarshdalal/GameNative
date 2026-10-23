@@ -405,6 +405,9 @@ class EpicDownloadManager @Inject constructor(
                 EpicInstallState(
                     buildVersion = manifest.meta?.buildVersion ?: "",
                     language = containerLanguage,
+                    prereqIds = manifest.meta?.prereqIds.orEmpty(),
+                    prereqName = manifest.meta?.prereqName.orEmpty(),
+                    prereqPath = manifest.meta?.prereqPath.orEmpty(),
                 ),
             )
 

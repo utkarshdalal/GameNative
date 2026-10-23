@@ -4,15 +4,26 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import app.gamenative.R
 
 /**
  * Shared visual language for the Steam-Controller editors, so every SC menu / sub-menu looks the same and matches
@@ -31,6 +42,27 @@ fun ScSectionHeader(text: String) {
         letterSpacing = MaterialTheme.typography.labelMedium.letterSpacing * 1.5f,
         modifier = Modifier.padding(top = 16.dp, bottom = 4.dp),
     )
+}
+
+/**
+ * Dialog title with a leading back arrow, so touch users can go up a level without B or hunting for the scrim.
+ * [onBack] should be the same action B runs for that dialog (auto-save editors commit, the keyboard cancels).
+ */
+@Composable
+fun ScBackTitle(text: String, onBack: () -> Unit, style: TextStyle = MaterialTheme.typography.titleLarge) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        ScBackArrow(onBack)
+        Spacer(Modifier.width(4.dp))
+        Text(text, style = style)
+    }
+}
+
+/** The bare back arrow from [ScBackTitle], for headers that aren't a single title (the bindings editor's set row). */
+@Composable
+fun ScBackArrow(onBack: () -> Unit) {
+    IconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
+        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+    }
 }
 
 /**

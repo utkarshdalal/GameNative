@@ -139,6 +139,26 @@ fun GyroSettingsDialog(
                     },
                 )
 
+                SettingsDropdownBlock(
+                    title = stringResource(R.string.gyro_input_priority),
+                    subtitle = stringResource(
+                        when (config.inputPriority) {
+                            GyroSettings.PRIORITY_STICK_TOUCH -> R.string.gyro_priority_stick_touch_help
+                            else -> R.string.gyro_priority_combined_help
+                        },
+                    ),
+                    value = config.inputPriority,
+                    values = listOf(
+                        GyroSettings.PRIORITY_COMBINED,
+                        GyroSettings.PRIORITY_STICK_TOUCH,
+                    ),
+                    labels = listOf(
+                        stringResource(R.string.gyro_priority_combined),
+                        stringResource(R.string.gyro_priority_stick_touch),
+                    ),
+                    onValueChange = { config = config.copy(inputPriority = it) },
+                )
+
                 if (stickOutput) {
                     GestureBlock {
                         if (tiltAvailable) {

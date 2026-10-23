@@ -60,6 +60,7 @@ object SupportApi {
     const val REASON_ALREADY_ANSWERED = "already_answered"
     const val REASON_FIX_QUOTA = "fix_quota"
     const val REASON_FIX_UPGRADE = "fix_upgrade"
+    const val REASON_MEMBERSHIP = "membership"
 
     const val STAGE_QUEUED = "queued"
     const val STAGE_ANALYSING = "analysing"
@@ -459,6 +460,9 @@ object SupportApi {
                 cpuProfile.asRequestBody("application/json".toMediaType()),
             )
         }
+        DebugReportUtils.exitTraceBeside(logFile)?.let { trace ->
+            builder.addFormDataPart("exit_trace", DebugReportUtils.EXIT_TRACE_FILE, trace.asRequestBody("text/plain".toMediaType()))
+        }
         return builder
     }
 
@@ -672,7 +676,7 @@ object SupportApi {
         val builder = multipartBuilder(report, logFile, perfFile, logcatFile)
         builder.addFormDataPart("text", null, LateTextBody(text))
         val multipart = builder.build()
-        val expected = listOfNotNull(logFile, perfFile, logcatFile, DebugReportUtils.cpuProfileBeside(perfFile)).filter { it.exists() }.sumOf { it.length() }
+        val expected = listOfNotNull(logFile, perfFile, logcatFile, DebugReportUtils.cpuProfileBeside(perfFile), DebugReportUtils.exitTraceBeside(logFile)).filter { it.exists() }.sumOf { it.length() }
         val body = if (onProgress == null) multipart else ProgressBody(multipart, onProgress, expected)
         return call(
             name = "conversations/files",

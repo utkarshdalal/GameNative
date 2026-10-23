@@ -1211,7 +1211,7 @@ private fun ScreenEffectAdjustmentButton(
 }
 
 @Composable
-private fun ScreenEffectToggleRow(
+internal fun ScreenEffectToggleRow(
     title: String,
     subtitle: String? = null,
     enabled: Boolean,

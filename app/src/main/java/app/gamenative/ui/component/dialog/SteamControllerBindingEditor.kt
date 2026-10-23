@@ -151,6 +151,7 @@ fun SteamControllerBindingEditorDialog(containerId: String, onDismiss: () -> Uni
                 // Compact header: action-set chips sit at the top (title + long description moved out → Y = Help);
                 // the Set name / Layer / Default / Delete row moved into the scroll list so it doesn't sit fixed.
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    ScBackArrow(closeEditor)
                     Text("Action sets", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                     ScButtonGlyph(TritonProtocol.BTN_LBUMPER, size = 22.dp)
                     ScButtonGlyph(TritonProtocol.BTN_RBUMPER, size = 22.dp)
@@ -282,7 +283,7 @@ fun SteamControllerBindingEditorDialog(containerId: String, onDismiss: () -> Uni
                         for (side in TriggerSide.entries) {
                             val open = { editingTrigger = side }
                             ScNavItem(nav, line = navLine, modifier = Modifier.fillMaxWidth(), onActivate = open) {
-                                DetailRow(side.label, summarizeTrigger(side.get(profile)), onClick = open)
+                                DetailRow(side.label, summarizeTrigger(side.get(profile), profile.buttons[side.clickSource.name]), onClick = open)
                             }
                             navLine++
                         }
@@ -429,10 +430,30 @@ private enum class TriggerSide(val label: String, val defaultAxis: String, val c
         if (this == LEFT) p.copy(leftTrigger = t) else p.copy(rightTrigger = t)
 }
 
-private fun summarizeTrigger(t: EditTrigger?): String = when (t?.mode) {
-    null -> "Inherit (default)"
-    TriggerEditMode.AXIS -> "Axis: ${t.axis.removePrefix("GAMEPAD_")}"
-    TriggerEditMode.STAGED -> "Staged (soft/full)"
+/** Trigger row summary: what the trigger does (its stage commands and full-pull bind), with the analog axis as a
+ *  suffix, so a trigger bound to a key reads as that key rather than "Axis: R2". */
+private fun summarizeTrigger(t: EditTrigger?, click: EditBinding?): String {
+    // INHERIT counts: it's a kept advanced binding from a .vdf, and summarize() prints its description.
+    val bound = { b: EditBinding -> b.kind != OutputKind.NONE }
+    val parts = mutableListOf<String>()
+    if (t?.mode == TriggerEditMode.STAGED) {
+        if (bound(t.soft)) parts += "Soft: ${summarize(t.soft)}"
+        if (bound(t.full)) parts += "Deep: ${summarize(t.full)}"
+    }
+    if (click != null && bound(click)) parts += if (parts.isEmpty()) summarize(click) else "Click: ${summarize(click)}"
+    val axis = when (t?.axis) {
+        null -> null
+        "GAMEPAD_L2" -> "LT analog"
+        "GAMEPAD_R2" -> "RT analog"
+        else -> null
+    }
+    return when {
+        t == null && parts.isNotEmpty() -> "Inherit (default) · Click: ${summarize(click!!)}"
+        parts.isNotEmpty() -> parts.joinToString(" · ") + (axis?.let { " + $it" } ?: "")
+        axis != null -> axis
+        t == null -> "Inherit (default)"
+        else -> "Unbound"
+    }
 }
 
 private fun summarizeGyro(g: EditGyro?): String {
@@ -492,7 +513,7 @@ private fun TriggerPickerDialog(
         containerColor = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
         shape = MaterialTheme.shapes.large,
-        title = { Text("${side.label} behavior") },
+        title = { ScBackTitle("${side.label} behavior", onBack = doApply, style = MaterialTheme.typography.headlineSmall) },
         text = {
             ScNavDialogColumn(nav, onBack = doApply, modifier = Modifier.heightIn(max = 420.dp), scrollable = true) {
                 LabeledDropdown("Behavior", modeOptions, modeKey, nav = nav, navLine = 0) { modeKey = it }
@@ -508,21 +529,21 @@ private fun TriggerPickerDialog(
                     Spacer(Modifier.height(8.dp))
                     AnalogSlider("Soft-pull threshold", soft, 5, 95, "%", nav = nav, navLine = 2) { soft = it }
                     Spacer(Modifier.height(8.dp))
-                    AnalogSlider("Full-pull threshold", full, 5, 100, "%", nav = nav, navLine = 3) { full = it }
+                    AnalogSlider("Deep-pull threshold", full, 5, 100, "%", nav = nav, navLine = 3) { full = it }
                     Spacer(Modifier.height(8.dp))
                     // Each stage fires its own command at its threshold — tap to bind via the standard picker.
                     val openSoft = { pickingStage = "SOFT" }
                     val openFull = { pickingStage = "FULL" }
                     ScNavItem(nav, 4, modifier = Modifier.fillMaxWidth(), onActivate = openSoft) { DetailRow("Soft-pull command", summarize(softCmd), openSoft) }
-                    ScNavItem(nav, 5, modifier = Modifier.fillMaxWidth(), onActivate = openFull) { DetailRow("Full-pull command", summarize(fullCmd), openFull) }
+                    ScNavItem(nav, 5, modifier = Modifier.fillMaxWidth(), onActivate = openFull) { DetailRow("Deep-pull command", summarize(fullCmd), openFull) }
                 }
                 // Hardware full-pull digital click (the trigger's physical detent at max pull), folded in here — was a
                 // separate button row. Independent of the analog axis / staged commands above.
                 Spacer(Modifier.height(8.dp))
-                ScSectionHeader("Full-pull")
+                ScSectionHeader("Full pull (trigger click)")
                 val openClick = { editingClick = true }
                 ScNavItem(nav, 6, modifier = Modifier.fillMaxWidth(), onActivate = openClick) {
-                    DetailRow("Full-pull binding", summarize(clickBind), openClick)
+                    DetailRow("Click at the bottom of the pull", summarize(clickBind), openClick)
                 }
             }
         },
@@ -533,7 +554,7 @@ private fun TriggerPickerDialog(
     pickingStage?.let { stage ->
         val isSoft = stage == "SOFT"
         BindingPickerDialog(
-            title = if (isSoft) "Soft-pull command" else "Full-pull command",
+            title = if (isSoft) "Soft-pull command" else "Deep-pull command",
             current = if (isSoft) softCmd else fullCmd,
             onDismiss = { pickingStage = null },
             onApply = { b -> if (isSoft) softCmd = b else fullCmd = b; pickingStage = null },
@@ -588,7 +609,7 @@ private fun GyroPickerDialog(current: EditGyro, onDismiss: () -> Unit, onApply: 
         containerColor = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
         shape = MaterialTheme.shapes.large,
-        title = { Text("Gyro behavior") },
+        title = { ScBackTitle("Gyro behavior", onBack = doApply, style = MaterialTheme.typography.headlineSmall) },
         text = {
             ScNavDialogColumn(nav, onBack = doApply, modifier = Modifier.heightIn(max = 420.dp), scrollable = true) {
                 LabeledDropdown("Behavior", modeOptions, modeKey, nav = nav, navLine = 0) { modeKey = it }
@@ -674,7 +695,7 @@ private fun HapticsDialog(current: EditHaptics, onDismiss: () -> Unit, onApply: 
         containerColor = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
         shape = MaterialTheme.shapes.large,
-        title = { Text("Haptics") },
+        title = { ScBackTitle("Haptics", onBack = doApply, style = MaterialTheme.typography.headlineSmall) },
         text = {
             ScNavDialogColumn(nav, onBack = doApply, modifier = Modifier.heightIn(max = 420.dp), scrollable = true) {
                 AnalogToggle("Haptics enabled", enabled, nav = nav, navLine = 0) { enabled = it }
@@ -697,7 +718,7 @@ private fun HapticsDialog(current: EditHaptics, onDismiss: () -> Unit, onApply: 
 
 private fun TriggerEditMode.uiLabel(): String = when (this) {
     TriggerEditMode.AXIS -> "Analog axis (trigger)"
-    TriggerEditMode.STAGED -> "Soft / full pull (staged)"
+    TriggerEditMode.STAGED -> "Soft / deep pull (staged)"
 }
 
 private fun GyroEditMode.uiLabel(): String = when (this) {
@@ -782,7 +803,7 @@ private fun BindingPickerDialog(
         containerColor = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
         shape = MaterialTheme.shapes.large,
-        title = { Text(title) },
+        title = { ScBackTitle(title, onBack = doApply, style = MaterialTheme.typography.headlineSmall) },
         text = {
             // Bumpers flip command-picker tabs; B commits the staged binding (auto-save). All the d-pad/A/B/focus/
             // scrollbar wiring is the shared ScNavDialogColumn.
@@ -1185,7 +1206,12 @@ private fun comboKeyLabel(name: String): String = when (name) {
     XKeycode.KEY_CTRL_L.name, XKeycode.KEY_CTRL_R.name -> "Ctrl"
     XKeycode.KEY_SHIFT_L.name, XKeycode.KEY_SHIFT_R.name -> "Shift"
     XKeycode.KEY_ALT_L.name, XKeycode.KEY_ALT_R.name -> "Alt"
-    else -> runCatching { keyLabel(XKeycode.valueOf(name)) }.getOrDefault(name.removePrefix("KEY_"))
+    XKeycode.KEY_NUM_LOCK.name -> "Num Lock"
+    // The numpad grid's chips say plain "2" (they sit under a Numpad tab), but a summary has no tab, so say "Num 2"
+    // or it reads the same as the number row's 2. Matches the overlay's "Num N".
+    else -> runCatching { XKeycode.valueOf(name) }.getOrNull()?.let { k ->
+        if (k.name.startsWith("KEY_KP_")) "Num ${keyLabel(k)}" else keyLabel(k)
+    } ?: name.removePrefix("KEY_")
 }
 
 private fun summarize(b: EditBinding): String {
@@ -1345,7 +1371,7 @@ private fun AnalogPickerDialog(
         containerColor = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
         shape = MaterialTheme.shapes.large,
-        title = { Text("${surface.label} behavior") },
+        title = { ScBackTitle("${surface.label} behavior", onBack = doApply, style = MaterialTheme.typography.headlineSmall) },
         text = {
             ScNavDialogColumn(nav, onBack = doApply, modifier = Modifier.heightIn(max = 520.dp), scrollable = true) {
                 LabeledDropdown("Behavior", modeOptions, modeKey, nav = nav, navLine = 0) { modeKey = it }

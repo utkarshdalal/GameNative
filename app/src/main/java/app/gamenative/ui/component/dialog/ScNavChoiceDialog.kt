@@ -2,6 +2,7 @@ package app.gamenative.ui.component.dialog
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -41,7 +42,7 @@ fun <T> ScNavChoiceDialog(
             color = MaterialTheme.colorScheme.surface,
         ) {
             ScNavDialogColumn(nav, onBack = onDismiss, modifier = Modifier.padding(16.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
+                Box(Modifier.padding(bottom = 8.dp)) { ScBackTitle(title, onBack = onDismiss, style = MaterialTheme.typography.titleMedium) }
                 val listScroll = rememberScrollState()
                 ScScrollbar(listScroll, Modifier.heightIn(max = 420.dp)) {
                     Column(modifier = Modifier.verticalScroll(listScroll)) {

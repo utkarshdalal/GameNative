@@ -66,8 +66,9 @@ but some titles (GOG releases, older UE3 games) load `soft_oal.dll` directly.
 
 4. Place `openal.tzst` in `app/src/main/assets/wincomponents/openal.tzst`
 
-## Note about the pre-install step
+## Games that ship the OpenAL installer
 
-The existing `OpenALStep` pre-install step searches for game-bundled OpenAL
-installers (oalinst.exe). That step still runs regardless of this override.
-This provides a system-level fallback for games that don't bundle their own.
+oalinst.exe is never run. When a game ships it (`_CommonRedist/OpenAL`, `redist/`),
+`OpenALRedist.applyForLaunch` adds `openal32=native,builtin` to the container's
+`WINEDLLOVERRIDES` unless an `openal32` or `soft_oal` override is already set, so a
+user's own choice from the table above is kept. Either way the archive is extracted at launch.

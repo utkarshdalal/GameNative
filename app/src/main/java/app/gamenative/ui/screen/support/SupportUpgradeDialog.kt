@@ -53,7 +53,15 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.os.SystemClock
+import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.billing.Membership
+import app.gamenative.billing.PlayBilling
+import kotlinx.coroutines.delay
 import app.gamenative.api.AccountApi
 import app.gamenative.api.ApiResult
 import app.gamenative.api.SupportApi
@@ -85,7 +93,13 @@ internal suspend fun FocusRequester.requestFocusAfterLayout() {
     requestFocusSafely()
 }
 
-private fun hasPaidTier(tier: String?): Boolean = tier == "basic" || tier == "pro" || tier == "patron"
+private fun hasPaidTier(tier: String?): Boolean = Membership.isPaidTier(tier)
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
 
 @Composable
 fun SupportUpgradeDialog(
@@ -94,6 +108,7 @@ fun SupportUpgradeDialog(
     onDismiss: () -> Unit,
     onPlanChanged: () -> Unit = {},
     onCheckoutReturn: () -> Unit = {},
+    onSignIn: (() -> Unit)? = null,
 ) {
     if (!visible) return
     if (!upgradeOffered(reason)) {
@@ -113,12 +128,73 @@ fun SupportUpgradeDialog(
     var startTier by rememberSaveable { mutableStateOf(account?.tier ?: "") }
     var noBrowser by remember { mutableStateOf(false) }
     var portalMessage by remember { mutableStateOf<Int?>(null) }
+    val signedIn by PrefManager.gameNativeSignedIn
+    val playEnabled = remember { PlayBilling.enabled(context) }
+    var playPlans by remember { mutableStateOf<List<PlayBilling.Plan>?>(null) }
+    var playUnavailable by remember { mutableStateOf(false) }
+    var guestDeviceCode by rememberSaveable { mutableStateOf("") }
+    var guestIntervalMs by rememberSaveable { mutableStateOf(3000L) }
+    var guestDeadline by rememberSaveable { mutableStateOf(0L) }
+    var guestExpired by remember { mutableStateOf(false) }
+
+    val planActive: () -> Unit = {
+        SnackbarManager.show(context.getString(R.string.support_plan_active))
+        currentOnPlanChanged()
+        currentOnDismiss()
+    }
 
     LaunchedEffect(Unit) {
-        if (startTier.isEmpty()) {
+        if (reason == SupportApi.REASON_MEMBERSHIP && Membership.isMember()) {
+            SnackbarManager.show(context.getString(R.string.support_plan_active))
+            currentOnDismiss()
+            return@LaunchedEffect
+        }
+        if (signedIn && startTier.isEmpty()) {
             val result = AccountApi.fetchAccount()
             if (result is ApiResult.Success) startTier = result.data.tier
         }
+    }
+
+    LaunchedEffect(playPlans == null) {
+        if (playEnabled && playPlans == null) {
+            val loaded = try {
+                PlayBilling.plans()
+            } catch (e: Exception) {
+                emptyList()
+            }
+            playPlans = loaded
+            if (loaded.isEmpty() && phase == PHASE_CHOOSE) {
+                playUnavailable = true
+                phase = PHASE_FAILED
+            }
+        }
+    }
+
+    LaunchedEffect(guestDeviceCode) {
+        if (guestDeviceCode.isEmpty()) return@LaunchedEffect
+        var intervalMs = guestIntervalMs
+        while (SystemClock.elapsedRealtime() < guestDeadline) {
+            delay(intervalMs)
+            when (val poll = AccountApi.pollDeviceSignIn(guestDeviceCode)) {
+                is AccountApi.PollResult.SignedIn -> {
+                    guestDeviceCode = ""
+                    val account = poll.account ?: (AccountApi.fetchAccount() as? ApiResult.Success)?.data
+                    currentOnCheckoutReturn()
+                    if (hasPaidTier(account?.tier)) planActive() else currentOnDismiss()
+                    return@LaunchedEffect
+                }
+                AccountApi.PollResult.Pending -> Unit
+                is AccountApi.PollResult.SlowDown -> {
+                    intervalMs = poll.retryAfterSeconds?.coerceIn(1L, 60L)?.let { maxOf(intervalMs, it * 1000L) }
+                        ?: (intervalMs + 2000L)
+                    guestIntervalMs = intervalMs
+                }
+                AccountApi.PollResult.Expired -> break
+                is AccountApi.PollResult.Failure -> if (poll.code != null && poll.code in 400..499) break
+            }
+        }
+        guestDeviceCode = ""
+        guestExpired = true
     }
 
     DisposableEffect(lifecycleOwner) {
@@ -128,9 +204,7 @@ fun SupportUpgradeDialog(
                     val result = AccountApi.fetchAccount()
                     currentOnCheckoutReturn()
                     if (result is ApiResult.Success && result.data.tier != startTier && hasPaidTier(result.data.tier)) {
-                        SnackbarManager.show(context.getString(R.string.support_plan_active))
-                        currentOnPlanChanged()
-                        currentOnDismiss()
+                        planActive()
                     }
                 }
             }
@@ -142,14 +216,49 @@ fun SupportUpgradeDialog(
     val choose: (String) -> Unit = { tier ->
         phase = PHASE_LOADING
         noBrowser = false
+        guestExpired = false
         scope.launch {
-            when (val result = AccountApi.createCheckout(tier)) {
-                is ApiResult.Success -> {
-                    checkoutUrl = result.data
-                    phase = PHASE_CHECKOUT
+            if (playEnabled) {
+                val plan = playPlans?.firstOrNull { it.tier == tier }
+                val activity = context.findActivity()
+                if (plan == null || activity == null) {
+                    phase = PHASE_FAILED
+                    return@launch
                 }
-                is ApiResult.HttpError -> phase = if (result.code == 409) PHASE_SUBSCRIBED else PHASE_FAILED
-                is ApiResult.NetworkError -> phase = PHASE_FAILED
+                when (PlayBilling.purchase(activity, plan)) {
+                    PlayBilling.PurchaseOutcome.Success -> {
+                        if (signedIn) {
+                            AccountApi.syncPlay()
+                            planActive()
+                        } else {
+                            SnackbarManager.show(context.getString(R.string.support_plan_active))
+                            currentOnPlanChanged()
+                            if (onSignIn != null) onSignIn() else currentOnDismiss()
+                        }
+                    }
+                    PlayBilling.PurchaseOutcome.Cancelled -> phase = PHASE_CHOOSE
+                    is PlayBilling.PurchaseOutcome.Failed -> phase = PHASE_FAILED
+                }
+            } else if (!signedIn) {
+                when (val result = AccountApi.createGuestCheckout(tier)) {
+                    is ApiResult.Success -> {
+                        checkoutUrl = result.data.url
+                        guestIntervalMs = result.data.start.interval.coerceAtLeast(1) * 1000L
+                        guestDeadline = SystemClock.elapsedRealtime() + result.data.start.expiresIn.coerceAtLeast(1) * 1000L
+                        guestDeviceCode = result.data.start.deviceCode
+                        phase = PHASE_CHECKOUT
+                    }
+                    else -> phase = PHASE_FAILED
+                }
+            } else {
+                when (val result = AccountApi.createCheckout(tier)) {
+                    is ApiResult.Success -> {
+                        checkoutUrl = result.data
+                        phase = PHASE_CHECKOUT
+                    }
+                    is ApiResult.HttpError -> phase = if (result.code == 409) PHASE_SUBSCRIBED else PHASE_FAILED
+                    is ApiResult.NetworkError -> phase = PHASE_FAILED
+                }
             }
         }
     }
@@ -217,13 +326,22 @@ fun SupportUpgradeDialog(
                             reason = reason,
                             showBasic = showBasic,
                             noBrowser = noBrowser,
+                            guestExpired = guestExpired,
+                            guestCheckout = guestDeviceCode.isNotEmpty(),
+                            playUnavailable = playUnavailable,
+                            playPlans = if (playEnabled) playPlans ?: emptyList() else null,
+                            onSignIn = if (signedIn) null else onSignIn,
                             portalMessage = portalMessage,
                             firstFocus = firstFocus,
                             cancelFocus = cancelFocus,
                             onChoose = choose,
                             onOpenCheckout = { noBrowser = !openAccountUrl(context, checkoutUrl) },
                             onManage = manage,
-                            onRetry = { phase = PHASE_CHOOSE },
+                            onRetry = {
+                                playUnavailable = false
+                                playPlans = null
+                                phase = PHASE_CHOOSE
+                            },
                             onDismiss = onDismiss,
                         )
                     }
@@ -245,13 +363,22 @@ fun SupportUpgradeDialog(
                         reason = reason,
                         showBasic = showBasic,
                         noBrowser = noBrowser,
+                        guestExpired = guestExpired,
+                        guestCheckout = guestDeviceCode.isNotEmpty(),
+                        playUnavailable = playUnavailable,
+                        playPlans = if (playEnabled) playPlans ?: emptyList() else null,
+                        onSignIn = if (signedIn) null else onSignIn,
                         portalMessage = portalMessage,
                         firstFocus = firstFocus,
                         cancelFocus = cancelFocus,
                         onChoose = choose,
                         onOpenCheckout = { noBrowser = !openAccountUrl(context, checkoutUrl) },
                         onManage = manage,
-                        onRetry = { phase = PHASE_CHOOSE },
+                        onRetry = {
+                            playUnavailable = false
+                            playPlans = null
+                            phase = PHASE_CHOOSE
+                        },
                         onDismiss = onDismiss,
                     )
                 }
@@ -376,6 +503,11 @@ private fun UpgradeBody(
     reason: String?,
     showBasic: Boolean,
     noBrowser: Boolean,
+    guestExpired: Boolean,
+    guestCheckout: Boolean,
+    playUnavailable: Boolean,
+    playPlans: List<PlayBilling.Plan>?,
+    onSignIn: (() -> Unit)?,
     portalMessage: Int?,
     firstFocus: FocusRequester,
     cancelFocus: FocusRequester,
@@ -386,29 +518,41 @@ private fun UpgradeBody(
     onDismiss: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
+        val membership = reason == SupportApi.REASON_MEMBERSHIP
         Text(
-            text = stringResource(R.string.debug_paywall_title),
+            text = stringResource(if (membership) R.string.membership_plans_title else R.string.debug_paywall_title),
             style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.padding(bottom = 12.dp),
         )
 
         when (phase) {
             PHASE_CHOOSE, PHASE_LOADING -> {
-                Text(text = upgradeReasonText(reason), style = MaterialTheme.typography.bodyMedium)
-                Text(
-                    text = stringResource(R.string.debug_paywall_pitch),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = PluviaTheme.colors.textMuted,
-                    modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
-                )
-                if (phase == PHASE_LOADING) {
+                if (membership) {
+                    Text(
+                        text = stringResource(R.string.membership_plans_pitch),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 16.dp),
+                    )
+                } else {
+                    Text(text = upgradeReasonText(reason), style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = stringResource(R.string.debug_paywall_pitch),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = PluviaTheme.colors.textMuted,
+                        modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
+                    )
+                }
+                val basicPrice = playPlans?.firstOrNull { it.tier == "basic" }?.price
+                val proPrice = playPlans?.firstOrNull { it.tier == "pro" }?.price
+                if (phase == PHASE_LOADING || (playPlans != null && playPlans.isEmpty())) {
                     Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(modifier = Modifier.size(32.dp))
                     }
                 } else {
                     if (showBasic) {
                         DialogButton(
-                            text = stringResource(R.string.support_plan_basic_title),
+                            text = basicPrice?.let { stringResource(R.string.support_plan_basic_title_priced, it) }
+                                ?: stringResource(R.string.support_plan_basic_title),
                             subtitle = stringResource(R.string.support_plan_basic_body),
                             primary = false,
                             onClick = { onChoose("basic") },
@@ -417,7 +561,8 @@ private fun UpgradeBody(
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                     DialogButton(
-                        text = stringResource(R.string.debug_paywall_tier10_title),
+                        text = proPrice?.let { stringResource(R.string.support_plan_pro_title_priced, it) }
+                            ?: stringResource(R.string.debug_paywall_tier10_title),
                         subtitle = stringResource(R.string.debug_paywall_tier10_body),
                         onClick = { onChoose("pro") },
                         modifier = if (showBasic) Modifier else Modifier.focusRequester(firstFocus),
@@ -429,14 +574,25 @@ private fun UpgradeBody(
                         color = PluviaTheme.colors.textMuted,
                         modifier = Modifier.padding(top = 12.dp),
                     )
+                    if (onSignIn != null) {
+                        TextButton(onClick = onSignIn, modifier = Modifier.padding(top = 4.dp)) {
+                            Text(stringResource(R.string.support_already_member))
+                        }
+                    }
                 }
             }
             PHASE_CHECKOUT -> {
                 Text(text = stringResource(R.string.support_checkout_scan), style = MaterialTheme.typography.bodyMedium)
                 Text(
-                    text = stringResource(R.string.support_checkout_waiting),
+                    text = stringResource(
+                        when {
+                            guestExpired -> R.string.support_checkout_expired
+                            guestCheckout -> R.string.support_checkout_waiting_guest
+                            else -> R.string.support_checkout_waiting
+                        },
+                    ),
                     style = MaterialTheme.typography.bodySmall,
-                    color = PluviaTheme.colors.textMuted,
+                    color = if (guestExpired) PluviaTheme.colors.accentDanger else PluviaTheme.colors.textMuted,
                     modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
                 )
                 if (noBrowser) {
@@ -475,7 +631,7 @@ private fun UpgradeBody(
             }
             else -> {
                 Text(
-                    text = stringResource(R.string.support_checkout_failed),
+                    text = stringResource(if (playUnavailable) R.string.support_play_unavailable else R.string.support_checkout_failed),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(bottom = 16.dp),
                 )

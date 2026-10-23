@@ -30,6 +30,7 @@
 #define TMP_SUFFIX_LEN 14
 #define MAX_FOLLOW 8
 #define MAX_PREFIXES 32
+#define MAX_HIDDEN 16
 #define DIR_MAGIC 0x79616c72766f6e67ULL
 
 enum { M_NONE, M_SELF, M_ANC, M_DIR };
@@ -66,8 +67,35 @@ static pthread_mutex_t g_mu = PTHREAD_MUTEX_INITIALIZER;
 
 static void **g_dirs;
 static size_t g_ndirs, g_capdirs;
+static char *g_hidden[MAX_HIDDEN];
+static int g_nhidden;
 
 int gno_active(void) { return g_active; }
+
+void gno_set_hidden(const char *names)
+{
+    for (int i = 0; i < g_nhidden; i++) free(g_hidden[i]);
+    g_nhidden = 0;
+    if (!names) return;
+    char buf[PM * 4];
+    snprintf(buf, sizeof(buf), "%s", names);
+    for (char *s = buf, *e; s && *s && g_nhidden < MAX_HIDDEN; s = e) {
+        e = strchr(s, ':');
+        if (e) *e++ = 0;
+        if (!*s || !strcmp(s, ".") || !strcmp(s, "..") || strchr(s, '/')) continue;
+        char *dup = strdup(s);
+        if (!dup) break;
+        g_hidden[g_nhidden++] = dup;
+    }
+}
+
+int gno_hidden_name(const char *name)
+{
+    int n = __atomic_load_n(&g_nhidden, __ATOMIC_RELAXED);
+    for (int i = 0; i < n; i++)
+        if (!strcmp(g_hidden[i], name)) return 1;
+    return 0;
+}
 
 void gno_log(const char *fmt, ...)
 {
@@ -1217,7 +1245,7 @@ int gno_snapshot(const char *rel, gno_snap *s)
         while ((de = O.readdir(ud))) {
             const char *nm = de->d_name;
             if (root && !strcmp(nm, META)) continue;
-            if (is_tmp_name(nm)) continue;
+            if (is_tmp_name(nm) || gno_hidden_name(nm)) continue;
             unsigned char t = de->d_type;
             if (t == DT_UNKNOWN) t = dtype_of(up, nm);
             if (snap_add(s, nm, (uint64_t)de->d_ino, t, GNO_UPPER) < 0) goto fail;
@@ -1244,6 +1272,7 @@ int gno_snapshot(const char *rel, gno_snap *s)
             int dot = !strcmp(nm, ".") || !strcmp(nm, "..");
             if (dot && up_opened) continue;
             if (root && !strcmp(nm, META)) continue;
+            if (gno_hidden_name(nm)) continue;
             uint32_t k = 2166136261u;
             for (const char *c = nm; *c; c++) k = (k ^ (unsigned char)*c) * 16777619u;
             int dup = 0;
@@ -1445,6 +1474,7 @@ static int cmp_prefix(const void *a, const void *b)
 void gno_shutdown(void)
 {
     g_active = 0;
+    gno_set_hidden(NULL);
     for (int i = 0; i < g_npfx; i++) free(g_pfx[i].s);
     g_npfx = 0;
     if (g_logfd >= 0) O.close(g_logfd);

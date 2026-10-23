@@ -90,6 +90,27 @@ class PhysicalControllerHandlerTest {
     }
 
     @Test
+    fun `stick direction bound to the opposite mouse direction moves the mouse that way`() {
+        val deviceId = 42
+        val upSource = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_RZ, -1)
+        val controller = motionController(upSource, Binding.MOUSE_MOVE_DOWN).apply {
+            state.thumbRY = -0.5f
+        }
+        val profile = mock<ControlsProfile>()
+        whenever(profile.getController(deviceId)).thenReturn(controller)
+        whenever(profile.isStickTuningConfigured).thenReturn(true)
+        whenever(profile.cursorSpeed).thenReturn(1f)
+        val handler = PhysicalControllerHandler(profile, mock<XServer>(), gamepadStateSender = {})
+
+        try {
+            assertTrue(handler.onGenericMotionEvent(motionEvent(deviceId)))
+            assertEquals(0.5f, mouseMoveOffset(handler).y, 0f)
+        } finally {
+            handler.cleanup()
+        }
+    }
+
+    @Test
     fun `untuned legacy profile retains the original stick binding threshold`() {
         val deviceId = 42
         val rightSource = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_X, 1)

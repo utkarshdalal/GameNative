@@ -7,6 +7,7 @@ import java.io.File
 object GOGManifestUtils {
     const val MANIFEST_FILE_NAME = "_gog_manifest.json"
     private const val KEY_SCRIPT_INTERPRETER = "scriptInterpreter"
+    private const val KEY_DEPENDENCIES = "dependencies"
 
     fun readLocalManifest(installDir: File): JSONObject? {
         val manifestFile = File(installDir, MANIFEST_FILE_NAME)
@@ -22,5 +23,10 @@ object GOGManifestUtils {
     fun needsScriptInterpreter(installDir: File): Boolean {
         val root = readLocalManifest(installDir) ?: return false
         return root.optBoolean(KEY_SCRIPT_INTERPRETER, false)
+    }
+
+    fun readDependencies(installDir: File): List<String>? {
+        val array = readLocalManifest(installDir)?.optJSONArray(KEY_DEPENDENCIES) ?: return null
+        return List(array.length()) { array.optString(it) }.filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }
     }
 }

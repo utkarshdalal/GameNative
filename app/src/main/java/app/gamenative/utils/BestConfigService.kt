@@ -15,6 +15,7 @@ import com.winlator.core.DefaultVersion
 import com.winlator.core.GPUInformation
 import com.winlator.core.KeyValueSet
 import com.winlator.fexcore.FEXCorePresetManager
+import com.winlator.winhandler.WinHandler
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
@@ -67,6 +68,13 @@ object BestConfigService {
         val config: Map<String, Any?>,
         val missingComponents: List<String> = emptyList(),
     )
+
+    internal fun usesNativeBox64(wineVersion: String): Boolean =
+        !wineVersion.contains("arm64ec", ignoreCase = true)
+
+    internal fun usesWowBox64(wineVersion: String, emulator: String): Boolean =
+        wineVersion.contains("arm64ec", ignoreCase = true) &&
+            !emulator.equals("FEXCore", ignoreCase = true)
 
     /**
      * Fetches best configuration for a game.
@@ -440,7 +448,7 @@ object BestConfigService {
         }
 
         // Validate Box64 version (check separately based on container variant)
-        if (box64Version.isNotEmpty() && containerVariant.isNotEmpty()) {
+        if (usesNativeBox64(wineVersion) && box64Version.isNotEmpty() && containerVariant.isNotEmpty()) {
             val box64VersionsToCheck = when {
                 containerVariant.equals(Container.BIONIC, ignoreCase = true) -> availableBox64Bionic
                 containerVariant.equals(Container.GLIBC, ignoreCase = true) -> availableBox64Glibc
@@ -456,8 +464,8 @@ object BestConfigService {
         }
 
         // Validate WoWBox64 version (if wineVersion contains arm64ec)
-        if (wineVersion.contains("arm64ec", ignoreCase = true)) {
-            if (box64Version.isNotEmpty() && !ManifestComponentHelper.versionExists(box64Version, availableWowBox64) && emulator != "FEXCore") {
+        if (usesWowBox64(wineVersion, emulator)) {
+            if (box64Version.isNotEmpty() && !ManifestComponentHelper.versionExists(box64Version, availableWowBox64)) {
                 Timber.tag("BestConfigService").w("WoWBox64 version $box64Version not found")
                 missing.add("WoWBox64 $box64Version")
             }
@@ -679,7 +687,7 @@ object BestConfigService {
             }
         }
 
-        if (box64Version.isNotEmpty() && containerVariant.isNotEmpty()) {
+        if (usesNativeBox64(wineVersion) && box64Version.isNotEmpty() && containerVariant.isNotEmpty()) {
             val locallyAvailableBox64 = when {
                 containerVariant.equals(Container.BIONIC, ignoreCase = true) -> locallyAvailableBox64Bionic
                 containerVariant.equals(Container.GLIBC, ignoreCase = true) -> locallyAvailableBox64Glibc
@@ -693,7 +701,7 @@ object BestConfigService {
             }
         }
 
-        if (wineVersion.contains("arm64ec", ignoreCase = true) && emulator != "FEXCore") {
+        if (usesWowBox64(wineVersion, emulator)) {
             if (box64Version.isNotEmpty() && !ManifestComponentHelper.versionExists(box64Version, locallyAvailableWowBox64)) {
                 val entry = ManifestComponentHelper.findManifestEntryForVersion(box64Version, manifestWowBox64)
                 if (entry != null) {
@@ -1017,6 +1025,9 @@ object BestConfigService {
                 if (filteredJson.has("audioDriver") && !filteredJson.isNull("audioDriver")) {
                     resultMap["audioDriver"] = filteredJson.optString("audioDriver", PrefManager.audioDriver)
                 }
+                if (filteredJson.has("inputType") && !filteredJson.isNull("inputType")) {
+                    resultMap["inputType"] = filteredJson.optInt("inputType", WinHandler.PreferredInputApi.BOTH.ordinal)
+                }
                 if (filteredJson.has("wincomponents") && !filteredJson.isNull("wincomponents")) {
                     resultMap["wincomponents"] = filteredJson.optString("wincomponents", PrefManager.winComponents)
                 }
@@ -1032,4 +1043,3 @@ object BestConfigService {
         }
     }
 }
-

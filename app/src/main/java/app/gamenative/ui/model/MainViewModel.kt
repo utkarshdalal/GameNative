@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import app.gamenative.BuildConfig
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
+import app.gamenative.billing.Membership
 import app.gamenative.data.BootAdRepository
 import app.gamenative.data.GameProcessInfo
 import app.gamenative.data.GameSource
@@ -44,6 +45,7 @@ import app.gamenative.utils.WineProcessSnapshotHelper
 import com.materialkolor.PaletteStyle
 import com.winlator.xserver.Window
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.AppProcessInfo
 import java.io.File
 import java.nio.file.Paths
@@ -68,6 +70,7 @@ import timber.log.Timber
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
+    @ApplicationContext private val appContext: Context,
     private val savedStateHandle: SavedStateHandle,
     private val appTheme: IAppTheme,
     private val libraryPlayHistoryDao: LibraryPlayHistoryDao,
@@ -98,7 +101,7 @@ class MainViewModel @Inject constructor(
     private var pendingWarmPitch: Pair<String, Boolean>? = null
 
     private fun warmPitchAllowed(): Boolean {
-        if (PrefManager.tipped || BuildConfig.GOLD) return false
+        if (!Membership.canPitch()) return false
         return System.currentTimeMillis() - PrefManager.lastWarmPitchTime >= WARM_PITCH_COOLDOWN_MS
     }
 
@@ -124,7 +127,7 @@ class MainViewModel @Inject constructor(
         data object OnBackPressed : MainUiEvent()
         data object OnLoggedOut : MainUiEvent()
         data object LaunchApp : MainUiEvent()
-        data class ExternalGameLaunch(val appId: String) : MainUiEvent()
+        data class ExternalGameLaunch(val appId: String, val execArgs: String?) : MainUiEvent()
         data class OnLogonEnded(val result: LoginResult) : MainUiEvent()
         data class SteamDisconnected(val isTerminal: Boolean) : MainUiEvent()
         data object ShowDiscordSupportDialog : MainUiEvent()
@@ -266,7 +269,7 @@ class MainViewModel @Inject constructor(
         Timber.tag("MainViewModel").i("Received external game launch event for app ${it.appId}")
         viewModelScope.launch {
             Timber.tag("MainViewModel").i("Sending ExternalGameLaunch UI event for app ${it.appId}")
-            _uiEvent.send(MainUiEvent.ExternalGameLaunch(it.appId))
+            _uiEvent.send(MainUiEvent.ExternalGameLaunch(it.appId, it.execArgs))
         }
     }
 
@@ -282,6 +285,7 @@ class MainViewModel @Inject constructor(
     }
 
     private val onClearBootingSplash: (AndroidEvent.ClearBootingSplash) -> Unit = {
+        bootAwaitingGameWindow = false
         bootingSplashTimeoutJob?.cancel()
         bootingSplashTimeoutJob = null
         bootAwaitingGameWindow = false
@@ -317,6 +321,16 @@ class MainViewModel @Inject constructor(
                 currentScreen = restoredScreen,
                 connectionState = initialConnectionState,
             )
+        }
+
+        // A debug run the previous process never finished: offer its recovered report once.
+        viewModelScope.launch {
+            DebugReportUtils.recovery?.let { recovered ->
+                recovered.await()
+                if (DebugReportUtils.recovery === recovered) DebugReportUtils.recovery = null
+            }
+            withContext(Dispatchers.IO) { DebugReportUtils.takePendingOffer(appContext) }
+                ?.let { _uiEvent.send(MainUiEvent.ShowDebugReportDialog(it)) }
         }
 
         // Register event handlers
@@ -573,6 +587,10 @@ class MainViewModel @Inject constructor(
         _state.update { it.copy(launchedAppId = value) }
     }
 
+    fun setExecArgs(value: String?) {
+        _state.update { it.copy(execArgs = value) }
+    }
+
     fun setBootToContainer(value: Boolean) {
         _state.update { it.copy(bootToContainer = value) }
     }
@@ -590,6 +608,10 @@ class MainViewModel @Inject constructor(
     }
 
     fun launchApp(context: Context, appId: String) {
+        launchAppWithArgs(context, appId, null)
+    }
+
+    fun launchAppWithArgs(context: Context, appId: String, execArgs: String?) {
         gameSessionStartTime = System.currentTimeMillis()
         gameWindowSeen = false
         gamePlayedThisSession = true
@@ -614,6 +636,7 @@ class MainViewModel @Inject constructor(
             // A new launch is a new impression: never reuse the previous launch's ad.
             bootAdHiddenAtMs = 0L
             setShowBootingSplash(true)
+            setExecArgs(execArgs)
             bootAwaitingGameWindow = _state.value.bootAd != null
             if (bootAwaitingGameWindow) startBootGameExitWatch(context, appId)
             PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(PrefManager.allowedOrientation))
@@ -1003,7 +1026,7 @@ class MainViewModel @Inject constructor(
                     val processes = mutableListOf<AppProcessInfo>()
                     var currentWindow: Window = window
                     do {
-                        var parentWindow: Window? = window.parent
+                        var parentWindow: Window? = currentWindow.parent
                         val process = if (parentWindow != null && parentWindow.className.lowercase() != "explorer.exe") {
                             val processId = currentWindow.processId
                             val parentProcessId = parentWindow.processId

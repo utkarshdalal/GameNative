@@ -147,9 +147,16 @@ internal fun winComponentsItemTitleRes(string: String): Int {
         "directplay" -> R.string.directplay
         "directshow" -> R.string.directshow
         "directx" -> R.string.directx
+        "vcrun2005" -> R.string.vcrun2005
+        "vcrun2008" -> R.string.vcrun2008
         "vcrun2010" -> R.string.vcrun2010
+        "vcrun2012" -> R.string.vcrun2012
+        "vcrun2013" -> R.string.vcrun2013
+        "vcrun2022" -> R.string.vcrun2022
+        "xaudio" -> R.string.xaudio
         "wmdecoder" -> R.string.wmdecoder
         "opengl" -> R.string.opengl
+        "physx" -> R.string.physx
         else -> throw IllegalArgumentException("No string res found for Win Components title: $string")
     }
 }

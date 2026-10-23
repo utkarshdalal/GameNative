@@ -187,6 +187,25 @@ keeps "resume = refresh" honest.
   left `.inflight`. Removed content is swept only after that depot's writes succeeded, and only when
   every other installed depot is part of the run (its manifest's filenames are needed to know which
   paths another depot still owns).
+- **Cross-depot name clashes**: two depots of one install can disagree about a path's *type*. Fallout 2
+  is the case in the wild: "Fallout 2 Depot New Base" (38414) declares `master.dat` as a **directory**
+  while "New English" (38415) ships it as a 317 MB **file**, and every package grants both. A
+  case-insensitive volume can hold only one, so the run keeps the **file** and drops the losing
+  directory together with everything under it (logged `depot-clash path=… kept=file depot=…`): a
+  directory is only a container, and the file is the form the game reads — it is also what a Windows
+  install converges on, since the directory cannot be created over the file. Depots the store records
+  as installed take part in that decision even when this press does not select them, so a run can
+  never replace a file an installed depot owns. The write path applies the same rule in both
+  directions — a directory in a file's way is removed (after the free-space preflight, so a failed
+  preflight leaves the old tree; refused when a symlinked ancestor would take the removal outside
+  the install dir) and a file in a directory's way is unlinked. Every creation and removal resolves
+  the nearest existing ancestor and refuses it outside the install root, so a link anywhere above a
+  path — including above a directory the manifest never declares — cannot redirect the run; a
+  directory entry that is a symlink is kept only while it resolves inside the tree, and otherwise
+  replaced. An install left in the wrong
+  shape by an earlier attempt repairs itself instead of failing with `EEXIST`/`EISDIR`. A file the
+  delta calls unchanged is only trusted when it is still the regular file of the manifest's size on
+  disk; a deleted, truncated or directory-shadowed path is revalidated like any other change.
 - **Manifest & key freshness**: the requested build's manifest is fetched on every press (a cached
   `target/` file is never reused), and a manifest whose metadata does not match the depot/gid it is
   filed under is never trusted as a diff base — the run fetches instead. Depot keys are requested via
