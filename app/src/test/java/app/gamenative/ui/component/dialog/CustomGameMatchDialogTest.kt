@@ -61,25 +61,27 @@ class CustomGameMatchDialogTest {
     }
 
     @Test
-    fun submittingEditedQuery_searchesAgain() {
+    fun editingQuery_searchesOnlyOnSubmit() {
         render()
         compose.onNodeWithText("Hollow Knight: Silksong").assertIsDisplayed()
 
         compose.onNode(hasSetTextAction()).performTextReplacement("Silksong")
+        compose.waitForIdle()
+        assertEquals(listOf("Hollow Knight"), queries)
+
         compose.onNode(hasSetTextAction()).performImeAction()
         compose.waitForIdle()
-
         assertEquals(listOf("Hollow Knight", "Silksong"), queries)
     }
 
     @Test
     fun existingMatch_searchesMatchedNameAndCanBeRemoved() {
-        render(currentMatch = hollowKnight)
+        render(folderName = "hk_gog", currentMatch = silksong)
 
-        compose.onNodeWithText("Matched to Hollow Knight").assertIsDisplayed()
+        compose.onNodeWithText("Matched to Hollow Knight: Silksong").assertIsDisplayed()
         compose.onNodeWithText("Remove match").performClick()
 
-        assertEquals(listOf("Hollow Knight"), queries)
+        assertEquals(listOf("Hollow Knight: Silksong"), queries)
         assertEquals(1, removed)
     }
 

@@ -68,11 +68,10 @@ class CustomGameAppScreen : BaseAppScreen() {
 
         private val matchDialogAppIds = mutableStateListOf<String>()
 
-        // Latest saveMatch per appId; only touched on the main thread
+        // Latest saveMatch per appId, and a lock per appId held while a match is saved and its
+        // artwork swapped, so two saves never write the same files. Only touched on the main thread.
         private val matchJobs = mutableMapOf<String, Job>()
-
-        // Held while a match is saved and its artwork swapped, so two saves never write the same files
-        private val matchMutex = Mutex()
+        private val matchLocks = mutableMapOf<String, Mutex>()
 
         // Bumped when a game's match or artwork changes so its open app screen re-reads them
         private val displayRefreshKeys = mutableStateMapOf<String, Int>()
@@ -464,8 +463,9 @@ class CustomGameAppScreen : BaseAppScreen() {
         val appId = libraryItem.appId
         // A previous save may still be downloading artwork; it stops at its next suspension point
         matchJobs[appId]?.cancel()
+        val lock = matchLocks.getOrPut(appId) { Mutex() }
         matchJobs[appId] = CoroutineScope(Dispatchers.IO).launch {
-            matchMutex.withLock {
+            lock.withLock {
                 val folder = CustomGameScanner.getFolderPathFromAppId(appId)?.let(::File)
                 if (folder == null) {
                     SnackbarManager.show(context.getString(R.string.base_app_game_folder_not_found))
