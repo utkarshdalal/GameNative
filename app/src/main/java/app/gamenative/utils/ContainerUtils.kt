@@ -98,6 +98,9 @@ object ContainerUtils {
             DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_HEADLESS
             DefaultVersion.ASYNC_CACHE = "0"
         }
+        DefaultVersion.DISPLAY_SERVER = Container.defaultDisplayServer(
+            GPUInformation.getRenderer(context).orEmpty().contains("adreno", ignoreCase = true),
+        )
     }
 
     fun getGPUCards(context: Context): Map<Int, GpuInfo> {

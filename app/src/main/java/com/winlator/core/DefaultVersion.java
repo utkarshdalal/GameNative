@@ -26,4 +26,5 @@ public abstract class DefaultVersion {
     public static String WINE_VERSION = com.winlator.core.WineInfo.MAIN_WINE_VERSION.identifier();
     public static String ASYNC = "1";
     public static String ASYNC_CACHE = "0";
+    public static String DISPLAY_SERVER = Container.DISPLAY_SERVER_X11;
 }

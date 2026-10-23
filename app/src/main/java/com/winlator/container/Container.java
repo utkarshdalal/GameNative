@@ -44,7 +44,6 @@ public class Container {
     public static final String DEFAULT_DISPLAY_RENDERER = "vulkan";
     public static final String DISPLAY_SERVER_X11 = "x11";
     public static final String DISPLAY_SERVER_GAMESCOPE = "gamescope";
-    public static final String DEFAULT_DISPLAY_SERVER = DISPLAY_SERVER_GAMESCOPE;
     public static final String DEFAULT_DDRAWRAPPER = "none";
     public static final String DEFAULT_DXWRAPPERCONFIG = "version=" + DefaultVersion.DXVK + ",framerate=0,maxDeviceMemory=0,async=" + DefaultVersion.ASYNC + ",asyncCache=" + DefaultVersion.ASYNC_CACHE + ",vkd3dVersion=" + DefaultVersion.VKD3D + ",vkd3dLevel=12_1" + ",ddrawrapper=" + Container.DEFAULT_DDRAWRAPPER + ",csmt=3" + ",gpuName=NVIDIA GeForce GTX 480" + ",videoMemorySize=2048" + ",strict_shader_math=1" + ",OffscreenRenderingMode=fbo" + ",renderer=gl";;
     public static final String DEFAULT_GRAPHICSDRIVERCONFIG = "vulkanVersion=1.3" + ",version=" + DefaultVersion.WRAPPER + ",blacklistedExtensions=" + ",maxDeviceMemory=0" + ",presentMode=mailbox" + ",syncFrame=0" + ",disablePresentWait=0" + ",resourceType=auto" + ",bcnEmulation=auto" + ",bcnEmulationType=compute" + ",bcnEmulationCache=0" + ",gpuName=Device";
@@ -87,7 +86,7 @@ public class Container {
     private String graphicsDriverConfig = DEFAULT_GRAPHICSDRIVERCONFIG;
     private String rendererPresentMode = "fifo";
     private String displayRenderer = Container.DEFAULT_DISPLAY_RENDERER;
-    private String displayServer = Container.DEFAULT_DISPLAY_SERVER;
+    private String displayServer = DefaultVersion.DISPLAY_SERVER;
     private int xrRefreshRate = 72;
     private int xrRenderScale = 100;
     private boolean sfCompatMode = true;
@@ -308,6 +307,10 @@ public class Container {
     public void setDisplayRenderer(String v) { this.displayRenderer = v; }
 
     public void setDisplayServer(String v) { this.displayServer = v; }
+
+    public static String defaultDisplayServer(boolean isAdreno) {
+        return isAdreno ? DISPLAY_SERVER_GAMESCOPE : DISPLAY_SERVER_X11;
+    }
 
     public static boolean isX11Display(String containerVariant, String displayServer) {
         return !BIONIC.equalsIgnoreCase(containerVariant) || !DISPLAY_SERVER_GAMESCOPE.equalsIgnoreCase(displayServer);
