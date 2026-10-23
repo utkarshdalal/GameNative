@@ -1419,7 +1419,10 @@ public class ControlElement {
                     Binding binding = bindingCombo.getPrimaryBinding();
                     Binding mouseMoveBinding = findMouseMoveBinding(bindingCombo);
                     if (mouseMoveBinding != Binding.NONE && !bindingCombo.isSequence()) {
-                        if (Math.abs(value) > TouchpadView.CURSOR_ACCELERATION_THRESHOLD) {
+                        // The threshold is for the cursor's move, so include the speed, as a touchpad drag does.
+                        // With the finger's move alone, a low speed accelerated moves that barely shift the cursor,
+                        // and a high speed only accelerated moves far past the threshold.
+                        if (Math.abs(value * cursorSpeed) > TouchpadView.CURSOR_ACCELERATION_THRESHOLD) {
                             value *= TouchpadView.CURSOR_ACCELERATION;
                         }
                         if (mouseMoveBinding == Binding.MOUSE_MOVE_LEFT || mouseMoveBinding == Binding.MOUSE_MOVE_RIGHT) {
