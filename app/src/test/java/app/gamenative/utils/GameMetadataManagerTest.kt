@@ -41,10 +41,11 @@ class GameMetadataManagerTest {
     }
 
     @Test
-    fun setMatch_withNullName_removesMatch() {
+    fun setMatch_withNullName_removesMatchAndItsReleaseDate() {
         val folder = tempFolder.newFolder("game")
         GameMetadataManager.write(folder, GameMetadata(appId = 42, steamgriddbFetched = true))
         GameMetadataManager.setMatch(folder, appId = 42, name = "Hollow Knight", gameId = 11)
+        GameMetadataManager.update(folder, releaseDate = 1_500_000_000L)
 
         assertTrue(GameMetadataManager.setMatch(folder, appId = 42, name = null, gameId = null))
 
@@ -52,6 +53,17 @@ class GameMetadataManagerTest {
         val json = metadataJson(folder)
         assertFalse(json.has("matchedName"))
         assertFalse(json.has("matchedGameId"))
+    }
+
+    @Test
+    fun setMatch_sameNameAgain_keepsReleaseDate() {
+        val folder = tempFolder.newFolder("game")
+        GameMetadataManager.setMatch(folder, appId = 42, name = "Hollow Knight", gameId = 11)
+        GameMetadataManager.update(folder, releaseDate = 1_500_000_000L)
+
+        GameMetadataManager.setMatch(folder, appId = 42, name = "Hollow Knight", gameId = 11)
+
+        assertEquals(1_500_000_000L, GameMetadataManager.read(folder)!!.releaseDate)
     }
 
     @Test

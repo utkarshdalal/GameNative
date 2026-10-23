@@ -25,8 +25,6 @@ data class GameMetadata(
  */
 object GameMetadataManager {
     private const val FILE_NAME = ".gamenative"
-    private const val MATCHED_NAME = "matchedName"
-    private const val MATCHED_GAME_ID = "matchedGameId"
 
     /**
      * Reads metadata from the .gamenative file in the given folder.
@@ -104,10 +102,10 @@ object GameMetadataManager {
                     put("releaseDate", merged.releaseDate)
                 }
                 if (merged.matchedName != null) {
-                    put(MATCHED_NAME, merged.matchedName)
+                    put("matchedName", merged.matchedName)
                 }
                 if (merged.matchedGameId != null) {
-                    put(MATCHED_GAME_ID, merged.matchedGameId)
+                    put("matchedGameId", merged.matchedGameId)
                 }
             }
 
@@ -144,8 +142,8 @@ object GameMetadataManager {
 
     /**
      * Stores the game picked with "Match game", or removes the match when [name] is null.
-     * The release date is dropped because it came from the previous name's SteamGridDB entry;
-     * fetching artwork for the new name sets it again.
+     * A changed name also drops the release date, which came from the previous name's SteamGridDB
+     * entry; fetching artwork for the new name sets it again.
      * [appId] is only used when the file has no valid appId yet.
      * Returns false if the file could not be written.
      */
@@ -156,13 +154,15 @@ object GameMetadataManager {
             if (json.optInt("appId", -1) <= 0) {
                 json.put("appId", appId)
             }
-            json.remove(MATCHED_NAME)
-            json.remove(MATCHED_GAME_ID)
-            json.remove("releaseDate")
+            if (json.optString("matchedName") != name.orEmpty()) {
+                json.remove("releaseDate")
+            }
+            json.remove("matchedName")
+            json.remove("matchedGameId")
             if (!name.isNullOrBlank()) {
-                json.put(MATCHED_NAME, name)
+                json.put("matchedName", name)
                 if (gameId != null && gameId > 0) {
-                    json.put(MATCHED_GAME_ID, gameId)
+                    json.put("matchedGameId", gameId)
                 }
             }
             gamenativeFile.writeText(json.toString())
@@ -191,8 +191,8 @@ object GameMetadataManager {
             appId = appId,
             steamgriddbFetched = json.optBoolean("steamgriddbFetched", false),
             releaseDate = json.optLong("releaseDate", -1).takeIf { it > 0 },
-            matchedName = json.optString(MATCHED_NAME).takeIf { it.isNotBlank() },
-            matchedGameId = json.optInt(MATCHED_GAME_ID, 0).takeIf { it > 0 },
+            matchedName = json.optString("matchedName").takeIf { it.isNotBlank() },
+            matchedGameId = json.optInt("matchedGameId", 0).takeIf { it > 0 },
         )
     }
 

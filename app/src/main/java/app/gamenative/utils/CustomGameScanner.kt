@@ -554,7 +554,7 @@ object CustomGameScanner {
 
     /**
      * All manually added folders are included regardless of content.
-     * Optionally filter by [query] contained in folder name (case-insensitive).
+     * Optionally filter by [query] contained in the folder name or matched name (case-insensitive).
      */
     fun scanAsLibraryItems(
         query: String = "",

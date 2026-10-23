@@ -31,9 +31,10 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import android.net.Uri
 import kotlinx.coroutines.CoroutineScope
@@ -69,6 +70,9 @@ class CustomGameAppScreen : BaseAppScreen() {
 
         // Latest saveMatch per appId; only touched on the main thread
         private val matchJobs = mutableMapOf<String, Job>()
+
+        // Held while a match is saved and its artwork swapped, so two saves never write the same files
+        private val matchMutex = Mutex()
 
         // Bumped when a game's match or artwork changes so its open app screen re-reads them
         private val displayRefreshKeys = mutableStateMapOf<String, Int>()
@@ -184,7 +188,6 @@ class CustomGameAppScreen : BaseAppScreen() {
             logoUrl = logoUrl,
             capsuleUrl = capsuleUrl,
             headerUrl = headerUrl,
-            communityGameId = metadata?.matchedGameId,
         )
     }
 
@@ -459,36 +462,37 @@ class CustomGameAppScreen : BaseAppScreen() {
      */
     private fun saveMatch(context: Context, libraryItem: LibraryItem, game: CommunityGame?) {
         val appId = libraryItem.appId
-        val previous = matchJobs[appId]
+        // A previous save may still be downloading artwork; it stops at its next suspension point
+        matchJobs[appId]?.cancel()
         matchJobs[appId] = CoroutineScope(Dispatchers.IO).launch {
-            // A previous match may still be downloading artwork into the same files
-            previous?.cancelAndJoin()
-            val folder = CustomGameScanner.getFolderPathFromAppId(appId)?.let(::File)
-            if (folder == null) {
-                SnackbarManager.show(context.getString(R.string.base_app_game_folder_not_found))
-                return@launch
-            }
-            if (!GameMetadataManager.setMatch(folder, libraryItem.gameId, game?.name, game?.id)) {
-                SnackbarManager.show(context.getString(R.string.custom_game_match_save_failed))
-                return@launch
-            }
-            val onChanged: suspend () -> Unit = {
-                withContext(Dispatchers.Main) { refreshDisplay(appId) }
-                PluviaApp.events.emit(AndroidEvent.CustomGameImagesFetched(appId))
-            }
-            onChanged()
-            SnackbarManager.show(
-                if (game != null) {
-                    context.getString(R.string.custom_game_matched_to, game.name)
-                } else {
-                    context.getString(R.string.custom_game_match_removed)
-                },
-            )
-            try {
-                SteamGridDB.replaceGameImages(game?.name ?: folder.name, folder, onChanged)
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                Timber.tag("CustomGameAppScreen").w(e, "Failed to replace images for $appId")
+            matchMutex.withLock {
+                val folder = CustomGameScanner.getFolderPathFromAppId(appId)?.let(::File)
+                if (folder == null) {
+                    SnackbarManager.show(context.getString(R.string.base_app_game_folder_not_found))
+                    return@launch
+                }
+                if (!GameMetadataManager.setMatch(folder, libraryItem.gameId, game?.name, game?.id)) {
+                    SnackbarManager.show(context.getString(R.string.custom_game_match_save_failed))
+                    return@launch
+                }
+                val onChanged: suspend () -> Unit = {
+                    withContext(Dispatchers.Main) { refreshDisplay(appId) }
+                    PluviaApp.events.emit(AndroidEvent.CustomGameImagesFetched(appId))
+                }
+                onChanged()
+                SnackbarManager.show(
+                    if (game != null) {
+                        context.getString(R.string.custom_game_matched_to, game.name)
+                    } else {
+                        context.getString(R.string.custom_game_match_removed)
+                    },
+                )
+                try {
+                    SteamGridDB.replaceGameImages(game?.name ?: folder.name, folder, onChanged)
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    Timber.tag("CustomGameAppScreen").w(e, "Failed to replace images for $appId")
+                }
             }
         }
     }

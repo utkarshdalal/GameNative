@@ -568,7 +568,7 @@ object SteamGridDB {
     }
 
     /** Deletes images saved by [fetchGameImages]. User-supplied covers and extracted icons are kept. */
-    fun deleteGameImages(gameFolder: File) {
+    internal fun deleteGameImages(gameFolder: File) {
         gameFolder.listFiles { file -> file.isFile && SAVED_IMAGE_NAME.matches(file.name) }
             ?.forEach { file ->
                 if (!file.delete()) Timber.tag("SteamGridDB").w("Failed to delete ${file.absolutePath}")

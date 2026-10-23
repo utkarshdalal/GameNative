@@ -1950,7 +1950,6 @@ abstract class BaseAppScreen {
                     currentEnvironmentVariables = currentContainerData.envVars,
                     initialHardwareScope = communityConfigsHardwareScope(appId),
                     canApply = isInstalledState,
-                    communityGameId = displayInfo.communityGameId,
                     onDismissRequest = { clearCommunityConfigsRequest(appId) },
                     onApply = { run, matchType, options ->
                         clearCommunityConfigsRequest(appId)
