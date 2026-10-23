@@ -1224,17 +1224,18 @@ public class WinHandler {
         }
         final ControlsProfile profile = inputControlsView != null ? inputControlsView.getProfile() : null;
         final boolean useVirtualGamepad = isVirtualGamepadActive();
-        // Read once: the receive thread may null currentController at any time.
-        final ExternalController controller = this.currentController;
-        final boolean enabled = controller != null || useVirtualGamepad;
-        final GamepadState sourceState = enabled
-                ? (useVirtualGamepad ? profile.getGamepadState() : controller.state)
-                : null;
-        final int deviceId = enabled
-                ? (!useVirtualGamepad ? controller.getDeviceId() : profile.id)
-                : 0;
 
         synchronized (this.actions) {
+            // Read under the lock so the snapshot agrees with GET_GAMEPAD_STATE replies, and only once since
+            // the UI thread may also replace currentController.
+            final ExternalController controller = this.currentController;
+            final boolean enabled = controller != null || useVirtualGamepad;
+            final GamepadState sourceState = enabled
+                    ? (useVirtualGamepad ? profile.getGamepadState() : controller.state)
+                    : null;
+            final int deviceId = enabled
+                    ? (!useVirtualGamepad ? controller.getDeviceId() : profile.id)
+                    : 0;
             boolean wake = false;
             // gamepadClients only changes in handleRequest(), under this lock.
             for (int i = 0, count = this.gamepadClients.size(); i < count; i++) {
