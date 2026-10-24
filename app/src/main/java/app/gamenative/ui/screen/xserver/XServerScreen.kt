@@ -5329,6 +5329,7 @@ private fun exit(
         Timber.i("Exit already in progress, ignoring duplicate request")
         return
     }
+    SteamService.isExitInProgress = true
 
     PerfSampler.halt()
 
