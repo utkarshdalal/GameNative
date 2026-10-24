@@ -1,16 +1,20 @@
 package app.gamenative.ui.component.dialog
 
 import android.app.Application
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import app.gamenative.api.CommunityGame
 import java.io.IOException
+import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -103,6 +107,30 @@ class CustomGameMatchDialogTest {
 
         compose.onNodeWithText("Hollow Knight: Silksong").assertIsDisplayed()
         assertEquals(2, queries.size)
+    }
+
+    // Robolectric windows aren't in touch mode, so focus behaves as with a controller
+    @Test
+    fun controller_focusStartsOnSearchAndMovesToFirstResult() {
+        val pending = CompletableDeferred<List<CommunityGame>>()
+        render(search = { pending.await() })
+        compose.onNodeWithContentDescription("Search").assertIsFocused()
+
+        pending.complete(listOf(silksong, hollowKnight))
+
+        compose.onNodeWithText("Hollow Knight: Silksong").assertIsFocused()
+    }
+
+    @Test
+    fun controller_resultsDontTakeFocusFromCancel() {
+        val pending = CompletableDeferred<List<CommunityGame>>()
+        render(search = { pending.await() })
+        compose.onNodeWithText("Cancel").performSemanticsAction(SemanticsActions.RequestFocus)
+
+        pending.complete(listOf(silksong, hollowKnight))
+
+        compose.onNodeWithText("Hollow Knight: Silksong").assertIsDisplayed()
+        compose.onNodeWithText("Cancel").assertIsFocused()
     }
 
     @Test

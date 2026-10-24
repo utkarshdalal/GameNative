@@ -41,10 +41,12 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.gamenative.R
 import app.gamenative.api.CommunityConfigService
 import app.gamenative.api.CommunityGame
@@ -98,10 +100,10 @@ fun CustomGameMatchDialog(
         onDismissRequest = onDismissRequest,
         title = { Text(stringResource(R.string.option_match_game)) },
         text = {
-            // On a controller, focus starts on the Search button and returns to it whenever the
-            // D-pad moves focus in from outside the content, and a search started there moves it on
-            // to the first result or Retry. The search field brings up the keyboard when focused, so
-            // it only gets focus when the user moves to it. These requests do nothing in touch mode.
+            // On a controller, focus starts on the Search button, and a search started there moves it
+            // on to the first result or Retry. The search field brings up the keyboard when focused,
+            // so D-pad moves up or down onto it go to Search instead; it's reached from Search with
+            // left or right. These requests do nothing in touch mode.
             val searchButtonFocus = remember { FocusRequester() }
             var searchButtonFocused by remember { mutableStateOf(false) }
             var fieldFocused by remember { mutableStateOf(false) }
@@ -118,15 +120,6 @@ fun CustomGameMatchDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = 420.dp)
-                    // requestFocus() enters with FocusDirection.Enter, so redirecting doesn't recurse
-                    .focusProperties {
-                        onEnter = {
-                            if (requestedFocusDirection != FocusDirection.Enter) {
-                                runCatching { searchButtonFocus.requestFocus() }
-                            }
-                        }
-                    }
-                    .focusGroup()
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -141,24 +134,41 @@ fun CustomGameMatchDialog(
                         color = MaterialTheme.colorScheme.primary,
                     )
                 }
-                Row(verticalAlignment = Alignment.Bottom) {
-                    NoExtractOutlinedTextField(
-                        value = query,
-                        onValueChange = { query = it },
-                        label = { Text(stringResource(R.string.search)) },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Search),
-                        keyboardActions = KeyboardActions(onSearch = { search() }),
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
                         modifier = Modifier
                             .weight(1f)
-                            .onFocusChanged { fieldFocused = it.hasFocus },
-                    )
-                    // Beside the field, not its trailing icon, which a D-pad can't reach. Centered on
-                    // the field's 56dp outline, which sits below the space for its label.
+                            // Also covers focus arriving from nowhere (Down), e.g. the first D-pad
+                            // press after touch. requestFocus() uses Enter, so this doesn't recurse.
+                            .focusProperties {
+                                onEnter = {
+                                    val direction = requestedFocusDirection
+                                    if (direction == FocusDirection.Up || direction == FocusDirection.Down) {
+                                        runCatching { searchButtonFocus.requestFocus() }
+                                    }
+                                }
+                            }
+                            .focusGroup(),
+                    ) {
+                        NoExtractOutlinedTextField(
+                            value = query,
+                            onValueChange = { query = it },
+                            label = { Text(stringResource(R.string.search)) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Search),
+                            keyboardActions = KeyboardActions(onSearch = { search() }),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .onFocusChanged { fieldFocused = it.hasFocus },
+                        )
+                    }
+                    // Beside the field, not its trailing icon, which a D-pad can't reach. The top
+                    // padding matches the space OutlinedTextField leaves above its outline for the
+                    // label (half of bodySmall's 16sp line height), so the two are centered together.
                     IconButton(
                         onClick = search,
                         modifier = Modifier
-                            .padding(bottom = 4.dp)
+                            .padding(top = with(LocalDensity.current) { 8.sp.toDp() })
                             .focusRequester(searchButtonFocus)
                             .onFocusChanged { searchButtonFocused = it.hasFocus },
                     ) {

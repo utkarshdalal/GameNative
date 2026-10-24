@@ -571,8 +571,9 @@ object SteamGridDB {
             deleteGameImages(gameFolder)
             onImagesChanged()
         }
-        // Recorded before downloading, so images left by an interrupted fetch are known to be this game's
-        GameMetadataManager.setSteamGridDBGame(gameFolder, searchResult.gameId)
+        // Recorded before downloading, so images left by an interrupted fetch are known to be this
+        // game's. Kept images skip the download, which would otherwise set the release date.
+        GameMetadataManager.setSteamGridDBGame(gameFolder, searchResult.gameId, searchResult.releaseDate)
         fetchGameImages(gameName, gameFolder.absolutePath, searchResult)
         onImagesChanged()
     }

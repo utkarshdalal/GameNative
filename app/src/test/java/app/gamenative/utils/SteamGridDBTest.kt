@@ -72,14 +72,15 @@ class SteamGridDBTest {
 
     /**
      * Runs replaceGameImages for a SteamGridDB match with id 5 and returns the files present when
-     * fetching. A search for [folderNameGameId]'s folder name finds that game id.
+     * fetching. A search for the folder name finds [folderNameGameId], or nothing if it's null.
      */
     private fun filesWhenReplacing(
         folder: File,
         folderNameGameId: Int? = null,
+        releaseDate: Long = 0,
         onImagesChanged: () -> Unit = {},
     ): List<String>? = runBlocking {
-        val match = SteamGridDB.GameSearchResult(gameId = 5, name = "Hollow Knight", releaseDate = 0)
+        val match = SteamGridDB.GameSearchResult(gameId = 5, name = "Hollow Knight", releaseDate = releaseDate)
         mockkObject(SteamGridDB)
         coEvery { SteamGridDB.searchGame(any()) } returns null
         coEvery { SteamGridDB.searchGame("Hollow Knight") } returns match
@@ -135,10 +136,22 @@ class SteamGridDBTest {
         GameMetadataManager.setMatch(sameGame, appId = 42, name = "Hollow Knight")
         assertEquals(allImages, filesWhenReplacing(sameGame, folderNameGameId = 5))
 
-        val otherGame = tempFolder.newFolder("other").also { folder ->
+        fun matchedFolder(name: String) = tempFolder.newFolder(name).also { folder ->
             listOf("steamgriddb_grid_hero.png", "cover.png").forEach { File(folder, it).writeText("x") }
+            GameMetadataManager.setMatch(folder, appId = 43, name = "Hollow Knight")
         }
-        GameMetadataManager.setMatch(otherGame, appId = 43, name = "Hollow Knight")
-        assertEquals(listOf("cover.png"), filesWhenReplacing(otherGame, folderNameGameId = 4))
+        assertEquals(listOf("cover.png"), filesWhenReplacing(matchedFolder("other"), folderNameGameId = 4))
+        // The folder name's game can't be told, so the images may be another game's
+        assertEquals(listOf("cover.png"), filesWhenReplacing(matchedFolder("unknown"), folderNameGameId = null))
+    }
+
+    @Test
+    fun replaceGameImages_keptImages_takeTheReleaseDateOfTheirGame() {
+        val folder = folderWithImages()
+        GameMetadataManager.write(folder, GameMetadata(appId = 42, steamgriddbGameId = 5))
+
+        filesWhenReplacing(folder, releaseDate = 1_500_000_000L)
+
+        assertEquals(1_500_000_000L, GameMetadataManager.read(folder)!!.releaseDate)
     }
 }

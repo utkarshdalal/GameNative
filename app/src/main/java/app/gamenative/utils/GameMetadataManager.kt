@@ -149,8 +149,7 @@ object GameMetadataManager {
 
     /**
      * Stores the game picked with "Match game", or removes the match when [name] is null.
-     * A changed name also drops the release date, which came from the previous name's SteamGridDB
-     * entry; fetching artwork for the new name sets it again.
+     * The release date is left alone: it belongs to the saved SteamGridDB images, see [setSteamGridDBGame].
      * [appId] is only used when the file has no valid appId yet.
      * Returns false if the file could not be written.
      */
@@ -160,9 +159,6 @@ object GameMetadataManager {
             val json = readJson(gamenativeFile) ?: JSONObject()
             if (json.optInt("appId", -1) <= 0) {
                 json.put("appId", appId)
-            }
-            if (json.optString("matchedName") != name.orEmpty()) {
-                json.remove("releaseDate")
             }
             json.remove("matchedName")
             if (!name.isNullOrBlank()) {
@@ -177,19 +173,18 @@ object GameMetadataManager {
     }
 
     /**
-     * Records [gameId] as the SteamGridDB game whose images are saved in [folder]. Replacing a
-     * different recorded game also drops the release date, which came from that game; fetching
-     * images sets it again. Does nothing if the folder has no metadata file.
+     * Records [gameId] as the SteamGridDB game whose images are saved in [folder], with its
+     * [releaseDate] (none if 0). Does nothing if the folder has no metadata file.
      */
-    fun setSteamGridDBGame(folder: File, gameId: Int) {
+    fun setSteamGridDBGame(folder: File, gameId: Int, releaseDate: Long) {
         val gamenativeFile = File(folder, FILE_NAME)
         val json = readJson(gamenativeFile) ?: return
-        val previous = json.optInt("steamgriddbGameId", 0)
-        if (previous == gameId) return
-        if (previous > 0) {
+        json.put("steamgriddbGameId", gameId)
+        if (releaseDate > 0) {
+            json.put("releaseDate", releaseDate)
+        } else {
             json.remove("releaseDate")
         }
-        json.put("steamgriddbGameId", gameId)
         try {
             gamenativeFile.writeText(json.toString())
         } catch (e: Exception) {

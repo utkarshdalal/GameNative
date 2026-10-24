@@ -4,7 +4,6 @@ import java.io.File
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -17,7 +16,7 @@ class GameMetadataManagerTest {
     private fun metadataJson(folder: File) = JSONObject(File(folder, ".gamenative").readText())
 
     @Test
-    fun setMatch_storesMatchKeepsAppIdAndDropsPreviousReleaseDate() {
+    fun setMatch_storesMatchAndKeepsAppIdAndImageMetadata() {
         val folder = tempFolder.newFolder("game")
         GameMetadataManager.write(
             folder,
@@ -26,13 +25,17 @@ class GameMetadataManagerTest {
 
         assertTrue(GameMetadataManager.setMatch(folder, appId = 99, name = "Hollow Knight"))
 
-        val metadata = GameMetadataManager.read(folder)!!
-        assertEquals(42, metadata.appId)
-        assertTrue(metadata.steamgriddbFetched)
-        assertNull(metadata.releaseDate)
-        assertEquals("Hollow Knight", metadata.matchedName)
-        // The saved images are still the ones from game 5 until they are replaced
-        assertEquals(5, metadata.steamgriddbGameId)
+        // The saved images, and the release date that came with them, are still game 5's until replaced
+        assertEquals(
+            GameMetadata(
+                appId = 42,
+                steamgriddbFetched = true,
+                releaseDate = 1_600_000_000L,
+                matchedName = "Hollow Knight",
+                steamgriddbGameId = 5,
+            ),
+            GameMetadataManager.read(folder),
+        )
     }
 
     @Test
@@ -45,27 +48,15 @@ class GameMetadataManagerTest {
     }
 
     @Test
-    fun setMatch_withNullName_removesMatchAndItsReleaseDate() {
+    fun setMatch_withNullName_removesMatch() {
         val folder = tempFolder.newFolder("game")
         GameMetadataManager.write(folder, GameMetadata(appId = 42, steamgriddbFetched = true))
         GameMetadataManager.setMatch(folder, appId = 42, name = "Hollow Knight")
-        GameMetadataManager.update(folder, releaseDate = 1_500_000_000L)
 
         assertTrue(GameMetadataManager.setMatch(folder, appId = 42, name = null))
 
         assertEquals(GameMetadata(appId = 42, steamgriddbFetched = true), GameMetadataManager.read(folder))
         assertFalse(metadataJson(folder).has("matchedName"))
-    }
-
-    @Test
-    fun setMatch_sameNameAgain_keepsReleaseDate() {
-        val folder = tempFolder.newFolder("game")
-        GameMetadataManager.setMatch(folder, appId = 42, name = "Hollow Knight")
-        GameMetadataManager.update(folder, releaseDate = 1_500_000_000L)
-
-        GameMetadataManager.setMatch(folder, appId = 42, name = "Hollow Knight")
-
-        assertEquals(1_500_000_000L, GameMetadataManager.read(folder)!!.releaseDate)
     }
 
     @Test
@@ -105,33 +96,33 @@ class GameMetadataManagerTest {
     }
 
     @Test
-    fun setSteamGridDBGame_replacingAnotherGame_dropsItsReleaseDate() {
+    fun setSteamGridDBGame_recordsGameAndItsReleaseDate() {
         val folder = tempFolder.newFolder("game")
-        GameMetadataManager.write(folder, GameMetadata(appId = 42, releaseDate = 1_500_000_000L, steamgriddbGameId = 4))
+        GameMetadataManager.setMatch(folder, appId = 42, name = "Hollow Knight")
 
-        GameMetadataManager.setSteamGridDBGame(folder, 5)
+        GameMetadataManager.setSteamGridDBGame(folder, gameId = 5, releaseDate = 1_500_000_000L)
 
-        assertEquals(GameMetadata(appId = 42, steamgriddbGameId = 5), GameMetadataManager.read(folder))
+        assertEquals(
+            GameMetadata(appId = 42, releaseDate = 1_500_000_000L, matchedName = "Hollow Knight", steamgriddbGameId = 5),
+            GameMetadataManager.read(folder),
+        )
     }
 
     @Test
-    fun setSteamGridDBGame_firstRecordedGame_keepsReleaseDate() {
+    fun setSteamGridDBGame_withoutReleaseDate_dropsThePreviousGamesDate() {
         val folder = tempFolder.newFolder("game")
-        GameMetadataManager.write(folder, GameMetadata(appId = 42, releaseDate = 1_500_000_000L))
+        GameMetadataManager.write(folder, GameMetadata(appId = 42, releaseDate = 1_500_000_000L, steamgriddbGameId = 4))
 
-        GameMetadataManager.setSteamGridDBGame(folder, 5)
+        GameMetadataManager.setSteamGridDBGame(folder, gameId = 5, releaseDate = 0)
 
-        assertEquals(
-            GameMetadata(appId = 42, releaseDate = 1_500_000_000L, steamgriddbGameId = 5),
-            GameMetadataManager.read(folder),
-        )
+        assertEquals(GameMetadata(appId = 42, steamgriddbGameId = 5), GameMetadataManager.read(folder))
     }
 
     @Test
     fun setSteamGridDBGame_withoutMetadataFile_doesNothing() {
         val folder = tempFolder.newFolder("game")
 
-        GameMetadataManager.setSteamGridDBGame(folder, 5)
+        GameMetadataManager.setSteamGridDBGame(folder, gameId = 5, releaseDate = 1_500_000_000L)
 
         assertFalse(File(folder, ".gamenative").exists())
     }
