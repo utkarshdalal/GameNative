@@ -5783,7 +5783,13 @@ private suspend fun setupWineSystemFiles(
         )
     }
 
-    val needReextract = ALWAYS_REEXTRACT || xServerState.value.dxwrapper != container.getExtra("dxwrapper") || variantChanged || wineVersionChanged
+    val dxwrapperCacheId = if (xServerState.value.dxwrapper.startsWith("vkd3d-")) {
+        "${xServerState.value.dxwrapper}+dxvk-${resolveVkd3dDxvkVersion(context, container)}"
+    } else {
+        xServerState.value.dxwrapper
+    }
+
+    val needReextract = ALWAYS_REEXTRACT || dxwrapperCacheId != container.getExtra("dxwrapper") || variantChanged || wineVersionChanged
 
     Timber.i("needReextract is " + needReextract)
     Timber.i("xServerState.value.dxwrapper is " + xServerState.value.dxwrapper)
@@ -5800,7 +5806,7 @@ private suspend fun setupWineSystemFiles(
             contentsManager,
             onExtractFileListener,
         )
-        container.putExtra("dxwrapper", xServerState.value.dxwrapper)
+        container.putExtra("dxwrapper", dxwrapperCacheId)
         containerDataChanged = true
     }
 
@@ -6107,18 +6113,7 @@ private suspend fun extractDXWrapperFiles(
         "vkd3d" -> {
             Timber.i("Extracting VKD3D D3D12 DLLs for dxwrapper: $dxwrapper")
             val profile: ContentProfile? = contentsManager.getProfileByEntryName(dxwrapper)
-            // Determine graphics driver to choose DXVK version
-            val vortekLike = container.graphicsDriver == "vortek" || container.graphicsDriver == "adreno" || container.graphicsDriver == "sd-8-elite"
-            val dxvkMinVersion = "2.6.1-gplasync"
-            val dxwrapperConfig = DXVKHelper.parseConfig(container.dxWrapperConfig)
-            val dxvkVersion = dxwrapperConfig.get("version", dxvkMinVersion)
-            val dxvkVersionForVkd3d = if (vortekLike && GPUHelper.vkGetApiVersionSafe() < GPUHelper.vkMakeVersion(1, 3, 0)) {
-                "1.10.3"
-            } else if (ManifestComponentHelper.isAtLeastVersion(dxvkVersion, 2, 1, 0)) {
-                dxvkVersion
-            } else {
-                dxvkMinVersion
-            }
+            val dxvkVersionForVkd3d = resolveVkd3dDxvkVersion(context, container)
             Timber.i("Extracting VKD3D DX version for dxwrapper: $dxvkVersionForVkd3d")
             extractDXWrapperComponent(context, "dxvk-$dxvkVersionForVkd3d", windowsDir, onExtractFileListener)
 
@@ -6146,6 +6141,31 @@ private suspend fun extractDXWrapperFiles(
         }
     }
 }
+
+private fun resolveVkd3dDxvkVersion(context: Context, container: Container): String {
+    val vortekLike = container.graphicsDriver == "vortek" ||
+        container.graphicsDriver == "adreno" || container.graphicsDriver == "sd-8-elite"
+    val fallbackVersion = if (vortekLike &&
+        GPUHelper.vkGetApiVersionSafe() < GPUHelper.vkMakeVersion(1, 3, 0)
+    ) {
+        "1.10.3"
+    } else {
+        "2.6.1-gplasync"
+    }
+    val configuredVersion = DXVKHelper.parseConfig(container.dxWrapperConfig)
+        .get("version", fallbackVersion)
+    val candidateVersion = if (ManifestComponentHelper.isAtLeastVersion(configuredVersion, 2, 1, 0)) {
+        configuredVersion
+    } else {
+        fallbackVersion
+    }
+
+    if (DXWrapperDownloader.hasComponent(context, "dxvk-$candidateVersion")) return candidateVersion
+
+    Timber.w("Configured VKD3D DXVK companion dxvk-$candidateVersion is unavailable; using dxvk-$fallbackVersion")
+    return fallbackVersion
+}
+
 private fun cloneOriginalDllFiles(imageFs: ImageFs, vararg dlls: String) {
     val rootDir = imageFs.rootDir
     val cacheDir = File(rootDir, ImageFs.CACHE_PATH + "/original_dlls")
