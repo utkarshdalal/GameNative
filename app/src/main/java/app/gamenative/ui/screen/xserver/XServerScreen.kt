@@ -6120,7 +6120,14 @@ private suspend fun extractDXWrapperFiles(
                 dxvkMinVersion
             }
             Timber.i("Extracting VKD3D DX version for dxwrapper: $dxvkVersionForVkd3d")
-            extractDXWrapperComponent(context, "dxvk-$dxvkVersionForVkd3d", windowsDir, onExtractFileListener)
+            val dxvkEntryName = "dxvk-$dxvkVersionForVkd3d"
+            val dxvkProfile = contentsManager.getProfileByEntryName(dxvkEntryName)
+            if (dxvkProfile != null) {
+                Timber.d("Applying user-defined DXVK content profile for VKD3D: $dxvkEntryName")
+                contentsManager.applyContent(dxvkProfile)
+            } else {
+                extractDXWrapperComponent(context, dxvkEntryName, windowsDir, onExtractFileListener)
+            }
 
             if (profile != null) {
                 Timber.d("Applying user-defined VKD3D content profile: " + dxwrapper)
