@@ -779,6 +779,12 @@ class EpicManager @Inject constructor(
         }
     }
 
+    suspend fun getAllGames(): List<EpicGame> {
+        return withContext(Dispatchers.IO) {
+            epicGameDao.getAllAsList()
+        }
+    }
+
     /**
      * Start background sync (called after login)
      */
