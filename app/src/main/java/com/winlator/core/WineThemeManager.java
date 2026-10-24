@@ -21,7 +21,7 @@ public abstract class WineThemeManager {
     public enum Theme {LIGHT, DARK}
     public enum BackgroundType {IMAGE, COLOR}
     public static final String DEFAULT_DESKTOP_THEME = Theme.LIGHT+","+BackgroundType.IMAGE+",#0277bd";
-    public static final String GAME_SESSION_THEME = Theme.DARK+","+BackgroundType.COLOR+",#000000";
+    public static final String GAME_SESSION_THEME = Theme.LIGHT+","+BackgroundType.COLOR+",#000000";
 
     public static class ThemeInfo {
         public final Theme theme;
