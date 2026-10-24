@@ -97,7 +97,7 @@
     <string name="private_branch_password_success">ブランチのロックが解除されました！</string>
     <string name="private_branch_password_invalid">無効なアクセスコードです</string>
     <string name="run_app">プレイ</string>
-    <string name="launch_immersive_mode">没入モード（VR）で起動</string>
+    <string name="launch_immersive_mode">イマーシブモード（VR）で起動</string>
     <string name="download_prompt_title">アプリをインストール</string>
     <string name="calculating_space_requirements">スペース要件を計算しています...</string>
     <string name="delete_prompt_title">アプリを削除</string>
@@ -408,7 +408,7 @@
     <string name="screen_effects_close">閉じる</string>
     <string name="quick_menu_tab_general">一般</string>
     <string name="quick_menu_tab_controller">コントローラー</string>
-    <string name="quick_menu_tab_immersive">没入</string>
+    <string name="quick_menu_tab_immersive">イマーシブ</string>
     <string name="immersive_passthrough">パススルー</string>
     <string name="immersive_passthrough_desc">仮想スクリーン越しに現実の周囲を表示します</string>
     <string name="immersive_passthrough_toggle">パススルーを有効にする</string>
@@ -924,8 +924,8 @@
     <string name="unpack_files_description">\'Application Load Error 3:0000065432\' が発生した場合にのみ使用してください。</string>
     <string name="load_mods">MODローダーを有効にする</string>
     <string name="load_mods_description">ゲームの実行ファイルと同じ場所に置かれた&lt;b&gt;DLLベース&lt;/b&gt;のMODローダー（BepInEx, MelonLoader, REFramework, Ultimate ASI Loader、UE4SSなど）を有効にします</string>
-    <string name="force_dlc">DLC を強制</string>
-    <string name="force_dlc_description">DLC が検出されない場合、または DLC を含むセーブが機能しない場合にのみ有効にします</string>
+    <string name="force_dlc">DLCを強制</string>
+    <string name="force_dlc_description">DLCが検出されない場合、またはDLCを含むセーブが機能しない場合にのみ有効にします</string>
     <string name="local_saves_only">ローカルセーブのみ</string>
     <string name="local_saves_only_description">このゲームのクラウドセーブ同期を無効にし、セーブをデバイス上にのみ保存します</string>
     <string name="launch_steam_client_beta">Steam クライアントを起動する</string>
@@ -939,7 +939,7 @@
     <string name="steam_offline_mode">Steam オフラインモード</string>
     <string name="steam_offline_mode_description">Steam ゲームをオフライン モードで起動する</string>
     <string name="achievement_unlocked">実績を解除しました</string>
-    <string name="settings_achievement_notification_position">達成通知位置</string>
+    <string name="settings_achievement_notification_position">実績通知位置</string>
     <string name="achievement_position_top_left">左上</string>
     <string name="achievement_position_top_right">右上</string>
     <string name="achievement_position_bottom_left">左下</string>
@@ -1303,7 +1303,7 @@
     <string name="support_plan_pro_title_priced">%1$s/月 · Pro</string>
     <string name="support_plan_basic_title_priced">%1$s/月 · Basic</string>
     <string name="support_checkout_waiting_guest">支払い後、そのページでサインインしてアカウントを作成してください。プランはここで自動的に有効になります。</string>
-    <string name="support_play_unavailable">Google Play の課金は現在利用できません。後でもう一度お試しください。</string>
+    <string name="support_play_unavailable">Google Playの購入は現在利用できません。後でもう一度お試しください。</string>
     <string name="support_checkout_expired">この購入手続きは期限切れです。すでに支払済みの場合は、使用したメールアドレスでサインインするとプランが表示されます。</string>
     <string name="support_already_member">すでにメンバーですか？サインイン</string>
     <string name="membership_plans_title">メンバーになる</string>
@@ -1542,12 +1542,12 @@
 
     <!-- LibraryAppScreen: UI Labels -->
     <string name="library_need_internet">インストールするにはインターネットが必要です</string>
-    <string name="library_wifi_only_enabled">Wi-Fi/LAN 経由でのみインストール可能</string>
+    <string name="library_wifi_only_enabled">Wi-Fi/LAN経由でのみインストール可能</string>
     <string name="library_file_count">ファイル %1$d/%2$d</string>
 
     <!-- SteamService: Download Notifications -->
-    <string name="download_no_wifi">Wi-Fi/LAN に接続されていません</string>
-    <string name="download_paused_wifi">ダウンロード一時停止 – Wi-Fi/LAN を待機中</string>
+    <string name="download_no_wifi">Wi-Fi/LANに接続されていません</string>
+    <string name="download_paused_wifi">ダウンロード一時停止 – Wi-Fi/LANを待機中</string>
 
     <!-- PluviaMain: Update & App Info -->
     <string name="main_update_available_title">利用可能なアップデート</string>
@@ -1579,7 +1579,7 @@
     <string name="main_downloading_steam">Steam をダウンロード中...</string>
     <string name="steam_update_required_title">アップデートが必要です</string>
     <string name="steam_update_required_message">このゲームにはアップデートがあります。アップデートをインストールするまで Steam クライアントは起動できません。今すぐ更新してから、もう一度起動してください。</string>
-    <string name="steam_agreement_ssa_title">Steam サブスクライバー契約</string>
+    <string name="steam_agreement_ssa_title">Steam 利用契約</string>
     <string name="steam_agreement_eula_title">エンドユーザー使用許諾契約</string>
     <string name="steam_agreement_message">プレイする前に、この契約に同意する必要があります。</string>
     <string name="steam_agreement_accept">同意する</string>
@@ -2502,7 +2502,6 @@
     <string name="nexus_plan_review_title">配置の確認</string>
     <string name="nexus_plan_coverage">%2$d 個中 %1$d 個のファイルを計画 • %3$d 個を除外 • %4$d 個を要確認</string>
     <string name="nexus_fomod_defaults_replaced">FOMOD の選択により %1$d 個の既定ファイルを置き換えました</string>
-    <string name="nexus_fomod_selected_winner" translatable="false">%1$s ← %2$s</string>
     <string name="nexus_plan_ranked">候補ランキング</string>
     <string name="nexus_plan_score">%1$d. %2$s — カバー率 %3$d%%</string>
     <string name="nexus_plan_case_merge">大文字小文字を統合: %1$s</string>
@@ -2892,7 +2891,7 @@
     <string name="binding_sequence_delay_ms">シーケンス遅延 (ミリ秒)</string>
     <string name="binding_sequence_current_format">%1$s（%2$d ミリ秒）</string>
     <string name="xr_windows_vr_toggle">VRアプリとして実行（試験的）</string>
-    <string name="xr_windows_vr_toggle_desc">Beat SaberなどのネイティブVRタイトル向け。arm64ec Wine、DXVK、D3D11が必要です。その他のゲームは平面の没入型画面のままです。</string>
+    <string name="xr_windows_vr_toggle_desc">Beat SaberなどのネイティブVRタイトル向け。arm64ec Wine、DXVK、D3D11が必要です。その他のゲームは平面のイマーシブ型画面のままです。</string>
     <string name="xr_open_composite_toggle">SteamVR（OpenVR）互換</string>
     <string name="xr_open_composite_toggle_desc">SteamVR向けに作られたゲームをOpenCompositeで動かします。ゲームがSteamVRが起動していないと表示する場合や、VRモードでも平面のままの場合に有効にしてください。</string>
     <string name="xr_render_scale">VRレンダースケール</string>
