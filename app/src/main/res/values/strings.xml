@@ -1145,6 +1145,7 @@
     <!-- Container Configuration: Rendering -->
     <string name="renderer">Renderer</string>
     <string name="gpu_name">GPU Name</string>
+    <string name="gpu_override_warning">May cause shader cache issues.</string>
     <string name="offscreen_rendering_mode">Offscreen Rendering Mode</string>
     <string name="video_memory_size">Video Memory Size</string>
     <string name="enable_csmt">Enable CSMT (Command Stream Multi-Thread)</string>

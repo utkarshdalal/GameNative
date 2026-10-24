@@ -723,7 +723,7 @@ object PrefManager {
 
     private val VIDEO_PCI_DEVICE_ID = intPreferencesKey("videoPciDeviceID")
     var videoPciDeviceID: Int
-        get() = getPref(VIDEO_PCI_DEVICE_ID, 1728)
+        get() = getPref(VIDEO_PCI_DEVICE_ID, 0)
         set(value) {
             setPref(VIDEO_PCI_DEVICE_ID, value)
         }

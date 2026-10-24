@@ -6616,7 +6616,7 @@ private suspend fun extractGraphicsDriverFiles(
         val blacklistedExtensions: String? = graphicsDriverConfig.get("blacklistedExtensions")
         envVars.put("WRAPPER_EXTENSION_BLACKLIST", blacklistedExtensions)
 
-        val gpuName = graphicsDriverConfig.get("gpuName")
+        val gpuName = graphicsDriverConfig.get("gpuName", "Device").ifBlank { "Device" }
         if (gpuName != "Device") {
             envVars.put("WRAPPER_DEVICE_NAME", GPUInformation.getCardNameFromGPUName(context, gpuName))
             envVars.put("WRAPPER_DEVICE_ID", GPUInformation.getDeviceIdFromGPUName(context, gpuName))

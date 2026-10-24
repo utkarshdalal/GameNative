@@ -516,11 +516,19 @@ object ContainerUtils {
         WineRegistryEditor(userRegFile).use { registryEditor ->
             registryEditor.setStringValue("Software\\Wine\\Direct3D", "renderer", containerData.renderer)
             registryEditor.setDwordValue("Software\\Wine\\Direct3D", "csmt", if (containerData.csmt) 3 else 0)
-            registryEditor.setDwordValue("Software\\Wine\\Direct3D", "VideoPciDeviceID", containerData.videoPciDeviceID)
+            val gpuCard = getGPUCards(context)[containerData.videoPciDeviceID]
+            if (gpuCard == null && containerData.videoPciDeviceID != 0) {
+                Timber.w("Unknown GPU card id %d, writing the Device entry instead", containerData.videoPciDeviceID)
+            }
+            registryEditor.setDwordValue(
+                "Software\\Wine\\Direct3D",
+                "VideoPciDeviceID",
+                gpuCard?.deviceId ?: 0,
+            )
             registryEditor.setDwordValue(
                 "Software\\Wine\\Direct3D",
                 "VideoPciVendorID",
-                getGPUCards(context)[containerData.videoPciDeviceID]!!.vendorId,
+                gpuCard?.vendorId ?: 0,
             )
             registryEditor.setStringValue("Software\\Wine\\Direct3D", "OffScreenRenderingMode", containerData.offScreenRenderingMode)
             registryEditor.setDwordValue("Software\\Wine\\Direct3D", "strict_shader_math", if (containerData.strictShaderMath) 1 else 0)
