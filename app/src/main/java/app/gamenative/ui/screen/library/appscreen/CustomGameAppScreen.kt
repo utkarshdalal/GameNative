@@ -15,7 +15,6 @@ import app.gamenative.R
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
-import app.gamenative.api.CommunityGame
 import app.gamenative.ui.component.dialog.CustomGameMatchDialog
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
@@ -68,16 +67,19 @@ class CustomGameAppScreen : BaseAppScreen() {
 
         private val matchDialogAppIds = mutableStateListOf<String>()
 
-        // Latest saveMatch per appId, and a lock per appId held while a match is saved and its
-        // artwork swapped, so two saves never write the same files. Only touched on the main thread.
-        private val matchJobs = mutableMapOf<String, Job>()
-        private val matchLocks = mutableMapOf<String, Mutex>()
+        // Latest artwork job (Match game or Fetch game images) per appId, and a lock per appId held
+        // while one runs, so two jobs never write the same files. Only touched on the main thread.
+        private val artworkJobs = mutableMapOf<String, Job>()
+        private val artworkLocks = mutableMapOf<String, Mutex>()
 
-        // Bumped when a game's match or artwork changes so its open app screen re-reads them
-        private val displayRefreshKeys = mutableStateMapOf<String, Int>()
-
-        private fun refreshDisplay(appId: String) {
-            displayRefreshKeys[appId] = (displayRefreshKeys[appId] ?: 0) + 1
+        /** Cancels the game's previous artwork job and runs [block] once that job has stopped. */
+        private fun launchArtworkJob(appId: String, block: suspend () -> Unit) {
+            // A cancelled job stops at its next suspension point, e.g. between image downloads
+            artworkJobs[appId]?.cancel()
+            val lock = artworkLocks.getOrPut(appId) { Mutex() }
+            artworkJobs[appId] = CoroutineScope(Dispatchers.IO).launch {
+                lock.withLock { block() }
+            }
         }
     }
     @Composable
@@ -85,7 +87,17 @@ class CustomGameAppScreen : BaseAppScreen() {
         context: Context,
         libraryItem: LibraryItem
     ): GameDisplayInfo {
-        val refreshKey = displayRefreshKeys[libraryItem.appId] ?: 0
+        // Bumped when the game's match or artwork changes, so they are read again
+        var refreshKey by remember(libraryItem.appId) { mutableIntStateOf(0) }
+        DisposableEffect(libraryItem.appId) {
+            val listener: (AndroidEvent.CustomGameImagesFetched) -> Unit = { event ->
+                if (event.appId == libraryItem.appId) refreshKey++
+            }
+            PluviaApp.events.on<AndroidEvent.CustomGameImagesFetched, Unit>(listener)
+            onDispose {
+                PluviaApp.events.off<AndroidEvent.CustomGameImagesFetched, Unit>(listener)
+            }
+        }
         // Re-resolved on refresh: creating the container can move the folder to internal storage
         val gameFolderPath = remember(libraryItem.appId, refreshKey) {
             CustomGameScanner.getFolderPathFromAppId(libraryItem.appId)
@@ -424,7 +436,7 @@ class CustomGameAppScreen : BaseAppScreen() {
         return AppMenuOption(
             optionType = AppOptionMenuType.FetchSteamGridDBImages,
             onClick = {
-                CoroutineScope(Dispatchers.IO).launch {
+                launchArtworkJob(libraryItem.appId) {
                     try {
                         val gameFolderPath = getGameFolderPathForImageFetch(context, libraryItem)
 
@@ -438,9 +450,10 @@ class CustomGameAppScreen : BaseAppScreen() {
                                 steamgriddbFetched = false,
                             )
 
-                            SteamGridDB.fetchGameImages(gameName, gameFolderPath)
-                            PluviaApp.events.emit(AndroidEvent.CustomGameImagesFetched(libraryItem.appId))
-                            withContext(Dispatchers.Main) { refreshDisplay(libraryItem.appId) }
+                            // Replaces images that were fetched for another name, e.g. before a match
+                            SteamGridDB.replaceGameImages(gameName, folder) {
+                                PluviaApp.events.emit(AndroidEvent.CustomGameImagesFetched(libraryItem.appId))
+                            }
                             onAfterFetchImages(context, libraryItem, gameFolderPath)
 
                             SnackbarManager.show(context.getString(R.string.base_app_images_fetched))
@@ -448,6 +461,7 @@ class CustomGameAppScreen : BaseAppScreen() {
                             SnackbarManager.show(context.getString(R.string.base_app_game_folder_not_found))
                         }
                     } catch (e: Exception) {
+                        if (e is CancellationException) throw e
                         SnackbarManager.show(context.getString(R.string.base_app_images_fetch_failed, e.message ?: ""))
                     }
                 }
@@ -456,43 +470,35 @@ class CustomGameAppScreen : BaseAppScreen() {
     }
 
     /**
-     * Saves [game] as the match, or removes the match when null, then swaps the SteamGridDB artwork
+     * Saves [name] as the match, or removes the match when null, then swaps the SteamGridDB artwork
      * for the new name (the folder name once the match is removed).
      */
-    private fun saveMatch(context: Context, libraryItem: LibraryItem, game: CommunityGame?) {
+    private fun saveMatch(context: Context, libraryItem: LibraryItem, name: String?) {
         val appId = libraryItem.appId
-        // A previous save may still be downloading artwork; it stops at its next suspension point
-        matchJobs[appId]?.cancel()
-        val lock = matchLocks.getOrPut(appId) { Mutex() }
-        matchJobs[appId] = CoroutineScope(Dispatchers.IO).launch {
-            lock.withLock {
-                val folder = CustomGameScanner.getFolderPathFromAppId(appId)?.let(::File)
-                if (folder == null) {
-                    SnackbarManager.show(context.getString(R.string.base_app_game_folder_not_found))
-                    return@launch
-                }
-                if (!GameMetadataManager.setMatch(folder, libraryItem.gameId, game?.name, game?.id)) {
-                    SnackbarManager.show(context.getString(R.string.custom_game_match_save_failed))
-                    return@launch
-                }
-                val onChanged: suspend () -> Unit = {
-                    withContext(Dispatchers.Main) { refreshDisplay(appId) }
-                    PluviaApp.events.emit(AndroidEvent.CustomGameImagesFetched(appId))
-                }
-                onChanged()
-                SnackbarManager.show(
-                    if (game != null) {
-                        context.getString(R.string.custom_game_matched_to, game.name)
-                    } else {
-                        context.getString(R.string.custom_game_match_removed)
-                    },
-                )
-                try {
-                    SteamGridDB.replaceGameImages(game?.name ?: folder.name, folder, onChanged)
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    Timber.tag("CustomGameAppScreen").w(e, "Failed to replace images for $appId")
-                }
+        launchArtworkJob(appId) {
+            val folder = CustomGameScanner.getFolderPathFromAppId(appId)?.let(::File)
+            if (folder == null) {
+                SnackbarManager.show(context.getString(R.string.base_app_game_folder_not_found))
+                return@launchArtworkJob
+            }
+            if (!GameMetadataManager.setMatch(folder, libraryItem.gameId, name)) {
+                SnackbarManager.show(context.getString(R.string.custom_game_match_save_failed))
+                return@launchArtworkJob
+            }
+            val onChanged: () -> Unit = { PluviaApp.events.emit(AndroidEvent.CustomGameImagesFetched(appId)) }
+            onChanged()
+            SnackbarManager.show(
+                if (name != null) {
+                    context.getString(R.string.custom_game_matched_to, name)
+                } else {
+                    context.getString(R.string.custom_game_match_removed)
+                },
+            )
+            try {
+                SteamGridDB.replaceGameImages(name ?: folder.name, folder, onChanged)
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                Timber.tag("CustomGameAppScreen").w(e, "Failed to replace images for $appId")
             }
         }
     }
@@ -538,18 +544,14 @@ class CustomGameAppScreen : BaseAppScreen() {
             val folder = remember(libraryItem.appId) {
                 CustomGameScanner.getFolderPathFromAppId(libraryItem.appId)?.let(::File)
             }
-            val currentMatch = remember(folder) {
-                folder?.let(GameMetadataManager::read)?.let { metadata ->
-                    metadata.matchedName?.let { CommunityGame(metadata.matchedGameId ?: 0, it) }
-                }
-            }
+            val matchedName = remember(folder) { folder?.let(GameMetadataManager::read)?.matchedName }
             val closeMatchDialog: () -> Unit = { matchDialogAppIds.remove(libraryItem.appId) }
             CustomGameMatchDialog(
                 folderName = folder?.name ?: libraryItem.name,
-                currentMatch = currentMatch,
+                matchedName = matchedName,
                 onMatch = { game ->
                     closeMatchDialog()
-                    saveMatch(context, libraryItem, game)
+                    saveMatch(context, libraryItem, game.name)
                 },
                 onRemoveMatch = {
                     closeMatchDialog()

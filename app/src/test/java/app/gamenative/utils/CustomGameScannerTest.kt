@@ -20,7 +20,7 @@ class CustomGameScannerTest {
     @Test
     fun getGameName_withMatch_isMatchedName() {
         val folder = tempFolder.newFolder("Hollow Knight v1.5.78")
-        GameMetadataManager.setMatch(folder, appId = 42, name = "Hollow Knight", gameId = 11)
+        GameMetadataManager.setMatch(folder, appId = 42, name = "Hollow Knight")
 
         assertEquals("Hollow Knight", CustomGameScanner.getGameName(folder))
     }
@@ -28,8 +28,8 @@ class CustomGameScannerTest {
     @Test
     fun getGameName_afterMatchRemoved_isFolderName() {
         val folder = tempFolder.newFolder("Hollow Knight v1.5.78")
-        GameMetadataManager.setMatch(folder, appId = 42, name = "Hollow Knight", gameId = 11)
-        GameMetadataManager.setMatch(folder, appId = 42, name = null, gameId = null)
+        GameMetadataManager.setMatch(folder, appId = 42, name = "Hollow Knight")
+        GameMetadataManager.setMatch(folder, appId = 42, name = null)
 
         assertEquals("Hollow Knight v1.5.78", CustomGameScanner.getGameName(folder))
     }

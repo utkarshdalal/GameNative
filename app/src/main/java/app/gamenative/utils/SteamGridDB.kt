@@ -534,7 +534,8 @@ object SteamGridDB {
                 folder = gameFolder,
                 appId = appId,
                 steamgriddbFetched = true,
-                releaseDate = if (searchResult.releaseDate > 0) searchResult.releaseDate else null
+                releaseDate = if (searchResult.releaseDate > 0) searchResult.releaseDate else null,
+                steamgriddbGameId = searchResult.gameId,
             )
         } catch (e: Exception) {
             Timber.tag("SteamGridDB").w(e, "Failed to update metadata after fetch")
@@ -550,19 +551,22 @@ object SteamGridDB {
     }
 
     /**
-     * Replaces the SteamGridDB images in [gameFolder] with ones for [gameName]. The current images
-     * are kept if [gameName] has no SteamGridDB match or fetching is unavailable.
-     * [onImagesChanged] runs after the old images are deleted and again after the new ones are saved,
-     * so views showing the old file URLs reload.
+     * Fetches the SteamGridDB images for [gameName] into [gameFolder]. Saved images from a different
+     * SteamGridDB game are deleted first; ones from the same game are kept and only missing ones
+     * fetched. Nothing changes if [gameName] has no SteamGridDB match or fetching is unavailable.
+     * [onImagesChanged] runs after old images are deleted and after new ones are saved, so views
+     * showing the old file URLs reload.
      */
     suspend fun replaceGameImages(
         gameName: String,
         gameFolder: File,
-        onImagesChanged: suspend () -> Unit,
+        onImagesChanged: () -> Unit,
     ) = withContext(Dispatchers.IO) {
         val searchResult = searchGame(gameName) ?: return@withContext
-        deleteGameImages(gameFolder)
-        onImagesChanged()
+        if (GameMetadataManager.read(gameFolder)?.steamgriddbGameId != searchResult.gameId) {
+            deleteGameImages(gameFolder)
+            onImagesChanged()
+        }
         fetchGameImages(gameName, gameFolder.absolutePath, searchResult)
         onImagesChanged()
     }

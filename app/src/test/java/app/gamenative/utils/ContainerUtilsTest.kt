@@ -31,7 +31,7 @@ class ContainerUtilsTest {
 
         assertEquals("hollow_knight_gog", ContainerUtils.resolveGameName("CUSTOM_GAME_42"))
 
-        GameMetadataManager.setMatch(folder, appId = 42, name = "Hollow Knight", gameId = 11)
+        GameMetadataManager.setMatch(folder, appId = 42, name = "Hollow Knight")
 
         assertEquals("Hollow Knight", ContainerUtils.resolveGameName("CUSTOM_GAME_42"))
     }

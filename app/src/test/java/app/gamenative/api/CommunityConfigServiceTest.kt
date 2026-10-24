@@ -457,6 +457,18 @@ class CommunityConfigServiceTest {
     }
 
     @Test
+    fun selectCommunityGame_prefersExactNameOverCaseOnlyMatch() {
+        val games = listOf(
+            CommunityGame(19172, "Prey"),
+            CommunityGame(103581, "PREY"),
+        )
+
+        assertEquals(103581, selectCommunityGame("PREY", games)?.id)
+        assertEquals(19172, selectCommunityGame("Prey", games)?.id)
+        assertEquals(19172, selectCommunityGame("prey", games)?.id)
+    }
+
+    @Test
     fun gpuMatcher_normalizesKnownVendorFormattingAndFallsBackSafely() {
         assertEquals("adreno:730", canonicalCommunityGpu("Qualcomm Adreno (TM) 730"))
         assertEquals("arm:g715", canonicalCommunityGpu("Immortalis-G715 MC11"))

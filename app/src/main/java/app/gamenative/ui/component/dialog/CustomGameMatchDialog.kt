@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -32,9 +33,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -52,14 +55,14 @@ import kotlinx.coroutines.CancellationException
 @Composable
 fun CustomGameMatchDialog(
     folderName: String,
-    currentMatch: CommunityGame?,
+    matchedName: String?,
     onMatch: (CommunityGame) -> Unit,
     onRemoveMatch: () -> Unit,
     onDismissRequest: () -> Unit,
     searchGames: suspend (String) -> List<CommunityGame> = CommunityConfigService.shared::searchGames,
 ) {
     val context = LocalContext.current
-    var query by remember { mutableStateOf(currentMatch?.name ?: suggestedMatchQuery(folderName)) }
+    var query by remember { mutableStateOf(matchedName ?: suggestedMatchQuery(folderName)) }
     var searchKey by remember { mutableIntStateOf(0) }
     var results by remember { mutableStateOf(emptyList<CommunityGame>()) }
     var searched by remember { mutableStateOf(false) }
@@ -91,10 +94,10 @@ fun CustomGameMatchDialog(
         onDismissRequest = onDismissRequest,
         title = { Text(stringResource(R.string.option_match_game)) },
         text = {
-            // The dialog has its own window, so its focus manager must be read in here
-            val focusManager = LocalFocusManager.current
+            // The dialog has its own window, so its keyboard controller must be read in here
+            val keyboard = LocalSoftwareKeyboardController.current
             val search: () -> Unit = {
-                focusManager.clearFocus()
+                keyboard?.hide()
                 searchKey++
             }
             Column(
@@ -108,30 +111,30 @@ fun CustomGameMatchDialog(
                     text = stringResource(R.string.custom_game_match_description),
                     style = MaterialTheme.typography.bodyMedium,
                 )
-                if (currentMatch != null) {
+                if (matchedName != null) {
                     Text(
-                        text = stringResource(R.string.custom_game_matched_to, currentMatch.name),
+                        text = stringResource(R.string.custom_game_matched_to, matchedName),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )
                 }
-                NoExtractOutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    label = { Text(stringResource(R.string.search)) },
-                    singleLine = true,
-                    trailingIcon = {
-                        IconButton(onClick = search) {
-                            Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search))
-                        }
-                    },
-                    keyboardOptions = KeyboardOptions.Default.copy(
-                        imeAction = ImeAction.Search,
-                        showKeyboardOnFocus = false,
-                    ),
-                    keyboardActions = KeyboardActions(onSearch = { search() }),
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    NoExtractOutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        label = { Text(stringResource(R.string.search)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { search() }),
+                        modifier = Modifier.weight(1f),
+                    )
+                    // Beside the field, not its trailing icon, which a D-pad can't reach
+                    IconButton(onClick = search) {
+                        Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search))
+                    }
+                }
+                // On a controller, focus starts on the first result or Retry instead of the search
+                // field, which would bring up the keyboard. Touch input doesn't move focus to them.
                 val error = errorMessage
                 when {
                     loading -> Box(
@@ -144,12 +147,14 @@ fun CustomGameMatchDialog(
                     }
 
                     error != null -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        val retryFocus = remember { FocusRequester() }
+                        LaunchedEffect(error) { runCatching { retryFocus.requestFocus() } }
                         Text(
                             text = error,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.error,
                         )
-                        TextButton(onClick = search) {
+                        TextButton(onClick = search, modifier = Modifier.focusRequester(retryFocus)) {
                             Text(stringResource(R.string.community_config_retry))
                         }
                     }
@@ -163,10 +168,12 @@ fun CustomGameMatchDialog(
                     }
 
                     else -> Column {
-                        results.forEach { game ->
+                        val firstResultFocus = remember { FocusRequester() }
+                        LaunchedEffect(results) { runCatching { firstResultFocus.requestFocus() } }
+                        results.forEachIndexed { index, game ->
                             ListItem(
                                 headlineContent = { Text(game.name) },
-                                trailingContent = if (game.id == currentMatch?.id) {
+                                trailingContent = if (game.name == matchedName) {
                                     { Icon(Icons.Default.Check, contentDescription = null) }
                                 } else {
                                     null
@@ -174,6 +181,7 @@ fun CustomGameMatchDialog(
                                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .then(if (index == 0) Modifier.focusRequester(firstResultFocus) else Modifier)
                                     .clickable { onMatch(game) },
                             )
                         }
@@ -186,7 +194,7 @@ fun CustomGameMatchDialog(
                 Text(stringResource(R.string.cancel))
             }
         },
-        dismissButton = if (currentMatch != null) {
+        dismissButton = if (matchedName != null) {
             {
                 TextButton(onClick = onRemoveMatch) {
                     Text(stringResource(R.string.custom_game_match_remove))
@@ -199,25 +207,40 @@ fun CustomGameMatchDialog(
 }
 
 private val BRACKETED_TAG = Regex("""\[[^\]]*\]|\([^)]*\)|\{[^}]*\}""")
+private val RELEASE_GROUP = Regex("""(?<=[\p{Ll}\d])-\p{Lu}[\p{Lu}\d]{2,}(?=\s*$)""")
+private val DOT = Regex("""\.""")
+
+// Versions need a dot, so "Danganronpa V3" and "Kingdom Hearts HD 2.8" keep their numbers
 private val VERSION_TAG = Regex(
-    """(?<![\p{L}\d])(?:v\d+(?:\.\d+)*|\d+(?:\.\d+)+)[a-z]?(?![\p{L}\d])|\bbuild\s*\d+\b""",
+    """(?<![\p{L}\d])(?:v\d+(?:\.\d+)+|\d+(?:\.\d+){2,})[a-z]?(?![\p{L}\d])|\bbuild\s*\d+\b""",
     RegexOption.IGNORE_CASE,
 )
-private val WORD_SEPARATOR_DOT = Regex("""(?<=\p{L}{2})\.(?=\p{L}{2})""")
 private val WHITESPACE = Regex("""\s+""")
 
 /**
- * Search text for a custom game folder name: drops bracketed tags and version numbers and turns
- * underscores and dots between words into spaces, so "Hollow.Knight.v1.5.78 [GOG]" searches for
- * "Hollow Knight". Falls back to the folder name when nothing is left.
+ * Search text for a custom game folder name: drops bracketed tags, a trailing release group and
+ * version numbers, and turns underscores and dots between words into spaces, so
+ * "Hollow.Knight.v1.5.78 [GOG]" searches for "Hollow Knight". Falls back to the folder name when
+ * nothing is left.
  */
 internal fun suggestedMatchQuery(folderName: String): String {
-    val query = folderName
+    val separated = folderName
         .replace(BRACKETED_TAG, " ")
-        .replace(VERSION_TAG, " ")
-        .replace(WORD_SEPARATOR_DOT, " ")
+        .replace(RELEASE_GROUP, "")
         .replace('_', ' ')
+    val query = DOT.replace(separated) { if (isWordSeparatorDot(separated, it.range.first)) " " else "." }
+        .replace(VERSION_TAG, " ")
         .replace(WHITESPACE, " ")
-        .trim(' ', '-', '.')
+        .trim(' ', '-')
     return query.ifEmpty { folderName.trim() }
+}
+
+/** False for the dot at [index] in a number ("1.5.78") or an initialism ("S.T.A.L.K.E.R."). */
+private fun isWordSeparatorDot(text: String, index: Int): Boolean {
+    val before = text.getOrNull(index - 1)
+    val after = text.getOrNull(index + 1)
+    if (before?.isDigit() == true && after?.isDigit() == true) return false
+    val singleLetterBefore = before?.isLetter() == true && text.getOrNull(index - 2)?.isLetterOrDigit() != true
+    val wordAfter = after?.isLetterOrDigit() == true && text.getOrNull(index + 2)?.isLetterOrDigit() == true
+    return !singleLetterBefore || wordAfter
 }

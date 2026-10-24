@@ -675,6 +675,8 @@ internal fun parseCommunityRetryAfterMillis(
 
 internal fun selectCommunityGame(query: String, games: List<CommunityGame>): CommunityGame? {
     if (games.isEmpty()) return null
+    // Separate entries can differ only in case, like "Prey" and "PREY"; a name picked with Match game is exact
+    games.firstOrNull { it.name == query.trim() }?.let { return it }
     val normalizedQuery = normalizeCommunityGameName(query)
     return games.firstOrNull { normalizeCommunityGameName(it.name) == normalizedQuery }
 }

@@ -68,22 +68,47 @@ class SteamGridDBTest {
         coVerify(exactly = 0) { SteamGridDB.fetchGameImages(any(), any(), any()) }
     }
 
-    @Test
-    fun replaceGameImages_withSearchResult_deletesOldImagesBeforeFetching() = runBlocking {
-        val folder = folderWithImages()
+    /** Runs replaceGameImages for a SteamGridDB match with id 5 and returns the files present when fetching. */
+    private fun filesWhenReplacing(folder: File, onImagesChanged: () -> Unit): List<String>? = runBlocking {
         val match = SteamGridDB.GameSearchResult(gameId = 5, name = "Hollow Knight", releaseDate = 0)
         mockkObject(SteamGridDB)
         coEvery { SteamGridDB.searchGame("Hollow Knight") } returns match
-        var filesWhenFetching: List<String>? = null
+        var files: List<String>? = null
         coEvery { SteamGridDB.fetchGameImages("Hollow Knight", folder.absolutePath, match) } coAnswers {
-            filesWhenFetching = folder.list()!!.sorted()
+            files = folder.list()!!.filter { !it.startsWith(".") }.sorted()
             SteamGridDB.ImageFetchResult(null, null, null)
         }
+        SteamGridDB.replaceGameImages("Hollow Knight", folder, onImagesChanged)
+        files
+    }
+
+    @Test
+    fun replaceGameImages_imagesFromAnotherGame_areDeletedBeforeFetching() {
+        val folder = folderWithImages()
+        GameMetadataManager.write(folder, GameMetadata(appId = 42, steamgriddbGameId = 4))
         var changes = 0
 
-        SteamGridDB.replaceGameImages("Hollow Knight", folder) { changes++ }
-
-        assertEquals(listOf("cover.png"), filesWhenFetching)
+        assertEquals(listOf("cover.png"), filesWhenReplacing(folder) { changes++ })
         assertEquals(2, changes)
+    }
+
+    @Test
+    fun replaceGameImages_imagesFromUnknownGame_areDeletedBeforeFetching() {
+        val folder = folderWithImages()
+
+        assertEquals(listOf("cover.png"), filesWhenReplacing(folder) {})
+    }
+
+    @Test
+    fun replaceGameImages_imagesFromSameGame_areKept() {
+        val folder = folderWithImages()
+        GameMetadataManager.write(folder, GameMetadata(appId = 42, steamgriddbGameId = 5))
+        var changes = 0
+
+        assertEquals(
+            listOf("cover.png", "steamgriddb_grid_hero.png", "steamgriddb_hero.png"),
+            filesWhenReplacing(folder) { changes++ },
+        )
+        assertEquals(1, changes)
     }
 }

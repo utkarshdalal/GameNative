@@ -14,8 +14,8 @@ data class GameMetadata(
     val releaseDate: Long? = null,
     /** Game picked with "Match game"; used instead of the folder name for display and config lookups. */
     val matchedName: String? = null,
-    /** GameNative game id of [matchedName]. */
-    val matchedGameId: Int? = null,
+    /** SteamGridDB game the saved images were fetched for. */
+    val steamgriddbGameId: Int? = null,
 )
 
 /**
@@ -89,7 +89,7 @@ object GameMetadataManager {
                     steamgriddbFetched = metadata.steamgriddbFetched || existingMetadata.steamgriddbFetched,
                     releaseDate = metadata.releaseDate ?: existingMetadata.releaseDate,
                     matchedName = metadata.matchedName ?: existingMetadata.matchedName,
-                    matchedGameId = metadata.matchedGameId ?: existingMetadata.matchedGameId,
+                    steamgriddbGameId = metadata.steamgriddbGameId ?: existingMetadata.steamgriddbGameId,
                 )
             } ?: metadata
 
@@ -104,8 +104,8 @@ object GameMetadataManager {
                 if (merged.matchedName != null) {
                     put("matchedName", merged.matchedName)
                 }
-                if (merged.matchedGameId != null) {
-                    put("matchedGameId", merged.matchedGameId)
+                if (merged.steamgriddbGameId != null) {
+                    put("steamgriddbGameId", merged.steamgriddbGameId)
                 }
             }
 
@@ -121,7 +121,13 @@ object GameMetadataManager {
      * If appId is not provided and no existing metadata exists, the update will fail.
      * For new metadata, use write() instead.
      */
-    fun update(folder: File, appId: Int? = null, steamgriddbFetched: Boolean? = null, releaseDate: Long? = null) {
+    fun update(
+        folder: File,
+        appId: Int? = null,
+        steamgriddbFetched: Boolean? = null,
+        releaseDate: Long? = null,
+        steamgriddbGameId: Int? = null,
+    ) {
         val existing = read(folder)
         val finalAppId = appId ?: existing?.appId
         if (finalAppId == null) {
@@ -134,7 +140,8 @@ object GameMetadataManager {
         ).let { base ->
             base.copy(
                 steamgriddbFetched = steamgriddbFetched ?: existing?.steamgriddbFetched ?: false,
-                releaseDate = releaseDate ?: existing?.releaseDate
+                releaseDate = releaseDate ?: existing?.releaseDate,
+                steamgriddbGameId = steamgriddbGameId,
             )
         }
         write(folder, updated)
@@ -147,7 +154,7 @@ object GameMetadataManager {
      * [appId] is only used when the file has no valid appId yet.
      * Returns false if the file could not be written.
      */
-    fun setMatch(folder: File, appId: Int, name: String?, gameId: Int?): Boolean {
+    fun setMatch(folder: File, appId: Int, name: String?): Boolean {
         val gamenativeFile = File(folder, FILE_NAME)
         return try {
             val json = readJson(gamenativeFile) ?: JSONObject()
@@ -158,12 +165,8 @@ object GameMetadataManager {
                 json.remove("releaseDate")
             }
             json.remove("matchedName")
-            json.remove("matchedGameId")
             if (!name.isNullOrBlank()) {
                 json.put("matchedName", name)
-                if (gameId != null && gameId > 0) {
-                    json.put("matchedGameId", gameId)
-                }
             }
             gamenativeFile.writeText(json.toString())
             true
@@ -192,7 +195,7 @@ object GameMetadataManager {
             steamgriddbFetched = json.optBoolean("steamgriddbFetched", false),
             releaseDate = json.optLong("releaseDate", -1).takeIf { it > 0 },
             matchedName = json.optString("matchedName").takeIf { it.isNotBlank() },
-            matchedGameId = json.optInt("matchedGameId", 0).takeIf { it > 0 },
+            steamgriddbGameId = json.optInt("steamgriddbGameId", 0).takeIf { it > 0 },
         )
     }
 

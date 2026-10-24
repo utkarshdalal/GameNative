@@ -372,6 +372,12 @@ private fun LibraryScreenContent(
     var wasOptionsPanelOpen by remember { mutableStateOf(false) }
     // Keep a stable reference to the selected item so detail view doesn't disappear during list refresh/pagination.
     var selectedLibraryItem by remember { mutableStateOf<LibraryItem?>(null) }
+    // Match game renames a custom game while its screen is open; dialogs there read this item's name
+    LaunchedEffect(state.appInfoList) {
+        val selected = selectedLibraryItem?.takeIf { it.gameSource == GameSource.CUSTOM_GAME } ?: return@LaunchedEffect
+        val name = state.appInfoList.firstOrNull { it.appId == selected.appId }?.name ?: return@LaunchedEffect
+        if (name != selected.name) selectedLibraryItem = selected.copy(name = name)
+    }
     val favorites by FavoritesManager.favorites.collectAsStateWithLifecycle()
     val favoritesLoaded by FavoritesManager.loaded.collectAsStateWithLifecycle()
     val filterFabExpanded by remember(currentPaneType, listState, carouselListState) {

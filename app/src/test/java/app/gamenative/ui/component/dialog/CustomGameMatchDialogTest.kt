@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
@@ -31,13 +32,13 @@ class CustomGameMatchDialogTest {
 
     private fun render(
         folderName: String = "Hollow.Knight.v1.5.78 [GOG]",
-        currentMatch: CommunityGame? = null,
+        matchedName: String? = null,
         search: suspend (String) -> List<CommunityGame> = { listOf(hollowKnight, silksong) },
     ) {
         compose.setContent {
             CustomGameMatchDialog(
                 folderName = folderName,
-                currentMatch = currentMatch,
+                matchedName = matchedName,
                 onMatch = { matched = it },
                 onRemoveMatch = { removed++ },
                 onDismissRequest = {},
@@ -72,11 +73,15 @@ class CustomGameMatchDialogTest {
         compose.onNode(hasSetTextAction()).performImeAction()
         compose.waitForIdle()
         assertEquals(listOf("Hollow Knight", "Silksong"), queries)
+
+        compose.onNodeWithContentDescription("Search").performClick()
+        compose.waitForIdle()
+        assertEquals(listOf("Hollow Knight", "Silksong", "Silksong"), queries)
     }
 
     @Test
     fun existingMatch_searchesMatchedNameAndCanBeRemoved() {
-        render(folderName = "hk_gog", currentMatch = silksong)
+        render(folderName = "hk_gog", matchedName = silksong.name)
 
         compose.onNodeWithText("Matched to Hollow Knight: Silksong").assertIsDisplayed()
         compose.onNodeWithText("Remove match").performClick()
@@ -116,6 +121,19 @@ class CustomGameMatchDialogTest {
         assertEquals("Hades", suggestedMatchQuery("Hades (GOG) {v2}"))
         assertEquals("Left 4 Dead 2", suggestedMatchQuery("Left_4_Dead_2"))
         assertEquals("Fallout 3 GOTY", suggestedMatchQuery("Fallout 3 GOTY build 1234"))
+        assertEquals("Stardew Valley", suggestedMatchQuery("Stardew Valley 1.6.8"))
+    }
+
+    @Test
+    fun suggestedMatchQuery_splitsDottedReleaseNames() {
+        assertEquals("Left 4 Dead 2", suggestedMatchQuery("Left.4.Dead.2"))
+        assertEquals("Grand Theft Auto V", suggestedMatchQuery("Grand.Theft.Auto.V"))
+        assertEquals("The Witcher 3 Wild Hunt", suggestedMatchQuery("The.Witcher.3.Wild.Hunt"))
+        assertEquals("A Plague Tale Innocence", suggestedMatchQuery("A.Plague.Tale.Innocence"))
+        assertEquals("Baldurs Gate 3", suggestedMatchQuery("Baldurs.Gate.3.v4.1.1.3624901"))
+        assertEquals("Game Deluxe", suggestedMatchQuery("Game.v1.2.3.Deluxe"))
+        assertEquals("Max Payne 3", suggestedMatchQuery("Max.Payne.3-RELOADED"))
+        assertEquals("Celeste", suggestedMatchQuery("Celeste.v1.4.0.0-GOG"))
     }
 
     @Test
@@ -124,6 +142,13 @@ class CustomGameMatchDialogTest {
         assertEquals("7 Days to Die", suggestedMatchQuery("7 Days to Die"))
         assertEquals("Grand Theft Auto V", suggestedMatchQuery("Grand Theft Auto V"))
         assertEquals("S.T.A.L.K.E.R. Shadow of Chernobyl", suggestedMatchQuery("S.T.A.L.K.E.R. Shadow of Chernobyl"))
+        assertEquals("F.E.A.R.", suggestedMatchQuery("F.E.A.R."))
+        assertEquals("X-COM", suggestedMatchQuery("X-COM"))
+        assertEquals("Danganronpa V3: Killing Harmony", suggestedMatchQuery("Danganronpa V3: Killing Harmony"))
+        assertEquals(
+            "KINGDOM HEARTS HD 2.8 Final Chapter Prologue",
+            suggestedMatchQuery("KINGDOM HEARTS HD 2.8 Final Chapter Prologue"),
+        )
     }
 
     @Test
