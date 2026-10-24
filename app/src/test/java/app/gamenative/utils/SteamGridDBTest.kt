@@ -68,6 +68,8 @@ class SteamGridDBTest {
         coVerify(exactly = 0) { SteamGridDB.fetchGameImages(any(), any(), any()) }
     }
 
+    private var savedFromWhenFetching: Int? = null
+
     /** Runs replaceGameImages for a SteamGridDB match with id 5 and returns the files present when fetching. */
     private fun filesWhenReplacing(folder: File, onImagesChanged: () -> Unit): List<String>? = runBlocking {
         val match = SteamGridDB.GameSearchResult(gameId = 5, name = "Hollow Knight", releaseDate = 0)
@@ -76,6 +78,7 @@ class SteamGridDBTest {
         var files: List<String>? = null
         coEvery { SteamGridDB.fetchGameImages("Hollow Knight", folder.absolutePath, match) } coAnswers {
             files = folder.list()!!.filter { !it.startsWith(".") }.sorted()
+            savedFromWhenFetching = GameMetadataManager.read(folder)?.steamgriddbGameId
             SteamGridDB.ImageFetchResult(null, null, null)
         }
         SteamGridDB.replaceGameImages("Hollow Knight", folder, onImagesChanged)
@@ -90,13 +93,24 @@ class SteamGridDBTest {
 
         assertEquals(listOf("cover.png"), filesWhenReplacing(folder) { changes++ })
         assertEquals(2, changes)
+        // So images saved by a fetch that is then interrupted count as the new game's
+        assertEquals(5, savedFromWhenFetching)
     }
 
     @Test
-    fun replaceGameImages_imagesFromUnknownGame_areDeletedBeforeFetching() {
-        val folder = folderWithImages()
+    fun replaceGameImages_imagesWithoutRecordedGame_areKeptUntilMatched() {
+        val unmatched = folderWithImages()
+        GameMetadataManager.write(unmatched, GameMetadata(appId = 42))
+        assertEquals(
+            listOf("cover.png", "steamgriddb_grid_hero.png", "steamgriddb_hero.png"),
+            filesWhenReplacing(unmatched) {},
+        )
 
-        assertEquals(listOf("cover.png"), filesWhenReplacing(folder) {})
+        val matched = tempFolder.newFolder("matched").also { folder ->
+            listOf("steamgriddb_grid_hero.png", "cover.png").forEach { File(folder, it).writeText("x") }
+        }
+        GameMetadataManager.setMatch(matched, appId = 43, name = "Hollow Knight")
+        assertEquals(listOf("cover.png"), filesWhenReplacing(matched) {})
     }
 
     @Test

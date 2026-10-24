@@ -143,6 +143,8 @@ class CustomGameMatchDialogTest {
         assertEquals("Grand Theft Auto V", suggestedMatchQuery("Grand Theft Auto V"))
         assertEquals("S.T.A.L.K.E.R. Shadow of Chernobyl", suggestedMatchQuery("S.T.A.L.K.E.R. Shadow of Chernobyl"))
         assertEquals("F.E.A.R.", suggestedMatchQuery("F.E.A.R."))
+        assertEquals("Dr. Langeskov", suggestedMatchQuery("Dr. Langeskov"))
+        assertEquals("Plants vs. Zombies", suggestedMatchQuery("Plants vs. Zombies"))
         assertEquals("X-COM", suggestedMatchQuery("X-COM"))
         assertEquals("Danganronpa V3: Killing Harmony", suggestedMatchQuery("Danganronpa V3: Killing Harmony"))
         assertEquals(

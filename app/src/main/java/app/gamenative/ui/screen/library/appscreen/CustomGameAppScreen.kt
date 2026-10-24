@@ -67,17 +67,15 @@ class CustomGameAppScreen : BaseAppScreen() {
 
         private val matchDialogAppIds = mutableStateListOf<String>()
 
-        // Latest artwork job (Match game or Fetch game images) per appId, and a lock per appId held
-        // while one runs, so two jobs never write the same files. Only touched on the main thread.
-        private val artworkJobs = mutableMapOf<String, Job>()
+        // A lock per appId held while a match is saved or artwork is fetched, so two jobs never write
+        // the same files, and the latest match save per appId. Only touched on the main thread.
         private val artworkLocks = mutableMapOf<String, Mutex>()
+        private val matchJobs = mutableMapOf<String, Job>()
 
-        /** Cancels the game's previous artwork job and runs [block] once that job has stopped. */
-        private fun launchArtworkJob(appId: String, block: suspend () -> Unit) {
-            // A cancelled job stops at its next suspension point, e.g. between image downloads
-            artworkJobs[appId]?.cancel()
+        /** Runs [block] after the game's earlier Match game and Fetch game images jobs. */
+        private fun launchArtworkJob(appId: String, block: suspend () -> Unit): Job {
             val lock = artworkLocks.getOrPut(appId) { Mutex() }
-            artworkJobs[appId] = CoroutineScope(Dispatchers.IO).launch {
+            return CoroutineScope(Dispatchers.IO).launch {
                 lock.withLock { block() }
             }
         }
@@ -475,7 +473,10 @@ class CustomGameAppScreen : BaseAppScreen() {
      */
     private fun saveMatch(context: Context, libraryItem: LibraryItem, name: String?) {
         val appId = libraryItem.appId
-        launchArtworkJob(appId) {
+        // Only the latest pick counts. A cancelled save stops at its next suspension point, e.g.
+        // between image downloads; one still waiting for the lock is dropped before it saves.
+        matchJobs[appId]?.cancel()
+        matchJobs[appId] = launchArtworkJob(appId) {
             val folder = CustomGameScanner.getFolderPathFromAppId(appId)?.let(::File)
             if (folder == null) {
                 SnackbarManager.show(context.getString(R.string.base_app_game_folder_not_found))

@@ -121,7 +121,10 @@ import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.PlatformOAuthHandlers
 import app.gamenative.utils.SteamUtils
 import com.posthog.PostHog
+import java.io.File
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import android.os.SystemClock
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -372,11 +375,16 @@ private fun LibraryScreenContent(
     var wasOptionsPanelOpen by remember { mutableStateOf(false) }
     // Keep a stable reference to the selected item so detail view doesn't disappear during list refresh/pagination.
     var selectedLibraryItem by remember { mutableStateOf<LibraryItem?>(null) }
-    // Match game renames a custom game while its screen is open; dialogs there read this item's name
-    LaunchedEffect(state.appInfoList) {
+    // Match game renames a custom game while its screen is open; dialogs there read this item's name.
+    // Read from the folder, since the renamed game can sort out of the loaded part of appInfoList.
+    LaunchedEffect(state.imageRefreshCounter) {
         val selected = selectedLibraryItem?.takeIf { it.gameSource == GameSource.CUSTOM_GAME } ?: return@LaunchedEffect
-        val name = state.appInfoList.firstOrNull { it.appId == selected.appId }?.name ?: return@LaunchedEffect
-        if (name != selected.name) selectedLibraryItem = selected.copy(name = name)
+        val name = withContext(Dispatchers.IO) {
+            CustomGameScanner.getFolderPathFromAppId(selected.appId)?.let { CustomGameScanner.getGameName(File(it)) }
+        }
+        if (name != null && name != selected.name && selectedLibraryItem?.appId == selected.appId) {
+            selectedLibraryItem = selected.copy(name = name)
+        }
     }
     val favorites by FavoritesManager.favorites.collectAsStateWithLifecycle()
     val favoritesLoaded by FavoritesManager.loaded.collectAsStateWithLifecycle()
