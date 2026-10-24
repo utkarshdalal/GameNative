@@ -411,11 +411,13 @@ object SteamGridDB {
      * Also updates the release date if found.
      * @param gameName The name of the game to search for
      * @param gameFolderPath The path to the game folder where images should be saved
+     * @param knownMatch Search result for [gameName] if the caller already has one
      * @return ImageFetchResult containing paths to saved images and release date
      */
     suspend fun fetchGameImages(
         gameName: String,
-        gameFolderPath: String
+        gameFolderPath: String,
+        knownMatch: GameSearchResult? = null,
     ): ImageFetchResult = withContext(Dispatchers.IO) {
         val apiKey = getApiKey()
         if (apiKey == null) {
@@ -484,7 +486,7 @@ object SteamGridDB {
         }
 
         // Search for the game
-        val searchResult = searchGame(gameName) ?: return@withContext ImageFetchResult(null, null, null, null, null)
+        val searchResult = knownMatch ?: searchGame(gameName) ?: return@withContext ImageFetchResult(null, null, null, null, null)
 
         // Fetch grids (returns hero and capsule paths)
         val (gridHeroPath, gridCapsulePath) = if (!existingGridHero || !existingGridCapsule) {
@@ -546,6 +548,35 @@ object SteamGridDB {
             releaseDate = searchResult.releaseDate
         )
     }
+
+    /**
+     * Replaces the SteamGridDB images in [gameFolder] with ones for [gameName]. The current images
+     * are kept if [gameName] has no SteamGridDB match or fetching is unavailable.
+     * [onImagesChanged] runs after the old images are deleted and again after the new ones are saved,
+     * so views showing the old file URLs reload.
+     */
+    suspend fun replaceGameImages(
+        gameName: String,
+        gameFolder: File,
+        onImagesChanged: suspend () -> Unit,
+    ) = withContext(Dispatchers.IO) {
+        val searchResult = searchGame(gameName) ?: return@withContext
+        deleteGameImages(gameFolder)
+        onImagesChanged()
+        fetchGameImages(gameName, gameFolder.absolutePath, searchResult)
+        onImagesChanged()
+    }
+
+    /** Deletes images saved by [fetchGameImages]. User-supplied covers and extracted icons are kept. */
+    internal fun deleteGameImages(gameFolder: File) {
+        gameFolder.listFiles { file -> file.isFile && SAVED_IMAGE_NAME.matches(file.name) }
+            ?.forEach { file ->
+                if (!file.delete()) Timber.tag("SteamGridDB").w("Failed to delete ${file.absolutePath}")
+            }
+    }
+
+    private val SAVED_IMAGE_NAME =
+        Regex("""steamgriddb_(grid_hero|grid_capsule|hero|logo)\.(png|jpe?g|webp)""", RegexOption.IGNORE_CASE)
 
     /**
      * Data class for search results

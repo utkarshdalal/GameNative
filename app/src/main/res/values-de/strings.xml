@@ -666,6 +666,13 @@
     <string name="base_app_images_fetched">Bilder erfolgreich geladen</string>
     <string name="base_app_game_folder_not_found">Spielordner nicht gefunden</string>
     <string name="base_app_images_fetch_failed">Bilder konnten nicht geladen werden: %s</string>
+    <string name="custom_game_match_description">Wähle aus, um welches Spiel es sich handelt. GameNative verwendet seinen Namen, um bekannte Konfigurationen, Community-Konfigurationen, Kompatibilitätsbewertungen und Bilder zu finden. Die Spieldateien werden nicht verändert, und es bleibt ein eigenes Spiel.</string>
+    <string name="custom_game_matched_to">Zugeordnet zu %1$s</string>
+    <string name="custom_game_match_no_results">Keine Spiele gefunden. Versuche einen kürzeren Namen.</string>
+    <string name="custom_game_match_search_failed">Suche fehlgeschlagen: %1$s</string>
+    <string name="custom_game_match_remove">Zuordnung entfernen</string>
+    <string name="custom_game_match_removed">Zuordnung entfernt</string>
+    <string name="custom_game_match_save_failed">Die Zuordnung konnte nicht im Spielordner gespeichert werden</string>
     <string name="base_app_exported">Exportiert</string>
     <string name="base_app_export_failed">Export fehlgeschlagen: %s</string>
     <string name="base_app_export_cancelled">Export abgebrochen</string>
@@ -1788,6 +1795,7 @@
     <string name="option_force_download_remote">Download der Remote-Spielstände erzwingen</string>
     <string name="option_force_upload_local">Upload der lokalen Spielstände erzwingen</string>
     <string name="option_fetch_game_images">Spielbilder abrufen</string>
+    <string name="option_match_game">Spiel zuordnen</string>
     <string name="option_test_graphics">Grafik testen</string>
     <string name="option_manage_dlc">DLC verwalten</string>
     <string name="option_manage_workshop">Workshop verwalten</string>

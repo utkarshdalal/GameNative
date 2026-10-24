@@ -699,6 +699,13 @@
     <string name="base_app_images_fetched">Images récupérées avec succès</string>
     <string name="base_app_game_folder_not_found">Dossier du jeu introuvable</string>
     <string name="base_app_images_fetch_failed">Échec de la récupération des images : %s</string>
+    <string name="custom_game_match_description">Choisissez de quel jeu il s\'agit. GameNative utilise son nom pour trouver les configurations connues, les configurations de la communauté, les évaluations de compatibilité et les images. Les fichiers du jeu ne sont pas modifiés et il reste un jeu personnalisé.</string>
+    <string name="custom_game_matched_to">Associé à %1$s</string>
+    <string name="custom_game_match_no_results">Aucun jeu trouvé. Essayez un nom plus court.</string>
+    <string name="custom_game_match_search_failed">Échec de la recherche : %1$s</string>
+    <string name="custom_game_match_remove">Retirer l\'association</string>
+    <string name="custom_game_match_removed">Association retirée</string>
+    <string name="custom_game_match_save_failed">Impossible d\'enregistrer l\'association dans le dossier du jeu</string>
     <string name="base_app_exported">Exporté</string>
     <string name="base_app_export_failed">Échec de l\'exportation : %s</string>
     <string name="base_app_export_cancelled">Exportation annulée</string>
@@ -1866,6 +1873,7 @@
     <string name="option_force_download_remote">Forcer le téléchargement des sauvegardes distantes</string>
     <string name="option_force_upload_local">Forcer l\'envoi des sauvegardes locales</string>
     <string name="option_fetch_game_images">Récupérer les images du jeu</string>
+    <string name="option_match_game">Associer un jeu</string>
     <string name="option_test_graphics">Tester les graphismes</string>
     <string name="option_manage_dlc">Gérer les DLC</string>
     <string name="option_manage_workshop">Gérer le Workshop</string>

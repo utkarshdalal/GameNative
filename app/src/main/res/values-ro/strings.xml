@@ -682,6 +682,13 @@
     <string name="base_app_images_fetched">Imaginile au fost preluate cu succes</string>
     <string name="base_app_game_folder_not_found">Folderul jocului nu a fost găsit</string>
     <string name="base_app_images_fetch_failed">Nu s-au putut prelua imaginile: %s</string>
+    <string name="custom_game_match_description">Alege ce joc este acesta. GameNative folosește numele lui pentru a găsi configurații cunoscute, configurații ale comunității, evaluări de compatibilitate și imagini. Fișierele jocului nu sunt modificate și rămâne un joc personalizat.</string>
+    <string name="custom_game_matched_to">Asociat cu %1$s</string>
+    <string name="custom_game_match_no_results">Nu s-au găsit jocuri. Încearcă un nume mai scurt.</string>
+    <string name="custom_game_match_search_failed">Căutarea a eșuat: %1$s</string>
+    <string name="custom_game_match_remove">Elimină asocierea</string>
+    <string name="custom_game_match_removed">Asociere eliminată</string>
+    <string name="custom_game_match_save_failed">Asocierea nu a putut fi salvată în folderul jocului</string>
     <string name="base_app_exported">Exportat</string>
     <string name="base_app_export_failed">Exportul a eșuat: %s</string>
     <string name="base_app_export_cancelled">Export anulat</string>
@@ -1827,6 +1834,7 @@
     <string name="option_force_download_remote">Forțează descărcarea salvărilor remote</string>
     <string name="option_force_upload_local">Forțează încărcarea salvărilor locale</string>
     <string name="option_fetch_game_images">Preia imaginile jocului</string>
+    <string name="option_match_game">Asociază jocul</string>
     <string name="option_test_graphics">Testează grafica</string>
     <string name="option_manage_dlc">Gestionează DLC</string>
     <string name="option_manage_workshop">Gestionează Workshop</string>

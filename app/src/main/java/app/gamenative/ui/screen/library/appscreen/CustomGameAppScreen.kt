@@ -15,6 +15,8 @@ import app.gamenative.R
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
+import app.gamenative.api.CommunityGame
+import app.gamenative.ui.component.dialog.CustomGameMatchDialog
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
@@ -25,10 +27,14 @@ import app.gamenative.utils.GameMetadataManager
 import app.gamenative.utils.SteamGridDB
 import app.gamenative.utils.StorageUtils
 import com.winlator.container.ContainerData
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import android.net.Uri
 import kotlinx.coroutines.CoroutineScope
@@ -59,14 +65,33 @@ class CustomGameAppScreen : BaseAppScreen() {
 
         // Shared state for deletion progress dialog
         var showDeletingDialog by mutableStateOf(false)
+
+        private val matchDialogAppIds = mutableStateListOf<String>()
+
+        // Latest saveMatch per appId, and a lock per appId held while a match is saved and its
+        // artwork swapped, so two saves never write the same files. Only touched on the main thread.
+        private val matchJobs = mutableMapOf<String, Job>()
+        private val matchLocks = mutableMapOf<String, Mutex>()
+
+        // Bumped when a game's match or artwork changes so its open app screen re-reads them
+        private val displayRefreshKeys = mutableStateMapOf<String, Int>()
+
+        private fun refreshDisplay(appId: String) {
+            displayRefreshKeys[appId] = (displayRefreshKeys[appId] ?: 0) + 1
+        }
     }
     @Composable
     override fun getGameDisplayInfo(
         context: Context,
         libraryItem: LibraryItem
     ): GameDisplayInfo {
-        val gameFolderPath = remember(libraryItem.appId) {
+        val refreshKey = displayRefreshKeys[libraryItem.appId] ?: 0
+        // Re-resolved on refresh: creating the container can move the folder to internal storage
+        val gameFolderPath = remember(libraryItem.appId, refreshKey) {
             CustomGameScanner.getFolderPathFromAppId(libraryItem.appId)
+        }
+        val metadata = remember(gameFolderPath, refreshKey) {
+            gameFolderPath?.let { GameMetadataManager.read(File(it)) }
         }
 
         // Helper function to find SteamGridDB images in the game folder
@@ -83,7 +108,7 @@ class CustomGameAppScreen : BaseAppScreen() {
         // Hero view uses horizontal grid (grid_hero)
         // A user-supplied "coverh"/"cover" image takes priority over SteamGridDB.
         // coverh = horizontal cover
-        val heroImageUrl = remember(gameFolderPath) {
+        val heroImageUrl = remember(gameFolderPath, refreshKey) {
             gameFolderPath?.let { path ->
                 val folder = File(path)
                 CustomGameScanner.findHeroCoverInFolder(folder)
@@ -94,7 +119,7 @@ class CustomGameAppScreen : BaseAppScreen() {
         // Capsule view uses vertical grid (grid_capsule)
         // A user-supplied "coverv"/"cover" image takes priority over SteamGridDB.
         // coverv = vertical cover
-        val capsuleUrl = remember(gameFolderPath) {
+        val capsuleUrl = remember(gameFolderPath, refreshKey) {
             gameFolderPath?.let { path ->
                 val folder = File(path)
                 CustomGameScanner.findCapsuleCoverInFolder(folder)
@@ -104,7 +129,7 @@ class CustomGameAppScreen : BaseAppScreen() {
 
         // Header view uses heroes endpoint (hero, but not grid_hero)
         // This is also a horizontal banner, so the user "coverh"/"cover" applies here too.
-        val headerUrl = remember(gameFolderPath) {
+        val headerUrl = remember(gameFolderPath, refreshKey) {
             gameFolderPath?.let { path ->
                 val folder = File(path)
                 CustomGameScanner.findHeroCoverInFolder(folder)
@@ -118,7 +143,7 @@ class CustomGameAppScreen : BaseAppScreen() {
             }
         }
 
-        val logoUrl = remember(gameFolderPath) {
+        val logoUrl = remember(gameFolderPath, refreshKey) {
             gameFolderPath?.let { path ->
                 val folder = File(path)
                 findSteamGridDBImage(folder, "logo")
@@ -127,17 +152,6 @@ class CustomGameAppScreen : BaseAppScreen() {
 
         // Note: iconUrl is intentionally null - we extract icons from exe files
         // and don't use SteamGridDB icons
-
-        // Try to get release date from .gamenative metadata if available
-        var releaseDate by remember { mutableStateOf(0L) }
-        LaunchedEffect(gameFolderPath) {
-            gameFolderPath?.let { path ->
-                val folder = File(path)
-                // Get release date from metadata
-                val metadata = app.gamenative.utils.GameMetadataManager.read(folder)
-                releaseDate = metadata?.releaseDate ?: 0L
-            }
-        }
 
         // Calculate folder size on disk (async, will update via state)
         var sizeOnDisk by remember { mutableStateOf<String?>(null) }
@@ -157,9 +171,10 @@ class CustomGameAppScreen : BaseAppScreen() {
 
         // Custom Games don't have Steam metadata, so we use basic info
         return GameDisplayInfo(
-            name = libraryItem.name,
+            // libraryItem is a snapshot that goes stale when the match changes
+            name = gameFolderPath?.let { metadata?.matchedName ?: File(it).name } ?: libraryItem.name,
             developer = context.getString(R.string.custom_game_unknown_developer), // Custom Games don't have developer info
-            releaseDate = releaseDate,
+            releaseDate = metadata?.releaseDate ?: 0L,
             heroImageUrl = heroImageUrl,
             iconUrl = null, // Icons are extracted from exe files, not from SteamGridDB
             gameId = libraryItem.gameId,
@@ -389,6 +404,15 @@ class CustomGameAppScreen : BaseAppScreen() {
     ): List<AppMenuOption> {
         val options = mutableListOf<AppMenuOption>()
 
+        options.add(
+            AppMenuOption(
+                optionType = AppOptionMenuType.MatchGame,
+                onClick = {
+                    if (libraryItem.appId !in matchDialogAppIds) matchDialogAppIds.add(libraryItem.appId)
+                },
+            ),
+        )
+
         // Fetch images from SteamGridDB for Custom Games
         options.add(getFetchImagesOption(context, libraryItem))
 
@@ -402,11 +426,11 @@ class CustomGameAppScreen : BaseAppScreen() {
             onClick = {
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
-                        val gameName = libraryItem.name
                         val gameFolderPath = getGameFolderPathForImageFetch(context, libraryItem)
 
                         if (gameFolderPath != null) {
                             val folder = File(gameFolderPath)
+                            val gameName = CustomGameScanner.getGameName(folder)
                             val appId = libraryItem.gameId
                             GameMetadataManager.update(
                                 folder = folder,
@@ -416,6 +440,7 @@ class CustomGameAppScreen : BaseAppScreen() {
 
                             SteamGridDB.fetchGameImages(gameName, gameFolderPath)
                             PluviaApp.events.emit(AndroidEvent.CustomGameImagesFetched(libraryItem.appId))
+                            withContext(Dispatchers.Main) { refreshDisplay(libraryItem.appId) }
                             onAfterFetchImages(context, libraryItem, gameFolderPath)
 
                             SnackbarManager.show(context.getString(R.string.base_app_images_fetched))
@@ -428,6 +453,48 @@ class CustomGameAppScreen : BaseAppScreen() {
                 }
             },
         )
+    }
+
+    /**
+     * Saves [game] as the match, or removes the match when null, then swaps the SteamGridDB artwork
+     * for the new name (the folder name once the match is removed).
+     */
+    private fun saveMatch(context: Context, libraryItem: LibraryItem, game: CommunityGame?) {
+        val appId = libraryItem.appId
+        // A previous save may still be downloading artwork; it stops at its next suspension point
+        matchJobs[appId]?.cancel()
+        val lock = matchLocks.getOrPut(appId) { Mutex() }
+        matchJobs[appId] = CoroutineScope(Dispatchers.IO).launch {
+            lock.withLock {
+                val folder = CustomGameScanner.getFolderPathFromAppId(appId)?.let(::File)
+                if (folder == null) {
+                    SnackbarManager.show(context.getString(R.string.base_app_game_folder_not_found))
+                    return@launch
+                }
+                if (!GameMetadataManager.setMatch(folder, libraryItem.gameId, game?.name, game?.id)) {
+                    SnackbarManager.show(context.getString(R.string.custom_game_match_save_failed))
+                    return@launch
+                }
+                val onChanged: suspend () -> Unit = {
+                    withContext(Dispatchers.Main) { refreshDisplay(appId) }
+                    PluviaApp.events.emit(AndroidEvent.CustomGameImagesFetched(appId))
+                }
+                onChanged()
+                SnackbarManager.show(
+                    if (game != null) {
+                        context.getString(R.string.custom_game_matched_to, game.name)
+                    } else {
+                        context.getString(R.string.custom_game_match_removed)
+                    },
+                )
+                try {
+                    SteamGridDB.replaceGameImages(game?.name ?: folder.name, folder, onChanged)
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    Timber.tag("CustomGameAppScreen").w(e, "Failed to replace images for $appId")
+                }
+            }
+        }
     }
 
     /** Custom games support known, community, and transferred configs. */
@@ -466,6 +533,31 @@ class CustomGameAppScreen : BaseAppScreen() {
     ) {
         val context = LocalContext.current
         val scope = rememberCoroutineScope()
+
+        if (libraryItem.appId in matchDialogAppIds) {
+            val folder = remember(libraryItem.appId) {
+                CustomGameScanner.getFolderPathFromAppId(libraryItem.appId)?.let(::File)
+            }
+            val currentMatch = remember(folder) {
+                folder?.let(GameMetadataManager::read)?.let { metadata ->
+                    metadata.matchedName?.let { CommunityGame(metadata.matchedGameId ?: 0, it) }
+                }
+            }
+            val closeMatchDialog: () -> Unit = { matchDialogAppIds.remove(libraryItem.appId) }
+            CustomGameMatchDialog(
+                folderName = folder?.name ?: libraryItem.name,
+                currentMatch = currentMatch,
+                onMatch = { game ->
+                    closeMatchDialog()
+                    saveMatch(context, libraryItem, game)
+                },
+                onRemoveMatch = {
+                    closeMatchDialog()
+                    saveMatch(context, libraryItem, null)
+                },
+                onDismissRequest = closeMatchDialog,
+            )
+        }
 
         // Track deletion progress dialog state
         if (showDeletingDialog) {

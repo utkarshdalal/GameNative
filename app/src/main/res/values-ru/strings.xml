@@ -109,6 +109,13 @@
     <string name="base_app_exported">Экспортировано</string>
     <string name="base_app_game_folder_not_found">Папка игры не найдена</string>
     <string name="base_app_images_fetch_failed">Ошибка загрузки изображений: %s</string>
+    <string name="custom_game_match_description">Выберите, что это за игра. GameNative использует её название для поиска известных конфигураций, конфигураций сообщества, оценок совместимости и изображений. Файлы игры не изменяются, и она остаётся пользовательской игрой.</string>
+    <string name="custom_game_matched_to">Сопоставлено с %1$s</string>
+    <string name="custom_game_match_no_results">Игры не найдены. Попробуйте более короткое название.</string>
+    <string name="custom_game_match_search_failed">Ошибка поиска: %1$s</string>
+    <string name="custom_game_match_remove">Удалить сопоставление</string>
+    <string name="custom_game_match_removed">Сопоставление удалено</string>
+    <string name="custom_game_match_save_failed">Не удалось сохранить сопоставление в папке игры</string>
     <string name="base_app_images_fetched">Изображения успешно загружены</string>
     <string name="base_app_reset_container_confirm">Сброс</string>
     <string name="base_app_reset_container_title">Сбросить контейнер?</string>
@@ -1774,6 +1781,7 @@ https://gamenative.app
     <string name="option_force_download_remote">Принудительно загрузить удалённые сохранения</string>
     <string name="option_force_upload_local">Принудительно выгрузить локальные сохранения</string>
     <string name="option_fetch_game_images">Загрузить изображения игры</string>
+    <string name="option_match_game">Сопоставить игру</string>
     <string name="option_test_graphics">Проверить графику</string>
     <string name="option_manage_dlc">Управление DLC</string>
     <string name="option_manage_workshop">Управление Workshop</string>

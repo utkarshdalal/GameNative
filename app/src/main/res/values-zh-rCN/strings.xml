@@ -672,6 +672,13 @@
     <string name="base_app_images_fetched">图像获取成功</string>
     <string name="base_app_game_folder_not_found">找不到游戏文件夹</string>
     <string name="base_app_images_fetch_failed">无法获取图像：%s</string>
+    <string name="custom_game_match_description">选择这是哪款游戏。GameNative 会使用它的名称查找已知配置、社区配置、兼容性评分和图片。游戏文件不会被更改，它仍是自定义游戏。</string>
+    <string name="custom_game_matched_to">已匹配到 %1$s</string>
+    <string name="custom_game_match_no_results">未找到游戏。请尝试更短的名称。</string>
+    <string name="custom_game_match_search_failed">搜索失败：%1$s</string>
+    <string name="custom_game_match_remove">移除匹配</string>
+    <string name="custom_game_match_removed">已移除匹配</string>
+    <string name="custom_game_match_save_failed">无法将匹配保存到游戏文件夹</string>
     <string name="base_app_exported">已导出</string>
     <string name="base_app_export_failed">无法导出：%s</string>
     <string name="base_app_export_cancelled">取消导出</string>
@@ -1814,6 +1821,7 @@
     <string name="option_submit_feedback">提交反馈</string>
     <string name="option_test_graphics">测试图形渲染</string>
     <string name="option_fetch_game_images">获取游戏封面</string>
+    <string name="option_match_game">匹配游戏</string>
 
     <!-- 容器配置：自定义分辨率 -->
     <string name="container_config_custom_resolution_title">设置自定义分辨率</string>

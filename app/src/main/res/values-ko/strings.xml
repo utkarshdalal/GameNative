@@ -687,6 +687,13 @@
     <string name="base_app_images_fetched">이미지를 성공적으로 가져왔습니다</string>
     <string name="base_app_game_folder_not_found">게임 폴더를 찾을 수 없음</string>
     <string name="base_app_images_fetch_failed">이미지 가져오기 실패: %s</string>
+    <string name="custom_game_match_description">이 게임이 어떤 게임인지 선택하세요. GameNative는 그 이름으로 알려진 설정, 커뮤니티 구성, 호환성 평가 및 이미지를 찾습니다. 게임 파일은 변경되지 않으며 사용자 지정 게임으로 유지됩니다.</string>
+    <string name="custom_game_matched_to">%1$s에 연결됨</string>
+    <string name="custom_game_match_no_results">게임을 찾을 수 없습니다. 더 짧은 이름으로 시도해 보세요.</string>
+    <string name="custom_game_match_search_failed">검색 실패: %1$s</string>
+    <string name="custom_game_match_remove">연결 해제</string>
+    <string name="custom_game_match_removed">연결이 해제되었습니다</string>
+    <string name="custom_game_match_save_failed">게임 폴더에 연결 정보를 저장할 수 없습니다</string>
     <string name="base_app_exported">내보내기 완료</string>
     <string name="base_app_export_failed">내보내기 실패: %s</string>
     <string name="base_app_export_cancelled">내보내기 취소됨</string>
@@ -1952,6 +1959,7 @@
     <string name="option_force_download_remote">원격 저장 파일 강제 다운로드</string>
     <string name="option_force_upload_local">로컬 저장 파일 강제 업로드</string>
     <string name="option_fetch_game_images">게임 이미지 가져오기</string>
+    <string name="option_match_game">게임 연결</string>
     <string name="option_test_graphics">그래픽 테스트</string>
     <string name="option_manage_dlc">DLC 관리</string>
     <string name="option_manage_workshop">워크숍 관리</string>
