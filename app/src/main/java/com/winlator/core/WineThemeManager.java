@@ -21,6 +21,7 @@ public abstract class WineThemeManager {
     public enum Theme {LIGHT, DARK}
     public enum BackgroundType {IMAGE, COLOR}
     public static final String DEFAULT_DESKTOP_THEME = Theme.LIGHT+","+BackgroundType.IMAGE+",#0277bd";
+    public static final String GAME_SESSION_THEME = Theme.DARK+","+BackgroundType.COLOR+",#000000";
 
     public static class ThemeInfo {
         public final Theme theme;
@@ -30,33 +31,14 @@ public abstract class WineThemeManager {
         public ThemeInfo(String value) {
             String[] values = value.split(",");
             theme = Theme.valueOf(values[0]);
-            if (values.length < 3) {
-                backgroundColor = Color.parseColor(values[1]);
-                backgroundType = BackgroundType.IMAGE;
-            }
-            else {
-                backgroundType = BackgroundType.valueOf(values[1]);
-                backgroundColor = Color.parseColor(values[2]);
-            }
+            backgroundType = BackgroundType.valueOf(values[1]);
+            backgroundColor = Color.parseColor(values[2]);
         }
-    }
-
-    // Game sessions get a black desktop: gamescope composites Wine's desktop
-    // surface, so the wallpaper would show through before the game's first frame
-    // and around its dialogs. The X11 renderers never draw explorer, so it is
-    // invisible there either way.
-    public static String gameSessionTheme(String value) {
-        ThemeInfo info = new ThemeInfo(value);
-        return info.theme + "," + BackgroundType.COLOR + ",#000000";
-    }
-
-    public static void apply(Context context, ThemeInfo themeInfo, ScreenInfo screenInfo) {
-        apply(context, themeInfo, screenInfo, true);
     }
 
     // The desktop is named "shell", which makes explorer draw its taskbar and
     // start menu; game sessions turn that off along with the standalone systray.
-    public static void apply(Context context, ThemeInfo themeInfo, ScreenInfo screenInfo, boolean enableShell) {
+    public static void apply(Context context, ThemeInfo themeInfo, ScreenInfo screenInfo, boolean showDesktop) {
         File rootDir = ImageFs.find(context).getRootDir();
         File userRegFile = new File(rootDir, ImageFs.WINEPREFIX+"/user.reg");
         String background = Color.red(themeInfo.backgroundColor)+" "+Color.green(themeInfo.backgroundColor)+" "+Color.blue(themeInfo.backgroundColor);
@@ -69,14 +51,8 @@ public abstract class WineThemeManager {
             }
             else registryEditor.removeValue("Control Panel\\Desktop", "Wallpaper");
 
-            if (enableShell) {
-                registryEditor.removeValue("Software\\Wine\\Explorer\\Desktops\\shell", "EnableShell");
-                registryEditor.removeValue("Software\\Wine\\Explorer\\Desktops\\shell", "ShowSystray");
-            }
-            else {
-                registryEditor.setDwordValue("Software\\Wine\\Explorer\\Desktops\\shell", "EnableShell", 0);
-                registryEditor.setDwordValue("Software\\Wine\\Explorer\\Desktops\\shell", "ShowSystray", 0);
-            }
+            registryEditor.setDwordValue("Software\\Wine\\Explorer\\Desktops\\shell", "EnableShell", showDesktop ? 1 : 0);
+            registryEditor.setDwordValue("Software\\Wine\\Explorer\\Desktops\\shell", "ShowSystray", showDesktop ? 1 : 0);
 
             if (themeInfo.theme == Theme.LIGHT) {
                 registryEditor.setStringValue("Control Panel\\Colors", "ActiveBorder", "245 245 245");

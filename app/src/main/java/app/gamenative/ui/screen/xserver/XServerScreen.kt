@@ -5868,13 +5868,9 @@ private suspend fun setupWineSystemFiles(
         cleanupBionicSteamAssets(imageFs)
     }
 
-    val desktopTheme = if (gameSession) WineThemeManager.gameSessionTheme(container.desktopTheme) else container.desktopTheme
-    val desktopThemeKey = desktopTheme + "," + screenInfo + if (gameSession) ",game" else ""
-    if (desktopThemeKey != container.getExtra("desktopTheme")) {
-        WineThemeManager.apply(context, WineThemeManager.ThemeInfo(desktopTheme), screenInfo, !gameSession)
-        container.putExtra("desktopTheme", desktopThemeKey)
-        containerDataChanged = true
-    }
+    // Better to directly update registry on every launch, no need to rely on container `desktopTheme` value
+    val desktopTheme = if (gameSession) WineThemeManager.GAME_SESSION_THEME else WineThemeManager.DEFAULT_DESKTOP_THEME
+    WineThemeManager.apply(context, WineThemeManager.ThemeInfo(desktopTheme), screenInfo, !gameSession)
 
     WineStartMenuCreator.create(context, container)
     WineUtils.createDosdevicesSymlinks(context, container)
