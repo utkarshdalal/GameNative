@@ -1,6 +1,7 @@
 package app.gamenative.ui.component.dialog
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,7 +34,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -95,22 +98,35 @@ fun CustomGameMatchDialog(
         onDismissRequest = onDismissRequest,
         title = { Text(stringResource(R.string.option_match_game)) },
         text = {
+            // On a controller, focus starts on the Search button and returns to it whenever the
+            // D-pad moves focus in from outside the content, and a search started there moves it on
+            // to the first result or Retry. The search field brings up the keyboard when focused, so
+            // it only gets focus when the user moves to it. These requests do nothing in touch mode.
+            val searchButtonFocus = remember { FocusRequester() }
+            var searchButtonFocused by remember { mutableStateOf(false) }
+            var fieldFocused by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) { runCatching { searchButtonFocus.requestFocus() } }
             // The dialog has its own window, so its keyboard controller must be read in here
             val keyboard = LocalSoftwareKeyboardController.current
             val search: () -> Unit = {
                 keyboard?.hide()
+                // Otherwise a focused Retry button going away would leave focus to land on the field
+                if (!fieldFocused) runCatching { searchButtonFocus.requestFocus() }
                 searchKey++
             }
-            // On a controller, focus starts on the Search button and moves to the first result or
-            // Retry unless the user is in the search field, which brings up the keyboard when focused.
-            // These requests do nothing in touch mode.
-            val searchButtonFocus = remember { FocusRequester() }
-            var fieldFocused by remember { mutableStateOf(false) }
-            LaunchedEffect(Unit) { runCatching { searchButtonFocus.requestFocus() } }
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = 420.dp)
+                    // requestFocus() enters with FocusDirection.Enter, so redirecting doesn't recurse
+                    .focusProperties {
+                        onEnter = {
+                            if (requestedFocusDirection != FocusDirection.Enter) {
+                                runCatching { searchButtonFocus.requestFocus() }
+                            }
+                        }
+                    }
+                    .focusGroup()
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -125,7 +141,7 @@ fun CustomGameMatchDialog(
                         color = MaterialTheme.colorScheme.primary,
                     )
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.Bottom) {
                     NoExtractOutlinedTextField(
                         value = query,
                         onValueChange = { query = it },
@@ -137,13 +153,14 @@ fun CustomGameMatchDialog(
                             .weight(1f)
                             .onFocusChanged { fieldFocused = it.hasFocus },
                     )
-                    // Beside the field, not its trailing icon, which a D-pad can't reach. The top
-                    // padding matches the field's label space so the two are centered together.
+                    // Beside the field, not its trailing icon, which a D-pad can't reach. Centered on
+                    // the field's 56dp outline, which sits below the space for its label.
                     IconButton(
                         onClick = search,
                         modifier = Modifier
-                            .padding(top = 8.dp)
-                            .focusRequester(searchButtonFocus),
+                            .padding(bottom = 4.dp)
+                            .focusRequester(searchButtonFocus)
+                            .onFocusChanged { searchButtonFocused = it.hasFocus },
                     ) {
                         Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search))
                     }
@@ -161,7 +178,7 @@ fun CustomGameMatchDialog(
 
                     error != null -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         val retryFocus = remember { FocusRequester() }
-                        LaunchedEffect(error) { if (!fieldFocused) runCatching { retryFocus.requestFocus() } }
+                        LaunchedEffect(error) { if (searchButtonFocused) runCatching { retryFocus.requestFocus() } }
                         Text(
                             text = error,
                             style = MaterialTheme.typography.bodyMedium,
@@ -182,7 +199,7 @@ fun CustomGameMatchDialog(
 
                     else -> Column {
                         val firstResultFocus = remember { FocusRequester() }
-                        LaunchedEffect(results) { if (!fieldFocused) runCatching { firstResultFocus.requestFocus() } }
+                        LaunchedEffect(results) { if (searchButtonFocused) runCatching { firstResultFocus.requestFocus() } }
                         results.forEachIndexed { index, game ->
                             ListItem(
                                 headlineContent = { Text(game.name) },
@@ -249,15 +266,15 @@ internal fun suggestedMatchQuery(folderName: String): String {
 }
 
 /**
- * False for the dot at [index] when it ends a word ("Dr. Langeskov", which the search needs) or is
- * in a number ("1.5.78") or an initialism ("S.T.A.L.K.E.R.").
+ * False for the dot at [index] when it ends an abbreviation ("Dr. Langeskov", which the search
+ * needs) or is in a number ("1.5.78") or an initialism ("S.T.A.L.K.E.R.").
  */
 private fun isWordSeparatorDot(text: String, index: Int): Boolean {
     val before = text.getOrNull(index - 1)
-    val after = text.getOrNull(index + 1) ?: return false
-    if (!after.isLetterOrDigit()) return false
-    if (before?.isDigit() == true && after.isDigit()) return false
+    val after = text.getOrNull(index + 1)
+    if (after == ' ' && text.getOrNull(index + 2)?.isLetter() == true) return false
+    if (before?.isDigit() == true && after?.isDigit() == true) return false
     val singleLetterBefore = before?.isLetter() == true && text.getOrNull(index - 2)?.isLetterOrDigit() != true
-    val wordAfter = text.getOrNull(index + 2)?.isLetterOrDigit() == true
+    val wordAfter = after?.isLetterOrDigit() == true && text.getOrNull(index + 2)?.isLetterOrDigit() == true
     return !singleLetterBefore || wordAfter
 }

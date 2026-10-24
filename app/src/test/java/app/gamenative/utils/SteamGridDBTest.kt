@@ -70,11 +70,22 @@ class SteamGridDBTest {
 
     private var savedFromWhenFetching: Int? = null
 
-    /** Runs replaceGameImages for a SteamGridDB match with id 5 and returns the files present when fetching. */
-    private fun filesWhenReplacing(folder: File, onImagesChanged: () -> Unit): List<String>? = runBlocking {
+    /**
+     * Runs replaceGameImages for a SteamGridDB match with id 5 and returns the files present when
+     * fetching. A search for [folderNameGameId]'s folder name finds that game id.
+     */
+    private fun filesWhenReplacing(
+        folder: File,
+        folderNameGameId: Int? = null,
+        onImagesChanged: () -> Unit = {},
+    ): List<String>? = runBlocking {
         val match = SteamGridDB.GameSearchResult(gameId = 5, name = "Hollow Knight", releaseDate = 0)
         mockkObject(SteamGridDB)
+        coEvery { SteamGridDB.searchGame(any()) } returns null
         coEvery { SteamGridDB.searchGame("Hollow Knight") } returns match
+        if (folderNameGameId != null) {
+            coEvery { SteamGridDB.searchGame(folder.name) } returns match.copy(gameId = folderNameGameId, name = folder.name)
+        }
         var files: List<String>? = null
         coEvery { SteamGridDB.fetchGameImages("Hollow Knight", folder.absolutePath, match) } coAnswers {
             files = folder.list()!!.filter { !it.startsWith(".") }.sorted()
@@ -84,6 +95,8 @@ class SteamGridDBTest {
         SteamGridDB.replaceGameImages("Hollow Knight", folder, onImagesChanged)
         files
     }
+
+    private val allImages = listOf("cover.png", "steamgriddb_grid_hero.png", "steamgriddb_hero.png")
 
     @Test
     fun replaceGameImages_imagesFromAnotherGame_areDeletedBeforeFetching() {
@@ -98,31 +111,34 @@ class SteamGridDBTest {
     }
 
     @Test
-    fun replaceGameImages_imagesWithoutRecordedGame_areKeptUntilMatched() {
-        val unmatched = folderWithImages()
-        GameMetadataManager.write(unmatched, GameMetadata(appId = 42))
-        assertEquals(
-            listOf("cover.png", "steamgriddb_grid_hero.png", "steamgriddb_hero.png"),
-            filesWhenReplacing(unmatched) {},
-        )
-
-        val matched = tempFolder.newFolder("matched").also { folder ->
-            listOf("steamgriddb_grid_hero.png", "cover.png").forEach { File(folder, it).writeText("x") }
-        }
-        GameMetadataManager.setMatch(matched, appId = 43, name = "Hollow Knight")
-        assertEquals(listOf("cover.png"), filesWhenReplacing(matched) {})
-    }
-
-    @Test
     fun replaceGameImages_imagesFromSameGame_areKept() {
         val folder = folderWithImages()
         GameMetadataManager.write(folder, GameMetadata(appId = 42, steamgriddbGameId = 5))
         var changes = 0
 
-        assertEquals(
-            listOf("cover.png", "steamgriddb_grid_hero.png", "steamgriddb_hero.png"),
-            filesWhenReplacing(folder) { changes++ },
-        )
+        assertEquals(allImages, filesWhenReplacing(folder) { changes++ })
         assertEquals(1, changes)
+    }
+
+    @Test
+    fun replaceGameImages_imagesWithoutRecordedGame_countAsTheFolderNamesGame() {
+        // Unmatched: the images were fetched for the folder name, which is the name searched now
+        val unmatched = folderWithImages()
+        GameMetadataManager.write(unmatched, GameMetadata(appId = 42))
+        assertEquals(allImages, filesWhenReplacing(unmatched))
+        assertEquals(5, savedFromWhenFetching)
+    }
+
+    @Test
+    fun replaceGameImages_imagesWithoutRecordedGame_afterMatch_areKeptOnlyIfFolderNameFindsSameGame() {
+        val sameGame = folderWithImages()
+        GameMetadataManager.setMatch(sameGame, appId = 42, name = "Hollow Knight")
+        assertEquals(allImages, filesWhenReplacing(sameGame, folderNameGameId = 5))
+
+        val otherGame = tempFolder.newFolder("other").also { folder ->
+            listOf("steamgriddb_grid_hero.png", "cover.png").forEach { File(folder, it).writeText("x") }
+        }
+        GameMetadataManager.setMatch(otherGame, appId = 43, name = "Hollow Knight")
+        assertEquals(listOf("cover.png"), filesWhenReplacing(otherGame, folderNameGameId = 4))
     }
 }

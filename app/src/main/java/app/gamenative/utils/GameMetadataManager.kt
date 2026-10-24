@@ -176,6 +176,27 @@ object GameMetadataManager {
         }
     }
 
+    /**
+     * Records [gameId] as the SteamGridDB game whose images are saved in [folder]. Replacing a
+     * different recorded game also drops the release date, which came from that game; fetching
+     * images sets it again. Does nothing if the folder has no metadata file.
+     */
+    fun setSteamGridDBGame(folder: File, gameId: Int) {
+        val gamenativeFile = File(folder, FILE_NAME)
+        val json = readJson(gamenativeFile) ?: return
+        val previous = json.optInt("steamgriddbGameId", 0)
+        if (previous == gameId) return
+        if (previous > 0) {
+            json.remove("releaseDate")
+        }
+        json.put("steamgriddbGameId", gameId)
+        try {
+            gamenativeFile.writeText(json.toString())
+        } catch (e: Exception) {
+            Timber.tag("GameMetadataManager").w(e, "Failed to save SteamGridDB game to ${gamenativeFile.absolutePath}")
+        }
+    }
+
     private fun readJson(gamenativeFile: File): JSONObject? {
         if (!gamenativeFile.isFile) return null
         return try {

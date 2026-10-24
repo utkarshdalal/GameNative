@@ -134,6 +134,9 @@ class CustomGameMatchDialogTest {
         assertEquals("Game Deluxe", suggestedMatchQuery("Game.v1.2.3.Deluxe"))
         assertEquals("Max Payne 3", suggestedMatchQuery("Max.Payne.3-RELOADED"))
         assertEquals("Celeste", suggestedMatchQuery("Celeste.v1.4.0.0-GOG"))
+        assertEquals("Hollow Knight", suggestedMatchQuery("Hollow.Knight.[GOG]"))
+        assertEquals("Hades", suggestedMatchQuery("Hades.v1.38290.(GOG)"))
+        assertEquals("Disco Elysium - The Final Cut", suggestedMatchQuery("Disco.Elysium.-.The.Final.Cut"))
     }
 
     @Test

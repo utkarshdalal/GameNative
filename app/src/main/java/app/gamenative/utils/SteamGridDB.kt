@@ -566,13 +566,13 @@ object SteamGridDB {
         val metadata = GameMetadataManager.read(gameFolder)
         // Images saved before the id was recorded were fetched for the folder name
         val savedFrom = metadata?.steamgriddbGameId
-        val sameGame = savedFrom == searchResult.gameId || (savedFrom == null && metadata?.matchedName == null)
-        if (!sameGame) {
+            ?: if (metadata?.matchedName == null) searchResult.gameId else searchGame(gameFolder.name)?.gameId
+        if (savedFrom != searchResult.gameId) {
             deleteGameImages(gameFolder)
-            // Recorded before downloading, so images left by an interrupted fetch are known to be this game's
-            GameMetadataManager.update(gameFolder, steamgriddbGameId = searchResult.gameId)
             onImagesChanged()
         }
+        // Recorded before downloading, so images left by an interrupted fetch are known to be this game's
+        GameMetadataManager.setSteamGridDBGame(gameFolder, searchResult.gameId)
         fetchGameImages(gameName, gameFolder.absolutePath, searchResult)
         onImagesChanged()
     }

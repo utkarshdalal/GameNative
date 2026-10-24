@@ -105,6 +105,38 @@ class GameMetadataManagerTest {
     }
 
     @Test
+    fun setSteamGridDBGame_replacingAnotherGame_dropsItsReleaseDate() {
+        val folder = tempFolder.newFolder("game")
+        GameMetadataManager.write(folder, GameMetadata(appId = 42, releaseDate = 1_500_000_000L, steamgriddbGameId = 4))
+
+        GameMetadataManager.setSteamGridDBGame(folder, 5)
+
+        assertEquals(GameMetadata(appId = 42, steamgriddbGameId = 5), GameMetadataManager.read(folder))
+    }
+
+    @Test
+    fun setSteamGridDBGame_firstRecordedGame_keepsReleaseDate() {
+        val folder = tempFolder.newFolder("game")
+        GameMetadataManager.write(folder, GameMetadata(appId = 42, releaseDate = 1_500_000_000L))
+
+        GameMetadataManager.setSteamGridDBGame(folder, 5)
+
+        assertEquals(
+            GameMetadata(appId = 42, releaseDate = 1_500_000_000L, steamgriddbGameId = 5),
+            GameMetadataManager.read(folder),
+        )
+    }
+
+    @Test
+    fun setSteamGridDBGame_withoutMetadataFile_doesNothing() {
+        val folder = tempFolder.newFolder("game")
+
+        GameMetadataManager.setSteamGridDBGame(folder, 5)
+
+        assertFalse(File(folder, ".gamenative").exists())
+    }
+
+    @Test
     fun write_keepsKeysItDoesNotKnow() {
         val folder = tempFolder.newFolder("game")
         File(folder, ".gamenative").writeText("""{"appId":42,"futureField":"kept"}""")
