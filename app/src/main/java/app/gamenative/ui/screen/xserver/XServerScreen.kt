@@ -2001,6 +2001,11 @@ fun XServerScreen(
                     ?.dispatchTouchEvent(event) == true
                 if (overlayHandled) return@pointerInteropFilter true
 
+                // A paused guest cannot drain its X socket. Do not forward touches to TouchpadView or
+                // InputControlsView while an overlay has SIGSTOPped it: their synchronous X event writes would
+                // otherwise block this UI callback and trigger an input-dispatch ANR.
+                if (PluviaApp.isOverlayPaused) return@pointerInteropFilter true
+
                 if (isPortrait) {
                     ui.gameRoot?.dispatchTouchEvent(event)
                 } else {
