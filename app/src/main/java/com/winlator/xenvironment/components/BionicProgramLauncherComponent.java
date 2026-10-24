@@ -550,15 +550,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         if (container != null && container.getGraphicsDriver() != null)
             envVars.put("GNDRM_DRIVER_TYPE", container.getGraphicsDriver());
 
-        // The guest image name for the session reaper's game-exit watch.
-        String gameExecutable = container != null ? container.getExecutablePath() : "";
-        if (gameExecutable != null && !gameExecutable.isEmpty()) {
-            int separator = Math.max(gameExecutable.lastIndexOf('/'), gameExecutable.lastIndexOf('\\'));
-            String gameImage = separator >= 0 ? gameExecutable.substring(separator + 1) : gameExecutable;
-            if (!gameImage.isEmpty())
-                envVars.put("GAMENATIVE_GAME_PROCESS", gameImage);
-        }
-
         // Same source as gamescope's -W/-H, so the two cannot drift.
         int[] scanoutOutput = displaySize();
         if (scanoutOutput == null)
