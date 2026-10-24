@@ -3006,4 +3006,6 @@
     <string name="support_files_listing_sending">Liste von %1$s wird gesendet</string>
     <string name="support_files_listing_sent">Liste gesendet (%1$d Einträge)</string>
     <string name="support_files_listing_failed">Die Liste von %1$s konnte nicht gesendet werden. %2$s</string>
+    <string name="orientation_landscape_camera_left">Querformat, Frontkamera links</string>
+    <string name="orientation_reverse_landscape_camera_right">Querformat gedreht, Frontkamera rechts</string>
 </resources>
