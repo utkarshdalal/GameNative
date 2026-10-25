@@ -113,6 +113,7 @@ static PFN_vkBindImageMemory p_vkBindImageMemory;
 static PFN_vkGetImageSubresourceLayout p_vkGetImageSubresourceLayout;
 static PFN_vkGetImageDrmFormatModifierPropertiesEXT p_vkGetImageDrmFormatModifierPropertiesEXT;
 static PFN_vkGetMemoryFdKHR p_vkGetMemoryFdKHR;
+static PFN_vkGetMemoryFdPropertiesKHR p_vkGetMemoryFdPropertiesKHR;
 static PFN_vkCreateFence p_vkCreateFence;
 static PFN_vkDestroyFence p_vkDestroyFence;
 static PFN_vkWaitForFences p_vkWaitForFences;
@@ -443,6 +444,7 @@ static void load_vulkan_functions(void)
     LOAD_DEVICE(vkGetImageSubresourceLayout);
     LOAD_DEVICE(vkGetImageDrmFormatModifierPropertiesEXT);
     LOAD_DEVICE(vkGetMemoryFdKHR);
+    LOAD_DEVICE(vkGetMemoryFdPropertiesKHR);
     LOAD_DEVICE(vkCreateFence);
     LOAD_DEVICE(vkDestroyFence);
     LOAD_DEVICE(vkWaitForFences);
@@ -469,6 +471,7 @@ static void load_vulkan_functions(void)
     if (!p_##name) p_##name = (PFN_##name)dlsym(vulkan_so, #name)
     LOAD_HOST_TRAMPOLINE(vkGetImageDrmFormatModifierPropertiesEXT);
     LOAD_HOST_TRAMPOLINE(vkGetMemoryFdKHR);
+    LOAD_HOST_TRAMPOLINE(vkGetMemoryFdPropertiesKHR);
     LOAD_HOST_TRAMPOLINE(vkGetFenceFdKHR);
 #if defined(__ANDROID__)
     LOAD_HOST_TRAMPOLINE(vkGetAndroidHardwareBufferPropertiesANDROID);
@@ -511,22 +514,29 @@ static void log_vk_result(const char *operation, VkResult result)
 }
 
 #if defined(__ANDROID__)
+static int create_ahardwarebuffer_transport(
+    const struct gn_swapchain *swapchain, struct gn_transport_image *transport);
+static void destroy_transport_image(struct gn_transport_image *transport);
+
 static int ahb_transport_probe(void)
 {
     static int cached;
     if (cached) return cached > 0;
-    AHardwareBuffer_Desc descriptor = {
-        .width = 16,
-        .height = 16,
-        .layers = 1,
-        .format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM,
-        .usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE |
-                 AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT
-    };
-    AHardwareBuffer *buffer = NULL;
-    if (p_vkGetAndroidHardwareBufferPropertiesANDROID && command_pool &&
-        p_vkCmdCopyImage && AHardwareBuffer_allocate(&descriptor, &buffer) == 0 && buffer) {
-        AHardwareBuffer_release(buffer);
+    /* Optimal-tiling render targets have no dma-buf of their own, so they are only safe when a
+     * transport image can really be created on the game's device: try one. */
+    int available = 0;
+    if ((p_vkGetAndroidHardwareBufferPropertiesANDROID || p_vkGetMemoryFdPropertiesKHR) &&
+        command_pool && p_vkCmdCopyImage) {
+        struct gn_swapchain trial;
+        struct gn_transport_image transport;
+        memset(&trial, 0, sizeof(trial));
+        memset(&transport, 0, sizeof(transport));
+        trial.width = 16;
+        trial.height = 16;
+        available = create_ahardwarebuffer_transport(&trial, &transport);
+        destroy_transport_image(&transport);
+    }
+    if (available) {
         cached = 1;
         log_line("AHardwareBuffer transport available; using optimal-tiling render targets");
     } else {
@@ -1658,9 +1668,183 @@ static int ahardwarebuffer_dmabuf_fd(AHardwareBuffer *buffer)
     return fd;
 }
 
+/* The same transport image for a game device without VK_ANDROID_external_memory_android_hardware_buffer,
+ * such as Mali through the Wrapper ICD: the AHardwareBuffer goes in through its dma-buf instead. That
+ * driver cannot export memory either (vkGetMemoryFdKHR succeeds with fd -1), so importing is what keeps
+ * the frame zero-copy. */
+static int create_dmabuf_import_transport(
+    const struct gn_swapchain *swapchain, struct gn_transport_image *transport)
+{
+    if (!p_vkGetMemoryFdPropertiesKHR || !command_pool ||
+        !p_vkAllocateCommandBuffers || !p_vkResetCommandBuffer ||
+        !p_vkBeginCommandBuffer || !p_vkEndCommandBuffer ||
+        !p_vkCmdPipelineBarrier || !p_vkCmdCopyImage || !p_vkQueueSubmit)
+        return 0;
+
+    /* CPU access keeps gralloc from compressing the buffer, so its dma-buf is a plain linear
+     * image (DRM format modifier 0) with the stride AHardwareBuffer_describe reports. */
+    AHardwareBuffer_Desc descriptor = {
+        .width = swapchain->width,
+        .height = swapchain->height,
+        .layers = 1,
+        .format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM,
+        .usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE |
+                 AHARDWAREBUFFER_USAGE_CPU_READ_RARELY
+    };
+    AHardwareBuffer *buffer = NULL;
+    if (AHardwareBuffer_allocate(&descriptor, &buffer) != 0 || !buffer) {
+        log_line("AHardwareBuffer allocation unavailable; using dma-buf fallback");
+        return 0;
+    }
+    transport->hardware_buffer = buffer;
+    AHardwareBuffer_describe(buffer, &descriptor);
+    int fd = ahardwarebuffer_dmabuf_fd(buffer);
+    if (fd < 0) {
+        log_line("AHardwareBuffer has no dma-buf handle");
+        goto fail;
+    }
+
+    /* Mali-G715 through the Wrapper accepts the explicit modifier-0 layout and a [0] modifier
+     * list, and rejects VK_IMAGE_TILING_LINEAR. With the last two the driver picks the layout,
+     * so it has to match the buffer's. */
+    const VkDeviceSize row_pitch = (VkDeviceSize)descriptor.stride * 4u;
+    const uint64_t linear_modifier = 0;
+    VkSubresourceLayout plane = {.offset = 0, .rowPitch = row_pitch};
+    VkImageDrmFormatModifierExplicitCreateInfoEXT explicit_modifier = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT,
+        .drmFormatModifier = linear_modifier,
+        .drmFormatModifierPlaneCount = 1,
+        .pPlaneLayouts = &plane
+    };
+    VkImageDrmFormatModifierListCreateInfoEXT modifier_list = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT,
+        .drmFormatModifierCount = 1,
+        .pDrmFormatModifiers = &linear_modifier
+    };
+    VkExternalMemoryImageCreateInfo external = {
+        .sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO,
+        .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT
+    };
+    VkImageCreateInfo image_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .pNext = &external,
+        .imageType = VK_IMAGE_TYPE_2D,
+        .format = VK_FORMAT_R8G8B8A8_UNORM,
+        .extent = {swapchain->width, swapchain->height, 1},
+        .mipLevels = 1,
+        .arrayLayers = 1,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
+    };
+    VkResult result = VK_ERROR_FORMAT_NOT_SUPPORTED;
+    int layout_choice = 0;
+    for (; layout_choice < 3; ++layout_choice) {
+        external.pNext = layout_choice == 0 ? (const void *)&explicit_modifier :
+                         layout_choice == 1 ? (const void *)&modifier_list : NULL;
+        image_info.tiling = layout_choice == 2 ?
+            VK_IMAGE_TILING_LINEAR : VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT;
+        result = p_vkCreateImage(device, &image_info, NULL, &transport->image);
+        if (result == VK_SUCCESS) break;
+        transport->image = VK_NULL_HANDLE;
+    }
+    if (result != VK_SUCCESS) {
+        log_vk_result("vkCreateImage(AHardwareBuffer dma-buf)", result);
+        close(fd);
+        goto fail;
+    }
+    if (layout_choice != 0 && p_vkGetImageSubresourceLayout) {
+        VkImageSubresource subresource = {
+            .aspectMask = layout_choice == 1 ?
+                VK_IMAGE_ASPECT_MEMORY_PLANE_0_BIT_EXT : VK_IMAGE_ASPECT_COLOR_BIT
+        };
+        VkSubresourceLayout layout;
+        p_vkGetImageSubresourceLayout(device, transport->image, &subresource, &layout);
+        if (layout.rowPitch != row_pitch || layout.offset != 0) {
+            log_line("AHardwareBuffer dma-buf pitch does not match the Vulkan image");
+            close(fd);
+            goto fail;
+        }
+    }
+
+    VkMemoryRequirements requirements;
+    p_vkGetImageMemoryRequirements(device, transport->image, &requirements);
+    VkMemoryFdPropertiesKHR fd_properties = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_FD_PROPERTIES_KHR
+    };
+    result = p_vkGetMemoryFdPropertiesKHR(
+        device, VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT, fd, &fd_properties);
+    if (result != VK_SUCCESS) {
+        log_vk_result("vkGetMemoryFdPropertiesKHR(AHardwareBuffer dma-buf)", result);
+        close(fd);
+        goto fail;
+    }
+    const off_t dma_buf_size = lseek(fd, 0, SEEK_END);
+    int memory_type = find_memory_type(
+        requirements.memoryTypeBits & fd_properties.memoryTypeBits, 0);
+    if (memory_type < 0 ||
+        (dma_buf_size > 0 && requirements.size > (VkDeviceSize)dma_buf_size)) {
+        log_line("No compatible memory type for AHardwareBuffer dma-buf image");
+        close(fd);
+        goto fail;
+    }
+    VkImportMemoryFdInfoKHR import_info = {
+        .sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR,
+        .handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
+        .fd = fd
+    };
+    VkMemoryDedicatedAllocateInfo dedicated = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO,
+        .pNext = &import_info,
+        .image = transport->image
+    };
+    VkMemoryAllocateInfo allocate_info = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .pNext = &dedicated,
+        .allocationSize = requirements.size,
+        .memoryTypeIndex = (uint32_t)memory_type
+    };
+    result = p_vkAllocateMemory(
+        device, &allocate_info, NULL, &transport->memory);
+    if (result != VK_SUCCESS) {
+        /* Only a successful import takes ownership of the fd. */
+        log_vk_result("vkAllocateMemory(AHardwareBuffer dma-buf)", result);
+        close(fd);
+        goto fail;
+    }
+    result = p_vkBindImageMemory(
+        device, transport->image, transport->memory, 0);
+    if (result != VK_SUCCESS) {
+        log_vk_result("vkBindImageMemory(AHardwareBuffer dma-buf)", result);
+        goto fail;
+    }
+
+    VkCommandBufferAllocateInfo command_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool = command_pool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1
+    };
+    result = p_vkAllocateCommandBuffers(
+        device, &command_info, &transport->command_buffer);
+    if (result != VK_SUCCESS) {
+        log_vk_result("vkAllocateCommandBuffers(AHardwareBuffer dma-buf)", result);
+        goto fail;
+    }
+    log_line("AHardwareBuffer Vulkan transport image created through its dma-buf");
+    return 1;
+
+fail:
+    destroy_transport_image(transport);
+    return 0;
+}
+
 static int create_ahardwarebuffer_transport(
     const struct gn_swapchain *swapchain, struct gn_transport_image *transport)
 {
+    if (!p_vkGetAndroidHardwareBufferPropertiesANDROID)
+        return create_dmabuf_import_transport(swapchain, transport);
     if (!p_vkGetAndroidHardwareBufferPropertiesANDROID || !command_pool ||
         !p_vkAllocateCommandBuffers || !p_vkResetCommandBuffer ||
         !p_vkBeginCommandBuffer || !p_vkEndCommandBuffer ||
@@ -2209,7 +2393,7 @@ static int32_t unix_set_vulkan_context(void *opaque)
     }
     load_vulkan_functions();
 #if defined(__ANDROID__)
-    if (p_vkGetAndroidHardwareBufferPropertiesANDROID &&
+    if ((p_vkGetAndroidHardwareBufferPropertiesANDROID || p_vkGetMemoryFdPropertiesKHR) &&
         p_vkCreateCommandPool && !command_pool) {
         VkCommandPoolCreateInfo pool_info = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
