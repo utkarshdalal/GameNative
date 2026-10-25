@@ -1799,9 +1799,10 @@ static int record_ahardwarebuffer_copy(
         log_vk_result("vkResetCommandBuffer(AHardwareBuffer)", result);
         return 0;
     }
+    /* Not ONE_TIME_SUBMIT: the steady recording is submitted again every frame, and a one-time
+     * buffer becomes invalid once it has executed. */
     VkCommandBufferBeginInfo begin = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
     };
     result = p_vkBeginCommandBuffer(transport->command_buffer, &begin);
     if (result != VK_SUCCESS) {
@@ -1812,8 +1813,9 @@ static int record_ahardwarebuffer_copy(
     VkImageMemoryBarrier before[2] = {
         {
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-                             VK_ACCESS_SHADER_WRITE_BIT,
+            /* Submitted right behind the game's frame: any write to the image, including a
+             * copy or resolve into it, has to be made available to this copy. */
+            .srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT,
             .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
             .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
             .newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
@@ -2430,13 +2432,17 @@ static int send_frame(const struct gn_unix_submit_view_args *view, int fence_fd,
 
 /* Asynchronous frame shipper: xrEndFrame used to drain the game's GPU queue synchronously
  * before transporting the frame, serializing the game's CPU and GPU completely. Instead,
- * xrEndFrame drops a fence on the game queue and returns; this worker waits for the render
- * to finish, runs the transport (relay copy + socket send), and the game overlaps its next
- * frame's CPU work with the GPU. */
+ * xrEndFrame submits the frame's copies behind the render with a fence and returns; this
+ * worker waits for that fence, runs the rest of the transport (relay copy + socket send),
+ * and the game overlaps its next frame's CPU work with the GPU.
+ * The worker never touches the game's VkQueue: a VkQueue must be externally synchronized,
+ * and xrEndFrame is where it is ours (the PE runtime holds DXVK's or vkd3d's submission lock
+ * around it, and XR_KHR_vulkan_enable only lets a runtime use the queue inside such calls). */
 struct gn_pending_submit {
     struct gn_unix_submit_view_args views[GN_UNIX_MAX_VIEWS];
     uint32_t view_count;
     VkFence fence;
+    int fence_fd;
     int used;
 };
 
@@ -2448,6 +2454,7 @@ static int submit_thread_running;
 static int submit_worker_busy;
 
 static int submit_views_transport(const struct gn_unix_submit_view_args *views, uint32_t view_count);
+static int ship_views(const struct gn_unix_submit_view_args *views, uint32_t view_count, int fence_fd);
 
 static void *submit_worker(void *unused)
 {
@@ -2472,7 +2479,7 @@ static void *submit_worker(void *unused)
             p_vkWaitForFences(device, 1, &item.fence, VK_TRUE, UINT64_MAX);
             p_vkDestroyFence(device, item.fence, NULL);
         }
-        if (!submit_views_transport(item.views, item.view_count)) {
+        if (!ship_views(item.views, item.view_count, item.fence_fd)) {
             static int failure_logged;
             if (!failure_logged) {
                 failure_logged = 1;
@@ -2504,6 +2511,155 @@ static void submit_worker_flush(void)
     pthread_mutex_unlock(&submit_mutex);
 }
 
+/* Runs inside xrEndFrame. Records the AHardwareBuffer copies and submits them (or an empty batch)
+ * right behind the game's frame; the fence covers the render and the copies. Its sync_fd goes to the
+ * receiver when it can be exported and no relay copy has to wait for the render on the host. */
+static int submit_game_queue_copies(const struct gn_unix_submit_view_args *views, uint32_t view_count,
+                                    VkFence *fence_out, int *fence_fd_out)
+{
+    VkCommandBuffer commands[GN_UNIX_MAX_VIEWS];
+    struct gn_transport_image *recorded[GN_UNIX_MAX_VIEWS];
+    uint32_t command_count = 0;
+    uint32_t relay_count = 0;
+    *fence_out = VK_NULL_HANDLE;
+    *fence_fd_out = -1;
+    pthread_mutex_lock(&socket_mutex);
+    for (uint32_t i = 0; i < view_count; ++i) {
+        const struct gn_unix_submit_view_args *view = &views[i];
+        if (!register_image(view->slot, view->image_index, view->eye,
+                            view->array_index)) {
+            pthread_mutex_unlock(&socket_mutex);
+            return 0;
+        }
+#if defined(__ANDROID__)
+        struct gn_image *image =
+            &swapchains[view->slot].images[view->image_index];
+        if (image->transport_kind[view->eye] == GN_TRANSPORT_RELAY) ++relay_count;
+        if (image->transport_kind[view->eye] != GN_TRANSPORT_AHARDWAREBUFFER) continue;
+        struct gn_transport_image *transport = &image->transport[view->eye];
+        if (!record_ahardwarebuffer_copy(
+                &swapchains[view->slot], image, transport,
+                view->array_index)) {
+            const uint8_t bit = (uint8_t)(1u << view->eye);
+            log_line("AHardwareBuffer GPU copy failed; switching image to dma-buf");
+            destroy_transport_image(transport);
+            image->transport_kind[view->eye] = GN_TRANSPORT_DMABUF;
+            image->registered_eye_mask &= (uint8_t)~bit;
+            if (!register_image(view->slot, view->image_index, view->eye,
+                                view->array_index)) {
+                pthread_mutex_unlock(&socket_mutex);
+                return 0;
+            }
+            continue;
+        }
+        commands[command_count] = transport->command_buffer;
+        recorded[command_count] = transport;
+        ++command_count;
+#endif
+    }
+    pthread_mutex_unlock(&socket_mutex);
+
+    const int can_export = command_count && !relay_count && p_vkGetFenceFdKHR;
+    VkExportFenceCreateInfo export_info = {
+        .sType = VK_STRUCTURE_TYPE_EXPORT_FENCE_CREATE_INFO,
+        .handleTypes = VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT
+    };
+    VkFenceCreateInfo fence_info = {
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+        .pNext = can_export ? &export_info : NULL
+    };
+    VkFence fence = VK_NULL_HANDLE;
+    VkResult result = p_vkCreateFence(device, &fence_info, NULL, &fence);
+    if (result != VK_SUCCESS) {
+        log_vk_result("vkCreateFence(frame copy)", result);
+        return 0;
+    }
+    VkSubmitInfo submit = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .commandBufferCount = command_count,
+        .pCommandBuffers = command_count ? commands : NULL
+    };
+    result = p_vkQueueSubmit(queue, 1, &submit, fence);
+    if (result != VK_SUCCESS) {
+        log_vk_result("vkQueueSubmit(frame copy)", result);
+        p_vkDestroyFence(device, fence, NULL);
+        return 0;
+    }
+    for (uint32_t i = 0; i < command_count; ++i) recorded[i]->initialized = 1;
+
+    if (can_export) {
+        VkFenceGetFdInfoKHR fd_info = {
+            .sType = VK_STRUCTURE_TYPE_FENCE_GET_FD_INFO_KHR,
+            .fence = fence,
+            .handleType = VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT
+        };
+        int fd = -1;
+        if (p_vkGetFenceFdKHR(device, &fd_info, &fd) == VK_SUCCESS && fd >= 0) {
+            p_vkDestroyFence(device, fence, NULL);
+            *fence_fd_out = fd;
+            return 1;
+        }
+    }
+    *fence_out = fence;
+    return 1;
+}
+
+/* Worker side: the game's GPU work is done, or covered by fence_fd. Relay copies run on the relay
+ * device's own queue, which only this thread uses; then every view goes to the receiver. Takes
+ * ownership of fence_fd. */
+static int ship_views(const struct gn_unix_submit_view_args *views, uint32_t view_count, int fence_fd)
+{
+    pthread_mutex_lock(&socket_mutex);
+#if defined(__ANDROID__)
+    VkCommandBuffer relay_commands[GN_UNIX_MAX_VIEWS];
+    struct gn_transport_image *relay_recorded[GN_UNIX_MAX_VIEWS];
+    uint32_t relay_count = 0;
+    for (uint32_t i = 0; i < view_count; ++i) {
+        const struct gn_unix_submit_view_args *view = &views[i];
+        struct gn_image *image =
+            &swapchains[view->slot].images[view->image_index];
+        if (image->transport_kind[view->eye] != GN_TRANSPORT_RELAY) continue;
+        struct gn_transport_image *transport = &image->transport[view->eye];
+        if (!relay_record_copy(&swapchains[view->slot], image, transport,
+                               view->array_index)) {
+            if (fence_fd >= 0) close(fence_fd);
+            pthread_mutex_unlock(&socket_mutex);
+            return 0;
+        }
+        relay_commands[relay_count] = transport->command_buffer;
+        relay_recorded[relay_count] = transport;
+        ++relay_count;
+    }
+    if (relay_count) {
+        int relay_ok = 0;
+        int relay_fence = relay_submit(relay_commands, relay_count, &relay_ok);
+        if (!relay_ok) {
+            if (relay_fence >= 0) close(relay_fence);
+            if (fence_fd >= 0) close(fence_fd);
+            pthread_mutex_unlock(&socket_mutex);
+            return 0;
+        }
+        for (uint32_t i = 0; i < relay_count; ++i) relay_recorded[i]->initialized = 1;
+        if (fence_fd >= 0) close(fence_fd);
+        fence_fd = relay_fence;
+    }
+#endif
+
+    int ok = 1;
+    const uint64_t frame_id = ++transport_frame_id;
+    for (uint32_t i = 0; i < view_count; ++i) {
+        const int view_fence_fd = i == 0 ? fence_fd : -1;
+        if (!send_frame(&views[i], view_fence_fd, frame_id, view_count)) {
+            ok = 0;
+            break;
+        }
+    }
+    if (fence_fd >= 0) close(fence_fd);
+
+    pthread_mutex_unlock(&socket_mutex);
+    return ok;
+}
+
 static int submit_views_async(const struct gn_unix_submit_view_args *views, uint32_t view_count)
 {
     if (!p_vkWaitForFences || !p_vkCreateFence || !p_vkDestroyFence || !p_vkQueueSubmit)
@@ -2521,15 +2677,25 @@ static int submit_views_async(const struct gn_unix_submit_view_args *views, uint
     }
     pthread_mutex_unlock(&submit_mutex);
 
-    VkFence fence = VK_NULL_HANDLE;
-    VkFenceCreateInfo fence_info = {.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-    if (p_vkCreateFence(device, &fence_info, NULL, &fence) == VK_SUCCESS) {
-        VkSubmitInfo marker = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO};
-        if (p_vkQueueSubmit(queue, 1, &marker, fence) != VK_SUCCESS) {
-            p_vkDestroyFence(device, fence, NULL);
-            fence = VK_NULL_HANDLE;
-        }
+    if (!view_count || view_count > GN_UNIX_MAX_VIEWS) return 0;
+    for (uint32_t i = 0; i < view_count; ++i) {
+        const struct gn_unix_submit_view_args *view = &views[i];
+        if (view->slot >= GN_UNIX_MAX_SWAPCHAINS || view->eye >= GN_UNIX_MAX_VIEWS ||
+            view->image_index >= swapchains[view->slot].image_count)
+            return 0;
     }
+    /* The copy's command buffer is reused, so an image submitted again before its last copy has
+     * run (a layer that keeps an image without acquiring a new one) waits for that copy first. */
+    pthread_mutex_lock(&submit_mutex);
+    for (uint32_t i = 0; i < view_count; ++i) {
+        while (image_copy_busy[views[i].slot][views[i].image_index])
+            pthread_cond_wait(&submit_space_cond, &submit_mutex);
+    }
+    pthread_mutex_unlock(&submit_mutex);
+
+    VkFence fence = VK_NULL_HANDLE;
+    int fence_fd = -1;
+    if (!submit_game_queue_copies(views, view_count, &fence, &fence_fd)) return 0;
 
     pthread_mutex_lock(&submit_mutex);
     while (submit_ring[submit_ring_head].used)
@@ -2537,12 +2703,11 @@ static int submit_views_async(const struct gn_unix_submit_view_args *views, uint
     struct gn_pending_submit *slot = &submit_ring[submit_ring_head];
     for (uint32_t i = 0; i < view_count; ++i) {
         slot->views[i] = views[i];
-        if (views[i].slot < GN_UNIX_MAX_SWAPCHAINS &&
-            views[i].image_index < GN_UNIX_MAX_IMAGES)
-            ++image_copy_busy[views[i].slot][views[i].image_index];
+        ++image_copy_busy[views[i].slot][views[i].image_index];
     }
     slot->view_count = view_count;
     slot->fence = fence;
+    slot->fence_fd = fence_fd;
     slot->used = 1;
     submit_ring_head = (submit_ring_head + 1) % 4;
     pthread_cond_signal(&submit_cond);
