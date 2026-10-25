@@ -6645,8 +6645,7 @@ private suspend fun extractGraphicsDriverFiles(
         val isWrapperGamenative = graphicsDriver.equals("wrapper-gamenative", ignoreCase = true)
         val vendorId = GPUInformation.getVendorID(null, null)
         val isAdreno = vendorId == 0x5143
-        val isXclipse = vendorId == 0x144D
-        val excludeBcnCompute = isAdreno || (isWrapperGamenative && isXclipse)
+        val excludeBcnCompute = isAdreno || isWrapperGamenative
         val bcnEmulation = graphicsDriverConfig.get("bcnEmulation")
         val bcnEmulationType = graphicsDriverConfig.get("bcnEmulationType")
         when (bcnEmulation) {
