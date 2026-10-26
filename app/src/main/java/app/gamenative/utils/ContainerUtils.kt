@@ -437,8 +437,12 @@ object ContainerUtils {
                 }
                     ?: updatedData
                 "dxwrapper" -> value?.let { updatedData.copy(dxwrapper = it as? String ?: updatedData.dxwrapper) } ?: updatedData
-                "dxwrapperConfig" -> value?.let { updatedData.copy(dxwrapperConfig = it as? String ?: updatedData.dxwrapperConfig) }
-                    ?: updatedData
+                "dxwrapperConfig" -> value?.let {
+                    val dxwrapperConfig = it as? String ?: updatedData.dxwrapperConfig
+                    val csmt = KeyValueSet(dxwrapperConfig).get("csmt").toIntOrNull()?.let { value -> value != 0 }
+                        ?: updatedData.csmt
+                    updatedData.copy(dxwrapperConfig = dxwrapperConfig, csmt = csmt)
+                } ?: updatedData
                 "execArgs" -> value?.let { updatedData.copy(execArgs = it as? String ?: updatedData.execArgs) } ?: updatedData
                 "startupSelection" -> value?.let {
                     updatedData.copy(
