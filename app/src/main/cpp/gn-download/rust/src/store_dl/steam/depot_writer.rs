@@ -7,7 +7,7 @@ use futures_util::stream::FuturesUnordered;
 use futures_util::StreamExt;
 use std::collections::{HashMap, VecDeque};
 use std::fs::{self, File, OpenOptions};
-use std::path::{Component, Path};
+use std::path::{Component, Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -537,9 +537,6 @@ pub fn prune_removed_files(
 ) -> PruneStats {
     let mut stats = PruneStats::default();
     let root = Path::new(target_dir);
-    // Resolved once: the containment check below compares each removed file's parent against it,
-    // because a lexical prefix check cannot see through a symlinked directory inside the install.
-    let canonical_root = std::fs::canonicalize(root).ok();
     for name in removed {
         if !path_is_safe(name) {
             stats.unsafe_paths += 1;
@@ -558,23 +555,17 @@ pub fn prune_removed_files(
             continue;
         }
         // `starts_with` is lexical: if a parent directory inside the install is a symlink pointing
-        // out of it, the unlink would follow it. Require the RESOLVED parent to stay beneath the
-        // resolved install root; when the parent cannot be resolved (already gone, unreadable) the
-        // lexical check above stands and the unlink simply fails.
-        if let (Some(canonical_root), Some(parent)) = (
-            canonical_root.as_ref(),
-            path.parent().and_then(|p| std::fs::canonicalize(p).ok()),
-        ) {
-            if !parent.starts_with(canonical_root) {
-                stats.unsafe_paths += 1;
-                if let Some(log) = log {
-                    log(&format!(
-                        "depot-prune: '{}' resolves outside the install dir — kept",
-                        path.display()
-                    ));
-                }
-                continue;
+        // out of it, the unlink would follow it. Walk the path from the root instead (no
+        // `canonicalize` — see `resolve_within` for why mount aliases make it lie on Android).
+        if resolve_within(target_dir, &path.to_string_lossy()).is_err() {
+            stats.unsafe_paths += 1;
+            if let Some(log) = log {
+                log(&format!(
+                    "depot-prune: '{}' resolves outside the install dir — kept",
+                    path.display()
+                ));
             }
+            continue;
         }
         match fs::remove_file(&path) {
             Ok(()) => {
@@ -1678,6 +1669,9 @@ struct DepotFiles {
     trusted_chunks: std::collections::HashSet<(u32, u32)>,
     /// Install root, so a file's parent directory is proven to be inside it before the first open.
     base: String,
+    /// Parent directories already proven to be inside the install root. Thousands of files share a
+    /// few dozen directories, so the walk happens once per directory, not once per file.
+    checked_parents: Mutex<std::collections::HashSet<String>>,
 }
 
 /// Normalize manifest file paths to case-insensitive (Windows / Android-storage) semantics:
@@ -1773,6 +1767,7 @@ impl DepotFiles {
         Self {
             slots,
             base: target_dir.to_string(),
+            checked_parents: Mutex::new(std::collections::HashSet::new()),
             already_present_bytes: already_present,
             trusted_chunks: std::collections::HashSet::new(),
         }
@@ -1824,6 +1819,30 @@ impl DepotFiles {
             .filter(|(_, slot)| slot.trusted.load(Ordering::Relaxed))
             .map(|(idx, _)| idx as u32)
             .collect()
+    }
+
+    /// `make_parent_dirs` for the file path, with the containment answer cached per directory.
+    fn create_parent_dirs(&self, path: &Path) -> Result<(), String> {
+        if let Some(parent) = path.parent() {
+            if !parent.as_os_str().is_empty() {
+                let key = parent.to_string_lossy().to_string();
+                if !self
+                    .checked_parents
+                    .lock()
+                    .expect("checked parent set poisoned")
+                    .contains(&key)
+                {
+                    // The FILE path: the check covers its ancestors, and a file directly in the
+                    // install root then checks the root against itself (a no-op).
+                    ensure_ancestor_within(&self.base, &path.to_string_lossy())?;
+                    self.checked_parents
+                        .lock()
+                        .expect("checked parent set poisoned")
+                        .insert(key);
+                }
+            }
+        }
+        make_parent_dirs(path, &self.base)
     }
 
     /// Removes directories standing where this run must write a regular file. Deliberately separate
@@ -1903,7 +1922,7 @@ impl DepotFiles {
             .ok_or_else(|| "write_depot: bad file index".to_string())?;
         let mut st = slot.state.lock().expect("slot state poisoned");
         if !st.opened {
-            make_parent_dirs(Path::new(&slot.path), &self.base)?;
+            self.create_parent_dirs(Path::new(&slot.path))?;
             let file = OpenOptions::new()
                 .create(true)
                 .write(true)
@@ -1963,7 +1982,7 @@ impl DepotFiles {
                     .map_err(|err| format!("write_depot: final sync '{}': {err}", slot.path))?;
             } else if !st.opened {
                 // 0-chunk regular file (never touched by a worker): ensure it exists at exact size.
-                make_parent_dirs(Path::new(&slot.path), &self.base)?;
+                self.create_parent_dirs(Path::new(&slot.path))?;
                 let file = OpenOptions::new()
                     .create(true)
                     .write(true)
@@ -3755,7 +3774,7 @@ fn create_directory(path: &str, target_dir: &str) -> Result<(), String> {
     let resolved = fs::metadata(path); // follows links
     let is_dir = resolved.as_ref().map(|meta| meta.is_dir()).unwrap_or(false);
     let dangling = resolved.is_err() && fs::symlink_metadata(path).is_ok();
-    let keep = is_dir && resolves_inside(target_dir, path)?;
+    let keep = is_dir && resolve_within(target_dir, path).is_ok();
     if !keep && (resolved.is_ok() || dangling) {
         fs::remove_file(path).map_err(|err| format!("write_depot: unlink '{path}': {err}"))?;
     }
@@ -3779,48 +3798,91 @@ fn create_symlink(path: &str, target: &str, target_dir: &str) -> Result<(), Stri
         .map_err(|err| format!("write_depot: symlink '{path}': {err}"))
 }
 
-/// Whether `path` resolves under `root`, both canonicalised. A directory entry that resolves
-/// outside the install tree is replaced rather than followed.
-fn resolves_inside(root: &str, path: &str) -> Result<bool, String> {
-    let root = fs::canonicalize(root)
-        .map_err(|err| format!("write_depot: resolve '{root}': {err}"))?;
-    let resolved = fs::canonicalize(path)
-        .map_err(|err| format!("write_depot: resolve '{path}': {err}"))?;
-    Ok(resolved.starts_with(&root))
+/// Collapse `.` and `..` without touching the filesystem: a link target may point through either.
+fn lexical_normalize(path: &Path) -> PathBuf {
+    let mut out = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                if !out.pop() {
+                    out.push(component.as_os_str());
+                }
+            }
+            other => out.push(other.as_os_str()),
+        }
+    }
+    out
+}
+
+/// Where `path` lands once every symlink along it is followed, refusing to leave the install dir.
+///
+/// `path_is_safe` validated the manifest's relative spelling, which cannot see a link on disk, so the
+/// path is walked from the install root one component at a time: a component that is missing cannot
+/// be a link (everything below it is about to be created), and a component that IS a link is replaced
+/// by its target, read with `read_link` and normalised lexically.
+///
+/// Deliberately no `canonicalize`: on Android storage the install root and a path below it can
+/// resolve to different mount aliases for a tree that never leaves itself, and comparing the two
+/// then refuses ordinary files — a download into
+/// `…/Dave the Diver/DaveTheDiver_Data/StreamingAssets/aa/StandaloneWindows64` failed this way even
+/// though nothing on that path is a symlink.
+fn resolve_within(target_dir: &str, path: &str) -> Result<PathBuf, String> {
+    let root = Path::new(target_dir);
+    let relative = Path::new(path).strip_prefix(root).map_err(|_| {
+        format!("write_depot: refusing '{path}': it is not under the install dir '{target_dir}'")
+    })?;
+    let mut current = root.to_path_buf();
+    for component in relative.components() {
+        match component {
+            Component::CurDir => continue,
+            Component::ParentDir => {
+                if !current.pop() {
+                    return Err(format!(
+                        "write_depot: refusing '{path}': it climbs out of the install dir"
+                    ));
+                }
+            }
+            Component::Normal(name) => {
+                current.push(name);
+                let Ok(meta) = fs::symlink_metadata(&current) else {
+                    continue; // not on disk yet, so nothing below it can be a link either
+                };
+                if meta.file_type().is_symlink() {
+                    let target = fs::read_link(&current)
+                        .map_err(|err| format!("write_depot: read link '{path}': {err}"))?;
+                    let joined = if target.is_absolute() {
+                        target
+                    } else {
+                        current.parent().unwrap_or(root).join(target)
+                    };
+                    current = lexical_normalize(&joined);
+                }
+            }
+            _ => {}
+        }
+        if !current.starts_with(root) {
+            return Err(format!(
+                "write_depot: refusing '{path}': '{}' resolves outside the install dir '{target_dir}'",
+                current.display()
+            ));
+        }
+    }
+    Ok(current)
 }
 
 /// A creation or a removal must not be redirected outside the install directory by a symlinked
-/// ancestor: `path_is_safe` validated the manifest's relative spelling, which cannot see a link on
-/// disk. The NEAREST ANCESTOR THAT EXISTS is resolved (following links) and has to stay under the
-/// resolved install root; the components below it do not exist yet, so none of them can be a link.
-/// Checking only an existing direct parent would miss `alias/newdir` when `alias` is a link out of
-/// the tree and the manifest never declares `alias` itself.
+/// ancestor. Checking only an existing direct parent would miss `alias/newdir` when `alias` is a
+/// link out of the tree and the manifest never declares `alias` itself, so the whole path is walked.
 fn ensure_ancestor_within(target_dir: &str, path: &str) -> Result<(), String> {
-    // An install dir that does not exist yet cannot redirect anything: every component inside it is
-    // about to be created, so none of them can be a link.
-    let Ok(root) = fs::canonicalize(target_dir) else {
-        return Ok(());
-    };
-    let mut ancestor = Path::new(path).parent();
-    while let Some(candidate) = ancestor {
-        if candidate.as_os_str().is_empty() {
-            break;
+    match Path::new(path).parent() {
+        // The entry itself may be a link that has to be REPLACED (that is the caller's job); only
+        // the way to it has to stay inside the install dir.
+        Some(parent) if !parent.as_os_str().is_empty() => {
+            resolve_within(target_dir, &parent.to_string_lossy()).map(|_| ())
         }
-        if let Ok(resolved) = fs::canonicalize(candidate) {
-            return if resolved.starts_with(&root) {
-                Ok(())
-            } else {
-                Err(format!(
-                    "write_depot: refusing '{path}': '{}' resolves outside the install dir",
-                    candidate.display()
-                ))
-            };
-        }
-        ancestor = candidate.parent();
+        _ => Ok(()),
     }
-    Err(format!(
-        "write_depot: refusing '{path}': no ancestor resolves inside the install dir"
-    ))
 }
 
 fn make_parent_dirs(path: &Path, target_dir: &str) -> Result<(), String> {
@@ -4620,6 +4682,45 @@ rename, a missing hash and a new file all fall through to the normal walk"
         );
         let _ = fs::remove_dir_all(&root);
         let _ = fs::remove_dir_all(&outside);
+    }
+
+    /// A deep, link-free path is inside the install dir by construction — the check has to say so
+    /// without resolving anything, because on Android storage `realpath` of the root and of a path
+    /// below it can come back as different mount aliases (this refused every Dave the Diver file).
+    #[test]
+    fn a_deep_path_with_no_links_is_inside_the_install_dir() {
+        let dir = std::env::temp_dir().join(format!("gndeep-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let manifest = ContentManifest {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
+                filenames_encrypted: false,
+                ..Default::default()
+            },
+            files: vec![
+                crate::store_dl::steam::content_manifest::FileMapping {
+                    filename: "DaveTheDiver_Data/StreamingAssets/aa/StandaloneWindows64".into(),
+                    flags: DEPOT_FILE_FLAG_DIRECTORY,
+                    ..Default::default()
+                },
+                crate::store_dl::steam::content_manifest::FileMapping {
+                    filename: "DaveTheDiver_Data/StreamingAssets/aa/StandaloneWindows64/x.bundle"
+                        .into(),
+                    size: 4,
+                    ..Default::default()
+                },
+            ],
+            signature: Vec::new(),
+        };
+        let base = dir.to_str().unwrap();
+        let plan = plan_depot_write(&manifest, &[1u8; 32], 4, base, 4).unwrap();
+        let result = create_depot_layout(&plan, base);
+        assert!(result.error.is_empty(), "{}", result.error);
+        assert!(
+            dir.join("DaveTheDiver_Data/StreamingAssets/aa/StandaloneWindows64").is_dir(),
+            "the deep directory is created inside the install dir"
+        );
+        let _ = fs::remove_dir_all(&dir);
     }
 
     /// A directory entry that does not exist yet can still escape: the manifest need never declare
