@@ -641,6 +641,7 @@ static int gn_exit_requested = 0;
 static gn_uint32 gn_events_lost = 0;
 static int gn_interaction_profile_event_pending = 0;
 static int gn_reference_space_event_pending = 0;
+static int gn_local_floor_event_pending = 0;
 static int gn_instance_loss_event_pending = 0;
 static GnSwapchain gn_swapchains[GN_MAX_SWAPCHAINS];
 static gn_uint32 gn_swapchain_count = 0;
@@ -1061,6 +1062,7 @@ static void gn_clear_events(void) {
     gn_events_lost = 0;
     gn_interaction_profile_event_pending = 0;
     gn_reference_space_event_pending = 0;
+    gn_local_floor_event_pending = 0;
     gn_instance_loss_event_pending = 0;
 }
 
@@ -1700,17 +1702,24 @@ static XrResult XRAPI_CALL gn_xrPollEvent(XrInstance instance, XrEventDataBuffer
         gn_instance_loss_event_pending = 0;
         return XR_SUCCESS;
     }
-    if (gn_reference_space_event_pending) {
+    if (gn_reference_space_event_pending || gn_local_floor_event_pending) {
         XrEventDataReferenceSpaceChangePending* change =
             (XrEventDataReferenceSpaceChangePending*)eventData;
         change->type = XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING;
         change->next = NULL;
         change->session = gn_session;
-        change->referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
+        /* LOCAL_FLOOR sits under LOCAL's origin, so it moves whenever LOCAL does. */
+        if (gn_reference_space_event_pending) {
+            change->referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
+            gn_reference_space_event_pending = 0;
+            gn_local_floor_event_pending = 1;
+        } else {
+            change->referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL_FLOOR;
+            gn_local_floor_event_pending = 0;
+        }
         change->changeTime = gn_next_display_time;
         change->poseValid = XR_FALSE;
         gn_identity_pose(&change->poseInPreviousSpace);
-        gn_reference_space_event_pending = 0;
         return XR_SUCCESS;
     }
     if (gn_interaction_profile_event_pending) {
@@ -2000,11 +2009,14 @@ static XrResult XRAPI_CALL gn_xrEnumerateReferenceSpaces(XrSession session, gn_u
         if (gn_bridge_call("GET_BOUNDS", response, sizeof(response)))
             gn_stage_supported = gn_parse_i64(response, "supported", 1) != 0;
     }
-    XrResult r = gn_copy_props(gn_stage_supported ? 3 : 2, capacity, count);
+    /* LOCAL_FLOOR is core in OpenXR 1.1 ("Runtimes must support LOCAL_FLOOR"), and xrCreateInstance accepts
+     * 1.1 instances: Unity 6 creates one and then asks for LOCAL_FLOOR for floor-level tracking. */
+    XrResult r = gn_copy_props(gn_stage_supported ? 4 : 3, capacity, count);
     if (XR_FAILED(r) || capacity == 0) return r;
     spaces[0] = XR_REFERENCE_SPACE_TYPE_VIEW;
     if (capacity > 1) spaces[1] = XR_REFERENCE_SPACE_TYPE_LOCAL;
-    if (gn_stage_supported && capacity > 2) spaces[2] = XR_REFERENCE_SPACE_TYPE_STAGE;
+    if (capacity > 2) spaces[2] = XR_REFERENCE_SPACE_TYPE_LOCAL_FLOOR;
+    if (gn_stage_supported && capacity > 3) spaces[3] = XR_REFERENCE_SPACE_TYPE_STAGE;
     return XR_SUCCESS;
 }
 
@@ -2016,6 +2028,7 @@ static XrResult XRAPI_CALL gn_xrCreateReferenceSpace(XrSession session, const Xr
         return XR_ERROR_VALIDATION_FAILURE;
     if (createInfo->referenceSpaceType != XR_REFERENCE_SPACE_TYPE_VIEW &&
         createInfo->referenceSpaceType != XR_REFERENCE_SPACE_TYPE_LOCAL &&
+        createInfo->referenceSpaceType != XR_REFERENCE_SPACE_TYPE_LOCAL_FLOOR &&
         createInfo->referenceSpaceType != XR_REFERENCE_SPACE_TYPE_STAGE)
         return XR_ERROR_REFERENCE_SPACE_UNSUPPORTED;
     if (createInfo->referenceSpaceType == XR_REFERENCE_SPACE_TYPE_STAGE && !gn_stage_supported)
@@ -2194,6 +2207,11 @@ static int gn_space_absolute_pose(
             }
         } else if (gn_ref_spaces[ref_idx].type == XR_REFERENCE_SPACE_TYPE_LOCAL) {
             if (gn_local_origin_valid) natural = gn_local_origin;
+        } else if (gn_ref_spaces[ref_idx].type == XR_REFERENCE_SPACE_TYPE_LOCAL_FLOOR) {
+            /* LOCAL's X, Z and yaw, on STAGE's floor: the tracking space handed over by the headset side
+             * is floor-level whenever its runtime offers LOCAL_FLOOR or STAGE. */
+            if (gn_local_origin_valid) natural = gn_local_origin;
+            natural.position.y = 0.0f;
         } else if (gn_ref_spaces[ref_idx].type != XR_REFERENCE_SPACE_TYPE_STAGE) {
             return -1;
         }

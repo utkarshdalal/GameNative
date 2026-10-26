@@ -113,6 +113,7 @@ static PFN_vkBindImageMemory p_vkBindImageMemory;
 static PFN_vkGetImageSubresourceLayout p_vkGetImageSubresourceLayout;
 static PFN_vkGetImageDrmFormatModifierPropertiesEXT p_vkGetImageDrmFormatModifierPropertiesEXT;
 static PFN_vkGetMemoryFdKHR p_vkGetMemoryFdKHR;
+static PFN_vkGetMemoryFdPropertiesKHR p_vkGetMemoryFdPropertiesKHR;
 static PFN_vkCreateFence p_vkCreateFence;
 static PFN_vkDestroyFence p_vkDestroyFence;
 static PFN_vkWaitForFences p_vkWaitForFences;
@@ -443,6 +444,7 @@ static void load_vulkan_functions(void)
     LOAD_DEVICE(vkGetImageSubresourceLayout);
     LOAD_DEVICE(vkGetImageDrmFormatModifierPropertiesEXT);
     LOAD_DEVICE(vkGetMemoryFdKHR);
+    LOAD_DEVICE(vkGetMemoryFdPropertiesKHR);
     LOAD_DEVICE(vkCreateFence);
     LOAD_DEVICE(vkDestroyFence);
     LOAD_DEVICE(vkWaitForFences);
@@ -469,6 +471,7 @@ static void load_vulkan_functions(void)
     if (!p_##name) p_##name = (PFN_##name)dlsym(vulkan_so, #name)
     LOAD_HOST_TRAMPOLINE(vkGetImageDrmFormatModifierPropertiesEXT);
     LOAD_HOST_TRAMPOLINE(vkGetMemoryFdKHR);
+    LOAD_HOST_TRAMPOLINE(vkGetMemoryFdPropertiesKHR);
     LOAD_HOST_TRAMPOLINE(vkGetFenceFdKHR);
 #if defined(__ANDROID__)
     LOAD_HOST_TRAMPOLINE(vkGetAndroidHardwareBufferPropertiesANDROID);
@@ -511,22 +514,29 @@ static void log_vk_result(const char *operation, VkResult result)
 }
 
 #if defined(__ANDROID__)
+static int create_ahardwarebuffer_transport(
+    const struct gn_swapchain *swapchain, struct gn_transport_image *transport);
+static void destroy_transport_image(struct gn_transport_image *transport);
+
 static int ahb_transport_probe(void)
 {
     static int cached;
     if (cached) return cached > 0;
-    AHardwareBuffer_Desc descriptor = {
-        .width = 16,
-        .height = 16,
-        .layers = 1,
-        .format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM,
-        .usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE |
-                 AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT
-    };
-    AHardwareBuffer *buffer = NULL;
-    if (p_vkGetAndroidHardwareBufferPropertiesANDROID && command_pool &&
-        p_vkCmdCopyImage && AHardwareBuffer_allocate(&descriptor, &buffer) == 0 && buffer) {
-        AHardwareBuffer_release(buffer);
+    /* Optimal-tiling render targets have no dma-buf of their own, so they are only safe when a
+     * transport image can really be created on the game's device: try one. */
+    int available = 0;
+    if ((p_vkGetAndroidHardwareBufferPropertiesANDROID || p_vkGetMemoryFdPropertiesKHR) &&
+        command_pool && p_vkCmdCopyImage) {
+        struct gn_swapchain trial;
+        struct gn_transport_image transport;
+        memset(&trial, 0, sizeof(trial));
+        memset(&transport, 0, sizeof(transport));
+        trial.width = 16;
+        trial.height = 16;
+        available = create_ahardwarebuffer_transport(&trial, &transport);
+        destroy_transport_image(&transport);
+    }
+    if (available) {
         cached = 1;
         log_line("AHardwareBuffer transport available; using optimal-tiling render targets");
     } else {
@@ -1658,9 +1668,183 @@ static int ahardwarebuffer_dmabuf_fd(AHardwareBuffer *buffer)
     return fd;
 }
 
+/* The same transport image for a game device without VK_ANDROID_external_memory_android_hardware_buffer,
+ * such as Mali through the Wrapper ICD: the AHardwareBuffer goes in through its dma-buf instead. That
+ * driver cannot export memory either (vkGetMemoryFdKHR succeeds with fd -1), so importing is what keeps
+ * the frame zero-copy. */
+static int create_dmabuf_import_transport(
+    const struct gn_swapchain *swapchain, struct gn_transport_image *transport)
+{
+    if (!p_vkGetMemoryFdPropertiesKHR || !command_pool ||
+        !p_vkAllocateCommandBuffers || !p_vkResetCommandBuffer ||
+        !p_vkBeginCommandBuffer || !p_vkEndCommandBuffer ||
+        !p_vkCmdPipelineBarrier || !p_vkCmdCopyImage || !p_vkQueueSubmit)
+        return 0;
+
+    /* CPU access keeps gralloc from compressing the buffer, so its dma-buf is a plain linear
+     * image (DRM format modifier 0) with the stride AHardwareBuffer_describe reports. */
+    AHardwareBuffer_Desc descriptor = {
+        .width = swapchain->width,
+        .height = swapchain->height,
+        .layers = 1,
+        .format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM,
+        .usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE |
+                 AHARDWAREBUFFER_USAGE_CPU_READ_RARELY
+    };
+    AHardwareBuffer *buffer = NULL;
+    if (AHardwareBuffer_allocate(&descriptor, &buffer) != 0 || !buffer) {
+        log_line("AHardwareBuffer allocation unavailable; using dma-buf fallback");
+        return 0;
+    }
+    transport->hardware_buffer = buffer;
+    AHardwareBuffer_describe(buffer, &descriptor);
+    int fd = ahardwarebuffer_dmabuf_fd(buffer);
+    if (fd < 0) {
+        log_line("AHardwareBuffer has no dma-buf handle");
+        goto fail;
+    }
+
+    /* Mali-G715 through the Wrapper accepts the explicit modifier-0 layout and a [0] modifier
+     * list, and rejects VK_IMAGE_TILING_LINEAR. With the last two the driver picks the layout,
+     * so it has to match the buffer's. */
+    const VkDeviceSize row_pitch = (VkDeviceSize)descriptor.stride * 4u;
+    const uint64_t linear_modifier = 0;
+    VkSubresourceLayout plane = {.offset = 0, .rowPitch = row_pitch};
+    VkImageDrmFormatModifierExplicitCreateInfoEXT explicit_modifier = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT,
+        .drmFormatModifier = linear_modifier,
+        .drmFormatModifierPlaneCount = 1,
+        .pPlaneLayouts = &plane
+    };
+    VkImageDrmFormatModifierListCreateInfoEXT modifier_list = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT,
+        .drmFormatModifierCount = 1,
+        .pDrmFormatModifiers = &linear_modifier
+    };
+    VkExternalMemoryImageCreateInfo external = {
+        .sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO,
+        .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT
+    };
+    VkImageCreateInfo image_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .pNext = &external,
+        .imageType = VK_IMAGE_TYPE_2D,
+        .format = VK_FORMAT_R8G8B8A8_UNORM,
+        .extent = {swapchain->width, swapchain->height, 1},
+        .mipLevels = 1,
+        .arrayLayers = 1,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
+    };
+    VkResult result = VK_ERROR_FORMAT_NOT_SUPPORTED;
+    int layout_choice = 0;
+    for (; layout_choice < 3; ++layout_choice) {
+        external.pNext = layout_choice == 0 ? (const void *)&explicit_modifier :
+                         layout_choice == 1 ? (const void *)&modifier_list : NULL;
+        image_info.tiling = layout_choice == 2 ?
+            VK_IMAGE_TILING_LINEAR : VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT;
+        result = p_vkCreateImage(device, &image_info, NULL, &transport->image);
+        if (result == VK_SUCCESS) break;
+        transport->image = VK_NULL_HANDLE;
+    }
+    if (result != VK_SUCCESS) {
+        log_vk_result("vkCreateImage(AHardwareBuffer dma-buf)", result);
+        close(fd);
+        goto fail;
+    }
+    if (layout_choice != 0 && p_vkGetImageSubresourceLayout) {
+        VkImageSubresource subresource = {
+            .aspectMask = layout_choice == 1 ?
+                VK_IMAGE_ASPECT_MEMORY_PLANE_0_BIT_EXT : VK_IMAGE_ASPECT_COLOR_BIT
+        };
+        VkSubresourceLayout layout;
+        p_vkGetImageSubresourceLayout(device, transport->image, &subresource, &layout);
+        if (layout.rowPitch != row_pitch || layout.offset != 0) {
+            log_line("AHardwareBuffer dma-buf pitch does not match the Vulkan image");
+            close(fd);
+            goto fail;
+        }
+    }
+
+    VkMemoryRequirements requirements;
+    p_vkGetImageMemoryRequirements(device, transport->image, &requirements);
+    VkMemoryFdPropertiesKHR fd_properties = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_FD_PROPERTIES_KHR
+    };
+    result = p_vkGetMemoryFdPropertiesKHR(
+        device, VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT, fd, &fd_properties);
+    if (result != VK_SUCCESS) {
+        log_vk_result("vkGetMemoryFdPropertiesKHR(AHardwareBuffer dma-buf)", result);
+        close(fd);
+        goto fail;
+    }
+    const off_t dma_buf_size = lseek(fd, 0, SEEK_END);
+    int memory_type = find_memory_type(
+        requirements.memoryTypeBits & fd_properties.memoryTypeBits, 0);
+    if (memory_type < 0 ||
+        (dma_buf_size > 0 && requirements.size > (VkDeviceSize)dma_buf_size)) {
+        log_line("No compatible memory type for AHardwareBuffer dma-buf image");
+        close(fd);
+        goto fail;
+    }
+    VkImportMemoryFdInfoKHR import_info = {
+        .sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR,
+        .handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
+        .fd = fd
+    };
+    VkMemoryDedicatedAllocateInfo dedicated = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO,
+        .pNext = &import_info,
+        .image = transport->image
+    };
+    VkMemoryAllocateInfo allocate_info = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .pNext = &dedicated,
+        .allocationSize = requirements.size,
+        .memoryTypeIndex = (uint32_t)memory_type
+    };
+    result = p_vkAllocateMemory(
+        device, &allocate_info, NULL, &transport->memory);
+    if (result != VK_SUCCESS) {
+        /* Only a successful import takes ownership of the fd. */
+        log_vk_result("vkAllocateMemory(AHardwareBuffer dma-buf)", result);
+        close(fd);
+        goto fail;
+    }
+    result = p_vkBindImageMemory(
+        device, transport->image, transport->memory, 0);
+    if (result != VK_SUCCESS) {
+        log_vk_result("vkBindImageMemory(AHardwareBuffer dma-buf)", result);
+        goto fail;
+    }
+
+    VkCommandBufferAllocateInfo command_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool = command_pool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1
+    };
+    result = p_vkAllocateCommandBuffers(
+        device, &command_info, &transport->command_buffer);
+    if (result != VK_SUCCESS) {
+        log_vk_result("vkAllocateCommandBuffers(AHardwareBuffer dma-buf)", result);
+        goto fail;
+    }
+    log_line("AHardwareBuffer Vulkan transport image created through its dma-buf");
+    return 1;
+
+fail:
+    destroy_transport_image(transport);
+    return 0;
+}
+
 static int create_ahardwarebuffer_transport(
     const struct gn_swapchain *swapchain, struct gn_transport_image *transport)
 {
+    if (!p_vkGetAndroidHardwareBufferPropertiesANDROID)
+        return create_dmabuf_import_transport(swapchain, transport);
     if (!p_vkGetAndroidHardwareBufferPropertiesANDROID || !command_pool ||
         !p_vkAllocateCommandBuffers || !p_vkResetCommandBuffer ||
         !p_vkBeginCommandBuffer || !p_vkEndCommandBuffer ||
@@ -1799,9 +1983,10 @@ static int record_ahardwarebuffer_copy(
         log_vk_result("vkResetCommandBuffer(AHardwareBuffer)", result);
         return 0;
     }
+    /* Not ONE_TIME_SUBMIT: the steady recording is submitted again every frame, and a one-time
+     * buffer becomes invalid once it has executed. */
     VkCommandBufferBeginInfo begin = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
     };
     result = p_vkBeginCommandBuffer(transport->command_buffer, &begin);
     if (result != VK_SUCCESS) {
@@ -1812,8 +1997,9 @@ static int record_ahardwarebuffer_copy(
     VkImageMemoryBarrier before[2] = {
         {
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-                             VK_ACCESS_SHADER_WRITE_BIT,
+            /* Submitted right behind the game's frame: any write to the image, including a
+             * copy or resolve into it, has to be made available to this copy. */
+            .srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT,
             .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
             .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
             .newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
@@ -2207,7 +2393,7 @@ static int32_t unix_set_vulkan_context(void *opaque)
     }
     load_vulkan_functions();
 #if defined(__ANDROID__)
-    if (p_vkGetAndroidHardwareBufferPropertiesANDROID &&
+    if ((p_vkGetAndroidHardwareBufferPropertiesANDROID || p_vkGetMemoryFdPropertiesKHR) &&
         p_vkCreateCommandPool && !command_pool) {
         VkCommandPoolCreateInfo pool_info = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -2430,13 +2616,17 @@ static int send_frame(const struct gn_unix_submit_view_args *view, int fence_fd,
 
 /* Asynchronous frame shipper: xrEndFrame used to drain the game's GPU queue synchronously
  * before transporting the frame, serializing the game's CPU and GPU completely. Instead,
- * xrEndFrame drops a fence on the game queue and returns; this worker waits for the render
- * to finish, runs the transport (relay copy + socket send), and the game overlaps its next
- * frame's CPU work with the GPU. */
+ * xrEndFrame submits the frame's copies behind the render with a fence and returns; this
+ * worker waits for that fence, runs the rest of the transport (relay copy + socket send),
+ * and the game overlaps its next frame's CPU work with the GPU.
+ * The worker never touches the game's VkQueue: a VkQueue must be externally synchronized,
+ * and xrEndFrame is where it is ours (the PE runtime holds DXVK's or vkd3d's submission lock
+ * around it, and XR_KHR_vulkan_enable only lets a runtime use the queue inside such calls). */
 struct gn_pending_submit {
     struct gn_unix_submit_view_args views[GN_UNIX_MAX_VIEWS];
     uint32_t view_count;
     VkFence fence;
+    int fence_fd;
     int used;
 };
 
@@ -2448,6 +2638,7 @@ static int submit_thread_running;
 static int submit_worker_busy;
 
 static int submit_views_transport(const struct gn_unix_submit_view_args *views, uint32_t view_count);
+static int ship_views(const struct gn_unix_submit_view_args *views, uint32_t view_count, int fence_fd);
 
 static void *submit_worker(void *unused)
 {
@@ -2472,7 +2663,7 @@ static void *submit_worker(void *unused)
             p_vkWaitForFences(device, 1, &item.fence, VK_TRUE, UINT64_MAX);
             p_vkDestroyFence(device, item.fence, NULL);
         }
-        if (!submit_views_transport(item.views, item.view_count)) {
+        if (!ship_views(item.views, item.view_count, item.fence_fd)) {
             static int failure_logged;
             if (!failure_logged) {
                 failure_logged = 1;
@@ -2504,6 +2695,155 @@ static void submit_worker_flush(void)
     pthread_mutex_unlock(&submit_mutex);
 }
 
+/* Runs inside xrEndFrame. Records the AHardwareBuffer copies and submits them (or an empty batch)
+ * right behind the game's frame; the fence covers the render and the copies. Its sync_fd goes to the
+ * receiver when it can be exported and no relay copy has to wait for the render on the host. */
+static int submit_game_queue_copies(const struct gn_unix_submit_view_args *views, uint32_t view_count,
+                                    VkFence *fence_out, int *fence_fd_out)
+{
+    VkCommandBuffer commands[GN_UNIX_MAX_VIEWS];
+    struct gn_transport_image *recorded[GN_UNIX_MAX_VIEWS];
+    uint32_t command_count = 0;
+    uint32_t relay_count = 0;
+    *fence_out = VK_NULL_HANDLE;
+    *fence_fd_out = -1;
+    pthread_mutex_lock(&socket_mutex);
+    for (uint32_t i = 0; i < view_count; ++i) {
+        const struct gn_unix_submit_view_args *view = &views[i];
+        if (!register_image(view->slot, view->image_index, view->eye,
+                            view->array_index)) {
+            pthread_mutex_unlock(&socket_mutex);
+            return 0;
+        }
+#if defined(__ANDROID__)
+        struct gn_image *image =
+            &swapchains[view->slot].images[view->image_index];
+        if (image->transport_kind[view->eye] == GN_TRANSPORT_RELAY) ++relay_count;
+        if (image->transport_kind[view->eye] != GN_TRANSPORT_AHARDWAREBUFFER) continue;
+        struct gn_transport_image *transport = &image->transport[view->eye];
+        if (!record_ahardwarebuffer_copy(
+                &swapchains[view->slot], image, transport,
+                view->array_index)) {
+            const uint8_t bit = (uint8_t)(1u << view->eye);
+            log_line("AHardwareBuffer GPU copy failed; switching image to dma-buf");
+            destroy_transport_image(transport);
+            image->transport_kind[view->eye] = GN_TRANSPORT_DMABUF;
+            image->registered_eye_mask &= (uint8_t)~bit;
+            if (!register_image(view->slot, view->image_index, view->eye,
+                                view->array_index)) {
+                pthread_mutex_unlock(&socket_mutex);
+                return 0;
+            }
+            continue;
+        }
+        commands[command_count] = transport->command_buffer;
+        recorded[command_count] = transport;
+        ++command_count;
+#endif
+    }
+    pthread_mutex_unlock(&socket_mutex);
+
+    const int can_export = command_count && !relay_count && p_vkGetFenceFdKHR;
+    VkExportFenceCreateInfo export_info = {
+        .sType = VK_STRUCTURE_TYPE_EXPORT_FENCE_CREATE_INFO,
+        .handleTypes = VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT
+    };
+    VkFenceCreateInfo fence_info = {
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+        .pNext = can_export ? &export_info : NULL
+    };
+    VkFence fence = VK_NULL_HANDLE;
+    VkResult result = p_vkCreateFence(device, &fence_info, NULL, &fence);
+    if (result != VK_SUCCESS) {
+        log_vk_result("vkCreateFence(frame copy)", result);
+        return 0;
+    }
+    VkSubmitInfo submit = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .commandBufferCount = command_count,
+        .pCommandBuffers = command_count ? commands : NULL
+    };
+    result = p_vkQueueSubmit(queue, 1, &submit, fence);
+    if (result != VK_SUCCESS) {
+        log_vk_result("vkQueueSubmit(frame copy)", result);
+        p_vkDestroyFence(device, fence, NULL);
+        return 0;
+    }
+    for (uint32_t i = 0; i < command_count; ++i) recorded[i]->initialized = 1;
+
+    if (can_export) {
+        VkFenceGetFdInfoKHR fd_info = {
+            .sType = VK_STRUCTURE_TYPE_FENCE_GET_FD_INFO_KHR,
+            .fence = fence,
+            .handleType = VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT
+        };
+        int fd = -1;
+        if (p_vkGetFenceFdKHR(device, &fd_info, &fd) == VK_SUCCESS && fd >= 0) {
+            p_vkDestroyFence(device, fence, NULL);
+            *fence_fd_out = fd;
+            return 1;
+        }
+    }
+    *fence_out = fence;
+    return 1;
+}
+
+/* Worker side: the game's GPU work is done, or covered by fence_fd. Relay copies run on the relay
+ * device's own queue, which only this thread uses; then every view goes to the receiver. Takes
+ * ownership of fence_fd. */
+static int ship_views(const struct gn_unix_submit_view_args *views, uint32_t view_count, int fence_fd)
+{
+    pthread_mutex_lock(&socket_mutex);
+#if defined(__ANDROID__)
+    VkCommandBuffer relay_commands[GN_UNIX_MAX_VIEWS];
+    struct gn_transport_image *relay_recorded[GN_UNIX_MAX_VIEWS];
+    uint32_t relay_count = 0;
+    for (uint32_t i = 0; i < view_count; ++i) {
+        const struct gn_unix_submit_view_args *view = &views[i];
+        struct gn_image *image =
+            &swapchains[view->slot].images[view->image_index];
+        if (image->transport_kind[view->eye] != GN_TRANSPORT_RELAY) continue;
+        struct gn_transport_image *transport = &image->transport[view->eye];
+        if (!relay_record_copy(&swapchains[view->slot], image, transport,
+                               view->array_index)) {
+            if (fence_fd >= 0) close(fence_fd);
+            pthread_mutex_unlock(&socket_mutex);
+            return 0;
+        }
+        relay_commands[relay_count] = transport->command_buffer;
+        relay_recorded[relay_count] = transport;
+        ++relay_count;
+    }
+    if (relay_count) {
+        int relay_ok = 0;
+        int relay_fence = relay_submit(relay_commands, relay_count, &relay_ok);
+        if (!relay_ok) {
+            if (relay_fence >= 0) close(relay_fence);
+            if (fence_fd >= 0) close(fence_fd);
+            pthread_mutex_unlock(&socket_mutex);
+            return 0;
+        }
+        for (uint32_t i = 0; i < relay_count; ++i) relay_recorded[i]->initialized = 1;
+        if (fence_fd >= 0) close(fence_fd);
+        fence_fd = relay_fence;
+    }
+#endif
+
+    int ok = 1;
+    const uint64_t frame_id = ++transport_frame_id;
+    for (uint32_t i = 0; i < view_count; ++i) {
+        const int view_fence_fd = i == 0 ? fence_fd : -1;
+        if (!send_frame(&views[i], view_fence_fd, frame_id, view_count)) {
+            ok = 0;
+            break;
+        }
+    }
+    if (fence_fd >= 0) close(fence_fd);
+
+    pthread_mutex_unlock(&socket_mutex);
+    return ok;
+}
+
 static int submit_views_async(const struct gn_unix_submit_view_args *views, uint32_t view_count)
 {
     if (!p_vkWaitForFences || !p_vkCreateFence || !p_vkDestroyFence || !p_vkQueueSubmit)
@@ -2521,15 +2861,25 @@ static int submit_views_async(const struct gn_unix_submit_view_args *views, uint
     }
     pthread_mutex_unlock(&submit_mutex);
 
-    VkFence fence = VK_NULL_HANDLE;
-    VkFenceCreateInfo fence_info = {.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-    if (p_vkCreateFence(device, &fence_info, NULL, &fence) == VK_SUCCESS) {
-        VkSubmitInfo marker = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO};
-        if (p_vkQueueSubmit(queue, 1, &marker, fence) != VK_SUCCESS) {
-            p_vkDestroyFence(device, fence, NULL);
-            fence = VK_NULL_HANDLE;
-        }
+    if (!view_count || view_count > GN_UNIX_MAX_VIEWS) return 0;
+    for (uint32_t i = 0; i < view_count; ++i) {
+        const struct gn_unix_submit_view_args *view = &views[i];
+        if (view->slot >= GN_UNIX_MAX_SWAPCHAINS || view->eye >= GN_UNIX_MAX_VIEWS ||
+            view->image_index >= swapchains[view->slot].image_count)
+            return 0;
     }
+    /* The copy's command buffer is reused, so an image submitted again before its last copy has
+     * run (a layer that keeps an image without acquiring a new one) waits for that copy first. */
+    pthread_mutex_lock(&submit_mutex);
+    for (uint32_t i = 0; i < view_count; ++i) {
+        while (image_copy_busy[views[i].slot][views[i].image_index])
+            pthread_cond_wait(&submit_space_cond, &submit_mutex);
+    }
+    pthread_mutex_unlock(&submit_mutex);
+
+    VkFence fence = VK_NULL_HANDLE;
+    int fence_fd = -1;
+    if (!submit_game_queue_copies(views, view_count, &fence, &fence_fd)) return 0;
 
     pthread_mutex_lock(&submit_mutex);
     while (submit_ring[submit_ring_head].used)
@@ -2537,12 +2887,11 @@ static int submit_views_async(const struct gn_unix_submit_view_args *views, uint
     struct gn_pending_submit *slot = &submit_ring[submit_ring_head];
     for (uint32_t i = 0; i < view_count; ++i) {
         slot->views[i] = views[i];
-        if (views[i].slot < GN_UNIX_MAX_SWAPCHAINS &&
-            views[i].image_index < GN_UNIX_MAX_IMAGES)
-            ++image_copy_busy[views[i].slot][views[i].image_index];
+        ++image_copy_busy[views[i].slot][views[i].image_index];
     }
     slot->view_count = view_count;
     slot->fence = fence;
+    slot->fence_fd = fence_fd;
     slot->used = 1;
     submit_ring_head = (submit_ring_head + 1) % 4;
     pthread_cond_signal(&submit_cond);
