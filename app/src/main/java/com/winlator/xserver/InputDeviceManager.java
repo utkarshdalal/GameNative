@@ -18,6 +18,11 @@ import com.winlator.xserver.events.MappingNotify;
 import com.winlator.xserver.events.MotionNotify;
 import com.winlator.xserver.events.PointerWindowEvent;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+
 public class InputDeviceManager implements Pointer.OnPointerMotionListener, Keyboard.OnKeyboardListener, WindowManager.OnWindowModificationListener, XResourceManager.OnResourceLifecycleListener {
     private static final byte MOUSE_WHEEL_DELTA = 120;
     private Window pointWindow;
@@ -27,6 +32,13 @@ public class InputDeviceManager implements Pointer.OnPointerMotionListener, Keyb
     private int currentRepeatingKeysym;
     private int repeatDelayMs = 500;
     private int repeatRateMs = 50;
+    private final AtomicReference<Runnable> pendingPointerMove = new AtomicReference<>();
+    private final AtomicBoolean pointerMoveDrainScheduled = new AtomicBoolean();
+    private final ExecutorService pointerMoveExecutor = Executors.newSingleThreadExecutor(runnable -> {
+        Thread thread = new Thread(runnable, "XPointerEvents");
+        thread.setDaemon(true);
+        return thread;
+    });
 
     private final Runnable autoRepeatRunnable = new Runnable() {
         @Override
@@ -138,6 +150,30 @@ public class InputDeviceManager implements Pointer.OnPointerMotionListener, Keyb
         }
     }
 
+    private void sendPointerMoveEvent(Window window, Bitmask eventMask, Event event) {
+        // Relative mouse input arrives on Android's UI thread. A guest that stops
+        // draining its X socket can therefore block ClientSocket.write() long
+        // enough to trigger an input-dispatch ANR. Motion events are coalescible,
+        // so keep only the newest one and perform the potentially blocking write
+        // on a dedicated daemon thread.
+        pendingPointerMove.set(() -> sendEvent(window, eventMask, event));
+        schedulePointerMoveDrain();
+    }
+
+    private void schedulePointerMoveDrain() {
+        if (!pointerMoveDrainScheduled.compareAndSet(false, true)) return;
+        pointerMoveExecutor.execute(() -> {
+            do {
+                Runnable delivery;
+                while ((delivery = pendingPointerMove.getAndSet(null)) != null) {
+                    delivery.run();
+                }
+                pointerMoveDrainScheduled.set(false);
+            } while (pendingPointerMove.get() != null &&
+                    pointerMoveDrainScheduled.compareAndSet(false, true));
+        });
+    }
+
     public void sendEnterLeaveNotify(Window windowA, Window windowB, PointerWindowEvent.Mode mode) {
         if (windowA == windowB) return;
         short x = xServer.pointer.getX();
@@ -241,7 +277,7 @@ public class InputDeviceManager implements Pointer.OnPointerMotionListener, Keyb
             short[] localPoint = eventWindow.rootPointToLocal(x, y);
 
             Window child = eventWindow.isAncestorOf(pointWindow) ? pointWindow : null;
-            sendEvent(window, eventMask, new MotionNotify(false, xServer.windowManager.rootWindow, eventWindow, child, x, y, localPoint[0], localPoint[1], getKeyButMask()));
+            sendPointerMoveEvent(window, eventMask, new MotionNotify(false, xServer.windowManager.rootWindow, eventWindow, child, x, y, localPoint[0], localPoint[1], getKeyButMask()));
         }
     }
 
