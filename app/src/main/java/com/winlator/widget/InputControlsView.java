@@ -90,6 +90,11 @@ public class InputControlsView extends View {
     // One mouse-look source per axis: the last control to move an axis sets it.
     private final Object touchMouseX = new Object();
     private final Object touchMouseY = new Object();
+    // Read on every mouse-look step, so a speed changed in the settings applies while a control is held.
+    private final MouseLookStepper.CursorSpeed touchCursorSpeed = () -> {
+        ControlsProfile speedProfile = profile != null ? profile : gyroProfile;
+        return speedProfile != null ? speedProfile.getCursorSpeed() : ControlsProfile.DEFAULT_CURSOR_SPEED;
+    };
     private boolean showTouchscreenControls = true;
 
     // Shooter mode state
@@ -214,6 +219,7 @@ public class InputControlsView extends View {
         mouseLook = new MouseLookStepper(throttling, (dx, dy) -> {
             if (xServer != null) xServer.injectPointerMoveDelta(dx, dy);
         });
+        attachMouseLook(mouseLook);
         setClickable(true);
         setFocusable(true);
         setFocusableInTouchMode(true);
@@ -592,10 +598,6 @@ public class InputControlsView extends View {
         if (touchpadView != null) touchpadView.setMouseMovementListener(this::onTouchMouseMovement);
     }
 
-    public void setPhysicalMouseMoving(Object source, boolean moving) {
-        gyroInputPriority.setManualMouseMoving(source, moving);
-    }
-
     private void onTouchMouseMovement(float x, float y) {
         gyroInputPriority.onTouchMouseMovement(x, y, SystemClock.uptimeMillis());
     }
@@ -612,12 +614,16 @@ public class InputControlsView extends View {
     /** Shares the session's gamepad output and mouse-look with the physical controller handler. */
     public void setInputPipeline(GamepadStateOutput gamepadOutput, MouseLookStepper mouseLook) {
         releaseTouchMouseLook();
+        this.mouseLook.setMovingListener(null);
+        gyroInputPriority.setManualMouseMoving(this.mouseLook, false);
         this.gamepadOutput = gamepadOutput;
         this.mouseLook = mouseLook;
+        attachMouseLook(mouseLook);
     }
 
-    public GamepadStateOutput getGamepadOutput() {
-        return gamepadOutput;
+    /** Mouse-look held on the touch controls or a physical controller takes priority over the gyro mouse. */
+    private void attachMouseLook(MouseLookStepper stepper) {
+        stepper.setMovingListener(moving -> gyroInputPriority.setManualMouseMoving(stepper, moving));
     }
 
     public int getMaxWidth() {
@@ -648,8 +654,7 @@ public class InputControlsView extends View {
             mouseLook.remove(key);
             return;
         }
-        ControlsProfile speedProfile = profile != null ? profile : gyroProfile;
-        mouseLook.hold(key, binding, offset, speedProfile != null ? speedProfile.getCursorSpeed() : 1f);
+        mouseLook.hold(key, binding, offset, touchCursorSpeed);
     }
 
     private void releaseTouchMouseLook() {
@@ -997,7 +1002,7 @@ public class InputControlsView extends View {
 
     private void commitGamepadState() {
         if (xServer == null || profile == null) return;
-        if (xServer.getWinHandler() != null) gamepadOutput.sendForced(profile.getGamepadState());
+        if (xServer.getWinHandler() != null) gamepadOutput.send(profile.getGamepadState());
     }
 
     private void releaseShooterSprint() {
@@ -1648,7 +1653,7 @@ public class InputControlsView extends View {
                     break;
             }
 
-            // commit on-screen joystick state if it changed; finger motion follows input throttling
+            // commit on-screen joystick state; finger motion follows input throttling
             WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
             if (winHandler != null) {
                 GamepadState state = profile.getGamepadState();
@@ -2056,7 +2061,7 @@ public class InputControlsView extends View {
         state.thumbRY = 0f;
 
         WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
-        if (winHandler != null) gamepadOutput.sendForced(state);
+        if (winHandler != null) gamepadOutput.send(state);
     }
 
     public Bitmap getIcon(byte id) {

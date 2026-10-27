@@ -1,6 +1,5 @@
 package app.gamenative.ui.screen.xserver
 
-import androidx.annotation.VisibleForTesting
 import app.gamenative.PluviaApp
 import com.winlator.inputcontrols.Binding
 
@@ -8,6 +7,7 @@ import com.winlator.inputcontrols.Binding
  * Held MOUSE_MOVE_* bindings from touch controls and physical controllers. Sums all held sources and moves
  * the pointer once per display frame by speed x frame time, keeping the sub-pixel remainder, so movement is
  * smooth at any frame or event rate. Follows [InputThrottling]; stops when nothing is held. Main thread only.
+ * Reports whether it moves the pointer to [movingListener] (gyro mouse priority).
  */
 class MouseLookStepper(
     private val throttling: InputThrottling,
@@ -17,9 +17,23 @@ class MouseLookStepper(
         fun move(dx: Int, dy: Int)
     }
 
+    /** The cursor speed of a held source, read on every step so a changed setting applies while held. */
+    fun interface CursorSpeed {
+        fun get(): Float
+    }
+
+    fun interface MovingListener {
+        fun onMovingChanged(moving: Boolean)
+    }
+
     companion object {
         @JvmStatic
         fun isHorizontal(binding: Binding): Boolean = binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_RIGHT
+
+        /** -1 for left and up, 1 for right and down. */
+        @JvmStatic
+        fun direction(binding: Binding): Float =
+            if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_UP) -1f else 1f
 
         // At full deflection and cursor speed 1: the former 10 px per 60 Hz timer tick.
         private const val PX_PER_SECOND = 600f
@@ -33,7 +47,7 @@ class MouseLookStepper(
         private const val NANOS_PER_SECOND = 1_000_000_000f
     }
 
-    private class Contribution(val key: Any, val horizontal: Boolean, var value: Float, var cursorSpeed: Float)
+    private class Contribution(val key: Any, val horizontal: Boolean, var value: Float, var cursorSpeed: CursorSpeed)
 
     // A few held sources at most: a list with indexed loops, so neither per-event lookups nor steps allocate.
     private val contributions = ArrayList<Contribution>()
@@ -49,31 +63,18 @@ class MouseLookStepper(
     private var unsteppedSeconds = 0f
     private val frameLoop = FrameCallbackLoop(::onFrame)
 
-    /** Summed horizontal deflection of all held sources, before cursor speed. */
-    @VisibleForTesting
-    internal val offsetX: Float get() = sum(horizontal = true)
-
-    /** Summed vertical deflection of all held sources, before cursor speed. */
-    @VisibleForTesting
-    internal val offsetY: Float get() = sum(horizontal = false)
-
-    @VisibleForTesting
-    internal val isRunning: Boolean get() = frameLoop.isScheduled
+    var movingListener: MovingListener? = null
 
     /**
      * Holds a MOUSE_MOVE_* [binding] for [key] until changed or removed. [offset] is the deflection
      * (-1..1, negative = left/up); 0 means full deflection in the binding's direction.
      */
-    fun hold(key: Any, binding: Binding, offset: Float, cursorSpeed: Float) {
-        val value = when {
-            offset != 0f -> offset
-            binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_UP -> -1f
-            else -> 1f
-        }
+    fun hold(key: Any, binding: Binding, offset: Float, cursorSpeed: CursorSpeed) {
+        val value = if (offset != 0f) offset else direction(binding)
         set(key, isHorizontal(binding), value, cursorSpeed)
     }
 
-    private fun set(key: Any, horizontal: Boolean, value: Float, cursorSpeed: Float) {
+    private fun set(key: Any, horizontal: Boolean, value: Float, cursorSpeed: CursorSpeed) {
         val index = indexOf(key)
         if (index < 0) {
             contributions.add(Contribution(key, horizontal, value, cursorSpeed))
@@ -82,6 +83,7 @@ class MouseLookStepper(
             contribution.value = value
             contribution.cursorSpeed = cursorSpeed
         }
+        notifyMoving()
         frameLoop.schedule()
     }
 
@@ -118,6 +120,7 @@ class MouseLookStepper(
     }
 
     private fun onRemoved() {
+        notifyMoving()
         if (contributions.isNotEmpty()) return
         remainderX = 0f
         remainderY = 0f
@@ -125,6 +128,11 @@ class MouseLookStepper(
         lastFrameNanos = 0L
         unsteppedSeconds = 0f
         frameLoop.cancel()
+    }
+
+    // On every change, not only on start and stop: the listener's side may have been reset meanwhile.
+    private fun notifyMoving() {
+        movingListener?.onMovingChanged(sum(horizontal = true) != 0f || sum(horizontal = false) != 0f)
     }
 
     private fun sum(horizontal: Boolean): Float {
@@ -166,12 +174,13 @@ class MouseLookStepper(
         var speedY = 0f
         for (i in contributions.indices) {
             val contribution = contributions[i]
+            val cursorSpeed = contribution.cursorSpeed.get()
             if (contribution.horizontal) {
                 deflectionX += contribution.value
-                speedX += contribution.value * contribution.cursorSpeed
+                speedX += contribution.value * cursorSpeed
             } else {
                 deflectionY += contribution.value
-                speedY += contribution.value * contribution.cursorSpeed
+                speedY += contribution.value * cursorSpeed
             }
         }
         // No noise floor: every source is past its own dead zone already (a tuned stick's is the user's).

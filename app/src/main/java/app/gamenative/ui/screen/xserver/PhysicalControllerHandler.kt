@@ -23,9 +23,9 @@ import java.util.TimerTask
  * Standalone handler for physical controller input that works independently of view visibility.
  * Applies profile bindings to convert physical controller input into virtual gamepad state.
  *
- * Motion is dispatched as it arrives (Android batches it per display frame); with [throttling] on, it waits
- * for the first frame on which it is due. Gamepad state goes out through [gamepadOutput] and mouse-look
- * through [mouseLook], both shared with the on-screen controls.
+ * Every event is applied to the bindings as it arrives. Gamepad state goes out through [gamepadOutput], which
+ * paces stick motion by the "Input throttling" setting and sends button and d-pad changes right away, and
+ * mouse-look through [mouseLook]; both are shared with the on-screen controls.
  */
 class PhysicalControllerHandler(
     private var profile: ControlsProfile?,
@@ -36,9 +36,8 @@ class PhysicalControllerHandler(
     private val onRadialMenuVectorChanged: ((Float, Float) -> Unit)? = null,
     private val onGyroModifierChanged: ((Any, Boolean) -> Unit)? = null,
     private val gyroStickMixer: ((Binding, Boolean, Float, Int) -> Float)? = null,
-    private val onMouseMovementChanged: ((Any, Boolean) -> Unit)? = null,
     gamepadStateSender: GamepadStateOutput.Sender = GamepadStateOutput.winHandlerSender { xServer },
-    private val throttling: InputThrottling = InputThrottling(),
+    throttling: InputThrottling = InputThrottling(),
     private val gamepadOutput: GamepadStateOutput = GamepadStateOutput(throttling, gamepadStateSender),
     private val mouseLook: MouseLookStepper = MouseLookStepper(throttling) { dx, dy -> xServer?.injectPointerMoveDelta(dx, dy) },
 ) {
@@ -94,24 +93,22 @@ class PhysicalControllerHandler(
 
     private val joystickValues = FloatArray(JOYSTICK_AXES.size)
 
+    // Read on every mouse-look step, so a speed changed in the settings applies while a direction is held.
+    private val cursorSpeed = MouseLookStepper.CursorSpeed { profile?.cursorSpeed ?: ControlsProfile.DEFAULT_CURSOR_SPEED }
+
     // Per device: keyCode -> binding (getControllerBinding() is a linear scan, and every motion dispatch looks up
     // all stick and trigger directions) and the input sources of those directions.
     private val bindingCache = mutableMapOf<Int, BindingCacheEntry>()
 
-    // Devices with motion since the last releaseAllActiveInput().
+    // Devices with motion since the last releaseAllActiveInput(): their controller state is current, so a
+    // re-evaluation can apply it again. Plus onFrame()'s reusable copy of them.
     private val trackedDeviceIds = mutableSetOf<Int>()
+    private val reevaluatedDeviceIds = ArrayList<Int>()
 
-    // Devices with motion not dispatched yet, and flushInput()'s reusable copy of them.
-    private val dirtyDeviceIds = mutableSetOf<Int>()
-    private val pendingDeviceIds = ArrayList<Int>()
-
-    // Re-evaluate every tracked device on the next frame, throttling aside (radial menu open/close).
+    // Re-evaluate every tracked device on the next frame: radial menu open/close, motion held back by a pause.
     private var fullReevaluationPending = false
 
-    // Paces dispatches at the throttling rate, on the display frame clock.
-    private val pacer = throttling.Pacer()
-
-    // Runs only while motion waits for a frame: throttling, or a re-evaluation (radial menu).
+    // Runs only while a re-evaluation waits for its frame.
     private val frameLoop = FrameCallbackLoop(::onFrame)
 
     // track which axis keycodes are currently "pressed" so we only release on actual transitions.
@@ -217,7 +214,6 @@ class PhysicalControllerHandler(
         activeSequenceTriggerBindings.clear()
         // Motion goes to the overlay meanwhile, so controller.state may go stale: wait for fresh motion.
         trackedDeviceIds.clear()
-        dirtyDeviceIds.clear()
         fullReevaluationPending = false
         sendGamepadState()
     }
@@ -241,15 +237,14 @@ class PhysicalControllerHandler(
         ExternalController.clearStickTuning(this)
     }
 
-    /** Resumes input the pause held back (e.g. manual resume without new motion). */
+    /** Applies motion the pause held back (e.g. manual resume without new motion). */
     fun onOverlayResumed() {
-        if (fullReevaluationPending || dirtyDeviceIds.isNotEmpty()) ensureFrameScheduled()
+        if (fullReevaluationPending) ensureFrameScheduled()
         mouseLook.resume()
     }
 
     fun onInputDeviceRemoved(deviceId: Int) {
         trackedDeviceIds.remove(deviceId)
-        dirtyDeviceIds.remove(deviceId)
         bindingCache.remove(deviceId)
         cancelActiveSequences()
         releaseActiveBindings(activeButtonBindings, deviceId)
@@ -330,8 +325,7 @@ class PhysicalControllerHandler(
                         sourceController = controller,
                     )
 
-                    // Only if the gamepad changed: keyboard/mouse bindings leave it untouched.
-                    gamepadOutput.send(profile?.gamepadState)
+                    sendGamepadState()
                     return true
                 }
             }
@@ -357,8 +351,8 @@ class PhysicalControllerHandler(
     }
 
     /**
-     * Handle physical controller analog stick and trigger events: dispatched right away, or with throttling
-     * on, on the first display frame on which it is due.
+     * Handle physical controller analog stick, trigger and d-pad hat events: applied to the bindings right away.
+     * The resulting stick motion goes out at the throttling rate, button and d-pad changes right away.
      * Extracted from InputControlsView.onGenericMotionEvent()
      */
     fun onGenericMotionEvent(event: MotionEvent): Boolean {
@@ -366,94 +360,73 @@ class PhysicalControllerHandler(
         if (radialMenuPressed && !isRadialMenuOpenerDevice(event.deviceId)) {
             // Its state isn't updated meanwhile: wait for fresh motion instead of re-applying it on close.
             trackedDeviceIds.remove(event.deviceId)
-            dirtyDeviceIds.remove(event.deviceId)
             return true
         }
         val controller = currentProfile.getController(event.deviceId) ?: return false
-        // Devices without a controller of their own share the "*" one and its state: dispatch another
-        // device's pending motion before this event overwrites it.
-        if (dirtyDeviceIds.isNotEmpty() && sharesController(dirtyDeviceIds, controller, event.deviceId)) {
-            flushInput(InputThrottling.nowNanos())
-        }
         if (!controller.updateStateFromMotionEvent(event)) return false
 
         trackedDeviceIds.add(event.deviceId)
-        dirtyDeviceIds.add(event.deviceId)
-        // The shared state is this device's now; re-evaluating the others from it would misapply it. That includes
-        // their undispatched motion: while paused, flushInput() above can't dispatch it first.
+        // Devices without a controller of their own share the "*" one and its state, which is this device's now:
+        // re-evaluating the others from it would misapply it.
         if (trackedDeviceIds.size > 1) {
             trackedDeviceIds.removeAll { it != event.deviceId && currentProfile.getController(it) === controller }
-            dirtyDeviceIds.retainAll(trackedDeviceIds)
         }
-        // Batched motion arrives during a frame: nowNanos() is that frame's time.
-        val nowNanos = InputThrottling.nowNanos()
-        if (pacer.isDue(nowNanos)) flushInput(nowNanos) else ensureFrameScheduled()
+        if (PluviaApp.isOverlayPaused) {
+            // Applied on resume: onOverlayResumed().
+            fullReevaluationPending = true
+            return true
+        }
+        processDevice(controller, event.deviceId)
+        gamepadOutput.sendMotion(currentProfile.gamepadState)
         return true
     }
 
-    private fun sharesController(deviceIds: Set<Int>, controller: ExternalController, deviceId: Int): Boolean =
-        deviceIds.any { it != deviceId && profile?.getController(it) === controller }
-
-    /** Sends even if unchanged: forced releases (profile switch, cleanup, device removal). */
+    /** Right away: buttons, releases and resets. */
     private fun sendGamepadState() {
-        gamepadOutput.sendForced(profile?.gamepadState)
+        gamepadOutput.send(profile?.gamepadState)
     }
 
-    /** Applies bindings for devices with undispatched motion and sends the gamepad state if it changed. */
-    private fun flushInput(nowNanos: Long) {
-        if (!fullReevaluationPending && dirtyDeviceIds.isEmpty()) return
-        if (PluviaApp.isOverlayPaused) return
+    /** Re-evaluates every tracked device, e.g. presses held sticks again when the radial menu closes. */
+    private fun onFrame(@Suppress("UNUSED_PARAMETER") frameTimeNanos: Long) {
+        if (!fullReevaluationPending || PluviaApp.isOverlayPaused) return
         val currentProfile = profile ?: return
-        // Copied: processing can release everything (e.g. a menu binding), clearing these sets.
-        val deviceIds = pendingDeviceIds.apply {
-            clear()
-            addAll(if (fullReevaluationPending) trackedDeviceIds else dirtyDeviceIds)
-        }
-        dirtyDeviceIds.clear()
         fullReevaluationPending = false
-        pacer.onSent(nowNanos)
-        processDevices(currentProfile, deviceIds)
-        // Already paced by throttling: sendMotion() would pace it twice.
-        gamepadOutput.send(currentProfile.gamepadState)
-    }
-
-    /** Dispatches throttled motion once due; stops when nothing is waiting. */
-    private fun onFrame(frameTimeNanos: Long) {
-        if (PluviaApp.isOverlayPaused || profile == null) return
-        if (fullReevaluationPending || pacer.isDue(frameTimeNanos)) flushInput(frameTimeNanos)
-        if (fullReevaluationPending || dirtyDeviceIds.isNotEmpty()) ensureFrameScheduled()
-    }
-
-    private fun processDevices(currentProfile: ControlsProfile, deviceIds: List<Int>) {
-        if (radialMenuPressed) {
-            for (deviceId in deviceIds) {
-                if (!radialMenuPressed) break
-                if (!isRadialMenuOpenerDevice(deviceId)) continue
-                val controller = currentProfile.getController(deviceId) ?: continue
-                updateRadialMenuVector(controller)
-                if (radialMenuOpenedFromMotion && !isRadialMenuMotionOpenerPressed(controller)) {
-                    handleInputEvent(
-                        Binding.OPEN_RADIAL_MENU,
-                        false,
-                        0f,
-                        fromMotion = true,
-                        sourceKeyCode = radialMenuOpenerKeyCode,
-                        sourceDeviceId = deviceId,
-                        sourceController = controller,
-                    )
-                }
-            }
-        } else {
-            for (i in deviceIds.indices) { // indexed: an iterator would allocate on every dispatch
-                val deviceId = deviceIds[i]
-                val controller = currentProfile.getController(deviceId) ?: continue
-                val cache = bindingCacheEntry(controller, deviceId)
-                processTriggers(controller, deviceId, cache)
-                if (radialMenuPressed) break // a trigger binding may have just opened the menu
-                processJoystickInput(controller, cache)
-                if (radialMenuPressed) break
-            }
+        // Copied: processing can release everything (e.g. a menu binding), clearing the tracked set.
+        val deviceIds = reevaluatedDeviceIds.apply {
+            clear()
+            addAll(trackedDeviceIds)
         }
+        val radialMenuWasOpen = radialMenuPressed
+        for (i in deviceIds.indices) { // indexed: an iterator would allocate
+            if (radialMenuPressed != radialMenuWasOpen) break // a binding opened or closed the menu
+            val deviceId = deviceIds[i]
+            val controller = currentProfile.getController(deviceId) ?: continue
+            processDevice(controller, deviceId)
+        }
+        sendGamepadState()
+    }
+
+    private fun processDevice(controller: ExternalController, deviceId: Int) {
+        if (radialMenuPressed) {
+            if (!isRadialMenuOpenerDevice(deviceId)) return
+            updateRadialMenuVector(controller)
+            if (radialMenuOpenedFromMotion && !isRadialMenuMotionOpenerPressed(controller)) {
+                handleInputEvent(
+                    Binding.OPEN_RADIAL_MENU,
+                    false,
+                    0f,
+                    fromMotion = true,
+                    sourceKeyCode = radialMenuOpenerKeyCode,
+                    sourceDeviceId = deviceId,
+                    sourceController = controller,
+                )
+            }
+            return
+        }
+        val cache = bindingCacheEntry(controller, deviceId)
+        processTriggers(controller, deviceId, cache)
+        if (radialMenuPressed) return // a trigger binding may have just opened the menu
+        processJoystickInput(controller, cache)
     }
 
     private fun processTriggers(controller: ExternalController, deviceId: Int, cache: BindingCacheEntry) {
@@ -495,7 +468,10 @@ class PhysicalControllerHandler(
         sourceDeviceId: Int,
     ) {
         if (isActionDown) {
-            mouseLook.hold(MouseMoveSource(sourceDeviceId, sourceKeyCode, binding), binding, offset, profile?.cursorSpeed ?: 1f)
+            // The binding sets the direction, the deflection only the speed: a stick axis bound to the opposite
+            // mouse direction moves the mouse that way.
+            val value = Math.abs(offset) * MouseLookStepper.direction(binding)
+            mouseLook.hold(MouseMoveSource(sourceDeviceId, sourceKeyCode, binding), binding, value, cursorSpeed)
         } else {
             mouseLook.removeIf { source ->
                 source is MouseMoveSource &&

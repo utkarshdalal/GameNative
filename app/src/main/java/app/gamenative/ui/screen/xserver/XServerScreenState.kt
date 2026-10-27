@@ -1,15 +1,20 @@
 package app.gamenative.ui.screen.xserver
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.widget.FrameLayout
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.data.ShooterModeConfig
 import app.gamenative.externaldisplay.SwapInputOverlayView
+import app.gamenative.ui.component.parseBooleanExtra
+import app.gamenative.ui.component.parsePositiveFpsLimit
 import app.gamenative.ui.data.PerformanceHudConfig
 import app.gamenative.ui.data.PerformanceHudSize
 import app.gamenative.ui.widget.PerformanceHudView
@@ -22,6 +27,17 @@ import com.winlator.winhandler.ProcessInfo
 import com.winlator.xserver.Keyboard
 import com.winlator.xserver.WindowManager
 import kotlinx.coroutines.Job
+
+private const val INPUT_THROTTLING_ENABLED_EXTRA = "inputThrottlingEnabled"
+private const val INPUT_THROTTLING_RATE_EXTRA = "inputThrottlingRateHz"
+
+private fun initialInputThrottlingEnabled(container: Container): Boolean =
+    parseBooleanExtra(container.getExtra(INPUT_THROTTLING_ENABLED_EXTRA)) ?: false
+
+private fun initialInputThrottlingRateHz(container: Container): Int =
+    parsePositiveFpsLimit(container.getExtra(INPUT_THROTTLING_RATE_EXTRA))
+        ?.coerceIn(InputThrottling.MIN_RATE_HZ, InputThrottling.MAX_RATE_HZ)
+        ?: InputThrottling.DEFAULT_RATE_HZ
 
 /**
  * Mutable session state of [XServerScreen], held in one remembered object.
@@ -84,6 +100,68 @@ internal class XServerScreenState(container: Container, context: Context) {
     var performanceHudTouchDownRawY by mutableStateOf(0f)
     var performanceHudDragOffsetX by mutableStateOf(0f)
     var performanceHudDragOffsetY by mutableStateOf(0f)
+
+    // The "Input throttling" setting, stored in the container, and the session's instance of it, shared by the
+    // on-screen controls and physical controllers.
+    var inputThrottlingEnabled by mutableStateOf(initialInputThrottlingEnabled(container))
+        private set
+    var inputThrottlingRateHz by mutableIntStateOf(initialInputThrottlingRateHz(container))
+        private set
+    val inputThrottling = InputThrottling().apply {
+        enabled = inputThrottlingEnabled
+        setRateHz(inputThrottlingRateHz)
+    }
+
+    // tryCapturePointer() runs on every gamepad event while capture is off: at most one request in flight.
+    // Posted on a main-thread Handler, not the view, so a detached view can't leave the flag set. Main thread only.
+    private val pointerCaptureHandler = Handler(Looper.getMainLooper())
+    private var pointerCaptureRequestPending = false
+
+    fun applyInputThrottlingEnabled(container: Container, enabled: Boolean) {
+        inputThrottlingEnabled = enabled
+        inputThrottling.enabled = enabled
+        persistInputThrottling(container)
+    }
+
+    fun applyInputThrottlingRateHz(container: Container, hz: Int) {
+        val sanitized = hz.coerceIn(InputThrottling.MIN_RATE_HZ, InputThrottling.MAX_RATE_HZ)
+        inputThrottlingRateHz = sanitized
+        inputThrottling.setRateHz(sanitized)
+        persistInputThrottling(container)
+    }
+
+    private fun persistInputThrottling(container: Container) {
+        container.putExtra(INPUT_THROTTLING_ENABLED_EXTRA, inputThrottlingEnabled)
+        container.putExtra(INPUT_THROTTLING_RATE_EXTRA, inputThrottlingRateHz)
+        container.saveData()
+    }
+
+    /** Requests pointer capture for the touchpad shortly, unless a menu or editor is open; false if it can't. */
+    fun tryCapturePointer(container: Container): Boolean {
+        if (!canCapturePointer(container)) return false
+        if (!pointerCaptureRequestPending) {
+            pointerCaptureRequestPending = true
+            pointerCaptureHandler.postDelayed({
+                pointerCaptureRequestPending = false
+                // Checked again: a menu or editor may have opened meanwhile.
+                val view = PluviaApp.touchpadView
+                if (view != null && canCapturePointer(container)) {
+                    view.requestFocus()
+                    view.requestPointerCapture()
+                }
+            }, 100)
+        }
+        return true
+    }
+
+    /** A request still pending must not capture the touchpad of a later session. */
+    fun cancelPointerCaptureRequest() {
+        pointerCaptureHandler.removeCallbacksAndMessages(null)
+        pointerCaptureRequestPending = false
+    }
+
+    private fun canCapturePointer(container: Container): Boolean =
+        !showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode && !container.isTouchscreenMode
 }
 
 internal fun loadPerformanceHudConfig(): PerformanceHudConfig {
