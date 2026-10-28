@@ -12,6 +12,7 @@ object SuggestionConfigKeys {
         "graphicsDriverConfig" to ConfigValueType.STRING,
         "dxwrapper" to ConfigValueType.STRING,
         "dxwrapperConfig" to ConfigValueType.STRING,
+        "csmt" to ConfigValueType.BOOLEAN,
         "execArgs" to ConfigValueType.STRING,
         "startupSelection" to ConfigValueType.INT,
         "box64Version" to ConfigValueType.STRING,
@@ -50,6 +51,7 @@ object SuggestionConfigKeys {
         "graphicsDriverConfig" -> data.graphicsDriverConfig
         "dxwrapper" -> data.dxwrapper
         "dxwrapperConfig" -> data.dxwrapperConfig
+        "csmt" -> data.csmt.toString()
         "execArgs" -> data.execArgs
         "startupSelection" -> data.startupSelection.toString()
         "box64Version" -> data.box64Version
