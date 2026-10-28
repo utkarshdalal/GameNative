@@ -19,6 +19,7 @@ import app.gamenative.data.EulaInfo
 import app.gamenative.data.GameSource
 import app.gamenative.data.SteamApp
 import app.gamenative.data.filterForCountry
+import app.gamenative.display.GamescopeSettings
 import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.enums.AppTheme
 import app.gamenative.ui.enums.AppFilter
@@ -233,6 +234,13 @@ object PrefManager {
         get() = getPref(DISPLAY_SERVER, DefaultVersion.DISPLAY_SERVER)
         set(value) {
             setPref(DISPLAY_SERVER, value)
+        }
+
+    private val GAMESCOPE_OUTPUT_RESOLUTION = stringPreferencesKey("gamescopeOutputResolution")
+    var gamescopeOutputResolution: String
+        get() = getPref(GAMESCOPE_OUTPUT_RESOLUTION, GamescopeSettings.OUTPUT_RESOLUTION_DEFAULT)
+        set(value) {
+            setPref(GAMESCOPE_OUTPUT_RESOLUTION, value)
         }
 
     private val DISPLAY_RENDERER_MODE = stringPreferencesKey("display_renderer_mode")
