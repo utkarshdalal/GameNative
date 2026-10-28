@@ -178,6 +178,7 @@ object ContainerUtils {
             mouseWarpOverride = PrefManager.mouseWarpOverride,
             useDRI3 = PrefManager.useDRI3,
             hdrEnabled = PrefManager.hdrEnabled,
+            gamescopeOutputResolution = PrefManager.gamescopeOutputResolution,
             useSteamInput = PrefManager.useSteamInput,
             enableXInput = PrefManager.xinputEnabled,
 			enableDInput = PrefManager.dinputEnabled,
@@ -231,6 +232,7 @@ object ContainerUtils {
         PrefManager.mouseWarpOverride = containerData.mouseWarpOverride
         PrefManager.useDRI3 = containerData.useDRI3
         PrefManager.hdrEnabled = containerData.hdrEnabled
+        PrefManager.gamescopeOutputResolution = containerData.gamescopeOutputResolution
         PrefManager.disableMouseInput = containerData.disableMouseInput
         PrefManager.externalDisplayInputMode = containerData.externalDisplayMode
         PrefManager.externalDisplaySwap = containerData.externalDisplaySwap
@@ -983,6 +985,7 @@ object ContainerUtils {
                 strictShaderMath = PrefManager.strictShaderMath,
                 useDRI3 = PrefManager.useDRI3,
                 hdrEnabled = PrefManager.hdrEnabled,
+                gamescopeOutputResolution = PrefManager.gamescopeOutputResolution,
                 videoMemorySize = PrefManager.videoMemorySize,
                 mouseWarpOverride = PrefManager.mouseWarpOverride,
                 enableXInput = PrefManager.xinputEnabled,
