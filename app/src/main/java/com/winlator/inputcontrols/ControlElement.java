@@ -26,6 +26,10 @@ import java.util.Locale;
 
 public class ControlElement {
     public static final float STICK_DEAD_ZONE = 0.15f;
+    // Keys on a stick direction press past STICK_DEAD_ZONE and release at or below this.
+    public static final float STICK_RELEASE_THRESHOLD = 0.10f;
+    // Tuned sticks already apply the user's dead zone: keys press past this margin and release at 0.
+    public static final float TUNED_STICK_PRESS_THRESHOLD = 0.03f;
     public static final float DPAD_DEAD_ZONE = 0.3f;
     public static final float STICK_SENSITIVITY = 3.0f;
     public static final float TRACKPAD_MIN_SPEED = 0.8f;
@@ -88,6 +92,8 @@ public class ControlElement {
     private final Rect boundingBox = new Rect();
     private boolean[] states = new boolean[4];
     private boolean[] gamepadAxisActive = new boolean[4];
+    // Active stick directions (up, right, down, left) for the release threshold.
+    private final boolean[] stickDirections = new boolean[4];
     private boolean radialMenuTouchActive = false;
     private boolean boundingBoxNeedsUpdate = true;
     private String text = "";
@@ -316,6 +322,30 @@ public class ControlElement {
             inputControlsView.handleInputEvent(bindingCombo, isActionDown, offset, bindingSources[index]);
         }
         else inputControlsView.handleInputEvent(bindingCombo, isActionDown, offset);
+    }
+
+    /** Re-sends only the analog members of a held direction. */
+    private void handleHeldBindingUpdate(int index, float offset) {
+        List<Binding> heldBindings = getBindingComboAt(index).getHeldUpdateBindings();
+        for (int i = 0, count = heldBindings.size(); i < count; i++) {
+            inputControlsView.handleInputEvent(heldBindings.get(i), true, offset);
+        }
+    }
+
+    /** Whether a stick direction is active; digital bindings release only at STICK_RELEASE_THRESHOLD. */
+    public static boolean isStickDirectionActive(float value, boolean wasActive, boolean digital) {
+        return isStickDirectionActive(value, wasActive, digital, false);
+    }
+
+    /** As above; for a tuned physical stick analog bindings follow any deflection, keys use TUNED_STICK_PRESS_THRESHOLD. */
+    public static boolean isStickDirectionActive(float value, boolean wasActive, boolean digital, boolean tuned) {
+        if (tuned) return value > (digital && !wasActive ? TUNED_STICK_PRESS_THRESHOLD : 0f);
+        return value > (wasActive && digital ? STICK_RELEASE_THRESHOLD : STICK_DEAD_ZONE);
+    }
+
+    /** Keys, buttons and sequences: nothing that follows the deflection. */
+    public static boolean isDigital(BindingCombo bindingCombo) {
+        return !bindingCombo.hasAnalog();
     }
 
     private void handleSimultaneousBindingMembers(
@@ -1284,6 +1314,7 @@ public class ControlElement {
             states[i] = false;
             gamepadAxisActive[i] = false;
         }
+        Arrays.fill(stickDirections, false);
     }
 
     public boolean handleTouchDown(int pointerId, float x, float y) {
@@ -1370,7 +1401,11 @@ public class ControlElement {
                 if (currentPosition == null) currentPosition = new PointF();
                 currentPosition.x = boundingBox.left + deltaX * radius + radius;
                 currentPosition.y = boundingBox.top + deltaY * radius + radius;
-                final boolean[] states = {deltaY <= -STICK_DEAD_ZONE, deltaX >= STICK_DEAD_ZONE, deltaY >= STICK_DEAD_ZONE, deltaX <= -STICK_DEAD_ZONE};
+                final boolean[] states = stickDirections;
+                states[0] = isStickDirectionActive(-deltaY, states[0], isDigital(getBindingComboAt(0)));
+                states[1] = isStickDirectionActive(deltaX, states[1], isDigital(getBindingComboAt(1)));
+                states[2] = isStickDirectionActive(deltaY, states[2], isDigital(getBindingComboAt(2)));
+                states[3] = isStickDirectionActive(-deltaX, states[3], isDigital(getBindingComboAt(3)));
                 if (handleRadialMenuDirectionalMove(pointerId, states, x, y)) return true;
 
                 for (byte i = 0; i < 4; i++) {
@@ -1394,9 +1429,8 @@ public class ControlElement {
                     }
                     else {
                         boolean state = binding.isMouseMove() ? (states[i] || states[(i+2)%4]) : states[i];
-                        if (binding.isMouseMove() || this.states[i] != state) {
-                            handleBindingInputEvent(i, state, value);
-                        }
+                        if (this.states[i] != state) handleBindingInputEvent(i, state, value);
+                        else if (state) handleHeldBindingUpdate(i, value);
                         this.states[i] = state;
                     }
                 }
@@ -1495,9 +1529,13 @@ public class ControlElement {
                     }
                 }
 
+                // Keys press once; analog bindings follow the finger.
                 for (byte i = 0; i < 4; i++) {
                     float value = i == 1 || i == 3 ? deltaX : deltaY;
-                    if (states[i]) handleBindingInputEvent(i, true, value);
+                    if (states[i]) {
+                        if (!this.states[i]) handleBindingInputEvent(i, true, value);
+                        else handleHeldBindingUpdate(i, value);
+                    }
                     this.states[i] = states[i];
                 }
 

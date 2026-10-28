@@ -218,6 +218,11 @@ public enum Binding {
         return this == MOUSE_MOVE_UP || this == MOUSE_MOVE_RIGHT || this == MOUSE_MOVE_DOWN || this == MOUSE_MOVE_LEFT;
     }
 
+    /** Follows a deflection or pull: stick and mouse axes, analog triggers. */
+    public boolean isAnalog() {
+        return isMouseMove() || isGamepadAxis() || this == GAMEPAD_BUTTON_L2 || this == GAMEPAD_BUTTON_R2;
+    }
+
     public static String[] mouseBindingLabels() {
         ArrayList<String> names = new ArrayList<>();
         for (Binding binding : values()) if (binding.isMouse()) names.add(binding.toString());

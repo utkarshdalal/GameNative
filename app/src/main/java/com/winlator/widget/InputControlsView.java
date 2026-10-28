@@ -57,6 +57,8 @@ import java.util.TimerTask;
 
 public class InputControlsView extends View {
     private static final long SHOOTER_SPRINT_TAP_DURATION_MS = 120;
+    // Sprint ends a little inside the outer ring, so a finger resting on its edge doesn't chatter.
+    private static final float SHOOTER_SPRINT_RELEASE_MARGIN = 0.05f;
     public static final float DEFAULT_OVERLAY_OPACITY = 0.4f;
     private static final int SEQUENCE_PRESS_MS = 80;
     // LX, LY, RX, RY - the leading entries of the axis array processed in processJoystickInput
@@ -1020,7 +1022,8 @@ public class InputControlsView extends View {
         }
 
         float magnitude = (float)Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-        boolean shouldSprint = magnitude >= shooterModeConfig.getOuterRingSprintThreshold();
+        float threshold = shooterModeConfig.getOuterRingSprintThreshold();
+        boolean shouldSprint = magnitude >= (shooterSprintActive ? threshold - SHOOTER_SPRINT_RELEASE_MARGIN : threshold);
         if (shooterModeConfig.getOuterRingSprintPressMode()) {
             if (shouldSprint && !shooterSprintActive) {
                 tapShooterSprintBinding();
@@ -1182,13 +1185,12 @@ public class InputControlsView extends View {
         Binding[] bindings = getJoystickBindings(movementType);
 
         float analogDeadzone = getMovementJoystickDeadzone();
-        float digitalDeadzone = ControlElement.STICK_DEAD_ZONE;
         float sensitivity = getMovementStickSensitivity();
         boolean[] newStates = {
-            deltaY <= -digitalDeadzone,   // up
-            deltaX >= digitalDeadzone,    // right
-            deltaY >= digitalDeadzone,    // down
-            deltaX <= -digitalDeadzone    // left
+            ControlElement.isStickDirectionActive(-deltaY, joystickStates[0], !bindings[0].isAnalog()), // up
+            ControlElement.isStickDirectionActive(deltaX, joystickStates[1], !bindings[1].isAnalog()),  // right
+            ControlElement.isStickDirectionActive(deltaY, joystickStates[2], !bindings[2].isAnalog()),  // down
+            ControlElement.isStickDirectionActive(-deltaX, joystickStates[3], !bindings[3].isAnalog())  // left
         };
 
         for (int i = 0; i < 4; i++) {
