@@ -310,6 +310,8 @@
     <string name="gamescope_reset_default">デフォルトに戻す</string>
     <string name="gamescope_look">カラー効果</string>
     <string name="gamescope_look_off">オフ</string>
+    <string name="gamescope_output_resolution">アップスケール解像度</string>
+    <string name="gamescope_output_resolution_device">デバイスの解像度</string>
     <string name="gamescope_reshade">ReShade エフェクト</string>
     <string name="gamescope_look_grayscale">グレースケール</string>
     <string name="gamescope_look_invertcolors">色を反転</string>

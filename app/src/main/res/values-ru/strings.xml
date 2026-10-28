@@ -1042,6 +1042,8 @@ https://gamenative.app
     <string name="gamescope_reset_default">Сбросить по умолчанию</string>
     <string name="gamescope_look">Эффекты цвета</string>
     <string name="gamescope_look_off">Выкл.</string>
+    <string name="gamescope_output_resolution">Разрешение масштабирования</string>
+    <string name="gamescope_output_resolution_device">Разрешение устройства</string>
     <string name="gamescope_reshade">Эффекты ReShade</string>
     <string name="gamescope_look_grayscale">Оттенки серого</string>
     <string name="gamescope_look_invertcolors">Инвертировать цвета</string>

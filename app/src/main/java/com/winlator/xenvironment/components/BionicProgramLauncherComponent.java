@@ -551,7 +551,9 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             envVars.put("GNDRM_DRIVER_TYPE", container.getGraphicsDriver());
 
         // Same source as gamescope's -W/-H, so the two cannot drift.
-        int[] scanoutOutput = displaySize();
+        int[] scanoutOutput = AppUtils.parseScreenSize(GamescopeSettings.outputResolution(container));
+        if (scanoutOutput == null)
+            scanoutOutput = displaySize();
         if (scanoutOutput == null)
             scanoutOutput = AppUtils.parseScreenSize(container != null ? container.getScreenSize() : null);
         if (scanoutOutput != null)
@@ -716,13 +718,10 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         }
     }
 
-    /** " -W <w> -H <h> -w <w> -h <h>": -W/-H from the real display (matches the panel, no resample), -w/-h from the container screen size; either pair omitted if unknown. */
+    /** " -W <w> -H <h> -w <w> -h <h>": -W/-H from the container's output resolution (the container screen size when Off, the panel when Device's), -w/-h from the container screen size; either pair omitted if unknown. */
     private String gamescopeModeGeometry() {
         int[] containerSize = AppUtils.parseScreenSize(container != null ? container.getScreenSize() : null);
-        int[] output = displaySize();
-        if (output == null) output = containerSize;
-        StringBuilder args = new StringBuilder();
-        if (output != null) args.append(" -W ").append(output[0]).append(" -H ").append(output[1]);
+        StringBuilder args = new StringBuilder(GamescopeSettings.outputGeometryArg(container));
         if (containerSize != null) args.append(" -w ").append(containerSize[0]).append(" -h ").append(containerSize[1]);
         return args.toString();
     }

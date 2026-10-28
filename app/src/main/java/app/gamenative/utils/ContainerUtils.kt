@@ -6,6 +6,7 @@ import app.gamenative.BuildConfig
 import app.gamenative.MainActivity
 import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
+import app.gamenative.display.GamescopeSettings
 import app.gamenative.enums.Marker
 import app.gamenative.inputcontrols.ControlProfileService
 import app.gamenative.service.SteamService
@@ -392,6 +393,10 @@ object ContainerUtils {
             strictShaderMath = strictShaderMath,
             useDRI3 = container.isUseDRI3(),
             hdrEnabled = container.isHdrEnabled(),
+            gamescopeOutputResolution = container.getExtra(
+                GamescopeSettings.EXTRA_OUTPUT_RESOLUTION,
+                GamescopeSettings.OUTPUT_RESOLUTION_DEFAULT,
+            ),
             videoMemorySize = videoMemorySize,
             mouseWarpOverride = mouseWarpOverride,
             sharpnessEffect = container.getExtra("sharpnessEffect", "None"),
@@ -604,6 +609,7 @@ object ContainerUtils {
             container.setNeedsUnpacking(true)
         }
         container.putExtra("sharpnessEffect", containerData.sharpnessEffect)
+        container.putExtra(GamescopeSettings.EXTRA_OUTPUT_RESOLUTION, containerData.gamescopeOutputResolution)
         container.putExtra("sharpnessLevel", containerData.sharpnessLevel.toString())
         container.putExtra("sharpnessDenoise", containerData.sharpnessDenoise.toString())
         container.putExtra("vibrationIntensity", containerData.vibrationIntensity.coerceIn(0, 100).toString())

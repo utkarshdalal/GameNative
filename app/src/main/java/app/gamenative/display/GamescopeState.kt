@@ -1,6 +1,8 @@
 package app.gamenative.display
 
+import app.gamenative.PluviaApp
 import com.winlator.container.Container
+import com.winlator.core.AppUtils
 import java.io.File
 
 /** The gamescope effects a session should have in effect: one value per effect domain. */
@@ -20,6 +22,18 @@ object GamescopeSettings {
     /** ReShade effect file name last chosen for the container; empty = off. */
     const val EXTRA_RESHADE = "gamescopeReshade"
     const val EXTRA_SCALER = "gamescopeScalingMode"
+
+    /** Output resolution the container presents at, as "WxH", [OUTPUT_RESOLUTION_DEVICE] or [OUTPUT_RESOLUTION_OFF]. */
+    const val EXTRA_OUTPUT_RESOLUTION = "gamescopeOutputResolution"
+
+    /** 1080p — the output resolution a session presents at until the container picks another. */
+    const val OUTPUT_RESOLUTION_DEFAULT = "1920x1080"
+
+    /** `-W`/`-H` follow the container's screen size: the game presents 1:1, nothing is resampled. */
+    const val OUTPUT_RESOLUTION_OFF = "off"
+
+    /** `-W`/`-H` follow the panel's real pixel size (the pre-setting behaviour). */
+    const val OUTPUT_RESOLUTION_DEVICE = "device"
 
     // Sharpness is stored in the UI's own units: 0..SHARPNESS_STEPS, higher = sharper — the scale the
     // QuickMenu row shows.
@@ -48,6 +62,31 @@ object GamescopeSettings {
      */
     @JvmStatic
     fun gridArg(): String = " -r $SESSION_GRID_HZ"
+
+    /**
+     * The output resolution a session presents at ("WxH"). [OUTPUT_RESOLUTION_OFF] resolves to the
+     * container's screen size and [OUTPUT_RESOLUTION_DEVICE] to the panel's real pixel size; "" only
+     * when the resolved size can't be read, which leaves the pair off the launch command.
+     */
+    @JvmStatic
+    fun outputResolution(container: Container?): String {
+        val stored = container?.getExtra(EXTRA_OUTPUT_RESOLUTION, "").orEmpty()
+        val resolution = stored.ifEmpty { OUTPUT_RESOLUTION_DEFAULT }
+        return when {
+            resolution.equals(OUTPUT_RESOLUTION_OFF, ignoreCase = true) ->
+                container?.screenSize.orEmpty()
+            resolution.equals(OUTPUT_RESOLUTION_DEVICE, ignoreCase = true) ->
+                PluviaApp.getNativeDisplaySize().orEmpty()
+            else -> resolution
+        }
+    }
+
+    /** The `-W <w> -H <h>` pair for [outputResolution], or "" when it is off or unreadable. */
+    @JvmStatic
+    fun outputGeometryArg(container: Container?): String {
+        val size = AppUtils.parseScreenSize(outputResolution(container)) ?: return ""
+        return " -W ${size[0]} -H ${size[1]}"
+    }
 
     /**
      * The session's X socket — gamescope's own Xwayland, whose root window the live scaling-mode
