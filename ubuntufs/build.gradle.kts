@@ -28,6 +28,9 @@ android {
     }
 
     buildTypes {
+        getByName("release") {
+            isDebuggable = true
+        }
         create("release-signed") {
             initWith(getByName("release"))
         }
