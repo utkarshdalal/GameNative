@@ -5365,8 +5365,12 @@ private fun exit(
         Timber.e(e, "winHandler.stop() failed during exit")
     }
     // The gndrm daemon (gamescope display mode) is torn down only at session exit: a display power
-    // cycle retargets the surface in XServerView instead of stopping it.
-    GameNativeDrm.nativeStop()
+    // cycle retargets the surface in XServerView instead of stopping it. Avoid touching the JNI
+    // binding in X11 sessions, where the daemon was never started and loading the library is both
+    // unnecessary and may fail on older Android versions.
+    if (PluviaApp.xServerView?.isGamescopeMode == true) {
+        GameNativeDrm.nativeStop()
+    }
     PluviaApp.shutdownEnvironment()
     EaLaunchSupport.stop()
     GogGalaxyService.stop(blocking = false)
