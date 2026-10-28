@@ -69,7 +69,7 @@ data class ContainerData(
     val strictShaderMath: Boolean = true,
     val useDRI3: Boolean = true,
     val hdrEnabled: Boolean = false,
-    /** Gamescope output (`-W`/`-H`) resolution; [GamescopeSettings.OUTPUT_RESOLUTION_OFF] presents at the panel's own mode. */
+    /** Gamescope output (`-W`/`-H`) resolution; [GamescopeSettings.OUTPUT_RESOLUTION_OFF] follows the container's General-tab screen size. */
     val gamescopeOutputResolution: String = GamescopeSettings.OUTPUT_RESOLUTION_DEFAULT,
     val videoMemorySize: String = "2048",
     val mouseWarpOverride: String = "disable",

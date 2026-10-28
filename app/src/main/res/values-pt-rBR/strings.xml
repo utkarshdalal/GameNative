@@ -285,7 +285,7 @@
     <string name="gamescope_reset_default">Redefinir para o padrão</string>
     <string name="gamescope_look">Efeitos de cor</string>
     <string name="gamescope_look_off">Desativado</string>
-    <string name="gamescope_output_resolution">Resolução de upscaling</string>
+    <string name="gamescope_output_resolution">Resolução de ampliação</string>
     <string name="gamescope_output_resolution_device">Resolução do dispositivo</string>
     <string name="gamescope_reshade">Efeitos ReShade</string>
     <string name="gamescope_look_grayscale">Escala de cinza</string>

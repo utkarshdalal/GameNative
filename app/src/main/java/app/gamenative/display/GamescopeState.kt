@@ -81,7 +81,7 @@ object GamescopeSettings {
         }
     }
 
-    /** The `-W <w> -H <h>` pair for [outputResolution], or "" when it is off or unreadable. */
+    /** The `-W <w> -H <h>` pair for [outputResolution], or "" when the resolved size is unreadable. */
     @JvmStatic
     fun outputGeometryArg(container: Container?): String {
         val size = AppUtils.parseScreenSize(outputResolution(container)) ?: return ""

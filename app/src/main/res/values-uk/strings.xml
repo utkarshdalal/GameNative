@@ -351,7 +351,7 @@
     <string name="gamescope_reset_default">Скинути до стандартних</string>
     <string name="gamescope_look">Ефекти кольору</string>
     <string name="gamescope_look_off">Вимк.</string>
-    <string name="gamescope_output_resolution">Роздільна здатність масштабування</string>
+    <string name="gamescope_output_resolution">Роздільна здатність апскейлінгу</string>
     <string name="gamescope_output_resolution_device">Роздільна здатність пристрою</string>
     <string name="gamescope_reshade">Ефекти ReShade</string>
     <string name="gamescope_look_grayscale">Відтінки сірого</string>
