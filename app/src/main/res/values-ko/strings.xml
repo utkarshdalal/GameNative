@@ -364,6 +364,8 @@
     <string name="gamescope_reset_default">기본값으로 재설정</string>
     <string name="gamescope_look">색상 효과</string>
     <string name="gamescope_look_off">끔</string>
+    <string name="gamescope_output_resolution">업스케일링 해상도</string>
+    <string name="gamescope_output_resolution_device">기기 해상도</string>
     <string name="gamescope_reshade">ReShade 효과</string>
     <string name="gamescope_look_grayscale">회색조</string>
     <string name="gamescope_look_invertcolors">색상 반전</string>

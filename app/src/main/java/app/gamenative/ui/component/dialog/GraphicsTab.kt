@@ -11,10 +11,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.gamenative.PluviaApp
 import app.gamenative.R
+import app.gamenative.display.GamescopeSettings
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.component.settings.SettingsListDropdownSearchable
 import app.gamenative.ui.component.settings.SettingsMultiListDropdown
@@ -123,6 +125,27 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                     }
                 },
             )
+            // Upscaling resolution gamescope presents at (-W/-H): Disabled follows the container screen size, Device's
+            // follows the panel, and the rest are the General tab's resolutions — whose 1920x1080 entry is the default.
+            if (!isX11Display) {
+                val outputResolutionLabels = stringArrayResource(R.array.screen_size_entries).drop(1).reversed()
+                val outputResolutionValues = listOf(
+                    GamescopeSettings.OUTPUT_RESOLUTION_OFF,
+                    GamescopeSettings.OUTPUT_RESOLUTION_DEVICE,
+                ) + outputResolutionLabels.map { it.substringBefore(' ') }
+                SettingsListDropdown(
+                    colors = settingsTileColors(),
+                    title = { Text(text = stringResource(R.string.gamescope_output_resolution)) },
+                    value = outputResolutionValues.indexOf(config.gamescopeOutputResolution).coerceAtLeast(0),
+                    items = listOf(
+                        stringResource(R.string.disabled),
+                        stringResource(R.string.gamescope_output_resolution_device),
+                    ) + outputResolutionLabels,
+                    onItemSelected = { idx ->
+                        state.config.value = config.copy(gamescopeOutputResolution = outputResolutionValues[idx])
+                    },
+                )
+            }
             // HDR is a launch-time Gamescope flag; hidden on the X11 display server, and
             // on a panel with no HDR types — the switch would silently do nothing there.
             val hdrCapable = remember { PluviaApp.getDisplayHdrCapabilities() != null }

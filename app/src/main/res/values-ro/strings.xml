@@ -354,6 +354,8 @@
     <string name="gamescope_reset_default">Resetează la implicit</string>
     <string name="gamescope_look">Efecte de culoare</string>
     <string name="gamescope_look_off">Oprit</string>
+    <string name="gamescope_output_resolution">Rezoluția de upscalare</string>
+    <string name="gamescope_output_resolution_device">Rezoluția dispozitivului</string>
     <string name="gamescope_reshade">Efecte ReShade</string>
     <string name="gamescope_look_grayscale">Nuanțe de gri</string>
     <string name="gamescope_look_invertcolors">Inversează culorile</string>

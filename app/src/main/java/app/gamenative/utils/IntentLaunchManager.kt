@@ -302,6 +302,8 @@ object IntentLaunchManager {
             } else {
                 base.screenSize
             },
+            // Not part of the intent override schema: always the container's own setting.
+            gamescopeOutputResolution = base.gamescopeOutputResolution,
             envVars = if (override.envVars != Container.DEFAULT_ENV_VARS) override.envVars else base.envVars,
             graphicsDriver = if (override.graphicsDriver != Container.DEFAULT_GRAPHICS_DRIVER) {
                 override.graphicsDriver
