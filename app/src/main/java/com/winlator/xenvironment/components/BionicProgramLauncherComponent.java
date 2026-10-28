@@ -550,14 +550,22 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         if (container != null && container.getGraphicsDriver() != null)
             envVars.put("GNDRM_DRIVER_TYPE", container.getGraphicsDriver());
 
-        // Same source as gamescope's -W/-H, so the two cannot drift.
+        // Same source as gamescope's -W/-H, so the two cannot drift. The nested pair is seeded from the
+        // same value the -w/-h arguments are formatted from (see gamescopeNestedSize).
         int[] scanoutOutput = AppUtils.parseScreenSize(GamescopeSettings.outputResolution(container));
         if (scanoutOutput == null)
             scanoutOutput = displaySize();
         if (scanoutOutput == null)
-            scanoutOutput = AppUtils.parseScreenSize(container != null ? container.getScreenSize() : null);
+            scanoutOutput = gamescopeNestedSize();
         if (scanoutOutput != null)
             envVars.put("GNDRM_SCANOUT", scanoutOutput[0] + "x" + scanoutOutput[1]);
+
+        // The nested (-w/-h) geometry, seeded the same way: Xwayland's first window-sized allocations
+        // reach the daemon as a bare length, and without this it learns that size only from a later
+        // commit, so those early buffers stay kernel-owned and get copied in.
+        int[] nested = gamescopeNestedSize();
+        if (nested != null)
+            envVars.put("GNDRM_SCANOUT_NESTED", nested[0] + "x" + nested[1]);
 
         Log.i("BionicProgramLauncherComponent", "Gamescope display server active; bin="
                 + new File(gsDir, "bin/gamescope").exists() + " shim="
@@ -720,10 +728,15 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
     /** " -W <w> -H <h> -w <w> -h <h>": -W/-H from the container's output resolution (the container screen size when Off, the panel when Device's), -w/-h from the container screen size; either pair omitted if unknown. */
     private String gamescopeModeGeometry() {
-        int[] containerSize = AppUtils.parseScreenSize(container != null ? container.getScreenSize() : null);
+        int[] containerSize = gamescopeNestedSize();
         StringBuilder args = new StringBuilder(GamescopeSettings.outputGeometryArg(container));
         if (containerSize != null) args.append(" -w ").append(containerSize[0]).append(" -h ").append(containerSize[1]);
         return args.toString();
+    }
+
+    /** The container's screen size — the nested (-w/-h) geometry of a gamescope session — or null if unreadable. */
+    private int[] gamescopeNestedSize() {
+        return AppUtils.parseScreenSize(container != null ? container.getScreenSize() : null);
     }
 
     /**
