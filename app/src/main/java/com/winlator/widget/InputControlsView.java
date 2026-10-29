@@ -1193,6 +1193,14 @@ public class InputControlsView extends View {
             ControlElement.isStickDirectionActive(-deltaX, joystickStates[3], !bindings[3].isAnalog())  // left
         };
 
+        // Release before press.
+        for (int i = 0; i < 4; i++) {
+            if (!bindings[i].isGamepad() && joystickStates[i] && !newStates[i]) {
+                handleInputEvent(bindings[i], false);
+                joystickStates[i] = false;
+            }
+        }
+
         for (int i = 0; i < 4; i++) {
             float value = (i == 1 || i == 3) ? deltaX : deltaY;
             if (bindings[i].isGamepad()) {

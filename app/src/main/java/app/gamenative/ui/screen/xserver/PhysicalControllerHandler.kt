@@ -1093,22 +1093,21 @@ class PhysicalControllerHandler(
             else -> 0f
         }
         if (triggerValue <= 0f) return
-        activeController.getControllerBinding(keyCode)
-            ?.takeIf { Binding.OPEN_RADIAL_MENU !in it.bindingCombo.bindings }
-            ?.let {
-                handleInputEvent(
-                    it.bindingCombo,
-                    false,
-                    0f,
-                    fromMotion = true,
-                    sourceKeyCode = keyCode,
-                    sourceController = activeController,
-                )
-                // Untrack it so a trigger still held after the menu closes presses again.
-                activeTriggerBindings.keys.removeAll { source ->
-                    source.keyCode == keyCode && profile?.getController(source.deviceId) === activeController
-                }
-            }
+        // Release what the held trigger pressed and untrack it, so it presses again after the menu closes.
+        for ((source, bindingCombo) in activeTriggerBindings.toList()) {
+            if (source.keyCode != keyCode || profile?.getController(source.deviceId) !== activeController) continue
+            if (Binding.OPEN_RADIAL_MENU in bindingCombo.bindings) continue
+            activeTriggerBindings.remove(source)
+            handleInputEvent(
+                bindingCombo,
+                false,
+                0f,
+                fromMotion = true,
+                sourceKeyCode = keyCode,
+                sourceDeviceId = source.deviceId,
+                sourceController = activeController,
+            )
+        }
     }
 
     private fun isRadialMenuOpenerDevice(deviceId: Int): Boolean {

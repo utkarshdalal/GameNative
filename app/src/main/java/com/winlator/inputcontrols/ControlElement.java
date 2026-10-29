@@ -31,6 +31,7 @@ public class ControlElement {
     // Tuned sticks already apply the user's dead zone: keys press past this margin and release at 0.
     public static final float TUNED_STICK_PRESS_THRESHOLD = 0.03f;
     public static final float DPAD_DEAD_ZONE = 0.3f;
+    public static final float DPAD_RELEASE_THRESHOLD = 0.25f;
     public static final float STICK_SENSITIVITY = 3.0f;
     public static final float TRACKPAD_MIN_SPEED = 0.8f;
     public static final float TRACKPAD_MAX_SPEED = 20.0f;
@@ -341,6 +342,10 @@ public class ControlElement {
     public static boolean isStickDirectionActive(float value, boolean wasActive, boolean digital, boolean tuned) {
         if (tuned) return value > (digital && !wasActive ? TUNED_STICK_PRESS_THRESHOLD : 0f);
         return value > (wasActive && digital ? STICK_RELEASE_THRESHOLD : STICK_DEAD_ZONE);
+    }
+
+    private static boolean isDPadDirectionActive(float value, boolean wasActive) {
+        return value >= (wasActive ? DPAD_RELEASE_THRESHOLD : DPAD_DEAD_ZONE);
     }
 
     /** Keys, buttons and sequences: nothing that follows the deflection. */
@@ -1408,6 +1413,24 @@ public class ControlElement {
                 states[3] = isStickDirectionActive(-deltaX, states[3], isDigital(getBindingComboAt(3)));
                 if (handleRadialMenuDirectionalMove(pointerId, states, x, y)) return true;
 
+                // Release before press.
+                for (byte i = 0; i < 4; i++) {
+                    if (!this.states[i]) continue;
+                    float value = i == 1 || i == 3 ? deltaX : deltaY;
+                    BindingCombo bindingCombo = getBindingComboAt(i);
+                    Binding gamepadAxisBinding = findGamepadAxisBinding(bindingCombo);
+                    if (gamepadAxisBinding != Binding.NONE && !bindingCombo.isSequence()) {
+                        if (bindingCombo.isSingleBinding() || states[i]) continue;
+                        handleSimultaneousBindingMembers(i, gamepadAxisBinding, false, value);
+                    }
+                    else {
+                        Binding binding = bindingCombo.getPrimaryBinding();
+                        if (binding.isMouseMove() ? (states[i] || states[(i+2)%4]) : states[i]) continue;
+                        handleBindingInputEvent(i, false, value);
+                    }
+                    this.states[i] = false;
+                }
+
                 for (byte i = 0; i < 4; i++) {
                     float value = i == 1 || i == 3 ? deltaX : deltaY;
                     BindingCombo bindingCombo = getBindingComboAt(i);
@@ -1516,7 +1539,12 @@ public class ControlElement {
                 if (cursorDx != 0 || cursorDy != 0) inputControlsView.getXServer().injectPointerMoveDelta(cursorDx, cursorDy);
             }
             else {
-                final boolean[] states = {deltaY <= -DPAD_DEAD_ZONE, deltaX >= DPAD_DEAD_ZONE, deltaY >= DPAD_DEAD_ZONE, deltaX <= -DPAD_DEAD_ZONE};
+                final boolean[] states = {
+                        isDPadDirectionActive(-deltaY, this.states[0]),
+                        isDPadDirectionActive(deltaX, this.states[1]),
+                        isDPadDirectionActive(deltaY, this.states[2]),
+                        isDPadDirectionActive(-deltaX, this.states[3]),
+                };
                 if (handleRadialMenuDirectionalMove(pointerId, states, x, y)) return true;
 
                 // Release transitions first because opposing stick and mouse-move
