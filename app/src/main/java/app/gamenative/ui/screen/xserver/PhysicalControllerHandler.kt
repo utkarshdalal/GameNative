@@ -1108,6 +1108,9 @@ class PhysicalControllerHandler(
                 sourceController = activeController,
             )
         }
+        activeSequenceTriggerBindings.removeAll { source ->
+            source.keyCode == keyCode && profile?.getController(source.deviceId) === activeController
+        }
     }
 
     private fun isRadialMenuOpenerDevice(deviceId: Int): Boolean {
