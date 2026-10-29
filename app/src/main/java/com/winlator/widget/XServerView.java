@@ -2,6 +2,8 @@ package com.winlator.widget;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.system.ErrnoException;
+import android.system.Os;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.ViewGroup;
@@ -20,6 +22,7 @@ import java.util.concurrent.Executors;
 
 import app.gamenative.PluviaApp;
 import app.gamenative.display.GameNativeDrm;
+import timber.log.Timber;
 
 @SuppressLint("ViewConstructor")
 public class XServerView extends SurfaceView implements SurfaceHolder.Callback, XServerRendererView {
@@ -57,6 +60,12 @@ public class XServerView extends SurfaceView implements SurfaceHolder.Callback, 
         return gamescopeMode;
     }
 
+    private String scanoutLayoutOverride;
+
+    public void setScanoutLayoutOverride(String scanoutLayoutOverride) {
+        this.scanoutLayoutOverride = scanoutLayoutOverride;
+    }
+
     public XServerRenderer getRenderer() {
         return renderer;
     }
@@ -80,6 +89,14 @@ public class XServerView extends SurfaceView implements SurfaceHolder.Callback, 
             // when none is running.
             int rc = GameNativeDrm.nativeRetargetSurface(holder.getSurface(), defaultSize[0], defaultSize[1]);
             if (rc == GameNativeDrm.E_NO_SESSION) {
+                try {
+                    if (scanoutLayoutOverride != null && !scanoutLayoutOverride.isEmpty())
+                        Os.setenv("GNDRM_SCANOUT_LAYOUT", scanoutLayoutOverride, true);
+                    else
+                        Os.unsetenv("GNDRM_SCANOUT_LAYOUT");
+                } catch (ErrnoException e) {
+                    Timber.w(e, "Could not set GNDRM_SCANOUT_LAYOUT");
+                }
                 GameNativeDrm.nativeStart("gndrm", holder.getSurface(), defaultSize[0], defaultSize[1]);
             }
             return;

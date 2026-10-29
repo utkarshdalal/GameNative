@@ -2069,6 +2069,9 @@ fun XServerScreen(
                 }
                 SessionDisplay.GAMESCOPE -> {
                     (xServerViewInstance as XServerView).isGamescopeMode = true
+                    xServerViewInstance.setScanoutLayoutOverride(
+                        EnvVars(container.envVars).get("GNDRM_SCANOUT_LAYOUT"),
+                    )
                     xServerToUse.setInputEventSink(GamescopeInputSink())
                     // Ahead of nativeStart, which fixes the emulated mode's rate from this
                     // view's surface callback, so the panel's real rate must be set first.
