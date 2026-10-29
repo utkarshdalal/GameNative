@@ -21,7 +21,6 @@ import com.winlator.PrefManager;
 
 import app.gamenative.PluviaApp;
 import app.gamenative.display.GameNativeDrm;
-import app.gamenative.display.GamescopeScanoutHealth;
 import app.gamenative.display.GamescopeSettings;
 import app.gamenative.utils.LsfgQuickMenuHelper;
 import app.gamenative.utils.LsfgVkManager;
@@ -578,7 +577,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     }
 
     private static String scanoutLayout(Context context) {
-        if (GamescopeScanoutHealth.INSTANCE.forceRgba(context)) return "rgba";
         try {
             return GameNativeDrm.nativeScanoutLayout();
         } catch (LinkageError e) {

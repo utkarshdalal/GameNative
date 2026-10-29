@@ -1959,9 +1959,4 @@ object PrefManager {
     var powerControlDefaultEnabled: Boolean
         get() = getPref(POWER_CONTROL_DEFAULT_ENABLED, DeviceGate.isDeviceSupported())
         set(value) { setPref(POWER_CONTROL_DEFAULT_ENABLED, value) }
-
-    private val GAMESCOPE_RGBA_SCANOUT = booleanPreferencesKey("gamescope_rgba_scanout")
-    var gamescopeRgbaScanout: Boolean
-        get() = getPref(GAMESCOPE_RGBA_SCANOUT, false)
-        set(value) { setPref(GAMESCOPE_RGBA_SCANOUT, value) }
 }

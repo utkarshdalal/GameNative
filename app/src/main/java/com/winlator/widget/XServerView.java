@@ -22,7 +22,6 @@ import java.util.concurrent.Executors;
 
 import app.gamenative.PluviaApp;
 import app.gamenative.display.GameNativeDrm;
-import app.gamenative.display.GamescopeScanoutHealth;
 import timber.log.Timber;
 
 @SuppressLint("ViewConstructor")
@@ -98,7 +97,6 @@ public class XServerView extends SurfaceView implements SurfaceHolder.Callback, 
                 } catch (ErrnoException e) {
                     Timber.w(e, "Could not set GNDRM_SCANOUT_LAYOUT");
                 }
-                GamescopeScanoutHealth.INSTANCE.markSessionStart(getContext());
                 GameNativeDrm.nativeStart("gndrm", holder.getSurface(), defaultSize[0], defaultSize[1]);
             }
             return;
