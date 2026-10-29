@@ -11,7 +11,7 @@ import java.io.File
 
 /** Versioned gamescope payload (gamescope, XWayland, scaling clients), fetched on the first gamescope launch. */
 object GamescopePayload {
-    const val VERSION = "20261028.4"
+    const val VERSION = "20261029.1"
     const val ARCHIVE = "gamescope-gamenative-$VERSION.tzst"
     private const val STAMP = ".payload.version"
 
