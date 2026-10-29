@@ -859,7 +859,7 @@
     <string name="add_custom_game_content_desc">カスタムゲームを追加する</string>
     <string name="add_custom_game_dialog_title">カスタムゲームを追加</string>
     <string name="add_custom_game_dialog_message">カスタムゲームとして追加するゲーム ファイルが含まれるフォルダーを選択してください。</string>
-    <string name="add_custom_game_dont_show_again">\'このダイアログを再度表示しないでください</string>
+    <string name="add_custom_game_dont_show_again">このダイアログを再度表示しない</string>
     <string name="custom_game_importing">ゲームをインポート中…</string>
     <string name="custom_game_import_success">ゲームをインポートしました</string>
     <string name="custom_game_import_failed">インポートに失敗しました</string>
