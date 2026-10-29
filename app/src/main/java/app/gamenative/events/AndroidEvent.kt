@@ -10,6 +10,9 @@ interface AndroidEvent<T> : Event<T> {
     data class SetSystemUIVisibility(val visible: Boolean) : AndroidEvent<Unit>
     data class SetAllowedOrientation(val orientations: EnumSet<Orientation>) : AndroidEvent<Unit>
     data object StartOrientator : AndroidEvent<Unit>
+
+    /** Advances the launcher orientation to the next state of its cycle; handled by MainActivity. */
+    data object RotateLauncherOrientation : AndroidEvent<Unit>
     data object ActivityDestroyed : AndroidEvent<Unit>
     data object GuestProgramTerminated : AndroidEvent<Unit>
     data class KeyEvent(val event: android.view.KeyEvent) : AndroidEvent<Boolean>

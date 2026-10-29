@@ -350,6 +350,8 @@
     <string name="gamescope_reset_default">重設為預設值</string>
     <string name="gamescope_look">色彩效果</string>
     <string name="gamescope_look_off">關閉</string>
+    <string name="gamescope_output_resolution">放大解析度</string>
+    <string name="gamescope_output_resolution_device">裝置解析度</string>
     <string name="gamescope_reshade">ReShade 效果</string>
     <string name="gamescope_look_grayscale">灰階</string>
     <string name="gamescope_look_invertcolors">反轉色彩</string>

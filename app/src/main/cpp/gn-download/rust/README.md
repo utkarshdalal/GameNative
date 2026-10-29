@@ -198,11 +198,13 @@ keeps "resume = refresh" honest.
   never replace a file an installed depot owns. The write path applies the same rule in both
   directions — a directory in a file's way is removed (after the free-space preflight, so a failed
   preflight leaves the old tree; refused when a symlinked ancestor would take the removal outside
-  the install dir) and a file in a directory's way is unlinked. Every creation and removal resolves
-  the nearest existing ancestor and refuses it outside the install root, so a link anywhere above a
-  path — including above a directory the manifest never declares — cannot redirect the run; a
-  directory entry that is a symlink is kept only while it resolves inside the tree, and otherwise
-  replaced. An install left in the wrong
+  the install dir) and a file in a directory's way is unlinked. Every creation and removal walks the
+  path from the install root one component at a time, following a component only when it is a link,
+  and refuses any step that leaves the root — so a link anywhere above a path, including above a
+  directory the manifest never declares, cannot redirect the run. It is a lexical walk rather than
+  `realpath`: on Android storage the root and a path below it can resolve to different mount aliases
+  for a tree that never leaves itself. A directory entry that is a symlink is kept only while it
+  resolves inside the tree, and otherwise replaced. An install left in the wrong
   shape by an earlier attempt repairs itself instead of failing with `EEXIST`/`EISDIR`. A file the
   delta calls unchanged is only trusted when it is still the regular file of the manifest's size on
   disk; a deleted, truncated or directory-shadowed path is revalidated like any other change.

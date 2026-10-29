@@ -1,6 +1,7 @@
 package app.gamenative
 
 import android.content.Context
+import android.content.pm.ActivityInfo
 import androidx.compose.runtime.mutableStateOf
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
@@ -18,6 +19,7 @@ import app.gamenative.data.EulaInfo
 import app.gamenative.data.GameSource
 import app.gamenative.data.SteamApp
 import app.gamenative.data.filterForCountry
+import app.gamenative.display.GamescopeSettings
 import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.enums.AppTheme
 import app.gamenative.ui.enums.AppFilter
@@ -232,6 +234,13 @@ object PrefManager {
         get() = getPref(DISPLAY_SERVER, DefaultVersion.DISPLAY_SERVER)
         set(value) {
             setPref(DISPLAY_SERVER, value)
+        }
+
+    private val GAMESCOPE_OUTPUT_RESOLUTION = stringPreferencesKey("gamescopeOutputResolution")
+    var gamescopeOutputResolution: String
+        get() = getPref(GAMESCOPE_OUTPUT_RESOLUTION, GamescopeSettings.OUTPUT_RESOLUTION_DEFAULT)
+        set(value) {
+            setPref(GAMESCOPE_OUTPUT_RESOLUTION, value)
         }
 
     private val DISPLAY_RENDERER_MODE = stringPreferencesKey("display_renderer_mode")
@@ -1094,6 +1103,18 @@ object PrefManager {
         }
         set(value) {
             setPref(ALLOWED_ORIENTATION, Orientation.toInt(value))
+        }
+
+    /**
+     * Last orientation chosen with the System menu's rotate button, stored as an
+     * [android.content.pm.ActivityInfo] screen orientation value so it can be
+     * re-applied when the launcher starts.
+     */
+    private val LAUNCHER_ORIENTATION = intPreferencesKey("launcher_orientation")
+    var launcherOrientation: Int
+        get() = getPref(LAUNCHER_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED)
+        set(value) {
+            setPref(LAUNCHER_ORIENTATION, value)
         }
 
     private val TIPPED = booleanPreferencesKey("tipped")

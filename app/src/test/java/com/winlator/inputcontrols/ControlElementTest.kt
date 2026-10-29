@@ -2,6 +2,7 @@ package com.winlator.inputcontrols
 
 import com.winlator.widget.InputControlsView
 import com.winlator.widget.TouchpadView
+import com.winlator.xserver.XServer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -64,6 +65,44 @@ class ControlElementTest {
             assertFalse(ReflectionHelpers.getField<BooleanArray>(element, "states")[direction])
             events.clear()
         }
+    }
+
+    @Test
+    fun `fast cursor speed accelerates a trackpad move it pushes past the threshold`() {
+        // 4 px at speed 2 moves the cursor 8 px, past the 6 px threshold: 4 * 2 * 1.5
+        assertTrackpadCursorMove(cursorSpeed = 2f, dx = 4f, expectedDx = 12)
+    }
+
+    @Test
+    fun `slow cursor speed does not accelerate a trackpad move it keeps under the threshold`() {
+        // 8 px at speed 0.5 moves the cursor 4 px, under the 6 px threshold
+        assertTrackpadCursorMove(cursorSpeed = 0.5f, dx = 8f, expectedDx = 4)
+    }
+
+    private fun assertTrackpadCursorMove(cursorSpeed: Float, dx: Float, expectedDx: Int) {
+        val view = mock<InputControlsView>()
+        val touchpad = mock<TouchpadView>()
+        val xServer = mock<XServer>()
+        val profile = mock<ControlsProfile>()
+        whenever(view.snappingSize).thenReturn(10)
+        whenever(view.touchpadView).thenReturn(touchpad)
+        whenever(view.xServer).thenReturn(xServer)
+        whenever(view.profile).thenReturn(profile)
+        whenever(profile.cursorSpeed).thenReturn(cursorSpeed)
+        whenever(touchpad.computeDeltaPoint(any(), any(), any(), any())).thenReturn(
+            floatArrayOf(0f, 0f),
+            floatArrayOf(dx, 0f),
+        )
+        val element = ControlElement(view).apply {
+            setType(ControlElement.Type.TRACKPAD)
+            setX(100)
+            setY(100)
+        }
+
+        assertTrue(element.handleTouchDown(1, 100f, 100f))
+        assertTrue(element.handleTouchMove(1, 100f, 100f))
+
+        verify(xServer).injectPointerMoveDelta(expectedDx, 0)
     }
 
     @Test

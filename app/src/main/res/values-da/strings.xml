@@ -285,6 +285,8 @@
     <string name="gamescope_reset_default">Nulstil til standard</string>
     <string name="gamescope_look">Farveeffekter</string>
     <string name="gamescope_look_off">Fra</string>
+    <string name="gamescope_output_resolution">Opskaleringsopløsning</string>
+    <string name="gamescope_output_resolution_device">Enhedens opløsning</string>
     <string name="gamescope_reshade">ReShade-effekter</string>
     <string name="gamescope_look_grayscale">Gråtoner</string>
     <string name="gamescope_look_invertcolors">Inverter farver</string>

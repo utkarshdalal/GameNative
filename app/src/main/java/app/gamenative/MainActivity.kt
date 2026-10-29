@@ -57,6 +57,7 @@ import app.gamenative.powercontrol.PowerManager
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.IconDecoder
 import app.gamenative.utils.IntentLaunchManager
+import app.gamenative.utils.LauncherOrientation
 import app.gamenative.utils.LocaleHelper
 import app.gamenative.ui.util.SnackbarManager
 import com.posthog.PostHog
@@ -152,6 +153,34 @@ class MainActivity : ComponentActivity() {
         startOrientator()
     }
 
+    /**
+     * Rotate button in the System menu: memory of the launcher orientation lives here so
+     * the sensor orientator, game requests and the button all share one code path.
+     * The ring starts one quarter turn after the device's natural orientation and ends on
+     * auto, so the first press always turns the picture and every press changes the state.
+     */
+    private val onRotateLauncherOrientation: (AndroidEvent.RotateLauncherOrientation) -> Unit = {
+        if (isHeadset(this)) {
+            Timber.d("RotateLauncherOrientation ignored: headset keeps a fixed landscape projection")
+        } else {
+            val next = LauncherOrientation.nextState(
+                LauncherOrientation.stored(),
+                LauncherOrientation.naturalPortrait(this),
+                LauncherOrientation.currentlyPortrait(this),
+            )
+            LauncherOrientation.store(next)
+
+            // Apply the choice immediately rather than relying on setOrientationTo alone: it
+            // also carries the in-game allowed-orientation math, which would ignore the press
+            // whenever the last orientation request was not the launcher's auto set.
+            val target = LauncherOrientation.launcherTarget()
+            if (requestedOrientation != target) {
+                requestedOrientation = target
+            }
+            setOrientationTo(currentOrientationChangeValue, availableOrientations)
+        }
+    }
+
     private val onEndProcess: (AndroidEvent.EndProcess) -> Unit = {
         finishAndRemoveTask()
     }
@@ -217,6 +246,9 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // Restore the orientation picked with the System menu rotate button.
+        LauncherOrientation.applyStored(this)
+
         // stale keepAlive from a prior crash/swipe — no container is actually running
         if (SteamService.keepAlive && PluviaApp.xEnvironment == null) {
             Timber.w("onCreate: clearing stale keepAlive — no container running")
@@ -241,6 +273,7 @@ class MainActivity : ComponentActivity() {
         // startOrientator() // causes memory leak since activity restarted every orientation change
         PluviaApp.events.on<AndroidEvent.SetSystemUIVisibility, Unit>(onSetSystemUi)
         PluviaApp.events.on<AndroidEvent.StartOrientator, Unit>(onStartOrientator)
+        PluviaApp.events.on<AndroidEvent.RotateLauncherOrientation, Unit>(onRotateLauncherOrientation)
         PluviaApp.events.on<AndroidEvent.SetAllowedOrientation, Unit>(onSetAllowedOrientation)
         PluviaApp.events.on<AndroidEvent.EndProcess, Unit>(onEndProcess)
 
@@ -474,6 +507,7 @@ class MainActivity : ComponentActivity() {
 
         PluviaApp.events.off<AndroidEvent.SetSystemUIVisibility, Unit>(onSetSystemUi)
         PluviaApp.events.off<AndroidEvent.StartOrientator, Unit>(onStartOrientator)
+        PluviaApp.events.off<AndroidEvent.RotateLauncherOrientation, Unit>(onRotateLauncherOrientation)
         PluviaApp.events.off<AndroidEvent.SetAllowedOrientation, Unit>(onSetAllowedOrientation)
         PluviaApp.events.off<AndroidEvent.EndProcess, Unit>(onEndProcess)
 
@@ -803,6 +837,18 @@ class MainActivity : ComponentActivity() {
             return
         }
         // Log.d("MainActivity$index", "Setting orientation to conform")
+
+        // The launcher owns the screen only while the last orientation request was its own
+        // auto set. Games request a concrete set, including portrait-mode containers and the
+        // request MainViewModel sends at launch time, before the container exists - so gating on
+        // "no container running" would swallow those during setup.
+        if (LauncherOrientation.isAuto(conformTo)) {
+            val target = LauncherOrientation.launcherTarget()
+            if (requestedOrientation != target) {
+                requestedOrientation = target
+            }
+            return
+        }
 
         // reverse direction of orientation
         val adjustedOrientation = 360 - orientation

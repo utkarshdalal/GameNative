@@ -997,6 +997,8 @@
     <string name="gamescope_reset_default">Reset to Default</string>
     <string name="gamescope_look">Color Effects</string>
     <string name="gamescope_look_off">Off</string>
+    <string name="gamescope_output_resolution">Upscaling Resolution</string>
+    <string name="gamescope_output_resolution_device">Device\'s Resolution</string>
     <string name="gamescope_reshade">ReShade Effects</string>
     <string name="gamescope_look_grayscale">Grayscale</string>
     <string name="gamescope_look_invertcolors">Invert Colors</string>

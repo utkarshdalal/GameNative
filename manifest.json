@@ -878,15 +878,15 @@
         "variant": "bionic"
       },
       {
-        "id": "proton-11.0-2-x86_64-7",
-        "name": "Proton 11.0-2 x86-64 (7)",
-        "url": "https://downloads.gamenative.app/proton-11.0-2-x86_64-7.wcp",
+        "id": "proton-11.0-2-x86_64-9",
+        "name": "Proton 11.0-2 x86-64 (9)",
+        "url": "https://downloads.gamenative.app/proton-11.0-2-x86_64-9.wcp",
         "variant": "bionic"
       },
       {
-        "id": "proton-11.0-2-arm64ec-7",
-        "name": "Proton 11.0-2 ARM64ec (7)",
-        "url": "https://downloads.gamenative.app/proton-11.0-2-arm64ec-7.wcp",
+        "id": "proton-11.0-2-arm64ec-9",
+        "name": "Proton 11.0-2 ARM64ec (9)",
+        "url": "https://downloads.gamenative.app/proton-11.0-2-arm64ec-9.wcp",
         "variant": "bionic"
       }
     ],

@@ -281,7 +281,8 @@ class MainViewModel @Inject constructor(
 
     private val onSetBootingSplashText: (AndroidEvent.SetBootingSplashText) -> Unit = {
         setBootingSplashText(it.text)
-        setShowBootingSplash(true)
+        if (!_state.value.alreadyClearedBootingSplash)
+            setShowBootingSplash(true)
     }
 
     private val onClearBootingSplash: (AndroidEvent.ClearBootingSplash) -> Unit = {
@@ -450,10 +451,14 @@ class MainViewModel @Inject constructor(
             }
             // bootAd stays in state so the exit fade keeps rendering it; the next show replaces it.
             PluviaApp.isBootingSplashShowing = false
-            _state.update { it.copy(showBootingSplash = false) }
+            _state.update { it.copy(showBootingSplash = false, alreadyClearedBootingSplash = true) }
         } else {
             PluviaApp.isBootingSplashShowing = value
-            _state.update { it.copy(showBootingSplash = value) }
+            if (!value) {
+                _state.update { it.copy(showBootingSplash = false, alreadyClearedBootingSplash = true) }
+            } else {
+                _state.update { it.copy(showBootingSplash = true) }
+            }
         }
     }
 

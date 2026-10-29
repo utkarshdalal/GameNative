@@ -349,6 +349,8 @@
     <string name="gamescope_reset_default">Auf Standard zurücksetzen</string>
     <string name="gamescope_look">Farbeffekte</string>
     <string name="gamescope_look_off">Aus</string>
+    <string name="gamescope_output_resolution">Hochskalierungsauflösung</string>
+    <string name="gamescope_output_resolution_device">Geräteauflösung</string>
     <string name="gamescope_reshade">ReShade-Effekte</string>
     <string name="gamescope_look_grayscale">Graustufen</string>
     <string name="gamescope_look_invertcolors">Farben invertieren</string>
