@@ -20,6 +20,8 @@ import androidx.annotation.NonNull;
 import com.winlator.PrefManager;
 
 import app.gamenative.PluviaApp;
+import app.gamenative.display.GameNativeDrm;
+import app.gamenative.display.GamescopeScanoutHealth;
 import app.gamenative.display.GamescopeSettings;
 import app.gamenative.utils.LsfgQuickMenuHelper;
 import app.gamenative.utils.LsfgVkManager;
@@ -526,6 +528,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         FileUtils.chmod(xdgRunDir, 0700);
         envVars.put("XDG_RUNTIME_DIR", xdgRunDir.getPath());
         envVars.put("GAMENATIVE_DRM_SOCKET", "gndrm");
+        if (!envVars.has("GNDRM_SCANOUT_LAYOUT"))
+            envVars.put("GNDRM_SCANOUT_LAYOUT", scanoutLayout(context));
 
         envVars.put("XKB_CONFIG_ROOT", gsDir + "/share/xkeyboard-config-2");
         envVars.put("GAMESCOPE_PNP_IDS_PATH", gsDir + "/share/hwdata/pnp.ids");
@@ -571,6 +575,15 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                 + new File(gsDir, "bin/gamescope").exists() + " shim="
                 + new File(gsDir, "lib/libgndrm_shim.so").exists() + " xwayland="
                 + new File(gsDir, "bin/Xwayland").exists() + " xdg=" + xdgRunDir.getPath());
+    }
+
+    private static String scanoutLayout(Context context) {
+        if (GamescopeScanoutHealth.INSTANCE.forceRgba(context)) return "rgba";
+        try {
+            return GameNativeDrm.nativeScanoutLayout();
+        } catch (LinkageError e) {
+            return "bgra";
+        }
     }
 
     /** Mirrors XServerScreen.resolveGamescopeMode; a session override (setGamescopeModeOverride) wins to force X11 for the open-container session (the setup/pre-install session has no separate arm and follows the game arm). */

@@ -41,6 +41,10 @@ object GameNativeDrm {
     @JvmStatic
     external fun nativeStop()
 
+    /** The scan-out pool layout the running session chose, "bgra" or "rgba"; valid after [nativeStart]. */
+    @JvmStatic
+    external fun nativeScanoutLayout(): String
+
     /**
      * Adopt a new display window for a RUNNING session without ending it: rebuild the publish
      * layer from [surface] and re-present the retained last frame, so a display power cycle keeps

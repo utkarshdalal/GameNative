@@ -12,6 +12,7 @@ import androidx.navigation.NavController
 import app.gamenative.db.dao.AmazonGameDao
 import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.display.GamescopeCommandQueue
+import app.gamenative.display.GamescopeScanoutHealth
 import app.gamenative.events.EventDispatcher
 import app.gamenative.mods.NexusAuthManager
 import app.gamenative.powercontrol.PowerManager
@@ -101,6 +102,7 @@ class PluviaApp : SplitCompatApplication() {
 
         // Init our datastore preferences.
         PrefManager.init(this)
+        GamescopeScanoutHealth.checkLastExit(this)
         PlayBilling.init(this)
         NexusAuthManager.initialize(this)
         FrontendSyncManager.init(this)

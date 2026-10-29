@@ -107,6 +107,7 @@ import app.gamenative.data.SteamApp
 import app.gamenative.display.GameNativeDrm
 import app.gamenative.display.GamescopeCommandQueue
 import app.gamenative.display.GamescopeServerComponent
+import app.gamenative.display.GamescopeScanoutHealth
 import app.gamenative.display.GamescopeSettings
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
@@ -2069,6 +2070,11 @@ fun XServerScreen(
                 }
                 SessionDisplay.GAMESCOPE -> {
                     (xServerViewInstance as XServerView).isGamescopeMode = true
+                    xServerViewInstance.setScanoutLayoutOverride(
+                        EnvVars(container.envVars).get("GNDRM_SCANOUT_LAYOUT").ifEmpty {
+                            if (GamescopeScanoutHealth.forceRgba(context)) "rgba" else ""
+                        },
+                    )
                     xServerToUse.setInputEventSink(GamescopeInputSink())
                     // Ahead of nativeStart, which fixes the emulated mode's rate from this
                     // view's surface callback, so the panel's real rate must be set first.
@@ -5367,6 +5373,7 @@ private fun exit(
     // The gndrm daemon (gamescope display mode) is torn down only at session exit: a display power
     // cycle retargets the surface in XServerView instead of stopping it.
     GameNativeDrm.nativeStop()
+    (frameRating?.context ?: PluviaApp.xServerView?.context)?.let { GamescopeScanoutHealth.markSessionEnd(it) }
     PluviaApp.shutdownEnvironment()
     EaLaunchSupport.stop()
     GogGalaxyService.stop(blocking = false)
