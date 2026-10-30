@@ -1496,7 +1496,7 @@ fun XServerScreen(
                     PluviaApp.xEnvironment?.resumeGameProcesses()
                 }
                 clearOverlayPauseState()
-                exit(ui.xServerView!!.getxServer().winHandler, ui.frameRating, currentAppInfo, container, appId, onExit, navigateBack, "quick_menu")
+                exit(ui.xServerView?.getxServer()?.winHandler, ui.frameRating, currentAppInfo, container, appId, onExit, navigateBack, "quick_menu")
                 true
             }
 
@@ -1649,7 +1649,7 @@ fun XServerScreen(
     // Event handlers defined in composable scope to capture latest state on each recomposition
     val onActivityDestroyed: (AndroidEvent.ActivityDestroyed) -> Unit = {
         Timber.i("onActivityDestroyed")
-        exit(ui.xServerView!!.getxServer().winHandler, ui.frameRating, currentAppInfo, container, appId, onExit, navigateBack, "activity_destroyed")
+        exit(ui.xServerView?.getxServer()?.winHandler, ui.frameRating, currentAppInfo, container, appId, onExit, navigateBack, "activity_destroyed")
     }
     val onKeyEvent: (AndroidEvent.KeyEvent) -> Boolean = {
         val isKeyboard = Keyboard.isKeyboardDevice(it.event.device)
@@ -1793,11 +1793,11 @@ fun XServerScreen(
     val onGuestProgramTerminated: (AndroidEvent.GuestProgramTerminated) -> Unit = {
         Timber.i("onGuestProgramTerminated")
         SteamHostStatusWatch.stop()
-        exit(ui.xServerView!!.getxServer().winHandler, ui.frameRating, currentAppInfo, container, appId, onExit, navigateBack, "guest_terminated")
+        exit(ui.xServerView?.getxServer()?.winHandler, ui.frameRating, currentAppInfo, container, appId, onExit, navigateBack, "guest_terminated")
     }
     val onForceCloseApp: (SteamEvent.ForceCloseApp) -> Unit = {
         Timber.i("onForceCloseApp")
-        exit(ui.xServerView!!.getxServer().winHandler, ui.frameRating, currentAppInfo, container, appId, onExit, navigateBack, "force_close")
+        exit(ui.xServerView?.getxServer()?.winHandler, ui.frameRating, currentAppInfo, container, appId, onExit, navigateBack, "force_close")
     }
     val onPlayingBlocked: (SteamEvent.PlayingBlocked) -> Unit = { event ->
         if (isOffline || container.isSteamOfflineMode()) {

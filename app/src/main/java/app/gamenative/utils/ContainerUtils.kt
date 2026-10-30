@@ -527,7 +527,7 @@ object ContainerUtils {
             registryEditor.setDwordValue(
                 "Software\\Wine\\Direct3D",
                 "VideoPciVendorID",
-                getGPUCards(context)[containerData.videoPciDeviceID]!!.vendorId,
+                getGPUCards(context)[containerData.videoPciDeviceID]?.vendorId ?: 0x10de, // NVIDIA, as the default GTX 480
             )
             registryEditor.setStringValue("Software\\Wine\\Direct3D", "OffScreenRenderingMode", containerData.offScreenRenderingMode)
             registryEditor.setDwordValue("Software\\Wine\\Direct3D", "strict_shader_math", if (containerData.strictShaderMath) 1 else 0)
