@@ -332,6 +332,26 @@ internal fun detectMaxRefreshRateHz(context: Context, attachedView: View?): Int 
         ?: DEFAULT_FPS_LIMITER_MAX_HZ
 }
 
+/**
+ * The panel's active refresh rate in Hz: the mode the display is in now, not the fastest it
+ * supports. The gndrm daemon measures the panel's latch grid against this period, and the
+ * gamescope frame-rate limit places its releases on that grid, so a panel a user holds at
+ * 60 Hz must be reported as 60 even when it can do 120.
+ */
+internal fun detectActiveRefreshRateHz(context: Context, attachedView: View?): Int {
+    val display = attachedView?.display
+        ?: context.display
+        ?: ContextCompat.getSystemService(context, DisplayManager::class.java)?.getDisplay(Display.DEFAULT_DISPLAY)
+    return display?.refreshRate
+        ?.takeIf { it.isFinite() && it > 0f }
+        ?.roundToInt()
+        ?.coerceAtLeast(5)
+        ?: detectMaxRefreshRateHz(context, attachedView)
+}
+
+/** Re-reports the panel's active refresh rate to the daemon while a gamescope session runs. */
+private var gamescopePanelRefreshListener: Pair<DisplayManager, DisplayManager.DisplayListener>? = null
+
 private data class XServerViewReleaseBinding(
     val xServerView: XServerRendererView,
     val windowModificationListener: WindowManager.OnWindowModificationListener,
@@ -2079,7 +2099,20 @@ fun XServerScreen(
                     } ?: GameNativeDrm.nativeSetScanoutGeometry(0, 0)
                     // Ahead of nativeStart, which fixes the emulated mode's rate from this
                     // view's surface callback, so the panel's real rate must be set first.
-                    GameNativeDrm.nativeSetPanelRefreshHz(detectMaxRefreshRateHz(context, xServerViewInstance as? View))
+                    // The active rate, and again whenever the display changes mode.
+                    GameNativeDrm.nativeSetPanelRefreshHz(detectActiveRefreshRateHz(context, xServerViewInstance as? View))
+                    val displayManager = ContextCompat.getSystemService(context, DisplayManager::class.java)
+                    if (displayManager != null && gamescopePanelRefreshListener == null) {
+                        val listener = object : DisplayManager.DisplayListener {
+                            override fun onDisplayAdded(displayId: Int) {}
+                            override fun onDisplayRemoved(displayId: Int) {}
+                            override fun onDisplayChanged(displayId: Int) {
+                                GameNativeDrm.nativeSetPanelRefreshHz(detectActiveRefreshRateHz(context, xServerViewInstance as? View))
+                            }
+                        }
+                        displayManager.registerDisplayListener(listener, Handler(Looper.getMainLooper()))
+                        gamescopePanelRefreshListener = displayManager to listener
+                    }
                     // The presenter opens its frame-generation session on the first
                     // present, from whatever the daemon holds: without this the daemon
                     // has nothing until the first Quick Menu change.
@@ -5373,6 +5406,10 @@ private fun exit(
     }
     // The gndrm daemon (gamescope display mode) is torn down only at session exit: a display power
     // cycle retargets the surface in XServerView instead of stopping it.
+    gamescopePanelRefreshListener?.let { (displayManager, listener) ->
+        displayManager.unregisterDisplayListener(listener)
+        gamescopePanelRefreshListener = null
+    }
     GameNativeDrm.nativeStop()
     PluviaApp.shutdownEnvironment()
     EaLaunchSupport.stop()
