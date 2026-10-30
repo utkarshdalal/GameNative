@@ -139,6 +139,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     public void stop() {
         synchronized (lock) {
             if (pid != -1) {
+                ProcessHelper.flushWineRegistry(ProcessHelper.listSubProcesses(), 2000);
                 Process.killProcess(pid);
                 Log.d("BionicProgramLauncherComponent", "Stopped process " + pid);
                 List<ProcessHelper.ProcessInfo> subProcesses = ProcessHelper.listSubProcesses();
