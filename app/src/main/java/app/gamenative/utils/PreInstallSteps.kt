@@ -4,6 +4,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
 import com.winlator.container.Container
 import java.io.File
+import timber.log.Timber
 
 /**
  * Determines whether pre-install steps (GOG script interpreter, Ubisoft Connect) need to run
@@ -107,7 +108,12 @@ object PreInstallSteps {
     fun markStepDone(container: Container, marker: Marker) {
         val gameDir = getGameDir(container) ?: return
         val gameDirPath = gameDir.absolutePath
-        MarkerUtils.addMarker(gameDirPath, marker)
+        val step = currentSteps().firstOrNull { it.marker == marker }
+        if (step == null || step.isDone(container)) {
+            MarkerUtils.addMarker(gameDirPath, marker)
+        } else {
+            Timber.w("Pre-install step for %s finished without its result; not marking it done", marker.fileName)
+        }
         touchPrefixStamp(container)
     }
 
