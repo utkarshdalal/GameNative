@@ -147,7 +147,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                 }
                 SteamService.setKeepAlive(false);
             }
-            execShellCommand("wineserver -k");
+            String output = execShellCommand("wineserver -k");
+            if (!output.isEmpty()) Log.w("BionicProgramLauncherComponent", "wineserver -k: " + output);
         }
     }
 
