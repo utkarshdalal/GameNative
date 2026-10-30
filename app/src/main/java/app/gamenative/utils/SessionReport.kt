@@ -126,19 +126,23 @@ object SessionReport {
 
     private fun isIgnoredExtra(key: String) = key in CONFIG_DIFF_IGNORED_EXTRA || key.startsWith("screenEffects")
 
-    fun markConfigApplied(container: Container, source: String) {
+    fun markConfigApplied(container: Container, source: String, matchType: String? = null) {
         try {
             val snapshot = JSONObject(container.containerJson)
             CONFIG_DIFF_IGNORED.forEach { snapshot.remove(it) }
             container.setConfigSource(source)
             container.saveData()
             appliedConfigFile(container).writeText(snapshot.toString())
+            val matchFile = appliedMatchFile(container)
+            if (matchType != null) matchFile.writeText(matchType) else matchFile.delete()
         } catch (e: Exception) {
             Timber.w(e, "SessionReport: mark config failed")
         }
     }
 
     private fun appliedConfigFile(container: Container) = File(container.rootDir, "applied_config.json")
+
+    private fun appliedMatchFile(container: Container) = File(container.rootDir, "applied_match_type")
 
     fun recordRun(container: Container, properties: Map<String, Any>) {
         try {
@@ -180,6 +184,8 @@ object SessionReport {
                 }
             }
             put("config_edited_fields", changed.take(20))
+            appliedMatchFile(container).takeIf { it.exists() }?.readText()?.trim()?.takeIf { it.isNotEmpty() }
+                ?.let { put("config_match_type", it) }
         } catch (e: Exception) {
             Timber.w(e, "SessionReport: config diff failed")
         }

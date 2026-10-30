@@ -887,6 +887,7 @@ object ContainerUtils {
 
         // Check for cached best config (store-backed games only, only if no custom config provided)
         var bestConfigMap: Map<String, Any?>? = null
+        var bestConfigMatchType: String? = null
 
         if (supportsKnownConfigAutoApply(gameSource) && customConfig == null && PrefManager.autoApplyKnownConfig) {
             try {
@@ -917,6 +918,7 @@ object ContainerUtils {
                                 )
                                 if (parsedConfig != null && parsedConfig.isNotEmpty()) {
                                     bestConfigMap = parsedConfig
+                                    bestConfigMatchType = bestConfig.matchType
                                 }
                             }
                         } catch (e: Exception) {
@@ -1044,7 +1046,7 @@ object ContainerUtils {
         // If custom config is provided, just apply it and return
         if (customConfig?.dxwrapper != null) {
             applyToContainer(context, container, containerData)
-            SessionReport.markConfigApplied(container, if (bestConfigMap.isNullOrEmpty()) "default" else "known")
+            SessionReport.markConfigApplied(container, if (bestConfigMap.isNullOrEmpty()) "default" else "known", bestConfigMatchType)
             return container
         }
 
@@ -1093,7 +1095,7 @@ object ContainerUtils {
 
         // Apply container data with the determined DX wrapper
         applyToContainer(context, container, containerData)
-        SessionReport.markConfigApplied(container, if (bestConfigMap.isNullOrEmpty()) "default" else "known")
+        SessionReport.markConfigApplied(container, if (bestConfigMap.isNullOrEmpty()) "default" else "known", bestConfigMatchType)
         return container
     }
 
