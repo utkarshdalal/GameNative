@@ -33,6 +33,10 @@ object GameNativeDrm {
     @JvmStatic
     external fun nativeSetPanelRefreshHz(refreshHz: Int)
 
+    /** The scan-out size the daemon emulates its mode at, before [nativeStart]; `0, 0` clears it. */
+    @JvmStatic
+    external fun nativeSetScanoutGeometry(width: Int, height: Int)
+
     /** Start the daemon: create the SurfaceControl layer on [surface], then serve [socketName]. */
     @JvmStatic
     external fun nativeStart(socketName: String, surface: Surface, width: Int, height: Int): Int

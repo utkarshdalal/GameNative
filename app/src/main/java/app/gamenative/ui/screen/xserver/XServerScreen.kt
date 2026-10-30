@@ -2073,6 +2073,10 @@ fun XServerScreen(
                         EnvVars(container.envVars).get("GNDRM_SCANOUT_LAYOUT"),
                     )
                     xServerToUse.setInputEventSink(GamescopeInputSink())
+                    // Ahead of nativeStart: the daemon's mode is the Upscaling Resolution.
+                    GamescopeSettings.scanoutSize(container)?.let {
+                        GameNativeDrm.nativeSetScanoutGeometry(it[0], it[1])
+                    } ?: GameNativeDrm.nativeSetScanoutGeometry(0, 0)
                     // Ahead of nativeStart, which fixes the emulated mode's rate from this
                     // view's surface callback, so the panel's real rate must be set first.
                     GameNativeDrm.nativeSetPanelRefreshHz(detectMaxRefreshRateHz(context, xServerViewInstance as? View))
