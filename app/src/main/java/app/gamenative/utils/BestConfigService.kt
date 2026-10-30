@@ -103,6 +103,7 @@ object BestConfigService {
                 // doesn't require glibc when this is true.
                 put("modernBuild", BuildConfig.MODERN_ANDROID)
                 HardwareUtils.getSOCName()?.let { put("socModel", it) }
+                put("manufacturer", Build.MANUFACTURER)
                 put("model", Build.MODEL)
                 put("androidSdk", Build.VERSION.SDK_INT)
                 put("androidVersion", Build.VERSION.RELEASE)
