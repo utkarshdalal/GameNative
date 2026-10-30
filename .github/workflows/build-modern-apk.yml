@@ -92,11 +92,13 @@ jobs:
           STEAMGRIDDB_API_KEY: ${{ secrets.STEAMGRIDDB_API_KEY }}
         run: |
           # All optional: analytics and artwork stay off when the secrets are absent.
-          cat <<EOF > local.properties
-          POSTHOG_API_KEY=${POSTHOG_API_KEY}
-          POSTHOG_HOST=${POSTHOG_HOST:-https://us.i.posthog.com}
-          STEAMGRIDDB_API_KEY=${STEAMGRIDDB_API_KEY}
-          EOF
+          # Only non-empty values are written: the secrets-gradle-plugin copies every entry into
+          # BuildConfig unquoted when empty, which generates `String X = ;` and breaks javac.
+          : > local.properties
+          [ -n "$POSTHOG_API_KEY" ] && echo "POSTHOG_API_KEY=$POSTHOG_API_KEY" >> local.properties
+          [ -n "$POSTHOG_HOST" ] && echo "POSTHOG_HOST=$POSTHOG_HOST" >> local.properties
+          [ -n "$STEAMGRIDDB_API_KEY" ] && echo "STEAMGRIDDB_API_KEY=$STEAMGRIDDB_API_KEY" >> local.properties
+          echo "local.properties keys: $(cut -d= -f1 local.properties | tr '\n' ' ')"
 
       - name: Install Android SDK build tools
         run: |

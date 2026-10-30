@@ -8,6 +8,8 @@ on:
 
 jobs:
   build:
+    # Needs the upstream signing keystores and API secrets, which forks don't have.
+    if: ${{ !github.event.repository.fork }}
     runs-on: ubuntu-latest
 
     steps:
