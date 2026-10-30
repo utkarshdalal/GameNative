@@ -311,34 +311,14 @@ private fun initialFpsLimiterTarget(container: Container): Int =
     parsePositiveFpsLimit(container.getExtra(FPS_LIMITER_TARGET_EXTRA))
         ?: DEFAULT_FPS_LIMITER_TARGET_HZ
 
-internal fun detectMaxRefreshRateHz(context: Context, attachedView: View?): Int {
-    val display = attachedView?.display
-        ?: context.display
-        ?: ContextCompat.getSystemService(context, DisplayManager::class.java)?.getDisplay(Display.DEFAULT_DISPLAY)
-
-    val refreshRate = when {
-        display == null -> DEFAULT_FPS_LIMITER_MAX_HZ.toFloat()
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.M -> {
-            val supportedMax = display.supportedModes.maxOfOrNull { it.refreshRate } ?: display.refreshRate
-            if (supportedMax.isFinite() && supportedMax > 0f) supportedMax else display.refreshRate
-        }
-        else -> display.refreshRate
-    }
-
-    return refreshRate
-        .takeIf { it.isFinite() && it > 0f }
-        ?.roundToInt()
-        ?.coerceAtLeast(5)
-        ?: DEFAULT_FPS_LIMITER_MAX_HZ
-}
-
 /**
- * The panel's active refresh rate in Hz: the mode the display is in now, not the fastest it
- * supports. The gndrm daemon measures the panel's latch grid against this period, and the
- * gamescope frame-rate limit places its releases on that grid, so a panel a user holds at
- * 60 Hz must be reported as 60 even when it can do 120.
+ * The panel's refresh rate in Hz: the mode the display is in now, not the fastest it
+ * supports. The gndrm daemon measures the panel's latch grid against this period and the
+ * FPS limiter's ceiling is derived from it, so a panel a user holds at 60 Hz counts as 60
+ * even when it can do 120; a mode change mid-session is reported again by the display
+ * listener below.
  */
-internal fun detectActiveRefreshRateHz(context: Context, attachedView: View?): Int {
+internal fun detectRefreshRateHz(context: Context, attachedView: View?): Int {
     val display = attachedView?.display
         ?: context.display
         ?: ContextCompat.getSystemService(context, DisplayManager::class.java)?.getDisplay(Display.DEFAULT_DISPLAY)
@@ -346,8 +326,9 @@ internal fun detectActiveRefreshRateHz(context: Context, attachedView: View?): I
         ?.takeIf { it.isFinite() && it > 0f }
         ?.roundToInt()
         ?.coerceAtLeast(5)
-        ?: detectMaxRefreshRateHz(context, attachedView)
+        ?: DEFAULT_FPS_LIMITER_MAX_HZ
 }
+
 
 /** Re-reports the panel's active refresh rate to the daemon while a gamescope session runs. */
 private var gamescopePanelRefreshListener: Pair<DisplayManager, DisplayManager.DisplayListener>? = null
@@ -824,7 +805,7 @@ fun XServerScreen(
             true
         }
         // Scaled here, not in the resolver, which must keep returning the display's real rate.
-        val detectedMax = detectMaxRefreshRateHz(context, ui.xServerView as? View) * FPS_LIMITER_MAX_MULTIPLIER
+        val detectedMax = detectRefreshRateHz(context, ui.xServerView as? View) * FPS_LIMITER_MAX_MULTIPLIER
         ui.detectedMaxRefreshRateHz = detectedMax
         val clampedTarget = fpsLimiterTarget.coerceAtMost(detectedMax).coerceAtLeast(5)
         if (clampedTarget != fpsLimiterTarget) {
@@ -2100,14 +2081,14 @@ fun XServerScreen(
                     // Ahead of nativeStart, which fixes the emulated mode's rate from this
                     // view's surface callback, so the panel's real rate must be set first.
                     // The active rate, and again whenever the display changes mode.
-                    GameNativeDrm.nativeSetPanelRefreshHz(detectActiveRefreshRateHz(context, xServerViewInstance as? View))
+                    GameNativeDrm.nativeSetPanelRefreshHz(detectRefreshRateHz(context, xServerViewInstance as? View))
                     val displayManager = ContextCompat.getSystemService(context, DisplayManager::class.java)
                     if (displayManager != null && gamescopePanelRefreshListener == null) {
                         val listener = object : DisplayManager.DisplayListener {
                             override fun onDisplayAdded(displayId: Int) {}
                             override fun onDisplayRemoved(displayId: Int) {}
                             override fun onDisplayChanged(displayId: Int) {
-                                GameNativeDrm.nativeSetPanelRefreshHz(detectActiveRefreshRateHz(context, xServerViewInstance as? View))
+                                GameNativeDrm.nativeSetPanelRefreshHz(detectRefreshRateHz(context, xServerViewInstance as? View))
                             }
                         }
                         displayManager.registerDisplayListener(listener, Handler(Looper.getMainLooper()))

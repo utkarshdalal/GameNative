@@ -74,7 +74,7 @@ internal class XServerScreenState(container: Container, context: Context) {
     var hasInternalTouchpad by mutableStateOf(false)
     var hasUpdatedScreenGamepad by mutableStateOf(false)
     var isPerformanceHudEnabled by mutableStateOf(PrefManager.showFps)
-    var detectedMaxRefreshRateHz by mutableIntStateOf(detectMaxRefreshRateHz(context, null))
+    var detectedMaxRefreshRateHz by mutableIntStateOf(detectRefreshRateHz(context, null))
     var performanceHudConfig by mutableStateOf(loadPerformanceHudConfig())
     var performanceHudView by mutableStateOf<PerformanceHudView?>(null)
     var performanceHudHost by mutableStateOf<FrameLayout?>(null)
