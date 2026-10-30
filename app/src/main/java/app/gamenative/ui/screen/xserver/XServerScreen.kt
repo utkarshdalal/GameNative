@@ -144,6 +144,7 @@ import app.gamenative.ui.data.XServerState
 import app.gamenative.ui.widget.PerformanceHudView
 import app.gamenative.utils.AssetUtils
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.ExtractionFingerprint
 import app.gamenative.utils.downloader.CoreDriverDownloader
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.DebugReportUtils
@@ -283,6 +284,19 @@ import com.winlator.PrefManager as WinlatorPrefManager
 // Always re-extract drivers and DXVK on every launch to handle cases of container corruption
 // where games randomly stop working. Set to false once corruption issues are resolved.
 private const val ALWAYS_REEXTRACT = true
+
+private val DXWRAPPER_DLLS = arrayOf(
+    "d3d10.dll",
+    "d3d10_1.dll",
+    "d3d10core.dll",
+    "d3d11.dll",
+    "d3d12.dll",
+    "d3d12core.dll",
+    "d3d8.dll",
+    "d3d9.dll",
+    "dxgi.dll",
+    "ddraw.dll",
+)
 
 // Guard to prevent duplicate game_exited events when multiple exit triggers fire simultaneously
 private val isExiting = AtomicBoolean(false)
@@ -5797,13 +5811,28 @@ private suspend fun setupWineSystemFiles(
         )
     }
 
-    val needReextract = ALWAYS_REEXTRACT || xServerState.value.dxwrapper != container.getExtra("dxwrapper") || variantChanged || wineVersionChanged
+    // ALWAYS_REEXTRACT guards against clobbered DLLs; skip it when the files from the last
+    // extraction are provably untouched (see ExtractionFingerprint).
+    val dxwrapperSignature = listOf(
+        xServerState.value.dxwrapper,
+        container.containerVariant,
+        container.wineVersion,
+        container.graphicsDriver,
+        DXVKHelper.parseConfig(container.dxWrapperConfig).get("version"),
+        appVersion,
+        imgVersion,
+    ).joinToString("|")
+    val dxwrapperIntact = ALWAYS_REEXTRACT &&
+        ExtractionFingerprint.isIntact(container, "dxwrapper", dxwrapperSignature)
+    val needReextract = (ALWAYS_REEXTRACT && !dxwrapperIntact) || xServerState.value.dxwrapper != container.getExtra("dxwrapper") || variantChanged || wineVersionChanged
 
     Timber.i("needReextract is " + needReextract)
     Timber.i("xServerState.value.dxwrapper is " + xServerState.value.dxwrapper)
     Timber.i("container.getExtra(\"dxwrapper\") is " + container.getExtra("dxwrapper"))
 
     if (needReextract) {
+        ExtractionFingerprint.clear(container, "dxwrapper")
+        val recorder = ExtractionFingerprint.Recorder(onExtractFileListener)
         extractDXWrapperFiles(
             context,
             firstTimeBoot,
@@ -5812,8 +5841,20 @@ private suspend fun setupWineSystemFiles(
             xServerState.value.dxwrapper,
             imageFs,
             contentsManager,
-            onExtractFileListener,
+            recorder,
         )
+        // Also track the wrapper DLL slots themselves: content profiles and DLL restores write
+        // them without going through the extract listener.
+        val windowsDir = File(imageFs.rootDir, ImageFs.WINEPREFIX + "/drive_c/windows")
+        val dllSlots = DXWRAPPER_DLLS.flatMap { dll ->
+            listOf(File(windowsDir, "system32/$dll"), File(windowsDir, "syswow64/$dll"))
+        }
+        if (!recorder.failed) {
+            ExtractionFingerprint.save(
+                container, "dxwrapper", dxwrapperSignature,
+                recorder.files.filter { !it.isDirectory } + dllSlots,
+            )
+        }
         container.putExtra("dxwrapper", xServerState.value.dxwrapper)
         containerDataChanged = true
     }
@@ -6017,7 +6058,7 @@ private suspend fun extractGraphicsDriverComponent(
         Timber.d("Downloading graphics driver $componentId: ${(progress * 100).toInt()}%")
     }
 
-    if (componentFile == null) {
+    val extracted = if (componentFile == null) {
         // Legacy variant: use bundled asset
         Timber.d("Extracting graphics driver $componentId from bundled assets")
         TarCompressorUtils.extract(
@@ -6037,6 +6078,10 @@ private suspend fun extractGraphicsDriverComponent(
             rootDir, onExtractFileListener,
         )
     }
+    if (!extracted) {
+        Timber.w("Extracting graphics driver component $componentId failed")
+        (onExtractFileListener as? ExtractionFingerprint.Recorder)?.failed = true
+    }
 }
 
 /**
@@ -6053,7 +6098,7 @@ private suspend fun extractDXWrapperComponent(
         Timber.d("Downloading dxwrapper $componentId: ${(progress * 100).toInt()}%")
     }
 
-    if (componentFile == null) {
+    val extracted = if (componentFile == null) {
         // Legacy variant: use bundled asset
         Timber.d("Extracting dxwrapper $componentId from bundled assets")
         SharedComponents.extractAndLink(
@@ -6068,6 +6113,10 @@ private suspend fun extractDXWrapperComponent(
             componentFile, windowsDir, onExtractFileListener,
         )
     }
+    if (!extracted) {
+        Timber.w("Extracting dxwrapper component $componentId failed")
+        (onExtractFileListener as? ExtractionFingerprint.Recorder)?.failed = true
+    }
 }
 
 private suspend fun extractDXWrapperFiles(
@@ -6080,18 +6129,7 @@ private suspend fun extractDXWrapperFiles(
     contentsManager: ContentsManager,
     onExtractFileListener: OnExtractFileListener?,
 ) {
-    val dlls = arrayOf(
-        "d3d10.dll",
-        "d3d10_1.dll",
-        "d3d10core.dll",
-        "d3d11.dll",
-        "d3d12.dll",
-        "d3d12core.dll",
-        "d3d8.dll",
-        "d3d9.dll",
-        "dxgi.dll",
-        "ddraw.dll",
-    )
+    val dlls = DXWRAPPER_DLLS
     val splitDxWrapper = if (dxwrapper == "cnc-ddraw" || dxwrapper.startsWith("cnc-ddraw-")) {
         "cnc-ddraw"
     } else {
@@ -6578,10 +6616,22 @@ private suspend fun extractGraphicsDriverFiles(
         // 2. Get the WRAPPER that was last saved to the container's settings.
         val lastInstalledMainWrapper = container.getExtra("lastInstalledMainWrapper")
 
-        // 3. Check if we need to extract a new wrapper file.
-        if (ALWAYS_REEXTRACT || firstTimeBoot || mainWrapperSelection != lastInstalledMainWrapper) {
+        // 3. Check if we need to extract a new wrapper file. ALWAYS_REEXTRACT is skipped when the
+        // files from the last extraction are provably untouched (see ExtractionFingerprint).
+        val wrapperSignature = listOf(
+            mainWrapperSelection,
+            container.wineVersion,
+            AppUtils.getVersionCode(context).toString(),
+        ).joinToString("|")
+        val wrapperIntact = ALWAYS_REEXTRACT && !firstTimeBoot &&
+            mainWrapperSelection == lastInstalledMainWrapper &&
+            ExtractionFingerprint.isIntact(container, "wrapper", wrapperSignature)
+        if ((ALWAYS_REEXTRACT && !wrapperIntact) || firstTimeBoot || mainWrapperSelection != lastInstalledMainWrapper) {
             // We only extract if the selection is actually a wrapper file.
             if (mainWrapperSelection.lowercase(Locale.getDefault()).startsWith("wrapper")) {
+                ExtractionFingerprint.clear(container, "wrapper")
+                val recorder = ExtractionFingerprint.Recorder(null)
+                var usedContentProfile = false
                 val wrapperComponentId = mainWrapperSelection.lowercase(Locale.getDefault())
                 Log.d("GraphicsDriverExtraction", "WRAPPER selection changed or first boot. Extracting: $wrapperComponentId")
                 try {
@@ -6591,8 +6641,9 @@ private suspend fun extractGraphicsDriverFiles(
                     if (wrapperProfile != null) {
                         Timber.d("Applying user-defined wrapper content profile: $wrapperComponentId")
                         wrapperContentsManager.applyContent(wrapperProfile)
+                        usedContentProfile = true
                     } else {
-                        extractGraphicsDriverComponent(context, wrapperComponentId, rootDir!!)
+                        extractGraphicsDriverComponent(context, wrapperComponentId, rootDir!!, recorder)
                     }
                     // After success, save the new version so we don't re-extract next time.
                     container.putExtra("lastInstalledMainWrapper", mainWrapperSelection)
@@ -6604,14 +6655,20 @@ private suspend fun extractGraphicsDriverFiles(
                     )
                 }
                 Log.d("XServerDisplayActivity", "First time container boot, extracting extra_libs.tzst")
-                extractGraphicsDriverComponent(context, "extra_libs", rootDir!!)
+                extractGraphicsDriverComponent(context, "extra_libs", rootDir!!, recorder)
                 val renderer = GPUInformation.getRenderer(null, null)
                 if (container.wineVersion.contains("arm64ec") && renderer?.contains("Mali") != true) {
                     extractGraphicsDriverComponent(
                         context,
                         "zink_dlls",
-                        File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows")
+                        File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows"),
+                        recorder,
                     )
+                }
+                // Content profiles write outside the extract listener, so they can't be verified; keep
+                // re-extracting those every launch as before.
+                if (!usedContentProfile && !recorder.failed) {
+                    ExtractionFingerprint.save(container, "wrapper", wrapperSignature, recorder.files.filter { !it.isDirectory })
                 }
             }
         }

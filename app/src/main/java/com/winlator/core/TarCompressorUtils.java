@@ -189,6 +189,9 @@ public abstract class TarCompressorUtils {
                     if (!file.isDirectory()) file.mkdirs();
                 }
                 else {
+                    // Archives without explicit directory entries would otherwise fail mid-extract.
+                    File parent = file.getParentFile();
+                    if (parent != null && !parent.isDirectory()) parent.mkdirs();
                     if (entry.isSymbolicLink()) {
                         FileUtils.symlink(entry.getLinkName(), file.getAbsolutePath());
                     }

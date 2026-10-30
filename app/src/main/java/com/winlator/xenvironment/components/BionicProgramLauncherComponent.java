@@ -330,8 +330,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         String primaryDNS = "8.8.4.4";
         ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Service.CONNECTIVITY_SERVICE);
-        if (connectivityManager.getActiveNetwork() != null) {
-            ArrayList<InetAddress> dnsServers = new ArrayList<>(connectivityManager.getLinkProperties(connectivityManager.getActiveNetwork()).getDnsServers());
+        // The active network can drop between calls, and getLinkProperties() is then null; that used to crash the launch.
+        android.net.Network activeNetwork = connectivityManager != null ? connectivityManager.getActiveNetwork() : null;
+        android.net.LinkProperties linkProperties = activeNetwork != null ? connectivityManager.getLinkProperties(activeNetwork) : null;
+        if (linkProperties != null) {
+            ArrayList<InetAddress> dnsServers = new ArrayList<>(linkProperties.getDnsServers());
 
             // Check if the dnsServers list is not empty before getting an item
             if (!dnsServers.isEmpty()) {
@@ -473,7 +476,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         Log.d("BionicProgramLauncherComponent", "env vars are " + EnvVarRedaction.redact(envVars));
 
-        String emulator = container.getEmulator();
+        String emulator = container != null ? container.getEmulator() : Container.DEFAULT_EMULATOR;
 
         // Construct the command without Box64 to the Wine executable
         String command = "";
@@ -667,6 +670,21 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
      * launch so it cannot drift from the APK.
      */
     private static void stageReshadeShaders(Context context, File root) {
+        // The staged copy can only drift from the APK when the APK changes, so key it on the install
+        // time instead of deleting and re-copying every shader pack on every gamescope launch.
+        File stamp = new File(root, ".staged");
+        String stampValue;
+        try {
+            stampValue = String.valueOf(context.getPackageManager()
+                    .getPackageInfo(context.getPackageName(), 0).lastUpdateTime);
+        }
+        catch (Exception e) {
+            stampValue = "";
+        }
+        if (!stampValue.isEmpty() && stamp.isFile() && new File(root, "all_shaders.json").isFile()
+                && stampValue.equals(FileUtils.readString(stamp).trim())) {
+            return;
+        }
         // The APK is the source of truth: a shader removed from it must disappear on device too.
         if (root.exists()) FileUtils.delete(root);
         root.mkdirs();
@@ -680,6 +698,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                     FileUtils.copy(context, "reshade/" + entry, new File(new File(root, "Shaders"), entry));
                 else FileUtils.copy(context, "reshade/" + entry, new File(root, entry));
             }
+            if (!stampValue.isEmpty()) FileUtils.writeString(stamp, stampValue);
         }
         catch (java.io.IOException e) {
             Log.w("BionicProgramLauncher", "ReShade staging failed: " + e.getMessage());
@@ -1043,11 +1062,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         if (new File(sysvPath).exists()) ld_preload += sysvPath;
 
-        if (replacePath != null) ld_preload += ":" + replacePath;
+        if (replacePath != null) ld_preload += (ld_preload.isEmpty() ? "" : ":") + replacePath;
 
         envVars.put("LD_PRELOAD", ld_preload);
 
-        String emulator = container.getEmulator();
+        String emulator = container != null ? container.getEmulator() : Container.DEFAULT_EMULATOR;
         if (this.envVars != null) envVars.putAll(this.envVars);
         try {
             ContainerOverlay.applyBionicLaunchEnv(context, container, envVars);
