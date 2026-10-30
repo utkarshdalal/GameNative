@@ -62,8 +62,6 @@ import androidx.compose.runtime.setValue
 import app.gamenative.MainActivity
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.type
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.input.pointer.PointerIcon
@@ -139,7 +137,6 @@ import app.gamenative.ui.component.dialog.SteamControllerBindingEditorDialog
 import app.gamenative.ui.component.parseBooleanExtra
 import app.gamenative.ui.component.parsePositiveFpsLimit
 import app.gamenative.ui.data.PerformanceHudConfig
-import app.gamenative.ui.data.PerformanceHudSize
 import app.gamenative.ui.data.XServerState
 import app.gamenative.ui.widget.PerformanceHudView
 import app.gamenative.utils.AssetUtils
@@ -254,7 +251,6 @@ import com.winlator.xserver.extensions.PresentExtension
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -330,8 +326,20 @@ internal fun detectRefreshRateHz(context: Context, attachedView: View?): Int {
 }
 
 
-/** Re-reports the panel's active refresh rate to the daemon while a gamescope session runs. */
-private var gamescopePanelRefreshListener: Pair<DisplayManager, DisplayManager.DisplayListener>? = null
+/** Re-reports the panel's active refresh rate to the daemon while a session runs. */
+private var panelRefreshListener: Pair<DisplayManager, DisplayManager.DisplayListener>? = null
+
+/**
+ * Drops the panel-refresh listener. Both session-end paths call this — `exit()` for a finished
+ * session and the view's `onRelease` for one disposed without it — so it has to tolerate a
+ * second call and a listener another path has already dropped.
+ */
+private fun releasePanelRefreshListener() {
+    panelRefreshListener?.let { (displayManager, listener) ->
+        displayManager.unregisterDisplayListener(listener)
+        panelRefreshListener = null
+    }
+}
 
 private data class XServerViewReleaseBinding(
     val xServerView: XServerRendererView,
@@ -792,6 +800,33 @@ fun XServerScreen(
     fun applyLsfgPerformanceMode(enabled: Boolean) {
         lsfgPerformanceMode = enabled
         applyLsfgSettings()
+    }
+
+    fun refreshFpsLimit(view: View?, isX11Display: Boolean) {
+        val refreshHz = detectRefreshRateHz(context, view)
+        ui.detectedMaxRefreshRateHz = refreshHz * FPS_LIMITER_MAX_MULTIPLIER
+
+        if (!isX11Display)
+            GameNativeDrm.nativeSetPanelRefreshHz(refreshHz)
+    }
+
+    /**
+     * Registers the display listener that re-reports the panel's rate when the display changes mode.
+     * Called from both the view factory and its update block: a session reusing a cached view skips
+     * the factory, and would otherwise run without one.
+     */
+    fun ensurePanelRefreshListener() {
+        if (panelRefreshListener != null) return
+        val displayManager = ContextCompat.getSystemService(context, DisplayManager::class.java) ?: return
+        val listener = object : DisplayManager.DisplayListener {
+            override fun onDisplayAdded(displayId: Int) {}
+            override fun onDisplayRemoved(displayId: Int) {}
+            override fun onDisplayChanged(displayId: Int) {
+                refreshFpsLimit(ui.xServerView as? View, isX11Display = isX11Display)
+            }
+        }
+        displayManager.registerDisplayListener(listener, Handler(Looper.getMainLooper()))
+        panelRefreshListener = displayManager to listener
     }
 
     LaunchedEffect(ui.xServerView) {
@@ -2078,28 +2113,16 @@ fun XServerScreen(
                     GamescopeSettings.scanoutSize(container)?.let {
                         GameNativeDrm.nativeSetScanoutGeometry(it[0], it[1])
                     } ?: GameNativeDrm.nativeSetScanoutGeometry(0, 0)
-                    // Ahead of nativeStart, which fixes the emulated mode's rate from this
-                    // view's surface callback, so the panel's real rate must be set first.
-                    // The active rate, and again whenever the display changes mode.
-                    GameNativeDrm.nativeSetPanelRefreshHz(detectRefreshRateHz(context, xServerViewInstance as? View))
-                    val displayManager = ContextCompat.getSystemService(context, DisplayManager::class.java)
-                    if (displayManager != null && gamescopePanelRefreshListener == null) {
-                        val listener = object : DisplayManager.DisplayListener {
-                            override fun onDisplayAdded(displayId: Int) {}
-                            override fun onDisplayRemoved(displayId: Int) {}
-                            override fun onDisplayChanged(displayId: Int) {
-                                GameNativeDrm.nativeSetPanelRefreshHz(detectRefreshRateHz(context, xServerViewInstance as? View))
-                            }
-                        }
-                        displayManager.registerDisplayListener(listener, Handler(Looper.getMainLooper()))
-                        gamescopePanelRefreshListener = displayManager to listener
-                    }
                     // The presenter opens its frame-generation session on the first
                     // present, from whatever the daemon holds: without this the daemon
                     // has nothing until the first Quick Menu change.
                     applyLsfgSettings()
                 }
             }
+
+            // Always refresh FPS Limit, Both X11 and Gamescope should refresh the fps limit when display is changed
+            refreshFpsLimit(xServerViewInstance as? View, isX11Display = sessionDisplay == SessionDisplay.X11)
+            ensurePanelRefreshListener()
 
             val xServerView = xServerViewInstance.apply {
                 ui.xServerView = this
@@ -3005,6 +3028,10 @@ fun XServerScreen(
             if (!isX11Display) {
                 GameNativeDrm.setFrameRating(null)
             }
+
+            // A view released without exit() (the activity-destroyed fallback, a restart) still ends
+            // the session, so the panel listener goes with it; exit() calls this too, harmlessly.
+            releasePanelRefreshListener()
 
             val releaseBinding = view.tag as? XServerViewReleaseBinding
             releaseBinding?.let { binding ->
@@ -5385,12 +5412,10 @@ private fun exit(
     } catch (e: Exception) {
         Timber.e(e, "winHandler.stop() failed during exit")
     }
-    // The gndrm daemon (gamescope display mode) is torn down only at session exit: a display power
-    // cycle retargets the surface in XServerView instead of stopping it.
-    gamescopePanelRefreshListener?.let { (displayManager, listener) ->
-        displayManager.unregisterDisplayListener(listener)
-        gamescopePanelRefreshListener = null
-    }
+
+    // The panel listener is session-wide, so both display types drop it here.
+    releasePanelRefreshListener()
+
     GameNativeDrm.nativeStop()
     PluviaApp.shutdownEnvironment()
     EaLaunchSupport.stop()
