@@ -316,40 +316,12 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("GST_PLUGIN_FEATURE_RANK", "ximagesink:3000");
         envVars.put("ALSA_CONFIG_PATH", rootDir.getPath() + "/usr/share/alsa/alsa.conf" + ":" + rootDir.getPath() + "/usr/etc/alsa/conf.d/android_aserver.conf");
         envVars.put("ALSA_PLUGIN_DIR", rootDir.getPath() + "/usr/lib/alsa-lib");
-        envVars.put("OPENSSL_CONF", rootDir.getPath() + "/usr/etc/tls/openssl.cnf");
-        envVars.put("SSL_CERT_FILE", rootDir.getPath() + "/usr/etc/tls/cert.pem");
-        envVars.put("SSL_CERT_DIR", rootDir.getPath() + "/usr/etc/tls/certs");
-        // Wine's crypt32 imports this bundle into the Windows ROOT certificate store. Without it
-        // the store only holds Wine's built-in Microsoft roots: Android 14+ moved the system CAs
-        // to an APEX path Wine does not scan, so TLS verification fails for anything that trusts
-        // via the Windows store (e.g. the EOS SDK's websockets, winhttp/wininet callers).
-        envVars.put("WINE_ADDITIONAL_CERTS_DIR", rootDir.getPath() + "/usr/etc/tls/cert.pem");
+        putTlsEnvVars(envVars, rootDir);
         envVars.put("WINE_X11FORCEGLX", "1");
         envVars.put("WINE_GST_NO_GL", "1");
         envVars.put("SteamGameId", "0");
 
-        String primaryDNS = "8.8.4.4";
-        ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Service.CONNECTIVITY_SERVICE);
-        // The active network can drop between calls, and getLinkProperties() is then null; that used to crash the launch.
-        android.net.Network activeNetwork = connectivityManager != null ? connectivityManager.getActiveNetwork() : null;
-        android.net.LinkProperties linkProperties = activeNetwork != null ? connectivityManager.getLinkProperties(activeNetwork) : null;
-        if (linkProperties != null) {
-            ArrayList<InetAddress> dnsServers = new ArrayList<>(linkProperties.getDnsServers());
-
-            // Check if the dnsServers list is not empty before getting an item
-            if (!dnsServers.isEmpty()) {
-                InetAddress selectedDNS = dnsServers.get(0);
-                for (InetAddress dnsServer : dnsServers) {
-                    if (dnsServer instanceof Inet4Address) {
-                        selectedDNS = dnsServer;
-                        break;
-                    }
-                }
-                primaryDNS = selectedDNS.getHostAddress();
-            }
-        }
-        envVars.put("ANDROID_RESOLV_DNS", primaryDNS);
-        envVars.put("WINE_NEW_NDIS", "1");
+        putNetworkEnvVars(context, envVars);
 
         String ld_preload = "";
         // Some vendor libandroid.so builds (notably Xiaomi's) depend on a system
@@ -380,8 +352,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         if (!ld_preload.isEmpty()) ld_preload += ":";
         ld_preload += evshimPath;
-        String dnsV4MappedPath = context.getApplicationInfo().nativeLibraryDir + "/libgamenative_dns_v4mapped.so";
-        if (new File(dnsV4MappedPath).exists()) {
+        String dnsV4MappedPath = dnsV4MappedPreload(context);
+        if (dnsV4MappedPath != null) {
             ld_preload += ":" + dnsV4MappedPath;
         }
         if (replacePath != null) ld_preload += ":" + replacePath;
@@ -1020,6 +992,49 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         }
     }
 
+    /** TLS trust settings Wine and native TLS stacks need to verify servers (Steam, EOS, winhttp...). */
+    private static void putTlsEnvVars(EnvVars envVars, File rootDir) {
+        envVars.put("OPENSSL_CONF", rootDir.getPath() + "/usr/etc/tls/openssl.cnf");
+        envVars.put("SSL_CERT_FILE", rootDir.getPath() + "/usr/etc/tls/cert.pem");
+        envVars.put("SSL_CERT_DIR", rootDir.getPath() + "/usr/etc/tls/certs");
+        // Wine's crypt32 imports this bundle into the Windows ROOT certificate store. Without it
+        // the store only holds Wine's built-in Microsoft roots: Android 14+ moved the system CAs
+        // to an APEX path Wine does not scan, so TLS verification fails for anything that trusts
+        // via the Windows store (e.g. the EOS SDK's websockets, winhttp/wininet callers).
+        envVars.put("WINE_ADDITIONAL_CERTS_DIR", rootDir.getPath() + "/usr/etc/tls/cert.pem");
+    }
+
+    /** DNS server and network-adapter settings this Wine build needs to reach the network on Android. */
+    private static void putNetworkEnvVars(Context context, EnvVars envVars) {
+        String primaryDNS = "8.8.4.4";
+        ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Service.CONNECTIVITY_SERVICE);
+        // The active network can drop between calls, and getLinkProperties() is then null; that used to crash the launch.
+        android.net.Network activeNetwork = connectivityManager != null ? connectivityManager.getActiveNetwork() : null;
+        android.net.LinkProperties linkProperties = activeNetwork != null ? connectivityManager.getLinkProperties(activeNetwork) : null;
+        if (linkProperties != null) {
+            ArrayList<InetAddress> dnsServers = new ArrayList<>(linkProperties.getDnsServers());
+
+            // Check if the dnsServers list is not empty before getting an item
+            if (!dnsServers.isEmpty()) {
+                InetAddress selectedDNS = dnsServers.get(0);
+                for (InetAddress dnsServer : dnsServers) {
+                    if (dnsServer instanceof Inet4Address) {
+                        selectedDNS = dnsServer;
+                        break;
+                    }
+                }
+                primaryDNS = selectedDNS.getHostAddress();
+            }
+        }
+        envVars.put("ANDROID_RESOLV_DNS", primaryDNS);
+        envVars.put("WINE_NEW_NDIS", "1");
+    }
+
+    private static String dnsV4MappedPreload(Context context) {
+        String path = context.getApplicationInfo().nativeLibraryDir + "/libgamenative_dns_v4mapped.so";
+        return new File(path).exists() ? path : null;
+    }
+
     public String execShellCommand(String command) {
         return execShellCommand(command, true);
     }
@@ -1055,6 +1070,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("PREFIX", rootDir.getPath() + "/usr");
         envVars.put("WINE_DISABLE_FULLSCREEN_HACK", "1");
         envVars.put("SteamGameId", "0");
+        // Shell commands also run networked programs (the steamhost CEG pass runs steam.exe, which must
+        // sign in to Steam), so they need the same DNS and TLS setup as a game launch. Without it steam.exe
+        // never got past "signing in" and steamhost gave up after its own timeout.
+        putTlsEnvVars(envVars, rootDir);
+        putNetworkEnvVars(context, envVars);
 
         String ld_preload = "";
         String sysvPath = imageFs.getLibDir() + "/libandroid-sysvshm.so";
@@ -1063,6 +1083,9 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         if (new File(sysvPath).exists()) ld_preload += sysvPath;
 
         if (replacePath != null) ld_preload += (ld_preload.isEmpty() ? "" : ":") + replacePath;
+
+        String dnsV4MappedPath = dnsV4MappedPreload(context);
+        if (dnsV4MappedPath != null) ld_preload += (ld_preload.isEmpty() ? "" : ":") + dnsV4MappedPath;
 
         envVars.put("LD_PRELOAD", ld_preload);
 
