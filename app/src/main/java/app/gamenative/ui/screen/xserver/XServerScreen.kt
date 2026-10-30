@@ -274,6 +274,7 @@ import java.util.Arrays
 import java.util.Locale
 import kotlin.math.ceil
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.concurrent.thread
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.io.path.name
@@ -4186,6 +4187,11 @@ private fun runSteamHostCegPass(
     resultFile.delete()
     val progressFile = File(imageFs.wineprefix, "drive_c/Program Files (x86)/Steam/steamhost_ceg")
     progressFile.delete()
+    // steamhost reports its logon stage here (see SteamHostStatusWatch); the CEG pass used to ignore it,
+    // so a stalled or failed Steam logon sat on "signing in to Steam" forever with no reason shown.
+    val statusFile = File(imageFs.wineprefix, "drive_c/Program Files (x86)/Steam/steamhost_status")
+    statusFile.delete()
+    val abortReason = AtomicReference<String?>(null)
     val batch = File(imageFs.wineprefix, "drive_c/steamhost_ceg.bat")
     batch.writeText("@\"C:\\Program Files (x86)\\Steam\\steam.exe\"\r\n")
     PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Preparing game executable..."))
@@ -4194,8 +4200,34 @@ private fun runSteamHostCegPass(
     val pollProgress = AtomicBoolean(true)
     thread(name = "steamhost-ceg-progress") {
         var lastText = ""
+        var lastSignal = ""
+        var lastChangeAt = passStartedAt
         while (pollProgress.get()) {
-            val text = cegSplashText(progressFile, passStartedAt)
+            val status = runCatching { statusFile.readText().trim() }.getOrDefault("")
+            val progress = runCatching { progressFile.readText().trim() }.getOrDefault("")
+            val now = System.currentTimeMillis()
+            val signal = "$status|$progress"
+            if (signal != lastSignal) {
+                lastSignal = signal
+                lastChangeAt = now
+            }
+            val reason = when {
+                status.startsWith("failed") -> "steamhost: $status"
+                // Logon retries can keep rewriting the status, so cap the sign-in phase on its own.
+                progress.isEmpty() && now - passStartedAt > CEG_STALL_TIMEOUT_MS ->
+                    "Steam did not sign in within ${CEG_STALL_TIMEOUT_MS / 60_000} minutes (steamhost status: ${status.ifEmpty { "none" }})"
+                now - lastChangeAt > CEG_STALL_TIMEOUT_MS ->
+                    "no progress for ${CEG_STALL_TIMEOUT_MS / 60_000} minutes (steamhost status: ${status.ifEmpty { "none" }})"
+                else -> null
+            }
+            if (reason != null) {
+                // Ends the blocking pass below: steam.exe and its cmd wrapper exit with the wineserver.
+                abortReason.set(reason)
+                Timber.w("Aborting steamhost CEG pass: $reason")
+                runCatching { launcher.execShellCommand("wineserver -k") }
+                break
+            }
+            val text = cegSplashText(progressFile, status, passStartedAt)
             if (text != lastText) {
                 lastText = text
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(text))
@@ -4224,15 +4256,25 @@ private fun runSteamHostCegPass(
     if (result == "ok") {
         MarkerUtils.addMarker(appDirPath, Marker.STEAM_CEG_WRAPPED)
     } else {
-        onGameLaunchError?.invoke("Steam could not prepare the game executable (${result.ifEmpty { "steamhost gave no result" }})")
+        val reason = abortReason.get() ?: result.ifEmpty { "steamhost gave no result" }
+        onGameLaunchError?.invoke("Steam could not prepare the game executable ($reason)")
     }
 }
 
-private fun cegSplashText(progressFile: File, startedAt: Long): String {
+/** How long the CEG pass may go without any steamhost status or download progress before it is abandoned. */
+private const val CEG_STALL_TIMEOUT_MS = 5 * 60_000L
+
+private fun cegSplashText(progressFile: File, status: String, startedAt: Long): String {
     val elapsed = (System.currentTimeMillis() - startedAt) / 1000
     val fields = runCatching { progressFile.readText().trim().split(' ') }.getOrNull()
     if (fields == null || fields.size < 6) {
-        return "Preparing game executable... signing in to Steam (${elapsed}s)"
+        val stage = when (status.substringBefore(' ')) {
+            "connecting" -> "connecting to Steam"
+            "retry" -> "retrying Steam login"
+            "logon" -> "logging in to Steam"
+            else -> "signing in to Steam"
+        }
+        return "Preparing game executable... $stage (${elapsed}s)"
     }
     val jobsDone = fields[1].toIntOrNull() ?: 0
     val jobs = fields[2].toIntOrNull() ?: 0
