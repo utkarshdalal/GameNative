@@ -969,6 +969,10 @@ object SteamUtils {
         skipFirstTimeSteamSetup(imageFs.rootDir)
         val appDirPath = SteamService.getAppDirPath(steamAppId)
         if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_DLL_RESTORED)) {
+            // Older builds set this marker after a restore pass that scanned the wrong directory, so the
+            // Steamless-stripped exe could survive into real/bionic Steam mode (CEG games then hang on a
+            // black screen). Re-check just the main exe here; it's one stat when nothing is wrong.
+            restoreMainExecutableIfPatched(appDirPath, container.executablePath)
             createAppManifest(context, steamAppId, container.language)
             return
         }
@@ -1128,6 +1132,23 @@ object SteamUtils {
         }
     }
 
+
+    /**
+     * Puts back the pre-Steamless main executable when [executablePath] currently differs from its
+     * `.original.exe` backup. Length is enough: Steamless output never matches the packed size.
+     */
+    private fun restoreMainExecutableIfPatched(appDirPath: String, executablePath: String) {
+        if (executablePath.isEmpty() || ContainerUtils.isAbsoluteWindowsPath(executablePath)) return
+        val exe = File(appDirPath, executablePath.replace('\\', '/'))
+        val original = File(exe.path + ".original.exe")
+        if (!original.isFile || (exe.isFile && exe.length() == original.length())) return
+        try {
+            Files.copy(original.toPath(), exe.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            Timber.i("Restored original ${exe.name} (was still the Steamless-unpacked copy)")
+        } catch (e: IOException) {
+            Timber.w(e, "Failed to restore original ${exe.name}")
+        }
+    }
 
     /**
      * Restores the original executable files from their .original.exe backups

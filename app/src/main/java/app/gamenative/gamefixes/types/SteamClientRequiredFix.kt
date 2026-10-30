@@ -9,8 +9,10 @@ import timber.log.Timber
  * For games whose DRM only a genuine Steam client can satisfy, e.g. Steam CEG (Custom Executable
  * Generation). CEG executables are signed per account and verify themselves through steamclient
  * at runtime, so neither Steamless nor the emulated Steam client can make them start; they sit on
- * a black screen instead. Uses bionic Steam on bionic containers, the Windows Steam client otherwise.
- * A launch mode the user already picked is left alone.
+ * a black screen instead.
+ *
+ * Switches the container to the real Steam client in headless mode, once per container: a launch
+ * mode the user picks afterwards is kept.
  */
 class SteamClientRequiredFix : GameFix {
     override fun apply(
@@ -21,25 +23,27 @@ class SteamClientRequiredFix : GameFix {
         container: Container,
     ): Boolean {
         return try {
-            if (container.isLaunchBionicSteam || container.isLaunchRealSteam) {
+            if (container.getExtra(APPLIED_EXTRA) == "1") {
                 return true
             }
 
-            if (container.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
-                container.setLaunchBionicSteam(true)
-                container.setLaunchRealSteam(false)
-                Timber.tag("GameFixes").i("Enabled bionic Steam client for game $gameId (Steam client required)")
-            } else {
+            if (!container.isLaunchRealSteam) {
                 container.setLaunchRealSteam(true)
                 container.setLaunchBionicSteam(false)
-                Timber.tag("GameFixes").i("Enabled real Steam client for game $gameId (Steam client required)")
+                container.setSteamType(Container.STEAM_TYPE_HEADLESS)
+                Timber.tag("GameFixes").i("Enabled headless real Steam client for game $gameId (Steam client required)")
             }
+            container.putExtra(APPLIED_EXTRA, "1")
             container.saveData()
             true
         } catch (e: Exception) {
             Timber.tag("GameFixes").e(e, "Failed to enable a Steam client for game $gameId")
             false
         }
+    }
+
+    private companion object {
+        const val APPLIED_EXTRA = "steamClientRequiredFixApplied"
     }
 }
 
