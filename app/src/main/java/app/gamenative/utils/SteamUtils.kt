@@ -589,8 +589,16 @@ object SteamUtils {
             personaName = SteamService.instance?.localPersona?.value?.name ?: PrefManager.username
         )
         val steamConfigDir = File(imageFs.wineprefix, "drive_c/Program Files (x86)/Steam/config")
+        // Separate from the registry update below: on a fresh prefix config/ doesn't exist yet, and a
+        // failed vdf write used to skip the HKCU\Software\Valve\Steam keys that SteamStub-protected
+        // games read to locate Steam.
         try {
+            steamConfigDir.mkdirs()
             File(steamConfigDir, "loginusers.vdf").writeText(vdfFileText)
+        } catch (e: Exception) {
+            Timber.w("Could not write loginusers.vdf: $e")
+        }
+        try {
             val rootDir = imageFs.rootDir
             val userRegFile = File(rootDir, ImageFs.WINEPREFIX + "/user.reg")
             val steamRoot = "C:\\Program Files (x86)\\Steam"
