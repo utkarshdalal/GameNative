@@ -693,24 +693,18 @@ object SteamUtils {
      */
     private fun restoreUnpackedExecutable(context: Context, steamAppId: Int) {
         try {
-            val imageFs = ImageFs.find(context)
             val appDirPath = SteamService.getAppDirPath(steamAppId)
 
-            // Convert to Wine path format
             val container = ContainerUtils.getContainer(context, "STEAM_$steamAppId")
             val executablePath = container.executablePath
-            val drives = container.drives
-            val driveIndex = drives.indexOf(appDirPath)
-            val drive = if (driveIndex > 1) {
-                drives[driveIndex - 2]
-            } else {
-                Timber.e("Could not locate game drive")
-                'D'
+            if (executablePath.isEmpty() || ContainerUtils.isAbsoluteWindowsPath(executablePath)) {
+                Timber.i("No game-relative executable set, nothing to restore")
+                return
             }
-            val executableFile = "$drive:\\${executablePath}"
-
-            val exe = File(imageFs.wineprefix + "/dosdevices/" + executableFile.replace("A:", "a:").replace('\\', '/'))
-            val unpackedExe = File(imageFs.wineprefix + "/dosdevices/" + executableFile.replace("A:", "a:").replace('\\', '/') + ".unpacked.exe")
+            // Resolve against the game's own directory rather than the shared prefix's dosdevices,
+            // which may still point at another game's install at this point.
+            val exe = File(appDirPath, executablePath.replace('\\', '/'))
+            val unpackedExe = File(exe.path + ".unpacked.exe")
 
             if (unpackedExe.exists()) {
                 // Check if files are different (compare size and last modified time for efficiency)
@@ -720,6 +714,8 @@ object SteamUtils {
 
                 if (areFilesDifferent) {
                     Files.copy(unpackedExe.toPath(), exe.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                    // Keep mtimes equal so the size+mtime check above doesn't force a full re-copy next launch.
+                    exe.setLastModified(unpackedExe.lastModified())
                     Timber.i("Restored unpacked executable from ${unpackedExe.name} to ${exe.name}")
                 } else {
                     Timber.i("Unpacked executable is already current, no restore needed")
@@ -1135,10 +1131,10 @@ object SteamUtils {
         Timber.i("Checking directory: $appDirPath")
         var restoredCount = 0
 
-        val imageFs = ImageFs.find(context)
-        val dosDevicesPath = File(imageFs.wineprefix, "dosdevices/a:")
-
-        dosDevicesPath.walkTopDown().maxDepth(10)
+        // Scan the game's own directory. dosdevices/a: lives in the shared imagefs prefix and can still
+        // point at the previously launched game here, which left the Steamless-stripped exe in place
+        // under real/bionic Steam (CEG titles like Call of Duty: Black Ops then hang on a black screen).
+        File(appDirPath).walkTopDown().maxDepth(DRM_BACKUP_MAX_DEPTH)
             .filter { it.isFile && it.name.endsWith(".original.exe", ignoreCase = true) }
             .forEach { file ->
                 try {

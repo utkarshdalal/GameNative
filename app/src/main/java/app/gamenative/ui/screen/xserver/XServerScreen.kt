@@ -5618,6 +5618,9 @@ private fun unpackExecutableFile(
                         PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM (${index + 1}/${exePaths.size})"))
                     }
                     var batchFile: File? = null
+                    // A leftover .unpacked.exe from an earlier pass would otherwise be copied over a
+                    // freshly updated exe when Steamless finds no DRM this time (stale binary bug).
+                    File(imageFs.wineprefix + "/dosdevices/a:/" + executablePath.replace('\\', '/') + ".unpacked.exe").delete()
                     try {
                         // Normalize path: use forward slashes for Unix format, backslashes for Windows
                         val normalizedPath = executablePath.replace('/', '\\')
@@ -5653,12 +5656,20 @@ private fun unpackExecutableFile(
                         val windowsPathForLog = "A:\\${executablePath.replace('/', '\\')}"
                         Timber.i("Moving files for $windowsPathForLog")
                         if (exe.exists() && unpackedExe.exists()) {
+                            // Rename the original instead of copying it (exes can be hundreds of MB on the boot path).
+                            // The .unpacked.exe stays as a cache for SteamUtils.restoreUnpackedExecutable.
                             if (originalExe.exists()) {
                                 Timber.i("Original backup exists for $windowsPathForLog; skipping overwrite")
                             } else {
-                                Files.copy(exe.toPath(), originalExe.toPath(), REPLACE_EXISTING)
+                                Files.move(exe.toPath(), originalExe.toPath())
                             }
-                            Files.copy(unpackedExe.toPath(), exe.toPath(), REPLACE_EXISTING)
+                            try {
+                                Files.copy(unpackedExe.toPath(), exe.toPath(), REPLACE_EXISTING)
+                            } catch (e: IOException) {
+                                // Never leave the game without its exe.
+                                if (!exe.exists() && originalExe.exists()) Files.copy(originalExe.toPath(), exe.toPath())
+                                throw e
+                            }
                             Timber.i("Successfully moved files for $windowsPathForLog")
                         } else {
                             val errorMsg =
@@ -6605,7 +6616,7 @@ private suspend fun extractGraphicsDriverFiles(
             }
         }
 
-        if (adrenoToolsDriverId !== "System") {
+        if (!adrenoToolsDriverId.equals("System", ignoreCase = true)) {
             val adrenotoolsManager: AdrenotoolsManager = AdrenotoolsManager(context)
             adrenotoolsManager.setDriverById(envVars, imageFs, adrenoToolsDriverId)
         }
@@ -6627,7 +6638,7 @@ private suspend fun extractGraphicsDriverFiles(
         }
 
         val maxDeviceMemory: String? = graphicsDriverConfig.get("maxDeviceMemory", "0")
-        if (maxDeviceMemory != null && maxDeviceMemory.toInt() > 0)
+        if ((maxDeviceMemory?.toIntOrNull() ?: 0) > 0)
             envVars.put("WRAPPER_VMEM_MAX_SIZE", maxDeviceMemory)
 
         val presentMode = graphicsDriverConfig.get("presentMode")
