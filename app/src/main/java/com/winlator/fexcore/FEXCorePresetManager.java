@@ -80,7 +80,7 @@ public abstract class FEXCorePresetManager {
         else if (id.startsWith(FEXCorePreset.CUSTOM)) {
             for (String[] preset : customPresetsIterator(context)) {
                 if (preset[0].equals(id)) {
-                    envVars.putAll(preset[2]);
+                    if (preset.length > 2) envVars.putAll(preset[2]);
                     break;
                 }
             }
@@ -97,7 +97,7 @@ public abstract class FEXCorePresetManager {
         presets.add(new FEXCorePreset(FEXCorePreset.PERFORMANCE, context.getString(R.string.performance)));
         presets.add(new FEXCorePreset(FEXCorePreset.EXTREME, context.getString(R.string.extreme)));
         presets.add(new FEXCorePreset(FEXCorePreset.DENUVO, context.getString(R.string.denuvo)));
-        for (String[] preset : customPresetsIterator(context)) presets.add(new FEXCorePreset(preset[0], preset[1]));
+        for (String[] preset : customPresetsIterator(context)) if (preset.length > 1) presets.add(new FEXCorePreset(preset[0], preset[1]));
         return presets;
     }
 
@@ -119,7 +119,8 @@ public abstract class FEXCorePresetManager {
 
             @Override
             public String[] next() {
-                return customPresets[index[0]++].split("\\|");
+                // limit -1 keeps the trailing empty env field: "ID|name|" must yield 3 parts, not 2.
+                return customPresets[index[0]++].split("\\|", -1);
             }
         };
     }
@@ -127,7 +128,10 @@ public abstract class FEXCorePresetManager {
     public static int getNextPresetId(Context context) {
         int maxId = 0;
         for (String[] preset : customPresetsIterator(context)) {
-            maxId = Math.max(maxId, Integer.parseInt(preset[0].replace(FEXCorePreset.CUSTOM + "-", "")));
+            try {
+                maxId = Math.max(maxId, Integer.parseInt(preset[0].replace(FEXCorePreset.CUSTOM + "-", "")));
+            } catch (NumberFormatException ignored) {
+            }
         }
         return maxId + 1;
     }
@@ -137,6 +141,8 @@ public abstract class FEXCorePresetManager {
         PrefManager.init(context);
         String customPresetsStr = PrefManager.getString(key, "");
         String presetId = id;
+        // Presets are stored as "id|name|env,id|name|env"; a delimiter in the name would corrupt the list.
+        if (name != null) name = name.replace("|", " ").replace(",", " ");
 
         if (presetId != null) {
             String[] customPresets = customPresetsStr.split(",");
