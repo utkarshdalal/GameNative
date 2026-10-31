@@ -554,9 +554,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         if (container != null && container.getGraphicsDriver() != null)
             envVars.put("GNDRM_DRIVER_TYPE", container.getGraphicsDriver());
 
-        // Same source as gamescope's -W/-H, so the two cannot drift. The nested pair is seeded from the
-        // same value the -w/-h arguments are formatted from (see gamescopeNestedSize).
-        int[] scanoutOutput = AppUtils.parseScreenSize(GamescopeSettings.outputResolution(container));
+        // Same source as gamescope's -W/-H and the daemon's mode; the panel is the fallback when the resolution is unreadable.
+        int[] scanoutOutput = GamescopeSettings.scanoutSize(container);
         if (scanoutOutput == null)
             scanoutOutput = displaySize();
         if (scanoutOutput == null)
@@ -751,11 +750,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         return AppUtils.parseScreenSize(container != null ? container.getScreenSize() : null);
     }
 
-    /**
-     * The panel's real pixel size, or null if unreadable. This is what scanout needs: the
-     * container's screen size is an internal desktop resolution, so using it here would make
-     * gamescope present at 720p (or whatever preset) and resample onto the panel.
-     */
+    /** The panel's real pixel size, or null if unreadable; only the shim seed's last-resort fallback. */
     private static int[] displaySize() {
         int[] nativeSize = AppUtils.parseScreenSize(PluviaApp.getNativeDisplaySize());
         if (nativeSize != null) return nativeSize;

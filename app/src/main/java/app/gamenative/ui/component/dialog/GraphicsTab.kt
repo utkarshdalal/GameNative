@@ -125,8 +125,7 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                     }
                 },
             )
-            // Upscaling resolution gamescope presents at (-W/-H): Disabled follows the container screen size, Device's
-            // follows the panel, and the rest are the General tab's resolutions — whose 1920x1080 entry is the default.
+            // Upscaling resolution: the session's scan-out size (-W/-H and the daemon's emulated mode); Disabled follows the container screen size.
             if (!isX11Display) {
                 val outputResolutionLabels = stringArrayResource(R.array.screen_size_entries).drop(1).reversed()
                 val outputResolutionValues = listOf(
