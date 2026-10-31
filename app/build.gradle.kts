@@ -104,6 +104,7 @@ android {
             "ro",      // Română
             "pl",      // Polish
             "ru",      // Russian
+            "tr",      // Turkish
             "ko",      // Korean
             "ja",      // Japanese
             // TODO: Add more languages here using the ISO 639-1 locale code with regional qualifiers (e.g., "pt-rPT" for European Portuguese)
