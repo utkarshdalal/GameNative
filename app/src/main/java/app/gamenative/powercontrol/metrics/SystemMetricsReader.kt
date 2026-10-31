@@ -11,7 +11,12 @@ enum class CpuUsageSource {
     UNAVAILABLE,
 }
 
-data class CpuUsageReading(val percent: Int, val source: CpuUsageSource)
+class CpuUsageReading(
+    val percent: Int,
+    val source: CpuUsageSource,
+    val coreMaxPercent: Int? = null,
+    val coreBusyTicks: LongArray? = null,
+)
 
 data class GpuUsageReading(val percent: Int, val source: String)
 
@@ -238,14 +243,19 @@ object SystemMetricsSources {
 class CpuUsageSampler {
     private var lastTotal: Long? = null
     private var lastIdle: Long? = null
+    private var lastCoreTotal = LongArray(0)
+    private var lastCoreIdle = LongArray(0)
 
     fun reset() {
         lastTotal = null
         lastIdle = null
+        lastCoreTotal = LongArray(0)
+        lastCoreIdle = LongArray(0)
     }
 
     fun sample(): CpuUsageReading? {
-        val parts = SystemMetricsSources.readFirstLine("/proc/stat")
+        val lines = readCpuLines()
+        val parts = lines?.firstOrNull()
             ?.trim()
             ?.split(Regex("\\s+"))
 
@@ -269,7 +279,8 @@ class CpuUsageSampler {
                         val percent = (((totalDiff - idleDiff).coerceAtLeast(0L)) * 100L / totalDiff)
                             .toInt()
                             .coerceIn(0, 100)
-                        return CpuUsageReading(percent, CpuUsageSource.PROC_STAT)
+                        val cores = lines.drop(1).let(::sampleCores)
+                        return CpuUsageReading(percent, CpuUsageSource.PROC_STAT, cores?.first, cores?.second)
                     }
                 }
             }
@@ -277,6 +288,47 @@ class CpuUsageSampler {
 
         val fallback = readFromFrequency() ?: return null
         return CpuUsageReading(fallback, CpuUsageSource.CPU_FREQUENCY)
+    }
+
+    private fun readCpuLines(): List<String>? = try {
+        File("/proc/stat").bufferedReader().useLines { seq -> seq.takeWhile { it.startsWith("cpu") }.toList() }
+    } catch (_: Exception) {
+        null
+    }
+
+    private fun sampleCores(lines: List<String>): Pair<Int?, LongArray>? {
+        val parsed = lines.mapNotNull { line ->
+            val parts = line.trim().split(Regex("\\s+"))
+            val index = parts.firstOrNull()?.removePrefix("cpu")?.toIntOrNull() ?: return@mapNotNull null
+            val values = parts.drop(1).mapNotNull { it.toLongOrNull() }
+            if (values.size < 4) return@mapNotNull null
+            Triple(index, values.sum(), values[3] + values.getOrElse(4) { 0L })
+        }
+        if (parsed.isEmpty()) return null
+        val size = parsed.maxOf { it.first } + 1
+        val total = LongArray(size) { -1L }
+        val idle = LongArray(size) { -1L }
+        parsed.forEach { (index, t, i) ->
+            total[index] = t
+            idle[index] = i
+        }
+        val prevTotal = lastCoreTotal
+        val prevIdle = lastCoreIdle
+        lastCoreTotal = total
+        lastCoreIdle = idle
+        if (prevTotal.isEmpty()) return null
+        val busy = LongArray(size)
+        var maxPercent: Int? = null
+        for (index in 0 until minOf(size, prevTotal.size)) {
+            if (total[index] < 0L || prevTotal[index] < 0L) continue
+            val totalDiff = total[index] - prevTotal[index]
+            if (totalDiff <= 0L) continue
+            val busyDiff = (totalDiff - (idle[index] - prevIdle[index])).coerceIn(0L, totalDiff)
+            busy[index] = busyDiff
+            val pct = (busyDiff * 100L / totalDiff).toInt()
+            if (maxPercent == null || pct > maxPercent) maxPercent = pct
+        }
+        return maxPercent to busy
     }
 
     /**

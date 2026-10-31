@@ -15,6 +15,7 @@ import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import app.gamenative.filedetect.GameFileDetection
 import app.gamenative.powercontrol.metrics.PowerTelemetry
+import app.gamenative.powercontrol.metrics.SessionProcessTelemetry
 import com.winlator.container.Container
 import java.io.File
 import org.json.JSONObject
@@ -185,6 +186,19 @@ object SessionReport {
         }
     }
 
+    private const val DESIGN_CAP_LOAD_PCT = 70
+
+    fun designCapDetected(fpsBuckets: List<Int>, loads: List<Pair<Int?, Int?>>): Boolean {
+        if (fpsBuckets.isEmpty()) return false
+        val capped = fpsBuckets.withIndex().count { (i, fps) ->
+            val (coreMax, gpu) = loads.getOrNull(i) ?: return@count false
+            (kotlin.math.abs(fps - 30) <= 1 || kotlin.math.abs(fps - 60) <= 1) &&
+                coreMax != null && coreMax < DESIGN_CAP_LOAD_PCT &&
+                (gpu == null || gpu < DESIGN_CAP_LOAD_PCT)
+        }
+        return capped * 2 > fpsBuckets.size
+    }
+
     fun exitProperties(
         context: Context?,
         frameRating: FrameRating?,
@@ -199,16 +213,26 @@ object SessionReport {
             putAll(windowActivity.snapshot(context, frameRating?.totalFrames ?: 0L, frameRating?.activeMs ?: 0L))
             runCatching { putAll(PowerTelemetry.sessionProperties()) }
                 .onFailure { Timber.w(it, "SessionReport: power properties failed") }
+            runCatching { putAll(SessionProcessTelemetry.properties()) }
+                .onFailure { Timber.w(it, "SessionReport: process properties failed") }
+            put("fps_cap_configured", app.gamenative.powercontrol.PowerManager.targetFps.coerceAtLeast(0))
+            put("optimize_state", OptimizeState.properties())
             if (frameRating != null) {
                 put("total_frames", frameRating.totalFrames)
-                frameRating.fpsBy5Min.takeIf { it.isNotEmpty() }?.let { put("fps_by_5min", it) }
+                frameRating.fpsBy5Min.takeIf { it.isNotEmpty() }?.let { fps ->
+                    put("fps_by_5min", fps)
+                    runCatching { put("design_cap_detected", designCapDetected(fps, PowerTelemetry.bucketLoads())) }
+                }
                 if (frameRating.totalFrames >= 60) {
+                    val p99 = frameRating.getFramePercentileMs(0.99)
                     put("frame_p50_ms", frameRating.getFramePercentileMs(0.50))
-                    put("frame_p99_ms", frameRating.getFramePercentileMs(0.99))
+                    put("frame_p99_ms", p99)
+                    put("frame_p99_clamped", p99 >= FrameRating.FRAME_HIST_CAP_MS)
                 }
             }
 
             if (context == null) return@buildMap
+            putAll(AppExitRecorder.takePendingExit(context))
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 (context.getSystemService(Context.POWER_SERVICE) as? PowerManager)?.let { pm ->
                     put("thermal_status", pm.currentThermalStatus)
