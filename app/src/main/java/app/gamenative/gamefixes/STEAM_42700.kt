@@ -1,6 +1,7 @@
 package app.gamenative.gamefixes
 
 import app.gamenative.data.GameSource
+import com.winlator.container.Container
 
 /**
  * Call of Duty: Black Ops (Steam)
@@ -12,6 +13,10 @@ import app.gamenative.data.GameSource
  *   after the intro (a 2.7 GB allocation) and deadlocked on a black screen with audio. Use DXVK, report
  *   1 GB of VRAM (d3d9.maxAvailableMemory) so the engine sizes its pools for a 32-bit process, and make
  *   the process large-address-aware (4 GB instead of 2 GB).
+ * - X11 display server: under the gamescope session (the Adreno default) the game's Vulkan bypasses the
+ *   wrapper ICD, so a 32-bit process gets memory mappings above 4 GB ("vkMapMemory2KHR returned mapping
+ *   ... does not fit 32-bit pointer") and DXVK fails with "DirectX encountered an unrecoverable error".
+ *   The X11 path goes through the wrapper, which places mappings for 32-bit processes.
  */
 val STEAM_Fix_42700: KeyedGameFix = KeyedCompositeGameFix(
     gameSource = GameSource.STEAM,
@@ -20,5 +25,6 @@ val STEAM_Fix_42700: KeyedGameFix = KeyedCompositeGameFix(
         SteamClientRequiredFix(),
         DxWrapperDefaultFix("dxvk", mapOf("maxDeviceMemory" to "1024")),
         WineEnvVarFix(mapOf("WINE_LARGE_ADDRESS_AWARE" to "1")),
+        DisplayServerDefaultFix(Container.DISPLAY_SERVER_X11),
     ),
 )
