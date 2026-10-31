@@ -4476,11 +4476,17 @@ private fun setupXEnvironment(
         guestProgramLauncherComponent.setSteamType(container.getSteamType())
         if (!container.isLaunchRealSteam && !container.isLaunchBionicSteam) envVars.put("PROTON_DISABLE_LSTEAMCLIENT", "1")
 
+        // The wrapper helpers populate these before the user environment is merged. Keep
+        // their managed values while still discarding stale user overrides below.
+        val managedDxvkFrameRate = envVars.get("DXVK_FRAME_RATE")
+        val managedVkd3dFrameRate = envVars.get("VKD3D_FRAME_RATE")
         envVars.putAll(container.envVars)
         if (container.isLoadMods && !bootToContainer && !testGraphics) ModDllOverrides.apply(container, envVars)
         immersiveHooks?.windowsVr?.afterContainerEnvironmentMerged(envVars, container)
         envVars.remove("DXVK_FRAME_RATE")
         envVars.remove("VKD3D_FRAME_RATE")
+        if (managedDxvkFrameRate.isNotEmpty()) envVars.put("DXVK_FRAME_RATE", managedDxvkFrameRate)
+        if (managedVkd3dFrameRate.isNotEmpty()) envVars.put("VKD3D_FRAME_RATE", managedVkd3dFrameRate)
         if (!envVars.has("WINEESYNC")) envVars.put("WINEESYNC", "1")
         if (!envVars.has("_JAVA_OPTIONS")) envVars.put("_JAVA_OPTIONS", "-XX:+IgnoreUnrecognizedVMOptions -XX:+UnlockExperimentalVMOptions -XX:-UseZGC")
         if (debugRun) {
