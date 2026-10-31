@@ -6,6 +6,7 @@ import app.gamenative.BuildConfig
 import app.gamenative.MainActivity
 import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
+import app.gamenative.gamefixes.GameFixesRegistry
 import app.gamenative.display.GamescopeSettings
 import app.gamenative.enums.Marker
 import app.gamenative.inputcontrols.ControlProfileService
@@ -1103,7 +1104,16 @@ object ContainerUtils {
         val container = if (containerManager.hasContainer(appId)) {
             containerManager.getContainerById(appId)
         } else {
-            createNewContainer(context, appId, appId, containerManager)
+            createNewContainer(context, appId, appId, containerManager).also { created ->
+                // Apply game-specific defaults now, not only at the first launch, so a new container's
+                // settings screen already shows them. Launches apply them too (each fix is idempotent),
+                // which covers a game that isn't installed yet when its container is created.
+                try {
+                    GameFixesRegistry.applyFor(context, appId, created)
+                } catch (e: Exception) {
+                    Timber.w(e, "Game fixes failed for new container $appId")
+                }
+            }
         }
 
         // Ensure Custom Games have the A: drive mapped to the game folder

@@ -64,7 +64,9 @@ android {
         buildConfigField("boolean", "XR_BUILD", "false")
         buildConfigField("boolean", "MODERN_XR", "false")
 
-        versionCode = 24
+        // CI builds pass -PversionCodeOverride so every build is a higher version than the last one
+        // and installs over it as a normal update.
+        versionCode = (project.findProperty("versionCodeOverride") as String?)?.toIntOrNull() ?: 24
         versionName = "1.4.0"
 
         buildConfigField("boolean", "GOLD", "false")

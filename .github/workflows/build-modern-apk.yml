@@ -121,7 +121,9 @@ jobs:
           echo "artifact=GameNative-modern-${type}-${branch}-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       - name: Build APK
-        run: ./gradlew -Pkotlin.daemon.jvmargs=-Xmx3g ${{ steps.meta.outputs.task }}
+        # A strictly increasing versionCode (24000 + run number) so each build installs over the
+        # previous one as an ordinary update.
+        run: ./gradlew -Pkotlin.daemon.jvmargs=-Xmx3g -PversionCodeOverride=$((24000 + GITHUB_RUN_NUMBER)) ${{ steps.meta.outputs.task }}
 
       - name: Collect APK
         run: |
