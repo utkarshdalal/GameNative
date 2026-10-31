@@ -658,7 +658,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                 + (hdr ? " --hdr-enabled" : "")
                 + (reshade.isEmpty() ? "" : " --reshade-effect " + reshade)
                 + GamescopeSettings.scalerArg(container)
-                + GamescopeSettings.gridArg(environment.getContext())
                 + gamescopeModeGeometry() + " -- " + command;
     }
 

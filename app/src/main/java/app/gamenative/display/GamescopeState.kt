@@ -1,6 +1,5 @@
 package app.gamenative.display
 
-import android.content.Context
 import app.gamenative.PluviaApp
 import com.winlator.container.Container
 import com.winlator.core.AppUtils
@@ -52,17 +51,6 @@ object GamescopeSettings {
             ?: GamescopeScalingMode.DEFAULT
         return if (mode == GamescopeScalingMode.DEFAULT) "" else " --scaler ${mode.id}"
     }
-
-    /**
-     * The `-r <hz>` argument for a session's launch command: the panel's active refresh rate
-     * ([PanelRefresh.activeHz], 60 when unreadable), the same value the daemon is told through
-     * [GameNativeDrm.nativeSetPanelRefreshHz]. gamescope's vblank runs on the panel latch grid the
-     * daemon supplies (patches A53/A54), so the nested refresh no longer has to outrun the panel
-     * mode; a mode change mid-session reaches gamescope from the daemon as the `gn_panel_refresh`
-     * ConVar.
-     */
-    @JvmStatic
-    fun gridArg(context: Context): String = " -r ${PanelRefresh.activeHz(context)}"
 
     /**
      * The output resolution a session presents at ("WxH"). [OUTPUT_RESOLUTION_OFF] resolves to the

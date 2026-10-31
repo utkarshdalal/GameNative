@@ -14,9 +14,10 @@ object PanelRefresh {
 
     /**
      * The panel's refresh rate in Hz: the mode the display is in now, not the fastest it supports,
-     * rounded to an integer. The gamescope session's `-r`, the daemon's latch-grid period
-     * ([GameNativeDrm.nativeSetPanelRefreshHz]) and the FPS limiter's ceiling all come from here, so
-     * they agree; a panel a user holds at 60 Hz counts as 60 even when it can do 120.
+     * rounded to an integer. The daemon's advertised mode and latch-grid period
+     * ([GameNativeDrm.nativeSetPanelRefreshHz], which gamescope takes its refresh from) and the FPS
+     * limiter's ceiling both come from here, so they agree; a panel a user holds at 60 Hz counts as
+     * 60 even when it can do 120.
      */
     @JvmStatic
     fun activeHz(context: Context, attachedView: View? = null): Int {
