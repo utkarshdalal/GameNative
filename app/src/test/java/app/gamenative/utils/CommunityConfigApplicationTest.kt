@@ -173,6 +173,21 @@ class CommunityConfigApplicationTest {
     }
 
     @Test
+    fun dxwrapperConfigCsmtUpdatesRegistrySetting() {
+        val disabled = ContainerUtils.applyBestConfigMapToContainerData(
+            containerData = ContainerData(csmt = true),
+            bestConfigMap = mapOf("dxwrapperConfig" to "version=2.4.1,csmt=0"),
+        )
+        assertFalse(disabled.csmt)
+
+        val unchanged = ContainerUtils.applyBestConfigMapToContainerData(
+            containerData = ContainerData(csmt = false),
+            bestConfigMap = mapOf("dxwrapperConfig" to "version=2.4.1"),
+        )
+        assertFalse(unchanged.csmt)
+    }
+
+    @Test
     fun optionalLaunchSettingsRequireExplicitSelection() {
         val excluded = prepareCommunityConfigForApply(
             config = config,
