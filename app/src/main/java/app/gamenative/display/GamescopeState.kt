@@ -1,5 +1,6 @@
 package app.gamenative.display
 
+import android.content.Context
 import app.gamenative.PluviaApp
 import com.winlator.container.Container
 import com.winlator.core.AppUtils
@@ -40,9 +41,6 @@ object GamescopeSettings {
     const val SHARPNESS_STEPS = 5
     const val SHARPNESS_DEFAULT = SHARPNESS_STEPS
 
-    /** The vblank grid a gamescope session is launched with (`-r`), in Hz. */
-    const val SESSION_GRID_HZ = 1200
-
     /** gamescope's raw `scaling_sharpness` (0 = maximum sharpening) for a stored UI value. */
     fun sharpnessRawValue(ui: Int): Int =
         (SHARPNESS_STEPS - ui.coerceIn(0, SHARPNESS_STEPS)) * 4
@@ -56,12 +54,15 @@ object GamescopeSettings {
     }
 
     /**
-     * The `-r <grid>` argument for a session's launch command, holding the grid at
-     * [SESSION_GRID_HZ] so `g_nNestedRefresh` wins over the panel rate the daemon advertises as
-     * the mode (see [SESSION_GRID_HZ]).
+     * The `-r <hz>` argument for a session's launch command: the panel's active refresh rate
+     * ([PanelRefresh.activeHz], 60 when unreadable), the same value the daemon is told through
+     * [GameNativeDrm.nativeSetPanelRefreshHz]. gamescope's vblank runs on the panel latch grid the
+     * daemon supplies (patches A53/A54), so the nested refresh no longer has to outrun the panel
+     * mode; a mode change mid-session reaches gamescope from the daemon as the `gn_panel_refresh`
+     * ConVar.
      */
     @JvmStatic
-    fun gridArg(): String = " -r $SESSION_GRID_HZ"
+    fun gridArg(context: Context): String = " -r ${PanelRefresh.activeHz(context)}"
 
     /**
      * The output resolution a session presents at ("WxH"). [OUTPUT_RESOLUTION_OFF] resolves to the

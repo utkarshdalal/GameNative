@@ -103,6 +103,7 @@ import app.gamenative.data.LibraryItem
 import app.gamenative.data.ShooterModeConfig
 import app.gamenative.data.SteamApp
 import app.gamenative.display.GameNativeDrm
+import app.gamenative.display.PanelRefresh
 import app.gamenative.display.GamescopeCommandQueue
 import app.gamenative.display.GamescopeServerComponent
 import app.gamenative.display.GamescopeSettings
@@ -272,7 +273,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.io.path.name
-import kotlin.math.roundToInt
 import kotlin.text.lowercase
 import com.winlator.PrefManager as WinlatorPrefManager
 
@@ -291,7 +291,6 @@ private const val EXIT_PROCESS_TIMEOUT_MS = 30_000L
 private const val EXIT_PROCESS_POLL_INTERVAL_MS = 1_000L
 private const val EXIT_PROCESS_RESPONSE_TIMEOUT_MS = 2_000L
 private const val QUICK_MENU_PROCESS_POLL_INTERVAL_MS = 2_000L
-private const val DEFAULT_FPS_LIMITER_MAX_HZ = 60
 private const val DEFAULT_FPS_LIMITER_TARGET_HZ = 60
 private const val FPS_LIMITER_MAX_MULTIPLIER = 2
 private const val FPS_LIMITER_ENABLED_EXTRA = "fpsLimiterEnabled"
@@ -314,16 +313,8 @@ private fun initialFpsLimiterTarget(container: Container): Int =
  * even when it can do 120; a mode change mid-session is reported again by the display
  * listener below.
  */
-internal fun detectRefreshRateHz(context: Context, attachedView: View?): Int {
-    val display = attachedView?.display
-        ?: context.display
-        ?: ContextCompat.getSystemService(context, DisplayManager::class.java)?.getDisplay(Display.DEFAULT_DISPLAY)
-    return display?.refreshRate
-        ?.takeIf { it.isFinite() && it > 0f }
-        ?.roundToInt()
-        ?.coerceAtLeast(5)
-        ?: DEFAULT_FPS_LIMITER_MAX_HZ
-}
+internal fun detectRefreshRateHz(context: Context, attachedView: View?): Int =
+    PanelRefresh.activeHz(context, attachedView)
 
 
 /** Re-reports the panel's active refresh rate to the daemon while a session runs. */
