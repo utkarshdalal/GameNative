@@ -64,7 +64,7 @@ data class ContainerData(
     // wine registry
     val renderer: String = "gl",
     val csmt: Boolean = true,
-    val videoPciDeviceID: Int = 1728,
+    val videoPciDeviceID: Int = 0,
     val offScreenRenderingMode: String = "fbo",
     val strictShaderMath: Boolean = true,
     val useDRI3: Boolean = true,
