@@ -1455,6 +1455,23 @@ class SteamService : Service(), IChallengeUrlChanged {
             return getInstalledApp(appId)?.dlcDepots
         }
 
+        /** Depot ids an INSTALL may skip: recorded by the parent app or by the DLC app owning them. */
+        fun alreadyInstalledDepotIds(
+            depotIds: Set<Int>,
+            parentInstalled: Set<Int>,
+            dlcInstalledPerApp: Map<Int, Set<Int>>,
+        ): Set<Int> = depotIds.filterTo(mutableSetOf()) { depotId ->
+            depotId in parentInstalled || dlcInstalledPerApp.values.any { depotId in it }
+        }
+
+        /** DLC app ids owning one of [installedDepotIds] inside the parent app's depot set. */
+        fun dlcAppIdsOfInstalledDepots(
+            installedDepotIds: List<Int>,
+            depots: Map<Int, DepotInfo>,
+        ): List<Int> = installedDepotIds
+            .mapNotNull { depotId -> depots[depotId]?.dlcAppId?.takeIf { it != INVALID_APP_ID } }
+            .distinct()
+
         fun getAppDownloadInfo(appId: Int): DownloadInfo? {
             return downloadJobs[appId]
         }
@@ -2231,6 +2248,16 @@ class SteamService : Service(), IChallengeUrlChanged {
                         }
                     }
 
+                    // DLC ids owning an installed parent depot, so update/verify re-checks and records them.
+                    if (installedApp != null) {
+                        dlcAppIds.addAll(
+                            dlcAppIdsOfInstalledDepots(
+                                installedApp.downloadedDepots,
+                                getAppInfoOf(appId)?.depots.orEmpty(),
+                            ),
+                        )
+                    }
+
                     // Fresh run for this app: re-check every depot (UPDATE) or re-verify the
                     // installed build (VERIFY) — never the INSTALL depot filter, which would skip
                     // the depots this run exists to re-check.
@@ -2656,12 +2683,18 @@ class SteamService : Service(), IChallengeUrlChanged {
                 userSelectedDlcAppIds.contains(depot.dlcAppId) && indirectDlcAppIds.contains(depot.dlcAppId) && hasDepotContent(depot)
             }
 
-            // Remove depots that are already downloaded (INSTALL only: an UPDATE must re-check
-            // every depot — the engine skips the ones whose manifest is unchanged — and a VERIFY
-            // exists precisely to re-check what is on disk).
+            // INSTALL skips depots a record lists; UPDATE and VERIFY must re-check everything.
             val appInfo = getInstalledApp(appId)
             if (appInfo != null && mode == SteamDownloadMode.INSTALL) {
-                mainAppDepots = mainAppDepots.filter { it.key !in appInfo.downloadedDepots }
+                val installed = alreadyInstalledDepotIds(
+                    depotIds = mainAppDepots.keys + dlcAppDepots.keys,
+                    parentInstalled = appInfo.downloadedDepots.toSet(),
+                    dlcInstalledPerApp = userSelectedDlcAppIds.associateWith { dlcAppId ->
+                        getInstalledApp(dlcAppId)?.downloadedDepots.orEmpty().toSet()
+                    },
+                )
+                mainAppDepots = mainAppDepots.filterKeys { it !in installed }
+                dlcAppDepots = dlcAppDepots.filterKeys { it !in installed }
             }
 
             // A VERIFY can only re-check depots whose installed manifest this app recorded. Skip
@@ -2983,11 +3016,15 @@ class SteamService : Service(), IChallengeUrlChanged {
                             // later INSTALL skips whatever `downloadedDepots` lists.
                             val mainAppDepotIds =
                                 (mainAppDepots.keys - outcome.unavailableDepotIds.toSet()).sorted()
+                            // A DLC can own a depot of the parent; record its app id so it is known installed.
                             completeAppDownload(
                                 downloadInfo = di,
                                 downloadingAppId = appId,
                                 entitledDepotIds = mainAppDepotIds,
-                                selectedDlcAppIds = mainAppDlcIds,
+                                selectedDlcAppIds = (
+                                    mainAppDlcIds +
+                                        dlcAppIdsOfInstalledDepots(mainAppDepotIds, selectedDepots)
+                                    ).distinct(),
                                 appDirPath = appDirPath,
                                 branch = branch,
                                 parentScope = this,
