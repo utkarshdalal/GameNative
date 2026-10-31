@@ -76,6 +76,11 @@ jobs:
             echo "$DEBUG_KEYSTORE_BASE64" | base64 --decode > ~/.android/debug.keystore
           elif [ -f ~/.android/debug.keystore ]; then
             echo "Using cached debug keystore"
+          elif [ "$GITHUB_REF_NAME" != "${{ github.event.repository.default_branch }}" ]; then
+            # Caches are scoped per branch: a key generated here would only ever be used by this
+            # branch, and its APKs would not install over builds from the default branch.
+            echo "::error::No signing key available on this branch. Run this workflow on ${{ github.event.repository.default_branch }} first (or set DEBUG_KEYSTORE_BASE64)."
+            exit 1
           else
             echo "::warning::No DEBUG_KEYSTORE_BASE64 secret or cached key; generating a new one. Builds signed with it won't install over APKs signed with a different key."
             keytool -genkeypair -v \
@@ -137,6 +142,10 @@ jobs:
           ls -la dist
 
       - name: Verify APK
+        env:
+          # The certificate of the installed build; override with the EXPECTED_SIGNER_SHA256 repo
+          # variable when the signing key is intentionally changed.
+          EXPECTED_SIGNER_SHA256: ${{ vars.EXPECTED_SIGNER_SHA256 || 'b36f992b21e522acd7de9bc63ab087711881c73b68e530d9a9b5e83fa4da451b' }}
         run: |
           BT="$ANDROID_HOME/build-tools/34.0.0"
           [ -d "$BT" ] || BT="$ANDROID_SDK_ROOT/build-tools/34.0.0"
@@ -144,6 +153,12 @@ jobs:
           # Signature + certificate fingerprint: an update only installs over an app signed with the
           # same certificate, so compare this digest between builds when an install is refused.
           "$BT/apksigner" verify --verbose --print-certs "$apk" | grep -E "Verifies|Verified using|Signer #1 certificate (DN|SHA-256)"
+          # Refuse to publish an APK that can't update the installed app (different signing key).
+          signer="$("$BT/apksigner" verify --print-certs "$apk" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')"
+          if [ -n "$EXPECTED_SIGNER_SHA256" ] && [ "$signer" != "$EXPECTED_SIGNER_SHA256" ]; then
+            echo "::error::APK is signed with $signer, expected $EXPECTED_SIGNER_SHA256: it would not install over the existing app."
+            exit 1
+          fi
           "$BT/aapt" dump badging "$apk" | grep -E "^package:|^sdkVersion|^targetSdkVersion|^native-code"
           echo "APK size: $(du -h "$apk" | cut -f1)"
 
