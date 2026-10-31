@@ -126,11 +126,14 @@ class BestConfigServiceTest {
 
         // Verify other fields are parsed
         assertEquals("proton-9.0-x86_64", result["wineVersion"])
-        assertEquals("0.3.6", result["box64Version"])
+        // Box64 0.3.6 (bionic) and FEXCore 2507 are bundled with the Legacy flavors only; Modern
+        // replaces them with its defaults
+        val modern = BuildConfig.MODERN_ANDROID
+        assertEquals(if (modern) DefaultVersion.BOX64 else "0.3.6", result["box64Version"])
         assertEquals("PERFORMANCE", result["box64Preset"])
         assertEquals("Box64", result["emulator"])
         assertEquals(1, (result["startupSelection"] as? Byte)?.toInt() ?: (result["startupSelection"] as? Int))
-        assertEquals("2507", result["fexcoreVersion"])
+        assertEquals(if (modern) DefaultVersion.FEXCORE else "2507", result["fexcoreVersion"])
         assertEquals(true, result["loadMods"])
     }
 
@@ -159,7 +162,8 @@ class BestConfigServiceTest {
         assertEquals("0.3.6", result["box64Version"])
         assertEquals("FEXCore", result["emulator"])
         assertEquals("COMPATIBILITY", result["box64Preset"])
-        assertEquals("2507", result["fexcoreVersion"])
+        // FEXCore 2507 is bundled with the Legacy flavors only; Modern replaces it with its default
+        assertEquals(if (BuildConfig.MODERN_ANDROID) DefaultVersion.FEXCORE else "2507", result["fexcoreVersion"])
         assertFalse("loadMods should not be added when absent", result.containsKey("loadMods"))
     }
 
