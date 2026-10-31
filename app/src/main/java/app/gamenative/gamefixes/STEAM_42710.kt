@@ -20,6 +20,10 @@ import com.winlator.container.Container
  *   allocation (err:virtual:allocate_virtual_memory ... size aa010000, identical across runs and
  *   renderers), which a 32-bit process can't satisfy; audio init fails and the game hangs (no audio,
  *   frozen title screen). winealsa avoids the winepulse path.
+ * - Wine's WMA decoder: when the title-screen music starts, the native wmadmod.dll installed by the
+ *   "wmdecoder" Windows component calls mfplat.MFCreateLegacyMediaBufferOnMFMediaBuffer, which this
+ *   Wine doesn't implement; the thread aborts and the game deadlocks on the title screen. wmdecoder=0
+ *   restores Wine's builtin decoder.
  */
 val STEAM_Fix_42710: KeyedGameFix = KeyedCompositeGameFix(
     gameSource = GameSource.STEAM,
@@ -30,5 +34,6 @@ val STEAM_Fix_42710: KeyedGameFix = KeyedCompositeGameFix(
         WineEnvVarFix(mapOf("WINE_LARGE_ADDRESS_AWARE" to "1")),
         ContainerSettingDefaultFix.displayServer(Container.DISPLAY_SERVER_X11),
         ContainerSettingDefaultFix.audioDriver("alsa"),
+        ContainerSettingDefaultFix.winComponent("wmdecoder", "0"),
     ),
 )

@@ -2,6 +2,7 @@ package app.gamenative.gamefixes
 
 import android.content.Context
 import com.winlator.container.Container
+import com.winlator.core.KeyValueSet
 import timber.log.Timber
 
 /**
@@ -46,6 +47,13 @@ class ContainerSettingDefaultFix(
 
         fun audioDriver(value: String) = ContainerSettingDefaultFix(
             "audioDriver", value, { it.audioDriver }, { c, v -> c.audioDriver = v },
+        )
+
+        /** One entry of the Windows components list ("1" = native DLLs, "0" = Wine's builtin). */
+        fun winComponent(name: String, value: String) = ContainerSettingDefaultFix(
+            "winComponent_$name", value,
+            { KeyValueSet(it.winComponents).get(name) },
+            { c, v -> c.winComponents = KeyValueSet(c.winComponents).put(name, v).toString() },
         )
     }
 }
