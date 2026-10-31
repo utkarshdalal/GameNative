@@ -444,8 +444,14 @@ object ContainerUtils {
                 }
                     ?: updatedData
                 "dxwrapper" -> value?.let { updatedData.copy(dxwrapper = it as? String ?: updatedData.dxwrapper) } ?: updatedData
-                "dxwrapperConfig" -> value?.let { updatedData.copy(dxwrapperConfig = it as? String ?: updatedData.dxwrapperConfig) }
-                    ?: updatedData
+                "dxwrapperConfig" -> value?.let {
+                    val dxwrapperConfig = it as? String ?: updatedData.dxwrapperConfig
+                    val renderer = KeyValueSet(dxwrapperConfig).get("renderer")
+                    updatedData.copy(
+                        dxwrapperConfig = dxwrapperConfig,
+                        renderer = renderer.ifEmpty { updatedData.renderer },
+                    )
+                } ?: updatedData
                 "execArgs" -> value?.let { updatedData.copy(execArgs = it as? String ?: updatedData.execArgs) } ?: updatedData
                 "startupSelection" -> value?.let {
                     updatedData.copy(

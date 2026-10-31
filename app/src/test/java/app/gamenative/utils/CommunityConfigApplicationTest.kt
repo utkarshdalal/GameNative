@@ -173,6 +173,22 @@ class CommunityConfigApplicationTest {
     }
 
     @Test
+    fun dxwrapperConfigRendererUpdatesWineRenderer() {
+        val updated = ContainerUtils.applyBestConfigMapToContainerData(
+            containerData = ContainerData(
+                dxwrapperConfig = "version=2.4.1,renderer=gl",
+                renderer = "gl",
+            ),
+            bestConfigMap = mapOf(
+                "dxwrapperConfig" to "version=2.4.1,renderer=vulkan",
+            ),
+        )
+
+        assertEquals("version=2.4.1,renderer=vulkan", updated.dxwrapperConfig)
+        assertEquals("vulkan", updated.renderer)
+    }
+
+    @Test
     fun optionalLaunchSettingsRequireExplicitSelection() {
         val excluded = prepareCommunityConfigForApply(
             config = config,
