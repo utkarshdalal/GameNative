@@ -1000,9 +1000,10 @@ class SteamAppScreen : BaseAppScreen() {
 
     override fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData) {
         val container = getContainer(context, libraryItem.appId)
+        val previousLanguage = container.language
         ContainerUtils.applyToContainer(context, libraryItem.appId, config)
 
-        if (container.language != config.language) {
+        if (previousLanguage != config.language) {
             CoroutineScope(Dispatchers.IO).launch {
                 SteamService.downloadApp(libraryItem.gameId, SteamDownloadMode.UPDATE)
             }
