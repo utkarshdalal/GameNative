@@ -467,6 +467,9 @@ private val REAL_STEAM_PROCESSES = setOf(
     "steamhost32",
     "steamhost64",
     "eastub",
+)
+
+private val UBISOFT_PROCESSES = setOf(
     "ubisoftgamelauncher",
     "ubisoftgamelauncher64",
     "upc",
@@ -480,7 +483,8 @@ private var realSteamRockstarDirectory: File? = null
 private fun buildEssentialProcessAllowlist(realSteam: Boolean): Set<String> {
     val essentialServices = WineUtils.getEssentialServiceNames()
         .map { normalizeProcessName(it) }
-    return (essentialServices + CORE_WINE_PROCESSES + (if (realSteam) REAL_STEAM_PROCESSES else emptySet())).toSet()
+    val baseProcesses = essentialServices + CORE_WINE_PROCESSES + UBISOFT_PROCESSES
+    return (baseProcesses + if (realSteam) REAL_STEAM_PROCESSES else emptySet()).toSet()
 }
 
 @Composable
