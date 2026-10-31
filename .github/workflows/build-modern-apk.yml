@@ -23,7 +23,8 @@ on:
         default: release
 
 permissions:
-  contents: read
+  # write: publish the APK as a GitHub Release asset (a direct .apk link, no zip to unpack)
+  contents: write
 
 jobs:
   build:
@@ -133,9 +134,36 @@ jobs:
           cp "$apk" "dist/${{ steps.meta.outputs.artifact }}.apk"
           ls -la dist
 
+      - name: Verify APK
+        run: |
+          BT="$ANDROID_HOME/build-tools/34.0.0"
+          [ -d "$BT" ] || BT="$ANDROID_SDK_ROOT/build-tools/34.0.0"
+          apk="$(ls dist/*.apk | head -n 1)"
+          # Signature + certificate fingerprint: an update only installs over an app signed with the
+          # same certificate, so compare this digest between builds when an install is refused.
+          "$BT/apksigner" verify --verbose --print-certs "$apk" | grep -E "Verifies|Verified using|Signer #1 certificate (DN|SHA-256)"
+          "$BT/aapt" dump badging "$apk" | grep -E "^package:|^sdkVersion|^targetSdkVersion|^native-code"
+          echo "APK size: $(du -h "$apk" | cut -f1)"
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.meta.outputs.artifact }}
           path: dist/*.apk
           if-no-files-found: error
+
+      - name: Publish direct download (GitHub Release)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # One release per build type, replaced on every build, so the download link never changes:
+          # https://github.com/<repo>/releases/download/modern-<type>/GameNative-modern-<type>.apk
+          branch="${GITHUB_REF_NAME//\//-}"
+          tag="modern-${{ inputs.build_type }}"
+          stable="dist/GameNative-modern-${{ inputs.build_type }}.apk"
+          cp "$(ls dist/*.apk | head -n 1)" "$stable"
+          gh release delete "$tag" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$tag" "$stable" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
+            --title "GameNative Modern ${{ inputs.build_type }} (${branch} @ ${GITHUB_SHA::7})" \
+            --notes "Built by the Build Modern APK workflow from ${branch} at ${GITHUB_SHA}."
+          echo "Direct download: https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/$(basename "$stable")" | tee -a "$GITHUB_STEP_SUMMARY"
