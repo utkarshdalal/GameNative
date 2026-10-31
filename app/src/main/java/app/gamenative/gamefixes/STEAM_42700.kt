@@ -24,6 +24,8 @@ import com.winlator.container.Container
  *   "wmdecoder" Windows component calls mfplat.MFCreateLegacyMediaBufferOnMFMediaBuffer, which this
  *   Wine doesn't implement; the thread aborts and the game deadlocks on the title screen. wmdecoder=0
  *   restores Wine's builtin decoder.
+ * - The PC version has no controller support, so a physical controller defaults to the bundled
+ *   "Call of Duty (Console Layout)" profile, which maps the console layout onto keyboard/mouse.
  */
 val STEAM_Fix_42700: KeyedGameFix = KeyedCompositeGameFix(
     gameSource = GameSource.STEAM,
@@ -35,5 +37,6 @@ val STEAM_Fix_42700: KeyedGameFix = KeyedCompositeGameFix(
         ContainerSettingDefaultFix.displayServer(Container.DISPLAY_SERVER_X11),
         ContainerSettingDefaultFix.audioDriver("alsa"),
         ContainerSettingDefaultFix.winComponent("wmdecoder", "0"),
+        ControlProfileDefaultFix("Call of Duty (Console Layout)"),
     ),
 )
