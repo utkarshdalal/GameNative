@@ -38,6 +38,8 @@ public class DXVKHelper {
         if (!maxDeviceMemory.isEmpty() && !maxDeviceMemory.equals("0")) {
             appendOption(content, "dxgi.maxDeviceMemory = " + maxDeviceMemory);
             appendOption(content, "dxgi.maxSharedMemory = " + maxDeviceMemory);
+            // dxgi.* only covers D3D10/11; D3D9 titles read their reported VRAM from this one.
+            appendOption(content, "d3d9.maxAvailableMemory = " + maxDeviceMemory);
         }
 
         String maxFeatureLevel = config.get("maxFeatureLevel");

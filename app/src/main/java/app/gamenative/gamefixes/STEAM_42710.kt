@@ -8,14 +8,17 @@ import app.gamenative.data.GameSource
  * - Steam CEG protected: the emulated Steam client / Steamless never get past a black screen, and on
  *   first launch Steam must regenerate the exe ("Updating executable"), so default to the real Steam
  *   client in headless mode, the configuration known to run it.
- * - Under DXVK's d3d9 it commonly shows a black screen with working audio (ProtonDB 42700 reports, fixed
- *   there with PROTON_USE_WINED3D=1), so default to WineD3D.
+ * - 32-bit D3D9 under WoW64: through WineD3D (GL -> zink -> Vulkan) it ran out of address space right
+ *   after the intro (a 2.7 GB allocation) and deadlocked on a black screen with audio. Use DXVK, report
+ *   1 GB of VRAM (d3d9.maxAvailableMemory) so the engine sizes its pools for a 32-bit process, and make
+ *   the process large-address-aware (4 GB instead of 2 GB).
  */
 val STEAM_Fix_42710: KeyedGameFix = KeyedCompositeGameFix(
     gameSource = GameSource.STEAM,
     gameId = "42710",
     fixes = listOf(
         SteamClientRequiredFix(),
-        DxWrapperDefaultFix("wined3d"),
+        DxWrapperDefaultFix("dxvk", mapOf("maxDeviceMemory" to "1024")),
+        WineEnvVarFix(mapOf("WINE_LARGE_ADDRESS_AWARE" to "1")),
     ),
 )
