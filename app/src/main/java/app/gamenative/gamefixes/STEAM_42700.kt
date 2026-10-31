@@ -27,6 +27,11 @@ import com.winlator.container.Container
  * - Wine's DirectSound: the native dsound.dll installed by the "directsound" Windows component failed
  *   in its DllMain on a fresh container ("DSOUND.dll" failed to initialize, c0000005), so BlackOps.exe
  *   aborted before opening a window (black screen). directsound=0 uses Wine's builtin DirectSound.
+ * - Native XAudio: much of the game's audio is xWMA played through XAudio2. Wine's xaudio2_7 hands
+ *   xWMA to the WMA decoder (winegstreamer), which fails on every stream here (Proton's media
+ *   converter claims it; "Failed to create winegstreamer transform"), so sounds such as knife hits
+ *   are silent. Microsoft's xaudio2_7 decodes xWMA itself. The "xaudio" entry also makes the
+ *   component show up in the container's Win Components list, where it can be switched back.
  * - The PC version has no controller support, so a physical controller defaults to the bundled
  *   "Call of Duty (Console Layout)" profile, which maps the console layout onto keyboard/mouse.
  * - No virtual gamepad inside Wine (EVSHIM_MAX_PLAYERS=0): the game still polls XInput, and loading
@@ -54,6 +59,7 @@ val STEAM_Fix_42700: KeyedGameFix = KeyedCompositeGameFix(
         ContainerSettingDefaultFix.audioDriver("alsa"),
         ContainerSettingDefaultFix.winComponent("wmdecoder", "0"),
         ContainerSettingDefaultFix.winComponent("directsound", "0"),
+        ContainerSettingDefaultFix.winComponent("xaudio", "1"),
         WineAppDefaultsFix("BlackOps.exe", "Direct3D", mapOf("renderer" to "no3d")),
         WineAppDefaultsFix("BlackOps.exe", "DllOverrides", mapOf("gameoverlayrenderer" to "")),
         ControlProfileDefaultFix("Call of Duty (Console Layout)"),
