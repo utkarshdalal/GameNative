@@ -84,6 +84,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         Log.d("GlibcProgramLauncherComponent", "Stopping...");
         synchronized (lock) {
             if (pid != -1) {
+                ProcessHelper.flushWineRegistry(ProcessHelper.listSubProcesses(), 2000);
                 Process.killProcess(pid);
                 Log.d("GlibcProgramLauncherComponent", "Stopped process " + pid);
                 pid = -1;
