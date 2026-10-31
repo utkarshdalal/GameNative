@@ -107,6 +107,19 @@ data class DebugRunParams(
             return DebugRunParams(channels, env, attach, minSeconds, instruction).takeUnless { it.isEmpty }
         }
 
+        fun fromManualWineDebug(enabled: Boolean, selection: String): DebugRunParams? {
+            if (!enabled) return null
+
+            val channels = mutableListOf<String>()
+            selection.split(',').forEach { value ->
+                val raw = value.trim().lowercase()
+                if (!CHANNEL_PATTERN.matches(raw)) return@forEach
+                val item = if (raw.startsWith("+") || raw.startsWith("-")) raw else "+$raw"
+                if (channels.none { channelName(it) == channelName(item) }) channels += item
+            }
+            return DebugRunParams(winedebug = channels).takeUnless { it.isEmpty }
+        }
+
         fun mergeWineDebug(base: String, extra: List<String>): String {
             val items = base.split(',').map { it.trim() }.filter { it.isNotEmpty() }.toMutableList()
             val names = items.map { channelName(it) }.toMutableSet()
