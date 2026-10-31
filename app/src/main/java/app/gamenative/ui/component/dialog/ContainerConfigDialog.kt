@@ -737,7 +737,7 @@ fun ContainerConfigDialog(
             val defaultBcnTypeIdx = bcnEmulationTypeEntries.indexOfFirst { it.equals(bcnType, true) }.takeIf { it >= 0 } ?: 0
             bcnEmulationTypeIndex = defaultBcnTypeIdx
 
-            bcnEmulationCacheEnabled = cfg.get("bcnEmulationCache", "0") == "1"
+            bcnEmulationCacheEnabled = cfg.get("bcnEmulationCache", "1") == "1"
             disablePresentWaitChecked = cfg.get("disablePresentWait", "0") == "1"
 
             val syncRaw = cfg.get("syncFrame").ifEmpty { cfg.get("frameSync", "0") }
