@@ -11,6 +11,7 @@ import android.graphics.Color.TRANSPARENT
 import android.hardware.input.InputManager
 import android.os.Build
 import android.os.Bundle
+import android.view.KeyCharacterMap
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.OrientationEventListener
@@ -712,6 +713,16 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         // Log.d("MainActivity$index", "dispatchKeyEvent(${event.keyCode}):\n$event")
+
+        // Android synthesizes fallback key events for unconsumed relative-mouse input.
+        // Forwarding them into the guest can feed the same fallback back into the
+        // activity, fill the X socket, and block input dispatch in ClientSocket.write.
+        // They are not physical or IME keyboard input, so consume them here.
+        if (event.deviceId == KeyCharacterMap.VIRTUAL_KEYBOARD &&
+            event.flags and KeyEvent.FLAG_FALLBACK != 0
+        ) {
+            return true
+        }
 
         var eventDispatched = PluviaApp.events.emit(AndroidEvent.KeyEvent(event)) { keyEvent ->
             keyEvent.any { it }
