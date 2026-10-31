@@ -13,6 +13,7 @@ import android.util.Base64
 import app.gamenative.ui.data.Achievement
 import app.gamenative.ui.util.GameInviteNotificationManager
 import app.gamenative.ui.util.SnackbarManager
+import app.gamenative.service.PicsAppInfo.resolveAppKeyValues
 import app.gamenative.service.callback.GameInviteCallback
 import app.gamenative.service.cloud.CloseSyncTracker
 import app.gamenative.service.handler.GameInviteHandler
@@ -105,6 +106,7 @@ import `in`.dragonbra.javasteam.steam.discovery.FileServerListProvider
 import `in`.dragonbra.javasteam.steam.discovery.ServerQuality
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.GamePlayedInfo
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.License
+import `in`.dragonbra.javasteam.steam.handlers.steamapps.PICSProductInfo
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.PICSRequest
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.SteamApps
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.callback.DepotKeyCallback
@@ -167,6 +169,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.BufferOverflow
 import okio.Path.Companion.toPath
@@ -976,7 +982,11 @@ class SteamService : Service(), IChallengeUrlChanged {
                         Timber.d("resolveDlcIdsForApp appId=$appId PICS returned no app; total=$ids")
                         return ids
                     }
-                val generated = remote.keyValues.generateSteamApp()
+                val remoteKeyValues = remote.resolveAppKeyValues() ?: run {
+                    Timber.d("resolveDlcIdsForApp appId=$appId PICS returned no app data; total=$ids")
+                    return ids
+                }
+                val generated = remoteKeyValues.generateSteamApp().copy(id = appId)
                 collectFromApp(generated, fromPics, fromDepots)
 
                 // Persist so subsequent opens start with a fuller local catalog.
@@ -5484,6 +5494,48 @@ class SteamService : Service(), IChallengeUrlChanged {
     /**
      * A buffered flow to parse so many PICS requests in a given moment.
      */
+    /** Caps concurrent appinfo downloads while a PICS batch is resolved. */
+    private val appInfoHttpLimiter = Semaphore(8)
+
+    /** Builds the row for one PICS app result, or null when it is unchanged or has no data yet. */
+    private suspend fun resolvePicsApp(app: PICSProductInfo): SteamApp? {
+        val appFromDb = appDao.findApp(app.id)
+        val packageId = appFromDb?.packageId ?: INVALID_PKG_ID
+        val packageFromDb = if (packageId != INVALID_PKG_ID) licenseDao.findLicense(packageId) else null
+        val ownerAccountId = packageFromDb?.ownerAccountId ?: emptyList()
+
+        // Apps with -1 for the ownerAccountId should be added.
+        //  This can help with friend game names.
+
+        // TODO maybe apps with -1 for the ownerAccountId can be stripped with necessities and name.
+
+        val ufsParseVersionOutdated = appFromDb != null && appFromDb.ufsParseVersion < CURRENT_UFS_PARSE_VERSION
+
+        return if (app.changeNumber != appFromDb?.lastChangeNumber || ufsParseVersionOutdated) {
+            // Steam serves large app info over HTTP with an empty inline buffer. An empty
+            // KeyValue would otherwise generate a row with INVALID_APP_ID and overwrite the
+            // previous one, leaving this app as a hidden type-0 stub. Skip it instead and let
+            // the next sync retry; keep the row keyed by the app we asked for.
+            val keyValues = app.resolveAppKeyValues() ?: return null
+            val newApp = keyValues.generateSteamApp().copy(
+                id = app.id,
+                packageId = packageId,
+                ownerAccountId = ownerAccountId,
+                receivedPICS = true,
+                lastChangeNumber = app.changeNumber,
+                licenseFlags = packageFromDb?.licenseFlags ?: EnumSet.noneOf(ELicenseFlags::class.java),
+            )
+            if (ufsParseVersionOutdated && newApp.ufs.saveFilePatterns.any { it.uploadRoot != it.root || it.uploadPath != it.path }) {
+                // UFS path logic changed and this app has rootoverrides: store 0 to force one
+                // full cloud query while preserving the local sync snapshot.
+                changeNumbersDao.insert(app.id, 0L)
+            }
+            newApp
+        } else {
+            null
+        }
+    }
+
     private fun continuousPICSGetProductInfo(): Job = scope.launch {
         // Launch both coroutines within this parent job
         launch {
@@ -5511,36 +5563,11 @@ class SteamService : Service(), IChallengeUrlChanged {
                             )
 
                             ensureActive()
-                            val steamAppsMap = picsCallback.apps.values.mapNotNull { app ->
-                                val appFromDb = appDao.findApp(app.id)
-                                val packageId = appFromDb?.packageId ?: INVALID_PKG_ID
-                                val packageFromDb = if (packageId != INVALID_PKG_ID) licenseDao.findLicense(packageId) else null
-                                val ownerAccountId = packageFromDb?.ownerAccountId ?: emptyList()
-
-                                // Apps with -1 for the ownerAccountId should be added.
-                                //  This can help with friend game names.
-
-                                // TODO maybe apps with -1 for the ownerAccountId can be stripped with necessities and name.
-
-                                val ufsParseVersionOutdated = appFromDb != null && appFromDb.ufsParseVersion < CURRENT_UFS_PARSE_VERSION
-
-                                if (app.changeNumber != appFromDb?.lastChangeNumber || ufsParseVersionOutdated) {
-                                    val newApp = app.keyValues.generateSteamApp().copy(
-                                        packageId = packageId,
-                                        ownerAccountId = ownerAccountId,
-                                        receivedPICS = true,
-                                        lastChangeNumber = app.changeNumber,
-                                        licenseFlags = packageFromDb?.licenseFlags ?: EnumSet.noneOf(ELicenseFlags::class.java),
-                                    )
-                                    if (ufsParseVersionOutdated && newApp.ufs.saveFilePatterns.any { it.uploadRoot != it.root || it.uploadPath != it.path }) {
-                                        // UFS path logic changed and this app has rootoverrides: store 0 to force one
-                                        // full cloud query while preserving the local sync snapshot.
-                                        changeNumbersDao.insert(app.id, 0L)
-                                    }
-                                    newApp
-                                } else {
-                                    null
-                                }
+                            // Resolved concurrently: most results now need an HTTP round trip each.
+                            val steamAppsMap = coroutineScope {
+                                picsCallback.apps.values.map { app ->
+                                    async { appInfoHttpLimiter.withPermit { resolvePicsApp(app) } }
+                                }.awaitAll().filterNotNull()
                             }
 
                             if (steamAppsMap.isNotEmpty()) {
