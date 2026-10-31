@@ -40,9 +40,6 @@ object GamescopeSettings {
     const val SHARPNESS_STEPS = 5
     const val SHARPNESS_DEFAULT = SHARPNESS_STEPS
 
-    /** The vblank grid a gamescope session is launched with (`-r`), in Hz. */
-    const val SESSION_GRID_HZ = 1200
-
     /** gamescope's raw `scaling_sharpness` (0 = maximum sharpening) for a stored UI value. */
     fun sharpnessRawValue(ui: Int): Int =
         (SHARPNESS_STEPS - ui.coerceIn(0, SHARPNESS_STEPS)) * 4
@@ -54,14 +51,6 @@ object GamescopeSettings {
             ?: GamescopeScalingMode.DEFAULT
         return if (mode == GamescopeScalingMode.DEFAULT) "" else " --scaler ${mode.id}"
     }
-
-    /**
-     * The `-r <grid>` argument for a session's launch command, holding the grid at
-     * [SESSION_GRID_HZ] so `g_nNestedRefresh` wins over the panel rate the daemon advertises as
-     * the mode (see [SESSION_GRID_HZ]).
-     */
-    @JvmStatic
-    fun gridArg(): String = " -r $SESSION_GRID_HZ"
 
     /**
      * The output resolution a session presents at ("WxH"). [OUTPUT_RESOLUTION_OFF] resolves to the
