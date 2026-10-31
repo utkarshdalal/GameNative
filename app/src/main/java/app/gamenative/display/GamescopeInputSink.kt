@@ -5,10 +5,26 @@ import com.winlator.xserver.XKeycode
 import com.winlator.xserver.XServer
 
 /** Gamescope-mode input retarget: Android-injected input is forwarded to gamescope's wayland seat via the gndrm injector (installed with XServer.setInputEventSink); X11 mode installs none. */
-class GamescopeInputSink : XServer.InputEventSink {
-    /** The guest cursor, as this sink has moved it: it starts where the seat's does. */
+class GamescopeInputSink : XServer.InputEventSink, Pointer.OnPointerMotionListener {
+    /** Last guest cursor position known to Xwayland. */
     private var cursorX = 0
     private var cursorY = 0
+
+    override fun onAttached(xServer: XServer) {
+        cursorX = xServer.pointer.x.toInt()
+        cursorY = xServer.pointer.y.toInt()
+        xServer.pointer.addOnPointerMotionListener(this)
+    }
+
+    override fun onDetached(xServer: XServer) {
+        xServer.pointer.removeOnPointerMotionListener(this)
+    }
+
+    /** Keep absolute Android input based on game-side XWarpPointer changes. */
+    override fun onPointerMove(x: Short, y: Short) {
+        cursorX = x.toInt()
+        cursorY = y.toInt()
+    }
 
     override fun pointerMove(x: Int, y: Int) {
         val dx = x - cursorX
