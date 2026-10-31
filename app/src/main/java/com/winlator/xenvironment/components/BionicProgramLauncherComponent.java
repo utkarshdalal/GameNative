@@ -60,6 +60,7 @@ import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import app.gamenative.BuildConfig;
 import app.gamenative.PluviaApp;
@@ -98,13 +99,32 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     // back to the W^X-only minimal shim (still required to run Wine on a strict
     // W^X kernel) and legacy preloads nothing. Returns null to preload nothing.
     private String resolveLibredirectPreload(ImageFs imageFs) {
-        if (container != null && container.isDisableLibredirect()) {
+        if ((container != null && container.isDisableLibredirect()) || isColorOs17()) {
             if (BuildConfig.MODERN_ANDROID) {
                 return imageFs.getLibDir() + "/libredirect-bionic-wx-minimal.so";
             }
             return null;
         }
         return imageFs.getLibDir() + "/" + BuildConfig.PRELOAD_BIONIC_SO;
+    }
+
+    static boolean isColorOs17() {
+        String rom = systemProperty("ro.build.version.oplusrom");
+        if (rom != null && rom.startsWith("V17")) return true;
+        if (Build.VERSION.SDK_INT < 37) return false;
+        String maker = Build.MANUFACTURER == null ? "" : Build.MANUFACTURER.toLowerCase(Locale.ROOT);
+        return maker.equals("oneplus") || maker.equals("oppo") || maker.equals("realme");
+    }
+
+    private static String systemProperty(String name) {
+        try {
+            Class<?> cls = Class.forName("android.os.SystemProperties");
+            Object value = cls.getMethod("get", String.class).invoke(null, name);
+            return value instanceof String && !((String) value).isEmpty() ? (String) value : null;
+        }
+        catch (Exception e) {
+            return null;
+        }
     }
 
     /** Numeric Steam appid for the game in this container (e.g. "221380").
