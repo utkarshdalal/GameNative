@@ -489,6 +489,16 @@ private val UBISOFT_PROCESSES = setOf(
 private var realSteamGameExecutable = ""
 private var realSteamRockstarDirectory: File? = null
 
+/**
+ * Builds the process allowlist used while waiting for a game session to exit.
+ *
+ * Ubisoft Connect helpers are allowed for every launch path because they may outlive games
+ * started through Steam, Epic, or other stores. Real Steam helpers remain conditional so they
+ * are only treated as essential when the session actually uses Real Steam.
+ *
+ * @param realSteam whether the current session launched through Real Steam
+ * @return normalized process names that may remain without blocking session shutdown
+ */
 private fun buildEssentialProcessAllowlist(realSteam: Boolean): Set<String> {
     val essentialServices = WineUtils.getEssentialServiceNames()
         .map { normalizeProcessName(it) }
