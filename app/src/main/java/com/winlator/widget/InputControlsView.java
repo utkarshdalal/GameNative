@@ -1452,10 +1452,10 @@ public class InputControlsView extends View {
             if (controller != null && controller.updateStateFromMotionEvent(event)) {
                 ExternalControllerBinding controllerBinding;
                 controllerBinding = controller.getControllerBinding(KeyEvent.KEYCODE_BUTTON_L2);
-                if (controllerBinding != null) handleInputEvent(controllerBinding.getBindingCombo(), controller.state.isPressed(ExternalController.IDX_BUTTON_L2));
+                if (controllerBinding != null) handleInputEvent(controllerBinding.getBindingCombo(), controller.isTriggerBindingPressed(ExternalController.IDX_BUTTON_L2));
 
                 controllerBinding = controller.getControllerBinding(KeyEvent.KEYCODE_BUTTON_R2);
-                if (controllerBinding != null) handleInputEvent(controllerBinding.getBindingCombo(), controller.state.isPressed(ExternalController.IDX_BUTTON_R2));
+                if (controllerBinding != null) handleInputEvent(controllerBinding.getBindingCombo(), controller.isTriggerBindingPressed(ExternalController.IDX_BUTTON_R2));
 
                 processJoystickInput(controller);
                 return true;
