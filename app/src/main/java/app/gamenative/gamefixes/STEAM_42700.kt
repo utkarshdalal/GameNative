@@ -24,6 +24,9 @@ import com.winlator.container.Container
  *   "wmdecoder" Windows component calls mfplat.MFCreateLegacyMediaBufferOnMFMediaBuffer, which this
  *   Wine doesn't implement; the thread aborts and the game deadlocks on the title screen. wmdecoder=0
  *   restores Wine's builtin decoder.
+ * - Wine's DirectSound: the native dsound.dll installed by the "directsound" Windows component failed
+ *   in its DllMain on a fresh container ("DSOUND.dll" failed to initialize, c0000005), so BlackOps.exe
+ *   aborted before opening a window (black screen). directsound=0 uses Wine's builtin DirectSound.
  * - The PC version has no controller support, so a physical controller defaults to the bundled
  *   "Call of Duty (Console Layout)" profile, which maps the console layout onto keyboard/mouse.
  */
@@ -37,6 +40,7 @@ val STEAM_Fix_42700: KeyedGameFix = KeyedCompositeGameFix(
         ContainerSettingDefaultFix.displayServer(Container.DISPLAY_SERVER_X11),
         ContainerSettingDefaultFix.audioDriver("alsa"),
         ContainerSettingDefaultFix.winComponent("wmdecoder", "0"),
+        ContainerSettingDefaultFix.winComponent("directsound", "0"),
         ControlProfileDefaultFix("Call of Duty (Console Layout)"),
     ),
 )
