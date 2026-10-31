@@ -467,6 +467,11 @@ private val REAL_STEAM_PROCESSES = setOf(
     "steamhost32",
     "steamhost64",
     "eastub",
+    "ubisoftgamelauncher",
+    "ubisoftgamelauncher64",
+    "upc",
+    "uplayservice",
+    "uplaywebcore",
 )
 
 private var realSteamGameExecutable = ""
