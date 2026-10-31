@@ -15,8 +15,10 @@ import app.gamenative.enums.PathType
 import app.gamenative.service.download.GameDownloadService
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.FileUtils
+import app.gamenative.utils.InstallPathOwner
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.Net
+import app.gamenative.utils.hasUniqueInstallPathOwner
 import com.winlator.container.Container
 import com.winlator.core.envvars.EnvVars
 import com.winlator.core.FileUtils as WinlatorFileUtils
@@ -97,6 +99,10 @@ class GOGManager @Inject constructor(
 
     suspend fun getNonInstalledGames(): List<GOGGame> {
         return withContext(Dispatchers.IO) { gogGameDao.getNonInstalledGames() }
+    }
+
+    suspend fun getAllGames(): List<GOGGame> {
+        return withContext(Dispatchers.IO) { gogGameDao.getAllAsList() }
     }
 
     suspend fun insertGame(game: GOGGame) {
@@ -606,7 +612,25 @@ class GOGManager @Inject constructor(
 
     fun isGameInstalled(context: Context, libraryItem: LibraryItem): Boolean {
         try {
-            val appDirPath = getAppDirPath(libraryItem.appId)
+            val gameId = libraryItem.gameId.toString()
+            val game = runBlocking { getGameFromDbById(gameId) } ?: return false
+            val appDirPath = game.installPath.ifBlank { GOGConstants.getGameInstallPath(game.title) }
+
+            // A generic completion marker cannot identify which same-named catalog entry owns the
+            // directory. Persisted installed rows are authoritative; legacy backfill must be unique.
+            if (!game.isInstalled) {
+                val target = InstallPathOwner(GameSource.GOG, game.id, appDirPath)
+                val candidates = runBlocking { getAllGames() }.map { candidate ->
+                    InstallPathOwner(
+                        source = GameSource.GOG,
+                        stableId = candidate.id,
+                        installPath = candidate.installPath.ifBlank {
+                            GOGConstants.getGameInstallPath(candidate.title)
+                        },
+                    )
+                }
+                if (!hasUniqueInstallPathOwner(target, candidates)) return false
+            }
 
             // Use marker-based approach
             val isDownloadComplete = MarkerUtils.hasMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
@@ -615,10 +639,8 @@ class GOGManager @Inject constructor(
             val isInstalled = isDownloadComplete && !isDownloadInProgress
 
             // Update database if status changed
-            val gameId = libraryItem.gameId.toString()
-            val game = runBlocking { getGameFromDbById(gameId) }
-            if (game != null && isInstalled != game.isInstalled) {
-                val installPath = if (isInstalled) getGameInstallPath(gameId, libraryItem.name) else ""
+            if (isInstalled != game.isInstalled) {
+                val installPath = if (isInstalled) appDirPath else ""
                 val updatedGame = game.copy(isInstalled = isInstalled, installPath = installPath)
                 runBlocking { gogGameDao.update(updatedGame) }
             }
