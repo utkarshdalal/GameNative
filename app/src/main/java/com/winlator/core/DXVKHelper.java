@@ -23,16 +23,17 @@ public class DXVKHelper {
         File rootDir = ImageFs.find(context).getRootDir();
         File dxvkConfigFile = new File(imageFs.config_path+"/dxvk.conf");
 
-        String content = "\"";
+        // DXVK splits DXVK_CONFIG on ';' and takes it verbatim (no shell unquoting), so no newlines and no wrapping quotes.
+        String content = "";
         String maxDeviceMemory = config.get("maxDeviceMemory");
         if (!maxDeviceMemory.isEmpty() && !maxDeviceMemory.equals("0")) {
-            content += "dxgi.maxDeviceMemory = "+maxDeviceMemory+"\n";
-            content += "dxgi.maxSharedMemory = "+maxDeviceMemory+"\n";
+            content += "dxgi.maxDeviceMemory = "+maxDeviceMemory+";";
+            content += "dxgi.maxSharedMemory = "+maxDeviceMemory+";";
         }
 
         String maxFeatureLevel = config.get("maxFeatureLevel");
         if (!maxFeatureLevel.isEmpty() && !maxFeatureLevel.equals("0")) {
-            content += "d3d11.maxFeatureLevel = "+maxFeatureLevel+"\n";
+            content += "d3d11.maxFeatureLevel = "+maxFeatureLevel+";";
             envVars.put("DXVK_FEATURE_LEVEL", maxFeatureLevel);
         }
 
@@ -44,10 +45,10 @@ public class DXVKHelper {
         String customDevice = config.get("customDevice");
         if (customDevice.contains(":")) {
             String[] parts = customDevice.split(":");
-            content = (((((content + "dxgi.customDeviceId = " + parts[0] + "\n") + "dxgi.customVendorId = " + parts[1] + "\n") + "d3d9.customDeviceId = " + parts[0] + "\n") + "d3d9.customVendorId = " + parts[1] + "\n") + "dxgi.customDeviceDesc = \"" + parts[2] + "\"\n") + "d3d9.customDeviceDesc = \"" + parts[2] + "\"\n";
+            content = (((((content + "dxgi.customDeviceId = " + parts[0] + ";") + "dxgi.customVendorId = " + parts[1] + ";") + "d3d9.customDeviceId = " + parts[0] + ";") + "d3d9.customVendorId = " + parts[1] + ";") + "dxgi.customDeviceDesc = \"" + parts[2] + "\";") + "d3d9.customDeviceDesc = \"" + parts[2] + "\";";
         }
         if (config.getBoolean("constantBufferRangeCheck")) {
-            content = content + "d3d11.constantBufferRangeCheck = \"True\"\n";
+            content = content + "d3d11.constantBufferRangeCheck = \"True\";";
         }
 
         String async = config.get("async");
@@ -57,7 +58,6 @@ public class DXVKHelper {
         String asyncCache = config.get("asyncCache");
         if (!asyncCache.isEmpty() && !asyncCache.equals("0"))
             envVars.put("DXVK_GPLASYNCCACHE", "1");
-        content = content + '\"';
 
 
         envVars.put("DXVK_CONFIG_FILE", rootDir + ImageFs.CONFIG_PATH+"/dxvk.conf");
