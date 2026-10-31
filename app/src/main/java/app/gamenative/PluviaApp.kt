@@ -253,6 +253,10 @@ class PluviaApp : SplitCompatApplication() {
         internal var onDestinationChangedListener: NavChangedListener? = null
 
         private lateinit var instance: PluviaApp
+
+        /** The app's native library dir, or null before the application object exists. */
+        internal fun nativeLibraryDir(): String? =
+            if (::instance.isInitialized) instance.applicationInfo.nativeLibraryDir else null
         private var cachedDefaultScreenSize: String? = null
 
         // TODO: find a way to make this saveable, this is terrible (leak that memory baby)
