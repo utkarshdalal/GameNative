@@ -225,7 +225,9 @@ Java_com_winlator_xconnector_ClientSocket_write(JNIEnv *env, jobject obj, jint f
                                                 jint length) {
 //    printf("Writing to %d", fd);
     char *dataAddr = (*env)->GetDirectBufferAddress(env, data);
-    return write(fd, dataAddr, length);
+    ssize_t result = send(fd, dataAddr, length, MSG_DONTWAIT | MSG_NOSIGNAL);
+    if (result < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) return -2;
+    return result;
 }
 
 JNIEXPORT jint JNICALL
