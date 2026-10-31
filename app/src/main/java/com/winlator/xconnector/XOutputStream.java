@@ -169,7 +169,9 @@ public class XOutputStream {
                 // Events take this lock again inside send(); while a droppable lock is held, nested
                 // locks leave the flush (or the drop) to it
                 if (lock.getHoldCount() > 1 && droppableDepth > 0) return;
-                if (droppable && startPosition == 0 && ancillaryFd == -1 && clientSocket != null
+                // An in-memory stream (no socket) keeps what was written
+                if (clientSocket == null) return;
+                if (droppable && startPosition == 0 && ancillaryFd == -1
                         && buffer.position() != 0 && !clientSocket.isWritable()) {
                     buffer.clear();
                 }
