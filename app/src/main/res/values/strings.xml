@@ -1171,6 +1171,8 @@
 
     <!-- Dialogs -->
     <string name="allowed_orientations">Allowed Orientations</string>
+    <string name="orientation_landscape_camera_left">Landscape, front camera on the left</string>
+    <string name="orientation_reverse_landscape_camera_right">Reverse landscape, front camera on the right</string>
     <string name="select_wine_debug_channels">Select Wine Debug Channels</string>
     <string name="cpu_label">CPU%d</string>
     <string name="describe_what_happened">Describe what happened</string>

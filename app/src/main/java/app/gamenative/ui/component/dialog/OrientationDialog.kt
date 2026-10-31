@@ -74,7 +74,12 @@ fun OrientationDialog(
                                 }
                             },
                         )
-                        Text(text = orientation.name)
+                        Text(
+                            text = stringResource(
+                                if (orientation == Orientation.LANDSCAPE) R.string.orientation_landscape_camera_left
+                                else R.string.orientation_reverse_landscape_camera_right,
+                            ),
+                        )
                     }
                 }
             }
