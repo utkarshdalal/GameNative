@@ -3,6 +3,7 @@ package app.gamenative.utils
 import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
 import com.winlator.container.Container
+import io.mockk.every
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -19,17 +20,35 @@ import kotlin.io.path.createTempDirectory
 class UbisoftConnectStepTest {
     private lateinit var container: Container
     private lateinit var gameDir: File
+    private lateinit var rootDir: File
 
     @Before
     fun setUp() {
         container = mockk(relaxed = true)
         gameDir = createTempDirectory(prefix = "ubisoft-step-test").toFile()
+        rootDir = createTempDirectory(prefix = "ubisoft-prefix-test").toFile()
+        every { container.rootDir } returns rootDir
     }
 
     @Test
-    fun appliesTo_returnsFalse_whenMarkerExists() {
+    fun appliesTo_returnsFalse_whenMarkerAndInstalledExecutableExist() {
         MarkerUtils.addMarker(gameDir.absolutePath, Marker.UBISOFT_CONNECT_INSTALLED)
+        val installedExe = File(
+            rootDir,
+            ".wine/drive_c/Program Files (x86)/Ubisoft/Ubisoft Game Launcher/UbisoftConnect.exe",
+        )
+        installedExe.parentFile?.mkdirs()
+        installedExe.writeText("x")
+
         assertFalse(UbisoftConnectStep.appliesTo(container, GameSource.STEAM, gameDir.absolutePath))
+    }
+
+    @Test
+    fun appliesTo_returnsTrueAndClearsMarker_whenInstalledExecutableIsMissing() {
+        MarkerUtils.addMarker(gameDir.absolutePath, Marker.UBISOFT_CONNECT_INSTALLED)
+
+        assertTrue(UbisoftConnectStep.appliesTo(container, GameSource.STEAM, gameDir.absolutePath))
+        assertFalse(MarkerUtils.hasMarker(gameDir.absolutePath, Marker.UBISOFT_CONNECT_INSTALLED))
     }
 
     @Test
