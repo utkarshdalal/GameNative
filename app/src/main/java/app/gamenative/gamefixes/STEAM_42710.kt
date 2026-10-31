@@ -29,6 +29,10 @@ import com.winlator.container.Container
  *   aborted before opening a window (black screen). directsound=0 uses Wine's builtin DirectSound.
  * - The PC version has no controller support, so a physical controller defaults to the bundled
  *   "Call of Duty (Console Layout)" profile, which maps the console layout onto keyboard/mouse.
+ * - No virtual gamepad inside Wine (EVSHIM_MAX_PLAYERS=0): the game still polls XInput, and loading
+ *   into a map its main thread hung while holding xinput1_3's controller lock ("controllers[0].crit
+ *   wait timed out ... blocked by" the game thread), freezing and then crashing the game. The profile
+ *   above drives the game through keyboard/mouse, so the game loses nothing without the pad.
  */
 val STEAM_Fix_42710: KeyedGameFix = KeyedCompositeGameFix(
     gameSource = GameSource.STEAM,
@@ -36,7 +40,7 @@ val STEAM_Fix_42710: KeyedGameFix = KeyedCompositeGameFix(
     fixes = listOf(
         SteamClientRequiredFix(),
         DxWrapperDefaultFix("dxvk", mapOf("maxDeviceMemory" to "1024")),
-        WineEnvVarFix(mapOf("WINE_LARGE_ADDRESS_AWARE" to "1")),
+        WineEnvVarFix(mapOf("WINE_LARGE_ADDRESS_AWARE" to "1", "EVSHIM_MAX_PLAYERS" to "0")),
         ContainerSettingDefaultFix.displayServer(Container.DISPLAY_SERVER_X11),
         ContainerSettingDefaultFix.audioDriver("alsa"),
         ContainerSettingDefaultFix.winComponent("wmdecoder", "0"),
