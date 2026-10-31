@@ -26,14 +26,14 @@ object GamescopeSettings {
     /** Output resolution the container presents at, as "WxH", [OUTPUT_RESOLUTION_DEVICE] or [OUTPUT_RESOLUTION_OFF]. */
     const val EXTRA_OUTPUT_RESOLUTION = "gamescopeOutputResolution"
 
-    /** 1080p — the output resolution a session presents at until the container picks another. */
-    const val OUTPUT_RESOLUTION_DEFAULT = "1920x1080"
-
     /** `-W`/`-H` follow the container's screen size: the game presents 1:1, nothing is resampled. */
     const val OUTPUT_RESOLUTION_OFF = "off"
 
     /** `-W`/`-H` follow the panel's real pixel size (the pre-setting behaviour). */
     const val OUTPUT_RESOLUTION_DEVICE = "device"
+
+    /** The default: no upscale — `-W/-H` follow the container's screen size, so the session presents 1:1. */
+    const val OUTPUT_RESOLUTION_DEFAULT = OUTPUT_RESOLUTION_OFF
 
     // Sharpness is stored in the UI's own units: 0..SHARPNESS_STEPS, higher = sharper — the scale the
     // QuickMenu row shows.
@@ -87,6 +87,11 @@ object GamescopeSettings {
         val size = AppUtils.parseScreenSize(outputResolution(container)) ?: return ""
         return " -W ${size[0]} -H ${size[1]}"
     }
+
+    /** The session's scan-out size — [outputResolution] read back as `[w, h]`, or null if unreadable. */
+    @JvmStatic
+    fun scanoutSize(container: Container?): IntArray? =
+        AppUtils.parseScreenSize(outputResolution(container))
 
     /**
      * The session's X socket — gamescope's own Xwayland, whose root window the live scaling-mode

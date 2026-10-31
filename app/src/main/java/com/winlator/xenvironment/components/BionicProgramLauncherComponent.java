@@ -60,6 +60,7 @@ import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import app.gamenative.BuildConfig;
 import app.gamenative.PluviaApp;
@@ -98,13 +99,32 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     // back to the W^X-only minimal shim (still required to run Wine on a strict
     // W^X kernel) and legacy preloads nothing. Returns null to preload nothing.
     private String resolveLibredirectPreload(ImageFs imageFs) {
-        if (container != null && container.isDisableLibredirect()) {
+        if ((container != null && container.isDisableLibredirect()) || isColorOs17()) {
             if (BuildConfig.MODERN_ANDROID) {
                 return imageFs.getLibDir() + "/libredirect-bionic-wx-minimal.so";
             }
             return null;
         }
         return imageFs.getLibDir() + "/" + BuildConfig.PRELOAD_BIONIC_SO;
+    }
+
+    static boolean isColorOs17() {
+        String rom = systemProperty("ro.build.version.oplusrom");
+        if (rom != null && rom.startsWith("V17")) return true;
+        if (Build.VERSION.SDK_INT < 37) return false;
+        String maker = Build.MANUFACTURER == null ? "" : Build.MANUFACTURER.toLowerCase(Locale.ROOT);
+        return maker.equals("oneplus") || maker.equals("oppo") || maker.equals("realme");
+    }
+
+    private static String systemProperty(String name) {
+        try {
+            Class<?> cls = Class.forName("android.os.SystemProperties");
+            Object value = cls.getMethod("get", String.class).invoke(null, name);
+            return value instanceof String && !((String) value).isEmpty() ? (String) value : null;
+        }
+        catch (Exception e) {
+            return null;
+        }
     }
 
     /** Numeric Steam appid for the game in this container (e.g. "221380").
@@ -554,9 +574,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         if (container != null && container.getGraphicsDriver() != null)
             envVars.put("GNDRM_DRIVER_TYPE", container.getGraphicsDriver());
 
-        // Same source as gamescope's -W/-H, so the two cannot drift. The nested pair is seeded from the
-        // same value the -w/-h arguments are formatted from (see gamescopeNestedSize).
-        int[] scanoutOutput = AppUtils.parseScreenSize(GamescopeSettings.outputResolution(container));
+        // Same source as gamescope's -W/-H and the daemon's mode; the panel is the fallback when the resolution is unreadable.
+        int[] scanoutOutput = GamescopeSettings.scanoutSize(container);
         if (scanoutOutput == null)
             scanoutOutput = displaySize();
         if (scanoutOutput == null)
@@ -751,11 +770,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         return AppUtils.parseScreenSize(container != null ? container.getScreenSize() : null);
     }
 
-    /**
-     * The panel's real pixel size, or null if unreadable. This is what scanout needs: the
-     * container's screen size is an internal desktop resolution, so using it here would make
-     * gamescope present at 720p (or whatever preset) and resample onto the panel.
-     */
+    /** The panel's real pixel size, or null if unreadable; only the shim seed's last-resort fallback. */
     private static int[] displaySize() {
         int[] nativeSize = AppUtils.parseScreenSize(PluviaApp.getNativeDisplaySize());
         if (nativeSize != null) return nativeSize;
