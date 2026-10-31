@@ -1074,12 +1074,19 @@ public class WinHandler {
 
     private void rearmControllerVibration(int slot) {
         controllerRumbleAppliedMs[slot] = 0;
-        InputDevice device = InputDevice.getDevice(rumbleDeviceIds[slot]);
-        Vibrator controllerVibrator = device != null ? device.getVibrator() : null;
-        if (controllerVibrator != null && controllerVibrator.hasVibrator()) {
-            controllerVibrator.vibrate(VibrationEffect.createOneShot(CONTROLLER_RUMBLE_DURATION_MS, controllerRumbleAmplitude[slot]));
-            controllerRumbleAppliedMs[slot] = SystemClock.uptimeMillis();
+        // Re-arm from the current shared-memory value, not the remembered amplitude. If the poller misses a stop,
+        // the keepalive would otherwise re-arm the old amplitude forever; this way a missed stop or intensity
+        // change heals within one re-arm period.
+        MappedByteBuffer buffer = getGamepadBuffer(slot);
+        short lowFreq = buffer != null ? buffer.getShort(OFF_RUMBLE_LOW) : 0;
+        short highFreq = buffer != null ? buffer.getShort(OFF_RUMBLE_HIGH) : 0;
+        lastLowFreq[slot] = lowFreq;
+        lastHighFreq[slot] = highFreq;
+        if (lowFreq == 0 && highFreq == 0) {
+            if (isRumbling[slot]) { stopDeviceVibration(rumbleDeviceIds[slot]); isRumbling[slot] = false; }
+            return;
         }
+        isRumbling[slot] = startDeviceVibration(slot, rumbleDeviceIds[slot], lowFreq, highFreq);
     }
 
     public void setVibrationIntensity(int intensity) {
