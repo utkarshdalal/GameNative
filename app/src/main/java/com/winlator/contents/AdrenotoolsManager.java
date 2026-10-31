@@ -47,7 +47,7 @@ public class AdrenotoolsManager {
             JSONObject jsonObject = new JSONObject(FileUtils.readString(metaProfile));
             libraryName = jsonObject.getString("libraryName");
         }
-        catch (JSONException e) {
+        catch (JSONException | NullPointerException e) {
         }
         return libraryName;
     }
@@ -60,7 +60,7 @@ public class AdrenotoolsManager {
             JSONObject jsonObject = new JSONObject(FileUtils.readString(metaProfile));
             driverName = jsonObject.getString("name");
         }
-        catch (JSONException e) {
+        catch (JSONException | NullPointerException e) {
         }
         return driverName;
     }
@@ -73,7 +73,7 @@ public class AdrenotoolsManager {
             JSONObject jsonObject = new JSONObject(FileUtils.readString(metaProfile));
             driverVersion = jsonObject.getString("driverVersion");
         }
-        catch (JSONException e) {
+        catch (JSONException | NullPointerException e) {
         }
         return driverVersion;
     }
@@ -102,7 +102,9 @@ public class AdrenotoolsManager {
     public ArrayList<String> enumarateInstalledDrivers() {
         ArrayList<String> driversList = new ArrayList<>();
 
-        for (File f : adrenotoolsContentDir.listFiles()) {
+        File[] files = adrenotoolsContentDir.listFiles();
+        if (files == null) return driversList;
+        for (File f : files) {
             boolean fromResources = isFromResources("graphics_driver/adrenotools-" + f.getName() + ".tzst");
             if (!fromResources && new File(f, "meta.json").exists())
                 driversList.add(f.getName());
@@ -128,40 +130,67 @@ public class AdrenotoolsManager {
 
     private boolean extractDriverFromResources(String adrenotoolsDriverId) {
         String src = "graphics_driver/adrenotools-" + adrenotoolsDriverId + ".tzst";
-        boolean hasExtracted;
+        // Only bundled drivers have an asset; never touch a user-installed driver directory.
+        if (!isFromResources(src)) return false;
 
         File dst = new File(adrenotoolsContentDir, adrenotoolsDriverId);
+        File stamp = new File(dst, ".extracted");
+        String stampValue = getPackageStamp();
+        // Skip the decompress on every launch: re-extract only when the APK changed.
+        if (new File(dst, "meta.json").isFile() && stamp.isFile()
+                && stampValue.equals(FileUtils.readString(stamp).trim()))
+            return true;
+
         if (dst.exists())
-            dst.delete();
+            FileUtils.delete(dst);
 
         dst.mkdirs();
         Log.d("AdrenotoolsManager", "Extracting " + src + " to " + dst.getAbsolutePath());
-        hasExtracted = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, mContext, src, dst);
+        boolean hasExtracted = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, mContext, src, dst);
 
-        if (!hasExtracted)
-            dst.delete();
+        if (hasExtracted)
+            FileUtils.writeString(stamp, stampValue);
+        else
+            FileUtils.delete(dst);
 
         return hasExtracted;
     }
 
+    private String getPackageStamp() {
+        try {
+            return String.valueOf(mContext.getPackageManager()
+                    .getPackageInfo(mContext.getPackageName(), 0).lastUpdateTime);
+        }
+        catch (Exception e) {
+            return "0";
+        }
+    }
+
     public String installDriver(Uri driverUri) {
         File tmpDir = new File(adrenotoolsContentDir, "tmp");
-        if (tmpDir.exists()) tmpDir.delete();
+        // A previous failed install can leave files behind; File.delete() can't remove a non-empty dir.
+        if (tmpDir.exists()) FileUtils.delete(tmpDir);
         tmpDir.mkdirs();
-        ZipInputStream zis;
-        InputStream is;
         String name = "";
 
-        try {
-            is = mContext.getContentResolver().openInputStream(driverUri);
-            zis = new ZipInputStream(is);
+        try (InputStream is = mContext.getContentResolver().openInputStream(driverUri);
+             ZipInputStream zis = new ZipInputStream(is)) {
+            String tmpRoot = tmpDir.getCanonicalPath() + File.separator;
             ZipEntry entry = zis.getNextEntry();
             while (entry != null) {
                 File dstFile = new File(tmpDir, entry.getName());
-                Files.copy(zis, dstFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                if (!dstFile.getCanonicalPath().startsWith(tmpRoot)) {
+                    throw new IOException("Zip entry outside of target dir: " + entry.getName());
+                }
+                if (entry.isDirectory()) {
+                    dstFile.mkdirs();
+                } else {
+                    File parent = dstFile.getParentFile();
+                    if (parent != null) parent.mkdirs();
+                    Files.copy(zis, dstFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                }
                 entry = zis.getNextEntry();
             }
-            zis.close();
             if (new File(tmpDir, "meta.json").exists()) {
                 name = getDriverName(tmpDir.getName());
                 File dst = new File(adrenotoolsContentDir, name);
@@ -174,12 +203,13 @@ public class AdrenotoolsManager {
             }
             else {
                 Log.d("AdrenotoolsManager", "Failed to install driver, a valid driver has not been selected");
-                tmpDir.delete();
+                FileUtils.delete(tmpDir);
             }
         }
-        catch (IOException e) {
-            Log.d("AdrenotoolsManager", "Failed to install driver, a valid driver has not been selected");
-            tmpDir.delete();
+        catch (IOException | NullPointerException e) {
+            Log.d("AdrenotoolsManager", "Failed to install driver, a valid driver has not been selected", e);
+            FileUtils.delete(tmpDir);
+            name = "";
         }
 
         return name;

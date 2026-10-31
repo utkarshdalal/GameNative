@@ -134,6 +134,7 @@ import app.gamenative.ui.util.LocalSnackbarHostController
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.BestConfigService
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.EmulatorVersionMigration
 import app.gamenative.utils.DebugReportUtils
 import app.gamenative.utils.DebugRunParamsHolder
 import app.gamenative.utils.HardwareUtils
@@ -2419,6 +2420,9 @@ fun preLaunchApp(
                 return@launch
             }
         }
+
+        // containers pinned to an emulator build this flavor no longer ships move to the default
+        EmulatorVersionMigration.apply(context, container)
 
         // download any manifest components (wine/proton, dxvk, etc.) the container's config
         // references but that aren't installed yet — all sources, including custom games

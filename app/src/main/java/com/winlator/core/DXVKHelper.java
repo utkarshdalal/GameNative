@@ -23,31 +23,48 @@ public class DXVKHelper {
         File rootDir = ImageFs.find(context).getRootDir();
         File dxvkConfigFile = new File(imageFs.config_path+"/dxvk.conf");
 
-        String content = "\"";
+        // DXVK_CONFIG is split on ';' by DXVK and read raw from the environment (execve, no shell),
+        // so entries must be ';'-separated with no surrounding quotes. The old "\"...\n...\"" form
+        // made DXVK see a key starting with '"' and silently drop every option.
+        StringBuilder content = new StringBuilder();
+        // Keep any DXVK_CONFIG the user set in the container env vars instead of overwriting it.
+        String userConfig = envVars.get("DXVK_CONFIG").trim();
+        if (userConfig.length() >= 2 && userConfig.startsWith("\"") && userConfig.endsWith("\""))
+            userConfig = userConfig.substring(1, userConfig.length() - 1);
+        for (String option : userConfig.split("[;\n]")) {
+            if (!option.trim().isEmpty()) appendOption(content, option.trim());
+        }
         String maxDeviceMemory = config.get("maxDeviceMemory");
         if (!maxDeviceMemory.isEmpty() && !maxDeviceMemory.equals("0")) {
-            content += "dxgi.maxDeviceMemory = "+maxDeviceMemory+"\n";
-            content += "dxgi.maxSharedMemory = "+maxDeviceMemory+"\n";
+            appendOption(content, "dxgi.maxDeviceMemory = " + maxDeviceMemory);
+            appendOption(content, "dxgi.maxSharedMemory = " + maxDeviceMemory);
+            // dxgi.* only covers D3D10/11; D3D9 titles read their reported VRAM from this one.
+            appendOption(content, "d3d9.maxAvailableMemory = " + maxDeviceMemory);
         }
 
         String maxFeatureLevel = config.get("maxFeatureLevel");
         if (!maxFeatureLevel.isEmpty() && !maxFeatureLevel.equals("0")) {
-            content += "d3d11.maxFeatureLevel = "+maxFeatureLevel+"\n";
+            appendOption(content, "d3d11.maxFeatureLevel = " + maxFeatureLevel);
             envVars.put("DXVK_FEATURE_LEVEL", maxFeatureLevel);
         }
-
 
         String framerate = config.get("framerate");
         if (!framerate.isEmpty() && !framerate.equals("0")) {
             envVars.put("DXVK_FRAME_RATE", framerate);
         }
         String customDevice = config.get("customDevice");
-        if (customDevice.contains(":")) {
-            String[] parts = customDevice.split(":");
-            content = (((((content + "dxgi.customDeviceId = " + parts[0] + "\n") + "dxgi.customVendorId = " + parts[1] + "\n") + "d3d9.customDeviceId = " + parts[0] + "\n") + "d3d9.customVendorId = " + parts[1] + "\n") + "dxgi.customDeviceDesc = \"" + parts[2] + "\"\n") + "d3d9.customDeviceDesc = \"" + parts[2] + "\"\n";
+        String[] parts = customDevice.split(":", 3);
+        if (parts.length == 3) {
+            String desc = parts[2].replace("\"", "").replace(";", "");
+            appendOption(content, "dxgi.customDeviceId = " + parts[0]);
+            appendOption(content, "dxgi.customVendorId = " + parts[1]);
+            appendOption(content, "d3d9.customDeviceId = " + parts[0]);
+            appendOption(content, "d3d9.customVendorId = " + parts[1]);
+            appendOption(content, "dxgi.customDeviceDesc = \"" + desc + "\"");
+            appendOption(content, "d3d9.customDeviceDesc = \"" + desc + "\"");
         }
         if (config.getBoolean("constantBufferRangeCheck")) {
-            content = content + "d3d11.constantBufferRangeCheck = \"True\"\n";
+            appendOption(content, "d3d11.constantBufferRangeCheck = True");
         }
 
         String async = config.get("async");
@@ -57,11 +74,16 @@ public class DXVKHelper {
         String asyncCache = config.get("asyncCache");
         if (!asyncCache.isEmpty() && !asyncCache.equals("0"))
             envVars.put("DXVK_GPLASYNCCACHE", "1");
-        content = content + '\"';
 
 
         envVars.put("DXVK_CONFIG_FILE", rootDir + ImageFs.CONFIG_PATH+"/dxvk.conf");
-        envVars.put("DXVK_CONFIG", content);
+        if (content.length() > 0) envVars.put("DXVK_CONFIG", content.toString());
+        else envVars.remove("DXVK_CONFIG");
+    }
+
+    private static void appendOption(StringBuilder content, String option) {
+        if (content.length() > 0) content.append("; ");
+        content.append(option);
     }
 
     public static void setVKD3DEnvVars(Context context, KeyValueSet config, EnvVars envVars) {

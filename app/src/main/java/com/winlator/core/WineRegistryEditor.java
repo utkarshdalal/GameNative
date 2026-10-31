@@ -255,6 +255,18 @@ public class WineRegistryEditor implements Closeable {
         return success ? unescape(new String(buffer)) : null;
     }
 
+    /** The raw (still escaped) text of [location] in the working copy, or null if it can't be read. */
+    private String readRegion(Location location) {
+        char[] buffer = new char[location.length()];
+        try (BufferedReader reader = new BufferedReader(new FileReader(cloneFile), StreamUtils.BUFFER_SIZE)) {
+            reader.skip(location.start);
+            return reader.read(buffer) == buffer.length ? new String(buffer) : null;
+        }
+        catch (IOException e) {
+            return null;
+        }
+    }
+
     private void setRawValue(String key, String name, String value) {
         resetLastParentKeyPositionIfNeed(key);
 
@@ -267,6 +279,9 @@ public class WineRegistryEditor implements Closeable {
         }
 
         Location valueLocation = getValueLocation(keyLocation, name);
+        // Launches set the same values every time; rewriting the whole (multi-MB) registry file for a
+        // value that is already there costs a full copy per call and dirties the hive for nothing.
+        if (valueLocation != null && value.equals(readRegion(valueLocation))) return;
         char[] buffer = new char[StreamUtils.BUFFER_SIZE];
         boolean success = false;
 

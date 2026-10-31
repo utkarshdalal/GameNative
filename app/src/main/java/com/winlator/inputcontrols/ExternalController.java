@@ -323,6 +323,24 @@ public class ExternalController {
         this.state.setPressed(IDX_BUTTON_R2, r > 0.0f);
     }
 
+    // A key or mouse button bound to a trigger needs a deliberate pull: analog triggers that rest
+    // slightly off zero, or get brushed while the stick is in use, otherwise fire the binding (e.g.
+    // a stray left click). Hysteresis keeps a held trigger from chattering around the threshold.
+    private static final float TRIGGER_BINDING_PRESS = 0.30f;
+    private static final float TRIGGER_BINDING_RELEASE = 0.15f;
+    private boolean triggerBindingL = false;
+    private boolean triggerBindingR = false;
+
+    /** Whether the left (IDX_BUTTON_L2) or right trigger counts as pressed for a profile binding. */
+    public boolean isTriggerBindingPressed(int buttonIdx) {
+        boolean left = buttonIdx == IDX_BUTTON_L2;
+        float value = left ? state.triggerL : state.triggerR;
+        boolean pressed = left ? triggerBindingL : triggerBindingR;
+        pressed = pressed ? value > TRIGGER_BINDING_RELEASE : value >= TRIGGER_BINDING_PRESS;
+        if (left) triggerBindingL = pressed; else triggerBindingR = pressed;
+        return pressed;
+    }
+
     public boolean isXboxController() {
         InputDevice device = InputDevice.getDevice(getDeviceId());
         if (device == null) return false;

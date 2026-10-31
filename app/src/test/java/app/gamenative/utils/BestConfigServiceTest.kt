@@ -7,6 +7,7 @@ import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
+import com.winlator.core.DefaultVersion
 import java.io.File
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
@@ -125,11 +126,14 @@ class BestConfigServiceTest {
 
         // Verify other fields are parsed
         assertEquals("proton-9.0-x86_64", result["wineVersion"])
-        assertEquals("0.3.6", result["box64Version"])
+        // Box64 0.3.6 (bionic) and FEXCore 2507 are bundled with the Legacy flavors only; Modern
+        // replaces them with its defaults
+        val modern = BuildConfig.MODERN_ANDROID
+        assertEquals(if (modern) DefaultVersion.BOX64 else "0.3.6", result["box64Version"])
         assertEquals("PERFORMANCE", result["box64Preset"])
         assertEquals("Box64", result["emulator"])
         assertEquals(1, (result["startupSelection"] as? Byte)?.toInt() ?: (result["startupSelection"] as? Int))
-        assertEquals("2507", result["fexcoreVersion"])
+        assertEquals(if (modern) DefaultVersion.FEXCORE else "2507", result["fexcoreVersion"])
         assertEquals(true, result["loadMods"])
     }
 
@@ -158,7 +162,8 @@ class BestConfigServiceTest {
         assertEquals("0.3.6", result["box64Version"])
         assertEquals("FEXCore", result["emulator"])
         assertEquals("COMPATIBILITY", result["box64Preset"])
-        assertEquals("2507", result["fexcoreVersion"])
+        // FEXCore 2507 is bundled with the Legacy flavors only; Modern replaces it with its default
+        assertEquals(if (BuildConfig.MODERN_ANDROID) DefaultVersion.FEXCORE else "2507", result["fexcoreVersion"])
         assertFalse("loadMods should not be added when absent", result.containsKey("loadMods"))
     }
 
@@ -282,8 +287,8 @@ class BestConfigServiceTest {
         val dxwrapperConfig = result!!["dxwrapperConfig"] as? String ?: ""
         assertTrue("DXVK version should be valid", dxwrapperConfig.contains("async-1.10.3"))
 
-        // Box64 version "0.3.6" should be in box64_bionic_version_entries (for bionic)
-        assertEquals("0.3.6", result["box64Version"])
+        // Box64 "0.3.6" (bionic) is bundled with the Legacy flavors only; Modern swaps in its default
+        assertEquals(if (BuildConfig.MODERN_ANDROID) DefaultVersion.BOX64 else "0.3.6", result["box64Version"])
     }
 
     @Test
@@ -317,7 +322,7 @@ class BestConfigServiceTest {
                 "dxwrapper": "dxvk",
                 "dxwrapperConfig": "version=1.10.3",
                 "containerVariant": "bionic",
-                "box64Version": "0.3.6",
+                "box64Version": "${DefaultVersion.BOX64}",
                 "wineVersion": "proton-9.0-x86_64"
             }
         """.trimIndent()
@@ -331,7 +336,31 @@ class BestConfigServiceTest {
         // If version exists, it should be preserved
         assertNotNull("Result should not be null", result)
         assertTrue("Result should not be empty", result!!.isNotEmpty())
-        assertEquals("0.3.6", result["box64Version"])
+        assertEquals(DefaultVersion.BOX64, result["box64Version"])
+    }
+
+    @Test
+    fun testUnavailableEmulatorVersions_useDefaultsInsteadOfRejecting() {
+        // An emulator build that is neither bundled, installed nor in the manifest (e.g. an older
+        // build a community config was made with) must not reject the whole config
+        val configJson = """
+            {
+                "dxwrapper": "dxvk",
+                "dxwrapperConfig": "version=1.10.3",
+                "containerVariant": "bionic",
+                "box64Version": "0.0.1",
+                "fexcoreVersion": "1",
+                "wineVersion": "proton-9.0-x86_64"
+            }
+        """.trimIndent()
+
+        val bestConfig = Json.parseToJsonElement(configJson).jsonObject
+        val parsed = runBlocking { BestConfigService.parseConfigResult(context, bestConfig, "exact_gpu_match", true) }
+
+        assertTrue("Emulator versions alone must not reject the config", parsed.missingComponents.isEmpty())
+        assertEquals(DefaultVersion.BOX64, parsed.config["box64Version"])
+        assertEquals(DefaultVersion.FEXCORE, parsed.config["fexcoreVersion"])
+        assertEquals("proton-9.0-x86_64", parsed.config["wineVersion"])
     }
 
     @Test
@@ -872,8 +901,11 @@ class BestConfigServiceTest {
         assertEquals("containerVariant should be parsed", "bionic", result["containerVariant"])
         assertEquals("wineVersion should be parsed", "proton-9.0-x86_64", result["wineVersion"])
         assertEquals("emulator should be parsed", "Box64", result["emulator"])
-        assertEquals("fexcoreVersion should be parsed", "2507", result["fexcoreVersion"])
-        assertEquals("box64Version should be parsed", "0.3.6", result["box64Version"])
+        // The fixture's Box64 0.3.6 (bionic) and FEXCore 2507 are bundled with the Legacy flavors only;
+        // Modern replaces them with its defaults
+        val modern = BuildConfig.MODERN_ANDROID
+        assertEquals("fexcoreVersion should be parsed", if (modern) DefaultVersion.FEXCORE else "2507", result["fexcoreVersion"])
+        assertEquals("box64Version should be parsed", if (modern) DefaultVersion.BOX64 else "0.3.6", result["box64Version"])
         assertEquals("box64Preset should be parsed", "PERFORMANCE", result["box64Preset"])
         assertEquals(1, (result["startupSelection"] as? Byte)?.toInt() ?: (result["startupSelection"] as? Int))
         assertEquals(false, result["useLegacyDRM"])

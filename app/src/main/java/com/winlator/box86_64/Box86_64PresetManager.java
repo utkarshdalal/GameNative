@@ -128,7 +128,7 @@ public abstract class Box86_64PresetManager {
         } else if (id.startsWith(Box86_64Preset.CUSTOM)) {
             for (String[] preset : customPresetsIterator(prefix, context)) {
                 if (preset[0].equals(id)) {
-                    envVars.putAll(preset[2]);
+                    if (preset.length > 2) envVars.putAll(preset[2]);
                     break;
                 }
             }
@@ -147,7 +147,7 @@ public abstract class Box86_64PresetManager {
         presets.add(new Box86_64Preset(Box86_64Preset.UNITY_MONO_BLEEDING_EDGE, context.getString(R.string.unity_mono_bleeding_edge)));
         presets.add(new Box86_64Preset(Box86_64Preset.DENUVO, context.getString(R.string.denuvo)));
         for (String[] preset : customPresetsIterator(prefix, context))
-            presets.add(new Box86_64Preset(preset[0], preset[1]));
+            if (preset.length > 1) presets.add(new Box86_64Preset(preset[0], preset[1]));
         return presets;
     }
 
@@ -170,7 +170,8 @@ public abstract class Box86_64PresetManager {
 
             @Override
             public String[] next() {
-                return customPresets[index[0]++].split("\\|");
+                // limit -1 keeps the trailing empty env field: "ID|name|" must yield 3 parts, not 2.
+                return customPresets[index[0]++].split("\\|", -1);
             }
         };
     }
@@ -178,7 +179,10 @@ public abstract class Box86_64PresetManager {
     public static int getNextPresetId(Context context, String prefix) {
         int maxId = 0;
         for (String[] preset : customPresetsIterator(prefix, context)) {
-            maxId = Math.max(maxId, Integer.parseInt(preset[0].replace(Box86_64Preset.CUSTOM + "-", "")));
+            try {
+                maxId = Math.max(maxId, Integer.parseInt(preset[0].replace(Box86_64Preset.CUSTOM + "-", "")));
+            } catch (NumberFormatException ignored) {
+            }
         }
         return maxId + 1;
     }
@@ -188,6 +192,8 @@ public abstract class Box86_64PresetManager {
         PrefManager.init(context);
         String customPresetsStr = PrefManager.getString(key, "");
         String presetId = id;
+        // Presets are stored as "id|name|env,id|name|env"; a delimiter in the name would corrupt the list.
+        if (name != null) name = name.replace("|", " ").replace(",", " ");
 
         if (presetId != null) {
             String[] customPresets = customPresetsStr.split(",");

@@ -141,6 +141,7 @@ import app.gamenative.ui.data.XServerState
 import app.gamenative.ui.widget.PerformanceHudView
 import app.gamenative.utils.AssetUtils
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.ExtractionFingerprint
 import app.gamenative.utils.downloader.CoreDriverDownloader
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.DebugReportUtils
@@ -269,6 +270,7 @@ import java.util.Arrays
 import java.util.Locale
 import kotlin.math.ceil
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.concurrent.thread
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.io.path.name
@@ -279,6 +281,19 @@ import com.winlator.PrefManager as WinlatorPrefManager
 // Always re-extract drivers and DXVK on every launch to handle cases of container corruption
 // where games randomly stop working. Set to false once corruption issues are resolved.
 private const val ALWAYS_REEXTRACT = true
+
+private val DXWRAPPER_DLLS = arrayOf(
+    "d3d10.dll",
+    "d3d10_1.dll",
+    "d3d10core.dll",
+    "d3d11.dll",
+    "d3d12.dll",
+    "d3d12core.dll",
+    "d3d8.dll",
+    "d3d9.dll",
+    "dxgi.dll",
+    "ddraw.dll",
+)
 
 // Guard to prevent duplicate game_exited events when multiple exit triggers fire simultaneously
 private val isExiting = AtomicBoolean(false)
@@ -1518,7 +1533,7 @@ fun XServerScreen(
                     PluviaApp.xEnvironment?.resumeGameProcesses()
                 }
                 clearOverlayPauseState()
-                exit(ui.xServerView!!.getxServer().winHandler, ui.frameRating, currentAppInfo, container, appId, onExit, navigateBack, "quick_menu")
+                exit(ui.xServerView?.getxServer()?.winHandler, ui.frameRating, currentAppInfo, container, appId, onExit, navigateBack, "quick_menu")
                 true
             }
 
@@ -1671,7 +1686,7 @@ fun XServerScreen(
     // Event handlers defined in composable scope to capture latest state on each recomposition
     val onActivityDestroyed: (AndroidEvent.ActivityDestroyed) -> Unit = {
         Timber.i("onActivityDestroyed")
-        exit(ui.xServerView!!.getxServer().winHandler, ui.frameRating, currentAppInfo, container, appId, onExit, navigateBack, "activity_destroyed")
+        exit(ui.xServerView?.getxServer()?.winHandler, ui.frameRating, currentAppInfo, container, appId, onExit, navigateBack, "activity_destroyed")
     }
     val onKeyEvent: (AndroidEvent.KeyEvent) -> Boolean = {
         val isKeyboard = Keyboard.isKeyboardDevice(it.event.device)
@@ -1815,11 +1830,11 @@ fun XServerScreen(
     val onGuestProgramTerminated: (AndroidEvent.GuestProgramTerminated) -> Unit = {
         Timber.i("onGuestProgramTerminated")
         SteamHostStatusWatch.stop()
-        exit(ui.xServerView!!.getxServer().winHandler, ui.frameRating, currentAppInfo, container, appId, onExit, navigateBack, "guest_terminated")
+        exit(ui.xServerView?.getxServer()?.winHandler, ui.frameRating, currentAppInfo, container, appId, onExit, navigateBack, "guest_terminated")
     }
     val onForceCloseApp: (SteamEvent.ForceCloseApp) -> Unit = {
         Timber.i("onForceCloseApp")
-        exit(ui.xServerView!!.getxServer().winHandler, ui.frameRating, currentAppInfo, container, appId, onExit, navigateBack, "force_close")
+        exit(ui.xServerView?.getxServer()?.winHandler, ui.frameRating, currentAppInfo, container, appId, onExit, navigateBack, "force_close")
     }
     val onPlayingBlocked: (SteamEvent.PlayingBlocked) -> Unit = { event ->
         if (isOffline || container.isSteamOfflineMode()) {
@@ -4217,6 +4232,11 @@ private fun runSteamHostCegPass(
     resultFile.delete()
     val progressFile = File(imageFs.wineprefix, "drive_c/Program Files (x86)/Steam/steamhost_ceg")
     progressFile.delete()
+    // steamhost reports its logon stage here (see SteamHostStatusWatch); the CEG pass used to ignore it,
+    // so a stalled or failed Steam logon sat on "signing in to Steam" forever with no reason shown.
+    val statusFile = File(imageFs.wineprefix, "drive_c/Program Files (x86)/Steam/steamhost_status")
+    statusFile.delete()
+    val abortReason = AtomicReference<String?>(null)
     val batch = File(imageFs.wineprefix, "drive_c/steamhost_ceg.bat")
     batch.writeText("@\"C:\\Program Files (x86)\\Steam\\steam.exe\"\r\n")
     PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Preparing game executable..."))
@@ -4225,8 +4245,34 @@ private fun runSteamHostCegPass(
     val pollProgress = AtomicBoolean(true)
     thread(name = "steamhost-ceg-progress") {
         var lastText = ""
+        var lastSignal = ""
+        var lastChangeAt = passStartedAt
         while (pollProgress.get()) {
-            val text = cegSplashText(progressFile, passStartedAt)
+            val status = runCatching { statusFile.readText().trim() }.getOrDefault("")
+            val progress = runCatching { progressFile.readText().trim() }.getOrDefault("")
+            val now = System.currentTimeMillis()
+            val signal = "$status|$progress"
+            if (signal != lastSignal) {
+                lastSignal = signal
+                lastChangeAt = now
+            }
+            val reason = when {
+                status.startsWith("failed") -> "steamhost: $status"
+                // Logon retries can keep rewriting the status, so cap the sign-in phase on its own.
+                progress.isEmpty() && now - passStartedAt > CEG_STALL_TIMEOUT_MS ->
+                    "Steam did not sign in within ${CEG_STALL_TIMEOUT_MS / 60_000} minutes (steamhost status: ${status.ifEmpty { "none" }})"
+                now - lastChangeAt > CEG_STALL_TIMEOUT_MS ->
+                    "no progress for ${CEG_STALL_TIMEOUT_MS / 60_000} minutes (steamhost status: ${status.ifEmpty { "none" }})"
+                else -> null
+            }
+            if (reason != null) {
+                // Ends the blocking pass below: steam.exe and its cmd wrapper exit with the wineserver.
+                abortReason.set(reason)
+                Timber.w("Aborting steamhost CEG pass: $reason")
+                runCatching { launcher.execShellCommand("wineserver -k") }
+                break
+            }
+            val text = cegSplashText(progressFile, status, passStartedAt)
             if (text != lastText) {
                 lastText = text
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(text))
@@ -4255,15 +4301,25 @@ private fun runSteamHostCegPass(
     if (result == "ok") {
         MarkerUtils.addMarker(appDirPath, Marker.STEAM_CEG_WRAPPED)
     } else {
-        onGameLaunchError?.invoke("Steam could not prepare the game executable (${result.ifEmpty { "steamhost gave no result" }})")
+        val reason = abortReason.get() ?: result.ifEmpty { "steamhost gave no result" }
+        onGameLaunchError?.invoke("Steam could not prepare the game executable ($reason)")
     }
 }
 
-private fun cegSplashText(progressFile: File, startedAt: Long): String {
+/** How long the CEG pass may go without any steamhost status or download progress before it is abandoned. */
+private const val CEG_STALL_TIMEOUT_MS = 5 * 60_000L
+
+private fun cegSplashText(progressFile: File, status: String, startedAt: Long): String {
     val elapsed = (System.currentTimeMillis() - startedAt) / 1000
     val fields = runCatching { progressFile.readText().trim().split(' ') }.getOrNull()
     if (fields == null || fields.size < 6) {
-        return "Preparing game executable... signing in to Steam (${elapsed}s)"
+        val stage = when (status.substringBefore(' ')) {
+            "connecting" -> "connecting to Steam"
+            "retry" -> "retrying Steam login"
+            "logon" -> "logging in to Steam"
+            else -> "signing in to Steam"
+        }
+        return "Preparing game executable... $stage (${elapsed}s)"
     }
     val jobsDone = fields[1].toIntOrNull() ?: 0
     val jobs = fields[2].toIntOrNull() ?: 0
@@ -5665,6 +5721,9 @@ private fun unpackExecutableFile(
                         PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM (${index + 1}/${exePaths.size})"))
                     }
                     var batchFile: File? = null
+                    // A leftover .unpacked.exe from an earlier pass would otherwise be copied over a
+                    // freshly updated exe when Steamless finds no DRM this time (stale binary bug).
+                    File(imageFs.wineprefix + "/dosdevices/a:/" + executablePath.replace('\\', '/') + ".unpacked.exe").delete()
                     try {
                         // Normalize path: use forward slashes for Unix format, backslashes for Windows
                         val normalizedPath = executablePath.replace('/', '\\')
@@ -5700,12 +5759,20 @@ private fun unpackExecutableFile(
                         val windowsPathForLog = "A:\\${executablePath.replace('/', '\\')}"
                         Timber.i("Moving files for $windowsPathForLog")
                         if (exe.exists() && unpackedExe.exists()) {
+                            // Rename the original instead of copying it (exes can be hundreds of MB on the boot path).
+                            // The .unpacked.exe stays as a cache for SteamUtils.restoreUnpackedExecutable.
                             if (originalExe.exists()) {
                                 Timber.i("Original backup exists for $windowsPathForLog; skipping overwrite")
                             } else {
-                                Files.copy(exe.toPath(), originalExe.toPath(), REPLACE_EXISTING)
+                                Files.move(exe.toPath(), originalExe.toPath())
                             }
-                            Files.copy(unpackedExe.toPath(), exe.toPath(), REPLACE_EXISTING)
+                            try {
+                                Files.copy(unpackedExe.toPath(), exe.toPath(), REPLACE_EXISTING)
+                            } catch (e: IOException) {
+                                // Never leave the game without its exe.
+                                if (!exe.exists() && originalExe.exists()) Files.copy(originalExe.toPath(), exe.toPath())
+                                throw e
+                            }
                             Timber.i("Successfully moved files for $windowsPathForLog")
                         } else {
                             val errorMsg =
@@ -5833,13 +5900,28 @@ private suspend fun setupWineSystemFiles(
         )
     }
 
-    val needReextract = ALWAYS_REEXTRACT || xServerState.value.dxwrapper != container.getExtra("dxwrapper") || variantChanged || wineVersionChanged
+    // ALWAYS_REEXTRACT guards against clobbered DLLs; skip it when the files from the last
+    // extraction are provably untouched (see ExtractionFingerprint).
+    val dxwrapperSignature = listOf(
+        xServerState.value.dxwrapper,
+        container.containerVariant,
+        container.wineVersion,
+        container.graphicsDriver,
+        DXVKHelper.parseConfig(container.dxWrapperConfig).get("version"),
+        appVersion,
+        imgVersion,
+    ).joinToString("|")
+    val dxwrapperIntact = ALWAYS_REEXTRACT &&
+        ExtractionFingerprint.isIntact(container, "dxwrapper", dxwrapperSignature)
+    val needReextract = (ALWAYS_REEXTRACT && !dxwrapperIntact) || xServerState.value.dxwrapper != container.getExtra("dxwrapper") || variantChanged || wineVersionChanged
 
     Timber.i("needReextract is " + needReextract)
     Timber.i("xServerState.value.dxwrapper is " + xServerState.value.dxwrapper)
     Timber.i("container.getExtra(\"dxwrapper\") is " + container.getExtra("dxwrapper"))
 
     if (needReextract) {
+        ExtractionFingerprint.clear(container, "dxwrapper")
+        val recorder = ExtractionFingerprint.Recorder(onExtractFileListener)
         extractDXWrapperFiles(
             context,
             firstTimeBoot,
@@ -5848,8 +5930,20 @@ private suspend fun setupWineSystemFiles(
             xServerState.value.dxwrapper,
             imageFs,
             contentsManager,
-            onExtractFileListener,
+            recorder,
         )
+        // Also track the wrapper DLL slots themselves: content profiles and DLL restores write
+        // them without going through the extract listener.
+        val windowsDir = File(imageFs.rootDir, ImageFs.WINEPREFIX + "/drive_c/windows")
+        val dllSlots = DXWRAPPER_DLLS.flatMap { dll ->
+            listOf(File(windowsDir, "system32/$dll"), File(windowsDir, "syswow64/$dll"))
+        }
+        if (!recorder.failed) {
+            ExtractionFingerprint.save(
+                container, "dxwrapper", dxwrapperSignature,
+                recorder.files.filter { !it.isDirectory } + dllSlots,
+            )
+        }
         container.putExtra("dxwrapper", xServerState.value.dxwrapper)
         containerDataChanged = true
     }
@@ -6053,7 +6147,7 @@ private suspend fun extractGraphicsDriverComponent(
         Timber.d("Downloading graphics driver $componentId: ${(progress * 100).toInt()}%")
     }
 
-    if (componentFile == null) {
+    val extracted = if (componentFile == null) {
         // Legacy variant: use bundled asset
         Timber.d("Extracting graphics driver $componentId from bundled assets")
         TarCompressorUtils.extract(
@@ -6073,6 +6167,10 @@ private suspend fun extractGraphicsDriverComponent(
             rootDir, onExtractFileListener,
         )
     }
+    if (!extracted) {
+        Timber.w("Extracting graphics driver component $componentId failed")
+        (onExtractFileListener as? ExtractionFingerprint.Recorder)?.failed = true
+    }
 }
 
 /**
@@ -6089,7 +6187,7 @@ private suspend fun extractDXWrapperComponent(
         Timber.d("Downloading dxwrapper $componentId: ${(progress * 100).toInt()}%")
     }
 
-    if (componentFile == null) {
+    val extracted = if (componentFile == null) {
         // Legacy variant: use bundled asset
         Timber.d("Extracting dxwrapper $componentId from bundled assets")
         SharedComponents.extractAndLink(
@@ -6104,6 +6202,10 @@ private suspend fun extractDXWrapperComponent(
             componentFile, windowsDir, onExtractFileListener,
         )
     }
+    if (!extracted) {
+        Timber.w("Extracting dxwrapper component $componentId failed")
+        (onExtractFileListener as? ExtractionFingerprint.Recorder)?.failed = true
+    }
 }
 
 private suspend fun extractDXWrapperFiles(
@@ -6116,18 +6218,7 @@ private suspend fun extractDXWrapperFiles(
     contentsManager: ContentsManager,
     onExtractFileListener: OnExtractFileListener?,
 ) {
-    val dlls = arrayOf(
-        "d3d10.dll",
-        "d3d10_1.dll",
-        "d3d10core.dll",
-        "d3d11.dll",
-        "d3d12.dll",
-        "d3d12core.dll",
-        "d3d8.dll",
-        "d3d9.dll",
-        "dxgi.dll",
-        "ddraw.dll",
-    )
+    val dlls = DXWRAPPER_DLLS
     val splitDxWrapper = if (dxwrapper == "cnc-ddraw" || dxwrapper.startsWith("cnc-ddraw-")) {
         "cnc-ddraw"
     } else {
@@ -6614,10 +6705,22 @@ private suspend fun extractGraphicsDriverFiles(
         // 2. Get the WRAPPER that was last saved to the container's settings.
         val lastInstalledMainWrapper = container.getExtra("lastInstalledMainWrapper")
 
-        // 3. Check if we need to extract a new wrapper file.
-        if (ALWAYS_REEXTRACT || firstTimeBoot || mainWrapperSelection != lastInstalledMainWrapper) {
+        // 3. Check if we need to extract a new wrapper file. ALWAYS_REEXTRACT is skipped when the
+        // files from the last extraction are provably untouched (see ExtractionFingerprint).
+        val wrapperSignature = listOf(
+            mainWrapperSelection,
+            container.wineVersion,
+            AppUtils.getVersionCode(context).toString(),
+        ).joinToString("|")
+        val wrapperIntact = ALWAYS_REEXTRACT && !firstTimeBoot &&
+            mainWrapperSelection == lastInstalledMainWrapper &&
+            ExtractionFingerprint.isIntact(container, "wrapper", wrapperSignature)
+        if ((ALWAYS_REEXTRACT && !wrapperIntact) || firstTimeBoot || mainWrapperSelection != lastInstalledMainWrapper) {
             // We only extract if the selection is actually a wrapper file.
             if (mainWrapperSelection.lowercase(Locale.getDefault()).startsWith("wrapper")) {
+                ExtractionFingerprint.clear(container, "wrapper")
+                val recorder = ExtractionFingerprint.Recorder(null)
+                var usedContentProfile = false
                 val wrapperComponentId = mainWrapperSelection.lowercase(Locale.getDefault())
                 Log.d("GraphicsDriverExtraction", "WRAPPER selection changed or first boot. Extracting: $wrapperComponentId")
                 try {
@@ -6627,8 +6730,9 @@ private suspend fun extractGraphicsDriverFiles(
                     if (wrapperProfile != null) {
                         Timber.d("Applying user-defined wrapper content profile: $wrapperComponentId")
                         wrapperContentsManager.applyContent(wrapperProfile)
+                        usedContentProfile = true
                     } else {
-                        extractGraphicsDriverComponent(context, wrapperComponentId, rootDir!!)
+                        extractGraphicsDriverComponent(context, wrapperComponentId, rootDir!!, recorder)
                     }
                     // After success, save the new version so we don't re-extract next time.
                     container.putExtra("lastInstalledMainWrapper", mainWrapperSelection)
@@ -6640,19 +6744,25 @@ private suspend fun extractGraphicsDriverFiles(
                     )
                 }
                 Log.d("XServerDisplayActivity", "First time container boot, extracting extra_libs.tzst")
-                extractGraphicsDriverComponent(context, "extra_libs", rootDir!!)
+                extractGraphicsDriverComponent(context, "extra_libs", rootDir!!, recorder)
                 val renderer = GPUInformation.getRenderer(null, null)
                 if (container.wineVersion.contains("arm64ec") && renderer?.contains("Mali") != true) {
                     extractGraphicsDriverComponent(
                         context,
                         "zink_dlls",
-                        File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows")
+                        File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows"),
+                        recorder,
                     )
+                }
+                // Content profiles write outside the extract listener, so they can't be verified; keep
+                // re-extracting those every launch as before.
+                if (!usedContentProfile && !recorder.failed) {
+                    ExtractionFingerprint.save(container, "wrapper", wrapperSignature, recorder.files.filter { !it.isDirectory })
                 }
             }
         }
 
-        if (adrenoToolsDriverId !== "System") {
+        if (!adrenoToolsDriverId.equals("System", ignoreCase = true)) {
             val adrenotoolsManager: AdrenotoolsManager = AdrenotoolsManager(context)
             adrenotoolsManager.setDriverById(envVars, imageFs, adrenoToolsDriverId)
         }
@@ -6674,7 +6784,7 @@ private suspend fun extractGraphicsDriverFiles(
         }
 
         val maxDeviceMemory: String? = graphicsDriverConfig.get("maxDeviceMemory", "0")
-        if (maxDeviceMemory != null && maxDeviceMemory.toInt() > 0)
+        if ((maxDeviceMemory?.toIntOrNull() ?: 0) > 0)
             envVars.put("WRAPPER_VMEM_MAX_SIZE", maxDeviceMemory)
 
         val presentMode = graphicsDriverConfig.get("presentMode")

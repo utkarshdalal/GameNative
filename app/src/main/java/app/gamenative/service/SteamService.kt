@@ -2214,12 +2214,24 @@ class SteamService : Service(), IChallengeUrlChanged {
                     val branch = installedApp?.branch ?: "public"
                     val dlcAppIds = getInstalledDlcDepotsOf(appId).orEmpty().toMutableList()
 
+                    // A DLC can have depots in several apps of one game (Black Ops' map packs each
+                    // ship a Zombies depot under 42700 and a Multiplayer depot under 42710). Installed
+                    // with one app, it is recorded only there, so count those records too: otherwise
+                    // the other app's DLC depots are never fetched and the shared install misses
+                    // files (iw_26-35.iwd, without which Ascension / Call of the Dead hang).
+                    val dlcInstalledWithOtherApps = getAllInstalledApps().orEmpty()
+                        .filter { it.id != appId }
+                        .flatMapTo(mutableSetOf()) { it.dlcDepots }
                     getDownloadableDlcAppsOf(appId)?.forEach { dlcApp ->
-                        val installedDlcApp = getInstalledApp(dlcApp.id)
-                        if (installedDlcApp != null) {
-                            dlcAppIds.add(installedDlcApp.id)
+                        if (getInstalledApp(dlcApp.id) != null && dlcApp.id !in dlcAppIds) {
+                            dlcAppIds.add(dlcApp.id)
                         }
                     }
+                    // The DLC app names its parent (the other app) as dlc_for_app_id, so the lookup
+                    // above misses it here; take it from this app's own DLC depots instead.
+                    getAppDlc(appId).values.map { it.dlcAppId }.distinct()
+                        .filter { it in dlcInstalledWithOtherApps && it !in dlcAppIds }
+                        .forEach { dlcAppIds.add(it) }
 
                     // Fresh run for this app: re-check every depot (UPDATE) or re-verify the
                     // installed build (VERIFY) — never the INSTALL depot filter, which would skip

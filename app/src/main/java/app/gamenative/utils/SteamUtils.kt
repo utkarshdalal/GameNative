@@ -589,8 +589,16 @@ object SteamUtils {
             personaName = SteamService.instance?.localPersona?.value?.name ?: PrefManager.username
         )
         val steamConfigDir = File(imageFs.wineprefix, "drive_c/Program Files (x86)/Steam/config")
+        // Separate from the registry update below: on a fresh prefix config/ doesn't exist yet, and a
+        // failed vdf write used to skip the HKCU\Software\Valve\Steam keys that SteamStub-protected
+        // games read to locate Steam.
         try {
+            steamConfigDir.mkdirs()
             File(steamConfigDir, "loginusers.vdf").writeText(vdfFileText)
+        } catch (e: Exception) {
+            Timber.w("Could not write loginusers.vdf: $e")
+        }
+        try {
             val rootDir = imageFs.rootDir
             val userRegFile = File(rootDir, ImageFs.WINEPREFIX + "/user.reg")
             val steamRoot = "C:\\Program Files (x86)\\Steam"
@@ -693,24 +701,18 @@ object SteamUtils {
      */
     private fun restoreUnpackedExecutable(context: Context, steamAppId: Int) {
         try {
-            val imageFs = ImageFs.find(context)
             val appDirPath = SteamService.getAppDirPath(steamAppId)
 
-            // Convert to Wine path format
             val container = ContainerUtils.getContainer(context, "STEAM_$steamAppId")
             val executablePath = container.executablePath
-            val drives = container.drives
-            val driveIndex = drives.indexOf(appDirPath)
-            val drive = if (driveIndex > 1) {
-                drives[driveIndex - 2]
-            } else {
-                Timber.e("Could not locate game drive")
-                'D'
+            if (executablePath.isEmpty() || ContainerUtils.isAbsoluteWindowsPath(executablePath)) {
+                Timber.i("No game-relative executable set, nothing to restore")
+                return
             }
-            val executableFile = "$drive:\\${executablePath}"
-
-            val exe = File(imageFs.wineprefix + "/dosdevices/" + executableFile.replace("A:", "a:").replace('\\', '/'))
-            val unpackedExe = File(imageFs.wineprefix + "/dosdevices/" + executableFile.replace("A:", "a:").replace('\\', '/') + ".unpacked.exe")
+            // Resolve against the game's own directory rather than the shared prefix's dosdevices,
+            // which may still point at another game's install at this point.
+            val exe = File(appDirPath, executablePath.replace('\\', '/'))
+            val unpackedExe = File(exe.path + ".unpacked.exe")
 
             if (unpackedExe.exists()) {
                 // Check if files are different (compare size and last modified time for efficiency)
@@ -720,6 +722,8 @@ object SteamUtils {
 
                 if (areFilesDifferent) {
                     Files.copy(unpackedExe.toPath(), exe.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                    // Keep mtimes equal so the size+mtime check above doesn't force a full re-copy next launch.
+                    exe.setLastModified(unpackedExe.lastModified())
                     Timber.i("Restored unpacked executable from ${unpackedExe.name} to ${exe.name}")
                 } else {
                     Timber.i("Unpacked executable is already current, no restore needed")
@@ -784,7 +788,6 @@ object SteamUtils {
             // Get game directory info
             val gameDir = File(SteamService.getAppDirPath(steamAppId))
             val gameName = gameDir.name
-            val sizeOnDisk = calculateDirectorySize(gameDir)
 
             // Create symlink from Steam common directory to actual game directory
             val steamGameLink = File(commonDir, gameName)
@@ -813,6 +816,15 @@ object SteamUtils {
 
             // Find the main content depot (owner) - typically the one with the lowest ID that has content
             val mainDepotId = regularDepots.keys.minOrNull()
+
+            // This runs on every real-Steam launch: take the install size from the depot manifests
+            // rather than walking every file of the game; walk only when no manifest size is known.
+            val manifestSize = regularDepots.values.sumOf { depotInfo ->
+                (depotInfo.manifests[installedBranch]
+                    ?: depotInfo.manifests["public"]
+                    ?: depotInfo.manifests.values.firstOrNull())?.size ?: 0L
+            }
+            val sizeOnDisk = if (manifestSize > 0) manifestSize else calculateDirectorySize(gameDir)
 
             // Create ACF content
             val acfContent = buildString {
@@ -965,6 +977,10 @@ object SteamUtils {
         skipFirstTimeSteamSetup(imageFs.rootDir)
         val appDirPath = SteamService.getAppDirPath(steamAppId)
         if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_DLL_RESTORED)) {
+            // Older builds set this marker after a restore pass that scanned the wrong directory, so the
+            // Steamless-stripped exe could survive into real/bionic Steam mode (CEG games then hang on a
+            // black screen). Re-check just the main exe here; it's one stat when nothing is wrong.
+            restoreMainExecutableIfPatched(appDirPath, container.executablePath)
             createAppManifest(context, steamAppId, container.language)
             return
         }
@@ -1126,6 +1142,23 @@ object SteamUtils {
 
 
     /**
+     * Puts back the pre-Steamless main executable when [executablePath] currently differs from its
+     * `.original.exe` backup. Length is enough: Steamless output never matches the packed size.
+     */
+    private fun restoreMainExecutableIfPatched(appDirPath: String, executablePath: String) {
+        if (executablePath.isEmpty() || ContainerUtils.isAbsoluteWindowsPath(executablePath)) return
+        val exe = File(appDirPath, executablePath.replace('\\', '/'))
+        val original = File(exe.path + ".original.exe")
+        if (!original.isFile || (exe.isFile && exe.length() == original.length())) return
+        try {
+            Files.copy(original.toPath(), exe.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            Timber.i("Restored original ${exe.name} (was still the Steamless-unpacked copy)")
+        } catch (e: IOException) {
+            Timber.w(e, "Failed to restore original ${exe.name}")
+        }
+    }
+
+    /**
      * Restores the original executable files from their .original.exe backups
      * if they exist. Does not error if backup files are not found.
      */
@@ -1135,10 +1168,10 @@ object SteamUtils {
         Timber.i("Checking directory: $appDirPath")
         var restoredCount = 0
 
-        val imageFs = ImageFs.find(context)
-        val dosDevicesPath = File(imageFs.wineprefix, "dosdevices/a:")
-
-        dosDevicesPath.walkTopDown().maxDepth(10)
+        // Scan the game's own directory. dosdevices/a: lives in the shared imagefs prefix and can still
+        // point at the previously launched game here, which left the Steamless-stripped exe in place
+        // under real/bionic Steam (CEG titles like Call of Duty: Black Ops then hang on a black screen).
+        File(appDirPath).walkTopDown().maxDepth(DRM_BACKUP_MAX_DEPTH)
             .filter { it.isFile && it.name.endsWith(".original.exe", ignoreCase = true) }
             .forEach { file ->
                 try {

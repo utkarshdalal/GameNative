@@ -1,0 +1,186 @@
+name: Build Modern APK
+
+# Click "Run workflow" in the Actions tab to build an installable APK of any branch.
+#
+# Signing: the release build type signs with the Android debug key. CI runners start
+# with no key, so to keep the signature identical between builds (needed to install a
+# new build over the previous one) the workflow uses, in order:
+#   1. the DEBUG_KEYSTORE_BASE64 repository secret, if set
+#      (base64 of a debug.keystore with store/key password "android", alias "androiddebugkey"), else
+#   2. a key cached by a previous run of this workflow, else
+#   3. a freshly generated key, which is then cached for later runs.
+# The cache is evicted after 7 days without a run, so set the secret for a permanent key.
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: "Build type"
+        type: choice
+        options:
+          - release
+          - debug
+        default: release
+
+permissions:
+  # write: publish the APK as a GitHub Release asset (a direct .apk link, no zip to unpack)
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/local/share/boost /usr/share/swift
+          df -h /
+
+      - name: Add swap
+        run: |
+          sudo fallocate -l 8G /mnt/swapfile.ci
+          sudo chmod 600 /mnt/swapfile.ci
+          sudo mkswap /mnt/swapfile.ci
+          sudo swapon /mnt/swapfile.ci
+          free -m
+
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v4
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Restore cached debug keystore
+        id: keystore-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: gamenative-debug-keystore-v1
+
+      - name: Prepare debug keystore
+        env:
+          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
+        run: |
+          mkdir -p ~/.android
+          if [ -n "$DEBUG_KEYSTORE_BASE64" ]; then
+            echo "Using DEBUG_KEYSTORE_BASE64 secret"
+            echo "$DEBUG_KEYSTORE_BASE64" | base64 --decode > ~/.android/debug.keystore
+          elif [ -f ~/.android/debug.keystore ]; then
+            echo "Using cached debug keystore"
+          elif [ "$GITHUB_REF_NAME" != "${{ github.event.repository.default_branch }}" ]; then
+            # Caches are scoped per branch: a key generated here would only ever be used by this
+            # branch, and its APKs would not install over builds from the default branch.
+            echo "::error::No signing key available on this branch. Run this workflow on ${{ github.event.repository.default_branch }} first (or set DEBUG_KEYSTORE_BASE64)."
+            exit 1
+          else
+            echo "::warning::No DEBUG_KEYSTORE_BASE64 secret or cached key; generating a new one. Builds signed with it won't install over APKs signed with a different key."
+            keytool -genkeypair -v \
+              -keystore ~/.android/debug.keystore \
+              -storepass android -keypass android \
+              -alias androiddebugkey \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+      - name: Write local.properties
+        env:
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+          STEAMGRIDDB_API_KEY: ${{ secrets.STEAMGRIDDB_API_KEY }}
+        run: |
+          # All optional: analytics and artwork stay off when the secrets are absent.
+          # Only non-empty values are written: the secrets-gradle-plugin copies every entry into
+          # BuildConfig unquoted when empty, which generates `String X = ;` and breaks javac.
+          : > local.properties
+          [ -n "$POSTHOG_API_KEY" ] && echo "POSTHOG_API_KEY=$POSTHOG_API_KEY" >> local.properties
+          [ -n "$POSTHOG_HOST" ] && echo "POSTHOG_HOST=$POSTHOG_HOST" >> local.properties
+          [ -n "$STEAMGRIDDB_API_KEY" ] && echo "STEAMGRIDDB_API_KEY=$STEAMGRIDDB_API_KEY" >> local.properties
+          echo "local.properties keys: $(cut -d= -f1 local.properties | tr '\n' ' ')"
+
+      - name: Install Android SDK build tools
+        run: |
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          fi
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          yes | "$SDKMANAGER" --install "build-tools;34.0.0"
+
+      - name: Compute names
+        id: meta
+        run: |
+          type="${{ inputs.build_type }}"
+          Type="$(echo "${type:0:1}" | tr '[:lower:]' '[:upper:]')${type:1}"
+          echo "task=:app:assembleModern${Type}" >> "$GITHUB_OUTPUT"
+          echo "outdir=app/build/outputs/apk/modern/${type}" >> "$GITHUB_OUTPUT"
+          branch="${GITHUB_REF_NAME//\//-}"
+          echo "artifact=GameNative-modern-${type}-${branch}-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Build APK
+        # A strictly increasing versionCode (24000 + run number) so each build installs over the
+        # previous one as an ordinary update.
+        run: ./gradlew -Pkotlin.daemon.jvmargs=-Xmx3g -PversionCodeOverride=$((24000 + GITHUB_RUN_NUMBER)) ${{ steps.meta.outputs.task }}
+
+      - name: Collect APK
+        run: |
+          apk="$(find "${{ steps.meta.outputs.outdir }}" -name '*.apk' | head -n 1)"
+          if [ -z "$apk" ]; then
+            echo "::error::No APK produced in ${{ steps.meta.outputs.outdir }}"
+            exit 1
+          fi
+          mkdir -p dist
+          cp "$apk" "dist/${{ steps.meta.outputs.artifact }}.apk"
+          ls -la dist
+
+      - name: Verify APK
+        env:
+          # The certificate of the installed build; override with the EXPECTED_SIGNER_SHA256 repo
+          # variable when the signing key is intentionally changed.
+          EXPECTED_SIGNER_SHA256: ${{ vars.EXPECTED_SIGNER_SHA256 || 'b36f992b21e522acd7de9bc63ab087711881c73b68e530d9a9b5e83fa4da451b' }}
+        run: |
+          BT="$ANDROID_HOME/build-tools/34.0.0"
+          [ -d "$BT" ] || BT="$ANDROID_SDK_ROOT/build-tools/34.0.0"
+          apk="$(ls dist/*.apk | head -n 1)"
+          # Signature + certificate fingerprint: an update only installs over an app signed with the
+          # same certificate, so compare this digest between builds when an install is refused.
+          "$BT/apksigner" verify --verbose --print-certs "$apk" | grep -E "Verifies|Verified using|Signer #1 certificate (DN|SHA-256)"
+          # Refuse to publish an APK that can't update the installed app (different signing key).
+          signer="$("$BT/apksigner" verify --print-certs "$apk" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')"
+          if [ -n "$EXPECTED_SIGNER_SHA256" ] && [ "$signer" != "$EXPECTED_SIGNER_SHA256" ]; then
+            echo "::error::APK is signed with $signer, expected $EXPECTED_SIGNER_SHA256: it would not install over the existing app."
+            exit 1
+          fi
+          "$BT/aapt" dump badging "$apk" | grep -E "^package:|^sdkVersion|^targetSdkVersion|^native-code"
+          echo "APK size: $(du -h "$apk" | cut -f1)"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.meta.outputs.artifact }}
+          path: dist/*.apk
+          if-no-files-found: error
+
+      - name: Publish direct download (GitHub Release)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # One release per build type, replaced on every build, so the download link never changes:
+          # https://github.com/<repo>/releases/download/modern-<type>/GameNative-modern-<type>.apk
+          branch="${GITHUB_REF_NAME//\//-}"
+          tag="modern-${{ inputs.build_type }}"
+          stable="dist/GameNative-modern-${{ inputs.build_type }}.apk"
+          cp "$(ls dist/*.apk | head -n 1)" "$stable"
+          gh release delete "$tag" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$tag" "$stable" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
+            --title "GameNative Modern ${{ inputs.build_type }} (${branch} @ ${GITHUB_SHA::7})" \
+            --notes "Built by the Build Modern APK workflow from ${branch} at ${GITHUB_SHA}."
+          echo "Direct download: https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/$(basename "$stable")" | tee -a "$GITHUB_STEP_SUMMARY"
