@@ -66,6 +66,26 @@ internal object ProcStatParser {
     private val linkerNames = setOf("linker64", "linker")
     private val wineLaunchers = setOf("wine", "wine64", "wine-preloader", "wine64-preloader")
 
+    val excludedProcessNames = setOf(
+        "wineserver",
+        "services.exe",
+        "explorer.exe",
+        "winedevice.exe",
+        "svchost.exe",
+        "plugplay.exe",
+        "rpcss.exe",
+        "conhost.exe",
+        "start.exe",
+        "winhandler.exe",
+        "tabtip.exe",
+        "steam.exe",
+        "steamservice.exe",
+        "steamwebhelper.exe",
+        "steamhost.exe",
+        "steamhost32.exe",
+        "steamhost64.exe",
+    )
+
     fun processName(cmdline: String, comm: String): String {
         val args = cmdline.split('\u0000').map { it.trim().trim('"') }.filter { it.isNotEmpty() }
         if (args.isEmpty()) return baseName(comm)
@@ -590,7 +610,7 @@ object PerfSampler {
 
             val wineserver = processes.firstOrNull { it.name == "wineserver" }
             val gameProcess = processes
-                .filter { it.name.lowercase(Locale.US) !in excludedProcessNames }
+                .filter { it.name.lowercase(Locale.US) !in ProcStatParser.excludedProcessNames }
                 .maxByOrNull { it.cpu }
             val threads = gameProcess?.let { safe { readThreads(it.pid, dtSec) } }
             val game = gameProcess?.let {
@@ -1085,28 +1105,6 @@ object PerfSampler {
             path.startsWith("/storage/") -> "sdCard"
             path.startsWith("/mnt/") -> "mounted"
             else -> "unknown"
-        }
-
-        private companion object {
-            val excludedProcessNames = setOf(
-                "wineserver",
-                "services.exe",
-                "explorer.exe",
-                "winedevice.exe",
-                "svchost.exe",
-                "plugplay.exe",
-                "rpcss.exe",
-                "conhost.exe",
-                "start.exe",
-                "winhandler.exe",
-                "tabtip.exe",
-                "steam.exe",
-                "steamservice.exe",
-                "steamwebhelper.exe",
-                "steamhost.exe",
-                "steamhost32.exe",
-                "steamhost64.exe",
-            )
         }
     }
 }

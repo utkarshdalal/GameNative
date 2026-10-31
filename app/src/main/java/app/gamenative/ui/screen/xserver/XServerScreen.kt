@@ -140,6 +140,7 @@ import app.gamenative.ui.data.PerformanceHudConfig
 import app.gamenative.ui.data.XServerState
 import app.gamenative.ui.widget.PerformanceHudView
 import app.gamenative.utils.AssetUtils
+import app.gamenative.utils.AppExitRecorder
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.downloader.CoreDriverDownloader
 import app.gamenative.utils.CustomGameScanner
@@ -543,6 +544,9 @@ fun XServerScreen(
     LaunchedEffect(appId) {
         isExiting.set(false)
         runCatching { windowActivity.start(context) }
+        withContext(Dispatchers.IO) {
+            runCatching { AppExitRecorder.markSessionStart(context, ContainerUtils.resolveGameName(appId)) }
+        }
     }
 
     val container = remember(appId) {
@@ -5387,6 +5391,9 @@ private fun exit(
         "avg_fps" to (frameRating?.avgFPS ?: 0.0),
         "container_config" to container.containerJson,
     ) + runCatching {
+        PluviaApp.xServerView?.getxServer()?.effectiveScreenInfo
+            ?.let { mapOf("render_w" to it.width.toInt(), "render_h" to it.height.toInt()) }
+    }.getOrNull().orEmpty() + runCatching {
         SessionReport.exitProperties(frameRating?.context ?: PluviaApp.xServerView?.context, frameRating, windowActivity, container, reason)
     }.getOrElse { emptyMap() } + runCatching {
         GameCompatibilityService.badgeProperties(ContainerUtils.resolveGameName(appId))
@@ -5396,6 +5403,7 @@ private fun exit(
         properties = exitProperties,
     )
     CoroutineScope(Dispatchers.IO).launch { SessionReport.recordRun(container, exitProperties) }
+    (frameRating?.context ?: PluviaApp.xServerView?.context)?.let { ctx -> runCatching { AppExitRecorder.markSessionEnd(ctx) } }
     runCatching { windowActivity.stop() }
 
     // Store session data in container metadata

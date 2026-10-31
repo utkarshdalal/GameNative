@@ -20,6 +20,8 @@ object AppExitRecorder {
     private const val DIR = "exit_info"
     private const val EXITS_FILE = "exits.json"
     private const val LAST_SEEN_FILE = "last_seen"
+    private const val SESSION_FILE = "active_session.json"
+    private const val PENDING_FILE = "pending_last_exit.json"
     private const val MAX_RECORDS = 10
     private const val TRACE_HEAD_BYTES = 64 * 1024
     private const val TRACE_TAIL_BYTES = 192 * 1024
@@ -73,6 +75,7 @@ object AppExitRecorder {
 
     /** Reads the exit records Android kept since the last call and stores the new ones. Call once per process start. */
     fun record(context: Context) {
+        val session = consumeSessionMarker(context)
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
         try {
             val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager ?: return
@@ -114,10 +117,68 @@ object AppExitRecorder {
             val start = (stored.length() - MAX_RECORDS).coerceAtLeast(0)
             for (i in start until stored.length()) kept.put(stored.getJSONObject(i))
             exitsFile(context).writeText(kept.toString())
+            writePendingExit(context, fresh.last(), session)
             pruneTraces(context, kept)
             writeLastSeen(lastSeenFile, fresh.last().timestamp)
         } catch (e: Exception) {
             Timber.w(e, "AppExitRecorder: failed to record exit reasons")
+        }
+    }
+
+    fun markSessionStart(context: Context, gameName: String) {
+        try {
+            dir(context).mkdirs()
+            File(dir(context), SESSION_FILE).writeText(
+                JSONObject().put("game_name", gameName).put("started", System.currentTimeMillis()).toString(),
+            )
+        } catch (e: Exception) {
+            Timber.w(e, "AppExitRecorder: failed to mark session start")
+        }
+    }
+
+    fun markSessionEnd(context: Context) {
+        runCatching { File(dir(context), SESSION_FILE).delete() }
+    }
+
+    fun takePendingExit(context: Context): Map<String, Any> {
+        val file = File(dir(context), PENDING_FILE)
+        if (!file.exists()) return emptyMap()
+        return try {
+            val json = JSONObject(file.readText())
+            buildMap {
+                put("last_exit_info_reason", json.getString("reason"))
+                put("last_exit_info_ts", json.getLong("timestamp"))
+                json.optString("game_name").takeIf { it.isNotEmpty() }?.let { put("last_exit_info_game", it) }
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "AppExitRecorder: failed to read pending exit")
+            emptyMap()
+        } finally {
+            file.delete()
+        }
+    }
+
+    private fun consumeSessionMarker(context: Context): JSONObject? {
+        val file = File(dir(context), SESSION_FILE)
+        if (!file.exists()) return null
+        return try {
+            JSONObject(file.readText())
+        } catch (_: Exception) {
+            null
+        } finally {
+            file.delete()
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    private fun writePendingExit(context: Context, info: ApplicationExitInfo, session: JSONObject?) {
+        try {
+            val json = JSONObject().put("reason", reasonName(info.reason)).put("timestamp", info.timestamp)
+            session?.takeIf { it.optLong("started") in 1 until info.timestamp }?.optString("game_name")
+                ?.takeIf { it.isNotEmpty() }?.let { json.put("game_name", it) }
+            File(dir(context), PENDING_FILE).writeText(json.toString())
+        } catch (e: Exception) {
+            Timber.w(e, "AppExitRecorder: failed to keep pending exit")
         }
     }
 

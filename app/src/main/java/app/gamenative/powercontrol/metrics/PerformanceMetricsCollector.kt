@@ -65,6 +65,7 @@ object PerformanceMetricsCollector {
         paused = false
         FrameTimeRing.start()
         PowerTelemetry.start()
+        SessionProcessTelemetry.start(appContext)
         openLog(appContext, sessionStartMillis)
 
         val gpuPaths = SystemMetricsSources.gpuUsagePaths()
@@ -99,6 +100,7 @@ object PerformanceMetricsCollector {
         samplingJob?.cancel()
         samplingJob = null
         FrameTimeRing.stop()
+        SessionProcessTelemetry.stop()
         closeLog()
         PowerManager.latestMetrics = null
         Timber.tag(TAG).i("Collector stopped after %d samples", sampleCount)
@@ -148,7 +150,8 @@ object PerformanceMetricsCollector {
         )
 
         publish(snapshot)
-        runCatching { PowerTelemetry.record(snapshot) }
+        runCatching { PowerTelemetry.record(snapshot, cpu) }
+        runCatching { SessionProcessTelemetry.tick(PowerTelemetry.currentBucket()) }
         appendLog(snapshot)
 
         sampleCount++

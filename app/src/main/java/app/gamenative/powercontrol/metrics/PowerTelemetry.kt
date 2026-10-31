@@ -34,11 +34,17 @@ object PowerTelemetry {
         var p95N = 0
         var p95Sum = 0.0
         var gpuCap: Int? = null
+        var coreMaxN = 0
+        val coreMaxHist = IntArray(101)
+        var bigTicks = 0L
+        var allTicks = 0L
+        var cpuProxy = false
         val clusters = Array(clusterCount) { ClusterBucket() }
     }
 
     private val lock = Any()
     private val clusters: List<Cluster> = runCatching { discoverClusters() }.getOrDefault(emptyList())
+    private val littleCores: Set<Int> = clusters.takeIf { it.size > 1 }?.first()?.cores?.toSet() ?: emptySet()
     private var startMs = 0L
     private val buckets = ArrayList<Bucket>()
 
@@ -115,6 +121,11 @@ object PowerTelemetry {
                         if (b.gpuTempMax > 0) put("gpu_temp_max", b.gpuTempMax)
                         if (b.p95N > 0) put("frame_p95_ms", (b.p95Sum / b.p95N * 10).roundToInt() / 10.0)
                         b.gpuCap?.let { put("gpu_cap", it) }
+                        if (b.coreMaxN > 0) put("core_max_p95", percentile(b.coreMaxHist, b.coreMaxN))
+                        if (b.allTicks > 0L && littleCores.isNotEmpty()) {
+                            put("big_share", (b.bigTicks * 100.0 / b.allTicks).roundToInt() / 100.0)
+                        }
+                        put("cpu_proxy", b.cpuProxy)
                         b.clusters.takeIf { c -> c.any { it.n > 0 } }?.let { c ->
                             put(
                                 "clusters",
@@ -144,7 +155,18 @@ object PowerTelemetry {
         }
     }
 
-    fun record(snapshot: MetricsSnapshot) {
+    fun currentBucket(): Int = synchronized(lock) {
+        if (startMs == 0L) -1 else ((SystemClock.elapsedRealtime() - startMs) / BUCKET_MS).toInt()
+    }
+
+    fun bucketLoads(): List<Pair<Int?, Int?>> = synchronized(lock) {
+        buckets.map { b ->
+            (if (b.coreMaxN > 0) percentile(b.coreMaxHist, b.coreMaxN) else null) to
+                (if (b.gpuN > 0) percentile(b.gpuHist, b.gpuN) else null)
+        }
+    }
+
+    fun record(snapshot: MetricsSnapshot, cpu: CpuUsageReading? = null) {
         val active = PowerManager.isDriverSupported() && PowerManager.isProfilePowerControlEnabled()
         val gpuCap = if (active) PowerManager.latestTunerCaps()?.gpuLevel ?: PowerManager.currentProfile.maxGpuPowerLevel else null
         val freqs = clusters.map { c ->
@@ -169,6 +191,17 @@ object PowerTelemetry {
                 b.gpuN++
                 b.gpuSum += pct
                 b.gpuHist[pct]++
+            }
+            if (snapshot.cpuUsageSource == CpuUsageSource.CPU_FREQUENCY) b.cpuProxy = true
+            cpu?.coreMaxPercent?.let { v ->
+                b.coreMaxN++
+                b.coreMaxHist[v.coerceIn(0, 100)]++
+            }
+            cpu?.coreBusyTicks?.let { ticks ->
+                ticks.forEachIndexed { core, t ->
+                    b.allTicks += t
+                    if (core !in littleCores) b.bigTicks += t
+                }
             }
             snapshot.cpuTempC?.let { if (it > b.cpuTempMax) b.cpuTempMax = it }
             snapshot.gpuTempC?.let { if (it > b.gpuTempMax) b.gpuTempMax = it }
