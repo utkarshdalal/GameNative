@@ -36,7 +36,7 @@ class CommunityConfigApplicationTest {
           "containerVariant": "bionic",
           "wineVersion": "proton-9.0-arm64ec",
           "emulator": "FEXCore",
-          "fexcoreVersion": "2605",
+          "fexcoreVersion": "2610-gn-5",
           "fexcoreTSOMode": "Strict",
           "fexcoreX87Mode": "Slow",
           "fexcoreMultiBlock": "Enabled",
@@ -149,7 +149,7 @@ class CommunityConfigApplicationTest {
         assertEquals("bionic", updated.containerVariant)
         assertEquals("proton-9.0-arm64ec", updated.wineVersion)
         assertEquals("FEXCore", updated.emulator)
-        assertEquals("2605", updated.fexcoreVersion)
+        assertEquals("2610-gn-5", updated.fexcoreVersion)
         assertEquals("Strict", updated.fexcoreTSOMode)
         assertEquals("Slow", updated.fexcoreX87Mode)
         assertEquals("Enabled", updated.fexcoreMultiBlock)

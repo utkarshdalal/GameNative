@@ -760,6 +760,13 @@ object BestConfigService {
     /**
      * Replace missing component versions in filteredJson with defaults so config can still be applied.
      */
+    private const val GLIBC_DEFAULT_BOX64 = "0.3.6"
+
+    /** A missing Box64 / WoWBox64 / FEXCore build (not a preset) from [validateComponentVersions]. */
+    private fun isEmulatorVersion(entry: String): Boolean =
+        !entry.contains(" preset ") &&
+            (entry.startsWith("Box64 ") || entry.startsWith("WoWBox64 ") || entry.startsWith("FEXCore "))
+
     private fun replaceWithDefaults(filteredJson: JSONObject, missing: List<String>) {
         for (entry in missing) {
             when {
@@ -780,7 +787,8 @@ object BestConfigService {
                     filteredJson.put("fexcorePreset", PrefManager.fexcorePreset)
                 }
                 entry.startsWith("Box64 ") || entry.startsWith("WoWBox64 ") -> {
-                    filteredJson.put("box64Version", DefaultVersion.BOX64)
+                    val glibc = filteredJson.optString("containerVariant", "").equals(Container.GLIBC, ignoreCase = true)
+                    filteredJson.put("box64Version", if (glibc && entry.startsWith("Box64 ")) GLIBC_DEFAULT_BOX64 else DefaultVersion.BOX64)
                 }
                 entry.startsWith("FEXCore ") -> {
                     filteredJson.put("fexcoreVersion", DefaultVersion.FEXCORE)
@@ -914,7 +922,15 @@ object BestConfigService {
                 )
 
                 // Step 2: check for unavailable component versions
-                val missingComponents = validateComponentVersions(context, filteredJson)
+                val allMissing = validateComponentVersions(context, filteredJson)
+                // Only the default Box64 / WoWBox64 / FEXCore builds are bundled (older ones ship with
+                // the Legacy flavors), and community configs often name an older build. Those are
+                // interchangeable for a config, so swap in the default instead of rejecting the config.
+                val (emulatorMissing, missingComponents) = allMissing.partition { isEmulatorVersion(it) }
+                if (emulatorMissing.isNotEmpty()) {
+                    Timber.tag("BestConfigService").i("Using default emulator versions instead of: ${emulatorMissing.joinToString(", ")}")
+                    replaceWithDefaults(filteredJson, emulatorMissing)
+                }
                 if (missingComponents.isNotEmpty()) {
                     if (!forceApply) {
                         Timber.tag("BestConfigService").w("Config rejected: missing components: ${missingComponents.joinToString(", ")}")
