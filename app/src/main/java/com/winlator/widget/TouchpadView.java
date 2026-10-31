@@ -30,8 +30,17 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class TouchpadView extends View implements View.OnCapturedPointerListener {
+    private static final ExecutorService POINTER_MOVE_EXECUTOR = Executors.newSingleThreadExecutor(runnable -> {
+        Thread thread = new Thread(runnable, "x11-pointer-move");
+        thread.setDaemon(true);
+        return thread;
+    });
     private static final byte MAX_FINGERS = 4;
     private static final short MAX_TWO_FINGERS_SCROLL_DISTANCE = 350;
     public static final byte MAX_TAP_TRAVEL_DISTANCE = 10;
@@ -88,6 +97,9 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private boolean pressExecuted;
     private final boolean capturePointerOnExternalMouse;
     private boolean pointerCaptureRequested;
+    private final AtomicInteger pendingPointerDx = new AtomicInteger();
+    private final AtomicInteger pendingPointerDy = new AtomicInteger();
+    private final AtomicBoolean pointerMoveQueued = new AtomicBoolean();
 
     // Suppress spurious left-click after two-finger right-click tap
     private boolean suppressNextLeftTap;
@@ -2143,13 +2155,40 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                         winHandler.mouseEvent(MouseEventFlags.MOVE, dx, dy, 0);
                         return;
                     } else {
-                        this.xServer.injectPointerMoveDelta(dx, dy);
+                        queuePointerMoveDelta(dx, dy);
                         return;
                     }
                 }
                 moveAbsoluteMouse(finger1.x, finger1.y);
             }
         }
+    }
+
+    /**
+     * X11 clients can temporarily stop draining their event socket while loading. Keep a blocked
+     * socket write off Android's input thread and coalesce motion accumulated behind it.
+     */
+    private void queuePointerMoveDelta(int dx, int dy) {
+        pendingPointerDx.addAndGet(dx);
+        pendingPointerDy.addAndGet(dy);
+        if (!pointerMoveQueued.compareAndSet(false, true)) return;
+
+        POINTER_MOVE_EXECUTOR.execute(() -> {
+            while (true) {
+                int queuedDx = pendingPointerDx.getAndSet(0);
+                int queuedDy = pendingPointerDy.getAndSet(0);
+                if (queuedDx != 0 || queuedDy != 0) {
+                    xServer.injectPointerMoveDelta(queuedDx, queuedDy);
+                    continue;
+                }
+
+                pointerMoveQueued.set(false);
+                if ((pendingPointerDx.get() == 0 && pendingPointerDy.get() == 0)
+                        || !pointerMoveQueued.compareAndSet(false, true)) {
+                    return;
+                }
+            }
+        });
     }
 
     private Finger findSecondFinger(Finger finger) {
