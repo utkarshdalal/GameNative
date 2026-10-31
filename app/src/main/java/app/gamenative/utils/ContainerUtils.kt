@@ -446,6 +446,7 @@ object ContainerUtils {
                 "dxwrapper" -> value?.let { updatedData.copy(dxwrapper = it as? String ?: updatedData.dxwrapper) } ?: updatedData
                 "dxwrapperConfig" -> value?.let { updatedData.copy(dxwrapperConfig = it as? String ?: updatedData.dxwrapperConfig) }
                     ?: updatedData
+                "csmt" -> value?.let { updatedData.copy(csmt = it as? Boolean ?: updatedData.csmt) } ?: updatedData
                 "execArgs" -> value?.let { updatedData.copy(execArgs = it as? String ?: updatedData.execArgs) } ?: updatedData
                 "startupSelection" -> value?.let {
                     updatedData.copy(
