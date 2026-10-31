@@ -1,5 +1,10 @@
 package com.winlator.xconnector;
 
+import android.os.ParcelFileDescriptor;
+import android.system.Os;
+import android.system.OsConstants;
+import android.system.StructPollfd;
+
 import androidx.annotation.Keep;
 
 import java.io.IOException;
@@ -16,6 +21,38 @@ public class ClientSocket {
 
     public ClientSocket(int fd) {
         this.fd = fd;
+    }
+
+    // A dup of fd, only for poll(): android.system.Os needs a FileDescriptor, not an int
+    private ParcelFileDescriptor pollFd;
+
+    /**
+     * True when the socket has room to send without blocking (POLLOUT). The socket itself is
+     * blocking, so a write to a client that stopped reading (a hung game) would block forever.
+     * When the state can't be determined this returns true, i.e. the old blocking behaviour.
+     */
+    public synchronized boolean isWritable() {
+        try {
+            if (pollFd == null) pollFd = ParcelFileDescriptor.fromFd(fd);
+            StructPollfd pfd = new StructPollfd();
+            pfd.fd = pollFd.getFileDescriptor();
+            pfd.events = (short) OsConstants.POLLOUT;
+            return Os.poll(new StructPollfd[]{pfd}, 0) > 0 && (pfd.revents & OsConstants.POLLOUT) != 0;
+        }
+        catch (Exception e) {
+            return true;
+        }
+    }
+
+    /** Releases what {@link #isWritable()} opened; call when the connection closes. */
+    public synchronized void release() {
+        if (pollFd == null) return;
+        try {
+            pollFd.close();
+        }
+        catch (IOException ignored) {
+        }
+        pollFd = null;
     }
 
     public boolean hasAncillaryFds() {

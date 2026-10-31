@@ -1,5 +1,7 @@
 package com.winlator.xserver;
 
+import com.winlator.xconnector.XOutputStream;
+import com.winlator.xconnector.XStreamLock;
 import com.winlator.xserver.events.Event;
 
 import java.io.IOException;
@@ -22,8 +24,9 @@ public class EventListener {
     }
 
     public void sendEvent(Event event) {
-        try {
-            event.send(client.getSequenceNumber(), client.getOutputStream());
+        XOutputStream outputStream = client.getOutputStream();
+        try (XStreamLock ignored = outputStream.lockDroppable()) {
+            event.send(client.getSequenceNumber(), outputStream);
         }
         catch (IOException e) {
             e.printStackTrace();

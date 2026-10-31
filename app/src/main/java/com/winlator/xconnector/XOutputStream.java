@@ -13,6 +13,8 @@ public class XOutputStream {
     public final ClientSocket clientSocket;
     private final ReentrantLock lock = new ReentrantLock();
     private int ancillaryFd = -1;
+    // Droppable locks currently held (guarded by lock)
+    private int droppableDepth = 0;
     private static final double FP3232_SCALE = 4294967296.0;
 
     public XOutputStream(int initialCapacity) {
@@ -117,7 +119,17 @@ public class XOutputStream {
     }
 
     public XStreamLock lock() {
-        return new OutputStreamLock();
+        return new OutputStreamLock(false);
+    }
+
+    /**
+     * Like {@link #lock()}, but for one self-contained message (an event) that may be dropped: when
+     * the client isn't reading and its socket has no room, the message is discarded instead of
+     * blocking the sender. Events are sent while holding X server locks, often from the UI thread
+     * (input injection), so one hung client would otherwise freeze the whole app (ANR).
+     */
+    public XStreamLock lockDroppable() {
+        return new OutputStreamLock(true);
     }
 
     private void ensureSpaceIsAvailable(int length) {
@@ -140,16 +152,31 @@ public class XOutputStream {
     }
 
     private class OutputStreamLock implements XStreamLock {
-        public OutputStreamLock() {
+        private final boolean droppable;
+        // Whatever was buffered before this lock was taken (normally nothing) is never dropped
+        private final int startPosition;
+
+        public OutputStreamLock(boolean droppable) {
             lock.lock();
+            this.droppable = droppable;
+            this.startPosition = buffer.position();
+            if (droppable) droppableDepth++;
         }
 
         @Override
         public void close() throws IOException {
             try {
-                flush();
+                // Events take this lock again inside send(); while a droppable lock is held, nested
+                // locks leave the flush (or the drop) to it
+                if (lock.getHoldCount() > 1 && droppableDepth > 0) return;
+                if (droppable && startPosition == 0 && ancillaryFd == -1 && clientSocket != null
+                        && buffer.position() != 0 && !clientSocket.isWritable()) {
+                    buffer.clear();
+                }
+                else flush();
             }
             finally {
+                if (droppable) droppableDepth--;
                 lock.unlock();
             }
         }

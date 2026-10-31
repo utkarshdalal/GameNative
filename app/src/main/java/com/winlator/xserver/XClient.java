@@ -57,7 +57,7 @@ public class XClient implements XResourceManager.OnResourceLifecycleListener {
     }
 
     public void sendEvent(Event event) {
-        try (XStreamLock ignored = outputStream.lock()) {
+        try (XStreamLock ignored = outputStream.lockDroppable()) {
             event.send(sequenceNumber, outputStream);
         }
         catch (IOException e) {

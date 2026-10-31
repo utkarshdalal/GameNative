@@ -39,6 +39,9 @@ import java.io.File
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import app.gamenative.ui.component.dialog.WineDebugChannelsDialog
+import app.gamenative.utils.AppExitRecorder
+
+private const val EXIT_TRACE_WINDOW_MS = 48L * 60 * 60 * 1000
 
 @Suppress("UnnecessaryOptInAnnotation") // ExperimentalFoundationApi
 @OptIn(ExperimentalCoilApi::class, ExperimentalFoundationApi::class)
@@ -119,8 +122,18 @@ fun SettingsGroupDebug() {
         try {
             resultUri?.let {
                 val logs = CrashHandler.getAppLogs(1000)
+                // The logcat only covers this process. When the previous one died (ANR, native crash),
+                // append the stack dump Android kept for it, which shows where the app was stuck.
+                val exitTrace = AppExitRecorder.newestHardExit(context, System.currentTimeMillis() - EXIT_TRACE_WINDOW_MS)
+                    ?.let { exit ->
+                        AppExitRecorder.traceFor(context, exit)?.let { file ->
+                            "\n\n===== Previous app exit: ${exit.optString("reason")} ${exit.optString("description")} =====\n" +
+                                file.readText()
+                        }
+                    }
                 context.contentResolver.openOutputStream(resultUri)?.use { outputStream ->
                     outputStream.write(logs.toByteArray())
+                    exitTrace?.let { outputStream.write(it.toByteArray()) }
                 }
             }
         } catch (e: Exception) {
