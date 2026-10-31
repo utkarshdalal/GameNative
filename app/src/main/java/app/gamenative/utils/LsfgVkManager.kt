@@ -7,6 +7,7 @@ import android.view.Choreographer
 import android.view.WindowManager
 import java.util.concurrent.Executors
 import app.gamenative.BuildConfig
+import app.gamenative.PluviaApp
 import app.gamenative.display.GameNativeDrm
 import app.gamenative.service.SteamService
 import com.winlator.container.Container
@@ -110,7 +111,12 @@ object LsfgVkManager {
     /** Whether LSFG is supported for this container's variant. */
     @JvmStatic
     fun isSupported(container: Container): Boolean =
-        container.containerVariant.equals(Container.BIONIC, ignoreCase = true)
+        container.containerVariant.equals(Container.BIONIC, ignoreCase = true) && layerBundled
+
+    /** Builds that leave out the layer library (e.g. the slimmed Modern APK) don't offer LSFG at all. */
+    private val layerBundled: Boolean by lazy {
+        PluviaApp.nativeLibraryDir()?.let { File(it, LIB_FILENAME).isFile } ?: true
+    }
 
     /** Whether LSFG is armed (enabled + Lossless.dll available in Steam dir) for this container. The DLL is copied into the container at launch time by ensureRuntimeInstalled(). */
     @JvmStatic

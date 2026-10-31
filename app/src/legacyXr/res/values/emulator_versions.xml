@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Legacy flavors bundle every emulator version (src/legacy/assets) and have no on-demand
+     download for them, so they keep the full lists. Overrides src/main/res/values/arrays.xml. -->
+<resources>
+    <string-array name="box64_version_entries">
+        <item>0.3.6 (Default)</item>
+        <item>0.3.4</item>
+        <item>0.3.8</item>
+    </string-array>
+    <string-array name="box64_bionic_version_entries">
+        <item>0.3.7 (Default)</item>
+        <item>0.4.2</item>
+        <item>0.4.0</item>
+        <item>0.3.8</item>
+        <item>0.3.6</item>
+        <item>0.3.2</item>
+    </string-array>
+    <string-array name="wowbox64_version_entries">
+        <item>0.4.2</item>
+        <item>0.4.0</item>
+        <item>0.3.7</item>
+        <item>0.3.6</item>
+        <item>0.3.4</item>
+    </string-array>
+    <string-array name="fexcore_version_entries">
+        <item>2507</item>
+        <item>2508</item>
+        <item>2511</item>
+        <item>2512</item>
+        <item>2601</item>
+        <item>2603</item>
+        <item>2604</item>
+        <item>2605</item>
+    </string-array>
+</resources>

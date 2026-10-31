@@ -788,7 +788,6 @@ object SteamUtils {
             // Get game directory info
             val gameDir = File(SteamService.getAppDirPath(steamAppId))
             val gameName = gameDir.name
-            val sizeOnDisk = calculateDirectorySize(gameDir)
 
             // Create symlink from Steam common directory to actual game directory
             val steamGameLink = File(commonDir, gameName)
@@ -817,6 +816,15 @@ object SteamUtils {
 
             // Find the main content depot (owner) - typically the one with the lowest ID that has content
             val mainDepotId = regularDepots.keys.minOrNull()
+
+            // This runs on every real-Steam launch: take the install size from the depot manifests
+            // rather than walking every file of the game; walk only when no manifest size is known.
+            val manifestSize = regularDepots.values.sumOf { depotInfo ->
+                (depotInfo.manifests[installedBranch]
+                    ?: depotInfo.manifests["public"]
+                    ?: depotInfo.manifests.values.firstOrNull())?.size ?: 0L
+            }
+            val sizeOnDisk = if (manifestSize > 0) manifestSize else calculateDirectorySize(gameDir)
 
             // Create ACF content
             val acfContent = buildString {
