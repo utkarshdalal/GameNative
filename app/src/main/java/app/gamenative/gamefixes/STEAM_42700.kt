@@ -33,6 +33,11 @@ import com.winlator.container.Container
  *   into a map its main thread hung while holding xinput1_3's controller lock ("controllers[0].crit
  *   wait timed out ... blocked by" the game thread), freezing and then crashing the game. The profile
  *   above drives the game through keyboard/mouse, so the game loses nothing without the pad.
+ * - No 3D for WineD3D in BlackOps.exe (AppDefaults renderer=no3d): the game renders through DXVK's
+ *   d3d9, but it also opens DirectDraw, which brings up WineD3D's OpenGL renderer (GL over zink)
+ *   inside the 32-bit process, and while loading a map it keeps creating new GL contexts ("threaded
+ *   context created" / wined3d_cs_create). Loading Ascension froze the game every time and the app
+ *   stopped responding. no3d keeps DirectDraw working for its 2D/caps queries without any GL.
  */
 val STEAM_Fix_42700: KeyedGameFix = KeyedCompositeGameFix(
     gameSource = GameSource.STEAM,
@@ -45,6 +50,7 @@ val STEAM_Fix_42700: KeyedGameFix = KeyedCompositeGameFix(
         ContainerSettingDefaultFix.audioDriver("alsa"),
         ContainerSettingDefaultFix.winComponent("wmdecoder", "0"),
         ContainerSettingDefaultFix.winComponent("directsound", "0"),
+        WineAppDefaultsFix("BlackOps.exe", "Direct3D", mapOf("renderer" to "no3d")),
         ControlProfileDefaultFix("Call of Duty (Console Layout)"),
     ),
 )
