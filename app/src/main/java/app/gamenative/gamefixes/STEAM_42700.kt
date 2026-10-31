@@ -38,6 +38,10 @@ import com.winlator.container.Container
  *   inside the 32-bit process, and while loading a map it keeps creating new GL contexts ("threaded
  *   context created" / wined3d_cs_create). Loading Ascension froze the game every time and the app
  *   stopped responding. no3d keeps DirectDraw working for its 2D/caps queries without any GL.
+ * - No Steam overlay in the game (gameoverlayrenderer disabled for the exe): it is injected into the
+ *   32-bit game, hooks every graphics API by creating throwaway devices (the likely source of the
+ *   DirectDraw/GL contexts above), and its UI process (gameoverlayui64) crashed on every run.
+ *   It can't be opened from a touch screen anyway.
  */
 val STEAM_Fix_42700: KeyedGameFix = KeyedCompositeGameFix(
     gameSource = GameSource.STEAM,
@@ -51,6 +55,7 @@ val STEAM_Fix_42700: KeyedGameFix = KeyedCompositeGameFix(
         ContainerSettingDefaultFix.winComponent("wmdecoder", "0"),
         ContainerSettingDefaultFix.winComponent("directsound", "0"),
         WineAppDefaultsFix("BlackOps.exe", "Direct3D", mapOf("renderer" to "no3d")),
+        WineAppDefaultsFix("BlackOps.exe", "DllOverrides", mapOf("gameoverlayrenderer" to "")),
         ControlProfileDefaultFix("Call of Duty (Console Layout)"),
     ),
 )
