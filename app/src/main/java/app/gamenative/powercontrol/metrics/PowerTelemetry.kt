@@ -30,6 +30,8 @@ object PowerTelemetry {
         var headroomMin: Float? = null
         var thermalStatusMax: Int? = null
         val bottlenecks = LinkedHashMap<String, Int>()
+        var gpuClkN = 0
+        var gpuClkSum = 0L
         var cpuN = 0
         var cpuSum = 0L
         val cpuHist = IntArray(101)
@@ -109,6 +111,7 @@ object PowerTelemetry {
             val ticks = buckets.sumOf { it.n }
             val gpuTicks = buckets.sumOf { it.gpuN }
             put("gpu_usage_source", SystemMetricsSources.lastGpuUsageSource?.takeIf { gpuTicks > 0 } ?: "none")
+            counterBackend(SystemMetricsSources.lastGpuUsageSource, MaliGpuCounters.backend)?.let { put("gpu_counter_backend", it) }
             put("cpu_temp_source", cpuTempSource ?: "none")
             thermalZonesReadable?.let { put("thermal_zones_readable", it) }
             put("gpu_temp_source", gpuTempSource ?: "none")
@@ -129,6 +132,7 @@ object PowerTelemetry {
                             put("gpu_avg", (b.gpuSum / b.gpuN).toInt())
                             put("gpu_p95", percentile(b.gpuHist, b.gpuN))
                         }
+                        if (b.gpuClkN > 0) put("gpu_clk_mhz_avg", (b.gpuClkSum / b.gpuClkN).toInt())
                         if (b.cpuTempMax > 0) put("cpu_temp_max", b.cpuTempMax)
                         if (b.gpuTempMax > 0) put("gpu_temp_max", b.gpuTempMax)
                         if (b.p95N > 0) put("frame_p95_ms", (b.p95Sum / b.p95N * 10).roundToInt() / 10.0)
@@ -176,6 +180,7 @@ object PowerTelemetry {
                 SystemMetricsSources.readLongFromLine("${c.dir}/scaling_max_freq")
         }
         val skinC = if (skinTick++ % SKIN_EVERY_N_TICKS == 0) readSkinTempC() else null
+        val gpuClkMhz = runCatching { GpuClock.currentMhz() }.getOrNull()
         synchronized(lock) {
             if (startMs == 0L) return
             val index = ((SystemClock.elapsedRealtime() - startMs) / BUCKET_MS).toInt()
@@ -185,6 +190,10 @@ object PowerTelemetry {
             val b = buckets[index]
             b.n++
             skinC?.let { if (it > b.skinTempMax) b.skinTempMax = it }
+            gpuClkMhz?.let {
+                b.gpuClkN++
+                b.gpuClkSum += it
+            }
             snapshot.cpuUsagePercent?.let { v ->
                 val pct = v.roundToInt().coerceIn(0, 100)
                 b.cpuN++
@@ -299,6 +308,10 @@ object PowerTelemetry {
         if (skinTempMax > 0) put("skin_temp_max", skinTempMax)
         battUah?.let { put("batt_uah", it) }
     }
+
+    /** `gpu_counter_backend` is reported only when the session's GPU usage came from the Mali counters. */
+    internal fun counterBackend(gpuUsageSource: String?, backend: String?): String? =
+        backend?.takeIf { gpuUsageSource == "mali/counters" && it.isNotEmpty() }
 
     /** Per-bucket thermal keys, left out when the bucket took no reading. */
     internal fun thermalExtras(headroomMin: Float?, thermalStatusMax: Int?): Map<String, Any> = buildMap {
