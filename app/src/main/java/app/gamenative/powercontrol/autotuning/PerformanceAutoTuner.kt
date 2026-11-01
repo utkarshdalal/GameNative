@@ -50,6 +50,47 @@ class PerformanceAutoTuner(
         private const val MAX_PERFORMANCE = 100.0
         private const val PERFORMANCE_REDUCTION_STEP = 2.0
         private const val ADJUSTMENT_DECAY_FACTOR = 0.3
+
+        /**
+         * Bottleneck from CPU/GPU usage while the target is missed. A null [gpuUsage] means the
+         * device gave no GPU reading: the GPU is then neither high nor low and the CPU and bus are
+         * judged as on a device without GPU control, so the GPU is never named the bottleneck.
+         */
+        internal fun classifyBottleneck(
+            cpuUsage: Double,
+            gpuUsage: Double?,
+            fpsError: Double,
+            hasGpuSupport: Boolean,
+            hasBusSupport: Boolean,
+        ): BottleneckType {
+            val isMissingTarget = fpsError > FPS_ERROR_THRESHOLD
+
+            if (!isMissingTarget) return BottleneckType.NONE
+
+            val gpuJudged = hasGpuSupport && gpuUsage != null
+
+            val cpuHigh = cpuUsage > USAGE_HIGH_THRESHOLD
+            val cpuLow = cpuUsage < USAGE_LOW_THRESHOLD
+            val gpuHigh = gpuJudged && gpuUsage!! > USAGE_HIGH_THRESHOLD
+            val gpuLow = gpuJudged && gpuUsage!! < USAGE_LOW_THRESHOLD
+
+            return when {
+                // Both CPU and GPU are bottlenecks (only with a GPU reading)
+                cpuHigh && gpuHigh -> BottleneckType.BOTH_BOUND
+
+                // CPU is the bottleneck
+                cpuHigh && (!gpuJudged || gpuLow) -> BottleneckType.CPU_BOUND
+
+                // GPU is the bottleneck (only with a GPU reading)
+                gpuHigh && cpuLow -> BottleneckType.GPU_BOUND
+
+                // Memory/Bus bottleneck - both CPU and GPU have headroom (only if bus is supported)
+                hasBusSupport && cpuLow && (!gpuJudged || gpuLow) -> BottleneckType.MEMORY_BOUND
+
+                // Unknown bottleneck or no clear pattern
+                else -> BottleneckType.NONE
+            }
+        }
     }
 
     /**
@@ -215,7 +256,7 @@ class PerformanceAutoTuner(
         }
 
         val cpuUsage = PowerManager.currentCpuUsage.toDouble()
-        val gpuUsage = PowerManager.currentGpuUsage.toDouble()
+        val gpuUsage = PowerManager.currentGpuUsage.toDouble().takeIf { PowerManager.gpuUsageKnown }
         val fpsError = abs(targetFps - currentFps)
 
         currentBottleneck = detectBottleneck(cpuUsage, gpuUsage, fpsError)
@@ -303,8 +344,9 @@ class PerformanceAutoTuner(
             // Check if GPU is the bottleneck
             val isGpuBottleneck = currentBottleneck == BottleneckType.GPU_BOUND ||
                                   currentBottleneck == BottleneckType.BOTH_BOUND
-            val isNotGpuBottleneck = currentBottleneck == BottleneckType.CPU_BOUND ||
-                                     currentBottleneck == BottleneckType.MEMORY_BOUND
+            // Without a GPU reading the CPU/bus call says nothing about GPU headroom.
+            val isNotGpuBottleneck = PowerManager.gpuUsageKnown &&
+                (currentBottleneck == BottleneckType.CPU_BOUND || currentBottleneck == BottleneckType.MEMORY_BOUND)
 
             // If we're hitting target FPS with low GPU usage, reduce performance. An unknown usage
             // reads as 0 and must not walk the GPU down on its own.
@@ -416,36 +458,8 @@ class PerformanceAutoTuner(
      * Detect performance bottleneck based on CPU/GPU usage and FPS error
      * Takes into account which components are supported by the driver
      */
-    private fun detectBottleneck(cpuUsage: Double, gpuUsage: Double, fpsError: Double): BottleneckType {
-        val isMissingTarget = fpsError > FPS_ERROR_THRESHOLD
-
-        if (!isMissingTarget) return BottleneckType.NONE
-
-        val hasGpuSupport = numGpuLevels > 0
-        val hasBusSupport = numBusLevels > 0
-
-        val cpuHigh = cpuUsage > USAGE_HIGH_THRESHOLD
-        val gpuHigh = gpuUsage > USAGE_HIGH_THRESHOLD
-        val cpuLow = cpuUsage < USAGE_LOW_THRESHOLD
-        val gpuLow = gpuUsage < USAGE_LOW_THRESHOLD
-
-        return when {
-            // Both CPU and GPU are bottlenecks (only if GPU is supported)
-            hasGpuSupport && cpuHigh && gpuHigh -> BottleneckType.BOTH_BOUND
-
-            // CPU is the bottleneck
-            cpuHigh && (!hasGpuSupport || gpuLow) -> BottleneckType.CPU_BOUND
-
-            // GPU is the bottleneck (only if GPU is supported)
-            hasGpuSupport && gpuHigh && cpuLow -> BottleneckType.GPU_BOUND
-
-            // Memory/Bus bottleneck - both CPU and GPU have headroom (only if bus is supported)
-            hasBusSupport && cpuLow && (!hasGpuSupport || gpuLow) -> BottleneckType.MEMORY_BOUND
-
-            // Unknown bottleneck or no clear pattern
-            else -> BottleneckType.NONE
-        }
-    }
+    private fun detectBottleneck(cpuUsage: Double, gpuUsage: Double?, fpsError: Double): BottleneckType =
+        classifyBottleneck(cpuUsage, gpuUsage, fpsError, hasGpuSupport = numGpuLevels > 0, hasBusSupport = numBusLevels > 0)
 
     /**
      * Check if auto-tuning is currently running

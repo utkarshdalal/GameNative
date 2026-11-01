@@ -304,7 +304,10 @@ class TunerDecisionEngine(
     }
 
     private fun raiseTarget(input: TunerInput): TunerDomain? {
-        val gpuBound = (input.gpuUsagePercent ?: 0f) >= TunerThresholds.GPU_BOUND_USAGE_PERCENT
+        // A missing GPU reading is not evidence of a GPU-bound render: raise the CPU first, the
+        // same order a device without GPU control ends up with.
+        val gpuUsage = input.gpuUsagePercent
+        val gpuBound = gpuUsage != null && gpuUsage >= TunerThresholds.GPU_BOUND_USAGE_PERCENT
         val order = if (gpuBound) {
             listOf(TunerDomain.GPU, TunerDomain.PRIME, TunerDomain.PERFORMANCE)
         } else {
