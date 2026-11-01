@@ -17,6 +17,7 @@ import app.gamenative.powercontrol.PowerManager
 import app.gamenative.powercontrol.metrics.FrameTimeRing
 import app.gamenative.powercontrol.metrics.SharedGpuUsage
 import app.gamenative.powercontrol.metrics.SystemMetricsSources
+import app.gamenative.powercontrol.metrics.ThermalHeadroom
 import com.winlator.container.Container
 import org.json.JSONArray
 import org.json.JSONObject
@@ -978,10 +979,7 @@ object PerfSampler {
             (context.getSystemService(Context.POWER_SERVICE) as? AndroidPowerManager)?.currentThermalStatus
 
         @RequiresApi(Build.VERSION_CODES.R)
-        private fun readThermalHeadroom(): Float? =
-            (context.getSystemService(Context.POWER_SERVICE) as? AndroidPowerManager)
-                ?.getThermalHeadroom(10)
-                ?.takeIf { it.isFinite() }
+        private fun readThermalHeadroom(): Float? = ThermalHeadroom.read(context)
 
         private fun readBatteryTempC(): Int? {
             val intent: Intent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)) ?: return null

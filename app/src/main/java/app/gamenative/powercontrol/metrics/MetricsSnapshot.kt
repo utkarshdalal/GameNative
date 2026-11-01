@@ -17,4 +17,6 @@ data class MetricsSnapshot(
     val gpuUsagePercent: Float?,
     val cpuTempC: Int?,
     val gpuTempC: Int?,
+    /** Latest finite thermal headroom of the session (refreshed every 10 s), null until one is read. */
+    val thermalHeadroom: Float? = null,
 )

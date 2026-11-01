@@ -228,7 +228,7 @@ object SessionReport {
                 (context.getSystemService(Context.POWER_SERVICE) as? PowerManager)?.let { pm ->
                     put("thermal_status", pm.currentThermalStatus)
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                        pm.getThermalHeadroom(10).takeIf { !it.isNaN() }?.let { put("thermal_headroom", (it * 100).roundToInt() / 100.0) }
+                        app.gamenative.powercontrol.metrics.ThermalHeadroom.read(context)?.let { put("thermal_headroom", (it * 100).roundToInt() / 100.0) }
                     }
                 }
             }

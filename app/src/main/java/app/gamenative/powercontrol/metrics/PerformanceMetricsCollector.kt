@@ -33,6 +33,7 @@ object PerformanceMetricsCollector {
     private const val MAX_LOG_BYTES = 20L * 1024L * 1024L
     private const val MAX_SESSION_FILES = 5
     private const val DEFAULT_REFRESH_RATE = 60f
+    private const val THERMAL_EVERY_N_SAMPLES = 20
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var samplingJob: Job? = null
@@ -46,6 +47,7 @@ object PerformanceMetricsCollector {
     private val sessionLog = JsonlSessionLog(TAG, "metrics-", MAX_LOG_BYTES, MAX_SESSION_FILES)
     private var sampleCount = 0L
     private var displayRefreshRate = DEFAULT_REFRESH_RATE
+    private var appContext: Context? = null
 
     @Volatile
     private var paused = false
@@ -66,6 +68,8 @@ object PerformanceMetricsCollector {
         if (isRunning) return
 
         val appContext = context.applicationContext
+        this.appContext = appContext
+        ThermalHeadroom.reset()
         displayRefreshRate = readDisplayRefreshRate(appContext)
         PowerTelemetry.attachBattery(appContext)
         cpuSampler.reset()
@@ -146,6 +150,11 @@ object PerformanceMetricsCollector {
         val cpuTemp = SystemMetricsSources.readTemperature(SystemMetricsSources.cpuTempPaths())
         val gpuTemp = SystemMetricsSources.readTemperature(SystemMetricsSources.gpuTempPaths())
         PowerTelemetry.noteTemperatureSources(cpuTemp?.path, gpuTemp?.path)
+        // Every 10 s: the headroom API rate-limits to one call a second, and status is
+        // sampled on the same cadence.
+        if (sampleCount % THERMAL_EVERY_N_SAMPLES == 0L) {
+            appContext?.let { PowerTelemetry.recordThermal(ThermalHeadroom.read(it), ThermalHeadroom.status(it)) }
+        }
 
         val snapshot = MetricsSnapshot(
             timestampMs = System.currentTimeMillis(),
@@ -160,6 +169,7 @@ object PerformanceMetricsCollector {
             gpuUsagePercent = gpu?.percent?.toFloat(),
             cpuTempC = cpuTemp?.celsius,
             gpuTempC = gpuTemp?.celsius,
+            thermalHeadroom = ThermalHeadroom.latest,
         )
 
         publish(snapshot)

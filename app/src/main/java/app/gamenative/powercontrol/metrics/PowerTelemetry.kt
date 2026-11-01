@@ -27,6 +27,8 @@ object PowerTelemetry {
         var n = 0
         var skinTempMax = 0
         var battUah: Long? = null
+        var headroomMin: Float? = null
+        var thermalStatusMax: Int? = null
         var cpuN = 0
         var cpuSum = 0L
         val cpuHist = IntArray(101)
@@ -115,6 +117,7 @@ object PowerTelemetry {
                     buildMap<String, Any> {
                         put("samples", b.n)
                         putAll(bucketExtras(b.skinTempMax, b.battUah))
+                        putAll(thermalExtras(b.headroomMin, b.thermalStatusMax))
                         if (b.cpuN > 0) {
                             put("cpu_avg", (b.cpuSum / b.cpuN).toInt())
                             put("cpu_p95", percentile(b.cpuHist, b.cpuN))
@@ -195,6 +198,10 @@ object PowerTelemetry {
                 b.p95Sum += snapshot.frameTimeP95Ms
             }
             gpuCap?.let { b.gpuCap = it }
+            pendingHeadroom?.let { h -> if (b.headroomMin?.let { h < it } != false) b.headroomMin = h }
+            pendingThermalStatus?.let { s -> if (b.thermalStatusMax?.let { s > it } != false) b.thermalStatusMax = s }
+            pendingHeadroom = null
+            pendingThermalStatus = null
             freqs.forEachIndexed { i, (cur, cap) ->
                 if (cur == null || cap == null) return@forEachIndexed
                 val cb = b.clusters[i]
@@ -203,6 +210,17 @@ object PowerTelemetry {
                 cb.capSum += cap
                 if (cur >= cap) cb.atCap++
             }
+        }
+    }
+
+    private var pendingHeadroom: Float? = null
+    private var pendingThermalStatus: Int? = null
+
+    /** Fresh thermal reads of this tick; folded into the current bucket by the next [record]. */
+    fun recordThermal(headroom: Float?, thermalStatus: Int?) {
+        synchronized(lock) {
+            pendingHeadroom = headroom?.takeIf { it.isFinite() }
+            pendingThermalStatus = thermalStatus
         }
     }
 
@@ -242,6 +260,12 @@ object PowerTelemetry {
     internal fun bucketExtras(skinTempMax: Int, battUah: Long?): Map<String, Any> = buildMap {
         if (skinTempMax > 0) put("skin_temp_max", skinTempMax)
         battUah?.let { put("batt_uah", it) }
+    }
+
+    /** Per-bucket thermal keys, left out when the bucket took no reading. */
+    internal fun thermalExtras(headroomMin: Float?, thermalStatusMax: Int?): Map<String, Any> = buildMap {
+        headroomMin?.let { put("headroom_min", (it * 100).roundToInt() / 100.0) }
+        thermalStatusMax?.let { put("thermal_status_max", it) }
     }
 
     private fun pinningOutcome(): Map<String, Any> {

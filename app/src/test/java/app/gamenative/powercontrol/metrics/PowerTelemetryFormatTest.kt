@@ -35,6 +35,14 @@ class PowerTelemetryFormatTest {
     }
 
     @Test
+    fun thermalKeysOmittedWithoutReading() {
+        assertEquals(emptyMap<String, Any>(), PowerTelemetry.thermalExtras(null, null))
+        val extras = PowerTelemetry.thermalExtras(0.4649f, 2)
+        assertEquals(0.46, extras["headroom_min"])
+        assertEquals(2, extras["thermal_status_max"])
+    }
+
+    @Test
     fun skinPathsKeepOnlySkinZones() {
         val zones = listOf(
             "cpu-0-0" to "/sys/class/thermal/thermal_zone1/temp",
