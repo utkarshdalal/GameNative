@@ -492,6 +492,13 @@ object PrefManager {
             setPref(PERFORMANCE_HUD_SHOW_GPU_TEMPERATURE, value)
         }
 
+    private val PERFORMANCE_HUD_SHOW_BOTTLENECK = booleanPreferencesKey("performance_hud_show_bottleneck")
+    var performanceHudShowBottleneck: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_BOTTLENECK, true)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_BOTTLENECK, value)
+        }
+
     private val PERFORMANCE_HUD_SHOW_FAN = booleanPreferencesKey("performance_hud_show_fan")
     var showPerformanceHudFan: Boolean
         get() = getPref(PERFORMANCE_HUD_SHOW_FAN, true)

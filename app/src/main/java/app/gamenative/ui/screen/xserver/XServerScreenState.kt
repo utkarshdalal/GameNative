@@ -99,6 +99,7 @@ internal fun loadPerformanceHudConfig(): PerformanceHudConfig {
         showClockTime = PrefManager.performanceHudShowClockTime,
         showCpuTemperature = PrefManager.performanceHudShowCpuTemperature,
         showGpuTemperature = PrefManager.performanceHudShowGpuTemperature,
+        showBottleneck = PrefManager.performanceHudShowBottleneck,
         showFrameRateGraph = PrefManager.performanceHudShowFrameRateGraph,
         showCpuUsageGraph = PrefManager.performanceHudShowCpuUsageGraph,
         showGpuUsageGraph = PrefManager.performanceHudShowGpuUsageGraph,
@@ -121,6 +122,7 @@ internal fun persistPerformanceHudConfig(config: PerformanceHudConfig) {
     PrefManager.performanceHudShowClockTime = config.showClockTime
     PrefManager.performanceHudShowCpuTemperature = config.showCpuTemperature
     PrefManager.performanceHudShowGpuTemperature = config.showGpuTemperature
+    PrefManager.performanceHudShowBottleneck = config.showBottleneck
     PrefManager.performanceHudShowFrameRateGraph = config.showFrameRateGraph
     PrefManager.performanceHudShowCpuUsageGraph = config.showCpuUsageGraph
     PrefManager.performanceHudShowGpuUsageGraph = config.showGpuUsageGraph
