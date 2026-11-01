@@ -4,6 +4,7 @@ import android.app.ActivityManager
 import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.res.Configuration
+import android.os.Debug
 import android.os.Process
 import android.os.SystemClock
 import android.system.Os
@@ -41,6 +42,7 @@ object SessionProcessTelemetry {
 
     private val wineserverPct = ArrayList<Int>()
     private val gameRssMb = ArrayList<Int>()
+    private val appPssMb = ArrayList<Int>()
     private val hotThreads = ArrayList<ThreadHot>()
     private var availMinMb = -1L
     private var lastLowMemory = false
@@ -72,6 +74,7 @@ object SessionProcessTelemetry {
             threadBaselineMs = 0L
             wineserverPct.clear()
             gameRssMb.clear()
+            appPssMb.clear()
             hotThreads.clear()
             availMinMb = -1L
             lastLowMemory = false
@@ -110,6 +113,7 @@ object SessionProcessTelemetry {
             p95(hotThreads.map { it.pct })?.let { put("hot_thread_pct_p95", it) }
             p95(wineserverPct)?.let { put("wineserver_pct_p95", it) }
             p95(gameRssMb)?.let { put("game_rss_p95_mb", it) }
+            p95(appPssMb)?.let { put("app_pss_p95_mb", it) }
             if (availMinMb >= 0L) put("avail_ram_min_mb", availMinMb)
             put("low_memory_events", lowMemoryEvents)
         }
@@ -122,6 +126,8 @@ object SessionProcessTelemetry {
     }
 
     private fun sampleMemory() {
+        val pssKb = Debug.getPss()
+        if (pssKb > 0L) appPssMb.add((pssKb / 1024L).toInt())
         val am = activityManager ?: return
         am.getMemoryInfo(memoryInfo)
         val availMb = memoryInfo.availMem / MB
