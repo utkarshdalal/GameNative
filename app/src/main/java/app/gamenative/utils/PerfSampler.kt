@@ -15,7 +15,7 @@ import android.view.Display
 import androidx.annotation.RequiresApi
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.powercontrol.metrics.FrameTimeRing
-import app.gamenative.powercontrol.metrics.GpuUsageSampler
+import app.gamenative.powercontrol.metrics.SharedGpuUsage
 import app.gamenative.powercontrol.metrics.SystemMetricsSources
 import com.winlator.container.Container
 import org.json.JSONArray
@@ -455,7 +455,7 @@ object PerfSampler {
         private val installLocation: String? = installPath?.let { classifyInstallPath(it) }
         private val totalMemMb: Int? = runCatching { memoryInfo()?.totalMem?.div(MB)?.toInt() }.getOrNull()
 
-        private val gpuSampler = GpuUsageSampler()
+        private val gpuUsage = SharedGpuUsage()
         private var prevCpuStat: Map<String, LongArray>? = null
         private var prevProcTicks = HashMap<Int, Long>()
         private val procNames = HashMap<Int, String>()
@@ -611,7 +611,7 @@ object PerfSampler {
 
             if (cpuProfile) cpuProfileProbe.run { sampleCpuProfile(nowMs, t, gameProcess, wineserver) }
 
-            val gpu = safe { gpuSampler.sample()?.percent }
+            val gpu = safe { gpuUsage.read()?.percent }
             val gpuMhz = safe { readGpuMhz() }
             val curMhz = if (clusters.isEmpty()) null else safe { readClusterFreq("scaling_cur_freq") }
             val maxMhz = if (clusters.isEmpty()) null else safe { readClusterFreq("scaling_max_freq") }

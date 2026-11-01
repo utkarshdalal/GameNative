@@ -38,7 +38,7 @@ object PerformanceMetricsCollector {
     private var samplingJob: Job? = null
 
     private val cpuSampler = CpuUsageSampler()
-    private val gpuSampler = GpuUsageSampler()
+    private val gpuSampler = GpuUsageSampler(publishSource = true)
 
     private val frameScratch = LongArray(FrameTimeRing.capacity())
     private val deltaScratch = LongArray(FrameTimeRing.capacity())
@@ -54,6 +54,14 @@ object PerformanceMetricsCollector {
     var isRunning: Boolean = false
         private set
 
+    /**
+     * Latest reading of the session's single GPU usage sampler; null while the device
+     * gives no valid value. Other consumers read this instead of sampling the node.
+     */
+    @Volatile
+    var latestGpuUsage: GpuUsageReading? = null
+        private set
+
     fun start(context: Context, sessionStartMillis: Long = System.currentTimeMillis()) {
         if (isRunning) return
 
@@ -62,6 +70,7 @@ object PerformanceMetricsCollector {
         PowerTelemetry.attachBattery(appContext)
         cpuSampler.reset()
         gpuSampler.reset()
+        latestGpuUsage = null
         sampleCount = 0L
         paused = false
         FrameTimeRing.start()
@@ -101,6 +110,7 @@ object PerformanceMetricsCollector {
         samplingJob = null
         FrameTimeRing.stop()
         closeLog()
+        latestGpuUsage = null
         PowerManager.latestMetrics = null
         Timber.tag(TAG).i("Collector stopped after %d samples", sampleCount)
     }
@@ -132,6 +142,7 @@ object PerformanceMetricsCollector {
 
         val cpu = cpuSampler.sample()
         val gpu = gpuSampler.sample()
+        latestGpuUsage = gpu
 
         val snapshot = MetricsSnapshot(
             timestampMs = System.currentTimeMillis(),
@@ -233,5 +244,27 @@ object PerformanceMetricsCollector {
 
     private fun closeLog() {
         sessionLog.close()
+    }
+}
+
+/**
+ * GPU usage for consumers other than the collector (HUD, debug-report sampler).
+ * While the collector runs its reading is reused so the usage node has a single
+ * reader; otherwise this falls back to a private, non-publishing sampler.
+ */
+class SharedGpuUsage {
+    private val fallback = GpuUsageSampler()
+    private var usedCollector = true
+
+    fun read(): GpuUsageReading? {
+        if (PerformanceMetricsCollector.isRunning) {
+            usedCollector = true
+            return PerformanceMetricsCollector.latestGpuUsage
+        }
+        if (usedCollector) {
+            fallback.reset()
+            usedCollector = false
+        }
+        return fallback.sample()
     }
 }

@@ -263,7 +263,10 @@ object SystemMetricsSources {
         return if (parent.isNullOrEmpty()) file.name else "$parent/${file.name}"
     }
 
-    /** Tag of the node behind the latest valid GPU usage reading, null until one is read. */
+    /**
+     * Tag of the node behind the latest valid GPU usage reading, null until one is read.
+     * Written only by the session's publishing sampler (the metrics collector's).
+     */
     @Volatile
     var lastGpuUsageSource: String? = null
 
@@ -408,8 +411,12 @@ class GpuBusyDelta {
 /**
  * Reads the first GPU usage node that yields a value, keeping the per-node delta
  * state needed by counter-style nodes.
+ *
+ * Counter nodes such as kgsl `gpubusy` can reset on read, so only one sampler should
+ * read them while a session runs: the metrics collector's, created with [publishSource]
+ * set so it alone records [SystemMetricsSources.lastGpuUsageSource].
  */
-class GpuUsageSampler {
+class GpuUsageSampler(private val publishSource: Boolean = false) {
     private val busyDelta = GpuBusyDelta()
     private var lastGpuInfoMs: Long? = null
     private var lastGpuInfoWallMs: Long = 0L
@@ -425,7 +432,9 @@ class GpuUsageSampler {
             .asSequence()
             .mapNotNull { readSample(it) }
             .firstOrNull()
-        reading?.let { SystemMetricsSources.lastGpuUsageSource = SystemMetricsSources.usageSourceTag(it.source) }
+        if (publishSource && reading != null) {
+            SystemMetricsSources.lastGpuUsageSource = SystemMetricsSources.usageSourceTag(reading.source)
+        }
         return reading
     }
 

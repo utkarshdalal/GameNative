@@ -24,7 +24,7 @@ import app.gamenative.PrefManager
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.powercontrol.fan.FanController
 import app.gamenative.powercontrol.metrics.CpuUsageSampler
-import app.gamenative.powercontrol.metrics.GpuUsageSampler
+import app.gamenative.powercontrol.metrics.SharedGpuUsage
 import app.gamenative.powercontrol.metrics.SystemMetricsSources
 import app.gamenative.ui.data.PerformanceHudConfig
 import app.gamenative.ui.data.PerformanceHudSize
@@ -134,7 +134,7 @@ class PerformanceHudView(
     private val allGraphs = allMetrics.flatMap { listOfNotNull(it.stackedGraph, it.compactGraph) }
 
     private val cpuSampler = CpuUsageSampler()
-    private val gpuSampler = GpuUsageSampler()
+    private val gpuUsage = SharedGpuUsage()
 
     init {
         background = backgroundDrawable
@@ -308,7 +308,7 @@ class PerformanceHudView(
 
     private fun collectSnapshot(currentFps: Float): HudSnapshot {
         val cpuPercent = cpuSampler.sample()?.percent
-        val gpuPercent = gpuSampler.sample()?.percent
+        val gpuPercent = gpuUsage.read()?.percent
         val batterySnapshot = collectBatterySnapshot()
         return HudSnapshot(
             fpsValue = currentFps,
