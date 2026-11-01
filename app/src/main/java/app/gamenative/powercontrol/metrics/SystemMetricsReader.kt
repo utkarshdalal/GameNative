@@ -495,7 +495,6 @@ class GpuUsageSampler(private val publishSource: Boolean = false) {
             .mapNotNull { readSample(it) }
             .firstOrNull()
             ?: MaliGpuCounters.sample()
-        // shim/timestamps fallback is added by ShimGpuTime
         if (publishSource && reading != null) {
             SystemMetricsSources.lastGpuUsageSource = SystemMetricsSources.usageSourceTag(reading.source)
         }
