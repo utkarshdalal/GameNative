@@ -59,6 +59,7 @@ object PerformanceMetricsCollector {
 
         val appContext = context.applicationContext
         displayRefreshRate = readDisplayRefreshRate(appContext)
+        PowerTelemetry.attachBattery(appContext)
         cpuSampler.reset()
         gpuSampler.reset()
         sampleCount = 0L

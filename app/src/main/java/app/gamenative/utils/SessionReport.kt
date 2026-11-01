@@ -265,6 +265,7 @@ class WindowActivity {
     private val windows = LinkedHashMap<String, Entry>()
     private val classByWindowId = HashMap<Int, String>()
     private var batteryStartPct = -1
+    private var batteryStartUah: Long? = null
     private var batteryStartTempC = 0
     private var chargingStart: Boolean? = null
     private val thermalTransitions = ArrayList<Pair<Long, Int>>()
@@ -300,6 +301,7 @@ class WindowActivity {
             trackedStartFrames = 0L
             trackedStartActiveMs = 0L
             batteryStartPct = readBatteryPct(context)
+            batteryStartUah = readChargeCounter(context)
             batteryStartTempC = 0
             chargingStart = null
             context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))?.let { intent ->
@@ -325,6 +327,11 @@ class WindowActivity {
         }
         powerManager = null
     }
+
+    private fun readChargeCounter(context: Context): Long? =
+        (context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager)
+            ?.getLongProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER)
+            ?.let(PowerTelemetry::validChargeCounter)
 
     private fun readBatteryPct(context: Context): Int =
         (context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager)
@@ -401,6 +408,12 @@ class WindowActivity {
             if (batteryStartPct >= 0 && batteryEnd >= 0) {
                 put("battery_start_pct", batteryStartPct)
                 put("battery_end_pct", batteryEnd)
+            }
+            val battStartUah = batteryStartUah
+            val battEndUah = context?.let { readChargeCounter(it) }
+            if (battStartUah != null && battEndUah != null) {
+                put("batt_uah_start", battStartUah)
+                put("batt_uah_end", battEndUah)
             }
             if (batteryStartTempC > 0) put("battery_temp_start_c", (batteryStartTempC / 10f).roundToInt())
             chargingStart?.let { put("charging_start", it) }

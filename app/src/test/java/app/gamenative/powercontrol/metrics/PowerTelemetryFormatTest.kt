@@ -2,6 +2,7 @@ package app.gamenative.powercontrol.metrics
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class PowerTelemetryFormatTest {
@@ -29,8 +30,8 @@ class PowerTelemetryFormatTest {
 
     @Test
     fun skinTempOmittedWithoutReading() {
-        assertFalse(PowerTelemetry.bucketExtras(0).containsKey("skin_temp_max"))
-        assertEquals(41, PowerTelemetry.bucketExtras(41)["skin_temp_max"])
+        assertFalse(PowerTelemetry.bucketExtras(0, null).containsKey("skin_temp_max"))
+        assertEquals(41, PowerTelemetry.bucketExtras(41, null)["skin_temp_max"])
     }
 
     @Test
@@ -46,5 +47,14 @@ class PowerTelemetryFormatTest {
             SystemMetricsSources.skinPathsOf(zones),
         )
         assertEquals(emptyList<String>(), SystemMetricsSources.skinPathsOf(zones.take(1)))
+    }
+
+    @Test
+    fun chargeCounterOmittedWhenUnsupported() {
+        assertNull(PowerTelemetry.validChargeCounter(Long.MIN_VALUE))
+        assertNull(PowerTelemetry.validChargeCounter(0L))
+        assertEquals(3_900_000L, PowerTelemetry.validChargeCounter(3_900_000L))
+        assertFalse(PowerTelemetry.bucketExtras(0, null).containsKey("batt_uah"))
+        assertEquals(3_900_000L, PowerTelemetry.bucketExtras(0, 3_900_000L)["batt_uah"])
     }
 }

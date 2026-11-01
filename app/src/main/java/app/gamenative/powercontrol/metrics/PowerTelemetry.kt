@@ -1,5 +1,7 @@
 package app.gamenative.powercontrol.metrics
 
+import android.content.Context
+import android.os.BatteryManager
 import android.os.SystemClock
 import app.gamenative.powercontrol.PowerManager
 import java.io.File
@@ -24,6 +26,7 @@ object PowerTelemetry {
     private class Bucket(clusterCount: Int) {
         var n = 0
         var skinTempMax = 0
+        var battUah: Long? = null
         var cpuN = 0
         var cpuSum = 0L
         val cpuHist = IntArray(101)
@@ -99,6 +102,7 @@ object PowerTelemetry {
         )
         synchronized(lock) {
             if (buckets.isEmpty()) return@buildMap
+            buckets.last().let { if (it.battUah == null) it.battUah = readChargeCounter() }
             val ticks = buckets.sumOf { it.n }
             val gpuTicks = buckets.sumOf { it.gpuN }
             put("gpu_usage_source", SystemMetricsSources.lastGpuUsageSource?.takeIf { gpuTicks > 0 } ?: "none")
@@ -108,7 +112,7 @@ object PowerTelemetry {
                 buckets.map { b ->
                     buildMap<String, Any> {
                         put("samples", b.n)
-                        putAll(bucketExtras(b.skinTempMax))
+                        putAll(bucketExtras(b.skinTempMax, b.battUah))
                         if (b.cpuN > 0) {
                             put("cpu_avg", (b.cpuSum / b.cpuN).toInt())
                             put("cpu_p95", percentile(b.cpuHist, b.cpuN))
@@ -163,6 +167,7 @@ object PowerTelemetry {
             if (startMs == 0L) return
             val index = ((SystemClock.elapsedRealtime() - startMs) / BUCKET_MS).toInt()
             if (index < 0 || index >= MAX_BUCKETS) return
+            if (index >= buckets.size && buckets.isNotEmpty()) buckets.last().battUah = readChargeCounter()
             while (buckets.size <= index) buckets.add(Bucket(clusters.size))
             val b = buckets[index]
             b.n++
@@ -203,9 +208,24 @@ object PowerTelemetry {
     private fun readSkinTempC(): Int? =
         SystemMetricsSources.skinTempPaths().takeIf { it.isNotEmpty() }?.let { SystemMetricsSources.readTemperatureC(it) }
 
+    @Volatile
+    private var batteryManager: BatteryManager? = null
+
+    fun attachBattery(context: Context) {
+        batteryManager = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
+    }
+
+    /** Battery charge counter in uAh, read at the end of each bucket; null where unsupported. */
+    private fun readChargeCounter(): Long? =
+        runCatching { batteryManager?.getLongProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER) }
+            .getOrNull()?.let(::validChargeCounter)
+
+    internal fun validChargeCounter(raw: Long): Long? = raw.takeIf { it != Long.MIN_VALUE && it > 0L }
+
     /** Per-bucket keys that are left out when the device has no reading. */
-    internal fun bucketExtras(skinTempMax: Int): Map<String, Any> = buildMap {
+    internal fun bucketExtras(skinTempMax: Int, battUah: Long?): Map<String, Any> = buildMap {
         if (skinTempMax > 0) put("skin_temp_max", skinTempMax)
+        battUah?.let { put("batt_uah", it) }
     }
 
     private fun pinningOutcome(): Map<String, Any> {
