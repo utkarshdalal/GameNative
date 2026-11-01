@@ -680,6 +680,8 @@ fun XServerScreen(
     var lsfgMultiplier by rememberSaveable(container.id) { mutableIntStateOf(initialLsfgSettings.multiplier) }
     var lsfgFlowScale by rememberSaveable(container.id) { mutableStateOf(initialLsfgSettings.flowScale) }
     var lsfgPerformanceMode by rememberSaveable(container.id) { mutableStateOf(initialLsfgSettings.performanceMode) }
+    /** The rate last reported to the daemon, so a mode nudge is only asked for when it changes. */
+    var advertisedPanelHz by remember(container.id) { mutableIntStateOf(0) }
 
     fun persistFpsLimiterState() {
         container.putExtra(FPS_LIMITER_ENABLED_EXTRA, fpsLimiterEnabled)
@@ -738,14 +740,33 @@ fun XServerScreen(
     /**
      * Report the rate the session's emulated display advertises.
      *
-     * The panel's own rate, except when the cap is below it: there the cap is the rate the session
-     * is asked to produce, so the connector advertises the cap and the compositor's grid and
-     * divisor base follow it. At or above the panel — and whenever the limiter is off — the panel is
-     * the truth and the cap lives purely at acquire, before a frame is drawn.
+     * That is the rate the session is asked to *produce*: the cap, times the frame-generation
+     * multiplier when it is armed (a 40 cap at x2 presents 80). Below the panel it is what the
+     * connector advertises, so the compositor's grid and divisor base follow the session instead of
+     * outrunning it; at or above it — and whenever the limiter is off — the panel's own rate is what
+     * the connector advertises, since a display cannot be handed more than its rate. Generation
+     * still runs at the multiplier either way (a 40 cap at x4 presents 160 on a 120 Hz panel), and
+     * the frame counter reports that produced rate; the cap itself lives purely at acquire, before
+     * a frame is drawn.
+     *
+     * The multiplier comes from the container, not from `isLsfgAvailable`: that is a
+     * composition-time value, and the QuickMenu's LSFG switch changes the container without
+     * recomposing this screen.
      */
     fun applyPanelRefreshForCap(limit: Int, panelHz: Int = detectRefreshRateHz(context, ui.xServerView as? View)) {
         if (isX11Display || panelHz <= 0) return
-        GameNativeDrm.nativeSetPanelRefreshHz(if (limit in 1 until panelHz) limit else panelHz)
+        val multiplier = if (LsfgQuickMenuHelper.isAvailable(container) && lsfgMultiplier >= 2) lsfgMultiplier else 1
+        val produced = if (limit > 0) limit * multiplier else 0
+        val rate = if (produced in 1 until panelHz) produced else panelHz
+        GameNativeDrm.nativeSetPanelRefreshHz(rate)
+        // The daemon's connector advertises the new rate from here on, but gamescope reads the mode
+        // once, when the session starts: dirty its backend so the mode — the compositor's grid — is
+        // the rate now rather than on the next launch. Only on a change, because a nudge forces a
+        // modeset.
+        if (rate != advertisedPanelHz) {
+            advertisedPanelHz = rate
+            GamescopeCommandQueue.nudgeDisplayMode()
+        }
     }
 
     fun applyFpsLimiterToEngines(limit: Int) {
@@ -811,8 +832,10 @@ fun XServerScreen(
 
     fun applyLsfgMultiplier(mult: Int) {
         lsfgMultiplier = LsfgQuickMenuHelper.sanitizeMultiplier(mult)
-        applyLsfgSettings()
+        // The rate first, then the settings: the session's config carries the rate, and the shim
+        // opens the generator from what the daemon holds when it is created.
         applyFpsLimiterToEngines(effectiveFpsLimit())
+        applyLsfgSettings()
     }
 
     fun applyLsfgFlowScale(scale: Float) {
