@@ -316,7 +316,7 @@ class PerformanceHudView(
             gpuValue = gpuPercent?.toFloat(),
             fps = String.format(Locale.US, "FPS %.1f", currentFps),
             cpu = cpuPercent?.let { "CPU $it%" },
-            gpu = gpuPercent?.let { "GPU $it%" },
+            gpu = gpuPercent?.let { "GPU $it%" } ?: "GPU $MISSING_VALUE",
             ram = "RAM ${readUsedRamText()}",
             battery = batterySnapshot.percent?.let { "BAT $it%" },
             power = batterySnapshot.powerWatts?.let { watts ->
@@ -326,9 +326,9 @@ class PerformanceHudView(
             batteryTemp = batterySnapshot.temperatureC?.let { "BAT TEMP ${it}°C" },
             clock = readClockText(),
             cpuTemp = SystemMetricsSources.readTemperatureC(SystemMetricsSources.cpuTempPaths())
-                ?.let { "CPU TEMP ${it}°C" },
+                ?.let { "CPU TEMP ${it}°C" } ?: "CPU TEMP $MISSING_VALUE",
             gpuTemp = SystemMetricsSources.readTemperatureC(SystemMetricsSources.gpuTempPaths())
-                ?.let { "GPU TEMP ${it}°C" },
+                ?.let { "GPU TEMP ${it}°C" } ?: "GPU TEMP $MISSING_VALUE",
             fan = readFanText(),
             tune = readTuneText(),
         )
@@ -907,6 +907,7 @@ class PerformanceHudView(
 
     private companion object {
         const val UPDATE_INTERVAL_MS = 1_000L
+        const val MISSING_VALUE = "--"
         const val MIN_BACKGROUND_OPACITY = 0.0f
         const val MAX_BACKGROUND_OPACITY = 1.0f
         const val MAX_RUNTIME_HOURS = 72.0
