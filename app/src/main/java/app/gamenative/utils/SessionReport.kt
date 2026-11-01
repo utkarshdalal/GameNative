@@ -121,7 +121,7 @@ object SessionReport {
         "dxwrapper", "wincomponents", "audioDriver", "graphicsDriver", "graphicsDriverAdreno", "desktopTheme",
         "startupSelection", "language", "profileId", "selected_menu_item_id", "discord_support_prompt_shown",
         "ai_debug_offer_last_shown", "app_id", "game_source", "workshopModPath",
-        "sharpnessLevel", "sharpnessEffect", "sharpnessDenoise",
+        "sharpnessLevel", "sharpnessEffect", "sharpnessDenoise", "configAppliedTs", "configAppliedAppVersion",
     )
 
     private fun isIgnoredExtra(key: String) = key in CONFIG_DIFF_IGNORED_EXTRA || key.startsWith("screenEffects")
@@ -131,6 +131,8 @@ object SessionReport {
             val snapshot = JSONObject(container.containerJson)
             CONFIG_DIFF_IGNORED.forEach { snapshot.remove(it) }
             container.setConfigSource(source)
+            container.putExtra("configAppliedTs", System.currentTimeMillis())
+            container.putExtra("configAppliedAppVersion", BuildConfig.VERSION_CODE)
             container.saveData()
             appliedConfigFile(container).writeText(snapshot.toString())
         } catch (e: Exception) {
