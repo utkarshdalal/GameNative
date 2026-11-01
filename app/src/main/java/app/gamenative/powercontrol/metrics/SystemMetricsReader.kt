@@ -87,6 +87,7 @@ object SystemMetricsSources {
             if (!devfreqRoot.isDirectory) return@forEach
             val nodeDirs = devfreqRoot.listFiles { file -> file.isDirectory } ?: emptyArray<File>()
             for (nodeDir in nodeDirs) {
+                if (isBusDevfreqNode(nodeDir.name)) continue
                 val nodePath = nodeDir.path.lowercase(Locale.US)
                 val looksLikeGpuNode = listOf("gpu", "mali", "g3d", "kgsl").any { token ->
                     nodePath.contains(token)
@@ -113,6 +114,17 @@ object SystemMetricsSources {
         gpuUsagePathsCache = paths
         Timber.tag(TAG).v("Discovered GPU usage paths: %s", paths.joinToString())
         return paths
+    }
+
+    private val busDevfreqTokens = listOf("gpubw", "busmon", "bwmon", "llcc", "ddr", "bus")
+
+    /**
+     * Devfreq nodes that scale memory or interconnect bandwidth rather than the GPU,
+     * e.g. Adreno's `soc:qcom,gpubw`, whose `load` is bus traffic, not GPU busy time.
+     */
+    internal fun isBusDevfreqNode(dirName: String): Boolean {
+        val name = dirName.lowercase(Locale.US)
+        return busDevfreqTokens.any { name.contains(it) }
     }
 
     /**

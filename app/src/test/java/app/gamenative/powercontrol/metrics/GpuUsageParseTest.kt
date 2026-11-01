@@ -1,7 +1,9 @@
 package app.gamenative.powercontrol.metrics
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class GpuUsageParseTest {
@@ -65,5 +67,20 @@ class GpuUsageParseTest {
         assertNull(delta.update(100L, 1000L))
         assertEquals(50, delta.update(600L, 2000L))
         assertNull(delta.update(0L, 0L))
+    }
+
+    @Test
+    fun skipsBandwidthDevfreqNodes() {
+        listOf(
+            "soc:qcom,gpubw",
+            "soc:qcom,kgsl-busmon",
+            "soc:qcom,cpu-cpu-llcc-bw",
+            "1d84000.qcom,llcc-ddr-bw",
+            "soc:qcom,cpubw-bwmon",
+            "aoss_qmp-bus",
+        )
+            .forEach { assertTrue(it, SystemMetricsSources.isBusDevfreqNode(it)) }
+        listOf("3d00000.qcom,kgsl-3d0", "gpu", "13000000.mali", "1c500000.mali", "17500000.g3d")
+            .forEach { assertFalse(it, SystemMetricsSources.isBusDevfreqNode(it)) }
     }
 }
