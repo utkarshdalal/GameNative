@@ -738,35 +738,25 @@ fun XServerScreen(
     }
 
     /**
-     * Report the rate the session's emulated display advertises.
+     * Report the rate the session's emulated display advertises: the display's own, and nothing else.
      *
-     * That is the rate the session is asked to *produce*: the cap, times the frame-generation
-     * multiplier when it is armed (a 40 cap at x2 presents 80). Below the panel it is what the
-     * connector advertises, so the compositor's grid and divisor base follow the session instead of
-     * outrunning it; at or above it — and whenever the limiter is off — the panel's own rate is what
-     * the connector advertises, since a display cannot be handed more than its rate. Generation
-     * still runs at the multiplier either way (a 40 cap at x4 presents 160 on a 120 Hz panel), and
-     * the frame counter reports that produced rate; the cap itself lives purely at acquire, before
-     * a frame is drawn.
-     *
-     * The multiplier comes from the container, not from `isLsfgAvailable`: that is a
-     * composition-time value, and the QuickMenu's LSFG switch changes the container without
-     * recomposing this screen.
+     * Neither the cap nor the frame-generation multiplier enters it. The mode is the rate the
+     * compositor runs at, so it belongs to the display and changes only when the display does; the
+     * cap lives at acquire, before a frame is drawn, and generation inserts `multiplier - 1` frames
+     * per source frame whatever the mode — a 40 cap at x4 produces and counts 160 on a 120 Hz mode.
+     * Advertising the produced rate instead would make the compositor's grid follow the QuickMenu.
      */
-    fun applyPanelRefreshForCap(limit: Int, panelHz: Int = detectRefreshRateHz(context, ui.xServerView as? View)) {
+    fun applyPanelRefresh(panelHz: Int = detectRefreshRateHz(context, ui.xServerView as? View)) {
         if (isX11Display || panelHz <= 0) return
-        val multiplier = if (LsfgQuickMenuHelper.isAvailable(container) && lsfgMultiplier >= 2) lsfgMultiplier else 1
-        val produced = if (limit > 0) limit * multiplier else 0
-        val rate = if (produced in 1 until panelHz) produced else panelHz
-        GameNativeDrm.nativeSetPanelRefreshHz(rate)
+        GameNativeDrm.nativeSetPanelRefreshHz(panelHz)
         // The daemon's connector advertises the new rate from here on, but gamescope reads the mode
-        // once, when the session starts: dirty its backend so the mode — the compositor's grid — is
-        // the rate now rather than on the next launch. Only on a change, because a nudge forces a
-        // modeset.
-        if (rate != advertisedPanelHz) {
-            advertisedPanelHz = rate
+        // once, when the session starts: dirty its backend so a display change becomes the mode now
+        // rather than on the next launch. Only on a change — a nudge forces a modeset — and not on
+        // the first report, which is the rate the session starts on anyway.
+        if (advertisedPanelHz != 0 && advertisedPanelHz != panelHz) {
             GamescopeCommandQueue.nudgeDisplayMode()
         }
+        advertisedPanelHz = panelHz
     }
 
     fun applyFpsLimiterToEngines(limit: Int) {
@@ -785,9 +775,8 @@ fun XServerScreen(
             // With frame generation active the presenter owns pacing, exactly as the layer does on X11:
             // the cap is disarmed and the output rate becomes limit x multiplier.
             GamescopeCommandQueue.setFpsLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
-            // The advertised rate follows a cap below the panel, and returns to the panel's own rate
-            // as soon as the cap is at or above it.
-            applyPanelRefreshForCap(limit)
+            // The mode is the display's rate: the cap and the multiplier never move it.
+            applyPanelRefresh()
         }
 
         PowerManager.targetFps = limit
@@ -853,7 +842,7 @@ fun XServerScreen(
         ui.detectedMaxRefreshRateHz = refreshHz * FPS_LIMITER_MAX_MULTIPLIER
 
         if (!isX11Display)
-            applyPanelRefreshForCap(effectiveFpsLimit(), refreshHz)
+            applyPanelRefresh(refreshHz)
     }
 
     /**
