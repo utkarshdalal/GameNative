@@ -127,55 +127,70 @@ object SystemMetricsSources {
         return busDevfreqTokens.any { name.contains(it) }
     }
 
-    /**
-     * Thermal zones ranked for CPU representativeness (lower rank wins):
-     * cpu-silicon, cpu-0, generic cpu, soc, s5p-tmu, cputop, tsens, cluster, big/little.
-     */
+    /** Thermal zones ranked for CPU representativeness (lower rank wins), see [cpuTempRank]. */
     @Synchronized
     fun cpuTempPaths(): List<String> {
         cpuTempPathsCache?.let { return it }
 
-        val paths = prioritizePaths(allThermalZones()) { type ->
-            when {
-                type.contains("cpu-silicon") -> 0
-                type.contains("cpu-0") -> 1
-                type.contains("cpu") && !type.contains("gpu") -> 2
-                type.contains("soc") -> 3
-                type.contains("s5p-tmu") -> 4
-                type.contains("cputop") -> 5
-                type.contains("tsens") -> 6
-                type.contains("cluster") -> 7
-                type.contains("big") || type.contains("little") -> 8
-                else -> null
-            }
-        }
+        val paths = prioritizePaths(allThermalZones(), ::cpuTempRank)
 
         cpuTempPathsCache = paths
         return paths
     }
 
-    /**
-     * Vendor GPU temperature nodes first, then thermal zones ranked by
-     * gpu-silicon, generic gpu, g3d, kgsl, mali.
-     */
+    /** Vendor GPU temperature nodes first, then thermal zones ranked by [gpuTempRank]. */
     @Synchronized
     fun gpuTempPaths(): List<String> {
         gpuTempPathsCache?.let { return it }
 
-        val zonePaths = prioritizePaths(allThermalZones()) { type ->
-            when {
-                type.contains("gpu-silicon") -> 0
-                type.contains("gpu") -> 1
-                type.contains("g3d") -> 2
-                type.contains("kgsl") -> 3
-                type.contains("mali") -> 4
-                else -> null
-            }
-        }
+        val zonePaths = prioritizePaths(allThermalZones(), ::gpuTempRank)
 
         val paths = (fixedGpuTempPaths + zonePaths).distinct()
         gpuTempPathsCache = paths
         return paths
+    }
+
+    /**
+     * Zone types that are not die sensors: current/voltage limiters, battery, charger,
+     * board NTCs, PMICs, skin and display sensors.
+     */
+    private val nonDieZoneTokens = listOf(
+        "ocp", "vdroop", "soft_", "bcl", "socd", "batt", "battery", "usb", "skin", "quiet",
+        "neutral", "disp", "modem", "charger", "pa-", "ntc", "pm8", "pmic",
+    )
+
+    internal fun isNonDieZone(type: String): Boolean = nonDieZoneTokens.any { type.contains(it) }
+
+    private fun isSocZone(type: String): Boolean =
+        type == "soc" || type.startsWith("soc_") || type.startsWith("soc-")
+
+    /**
+     * CPU rank of a lowercase zone type, null when it is not a CPU candidate:
+     * cpu-silicon, cpu-0, generic cpu, s5p-tmu, cputop, tsens, cluster, big/mid/little, soc.
+     */
+    internal fun cpuTempRank(type: String): Int? = when {
+        isNonDieZone(type) -> null
+        type.contains("cpu-silicon") -> 0
+        type.contains("cpu-0") -> 1
+        type.contains("cpu") && !type.contains("gpu") -> 2
+        type.contains("s5p-tmu") -> 3
+        type.contains("cputop") -> 4
+        type.contains("tsens") -> 5
+        type.contains("cluster") -> 6
+        type.contains("big") || type.contains("mid") || type.contains("little") -> 7
+        isSocZone(type) -> 8
+        else -> null
+    }
+
+    /** GPU rank of a lowercase zone type: gpu-silicon, generic gpu, g3d, kgsl, mali. */
+    internal fun gpuTempRank(type: String): Int? = when {
+        isNonDieZone(type) -> null
+        type.contains("gpu-silicon") -> 0
+        type.contains("gpu") -> 1
+        type.contains("g3d") -> 2
+        type.contains("kgsl") -> 3
+        type.contains("mali") -> 4
+        else -> null
     }
 
     /** Thermal zones whose type names a skin sensor; empty on devices without one. */
