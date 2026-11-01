@@ -29,6 +29,9 @@ object MaliGpuCounters {
     private const val SOURCE = "mali/counters"
     private const val MIN_NATIVE_INTERVAL_MS = 400L
     private const val LOG_EVERY_N = 20
+    private const val OPEN_MARKER = "gncounters.opening"
+    private const val PREFS = "gncounters"
+    private const val PREF_DISABLED = "disabled_after_crash"
 
     @Volatile
     private var context: Context? = null
@@ -69,7 +72,7 @@ object MaliGpuCounters {
         val ctx = context ?: return false
         val renderer = runCatching { GPUInformation.getRenderer(ctx) }.getOrNull()
         val allowed = gateAllows(renderer, Build.HARDWARE, File("/dev/mali0").exists())
-        val decided = allowed && loadLibrary() && openNative()
+        val decided = allowed && !crashGuardTripped(ctx) && loadLibrary() && openNative()
         Timber.tag(TAG).i(
             "available=%s renderer=%s hardware=%s backend=%s",
             decided, renderer ?: "?", Build.HARDWARE, backend ?: "none",
@@ -112,7 +115,11 @@ object MaliGpuCounters {
     @Synchronized
     fun close() {
         if (open) {
-            runCatching { nativeClose() }
+            try {
+                nativeClose()
+            } catch (t: Throwable) {
+                Timber.tag(TAG).w(t, "nativeClose failed")
+            }
             open = false
         }
         context = null
@@ -121,13 +128,35 @@ object MaliGpuCounters {
     }
 
     private fun openNative(): Boolean {
+        val marker = context?.let { File(it.filesDir, OPEN_MARKER) }
+        runCatching { marker?.createNewFile() }
         open = try {
             nativeOpen().also { backend = nativeBackend().takeIf { b -> b.isNotEmpty() && b != "none" } }
         } catch (t: Throwable) {
             Timber.tag(TAG).w(t, "nativeOpen failed")
             false
         }
+        runCatching { marker?.delete() }
         return open
+    }
+
+    /**
+     * Crash guard: [openNative] writes [OPEN_MARKER] before nativeOpen and deletes it after the call
+     * returns. A marker left over from an earlier process means that open took the process down, so
+     * the counters are disabled for good on this device and libgncounters is never loaded again.
+     */
+    private fun crashGuardTripped(ctx: Context): Boolean {
+        val prefs = runCatching { ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE) }.getOrNull()
+        if (prefs?.getBoolean(PREF_DISABLED, false) == true) {
+            Timber.tag(TAG).i("disabled: an earlier nativeOpen crashed the process")
+            return true
+        }
+        val marker = File(ctx.filesDir, OPEN_MARKER)
+        if (!marker.exists()) return false
+        Timber.tag(TAG).w("previous nativeOpen did not return; disabling Mali counters on this device")
+        runCatching { prefs?.edit()?.putBoolean(PREF_DISABLED, true)?.commit() }
+        runCatching { marker.delete() }
+        return true
     }
 
     private var libraryLoaded: Boolean? = null
