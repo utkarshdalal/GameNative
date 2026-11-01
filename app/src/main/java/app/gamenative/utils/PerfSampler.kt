@@ -448,7 +448,7 @@ object PerfSampler {
         private val clusters: List<PerfCluster> = runCatching { discoverClusters() }.getOrDefault(emptyList())
         private val coreCount: Int = runCatching { discoverCoreCount() }.getOrDefault(Runtime.getRuntime().availableProcessors())
         private val gpuFreqPath: String? = runCatching { discoverGpuFreqPath() }.getOrNull()
-        private val skinTempPaths: List<String> = runCatching { discoverSkinTempPaths() }.getOrDefault(emptyList())
+        private val skinTempPaths: List<String> = runCatching { SystemMetricsSources.skinTempPaths() }.getOrDefault(emptyList())
         private val refreshRateHz: Float = runCatching { readRefreshRate() }.getOrDefault(60f)
         private val maxAvailableKhz: Long? = runCatching { PowerManager.getAvailableCpuFrequencies().maxOrNull() }.getOrNull()
         private val installPath: String? = runCatching { gameDrivePath(drives) }.getOrNull()
@@ -1052,18 +1052,6 @@ object PerfSampler {
                 }
             }
             return null
-        }
-
-        private fun discoverSkinTempPaths(): List<String> {
-            return listOf(File("/sys/class/thermal"), File("/sys/devices/virtual/thermal")).flatMap { root ->
-                val zones = root.listFiles { file -> file.isDirectory && file.name.startsWith("thermal_zone") }
-                    ?: return@flatMap emptyList()
-                zones.mapNotNull { zone ->
-                    val type = SystemMetricsSources.readFirstLine(File(zone, "type").path)?.trim()?.lowercase(Locale.US)
-                        ?: return@mapNotNull null
-                    if (type.contains("skin")) File(zone, "temp").path else null
-                }
-            }.distinct()
         }
 
         private fun gameDrivePath(drives: String?): String? {

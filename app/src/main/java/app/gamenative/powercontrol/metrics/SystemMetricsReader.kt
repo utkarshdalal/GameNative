@@ -34,6 +34,9 @@ object SystemMetricsSources {
     @Volatile
     private var gpuTempPathsCache: List<String>? = null
 
+    @Volatile
+    private var skinTempPathsCache: List<String>? = null
+
     private val fixedGpuTempPaths = listOf(
         "/sys/class/kgsl/kgsl-3d0/temp",
         "/sys/class/kgsl/kgsl-3d0/devfreq/temp",
@@ -160,6 +163,18 @@ object SystemMetricsSources {
         gpuTempPathsCache = paths
         return paths
     }
+
+    /** Thermal zones whose type names a skin sensor; empty on devices without one. */
+    @Synchronized
+    fun skinTempPaths(): List<String> {
+        skinTempPathsCache?.let { return it }
+        val paths = skinPathsOf(allThermalZones())
+        skinTempPathsCache = paths
+        return paths
+    }
+
+    internal fun skinPathsOf(zones: List<Pair<String, String>>): List<String> =
+        zones.filter { (type, _) -> type.contains("skin") }.map { it.second }.distinct()
 
     @Synchronized
     private fun allThermalZones(): List<Pair<String, String>> {

@@ -23,6 +23,7 @@ object PowerTelemetry {
 
     private class Bucket(clusterCount: Int) {
         var n = 0
+        var skinTempMax = 0
         var cpuN = 0
         var cpuSum = 0L
         val cpuHist = IntArray(101)
@@ -107,6 +108,7 @@ object PowerTelemetry {
                 buckets.map { b ->
                     buildMap<String, Any> {
                         put("samples", b.n)
+                        putAll(bucketExtras(b.skinTempMax))
                         if (b.cpuN > 0) {
                             put("cpu_avg", (b.cpuSum / b.cpuN).toInt())
                             put("cpu_p95", percentile(b.cpuHist, b.cpuN))
@@ -156,6 +158,7 @@ object PowerTelemetry {
             SystemMetricsSources.readLongFromLine("${c.dir}/scaling_cur_freq") to
                 SystemMetricsSources.readLongFromLine("${c.dir}/scaling_max_freq")
         }
+        val skinC = if (skinTick++ % SKIN_EVERY_N_TICKS == 0) readSkinTempC() else null
         synchronized(lock) {
             if (startMs == 0L) return
             val index = ((SystemClock.elapsedRealtime() - startMs) / BUCKET_MS).toInt()
@@ -163,6 +166,7 @@ object PowerTelemetry {
             while (buckets.size <= index) buckets.add(Bucket(clusters.size))
             val b = buckets[index]
             b.n++
+            skinC?.let { if (it > b.skinTempMax) b.skinTempMax = it }
             snapshot.cpuUsagePercent?.let { v ->
                 val pct = v.roundToInt().coerceIn(0, 100)
                 b.cpuN++
@@ -191,6 +195,17 @@ object PowerTelemetry {
                 if (cur >= cap) cb.atCap++
             }
         }
+    }
+
+    private const val SKIN_EVERY_N_TICKS = 10
+    private var skinTick = 0
+
+    private fun readSkinTempC(): Int? =
+        SystemMetricsSources.skinTempPaths().takeIf { it.isNotEmpty() }?.let { SystemMetricsSources.readTemperatureC(it) }
+
+    /** Per-bucket keys that are left out when the device has no reading. */
+    internal fun bucketExtras(skinTempMax: Int): Map<String, Any> = buildMap {
+        if (skinTempMax > 0) put("skin_temp_max", skinTempMax)
     }
 
     private fun pinningOutcome(): Map<String, Any> {
