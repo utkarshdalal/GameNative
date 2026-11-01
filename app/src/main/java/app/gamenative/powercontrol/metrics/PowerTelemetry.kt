@@ -35,6 +35,7 @@ object PowerTelemetry {
         var gpuN = 0
         var gpuSum = 0L
         val gpuHist = IntArray(101)
+        val gpuMs = ArrayList<Float>()
         var cpuTempMax = 0
         var gpuTempMax = 0
         var p95N = 0
@@ -112,6 +113,7 @@ object PowerTelemetry {
             thermalZonesReadable?.let { put("thermal_zones_readable", it) }
             put("gpu_temp_source", gpuTempSource ?: "none")
             if (ticks > 0) put("gpu_usage_valid_share", (gpuTicks * 100.0 / ticks).roundToInt() / 100.0)
+            putAll(ShimGpuTime.sessionProperties())
             put(
                 "perf_by_5min",
                 buckets.map { b ->
@@ -127,6 +129,7 @@ object PowerTelemetry {
                             put("gpu_avg", (b.gpuSum / b.gpuN).toInt())
                             put("gpu_p95", percentile(b.gpuHist, b.gpuN))
                         }
+                        putAll(gpuTimeExtras(b.gpuMs))
                         if (b.cpuTempMax > 0) put("cpu_temp_max", b.cpuTempMax)
                         if (b.gpuTempMax > 0) put("gpu_temp_max", b.gpuTempMax)
                         if (b.p95N > 0) put("frame_p95_ms", (b.p95Sum / b.p95N * 10).roundToInt() / 10.0)
@@ -272,6 +275,25 @@ object PowerTelemetry {
     internal fun thermalExtras(headroomMin: Float?, thermalStatusMax: Int?): Map<String, Any> = buildMap {
         headroomMin?.let { put("headroom_min", (it * 100).roundToInt() / 100.0) }
         thermalStatusMax?.let { put("thermal_status_max", it) }
+    }
+
+    /** GPU time of one guest frame from the shim's timestamps, into the current bucket. */
+    fun recordGpuFrameMs(ms: Float) {
+        if (!ms.isFinite() || ms <= 0f) return
+        synchronized(lock) {
+            if (startMs == 0L) return
+            val index = ((SystemClock.elapsedRealtime() - startMs) / BUCKET_MS).toInt()
+            buckets.getOrNull(index)?.gpuMs?.add(ms)
+        }
+    }
+
+    /** Per-bucket GPU-time keys, left out when the bucket has no shim reading. */
+    internal fun gpuTimeExtras(gpuMs: List<Float>): Map<String, Any> = buildMap {
+        if (gpuMs.isEmpty()) return@buildMap
+        val sorted = gpuMs.sorted()
+        val p95 = sorted[((sorted.size * 0.95).toInt().coerceAtLeast(1) - 1).coerceIn(0, sorted.size - 1)]
+        put("gpu_ms_avg", (sorted.average() * 10).roundToInt() / 10.0)
+        put("gpu_ms_p95", (p95 * 10).roundToInt() / 10.0)
     }
 
     private fun pinningOutcome(): Map<String, Any> {

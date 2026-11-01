@@ -22,6 +22,7 @@ import com.winlator.PrefManager;
 import app.gamenative.PluviaApp;
 import app.gamenative.display.GameNativeDrm;
 import app.gamenative.display.GamescopeSettings;
+import app.gamenative.powercontrol.metrics.ShimGpuTime;
 import app.gamenative.utils.LsfgQuickMenuHelper;
 import app.gamenative.utils.LsfgVkManager;
 import com.winlator.box86_64.Box86_64Preset;
@@ -548,6 +549,10 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         FileUtils.chmod(xdgRunDir, 0700);
         envVars.put("XDG_RUNTIME_DIR", xdgRunDir.getPath());
         envVars.put("GAMENATIVE_DRM_SOCKET", "gndrm");
+        // The ICD shim's per-process GPU busy time (read by ShimGpuTime); inert on payloads without it.
+        File gpuTimeDir = ShimGpuTime.directory(rootDir);
+        gpuTimeDir.mkdirs();
+        envVars.put("GN_GPUTIME_DIR", gpuTimeDir.getPath());
         if (!envVars.has("GNDRM_SCANOUT_LAYOUT"))
             envVars.put("GNDRM_SCANOUT_LAYOUT", scanoutLayout(context));
 

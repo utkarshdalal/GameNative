@@ -494,6 +494,7 @@ class GpuUsageSampler(private val publishSource: Boolean = false) {
             .asSequence()
             .mapNotNull { readSample(it) }
             .firstOrNull()
+            ?: ShimGpuTime.sample()
         if (publishSource && reading != null) {
             SystemMetricsSources.lastGpuUsageSource = SystemMetricsSources.usageSourceTag(reading.source)
         }

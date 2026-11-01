@@ -5,6 +5,7 @@ import android.hardware.display.DisplayManager
 import android.view.Display
 import app.gamenative.powercontrol.PowerBaselineScripts
 import app.gamenative.powercontrol.PowerManager
+import com.winlator.xenvironment.ImageFs
 import java.io.File
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
@@ -69,6 +70,7 @@ object PerformanceMetricsCollector {
 
         val appContext = context.applicationContext
         this.appContext = appContext
+        ShimGpuTime.start(ShimGpuTime.directory(ImageFs.find(appContext).rootDir))
         ThermalHeadroom.reset()
         displayRefreshRate = readDisplayRefreshRate(appContext)
         PowerTelemetry.attachBattery(appContext)
@@ -145,6 +147,7 @@ object PerformanceMetricsCollector {
         )
 
         val cpu = cpuSampler.sample()
+        ShimGpuTime.update()
         val gpu = gpuSampler.sample()
         latestGpuUsage = gpu
         val cpuTemp = SystemMetricsSources.readTemperature(SystemMetricsSources.cpuTempPaths())
