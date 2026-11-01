@@ -3,6 +3,7 @@ package app.gamenative.powercontrol.metrics
 import java.io.File
 import java.util.Locale
 import kotlin.math.roundToInt
+import timber.log.Timber
 
 /**
  * GPU load measured by the gamescope ICD shim (gn-vkshim) from per-submit timestamps.
@@ -24,6 +25,9 @@ import kotlin.math.roundToInt
 object ShimGpuTime {
     const val SOURCE = "shim/timestamps"
     private const val STALE_NS = 2_000_000_000L
+    private const val TAG = "GNShimGpu"
+    private const val SUMMARY_EVERY = 20
+    private const val EMPTY_WARN_NS = 30_000_000_000L
 
     data class Record(
         val role: String,
@@ -122,6 +126,9 @@ object ShimGpuTime {
     private var states: Map<String, PidState> = emptyMap()
     private val seen = HashMap<String, Record>()
     private var devicesSeen = 0
+    private var updates = 0
+    private var firstUpdateNs = 0L
+    private var emptyWarned = false
 
     @Volatile
     private var latest: GpuUsageReading? = null
@@ -133,6 +140,9 @@ object ShimGpuTime {
             states = emptyMap()
             seen.clear()
             devicesSeen = 0
+            updates = 0
+            firstUpdateNs = 0L
+            emptyWarned = false
             latest = null
         }
         GpuFrameTime.reset()
@@ -140,6 +150,7 @@ object ShimGpuTime {
             directory.mkdirs()
             directory.listFiles()?.forEach { it.delete() }
         }
+        Timber.tag(TAG).i("dir=%s cleared", directory.path)
     }
 
     /** Reads the directory once; call from the metrics collector's cycle. */
@@ -150,15 +161,35 @@ object ShimGpuTime {
             ?.toMap()
             ?: return
         val result = synchronized(lock) {
+            for ((pid, rec) in files) {
+                if (pid !in seen) Timber.tag(TAG).i("pid=%s role=%s devices=%d", pid, rec.role, rec.devices)
+            }
             val s = step(states, files, nowNs)
             states = s.states
             seen.putAll(files)
             if (s.devices > devicesSeen) devicesSeen = s.devices
             latest = s.percent?.let { GpuUsageReading(it, SOURCE) }
+            if (firstUpdateNs == 0L) firstUpdateNs = nowNs
+            if (seen.isEmpty() && !emptyWarned && nowNs - firstUpdateNs >= EMPTY_WARN_NS) {
+                emptyWarned = true
+                Timber.tag(TAG).w("no gputime files after 30 s")
+            }
+            if (++updates % SUMMARY_EVERY == 0) logSummary(s, files)
             s
         }
         GpuFrameTime.lastFrameMs = result.frameMs
         if (result.guestUpdated) result.frameMs?.let { PowerTelemetry.recordGpuFrameMs(it) }
+    }
+
+    private fun logSummary(s: Step, files: Map<String, Record>) {
+        Timber.tag(TAG).i(
+            "util=%s%% gpu_ms=%s coverage=%s files=%d roles=%s",
+            s.percent?.toString() ?: "-",
+            s.frameMs?.let { String.format(Locale.US, "%.1f", it) } ?: "-",
+            coverage(files.values)?.let { String.format(Locale.US, "%.3f", it) } ?: "-",
+            files.size,
+            files.values.joinToString(",") { it.role },
+        )
     }
 
     /** Latest usage from the shim, or null when no session process has a fresh file. */
