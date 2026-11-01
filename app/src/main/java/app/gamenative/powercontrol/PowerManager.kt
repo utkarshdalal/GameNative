@@ -115,6 +115,13 @@ object PowerManager {
         }
 
     /**
+     * False while the device has no readable GPU usage node; [currentGpuUsage] is then 0 and
+     * means "unknown", not "idle".
+     */
+    @Volatile
+    var gpuUsageKnown: Boolean = false
+
+    /**
      * Full metrics snapshot of the most recent collector cycle, or null when no
      * game session is active.
      */

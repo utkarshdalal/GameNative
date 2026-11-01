@@ -174,6 +174,7 @@ object PerformanceMetricsCollector {
         PowerManager.currentFps = snapshot.fps
         PowerManager.currentCpuUsage = snapshot.cpuUsagePercent ?: 0f
         PowerManager.currentGpuUsage = snapshot.gpuUsagePercent ?: 0f
+        PowerManager.gpuUsageKnown = snapshot.gpuUsagePercent != null
     }
 
     private fun slowFrameThresholdNs(): Long {

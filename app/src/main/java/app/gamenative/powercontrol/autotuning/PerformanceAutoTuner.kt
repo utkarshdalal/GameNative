@@ -306,8 +306,11 @@ class PerformanceAutoTuner(
             val isNotGpuBottleneck = currentBottleneck == BottleneckType.CPU_BOUND ||
                                      currentBottleneck == BottleneckType.MEMORY_BOUND
 
-            // If we're hitting target FPS with low GPU usage, reduce performance
-            if (fpsError < FPS_ERROR_THRESHOLD && gpuUsage < USAGE_LOW_THRESHOLD && currentGpuPerformance > MIN_PERFORMANCE + 5.0) {
+            // If we're hitting target FPS with low GPU usage, reduce performance. An unknown usage
+            // reads as 0 and must not walk the GPU down on its own.
+            if (fpsError < FPS_ERROR_THRESHOLD && PowerManager.gpuUsageKnown && gpuUsage < USAGE_LOW_THRESHOLD &&
+                currentGpuPerformance > MIN_PERFORMANCE + 5.0
+            ) {
                 currentGpuPerformance = (currentGpuPerformance - PERFORMANCE_REDUCTION_STEP).coerceAtLeast(MIN_PERFORMANCE)
                 controller.reset()
             }
