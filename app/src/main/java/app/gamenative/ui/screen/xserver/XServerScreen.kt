@@ -144,6 +144,7 @@ import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.downloader.CoreDriverDownloader
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.DebugReportUtils
+import app.gamenative.utils.GameSessionId
 import app.gamenative.utils.DebugRunParams
 import app.gamenative.utils.DebugRunParamsHolder
 import app.gamenative.utils.ExecutableSelectionUtils
@@ -550,6 +551,7 @@ fun XServerScreen(
     }
     val ui = remember { XServerScreenState(container, context) }
     val activity = remember(context) { BrightnessManager.findActivity(context) }
+    LaunchedEffect(appId) { GameSessionId.bind() }
 
     DisposableEffect(activity) {
         if (activity == null) return@DisposableEffect onDispose { }
@@ -5378,6 +5380,12 @@ private fun exit(
         return
     }
 
+    // Before container_config is read so the id rides into game_sessions and the rating payload.
+    GameSessionId.active()?.let { uuid ->
+        container.putSessionMetadata("session_uuid", uuid)
+        container.saveData()
+    }
+
     PerfSampler.halt()
 
     val exitProperties = mapOf(
@@ -5405,6 +5413,7 @@ private fun exit(
         container.putSessionMetadata("total_frames", rating.totalFrames)
         container.saveData()
     }
+    GameSessionId.end()
 
     // only needed in exit() — OS reclaims on process death, so onDestroy fallback skips this
     try {

@@ -137,6 +137,8 @@ import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.DebugReportUtils
 import app.gamenative.utils.DebugRunParamsHolder
 import app.gamenative.utils.HardwareUtils
+import app.gamenative.utils.GameSessionId
+import app.gamenative.utils.SessionReport
 import app.gamenative.utils.PlatformAuthUtils
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.ManifestInstaller
@@ -342,7 +344,7 @@ fun trackAiDebug(event: String, properties: Map<String, Any> = emptyMap()) {
     }
 }
 
-private fun trackGameLaunched(appId: String) {
+private fun trackGameLaunched(context: Context, appId: String) {
     val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
     val gameName = ContainerUtils.resolveGameName(appId)
     val attribution = if (gameSource == GameSource.STEAM) {
@@ -357,6 +359,8 @@ private fun trackGameLaunched(appId: String) {
             "game_store" to gameSource.name,
             "key_attestation_available" to PrefManager.keyAttestationAvailable,
             "play_integrity_available" to PrefManager.playIntegrityAvailable,
+            "session_uuid" to GameSessionId.newLaunch(),
+            "config_source" to SessionReport.launchConfigSource(context, appId),
         ) + attribution,
     )
 }
@@ -374,7 +378,7 @@ private fun startDebugRun(
     setMessageDialogState: (MessageDialogState) -> Unit,
 ) {
     if (appId.isEmpty()) return
-    trackGameLaunched(appId)
+    trackGameLaunched(context, appId)
     viewModel.setLaunchedAppId(appId)
     viewModel.setBootToContainer(false)
     viewModel.setTestGraphics(false)
@@ -508,7 +512,7 @@ fun PluviaMain(
             }
         } else {
             MainActivity.wasLaunchedViaExternalIntent = true
-            trackGameLaunched(resolvedAppId)
+            trackGameLaunched(context, resolvedAppId)
             viewModel.setLaunchedAppId(resolvedAppId)
             viewModel.setBootToContainer(false)
             scope.launch(Dispatchers.IO) {
@@ -2070,7 +2074,7 @@ fun PluviaMain(
 
                     HomeScreen(
                         onClickPlay = { appId, asContainer ->
-                            trackGameLaunched(appId)
+                            trackGameLaunched(context, appId)
                             viewModel.setLaunchedAppId(appId)
                             viewModel.setBootToContainer(asContainer)
                             viewModel.setTestGraphics(false)
@@ -2109,7 +2113,7 @@ fun PluviaMain(
                             )
                         },
                         onPlayWithDiagnostics = { appId ->
-                            trackGameLaunched(appId)
+                            trackGameLaunched(context, appId)
                             viewModel.setLaunchedAppId(appId)
                             viewModel.setBootToContainer(false)
                             viewModel.setTestGraphics(false)

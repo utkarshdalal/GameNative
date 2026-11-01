@@ -155,9 +155,21 @@ object SessionReport {
 
     private const val MAX_RUN_FILES = 30
 
+    private fun configSourceValue(raw: String?): String =
+        raw.orEmpty().ifEmpty { if (PrefManager.autoApplyKnownConfig) "none" else "disabled" }
+
+    /** config_source for game_launched; reads only this container's config file, "new_container" if none exists yet. */
+    fun launchConfigSource(context: Context, appId: String): String = try {
+        val file = File(com.winlator.xenvironment.ImageFs.find(context).rootDir, "home/${com.winlator.xenvironment.ImageFs.USER}-$appId/.container")
+        if (!file.exists()) "new_container" else configSourceValue(JSONObject(file.readText()).optString("configSource"))
+    } catch (e: Exception) {
+        Timber.w(e, "SessionReport: launch config source failed")
+        "unknown"
+    }
+
     fun configProperties(container: Container): Map<String, Any> = buildMap {
         try {
-            put("config_source", container.configSource.ifEmpty { if (PrefManager.autoApplyKnownConfig) "none" else "disabled" })
+            put("config_source", configSourceValue(container.configSource))
             val applied = appliedConfigFile(container).takeIf { it.exists() }?.readText().orEmpty()
             if (applied.isEmpty()) {
                 markConfigApplied(container, container.configSource.ifEmpty { "existing" })
@@ -193,6 +205,7 @@ object SessionReport {
         reason: String,
     ): Map<String, Any> = buildMap {
         put("exit_reason", reason)
+        GameSessionId.active()?.let { put("session_uuid", it) }
         try {
             putAll(configProperties(container))
             putAll(GameFileDetection.properties(container))
