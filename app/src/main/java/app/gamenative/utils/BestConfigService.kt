@@ -45,11 +45,11 @@ object BestConfigService {
     data class BestConfigResponse(
         val bestConfig: JsonObject,
         val matchType: String, // "exact_gpu_match" | "gpu_family_match" | "fallback_match" | "no_match"
-        val matchedGpu: String,
-        val matchedDeviceId: Int,
+        val matchedGpu: String, // empty when the server sends null (overlay-only answer)
+        val matchedDeviceId: Int?,
         val matchedStore: String,
     ) {
-        fun toMatch() = BestConfigMatch(matchType, matchedDeviceId.takeIf { it > 0 }, matchedGpu.takeIf { it.isNotBlank() && it != "null" })
+        fun toMatch() = BestConfigMatch(matchType, matchedDeviceId?.takeIf { it > 0 }, matchedGpu.takeIf { it.isNotBlank() && it != "null" })
     }
 
     /** Which server row a known config came from; persisted per container for game_exited. */
@@ -166,16 +166,7 @@ object BestConfigService {
                 val responseBody = response.body?.string() ?: return@withContext null
                 val jsonResponse = JSONObject(responseBody)
 
-                val bestConfigJson = jsonResponse.getJSONObject("bestConfig")
-                val bestConfig = Json.parseToJsonElement(bestConfigJson.toString()).jsonObject
-
-                val bestConfigResponse = BestConfigResponse(
-                    bestConfig = bestConfig,
-                    matchType = jsonResponse.getString("matchType"),
-                    matchedGpu = jsonResponse.getString("matchedGpu"),
-                    matchedDeviceId = jsonResponse.getInt("matchedDeviceId"),
-                    matchedStore = jsonResponse.optString("matchedStore", gameStore),
-                )
+                val bestConfigResponse = parseBestConfigResponse(jsonResponse, gameStore)
 
                 cache[cacheKey] = bestConfigResponse
 
@@ -194,6 +185,22 @@ object BestConfigService {
     /**
      * Gets user-friendly compatibility message based on match type.
      */
+    /**
+     * Parses the best-config API body. matchedGpu and matchedDeviceId are JSON null when the
+     * answer comes from a config overlay alone (no learned row behind it); getString/getInt
+     * would throw on null and the whole config would be dropped.
+     */
+    internal fun parseBestConfigResponse(jsonResponse: JSONObject, gameStore: String): BestConfigResponse {
+        val bestConfigJson = jsonResponse.getJSONObject("bestConfig")
+        return BestConfigResponse(
+            bestConfig = Json.parseToJsonElement(bestConfigJson.toString()).jsonObject,
+            matchType = jsonResponse.getString("matchType"),
+            matchedGpu = jsonResponse.optString("matchedGpu").takeIf { it != "null" }.orEmpty(),
+            matchedDeviceId = jsonResponse.optInt("matchedDeviceId", -1).takeIf { it > 0 },
+            matchedStore = jsonResponse.optString("matchedStore").takeIf { it.isNotEmpty() && it != "null" } ?: gameStore,
+        )
+    }
+
     fun getCompatibilityMessage(context: Context, matchType: String?): CompatibilityMessage {
         return when (matchType) {
             "exact_gpu_match" -> CompatibilityMessage(
