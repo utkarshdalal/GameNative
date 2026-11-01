@@ -326,12 +326,19 @@ class PerformanceHudView(
             batteryTemp = batterySnapshot.temperatureC?.let { "BAT TEMP ${it}°C" },
             clock = readClockText(),
             cpuTemp = SystemMetricsSources.readTemperatureC(SystemMetricsSources.cpuTempPaths())
-                ?.let { "CPU TEMP ${it}°C" } ?: "CPU TEMP $MISSING_VALUE",
+                ?.let { "CPU TEMP ${it}°C" } ?: missingCpuTempText(),
             gpuTemp = SystemMetricsSources.readTemperatureC(SystemMetricsSources.gpuTempPaths())
                 ?.let { "GPU TEMP ${it}°C" } ?: "GPU TEMP $MISSING_VALUE",
             fan = readFanText(),
             tune = readTuneText(),
         )
+    }
+
+    /** No readable zone: fall back to the collector's thermal headroom when it has one. */
+    private fun missingCpuTempText(): String {
+        val headroom = PowerManager.latestMetrics?.thermalHeadroom?.takeIf { it.isFinite() }
+            ?: return "CPU TEMP $MISSING_VALUE"
+        return "CPU TEMP $MISSING_VALUE (HEADROOM ${(headroom * 100).roundToInt()}%)"
     }
 
     private fun readFanText(): String? {
