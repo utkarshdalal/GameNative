@@ -75,6 +75,7 @@ object PerformanceMetricsCollector {
         cpuSampler.reset()
         gpuSampler.reset()
         latestGpuUsage = null
+        MaliGpuCounters.attach(appContext)
         sampleCount = 0L
         paused = false
         FrameTimeRing.start()
@@ -117,6 +118,7 @@ object PerformanceMetricsCollector {
         latestGpuUsage = null
         PowerManager.latestMetrics = null
         Timber.tag(TAG).i("Collector stopped after %d samples", sampleCount)
+        MaliGpuCounters.close()
     }
 
     fun pause() {
