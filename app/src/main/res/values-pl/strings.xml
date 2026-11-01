@@ -435,6 +435,7 @@
     <string name="performance_hud_clock_time">Czas</string>
     <string name="performance_hud_cpu_temperature">Temperatura CPU</string>
     <string name="performance_hud_gpu_temperature">Temperatura GPU</string>
+    <string name="performance_hud_bottleneck">Czynnik ograniczający</string>
     <string name="touchpad_help">Pomoc touchpada</string>
     <string name="hide_controls_with_controller">Ukryj kontroler ekranowy przy podłączonym kontrolerze</string>
     <string name="hide_controls_with_controller_description">Automatycznie ukrywa kontroler ekranowy, gdy podłączony jest kontroler fizyczny</string>

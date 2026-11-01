@@ -419,6 +419,7 @@
     <string name="performance_hud_clock_time">時間</string>
     <string name="performance_hud_cpu_temperature">CPU 溫度</string>
     <string name="performance_hud_gpu_temperature">GPU 溫度</string>
+    <string name="performance_hud_bottleneck">限制因素</string>
     <string name="touchpad_help">觸摸板支援</string>
     <string name="hide_controls_with_controller">使用控制器時隱藏螢幕控制器</string>
     <string name="hide_controls_with_controller_description">當實體控制器連接時自動隱藏螢幕控制器</string>
