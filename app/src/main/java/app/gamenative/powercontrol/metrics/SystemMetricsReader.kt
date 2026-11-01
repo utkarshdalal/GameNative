@@ -61,9 +61,19 @@ object SystemMetricsSources {
             "/sys/class/misc/mali0/device/gpuinfo",
             "/sys/devices/platform/mali/utilization",
             "/sys/kernel/gpu/gpu_busy",
+            "/sys/kernel/ged/hal/gpu_utilization",
+            "/sys/module/ged/parameters/gpu_loading",
             "/sys/class/misc/pvrsrvkm/device/utilisation",
             "/sys/class/devfreq/gpu/load",
         ).forEach(::add)
+
+        // Mali platform devices (Tensor 1c500000.mali, MediaTek 13000000.mali, ...).
+        File("/sys/devices/platform").listFiles { file ->
+            file.isDirectory && file.name.lowercase(Locale.US).contains("mali")
+        }?.forEach { dir ->
+            add(File(dir, "utilization").path)
+            add(File(dir, "utilisation").path)
+        }
 
         listOf(
             File("/sys/class/devfreq"),
@@ -217,14 +227,30 @@ object SystemMetricsSources {
         }
     }
 
-    fun readPercentFromLine(path: String): Int? {
-        val raw = readFirstLine(path)?.trim() ?: return null
-        val token = raw.split(Regex("\\s+"))
-            .map { it.replace(Regex("[^0-9]"), "") }
-            .firstOrNull { it.isNotEmpty() }
-            ?: return null
-        return token.toIntOrNull()?.coerceIn(0, 100)
+    fun readPercentFromLine(path: String): Int? = readFirstLine(path)?.let(::parseUsagePercent)
+
+    private val leadingNumber = Regex("(?<![A-Za-z0-9_.])(\\d+)(?![A-Za-z0-9_])")
+
+    /**
+     * First standalone integer on a usage line, e.g. `45`, `45 %`, `45@600000000Hz`
+     * (devfreq load), `45 12 43` (MediaTek ged loading/block/idle). Values outside
+     * 0..100 are not percentages and yield null rather than a clamped number.
+     */
+    fun parseUsagePercent(raw: String): Int? {
+        val value = leadingNumber.find(raw.trim())?.groupValues?.get(1)?.toIntOrNull() ?: return null
+        return value.takeIf { it in 0..100 }
     }
+
+    /** Short tag for a usage node: its parent directory and file name, e.g. `hal/gpu_utilization`. */
+    fun usageSourceTag(path: String): String {
+        val file = File(path)
+        val parent = file.parentFile?.name
+        return if (parent.isNullOrEmpty()) file.name else "$parent/${file.name}"
+    }
+
+    /** Tag of the node behind the latest valid GPU usage reading, null until one is read. */
+    @Volatile
+    var lastGpuUsageSource: String? = null
 
     fun readLongFromLine(path: String): Long? {
         return readFirstLine(path)?.trim()?.toLongOrNull()
@@ -380,10 +406,12 @@ class GpuUsageSampler {
     }
 
     fun sample(): GpuUsageReading? {
-        return SystemMetricsSources.gpuUsagePaths()
+        val reading = SystemMetricsSources.gpuUsagePaths()
             .asSequence()
             .mapNotNull { readSample(it) }
             .firstOrNull()
+        reading?.let { SystemMetricsSources.lastGpuUsageSource = SystemMetricsSources.usageSourceTag(it.source) }
+        return reading
     }
 
     private fun readSample(path: String): GpuUsageReading? {

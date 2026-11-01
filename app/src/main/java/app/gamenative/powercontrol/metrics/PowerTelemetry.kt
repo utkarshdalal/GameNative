@@ -98,6 +98,10 @@ object PowerTelemetry {
         )
         synchronized(lock) {
             if (buckets.isEmpty()) return@buildMap
+            val ticks = buckets.sumOf { it.n }
+            val gpuTicks = buckets.sumOf { it.gpuN }
+            put("gpu_usage_source", SystemMetricsSources.lastGpuUsageSource?.takeIf { gpuTicks > 0 } ?: "none")
+            if (ticks > 0) put("gpu_usage_valid_share", (gpuTicks * 100.0 / ticks).roundToInt() / 100.0)
             put(
                 "perf_by_5min",
                 buckets.map { b ->
@@ -141,6 +145,7 @@ object PowerTelemetry {
         synchronized(lock) {
             startMs = SystemClock.elapsedRealtime()
             buckets.clear()
+            SystemMetricsSources.lastGpuUsageSource = null
         }
     }
 
