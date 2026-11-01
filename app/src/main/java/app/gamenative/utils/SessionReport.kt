@@ -116,6 +116,7 @@ object SessionReport {
     )
 
     private val CONFIG_DIFF_IGNORED_EXTRA = setOf(
+        "configMatchedDeviceId", "configMatchedGpu",
         "appliedWineVersion", "appliedContainerVariant", "lastInstalledMainWrapper", "box64Version", "fexcoreVersion",
         "appVersion", "imgVersion", "openal_dlls", "xaudioDllsExtracted", "config_changed", "wineprefixNeedsUpdate",
         "dxwrapper", "wincomponents", "audioDriver", "graphicsDriver", "graphicsDriverAdreno", "desktopTheme",
@@ -126,15 +127,17 @@ object SessionReport {
 
     private fun isIgnoredExtra(key: String) = key in CONFIG_DIFF_IGNORED_EXTRA || key.startsWith("screenEffects")
 
-    fun markConfigApplied(container: Container, source: String, matchType: String? = null) {
+    fun markConfigApplied(container: Container, source: String, match: BestConfigService.BestConfigMatch? = null) {
         try {
+            container.putExtra("configMatchedDeviceId", match?.deviceId)
+            container.putExtra("configMatchedGpu", match?.gpu)
             val snapshot = JSONObject(container.containerJson)
             CONFIG_DIFF_IGNORED.forEach { snapshot.remove(it) }
             container.setConfigSource(source)
             container.saveData()
             appliedConfigFile(container).writeText(snapshot.toString())
             val matchFile = appliedMatchFile(container)
-            if (matchType != null) matchFile.writeText(matchType) else matchFile.delete()
+            if (match != null) matchFile.writeText(match.toJson()) else matchFile.delete()
         } catch (e: Exception) {
             Timber.w(e, "SessionReport: mark config failed")
         }
@@ -184,8 +187,11 @@ object SessionReport {
                 }
             }
             put("config_edited_fields", changed.take(20))
-            appliedMatchFile(container).takeIf { it.exists() }?.readText()?.trim()?.takeIf { it.isNotEmpty() }
-                ?.let { put("config_match_type", it) }
+            appliedMatchFile(container).takeIf { it.exists() }?.readText()?.let(BestConfigService.BestConfigMatch::parse)?.let { m ->
+                put("config_match_type", m.matchType)
+                m.deviceId?.let { put("config_matched_device_id", it) }
+                m.gpu?.let { put("config_matched_gpu", it) }
+            }
         } catch (e: Exception) {
             Timber.w(e, "SessionReport: config diff failed")
         }

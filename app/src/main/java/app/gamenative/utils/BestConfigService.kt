@@ -48,7 +48,26 @@ object BestConfigService {
         val matchedGpu: String,
         val matchedDeviceId: Int,
         val matchedStore: String,
-    )
+    ) {
+        fun toMatch() = BestConfigMatch(matchType, matchedDeviceId.takeIf { it > 0 }, matchedGpu.takeIf { it.isNotBlank() && it != "null" })
+    }
+
+    /** Which server row a known config came from; persisted per container for game_exited. */
+    data class BestConfigMatch(val matchType: String, val deviceId: Int? = null, val gpu: String? = null) {
+        fun toJson(): String = JSONObject().put("matchType", matchType).put("deviceId", deviceId).put("gpu", gpu).toString()
+
+        companion object {
+            /** Reads [toJson] output, or the older plain match-type string. */
+            fun parse(text: String): BestConfigMatch? {
+                val t = text.trim()
+                if (t.isEmpty()) return null
+                if (!t.startsWith("{")) return BestConfigMatch(t)
+                val o = JSONObject(t)
+                val type = o.optString("matchType").ifEmpty { return null }
+                return BestConfigMatch(type, o.optInt("deviceId").takeIf { it > 0 }, o.optString("gpu").ifEmpty { null })
+            }
+        }
+    }
 
     /**
      * Compatibility message with text and color.

@@ -1205,4 +1205,13 @@ class BestConfigServiceTest {
             )
         }
     }
+
+    @Test
+    fun bestConfigMatch_roundTripsAndReadsLegacyPlainString() {
+        val m = BestConfigService.BestConfigMatch("gpu_family_match", 1234, "Adreno (TM) 740")
+        assertEquals(m, BestConfigService.BestConfigMatch.parse(m.toJson()))
+        assertEquals(BestConfigService.BestConfigMatch("fallback_match"), BestConfigService.BestConfigMatch.parse("fallback_match\n"))
+        assertEquals(BestConfigService.BestConfigMatch("exact_gpu_match"), BestConfigService.BestConfigMatch.parse(BestConfigService.BestConfigMatch("exact_gpu_match").toJson()))
+        assertNull(BestConfigService.BestConfigMatch.parse(""))
+    }
 }
