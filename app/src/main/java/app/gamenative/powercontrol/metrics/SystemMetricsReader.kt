@@ -15,6 +15,8 @@ data class CpuUsageReading(val percent: Int, val source: CpuUsageSource)
 
 data class GpuUsageReading(val percent: Int, val source: String)
 
+data class TemperatureReading(val celsius: Int, val path: String)
+
 /**
  * Device sysfs discovery shared by the metrics collector and the on-screen HUD.
  * Discovery results are cached process-wide so both consumers scan the tree once.
@@ -213,16 +215,35 @@ object SystemMetricsSources {
             .map { it.second }
     }
 
-    fun readTemperatureC(paths: List<String>): Int? {
+    fun readTemperatureC(paths: List<String>): Int? = readTemperature(paths)?.celsius
+
+    /** First path in [paths] holding a plausible temperature, with the path that produced it. */
+    fun readTemperature(paths: List<String>): TemperatureReading? {
         for (path in paths.distinct()) {
             val raw = readFirstLine(path)?.trim()?.toIntOrNull() ?: continue
-            val celsius = if (raw > 1000) (raw + 500) / 1000 else raw
-            if (celsius in 1..150) {
-                return celsius
-            }
+            val celsius = scaleTemperatureC(raw) ?: continue
+            return TemperatureReading(celsius, path)
         }
         return null
     }
+
+    /**
+     * Whole degrees from a raw sensor value: plain degrees (1..150), deci-degrees
+     * (151..1500, e.g. 425 = 42.5 C) or milli-degrees (above 1500). Zero, negative
+     * and out-of-range results are rejected.
+     */
+    fun scaleTemperatureC(raw: Int): Int? {
+        val celsius = when {
+            raw <= 0 -> return null
+            raw <= MAX_PLAIN_CELSIUS -> raw
+            raw <= MAX_DECI_CELSIUS_RAW -> (raw + 5) / 10
+            else -> (raw + 500) / 1000
+        }
+        return celsius.takeIf { it in 1..MAX_PLAIN_CELSIUS }
+    }
+
+    private const val MAX_PLAIN_CELSIUS = 150
+    private const val MAX_DECI_CELSIUS_RAW = 1500
 
     fun readFirstLine(path: String): String? {
         return try {
