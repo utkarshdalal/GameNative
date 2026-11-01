@@ -6,8 +6,8 @@ enum class BottleneckPart(val key: String, val label: String, val shortLabel: St
     CPU("cpu", "CPU", "CPU"),
     GPU("gpu", "GPU", "GPU"),
     THERMAL("thermal", "THERMAL", "HOT"),
-    CAPPED("capped", "CAPPED", "CAP"),
-    NONE("none", "NONE", "NONE"),
+    CAPPED("capped", "FPS CAP", "CAP"),
+    NONE("none", "NOTHING", "--"),
 }
 
 /** Verdict of [BottleneckClassifier]: one part, or CPU/GPU combined with THERMAL. */

@@ -74,6 +74,6 @@ class BottleneckClassifierTest {
         assertEquals("GPU+HOT", Bottleneck.GPU_THERMAL.shortLabel())
         assertEquals("cpu+thermal", Bottleneck.CPU_THERMAL.key())
         assertEquals("capped", Bottleneck.CAPPED.key())
-        assertEquals("NONE", Bottleneck.NONE.label())
+        assertEquals("NOTHING", Bottleneck.NONE.label())
     }
 }

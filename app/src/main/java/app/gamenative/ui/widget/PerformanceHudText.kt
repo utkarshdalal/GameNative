@@ -39,6 +39,7 @@ internal object PerformanceHudText {
         return if (throttling && !compact) "$text throttling" else text
     }
 
+    /** What limits the frame rate: "LIMITED BY: GPU+THERMAL", compact "LIMIT GPU+HOT". */
     fun bottleneck(verdict: Bottleneck, compact: Boolean): String =
-        if (compact) "BN: ${verdict.shortLabel()}" else "BOTTLENECK: ${verdict.label()}"
+        if (compact) "LIMIT ${verdict.shortLabel()}" else "LIMITED BY: ${verdict.label()}"
 }

@@ -43,7 +43,9 @@ class PerformanceHudTextTest {
 
     @Test
     fun bottleneckRow() {
-        assertEquals("BOTTLENECK: GPU+THERMAL", PerformanceHudText.bottleneck(Bottleneck.GPU_THERMAL, compact = false))
-        assertEquals("BN: CPU", PerformanceHudText.bottleneck(Bottleneck.CPU, compact = true))
+        assertEquals("LIMITED BY: GPU+THERMAL", PerformanceHudText.bottleneck(Bottleneck.GPU_THERMAL, compact = false))
+        assertEquals("LIMIT CPU", PerformanceHudText.bottleneck(Bottleneck.CPU, compact = true))
+        assertEquals("LIMITED BY: FPS CAP", PerformanceHudText.bottleneck(Bottleneck.CAPPED, compact = false))
+        assertEquals("LIMIT --", PerformanceHudText.bottleneck(Bottleneck.NONE, compact = true))
     }
 }
