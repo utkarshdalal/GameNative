@@ -9,19 +9,22 @@ import kotlin.math.roundToInt
 internal object PerformanceHudText {
     private const val MISSING = "--"
 
-    /** GPU busy share of the current frame derived from a measured GPU frame time; null without both. */
-    fun gpuFrameSharePercent(gpuFrameMs: Float?, fps: Float): Int? {
-        if (gpuFrameMs == null || fps <= 0f || !fps.isFinite()) return null
-        return (gpuFrameMs * fps / 10f).roundToInt().coerceIn(0, 100)
-    }
-
-    /** "GPU 12.3 ms (91%)" with a GPU frame time, "GPU 38%" with only a busy percent, "GPU --" with neither. */
-    fun gpu(percent: Int?, gpuFrameMs: Float?, fps: Float): String {
-        if (gpuFrameMs != null) {
-            val ms = String.format(Locale.US, "GPU %.1f ms", gpuFrameMs)
-            return gpuFrameSharePercent(gpuFrameMs, fps)?.let { "$ms ($it%)" } ?: ms
+    /**
+     * GPU row. The percent is always the active usage source's reading (sysfs, Mali counters
+     * or the shim); a measured GPU frame time is appended, never substituted:
+     * "GPU 8% (0.5 ms)" with both, "GPU 8%" with only a percent, "GPU 0.5 ms" with only a
+     * frame time, "GPU --" with neither. The compact form is "GPU 8% 0.5ms".
+     */
+    fun gpu(percent: Int?, gpuFrameMs: Float?, compact: Boolean = false): String {
+        val ms = gpuFrameMs?.takeIf { it.isFinite() && it >= 0f }
+        return when {
+            percent != null && ms != null ->
+                if (compact) String.format(Locale.US, "GPU %d%% %.1fms", percent, ms)
+                else String.format(Locale.US, "GPU %d%% (%.1f ms)", percent, ms)
+            percent != null -> "GPU $percent%"
+            ms != null -> if (compact) String.format(Locale.US, "GPU %.1fms", ms) else String.format(Locale.US, "GPU %.1f ms", ms)
+            else -> "GPU $MISSING"
         }
-        return percent?.let { "GPU $it%" } ?: "GPU $MISSING"
     }
 
     /**

@@ -36,6 +36,7 @@ internal data class HudSnapshot(
     val fps: String,
     val cpu: String?,
     val gpu: String?,
+    val gpuCompact: String? = gpu,
     val ram: String,
     val battery: String?,
     val power: String?,

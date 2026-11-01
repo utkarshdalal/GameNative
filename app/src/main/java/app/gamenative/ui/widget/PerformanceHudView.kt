@@ -346,10 +346,11 @@ class PerformanceHudView(
         return HudSnapshot(
             fpsValue = currentFps,
             cpuValue = cpuPercent?.toFloat(),
-            gpuValue = (PerformanceHudText.gpuFrameSharePercent(gpuFrameMs, currentFps) ?: gpuPercent)?.toFloat(),
+            gpuValue = gpuPercent?.toFloat(),
             fps = String.format(Locale.US, "FPS %.1f", currentFps),
             cpu = cpuPercent?.let { "CPU $it%" },
-            gpu = PerformanceHudText.gpu(gpuPercent, gpuFrameMs, currentFps),
+            gpu = PerformanceHudText.gpu(gpuPercent, gpuFrameMs),
+            gpuCompact = PerformanceHudText.gpu(gpuPercent, gpuFrameMs, compact = true),
             ram = "RAM ${readUsedRamText()}",
             battery = batterySnapshot.percent?.let { "BAT $it%" },
             power = batterySnapshot.powerWatts?.let { watts ->
@@ -467,7 +468,7 @@ class PerformanceHudView(
     private fun applySnapshotText(snapshot: HudSnapshot) {
         updateMetricText(fpsMetric, snapshot.fps)
         updateMetricText(cpuMetric, snapshot.cpu)
-        updateMetricText(gpuMetric, snapshot.gpu)
+        updateMetricText(gpuMetric, snapshot.gpu, snapshot.gpuCompact)
         updateMetricText(ramMetric, snapshot.ram)
         updateMetricText(batteryMetric, snapshot.battery)
         updateMetricText(powerMetric, snapshot.power)

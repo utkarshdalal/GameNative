@@ -9,11 +9,27 @@ class PerformanceHudTextTest {
 
     @Test
     fun gpuRow() {
-        assertEquals("GPU 38%", PerformanceHudText.gpu(38, null, 60f))
-        assertEquals("GPU 12.3 ms (74%)", PerformanceHudText.gpu(38, 12.3f, 60f))
-        assertEquals("GPU 12.3 ms", PerformanceHudText.gpu(null, 12.3f, 0f))
-        assertEquals("GPU 40.0 ms (100%)", PerformanceHudText.gpu(null, 40f, 60f))
-        assertEquals("GPU --", PerformanceHudText.gpu(null, null, 60f))
+        assertEquals("GPU 8%", PerformanceHudText.gpu(8, null))
+        assertEquals("GPU 8% (0.5 ms)", PerformanceHudText.gpu(8, 0.5f))
+        assertEquals("GPU 0.5 ms", PerformanceHudText.gpu(null, 0.5f))
+        assertEquals("GPU --", PerformanceHudText.gpu(null, null))
+        assertEquals("GPU --", PerformanceHudText.gpu(null, Float.NaN))
+    }
+
+    @Test
+    fun gpuRowKeepsTheSourcePercentWhenAFrameTimeExists() {
+        // Pixel 9: counters read 8% while the shim measured 0.5 ms per frame at 60 fps;
+        // the row used to show the frame-time share (3%) instead of the source percent.
+        assertEquals("GPU 8% (0.5 ms)", PerformanceHudText.gpu(8, 0.5f))
+        assertEquals("GPU 91% (12.3 ms)", PerformanceHudText.gpu(91, 12.3f))
+    }
+
+    @Test
+    fun gpuRowCompact() {
+        assertEquals("GPU 8% 0.5ms", PerformanceHudText.gpu(8, 0.5f, compact = true))
+        assertEquals("GPU 8%", PerformanceHudText.gpu(8, null, compact = true))
+        assertEquals("GPU 0.5ms", PerformanceHudText.gpu(null, 0.5f, compact = true))
+        assertEquals("GPU --", PerformanceHudText.gpu(null, null, compact = true))
     }
 
     @Test
