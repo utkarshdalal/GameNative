@@ -735,6 +735,19 @@ fun XServerScreen(
         }
     }
 
+    /**
+     * Report the rate the session's emulated display advertises.
+     *
+     * The panel's own rate, except when the cap is below it: there the cap is the rate the session
+     * is asked to produce, so the connector advertises the cap and the compositor's grid and
+     * divisor base follow it. At or above the panel — and whenever the limiter is off — the panel is
+     * the truth and the cap lives purely at acquire, before a frame is drawn.
+     */
+    fun applyPanelRefreshForCap(limit: Int, panelHz: Int = detectRefreshRateHz(context, ui.xServerView as? View)) {
+        if (isX11Display || panelHz <= 0) return
+        GameNativeDrm.nativeSetPanelRefreshHz(if (limit in 1 until panelHz) limit else panelHz)
+    }
+
     fun applyFpsLimiterToEngines(limit: Int) {
         if (isX11Display) {
             // With LSFG active the layer owns ALL pacing (vsync-locked via vsync.txt) and presents at limit *
@@ -751,6 +764,9 @@ fun XServerScreen(
             // With frame generation active the presenter owns pacing, exactly as the layer does on X11:
             // the cap is disarmed and the output rate becomes limit x multiplier.
             GamescopeCommandQueue.setFpsLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
+            // The advertised rate follows a cap below the panel, and returns to the panel's own rate
+            // as soon as the cap is at or above it.
+            applyPanelRefreshForCap(limit)
         }
 
         PowerManager.targetFps = limit
@@ -761,6 +777,7 @@ fun XServerScreen(
 
     fun effectiveFpsLimit(): Int =
         if (fpsLimiterEnabled) fpsLimiterTarget else 0
+
 
     fun applyLsfgSettings() {
         LsfgQuickMenuHelper.applySettings(
@@ -813,7 +830,7 @@ fun XServerScreen(
         ui.detectedMaxRefreshRateHz = refreshHz * FPS_LIMITER_MAX_MULTIPLIER
 
         if (!isX11Display)
-            GameNativeDrm.nativeSetPanelRefreshHz(refreshHz)
+            applyPanelRefreshForCap(effectiveFpsLimit(), refreshHz)
     }
 
     /**
