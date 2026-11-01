@@ -109,6 +109,7 @@ object PowerTelemetry {
             val gpuTicks = buckets.sumOf { it.gpuN }
             put("gpu_usage_source", SystemMetricsSources.lastGpuUsageSource?.takeIf { gpuTicks > 0 } ?: "none")
             put("cpu_temp_source", cpuTempSource ?: "none")
+            thermalZonesReadable?.let { put("thermal_zones_readable", it) }
             put("gpu_temp_source", gpuTempSource ?: "none")
             if (ticks > 0) put("gpu_usage_valid_share", (gpuTicks * 100.0 / ticks).roundToInt() / 100.0)
             put(
@@ -159,6 +160,7 @@ object PowerTelemetry {
             SystemMetricsSources.lastGpuUsageSource = null
             cpuTempSource = null
             gpuTempSource = null
+            thermalZonesReadable = runCatching { File("/sys/class/thermal").list() != null }.getOrNull()
         }
     }
 
@@ -232,6 +234,10 @@ object PowerTelemetry {
 
     @Volatile
     private var cpuTempSource: String? = null
+
+    /** Whether the app may list /sys/class/thermal (SELinux denies it on many devices); read once per session. */
+    @Volatile
+    private var thermalZonesReadable: Boolean? = null
 
     @Volatile
     private var gpuTempSource: String? = null
