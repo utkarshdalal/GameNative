@@ -143,6 +143,14 @@ object PowerManager {
         private set
 
     /**
+     * Outcome of the latest pin run this session: true once the kernel reported the mask on the
+     * game, false when the run ended without it, null when no run finished.
+     */
+    @Volatile
+    var gamePinVerified: Boolean? = null
+        private set
+
+    /**
      * True while power control is allowed to move the game between cores. False when the
      * container carries an explicit CPU list, because that list is the user's own choice and the
      * winhandler applies it to every thread of the game anyway.
@@ -286,6 +294,7 @@ object PowerManager {
         pinnedGameProcessName = null
         pinnedGamePid = null
         pinnedGameCores = emptyList()
+        gamePinVerified = null
         ownsGameAffinity = false
     }
 
@@ -1232,6 +1241,7 @@ object PowerManager {
             try {
                 val gameCores = gamePinCores(pserver)
                 if (gameCores.isEmpty()) {
+                    gamePinVerified = false
                     Timber.tag("PowerManager").w("No cores to pin $processName on, leaving its affinity alone")
                     return@Thread
                 }
@@ -1257,6 +1267,7 @@ object PowerManager {
                         pinnedGameProcessName = processName
                         pinnedGamePid = pid
                         pinnedGameCores = gameCores
+                        gamePinVerified = verified
                         Timber.tag("PowerManager").i(
                             "Pinned $processName (PID: $pid) to CPUs ${gameCores.joinToString()} after $attempt attempts, verified=$verified ($reason)"
                         )
@@ -1266,6 +1277,7 @@ object PowerManager {
                     if (attempt < maxRetries) Thread.sleep(retryDelayMs)
                     attempt++
                 }
+                gamePinVerified = false
                 Timber.tag("PowerManager").w(
                     "Pin of $processName onto CPUs ${gameCores.joinToString()} did not take after $maxRetries attempts ($reason)"
                 )

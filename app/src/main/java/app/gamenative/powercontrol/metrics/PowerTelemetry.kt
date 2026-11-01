@@ -94,7 +94,7 @@ object PowerTelemetry {
                 "fan_control" to p.enableFanControl,
                 "game_pinning" to p.enableGamePinning,
                 "adaptive_fps_cap" to p.adaptiveFpsCapEnabled,
-            ),
+            ) + pinningOutcome(),
         )
         synchronized(lock) {
             if (buckets.isEmpty()) return@buildMap
@@ -191,6 +191,28 @@ object PowerTelemetry {
                 if (cur >= cap) cb.atCap++
             }
         }
+    }
+
+    private fun pinningOutcome(): Map<String, Any> {
+        val cores = PowerManager.pinnedGameCores
+        return buildMap {
+            put("pinning_applied", PowerManager.gamePinVerified == true && cores.isNotEmpty())
+            if (cores.isNotEmpty()) put("pinned_cpus", cpuRanges(cores))
+        }
+    }
+
+    /** Compact core list, e.g. [4, 5, 6, 7] -> "4-7", [0, 2, 3, 4] -> "0,2-4". */
+    internal fun cpuRanges(cores: Collection<Int>): String {
+        val sorted = cores.toSortedSet().toList()
+        val parts = ArrayList<String>()
+        var i = 0
+        while (i < sorted.size) {
+            var j = i
+            while (j + 1 < sorted.size && sorted[j + 1] == sorted[j] + 1) j++
+            parts += if (j > i) "${sorted[i]}-${sorted[j]}" else "${sorted[i]}"
+            i = j + 1
+        }
+        return parts.joinToString(",")
     }
 
     private fun percentile(hist: IntArray, n: Int): Int {
