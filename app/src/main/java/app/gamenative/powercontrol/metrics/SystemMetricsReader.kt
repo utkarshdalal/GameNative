@@ -285,6 +285,20 @@ object SystemMetricsSources {
     }
 
     /**
+     * Short tag for a temperature node: the thermal zone's `type` (e.g. `cpu-0-0-0`)
+     * for `thermal_zoneN/temp`, otherwise its parent directory and file name
+     * (e.g. `kgsl-3d0/temp`).
+     */
+    fun temperatureSourceTag(path: String): String {
+        val file = File(path)
+        val zone = file.parentFile
+        if (zone != null && zone.name.startsWith("thermal_zone")) {
+            readFirstLine(File(zone, "type").path)?.trim()?.takeIf { it.isNotEmpty() }?.let { return it }
+        }
+        return usageSourceTag(path)
+    }
+
+    /**
      * Tag of the node behind the latest valid GPU usage reading, null until one is read.
      * Written only by the session's publishing sampler (the metrics collector's).
      */

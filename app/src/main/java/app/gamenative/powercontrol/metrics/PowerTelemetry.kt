@@ -106,6 +106,8 @@ object PowerTelemetry {
             val ticks = buckets.sumOf { it.n }
             val gpuTicks = buckets.sumOf { it.gpuN }
             put("gpu_usage_source", SystemMetricsSources.lastGpuUsageSource?.takeIf { gpuTicks > 0 } ?: "none")
+            put("cpu_temp_source", cpuTempSource ?: "none")
+            put("gpu_temp_source", gpuTempSource ?: "none")
             if (ticks > 0) put("gpu_usage_valid_share", (gpuTicks * 100.0 / ticks).roundToInt() / 100.0)
             put(
                 "perf_by_5min",
@@ -152,6 +154,8 @@ object PowerTelemetry {
             startMs = SystemClock.elapsedRealtime()
             buckets.clear()
             SystemMetricsSources.lastGpuUsageSource = null
+            cpuTempSource = null
+            gpuTempSource = null
         }
     }
 
@@ -207,6 +211,18 @@ object PowerTelemetry {
 
     private fun readSkinTempC(): Int? =
         SystemMetricsSources.skinTempPaths().takeIf { it.isNotEmpty() }?.let { SystemMetricsSources.readTemperatureC(it) }
+
+    @Volatile
+    private var cpuTempSource: String? = null
+
+    @Volatile
+    private var gpuTempSource: String? = null
+
+    /** Records the sensor behind the first valid CPU and GPU temperature of the session. */
+    fun noteTemperatureSources(cpuPath: String?, gpuPath: String?) {
+        if (cpuTempSource == null && cpuPath != null) cpuTempSource = SystemMetricsSources.temperatureSourceTag(cpuPath)
+        if (gpuTempSource == null && gpuPath != null) gpuTempSource = SystemMetricsSources.temperatureSourceTag(gpuPath)
+    }
 
     @Volatile
     private var batteryManager: BatteryManager? = null

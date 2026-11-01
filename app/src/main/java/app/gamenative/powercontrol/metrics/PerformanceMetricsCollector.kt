@@ -143,6 +143,9 @@ object PerformanceMetricsCollector {
         val cpu = cpuSampler.sample()
         val gpu = gpuSampler.sample()
         latestGpuUsage = gpu
+        val cpuTemp = SystemMetricsSources.readTemperature(SystemMetricsSources.cpuTempPaths())
+        val gpuTemp = SystemMetricsSources.readTemperature(SystemMetricsSources.gpuTempPaths())
+        PowerTelemetry.noteTemperatureSources(cpuTemp?.path, gpuTemp?.path)
 
         val snapshot = MetricsSnapshot(
             timestampMs = System.currentTimeMillis(),
@@ -155,8 +158,8 @@ object PerformanceMetricsCollector {
             cpuUsagePercent = cpu?.percent?.toFloat(),
             cpuUsageSource = cpu?.source ?: CpuUsageSource.UNAVAILABLE,
             gpuUsagePercent = gpu?.percent?.toFloat(),
-            cpuTempC = SystemMetricsSources.readTemperatureC(SystemMetricsSources.cpuTempPaths()),
-            gpuTempC = SystemMetricsSources.readTemperatureC(SystemMetricsSources.gpuTempPaths()),
+            cpuTempC = cpuTemp?.celsius,
+            gpuTempC = gpuTemp?.celsius,
         )
 
         publish(snapshot)
