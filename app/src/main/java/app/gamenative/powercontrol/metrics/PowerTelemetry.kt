@@ -29,6 +29,7 @@ object PowerTelemetry {
         var battUah: Long? = null
         var headroomMin: Float? = null
         var thermalStatusMax: Int? = null
+        val bottlenecks = LinkedHashMap<String, Int>()
         var cpuN = 0
         var cpuSum = 0L
         val cpuHist = IntArray(101)
@@ -119,6 +120,7 @@ object PowerTelemetry {
                         put("samples", b.n)
                         putAll(bucketExtras(b.skinTempMax, b.battUah))
                         putAll(thermalExtras(b.headroomMin, b.thermalStatusMax))
+                        bottleneckMode(b.bottlenecks)?.let { put("bottleneck", it) }
                         if (b.cpuN > 0) {
                             put("cpu_avg", (b.cpuSum / b.cpuN).toInt())
                             put("cpu_p95", percentile(b.cpuHist, b.cpuN))
@@ -150,6 +152,7 @@ object PowerTelemetry {
                     }
                 },
             )
+            putAll(bottleneckSummary(buckets.map { it.bottlenecks }))
         }
     }
 
@@ -160,6 +163,7 @@ object PowerTelemetry {
             SystemMetricsSources.lastGpuUsageSource = null
             cpuTempSource = null
             gpuTempSource = null
+            pendingBottleneck = null
             thermalZonesReadable = runCatching { File("/sys/class/thermal").list() != null }.getOrNull()
         }
     }
@@ -204,6 +208,8 @@ object PowerTelemetry {
             pendingThermalStatus?.let { s -> if (b.thermalStatusMax?.let { s > it } != false) b.thermalStatusMax = s }
             pendingHeadroom = null
             pendingThermalStatus = null
+            pendingBottleneck?.let { v -> b.bottlenecks[v] = (b.bottlenecks[v] ?: 0) + 1 }
+            pendingBottleneck = null
             freqs.forEachIndexed { i, (cur, cap) ->
                 if (cur == null || cap == null) return@forEachIndexed
                 val cb = b.clusters[i]
@@ -224,6 +230,32 @@ object PowerTelemetry {
             pendingHeadroom = headroom?.takeIf { it.isFinite() }
             pendingThermalStatus = thermalStatus
         }
+    }
+
+    private var pendingBottleneck: String? = null
+
+    /** Bottleneck verdict of this tick; counted in the current bucket by the next [record]. */
+    fun noteBottleneck(bottleneck: Bottleneck) {
+        synchronized(lock) { pendingBottleneck = bottleneck.key() }
+    }
+
+    /** Most frequent verdict of a bucket; null when the bucket classified no tick. */
+    internal fun bottleneckMode(counts: Map<String, Int>): String? = counts.maxByOrNull { it.value }?.key
+
+    /**
+     * Session-level bottleneck keys: the most frequent verdict across all ticks, and the share
+     * of ticks per part, where a combined verdict ("gpu+thermal") counts toward each of its parts.
+     */
+    internal fun bottleneckSummary(bucketCounts: List<Map<String, Int>>): Map<String, Any> {
+        val totals = LinkedHashMap<String, Int>()
+        bucketCounts.forEach { counts -> counts.forEach { (k, v) -> totals[k] = (totals[k] ?: 0) + v } }
+        val ticks = totals.values.sum()
+        if (ticks == 0) return emptyMap()
+        val share = BottleneckPart.entries.associate { part ->
+            val n = totals.entries.sumOf { (k, v) -> if (part.key in k.split('+')) v else 0 }
+            part.key to (n * 100.0 / ticks).roundToInt() / 100.0
+        }
+        return mapOf("bottleneck_primary" to bottleneckMode(totals)!!, "bottleneck_share" to share)
     }
 
     private const val SKIN_EVERY_N_TICKS = 10

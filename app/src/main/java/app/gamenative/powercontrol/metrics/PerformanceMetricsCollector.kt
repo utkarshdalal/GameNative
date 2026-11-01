@@ -40,6 +40,7 @@ object PerformanceMetricsCollector {
 
     private val cpuSampler = CpuUsageSampler()
     private val gpuSampler = GpuUsageSampler(publishSource = true)
+    private val coreSampler = CoreLoadSampler()
 
     private val frameScratch = LongArray(FrameTimeRing.capacity())
     private val deltaScratch = LongArray(FrameTimeRing.capacity())
@@ -64,12 +65,23 @@ object PerformanceMetricsCollector {
     var latestGpuUsage: GpuUsageReading? = null
         private set
 
+    /** Load of the busiest core in the last cycle; null while /proc/stat gives no per-core value. */
+    @Volatile
+    var latestCoreMaxPercent: Int? = null
+        private set
+
+    /** Refresh rate of the default display, read at session start. */
+    val refreshRateHz: Float
+        get() = displayRefreshRate
+
     fun start(context: Context, sessionStartMillis: Long = System.currentTimeMillis()) {
         if (isRunning) return
 
         val appContext = context.applicationContext
         this.appContext = appContext
         ThermalHeadroom.reset()
+        coreSampler.reset()
+        latestCoreMaxPercent = null
         displayRefreshRate = readDisplayRefreshRate(appContext)
         PowerTelemetry.attachBattery(appContext)
         cpuSampler.reset()
@@ -129,6 +141,7 @@ object PerformanceMetricsCollector {
         if (!isRunning || !paused) return
         cpuSampler.reset()
         gpuSampler.reset()
+        coreSampler.reset()
         paused = false
         Timber.tag(TAG).i("Collector resumed")
     }
@@ -155,6 +168,24 @@ object PerformanceMetricsCollector {
         if (sampleCount % THERMAL_EVERY_N_SAMPLES == 0L) {
             appContext?.let { PowerTelemetry.recordThermal(ThermalHeadroom.read(it), ThermalHeadroom.status(it)) }
         }
+        val coreMax = coreSampler.sample()
+        latestCoreMaxPercent = coreMax
+        PowerTelemetry.noteBottleneck(
+            BottleneckClassifier.classify(
+                BottleneckInput(
+                    fps = frameStats.fps,
+                    frameMs = if (frameStats.fps > 0f) 1000f / frameStats.fps else 0f,
+                    fpsCap = PowerManager.targetFps,
+                    vsyncHz = displayRefreshRate,
+                    cpuTotalPct = cpu?.percent?.toFloat(),
+                    coreMaxPct = coreMax?.toFloat(),
+                    gpuPct = gpu?.percent?.toFloat(),
+                    gpuFrameMs = GpuFrameTime.current(),
+                    headroom = ThermalHeadroom.latest,
+                    thermalStatus = ThermalHeadroom.latestStatus,
+                ),
+            ),
+        )
 
         val snapshot = MetricsSnapshot(
             timestampMs = System.currentTimeMillis(),

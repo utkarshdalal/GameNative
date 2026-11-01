@@ -24,9 +24,15 @@ object ThermalHeadroom {
     var latest: Float? = null
         private set
 
+    /** Last thermal status read through [status]; null until one is read. */
+    @Volatile
+    var latestStatus: Int? = null
+        private set
+
     fun reset() {
         synchronized(lock) {
             latest = null
+            latestStatus = null
             lastResult = null
             lastCallMs = 0L
         }
@@ -49,6 +55,6 @@ object ThermalHeadroom {
     fun status(context: Context): Int? {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
         val pm = context.getSystemService(Context.POWER_SERVICE) as? AndroidPowerManager ?: return null
-        return runCatching { pm.currentThermalStatus }.getOrNull()
+        return runCatching { pm.currentThermalStatus }.getOrNull()?.also { latestStatus = it }
     }
 }
