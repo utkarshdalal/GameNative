@@ -10,7 +10,6 @@ plugins {
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.android.dynamic.feature) apply false
     alias(libs.plugins.secrets.gradle) apply false
-    alias(libs.plugins.room) apply false
 }
 
 configurations.configureEach {
