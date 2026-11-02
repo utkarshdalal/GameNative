@@ -1278,6 +1278,7 @@ object PowerManager {
                         Timber.tag("PowerManager").i(
                             "Pinned $processName (PID: $pid) to CPUs ${gameCores.joinToString()} after $attempt attempts, verified=$verified ($reason)"
                         )
+                        applyCompositorAffinity(reason)
                         return@Thread
                     }
 
@@ -1325,6 +1326,113 @@ object PowerManager {
             }
         }.start()
     }
+
+    /**
+     * Moves the gamescope compositor chain onto [compositorCores]: every thread of gamescope and of
+     * its Xwayland, and the gndrm* threads the display daemon runs inside this app process. All of
+     * them run under this app's uid, so sched_setaffinity needs no privilege, and this runs whatever
+     * the driver, the profile or the container CPU list say. Called when the gamescope session
+     * connects and again whenever the game pin re-applies. Nothing is found and nothing changes in
+     * an X11 session.
+     */
+    @JvmStatic
+    fun applyCompositorAffinity(reason: String) {
+        val cores = compositorCores()
+        if (cores.isEmpty()) {
+            Timber.tag("PowerManager").w("No cores clear of the display server, gamescope chain left alone ($reason)")
+            return
+        }
+        placeCompositorChain(cores, reason)
+    }
+
+    /**
+     * Hands the gamescope chain every online core back at the end of the session.
+     */
+    @JvmStatic
+    fun releaseCompositorAffinity(reason: String) {
+        val online = readCpuList("/sys/devices/system/cpu/online")
+        if (online.isNotEmpty()) placeCompositorChain(online.sorted(), reason)
+    }
+
+    /**
+     * All online cores minus the ones SurfaceFlinger may run on. SurfaceFlinger, the HWC composer
+     * and the audio realtime threads are confined to that cluster (0-2 on the Retroid Pocket 6), and
+     * the chain must not share a core with the display server's own realtime threads: there it is
+     * preempted and frames miss their vblank. When SurfaceFlinger's mask cannot be read, the
+     * lowest-capacity cluster is left out instead.
+     */
+    private fun compositorCores(): List<Int> {
+        val online = readCpuList("/sys/devices/system/cpu/online")
+        val surfaceFlinger = File("/proc").listFiles().orEmpty().firstOrNull { dir ->
+            dir.name.toIntOrNull() != null &&
+                runCatching { File(dir, "comm").readText().trim() }.getOrNull() == "surfaceflinger"
+        }?.let { readCpuList(it.path + "/status", "Cpus_allowed_list") }.orEmpty()
+        val excluded = if (surfaceFlinger.isNotEmpty() && !surfaceFlinger.containsAll(online)) {
+            surfaceFlinger
+        } else {
+            val capacity = online.associateWith { cpu ->
+                runCatching { File("/sys/devices/system/cpu/cpu$cpu/cpu_capacity").readText().trim().toInt() }.getOrNull()
+            }
+            val lowest = capacity.values.filterNotNull().minOrNull()
+            if (lowest == null || capacity.values.all { it == lowest }) emptySet()
+            else capacity.filterValues { it == lowest }.keys
+        }
+        return (online - excluded).sorted()
+    }
+
+    /**
+     * Core list in [path], from the line starting with [key] when given, empty when unreadable.
+     */
+    private fun readCpuList(path: String, key: String? = null): Set<Int> = runCatching {
+        val lines = File(path).readLines()
+        val value = if (key == null) lines.first() else lines.first { it.startsWith(key) }.substringAfter(':')
+        parseCpuList(value.trim())
+    }.getOrDefault(emptySet())
+
+    private fun placeCompositorChain(cores: List<Int>, reason: String) {
+        try {
+            val gamescopePid = findOwnProcess("gamescope")
+            val xwaylandPid = findOwnProcess("Xwayland")
+            val daemonTids = File("/proc/self/task").listFiles().orEmpty().mapNotNull { task ->
+                val comm = runCatching { File(task, "comm").readText().trim() }.getOrNull()
+                task.name.toIntOrNull()?.takeIf { comm?.startsWith("gndrm") == true }
+            }
+
+            val mask = ProcessHelper.getAffinityMask(cores.joinToString(","))
+            val tids = listOfNotNull(gamescopePid, xwaylandPid).flatMap { pid ->
+                File("/proc/$pid/task").listFiles().orEmpty().mapNotNull { it.name.toIntOrNull() }
+            } + daemonTids
+            var applied = 0
+            tids.forEach { tid ->
+                val errno = TaskAffinity.set(tid, mask)
+                if (errno == 0) {
+                    applied++
+                } else {
+                    Timber.tag("PowerManager").w("sched_setaffinity on TID $tid failed, errno $errno")
+                }
+            }
+            val now = gamescopePid?.let { readCpuList("/proc/$it/status", "Cpus_allowed_list") }
+            Timber.tag("PowerManager").i(
+                "Applied affinity ${cores.joinToString()} (mask 0x${Integer.toHexString(mask)}) to gamescope (PID: ${gamescopePid ?: "none"}), " +
+                    "Xwayland (PID: ${xwaylandPid ?: "none"}), gndrm threads (TIDs: ${daemonTids.joinToString()}), " +
+                    "$applied of ${tids.size} threads, gamescope now ${now?.let { formatCores(it) }} ($reason)"
+            )
+        } catch (e: Exception) {
+            Timber.tag("PowerManager").e(e, "Failed to apply affinity to the gamescope chain")
+        }
+    }
+
+    /**
+     * PID of a process this app can see whose program is [binary], given as the first argument or
+     * the second behind /system/bin/linker64, or null when none runs.
+     */
+    private fun findOwnProcess(binary: String): Int? =
+        File("/proc").listFiles().orEmpty().firstNotNullOfOrNull { dir ->
+            val pid = dir.name.toIntOrNull() ?: return@firstNotNullOfOrNull null
+            val args = runCatching { File(dir, "cmdline").readText() }.getOrNull()
+                ?.split('\u0000')?.take(2) ?: return@firstNotNullOfOrNull null
+            pid.takeIf { args.any { it == binary || it.endsWith("/$binary") } }
+        }
 
     /**
      * Cores a pinned game runs on: all cores except the 2 lowest-frequency ones,
