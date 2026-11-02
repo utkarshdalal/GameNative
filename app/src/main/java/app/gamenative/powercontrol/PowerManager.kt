@@ -59,6 +59,7 @@ object PowerManager {
     private const val GAME_PIN_MAX_RETRIES = 10
     private const val GAME_PIN_RETRY_DELAY_MS = 1000L
     private const val MIN_GAME_CLUSTER_CORES = 4
+    private const val LOW_CAPACITY_RATIO = 0.6
 
     private val json = Json {
         encodeDefaults = true
@@ -200,6 +201,8 @@ object PowerManager {
      */
     fun autoStart(rootDir: File) {
         containerDir = rootDir
+        compositorRestoreCores = null
+        compositorOffLogged = false
         resolveGameAffinityOwnership()
         loadCurrentProfile()
         if (isProfilePowerControlEnabled()) {
@@ -213,6 +216,10 @@ object PowerManager {
         appContext.let { PerformanceMetricsCollector.start(it) }
 
         isGameStarted = true
+        if (gamescopeSession) {
+            // The gamescope session may have connected before the profile was loaded.
+            Thread({ applyCompositorAffinity("power control start") }, "compositor-affinity").start()
+        }
     }
 
     /**
@@ -267,6 +274,15 @@ object PowerManager {
             startPowerControl()
         } else {
             stopPowerControl()
+        }
+        if (isGameStarted && gamescopeSession) {
+            Thread({
+                if (enabled) {
+                    applyCompositorAffinity("power control switched on")
+                } else {
+                    releaseCompositorAffinity("power control switched off")
+                }
+            }, "compositor-affinity").start()
         }
     }
 
@@ -346,14 +362,15 @@ object PowerManager {
      */
     fun resume() {
         if (!isGameStarted) return
-        if (gamescopeSession) {
-            // An activity resume moves this process between cpusets, and before Linux 6.2 that
-            // resets the gndrm threads' affinity: place the chain again, off the main thread.
-            Thread({ applyCompositorAffinity("activity resume") }, "compositor-affinity").start()
-        }
         if (isProfilePowerControlEnabled()) {
             driver.start()
             applyCurrentProfile()
+        }
+        if (gamescopeSession) {
+            // An activity resume moves this process between cpusets, and before Linux 6.2 that
+            // resets the gndrm threads' affinity: place the chain again (power control on only),
+            // off the main thread.
+            Thread({ applyCompositorAffinity("activity resume") }, "compositor-affinity").start()
         }
         if (currentProfile.adaptiveFpsCapEnabled) {
             AdaptiveFpsCapController.start(containerDir, tunerLogDirectory())
@@ -1113,34 +1130,75 @@ object PowerManager {
         allCpuCoresSorted(pserver).take(count)
 
     /**
-     * Cores the game should use. In a gamescope session: every cluster above the lowest-frequency
-     * one, so the game's threads never land on a little core (an RP6 frame costs 11 ms on c2
-     * against 4.4 ms on the prime core). X11 sessions keep all cores but the 2 slowest. The 2
-     * lowest-frequency cores stay reserved for audio/background either way.
+     * PServer's clusters, lowest to highest frequency, each with the capacity the driver read for
+     * it (cpu_capacity, or the max frequency when the kernel reports no capacity).
      */
-    private fun gameCores(pserver: PServerDriver): List<Int> {
-        return clusterGameCores(
-            listOf(
-                pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.EFFICIENCY),
-                pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.PERFORMANCE),
-                pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.PRIME),
-            ),
-            gamescopeSession,
-        )
+    private fun coreClusters(pserver: PServerDriver): List<CoreCluster> =
+        listOf(
+            PServerDriver.CpuCluster.EFFICIENCY,
+            PServerDriver.CpuCluster.PERFORMANCE,
+            PServerDriver.CpuCluster.PRIME,
+        ).map { cluster ->
+            CoreCluster(
+                cluster.name.lowercase(),
+                pserver.getCpuCoresByCluster(cluster),
+                pserver.getCpuClusterCapacity(cluster),
+            )
+        }
+
+    /**
+     * The PServer driver when power control runs this session (the profile enables it and the
+     * device has a PServer driver, the gate the game pin and the ClusterTuner use), else null.
+     * Every core placement for gamescope goes through it: without power control nothing moves.
+     */
+    private fun powerControlPServer(): PServerDriver? {
+        if (!::driver.isInitialized || !isProfilePowerControlEnabled()) return null
+        return driver as? PServerDriver
+    }
+
+    /** One CPU cluster from PServer's grouping, with its capacity in the driver's units. */
+    internal data class CoreCluster(val name: String, val cores: List<Int>, val capacity: Long)
+
+    /** Game core set and the rule that chose it, for the log. */
+    internal data class GameCoreSet(val cores: List<Int>, val rule: String)
+
+    /**
+     * Cores of the low-capacity clusters: capacity below [LOW_CAPACITY_RATIO] of the device's
+     * largest. The Snapdragon 8 Gen 2 little cores (about a third of the prime core) are; the
+     * Snapdragon 8 Elite's 6 performance cores (792 of 1024) are not. Clusters of unknown
+     * capacity are never low.
+     */
+    internal fun lowCapacityCores(clusters: List<CoreCluster>): List<Int> {
+        val max = clusters.filter { it.cores.isNotEmpty() }.maxOfOrNull { it.capacity } ?: return emptyList()
+        if (max <= 0L) return emptyList()
+        return clusters
+            .filter { it.cores.isNotEmpty() && it.capacity > 0L && it.capacity < LOW_CAPACITY_RATIO * max }
+            .flatMap { it.cores }
+            .sorted()
     }
 
     /**
-     * Game cores from clusters ordered lowest to highest frequency. In a gamescope session: the
-     * cores of every cluster above the lowest one. All cores but the 2 slowest in an X11
-     * session, with only one cluster, or when the clusters above the lowest hold fewer than
-     * [MIN_GAME_CLUSTER_CORES] cores (a 6+2 part would leave a Wine game on 2 cores).
+     * Game cores from clusters ordered lowest to highest frequency. [gamescope] (a gamescope
+     * session with power control on): every core outside the low-capacity clusters, so the game's
+     * threads never land on a little core (an RP6 frame costs 11 ms on c2 against 4.4 ms on the
+     * prime core). Everything else keeps the rule on master, all cores but the 2 slowest: X11
+     * sessions, devices without a low-capacity cluster, and parts where fewer than
+     * [MIN_GAME_CLUSTER_CORES] cores are outside it (a Wine game on 2 cores).
      */
-    internal fun clusterGameCores(clustersLowToHigh: List<List<Int>>, gamescope: Boolean): List<Int> {
-        val clusters = clustersLowToHigh.filter { it.isNotEmpty() }
-        val all = clusters.flatten()
-        val aboveLowest = clusters.drop(1).flatten()
-        if (gamescope && clusters.size >= 2 && aboveLowest.size >= MIN_GAME_CLUSTER_CORES) return aboveLowest
-        return if (all.size <= 2) all else all.drop(2)
+    internal fun clusterGameCores(clustersLowToHigh: List<CoreCluster>, gamescope: Boolean): GameCoreSet {
+        val all = clustersLowToHigh.flatMap { it.cores }
+        val unchanged = if (all.size <= 2) all else all.drop(2)
+        if (!gamescope) return GameCoreSet(unchanged, "(unchanged rule)")
+        val low = lowCapacityCores(clustersLowToHigh)
+        if (low.isEmpty()) return GameCoreSet(unchanged, "(unchanged rule) no low-capacity cluster")
+        val above = all.filter { it !in low }
+        if (above.size < MIN_GAME_CLUSTER_CORES) {
+            return GameCoreSet(
+                unchanged,
+                "(unchanged rule) only ${above.size} cores outside the low-capacity cluster [${formatCores(low)}]",
+            )
+        }
+        return GameCoreSet(above, "low-capacity [${formatCores(low)}] left out")
     }
 
     /**
@@ -1378,93 +1436,124 @@ object PowerManager {
         }.start()
     }
 
+    /** Every core, to hand the gamescope chain back on release; null while it is not placed. */
+    @Volatile
+    internal var compositorRestoreCores: List<Int>? = null
+
+    /** The "power control off" line goes out once per session. */
+    @Volatile
+    private var compositorOffLogged = false
+
     /**
-     * Moves the gamescope compositor chain onto [compositorCores]: every thread of gamescope and of
-     * its Xwayland, and the gndrm* threads the display daemon runs inside this app process. All of
-     * them run under this app's uid, so sched_setaffinity needs no privilege, and this runs whatever
-     * the driver, the profile or the container CPU list say. Called when the gamescope session
-     * connects and again whenever the game pin re-applies. Nothing is found and nothing changes in
-     * an X11 session.
+     * Places the gamescope compositor chain (every thread of gamescope and of its Xwayland, and
+     * the gndrm* threads the display daemon runs inside this app process) off the low-capacity
+     * clusters, only when power control runs for the session. All of them run under this app's
+     * uid, so sched_setaffinity needs no privilege. Called when the gamescope session connects,
+     * when power control starts, on an activity resume and after every game pin in a gamescope
+     * session. Before power control has started for the session it does nothing: the start
+     * places it.
      */
     @JvmStatic
     fun applyCompositorAffinity(reason: String) {
-        val online = readCpuList("/sys/devices/system/cpu/online")
-        val placement = compositorCoreSet(online, surfaceFlingerCores(), cpuCapacities(online))
-        if (placement.cores.isEmpty()) {
-            Timber.tag("PowerManager").w("No cores clear of the display server, gamescope chain left alone ($reason)")
-            return
-        }
-        placement.fallbackReason?.let {
-            Timber.tag("PowerManager").w("Gamescope chain left on all cores: $it ($reason)")
-        }
-        placeCompositorChain(placement.cores, reason)
+        if (!isGameStarted) return
+        applyCompositorAffinity(reason, powerControlPServer()?.let { coreClusters(it) }, TaskAffinity::set)
     }
 
     /**
-     * Hands the gamescope chain every online core back at the end of the session.
+     * [clusters] is null when power control is off for the session: nothing is moved then.
+     */
+    @Synchronized
+    internal fun applyCompositorAffinity(
+        reason: String,
+        clusters: List<CoreCluster>?,
+        setAffinity: (Int, Int) -> Int,
+        chainThreads: () -> ChainThreads = ::findChainThreads,
+    ) {
+        if (clusters == null) {
+            if (!compositorOffLogged) {
+                compositorOffLogged = true
+                Timber.tag("PowerManager").i("gamescope chain left on all cores (power control off) ($reason)")
+            }
+            return
+        }
+        val placement = compositorCoreSet(clusters)
+        if (placement.cores.isEmpty()) {
+            Timber.tag("PowerManager").i("${placement.skipReason} ($reason; ${describeClusters(clusters)})")
+            return
+        }
+        compositorRestoreCores = clusters.flatMap { it.cores }.sorted()
+        placeCompositorChain(placement.cores, "$reason; ${describeClusters(clusters)}", setAffinity, chainThreads)
+    }
+
+    /**
+     * Hands the gamescope chain every core back at the end of the session. Nothing happens when
+     * the chain was never placed.
      */
     @JvmStatic
     fun releaseCompositorAffinity(reason: String) {
-        val online = readCpuList("/sys/devices/system/cpu/online")
-        if (online.isNotEmpty()) placeCompositorChain(online.sorted(), reason)
+        releaseCompositorAffinity(reason, TaskAffinity::set)
     }
 
-    /** Cores for the gamescope chain, with the reason when the guard put it back on all cores. */
-    internal data class CompositorPlacement(val cores: List<Int>, val fallbackReason: String? = null)
+    @Synchronized
+    internal fun releaseCompositorAffinity(
+        reason: String,
+        setAffinity: (Int, Int) -> Int,
+        chainThreads: () -> ChainThreads = ::findChainThreads,
+    ) {
+        val cores = compositorRestoreCores ?: return
+        compositorRestoreCores = null
+        placeCompositorChain(cores, reason, setAffinity, chainThreads)
+    }
+
+    /** Cores for the gamescope chain, empty with the reason when it stays on all cores. */
+    internal data class CompositorPlacement(val cores: List<Int>, val skipReason: String? = null)
 
     /**
-     * All online cores minus the ones SurfaceFlinger may run on. SurfaceFlinger, the HWC composer
-     * and the audio realtime threads are confined to that cluster (0-2 on the Retroid Pocket 6), and
-     * the chain must not share a core with the display server's own realtime threads: there it is
-     * preempted and frames miss their vblank. When SurfaceFlinger's mask cannot be read, the
-     * lowest-capacity cluster is left out instead.
-     *
-     * The chain stays on every online core when fewer than 2 cores would remain, or when the cores
-     * that remain leave out the fastest cluster (SurfaceFlinger in a 0-6 cpuset would put the whole
-     * chain on core 7; SurfaceFlinger on the big cores would put it on the littles).
+     * Every core outside the low-capacity clusters. Those clusters carry SurfaceFlinger, the HWC
+     * composer and the audio realtime threads at a third of the big cores' capacity (0-2 on the
+     * Retroid Pocket 6), and a chain thread there is preempted and posts frames after the latch.
+     * A device without a low-capacity cluster (the Snapdragon 8 Elite's 6+2) is left alone.
      */
-    internal fun compositorCoreSet(
-        online: Set<Int>,
-        surfaceFlinger: Set<Int>,
-        capacity: Map<Int, Int?>,
-    ): CompositorPlacement {
-        val known = capacity.filterKeys { it in online }.filterValues { it != null }.mapValues { it.value!! }
-        val excluded = if (surfaceFlinger.isNotEmpty() && !surfaceFlinger.containsAll(online)) {
-            surfaceFlinger
-        } else {
-            val lowest = known.values.minOrNull()
-            if (lowest == null || known.values.all { it == lowest }) emptySet()
-            else known.filterValues { it == lowest }.keys
+    internal fun compositorCoreSet(clusters: List<CoreCluster>): CompositorPlacement {
+        val all = clusters.flatMap { it.cores }.sorted()
+        val low = lowCapacityCores(clusters)
+        if (low.isEmpty()) {
+            return CompositorPlacement(emptyList(), "no low-capacity cluster; gamescope chain left on all cores")
         }
-        val remaining = (online - excluded).sorted()
-        val all = online.sorted()
+        val remaining = all.filter { it !in low }
         if (remaining.size < 2) {
             return CompositorPlacement(
-                all,
-                "only ${remaining.size} core(s) [${remaining.joinToString()}] clear of [${formatCores(excluded)}]",
-            )
-        }
-        val highest = known.values.maxOrNull()
-        val fastest = if (highest == null) emptySet() else known.filterValues { it == highest }.keys
-        if (fastest.isNotEmpty() && remaining.none { it in fastest }) {
-            return CompositorPlacement(
-                all,
-                "cores [${remaining.joinToString()}] clear of [${formatCores(excluded)}] leave out the fastest cluster [${formatCores(fastest)}]",
+                emptyList(),
+                "only ${remaining.size} core(s) outside the low-capacity cluster [${formatCores(low)}]; gamescope chain left on all cores",
             )
         }
         return CompositorPlacement(remaining)
     }
 
-    private fun surfaceFlingerCores(): Set<Int> =
-        File("/proc").listFiles().orEmpty().firstOrNull { dir ->
-            dir.name.toIntOrNull() != null &&
-                runCatching { File(dir, "comm").readText().trim() }.getOrNull() == "surfaceflinger"
-        }?.let { readCpuList(it.path + "/status", "Cpus_allowed_list") }.orEmpty()
+    private fun describeClusters(clusters: List<CoreCluster>): String =
+        "clusters " + clusters.joinToString(" ") { "${it.name}=[${it.cores.joinToString()}]@${it.capacity}" } +
+            " (${if (::driver.isInitialized) (driver as? PServerDriver)?.cpuClusterCapacitySource ?: "-" else "-"})"
 
-    private fun cpuCapacities(online: Set<Int>): Map<Int, Int?> =
-        online.associateWith { cpu ->
-            runCatching { File("/sys/devices/system/cpu/cpu$cpu/cpu_capacity").readText().trim().toInt() }.getOrNull()
+    /** The chain's processes and threads. */
+    internal data class ChainThreads(
+        val gamescopePid: Int?,
+        val xwaylandPid: Int?,
+        val daemonTids: List<Int>,
+        val tids: List<Int>,
+    )
+
+    private fun findChainThreads(): ChainThreads {
+        val gamescopePid = findOwnProcess("gamescope")
+        val xwaylandPid = findOwnProcess("Xwayland")
+        val daemonTids = File("/proc/self/task").listFiles().orEmpty().mapNotNull { task ->
+            val comm = runCatching { File(task, "comm").readText().trim() }.getOrNull()
+            task.name.toIntOrNull()?.takeIf { comm?.startsWith("gndrm") == true }
         }
+        val tids = listOfNotNull(gamescopePid, xwaylandPid).flatMap { pid ->
+            File("/proc/$pid/task").listFiles().orEmpty().mapNotNull { it.name.toIntOrNull() }
+        } + daemonTids
+        return ChainThreads(gamescopePid, xwaylandPid, daemonTids, tids)
+    }
 
     /**
      * Core list in [path], from the line starting with [key] when given, empty when unreadable.
@@ -1475,33 +1564,29 @@ object PowerManager {
         parseCpuList(value.trim())
     }.getOrDefault(emptySet())
 
-    private fun placeCompositorChain(cores: List<Int>, reason: String) {
+    private fun placeCompositorChain(
+        cores: List<Int>,
+        reason: String,
+        setAffinity: (Int, Int) -> Int,
+        chainThreads: () -> ChainThreads,
+    ) {
         try {
-            val gamescopePid = findOwnProcess("gamescope")
-            val xwaylandPid = findOwnProcess("Xwayland")
-            val daemonTids = File("/proc/self/task").listFiles().orEmpty().mapNotNull { task ->
-                val comm = runCatching { File(task, "comm").readText().trim() }.getOrNull()
-                task.name.toIntOrNull()?.takeIf { comm?.startsWith("gndrm") == true }
-            }
-
-            val mask = ProcessHelper.getAffinityMask(cores.joinToString(","))
-            val tids = listOfNotNull(gamescopePid, xwaylandPid).flatMap { pid ->
-                File("/proc/$pid/task").listFiles().orEmpty().mapNotNull { it.name.toIntOrNull() }
-            } + daemonTids
+            val chain = chainThreads()
+            val mask = cores.fold(0) { acc, core -> acc or (1 shl core) }
             var applied = 0
-            tids.forEach { tid ->
-                val errno = TaskAffinity.set(tid, mask)
+            chain.tids.forEach { tid ->
+                val errno = setAffinity(tid, mask)
                 if (errno == 0) {
                     applied++
                 } else {
                     Timber.tag("PowerManager").w("sched_setaffinity on TID $tid failed, errno $errno")
                 }
             }
-            val now = gamescopePid?.let { readCpuList("/proc/$it/status", "Cpus_allowed_list") }
+            val now = chain.gamescopePid?.let { readCpuList("/proc/$it/status", "Cpus_allowed_list") }
             Timber.tag("PowerManager").i(
-                "Applied affinity ${cores.joinToString()} (mask 0x${Integer.toHexString(mask)}) to gamescope (PID: ${gamescopePid ?: "none"}), " +
-                    "Xwayland (PID: ${xwaylandPid ?: "none"}), gndrm threads (TIDs: ${daemonTids.joinToString()}), " +
-                    "$applied of ${tids.size} threads, gamescope now ${now?.let { formatCores(it) }} ($reason)"
+                "Applied affinity ${cores.joinToString()} (mask 0x${Integer.toHexString(mask)}) to gamescope (PID: ${chain.gamescopePid ?: "none"}), " +
+                    "Xwayland (PID: ${chain.xwaylandPid ?: "none"}), gndrm threads (TIDs: ${chain.daemonTids.joinToString()}), " +
+                    "$applied of ${chain.tids.size} threads, gamescope now ${now?.let { formatCores(it) }} ($reason)"
             )
         } catch (e: Exception) {
             Timber.tag("PowerManager").e(e, "Failed to apply affinity to the gamescope chain")
@@ -1521,19 +1606,24 @@ object PowerManager {
         }
 
     /**
-     * Cores a pinned game runs on: the clusters above the lowest-frequency one (see
-     * [clusterGameCores]). The 2 lowest-frequency cores stay reserved for PulseAudio and
-     * other background/Wine processes.
+     * Cores a pinned game runs on (see [clusterGameCores]). The low-capacity rule applies only in
+     * a gamescope session with power control on. The 2 lowest-frequency cores stay reserved for
+     * PulseAudio and other background/Wine processes.
      */
     private fun gamePinCores(pserver: PServerDriver): List<Int> {
-        val cores = gameCores(pserver)
+        val clusters = coreClusters(pserver)
+        val gamescope = gamescopeSession && powerControlPServer() != null
+        val set = clusterGameCores(clusters, gamescope)
+        val session = when {
+            gamescope -> "gamescope"
+            gamescopeSession -> "gamescope, power control off"
+            else -> "x11"
+        }
         Timber.tag("PowerManager").i(
-            "Game core set ${cores.joinToString()} (${if (gamescopeSession) "gamescope" else "x11: unchanged rule"}; clusters efficiency=[${pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.EFFICIENCY).joinToString()}] " +
-                "performance=[${pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.PERFORMANCE).joinToString()}] " +
-                "prime=[${pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.PRIME).joinToString()}], " +
-                "background=${lowestCores(pserver, 2).joinToString()})"
+            "Game core set ${set.cores.joinToString()} ${set.rule} ($session; " +
+                "${describeClusters(clusters)}, background=${lowestCores(pserver, 2).joinToString()})"
         )
-        return cores
+        return set.cores
     }
 
     /**

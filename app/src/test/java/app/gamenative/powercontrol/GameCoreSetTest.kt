@@ -1,83 +1,214 @@
 package app.gamenative.powercontrol
 
+import app.gamenative.powercontrol.PowerManager.ChainThreads
+import app.gamenative.powercontrol.PowerManager.CoreCluster
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
+import org.junit.Before
 import org.junit.Test
 
+/**
+ * Core placement with the cluster layouts PServerDriver reports on real devices, lowest to
+ * highest frequency, each with its cpu_capacity.
+ */
 class GameCoreSetTest {
 
-    // Retroid Pocket 6 (Snapdragon 8 Gen 2): c0-2 little, c3-6 big, c7 prime.
-    private val rp6 = listOf(listOf(0, 1, 2), listOf(3, 4, 5, 6), listOf(7))
-    private val rp6Capacity = mapOf(0 to 325, 1 to 325, 2 to 325, 3 to 825, 4 to 825, 5 to 825, 6 to 825, 7 to 1024)
-    private val online = (0..7).toSet()
+    // Retroid Pocket 6 (Snapdragon 8 Gen 2): c0-2 little at about a third of the prime core,
+    // c3-6 big, c7 prime.
+    private val rp6 = listOf(
+        CoreCluster("efficiency", listOf(0, 1, 2), 325),
+        CoreCluster("performance", listOf(3, 4, 5, 6), 825),
+        CoreCluster("prime", listOf(7), 1024),
+    )
+
+    // The same RP6 when the kernel reports no cpu_capacity: max frequency in kHz. The little
+    // cores run at 63 % of the prime core's frequency, above the 0.6 line.
+    private val rp6ByFrequency = listOf(
+        CoreCluster("efficiency", listOf(0, 1, 2), 2_016_000),
+        CoreCluster("performance", listOf(3, 4, 5, 6), 2_803_200),
+        CoreCluster("prime", listOf(7), 3_187_200),
+    )
+
+    // AYN Odin 3 (Snapdragon 8 Elite class 'sun'): 6 cores at capacity 792, 2 at 1024. PServer
+    // groups a dual-cluster part as performance + prime.
+    private val odin3 = listOf(
+        CoreCluster("efficiency", emptyList(), 0),
+        CoreCluster("performance", listOf(0, 1, 2, 3, 4, 5), 792),
+        CoreCluster("prime", listOf(6, 7), 1024),
+    )
+
+    // A 4+4 phone: 4 little cores at about 400, 4 big at 1024.
+    private val fourFour = listOf(
+        CoreCluster("efficiency", emptyList(), 0),
+        CoreCluster("performance", listOf(0, 1, 2, 3), 400),
+        CoreCluster("prime", listOf(4, 5, 6, 7), 1024),
+    )
+
+    // A 6+2 part whose 6 cores are little (about 400 of 1024).
+    private val sixLittleTwoBig = listOf(
+        CoreCluster("efficiency", emptyList(), 0),
+        CoreCluster("performance", listOf(0, 1, 2, 3, 4, 5), 400),
+        CoreCluster("prime", listOf(6, 7), 1024),
+    )
+
+    private val chain = ChainThreads(gamescopePid = 4242, xwaylandPid = 4243, daemonTids = listOf(100, 101), tids = listOf(4242, 4250, 4243, 100, 101))
+
+    private val calls = mutableListOf<Pair<Int, Int>>()
+    private val recordAffinity: (Int, Int) -> Int = { tid, mask -> calls.add(tid to mask); 0 }
+    private val noAffinity: (Int, Int) -> Int = { tid, _ -> fail("sched_setaffinity on $tid with power control off"); 0 }
+    private val noThreads: () -> ChainThreads = { fail("the chain was looked up with power control off"); chain }
+
+    @Before
+    @After
+    fun clearPlacement() {
+        PowerManager.compositorRestoreCores = null
+        calls.clear()
+    }
+
+    // ---- game core set
 
     @Test
-    fun `gamescope tri-cluster game runs on every cluster above the little one`() {
-        assertEquals(listOf(3, 4, 5, 6, 7), PowerManager.clusterGameCores(rp6, gamescope = true))
+    fun `RP6 gamescope game runs outside the little cluster`() {
+        val set = PowerManager.clusterGameCores(rp6, gamescope = true)
+        assertEquals(listOf(3, 4, 5, 6, 7), set.cores)
+        assertEquals("low-capacity [0, 1, 2] left out", set.rule)
     }
 
     @Test
     fun `x11 keeps all cores but the two slowest`() {
-        assertEquals(listOf(2, 3, 4, 5, 6, 7), PowerManager.clusterGameCores(rp6, gamescope = false))
-        assertEquals(
-            listOf(2, 3, 4, 5, 6, 7),
-            PowerManager.clusterGameCores(listOf(emptyList(), listOf(0, 1, 2, 3), listOf(4, 5, 6, 7)), gamescope = false),
+        assertEquals(listOf(2, 3, 4, 5, 6, 7), PowerManager.clusterGameCores(rp6, gamescope = false).cores)
+        assertEquals(listOf(2, 3, 4, 5, 6, 7), PowerManager.clusterGameCores(fourFour, gamescope = false).cores)
+        assertEquals(listOf(2, 3, 4, 5, 6, 7), PowerManager.clusterGameCores(odin3, gamescope = false).cores)
+        assertEquals("(unchanged rule)", PowerManager.clusterGameCores(rp6, gamescope = false).rule)
+    }
+
+    @Test
+    fun `Odin 3 gamescope game keeps the unchanged rule`() {
+        val set = PowerManager.clusterGameCores(odin3, gamescope = true)
+        assertEquals(listOf(2, 3, 4, 5, 6, 7), set.cores)
+        assertTrue(set.rule, set.rule.startsWith("(unchanged rule)"))
+    }
+
+    @Test
+    fun `four-four gamescope game runs on the big cluster`() {
+        val set = PowerManager.clusterGameCores(fourFour, gamescope = true)
+        assertEquals(listOf(4, 5, 6, 7), set.cores)
+    }
+
+    @Test
+    fun `fewer than four cores outside the low-capacity cluster keeps the unchanged rule`() {
+        val set = PowerManager.clusterGameCores(sixLittleTwoBig, gamescope = true)
+        assertEquals(listOf(2, 3, 4, 5, 6, 7), set.cores)
+        assertTrue(set.rule, set.rule.startsWith("(unchanged rule) only 2 cores"))
+    }
+
+    @Test
+    fun `single cluster keeps the unchanged rule`() {
+        val single = listOf(
+            CoreCluster("efficiency", emptyList(), 0),
+            CoreCluster("performance", listOf(0, 1, 2, 3), 1024),
+            CoreCluster("prime", emptyList(), 0),
         )
+        assertEquals(listOf(2, 3), PowerManager.clusterGameCores(single, gamescope = true).cores)
     }
 
     @Test
-    fun `gamescope four-four dual cluster runs on the big cluster`() {
-        val cores = PowerManager.clusterGameCores(listOf(emptyList(), listOf(0, 1, 2, 3), listOf(4, 5, 6, 7)), gamescope = true)
-        assertEquals(listOf(4, 5, 6, 7), cores)
+    fun `unknown capacities keep the unchanged rule`() {
+        val unknown = rp6.map { it.copy(capacity = 0) }
+        assertEquals(listOf(2, 3, 4, 5, 6, 7), PowerManager.clusterGameCores(unknown, gamescope = true).cores)
     }
 
-    @Test
-    fun `gamescope with a small big cluster keeps all but the two slowest`() {
-        val cores = PowerManager.clusterGameCores(listOf(emptyList(), listOf(0, 1, 2, 3, 4, 5), listOf(6, 7)), gamescope = true)
-        assertEquals(listOf(2, 3, 4, 5, 6, 7), cores)
-    }
+    // ---- low-capacity criterion
 
     @Test
-    fun `gamescope with a single cluster keeps all but the two slowest`() {
-        val cores = PowerManager.clusterGameCores(listOf(emptyList(), listOf(0, 1, 2, 3), emptyList()), gamescope = true)
-        assertEquals(listOf(2, 3), cores)
+    fun `low capacity is below 0_6 of the device max`() {
+        assertEquals(listOf(0, 1, 2), PowerManager.lowCapacityCores(rp6))
+        assertEquals(emptyList<Int>(), PowerManager.lowCapacityCores(odin3))
+        assertEquals(listOf(0, 1, 2, 3), PowerManager.lowCapacityCores(fourFour))
+        // RP6 by max frequency: 2016 / 3187 MHz = 0.63, not low.
+        assertEquals(emptyList<Int>(), PowerManager.lowCapacityCores(rp6ByFrequency))
     }
 
+    // ---- compositor chain set
+
     @Test
-    fun `compositor chain leaves SurfaceFlinger's little cluster`() {
-        val placement = PowerManager.compositorCoreSet(online, setOf(0, 1, 2), rp6Capacity)
+    fun `RP6 chain goes outside the little cluster`() {
+        val placement = PowerManager.compositorCoreSet(rp6)
         assertEquals(listOf(3, 4, 5, 6, 7), placement.cores)
-        assertNull(placement.fallbackReason)
+        assertNull(placement.skipReason)
     }
 
     @Test
-    fun `a 0-6 SurfaceFlinger mask leaves the chain on all cores`() {
-        val placement = PowerManager.compositorCoreSet(online, (0..6).toSet(), rp6Capacity)
-        assertEquals((0..7).toList(), placement.cores)
-        assertNotNull(placement.fallbackReason)
+    fun `Odin 3 chain is not pinned`() {
+        val placement = PowerManager.compositorCoreSet(odin3)
+        assertEquals(emptyList<Int>(), placement.cores)
+        assertEquals("no low-capacity cluster; gamescope chain left on all cores", placement.skipReason)
     }
 
     @Test
-    fun `SurfaceFlinger on the big cores leaves the chain on all cores`() {
-        val placement = PowerManager.compositorCoreSet(online, (3..7).toSet(), rp6Capacity)
-        assertEquals((0..7).toList(), placement.cores)
-        assertNotNull(placement.fallbackReason)
+    fun `four-four chain goes on the big cluster`() {
+        assertEquals(listOf(4, 5, 6, 7), PowerManager.compositorCoreSet(fourFour).cores)
+    }
+
+    // ---- placement through the gate
+
+    @Test
+    fun `power control off makes no affinity call and does not look up the chain`() {
+        PowerManager.applyCompositorAffinity("gamescope session start", null, noAffinity, noThreads)
+        PowerManager.applyCompositorAffinity("activity resume", null, noAffinity, noThreads)
+        PowerManager.applyCompositorAffinity("game start", null, noAffinity, noThreads)
+        assertNull(PowerManager.compositorRestoreCores)
+        PowerManager.releaseCompositorAffinity("gamescope session end", noAffinity, noThreads)
     }
 
     @Test
-    fun `unreadable SurfaceFlinger leaves out the lowest-capacity cluster`() {
-        val placement = PowerManager.compositorCoreSet(online, emptySet(), rp6Capacity)
-        assertEquals(listOf(3, 4, 5, 6, 7), placement.cores)
+    fun `RP6 places every chain thread on 3-7 and releases to all cores`() {
+        PowerManager.applyCompositorAffinity("gamescope session start", rp6, recordAffinity) { chain }
+        assertEquals(chain.tids.map { it to 0xF8 }, calls)
+        assertNotNull(PowerManager.compositorRestoreCores)
+
+        calls.clear()
+        PowerManager.releaseCompositorAffinity("gamescope session end", recordAffinity) { chain }
+        assertEquals(chain.tids.map { it to 0xFF }, calls)
+        assertNull(PowerManager.compositorRestoreCores)
+
+        // A second release has nothing to hand back.
+        PowerManager.releaseCompositorAffinity("gamescope session end", noAffinity, noThreads)
     }
 
     @Test
-    fun `tuner aims for the panel rate when a gamescope cap is above it`() {
+    fun `Odin 3 makes no affinity call at session start or end`() {
+        PowerManager.applyCompositorAffinity("gamescope session start", odin3, noAffinity, noThreads)
+        PowerManager.releaseCompositorAffinity("gamescope session end", noAffinity, noThreads)
+    }
+
+    @Test
+    fun `four-four places the chain on 4-7`() {
+        PowerManager.applyCompositorAffinity("game start", fourFour, recordAffinity) { chain }
+        assertEquals(chain.tids.map { it to 0xF0 }, calls)
+    }
+
+    // ---- gamescope-only fences
+
+    @Test
+    fun `tuner aims for the panel rate only on the gamescope route`() {
         assertEquals(60, PowerManager.tunerTargetFps(120, gamescope = true, panelHz = 60))
         assertEquals(60, PowerManager.tunerTargetFps(60, gamescope = true, panelHz = 120))
         assertEquals(45, PowerManager.tunerTargetFps(45, gamescope = true, panelHz = 60))
-        assertEquals(120, PowerManager.tunerTargetFps(120, gamescope = false, panelHz = 60))
         assertEquals(120, PowerManager.tunerTargetFps(120, gamescope = true, panelHz = 0))
         assertEquals(0, PowerManager.tunerTargetFps(0, gamescope = true, panelHz = 60))
+    }
+
+    @Test
+    fun `x11 tuner target is the cap whatever the panel rate`() {
+        for (cap in listOf(0, 30, 45, 60, 90, 120, 144)) {
+            for (panel in listOf(0, 60, 90, 120)) {
+                assertEquals(cap, PowerManager.tunerTargetFps(cap, gamescope = false, panelHz = panel))
+            }
+        }
     }
 }
