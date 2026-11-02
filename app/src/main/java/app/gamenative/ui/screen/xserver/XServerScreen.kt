@@ -2127,11 +2127,16 @@ fun XServerScreen(
             // VirGL passthrough). Default to the legacy GL renderer for all
             // other containers as well. Uncheck the per-container useLegacyRenderer
             // setting to switch to the Vulkan renderer.
-            val useGLRenderer = isX11Display && (container.graphicsDriver == "virgl" || container.displayRenderer.equals("gl", true))
+            // The stored display renderer is only shown, and only meant, for X11 containers: a gamescope
+            // container keeps whatever value the field had (the last X11 container's choice), so its X11
+            // sessions (open container, test graphics, pre-install steps) use the Vulkan renderer like the
+            // game session does.
+            val displayRenderer = if (resolveDisplayX11(container)) container.displayRenderer else "vulkan"
+            val useGLRenderer = isX11Display && (container.graphicsDriver == "virgl" || displayRenderer.equals("gl", true))
             val xServerViewInstance: XServerRendererView = if (useGLRenderer) {
                 XServerViewGL(context, xServerToUse)
             } else {
-                XServerView(context, xServerToUse, if (isGamescopeSession) "vulkan" else container.displayRenderer)
+                XServerView(context, xServerToUse, if (isGamescopeSession) "vulkan" else displayRenderer)
             }
 
             // Install (or clear, when reusing a cached XServer) the input retarget sink.
