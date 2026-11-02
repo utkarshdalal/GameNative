@@ -172,4 +172,21 @@ class TunerRepeatedFramesTest {
         assertEquals(TunerDomain.PERFORMANCE, undo.domain)
         assertTrue(undo.reason, undo.reason.startsWith("repeat-undo:perf repeated=2"))
     }
+
+    @Test
+    fun `a warm-start floor keeps stepping back while repeats go on`() {
+        val engine = TunerDecisionEngine()
+        repeat(TunerThresholds.STEADY_RENDER_CYCLES - 1) { engine.decide(input()) }
+        engine.noteWarmStart(mapOf(TunerDomain.PERFORMANCE to 10))
+        var undos = 0
+        repeat(TunerThresholds.REPEAT_UNDO_COOLDOWN_CYCLES * 12) {
+            val decision = engine.decide(input(repeated = 4))
+            if (decision.action == TunerAction.UNDO) {
+                undos++
+                assertEquals(TunerDomain.PERFORMANCE, decision.domain)
+            }
+        }
+        // The ineffective-step-back cutoff does not apply: every warm-start step comes back.
+        assertEquals(10, undos)
+    }
 }

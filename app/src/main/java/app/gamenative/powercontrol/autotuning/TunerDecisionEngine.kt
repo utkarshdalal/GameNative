@@ -176,6 +176,9 @@ private enum class Bottleneck(val key: String) {
     CPU("cpu"),
 }
 
+/** One trimmed step: made by this session, or carried in by a warm start. */
+private data class TrimEntry(val domain: TunerDomain, val warmStart: Boolean)
+
 /**
  * Pure decision logic for [ClusterTuner]: a snapshot plus the current per-domain
  * capabilities in, one action out. Holds all tuning state and has no Android or
@@ -206,9 +209,10 @@ class TunerDecisionEngine(
     private var watchedDomain: TunerDomain? = null
 
     /** Domains trimmed this session, newest last, so a repeat step-back undoes the latest. */
-    private val trimHistory = ArrayList<TunerDomain>()
+    private val trimHistory = ArrayList<TrimEntry>()
     private var repeatUndoCooldownCycles = 0
     private var repeatUndoBaseline = -1
+    private var repeatUndoWarm = false
     private var ineffectiveRepeatUndos = 0
     private var repeatStepBackOff = false
     private var lastTargetFps = 0
@@ -324,13 +328,15 @@ class TunerDecisionEngine(
         val repeated = input.repeatedFrameCount
         if (repeated > 0) {
             trimQualifiedCycles = 0
-            if (repeated >= TunerThresholds.REPEAT_UNDO_COUNT && repeatUndoCooldownCycles == 0 && !repeatStepBackOff) {
-                val domain = repeatUndoTarget(input)
-                if (domain != null) {
+            if (repeated >= TunerThresholds.REPEAT_UNDO_COUNT && repeatUndoCooldownCycles == 0) {
+                val entry = repeatUndoTarget(input)
+                if (entry != null) {
+                    val domain = entry.domain
                     frozen.add(domain)
-                    forgetTrim(domain)
+                    trimHistory.remove(entry)
                     repeatUndoCooldownCycles = TunerThresholds.REPEAT_UNDO_COOLDOWN_CYCLES
                     repeatUndoBaseline = repeated
+                    repeatUndoWarm = entry.warmStart
                     return decision(TunerAction.UNDO, domain, 1, "repeat-undo:${domain.key} ${repeatLabel(input)}")
                 }
             }
@@ -351,7 +357,7 @@ class TunerDecisionEngine(
                 trimQualifiedCycles = 0
                 watchedDomain = domain
                 watchCyclesRemaining = tuning.trimWatchCycles
-                trimHistory.add(domain)
+                trimHistory.add(TrimEntry(domain, warmStart = false))
                 return decision(TunerAction.TRIM, domain, 1, "trim:${domain.key}")
             }
             return decision(TunerAction.HOLD, null, 0, "trim:no-domain")
@@ -372,7 +378,7 @@ class TunerDecisionEngine(
             stepsByDomain.entries
                 .filter { it.value > step }
                 .sortedBy { it.value }
-                .forEach { trimHistory.add(it.key) }
+                .forEach { trimHistory.add(TrimEntry(it.key, warmStart = true)) }
         }
     }
 
@@ -401,8 +407,10 @@ class TunerDecisionEngine(
      * The domain a repeat step-back raises: the latest trim made this session that can still go
      * up. Without one the repeats are not the tuner's doing, and nothing is raised.
      */
-    private fun repeatUndoTarget(input: TunerInput): TunerDomain? {
-        return trimHistory.lastOrNull { input.capabilities[it]?.canRaise == true }
+    private fun repeatUndoTarget(input: TunerInput): TrimEntry? {
+        return trimHistory.lastOrNull { entry ->
+            (entry.warmStart || !repeatStepBackOff) && input.capabilities[entry.domain]?.canRaise == true
+        }
     }
 
     /**
@@ -413,7 +421,9 @@ class TunerDecisionEngine(
     private fun judgeRepeatUndo(repeated: Int) {
         val baseline = repeatUndoBaseline
         repeatUndoBaseline = -1
-        if (baseline < 0 || repeated < baseline) return
+        // A warm-start floor is the known-bad state: stepping it back is never held against
+        // the repeat signal, it goes on until the floor is gone or the repeats stop.
+        if (repeatUndoWarm || baseline < 0 || repeated < baseline) return
         ineffectiveRepeatUndos++
         if (ineffectiveRepeatUndos >= TunerThresholds.REPEAT_UNDO_INEFFECTIVE_LIMIT) {
             repeatStepBackOff = true
@@ -421,7 +431,8 @@ class TunerDecisionEngine(
     }
 
     private fun forgetTrim(domain: TunerDomain) {
-        val index = trimHistory.lastIndexOf(domain)
+        val index = trimHistory.indexOfLast { it.domain == domain && !it.warmStart }
+            .takeIf { it >= 0 } ?: trimHistory.indexOfLast { it.domain == domain }
         if (index >= 0) trimHistory.removeAt(index)
     }
 
@@ -486,7 +497,7 @@ class TunerDecisionEngine(
         harvestBaselineFps = averageFps ?: input.fps
         harvestBaselineP95Ms = averageP95Ms ?: input.frameTimeP95Ms
         harvestBaselineSlowRatio = averageSlowRatio ?: slowRatio
-        trimHistory.add(domain)
+        trimHistory.add(TrimEntry(domain, warmStart = false))
         return decision(TunerAction.TRIM, domain, 1, "harvest:${domain.key}")
     }
 
