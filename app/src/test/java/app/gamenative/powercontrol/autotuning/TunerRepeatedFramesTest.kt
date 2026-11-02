@@ -1,0 +1,116 @@
+package app.gamenative.powercontrol.autotuning
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+/**
+ * Covers the repeated-frame steady rule against the shape seen on the Retroid Pocket 6 in
+ * SteamWorld Dig 2: a 60 fps cap held at 59.9 fps with a p95 of one period, while the trimmed
+ * clocks make the game repeat a frame every few seconds.
+ */
+class TunerRepeatedFramesTest {
+
+    private val capabilities = mapOf(
+        TunerDomain.PRIME to DomainCapability(available = true, canRaise = true, canTrim = true),
+        TunerDomain.PERFORMANCE to DomainCapability(available = true, canRaise = true, canTrim = true),
+        TunerDomain.GPU to DomainCapability(available = true, canRaise = true, canTrim = true),
+    )
+
+    /** Capped at 60 and meeting it, CPU and GPU both well under the bound thresholds. */
+    private fun input(repeated: Int = 0) = TunerInput(
+        fps = 59.9f,
+        targetFps = 60,
+        frameTimeP50Ms = 16.7f,
+        frameTimeP95Ms = 17f,
+        slowFrameCount = 0,
+        totalFrameCount = 120,
+        cpuUsagePercent = 30f,
+        gpuUsagePercent = 40f,
+        cpuTempC = 60,
+        gpuTempC = 60,
+        capabilities = capabilities,
+        repeatedFrameCount = repeated,
+    )
+
+    private fun runToTrim(engine: TunerDecisionEngine): TunerDecision {
+        repeat(20) {
+            val decision = engine.decide(input())
+            if (decision.action == TunerAction.TRIM) return decision
+        }
+        throw AssertionError("never trimmed")
+    }
+
+    /** Runs a clean window until the trim watch has ended. */
+    private fun finishWatch(engine: TunerDecisionEngine) {
+        repeat(TunerThresholds.TRIM_WATCH_CYCLES) {
+            assertEquals(TunerAction.HOLD, engine.decide(input()).action)
+        }
+    }
+
+    @Test
+    fun `a clean capped render trims`() {
+        val trim = runToTrim(TunerDecisionEngine())
+        assertEquals(TunerDomain.PRIME, trim.domain)
+    }
+
+    @Test
+    fun `one repeat in the window blocks the next trim`() {
+        val engine = TunerDecisionEngine()
+        runToTrim(engine)
+        finishWatch(engine)
+        repeat(20) {
+            val decision = engine.decide(input(repeated = 1))
+            assertEquals("trimmed through a repeat: ${decision.reason}", TunerAction.HOLD, decision.action)
+            assertTrue(decision.reason, decision.reason.startsWith("repeat-hold repeated=1 in 10s"))
+        }
+    }
+
+    @Test
+    fun `a repeat during the trim watch gives that step back`() {
+        val engine = TunerDecisionEngine()
+        runToTrim(engine)
+        val undo = engine.decide(input(repeated = 1))
+        assertEquals(TunerAction.UNDO, undo.action)
+        assertEquals(TunerDomain.PRIME, undo.domain)
+        assertTrue(undo.reason, undo.reason.contains("repeated=1"))
+    }
+
+    @Test
+    fun `repeats after the watch step the last trim back once per window`() {
+        val engine = TunerDecisionEngine()
+        runToTrim(engine)
+        finishWatch(engine)
+        val second = runToTrim(engine)
+        finishWatch(engine)
+
+        val undo = engine.decide(input(repeated = 3))
+        assertEquals(TunerAction.UNDO, undo.action)
+        assertEquals(second.domain, undo.domain)
+        assertEquals("repeat-undo:${second.domain!!.key} repeated=3 in 10s", undo.reason)
+
+        // The same repeats are still in the window: hold until it has turned over.
+        repeat(TunerThresholds.REPEAT_UNDO_COOLDOWN_CYCLES - 1) {
+            assertEquals(TunerAction.HOLD, engine.decide(input(repeated = 3)).action)
+        }
+        assertEquals(TunerAction.UNDO, engine.decide(input(repeated = 3)).action)
+    }
+
+    @Test
+    fun `a single repeat holds but does not step back`() {
+        val engine = TunerDecisionEngine()
+        runToTrim(engine)
+        finishWatch(engine)
+        val decision = engine.decide(input(repeated = 1))
+        assertEquals(TunerAction.HOLD, decision.action)
+    }
+
+    @Test
+    fun `repeats with no trim this session raise the domain a frame drop would`() {
+        val engine = TunerDecisionEngine()
+        repeat(TunerThresholds.STEADY_RENDER_CYCLES) { engine.decide(input(repeated = 0)) }
+        val undo = engine.decide(input(repeated = 2))
+        assertEquals(TunerAction.UNDO, undo.action)
+        assertEquals(TunerDomain.PRIME, undo.domain)
+    }
+}

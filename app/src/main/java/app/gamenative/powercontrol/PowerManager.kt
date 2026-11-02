@@ -58,6 +58,7 @@ object PowerManager {
     private const val AFFINITY_SETTLE_MS = 1500L
     private const val GAME_PIN_MAX_RETRIES = 10
     private const val GAME_PIN_RETRY_DELAY_MS = 1000L
+    private const val MIN_GAME_CLUSTER_CORES = 4
 
     private val json = Json {
         encodeDefaults = true
@@ -1084,11 +1085,31 @@ object PowerManager {
         allCpuCoresSorted(pserver).take(count)
 
     /**
-     * Cores the game should use: all cores except the 2 lowest-frequency ones
-     * reserved for audio/background.
+     * Cores the game should use: every cluster above the lowest-frequency one, so the game's
+     * threads never land on a little core (an RP6 frame costs 11 ms on c2 against 4.4 ms on the
+     * prime core). The 2 lowest-frequency cores stay reserved for audio/background.
      */
     private fun gameCores(pserver: PServerDriver): List<Int> {
-        val all = allCpuCoresSorted(pserver)
+        return clusterGameCores(
+            listOf(
+                pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.EFFICIENCY),
+                pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.PERFORMANCE),
+                pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.PRIME),
+            ),
+        )
+    }
+
+    /**
+     * Game cores from clusters ordered lowest to highest frequency: the cores of every
+     * cluster above the lowest one. Falls back to all cores but the 2 slowest when there is
+     * only one cluster, or when the clusters above the lowest hold fewer than
+     * [MIN_GAME_CLUSTER_CORES] cores (a 6+2 part would leave a Wine game on 2 cores).
+     */
+    internal fun clusterGameCores(clustersLowToHigh: List<List<Int>>): List<Int> {
+        val clusters = clustersLowToHigh.filter { it.isNotEmpty() }
+        val all = clusters.flatten()
+        val aboveLowest = clusters.drop(1).flatten()
+        if (clusters.size >= 2 && aboveLowest.size >= MIN_GAME_CLUSTER_CORES) return aboveLowest
         return if (all.size <= 2) all else all.drop(2)
     }
 
@@ -1435,12 +1456,19 @@ object PowerManager {
         }
 
     /**
-     * Cores a pinned game runs on: all cores except the 2 lowest-frequency ones,
-     * which are reserved for PulseAudio and other background/Wine processes.
-     * This applies uniformly to single, dual, and tri-cluster devices.
+     * Cores a pinned game runs on: the clusters above the lowest-frequency one (see
+     * [clusterGameCores]). The 2 lowest-frequency cores stay reserved for PulseAudio and
+     * other background/Wine processes.
      */
     private fun gamePinCores(pserver: PServerDriver): List<Int> {
-        return gameCores(pserver)
+        val cores = gameCores(pserver)
+        Timber.tag("PowerManager").i(
+            "Game core set ${cores.joinToString()} (clusters efficiency=[${pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.EFFICIENCY).joinToString()}] " +
+                "performance=[${pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.PERFORMANCE).joinToString()}] " +
+                "prime=[${pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.PRIME).joinToString()}], " +
+                "background=${lowestCores(pserver, 2).joinToString()})"
+        )
+        return cores
     }
 
     /**

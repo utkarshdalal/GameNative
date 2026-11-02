@@ -19,4 +19,6 @@ data class MetricsSnapshot(
     val gpuTempC: Int?,
     /** Latest finite thermal headroom of the session (refreshed every 10 s), null until one is read. */
     val thermalHeadroom: Float? = null,
+    /** Frame intervals over 1.5 target periods in the last 10 s (the tuner's repeat window). */
+    val repeatedFrameCount: Int = 0,
 )
