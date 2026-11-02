@@ -125,9 +125,33 @@ private fun percentileMs(sortedDeltas: LongArray, size: Int, percentile: Double)
 }
 
 /**
+ * Whether repeated frames are counted: only in gamescope sessions, where the ring takes one entry
+ * per frame gamescope publishes on its vblank grid, and not with frame generation on
+ * ([sampleStride] > 1), where generated frames tick the ring. X11 sessions feed the ring from
+ * their own present hooks and keep the tuner as it was.
+ */
+fun repeatCountingActive(gamescopeSession: Boolean, sampleStride: Int): Boolean =
+    gamescopeSession && sampleStride <= 1
+
+/**
+ * Interval above which a published frame counts as a repeat in a gamescope session, or 0 when
+ * the display rate is unknown. Gamescope runs a capped game at a whole number of vblanks per
+ * frame, divisor = max(1, floor(refresh / cap)) (cap above refresh, or no cap: 1), so a frame is
+ * expected one divisor of display periods after the last, and a repeat adds at least one more
+ * vblank: the threshold sits half a display period above the expected interval.
+ * Cap 60 @ 60 Hz: 25 ms; cap 60 @ 120: 20.8 ms; cap 30 @ 60: 41.7 ms; cap 40 @ 120: 29.2 ms.
+ */
+fun repeatThresholdNs(capFps: Int, refreshHz: Int): Long {
+    if (refreshHz <= 0) return 0L
+    val periodNs = 1_000_000_000.0 / refreshHz
+    val divisor = if (capFps > 0) (refreshHz / capFps).coerceAtLeast(1) else 1
+    return (periodNs * divisor + periodNs * 0.5).toLong()
+}
+
+/**
  * Number of intervals between [count] ascending timestamps in [timestampsNs] (taken
  * [sampleStride] frames apart, as in [computeFrameWindowStats]) longer than [thresholdNs].
- * At a frame cap each such interval is a frame the display showed again.
+ * With [repeatThresholdNs] each such interval is a frame the display showed again.
  */
 fun countSlowIntervals(
     timestampsNs: LongArray,

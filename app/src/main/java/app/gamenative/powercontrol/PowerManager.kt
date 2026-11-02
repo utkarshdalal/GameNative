@@ -91,6 +91,18 @@ object PowerManager {
     private val _uiState = MutableStateFlow<PowerControlUiState>(PowerControlUiState.Loading)
     val uiState: StateFlow<PowerControlUiState> = _uiState.asStateFlow()
 
+    /**
+     * True while the running session presents through gamescope. Set by the session before the
+     * game is pinned; the cluster game core set and the tuner's repeated-frame input apply only
+     * then, and X11 sessions keep the rules they had.
+     */
+    @Volatile
+    var gamescopeSession: Boolean = false
+
+    /** Refresh rate the gamescope session reports as its display mode, 0 when none is reported. */
+    @Volatile
+    var panelRefreshHz: Int = 0
+
     var targetFps: Int = 0
         set(value) {
             // Enforce non-negative values and round/clamp if necessary
@@ -298,6 +310,8 @@ object PowerManager {
         isGameStarted = false
         fpsCapApplier = null
         frameSampleStride = 1
+        gamescopeSession = false
+        panelRefreshHz = 0
         containerDir = null
         pinnedGameProcessName = null
         pinnedGamePid = null
@@ -323,6 +337,11 @@ object PowerManager {
      */
     fun resume() {
         if (!isGameStarted) return
+        if (gamescopeSession) {
+            // An activity resume moves this process between cpusets, and before Linux 6.2 that
+            // resets the gndrm threads' affinity: place the chain again, off the main thread.
+            Thread({ applyCompositorAffinity("activity resume") }, "compositor-affinity").start()
+        }
         if (isProfilePowerControlEnabled()) {
             driver.start()
             applyCurrentProfile()
@@ -1085,9 +1104,10 @@ object PowerManager {
         allCpuCoresSorted(pserver).take(count)
 
     /**
-     * Cores the game should use: every cluster above the lowest-frequency one, so the game's
-     * threads never land on a little core (an RP6 frame costs 11 ms on c2 against 4.4 ms on the
-     * prime core). The 2 lowest-frequency cores stay reserved for audio/background.
+     * Cores the game should use. In a gamescope session: every cluster above the lowest-frequency
+     * one, so the game's threads never land on a little core (an RP6 frame costs 11 ms on c2
+     * against 4.4 ms on the prime core). X11 sessions keep all cores but the 2 slowest. The 2
+     * lowest-frequency cores stay reserved for audio/background either way.
      */
     private fun gameCores(pserver: PServerDriver): List<Int> {
         return clusterGameCores(
@@ -1096,20 +1116,21 @@ object PowerManager {
                 pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.PERFORMANCE),
                 pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.PRIME),
             ),
+            gamescopeSession,
         )
     }
 
     /**
-     * Game cores from clusters ordered lowest to highest frequency: the cores of every
-     * cluster above the lowest one. Falls back to all cores but the 2 slowest when there is
-     * only one cluster, or when the clusters above the lowest hold fewer than
+     * Game cores from clusters ordered lowest to highest frequency. In a gamescope session: the
+     * cores of every cluster above the lowest one. All cores but the 2 slowest in an X11
+     * session, with only one cluster, or when the clusters above the lowest hold fewer than
      * [MIN_GAME_CLUSTER_CORES] cores (a 6+2 part would leave a Wine game on 2 cores).
      */
-    internal fun clusterGameCores(clustersLowToHigh: List<List<Int>>): List<Int> {
+    internal fun clusterGameCores(clustersLowToHigh: List<List<Int>>, gamescope: Boolean): List<Int> {
         val clusters = clustersLowToHigh.filter { it.isNotEmpty() }
         val all = clusters.flatten()
         val aboveLowest = clusters.drop(1).flatten()
-        if (clusters.size >= 2 && aboveLowest.size >= MIN_GAME_CLUSTER_CORES) return aboveLowest
+        if (gamescope && clusters.size >= 2 && aboveLowest.size >= MIN_GAME_CLUSTER_CORES) return aboveLowest
         return if (all.size <= 2) all else all.drop(2)
     }
 
@@ -1358,12 +1379,16 @@ object PowerManager {
      */
     @JvmStatic
     fun applyCompositorAffinity(reason: String) {
-        val cores = compositorCores()
-        if (cores.isEmpty()) {
+        val online = readCpuList("/sys/devices/system/cpu/online")
+        val placement = compositorCoreSet(online, surfaceFlingerCores(), cpuCapacities(online))
+        if (placement.cores.isEmpty()) {
             Timber.tag("PowerManager").w("No cores clear of the display server, gamescope chain left alone ($reason)")
             return
         }
-        placeCompositorChain(cores, reason)
+        placement.fallbackReason?.let {
+            Timber.tag("PowerManager").w("Gamescope chain left on all cores: $it ($reason)")
+        }
+        placeCompositorChain(placement.cores, reason)
     }
 
     /**
@@ -1375,31 +1400,62 @@ object PowerManager {
         if (online.isNotEmpty()) placeCompositorChain(online.sorted(), reason)
     }
 
+    /** Cores for the gamescope chain, with the reason when the guard put it back on all cores. */
+    internal data class CompositorPlacement(val cores: List<Int>, val fallbackReason: String? = null)
+
     /**
      * All online cores minus the ones SurfaceFlinger may run on. SurfaceFlinger, the HWC composer
      * and the audio realtime threads are confined to that cluster (0-2 on the Retroid Pocket 6), and
      * the chain must not share a core with the display server's own realtime threads: there it is
      * preempted and frames miss their vblank. When SurfaceFlinger's mask cannot be read, the
      * lowest-capacity cluster is left out instead.
+     *
+     * The chain stays on every online core when fewer than 2 cores would remain, or when the cores
+     * that remain leave out the fastest cluster (SurfaceFlinger in a 0-6 cpuset would put the whole
+     * chain on core 7; SurfaceFlinger on the big cores would put it on the littles).
      */
-    private fun compositorCores(): List<Int> {
-        val online = readCpuList("/sys/devices/system/cpu/online")
-        val surfaceFlinger = File("/proc").listFiles().orEmpty().firstOrNull { dir ->
-            dir.name.toIntOrNull() != null &&
-                runCatching { File(dir, "comm").readText().trim() }.getOrNull() == "surfaceflinger"
-        }?.let { readCpuList(it.path + "/status", "Cpus_allowed_list") }.orEmpty()
+    internal fun compositorCoreSet(
+        online: Set<Int>,
+        surfaceFlinger: Set<Int>,
+        capacity: Map<Int, Int?>,
+    ): CompositorPlacement {
+        val known = capacity.filterKeys { it in online }.filterValues { it != null }.mapValues { it.value!! }
         val excluded = if (surfaceFlinger.isNotEmpty() && !surfaceFlinger.containsAll(online)) {
             surfaceFlinger
         } else {
-            val capacity = online.associateWith { cpu ->
-                runCatching { File("/sys/devices/system/cpu/cpu$cpu/cpu_capacity").readText().trim().toInt() }.getOrNull()
-            }
-            val lowest = capacity.values.filterNotNull().minOrNull()
-            if (lowest == null || capacity.values.all { it == lowest }) emptySet()
-            else capacity.filterValues { it == lowest }.keys
+            val lowest = known.values.minOrNull()
+            if (lowest == null || known.values.all { it == lowest }) emptySet()
+            else known.filterValues { it == lowest }.keys
         }
-        return (online - excluded).sorted()
+        val remaining = (online - excluded).sorted()
+        val all = online.sorted()
+        if (remaining.size < 2) {
+            return CompositorPlacement(
+                all,
+                "only ${remaining.size} core(s) [${remaining.joinToString()}] clear of [${formatCores(excluded)}]",
+            )
+        }
+        val highest = known.values.maxOrNull()
+        val fastest = if (highest == null) emptySet() else known.filterValues { it == highest }.keys
+        if (fastest.isNotEmpty() && remaining.none { it in fastest }) {
+            return CompositorPlacement(
+                all,
+                "cores [${remaining.joinToString()}] clear of [${formatCores(excluded)}] leave out the fastest cluster [${formatCores(fastest)}]",
+            )
+        }
+        return CompositorPlacement(remaining)
     }
+
+    private fun surfaceFlingerCores(): Set<Int> =
+        File("/proc").listFiles().orEmpty().firstOrNull { dir ->
+            dir.name.toIntOrNull() != null &&
+                runCatching { File(dir, "comm").readText().trim() }.getOrNull() == "surfaceflinger"
+        }?.let { readCpuList(it.path + "/status", "Cpus_allowed_list") }.orEmpty()
+
+    private fun cpuCapacities(online: Set<Int>): Map<Int, Int?> =
+        online.associateWith { cpu ->
+            runCatching { File("/sys/devices/system/cpu/cpu$cpu/cpu_capacity").readText().trim().toInt() }.getOrNull()
+        }
 
     /**
      * Core list in [path], from the line starting with [key] when given, empty when unreadable.
@@ -1463,7 +1519,7 @@ object PowerManager {
     private fun gamePinCores(pserver: PServerDriver): List<Int> {
         val cores = gameCores(pserver)
         Timber.tag("PowerManager").i(
-            "Game core set ${cores.joinToString()} (clusters efficiency=[${pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.EFFICIENCY).joinToString()}] " +
+            "Game core set ${cores.joinToString()} (${if (gamescopeSession) "gamescope" else "x11: unchanged rule"}; clusters efficiency=[${pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.EFFICIENCY).joinToString()}] " +
                 "performance=[${pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.PERFORMANCE).joinToString()}] " +
                 "prime=[${pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.PRIME).joinToString()}], " +
                 "background=${lowestCores(pserver, 2).joinToString()})"

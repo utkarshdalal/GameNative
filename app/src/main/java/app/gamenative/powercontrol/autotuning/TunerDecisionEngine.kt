@@ -126,6 +126,13 @@ object TunerThresholds {
      * the window until it has turned over, and must not step back a second domain.
      */
     const val REPEAT_UNDO_COOLDOWN_CYCLES = (REPEAT_WINDOW_MS / CYCLE_INTERVAL_MS).toInt()
+
+    /**
+     * Repeat step-backs that did not cut the repeats in the window after them before repeats
+     * stop being a step-back signal for the session. A game that hitches on its own (shader
+     * compiles, GC pauses, streaming) repeats whatever the clocks are; repeats still block trims.
+     */
+    const val REPEAT_UNDO_INEFFECTIVE_LIMIT = 3
 }
 
 data class StrategyTuning(
@@ -201,6 +208,10 @@ class TunerDecisionEngine(
     /** Domains trimmed this session, newest last, so a repeat step-back undoes the latest. */
     private val trimHistory = ArrayList<TunerDomain>()
     private var repeatUndoCooldownCycles = 0
+    private var repeatUndoBaseline = -1
+    private var ineffectiveRepeatUndos = 0
+    private var repeatStepBackOff = false
+    private var lastTargetFps = 0
 
     private var lastBottleneck: Bottleneck? = null
     private var harvestBottleneck: Bottleneck? = null
@@ -244,7 +255,18 @@ class TunerDecisionEngine(
         }
         steadyCycles++
         updateRenderAverages(input, slowRatio)
-        if (repeatUndoCooldownCycles > 0) repeatUndoCooldownCycles--
+        if (input.targetFps != lastTargetFps) {
+            // A new cap re-scores the window: a step-back in flight can no longer be judged.
+            if (lastTargetFps != 0) {
+                repeatUndoCooldownCycles = 0
+                repeatUndoBaseline = -1
+            }
+            lastTargetFps = input.targetFps
+        }
+        if (repeatUndoCooldownCycles > 0) {
+            repeatUndoCooldownCycles--
+            if (repeatUndoCooldownCycles == 0) judgeRepeatUndo(input.repeatedFrameCount)
+        }
 
         val target = input.targetFps.toFloat()
         val targetPeriodMs = 1000f / target
@@ -302,16 +324,18 @@ class TunerDecisionEngine(
         val repeated = input.repeatedFrameCount
         if (repeated > 0) {
             trimQualifiedCycles = 0
-            if (repeated >= TunerThresholds.REPEAT_UNDO_COUNT && repeatUndoCooldownCycles == 0) {
+            if (repeated >= TunerThresholds.REPEAT_UNDO_COUNT && repeatUndoCooldownCycles == 0 && !repeatStepBackOff) {
                 val domain = repeatUndoTarget(input)
                 if (domain != null) {
                     frozen.add(domain)
                     forgetTrim(domain)
                     repeatUndoCooldownCycles = TunerThresholds.REPEAT_UNDO_COOLDOWN_CYCLES
+                    repeatUndoBaseline = repeated
                     return decision(TunerAction.UNDO, domain, 1, "repeat-undo:${domain.key} ${repeatLabel(input)}")
                 }
             }
-            return decision(TunerAction.HOLD, null, 0, "repeat-hold ${repeatLabel(input)}")
+            val note = if (repeatStepBackOff) " step-back off" else ""
+            return decision(TunerAction.HOLD, null, 0, "repeat-hold ${repeatLabel(input)}$note")
         }
 
         if (isHealthy(input, slowRatio, targetPeriodMs, tuning)) {
@@ -349,6 +373,7 @@ class TunerDecisionEngine(
         lastBottleneck = null
         trimHistory.clear()
         repeatUndoCooldownCycles = 0
+        repeatUndoBaseline = -1
     }
 
     fun slowFrameRatio(input: TunerInput): Float {
@@ -357,12 +382,26 @@ class TunerDecisionEngine(
     }
 
     /**
-     * The domain a repeat step-back raises: the latest trim that can still go up, or, for caps
-     * that came from a warm start rather than a trim this session, the domain a frame-rate
-     * drop would raise first.
+     * The domain a repeat step-back raises: the latest trim made this session that can still go
+     * up. Without one the repeats are not the tuner's doing, and nothing is raised.
      */
     private fun repeatUndoTarget(input: TunerInput): TunerDomain? {
-        return trimHistory.lastOrNull { input.capabilities[it]?.canRaise == true } ?: raiseTarget(input)
+        return trimHistory.lastOrNull { input.capabilities[it]?.canRaise == true }
+    }
+
+    /**
+     * Judges a repeat step-back once its window has turned over: one that left at least as many
+     * repeats as it started from did not help, and after
+     * [TunerThresholds.REPEAT_UNDO_INEFFECTIVE_LIMIT] of those repeats stop stepping back.
+     */
+    private fun judgeRepeatUndo(repeated: Int) {
+        val baseline = repeatUndoBaseline
+        repeatUndoBaseline = -1
+        if (baseline < 0 || repeated < baseline) return
+        ineffectiveRepeatUndos++
+        if (ineffectiveRepeatUndos >= TunerThresholds.REPEAT_UNDO_INEFFECTIVE_LIMIT) {
+            repeatStepBackOff = true
+        }
     }
 
     private fun forgetTrim(domain: TunerDomain) {

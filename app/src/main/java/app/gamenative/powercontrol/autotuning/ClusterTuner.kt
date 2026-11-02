@@ -212,7 +212,7 @@ class ClusterTuner(
             cpuTempC = snapshot.cpuTempC,
             gpuTempC = snapshot.gpuTempC,
             capabilities = capabilities(),
-            repeatedFrameCount = snapshot.repeatedFrameCount,
+            repeatedFrameCount = snapshot.repeatedFrameCount ?: 0,
         )
 
         val slowRatio = engine.slowFrameRatio(input)
@@ -254,14 +254,14 @@ class ClusterTuner(
         if (applied) {
             persistWarmState()
             Timber.tag(TAG).i(
-                "%s %s: fps=%.1f/%d p95=%.1fms slow=%.1f%% repeated=%d in %s cpu=%s%% gpu=%s%% caps[prime=%s perf=%s gpu=%s] frozen=%s",
+                "%s %s: fps=%.1f/%d p95=%.1fms slow=%.1f%% repeated=%s in %s cpu=%s%% gpu=%s%% caps[prime=%s perf=%s gpu=%s] frozen=%s",
                 action,
                 reason,
                 snapshot.fps,
                 targetFps,
                 snapshot.frameTimeP95Ms,
                 slowRatio * 100f,
-                snapshot.repeatedFrameCount,
+                snapshot.repeatedFrameCount?.toString() ?: "-",
                 TunerThresholds.REPEAT_WINDOW_LABEL,
                 snapshot.cpuUsagePercent?.toInt()?.toString() ?: "-",
                 snapshot.gpuUsagePercent?.toInt()?.toString() ?: "-",
@@ -270,7 +270,7 @@ class ClusterTuner(
                 capLabel(TunerDomain.GPU),
                 decision.frozenDomains.joinToString(",") { it.key }.ifEmpty { "-" },
             )
-        } else if (snapshot.repeatedFrameCount > 0) {
+        } else if ((snapshot.repeatedFrameCount ?: 0) > 0) {
             // Repeat holds go out at info so a tester sees why the tuner stopped trimming.
             Timber.tag(TAG).i(
                 "hold %s: fps=%.1f/%d p95=%.1fms steady=%d",

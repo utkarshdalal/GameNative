@@ -106,11 +106,58 @@ class TunerRepeatedFramesTest {
     }
 
     @Test
-    fun `repeats with no trim this session raise the domain a frame drop would`() {
+    fun `repeats with no trim this session hold and raise nothing`() {
         val engine = TunerDecisionEngine()
-        repeat(TunerThresholds.STEADY_RENDER_CYCLES) { engine.decide(input(repeated = 0)) }
-        val undo = engine.decide(input(repeated = 2))
-        assertEquals(TunerAction.UNDO, undo.action)
-        assertEquals(TunerDomain.PRIME, undo.domain)
+        repeat(TunerThresholds.STEADY_RENDER_CYCLES - 1) { engine.decide(input(repeated = 0)) }
+        val decision = engine.decide(input(repeated = 5))
+        assertEquals(TunerAction.HOLD, decision.action)
+        assertTrue(decision.reason, decision.reason.startsWith("repeat-hold"))
+    }
+
+    @Test
+    fun `three step-backs that did not cut repeats turn step-backs off`() {
+        val engine = TunerDecisionEngine()
+        repeat(4) {
+            runToTrim(engine)
+            finishWatch(engine)
+        }
+        var undos = 0
+        repeat(TunerThresholds.REPEAT_UNDO_COOLDOWN_CYCLES * 6) {
+            val decision = engine.decide(input(repeated = 4))
+            if (decision.action == TunerAction.UNDO) undos++
+            assertTrue(decision.reason, decision.action != TunerAction.TRIM)
+        }
+        assertEquals(TunerThresholds.REPEAT_UNDO_INEFFECTIVE_LIMIT, undos)
+        val held = engine.decide(input(repeated = 4))
+        assertEquals(TunerAction.HOLD, held.action)
+        assertTrue(held.reason, held.reason.endsWith("step-back off"))
+    }
+
+    @Test
+    fun `step-backs that cut repeats stay on`() {
+        val engine = TunerDecisionEngine()
+        repeat(4) {
+            runToTrim(engine)
+            finishWatch(engine)
+        }
+        var undos = 0
+        repeat(4) {
+            if (engine.decide(input(repeated = 4)).action == TunerAction.UNDO) undos++
+            // The window after each step-back holds fewer repeats than the step-back saw.
+            repeat(TunerThresholds.REPEAT_UNDO_COOLDOWN_CYCLES) { engine.decide(input(repeated = 1)) }
+        }
+        assertEquals(4, undos)
+    }
+
+    @Test
+    fun `a cap change drops the cooldown of a step-back in flight`() {
+        val engine = TunerDecisionEngine()
+        runToTrim(engine)
+        finishWatch(engine)
+        runToTrim(engine)
+        finishWatch(engine)
+        assertEquals(TunerAction.UNDO, engine.decide(input(repeated = 3)).action)
+        assertEquals(TunerAction.HOLD, engine.decide(input(repeated = 3)).action)
+        assertEquals(TunerAction.UNDO, engine.decide(input(repeated = 3).copy(targetFps = 30, fps = 30f)).action)
     }
 }
