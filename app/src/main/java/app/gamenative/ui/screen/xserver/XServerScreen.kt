@@ -217,6 +217,7 @@ import com.winlator.widget.FrameRating
 import com.winlator.widget.InputControlsView
 import com.winlator.widget.TouchpadView
 import com.winlator.renderer.ASurfaceRenderer
+import com.winlator.renderer.AHBImage
 import com.winlator.renderer.GLRenderer
 import com.winlator.renderer.VulkanRenderer
 import com.winlator.widget.XServerRendererView
@@ -262,6 +263,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONException
 import org.json.JSONObject
 import timber.log.Timber
+import android.system.Os
+import android.system.ErrnoException
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
@@ -2128,6 +2131,9 @@ fun XServerScreen(
             // other containers as well. Uncheck the per-container useLegacyRenderer
             // setting to switch to the Vulkan renderer.
             val useGLRenderer = isX11Display && (container.graphicsDriver == "virgl" || container.displayRenderer.equals("gl", true))
+            // Before the first drawable: the SurfaceFlinger display renderer hands its window buffers to
+            // surfaceflinger, so they follow the same scan-out layout rule as the gamescope daemon's pool.
+            if (isX11Display) AHBImage.setCpuScanoutRgba(resolveScanoutLayout(container) == "rgba")
             val xServerViewInstance: XServerRendererView = if (useGLRenderer) {
                 XServerViewGL(context, xServerToUse)
             } else {
@@ -6075,6 +6081,29 @@ private fun hasContainerVariantChanged(container: Container, imageFs: ImageFs): 
 /** Launch-time check that the container selects X11; */
 internal fun resolveDisplayX11(container: Container?): Boolean {
     return container == null || Container.isX11Display(container.containerVariant, container.displayServer)
+}
+
+/**
+ * The scan-out layout for buffers this process hands to SurfaceFlinger, "bgra" or "rgba": the container's
+ * GNDRM_SCANOUT_LAYOUT override, else the gndrm daemon's device rule (RGBA on Android 16 with a GLES render
+ * engine, which aborts surfaceflinger on a BGRA_8888 layer). The override is put in this process's
+ * environment first, the way the daemon reads it, and cleared otherwise so an earlier session's does not linger.
+ */
+internal fun resolveScanoutLayout(container: Container): String {
+    val override = EnvVars(container.envVars).get("GNDRM_SCANOUT_LAYOUT")
+    try {
+        if (override.isNotEmpty()) Os.setenv("GNDRM_SCANOUT_LAYOUT", override, true) else Os.unsetenv("GNDRM_SCANOUT_LAYOUT")
+    } catch (e: ErrnoException) {
+        Timber.w(e, "Could not set GNDRM_SCANOUT_LAYOUT")
+    }
+    val layout = try {
+        GameNativeDrm.nativeScanoutLayout() ?: "bgra"
+    } catch (e: LinkageError) {
+        Timber.w(e, "Scan-out layout rule unavailable, assuming bgra")
+        "bgra"
+    }
+    Timber.i("X11 scan-out layout %s (%s)", layout, if (override.isNotEmpty()) "container override" else "device rule")
+    return layout
 }
 
 private fun refreshComponentsFiles(context: Context) {
