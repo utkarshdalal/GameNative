@@ -195,7 +195,7 @@ public abstract class ImageFsInstaller {
     private static final String REDIRECT_ARCHIVE = "redirect-gamenative-20261030.tzst";
     private static final String REDIRECT_STAMP = ".redirect.version";
 
-    private static boolean installRedirectLibs(Context ctx, File imagefs) {
+    public static boolean installRedirectLibs(Context ctx, File imagefs) {
         try (InputStream in = ctx.getAssets().open(REDIRECT_ARCHIVE)) {
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, in, imagefs);
         } catch (IOException e) {

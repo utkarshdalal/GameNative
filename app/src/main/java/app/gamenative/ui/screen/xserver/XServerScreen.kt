@@ -228,6 +228,7 @@ import com.winlator.winhandler.OnGetProcessInfoListener
 import com.winlator.winhandler.ProcessInfo
 import com.winlator.xconnector.UnixSocketConfig
 import com.winlator.xenvironment.ImageFs
+import com.winlator.xenvironment.ImageFsInstaller
 import com.winlator.xenvironment.XEnvironment
 import com.winlator.xenvironment.components.ALSAServerComponent
 import com.winlator.xenvironment.components.BionicProgramLauncherComponent
@@ -6086,6 +6087,10 @@ private fun refreshComponentsFiles(context: Context) {
         context.assets,
         TarCompressorUtils.Type.ZSTD
     )
+
+    // Always refresh redirect
+    val imageFs = ImageFs.find(context)
+    ImageFsInstaller.installRedirectLibs(context, imageFs.rootDir)
 }
 
 /**
