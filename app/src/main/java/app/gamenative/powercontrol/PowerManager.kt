@@ -1320,7 +1320,7 @@ object PowerManager {
                         Timber.tag("PowerManager").i(
                             "Pinned $processName (PID: $pid) to CPUs ${gameCores.joinToString()} after $attempt attempts, verified=$verified ($reason)"
                         )
-                        applyCompositorAffinity(reason)
+                        if (gamescopeSession) applyCompositorAffinity(reason)
                         return@Thread
                     }
 
