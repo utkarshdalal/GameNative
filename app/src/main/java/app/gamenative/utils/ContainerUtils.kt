@@ -101,6 +101,7 @@ object ContainerUtils {
         }
         DefaultVersion.DISPLAY_SERVER = Container.defaultDisplayServer(
             GPUInformation.getRenderer(context).orEmpty().contains("adreno", ignoreCase = true),
+            Build.VERSION.SDK_INT,
         )
     }
 
