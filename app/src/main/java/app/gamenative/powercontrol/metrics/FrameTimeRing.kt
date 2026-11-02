@@ -123,3 +123,25 @@ private fun percentileMs(sortedDeltas: LongArray, size: Int, percentile: Double)
     val index = Math.ceil(percentile * size).toInt() - 1
     return sortedDeltas[index.coerceIn(0, size - 1)] / 1_000_000f
 }
+
+/**
+ * Number of intervals between [count] ascending timestamps in [timestampsNs] (taken
+ * [sampleStride] frames apart, as in [computeFrameWindowStats]) longer than [thresholdNs].
+ * At a frame cap each such interval is a frame the display showed again.
+ */
+fun countSlowIntervals(
+    timestampsNs: LongArray,
+    count: Int,
+    thresholdNs: Long,
+    sampleStride: Int = 1,
+): Int {
+    val stride = sampleStride.coerceAtLeast(1)
+    if (thresholdNs <= 0L) return 0
+    var slow = 0
+    var index = stride
+    while (index < count) {
+        if (timestampsNs[index] - timestampsNs[index - stride] > thresholdNs) slow++
+        index += stride
+    }
+    return slow
+}
