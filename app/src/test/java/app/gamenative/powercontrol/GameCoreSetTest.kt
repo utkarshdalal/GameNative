@@ -59,8 +59,8 @@ class GameCoreSetTest {
 
     private val calls = mutableListOf<Pair<Int, Int>>()
     private val recordAffinity: (Int, Int) -> Int = { tid, mask -> calls.add(tid to mask); 0 }
-    private val noAffinity: (Int, Int) -> Int = { tid, _ -> fail("sched_setaffinity on $tid with power control off"); 0 }
-    private val noThreads: () -> ChainThreads = { fail("the chain was looked up with power control off"); chain }
+    private val noAffinity: (Int, Int) -> Int = { tid, _ -> fail("unexpected sched_setaffinity on $tid"); 0 }
+    private val noThreads: () -> ChainThreads = { fail("unexpected chain lookup"); chain }
 
     @Before
     @After
@@ -97,6 +97,15 @@ class GameCoreSetTest {
     fun `four-four gamescope game runs on the big cluster`() {
         val set = PowerManager.clusterGameCores(fourFour, gamescope = true)
         assertEquals(listOf(4, 5, 6, 7), set.cores)
+    }
+
+    @Test
+    fun `six little two big does not pin the chain`() {
+        val placement = PowerManager.compositorCoreSet(sixLittleTwoBig)
+        assertEquals(emptyList<Int>(), placement.cores)
+        assertTrue(placement.skipReason!!, placement.skipReason!!.startsWith("only 2 core(s) outside the low-capacity cluster"))
+        PowerManager.applyCompositorAffinity("gamescope session start", sixLittleTwoBig, true, noAffinity, noThreads)
+        assertNull(PowerManager.compositorRestoreCores)
     }
 
     @Test
@@ -157,17 +166,17 @@ class GameCoreSetTest {
     // ---- placement through the gate
 
     @Test
-    fun `power control off makes no affinity call and does not look up the chain`() {
-        PowerManager.applyCompositorAffinity("gamescope session start", null, noAffinity, noThreads)
-        PowerManager.applyCompositorAffinity("activity resume", null, noAffinity, noThreads)
-        PowerManager.applyCompositorAffinity("game start", null, noAffinity, noThreads)
+    fun `a device without a PServer driver makes no affinity call and does not look up the chain`() {
+        PowerManager.applyCompositorAffinity("gamescope session start", null, true, noAffinity, noThreads)
+        PowerManager.applyCompositorAffinity("activity resume", null, false, noAffinity, noThreads)
+        PowerManager.applyCompositorAffinity("game start", null, true, noAffinity, noThreads)
         assertNull(PowerManager.compositorRestoreCores)
         PowerManager.releaseCompositorAffinity("gamescope session end", noAffinity, noThreads)
     }
 
     @Test
     fun `RP6 places every chain thread on 3-7 and releases to all cores`() {
-        PowerManager.applyCompositorAffinity("gamescope session start", rp6, recordAffinity) { chain }
+        PowerManager.applyCompositorAffinity("gamescope session start", rp6, true, recordAffinity) { chain }
         assertEquals(chain.tids.map { it to 0xF8 }, calls)
         assertNotNull(PowerManager.compositorRestoreCores)
 
@@ -182,14 +191,42 @@ class GameCoreSetTest {
 
     @Test
     fun `Odin 3 makes no affinity call at session start or end`() {
-        PowerManager.applyCompositorAffinity("gamescope session start", odin3, noAffinity, noThreads)
+        PowerManager.applyCompositorAffinity("gamescope session start", odin3, true, noAffinity, noThreads)
         PowerManager.releaseCompositorAffinity("gamescope session end", noAffinity, noThreads)
     }
 
     @Test
     fun `four-four places the chain on 4-7`() {
-        PowerManager.applyCompositorAffinity("game start", fourFour, recordAffinity) { chain }
+        PowerManager.applyCompositorAffinity("game start", fourFour, true, recordAffinity) { chain }
         assertEquals(chain.tids.map { it to 0xF0 }, calls)
+    }
+
+    @Test
+    fun `RP6 with power control off in the profile still places the chain on 3-7`() {
+        PowerManager.applyCompositorAffinity("gamescope session start", rp6, false, recordAffinity) { chain }
+        assertEquals(chain.tids.map { it to 0xF8 }, calls)
+        assertEquals((0..7).toList(), PowerManager.compositorRestoreCores)
+        assertEquals("3-7", PowerManager.formatRanges(listOf(3, 4, 5, 6, 7)))
+        assertEquals("0-2,4,6-7", PowerManager.formatRanges(listOf(7, 0, 1, 2, 4, 6)))
+    }
+
+    // ---- capacity source
+
+    @Test
+    fun `max frequency capacities never pin the chain nor change the game rule`() {
+        val byFrequency = PowerManager.knownCapacities(rp6ByFrequency, "max_freq")
+        assertTrue(byFrequency.all { it.capacity == 0L })
+        val placement = PowerManager.compositorCoreSet(byFrequency)
+        assertEquals(emptyList<Int>(), placement.cores)
+        assertEquals("cluster capacity unknown (max_freq only); placement skipped", placement.skipReason)
+        val game = PowerManager.clusterGameCores(byFrequency, gamescope = true)
+        assertEquals(listOf(2, 3, 4, 5, 6, 7), game.cores)
+        assertEquals("(unchanged rule) cluster capacity unknown (max_freq only); placement skipped", game.rule)
+        PowerManager.applyCompositorAffinity("gamescope session start", byFrequency, true, noAffinity, noThreads)
+        // Even a frequency spread that would cross the 0.6 line is ignored.
+        val wideSpread = PowerManager.knownCapacities(fourFour, "max_freq")
+        assertEquals(emptyList<Int>(), PowerManager.compositorCoreSet(wideSpread).cores)
+        assertEquals(fourFour, PowerManager.knownCapacities(fourFour, "cpu_capacity"))
     }
 
     // ---- gamescope-only fences
