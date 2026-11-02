@@ -70,4 +70,14 @@ class GameCoreSetTest {
         val placement = PowerManager.compositorCoreSet(online, emptySet(), rp6Capacity)
         assertEquals(listOf(3, 4, 5, 6, 7), placement.cores)
     }
+
+    @Test
+    fun `tuner aims for the panel rate when a gamescope cap is above it`() {
+        assertEquals(60, PowerManager.tunerTargetFps(120, gamescope = true, panelHz = 60))
+        assertEquals(60, PowerManager.tunerTargetFps(60, gamescope = true, panelHz = 120))
+        assertEquals(45, PowerManager.tunerTargetFps(45, gamescope = true, panelHz = 60))
+        assertEquals(120, PowerManager.tunerTargetFps(120, gamescope = false, panelHz = 60))
+        assertEquals(120, PowerManager.tunerTargetFps(120, gamescope = true, panelHz = 0))
+        assertEquals(0, PowerManager.tunerTargetFps(0, gamescope = true, panelHz = 60))
+    }
 }

@@ -160,4 +160,16 @@ class TunerRepeatedFramesTest {
         assertEquals(TunerAction.HOLD, engine.decide(input(repeated = 3)).action)
         assertEquals(TunerAction.UNDO, engine.decide(input(repeated = 3).copy(targetFps = 30, fps = 30f)).action)
     }
+
+    @Test
+    fun `warm-start caps step back on repeats like trims made this session`() {
+        val engine = TunerDecisionEngine()
+        repeat(TunerThresholds.STEADY_RENDER_CYCLES - 1) { engine.decide(input()) }
+        // A state file left perf at its floor, 10 steps down, and prime 2 steps down.
+        engine.noteWarmStart(mapOf(TunerDomain.PRIME to 2, TunerDomain.PERFORMANCE to 10, TunerDomain.GPU to 0))
+        val undo = engine.decide(input(repeated = 2))
+        assertEquals(TunerAction.UNDO, undo.action)
+        assertEquals(TunerDomain.PERFORMANCE, undo.domain)
+        assertTrue(undo.reason, undo.reason.startsWith("repeat-undo:perf repeated=2"))
+    }
 }

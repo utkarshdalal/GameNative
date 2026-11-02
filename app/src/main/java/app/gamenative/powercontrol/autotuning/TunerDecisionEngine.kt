@@ -361,6 +361,22 @@ class TunerDecisionEngine(
     }
 
     /**
+     * Records warm-start caps as trims made this session, [stepsByDomain] steps below the top per
+     * domain, so repeats can step them back like any other trim. A state file written by an
+     * earlier session can hold a domain at its floor; without this the floor would only ever be
+     * held. Entries interleave, the most-trimmed domain newest, so step-backs start there.
+     */
+    fun noteWarmStart(stepsByDomain: Map<TunerDomain, Int>) {
+        val most = stepsByDomain.values.maxOrNull() ?: return
+        for (step in 0 until most) {
+            stepsByDomain.entries
+                .filter { it.value > step }
+                .sortedBy { it.value }
+                .forEach { trimHistory.add(it.key) }
+        }
+    }
+
+    /**
      * Drops the frozen set and any in-flight trim watch, the same trim state a raise clears.
      * For owners that open every domain outside the decision path.
      */

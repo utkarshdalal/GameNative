@@ -103,6 +103,15 @@ object PowerManager {
     @Volatile
     var panelRefreshHz: Int = 0
 
+    /**
+     * The frame rate the tuners aim for. Under gamescope a capped game is FIFO on the display's
+     * vblank grid, so a cap above the display's rate (the slider goes to twice it) cannot be
+     * reached: the tuners aim for the display's rate there, while the cap sent to gamescope and
+     * reported everywhere else stays what the user set.
+     */
+    internal fun tunerTargetFps(capFps: Int, gamescope: Boolean, panelHz: Int): Int =
+        if (gamescope && panelHz > 0 && capFps > panelHz) panelHz else capFps
+
     var targetFps: Int = 0
         set(value) {
             // Enforce non-negative values and round/clamp if necessary
@@ -458,7 +467,7 @@ object PowerManager {
             },
             applyGpuMaxLevel = { level -> pserver.setMaxGpuPowerLevel(level) },
             metricsProvider = { latestMetrics },
-            targetFpsProvider = { targetFps },
+            targetFpsProvider = { tunerTargetFps(targetFps, gamescopeSession, panelRefreshHz) },
             fanSampleProvider = { FanController.latestSample },
             strategyProvider = { currentProfile.tuningStrategy },
             fpsCapProvider = { AdaptiveFpsCapController.snapshot() },

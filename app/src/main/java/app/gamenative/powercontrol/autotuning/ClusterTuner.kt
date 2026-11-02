@@ -415,6 +415,12 @@ class ClusterTuner(
         applied = applyWarmDomain(TunerDomain.GPU, state.gpuIndex, state.gpuStepCount) || applied
 
         if (applied) {
+            engine.noteWarmStart(
+                TunerDomain.entries.associateWith { domain ->
+                    val last = lastIndexOf(domain)
+                    if (last <= 0) 0 else (last - (stepIndex[domain] ?: last)).coerceAtLeast(0)
+                },
+            )
             Timber.tag(TAG).i(
                 "Warm-start caps applied [prime=%s perf=%s gpu=%s]",
                 capLabel(TunerDomain.PRIME),
