@@ -749,6 +749,7 @@ fun XServerScreen(
     fun applyPanelRefresh(panelHz: Int = detectRefreshRateHz(context, ui.xServerView as? View)) {
         if (isX11Display || panelHz <= 0) return
         GameNativeDrm.nativeSetPanelRefreshHz(panelHz)
+        PowerManager.panelRefreshHz = panelHz
         // The daemon's connector advertises the new rate from here on, but gamescope reads the mode
         // once, when the session starts: dirty its backend so a display change becomes the mode now
         // rather than on the next launch. Only on a change — a nudge forces a modeset — and not on
@@ -2555,6 +2556,8 @@ fun XServerScreen(
                                 immersiveHooks,
                             )
 
+                            // The game core set and the tuner's repeated-frame input differ by session type.
+                            PowerManager.gamescopeSession = sessionDisplay == SessionDisplay.GAMESCOPE
                             // Autostart performance driver after environment is set up
                             PowerManager.autoStart(container.rootDir)
 

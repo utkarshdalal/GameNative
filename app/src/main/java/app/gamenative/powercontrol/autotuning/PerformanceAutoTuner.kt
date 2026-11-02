@@ -247,7 +247,11 @@ class PerformanceAutoTuner(
         // Skip first ${WARMUP_CYCLES} cycles regardless of FPS to allow game to start
         if (!skipWarmupCycles && ++warmUpCycles < WARMUP_CYCLES) return
 
-        val targetFps = PowerManager.targetFps.toDouble()
+        val targetFps = PowerManager.tunerTargetFps(
+            PowerManager.targetFps,
+            PowerManager.gamescopeSession,
+            PowerManager.panelRefreshHz,
+        ).toDouble()
         val currentFps = PowerManager.currentFps.toDouble()
 
         // Skip tuning when targetFps is 0 (FPS limiter disabled) or currentFps is 0

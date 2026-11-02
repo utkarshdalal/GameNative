@@ -37,6 +37,12 @@ data class TunerInput(
     val cpuTempC: Int?,
     val gpuTempC: Int?,
     val capabilities: Map<TunerDomain, DomainCapability>,
+    /**
+     * Frame intervals longer than 1.5 target periods over the last
+     * [TunerThresholds.REPEAT_WINDOW_MS], from the app's own frame timestamps. At a cap each
+     * one is a frame the display showed twice.
+     */
+    val repeatedFrameCount: Int = 0,
 )
 
 data class TunerDecision(
@@ -98,6 +104,35 @@ object TunerThresholds {
     const val REPROBE_INTERVAL_CYCLES = 60
 
     const val STEPS_UNCAPPED = Int.MAX_VALUE
+
+    /**
+     * Window the repeated-frame count covers. The fps and p95 of a capped game read as steady
+     * while it repeats a frame every few seconds (59.9 fps, p95 one period), so repeats are
+     * counted over a window long enough to see them.
+     */
+    const val REPEAT_WINDOW_MS = 10_000L
+    const val REPEAT_WINDOW_LABEL = "10s"
+
+    /**
+     * Any repeat in the window blocks the next trim. Repeats at or above this count step the
+     * last trim back. A capped game with power control off repeats about once in 90 s
+     * (RP6, SteamWorld Dig 2: 1 in 90 s), so two in one 10 s window almost never happens
+     * on its own, while the trimmed run repeated 25 times in 70 s.
+     */
+    const val REPEAT_UNDO_COUNT = 2
+
+    /**
+     * Cycles after a repeat step-back before the next one: the repeats that caused it stay in
+     * the window until it has turned over, and must not step back a second domain.
+     */
+    const val REPEAT_UNDO_COOLDOWN_CYCLES = (REPEAT_WINDOW_MS / CYCLE_INTERVAL_MS).toInt()
+
+    /**
+     * Repeat step-backs that did not cut the repeats in the window after them before repeats
+     * stop being a step-back signal for the session. A game that hitches on its own (shader
+     * compiles, GC pauses, streaming) repeats whatever the clocks are; repeats still block trims.
+     */
+    const val REPEAT_UNDO_INEFFECTIVE_LIMIT = 3
 }
 
 data class StrategyTuning(
@@ -141,6 +176,9 @@ private enum class Bottleneck(val key: String) {
     CPU("cpu"),
 }
 
+/** One trimmed step: made by this session, or carried in by a warm start. */
+private data class TrimEntry(val domain: TunerDomain, val warmStart: Boolean)
+
 /**
  * Pure decision logic for [ClusterTuner]: a snapshot plus the current per-domain
  * capabilities in, one action out. Holds all tuning state and has no Android or
@@ -169,6 +207,15 @@ class TunerDecisionEngine(
     private var trimQualifiedCycles = 0
     private var watchCyclesRemaining = 0
     private var watchedDomain: TunerDomain? = null
+
+    /** Domains trimmed this session, newest last, so a repeat step-back undoes the latest. */
+    private val trimHistory = ArrayList<TrimEntry>()
+    private var repeatUndoCooldownCycles = 0
+    private var repeatUndoBaseline = -1
+    private var repeatUndoWarm = false
+    private var ineffectiveRepeatUndos = 0
+    private var repeatStepBackOff = false
+    private var lastTargetFps = 0
 
     private var lastBottleneck: Bottleneck? = null
     private var harvestBottleneck: Bottleneck? = null
@@ -212,6 +259,18 @@ class TunerDecisionEngine(
         }
         steadyCycles++
         updateRenderAverages(input, slowRatio)
+        if (input.targetFps != lastTargetFps) {
+            // A new cap re-scores the window: a step-back in flight can no longer be judged.
+            if (lastTargetFps != 0) {
+                repeatUndoCooldownCycles = 0
+                repeatUndoBaseline = -1
+            }
+            lastTargetFps = input.targetFps
+        }
+        if (repeatUndoCooldownCycles > 0) {
+            repeatUndoCooldownCycles--
+            if (repeatUndoCooldownCycles == 0) judgeRepeatUndo(input.repeatedFrameCount)
+        }
 
         val target = input.targetFps.toFloat()
         val targetPeriodMs = 1000f / target
@@ -258,10 +317,31 @@ class TunerDecisionEngine(
                 frozen.add(watched)
                 clearWatch()
                 trimQualifiedCycles = 0
-                return decision(TunerAction.UNDO, watched, 1, "undo:${watched.key}")
+                forgetTrim(watched)
+                val cause = if (input.repeatedFrameCount > 0) " ${repeatLabel(input)}" else ""
+                return decision(TunerAction.UNDO, watched, 1, "undo:${watched.key}$cause")
             }
             watchCyclesRemaining--
             return decision(TunerAction.HOLD, watched, 0, "watch:${watched.key}")
+        }
+
+        val repeated = input.repeatedFrameCount
+        if (repeated > 0) {
+            trimQualifiedCycles = 0
+            if (repeated >= TunerThresholds.REPEAT_UNDO_COUNT && repeatUndoCooldownCycles == 0) {
+                val entry = repeatUndoTarget(input)
+                if (entry != null) {
+                    val domain = entry.domain
+                    frozen.add(domain)
+                    trimHistory.remove(entry)
+                    repeatUndoCooldownCycles = TunerThresholds.REPEAT_UNDO_COOLDOWN_CYCLES
+                    repeatUndoBaseline = repeated
+                    repeatUndoWarm = entry.warmStart
+                    return decision(TunerAction.UNDO, domain, 1, "repeat-undo:${domain.key} ${repeatLabel(input)}")
+                }
+            }
+            val note = if (repeatStepBackOff) " step-back off" else ""
+            return decision(TunerAction.HOLD, null, 0, "repeat-hold ${repeatLabel(input)}$note")
         }
 
         if (isHealthy(input, slowRatio, targetPeriodMs, tuning)) {
@@ -277,12 +357,29 @@ class TunerDecisionEngine(
                 trimQualifiedCycles = 0
                 watchedDomain = domain
                 watchCyclesRemaining = tuning.trimWatchCycles
+                trimHistory.add(TrimEntry(domain, warmStart = false))
                 return decision(TunerAction.TRIM, domain, 1, "trim:${domain.key}")
             }
             return decision(TunerAction.HOLD, null, 0, "trim:no-domain")
         }
 
         return decision(TunerAction.HOLD, null, 0, if (steadyEnough) "hold" else "warmup")
+    }
+
+    /**
+     * Records warm-start caps as trims made this session, [stepsByDomain] steps below the top per
+     * domain, so repeats can step them back like any other trim. A state file written by an
+     * earlier session can hold a domain at its floor; without this the floor would only ever be
+     * held. Entries interleave, the most-trimmed domain newest, so step-backs start there.
+     */
+    fun noteWarmStart(stepsByDomain: Map<TunerDomain, Int>) {
+        val most = stepsByDomain.values.maxOrNull() ?: return
+        for (step in 0 until most) {
+            stepsByDomain.entries
+                .filter { it.value > step }
+                .sortedBy { it.value }
+                .forEach { trimHistory.add(TrimEntry(it.key, warmStart = true)) }
+        }
     }
 
     /**
@@ -296,12 +393,51 @@ class TunerDecisionEngine(
         clearRenderAverages()
         trimQualifiedCycles = 0
         lastBottleneck = null
+        trimHistory.clear()
+        repeatUndoCooldownCycles = 0
+        repeatUndoBaseline = -1
     }
 
     fun slowFrameRatio(input: TunerInput): Float {
         if (input.totalFrameCount <= 0) return 0f
         return input.slowFrameCount.toFloat() / input.totalFrameCount.toFloat()
     }
+
+    /**
+     * The domain a repeat step-back raises: the latest trim made this session that can still go
+     * up. Without one the repeats are not the tuner's doing, and nothing is raised.
+     */
+    private fun repeatUndoTarget(input: TunerInput): TrimEntry? {
+        return trimHistory.lastOrNull { entry ->
+            (entry.warmStart || !repeatStepBackOff) && input.capabilities[entry.domain]?.canRaise == true
+        }
+    }
+
+    /**
+     * Judges a repeat step-back once its window has turned over: one that left at least as many
+     * repeats as it started from did not help, and after
+     * [TunerThresholds.REPEAT_UNDO_INEFFECTIVE_LIMIT] of those repeats stop stepping back.
+     */
+    private fun judgeRepeatUndo(repeated: Int) {
+        val baseline = repeatUndoBaseline
+        repeatUndoBaseline = -1
+        // A warm-start floor is the known-bad state: stepping it back is never held against
+        // the repeat signal, it goes on until the floor is gone or the repeats stop.
+        if (repeatUndoWarm || baseline < 0 || repeated < baseline) return
+        ineffectiveRepeatUndos++
+        if (ineffectiveRepeatUndos >= TunerThresholds.REPEAT_UNDO_INEFFECTIVE_LIMIT) {
+            repeatStepBackOff = true
+        }
+    }
+
+    private fun forgetTrim(domain: TunerDomain) {
+        val index = trimHistory.indexOfLast { it.domain == domain && !it.warmStart }
+            .takeIf { it >= 0 } ?: trimHistory.indexOfLast { it.domain == domain }
+        if (index >= 0) trimHistory.removeAt(index)
+    }
+
+    private fun repeatLabel(input: TunerInput): String =
+        "repeated=${input.repeatedFrameCount} in ${TunerThresholds.REPEAT_WINDOW_LABEL}"
 
     private fun raiseTarget(input: TunerInput): TunerDomain? {
         // A missing GPU reading is not evidence of a GPU-bound render: raise the CPU first, the
@@ -361,6 +497,7 @@ class TunerDecisionEngine(
         harvestBaselineFps = averageFps ?: input.fps
         harvestBaselineP95Ms = averageP95Ms ?: input.frameTimeP95Ms
         harvestBaselineSlowRatio = averageSlowRatio ?: slowRatio
+        trimHistory.add(TrimEntry(domain, warmStart = false))
         return decision(TunerAction.TRIM, domain, 1, "harvest:${domain.key}")
     }
 
@@ -387,6 +524,7 @@ class TunerDecisionEngine(
             if (harvestDegradedCycles >= TunerThresholds.HARVEST_DEGRADED_CYCLES) {
                 frozen.add(watched)
                 clearHarvest()
+                forgetTrim(watched)
                 return decision(TunerAction.UNDO, watched, 1, "harvest-undo:${watched.key}")
             }
         } else {
@@ -474,7 +612,8 @@ class TunerDecisionEngine(
 
     private fun isHealthy(input: TunerInput, slowRatio: Float, targetPeriodMs: Float, tuning: StrategyTuning): Boolean {
         val target = input.targetFps.toFloat()
-        return input.fps >= target - tuning.fpsTrimToleranceFps &&
+        return input.repeatedFrameCount == 0 &&
+            input.fps >= target - tuning.fpsTrimToleranceFps &&
             input.frameTimeP95Ms <= targetPeriodMs * TunerThresholds.FRAME_TIME_P95_TRIM_FACTOR &&
             slowRatio < TunerThresholds.SLOW_FRAME_TRIM_RATIO
     }

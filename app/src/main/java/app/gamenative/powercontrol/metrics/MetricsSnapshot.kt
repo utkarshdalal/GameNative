@@ -19,4 +19,9 @@ data class MetricsSnapshot(
     val gpuTempC: Int?,
     /** Latest finite thermal headroom of the session (refreshed every 10 s), null until one is read. */
     val thermalHeadroom: Float? = null,
+    /**
+     * Repeated frames in the last 10 s (the tuner's repeat window, see [repeatThresholdNs]); null
+     * outside gamescope sessions and with frame generation on, where it is not counted.
+     */
+    val repeatedFrameCount: Int? = null,
 )

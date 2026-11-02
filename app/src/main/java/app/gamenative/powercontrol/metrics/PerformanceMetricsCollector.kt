@@ -5,6 +5,7 @@ import android.hardware.display.DisplayManager
 import android.view.Display
 import app.gamenative.powercontrol.PowerBaselineScripts
 import app.gamenative.powercontrol.PowerManager
+import app.gamenative.powercontrol.autotuning.TunerThresholds
 import java.io.File
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
@@ -44,6 +45,9 @@ object PerformanceMetricsCollector {
 
     private val frameScratch = LongArray(FrameTimeRing.capacity())
     private val deltaScratch = LongArray(FrameTimeRing.capacity())
+    private val repeatScratch = LongArray(FrameTimeRing.capacity())
+    private var repeatWindowKey: List<Int>? = null
+    private var repeatWindowStartNs = 0L
 
     private val sessionLog = JsonlSessionLog(TAG, "metrics-", MAX_LOG_BYTES, MAX_SESSION_FILES)
     private var sampleCount = 0L
@@ -160,6 +164,7 @@ object PerformanceMetricsCollector {
             deltaScratch,
             PowerManager.frameSampleStride,
         )
+        val repeatedFrames = countRepeatedFrames(now)
 
         val cpu = cpuSampler.sample()
         val gpu = gpuSampler.sample()
@@ -205,6 +210,7 @@ object PerformanceMetricsCollector {
             cpuTempC = cpuTemp?.celsius,
             gpuTempC = gpuTemp?.celsius,
             thermalHeadroom = ThermalHeadroom.latest,
+            repeatedFrameCount = repeatedFrames,
         )
 
         publish(snapshot)
@@ -215,11 +221,12 @@ object PerformanceMetricsCollector {
         sampleCount++
         if (sampleCount % LOG_EVERY_N_SAMPLES == 0L) {
             Timber.tag(TAG).i(
-                "fps=%.1f p95=%.1fms slow=%d/%d cpu=%s%%(%s) gpu=%s%% cpuTemp=%s gpuTemp=%s",
+                "fps=%.1f p95=%.1fms slow=%d/%d repeated=%s in 10s cpu=%s%%(%s) gpu=%s%% cpuTemp=%s gpuTemp=%s",
                 snapshot.fps,
                 snapshot.frameTimeP95Ms,
                 snapshot.slowFrameCount,
                 snapshot.totalFrameCount,
+                snapshot.repeatedFrameCount?.toString() ?: "-",
                 snapshot.cpuUsagePercent?.toInt()?.toString() ?: "-",
                 snapshot.cpuUsageSource.name,
                 snapshot.gpuUsagePercent?.toInt()?.toString() ?: "-",
@@ -235,6 +242,30 @@ object PerformanceMetricsCollector {
         PowerManager.currentCpuUsage = snapshot.cpuUsagePercent ?: 0f
         PowerManager.currentGpuUsage = snapshot.gpuUsagePercent ?: 0f
         PowerManager.gpuUsageKnown = snapshot.gpuUsagePercent != null
+    }
+
+    /**
+     * Repeated frames over the tuner's repeat window, or null when they are not counted: only
+     * gamescope sessions publish one ring entry per frame gamescope flipped on its vblank grid,
+     * and with frame generation on the ring carries generated frames, so neither X11 sessions nor
+     * generation count repeats. A change of cap or display rate re-scores the window, so it
+     * restarts empty then.
+     */
+    private fun countRepeatedFrames(now: Long): Int? {
+        if (!repeatCountingActive(PowerManager.gamescopeSession, PowerManager.frameSampleStride)) {
+            repeatWindowKey = null
+            return null
+        }
+        val refreshHz = PowerManager.panelRefreshHz.takeIf { it > 0 } ?: Math.round(displayRefreshRate)
+        val capFps = PowerManager.targetFps
+        val key = listOf(capFps, refreshHz)
+        if (key != repeatWindowKey) {
+            repeatWindowKey = key
+            repeatWindowStartNs = now
+        }
+        val since = maxOf(now - TunerThresholds.REPEAT_WINDOW_MS * 1_000_000L, repeatWindowStartNs)
+        val count = FrameTimeRing.copySince(since, repeatScratch)
+        return countSlowIntervals(repeatScratch, count, repeatThresholdNs(capFps, refreshHz))
     }
 
     private fun slowFrameThresholdNs(): Long {
