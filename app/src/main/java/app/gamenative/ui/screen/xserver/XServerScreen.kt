@@ -230,6 +230,7 @@ import com.winlator.inputcontrols.ControllerManager
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.ExternalController
 import com.winlator.inputcontrols.InputControlsManager
+import com.winlator.inputcontrols.OnScreenControlsVisibility
 import com.winlator.inputcontrols.TouchMouse
 import com.winlator.widget.FrameRating
 import com.winlator.widget.InputControlsView
@@ -1177,6 +1178,24 @@ fun XServerScreen(
         }
     }
 
+    fun updateInputControlsVisibility(automaticVisibility: Boolean) {
+        if (!shouldShowInputControls(container.onScreenControlsVisibility, automaticVisibility, ui.isEditMode)) {
+            ui.areControlsVisible = false
+            hideInputControls()
+            return
+        }
+
+        if (ui.areControlsVisible && PluviaApp.inputControlsView?.visibility == View.VISIBLE) return
+        val manager = PluviaApp.inputControlsManager ?: return
+        val profiles = manager.getProfiles(false)
+        if (profiles.isEmpty()) return
+        val profileId = container.getExtra("profileId", "0").toIntOrNull() ?: 0
+        val profile = manager.getProfile(profileId) ?: manager.getProfile(0) ?: profiles.getOrNull(2) ?: profiles.first()
+        val winHandler = ui.xServerView?.getxServer()?.winHandler ?: return
+        ui.areControlsVisible = true
+        showInputControls(profile, winHandler, container) { ui.areControlsVisible }
+    }
+
     fun scanForExternalDevices() {
         val deviceIds = InputDevice.getDeviceIds()
         ui.hasPhysicalKeyboard = deviceIds.any { id ->
@@ -1197,39 +1216,11 @@ fun XServerScreen(
         ui.controllerSlotStatusVersion++
         ui.xServerView?.getxServer()?.winHandler?.refreshControllerMappingsForHotplug()
 
-        if (!ui.usingScreenMirror &&
-            !ui.hasInternalTouchpad && !ui.hasPhysicalMouse && !ui.hasPhysicalKeyboard && !ui.hasPhysicalController &&
-            !container.isTouchscreenMode) {
-            val manager = PluviaApp.inputControlsManager
-            val profiles = manager?.getProfiles(false) ?: listOf()
-
-            if (profiles.isNotEmpty()) {
-                // Use current profile (custom or Profile 0)
-                val profileIdStr = container.getExtra("profileId", "0")
-                val profileId = profileIdStr.toIntOrNull() ?: 0
-                val targetProfile = if (profileId != 0) {
-                    manager?.getProfile(profileId)
-                } else {
-                    null
-                } ?: manager?.getProfile(0) ?: profiles.getOrNull(2) ?: profiles.first()
-
-                if (!ui.showElementEditor && !ui.keepPausedForEditor && !ui.showQuickMenu && !ui.isEditMode) {
-                    Timber.d("No external devices attached, showing on-screen controls")
-                    if (!ui.areControlsVisible) {
-                        showInputControls(targetProfile, ui.xServerView!!.getxServer().winHandler, container)
-                        ui.areControlsVisible = true
-                    }
-
-                    PluviaApp.touchpadView?.postDelayed({
-                        val view = PluviaApp.touchpadView
-                        if (view != null) {
-                            // Delay technically not required for the function to work but this can
-                            // race against tryCapturePointer() and end up capturing after release
-                            // was already called
-                            view.releasePointerCapture()
-                        }
-                    }, 100)
-                }
+        if (!ui.showElementEditor && !ui.keepPausedForEditor && !ui.showQuickMenu && !ui.isEditMode) {
+            updateInputControlsVisibility(ui.shouldAutomaticallyShowControls)
+            if (ui.shouldAutomaticallyShowControls) {
+                // Avoid racing tryCapturePointer(), which also posts a delayed capture request.
+                PluviaApp.touchpadView?.postDelayed({ PluviaApp.touchpadView?.releasePointerCapture() }, 100)
                 ui.hasUpdatedScreenGamepad = false
             }
         }
@@ -1247,8 +1238,7 @@ fun XServerScreen(
                     !ui.hasUpdatedScreenGamepad) {
                     ui.hasUpdatedScreenGamepad = true
 
-                    hideInputControls()
-                    ui.areControlsVisible = false
+                    updateInputControlsVisibility(false)
                 }
             }
             val isMouse = device.supportsSource(InputDevice.SOURCE_MOUSE) ||
@@ -1259,8 +1249,7 @@ fun XServerScreen(
                 if (!ui.hasUpdatedScreenGamepad && tryCapturePointer()) {
                     ui.hasUpdatedScreenGamepad = true
 
-                    hideInputControls()
-                    ui.areControlsVisible = false
+                    updateInputControlsVisibility(false)
                 }
             }
         }
@@ -1275,8 +1264,7 @@ fun XServerScreen(
                 !ui.hasUpdatedScreenGamepad) {
                 ui.hasUpdatedScreenGamepad = true
 
-                hideInputControls()
-                ui.areControlsVisible = false
+                updateInputControlsVisibility(false)
             }
         }
     }
@@ -1345,27 +1333,15 @@ fun XServerScreen(
             }
 
             QuickMenuAction.INPUT_CONTROLS -> {
-                if (ui.areControlsVisible) {
+                container.onScreenControlsVisibility = if (ui.areControlsVisible) {
                     if (PrefManager.usageAnalyticsEnabled) PostHog.capture(event = "onscreen_controller_disabled")
-                    hideInputControls()
+                    OnScreenControlsVisibility.HIDDEN
                 } else {
                     if (PrefManager.usageAnalyticsEnabled) PostHog.capture(event = "onscreen_controller_enabled")
-                    val manager = PluviaApp.inputControlsManager
-                    val profiles = manager?.getProfiles(false) ?: listOf()
-                    if (profiles.isNotEmpty()) {
-                        // Use current profile (custom or Profile 0)
-                        val profileIdStr = container.getExtra("profileId", "0")
-                        val profileId = profileIdStr.toIntOrNull() ?: 0
-                        val targetProfile = if (profileId != 0) {
-                            manager?.getProfile(profileId)
-                        } else {
-                            null
-                        } ?: manager?.getProfile(0) ?: profiles.getOrNull(2) ?: profiles.first()
-
-                        showInputControls(targetProfile, ui.xServerView!!.getxServer().winHandler, container)
-                    }
+                    OnScreenControlsVisibility.SHOWN
                 }
-                ui.areControlsVisible = !ui.areControlsVisible
+                container.saveData()
+                updateInputControlsVisibility(ui.shouldAutomaticallyShowControls)
                 true
             }
 
@@ -1393,24 +1369,25 @@ fun XServerScreen(
                     PluviaApp.radialMenuCoordinator?.setProfile(profile)
 
                     val winHandler = ui.xServerView?.getxServer()?.winHandler
-                    if (ui.isTouchscreenModeActive) {
-                        if (ui.areControlsVisible) hideInputControls()
-                        ui.areControlsVisible = false
-                        loadInputControlsProfilePreservingVisibility(profile, winHandler)
-                    }
-                    else if (winHandler != null && shouldShowControlsAfterProfileApply(
-                            wereControlsVisible = ui.areControlsVisible,
-                            wasTouchscreenMode = wasTouchscreenMode,
-                            isTouchscreenMode = ui.isTouchscreenModeActive,
-                            isShooterMode = ui.isShooterModeActive,
-                            hasOtherInputDevice = ui.hasPhysicalController || ui.hasPhysicalKeyboard ||
-                                ui.hasPhysicalMouse || ui.hasInternalTouchpad,
+                    if (winHandler != null && shouldShowInputControls(
+                            container.onScreenControlsVisibility,
+                            shouldShowControlsAfterProfileApply(
+                                wereControlsVisible = ui.areControlsVisible,
+                                wasTouchscreenMode = wasTouchscreenMode,
+                                isTouchscreenMode = ui.isTouchscreenModeActive,
+                                isShooterMode = ui.isShooterModeActive,
+                                hasOtherInputDevice = ui.hasPhysicalController || ui.hasPhysicalKeyboard ||
+                                    ui.hasPhysicalMouse || ui.hasInternalTouchpad,
+                            ),
+                            ui.isEditMode,
                         )
                     ) {
-                        showInputControls(profile, winHandler, container)
                         ui.areControlsVisible = true
+                        showInputControls(profile, winHandler, container) { ui.areControlsVisible }
                     }
                     else {
+                        ui.areControlsVisible = false
+                        hideInputControls()
                         loadInputControlsProfilePreservingVisibility(profile, winHandler)
                     }
                     applyMouseCursorVisibility()
@@ -1462,6 +1439,7 @@ fun XServerScreen(
                         ui.elementPositionsSnapshot = snapshot
                     }
 
+                    ui.controlsVisibleBeforeEdit = ui.areControlsVisible
                     ui.isEditMode = true
                     PluviaApp.inputControlsView?.setEditMode(true)
                     PluviaApp.inputControlsView?.let { icView ->
@@ -1472,8 +1450,8 @@ fun XServerScreen(
                     }
 
                     if (!ui.areControlsVisible) {
-                        showInputControls(activeProfile, ui.xServerView!!.getxServer().winHandler, container)
                         ui.areControlsVisible = true
+                        showInputControls(activeProfile, ui.xServerView!!.getxServer().winHandler, container) { ui.areControlsVisible }
                     }
                 }
                 true
@@ -1489,38 +1467,10 @@ fun XServerScreen(
                 PluviaApp.touchpadView?.setTouchscreenMode(newMode)
 
                 if (newMode) {
-                    // Apply gesture config when enabling
                     PluviaApp.touchpadView?.setGestureConfig(ui.currentGestureConfig)
-
-                    // Hide on-screen controls (mirrors startup priority logic)
-                    if (ui.areControlsVisible) {
-                        hideInputControls()
-                        ui.areControlsVisible = false
-                    }
-
-                    applyMouseCursorVisibility()
-                } else {
-                    applyMouseCursorVisibility()
-
-                    // Re-evaluate whether to show on-screen controls
-                    // (same logic as scanForExternalDevices startup path)
-                    if (!ui.hasPhysicalController && !ui.hasPhysicalKeyboard &&
-                        !ui.hasPhysicalMouse && !ui.hasInternalTouchpad) {
-                        val manager = PluviaApp.inputControlsManager
-                        val profiles = manager?.getProfiles(false) ?: listOf()
-                        if (profiles.isNotEmpty() && !ui.areControlsVisible) {
-                            val profileIdStr = container.getExtra("profileId", "0")
-                            val profileId = profileIdStr.toIntOrNull() ?: 0
-                            val targetProfile = if (profileId != 0) {
-                                manager?.getProfile(profileId)
-                            } else {
-                                null
-                            } ?: manager?.getProfile(0) ?: profiles.getOrNull(2) ?: profiles.first()
-                            showInputControls(targetProfile, ui.xServerView!!.getxServer().winHandler, container)
-                            ui.areControlsVisible = true
-                        }
-                    }
                 }
+                updateInputControlsVisibility(ui.shouldAutomaticallyShowControls)
+                applyMouseCursorVisibility()
                 false
             }
 
@@ -1529,20 +1479,8 @@ fun XServerScreen(
                 container.setShooterMode(newMode)
                 container.saveData()
                 ui.isShooterModeActive = newMode
-                if (newMode && !ui.areControlsVisible) {
-                    val manager = PluviaApp.inputControlsManager
-                    val profiles = manager?.getProfiles(false) ?: listOf()
-                    val winHandler = ui.xServerView?.getxServer()?.winHandler
-                    if (profiles.isNotEmpty() && winHandler != null) {
-                        val profileId = container.getExtra("profileId", "0").toIntOrNull() ?: 0
-                        val targetProfile = if (profileId != 0) {
-                            manager?.getProfile(profileId)
-                        } else {
-                            null
-                        } ?: manager?.getProfile(0) ?: profiles.getOrNull(2) ?: profiles.first()
-                        showInputControls(targetProfile, winHandler, container)
-                        ui.areControlsVisible = true
-                    }
+                if (newMode) {
+                    updateInputControlsVisibility(true)
                 }
                 PluviaApp.inputControlsView?.setContainerShooterMode(newMode)
                 PluviaApp.inputControlsView?.setShooterModeConfig(ui.currentShooterConfig)
@@ -1884,8 +1822,7 @@ fun XServerScreen(
                         if (!ui.showElementEditor && !ui.keepPausedForEditor && !ui.showQuickMenu && !ui.isEditMode &&
                             !ui.hasUpdatedScreenGamepad) {
                             ui.hasUpdatedScreenGamepad = true
-                            hideInputControls()
-                            ui.areControlsVisible = false
+                            updateInputControlsVisibility(false)
                         }
                     }
                     tryCapturePointer()
@@ -2763,6 +2700,9 @@ fun XServerScreen(
 
             // Create InputControlsView and add to FrameLayout
             val icView = InputControlsView(context).apply {
+                // Measure the overlay before choosing visibility, without flashing unwanted controls.
+                setShowTouchscreenControls(false)
+                visibility = View.INVISIBLE
                 // Configure InputControlsView
                 setXServer(xServerView.getxServer())
                 setTouchpadView(PluviaApp.touchpadView)
@@ -3050,11 +2990,9 @@ fun XServerScreen(
                     swapController?.stop()
                 }
             })
-            // Don't call hideInputControls() here - let the auto-show logic below handle visibility
-            // so that the view gets measured/laid out and has valid dimensions for element loading
-
-            // Auto-show on-screen controls after the view has been laid out and has proper dimensions
+            // Choose visibility after layout, when profile elements can use valid dimensions.
             icView.post {
+                if (PluviaApp.inputControlsView !== icView) return@post
                 Timber.d("Auto-show logic running - view dimensions: ${icView.width}x${icView.height}")
                 loadedProfile?.let { profile ->
                     // Load elements if not already loaded (view has dimensions now)
@@ -3069,29 +3007,8 @@ fun XServerScreen(
                         // Check for ACTUAL physically connected controllers, not just saved bindings
                         val controllerManager = ControllerManager.getInstance()
                         controllerManager.scanForDevices()
-                        val hasPhysicalController = controllerManager.getDetectedDevices().isNotEmpty()
-
-                        // Determine if controls should be shown based on priority:
-                        // 1. If touchscreen mode is true → always hide
-                        // 2. Else if physical controller detected → hide
-                        // 3. Else if physical mouse/keyboard detected → hide
-                        // 4. Else → show
-                        val shouldShowControls = when {
-                            container.isTouchscreenMode -> false
-                            ui.hasPhysicalController -> false
-                            ui.hasPhysicalKeyboard || ui.hasPhysicalMouse -> false
-                            else -> true
-                        }
-
-                        if (shouldShowControls) {
-                            Timber.d("Auto-showing onscreen controls")
-                            showInputControls(profile, xServerView.getxServer().winHandler, container)
-                            ui.areControlsVisible = true
-                        } else {
-                            Timber.d("Hiding onscreen controls")
-                            hideInputControls()
-                            ui.areControlsVisible = false
-                        }
+                        ui.hasPhysicalController = controllerManager.getDetectedDevices().isNotEmpty()
+                        updateInputControlsVisibility(ui.shouldAutomaticallyShowControls)
                     } else {
                         Timber.w("Profile has no elements - cannot auto-show controls")
                     }
@@ -3251,6 +3168,7 @@ fun XServerScreen(
                     // Exit edit mode
                     ui.isEditMode = false
                     PluviaApp.inputControlsView?.setEditMode(false)
+                    updateInputControlsVisibility(ui.controlsVisibleBeforeEdit)
                     // Force redraw on next frame to ensure grid is removed
                     PluviaApp.inputControlsView?.post {
                         PluviaApp.inputControlsView?.invalidate()
@@ -3276,6 +3194,7 @@ fun XServerScreen(
                         PluviaApp.inputControlsView?.profile?.loadElements(PluviaApp.inputControlsView)
                         PluviaApp.inputControlsView?.profile?.save()
                         PluviaApp.inputControlsView?.invalidate()
+                        updateInputControlsVisibility(ui.controlsVisibleBeforeEdit)
                     }
                     ui.keepPausedForEditor = false
                     resumeIfAllowedAfterOverlay()
@@ -3798,7 +3717,13 @@ private fun EditModeToolbar(
     }
 }
 
-private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, container: Container) {
+internal fun showInputControls(
+    profile: ControlsProfile,
+    winHandler: WinHandler,
+    container: Container,
+    isVisibilityRequested: () -> Boolean,
+) {
+    if (!isVisibilityRequested()) return
     PluviaApp.radialMenuCoordinator?.setProfile(profile)
 
     PluviaApp.inputControlsView?.let { icView ->
@@ -3810,6 +3735,8 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
                 // View has no dimensions yet - wait for layout before loading elements
                 Timber.d("Deferring element loading until view has dimensions")
                 icView.post {
+                    // A hide or view recreation may have happened while waiting for layout.
+                    if (PluviaApp.inputControlsView !== icView || !isVisibilityRequested()) return@post
                     Timber.d("Loading elements after layout: ${icView.width}x${icView.height}")
                     profile.loadElements(icView)
                     icView.setProfile(profile)
@@ -3882,9 +3809,10 @@ private fun ensureVirtualGamepadSlot(
     }
 }
 
-private fun hideInputControls() {
+internal fun hideInputControls() {
     PluviaApp.inputControlsView?.setShowTouchscreenControls(false)
-    PluviaApp.inputControlsView?.setVisibility(View.GONE)
+    // Keep measuring a hidden overlay so enabling it later uses the current screen dimensions.
+    PluviaApp.inputControlsView?.setVisibility(View.INVISIBLE)
     PluviaApp.inputControlsView?.hideProfileForOverlay()
     PluviaApp.xServerView?.getxServer()?.winHandler?.refreshControllerMappingsForHotplug()
 

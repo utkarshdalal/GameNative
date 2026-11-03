@@ -10,6 +10,7 @@ import com.winlator.core.KeyValueSet;
 import com.winlator.core.WineInfo;
 import com.winlator.core.WineThemeManager;
 import com.winlator.fexcore.FEXCorePreset;
+import com.winlator.inputcontrols.OnScreenControlsVisibility;
 import com.winlator.winhandler.WinHandler;
 import com.winlator.xenvironment.ImageFs;
 
@@ -164,6 +165,7 @@ public class Container {
     private byte dinputMapperType = 1;  // 1=standard, 2=XInput mapper
     // Disable external mouse input
     private boolean disableMouseInput = false;
+    private OnScreenControlsVisibility onScreenControlsVisibility = OnScreenControlsVisibility.AUTOMATIC;
     // Touchscreen mode (defaults on for XR builds)
     private boolean touchscreenMode = app.gamenative.BuildConfig.XR_BUILD;
     // Shooter mode
@@ -870,6 +872,7 @@ public class Container {
             data.put("disableEpicOverlay", disableEpicOverlay);
             // Disable mouse input flag
             data.put("disableMouseInput", disableMouseInput);
+            data.put("onScreenControlsVisibility", onScreenControlsVisibility.getValue());
             // Touchscreen mode flag
             data.put("touchscreenMode", touchscreenMode);
             // Shooter mode flag
@@ -933,6 +936,7 @@ public class Container {
     public void loadData(JSONObject data) throws JSONException {
         wineVersion = WineInfo.MAIN_WINE_VERSION.identifier();
         dxwrapperConfig = "";
+        onScreenControlsVisibility = OnScreenControlsVisibility.AUTOMATIC;
         checkObsoleteOrMissingProperties(data);
 
         for (Iterator<String> it = data.keys(); it.hasNext(); ) {
@@ -1123,6 +1127,9 @@ public class Container {
                     break;
                 case "touchscreenMode" :
                     setTouchscreenMode(data.getBoolean(key));
+                    break;
+                case "onScreenControlsVisibility" :
+                    setOnScreenControlsVisibility(OnScreenControlsVisibility.fromValue(data.optString(key)));
                     break;
                 case "shooterMode" :
                     setShooterMode(data.getBoolean(key));
@@ -1418,6 +1425,15 @@ public class Container {
 
     public void setDisableMouseInput(boolean disableMouseInput) {
         this.disableMouseInput = disableMouseInput;
+    }
+
+    public OnScreenControlsVisibility getOnScreenControlsVisibility() {
+        return onScreenControlsVisibility;
+    }
+
+    public void setOnScreenControlsVisibility(OnScreenControlsVisibility visibility) {
+        onScreenControlsVisibility = visibility != null ? visibility :
+                OnScreenControlsVisibility.AUTOMATIC;
     }
 
     // Touchscreen mode

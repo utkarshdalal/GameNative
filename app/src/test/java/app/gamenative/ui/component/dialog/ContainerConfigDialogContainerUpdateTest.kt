@@ -14,6 +14,7 @@ import app.gamenative.service.SteamService
 import app.gamenative.utils.ContainerUtils
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
+import com.winlator.inputcontrols.OnScreenControlsVisibility
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -24,11 +25,13 @@ import org.junit.runner.RunWith
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.io.File
 import java.lang.reflect.Field
 import java.util.EnumSet
 
 @RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
 class ContainerConfigDialogContainerUpdateTest {
 
     private lateinit var context: Context
@@ -670,6 +673,19 @@ class ContainerConfigDialogContainerUpdateTest {
         ContainerUtils.applyToContainer(context, container, containerData, saveToDisk = false)
 
         assertEquals(Container.STARTUP_SELECTION_AGGRESSIVE, container.startupSelection)
+    }
+
+    @Test
+    fun controlsVisibility_isAppliedAndReadBackWithoutChangingTouchpadMode() {
+        val data = ContainerData(
+            onScreenControlsVisibility = OnScreenControlsVisibility.HIDDEN,
+            touchscreenMode = false,
+        )
+        ContainerUtils.applyToContainer(context, container, data, saveToDisk = false)
+
+        assertEquals(OnScreenControlsVisibility.HIDDEN, container.onScreenControlsVisibility)
+        assertEquals(OnScreenControlsVisibility.HIDDEN, ContainerUtils.toContainerData(container).onScreenControlsVisibility)
+        assertFalse(container.isTouchscreenMode)
     }
 
     @Test

@@ -43,6 +43,7 @@ internal class XServerScreenState(container: Container, context: Context) {
     var physicalControllerHandler: PhysicalControllerHandler? by mutableStateOf(null)
     var exitWatchJob: Job? by mutableStateOf(null)
     var areControlsVisible by mutableStateOf(false)
+    var controlsVisibleBeforeEdit = false
     var isDisableMouseInput by mutableStateOf(container.isDisableMouseInput)
     var isEditMode by mutableStateOf(false)
     var gameRoot by mutableStateOf<View?>(null)
@@ -73,6 +74,9 @@ internal class XServerScreenState(container: Container, context: Context) {
     var usingScreenMirror by mutableStateOf(false)
     var hasInternalTouchpad by mutableStateOf(false)
     var hasUpdatedScreenGamepad by mutableStateOf(false)
+    val shouldAutomaticallyShowControls: Boolean
+        get() = !isTouchscreenModeActive && !hasPhysicalController && !hasPhysicalKeyboard &&
+            !hasPhysicalMouse && !hasInternalTouchpad && !usingScreenMirror
     var isPerformanceHudEnabled by mutableStateOf(PrefManager.showFps)
     var detectedMaxRefreshRateHz by mutableIntStateOf(detectRefreshRateHz(context, null))
     var performanceHudConfig by mutableStateOf(loadPerformanceHudConfig())
