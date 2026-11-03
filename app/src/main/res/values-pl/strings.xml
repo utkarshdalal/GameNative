@@ -1786,6 +1786,8 @@
     <string name="download_failed_title">Pobieranie nie powiodło się</string>
     <string name="download_failed_message">Nie udało się pobrać wymaganego pliku. Sprawdź połączenie sieciowe i spróbuj ponownie.</string>
     <string name="install_failed_title">Instalacja nie powiodła się</string>
+    <string name="container_create_failed_title">Nie udało się utworzyć kontenera gry</string>
+    <string name="container_create_failed_message">GameNative nie mógł utworzyć folderu, w którym działa ta gra. Zwykle oznacza to, że na urządzeniu skończyło się miejsce.\n\n%1$s</string>
     <string name="install_failed_message">Nie udało się zainstalować plików systemowych. Spróbuj ponownie. Jeśli problem będzie się powtarzał, spróbuj innej sieci lub użyj VPN.</string>
     <string name="settings_interface_swap_face_buttons_title">Zamień przyciski akcji</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Zamień ikony przycisków A↔B i X↔Y</string>

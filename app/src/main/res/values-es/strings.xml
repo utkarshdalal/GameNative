@@ -1782,6 +1782,8 @@
     <string name="download_failed_title">Error de descarga</string>
     <string name="download_failed_message">No se pudo descargar un archivo necesario. Comprueba tu conexión de red e inténtalo de nuevo.</string>
     <string name="install_failed_title">Error de instalación</string>
+    <string name="container_create_failed_title">No se pudo crear el contenedor del juego</string>
+    <string name="container_create_failed_message">GameNative no pudo crear la carpeta en la que se ejecuta este juego. Esto suele significar que el dispositivo se ha quedado sin espacio de almacenamiento.\n\n%1$s</string>
     <string name="install_failed_message">No se pudieron instalar los archivos del sistema. Inténtalo de nuevo. Si el problema persiste, prueba con una red diferente o usa una VPN.</string>
     <string name="settings_interface_swap_face_buttons_title">Intercambiar botones frontales</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Intercambia los iconos de los botones A↔B y X↔Y</string>

@@ -620,11 +620,13 @@ private fun FullscreenStoreMediaDialog(
             ) {
                 HorizontalPager(
                     state = pagerState,
-                    key = { media[it].url },
+                    // The pager can still compose a page index from before the media list shrank.
+                    key = { media.getOrNull(it)?.url ?: it },
                     modifier = Modifier.fillMaxSize(),
                 ) { page ->
+                    val item = media.getOrNull(page) ?: return@HorizontalPager
                     StoreMediaPage(
-                        item = media[page],
+                        item = item,
                         gameName = gameName,
                         videoFallback = videoFallback,
                         active = page == pagerState.currentPage,

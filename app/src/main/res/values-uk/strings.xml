@@ -1782,6 +1782,8 @@
     <string name="download_failed_title">Помилка завантаження</string>
     <string name="download_failed_message">Не вдалося завантажити необхідний файл. Перевірте підключення до мережі та спробуйте ще раз.</string>
     <string name="install_failed_title">Помилка інсталяції</string>
+    <string name="container_create_failed_title">Не вдалося створити контейнер гри</string>
+    <string name="container_create_failed_message">GameNative не вдалося створити теку, у якій запускається ця гра. Зазвичай це означає, що на пристрої закінчилося вільне місце.\n\n%1$s</string>
     <string name="install_failed_message">Не вдалося інсталювати системні файли. Спробуйте ще раз. Якщо проблема не зникає, спробуйте іншу мережу або скористайтеся VPN.</string>
     <string name="settings_interface_swap_face_buttons_title">Поміняти місцями кнопки дій</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Поміняти місцями значки кнопок A↔B і X↔Y</string>

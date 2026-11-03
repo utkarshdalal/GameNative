@@ -1767,6 +1767,8 @@
     <string name="download_failed_title">다운로드 실패</string>
     <string name="download_failed_message">필수 파일을 다운로드할 수 없습니다. 네트워크 연결을 확인하고 다시 시도해 주세요.</string>
     <string name="install_failed_title">설치 실패</string>
+    <string name="container_create_failed_title">게임 컨테이너를 만들 수 없습니다</string>
+    <string name="container_create_failed_message">GameNative가 이 게임을 실행할 폴더를 만들지 못했습니다. 보통 기기의 저장 공간이 부족할 때 발생합니다.\n\n%1$s</string>
     <string name="install_failed_message">시스템 파일을 설치할 수 없습니다. 다시 시도해 주세요. 문제가 지속되면 다른 네트워크를 사용하거나 VPN을 사용해 보세요.</string>
     <string name="settings_interface_swap_face_buttons_title">페이스 버튼 바꾸기</string>
     <string name="settings_interface_swap_face_buttons_subtitle">A↔B 및 X↔Y 버튼 아이콘 바꾸기</string>

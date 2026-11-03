@@ -1654,6 +1654,8 @@
     <string name="download_failed_title">Download mislykkedes</string>
     <string name="download_failed_message">En nødvendig fil kunne ikke downloades. Kontrollér din netværksforbindelse, og prøv igen.</string>
     <string name="install_failed_title">Installation mislykkedes</string>
+    <string name="container_create_failed_title">Kunne ikke oprette spillets container</string>
+    <string name="container_create_failed_message">GameNative kunne ikke oprette den mappe, som dette spil kører i. Det betyder som regel, at enheden er løbet tør for lagerplads.\n\n%1$s</string>
     <string name="install_failed_message">Systemfiler kunne ikke installeres. Prøv igen. Hvis problemet fortsætter, prøv et andet netværk eller brug en VPN.</string>
     <string name="settings_interface_swap_face_buttons_title">Byt frontknapper</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Byt A↔B- og X↔Y-knapikoner</string>

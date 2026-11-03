@@ -1761,6 +1761,8 @@
     <string name="download_failed_title">下载失败</string>
     <string name="download_failed_message">无法下载所需文件。请检查您的网络连接后重试。</string>
     <string name="install_failed_title">安装失败</string>
+    <string name="container_create_failed_title">无法创建游戏容器</string>
+    <string name="container_create_failed_message">GameNative 无法创建运行此游戏的文件夹。这通常表示设备存储空间已满。\n\n%1$s</string>
     <string name="install_failed_message">无法安装系统文件。请重试。如果问题持续存在，请尝试使用其他网络或使用 VPN。</string>
     <string name="settings_interface_swap_face_buttons_title">交换面键</string>
     <string name="settings_interface_swap_face_buttons_subtitle">交换 A↔B 和 X↔Y 按键图标</string>
