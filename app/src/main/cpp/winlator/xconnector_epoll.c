@@ -228,20 +228,6 @@ Java_com_winlator_xconnector_ClientSocket_write(JNIEnv *env, jobject obj, jint f
     return write(fd, dataAddr, length);
 }
 
-// True when a send on the socket would not block right now. For an AF_UNIX stream
-// socket POLLOUT means at least half the send buffer is free, so a short X event
-// (32 bytes) goes out whole.
-JNIEXPORT jboolean JNICALL
-Java_com_winlator_xconnector_ClientSocket_isWritable(JNIEnv *env, jobject obj, jint fd) {
-    struct pollfd pfd = {.fd = fd, .events = POLLOUT, .revents = 0};
-    int res;
-    do {
-        res = poll(&pfd, 1, 0);
-    } while (res < 0 && errno == EINTR);
-    if (res < 0) return JNI_TRUE;   // let write() report the error as before
-    return (pfd.revents & POLLOUT) ? JNI_TRUE : JNI_FALSE;
-}
-
 JNIEXPORT jint JNICALL
 Java_com_winlator_xconnector_XConnectorEpoll_createEventFd(JNIEnv *env, jobject obj) {
     int fd = eventfd(0, EFD_NONBLOCK);

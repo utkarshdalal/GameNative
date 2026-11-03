@@ -1,6 +1,7 @@
 package com.winlator.xconnector;
 
 import android.os.Looper;
+import android.os.SystemClock;
 import android.util.Log;
 
 import com.winlator.xserver.XServer;
@@ -17,6 +18,11 @@ public class XOutputStream {
     private final ReentrantLock lock = new ReentrantLock();
     private int ancillaryFd = -1;
     private static final double FP3232_SCALE = 4294967296.0;
+    // A healthy client can keep the socket full for a few milliseconds while it drains a large
+    // reply, so the UI thread waits this long once before it starts dropping. While stalled it
+    // checks without waiting, so a flood of queued touch events cannot add up to an ANR.
+    private static final int UI_STALL_GRACE_MS = 50;
+    private boolean uiStalled;
     private int droppedOnUiThread;
 
     public XOutputStream(int initialCapacity) {
@@ -130,8 +136,22 @@ public class XOutputStream {
         }
     }
 
+    // Called with lock held.
     private boolean canWriteFromUiThread() {
-        return !Looper.getMainLooper().isCurrentThread() || clientSocket.isWritable();
+        if (!Looper.getMainLooper().isCurrentThread()) return true;
+        if (!clientSocket.isWritable()) {
+            // First sign of a stall: give a healthy client one short grace period to drain a
+            // large reply. A poll with a timeout cannot be used here (see ClientSocket), so this
+            // is a plain sleep followed by a second instant check.
+            if (uiStalled) return false;
+            SystemClock.sleep(UI_STALL_GRACE_MS);
+            if (!clientSocket.isWritable()) {
+                uiStalled = true;
+                return false;
+            }
+        }
+        uiStalled = false;
+        return true;
     }
 
     public XStreamLock lock() {
