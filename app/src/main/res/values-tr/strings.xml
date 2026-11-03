@@ -1462,6 +1462,8 @@
     <string name="download_failed_title">İndirme başarısız</string>
     <string name="download_failed_message">Gerekli bir dosya indirilemedi. Lütfen ağ bağlantınızı kontrol edip tekrar deneyin.</string>
     <string name="install_failed_title">Yükleme başarısız</string>
+    <string name="container_create_failed_title">Oyun kapsayıcısı oluşturulamadı</string>
+    <string name="container_create_failed_message">GameNative bu oyunun çalıştığı klasörü oluşturamadı. Bu genellikle cihazın depolama alanının dolduğu anlamına gelir.\n\n%1$s</string>
     <string name="install_failed_message">Sistem dosyaları yüklenemedi. Lütfen tekrar deneyin. Sorun sürerse farklı bir ağ deneyin veya VPN kullanın.</string>
     <string name="main_app_running_title">Uygulama çalışıyor</string>
     <string name="main_app_running_message">Başka bir cihazda oturumunuz açık ve orada %s oynanıyor. \nBu oyunu yine de oynayabilirsiniz, ancak bu diğer oturumun Steam bağlantısını keser.</string>

@@ -1594,6 +1594,8 @@
     <string name="download_failed_title">ダウンロードに失敗しました</string>
     <string name="download_failed_message">必要なファイルをダウンロードできませんでした。ネットワーク接続を確認して、もう一度試してください。</string>
     <string name="install_failed_title">インストールに失敗しました</string>
+    <string name="container_create_failed_title">ゲームのコンテナを作成できませんでした</string>
+    <string name="container_create_failed_message">GameNative はこのゲームを実行するフォルダーを作成できませんでした。通常はデバイスのストレージ容量が不足していることが原因です。\n\n%1$s</string>
     <string name="install_failed_message">システムファイルをインストールできませんでした。もう一度試してください。問題が解決しない場合は、別のネットワークを試すか、VPN を使用してください。</string>
 
     <!-- PluviaMain: Session Conflicts -->

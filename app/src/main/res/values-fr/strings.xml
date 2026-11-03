@@ -1802,6 +1802,8 @@
     <string name="download_failed_title">Échec du téléchargement</string>
     <string name="download_failed_message">Un fichier requis n\'a pas pu être téléchargé. Veuillez vérifier votre connexion réseau et réessayer.</string>
     <string name="install_failed_title">Échec de l\'installation</string>
+    <string name="container_create_failed_title">Impossible de créer le conteneur du jeu</string>
+    <string name="container_create_failed_message">GameNative n\'a pas pu créer le dossier dans lequel ce jeu s\'exécute. Cela signifie généralement que l\'appareil n\'a plus d\'espace de stockage.\n\n%1$s</string>
     <string name="install_failed_message">Les fichiers système n\'ont pas pu être installés. Veuillez réessayer. Si le problème persiste, essayez un autre réseau ou utilisez un VPN.</string>
     <string name="settings_interface_swap_face_buttons_title">Inverser les boutons d\'action</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Inverse les icônes des boutons A↔B et X↔Y</string>

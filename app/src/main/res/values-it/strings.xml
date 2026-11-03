@@ -1775,6 +1775,8 @@
     <string name="download_failed_title">Download non riuscito</string>
     <string name="download_failed_message">Non è stato possibile scaricare un file necessario. Controlla la connessione di rete e riprova.</string>
     <string name="install_failed_title">Installazione non riuscita</string>
+    <string name="container_create_failed_title">Impossibile creare il container del gioco</string>
+    <string name="container_create_failed_message">GameNative non è riuscito a creare la cartella in cui viene eseguito questo gioco. Di solito significa che lo spazio di archiviazione del dispositivo è esaurito.\n\n%1$s</string>
     <string name="install_failed_message">Non è stato possibile installare i file di sistema. Riprova. Se il problema persiste, prova una rete diversa o usa una VPN.</string>
     <string name="settings_interface_swap_face_buttons_title">Scambia i pulsanti frontali</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Scambia le icone dei pulsanti A↔B e X↔Y</string>
