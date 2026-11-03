@@ -26,6 +26,7 @@ import com.winlator.core.WineThemeManager
 import com.winlator.winhandler.WinHandler.PreferredInputApi
 import com.winlator.xenvironment.ImageFs
 import java.io.File
+import java.util.concurrent.ExecutionException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -725,6 +726,27 @@ object ContainerUtils {
         }
     }
 
+    /** Thrown when the on-disk container could not be created; the message names the cause. */
+    class ContainerCreationException(message: String, cause: Throwable? = null) : IllegalStateException(message, cause)
+
+    // Serialises container creation: two callers racing for the same id made the loser's
+    // mkdirs() fail, after which it deleted the winner's fresh directory or threw.
+    private val containerCreateLock = Any()
+
+    private fun createOrReuseContainer(
+        context: Context,
+        appId: String,
+        customConfig: ContainerData? = null,
+    ): Container = synchronized(containerCreateLock) {
+        // Re-read the home directory under the lock: another caller may have created it meanwhile.
+        val containerManager = ContainerManager(context)
+        if (containerManager.hasContainer(appId)) {
+            containerManager.getContainerById(appId)
+        } else {
+            createNewContainer(context, appId, appId, containerManager, customConfig)
+        }
+    }
+
     private fun createNewContainer(
         context: Context,
         appId: String,
@@ -841,22 +863,29 @@ object ContainerUtils {
         data.put("name", "container_$containerId")
 
         // Create the actual container
-        var container = containerManager.createContainerFuture(containerId, data).get()
+        val rootDir = ImageFs.find(context).getRootDir()
+        val containerDir = File(File(rootDir, "home"), ImageFs.USER + "-" + containerId)
+        val create: () -> Container? = {
+            try {
+                containerManager.createContainerFuture(containerId, data).get()
+            } catch (e: ExecutionException) {
+                val cause = e.cause ?: e
+                throw ContainerCreationException("Container creation failed for $containerId: $cause", cause)
+            }
+        }
+        var container = create()
         // If container creation failed, it might be because directory already exists but is corrupted
         // Try to clean it up and retry once
         if (container == null) {
             Timber.w("Container creation failed for $containerId, checking for corrupted directory...")
-            // Get the container directory path
-            val rootDir = ImageFs.find(context).getRootDir()
-            val homeDir = File(rootDir, "home")
-            val containerDir = File(homeDir, ImageFs.USER + "-" + containerId)
-
             if (containerDir.exists() && !containerManager.hasContainer(containerId)) {
                 Timber.w("Found orphaned/corrupted container directory, deleting and retrying: $containerId")
                 try {
                     FileUtils.delete(containerDir)
                     // Retry container creation after cleanup
-                    container = containerManager.createContainerFuture(containerId, data).get()
+                    container = create()
+                } catch (e: ContainerCreationException) {
+                    throw e
                 } catch (e: Exception) {
                     Timber.e(e, "Failed to clean up corrupted container directory: $containerId")
                 }
@@ -864,8 +893,12 @@ object ContainerUtils {
 
             // If still null after retry, throw exception
             if (container == null) {
-                Timber.e("Failed to create container for $containerId after cleanup attempt")
-                throw IllegalStateException("Failed to create container: $containerId")
+                val freeMb = rootDir.usableSpace / (1024 * 1024)
+                Timber.e("Failed to create container for $containerId after cleanup attempt (free space $freeMb MB)")
+                throw ContainerCreationException(
+                    "Failed to create container $containerId: directory ${containerDir.absolutePath} " +
+                        "exists=${containerDir.exists()}, writable root=${rootDir.canWrite()}, free space $freeMb MB",
+                )
             }
         }
 
@@ -1106,7 +1139,7 @@ object ContainerUtils {
         val container = if (containerManager.hasContainer(appId)) {
             containerManager.getContainerById(appId)
         } else {
-            createNewContainer(context, appId, appId, containerManager)
+            createOrReuseContainer(context, appId)
         }
 
         // Ensure Custom Games have the A: drive mapped to the game folder
@@ -1227,7 +1260,7 @@ object ContainerUtils {
                 null
             }
 
-            createNewContainer(context, appId, appId, containerManager, overrideConfig)
+            createOrReuseContainer(context, appId, overrideConfig)
         }
     }
 

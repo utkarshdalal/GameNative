@@ -263,7 +263,11 @@ public class XConnectorEpoll implements Runnable {
             this.connectionHandler.handleConnectionShutdown(client);
             removeFdFromEpoll(this.epollFd, client.clientSocket.fd);
         }
-        closeTrackedFd(client.clientSocket.fd);
+        // A drain thread mid-send keeps the fd and closes it itself, so a new client cannot be
+        // handed the same number while queued bytes are still going out on it.
+        XOutputStream outputStream = client.getOutputStream();
+        boolean drainOwnsFd = outputStream != null && outputStream.abandon();
+        if (!drainOwnsFd) closeTrackedFd(client.clientSocket.fd);
         this.connectedClients.remove(client.clientSocket.fd);
     }
 

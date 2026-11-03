@@ -228,6 +228,22 @@ Java_com_winlator_xconnector_ClientSocket_write(JNIEnv *env, jobject obj, jint f
     return write(fd, dataAddr, length);
 }
 
+// send() on the client socket. Returns bytes sent, -1 on error, or -2 when a
+// non-blocking send would block (EAGAIN). MSG_NOSIGNAL: a peer that died mid-write
+// must surface as EPIPE, not SIGPIPE.
+JNIEXPORT jint JNICALL
+Java_com_winlator_xconnector_ClientSocket_send(JNIEnv *env, jobject obj, jint fd, jobject data,
+                                               jint offset, jint length, jboolean nonBlocking) {
+    char *dataAddr = (*env)->GetDirectBufferAddress(env, data);
+    int flags = MSG_NOSIGNAL | (nonBlocking ? MSG_DONTWAIT : 0);
+    ssize_t n;
+    do {
+        n = send(fd, dataAddr + offset, length, flags);
+    } while (n < 0 && errno == EINTR);
+    if (n < 0) return (errno == EAGAIN || errno == EWOULDBLOCK) ? -2 : -1;
+    return (jint) n;
+}
+
 JNIEXPORT jint JNICALL
 Java_com_winlator_xconnector_XConnectorEpoll_createEventFd(JNIEnv *env, jobject obj) {
     int fd = eventfd(0, EFD_NONBLOCK);
@@ -306,7 +322,7 @@ Java_com_winlator_xconnector_ClientSocket_sendAncillaryMsg(JNIEnv *env, jobject 
     cmsg->cmsg_len = msg.msg_controllen;
     ((int*)CMSG_DATA(cmsg))[0] = ancillaryFd;
 
-    jint size = sendmsg(clientFd, &msg, 0);
+    jint size = sendmsg(clientFd, &msg, MSG_NOSIGNAL);
     printf("xconnector_epoll.c sendmsg size %d", size);
     return size;
 }
