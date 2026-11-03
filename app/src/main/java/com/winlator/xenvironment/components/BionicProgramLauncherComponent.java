@@ -108,12 +108,33 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         return imageFs.getLibDir() + "/" + BuildConfig.PRELOAD_BIONIC_SO;
     }
 
+    // Any Oplus ROM (ColorOS, OxygenOS, realme UI) on Android 17. realme and OPPO
+    // phones on the same CP2A firmware as the OnePlus 15 slipped past a V17
+    // oplusrom + SDK 37 check, so match the ROM property, the manufacturer or the
+    // brand, and the Android release as well as the SDK level.
     static boolean isColorOs17() {
         String rom = systemProperty("ro.build.version.oplusrom");
         if (rom != null && rom.startsWith("V17")) return true;
-        if (Build.VERSION.SDK_INT < 37) return false;
-        String maker = Build.MANUFACTURER == null ? "" : Build.MANUFACTURER.toLowerCase(Locale.ROOT);
-        return maker.equals("oneplus") || maker.equals("oppo") || maker.equals("realme");
+        if (Build.VERSION.SDK_INT < 37 && androidMajorVersion() < 17) return false;
+        if (rom != null || systemProperty("ro.build.version.realmeui") != null) return true;
+        return isOplusBrand(Build.MANUFACTURER) || isOplusBrand(Build.BRAND);
+    }
+
+    private static boolean isOplusBrand(String name) {
+        String n = name == null ? "" : name.toLowerCase(Locale.ROOT);
+        return n.equals("oneplus") || n.equals("oppo") || n.equals("realme");
+    }
+
+    private static int androidMajorVersion() {
+        String release = Build.VERSION.RELEASE == null ? "" : Build.VERSION.RELEASE;
+        int i = 0;
+        while (i < release.length() && Character.isDigit(release.charAt(i))) i++;
+        try {
+            return i == 0 ? 0 : Integer.parseInt(release.substring(0, i));
+        }
+        catch (NumberFormatException e) {
+            return 0;
+        }
     }
 
     private static String systemProperty(String name) {
