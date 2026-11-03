@@ -38,7 +38,8 @@ public class XOutputStream {
     private long pendingBytes;                                           // guarded by lock
     private boolean draining;                                            // guarded by lock
     private boolean failed;                                              // guarded by lock
-    private boolean overflowLogged;
+    private volatile boolean abandoned;                                  // set under lock, read by the drain
+    private boolean closeOnDrainExit;                                    // guarded by lock
 
     public XOutputStream(int initialCapacity) {
         this(null, initialCapacity);
@@ -132,19 +133,27 @@ public class XOutputStream {
         if (buffer.position() != 0) {
             buffer.flip();
 
-            if (failed) throw new IOException("Failed to write data.");
+            if (failed) {
+                ancillaryFd = -1;
+                buffer.clear();
+                throw new IOException("Failed to write data.");
+            }
 
             if (ancillaryFd != -1) {
                 // The fd travels with this message and callers close it right after the lock is
-                // released, so it cannot be deferred: wait for queued bytes to go first.
+                // released, so it cannot be deferred: queued bytes must go first. Waiting releases
+                // the lock, so the message and fd are snapshotted before another writer can reuse
+                // the shared buffer.
+                int fd = ancillaryFd;
+                ancillaryFd = -1;
+                ByteBuffer message = copyRemaining();
+                buffer.clear();
                 awaitDrained();
-                try {
-                    clientSocket.sendAncillaryMsg(buffer, ancillaryFd);
-                } finally {
-                    ancillaryFd = -1;
-                }
+                clientSocket.sendAncillaryMsg(message, fd);
+                return;
             }
-            else if (pending.isEmpty()) {
+
+            if (pending.isEmpty()) {
                 clientSocket.send(buffer, true);
                 if (buffer.hasRemaining()) enqueueRemaining();
             }
@@ -154,21 +163,27 @@ public class XOutputStream {
         }
     }
 
-    private void enqueueRemaining() {
+    private ByteBuffer copyRemaining() {
+        ByteBuffer copy = ByteBuffer.allocateDirect(buffer.remaining()).order(buffer.order());
+        copy.put(buffer).flip();
+        return copy;
+    }
+
+    // Called with lock held.
+    private void enqueueRemaining() throws IOException {
         int remaining = buffer.remaining();
         if (pendingBytes + remaining > MAX_PENDING_BYTES) {
-            // The client has not read for a very long time; keep the UI thread free rather
-            // than grow without bound. Dropped bytes are logged once per stream.
-            if (!overflowLogged) {
-                overflowLogged = true;
-                Log.w(TAG, "fd " + clientSocket.fd + " is not reading; dropping output beyond "
-                        + MAX_PENDING_BYTES + " queued bytes");
-            }
-            return;
+            // Dropping bytes would desynchronise the X stream, and a client that has not read
+            // this much output is gone for practical purposes: fail the stream so the request
+            // handler closes the connection.
+            Log.w(TAG, "fd " + clientSocket.fd + " has not read " + MAX_PENDING_BYTES
+                    + " queued bytes; failing the stream");
+            abandonLocked();
+            failed = true;
+            buffer.clear();
+            throw new IOException("Failed to write data.");
         }
-        ByteBuffer copy = ByteBuffer.allocateDirect(remaining).order(buffer.order());
-        copy.put(buffer).flip();
-        pending.addLast(copy);
+        pending.addLast(copyRemaining());
         pendingBytes += remaining;
         if (!draining) {
             draining = true;
@@ -176,7 +191,7 @@ public class XOutputStream {
         }
     }
 
-    // Lock is held by the caller (an ancillary send); await() releases it while the drain runs.
+    // Lock is held by the caller; await() releases it while the drain runs.
     private void awaitDrained() throws IOException {
         boolean interrupted = false;
         while (draining && !failed) {
@@ -190,45 +205,85 @@ public class XOutputStream {
         if (failed) throw new IOException("Failed to write data.");
     }
 
-    private void drainPending() {
-        while (true) {
-            ByteBuffer head;
-            lock.lock();
-            try {
-                head = pending.peekFirst();
-                if (head == null) {
-                    draining = false;
-                    drained.signalAll();
-                    return;
-                }
-            } finally {
-                lock.unlock();
-            }
+    /**
+     * Stops queued output for a connection that is being closed. Returns true when the drain
+     * thread still holds a send in flight: it then owns the fd and closes it when the send
+     * returns, so the number cannot be reused by a new client underneath it. When false the
+     * caller closes the fd as usual.
+     */
+    public boolean abandon() {
+        lock.lock();
+        try {
+            boolean inFlight = draining;
+            abandonLocked();
+            failed = true;
+            if (inFlight) closeOnDrainExit = true;
+            return inFlight;
+        } finally {
+            lock.unlock();
+        }
+    }
 
-            // Blocking send without the lock: other threads keep appending behind this chunk.
-            try {
-                clientSocket.sendFully(head);
-            } catch (IOException e) {
+    // Called with lock held.
+    private void abandonLocked() {
+        abandoned = true;
+        pending.clear();
+        pendingBytes = 0;
+        drained.signalAll();
+    }
+
+    private void drainPending() {
+        try {
+            while (true) {
+                ByteBuffer head;
                 lock.lock();
                 try {
-                    failed = true;
-                    pending.clear();
-                    pendingBytes = 0;
-                    draining = false;
-                    drained.signalAll();
+                    head = abandoned ? null : pending.peekFirst();
+                    if (head == null) return;
                 } finally {
                     lock.unlock();
                 }
-                return;
-            }
 
+                // Blocking sends without the lock: other threads keep appending behind this chunk.
+                try {
+                    while (head.hasRemaining()) {
+                        if (abandoned) return;
+                        clientSocket.send(head, false);
+                    }
+                } catch (IOException e) {
+                    lock.lock();
+                    try {
+                        failed = true;
+                        pending.clear();
+                        pendingBytes = 0;
+                    } finally {
+                        lock.unlock();
+                    }
+                    return;
+                }
+
+                lock.lock();
+                try {
+                    if (pending.peekFirst() == head) {
+                        pending.pollFirst();
+                        pendingBytes -= head.capacity();
+                    }
+                } finally {
+                    lock.unlock();
+                }
+            }
+        } finally {
+            boolean close;
             lock.lock();
             try {
-                pending.pollFirst();
-                pendingBytes -= head.capacity();
+                draining = false;
+                close = closeOnDrainExit;
+                closeOnDrainExit = false;
+                drained.signalAll();
             } finally {
                 lock.unlock();
             }
+            if (close) XConnectorEpoll.closeFd(clientSocket.fd);
         }
     }
 

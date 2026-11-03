@@ -322,7 +322,7 @@ Java_com_winlator_xconnector_ClientSocket_sendAncillaryMsg(JNIEnv *env, jobject 
     cmsg->cmsg_len = msg.msg_controllen;
     ((int*)CMSG_DATA(cmsg))[0] = ancillaryFd;
 
-    jint size = sendmsg(clientFd, &msg, 0);
+    jint size = sendmsg(clientFd, &msg, MSG_NOSIGNAL);
     printf("xconnector_epoll.c sendmsg size %d", size);
     return size;
 }

@@ -2361,6 +2361,10 @@ fun preLaunchApp(
             // Mostly ENOSPC on small-storage phones: mkdirs() fails and the game has no prefix.
             // Tell the user instead of letting the launch coroutine take the process down.
             Timber.tag("preLaunchApp").e(e, "Could not create the container for $appId")
+            if (useTemporaryOverride) {
+                IntentLaunchManager.restoreOriginalConfiguration(context, appId)
+                IntentLaunchManager.clearTemporaryOverride(appId)
+            }
             setLoadingDialogVisible(false)
             setMessageDialogState(
                 MessageDialogState(
