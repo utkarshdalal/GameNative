@@ -52,6 +52,24 @@ public class ClientSocket {
         else throw new IOException("Failed to write data.");
     }
 
+    /**
+     * Sends from {@code data.position()} to its limit. Blocking by default; with
+     * {@code nonBlocking} it returns -1 instead of waiting when the socket buffer is full.
+     * Advances the position by the bytes sent.
+     */
+    public int send(ByteBuffer data, boolean nonBlocking) throws IOException {
+        int position = data.position();
+        int sent = send(fd, data, position, data.remaining(), nonBlocking);
+        if (sent == -2) return -1;
+        if (sent < 0) throw new IOException("Failed to write data.");
+        data.position(position + sent);
+        return sent;
+    }
+
+    public void sendFully(ByteBuffer data) throws IOException {
+        while (data.hasRemaining()) send(data, false);
+    }
+
     public int recvAncillaryMsg(ByteBuffer data) throws IOException {
         int position = data.position();
         int bytesRead = recvAncillaryMsg(fd, data, position, data.remaining());
@@ -76,6 +94,8 @@ public class ClientSocket {
     private native int read(int fd, ByteBuffer data, int offset, int length);
 
     private native int write(int fd, ByteBuffer data, int length);
+
+    private native int send(int fd, ByteBuffer data, int offset, int length, boolean nonBlocking);
 
     private native int recvAncillaryMsg(int clientFd, ByteBuffer data, int offset, int length);
 

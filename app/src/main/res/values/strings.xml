@@ -1605,6 +1605,8 @@
     <string name="download_failed_title">Download Failed</string>
     <string name="download_failed_message">A required file could not be downloaded. Please check your network connection and try again.</string>
     <string name="install_failed_title">Installation Failed</string>
+    <string name="container_create_failed_title">Could not create the game container</string>
+    <string name="container_create_failed_message">GameNative could not create the folder this game runs in. Free up storage space and try again.\n\n%1$s</string>
     <string name="install_failed_message">System files could not be installed. Please try again. If the problem persists, try a different network or use a VPN.</string>
 
     <!-- PluviaMain: Session Conflicts -->
