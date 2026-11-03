@@ -1,5 +1,10 @@
 package com.winlator.xconnector;
 
+import android.os.ParcelFileDescriptor;
+import android.system.Os;
+import android.system.OsConstants;
+import android.system.StructPollfd;
+
 import androidx.annotation.Keep;
 
 import java.io.IOException;
@@ -52,9 +57,37 @@ public class ClientSocket {
         else throw new IOException("Failed to write data.");
     }
 
-    /** True when a write would not block right now (see the native side). */
+    private ParcelFileDescriptor pollFd;
+
+    /**
+     * True when a write would not block right now. For an AF_UNIX stream socket POLLOUT means at
+     * least half the send buffer is free, so a short X event (32 bytes) goes out whole. Uses a
+     * dup of the fd so the public Os.poll API can be used; {@link #closePollFd()} releases it.
+     */
     public boolean isWritable() {
-        return isWritable(fd);
+        try {
+            if (pollFd == null) pollFd = ParcelFileDescriptor.fromFd(fd);
+            StructPollfd pfd = new StructPollfd();
+            pfd.fd = pollFd.getFileDescriptor();
+            pfd.events = (short) OsConstants.POLLOUT;
+            int res = Os.poll(new StructPollfd[] {pfd}, 0);
+            if (res < 0) return true;   // let write() report the error as before
+            return (pfd.revents & OsConstants.POLLOUT) != 0;
+        } catch (Exception e) {
+            return true;                // same: fall through to the blocking write
+        }
+    }
+
+    public void closePollFd() {
+        ParcelFileDescriptor p = pollFd;
+        pollFd = null;
+        if (p != null) {
+            try {
+                p.close();
+            } catch (IOException e) {
+                // nothing to do
+            }
+        }
     }
 
     public int recvAncillaryMsg(ByteBuffer data) throws IOException {
@@ -81,8 +114,6 @@ public class ClientSocket {
     private native int read(int fd, ByteBuffer data, int offset, int length);
 
     private native int write(int fd, ByteBuffer data, int length);
-
-    private native boolean isWritable(int fd);
 
     private native int recvAncillaryMsg(int clientFd, ByteBuffer data, int offset, int length);
 
