@@ -1,5 +1,8 @@
 package com.winlator.xconnector;
 
+import android.os.Looper;
+import android.util.Log;
+
 import com.winlator.xserver.XServer;
 
 import java.io.IOException;
@@ -14,6 +17,7 @@ public class XOutputStream {
     private final ReentrantLock lock = new ReentrantLock();
     private int ancillaryFd = -1;
     private static final double FP3232_SCALE = 4294967296.0;
+    private int droppedOnUiThread;
 
     public XOutputStream(int initialCapacity) {
         this(null, initialCapacity);
@@ -110,10 +114,24 @@ public class XOutputStream {
                 clientSocket.sendAncillaryMsg(buffer, ancillaryFd);
                 ancillaryFd = -1;
             }
+            else if (!canWriteFromUiThread()) {
+                // Input events are sent from the UI thread. A client that has stopped reading
+                // (a game stalled in a load, or hung) has a full socket buffer, and write()
+                // would park the UI thread until Android raised an ANR. The client is tens of
+                // seconds behind at that point, so this event is dropped instead.
+                if (droppedOnUiThread++ % 1000 == 0) {
+                    Log.w("XOutputStream", "fd " + clientSocket.fd + " is not reading; dropped "
+                            + (droppedOnUiThread) + " UI-thread writes so far");
+                }
+            }
             else clientSocket.write(buffer);
 
             buffer.clear();
         }
+    }
+
+    private boolean canWriteFromUiThread() {
+        return !Looper.getMainLooper().isCurrentThread() || clientSocket.isWritable();
     }
 
     public XStreamLock lock() {

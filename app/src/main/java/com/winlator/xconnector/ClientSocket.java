@@ -52,6 +52,11 @@ public class ClientSocket {
         else throw new IOException("Failed to write data.");
     }
 
+    /** True when a write would not block right now (see the native side). */
+    public boolean isWritable() {
+        return isWritable(fd);
+    }
+
     public int recvAncillaryMsg(ByteBuffer data) throws IOException {
         int position = data.position();
         int bytesRead = recvAncillaryMsg(fd, data, position, data.remaining());
@@ -76,6 +81,8 @@ public class ClientSocket {
     private native int read(int fd, ByteBuffer data, int offset, int length);
 
     private native int write(int fd, ByteBuffer data, int length);
+
+    private native boolean isWritable(int fd);
 
     private native int recvAncillaryMsg(int clientFd, ByteBuffer data, int offset, int length);
 
