@@ -10,6 +10,25 @@ internal object PerformanceHudText {
     private const val MISSING = "--"
 
     /**
+     * FPS row: the frames that reached the panel, then in brackets the frames the game produced
+     * when the two differ. "FPS 60 (287)" is a game rendering 287 frames a second on a 60 Hz
+     * panel; "FPS 59.8" is a game at or below the panel's rate, where the two are the same.
+     *
+     * [gameFps] is what the session counts on either display server (see FrameRating). The
+     * displayed figure is an estimate: [gameFps] clamped to [refreshHz]; no renderer reports the
+     * frames the panel actually latched. With no refresh rate known the row is the game's fps.
+     */
+    fun fps(gameFps: Float, refreshHz: Float): String {
+        val game = if (gameFps.isFinite()) gameFps.coerceAtLeast(0f) else 0f
+        val hz = refreshHz.takeIf { it.isFinite() && it > 0f }
+        return if (hz != null && game > hz + 0.5f) {
+            String.format(Locale.US, "FPS %d (%d)", hz.roundToInt(), game.roundToInt())
+        } else {
+            String.format(Locale.US, "FPS %.1f", game)
+        }
+    }
+
+    /**
      * GPU row. The percent is always the active usage source's reading (sysfs, Mali counters
      * or the shim); a measured GPU frame time is appended, never substituted:
      * "GPU 8% (0.5 ms)" with both, "GPU 8%" with only a percent, "GPU 0.5 ms" with only a

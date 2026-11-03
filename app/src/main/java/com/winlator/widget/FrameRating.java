@@ -23,7 +23,37 @@ import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+/**
+ * Counts the frames the game produced, on either display server.
+ *
+ * <ul>
+ *   <li>X11: one tick per content update of the tracked application window, i.e. per
+ *   present the game sends to the app's X server (XServerScreen's onUpdateWindowContent).</li>
+ *   <li>gamescope: one tick per {@link app.gamenative.display.GameNativeDrm#onFramePublished}
+ *   upcall. The daemon raises it once per frame the ICD shim reports as produced (acquired, plus
+ *   generated under frame generation), and once per frame it published to the panel only while
+ *   no shim report has arrived for a second.</li>
+ * </ul>
+ *
+ * Neither renderer reports the frames that reached the panel, so the "displayed" figure kept
+ * here is an estimate: each one-second reading clamped to the panel's refresh rate
+ * ({@link #setPanelRefreshHz}). A frame the panel dropped below that rate is not seen.
+ */
 public class FrameRating extends FrameLayout implements Runnable {
+    /** The panel's refresh rate in Hz, 0 while unknown; set from the session's display. */
+    private static volatile float panelRefreshHz = 0f;
+
+    /** Record the panel's refresh rate, the ceiling of the displayed-fps estimate. */
+    public static void setPanelRefreshHz(float hz) {
+        panelRefreshHz = (hz > 0f && !Float.isInfinite(hz)) ? hz : 0f;
+    }
+
+    /** {@code fps} clamped to the panel's refresh rate: what the panel could have shown. */
+    public static float displayedFps(float fps) {
+        float hz = panelRefreshHz;
+        return hz > 0f ? Math.min(fps, hz) : fps;
+    }
+
     private long lastTime = 0;
     private int frameCount = 0;
     private float lastFPS = 0;
@@ -37,6 +67,7 @@ public class FrameRating extends FrameLayout implements Runnable {
     private int minFPS = Integer.MAX_VALUE;
     private long lastReadingTime = 0;
     private long fpsSum = 0; // Sum of all FPS readings for average calculation
+    private double displayedFpsSum = 0; // Same readings clamped to the panel's rate
     private long lastFrameTime = 0;
     private long totalFrames = 0;
     private long activeMs = 0;
@@ -91,6 +122,7 @@ public class FrameRating extends FrameLayout implements Runnable {
                 int currentFPS = Math.round(lastFPS);
                 readingCount++;
                 fpsSum += currentFPS;
+                displayedFpsSum += displayedFps(currentFPS);
                 int bucket = (int) ((time - sessionStartTime) / FPS_BUCKET_MS);
                 if (bucket >= 0 && bucket < MAX_FPS_BUCKETS) {
                     bucketFpsSum[bucket] += currentFPS;
@@ -129,9 +161,16 @@ public class FrameRating extends FrameLayout implements Runnable {
         return lastFPS;
     }
 
+    /** Average of the one-second game-fps readings. */
     public float getAvgFPS() {
         if (readingCount == 0) return 0;
         return (float) fpsSum / readingCount;
+    }
+
+    /** Average of the same readings clamped to the panel's rate (an estimate, see the class note). */
+    public float getAvgDisplayedFPS() {
+        if (readingCount == 0) return 0;
+        return (float) (displayedFpsSum / readingCount);
     }
 
     public long getTotalFrames() {

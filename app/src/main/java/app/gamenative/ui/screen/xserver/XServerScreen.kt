@@ -844,6 +844,8 @@ fun XServerScreen(
 
     fun refreshFpsLimit(view: View?, isX11Display: Boolean) {
         val refreshHz = detectRefreshRateHz(context, view)
+        // The ceiling of the displayed-fps estimate, on both display servers.
+        FrameRating.setPanelRefreshHz(refreshHz.toFloat())
         ui.detectedMaxRefreshRateHz = refreshHz * FPS_LIMITER_MAX_MULTIPLIER
 
         if (!isX11Display)
@@ -5435,7 +5437,12 @@ private fun exit(
         "game_name" to ContainerUtils.resolveGameName(appId),
         "game_store" to ContainerUtils.extractGameSourceFromContainerId(appId).name,
         "session_length" to (frameRating?.sessionLengthSec ?: 0),
+        // avg_fps is the game's fps (frames it produced; see FrameRating). game_fps repeats it
+        // under an explicit name, and displayed_fps is the same readings clamped to the panel's
+        // rate, an estimate of the frames that reached the panel.
         "avg_fps" to (frameRating?.avgFPS ?: 0.0),
+        "game_fps" to (frameRating?.avgFPS ?: 0.0),
+        "displayed_fps" to (frameRating?.avgDisplayedFPS ?: 0.0),
         "container_config" to container.containerJson,
     ) + runCatching {
         PluviaApp.xServerView?.getxServer()?.effectiveScreenInfo
@@ -5456,6 +5463,7 @@ private fun exit(
     // Store session data in container metadata
     frameRating?.let { rating ->
         container.putSessionMetadata("avg_fps", rating.avgFPS)
+        container.putSessionMetadata("displayed_fps", rating.avgDisplayedFPS)
         container.putSessionMetadata("session_length_sec", rating.sessionLengthSec.toInt())
         container.putSessionMetadata("total_frames", rating.totalFrames)
         container.saveData()

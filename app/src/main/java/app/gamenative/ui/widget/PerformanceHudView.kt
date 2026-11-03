@@ -347,7 +347,7 @@ class PerformanceHudView(
             fpsValue = currentFps,
             cpuValue = cpuPercent?.toFloat(),
             gpuValue = gpuPercent?.toFloat(),
-            fps = String.format(Locale.US, "FPS %.1f", currentFps),
+            fps = PerformanceHudText.fps(currentFps, refreshHz),
             cpu = cpuPercent?.let { "CPU $it%" },
             gpu = PerformanceHudText.gpu(gpuPercent, gpuFrameMs),
             gpuCompact = PerformanceHudText.gpu(gpuPercent, gpuFrameMs, compact = true),

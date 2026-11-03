@@ -8,6 +8,23 @@ import org.junit.Test
 class PerformanceHudTextTest {
 
     @Test
+    fun fpsRowShowsDisplayedThenGameWhenTheGameOutrunsThePanel() {
+        // Hades II uncapped: 287 frames produced, a 60 Hz panel shows at most 60.
+        assertEquals("FPS 60 (287)", PerformanceHudText.fps(287f, 60f))
+        assertEquals("FPS 120 (142)", PerformanceHudText.fps(142.4f, 120f))
+    }
+
+    @Test
+    fun fpsRowIsOneNumberAtOrBelowThePanelRate() {
+        assertEquals("FPS 59.8", PerformanceHudText.fps(59.8f, 60f))
+        assertEquals("FPS 60.3", PerformanceHudText.fps(60.3f, 60f))
+        assertEquals("FPS 42.0", PerformanceHudText.fps(42f, 60f))
+        // No refresh rate known: the game's fps alone.
+        assertEquals("FPS 287.0", PerformanceHudText.fps(287f, 0f))
+        assertEquals("FPS 0.0", PerformanceHudText.fps(Float.NaN, 60f))
+    }
+
+    @Test
     fun gpuRow() {
         assertEquals("GPU 8%", PerformanceHudText.gpu(8, null))
         assertEquals("GPU 8% (0.5 ms)", PerformanceHudText.gpu(8, 0.5f))

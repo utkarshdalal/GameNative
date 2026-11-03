@@ -221,8 +221,11 @@ object PerformanceMetricsCollector {
         sampleCount++
         if (sampleCount % LOG_EVERY_N_SAMPLES == 0L) {
             Timber.tag(TAG).i(
-                "fps=%.1f p95=%.1fms slow=%d/%d repeated=%s in 10s cpu=%s%%(%s) gpu=%s%% cpuTemp=%s gpuTemp=%s",
+                // fps is the game's (frames produced, FrameRating's ticks); displayed is it
+                // clamped to the panel's rate, an estimate of the frames the panel showed.
+                "fps=%.1f displayed=%.1f p95=%.1fms slow=%d/%d repeated=%s in 10s cpu=%s%%(%s) gpu=%s%% cpuTemp=%s gpuTemp=%s",
                 snapshot.fps,
+                com.winlator.widget.FrameRating.displayedFps(snapshot.fps),
                 snapshot.frameTimeP95Ms,
                 snapshot.slowFrameCount,
                 snapshot.totalFrameCount,
