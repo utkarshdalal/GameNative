@@ -293,6 +293,8 @@ class WindowActivity {
     }
 
     private var trackedClass: String? = null
+    /** "x11_map" when entries came from X11 window maps, "gamescope_frames" when from the daemon's published frames. */
+    private var windowSource: String? = null
     private var trackedStartFrames = 0L
     private var trackedStartActiveMs = 0L
 
@@ -331,6 +333,7 @@ class WindowActivity {
         synchronized(lock) {
             startMs = SystemClock.elapsedRealtime()
             windows.clear()
+            windowSource = null
             classByWindowId.clear()
             thermalTransitions.clear()
             trackedClass = null
@@ -405,6 +408,31 @@ class WindowActivity {
         trackedStartActiveMs = activeMs
     }
 
+    /**
+     * Gamescope sessions have no X11 window maps for the game (it maps on Xwayland). Called once,
+     * when the daemon has published enough frames to count as game content, with the launched
+     * executable's name as the window class, so game_exited carries the same window fields on both
+     * display servers. Frames from this point on are attributed to that entry.
+     */
+    fun onGamescopeContent(className: String, totalFrames: Long, activeMs: Long) {
+        try {
+            synchronized(lock) {
+                val now = SystemClock.elapsedRealtime()
+                if (startMs == 0L) startMs = now
+                val cls = className.ifBlank { "gamescope" }
+                val entry = windows.getOrPut(cls) { Entry(cls, now) }
+                entry.mapped = true
+                windowSource = "gamescope_frames"
+                closeTrackedSegment(totalFrames, activeMs)
+                trackedClass = cls
+                trackedStartFrames = totalFrames
+                trackedStartActiveMs = activeMs
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "WindowActivity: gamescope content failed")
+        }
+    }
+
     fun onWindowMapped(window: Window) {
         try {
             entryFor(window).mapped = true
@@ -427,6 +455,7 @@ class WindowActivity {
         val now = SystemClock.elapsedRealtime()
         if (startMs == 0L) startMs = now
         val className = classByWindowId.getOrPut(window.id) { window.className.ifBlank { "unknown" } }
+        if (windowSource == null) windowSource = "x11_map"
         windows.getOrPut(className) { Entry(className, now) }
     }
 
@@ -463,6 +492,7 @@ class WindowActivity {
                 val now = SystemClock.elapsedRealtime()
                 fun endMs(e: Entry) = if (e.mapped) now else e.lastMs
                 put("window_classes", windows.keys.joinToString(","))
+                windowSource?.let { put("window_source", it) }
                 windows.values.maxByOrNull { endMs(it) }?.let { put("last_window_class", it.className) }
                 windows.values.maxByOrNull { it.frames }?.takeIf { it.frames > 0 }?.let { main ->
                     put("main_window_class", main.className)

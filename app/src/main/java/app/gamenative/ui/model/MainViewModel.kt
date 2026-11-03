@@ -18,6 +18,7 @@ import app.gamenative.di.IAppTheme
 import app.gamenative.enums.AppTheme
 import app.gamenative.enums.LoginResult
 import app.gamenative.enums.PathType
+import app.gamenative.display.GameNativeDrm
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
 import app.gamenative.ui.enums.Orientation
@@ -285,6 +286,17 @@ class MainViewModel @Inject constructor(
             setShowBootingSplash(true)
     }
 
+    /**
+     * The gamescope counterpart of [onWindowMapped]'s application-window check: the game maps its
+     * window on gamescope's Xwayland, which this X server never sees, so the daemon's published
+     * frames stand in for the map (see [GameNativeDrm.GAME_CONTENT_FRAMES]). Without this every
+     * gamescope quit looked like "no window" to [maybeOfferAiDebugRun] and to game_exited.
+     */
+    private val onGamescopeGameContent: (AndroidEvent.GamescopeGameContent) -> Unit = {
+        if (!gameWindowSeen) Timber.i("gamescope session published game content; counting the game window as seen")
+        gameWindowSeen = true
+    }
+
     private val onClearBootingSplash: (AndroidEvent.ClearBootingSplash) -> Unit = {
         bootAwaitingGameWindow = false
         bootingSplashTimeoutJob?.cancel()
@@ -339,6 +351,7 @@ class MainViewModel @Inject constructor(
         PluviaApp.events.on<AndroidEvent.ExternalGameLaunch, Unit>(onExternalGameLaunch)
         PluviaApp.events.on<AndroidEvent.SetBootingSplashText, Unit>(onSetBootingSplashText)
         PluviaApp.events.on<AndroidEvent.ClearBootingSplash, Unit>(onClearBootingSplash)
+        PluviaApp.events.on<AndroidEvent.GamescopeGameContent, Unit>(onGamescopeGameContent)
         PluviaApp.events.on<SteamEvent.Connected, Unit>(onSteamConnected)
         PluviaApp.events.on<SteamEvent.Disconnected, Unit>(onSteamDisconnected)
         PluviaApp.events.on<SteamEvent.RemotelyDisconnected, Unit>(onRemotelyDisconnected)
@@ -366,6 +379,7 @@ class MainViewModel @Inject constructor(
         PluviaApp.events.off<AndroidEvent.ExternalGameLaunch, Unit>(onExternalGameLaunch)
         PluviaApp.events.off<AndroidEvent.SetBootingSplashText, Unit>(onSetBootingSplashText)
         PluviaApp.events.off<AndroidEvent.ClearBootingSplash, Unit>(onClearBootingSplash)
+        PluviaApp.events.off<AndroidEvent.GamescopeGameContent, Unit>(onGamescopeGameContent)
         PluviaApp.events.off<SteamEvent.Connected, Unit>(onSteamConnected)
         PluviaApp.events.off<SteamEvent.Disconnected, Unit>(onSteamDisconnected)
         PluviaApp.events.off<SteamEvent.RemotelyDisconnected, Unit>(onRemotelyDisconnected)

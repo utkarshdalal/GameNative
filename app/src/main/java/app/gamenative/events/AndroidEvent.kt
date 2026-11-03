@@ -25,6 +25,8 @@ interface AndroidEvent<T> : Event<T> {
     data object HideLaunchingOverlay : AndroidEvent<Unit>
     data class SetBootingSplashText(val text: String) : AndroidEvent<Unit>
     data object ClearBootingSplash : AndroidEvent<Unit>
+    /** A gamescope session has published enough distinct frames to count as game content (see GameNativeDrm). */
+    data object GamescopeGameContent : AndroidEvent<Unit>
     data class DownloadPausedDueToConnectivity(val appId: Int) : AndroidEvent<Unit>
     data class DownloadStatusChanged(val appId: Int, val isDownloading: Boolean) : AndroidEvent<Unit>
     data class PostInstallSyncStatusChanged(val appId: Int, val isSyncing: Boolean) : AndroidEvent<Unit>
