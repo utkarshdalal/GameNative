@@ -1,6 +1,5 @@
 package app.gamenative.service
 
-import app.gamenative.PluviaApp
 import android.app.Application
 import android.app.Service
 import android.content.ComponentName
@@ -13,6 +12,7 @@ import android.database.Cursor
 import android.net.Uri
 import android.provider.DocumentsContract
 import androidx.test.core.app.ApplicationProvider
+import app.gamenative.PluviaApp
 import app.gamenative.R
 import app.gamenative.data.ModInstall
 import app.gamenative.data.ModInstallSource
