@@ -1,5 +1,6 @@
 package app.gamenative.service
 
+import app.gamenative.PluviaApp
 import android.app.Application
 import android.app.Service
 import android.content.ComponentName
@@ -31,9 +32,12 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowContentResolver
 
 @RunWith(RobolectricTestRunner::class)
+// relies on what PluviaApp.onCreate initialises (PrefManager, DownloadService paths)
+@Config(application = PluviaApp::class)
 class NexusModImportServiceRobolectricTest {
     private lateinit var provider: RejectingMimeProbeProvider
 

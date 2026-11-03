@@ -1,5 +1,6 @@
 package app.gamenative.service
 
+import app.gamenative.PluviaApp
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
@@ -56,6 +57,7 @@ import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.io.File
 import java.io.IOException
 import java.lang.reflect.Field
@@ -64,6 +66,8 @@ import java.util.EnumSet
 import java.util.concurrent.CompletableFuture
 
 @RunWith(RobolectricTestRunner::class)
+// relies on what PluviaApp.onCreate initialises (PrefManager, DownloadService paths)
+@Config(application = PluviaApp::class)
 class SteamAutoCloudTest {
 
     private lateinit var context: Context

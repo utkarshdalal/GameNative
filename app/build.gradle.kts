@@ -232,7 +232,8 @@ android {
         unitTests {
             isIncludeAndroidResources = true
             all {
-                // two test JVMs fit the 4-core / 16 GB CI runner next to the Gradle daemon
+                // two 3 GB test JVMs on the 4-core / 16 GB CI runner; the Gradle daemon may grow to 8 GB
+                // (gradle.properties) but has finished compiling by the time the tests run
                 it.maxParallelForks = 2
                 it.maxHeapSize = "3g"
                 it.testLogging { events("started", "failed") }

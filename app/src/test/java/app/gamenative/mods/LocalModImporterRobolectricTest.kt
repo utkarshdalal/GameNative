@@ -1,5 +1,6 @@
 package app.gamenative.mods
 
+import app.gamenative.PluviaApp
 import android.content.ContentProvider
 import android.content.ContentValues
 import android.content.Context
@@ -27,9 +28,12 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowContentResolver
 
 @RunWith(RobolectricTestRunner::class)
+// relies on what PluviaApp.onCreate initialises (PrefManager, DownloadService paths)
+@Config(application = PluviaApp::class)
 class LocalModImporterRobolectricTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private lateinit var provider: FakeModDocumentsProvider
