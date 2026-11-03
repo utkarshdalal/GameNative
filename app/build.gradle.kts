@@ -232,8 +232,14 @@ android {
         unitTests {
             isIncludeAndroidResources = true
             all {
-                it.maxHeapSize = "4g"
+                // two test JVMs fit the 4-core / 16 GB CI runner next to the Gradle daemon
+                it.maxParallelForks = 2
+                it.maxHeapSize = "3g"
                 it.testLogging { events("started", "failed") }
+                // downloads and installs every manifest.json entry; run with -PmanifestTests
+                if (!project.hasProperty("manifestTests")) {
+                    it.exclude("**/ManifestIdCorrelationTest*")
+                }
             }
         }
     }
