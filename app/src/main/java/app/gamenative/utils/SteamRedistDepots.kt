@@ -50,6 +50,21 @@ object SteamRedistDepots {
         return RedistInstallerExtractor.familiesOf(RedistInstallerExtractor.scriptStepInstallers(gameDir, scriptName))
     }
 
+    /**
+     * VC++ families of the installers in the game's redist folders
+     * ([RedistInstallerExtractor.vcRedistLayoutInstallers]) that no install-script step runs, so
+     * a game that ships its own `_CommonRedist` without listing the shared depots still gets them.
+     */
+    internal fun layoutComponents(gameDir: File?, scriptName: String?): Set<String> {
+        if (gameDir == null || !gameDir.isDirectory) return emptySet()
+        val fromScripts = RedistInstallerExtractor.scriptStepInstallers(gameDir, scriptName).map(::canonicalPath).toSet()
+        val installers = RedistInstallerExtractor.expandInstallers(RedistInstallerExtractor.vcRedistLayoutInstallers(gameDir))
+            .filter { canonicalPath(it) !in fromScripts }
+        return RedistInstallerExtractor.familiesOf(installers)
+    }
+
+    private fun canonicalPath(file: File): String = runCatching { file.canonicalPath }.getOrDefault(file.absolutePath)
+
     fun applyForLaunch(container: Container, appId: String) {
         try {
             if (ContainerUtils.extractGameSourceFromContainerId(appId) != GameSource.STEAM) return
@@ -60,7 +75,13 @@ object SteamRedistDepots {
                 Timber.w(e, "Failed to read redist installers named by install scripts for $appId")
                 emptySet()
             }
-            val required = componentsForApp(numericAppId) + fromScripts
+            val fromLayout = try {
+                layoutComponents(PreInstallSteps.getGameDir(container), SteamService.getAppInfoOf(numericAppId)?.installScript)
+            } catch (e: Exception) {
+                Timber.w(e, "Failed to read redist installers in the redist folders for $appId")
+                emptySet()
+            }
+            val required = componentsForApp(numericAppId) + fromScripts + fromLayout
             if (required.isEmpty()) return
             val current = container.winComponents.orEmpty()
             val merged = mergeComponents(current, required)

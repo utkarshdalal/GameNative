@@ -58,6 +58,8 @@ object RedistInstallerExtractor {
     private val NOT_A_VC_RUNTIME = Regex("(?i)\\.NET|Framework|DirectX|PhysX|OpenAL")
     private val VC_PRODUCT = Regex("(?i)Visual C\\+\\+ (20\\d\\d)")
     private val UNREAL_REDIST_PATH = listOf("Engine", "Extras", "Redist", "en-us")
+    private val MSVC_LAYOUT_DIR = Regex("(?i)^MSVC20\\d\\d(_x64)?$")
+    private val VC_INSTALLER_NAME = Regex("(?i)^vc_?redist[._].*\\.exe$")
     private val UNREAL_INSTALLERS = setOf(
         "vc_redist.x64.exe",
         "vc_redist.x86.exe",
@@ -352,6 +354,26 @@ object RedistInstallerExtractor {
                     .sortedBy { it.name }
             }
     }
+
+    /**
+     * The VC++ installers in the redist folders the removed vc_redist step ran:
+     * `_CommonRedist/vcredist/<year>/`, `_CommonRedist/MSVC20xx[_x64]/`, `_CommonRedist/` itself
+     * and `redist/`, matched case-insensitively.
+     */
+    internal fun vcRedistLayoutInstallers(gameDir: File): List<File> {
+        val commonRedist = childDir(gameDir, "_CommonRedist")
+        val msvc = commonRedist?.listFiles().orEmpty()
+            .filter { it.isDirectory && MSVC_LAYOUT_DIR.matches(it.name) }
+            .sortedBy { it.name.lowercase() }
+            .flatMap(::vcInstallersIn)
+        val loose = listOfNotNull(commonRedist, childDir(gameDir, "redist")).flatMap(::vcInstallersIn)
+        return steamworksLayoutInstallers(gameDir) + msvc + loose
+    }
+
+    private fun vcInstallersIn(dir: File): List<File> =
+        dir.listFiles().orEmpty()
+            .filter { it.isFile && VC_INSTALLER_NAME.matches(it.name) }
+            .sortedBy { it.name.lowercase() }
 
     fun unrealLayoutInstallers(gameDir: File): List<File> {
         val redistDirs = UNREAL_REDIST_PATH.fold(listOf(gameDir)) { dirs, name -> dirs.flatMap { childDirs(it, name) } }
