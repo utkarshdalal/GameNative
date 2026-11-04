@@ -1,6 +1,7 @@
 package app.gamenative.powercontrol
 
 import app.gamenative.PluviaApp
+import app.gamenative.display.GameNativeDrm
 import app.gamenative.events.AndroidEvent
 import com.winlator.winhandler.OnGetProcessInfoListener
 import com.winlator.winhandler.ProcessInfo
@@ -24,6 +25,7 @@ import java.util.concurrent.TimeUnit
 object ContainerAffinity {
     private const val TAG = "ContainerAffinity"
     private const val REPLY_TIMEOUT_MS = 2000L
+    private const val REPLY_ATTEMPTS = 3
 
     /**
      * Names the mask is never sent to: steam.exe as on X11, the processes power control's
@@ -57,6 +59,11 @@ object ContainerAffinity {
         Timber.tag(TAG).i(
             "Container CPU list armed for the first game content (mask 0x${Integer.toHexString(mask)}, wow64 0x${Integer.toHexString(maskWoW64)})"
         )
+        if (GameNativeDrm.gameContentSeen) {
+            // The event fires once per session and has already gone by.
+            disarm()
+            listener(AndroidEvent.GamescopeGameContent)
+        }
     }
 
     fun disarm() {
@@ -65,12 +72,18 @@ object ContainerAffinity {
     }
 
     private fun apply(winHandler: WinHandler, mask: Int, maskWoW64: Int) {
-        if (WinHandler.getActiveInstance() !== winHandler) return
-        val processes = listProcesses(winHandler)
+        var processes: List<ProcessInfo>? = null
+        for (attempt in 1..REPLY_ATTEMPTS) {
+            if (WinHandler.getActiveInstance() !== winHandler) return
+            processes = listProcesses(winHandler)
+            if (processes != null) break
+            Timber.tag(TAG).w("No process list from the winhandler within $REPLY_TIMEOUT_MS ms (attempt $attempt of $REPLY_ATTEMPTS)")
+        }
         if (processes == null) {
-            Timber.tag(TAG).w("No process list from the winhandler within $REPLY_TIMEOUT_MS ms, container CPU list not applied")
+            Timber.tag(TAG).w("Container CPU list not applied, the winhandler never answered")
             return
         }
+        if (WinHandler.getActiveInstance() !== winHandler) return
         for (info in processes) {
             val target = targetMask(info, mask, maskWoW64) ?: continue
             if (sameMask(info.affinityMask, target)) {

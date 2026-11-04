@@ -30,7 +30,7 @@ class ContainerAffinityTest {
 
     @Test
     fun steamWineServicesAndBackgroundPinnedProcessesStayOut() {
-        for (name in listOf("steam.exe", "Steam.exe", "winhandler.exe", "services.exe", "start.exe", "winedevice.exe", "plugplay.exe", "svchost.exe", "rpcss.exe")) {
+        for (name in listOf("steam.exe", "Steam.exe", "winhandler.exe", "services.exe", "wineserver", "start.exe", "wineboot.exe", "winedevice.exe", "plugplay.exe", "svchost.exe", "rpcss.exe", "conhost.exe")) {
             assertNull(name, ContainerAffinity.targetMask(process(name), mask, maskWoW64, pinnedGame = null, powerControlOwnsGame = false))
         }
     }

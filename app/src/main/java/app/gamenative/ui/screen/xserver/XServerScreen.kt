@@ -3091,6 +3091,7 @@ fun XServerScreen(
             if (!isX11Display) {
                 GameNativeDrm.gameContentListener = null
                 GameNativeDrm.setFrameRating(null)
+                ContainerAffinity.disarm()
             }
 
             // A view released without exit() (the activity-destroyed fallback, a restart) still ends
