@@ -238,7 +238,11 @@ object IntentLaunchManager {
                 ""
             },
             audioDriver = if (json.has("audioDriver")) json.getString("audioDriver") else Container.DEFAULT_AUDIO_DRIVER,
-            wincomponents = if (json.has("wincomponents")) json.getString("wincomponents") else Container.DEFAULT_WINCOMPONENTS,
+            wincomponents = if (json.has("wincomponents")) {
+                RedistComponents.withoutExternalRedistOff(json.getString("wincomponents"))
+            } else {
+                Container.DEFAULT_WINCOMPONENTS
+            },
             drives = if (json.has("drives")) json.getString("drives") else Container.DEFAULT_DRIVES,
             execArgs = if (json.has("execArgs")) json.getString("execArgs") else "",
             executablePath = if (json.has("executablePath")) json.getString("executablePath") else "",
