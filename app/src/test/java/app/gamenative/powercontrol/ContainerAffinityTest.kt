@@ -29,8 +29,8 @@ class ContainerAffinityTest {
     }
 
     @Test
-    fun steamAndBackgroundPinnedProcessesStayOut() {
-        for (name in listOf("steam.exe", "Steam.exe", "winhandler.exe", "services.exe")) {
+    fun steamWineServicesAndBackgroundPinnedProcessesStayOut() {
+        for (name in listOf("steam.exe", "Steam.exe", "winhandler.exe", "services.exe", "start.exe", "winedevice.exe", "plugplay.exe", "svchost.exe", "rpcss.exe")) {
             assertNull(name, ContainerAffinity.targetMask(process(name), mask, maskWoW64, pinnedGame = null, powerControlOwnsGame = false))
         }
     }
@@ -40,6 +40,13 @@ class ContainerAffinityTest {
         assertNull(ContainerAffinity.targetMask(process("Game.exe"), mask, maskWoW64, pinnedGame = "game.exe", powerControlOwnsGame = true))
         assertEquals(mask, ContainerAffinity.targetMask(process("Game.exe"), mask, maskWoW64, pinnedGame = "game.exe", powerControlOwnsGame = false))
         assertEquals(mask, ContainerAffinity.targetMask(process("Launcher.exe"), mask, maskWoW64, pinnedGame = "game.exe", powerControlOwnsGame = true))
+    }
+
+    @Test
+    fun windowedHelpersStillGetTheList() {
+        for (name in listOf("explorer.exe", "tabtip.exe", "UnityCrashHandler64.exe")) {
+            assertEquals(name, mask, ContainerAffinity.targetMask(process(name), mask, maskWoW64, pinnedGame = null, powerControlOwnsGame = false))
+        }
     }
 
     @Test

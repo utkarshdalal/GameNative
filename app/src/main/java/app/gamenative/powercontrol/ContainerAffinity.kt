@@ -18,16 +18,23 @@ import java.util.concurrent.TimeUnit
  * this app never sees; what it does see is the session's first game content
  * ([AndroidEvent.GamescopeGameContent], the gamescope stand-in for the mapped game window). On
  * that event this takes one process list from the winhandler and sends the mask to each process,
- * 64-bit or WoW64 as the winhandler reports it. The same processes stay out as on X11: steam.exe,
- * and the game when power control holds its affinity. The processes power control's background
- * pin manages stay out as well.
+ * 64-bit or WoW64 as the winhandler reports it. Left out: steam.exe as on X11, the game when
+ * power control holds its affinity, and the processes in [skippedProcesses].
  */
 object ContainerAffinity {
     private const val TAG = "ContainerAffinity"
     private const val REPLY_TIMEOUT_MS = 2000L
 
-    /** Names the mask is never sent to. */
-    internal val skippedProcesses = setOf("steam.exe", "winhandler.exe", "services.exe")
+    /**
+     * Names the mask is never sent to: steam.exe as on X11, the processes power control's
+     * background pin manages, and Wine's own service processes, which map no window on X11 and so
+     * never got the list there either. start.exe is the launcher process that pin found as
+     * winhandler.exe by command line.
+     */
+    internal val skippedProcesses = setOf(
+        "steam.exe", "winhandler.exe", "services.exe", "wineserver",
+        "start.exe", "wineboot.exe", "winedevice.exe", "plugplay.exe", "svchost.exe", "rpcss.exe", "conhost.exe",
+    )
 
     private var armed: ((AndroidEvent.GamescopeGameContent) -> Unit)? = null
 
