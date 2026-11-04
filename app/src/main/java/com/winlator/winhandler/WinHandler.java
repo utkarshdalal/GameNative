@@ -75,7 +75,7 @@ public class WinHandler {
     private InetAddress localhost;
     private OnGetProcessInfoListener onGetProcessInfoListener;
     // Extra receivers of GET_PROCESS replies, alongside the UI's listener.
-    private final List<OnGetProcessInfoListener> processInfoObservers = new CopyOnWriteArrayList<>();
+    private final CopyOnWriteArrayList<OnGetProcessInfoListener> processInfoObservers = new CopyOnWriteArrayList<>();
     private PreferredInputApi preferredInputApi;
     private final ByteBuffer receiveData;
     private final DatagramPacket receivePacket;
