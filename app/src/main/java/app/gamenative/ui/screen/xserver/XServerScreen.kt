@@ -113,6 +113,7 @@ import java.util.EnumSet
 import app.gamenative.externaldisplay.ExternalDisplayInputController
 import app.gamenative.externaldisplay.ExternalDisplaySwapController
 import app.gamenative.externaldisplay.SwapInputOverlayView
+import app.gamenative.powercontrol.ContainerAffinity
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.service.AchievementWatcher
 import app.gamenative.service.SteamHostAchievementPoller
@@ -2568,6 +2569,15 @@ fun XServerScreen(
                             // Autostart performance driver after environment is set up
                             PowerManager.autoStart(container.rootDir)
 
+                            // Without the in-app X server no window maps here, so the container
+                            // CPU list goes out over the winhandler on the first game content.
+                            if (sessionDisplay == SessionDisplay.GAMESCOPE) {
+                                val handler = getxServer().winHandler
+                                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                    ContainerAffinity.arm(handler, taskAffinityMask, taskAffinityMaskWoW64)
+                                }
+                            }
+
                             if (debugRun) {
                                 PerfSampler.start(
                                     context,
@@ -3081,6 +3091,7 @@ fun XServerScreen(
             if (!isX11Display) {
                 GameNativeDrm.gameContentListener = null
                 GameNativeDrm.setFrameRating(null)
+                ContainerAffinity.disarm()
             }
 
             // A view released without exit() (the activity-destroyed fallback, a restart) still ends
@@ -5472,6 +5483,7 @@ private fun exit(
     GameSessionId.end()
 
     // only needed in exit() — OS reclaims on process death, so onDestroy fallback skips this
+    ContainerAffinity.disarm()
     try {
         winHandler?.stop()
     } catch (e: Exception) {

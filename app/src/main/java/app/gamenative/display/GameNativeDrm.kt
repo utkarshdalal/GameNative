@@ -84,6 +84,10 @@ object GameNativeDrm {
     private val publishedFrames = java.util.concurrent.atomic.AtomicInteger(0)
     private val gameContentSignalled = java.util.concurrent.atomic.AtomicBoolean(false)
 
+    /** Whether this session has already signalled game content (the event fires once). */
+    @JvmStatic
+    val gameContentSeen: Boolean get() = gameContentSignalled.get()
+
     /** Set by the session screen; runs on the main thread once per session when game content is first seen. */
     @Volatile
     @JvmStatic
