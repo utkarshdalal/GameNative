@@ -27,7 +27,9 @@ import java.util.concurrent.ConcurrentHashMap
  *   the game's install script and in every installscript.vdf under `_CommonRedist`. A .cmd or
  *   .bat step contributes every .exe/.msi it names (`%~dp0` and relative paths resolve against
  *   its own folder) plus every .exe/.msi next to it.
- * - Every .exe in the Steamworks layout `<gameDir>/_CommonRedist/vcredist/<year>/`.
+ * - Every .exe in the Steamworks layout `<gameDir>/_CommonRedist/vcredist/<year>/`; for Steam
+ *   containers every VC++ installer of [vcRedistLayoutInstallers], the folders Steam family
+ *   detection reads, so a family detected from a folder is extracted from that folder.
  * Anything that is not .exe, .msi or .cab after expansion is dropped. Installers of any family
  * may be listed together; each is matched to a family by its own version resource and by the
  * versions of the DLLs inside it.
@@ -197,10 +199,14 @@ object RedistInstallerExtractor {
         } else {
             emptyList()
         }
-        val fromLayout = usableGameDir?.let(::steamworksLayoutInstallers).orEmpty()
+        val fromLayout = when {
+            usableGameDir == null -> emptyList()
+            isSteam(container) -> vcRedistLayoutInstallers(usableGameDir)
+            else -> steamworksLayoutInstallers(usableGameDir)
+        }
         if (listed.isNotEmpty()) Timber.d("Redistributable installers from container extra: $listed")
         if (fromSteps.isNotEmpty()) Timber.d("Redistributable installers from install scripts: $fromSteps")
-        if (fromLayout.isNotEmpty()) Timber.d("Redistributable installers from _CommonRedist/vcredist: $fromLayout")
+        if (fromLayout.isNotEmpty()) Timber.d("Redistributable installers from redist folders: $fromLayout")
         return expandInstallers(listed + fromSteps + fromLayout)
     }
 
