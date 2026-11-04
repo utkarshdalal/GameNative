@@ -829,6 +829,8 @@ object BestConfigService {
      * Returns map with only fields present in config (no defaults), or empty map if validation fails.
      * When forceApply is true, missing components are replaced with defaults instead of rejecting.
      * When preserveConfigValues is true, match filtering and device-specific substitutions are skipped.
+     * Unless keepRedistOff is true (the user's own exported config), wincomponents drop the redist
+     * components the config turns off so launch-time detection decides them.
      */
     suspend fun parseConfigToContainerData(
         context: Context,
@@ -839,6 +841,7 @@ object BestConfigService {
         forceApply: Boolean = false,
         matchedGpu: String = "",
         preserveConfigValues: Boolean = false,
+        keepRedistOff: Boolean = false,
     ): Map<String, Any?>? = parseConfigResult(
         context = context,
         configJson = configJson,
@@ -848,6 +851,7 @@ object BestConfigService {
         forceApply = forceApply,
         matchedGpu = matchedGpu,
         preserveConfigValues = preserveConfigValues,
+        keepRedistOff = keepRedistOff,
     ).config
 
     suspend fun parseConfigResult(
@@ -859,6 +863,7 @@ object BestConfigService {
         forceApply: Boolean = false,
         matchedGpu: String = "",
         preserveConfigValues: Boolean = false,
+        keepRedistOff: Boolean = false,
     ): ParsedConfigResult {
         try {
             val originalJson = JSONObject(configJson.toString())
@@ -1056,7 +1061,10 @@ object BestConfigService {
                     resultMap["inputType"] = filteredJson.optInt("inputType", WinHandler.PreferredInputApi.BOTH.ordinal)
                 }
                 if (filteredJson.has("wincomponents") && !filteredJson.isNull("wincomponents")) {
-                    resultMap["wincomponents"] = filteredJson.optString("wincomponents", PrefManager.winComponents)
+                    val wincomponents = filteredJson.optString("wincomponents", PrefManager.winComponents)
+                        .let { if (keepRedistOff) it else RedistComponents.withoutExternalRedistOff(it) }
+                    // Only redist "=0" entries: nothing left to apply, the container keeps its own value
+                    if (wincomponents.isNotBlank()) resultMap["wincomponents"] = wincomponents
                 }
                 if (filteredJson.has("videoMemorySize") && !filteredJson.isNull("videoMemorySize")) {
                     resultMap["videoMemorySize"] = filteredJson.optString("videoMemorySize", PrefManager.videoMemorySize)

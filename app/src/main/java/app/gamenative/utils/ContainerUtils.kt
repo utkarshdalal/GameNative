@@ -1255,7 +1255,7 @@ object ContainerUtils {
         } else {
             // Create new container with override config if present
             val overrideConfig = if (IntentLaunchManager.hasTemporaryOverride(appId)) {
-                IntentLaunchManager.getTemporaryOverride(appId)
+                IntentLaunchManager.getEffectiveContainerConfig(context, appId)
             } else {
                 null
             }
