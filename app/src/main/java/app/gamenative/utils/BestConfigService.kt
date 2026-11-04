@@ -1062,8 +1062,9 @@ object BestConfigService {
                 }
                 if (filteredJson.has("wincomponents") && !filteredJson.isNull("wincomponents")) {
                     val wincomponents = filteredJson.optString("wincomponents", PrefManager.winComponents)
-                    resultMap["wincomponents"] =
-                        if (keepRedistOff) wincomponents else RedistComponents.withoutExternalRedistOff(wincomponents)
+                        .let { if (keepRedistOff) it else RedistComponents.withoutExternalRedistOff(it) }
+                    // Only redist "=0" entries: nothing left to apply, the container keeps its own value
+                    if (wincomponents.isNotBlank()) resultMap["wincomponents"] = wincomponents
                 }
                 if (filteredJson.has("videoMemorySize") && !filteredJson.isNull("videoMemorySize")) {
                     resultMap["videoMemorySize"] = filteredJson.optString("videoMemorySize", PrefManager.videoMemorySize)

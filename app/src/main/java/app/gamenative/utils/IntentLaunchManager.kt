@@ -147,7 +147,10 @@ object IntentLaunchManager {
 
             when {
                 override != null && baseConfig != null -> mergeConfigurations(baseConfig, override)
-                override != null -> override
+                override != null -> override.copy(
+                    wincomponents = RedistComponents.withoutExternalRedistOff(override.wincomponents)
+                        .ifBlank { Container.DEFAULT_WINCOMPONENTS },
+                )
                 else -> baseConfig
             }
         } catch (e: Exception) {
@@ -238,11 +241,7 @@ object IntentLaunchManager {
                 ""
             },
             audioDriver = if (json.has("audioDriver")) json.getString("audioDriver") else Container.DEFAULT_AUDIO_DRIVER,
-            wincomponents = if (json.has("wincomponents")) {
-                RedistComponents.withoutExternalRedistOff(json.getString("wincomponents"))
-            } else {
-                Container.DEFAULT_WINCOMPONENTS
-            },
+            wincomponents = if (json.has("wincomponents")) json.getString("wincomponents") else Container.DEFAULT_WINCOMPONENTS,
             drives = if (json.has("drives")) json.getString("drives") else Container.DEFAULT_DRIVES,
             execArgs = if (json.has("execArgs")) json.getString("execArgs") else "",
             executablePath = if (json.has("executablePath")) json.getString("executablePath") else "",
@@ -295,7 +294,7 @@ object IntentLaunchManager {
         return config
     }
 
-    private fun mergeConfigurations(base: ContainerData, override: ContainerData): ContainerData {
+    internal fun mergeConfigurations(base: ContainerData, override: ContainerData): ContainerData {
         // Quick return if no actual overrides
         if (override == base) return base
 
@@ -322,8 +321,9 @@ object IntentLaunchManager {
                 else -> DXVKHelper.DEFAULT_CONFIG
             },
             audioDriver = if (override.audioDriver != Container.DEFAULT_AUDIO_DRIVER) override.audioDriver else base.audioDriver,
+            // Given or not is decided on the intent's own string, before its redist "=0" entries go
             wincomponents = if (override.wincomponents != Container.DEFAULT_WINCOMPONENTS) {
-                override.wincomponents
+                RedistComponents.withoutExternalRedistOff(override.wincomponents).ifBlank { base.wincomponents }
             } else {
                 base.wincomponents
             },

@@ -415,6 +415,28 @@ class BestConfigServiceTest {
     }
 
     @Test
+    fun testExternalConfigOfOnlyRedistComponentsTurnedOffLeavesWincomponentsAlone() = runBlocking {
+        val configJson = Json.parseToJsonElement(
+            """
+            {
+                "dxwrapper": "dxvk",
+                "dxwrapperConfig": "version=1.10.3",
+                "containerVariant": "bionic",
+                "wineVersion": "proton-9.0-arm64ec",
+                "wincomponents": "xaudio=0,vcrun2022=0"
+            }
+            """.trimIndent(),
+        ).jsonObject
+
+        val parsed = BestConfigService.parseConfigResult(context, configJson, "exact_gpu_match", true)
+        val current = Container.DEFAULT_WINCOMPONENTS + ",vcrun2022=1"
+        val updated = ContainerUtils.applyBestConfigMapToContainerData(ContainerData(wincomponents = current), parsed.config)
+
+        assertFalse(parsed.config.containsKey("wincomponents"))
+        assertEquals(current, updated.wincomponents)
+    }
+
+    @Test
     fun testGlibcBox64VersionValidation() {
         // Modern flavor rejects glibc containers wholesale — this test only applies to legacy.
         assumeFalse("glibc not supported on modern", BuildConfig.MODERN_ANDROID)
