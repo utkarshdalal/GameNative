@@ -1,5 +1,7 @@
 package app.gamenative.powercontrol
 
+import app.gamenative.PluviaApp
+import app.gamenative.events.AndroidEvent
 import com.winlator.winhandler.OnGetProcessInfoListener
 import com.winlator.winhandler.ProcessInfo
 import com.winlator.winhandler.WinHandler
@@ -12,68 +14,67 @@ import java.util.concurrent.TimeUnit
  * without the in-app X server.
  *
  * On X11 the list reaches a process through [com.winlator.core.Win32AppWorkarounds] when the
- * process maps its first top-level window. Under gamescope the windows map on Xwayland, so this
- * poller asks the winhandler for its process list instead and sends the mask once to each new
- * process, 64-bit or WoW64 as the winhandler reports it. The same processes stay out as on X11:
- * steam.exe, and the game when power control holds its affinity. The processes power control's
- * background pin manages stay out as well.
+ * process maps its first top-level window. Under gamescope the windows map on Xwayland, which
+ * this app never sees; what it does see is the session's first game content
+ * ([AndroidEvent.GamescopeGameContent], the gamescope stand-in for the mapped game window). On
+ * that event this takes one process list from the winhandler and sends the mask to each process,
+ * 64-bit or WoW64 as the winhandler reports it. The same processes stay out as on X11: steam.exe,
+ * and the game when power control holds its affinity. The processes power control's background
+ * pin manages stay out as well.
  */
 object ContainerAffinity {
     private const val TAG = "ContainerAffinity"
-    private const val POLL_MS = 5000L
     private const val REPLY_TIMEOUT_MS = 2000L
 
     /** Names the mask is never sent to. */
     internal val skippedProcesses = setOf("steam.exe", "winhandler.exe", "services.exe")
 
-    @Volatile
-    private var poller: Thread? = null
+    private var armed: ((AndroidEvent.GamescopeGameContent) -> Unit)? = null
 
     /**
-     * Starts polling [winHandler] for the session; stops on [stop] or when the handler is no
-     * longer the live instance. A zero [mask] means no CPU list, nothing runs.
+     * Arms the session: the list goes out once, when the game first shows content. A zero [mask]
+     * means no CPU list, nothing is armed. Call from the main thread, like the other event users.
      */
-    fun start(winHandler: WinHandler, mask: Int, maskWoW64: Int) {
-        stop()
+    fun arm(winHandler: WinHandler, mask: Int, maskWoW64: Int) {
+        disarm()
         if (mask == 0) {
             Timber.tag(TAG).i("No container CPU list, nothing to apply")
             return
         }
-        val applied = mutableSetOf<Int>()
-        val thread = Thread({
-            Timber.tag(TAG).i(
-                "Applying the container CPU list over the winhandler (mask 0x${Integer.toHexString(mask)}, wow64 0x${Integer.toHexString(maskWoW64)})"
-            )
-            while (!Thread.currentThread().isInterrupted && WinHandler.getActiveInstance() === winHandler) {
-                val processes = listProcesses(winHandler) ?: emptyList()
-                for (info in processes) {
-                    if (info.pid in applied) continue
-                    val target = targetMask(info, mask, maskWoW64) ?: continue
-                    applied.add(info.pid)
-                    if (sameMask(info.affinityMask, target)) {
-                        Timber.tag(TAG).d("${info.name} (PID ${info.pid}) already on mask 0x${Integer.toHexString(target)}")
-                        continue
-                    }
-                    winHandler.setProcessAffinity(info.pid, target)
-                    Timber.tag(TAG).i(
-                        "Applied mask 0x${Integer.toHexString(target)} to ${info.name} (PID ${info.pid}, wow64=${info.wow64Process}, was 0x${Integer.toHexString(info.affinityMask)})"
-                    )
-                }
-                try {
-                    Thread.sleep(POLL_MS)
-                } catch (_: InterruptedException) {
-                    break
-                }
-            }
-            Timber.tag(TAG).i("Container CPU list poller ended")
-        }, "container-affinity")
-        poller = thread
-        thread.start()
+        val listener: (AndroidEvent.GamescopeGameContent) -> Unit = {
+            armed = null
+            Thread({ apply(winHandler, mask, maskWoW64) }, "container-affinity").start()
+        }
+        armed = listener
+        PluviaApp.events.once<AndroidEvent.GamescopeGameContent, Unit>(listener)
+        Timber.tag(TAG).i(
+            "Container CPU list armed for the first game content (mask 0x${Integer.toHexString(mask)}, wow64 0x${Integer.toHexString(maskWoW64)})"
+        )
     }
 
-    fun stop() {
-        poller?.interrupt()
-        poller = null
+    fun disarm() {
+        armed?.let { PluviaApp.events.off<AndroidEvent.GamescopeGameContent, Unit>(it) }
+        armed = null
+    }
+
+    private fun apply(winHandler: WinHandler, mask: Int, maskWoW64: Int) {
+        if (WinHandler.getActiveInstance() !== winHandler) return
+        val processes = listProcesses(winHandler)
+        if (processes == null) {
+            Timber.tag(TAG).w("No process list from the winhandler within $REPLY_TIMEOUT_MS ms, container CPU list not applied")
+            return
+        }
+        for (info in processes) {
+            val target = targetMask(info, mask, maskWoW64) ?: continue
+            if (sameMask(info.affinityMask, target)) {
+                Timber.tag(TAG).d("${info.name} (PID ${info.pid}) already on mask 0x${Integer.toHexString(target)}")
+                continue
+            }
+            winHandler.setProcessAffinity(info.pid, target)
+            Timber.tag(TAG).i(
+                "Applied mask 0x${Integer.toHexString(target)} to ${info.name} (PID ${info.pid}, wow64=${info.wow64Process}, was 0x${Integer.toHexString(info.affinityMask)})"
+            )
+        }
     }
 
     /**
@@ -112,10 +113,7 @@ object ContainerAffinity {
         winHandler.addProcessInfoObserver(observer)
         try {
             winHandler.listProcesses()
-            if (!done.await(REPLY_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
-                Timber.tag(TAG).d("No process list from the winhandler within $REPLY_TIMEOUT_MS ms")
-                return null
-            }
+            if (!done.await(REPLY_TIMEOUT_MS, TimeUnit.MILLISECONDS)) return null
         } catch (_: InterruptedException) {
             Thread.currentThread().interrupt()
             return null

@@ -2570,9 +2570,12 @@ fun XServerScreen(
                             PowerManager.autoStart(container.rootDir)
 
                             // Without the in-app X server no window maps here, so the container
-                            // CPU list goes to each process over the winhandler instead.
+                            // CPU list goes out over the winhandler on the first game content.
                             if (sessionDisplay == SessionDisplay.GAMESCOPE) {
-                                ContainerAffinity.start(getxServer().winHandler, taskAffinityMask, taskAffinityMaskWoW64)
+                                val handler = getxServer().winHandler
+                                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                    ContainerAffinity.arm(handler, taskAffinityMask, taskAffinityMaskWoW64)
+                                }
                             }
 
                             if (debugRun) {
@@ -5479,7 +5482,7 @@ private fun exit(
     GameSessionId.end()
 
     // only needed in exit() — OS reclaims on process death, so onDestroy fallback skips this
-    ContainerAffinity.stop()
+    ContainerAffinity.disarm()
     try {
         winHandler?.stop()
     } catch (e: Exception) {
