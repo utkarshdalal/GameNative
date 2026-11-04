@@ -113,6 +113,7 @@ import java.util.EnumSet
 import app.gamenative.externaldisplay.ExternalDisplayInputController
 import app.gamenative.externaldisplay.ExternalDisplaySwapController
 import app.gamenative.externaldisplay.SwapInputOverlayView
+import app.gamenative.powercontrol.ContainerAffinity
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.service.AchievementWatcher
 import app.gamenative.service.SteamHostAchievementPoller
@@ -2567,6 +2568,12 @@ fun XServerScreen(
                             PowerManager.gamescopeSession = sessionDisplay == SessionDisplay.GAMESCOPE
                             // Autostart performance driver after environment is set up
                             PowerManager.autoStart(container.rootDir)
+
+                            // Without the in-app X server no window maps here, so the container
+                            // CPU list goes to each process over the winhandler instead.
+                            if (sessionDisplay == SessionDisplay.GAMESCOPE) {
+                                ContainerAffinity.start(getxServer().winHandler, taskAffinityMask, taskAffinityMaskWoW64)
+                            }
 
                             if (debugRun) {
                                 PerfSampler.start(
@@ -5472,6 +5479,7 @@ private fun exit(
     GameSessionId.end()
 
     // only needed in exit() — OS reclaims on process death, so onDestroy fallback skips this
+    ContainerAffinity.stop()
     try {
         winHandler?.stop()
     } catch (e: Exception) {
