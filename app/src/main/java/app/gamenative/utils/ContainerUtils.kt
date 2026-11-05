@@ -497,6 +497,7 @@ object ContainerUtils {
                 "launchBionicSteam" -> value?.let { updatedData.copy(launchBionicSteam = it as? Boolean ?: updatedData.launchBionicSteam) } ?: updatedData
                 "launchRealSteam" -> value?.let { updatedData.copy(launchRealSteam = it as? Boolean ?: updatedData.launchRealSteam) } ?: updatedData
                 "steamType" -> value?.let { updatedData.copy(steamType = (it as? String)?.takeIf { s -> s.isNotBlank() } ?: updatedData.steamType) } ?: updatedData
+                "displayServer" -> value?.let { updatedData.copy(displayServer = it as? String ?: updatedData.displayServer) } ?: updatedData
                 else -> updatedData
             }
         }
