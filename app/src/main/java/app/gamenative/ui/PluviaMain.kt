@@ -1887,10 +1887,25 @@ fun PluviaMain(
             SupportUpgradeDialog(
                 visible = debugAccountPrompt != null && debugAccountPrompt != SUPPORT_PROMPT_SIGN_IN,
                 reason = debugAccountPrompt,
-                onPlanChanged = { debugAccountPrompt = null },
+                onPlanChanged = {
+                    debugAccountPrompt = null
+                    submitDebugReport()
+                },
                 onDismiss = { debugAccountPrompt = null },
                 onConnectDiscord = openDiscordConnect,
             )
+
+            // Discord linked while the plan picker is up: resend the report at once. The create
+            // call carries the relay token, so the server merges the Discord plan into the
+            // account and judges it in the same request; a 403 simply reopens the picker.
+            LaunchedEffect(discordTokenPresent) {
+                val prompt = debugAccountPrompt
+                if (!discordTokenPresent || prompt == null || prompt == SUPPORT_PROMPT_SIGN_IN) return@LaunchedEffect
+                if (!withContext(Dispatchers.IO) { PrefManager.discordMergePending }) return@LaunchedEffect
+                Timber.i("[AiSupport] Discord linked with the plan picker open (reason=%s); resending the report", prompt)
+                debugAccountPrompt = null
+                submitDebugReport()
+            }
 
             SupportUpgradeDialog(
                 visible = membershipPlansVisible,
