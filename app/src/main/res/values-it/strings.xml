@@ -2139,6 +2139,7 @@
     <string name="debug_paywall_cancel_anytime">Annulla quando vuoi. Si applicano limiti di uso corretto.</string>
     <string name="debug_paywall_costs_note">Gli abbonamenti coprono i costi del servizio AI che rende possibile questa funzione.</string>
     <string name="debug_paywall_already">Sei già supporter?</string>
+    <string name="support_plan_discord_member">Sei già membro su Discord? Collega il tuo Discord per usare il tuo piano.</string>
     <string name="debug_paywall_send_now">Mi sono abbonato, invia ora</string>
     <string name="debug_paywall_not_now">Non ora</string>
     <string name="diagnostics_share_title">Condividi il log di diagnostica</string>

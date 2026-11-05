@@ -1902,6 +1902,7 @@
     <string name="debug_paywall_cancel_anytime">İstediğiniz zaman iptal edin. Adil kullanım sınırları geçerlidir.</string>
     <string name="debug_paywall_costs_note">Abonelikler, bu özelliği mümkün kılan YZ hizmeti maliyetlerini karşılar.</string>
     <string name="debug_paywall_already">Zaten destekçi misiniz?</string>
+    <string name="support_plan_discord_member">Zaten Discord üyesi misiniz? Planınızı kullanmak için Discord hesabınızı bağlayın.</string>
     <string name="debug_paywall_send_now">Abone oldum, şimdi gönder</string>
     <string name="debug_paywall_not_now">Şimdi değil</string>
     <string name="debug_offer_title">Bu çökme için YZ yardımı alın</string>

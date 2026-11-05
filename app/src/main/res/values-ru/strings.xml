@@ -2074,6 +2074,7 @@ https://gamenative.app
     <string name="debug_paywall_cancel_anytime">Отмена в любой момент. Действуют лимиты добросовестного использования.</string>
     <string name="debug_paywall_costs_note">Подписки покрывают расходы на сервис AI, благодаря которому работает эта функция.</string>
     <string name="debug_paywall_already">Уже саппортер?</string>
+    <string name="support_plan_discord_member">Уже участник в Discord? Подключите Discord, чтобы использовать свой план.</string>
     <string name="debug_paywall_send_now">Я оформил подписку, отправить сейчас</string>
     <string name="debug_paywall_not_now">Не сейчас</string>
     <string name="diagnostics_share_title">Поделиться журналом диагностики</string>

@@ -2150,6 +2150,7 @@
     <string name="debug_paywall_cancel_anytime">Anuluj w dowolnym momencie. Obowiązują limity uczciwego użytkowania.</string>
     <string name="debug_paywall_costs_note">Subskrypcje pokrywają koszty usługi AI, dzięki której ta funkcja działa.</string>
     <string name="debug_paywall_already">Jesteś już supporterem?</string>
+    <string name="support_plan_discord_member">Jesteś już członkiem na Discordzie? Połącz swój Discord, aby korzystać z planu.</string>
     <string name="debug_paywall_send_now">Mam już subskrypcję, wyślij teraz</string>
     <string name="debug_paywall_not_now">Nie teraz</string>
     <string name="diagnostics_share_title">Udostępnij dziennik diagnostyki</string>

@@ -2155,6 +2155,7 @@
     <string name="debug_paywall_cancel_anytime">隨時可取消。適用合理使用上限。</string>
     <string name="debug_paywall_costs_note">訂閱費用用於支付支援此功能的 AI 服務成本。</string>
     <string name="debug_paywall_already">已經是支持者？</string>
+    <string name="support_plan_discord_member">已經是 Discord 會員？連結 Discord 即可使用您的方案。</string>
     <string name="debug_paywall_send_now">我已訂閱，立即傳送</string>
     <string name="debug_paywall_not_now">暫時不要</string>
     <string name="diagnostics_share_title">分享診斷日誌</string>

@@ -2127,6 +2127,7 @@
     <string name="debug_paywall_cancel_anytime">Anulează oricând. Se aplică limite de utilizare corectă.</string>
     <string name="debug_paywall_costs_note">Abonamentele acoperă costurile serviciului AI care face posibilă această funcție.</string>
     <string name="debug_paywall_already">Ești deja susținător?</string>
+    <string name="support_plan_discord_member">Ești deja membru pe Discord? Conectează-ți Discordul pentru a-ți folosi planul.</string>
     <string name="debug_paywall_send_now">M-am abonat, trimite acum</string>
     <string name="debug_paywall_not_now">Nu acum</string>
     <string name="diagnostics_share_title">Partajează jurnalul de diagnosticare</string>

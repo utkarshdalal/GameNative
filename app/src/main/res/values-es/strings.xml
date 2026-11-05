@@ -2146,6 +2146,7 @@
     <string name="debug_paywall_cancel_anytime">Cancela cuando quieras. Se aplican límites de uso justo.</string>
     <string name="debug_paywall_costs_note">Las suscripciones cubren los costes del servicio de AI que hace posible esta función.</string>
     <string name="debug_paywall_already">¿Ya eres supporter?</string>
+    <string name="support_plan_discord_member">¿Ya eres miembro en Discord? Conecta tu Discord para usar tu plan.</string>
     <string name="debug_paywall_send_now">Ya me he suscrito, enviar ahora</string>
     <string name="debug_paywall_not_now">Ahora no</string>
     <string name="diagnostics_share_title">Compartir registro de diagnóstico</string>

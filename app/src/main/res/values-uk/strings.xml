@@ -2146,6 +2146,7 @@
     <string name="debug_paywall_cancel_anytime">Скасувати можна будь-коли. Діють ліміти чесного використання.</string>
     <string name="debug_paywall_costs_note">Підписки покривають витрати на сервіс AI, завдяки якому працює ця функція.</string>
     <string name="debug_paywall_already">Уже прихильник?</string>
+    <string name="support_plan_discord_member">Уже учасник у Discord? Підключіть Discord, щоб використовувати свій план.</string>
     <string name="debug_paywall_send_now">Я оформив підписку, надіслати зараз</string>
     <string name="debug_paywall_not_now">Не зараз</string>
     <string name="diagnostics_share_title">Поділитися журналом діагностики</string>

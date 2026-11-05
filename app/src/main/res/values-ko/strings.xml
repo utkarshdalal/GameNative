@@ -2144,6 +2144,7 @@
     <string name="debug_paywall_cancel_anytime">언제든지 해지할 수 있습니다. 공정 사용 한도가 적용됩니다.</string>
     <string name="debug_paywall_costs_note">구독료는 이 기능을 지원하는 AI 서비스 비용에 사용됩니다.</string>
     <string name="debug_paywall_already">이미 서포터이신가요?</string>
+    <string name="support_plan_discord_member">이미 Discord 멤버이신가요? Discord를 연결하면 플랜을 사용할 수 있습니다.</string>
     <string name="debug_paywall_send_now">구독했습니다, 지금 보내기</string>
     <string name="debug_paywall_not_now">나중에</string>
     <string name="diagnostics_share_title">진단 로그 공유</string>

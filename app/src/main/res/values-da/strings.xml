@@ -2018,6 +2018,7 @@
     <string name="debug_paywall_cancel_anytime">Opsig når som helst. Fair use-grænser gælder.</string>
     <string name="debug_paywall_costs_note">Abonnementer dækker AI-tjenesteomkostningerne, der gør denne funktion mulig.</string>
     <string name="debug_paywall_already">Allerede supporter?</string>
+    <string name="support_plan_discord_member">Allerede medlem på Discord? Forbind din Discord for at bruge dit abonnement.</string>
     <string name="debug_paywall_send_now">Jeg har tegnet abonnement, send nu</string>
     <string name="debug_paywall_not_now">Ikke nu</string>
     <string name="diagnostics_share_title">Del diagnostiklog</string>

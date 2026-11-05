@@ -2018,6 +2018,7 @@
     <string name="debug_paywall_cancel_anytime">Cancele quando quiser. Limites de uso justo se aplicam.</string>
     <string name="debug_paywall_costs_note">As assinaturas cobrem os custos do serviço de AI que torna este recurso possível.</string>
     <string name="debug_paywall_already">Já é apoiador?</string>
+    <string name="support_plan_discord_member">Já é membro no Discord? Conecte seu Discord para usar seu plano.</string>
     <string name="debug_paywall_send_now">Já assinei, enviar agora</string>
     <string name="debug_paywall_not_now">Agora não</string>
     <string name="diagnostics_share_title">Compartilhar registro de diagnóstico</string>

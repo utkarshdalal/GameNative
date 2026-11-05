@@ -2106,6 +2106,7 @@
     <string name="debug_paywall_cancel_anytime">Cancel anytime. Fair-use limits apply.</string>
     <string name="debug_paywall_costs_note">Subscriptions cover the AI service costs that make this feature possible.</string>
     <string name="debug_paywall_already">Already a supporter?</string>
+    <string name="support_plan_discord_member">Already a member on Discord? Link your Discord to use your plan.</string>
     <string name="debug_paywall_send_now">I’ve subscribed, send now</string>
     <string name="debug_paywall_not_now">Not now</string>
     <string name="debug_offer_title">Get AI help with this crash</string>

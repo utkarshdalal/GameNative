@@ -597,7 +597,7 @@ private fun UpgradeBody(
                     }
                     if (onConnectDiscord != null) {
                         Text(
-                            text = stringResource(R.string.debug_paywall_already),
+                            text = stringResource(R.string.support_plan_discord_member),
                             style = MaterialTheme.typography.bodySmall,
                             color = PluviaTheme.colors.textMuted,
                             modifier = Modifier.padding(top = 12.dp),
