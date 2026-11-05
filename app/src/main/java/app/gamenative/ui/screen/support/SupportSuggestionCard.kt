@@ -84,6 +84,7 @@ private val TOP_LEVEL_LABELS: Map<String, Int> = mapOf(
     "launchBionicSteam" to R.string.launch_bionic_steam,
     "launchRealSteam" to R.string.launch_steam_client_beta,
     "steamType" to R.string.steam_type,
+    "displayServer" to R.string.display_server,
 )
 
 private val DXWRAPPER_LABELS: Map<String, Int> = mapOf(
