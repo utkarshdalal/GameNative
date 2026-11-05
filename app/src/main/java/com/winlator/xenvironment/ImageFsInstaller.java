@@ -89,13 +89,17 @@ public abstract class ImageFsInstaller {
 
     // Modern flavor ships an additional bionic preload shipped as a flat asset
     // (src/modern/assets/) until it's folded into redirect.tzst. Copy it next to
-    // the tarball-extracted variant so BionicProgramLauncherComponent can find it
+    // the tarball-extracted variant so BionicProgramLauncherComponent can find it.
+    // The stamp replaces an existing wx shim once: #2289's deadlocks on jemalloc libcs,
+    // and the exists check alone would keep it on installed images.
     private static void ensureBionicLib(Context context, File imagefs) {
         if (BuildConfig.MODERN_ANDROID) {
             File wxDest = new File(imagefs, "usr/lib/libredirect-bionic-wx.so");
-            if (!wxDest.exists()) {
+            File wxStamp = new File(imagefs, ".wx_shim_restored");
+            if (!wxDest.exists() || !wxStamp.exists()) {
                 FileUtils.copy(context, "libredirect-bionic-wx.so", wxDest);
                 chmod(wxDest);
+                FileUtils.writeString(wxStamp, "1");
             }
             File wxMinimalDest = new File(imagefs, "usr/lib/libredirect-bionic-wx-minimal.so");
             if (!wxMinimalDest.exists()) {
