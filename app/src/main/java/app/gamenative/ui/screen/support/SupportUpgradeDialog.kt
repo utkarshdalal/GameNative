@@ -61,6 +61,7 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.billing.Membership
 import app.gamenative.billing.PlayBilling
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import app.gamenative.api.AccountApi
 import app.gamenative.api.ApiResult
@@ -73,6 +74,7 @@ import app.gamenative.ui.util.SnackbarManager
 import java.text.DateFormat
 import java.util.Date
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val PHASE_CHOOSE = "choose"
 private const val PHASE_LOADING = "loading"
@@ -109,6 +111,7 @@ fun SupportUpgradeDialog(
     onPlanChanged: () -> Unit = {},
     onCheckoutReturn: () -> Unit = {},
     onSignIn: (() -> Unit)? = null,
+    onConnectDiscord: (() -> Unit)? = null,
 ) {
     if (!visible) return
     if (!upgradeOffered(reason)) {
@@ -129,6 +132,7 @@ fun SupportUpgradeDialog(
     var noBrowser by remember { mutableStateOf(false) }
     var portalMessage by remember { mutableStateOf<Int?>(null) }
     val signedIn by PrefManager.gameNativeSignedIn
+    val discordLinked by PrefManager.discordRelayTokenPresent
     val playEnabled = remember { PlayBilling.enabled(context) }
     var playPlans by remember { mutableStateOf<List<PlayBilling.Plan>?>(null) }
     var playUnavailable by remember { mutableStateOf(false) }
@@ -153,6 +157,15 @@ fun SupportUpgradeDialog(
             val result = AccountApi.fetchAccount()
             if (result is ApiResult.Success) startTier = result.data.tier
         }
+    }
+
+    // A Discord link made from this dialog: merge the Discord identity into the account
+    // (the relay token rides on the next support call) and re-read the plan it carries.
+    LaunchedEffect(signedIn, discordLinked) {
+        if (!signedIn || !discordLinked || !withContext(Dispatchers.IO) { PrefManager.discordMergePending }) return@LaunchedEffect
+        if (SupportApi.listConversations() !is ApiResult.Success) return@LaunchedEffect
+        val result = AccountApi.fetchAccount()
+        if (result is ApiResult.Success && Membership.isPaidTier(result.data.tier)) planActive()
     }
 
     LaunchedEffect(playPlans == null) {
@@ -331,6 +344,7 @@ fun SupportUpgradeDialog(
                             playUnavailable = playUnavailable,
                             playPlans = if (playEnabled) playPlans ?: emptyList() else null,
                             onSignIn = if (signedIn) null else onSignIn,
+                            onConnectDiscord = if (signedIn && !discordLinked) onConnectDiscord else null,
                             portalMessage = portalMessage,
                             firstFocus = firstFocus,
                             cancelFocus = cancelFocus,
@@ -368,6 +382,7 @@ fun SupportUpgradeDialog(
                         playUnavailable = playUnavailable,
                         playPlans = if (playEnabled) playPlans ?: emptyList() else null,
                         onSignIn = if (signedIn) null else onSignIn,
+                        onConnectDiscord = if (signedIn && !discordLinked) onConnectDiscord else null,
                         portalMessage = portalMessage,
                         firstFocus = firstFocus,
                         cancelFocus = cancelFocus,
@@ -508,6 +523,7 @@ private fun UpgradeBody(
     playUnavailable: Boolean,
     playPlans: List<PlayBilling.Plan>?,
     onSignIn: (() -> Unit)?,
+    onConnectDiscord: (() -> Unit)?,
     portalMessage: Int?,
     firstFocus: FocusRequester,
     cancelFocus: FocusRequester,
@@ -553,7 +569,7 @@ private fun UpgradeBody(
                         DialogButton(
                             text = basicPrice?.let { stringResource(R.string.support_plan_basic_title_priced, it) }
                                 ?: stringResource(R.string.support_plan_basic_title),
-                            subtitle = stringResource(R.string.support_plan_basic_body),
+                            subtitle = stringResource(R.string.debug_paywall_tier5_body),
                             primary = false,
                             onClick = { onChoose("basic") },
                             modifier = Modifier.focusRequester(firstFocus),
@@ -577,6 +593,17 @@ private fun UpgradeBody(
                     if (onSignIn != null) {
                         TextButton(onClick = onSignIn, modifier = Modifier.padding(top = 4.dp)) {
                             Text(stringResource(R.string.support_already_member))
+                        }
+                    }
+                    if (onConnectDiscord != null) {
+                        Text(
+                            text = stringResource(R.string.debug_paywall_already),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = PluviaTheme.colors.textMuted,
+                            modifier = Modifier.padding(top = 12.dp),
+                        )
+                        TextButton(onClick = onConnectDiscord) {
+                            Text(stringResource(R.string.debug_report_connect_discord))
                         }
                     }
                 }

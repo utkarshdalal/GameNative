@@ -1845,7 +1845,6 @@ fun PluviaMain(
                 onSend = {
                     val usesApp = debugReportUsesApp(
                         appChatEnabled = SupportApi.available.value != false,
-                        hasDiscordToken = discordTokenPresent,
                         accountSignedIn = PrefManager.gameNativeSignedIn.value,
                         preferredPath = aiHelpPreferredPath,
                     )
@@ -1890,6 +1889,7 @@ fun PluviaMain(
                 reason = debugAccountPrompt,
                 onPlanChanged = { debugAccountPrompt = null },
                 onDismiss = { debugAccountPrompt = null },
+                onConnectDiscord = openDiscordConnect,
             )
 
             SupportUpgradeDialog(
@@ -1901,6 +1901,7 @@ fun PluviaMain(
                     membershipPlansVisible = false
                     membershipSignInVisible = true
                 },
+                onConnectDiscord = openDiscordConnect,
             )
 
             AccountSignInDialog(

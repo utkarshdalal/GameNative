@@ -51,16 +51,17 @@ import app.gamenative.ui.theme.PluviaTheme
 const val AI_HELP_PATH_APP = "app"
 const val AI_HELP_PATH_DISCORD = "discord"
 
+/**
+ * In-app chat is the default for every signed-in user, whatever their plan's source:
+ * a Discord-granted plan reaches the app through the account merge, so a linked
+ * Discord account is not a reason to send the report to Discord. Only an explicit
+ * "Use Discord instead" choice (or the app chat being unavailable) takes that path.
+ */
 fun debugReportUsesApp(
     appChatEnabled: Boolean,
-    hasDiscordToken: Boolean,
     accountSignedIn: Boolean,
     preferredPath: String,
-): Boolean = appChatEnabled && accountSignedIn && when (preferredPath) {
-    AI_HELP_PATH_APP -> true
-    AI_HELP_PATH_DISCORD -> false
-    else -> !hasDiscordToken
-}
+): Boolean = appChatEnabled && accountSignedIn && preferredPath != AI_HELP_PATH_DISCORD
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -215,7 +216,7 @@ fun DebugReportDialog(
                         }
 
                         else -> {
-                            val usesApp = debugReportUsesApp(appChatEnabled, hasDiscordToken, accountSignedIn, preferredPath)
+                            val usesApp = debugReportUsesApp(appChatEnabled, accountSignedIn, preferredPath)
                             val canSend = state.issueText.isNotBlank() && !state.preparing
                             Column(
                                 modifier = Modifier
