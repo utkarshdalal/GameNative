@@ -95,7 +95,6 @@ import app.gamenative.api.AccountApi
 import app.gamenative.billing.Membership
 import app.gamenative.api.DebugReportApi
 import app.gamenative.api.SupportApi
-import app.gamenative.ui.component.dialog.AI_HELP_PATH_APP
 import app.gamenative.ui.component.dialog.AccountSignInDialog
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.component.dialog.DebugPreRunDialog
@@ -442,7 +441,8 @@ fun PluviaMain(
     var debugPreRunAppId by rememberSaveable { mutableStateOf("") }
     var debugPreRunOffline by rememberSaveable { mutableStateOf(false) }
     val discordTokenPresent by PrefManager.discordRelayTokenPresent
-    var aiHelpPreferredPath by remember { mutableStateOf(PrefManager.aiHelpPreferredPath) }
+    // "Use Discord instead" applies to the report being written; it is reset whenever the dialog opens.
+    var debugReportUseDiscord by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         if (!PrefManager.discordRelayTokenPresent.value) {
@@ -1827,6 +1827,10 @@ fun PluviaMain(
                 }
             }
 
+            LaunchedEffect(debugReportState.visible) {
+                if (debugReportState.visible) debugReportUseDiscord = false
+            }
+
             val debugFlowActive = debugReportState.visible || debugPaywallReason != null
             LaunchedEffect(debugFlowActive) {
                 if (debugFlowActive) {
@@ -1839,29 +1843,24 @@ fun PluviaMain(
                 hasDiscordToken = discordTokenPresent,
                 appChatEnabled = SupportApi.available.value != false,
                 accountSignedIn = PrefManager.gameNativeSignedIn.value,
-                preferredPath = aiHelpPreferredPath,
+                useDiscord = debugReportUseDiscord,
                 sendProgress = SupportReportSubmitter.progress.value,
                 onStateChange = { debugReportState = it },
                 onSend = {
                     val usesApp = debugReportUsesApp(
                         appChatEnabled = SupportApi.available.value != false,
-                        hasDiscordToken = discordTokenPresent,
                         accountSignedIn = PrefManager.gameNativeSignedIn.value,
-                        preferredPath = aiHelpPreferredPath,
+                        useDiscord = debugReportUseDiscord,
                     )
                     if (usesApp) submitDebugReport() else submitViaDiscord()
                 },
                 onShare = shareDebugLog,
                 onConnectDiscord = openDiscordConnect,
                 onSignInForApp = {
-                    aiHelpPreferredPath = AI_HELP_PATH_APP
-                    PrefManager.aiHelpPreferredPath = AI_HELP_PATH_APP
+                    debugReportUseDiscord = false
                     submitDebugReport()
                 },
-                onPreferredPathChange = { path ->
-                    aiHelpPreferredPath = path
-                    PrefManager.aiHelpPreferredPath = path
-                },
+                onUseDiscordChange = { debugReportUseDiscord = it },
                 onOpenThread = {
                     if (debugReportState.threadUrl.isNotEmpty()) {
                         uriHandler.openUri(debugReportState.threadUrl)
@@ -1888,9 +1887,25 @@ fun PluviaMain(
             SupportUpgradeDialog(
                 visible = debugAccountPrompt != null && debugAccountPrompt != SUPPORT_PROMPT_SIGN_IN,
                 reason = debugAccountPrompt,
-                onPlanChanged = { debugAccountPrompt = null },
+                onPlanChanged = {
+                    debugAccountPrompt = null
+                    submitDebugReport()
+                },
                 onDismiss = { debugAccountPrompt = null },
+                onConnectDiscord = openDiscordConnect,
             )
+
+            // Discord linked while the plan picker is up: resend the report at once. The create
+            // call carries the relay token, so the server merges the Discord plan into the
+            // account and judges it in the same request; a 403 simply reopens the picker.
+            LaunchedEffect(discordTokenPresent) {
+                val prompt = debugAccountPrompt
+                if (!discordTokenPresent || prompt == null || prompt == SUPPORT_PROMPT_SIGN_IN) return@LaunchedEffect
+                if (!withContext(Dispatchers.IO) { PrefManager.discordMergePending }) return@LaunchedEffect
+                Timber.i("[AiSupport] Discord linked with the plan picker open (reason=%s); resending the report", prompt)
+                debugAccountPrompt = null
+                submitDebugReport()
+            }
 
             SupportUpgradeDialog(
                 visible = membershipPlansVisible,
@@ -1901,6 +1916,7 @@ fun PluviaMain(
                     membershipPlansVisible = false
                     membershipSignInVisible = true
                 },
+                onConnectDiscord = openDiscordConnect,
             )
 
             AccountSignInDialog(

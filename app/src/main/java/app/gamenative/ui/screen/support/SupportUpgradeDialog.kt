@@ -45,6 +45,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -61,6 +67,7 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.billing.Membership
 import app.gamenative.billing.PlayBilling
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import app.gamenative.api.AccountApi
 import app.gamenative.api.ApiResult
@@ -73,6 +80,7 @@ import app.gamenative.ui.util.SnackbarManager
 import java.text.DateFormat
 import java.util.Date
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val PHASE_CHOOSE = "choose"
 private const val PHASE_LOADING = "loading"
@@ -109,6 +117,7 @@ fun SupportUpgradeDialog(
     onPlanChanged: () -> Unit = {},
     onCheckoutReturn: () -> Unit = {},
     onSignIn: (() -> Unit)? = null,
+    onConnectDiscord: (() -> Unit)? = null,
 ) {
     if (!visible) return
     if (!upgradeOffered(reason)) {
@@ -129,6 +138,7 @@ fun SupportUpgradeDialog(
     var noBrowser by remember { mutableStateOf(false) }
     var portalMessage by remember { mutableStateOf<Int?>(null) }
     val signedIn by PrefManager.gameNativeSignedIn
+    val discordLinked by PrefManager.discordRelayTokenPresent
     val playEnabled = remember { PlayBilling.enabled(context) }
     var playPlans by remember { mutableStateOf<List<PlayBilling.Plan>?>(null) }
     var playUnavailable by remember { mutableStateOf(false) }
@@ -153,6 +163,15 @@ fun SupportUpgradeDialog(
             val result = AccountApi.fetchAccount()
             if (result is ApiResult.Success) startTier = result.data.tier
         }
+    }
+
+    // A Discord link made from this dialog: merge the Discord identity into the account
+    // (the relay token rides on the next support call) and re-read the plan it carries.
+    LaunchedEffect(signedIn, discordLinked) {
+        if (!signedIn || !discordLinked || !withContext(Dispatchers.IO) { PrefManager.discordMergePending }) return@LaunchedEffect
+        if (SupportApi.listConversations() !is ApiResult.Success) return@LaunchedEffect
+        val result = AccountApi.fetchAccount()
+        if (result is ApiResult.Success && Membership.isPaidTier(result.data.tier)) planActive()
     }
 
     LaunchedEffect(playPlans == null) {
@@ -316,11 +335,56 @@ fun SupportUpgradeDialog(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     CheckoutQr(url = checkoutUrl, size = 180.dp)
+                    Column(modifier = Modifier.weight(1f)) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f, fill = false)
+                                .verticalScroll(rememberScrollState()),
+                        ) {
+                            UpgradeBody(
+                                phase = phase,
+                                reason = reason,
+                                showBasic = showBasic,
+                                noBrowser = noBrowser,
+                                guestExpired = guestExpired,
+                                guestCheckout = guestDeviceCode.isNotEmpty(),
+                                playUnavailable = playUnavailable,
+                                playPlans = if (playEnabled) playPlans ?: emptyList() else null,
+                                onSignIn = if (signedIn) null else onSignIn,
+                                onConnectDiscord = if (signedIn && !discordLinked) onConnectDiscord else null,
+                                portalMessage = portalMessage,
+                                firstFocus = firstFocus,
+                                onChoose = choose,
+                                onOpenCheckout = { noBrowser = !openAccountUrl(context, checkoutUrl) },
+                                onManage = manage,
+                                onRetry = {
+                                    playUnavailable = false
+                                    playPlans = null
+                                    phase = PHASE_CHOOSE
+                                },
+                            )
+                        }
+                        UpgradeCancel(phase = phase, cancelFocus = cancelFocus, onDismiss = onDismiss)
+                    }
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
                     Column(
                         modifier = Modifier
-                            .weight(1f)
+                            .fillMaxWidth()
+                            .weight(1f, fill = false)
                             .verticalScroll(rememberScrollState()),
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
+                        if (phase == PHASE_CHECKOUT) {
+                            CheckoutQr(url = checkoutUrl, size = 200.dp)
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
                         UpgradeBody(
                             phase = phase,
                             reason = reason,
@@ -331,9 +395,9 @@ fun SupportUpgradeDialog(
                             playUnavailable = playUnavailable,
                             playPlans = if (playEnabled) playPlans ?: emptyList() else null,
                             onSignIn = if (signedIn) null else onSignIn,
+                            onConnectDiscord = if (signedIn && !discordLinked) onConnectDiscord else null,
                             portalMessage = portalMessage,
                             firstFocus = firstFocus,
-                            cancelFocus = cancelFocus,
                             onChoose = choose,
                             onOpenCheckout = { noBrowser = !openAccountUrl(context, checkoutUrl) },
                             onManage = manage,
@@ -342,45 +406,9 @@ fun SupportUpgradeDialog(
                                 playPlans = null
                                 phase = PHASE_CHOOSE
                             },
-                            onDismiss = onDismiss,
                         )
                     }
-                }
-            } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    if (phase == PHASE_CHECKOUT) {
-                        CheckoutQr(url = checkoutUrl, size = 200.dp)
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
-                    UpgradeBody(
-                        phase = phase,
-                        reason = reason,
-                        showBasic = showBasic,
-                        noBrowser = noBrowser,
-                        guestExpired = guestExpired,
-                        guestCheckout = guestDeviceCode.isNotEmpty(),
-                        playUnavailable = playUnavailable,
-                        playPlans = if (playEnabled) playPlans ?: emptyList() else null,
-                        onSignIn = if (signedIn) null else onSignIn,
-                        portalMessage = portalMessage,
-                        firstFocus = firstFocus,
-                        cancelFocus = cancelFocus,
-                        onChoose = choose,
-                        onOpenCheckout = { noBrowser = !openAccountUrl(context, checkoutUrl) },
-                        onManage = manage,
-                        onRetry = {
-                            playUnavailable = false
-                            playPlans = null
-                            phase = PHASE_CHOOSE
-                        },
-                        onDismiss = onDismiss,
-                    )
+                    UpgradeCancel(phase = phase, cancelFocus = cancelFocus, onDismiss = onDismiss)
                 }
             }
         }
@@ -429,13 +457,43 @@ internal fun upgradeReasonText(reason: String?, resetsAt: Long? = null, message:
         return fairUseReasonText(SupportApi.FairUse(resetsAt, null).hoursLeft())
     }
     if (reason == SupportApi.REASON_FIX_QUOTA) return fixQuotaText(resetsAt, message)
-    return stringResource(
-        when (reason) {
-            SupportApi.REASON_TRIAL_USED -> R.string.support_upgrade_reason_trial_used
-            SupportApi.REASON_FIX_UPGRADE -> R.string.support_fix_upgrade_reason
-            else -> R.string.support_upgrade_reason_required
-        },
+    return when (reason) {
+        SupportApi.REASON_TRIAL_USED -> stringResource(R.string.support_upgrade_reason_trial_used)
+        SupportApi.REASON_FIX_UPGRADE -> stringResource(R.string.support_fix_upgrade_reason)
+        else -> stringResource(R.string.support_upgrade_reason_required, stringResource(R.string.debug_report_connect_discord))
+    }
+}
+
+/**
+ * The "subscription required" line with "Connect Discord" as a tappable link, for a
+ * signed-in user whose Discord is not linked yet. Other reasons render as plain text.
+ */
+@Composable
+private fun UpgradeReasonText(reason: String?, onConnectDiscord: (() -> Unit)?) {
+    val style = MaterialTheme.typography.bodyMedium
+    val plainReason = reason == SupportApi.REASON_TRIAL_USED || reason == SupportApi.REASON_FIX_UPGRADE
+    if (onConnectDiscord == null || plainReason) {
+        Text(text = upgradeReasonText(reason), style = style)
+        return
+    }
+    val connect = stringResource(R.string.debug_report_connect_discord)
+    val full = stringResource(R.string.support_upgrade_reason_required, connect)
+    val start = full.indexOf(connect)
+    val linkStyle = TextLinkStyles(
+        style = SpanStyle(color = MaterialTheme.colorScheme.primary, textDecoration = TextDecoration.Underline),
     )
+    val text = buildAnnotatedString {
+        if (start < 0) {
+            append(full)
+            append(" ")
+            withLink(LinkAnnotation.Clickable(tag = "connect", styles = linkStyle, linkInteractionListener = { onConnectDiscord() })) { append(connect) }
+        } else {
+            append(full.substring(0, start))
+            withLink(LinkAnnotation.Clickable(tag = "connect", styles = linkStyle, linkInteractionListener = { onConnectDiscord() })) { append(connect) }
+            append(full.substring(start + connect.length))
+        }
+    }
+    Text(text = text, style = style)
 }
 
 @Composable
@@ -508,14 +566,13 @@ private fun UpgradeBody(
     playUnavailable: Boolean,
     playPlans: List<PlayBilling.Plan>?,
     onSignIn: (() -> Unit)?,
+    onConnectDiscord: (() -> Unit)?,
     portalMessage: Int?,
     firstFocus: FocusRequester,
-    cancelFocus: FocusRequester,
     onChoose: (String) -> Unit,
     onOpenCheckout: () -> Unit,
     onManage: () -> Unit,
     onRetry: () -> Unit,
-    onDismiss: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         val membership = reason == SupportApi.REASON_MEMBERSHIP
@@ -534,7 +591,7 @@ private fun UpgradeBody(
                         modifier = Modifier.padding(bottom = 16.dp),
                     )
                 } else {
-                    Text(text = upgradeReasonText(reason), style = MaterialTheme.typography.bodyMedium)
+                    UpgradeReasonText(reason = reason, onConnectDiscord = onConnectDiscord)
                     Text(
                         text = stringResource(R.string.debug_paywall_pitch),
                         style = MaterialTheme.typography.bodySmall,
@@ -553,7 +610,7 @@ private fun UpgradeBody(
                         DialogButton(
                             text = basicPrice?.let { stringResource(R.string.support_plan_basic_title_priced, it) }
                                 ?: stringResource(R.string.support_plan_basic_title),
-                            subtitle = stringResource(R.string.support_plan_basic_body),
+                            subtitle = stringResource(R.string.debug_paywall_tier5_body),
                             primary = false,
                             onClick = { onChoose("basic") },
                             modifier = Modifier.focusRequester(firstFocus),
@@ -643,18 +700,23 @@ private fun UpgradeBody(
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-        val cancelInteraction = remember { MutableInteractionSource() }
-        TextButton(
-            onClick = onDismiss,
-            interactionSource = cancelInteraction,
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .focusRequester(cancelFocus)
-                .focusRing(cancelInteraction, RoundedCornerShape(12.dp), width = 2.dp),
-        ) {
-            Text(stringResource(if (phase == PHASE_CHECKOUT) R.string.support_checkout_done else R.string.cancel))
-        }
+    }
+}
+
+/** The dismiss button, kept outside the scrolling body so it stays reachable on short screens. */
+@Composable
+private fun UpgradeCancel(phase: String, cancelFocus: FocusRequester, onDismiss: () -> Unit) {
+    Spacer(modifier = Modifier.height(8.dp))
+    val cancelInteraction = remember { MutableInteractionSource() }
+    TextButton(
+        onClick = onDismiss,
+        interactionSource = cancelInteraction,
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .focusRequester(cancelFocus)
+            .focusRing(cancelInteraction, RoundedCornerShape(12.dp), width = 2.dp),
+    ) {
+        Text(stringResource(if (phase == PHASE_CHECKOUT) R.string.support_checkout_done else R.string.cancel))
     }
 }

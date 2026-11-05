@@ -1192,7 +1192,7 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Pro raporları kuyruğu atlar.</string>
     <string name="support_limit_title">Günlük adil kullanım sınırına ulaşıldı</string>
-    <string name="support_upgrade_reason_required">YZ yanıtları için GameNative aboneliği gerekir. Discord veya Ko-fi üzerinden aboneyseniz Ayarlar’dan Discord’u bağlayın.</string>
+    <string name="support_upgrade_reason_required">YZ yanıtları için GameNative aboneliği gerekir. Discord veya Ko-fi üzerinden aboneyseniz: %1$s.</string>
     <string name="support_see_plans">Planları gör</string>
     <string name="support_plan_basic_title">5 $/ay · Basic</string>
     <string name="support_plan_basic_body">Oyunlarınızı çalıştırın veya daha iyi çalıştırın.</string>
