@@ -1115,7 +1115,7 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Pro 報告不必排隊。</string>
     <string name="support_limit_title">已達到今天的合理使用額度</string>
-    <string name="support_upgrade_reason_required">AI 回覆需要 GameNative 訂閱。如果你已在 Discord 或 Ko-fi 上訂閱，請在設定中連接 Discord。</string>
+    <string name="support_upgrade_reason_required">AI 回覆需要 GameNative 訂閱。如果你已在 Discord 或 Ko-fi 上訂閱，請%1$s。</string>
     <string name="support_see_plans">查看方案</string>
     <string name="support_plan_basic_title">$5/月 · Basic</string>
     <string name="support_plan_basic_body">讓你的遊戲執行起來，或執行得更好。</string>
@@ -2155,7 +2155,6 @@
     <string name="debug_paywall_cancel_anytime">隨時可取消。適用合理使用上限。</string>
     <string name="debug_paywall_costs_note">訂閱費用用於支付支援此功能的 AI 服務成本。</string>
     <string name="debug_paywall_already">已經是支持者？</string>
-    <string name="support_plan_discord_member">已經是 Discord 會員？連結 Discord 即可使用您的方案。</string>
     <string name="debug_paywall_send_now">我已訂閱，立即傳送</string>
     <string name="debug_paywall_not_now">暫時不要</string>
     <string name="diagnostics_share_title">分享診斷日誌</string>

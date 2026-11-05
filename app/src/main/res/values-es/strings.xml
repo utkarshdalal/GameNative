@@ -1136,7 +1136,7 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Los informes Pro se saltan la cola.</string>
     <string name="support_limit_title">Límite diario de uso razonable alcanzado</string>
-    <string name="support_upgrade_reason_required">Las respuestas de la AI requieren una suscripción a GameNative. Si ya estás suscrito en Discord o Ko-fi, conecta Discord en Ajustes.</string>
+    <string name="support_upgrade_reason_required">Las respuestas de la AI requieren una suscripción a GameNative. Si ya estás suscrito en Discord o Ko-fi: %1$s.</string>
     <string name="support_see_plans">Ver planes</string>
     <string name="support_plan_basic_title">$5/mes · Basic</string>
     <string name="support_plan_basic_body">Haz que tus juegos funcionen, o que funcionen mejor.</string>
@@ -2146,7 +2146,6 @@
     <string name="debug_paywall_cancel_anytime">Cancela cuando quieras. Se aplican límites de uso justo.</string>
     <string name="debug_paywall_costs_note">Las suscripciones cubren los costes del servicio de AI que hace posible esta función.</string>
     <string name="debug_paywall_already">¿Ya eres supporter?</string>
-    <string name="support_plan_discord_member">¿Ya eres miembro en Discord? Conecta tu Discord para usar tu plan.</string>
     <string name="debug_paywall_send_now">Ya me he suscrito, enviar ahora</string>
     <string name="debug_paywall_not_now">Ahora no</string>
     <string name="diagnostics_share_title">Compartir registro de diagnóstico</string>
