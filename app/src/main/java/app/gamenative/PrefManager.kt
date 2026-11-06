@@ -1594,6 +1594,13 @@ object PrefManager {
             setPref(DOWNLOAD_SPEED, value)
         }
 
+    private val SAVE_BACKUPS_TO_KEEP = intPreferencesKey("save_backups_to_keep")
+    var saveBackupsToKeep: Int
+        get() = getPref(SAVE_BACKUPS_TO_KEEP, 3)
+        set(value) {
+            setPref(SAVE_BACKUPS_TO_KEEP, value)
+        }
+
     private val USE_EXTERNAL_STORAGE = booleanPreferencesKey("use_external_storage")
     var useExternalStorage: Boolean
         get() = getPref(USE_EXTERNAL_STORAGE, false)

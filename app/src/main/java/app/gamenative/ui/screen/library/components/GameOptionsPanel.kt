@@ -52,6 +52,7 @@ import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SdStorage
 import androidx.compose.material.icons.filled.Settings
@@ -358,6 +359,7 @@ private fun getIconForOption(type: AppOptionMenuType): ImageVector {
         AppOptionMenuType.ExportConfig -> Icons.Default.ArrowUpward
         AppOptionMenuType.ImportSaves -> Icons.Default.ArrowDownward
         AppOptionMenuType.ExportSaves -> Icons.Default.ArrowUpward
+        AppOptionMenuType.RestoreSaveBackup -> Icons.Default.Restore
         AppOptionMenuType.ManageGameContent -> Icons.Default.Apps
         AppOptionMenuType.ManageWorkshop -> Icons.Default.Build
         AppOptionMenuType.ImportFiles -> Icons.Default.UploadFile
@@ -418,6 +420,7 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
             AppOptionMenuType.BrowseOnlineSaves,
             AppOptionMenuType.ForceDownloadRemote,
             AppOptionMenuType.ForceUploadLocal,
+            AppOptionMenuType.RestoreSaveBackup,
             -> cloudSaves.add(option)
 
             // Help & Info

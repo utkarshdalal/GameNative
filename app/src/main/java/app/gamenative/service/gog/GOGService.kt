@@ -18,6 +18,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.service.download.GameDownloadService
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.service.NotificationHelper
+import app.gamenative.utils.CloudSaveBackupManager
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.LocaleHelper
 import dagger.hilt.android.AndroidEntryPoint
@@ -550,6 +551,9 @@ class GOGService : Service() {
                     Timber.tag("GOG").i("[Cloud Saves] Found ${saveLocations.size} save location(s) for $appId")
 
                     var allSucceeded = true
+                    val backupSession = CloudSaveBackupManager.session(context, CloudSaveBackupManager.PROVIDER_GOG, gameId.toString()) {
+                        saveLocations.map { CloudSaveBackupManager.BackupRoot(it.name, java.io.File(it.location)) }
+                    }
 
                     // Sync each save location
                     for ((index, location) in saveLocations.withIndex()) {
@@ -599,6 +603,7 @@ class GOGService : Service() {
                                 dirname = location.name,
                                 lastSyncTimestamp = timestamp,
                                 preferredAction = preferredAction,
+                                beforeOverwrite = { backupSession.ensure() },
                             )
 
                             if (newTimestamp != timestamp) {

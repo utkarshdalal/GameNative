@@ -34,6 +34,7 @@ import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.enums.Marker
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.ContainerUtils.extractGameIdFromContainerId
+import app.gamenative.utils.CloudSaveBackupManager
 import app.gamenative.utils.MarkerUtils
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
@@ -646,6 +647,9 @@ class EpicAppScreen : BaseAppScreen() {
         // Epic games support container configuration like other Wine games
         return true
     }
+
+    override suspend fun resolveSaveBackupTarget(context: Context, libraryItem: LibraryItem): SaveBackupTarget =
+        SaveBackupTarget(CloudSaveBackupManager.PROVIDER_EPIC, libraryItem.gameId.toString())
 
     /**
      * Epic-specific menu options

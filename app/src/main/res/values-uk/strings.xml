@@ -1842,6 +1842,26 @@
      <string name="steam_save_import_failed">Не вдалося імпортувати збереження: %s</string>
     <string name="option_import_saves">Імпортувати збереження</string>
     <string name="option_export_saves">Експортувати збереження</string>
+    <string name="option_restore_save_backup">Відновити резервну копію збережень</string>
+    <string name="settings_group_cloud_saves">Хмарні збереження</string>
+    <string name="settings_save_backups_to_keep">Кількість резервних копій збережень</string>
+    <string name="settings_save_backups_off">Вимк.</string>
+    <string name="save_backup_restore_dialog_title">Відновлення резервної копії збережень</string>
+    <plurals name="save_backup_file_count">
+        <item quantity="one">%1$d файл</item>
+        <item quantity="few">%1$d файли</item>
+        <item quantity="many">%1$d файлів</item>
+        <item quantity="other">%1$d файлу</item>
+    </plurals>
+    <string name="save_backup_before_sync">Локальні збереження до хмарної синхронізації</string>
+    <string name="save_backup_size_and_count">%1$s · %2$s</string>
+    <string name="save_backup_before_restore">До останнього відновлення</string>
+    <string name="save_backup_restore_confirm_title">Відновити цю резервну копію?</string>
+    <string name="save_backup_restore_confirm_message">Поточні збереження буде замінено резервною копією від %1$s. Спершу створюється резервна копія поточних збережень, тож це можна скасувати.</string>
+    <string name="save_backup_restore_button">Відновити</string>
+    <string name="save_backup_game_running">Закрийте гру перед відновленням резервної копії збережень</string>
+    <string name="save_backup_restored">Резервну копію збережень відновлено</string>
+    <string name="save_backup_restore_failed">Не вдалося відновити резервну копію збережень</string>
     <string name="option_verify_files">Перевірити файли</string>
     <string name="option_update">Оновити</string>
     <string name="option_move_to_external_storage">Перемістити на зовнішнє сховище</string>

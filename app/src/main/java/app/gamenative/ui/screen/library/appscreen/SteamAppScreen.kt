@@ -57,10 +57,13 @@ import app.gamenative.enums.PathType
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
+import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamService.Companion.getAppDirPath
 import app.gamenative.service.download.SteamDownloadMode
+import app.gamenative.service.ea.EaLaunchSupport
+import app.gamenative.service.rockstar.RockstarLaunchSupport
 import app.gamenative.ui.component.dialog.MessageDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.state.MessageDialogState
@@ -69,6 +72,7 @@ import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.enums.DialogType
+import app.gamenative.utils.CloudSaveBackupManager
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.SteamUtils
@@ -773,6 +777,31 @@ class SteamAppScreen : BaseAppScreen() {
     override fun supportsSaveTransfer(libraryItem: LibraryItem): Boolean {
         return libraryItem.gameSource == app.gamenative.data.GameSource.STEAM
     }
+
+    override suspend fun resolveSaveBackupTarget(context: Context, libraryItem: LibraryItem): SaveBackupTarget? {
+        if (libraryItem.gameSource != GameSource.STEAM) return null
+        val gameId = libraryItem.gameId
+        val provider = withContext(Dispatchers.IO) {
+            val container = if (ContainerUtils.hasContainer(context, libraryItem.appId)) {
+                ContainerUtils.getContainer(context, libraryItem.appId)
+            } else {
+                null
+            }
+            val gameDir = File(getAppDirPath(gameId))
+            when {
+                container?.isLaunchHeadlessSteam == true && EaLaunchSupport.isEaTitle(gameId, gameDir) ->
+                    CloudSaveBackupManager.PROVIDER_EA
+                container != null && (container.isLaunchHeadlessSteam || container.isLaunchBionicSteam) &&
+                    RockstarLaunchSupport.isRockstarTitle(gameDir) ->
+                    CloudSaveBackupManager.PROVIDER_ROCKSTAR
+                else -> CloudSaveBackupManager.PROVIDER_STEAM
+            }
+        }
+        return SaveBackupTarget(provider, gameId.toString())
+    }
+
+    override fun isGameRunningForSaveRestore(libraryItem: LibraryItem): Boolean =
+        super.isGameRunningForSaveRestore(libraryItem) || ActiveGameRegistry.get()?.appId == libraryItem.gameId
 
     override val supportsAchievements: Boolean = true
 

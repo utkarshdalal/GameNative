@@ -15,8 +15,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -51,6 +53,7 @@ import app.gamenative.ui.component.dialog.ExportFilesDialog
 import app.gamenative.ui.component.dialog.ImportFilesDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.NexusModsDialog
+import app.gamenative.ui.component.dialog.SaveBackupRestoreDialog
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.Achievement
 import app.gamenative.ui.data.GameDisplayInfo
@@ -59,6 +62,7 @@ import app.gamenative.ui.screen.library.components.toggleFavorite
 import app.gamenative.ui.util.ContainerConfigTransfer
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.BestConfigService
+import app.gamenative.utils.CloudSaveBackupManager
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.DeviceGameStatsCache
 import app.gamenative.utils.SessionReport
@@ -184,6 +188,8 @@ abstract class BaseAppScreen {
         private val importConfigRequests = mutableStateMapOf<String, Boolean>()
         private val exportSavesRequests = mutableStateMapOf<String, Boolean>()
         private val importSavesRequests = mutableStateMapOf<String, Boolean>()
+        private val restoreSaveBackupRequests = mutableStateMapOf<String, Boolean>()
+        private var saveBackupsRevision by mutableIntStateOf(0)
         private val importFilesRequests = mutableStateMapOf<String, Boolean>()
         private val exportFilesRequests = mutableStateMapOf<String, Boolean>()
         private val manageModsRequests = mutableStateMapOf<String, Boolean>()
@@ -248,6 +254,18 @@ abstract class BaseAppScreen {
 
         fun shouldImportSaves(appId: String): Boolean {
             return importSavesRequests[appId] == true
+        }
+
+        fun requestRestoreSaveBackup(appId: String) {
+            restoreSaveBackupRequests[appId] = true
+        }
+
+        fun clearRestoreSaveBackupRequest(appId: String) {
+            restoreSaveBackupRequests.remove(appId)
+        }
+
+        fun shouldRestoreSaveBackup(appId: String): Boolean {
+            return restoreSaveBackupRequests[appId] == true
         }
 
         fun requestImportFiles(appId: String) {
@@ -700,6 +718,42 @@ abstract class BaseAppScreen {
 
     protected open fun supportsSaveTransfer(libraryItem: LibraryItem): Boolean = false
 
+    /** Provider and game id the cloud save backups for this game are stored under, or null if it has none. */
+    protected open suspend fun resolveSaveBackupTarget(context: Context, libraryItem: LibraryItem): SaveBackupTarget? = null
+
+    protected open fun isGameRunningForSaveRestore(libraryItem: LibraryItem): Boolean = PluviaApp.xEnvironment != null
+
+    private suspend fun loadSaveBackups(context: Context, libraryItem: LibraryItem): List<CloudSaveBackupManager.SaveBackup> =
+        withContext(Dispatchers.IO) {
+            try {
+                resolveSaveBackupTarget(context, libraryItem)
+                    ?.let { CloudSaveBackupManager.listBackups(context, it.provider, it.gameId) }
+                    .orEmpty()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.w(e, "Failed to list save backups for ${libraryItem.appId}")
+                emptyList()
+            }
+        }
+
+    @Composable
+    protected open fun getRestoreSaveBackupOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption? {
+        val hasBackups by produceState(false, libraryItem.appId, saveBackupsRevision) {
+            value = loadSaveBackups(context, libraryItem).isNotEmpty()
+        }
+        if (!hasBackups) return null
+        return AppMenuOption(
+            optionType = AppOptionMenuType.RestoreSaveBackup,
+            onClick = {
+                requestRestoreSaveBackup(libraryItem.appId)
+            },
+        )
+    }
+
     protected open val supportsAchievements: Boolean = false
 
     /** Null when the fetch failed, so the caller can retry. Empty means the game has none. */
@@ -745,6 +799,7 @@ abstract class BaseAppScreen {
         return configOptions + listOfNotNull(
             getExportSavesOption(context, libraryItem),
             getImportSavesOption(context, libraryItem),
+            getRestoreSaveBackupOption(context, libraryItem),
         )
     }
 
@@ -1245,6 +1300,7 @@ abstract class BaseAppScreen {
         // so container-related items appear as:
         // Reset Container, Reset DRM, Use Known Config, Export Config, Import Config.
         if (isInstalled) {
+            LaunchedEffect(libraryItem.appId) { saveBackupsRevision++ }
             val configOptions = getConfigMenuOptions(context, libraryItem)
             val fileOptions = listOf(
                 getImportFilesOption(context, libraryItem),
@@ -1729,6 +1785,28 @@ abstract class BaseAppScreen {
             }
         }
 
+        var restoreSaveBackupRequested by remember(appId) {
+            mutableStateOf(shouldRestoreSaveBackup(appId))
+        }
+
+        LaunchedEffect(appId) {
+            snapshotFlow { shouldRestoreSaveBackup(appId) }
+                .collect { shouldRequest ->
+                    restoreSaveBackupRequested = shouldRequest
+                }
+        }
+
+        var saveBackups by remember(appId) { mutableStateOf<List<CloudSaveBackupManager.SaveBackup>>(emptyList()) }
+
+        LaunchedEffect(restoreSaveBackupRequested) {
+            if (restoreSaveBackupRequested) {
+                saveBackups = loadSaveBackups(context, libraryItem)
+                if (saveBackups.isEmpty()) clearRestoreSaveBackupRequest(appId)
+            } else {
+                saveBackups = emptyList()
+            }
+        }
+
         var importFilesRequested by remember(appId) {
             mutableStateOf(shouldImportFiles(appId))
         }
@@ -1975,6 +2053,36 @@ abstract class BaseAppScreen {
             }
         }
 
+        if (restoreSaveBackupRequested && saveBackups.isNotEmpty()) {
+            SaveBackupRestoreDialog(
+                backups = saveBackups,
+                onRestore = { backup ->
+                    clearRestoreSaveBackupRequest(appId)
+                    if (isGameRunningForSaveRestore(libraryItem)) {
+                        SnackbarManager.show(context.getString(R.string.save_backup_game_running))
+                    } else {
+                        uiScope.launch {
+                            val restored = try {
+                                withContext(NonCancellable + Dispatchers.IO) { CloudSaveBackupManager.restore(context, backup) }
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                Timber.e(e, "Failed to restore save backup for $appId")
+                                false
+                            }
+                            saveBackupsRevision++
+                            SnackbarManager.show(
+                                context.getString(
+                                    if (restored) R.string.save_backup_restored else R.string.save_backup_restore_failed,
+                                ),
+                            )
+                        }
+                    }
+                },
+                onDismiss = { clearRestoreSaveBackupRequest(appId) },
+            )
+        }
+
         if (importFilesRequested) {
             ImportFilesDialog(
                 visible = true,
@@ -2108,3 +2216,5 @@ abstract class BaseAppScreen {
         // Default: no additional dialogs
     }
 }
+
+data class SaveBackupTarget(val provider: String, val gameId: String)
