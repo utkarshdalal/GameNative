@@ -27,5 +27,16 @@ fun SettingsGroupPerformance() {
                 PrefManager.powerControlDefaultEnabled = it
             },
         )
+        var sharedShaderCache by rememberSaveable { mutableStateOf(PrefManager.sharedShaderCache) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            state = sharedShaderCache,
+            title = { Text(stringResource(R.string.settings_performance_shared_shader_cache_title)) },
+            subtitle = { Text(stringResource(R.string.settings_performance_shared_shader_cache_subtitle)) },
+            onCheckedChange = {
+                sharedShaderCache = it
+                PrefManager.sharedShaderCache = it
+            },
+        )
     }
 }

@@ -999,6 +999,10 @@
     <string name="settings_performance_title">Leistung</string>
     <string name="settings_performance_power_control_title">Energieverwaltung</string>
     <string name="settings_performance_power_control_subtitle">Energieverwaltung im Spiel standardmäßig aktivieren (auf getesteten Geräten aktiviert: AYN Odin 3, Retroid Pocket 6/Nova)</string>
+    <string name="settings_performance_shared_shader_cache_title">Geteilter Shader-Cache</string>
+    <string name="settings_performance_shared_shader_cache_subtitle">Shader beim Spielen aufzeichnen, mit anderen Spielern teilen und den geteilten Cache vor dem Start vorbereiten, um Ruckler zu verringern</string>
+    <string name="shader_cache_preparing">Shader werden vorbereitet…</string>
+    <string name="shader_cache_preparing_progress">Shader werden vorbereitet %1$d/%2$d</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulation</string>

@@ -23,6 +23,7 @@ import app.gamenative.PluviaApp;
 import app.gamenative.display.GameNativeDrm;
 import app.gamenative.display.GamescopeSettings;
 import app.gamenative.utils.LsfgQuickMenuHelper;
+import app.gamenative.shadercache.FossilizeManager;
 import app.gamenative.utils.LsfgVkManager;
 import com.winlator.box86_64.Box86_64Preset;
 import com.winlator.box86_64.Box86_64PresetManager;
@@ -478,6 +479,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                 }
             }
         }
+
+        FossilizeManager.applyLaunchEnv(context, container, envVars);
 
         try {
             ContainerOverlay.applyBionicLaunchEnv(context, container, envVars);
@@ -1026,6 +1029,27 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     public String execShellCommand(String command, boolean includeStderr, EnvVars extraEnv, String[] unsetEnv) {
         Context context = environment.getContext();
         ImageFs imageFs = ImageFs.find(context);
+        EnvVars envVars = buildShellEnvVars(extraEnv, unsetEnv);
+        if (envVars == null) return "";
+        String winePath = imageFs.getWinePath() + "/bin";
+        String emulator = container.getEmulator();
+
+        // Never gamescope-wrap shell commands (wineserver -k, winetricks, ...): they run wine directly with this method's env.
+        String finalCommand = getFinalCommand(winePath, emulator, envVars, imageFs.getBinDir(), command, false);
+
+        File box64File = new File(imageFs.getRootDir(), "/usr/bin/box64");
+        if (box64File.exists()) {
+            FileUtils.chmod(box64File, 0755);
+        }
+
+        Log.d("BionicProgramLauncherComponent", "Shell command is " + finalCommand);
+        return ProcessHelper.execWithOutput(finalCommand, envVars.toStringArray(),
+                workingDir != null ? workingDir : imageFs.getRootDir(), includeStderr);
+    }
+
+    public EnvVars buildShellEnvVars(EnvVars extraEnv, String[] unsetEnv) {
+        Context context = environment.getContext();
+        ImageFs imageFs = ImageFs.find(context);
         File rootDir = imageFs.getRootDir();
         EnvVars envVars = new EnvVars();
         addBox64EnvVars(envVars, false);
@@ -1061,29 +1085,17 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         envVars.put("LD_PRELOAD", ld_preload);
 
-        String emulator = container.getEmulator();
         if (this.envVars != null) envVars.putAll(this.envVars);
         try {
             ContainerOverlay.applyBionicLaunchEnv(context, container, envVars);
         }
         catch (IllegalStateException e) {
             Log.e("BionicProgramLauncherComponent", e.getMessage());
-            return "";
+            return null;
         }
         if (extraEnv != null) envVars.putAll(extraEnv);
         if (unsetEnv != null) for (String name : unsetEnv) envVars.remove(name);
-
-        // Never gamescope-wrap shell commands (wineserver -k, winetricks, ...): they run wine directly with this method's env.
-        String finalCommand = getFinalCommand(winePath, emulator, envVars, imageFs.getBinDir(), command, false);
-
-        File box64File = new File(rootDir, "/usr/bin/box64");
-        if (box64File.exists()) {
-            FileUtils.chmod(box64File, 0755);
-        }
-
-        Log.d("BionicProgramLauncherComponent", "Shell command is " + finalCommand);
-        return ProcessHelper.execWithOutput(finalCommand, envVars.toStringArray(),
-                workingDir != null ? workingDir : imageFs.getRootDir(), includeStderr);
+        return envVars;
     }
 
     public void restartWineServer() {

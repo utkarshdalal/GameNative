@@ -78,6 +78,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import app.gamenative.R
+import app.gamenative.shadercache.FossilizeManager
 import app.gamenative.ui.util.applyScreenEffectsConfig
 import app.gamenative.ui.util.loadScreenEffectsConfig
 import androidx.core.content.ContextCompat
@@ -4587,6 +4588,9 @@ private fun setupXEnvironment(
             )
             if (container.isLaunchHeadlessSteam && gameSource == GameSource.STEAM && !bootToContainer) {
                 runSteamHostCegPass(appId, imageFs, guestProgramLauncherComponent, onGameLaunchError)
+            }
+            if (guestProgramLauncherComponent is BionicProgramLauncherComponent && !bootToContainer && !testGraphics) {
+                FossilizeManager.prepareBeforeLaunch(context, container, guestProgramLauncherComponent)
             }
             if (preInstallCommands.isNotEmpty()) {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing prerequisites..."))
