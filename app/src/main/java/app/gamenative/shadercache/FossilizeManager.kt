@@ -58,7 +58,6 @@ object FossilizeManager {
     private const val RECORD_DIR = "record"
     private const val POOL_DIR = "pool"
     private const val FILTER_FILENAME = "application_filter.json"
-    private const val PIPELINE_CACHE_FILENAME = "pipeline.cache"
     private const val LOCAL_POOL_FILENAME = "local.foz"
 
     private const val EXTRA_REPLAYED = "fossilizeReplayed"
@@ -220,7 +219,10 @@ object FossilizeManager {
             val version = meta?.optLong("version")?.toString() ?: "local-${poolFile.length()}-${poolFile.lastModified()}"
             val stamp = "${key.fileName}|$version|${driverIdentity(container)}"
             val replayed = container.getExtra(EXTRA_REPLAYED, "")
-            if (replayed == stamp || replayed == "$stamp|failed") return
+            if (replayed == stamp || replayed == "$stamp|failed") {
+                Timber.tag(TAG).d("Replay of %s already done for version %s, skipping", key.fileName, version)
+                return
+            }
             replay(context, container, launcher, key, poolFile, version, meta?.optLong("entries") ?: 0L, replayBin, stamp)
         } catch (t: Throwable) {
             Timber.tag(TAG).e(t, "Shader cache preparation failed")
@@ -284,7 +286,6 @@ object FossilizeManager {
         val args = listOf(
             poolFile.absolutePath,
             "--num-threads", threads.toString(),
-            "--on-disk-pipeline-cache", File(cacheDir(container), PIPELINE_CACHE_FILENAME).absolutePath,
             "--timeout-seconds", REPLAY_STALL_SECONDS.toString(),
             "--disable-rate-limiter",
         )
