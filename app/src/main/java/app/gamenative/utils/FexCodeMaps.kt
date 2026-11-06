@@ -150,7 +150,11 @@ object FexCodeMaps {
                         // A map the server validated and refused will be refused again; anything else may be transient.
                         if (result.code == 400 || result.code == 413) file.delete()
                     }
-                    is ApiResult.NetworkError -> Timber.tag(TAG).w("Code map ${file.name} not uploaded: ${result.exception.message}")
+                    is ApiResult.NetworkError -> {
+                        // The server is unreachable; the rest would only wait out the same timeout.
+                        Timber.tag(TAG).w("Code map ${file.name} not uploaded: ${result.exception.message}")
+                        return
+                    }
                 }
             } catch (e: Exception) {
                 Timber.tag(TAG).w(e, "Code map ${file.name} failed")
