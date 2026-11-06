@@ -412,7 +412,7 @@ object CloudSaveBackupManager {
             root,
             object : SimpleFileVisitor<Path>() {
                 override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
-                    if (attrs.isRegularFile) out += file
+                    if (attrs.isRegularFile) out.add(file)
                     return FileVisitResult.CONTINUE
                 }
 
