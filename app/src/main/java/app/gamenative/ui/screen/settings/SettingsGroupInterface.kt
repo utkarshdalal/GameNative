@@ -749,7 +749,6 @@ fun SettingsGroupInterface(
         }
         SettingsListDropdown(
             title = { Text(text = stringResource(R.string.settings_save_backups_to_keep)) },
-            subtitle = { Text(text = stringResource(R.string.settings_save_backups_to_keep_subtitle)) },
             items = saveBackupLabels,
             value = saveBackupIndex,
             onItemSelected = { idx ->

@@ -10,10 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
@@ -53,7 +50,6 @@ fun SaveBackupRestoreDialog(
     if (confirming) {
         MessageDialog(
             visible = true,
-            icon = Icons.Default.Restore,
             title = stringResource(R.string.save_backup_restore_confirm_title),
             message = stringResource(
                 R.string.save_backup_restore_confirm_message,
@@ -73,17 +69,12 @@ fun SaveBackupRestoreDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        icon = { Icon(imageVector = Icons.Default.Restore, contentDescription = null) },
         title = { Text(text = stringResource(R.string.save_backup_restore_dialog_title)) },
         text = {
             Column(modifier = Modifier.selectableGroup().verticalScroll(rememberScrollState())) {
                 backups.forEachIndexed { index, backup ->
-                    val details = stringResource(
-                        R.string.save_backup_row,
-                        dateFormat.format(Date(backup.createdAt)),
-                        Formatter.formatShortFileSize(context, backup.sizeBytes),
-                        pluralStringResource(R.plurals.save_backup_file_count, backup.fileCount, backup.fileCount),
-                    )
+                    val details = Formatter.formatShortFileSize(context, backup.sizeBytes) + " \u00b7 " +
+                        pluralStringResource(R.plurals.save_backup_file_count, backup.fileCount, backup.fileCount)
                     Row(
                         Modifier
                             .fillMaxWidth()
@@ -101,16 +92,25 @@ fun SaveBackupRestoreDialog(
                             onClick = null,
                         )
                         Column(modifier = Modifier.padding(start = 16.dp)) {
-                            if (backup.kind == CloudSaveBackupManager.Kind.PRE_RESTORE) {
-                                Text(
-                                    text = stringResource(R.string.save_backup_before_restore),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
-                            }
+                            Text(
+                                text = stringResource(
+                                    if (backup.kind == CloudSaveBackupManager.Kind.PRE_RESTORE) {
+                                        R.string.save_backup_before_restore
+                                    } else {
+                                        R.string.save_backup_before_sync
+                                    },
+                                ),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            Text(
+                                text = dateFormat.format(Date(backup.createdAt)),
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
                             Text(
                                 text = details,
-                                style = MaterialTheme.typography.bodyLarge,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }

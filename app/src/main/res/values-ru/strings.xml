@@ -1773,16 +1773,15 @@ https://gamenative.app
     <string name="option_restore_save_backup">Восстановить резервную копию сохранений</string>
     <string name="settings_group_cloud_saves">Облачные сохранения</string>
     <string name="settings_save_backups_to_keep">Хранить резервных копий сохранений</string>
-    <string name="settings_save_backups_to_keep_subtitle">Локальные снимки, создаваемые перед тем, как облачная синхронизация заменит ваши сохранения</string>
     <string name="settings_save_backups_off">Выкл.</string>
     <string name="save_backup_restore_dialog_title">Восстановление резервной копии сохранений</string>
-    <string name="save_backup_row">%1$s · %2$s · %3$s</string>
     <plurals name="save_backup_file_count">
         <item quantity="one">%1$d файл</item>
         <item quantity="few">%1$d файла</item>
         <item quantity="many">%1$d файлов</item>
         <item quantity="other">%1$d файла</item>
     </plurals>
+    <string name="save_backup_before_sync">Локальные сохранения до облачной синхронизации</string>
     <string name="save_backup_before_restore">До последнего восстановления</string>
     <string name="save_backup_restore_confirm_title">Восстановить эту резервную копию?</string>
     <string name="save_backup_restore_confirm_message">Текущие сохранения будут заменены резервной копией от %1$s. Сначала создаётся резервная копия текущих сохранений, так что это можно отменить.</string>

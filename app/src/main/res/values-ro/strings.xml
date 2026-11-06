@@ -1826,15 +1826,14 @@
     <string name="option_restore_save_backup">Restaurează copia de rezervă a salvărilor</string>
     <string name="settings_group_cloud_saves">Salvări în cloud</string>
     <string name="settings_save_backups_to_keep">Copii de rezervă ale salvărilor păstrate</string>
-    <string name="settings_save_backups_to_keep_subtitle">Instantanee locale create înainte ca o sincronizare cloud să îți înlocuiască salvările</string>
     <string name="settings_save_backups_off">Dezactivat</string>
     <string name="save_backup_restore_dialog_title">Restaurează o copie de rezervă a salvărilor</string>
-    <string name="save_backup_row">%1$s · %2$s · %3$s</string>
     <plurals name="save_backup_file_count">
         <item quantity="one">%1$d fișier</item>
         <item quantity="few">%1$d fișiere</item>
         <item quantity="other">%1$d de fișiere</item>
     </plurals>
+    <string name="save_backup_before_sync">Salvări locale înainte de sincronizarea în cloud</string>
     <string name="save_backup_before_restore">Înainte de ultima restaurare</string>
     <string name="save_backup_restore_confirm_title">Restaurezi această copie de rezervă?</string>
     <string name="save_backup_restore_confirm_message">Salvările tale actuale vor fi înlocuite cu copia de rezervă din %1$s. Salvările actuale sunt copiate mai întâi, așa că poți anula acest lucru.</string>

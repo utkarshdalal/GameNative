@@ -338,6 +338,7 @@ object CloudSaveBackupManager {
             }
             Timber.tag(TAG).i("Restored ${planned.size} save file(s) for ${meta.provider}/${meta.gameId} from ${backup.file.name}")
         }
+        if (backup.kind == Kind.PRE_RESTORE) deleteBackup(backup)
         return true
     }
 

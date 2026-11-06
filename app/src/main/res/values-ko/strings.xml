@@ -1819,13 +1819,12 @@
     <string name="option_restore_save_backup">세이브 백업 복원</string>
     <string name="settings_group_cloud_saves">클라우드 세이브</string>
     <string name="settings_save_backups_to_keep">보관할 세이브 백업 수</string>
-    <string name="settings_save_backups_to_keep_subtitle">클라우드 동기화가 세이브를 덮어쓰기 전에 만드는 로컬 스냅샷</string>
     <string name="settings_save_backups_off">끄기</string>
     <string name="save_backup_restore_dialog_title">세이브 백업 복원</string>
-    <string name="save_backup_row">%1$s · %2$s · %3$s</string>
     <plurals name="save_backup_file_count">
         <item quantity="other">파일 %1$d개</item>
     </plurals>
+    <string name="save_backup_before_sync">클라우드 동기화 이전의 로컬 저장 데이터</string>
     <string name="save_backup_before_restore">마지막 복원 이전</string>
     <string name="save_backup_restore_confirm_title">이 백업을 복원할까요?</string>
     <string name="save_backup_restore_confirm_message">현재 세이브가 %1$s 백업으로 대체됩니다. 현재 세이브는 먼저 백업되므로 되돌릴 수 있습니다.</string>
