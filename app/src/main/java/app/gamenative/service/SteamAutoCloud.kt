@@ -36,6 +36,7 @@ import java.io.InputStream
 import java.io.RandomAccessFile
 import java.security.MessageDigest
 import java.nio.file.Files
+import java.nio.file.LinkOption
 import java.nio.file.FileSystemException
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -881,21 +882,24 @@ object SteamAutoCloud {
             val backupBeforeOverwrite: suspend (Boolean) -> Unit = { deleting ->
                 try {
                     val context: Context? = steamInstance.applicationContext
-                    val overwriting = allLocalUserFiles.isNotEmpty() && (deleting || run {
-                        val localByPath = allLocalUserFiles.associate {
-                            it.getAbsPath(prefixToPath).toString().lowercase() to it.sha
+                    val scanned = allLocalUserFiles.map { it.getAbsPath(prefixToPath).normalize() }.toSet()
+                    val overwritten = appFileListChange.files
+                        .map { getFullFilePath(it, appFileListChange).normalize() }
+                        .filter { Files.isRegularFile(it, LinkOption.NOFOLLOW_LINKS) }
+                    if (context != null && (overwritten.isNotEmpty() || (deleting && scanned.isNotEmpty()))) {
+                        val rootDirs = PathType.entries.mapNotNull { type ->
+                            runCatching { type to Paths.get(prefixToPath(type.name)).normalize() }.getOrNull()
                         }
-                        appFileListChange.files.any { file ->
-                            localByPath[getFullFilePath(file, appFileListChange).toString().lowercase()]
-                                ?.let { !it.contentEquals(file.shaFile) } == true
+                        val extra = overwritten.filter { it !in scanned }.mapNotNull { path ->
+                            rootDirs.filter { path.startsWith(it.second) }.maxByOrNull { it.second.nameCount }?.let { it.first to path }
                         }
-                    })
-                    if (context != null && overwriting) {
-                        val roots = allLocalUserFiles.groupBy { it.root }.map { (root, files) ->
+                        val byRoot = allLocalUserFiles.groupBy({ it.root }, { it.getAbsPath(prefixToPath).normalize() }).toMutableMap()
+                        extra.forEach { (root, path) -> byRoot[root] = byRoot[root].orEmpty() + path }
+                        val roots = byRoot.map { (root, files) ->
                             CloudSaveBackupManager.BackupRoot(
                                 id = root.name,
-                                dir = File(prefixToPath(root.toString())),
-                                files = files.map { it.getAbsPath(prefixToPath).toFile() },
+                                dir = File(prefixToPath(root.name)),
+                                files = files.distinct().map { it.toFile() },
                             )
                         }
                         CloudSaveBackupManager.backup(context, CloudSaveBackupManager.PROVIDER_STEAM, appInfo.id.toString(), roots)

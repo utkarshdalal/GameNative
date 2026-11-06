@@ -1300,6 +1300,7 @@ abstract class BaseAppScreen {
         // so container-related items appear as:
         // Reset Container, Reset DRM, Use Known Config, Export Config, Import Config.
         if (isInstalled) {
+            LaunchedEffect(libraryItem.appId) { saveBackupsRevision++ }
             val configOptions = getConfigMenuOptions(context, libraryItem)
             val fileOptions = listOf(
                 getImportFilesOption(context, libraryItem),

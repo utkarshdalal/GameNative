@@ -216,6 +216,18 @@ object EaCloudSavesManager {
                 return PullResult.Failed("mass_delete_guard")
             }
 
+            val overwrites = plan.download.any { name ->
+                view.entries[name]?.let { EaCloudSaveConfig.toFile(it.localName, driveC) }?.isFile == true
+            }
+            if (plan.removeLocal.isNotEmpty() || overwrites) {
+                CloudSaveBackupManager.backup(
+                    context,
+                    CloudSaveBackupManager.PROVIDER_EA,
+                    steamAppId.toString(),
+                    listOf(CloudSaveBackupManager.BackupRoot("driveC", driveC, local.values.map { it.file })),
+                )
+            }
+
             val probe = FormatProbe()
             val downloads = LinkedHashMap<String, Download>()
             val tmpDir = File(container.rootDir, ".ea_cloud/tmp")
@@ -241,14 +253,6 @@ object EaCloudSavesManager {
                         probe.observe(entry, digest)
                         downloads[name] = Download(temp, dest, localKey(size, digest))
                     }
-                }
-                if (plan.removeLocal.isNotEmpty() || downloads.values.any { it.dest.exists() }) {
-                    CloudSaveBackupManager.backup(
-                        context,
-                        CloudSaveBackupManager.PROVIDER_EA,
-                        steamAppId.toString(),
-                        listOf(CloudSaveBackupManager.BackupRoot("driveC", driveC, local.values.map { it.file })),
-                    )
                 }
                 if (now() - acquiredAt > lockLimitMs) return PullResult.Failed("lock_timeout")
                 applyPull(container, driveC, downloads.values, plan.removeLocal.mapNotNull { local[it]?.file })
