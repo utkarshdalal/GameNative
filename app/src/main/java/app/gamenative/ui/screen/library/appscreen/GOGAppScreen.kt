@@ -25,6 +25,7 @@ import app.gamenative.service.DownloadService
 import app.gamenative.service.gog.GOGConstants
 import app.gamenative.service.gog.GOGService
 import app.gamenative.utils.FormatUtils
+import app.gamenative.utils.CloudSaveBackupManager
 import app.gamenative.utils.MarkerUtils
 import java.io.File
 import app.gamenative.ui.data.AppMenuOption
@@ -479,6 +480,9 @@ class GOGAppScreen : BaseAppScreen() {
         // GOG games support container configuration like other Wine games
         return true
     }
+
+    override suspend fun resolveSaveBackupTarget(context: Context, libraryItem: LibraryItem): SaveBackupTarget =
+        SaveBackupTarget(CloudSaveBackupManager.PROVIDER_GOG, libraryItem.gameId.toString())
 
     @Composable
     override fun getSourceSpecificMenuOptions(

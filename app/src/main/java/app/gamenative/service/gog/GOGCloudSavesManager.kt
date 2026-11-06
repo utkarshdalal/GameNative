@@ -200,7 +200,8 @@ class GOGCloudSavesManager(
         clientId: String,
         clientSecret: String,
         lastSyncTimestamp: Long = 0,
-        preferredAction: String = "none"
+        preferredAction: String = "none",
+        beforeOverwrite: suspend () -> Unit = {},
     ): Long = withContext(Dispatchers.IO) {
         try {
             Timber.tag("GOG-CloudSaves").i("Starting sync for path: $localPath")
@@ -256,7 +257,7 @@ class GOGCloudSavesManager(
                 localFiles.isEmpty() && downloadableCloud.isNotEmpty() -> {
                     Timber.tag("GOG-CloudSaves").i("No files locally, downloading ${downloadableCloud.size} file(s)")
                     downloadableCloud.forEach { file ->
-                        downloadFile(credentials.userId, clientId, dirname, file, syncDir, credentials.accessToken)
+                        downloadFile(credentials.userId, clientId, dirname, file, syncDir, credentials.accessToken, beforeOverwrite)
                     }
                     return@withContext currentTimestamp()
                 }
@@ -271,7 +272,7 @@ class GOGCloudSavesManager(
             if (preferredAction == "download" && downloadableCloud.isNotEmpty()) {
                 Timber.tag("GOG-CloudSaves").i("Forcing download of ${downloadableCloud.size} file(s) (user requested)")
                 downloadableCloud.forEach { file ->
-                    downloadFile(credentials.userId, clientId, dirname, file, syncDir, credentials.accessToken)
+                    downloadFile(credentials.userId, clientId, dirname, file, syncDir, credentials.accessToken, beforeOverwrite)
                 }
                 return@withContext currentTimestamp()
             }
@@ -328,11 +329,11 @@ class GOGCloudSavesManager(
                 SyncAction.DOWNLOAD -> {
                     Timber.tag("GOG-CloudSaves").i("Downloading ${classifier.updatedCloud.size} updated cloud file(s)")
                     classifier.updatedCloud.forEach { file ->
-                        downloadFile(credentials.userId, clientId, dirname, file, syncDir, credentials.accessToken)
+                        downloadFile(credentials.userId, clientId, dirname, file, syncDir, credentials.accessToken, beforeOverwrite)
                     }
                     classifier.notExistingLocally.forEach { file ->
                         if (!file.isDeleted) {
-                            downloadFile(credentials.userId, clientId, dirname, file, syncDir, credentials.accessToken)
+                            downloadFile(credentials.userId, clientId, dirname, file, syncDir, credentials.accessToken, beforeOverwrite)
                         }
                     }
                 }
@@ -407,7 +408,7 @@ class GOGCloudSavesManager(
                     if (toDownload.isNotEmpty()) {
                         Timber.tag("GOG-CloudSaves").i("Downloading ${toDownload.size} file(s) based on timestamp comparison")
                         toDownload.forEach { file ->
-                            downloadFile(credentials.userId, clientId, dirname, file, syncDir, credentials.accessToken)
+                            downloadFile(credentials.userId, clientId, dirname, file, syncDir, credentials.accessToken, beforeOverwrite)
                         }
                     }
                 }
@@ -684,7 +685,8 @@ class GOGCloudSavesManager(
         dirname: String,
         file: CloudFile,
         syncDir: File,
-        authToken: String
+        authToken: String,
+        beforeOverwrite: suspend () -> Unit,
     ) = withContext(Dispatchers.IO) {
         try {
             Timber.tag("GOG-CloudSaves").i("Downloading: ${file.relativePath}")
@@ -712,6 +714,7 @@ class GOGCloudSavesManager(
 
                 // resolve against on-disk casing to avoid creating duplicate dirs
                 val localFile = FileUtils.resolveCaseInsensitive(syncDir, file.relativePath)
+                if (localFile.exists()) beforeOverwrite()
                 localFile.parentFile?.mkdirs()
 
                 // Write file content

@@ -1810,6 +1810,23 @@
      <string name="steam_save_import_failed">导入存档失败：%s</string>
     <string name="option_import_saves">导入存档</string>
     <string name="option_export_saves">导出存档</string>
+    <string name="option_restore_save_backup">恢复存档备份</string>
+    <string name="settings_group_cloud_saves">云存档</string>
+    <string name="settings_save_backups_to_keep">保留的存档备份数</string>
+    <string name="settings_save_backups_to_keep_subtitle">在云同步替换你的存档之前创建的本地快照</string>
+    <string name="settings_save_backups_off">关闭</string>
+    <string name="save_backup_restore_dialog_title">恢复存档备份</string>
+    <string name="save_backup_row">%1$s · %2$s · %3$s</string>
+    <plurals name="save_backup_file_count">
+        <item quantity="other">%1$d 个文件</item>
+    </plurals>
+    <string name="save_backup_before_restore">上次恢复之前</string>
+    <string name="save_backup_restore_confirm_title">恢复此备份？</string>
+    <string name="save_backup_restore_confirm_message">你当前的存档将被替换为 %1$s 的备份。当前存档会先进行备份，因此你可以撤销此操作。</string>
+    <string name="save_backup_restore_button">恢复</string>
+    <string name="save_backup_game_running">请先关闭游戏再恢复存档备份</string>
+    <string name="save_backup_restored">存档备份已恢复</string>
+    <string name="save_backup_restore_failed">无法恢复存档备份</string>
     <string name="option_export_for_frontend">导出至前端</string>
     <string name="option_copy_launch_link">复制启动链接</string>
     <string name="option_open_container">打开容器</string>

@@ -3,6 +3,7 @@ package app.gamenative.service.ea
 import android.content.Context
 import android.os.SystemClock
 import android.util.Base64
+import app.gamenative.utils.CloudSaveBackupManager
 import com.winlator.container.Container
 import java.io.File
 import java.math.BigInteger
@@ -240,6 +241,14 @@ object EaCloudSavesManager {
                         probe.observe(entry, digest)
                         downloads[name] = Download(temp, dest, localKey(size, digest))
                     }
+                }
+                if (plan.removeLocal.isNotEmpty() || downloads.values.any { it.dest.exists() }) {
+                    CloudSaveBackupManager.backup(
+                        context,
+                        CloudSaveBackupManager.PROVIDER_EA,
+                        steamAppId.toString(),
+                        listOf(CloudSaveBackupManager.BackupRoot("driveC", driveC, local.values.map { it.file })),
+                    )
                 }
                 if (now() - acquiredAt > lockLimitMs) return PullResult.Failed("lock_timeout")
                 applyPull(container, driveC, downloads.values, plan.removeLocal.mapNotNull { local[it]?.file })
