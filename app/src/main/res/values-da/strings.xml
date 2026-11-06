@@ -1724,6 +1724,7 @@
         <item quantity="other">%1$d filer</item>
     </plurals>
     <string name="save_backup_before_sync">Lokale gemte spil før cloud-synkronisering</string>
+    <string name="save_backup_size_and_count">%1$s · %2$s</string>
     <string name="save_backup_before_restore">Før seneste gendannelse</string>
     <string name="save_backup_restore_confirm_title">Gendan denne sikkerhedskopi?</string>
     <string name="save_backup_restore_confirm_message">Dine nuværende gemte spil erstattes med sikkerhedskopien fra %1$s. De nuværende gemte spil sikkerhedskopieres først, så du kan fortryde dette.</string>

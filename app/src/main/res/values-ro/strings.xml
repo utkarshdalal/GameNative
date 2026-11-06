@@ -1834,6 +1834,7 @@
         <item quantity="other">%1$d de fișiere</item>
     </plurals>
     <string name="save_backup_before_sync">Salvări locale înainte de sincronizarea în cloud</string>
+    <string name="save_backup_size_and_count">%1$s · %2$s</string>
     <string name="save_backup_before_restore">Înainte de ultima restaurare</string>
     <string name="save_backup_restore_confirm_title">Restaurezi această copie de rezervă?</string>
     <string name="save_backup_restore_confirm_message">Salvările tale actuale vor fi înlocuite cu copia de rezervă din %1$s. Salvările actuale sunt copiate mai întâi, așa că poți anula acest lucru.</string>

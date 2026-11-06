@@ -1724,6 +1724,7 @@
         <item quantity="other">%1$d arquivos</item>
     </plurals>
     <string name="save_backup_before_sync">Saves locais antes da sincronização na nuvem</string>
+    <string name="save_backup_size_and_count">%1$s · %2$s</string>
     <string name="save_backup_before_restore">Antes da última restauração</string>
     <string name="save_backup_restore_confirm_title">Restaurar este backup?</string>
     <string name="save_backup_restore_confirm_message">Seus saves atuais serão substituídos pelo backup de %1$s. Os saves atuais são copiados antes, então você pode desfazer isso.</string>

@@ -73,8 +73,11 @@ fun SaveBackupRestoreDialog(
         text = {
             Column(modifier = Modifier.selectableGroup().verticalScroll(rememberScrollState())) {
                 backups.forEachIndexed { index, backup ->
-                    val details = Formatter.formatShortFileSize(context, backup.sizeBytes) + " \u00b7 " +
-                        pluralStringResource(R.plurals.save_backup_file_count, backup.fileCount, backup.fileCount)
+                    val details = stringResource(
+                        R.string.save_backup_size_and_count,
+                        Formatter.formatShortFileSize(context, backup.sizeBytes),
+                        pluralStringResource(R.plurals.save_backup_file_count, backup.fileCount, backup.fileCount),
+                    )
                     Row(
                         Modifier
                             .fillMaxWidth()

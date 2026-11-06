@@ -1872,6 +1872,7 @@
         <item quantity="other">%1$d fichiers</item>
     </plurals>
     <string name="save_backup_before_sync">Sauvegardes locales avant la synchronisation cloud</string>
+    <string name="save_backup_size_and_count">%1$s · %2$s</string>
     <string name="save_backup_before_restore">Avant la dernière restauration</string>
     <string name="save_backup_restore_confirm_title">Restaurer cette copie ?</string>
     <string name="save_backup_restore_confirm_message">Vos sauvegardes actuelles seront remplacées par la copie du %1$s. Les sauvegardes actuelles sont d\'abord copiées, vous pourrez donc annuler.</string>

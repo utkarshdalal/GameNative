@@ -1821,6 +1821,7 @@
         <item quantity="other">%1$d 個檔案</item>
     </plurals>
     <string name="save_backup_before_sync">雲端同步之前的本機存檔</string>
+    <string name="save_backup_size_and_count">%1$s · %2$s</string>
     <string name="save_backup_before_restore">上次還原之前</string>
     <string name="save_backup_restore_confirm_title">還原此備份？</string>
     <string name="save_backup_restore_confirm_message">你目前的存檔將被取代為 %1$s 的備份。目前的存檔會先備份，因此你可以復原此操作。</string>

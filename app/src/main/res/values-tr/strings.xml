@@ -1872,6 +1872,7 @@
         <item quantity="other">%1$d dosya</item>
     </plurals>
     <string name="save_backup_before_sync">Bulut eşitlemesinden önceki yerel kayıtlar</string>
+    <string name="save_backup_size_and_count">%1$s · %2$s</string>
     <string name="save_backup_before_restore">Son geri yüklemeden önce</string>
     <string name="save_backup_restore_confirm_title">Bu yedek geri yüklensin mi?</string>
     <string name="save_backup_restore_confirm_message">Mevcut kayıtlarınız %1$s tarihli yedekle değiştirilecek. Mevcut kayıtlar önce yedeklenir, böylece bunu geri alabilirsiniz.</string>

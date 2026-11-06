@@ -2063,6 +2063,7 @@
         <item quantity="other">%1$d ファイル</item>
     </plurals>
     <string name="save_backup_before_sync">クラウド同期前のローカルセーブ</string>
+    <string name="save_backup_size_and_count">%1$s · %2$s</string>
     <string name="save_backup_before_restore">前回の復元の前</string>
     <string name="save_backup_restore_confirm_title">このバックアップを復元しますか？</string>
     <string name="save_backup_restore_confirm_message">現在のセーブデータは %1$s のバックアップで置き換えられます。現在のセーブデータは先にバックアップされるため、元に戻せます。</string>

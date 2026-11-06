@@ -1858,6 +1858,7 @@
         <item quantity="other">%1$d pliku</item>
     </plurals>
     <string name="save_backup_before_sync">Lokalne zapisy przed synchronizacją z chmurą</string>
+    <string name="save_backup_size_and_count">%1$s · %2$s</string>
     <string name="save_backup_before_restore">Przed ostatnim przywróceniem</string>
     <string name="save_backup_restore_confirm_title">Przywrócić tę kopię zapasową?</string>
     <string name="save_backup_restore_confirm_message">Twoje obecne zapisy zostaną zastąpione kopią zapasową z %1$s. Obecne zapisy zostaną najpierw zabezpieczone, więc możesz to cofnąć.</string>

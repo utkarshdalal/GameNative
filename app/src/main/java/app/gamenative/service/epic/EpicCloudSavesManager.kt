@@ -466,7 +466,7 @@ object EpicCloudSavesManager {
                     downloadSuccess = false
                 }
 
-                if (toDownload.any { File(saveDir, it).exists() }) backupSession.ensure()
+                if (toDownload.any { isInsideSaveDir(saveDir, it) && File(saveDir, it).exists() }) backupSession.ensure()
 
                 // Reconstruct only the files we need to download
                 manifest.fileManifestList?.elements?.forEach { fileManifest ->
@@ -530,6 +530,12 @@ object EpicCloudSavesManager {
     }
 
     // Download saves flow
+    private fun isInsideSaveDir(saveDir: File, name: String): Boolean {
+        if (name.isBlank() || name.contains('\u0000')) return false
+        val base = saveDir.canonicalPath.trimEnd(File.separatorChar) + File.separator
+        return File(saveDir, name.replace('\\', '/')).canonicalPath.startsWith(base)
+    }
+
     private suspend fun downloadSaves(
         context: Context,
         appId: Int,
@@ -617,7 +623,7 @@ object EpicCloudSavesManager {
 
             saveDir.mkdirs()
 
-            if (manifest.fileManifestList?.elements?.any { File(saveDir, it.filename).exists() } == true) backupSession.ensure()
+            if (manifest.fileManifestList?.elements?.any { isInsideSaveDir(saveDir, it.filename) && File(saveDir, it.filename).exists() } == true) backupSession.ensure()
 
             var downloadedFiles = 0
 

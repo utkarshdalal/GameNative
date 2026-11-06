@@ -1819,6 +1819,7 @@
         <item quantity="other">%1$d 个文件</item>
     </plurals>
     <string name="save_backup_before_sync">云同步之前的本地存档</string>
+    <string name="save_backup_size_and_count">%1$s · %2$s</string>
     <string name="save_backup_before_restore">上次恢复之前</string>
     <string name="save_backup_restore_confirm_title">恢复此备份？</string>
     <string name="save_backup_restore_confirm_message">你当前的存档将被替换为 %1$s 的备份。当前存档会先进行备份，因此你可以撤销此操作。</string>

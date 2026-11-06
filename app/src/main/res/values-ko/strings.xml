@@ -1825,6 +1825,7 @@
         <item quantity="other">파일 %1$d개</item>
     </plurals>
     <string name="save_backup_before_sync">클라우드 동기화 이전의 로컬 저장 데이터</string>
+    <string name="save_backup_size_and_count">%1$s · %2$s</string>
     <string name="save_backup_before_restore">마지막 복원 이전</string>
     <string name="save_backup_restore_confirm_title">이 백업을 복원할까요?</string>
     <string name="save_backup_restore_confirm_message">현재 세이브가 %1$s 백업으로 대체됩니다. 현재 세이브는 먼저 백업되므로 되돌릴 수 있습니다.</string>

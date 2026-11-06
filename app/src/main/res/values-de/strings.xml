@@ -1794,6 +1794,7 @@
         <item quantity="other">%1$d Dateien</item>
     </plurals>
     <string name="save_backup_before_sync">Lokale Spielstände vor der Cloud-Synchronisierung</string>
+    <string name="save_backup_size_and_count">%1$s · %2$s</string>
     <string name="save_backup_before_restore">Vor der letzten Wiederherstellung</string>
     <string name="save_backup_restore_confirm_title">Dieses Backup wiederherstellen?</string>
     <string name="save_backup_restore_confirm_message">Deine aktuellen Spielstände werden durch das Backup vom %1$s ersetzt. Die aktuellen Spielstände werden vorher gesichert, sodass du dies rückgängig machen kannst.</string>

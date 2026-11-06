@@ -77,7 +77,7 @@ object CloudSaveBackupManager {
         }
     }
 
-    private enum class Outcome { WRITTEN, SKIPPED, FAILED }
+    private enum class Outcome { WRITTEN, SKIPPED, SKIPPED_UNSAFE, FAILED }
 
     @Serializable
     private data class SidecarRoot(val id: String, val absolutePath: String, val wholeDir: Boolean)
@@ -185,13 +185,13 @@ object CloudSaveBackupManager {
             val total = files.sumOf { it.size }
             if (total > MAX_TOTAL_BYTES) {
                 Timber.tag(TAG).w("Save backup skipped for $provider/$gameId: $total bytes exceeds the limit")
-                return Outcome.SKIPPED
+                return Outcome.SKIPPED_UNSAFE
             }
             val dir = gameDir(context, provider, gameId)
             if (!dir.isDirectory && !dir.mkdirs()) throw IOException("Cannot create $dir")
             if (context.filesDir.usableSpace < total * 2) {
                 Timber.tag(TAG).w("Save backup skipped for $provider/$gameId: not enough free space for $total bytes")
-                return Outcome.SKIPPED
+                return Outcome.SKIPPED_UNSAFE
             }
             val fingerprint = fingerprint(files)
             val existing = readBackups(dir, provider, gameId)
@@ -269,6 +269,7 @@ object CloudSaveBackupManager {
         val meta = json.decodeFromString(Sidecar.serializer(), sidecarFile.readText())
         val roots = meta.roots.associate { it.id to Paths.get(it.absolutePath).normalize() }
         val wholeDir = meta.roots.associate { it.id to it.wholeDir }
+        roots.values.forEach { requireRealPath(it) }
 
         ZipFile(backup.file).use { zip ->
             val planned = LinkedHashMap<Path, ZipEntry>()
@@ -298,7 +299,8 @@ object CloudSaveBackupManager {
                     BackupRoot(root.id, dir, planned.keys.filter { it.startsWith(rootPath) }.map { it.toFile() })
                 }
             }
-            if (backupLocked(context, meta.provider, meta.gameId, preRestoreRoots, Kind.PRE_RESTORE, backup.file) == Outcome.FAILED) {
+            val preRestore = backupLocked(context, meta.provider, meta.gameId, preRestoreRoots, Kind.PRE_RESTORE, backup.file)
+            if (preRestore == Outcome.FAILED || preRestore == Outcome.SKIPPED_UNSAFE) {
                 Timber.tag(TAG).w("Save restore aborted: could not back up the current saves first")
                 return false
             }
@@ -344,6 +346,15 @@ object CloudSaveBackupManager {
 
     private fun rootOf(roots: Map<String, Path>, destination: Path): String =
         roots.entries.filter { destination.startsWith(it.value) }.maxBy { it.value.nameCount }.key
+
+    private fun requireRealPath(root: Path) {
+        var existing: Path? = root
+        while (existing != null && !Files.exists(existing, LinkOption.NOFOLLOW_LINKS)) existing = existing.parent
+        if (existing == null) return
+        if (!Files.isDirectory(existing, LinkOption.NOFOLLOW_LINKS) || existing.toRealPath() != existing) {
+            throw IOException("Refusing to restore into a symlinked save root: $root")
+        }
+    }
 
     private fun checkNoSymlinks(root: Path, destination: Path) {
         var current: Path? = destination
@@ -417,7 +428,7 @@ object CloudSaveBackupManager {
                     return FileVisitResult.CONTINUE
                 }
 
-                override fun visitFileFailed(file: Path, exc: IOException): FileVisitResult = FileVisitResult.CONTINUE
+                override fun visitFileFailed(file: Path, exc: IOException): FileVisitResult = throw exc
             },
         )
         return out

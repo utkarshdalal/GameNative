@@ -1852,6 +1852,7 @@
         <item quantity="other">%1$d archivos</item>
     </plurals>
     <string name="save_backup_before_sync">Partidas locales antes de la sincronización en la nube</string>
+    <string name="save_backup_size_and_count">%1$s · %2$s</string>
     <string name="save_backup_before_restore">Antes de la última restauración</string>
     <string name="save_backup_restore_confirm_title">¿Restaurar esta copia de seguridad?</string>
     <string name="save_backup_restore_confirm_message">Tus partidas actuales se reemplazarán por la copia de seguridad del %1$s. Antes se hace una copia de las partidas actuales, así que puedes deshacerlo.</string>

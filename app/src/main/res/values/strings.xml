@@ -2076,6 +2076,7 @@
         <item quantity="other">%1$d files</item>
     </plurals>
     <string name="save_backup_before_sync">Local saves before cloud sync</string>
+    <string name="save_backup_size_and_count">%1$s · %2$s</string>
     <string name="save_backup_before_restore">Before last restore</string>
     <string name="save_backup_restore_confirm_title">Restore this backup?</string>
     <string name="save_backup_restore_confirm_message">Your current saves will be replaced with the backup from %1$s. The current saves are backed up first, so you can undo this.</string>
