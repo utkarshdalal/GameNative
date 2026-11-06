@@ -1020,8 +1020,8 @@
     <string name="settings_performance_title">效能</string>
     <string name="settings_performance_power_control_title">效能控制</string>
     <string name="settings_performance_power_control_subtitle">預設啟用遊戲內效能控制（已在測試裝置上啟用：AYN Odin 3、Retroid Pocket 6/Nova）</string>
-    <string name="settings_performance_shared_shader_cache_title">共享著色器快取</string>
-    <string name="settings_performance_shared_shader_cache_subtitle">遊玩時記錄著色器並與其他玩家共享，啟動前準備共享快取以減少卡頓</string>
+    <string name="settings_performance_shared_shader_cache_title">上傳著色器快取</string>
+    <string name="settings_performance_shared_shader_cache_subtitle">將遊玩時記錄的著色器與其他玩家共享。關閉後也不會下載可減少卡頓的共享快取</string>
     <string name="shader_cache_preparing">正在準備著色器…</string>
     <string name="shader_cache_preparing_progress">正在準備著色器 %1$d/%2$d</string>
 

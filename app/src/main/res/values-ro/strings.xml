@@ -1033,8 +1033,8 @@
 	<string name="settings_performance_title">Performanță</string>
 	<string name="settings_performance_power_control_title">Control performanței</string>
 	<string name="settings_performance_power_control_subtitle">Activează implicit controlul performanței în joc (activat pe dispozitivele testate: AYN Odin 3, Retroid Pocket 6/Nova)</string>
-	<string name="settings_performance_shared_shader_cache_title">Cache de shadere partajat</string>
-	<string name="settings_performance_shared_shader_cache_subtitle">Înregistrează shaderele în timp ce joci, le partajează cu alți jucători și pregătește cache-ul partajat înainte de pornire pentru a reduce sacadările</string>
+	<string name="settings_performance_shared_shader_cache_title">Încarcă cache-urile de shadere</string>
+	<string name="settings_performance_shared_shader_cache_subtitle">Partajează cu alți jucători shaderele înregistrate în timp ce joci. Dezactivarea oprește și descărcarea cache-urilor partajate care reduc sacadările</string>
 	<string name="shader_cache_preparing">Se pregătesc shaderele…</string>
 	<string name="shader_cache_preparing_progress">Se pregătesc shaderele %1$d/%2$d</string>
 

@@ -1050,8 +1050,8 @@
     <string name="settings_performance_title">Performances</string>
     <string name="settings_performance_power_control_title">Contrôle des performances</string>
     <string name="settings_performance_power_control_subtitle">Activer le contrôle des performances en jeu par défaut (activé sur les appareils testés : AYN Odin 3, Retroid Pocket 6/Nova)</string>
-    <string name="settings_performance_shared_shader_cache_title">Cache de shaders partagé</string>
-    <string name="settings_performance_shared_shader_cache_subtitle">Enregistre les shaders pendant que vous jouez, les partage avec les autres joueurs et prépare le cache partagé avant le lancement pour réduire les saccades</string>
+    <string name="settings_performance_shared_shader_cache_title">Envoyer les caches de shaders</string>
+    <string name="settings_performance_shared_shader_cache_subtitle">Partage avec les autres joueurs les shaders enregistrés pendant que vous jouez. Désactiver cette option empêche aussi le téléchargement des caches partagés qui réduisent les saccades</string>
     <string name="shader_cache_preparing">Préparation des shaders…</string>
     <string name="shader_cache_preparing_progress">Préparation des shaders %1$d/%2$d</string>
 
