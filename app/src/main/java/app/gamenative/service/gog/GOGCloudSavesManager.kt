@@ -683,7 +683,15 @@ class GOGCloudSavesManager(
      * Download file from GOG cloud storage
      */
     private suspend fun backupIfOverwriting(files: List<CloudFile>, syncDir: File, beforeOverwrite: suspend () -> Unit) {
-        if (files.any { FileUtils.resolveCaseInsensitive(syncDir, it.relativePath).exists() }) beforeOverwrite()
+        if (files.any { localTarget(syncDir, it.relativePath)?.exists() == true }) beforeOverwrite()
+    }
+
+    /** Resolves a cloud-provided relative path against on-disk casing, or null when it would leave [syncDir]. */
+    private fun localTarget(syncDir: File, relativePath: String): File? {
+        if (relativePath.isBlank() || relativePath.contains('\u0000')) return null
+        val target = FileUtils.resolveCaseInsensitive(syncDir, relativePath)
+        val base = syncDir.canonicalPath.trimEnd(File.separatorChar) + File.separator
+        return target.takeIf { it.canonicalPath.startsWith(base) }
     }
 
     private suspend fun downloadFile(
@@ -719,7 +727,11 @@ class GOGCloudSavesManager(
                 Timber.tag("GOG-CloudSaves").d("Downloaded ${bytes.size} bytes for ${file.relativePath}")
 
                 // resolve against on-disk casing to avoid creating duplicate dirs
-                val localFile = FileUtils.resolveCaseInsensitive(syncDir, file.relativePath)
+                val localFile = localTarget(syncDir, file.relativePath)
+                if (localFile == null) {
+                    Timber.tag("GOG-CloudSaves").w("Skipping ${file.relativePath}: path leaves the save directory")
+                    return@withContext
+                }
                 localFile.parentFile?.mkdirs()
 
                 // Write file content

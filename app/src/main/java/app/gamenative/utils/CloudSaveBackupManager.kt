@@ -384,6 +384,9 @@ object CloudSaveBackupManager {
         }
     }
 
+    private fun rootOf(roots: Map<String, Path>, destination: Path): String =
+        roots.entries.filter { destination.startsWith(it.value) }.maxBy { it.value.nameCount }.key
+
     private fun requireRealPath(root: Path) {
         var existing: Path? = root
         while (existing != null && !Files.exists(existing, LinkOption.NOFOLLOW_LINKS)) existing = existing.parent
