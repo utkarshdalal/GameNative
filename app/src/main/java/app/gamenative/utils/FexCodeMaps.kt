@@ -3,7 +3,6 @@ package app.gamenative.utils
 import android.content.Context
 import android.os.Build
 import app.gamenative.BuildConfig
-import app.gamenative.PrefManager
 import app.gamenative.api.ApiResult
 import app.gamenative.api.CodeMapApi
 import com.winlator.container.Container
@@ -23,7 +22,7 @@ import java.util.zip.GZIPOutputStream
  * FEX_ENABLECODECACHINGWIP=1 to AppData/Local/fex-emu/codemap/new/ in the prefix. They are the
  * input to the offline code cache compiler and do not depend on the FEX build that wrote them,
  * so the app uploads them after a session when the container runs a FEX series build that has
- * the cache fixes (2611-gn-6 or newer) and usage analytics are on.
+ * the cache fixes (2611-gn-6 or newer).
  */
 object FexCodeMaps {
 
@@ -48,10 +47,9 @@ object FexCodeMaps {
         return release > MIN_RELEASE || (release == MIN_RELEASE && series >= MIN_SERIES)
     }
 
-    /** Whether this launch should have FEX write code maps: supported FEX build and analytics opted in. */
+    /** Whether this launch should have FEX write code maps: the container runs a supported FEX build. */
     @JvmStatic
     fun captureEnabled(container: Container): Boolean {
-        if (!PrefManager.usageAnalyticsEnabled) return false
         if (!"fexcore".equals(container.emulator, ignoreCase = true)) return false
         return supportsCodeMaps(container.fexCoreVersion)
     }
@@ -110,7 +108,7 @@ object FexCodeMaps {
      * Runs after the game has exited and the environment is down, on an IO thread.
      */
     fun uploadAfterSession(context: Context, container: Container, containerId: String, sessionLengthSec: Int?) {
-        if (!PrefManager.usageAnalyticsEnabled || !supportsCodeMaps(container.fexCoreVersion)) return
+        if (!supportsCodeMaps(container.fexCoreVersion)) return
         val dir = codeMapDir(container)
         val files = dir.listFiles { f -> f.isFile && f.name.endsWith(".bin") }
             ?.sortedByDescending { it.lastModified() }
