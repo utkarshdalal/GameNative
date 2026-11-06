@@ -13,8 +13,15 @@ import java.io.IOException
 
 object GameNativeApi {
 
-    val BASE_URL: String =
-        if (BuildConfig.DEBUG) "http://10.0.2.2:8787" else "https://api.gamenative.app"
+    val BASE_URL: String
+        get() = if (BuildConfig.DEBUG) (debugBaseUrlOverride() ?: "http://10.0.2.2:8787") else "https://api.gamenative.app"
+
+    // Debug builds default to the emulator's host loopback, which a physical device cannot reach.
+    // `adb shell setprop debug.gamenative.api_base https://api.gamenative.app` points one at a real server.
+    private fun debugBaseUrlOverride(): String? = runCatching {
+        val cls = Class.forName("android.os.SystemProperties")
+        cls.getMethod("get", String::class.java).invoke(null, "debug.gamenative.api_base") as? String
+    }.getOrNull()?.trim()?.takeIf { it.startsWith("http") }
 
     val httpClient: OkHttpClient = Net.http
 
