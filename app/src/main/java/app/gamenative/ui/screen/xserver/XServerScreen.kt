@@ -150,6 +150,7 @@ import app.gamenative.utils.GameSessionId
 import app.gamenative.utils.DebugRunParams
 import app.gamenative.utils.DebugRunParamsHolder
 import app.gamenative.utils.ExecutableSelectionUtils
+import app.gamenative.utils.FexCodeMaps
 import app.gamenative.utils.LsfgQuickMenuHelper
 import app.gamenative.utils.LsfgVkManager
 import app.gamenative.utils.ManifestComponentHelper
@@ -5496,6 +5497,15 @@ private fun exit(
     GameNativeDrm.nativeStop()
     PluviaApp.shutdownEnvironment()
     EaLaunchSupport.stop()
+
+    // FEX flushed its code maps when the guest exited; ship them once the environment is down.
+    (frameRating?.context ?: PluviaApp.xServerView?.context)?.applicationContext?.let { appContext ->
+        val sessionLengthSec = frameRating?.sessionLengthSec?.toInt()
+        CoroutineScope(Dispatchers.IO).launch {
+            runCatching { FexCodeMaps.uploadAfterSession(appContext, container, appId, sessionLengthSec) }
+                .onFailure { Timber.w(it, "Code map upload failed") }
+        }
+    }
     GogGalaxyService.stop(blocking = false)
 
     // Bionic-Steam mode brought up libsteamclient.so inside this Android process

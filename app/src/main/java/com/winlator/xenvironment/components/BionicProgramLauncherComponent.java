@@ -22,6 +22,7 @@ import com.winlator.PrefManager;
 import app.gamenative.PluviaApp;
 import app.gamenative.display.GameNativeDrm;
 import app.gamenative.display.GamescopeSettings;
+import app.gamenative.utils.FexCodeMaps;
 import app.gamenative.utils.LsfgQuickMenuHelper;
 import app.gamenative.utils.LsfgVkManager;
 import com.winlator.box86_64.Box86_64Preset;
@@ -282,6 +283,10 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         }
         addBox64EnvVars(envVars, enableBox86_64Logs);
         envVars.putAll(FEXCorePresetManager.getEnvVars(context, fexcorePreset));
+        if (FexCodeMaps.captureEnabled(container)) {
+            // FEX writes a code map per process (input for offline code caches); uploaded after exit.
+            envVars.put("FEX_ENABLECODECACHINGWIP", "1");
+        }
 
         String renderer = GPUInformation.getRenderer(context);
 
