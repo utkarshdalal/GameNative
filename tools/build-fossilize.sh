@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Builds Valve's Fossilize (https://github.com/ValveSoftware/Fossilize) for the
 # bionic container used by GameNative:
-#   - app/src/main/jniLibs/arm64-v8a/libVkLayer_fossilize.so   the recording layer,
-#                                                              installed per container by FossilizeManager
+#   - app/src/main/jniLibs/arm64-v8a/libfossilize_layer.so     the recording layer, installed per container
+#                                                              as libVkLayer_fossilize.so by FossilizeManager
+#                                                              (not libVkLayer_* in the APK, so Android's own
+#                                                              loader does not scan it)
 #   - app/src/main/jniLibs/arm64-v8a/libfossilize_replay.so    fossilize-replay (a PIE executable,
 #                                                              run from nativeLibraryDir)
 #
@@ -13,8 +15,9 @@
 #     layer honours FOSSILIZE_DUMP_PATH / _READ_ONLY / the app-info filter instead of
 #     getprop, and exports the manifest-named entry points
 #   - layer/utils.hpp: CLI tools log to stderr as well as logcat
-#   - cli/: enable the crash-isolated replayer on bionic (memfd_create instead of
-#     shm_open) and re-exec --progress through /system/bin/linker64
+#   - cli/, fossilize_db.cpp: enable the crash-isolated replayer on bionic (memfd_create
+#     instead of shm_open for the control block and the exported metadata) and re-exec
+#     --progress through /system/bin/linker64
 #
 # Prerequisites:
 #   - Android NDK r27d (ANDROID_NDK_HOME, else probes the default SDK locations
@@ -76,7 +79,7 @@ cmake -S "$SRC_DIR" -B "$OUT_DIR" -G Ninja \
 ninja -C "$OUT_DIR" VkLayer_fossilize fossilize-replay fossilize-merge-db fossilize-prune fossilize-list
 
 echo "==> install into $JNI_DIR"
-cp "$OUT_DIR/layer/libVkLayer_fossilize.so" "$JNI_DIR/libVkLayer_fossilize.so"
+cp "$OUT_DIR/layer/libVkLayer_fossilize.so" "$JNI_DIR/libfossilize_layer.so"
 "$STRIP" -o "$JNI_DIR/libfossilize_replay.so" "$OUT_DIR/cli/fossilize-replay"
-ls -la "$JNI_DIR"/libVkLayer_fossilize.so "$JNI_DIR"/libfossilize_replay.so
+ls -la "$JNI_DIR"/libfossilize_layer.so "$JNI_DIR"/libfossilize_replay.so
 echo "merge/prune/list tools for the server side are in $OUT_DIR/cli/"

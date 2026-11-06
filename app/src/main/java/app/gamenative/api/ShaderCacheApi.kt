@@ -39,8 +39,11 @@ object ShaderCacheApi {
             .build()
         it.url(url).get()
     }.map { raw ->
-        if (raw.code == 404) return@map null
-        val json = JSONObject(raw.body)
+        val json = if (raw.code == 404) null else JSONObject(raw.body)
+        if (json == null || !json.has("version")) {
+            Timber.tag(TAG).d("pool: no pool for %s", key)
+            return@map null
+        }
         Pool(
             version = json.getLong("version"),
             url = json.getString("url"),

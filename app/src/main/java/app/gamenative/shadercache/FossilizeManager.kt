@@ -45,6 +45,7 @@ import timber.log.Timber
 object FossilizeManager {
     private const val TAG = "Fossilize"
 
+    private const val BUNDLED_LAYER_LIB = "libfossilize_layer.so"
     private const val LAYER_LIB = "libVkLayer_fossilize.so"
     private const val REPLAY_BIN = "libfossilize_replay.so"
     private const val LIB_RELATIVE_DIR = ".local/lib"
@@ -58,6 +59,7 @@ object FossilizeManager {
     private const val POOL_DIR = "pool"
     private const val FILTER_FILENAME = "application_filter.json"
     private const val PIPELINE_CACHE_FILENAME = "pipeline.cache"
+    private const val LOCAL_POOL_FILENAME = "local.foz"
 
     private const val EXTRA_REPLAYED = "fossilizeReplayed"
 
@@ -67,15 +69,16 @@ object FossilizeManager {
     private const val POOL_DOWNLOAD_TIMEOUT_MS = 3 * 60 * 1000L
     private const val REPLAY_WALL_CLOCK_MS = 10 * 60 * 1000L
     private const val REPLAY_STALL_SECONDS = 30
-    private const val SPAWN_FALLBACK_WINDOW_MS = 5_000L
+    private const val OUTPUT_TAIL_LINES = 20
 
-    private val FILTERED_APPLICATIONS = listOf("gamescope")
+    private val FILTERED_APPLICATIONS = listOf("gamescope", "Xwayland")
+    private val FILTERED_ENGINES = listOf("mesa zink")
     private val PROGRESS_LINE = Regex("Overall (\\d+) / (\\d+)")
 
     private val uploadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val uploadMutex = Mutex()
 
-    private data class ReplayOutcome(val exitCode: Int, val timedOut: Boolean, val completed: Int, val total: Int, val sawProgress: Boolean)
+    private data class ReplayOutcome(val exitCode: Int, val timedOut: Boolean, val completed: Int, val total: Int, val tail: List<String>)
 
     @JvmStatic
     fun isEnabled(container: Container?): Boolean =
@@ -88,12 +91,13 @@ object FossilizeManager {
     private fun poolDir(container: Container) = File(cacheDir(container), POOL_DIR)
     private fun poolFile(container: Container, key: ShaderCacheKey) = File(poolDir(container), "${key.fileName}.foz")
     private fun poolMetaFile(container: Container, key: ShaderCacheKey) = File(poolDir(container), "${key.fileName}.json")
+    private fun localPoolFile(container: Container) = File(poolDir(container), LOCAL_POOL_FILENAME)
 
     @JvmStatic
     fun ensureRuntimeInstalled(context: Context, container: Container): Boolean {
-        val source = File(context.applicationInfo.nativeLibraryDir, LAYER_LIB)
+        val source = File(context.applicationInfo.nativeLibraryDir, BUNDLED_LAYER_LIB)
         if (!source.isFile) {
-            Timber.tag(TAG).i("%s not bundled; shader cache recording is off", LAYER_LIB)
+            Timber.tag(TAG).i("%s not bundled; shader cache recording is off", BUNDLED_LAYER_LIB)
             return false
         }
         val libFile = File(File(container.rootDir, LIB_RELATIVE_DIR), LAYER_LIB)
@@ -161,7 +165,8 @@ object FossilizeManager {
             envVars.remove("DISABLE_FOSSILIZE")
             envVars.put("FOSSILIZE", "1")
             envVars.put("FOSSILIZE_DUMP_PATH", File(sessionDir, "fossilize").absolutePath)
-            ShaderCacheKey.of(container)?.let { poolFile(container, it) }?.takeIf { it.isFile }?.let {
+            (ShaderCacheKey.of(container)?.let { poolFile(container, it) }?.takeIf { it.isFile }
+                ?: localPoolFile(container).takeIf { it.isFile })?.let {
                 envVars.put("FOSSILIZE_DUMP_PATH_READ_ONLY", it.absolutePath)
             }
             envVars.put("FOSSILIZE_APPLICATION_INFO_FILTER_PATH", writeApplicationFilter(container).absolutePath)
@@ -187,6 +192,7 @@ object FossilizeManager {
             .put("asset", "FossilizeApplicationInfoFilter")
             .put("version", 1)
             .put("blacklistedApplicationNames", JSONArray(FILTERED_APPLICATIONS))
+            .put("blacklistedEngineNames", JSONArray(FILTERED_ENGINES))
             .toString(2)
         if (!file.isFile || file.readText() != json) {
             file.parentFile?.mkdirs()
@@ -209,12 +215,13 @@ object FossilizeManager {
                 Timber.tag(TAG).i("No shader cache key for %s", container.id)
                 return
             }
-            val pool = refreshPool(context, container, key)
-            val poolFile = poolFile(container, key)
-            if (pool == null || !poolFile.isFile) return
-            val stamp = "${key.fileName}|${pool.optLong("version")}|${driverIdentity(container)}"
-            if (container.getExtra(EXTRA_REPLAYED, "") == stamp) return
-            replay(context, container, launcher, key, pool, replayBin, stamp)
+            val meta = refreshPool(context, container, key)?.takeIf { poolFile(container, key).isFile }
+            val poolFile = meta?.let { poolFile(container, key) } ?: localPoolFile(container).takeIf { it.isFile } ?: return
+            val version = meta?.optLong("version")?.toString() ?: "local-${poolFile.length()}-${poolFile.lastModified()}"
+            val stamp = "${key.fileName}|$version|${driverIdentity(container)}"
+            val replayed = container.getExtra(EXTRA_REPLAYED, "")
+            if (replayed == stamp || replayed == "$stamp|failed") return
+            replay(context, container, launcher, key, poolFile, version, meta?.optLong("entries") ?: 0L, replayBin, stamp)
         } catch (t: Throwable) {
             Timber.tag(TAG).e(t, "Shader cache preparation failed")
         }
@@ -260,7 +267,9 @@ object FossilizeManager {
         container: Container,
         launcher: BionicProgramLauncherComponent,
         key: ShaderCacheKey,
-        pool: JSONObject,
+        poolFile: File,
+        version: String,
+        entries: Long,
         replayBin: File,
         stamp: String,
     ) {
@@ -273,7 +282,7 @@ object FossilizeManager {
         }
         val threads = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
         val args = listOf(
-            poolFile(container, key).absolutePath,
+            poolFile.absolutePath,
             "--num-threads", threads.toString(),
             "--on-disk-pipeline-cache", File(cacheDir(container), PIPELINE_CACHE_FILENAME).absolutePath,
             "--timeout-seconds", REPLAY_STALL_SECONDS.toString(),
@@ -283,33 +292,36 @@ object FossilizeManager {
         val started = System.currentTimeMillis()
         PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(context.getString(R.string.shader_cache_preparing)))
 
-        var outcome = runReplay(listOf(replayBin.absolutePath) + args + "--progress", env, workDir, started, context)
-        if (outcome == null || (!outcome.sawProgress && !outcome.timedOut && outcome.exitCode != 0 &&
-                System.currentTimeMillis() - started < SPAWN_FALLBACK_WINDOW_MS)
-        ) {
-            Timber.tag(TAG).i("Progress replay unavailable (%s); replaying without progress", outcome?.exitCode)
-            outcome = runReplay(listOf("/system/bin/linker64", replayBin.absolutePath) + args, env, workDir, started, context)
+        var command = listOf(replayBin.absolutePath)
+        var outcome = runReplay(command + args + "--progress", env, workDir, started, context)
+        if (outcome == null) {
+            command = listOf("/system/bin/linker64", replayBin.absolutePath)
+            outcome = runReplay(command + args + "--progress", env, workDir, started, context)
         }
-        val seconds = (System.currentTimeMillis() - started) / 1000.0
         if (outcome == null) {
             Timber.tag(TAG).w("Could not start %s", REPLAY_BIN)
             return
         }
+        if (outcome.exitCode != 0 && !outcome.timedOut) {
+            Timber.tag(TAG).i("Multi-process replay failed (exit=%d); retrying in a single process", outcome.exitCode)
+            outcome = runReplay(command + args, env, workDir, started, context) ?: outcome
+        }
+        val seconds = (System.currentTimeMillis() - started) / 1000.0
+        val succeeded = outcome.exitCode == 0
         Timber.tag(TAG).i(
             "Replay of %s finished: exit=%d timedOut=%s progress=%d/%d in %.1fs",
             key, outcome.exitCode, outcome.timedOut, outcome.completed, outcome.total, seconds,
         )
-        if (outcome.exitCode == 0 || outcome.timedOut) {
-            container.putExtra(EXTRA_REPLAYED, stamp)
-            container.saveData()
-        }
+        if (!succeeded) Timber.tag(TAG).w("Replay of %s failed:\n%s", key, outcome.tail.joinToString("\n"))
+        container.putExtra(EXTRA_REPLAYED, if (succeeded) stamp else "$stamp|failed")
+        container.saveData()
         if (PrefManager.usageAnalyticsEnabled) {
             runCatching {
                 PostHog.capture(
                     event = "shader_cache_replayed",
                     properties = keyProperties(key) + mapOf(
-                        "pool_version" to pool.optLong("version"),
-                        "entries" to pool.optLong("entries"),
+                        "pool_version" to version,
+                        "entries" to entries,
                         "seconds" to seconds,
                         "exit_code" to outcome.exitCode,
                         "timed_out" to outcome.timedOut,
@@ -338,7 +350,7 @@ object FossilizeManager {
         }
         var completed = 0
         var total = 0
-        var sawProgress = false
+        val tail = ArrayDeque<String>()
         val reader = Thread({
             runCatching {
                 process.inputStream.bufferedReader().forEachLine { line ->
@@ -346,7 +358,6 @@ object FossilizeManager {
                     if (match != null) {
                         val current = match.groupValues[1].toInt()
                         val all = match.groupValues[2].toInt()
-                        sawProgress = true
                         if (current != completed || all != total) {
                             completed = current
                             total = all
@@ -360,6 +371,10 @@ object FossilizeManager {
                         }
                     } else if (!line.startsWith("Fossilize INFO")) {
                         Timber.tag(TAG).d("replay: %s", line)
+                        synchronized(tail) {
+                            if (tail.size == OUTPUT_TAIL_LINES) tail.removeFirst()
+                            tail.addLast(line)
+                        }
                     }
                 }
             }
@@ -378,7 +393,7 @@ object FossilizeManager {
             timedOut = !finished,
             completed = completed,
             total = total,
-            sawProgress = sawProgress,
+            tail = synchronized(tail) { tail.toList() },
         )
     }
 

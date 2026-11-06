@@ -12,10 +12,10 @@ import java.util.Locale
  *
  * game:  steam:<appid>, gog:<id>, epic:<id>, amazon:<id> from the container id; custom games use
  *        custom:<sha256 of the exe size in decimal, a newline, then the first 1 MiB of the exe>.
- * dxvk:  dxvk-<version> from dxwrapperConfig "version", lowercased, with a leading "dxvk-" and a
- *        trailing "-gplasync" / "-async" removed (2.6.1-gplasync -> dxvk-2.6.1).
- * vkd3d: vkd3d-<version> from dxwrapperConfig "vkd3dVersion", lowercased, with a leading
- *        "vkd3d-proton-" or "vkd3d-" removed (2.14.1 -> vkd3d-2.14.1).
+ * dxvk:  dxvk-<version> from dxwrapperConfig "version": the leading version number after an optional
+ *        "dxvk-" / "v" (2.7.1-1-gplasync-0 -> dxvk-2.7.1); anything else is kept lowercased.
+ * vkd3d: vkd3d-<version> from dxwrapperConfig "vkd3dVersion": the leading version number after an
+ *        optional "vkd3d-proton-" / "vkd3d-" / "v" (vkd3d-proton-2.14.1 -> vkd3d-2.14.1).
  */
 data class ShaderCacheKey(val game: String, val dxvk: String, val vkd3d: String) {
 
@@ -25,7 +25,8 @@ data class ShaderCacheKey(val game: String, val dxvk: String, val vkd3d: String)
     companion object {
         private const val CUSTOM_HASH_BYTES = 1 shl 20
         private val UNSAFE_FILE_CHARS = Regex("[^A-Za-z0-9._-]")
-        private val DXVK_SUFFIX = Regex("-(gplasync|async)$")
+        private val DXVK_VERSION = Regex("^(?:dxvk-?)?v?(\\d+\\.\\d+(?:\\.\\d+)?)")
+        private val VKD3D_VERSION = Regex("^(?:vkd3d-?)?(?:proton-?)?v?(\\d+\\.\\d+(?:\\.\\d+)?)")
         private val STORE_PREFIXES = listOf(
             "STEAM_" to "steam",
             "GOG_" to "gog",
@@ -39,13 +40,14 @@ data class ShaderCacheKey(val game: String, val dxvk: String, val vkd3d: String)
             return ShaderCacheKey(game, dxvkKey(config.get("version")), vkd3dKey(config.get("vkd3dVersion")))
         }
 
-        fun dxvkKey(version: String?): String =
-            "dxvk-" + clean(version).removePrefix("dxvk-").replace(DXVK_SUFFIX, "").ifEmpty { "none" }
+        fun dxvkKey(version: String?): String = "dxvk-" + normalize(version, DXVK_VERSION)
 
-        fun vkd3dKey(version: String?): String =
-            "vkd3d-" + clean(version).removePrefix("vkd3d-proton-").removePrefix("vkd3d-").ifEmpty { "none" }
+        fun vkd3dKey(version: String?): String = "vkd3d-" + normalize(version, VKD3D_VERSION)
 
-        private fun clean(version: String?): String = version.orEmpty().trim().lowercase(Locale.ROOT)
+        private fun normalize(version: String?, pattern: Regex): String {
+            val clean = version.orEmpty().trim().lowercase(Locale.ROOT)
+            return pattern.find(clean)?.groupValues?.get(1) ?: clean.ifEmpty { "none" }
+        }
 
         private fun gameKey(container: Container): String? {
             val id = container.id.substringBefore('(')

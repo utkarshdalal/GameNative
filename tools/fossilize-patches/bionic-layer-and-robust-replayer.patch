@@ -72,6 +72,56 @@ index 07c3ffd..211b66a 100644
  	vector<const char *> databases;
  	const char *whitelist_path = nullptr;
  	uint32_t whitelist_mask = ExternalReplayer::WHITELIST_MASK_ALL_BIT;
+diff --git a/fossilize_db.cpp b/fossilize_db.cpp
+index 6aa3e5c..1a8a8f4 100644
+--- a/fossilize_db.cpp
++++ b/fossilize_db.cpp
+@@ -28,6 +28,7 @@
+ #else
+ #include <unistd.h>
+ #include <sys/mman.h>
++#include <sys/syscall.h>
+ #include <sys/stat.h>
+ #include <fcntl.h>
+ #endif
+@@ -363,20 +364,27 @@ intptr_t DatabaseInterface::export_metadata_to_os_handle(const char *name)
+ 
+ 	UnmapViewOfFile(mapped);
+ 	return reinterpret_cast<intptr_t>(mapping_handle);
+-#elif !defined(ANDROID)
++#else
++#ifdef __ANDROID__
++	// bionic has no shm_open. An anonymous memfd is equivalent, since the named segment is unlinked right away.
++	int fd = int(syscall(__NR_memfd_create, name + 1, MFD_CLOEXEC));
++#else
+ 	int fd = shm_open(name, O_RDWR | O_CREAT | O_EXCL, 0600);
++#endif
+ 	if (fd < 0)
+ 	{
+ 		LOGE_LEVEL("Failed to create shared memory.\n");
+ 		return invalid_metadata_handle();
+ 	}
+ 
++#ifndef __ANDROID__
+ 	if (shm_unlink(name) < 0)
+ 	{
+ 		LOGE_LEVEL("Failed to unlink SHM block.\n");
+ 		close(fd);
+ 		return invalid_metadata_handle();
+ 	}
++#endif
+ 
+ 	if (ftruncate(fd, size) < 0)
+ 	{
+@@ -403,8 +411,6 @@ intptr_t DatabaseInterface::export_metadata_to_os_handle(const char *name)
+ 
+ 	munmap(mapped, size);
+ 	return intptr_t(fd);
+-#else
+-	return invalid_metadata_handle();
+ #endif
+ }
+ 
 diff --git a/fossilize_external_replayer.cpp b/fossilize_external_replayer.cpp
 index d49e876..c90a7f6 100644
 --- a/fossilize_external_replayer.cpp
