@@ -356,6 +356,7 @@
     <string name="performance_hud_clock_time">Hora</string>
     <string name="performance_hud_cpu_temperature">Temperatura da CPU</string>
     <string name="performance_hud_gpu_temperature">Temperatura da GPU</string>
+    <string name="performance_hud_bottleneck">Fator limitante</string>
     <string name="touchpad_help">Ajuda Touchpad</string>
     <string name="hide_controls_with_controller">Ocultar controles on-screen com controle</string>
     <string name="hide_controls_with_controller_description">Ocultar automaticamente controles on-screen quando um controle físico estiver conectado</string>
@@ -943,7 +944,7 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Os relatórios Pro furam a fila.</string>
     <string name="support_limit_title">Limite diário de uso justo atingido</string>
-    <string name="support_upgrade_reason_required">As respostas da AI exigem uma assinatura GameNative. Se você já assina pelo Discord ou Ko-fi, conecte o Discord em Configurações.</string>
+    <string name="support_upgrade_reason_required">As respostas da AI exigem uma assinatura GameNative. Se você já assina pelo Discord ou Ko-fi: %1$s.</string>
     <string name="support_see_plans">Ver planos</string>
     <string name="support_plan_basic_title">$5/mês · Basic</string>
     <string name="support_plan_basic_body">Faça seus jogos rodarem, ou rodarem melhor.</string>
@@ -1653,6 +1654,8 @@
     <string name="download_failed_title">Falha no Download</string>
     <string name="download_failed_message">Um arquivo necessário não pôde ser baixado. Verifique sua conexão de rede e tente novamente.</string>
     <string name="install_failed_title">Falha na Instalação</string>
+    <string name="container_create_failed_title">Não foi possível criar o contêiner do jogo</string>
+    <string name="container_create_failed_message">O GameNative não conseguiu criar a pasta em que este jogo é executado. Isso geralmente significa que o dispositivo está sem espaço de armazenamento.\n\n%1$s</string>
     <string name="install_failed_message">Os arquivos do sistema não puderam ser instalados. Tente novamente. Se o problema persistir, tente uma rede diferente ou use uma VPN.</string>
     <string name="settings_interface_swap_face_buttons_title">Trocar botões de ação</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Troca os ícones dos botões A↔B e X↔Y</string>

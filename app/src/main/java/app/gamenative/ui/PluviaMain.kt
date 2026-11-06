@@ -95,7 +95,6 @@ import app.gamenative.api.AccountApi
 import app.gamenative.billing.Membership
 import app.gamenative.api.DebugReportApi
 import app.gamenative.api.SupportApi
-import app.gamenative.ui.component.dialog.AI_HELP_PATH_APP
 import app.gamenative.ui.component.dialog.AccountSignInDialog
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.component.dialog.DebugPreRunDialog
@@ -137,6 +136,8 @@ import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.DebugReportUtils
 import app.gamenative.utils.DebugRunParamsHolder
 import app.gamenative.utils.HardwareUtils
+import app.gamenative.utils.GameSessionId
+import app.gamenative.utils.SessionReport
 import app.gamenative.utils.PlatformAuthUtils
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.ManifestInstaller
@@ -342,7 +343,7 @@ fun trackAiDebug(event: String, properties: Map<String, Any> = emptyMap()) {
     }
 }
 
-private fun trackGameLaunched(appId: String) {
+private fun trackGameLaunched(context: Context, appId: String) {
     val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
     val gameName = ContainerUtils.resolveGameName(appId)
     val attribution = if (gameSource == GameSource.STEAM) {
@@ -357,6 +358,8 @@ private fun trackGameLaunched(appId: String) {
             "game_store" to gameSource.name,
             "key_attestation_available" to PrefManager.keyAttestationAvailable,
             "play_integrity_available" to PrefManager.playIntegrityAvailable,
+            "session_uuid" to GameSessionId.newLaunch(),
+            "config_source" to SessionReport.launchConfigSource(context, appId),
         ) + attribution,
     )
 }
@@ -374,7 +377,7 @@ private fun startDebugRun(
     setMessageDialogState: (MessageDialogState) -> Unit,
 ) {
     if (appId.isEmpty()) return
-    trackGameLaunched(appId)
+    trackGameLaunched(context, appId)
     viewModel.setLaunchedAppId(appId)
     viewModel.setBootToContainer(false)
     viewModel.setTestGraphics(false)
@@ -438,7 +441,8 @@ fun PluviaMain(
     var debugPreRunAppId by rememberSaveable { mutableStateOf("") }
     var debugPreRunOffline by rememberSaveable { mutableStateOf(false) }
     val discordTokenPresent by PrefManager.discordRelayTokenPresent
-    var aiHelpPreferredPath by remember { mutableStateOf(PrefManager.aiHelpPreferredPath) }
+    // "Use Discord instead" applies to the report being written; it is reset whenever the dialog opens.
+    var debugReportUseDiscord by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         if (!PrefManager.discordRelayTokenPresent.value) {
@@ -508,7 +512,7 @@ fun PluviaMain(
             }
         } else {
             MainActivity.wasLaunchedViaExternalIntent = true
-            trackGameLaunched(resolvedAppId)
+            trackGameLaunched(context, resolvedAppId)
             viewModel.setLaunchedAppId(resolvedAppId)
             viewModel.setBootToContainer(false)
             scope.launch(Dispatchers.IO) {
@@ -1823,6 +1827,10 @@ fun PluviaMain(
                 }
             }
 
+            LaunchedEffect(debugReportState.visible) {
+                if (debugReportState.visible) debugReportUseDiscord = false
+            }
+
             val debugFlowActive = debugReportState.visible || debugPaywallReason != null
             LaunchedEffect(debugFlowActive) {
                 if (debugFlowActive) {
@@ -1835,29 +1843,24 @@ fun PluviaMain(
                 hasDiscordToken = discordTokenPresent,
                 appChatEnabled = SupportApi.available.value != false,
                 accountSignedIn = PrefManager.gameNativeSignedIn.value,
-                preferredPath = aiHelpPreferredPath,
+                useDiscord = debugReportUseDiscord,
                 sendProgress = SupportReportSubmitter.progress.value,
                 onStateChange = { debugReportState = it },
                 onSend = {
                     val usesApp = debugReportUsesApp(
                         appChatEnabled = SupportApi.available.value != false,
-                        hasDiscordToken = discordTokenPresent,
                         accountSignedIn = PrefManager.gameNativeSignedIn.value,
-                        preferredPath = aiHelpPreferredPath,
+                        useDiscord = debugReportUseDiscord,
                     )
                     if (usesApp) submitDebugReport() else submitViaDiscord()
                 },
                 onShare = shareDebugLog,
                 onConnectDiscord = openDiscordConnect,
                 onSignInForApp = {
-                    aiHelpPreferredPath = AI_HELP_PATH_APP
-                    PrefManager.aiHelpPreferredPath = AI_HELP_PATH_APP
+                    debugReportUseDiscord = false
                     submitDebugReport()
                 },
-                onPreferredPathChange = { path ->
-                    aiHelpPreferredPath = path
-                    PrefManager.aiHelpPreferredPath = path
-                },
+                onUseDiscordChange = { debugReportUseDiscord = it },
                 onOpenThread = {
                     if (debugReportState.threadUrl.isNotEmpty()) {
                         uriHandler.openUri(debugReportState.threadUrl)
@@ -1884,9 +1887,25 @@ fun PluviaMain(
             SupportUpgradeDialog(
                 visible = debugAccountPrompt != null && debugAccountPrompt != SUPPORT_PROMPT_SIGN_IN,
                 reason = debugAccountPrompt,
-                onPlanChanged = { debugAccountPrompt = null },
+                onPlanChanged = {
+                    debugAccountPrompt = null
+                    submitDebugReport()
+                },
                 onDismiss = { debugAccountPrompt = null },
+                onConnectDiscord = openDiscordConnect,
             )
+
+            // Discord linked while the plan picker is up: resend the report at once. The create
+            // call carries the relay token, so the server merges the Discord plan into the
+            // account and judges it in the same request; a 403 simply reopens the picker.
+            LaunchedEffect(discordTokenPresent) {
+                val prompt = debugAccountPrompt
+                if (!discordTokenPresent || prompt == null || prompt == SUPPORT_PROMPT_SIGN_IN) return@LaunchedEffect
+                if (!withContext(Dispatchers.IO) { PrefManager.discordMergePending }) return@LaunchedEffect
+                Timber.i("[AiSupport] Discord linked with the plan picker open (reason=%s); resending the report", prompt)
+                debugAccountPrompt = null
+                submitDebugReport()
+            }
 
             SupportUpgradeDialog(
                 visible = membershipPlansVisible,
@@ -1897,6 +1916,7 @@ fun PluviaMain(
                     membershipPlansVisible = false
                     membershipSignInVisible = true
                 },
+                onConnectDiscord = openDiscordConnect,
             )
 
             AccountSignInDialog(
@@ -2070,7 +2090,7 @@ fun PluviaMain(
 
                     HomeScreen(
                         onClickPlay = { appId, asContainer ->
-                            trackGameLaunched(appId)
+                            trackGameLaunched(context, appId)
                             viewModel.setLaunchedAppId(appId)
                             viewModel.setBootToContainer(asContainer)
                             viewModel.setTestGraphics(false)
@@ -2109,7 +2129,7 @@ fun PluviaMain(
                             )
                         },
                         onPlayWithDiagnostics = { appId ->
-                            trackGameLaunched(appId)
+                            trackGameLaunched(context, appId)
                             viewModel.setLaunchedAppId(appId)
                             viewModel.setBootToContainer(false)
                             viewModel.setTestGraphics(false)
@@ -2347,10 +2367,31 @@ fun preLaunchApp(
         // create container if it does not already exist
         // TODO: combine somehow with container creation in HomeLibraryAppScreen
         val containerManager = ContainerManager(context)
-        val container = if (useTemporaryOverride) {
-            ContainerUtils.getOrCreateContainerWithOverride(context, appId)
-        } else {
-            ContainerUtils.getOrCreateContainer(context, appId)
+        val container = try {
+            if (useTemporaryOverride) {
+                ContainerUtils.getOrCreateContainerWithOverride(context, appId)
+            } else {
+                ContainerUtils.getOrCreateContainer(context, appId)
+            }
+        } catch (e: Exception) {
+            // Mostly ENOSPC on small-storage phones: mkdirs() fails and the game has no prefix.
+            // Tell the user instead of letting the launch coroutine take the process down.
+            Timber.tag("preLaunchApp").e(e, "Could not create the container for $appId")
+            if (useTemporaryOverride) {
+                IntentLaunchManager.restoreOriginalConfiguration(context, appId)
+                IntentLaunchManager.clearTemporaryOverride(appId)
+            }
+            setLoadingDialogVisible(false)
+            setMessageDialogState(
+                MessageDialogState(
+                    visible = true,
+                    type = DialogType.SYNC_FAIL,
+                    title = context.getString(R.string.container_create_failed_title),
+                    message = context.getString(R.string.container_create_failed_message, e.message ?: e.toString()),
+                    dismissBtnText = context.getString(R.string.ok),
+                ),
+            )
+            return@launch
         }
 
         // Clear session metadata on every launch to ensure fresh values

@@ -116,6 +116,15 @@ object GamescopeCommandQueue {
     /** Set the frame-rate cap (0 = uncapped); re-applied with the rest of the state. */
     fun setFpsLimit(fps: Int) = update { fpsLimit = fps }
 
+    /**
+     * Ask gamescope to re-read the connector and re-select its mode.
+     *
+     * The mode is read once when the session starts, so a rate the connector advertises later (the
+     * compositor's grid for a cap, a multiplier or a new panel) only becomes the mode once the
+     * backend is dirtied. A one-shot action, not state: it carries no value to re-apply.
+     */
+    fun nudgeDisplayMode() = submitAction(GamescopeConVar.BACKEND_SET_DIRTY)
+
     /** Queue a one-shot action; sent once on the next apply (immediately when applicable). */
     fun submitAction(action: GamescopeConVar) {
         val sendNow: Boolean

@@ -1113,6 +1113,7 @@ https://gamenative.app
     <string name="performance_hud_clock_time">Время</string>
     <string name="performance_hud_cpu_temperature">Температура CPU</string>
     <string name="performance_hud_gpu_temperature">Температура GPU</string>
+    <string name="performance_hud_bottleneck">Ограничивающий фактор</string>
     <string name="quick_presets">Быстрые предустановки</string>
     <string name="range_1_to_0">1 – 0</string>
     <string name="range_a_to_z">A – Z</string>
@@ -1307,7 +1308,7 @@ https://gamenative.app
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Отчёты Pro проходят без очереди.</string>
     <string name="support_limit_title">Дневной лимит честного использования исчерпан</string>
-    <string name="support_upgrade_reason_required">Для ответов AI нужна подписка GameNative. Если вы уже оформили подписку в Discord или на Ko-fi, подключите Discord в настройках.</string>
+    <string name="support_upgrade_reason_required">Для ответов AI нужна подписка GameNative. Если вы уже оформили подписку в Discord или на Ko-fi: %1$s.</string>
     <string name="support_see_plans">Посмотреть планы</string>
     <string name="support_plan_basic_title">$5/месяц · Basic</string>
     <string name="support_plan_basic_body">Запустите свои игры или заставьте их работать лучше.</string>
@@ -1709,6 +1710,8 @@ https://gamenative.app
     <string name="download_failed_title">Ошибка загрузки</string>
     <string name="download_failed_message">Не удалось загрузить необходимый файл. Проверьте подключение к сети и попробуйте снова.</string>
     <string name="install_failed_title">Ошибка установки</string>
+    <string name="container_create_failed_title">Не удалось создать контейнер игры</string>
+    <string name="container_create_failed_message">GameNative не удалось создать папку, в которой запускается эта игра. Обычно это означает, что на устройстве закончилось свободное место.\n\n%1$s</string>
     <string name="install_failed_message">Не удалось установить системные файлы. Попробуйте снова. Если проблема сохраняется, попробуйте другую сеть или используйте VPN.</string>
     <string name="settings_interface_swap_face_buttons_title">Поменять кнопки действий</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Поменять местами значки кнопок A↔B и X↔Y</string>

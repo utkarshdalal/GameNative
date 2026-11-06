@@ -1006,6 +1006,7 @@ abstract class BaseAppScreen {
                                 val cd = ContainerUtils.toContainerData(c)
                                 val updated = ContainerUtils.applyBestConfigMapToContainerData(cd, forced)
                                 ContainerUtils.applyToContainer(context, c, updated)
+                                SessionReport.markConfigApplied(c, "known", bestConfig.toMatch())
                                 SnackbarManager.show(context.getString(R.string.best_config_applied_with_defaults))
                             } else {
                                 SnackbarManager.show(context.getString(R.string.best_config_known_config_invalid))
@@ -1024,7 +1025,7 @@ abstract class BaseAppScreen {
                     parsedConfig,
                 )
                 ContainerUtils.applyToContainer(context, container, updatedData)
-                SessionReport.markConfigApplied(container, "known")
+                SessionReport.markConfigApplied(container, "known", bestConfig.toMatch())
                 SnackbarManager.show(context.getString(R.string.best_config_applied_successfully))
             } else {
                 SnackbarManager.show(context.getString(R.string.best_config_known_config_invalid))

@@ -425,6 +425,7 @@
     <string name="performance_hud_clock_time">Ora</string>
     <string name="performance_hud_cpu_temperature">Temperatura CPU</string>
     <string name="performance_hud_gpu_temperature">Temperatura GPU</string>
+    <string name="performance_hud_bottleneck">Factor limitativ</string>
     <string name="touchpad_help">Ajutor touchpad</string>
     <string name="hide_controls_with_controller">Ascunde controalele pe ecran când există controller</string>
     <string name="hide_controls_with_controller_description">Ascunde automat controalele pe ecran când un controller fizic este conectat</string>
@@ -1129,7 +1130,7 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Rapoartele Pro sar peste coadă.</string>
     <string name="support_limit_title">Limita zilnică de utilizare corectă a fost atinsă</string>
-    <string name="support_upgrade_reason_required">Răspunsurile AI necesită un abonament GameNative. Dacă ai deja un abonament pe Discord sau Ko-fi, conectează Discord în Setări.</string>
+    <string name="support_upgrade_reason_required">Răspunsurile AI necesită un abonament GameNative. Dacă ai deja un abonament pe Discord sau Ko-fi: %1$s.</string>
     <string name="support_see_plans">Vezi planurile</string>
     <string name="support_plan_basic_title">$5/lună · Basic</string>
     <string name="support_plan_basic_body">Fă-ți jocurile să ruleze sau să ruleze mai bine.</string>
@@ -1762,6 +1763,8 @@
     <string name="download_failed_title">Descărcarea a eșuat</string>
     <string name="download_failed_message">Un fișier necesar nu a putut fi descărcat. Verifică conexiunea la rețea și încearcă din nou.</string>
     <string name="install_failed_title">Instalarea a eșuat</string>
+    <string name="container_create_failed_title">Nu s-a putut crea containerul jocului</string>
+    <string name="container_create_failed_message">GameNative nu a putut crea folderul în care rulează acest joc. De obicei, asta înseamnă că dispozitivul nu mai are spațiu de stocare.\n\n%1$s</string>
     <string name="install_failed_message">Fișierele de sistem nu au putut fi instalate. Încearcă din nou. Dacă problema persistă, încearcă o altă rețea sau folosește un VPN.</string>
     <string name="settings_interface_swap_face_buttons_title">Inversează butoanele de acțiune</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Inversează pictogramele butoanelor A↔B și X↔Y</string>

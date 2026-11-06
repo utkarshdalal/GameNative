@@ -492,6 +492,13 @@ object PrefManager {
             setPref(PERFORMANCE_HUD_SHOW_GPU_TEMPERATURE, value)
         }
 
+    private val PERFORMANCE_HUD_SHOW_BOTTLENECK = booleanPreferencesKey("performance_hud_show_bottleneck")
+    var performanceHudShowBottleneck: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_BOTTLENECK, true)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_BOTTLENECK, value)
+        }
+
     private val PERFORMANCE_HUD_SHOW_FAN = booleanPreferencesKey("performance_hud_show_fan")
     var showPerformanceHudFan: Boolean
         get() = getPref(PERFORMANCE_HUD_SHOW_FAN, true)
@@ -1200,13 +1207,6 @@ object PrefManager {
         get() = getPref(SUPPORT_LAST_SEEN, "")
         set(value) {
             setPref(SUPPORT_LAST_SEEN, value)
-        }
-
-    private val AI_HELP_PREFERRED_PATH = stringPreferencesKey("ai_help_preferred_path")
-    var aiHelpPreferredPath: String
-        get() = getPref(AI_HELP_PREFERRED_PATH, "")
-        set(value) {
-            setPref(AI_HELP_PREFERRED_PATH, value)
         }
 
     private val GAMENATIVE_ACCESS_TOKEN_ENC = byteArrayPreferencesKey("gamenative_access_token_enc")

@@ -419,6 +419,7 @@
     <string name="performance_hud_clock_time">時間</string>
     <string name="performance_hud_cpu_temperature">CPU 溫度</string>
     <string name="performance_hud_gpu_temperature">GPU 溫度</string>
+    <string name="performance_hud_bottleneck">限制因素</string>
     <string name="touchpad_help">觸摸板支援</string>
     <string name="hide_controls_with_controller">使用控制器時隱藏螢幕控制器</string>
     <string name="hide_controls_with_controller_description">當實體控制器連接時自動隱藏螢幕控制器</string>
@@ -1114,7 +1115,7 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Pro 報告不必排隊。</string>
     <string name="support_limit_title">已達到今天的合理使用額度</string>
-    <string name="support_upgrade_reason_required">AI 回覆需要 GameNative 訂閱。如果你已在 Discord 或 Ko-fi 上訂閱，請在設定中連接 Discord。</string>
+    <string name="support_upgrade_reason_required">AI 回覆需要 GameNative 訂閱。如果你已在 Discord 或 Ko-fi 上訂閱，請%1$s。</string>
     <string name="support_see_plans">查看方案</string>
     <string name="support_plan_basic_title">$5/月 · Basic</string>
     <string name="support_plan_basic_body">讓你的遊戲執行起來，或執行得更好。</string>
@@ -1762,6 +1763,8 @@
     <string name="download_failed_title">下載失敗</string>
     <string name="download_failed_message">無法下載必要的檔案。請檢查您的網路連線後重試。</string>
     <string name="install_failed_title">安裝失敗</string>
+    <string name="container_create_failed_title">無法建立遊戲容器</string>
+    <string name="container_create_failed_message">GameNative 無法建立執行此遊戲的資料夾。這通常表示裝置的儲存空間已滿。\n\n%1$s</string>
     <string name="install_failed_message">無法安裝系統檔案。請重試。如果問題持續存在，請嘗試使用其他網路或使用 VPN。</string>
     <string name="settings_interface_swap_face_buttons_title">交換面鍵</string>
     <string name="settings_interface_swap_face_buttons_subtitle">交換 A↔B 和 X↔Y 按鍵圖示</string>

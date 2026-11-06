@@ -74,6 +74,8 @@ public class WinHandler {
     private Thread initTimeoutThread;
     private InetAddress localhost;
     private OnGetProcessInfoListener onGetProcessInfoListener;
+    // Extra receivers of GET_PROCESS replies, alongside the UI's listener.
+    private final CopyOnWriteArrayList<OnGetProcessInfoListener> processInfoObservers = new CopyOnWriteArrayList<>();
     private PreferredInputApi preferredInputApi;
     private final ByteBuffer receiveData;
     private final DatagramPacket receivePacket;
@@ -628,6 +630,18 @@ public class WinHandler {
         }
     }
 
+    /**
+     * Receives every GET_PROCESS reply in addition to the listener above, which the UI swaps in
+     * and out around its own requests.
+     */
+    public void addProcessInfoObserver(OnGetProcessInfoListener observer) {
+        processInfoObservers.addIfAbsent(observer);
+    }
+
+    public void removeProcessInfoObserver(OnGetProcessInfoListener observer) {
+        processInfoObservers.remove(observer);
+    }
+
     private void startSendThread() {
         initTimeoutThread = new Thread(() -> {
             try {
@@ -737,7 +751,8 @@ public class WinHandler {
                 }
                 return;
             case RequestCodes.GET_PROCESS:
-                if (this.onGetProcessInfoListener == null) {
+                OnGetProcessInfoListener processInfoListener = this.onGetProcessInfoListener;
+                if (processInfoListener == null && processInfoObservers.isEmpty()) {
                     return;
                 }
                 ByteBuffer byteBuffer = this.receiveData;
@@ -751,7 +766,9 @@ public class WinHandler {
                 byte[] bytes = new byte[32];
                 this.receiveData.get(bytes);
                 String name = StringUtils.fromANSIString(bytes);
-                this.onGetProcessInfoListener.onGetProcessInfo(index, numProcesses, new ProcessInfo(pid, name, memoryUsage, affinityMask, wow64Process));
+                ProcessInfo processInfo = new ProcessInfo(pid, name, memoryUsage, affinityMask, wow64Process);
+                if (processInfoListener != null) processInfoListener.onGetProcessInfo(index, numProcesses, processInfo);
+                for (OnGetProcessInfoListener observer : processInfoObservers) observer.onGetProcessInfo(index, numProcesses, processInfo);
                 return;
             case RequestCodes.GET_GAMEPAD:
                 forgetLastSentGamepadState(port);

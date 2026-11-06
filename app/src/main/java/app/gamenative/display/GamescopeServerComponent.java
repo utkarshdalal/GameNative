@@ -1,5 +1,6 @@
 package app.gamenative.display;
 
+import app.gamenative.powercontrol.PowerManager;
 import com.winlator.container.Container;
 import com.winlator.xenvironment.EnvironmentComponent;
 import com.winlator.xenvironment.ImageFs;
@@ -52,6 +53,7 @@ public class GamescopeServerComponent extends EnvironmentComponent {
         for (int i = 0; i < START_POLL_TRIES && !stopped; i++) {
             if (gamescopeAnswered()) {
                 GamescopeCommandQueue.setApplicable(sessionId, true);
+                PowerManager.applyCompositorAffinity("gamescope session start");
                 return;
             }
             try {
@@ -83,6 +85,7 @@ public class GamescopeServerComponent extends EnvironmentComponent {
         stopped = true;
         GamescopeCommandQueue.reset();
         GameNativeDrm.nativeInjectorStop();
+        PowerManager.releaseCompositorAffinity("gamescope session end");
     }
 
     public void pause() {

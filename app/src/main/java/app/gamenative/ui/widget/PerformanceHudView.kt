@@ -23,9 +23,15 @@ import android.widget.TextView
 import app.gamenative.PrefManager
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.powercontrol.fan.FanController
+import app.gamenative.powercontrol.metrics.BottleneckClassifier
+import app.gamenative.powercontrol.metrics.BottleneckInput
+import app.gamenative.powercontrol.metrics.CoreLoadSampler
 import app.gamenative.powercontrol.metrics.CpuUsageSampler
-import app.gamenative.powercontrol.metrics.GpuUsageSampler
+import app.gamenative.powercontrol.metrics.GpuFrameTime
+import app.gamenative.powercontrol.metrics.PerformanceMetricsCollector
+import app.gamenative.powercontrol.metrics.SharedGpuUsage
 import app.gamenative.powercontrol.metrics.SystemMetricsSources
+import app.gamenative.powercontrol.metrics.ThermalHeadroom
 import app.gamenative.ui.data.PerformanceHudConfig
 import app.gamenative.ui.data.PerformanceHudSize
 import app.gamenative.utils.DateTimeUtils.formatRuntimeHours
@@ -111,6 +117,7 @@ class PerformanceHudView(
     private val cpuTempMetric = createMetricViews(MetricId.CPU_TEMP, 0xFFBDBDBD.toInt())
     private val gpuTempMetric = createMetricViews(MetricId.GPU_TEMP, 0xFFBDBDBD.toInt())
     private val batteryTempMetric = createMetricViews(MetricId.BATTERY_TEMP, 0xFFBDBDBD.toInt())
+    private val bottleneckMetric = createMetricViews(MetricId.BOTTLENECK, 0xFFFFAB40.toInt())
     private val fanMetric = createMetricViews(MetricId.FAN, 0xFF80DEEA.toInt())
     private val tuneMetric = createMetricViews(MetricId.TUNE, 0xFFCE93D8.toInt())
 
@@ -126,6 +133,7 @@ class PerformanceHudView(
         cpuTempMetric,
         gpuTempMetric,
         batteryTempMetric,
+        bottleneckMetric,
         fanMetric,
         tuneMetric,
     )
@@ -134,7 +142,8 @@ class PerformanceHudView(
     private val allGraphs = allMetrics.flatMap { listOfNotNull(it.stackedGraph, it.compactGraph) }
 
     private val cpuSampler = CpuUsageSampler()
-    private val gpuSampler = GpuUsageSampler()
+    private val coreSampler = CoreLoadSampler()
+    private val gpuUsage = SharedGpuUsage()
 
     init {
         background = backgroundDrawable
@@ -210,8 +219,13 @@ class PerformanceHudView(
             while (isActive) {
                 val rawFps = fpsProvider()
                 val currentFps = if (rawFps.isFinite()) rawFps.coerceAtLeast(0f) else 0f
+                val refreshHz = if (PerformanceMetricsCollector.isRunning) {
+                    PerformanceMetricsCollector.refreshRateHz
+                } else {
+                    display?.refreshRate ?: 0f
+                }
                 val snapshot = withContext(Dispatchers.IO) {
-                    collectSnapshot(currentFps)
+                    collectSnapshot(currentFps, refreshHz)
                 }
                 renderSnapshot(snapshot)
                 delay(UPDATE_INTERVAL_MS)
@@ -306,9 +320,28 @@ class PerformanceHudView(
         }
     }
 
-    private fun collectSnapshot(currentFps: Float): HudSnapshot {
+    private fun collectSnapshot(currentFps: Float, refreshHz: Float): HudSnapshot {
         val cpuPercent = cpuSampler.sample()?.percent
-        val gpuPercent = gpuSampler.sample()?.percent
+        val coreMax = coreSampler.sample()
+        val gpuPercent = gpuUsage.read()?.percent
+        val gpuFrameMs = GpuFrameTime.current()
+        val headroom = PowerManager.latestMetrics?.thermalHeadroom?.takeIf { it.isFinite() }
+        val thermalStatus = ThermalHeadroom.latestStatus.takeIf { PowerManager.latestMetrics != null }
+        val bottleneck = BottleneckClassifier.classify(
+            BottleneckInput(
+                fps = currentFps,
+                frameMs = if (currentFps > 0f) 1000f / currentFps else 0f,
+                fpsCap = PowerManager.targetFps,
+                vsyncHz = refreshHz,
+                cpuTotalPct = cpuPercent?.toFloat(),
+                coreMaxPct = coreMax?.toFloat(),
+                gpuPct = gpuPercent?.toFloat(),
+                gpuFrameMs = gpuFrameMs,
+                headroom = headroom,
+                thermalStatus = thermalStatus,
+            ),
+        )
+        val cpuTempC = SystemMetricsSources.readTemperatureC(SystemMetricsSources.cpuTempPaths())
         val batterySnapshot = collectBatterySnapshot()
         return HudSnapshot(
             fpsValue = currentFps,
@@ -316,7 +349,8 @@ class PerformanceHudView(
             gpuValue = gpuPercent?.toFloat(),
             fps = String.format(Locale.US, "FPS %.1f", currentFps),
             cpu = cpuPercent?.let { "CPU $it%" },
-            gpu = gpuPercent?.let { "GPU $it%" },
+            gpu = PerformanceHudText.gpu(gpuPercent, gpuFrameMs),
+            gpuCompact = PerformanceHudText.gpu(gpuPercent, gpuFrameMs, compact = true),
             ram = "RAM ${readUsedRamText()}",
             battery = batterySnapshot.percent?.let { "BAT $it%" },
             power = batterySnapshot.powerWatts?.let { watts ->
@@ -325,10 +359,17 @@ class PerformanceHudView(
             runtime = batterySnapshot.runtimeText,
             batteryTemp = batterySnapshot.temperatureC?.let { "BAT TEMP ${it}°C" },
             clock = readClockText(),
-            cpuTemp = SystemMetricsSources.readTemperatureC(SystemMetricsSources.cpuTempPaths())
-                ?.let { "CPU TEMP ${it}°C" },
+            // No readable zone: fall back to the collector's thermal headroom when it has one.
+            cpuTemp = cpuTempC?.let { "CPU TEMP ${it}°C" }
+                ?: PerformanceHudText.heat(headroom, thermalStatus, compact = false)
+                ?: "CPU TEMP $MISSING_VALUE",
+            cpuTempCompact = cpuTempC?.let { "CPU TEMP ${it}°C" }
+                ?: PerformanceHudText.heat(headroom, thermalStatus, compact = true)
+                ?: "CPU TEMP $MISSING_VALUE",
             gpuTemp = SystemMetricsSources.readTemperatureC(SystemMetricsSources.gpuTempPaths())
-                ?.let { "GPU TEMP ${it}°C" },
+                ?.let { "GPU TEMP ${it}°C" } ?: "GPU TEMP $MISSING_VALUE",
+            bottleneck = PerformanceHudText.bottleneck(bottleneck, compact = false),
+            bottleneckCompact = PerformanceHudText.bottleneck(bottleneck, compact = true),
             fan = readFanText(),
             tune = readTuneText(),
         )
@@ -427,23 +468,23 @@ class PerformanceHudView(
     private fun applySnapshotText(snapshot: HudSnapshot) {
         updateMetricText(fpsMetric, snapshot.fps)
         updateMetricText(cpuMetric, snapshot.cpu)
-        updateMetricText(gpuMetric, snapshot.gpu)
+        updateMetricText(gpuMetric, snapshot.gpu, snapshot.gpuCompact)
         updateMetricText(ramMetric, snapshot.ram)
         updateMetricText(batteryMetric, snapshot.battery)
         updateMetricText(powerMetric, snapshot.power)
         updateMetricText(runtimeMetric, snapshot.runtime)
         updateMetricText(batteryTempMetric, snapshot.batteryTemp)
         updateMetricText(clockMetric, snapshot.clock)
-        updateMetricText(cpuTempMetric, snapshot.cpuTemp)
+        updateMetricText(cpuTempMetric, snapshot.cpuTemp, snapshot.cpuTempCompact)
         updateMetricText(gpuTempMetric, snapshot.gpuTemp)
+        updateMetricText(bottleneckMetric, snapshot.bottleneck, snapshot.bottleneckCompact)
         updateMetricText(fanMetric, snapshot.fan)
         updateMetricText(tuneMetric, snapshot.tune)
     }
 
-    private fun updateMetricText(metric: MetricViews, text: String?) {
-        val safeText = text.orEmpty()
-        metric.stackedText.text = safeText
-        metric.compactText.text = safeText
+    private fun updateMetricText(metric: MetricViews, text: String?, compactText: String? = text) {
+        metric.stackedText.text = text.orEmpty()
+        metric.compactText.text = compactText.orEmpty()
     }
 
     private fun refreshVisibleMetrics() {
@@ -459,6 +500,7 @@ class PerformanceHudView(
             addMetricIfVisible(cpuTempMetric, config.showCpuTemperature)
             addMetricIfVisible(gpuTempMetric, config.showGpuTemperature)
             addMetricIfVisible(batteryTempMetric, config.showBatteryTemperature)
+            addMetricIfVisible(bottleneckMetric, config.showBottleneck)
             addMetricIfVisible(fanMetric, true)
             addMetricIfVisible(tuneMetric, true)
         }
@@ -907,6 +949,7 @@ class PerformanceHudView(
 
     private companion object {
         const val UPDATE_INTERVAL_MS = 1_000L
+        const val MISSING_VALUE = "--"
         const val MIN_BACKGROUND_OPACITY = 0.0f
         const val MAX_BACKGROUND_OPACITY = 1.0f
         const val MAX_RUNTIME_HOURS = 72.0

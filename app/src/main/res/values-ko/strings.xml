@@ -433,6 +433,7 @@
     <string name="performance_hud_clock_time">시계</string>
     <string name="performance_hud_cpu_temperature">CPU 온도</string>
     <string name="performance_hud_gpu_temperature">GPU 온도</string>
+    <string name="performance_hud_bottleneck">제한 요인</string>
     <string name="touchpad_help">터치패드 도움말</string>
     <string name="hide_controls_with_controller">컨트롤러 연결 시 화면 컨트롤 숨기기</string>
     <string name="hide_controls_with_controller_description">물리 컨트롤러가 연결되면 화면 컨트롤을 자동으로 숨깁니다</string>
@@ -1127,7 +1128,7 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Pro 보고서는 대기열을 건너뜁니다.</string>
     <string name="support_limit_title">오늘의 공정 사용 한도 도달</string>
-    <string name="support_upgrade_reason_required">AI 답변에는 GameNative 구독이 필요합니다. 이미 Discord 또는 Ko-fi에서 구독 중이라면 설정에서 Discord를 연결하세요.</string>
+    <string name="support_upgrade_reason_required">AI 답변에는 GameNative 구독이 필요합니다. 이미 Discord 또는 Ko-fi에서 구독 중이라면: %1$s.</string>
     <string name="support_see_plans">플랜 보기</string>
     <string name="support_plan_basic_title">$5/월 · Basic</string>
     <string name="support_plan_basic_body">게임을 실행되게, 또는 더 잘 실행되게.</string>
@@ -1766,6 +1767,8 @@
     <string name="download_failed_title">다운로드 실패</string>
     <string name="download_failed_message">필수 파일을 다운로드할 수 없습니다. 네트워크 연결을 확인하고 다시 시도해 주세요.</string>
     <string name="install_failed_title">설치 실패</string>
+    <string name="container_create_failed_title">게임 컨테이너를 만들 수 없습니다</string>
+    <string name="container_create_failed_message">GameNative가 이 게임을 실행할 폴더를 만들지 못했습니다. 보통 기기의 저장 공간이 부족할 때 발생합니다.\n\n%1$s</string>
     <string name="install_failed_message">시스템 파일을 설치할 수 없습니다. 다시 시도해 주세요. 문제가 지속되면 다른 네트워크를 사용하거나 VPN을 사용해 보세요.</string>
     <string name="settings_interface_swap_face_buttons_title">페이스 버튼 바꾸기</string>
     <string name="settings_interface_swap_face_buttons_subtitle">A↔B 및 X↔Y 버튼 아이콘 바꾸기</string>

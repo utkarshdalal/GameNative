@@ -113,6 +113,7 @@ import java.util.EnumSet
 import app.gamenative.externaldisplay.ExternalDisplayInputController
 import app.gamenative.externaldisplay.ExternalDisplaySwapController
 import app.gamenative.externaldisplay.SwapInputOverlayView
+import app.gamenative.powercontrol.ContainerAffinity
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.service.AchievementWatcher
 import app.gamenative.service.SteamHostAchievementPoller
@@ -140,10 +141,12 @@ import app.gamenative.ui.data.PerformanceHudConfig
 import app.gamenative.ui.data.XServerState
 import app.gamenative.ui.widget.PerformanceHudView
 import app.gamenative.utils.AssetUtils
+import app.gamenative.utils.AppExitRecorder
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.downloader.CoreDriverDownloader
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.DebugReportUtils
+import app.gamenative.utils.GameSessionId
 import app.gamenative.utils.DebugRunParams
 import app.gamenative.utils.DebugRunParamsHolder
 import app.gamenative.utils.ExecutableSelectionUtils
@@ -215,6 +218,7 @@ import com.winlator.widget.FrameRating
 import com.winlator.widget.InputControlsView
 import com.winlator.widget.TouchpadView
 import com.winlator.renderer.ASurfaceRenderer
+import com.winlator.renderer.AHBImage
 import com.winlator.renderer.GLRenderer
 import com.winlator.renderer.VulkanRenderer
 import com.winlator.widget.XServerRendererView
@@ -226,6 +230,7 @@ import com.winlator.winhandler.OnGetProcessInfoListener
 import com.winlator.winhandler.ProcessInfo
 import com.winlator.xconnector.UnixSocketConfig
 import com.winlator.xenvironment.ImageFs
+import com.winlator.xenvironment.ImageFsInstaller
 import com.winlator.xenvironment.XEnvironment
 import com.winlator.xenvironment.components.ALSAServerComponent
 import com.winlator.xenvironment.components.BionicProgramLauncherComponent
@@ -259,6 +264,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONException
 import org.json.JSONObject
 import timber.log.Timber
+import android.system.Os
+import android.system.ErrnoException
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
@@ -543,6 +550,9 @@ fun XServerScreen(
     LaunchedEffect(appId) {
         isExiting.set(false)
         runCatching { windowActivity.start(context) }
+        withContext(Dispatchers.IO) {
+            runCatching { AppExitRecorder.markSessionStart(context, ContainerUtils.resolveGameName(appId)) }
+        }
     }
 
     val container = remember(appId) {
@@ -550,6 +560,7 @@ fun XServerScreen(
     }
     val ui = remember { XServerScreenState(container, context) }
     val activity = remember(context) { BrightnessManager.findActivity(context) }
+    LaunchedEffect(appId) { GameSessionId.bind() }
 
     DisposableEffect(activity) {
         if (activity == null) return@DisposableEffect onDispose { }
@@ -674,6 +685,8 @@ fun XServerScreen(
     var lsfgMultiplier by rememberSaveable(container.id) { mutableIntStateOf(initialLsfgSettings.multiplier) }
     var lsfgFlowScale by rememberSaveable(container.id) { mutableStateOf(initialLsfgSettings.flowScale) }
     var lsfgPerformanceMode by rememberSaveable(container.id) { mutableStateOf(initialLsfgSettings.performanceMode) }
+    /** The rate last reported to the daemon, so a mode nudge is only asked for when it changes. */
+    var advertisedPanelHz by remember(container.id) { mutableIntStateOf(0) }
 
     fun persistFpsLimiterState() {
         container.putExtra(FPS_LIMITER_ENABLED_EXTRA, fpsLimiterEnabled)
@@ -729,6 +742,29 @@ fun XServerScreen(
         }
     }
 
+    /**
+     * Report the rate the session's emulated display advertises: the display's own, and nothing else.
+     *
+     * Neither the cap nor the frame-generation multiplier enters it. The mode is the rate the
+     * compositor runs at, so it belongs to the display and changes only when the display does; the
+     * cap lives at acquire, before a frame is drawn, and generation inserts `multiplier - 1` frames
+     * per source frame whatever the mode — a 40 cap at x4 produces and counts 160 on a 120 Hz mode.
+     * Advertising the produced rate instead would make the compositor's grid follow the QuickMenu.
+     */
+    fun applyPanelRefresh(panelHz: Int = detectRefreshRateHz(context, ui.xServerView as? View)) {
+        if (isX11Display || panelHz <= 0) return
+        GameNativeDrm.nativeSetPanelRefreshHz(panelHz)
+        PowerManager.panelRefreshHz = panelHz
+        // The daemon's connector advertises the new rate from here on, but gamescope reads the mode
+        // once, when the session starts: dirty its backend so a display change becomes the mode now
+        // rather than on the next launch. Only on a change — a nudge forces a modeset — and not on
+        // the first report, which is the rate the session starts on anyway.
+        if (advertisedPanelHz != 0 && advertisedPanelHz != panelHz) {
+            GamescopeCommandQueue.nudgeDisplayMode()
+        }
+        advertisedPanelHz = panelHz
+    }
+
     fun applyFpsLimiterToEngines(limit: Int) {
         if (isX11Display) {
             // With LSFG active the layer owns ALL pacing (vsync-locked via vsync.txt) and presents at limit *
@@ -745,6 +781,8 @@ fun XServerScreen(
             // With frame generation active the presenter owns pacing, exactly as the layer does on X11:
             // the cap is disarmed and the output rate becomes limit x multiplier.
             GamescopeCommandQueue.setFpsLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
+            // The mode is the display's rate: the cap and the multiplier never move it.
+            applyPanelRefresh()
         }
 
         PowerManager.targetFps = limit
@@ -755,6 +793,7 @@ fun XServerScreen(
 
     fun effectiveFpsLimit(): Int =
         if (fpsLimiterEnabled) fpsLimiterTarget else 0
+
 
     fun applyLsfgSettings() {
         LsfgQuickMenuHelper.applySettings(
@@ -788,8 +827,10 @@ fun XServerScreen(
 
     fun applyLsfgMultiplier(mult: Int) {
         lsfgMultiplier = LsfgQuickMenuHelper.sanitizeMultiplier(mult)
-        applyLsfgSettings()
+        // The rate first, then the settings: the session's config carries the rate, and the shim
+        // opens the generator from what the daemon holds when it is created.
         applyFpsLimiterToEngines(effectiveFpsLimit())
+        applyLsfgSettings()
     }
 
     fun applyLsfgFlowScale(scale: Float) {
@@ -807,7 +848,7 @@ fun XServerScreen(
         ui.detectedMaxRefreshRateHz = refreshHz * FPS_LIMITER_MAX_MULTIPLIER
 
         if (!isX11Display)
-            GameNativeDrm.nativeSetPanelRefreshHz(refreshHz)
+            applyPanelRefresh(refreshHz)
     }
 
     /**
@@ -2091,6 +2132,9 @@ fun XServerScreen(
             // other containers as well. Uncheck the per-container useLegacyRenderer
             // setting to switch to the Vulkan renderer.
             val useGLRenderer = isX11Display && (container.graphicsDriver == "virgl" || container.displayRenderer.equals("gl", true))
+            // Before the first drawable: the SurfaceFlinger display renderer hands its window buffers to
+            // surfaceflinger, so they follow the same scan-out layout rule as the gamescope daemon's pool.
+            if (isX11Display) AHBImage.setCpuScanoutRgba(resolveScanoutLayout(container) == "rgba")
             val xServerViewInstance: XServerRendererView = if (useGLRenderer) {
                 XServerViewGL(context, xServerToUse)
             } else {
@@ -2520,8 +2564,19 @@ fun XServerScreen(
                                 immersiveHooks,
                             )
 
+                            // The game core set and the tuner's repeated-frame input differ by session type.
+                            PowerManager.gamescopeSession = sessionDisplay == SessionDisplay.GAMESCOPE
                             // Autostart performance driver after environment is set up
                             PowerManager.autoStart(container.rootDir)
+
+                            // Without the in-app X server no window maps here, so the container
+                            // CPU list goes out over the winhandler on the first game content.
+                            if (sessionDisplay == SessionDisplay.GAMESCOPE) {
+                                val handler = getxServer().winHandler
+                                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                    ContainerAffinity.arm(handler, taskAffinityMask, taskAffinityMaskWoW64)
+                                }
+                            }
 
                             if (debugRun) {
                                 PerfSampler.start(
@@ -2982,6 +3037,14 @@ fun XServerScreen(
                 // upcall ticks this widget instead — register it with the integration object that owns that
                 // upcall.
                 GameNativeDrm.setFrameRating(ui.frameRating)
+                // The game's window maps on gamescope's Xwayland, never on this X server, so the
+                // daemon's published frames are what says the game is showing content (see
+                // GameNativeDrm.GAME_CONTENT_FRAMES); record it as the game's window for game_exited.
+                val exeName = runCatching { Paths.get(container.executablePath).fileName?.toString() }.getOrNull().orEmpty()
+                GameNativeDrm.gameContentListener = {
+                    val rating = ui.frameRating
+                    runCatching { windowActivity.onGamescopeContent(exeName, rating?.totalFrames ?: 0L, rating?.activeMs ?: 0L) }
+                }
             }
 
             if (ui.isPerformanceHudEnabled) {
@@ -3026,7 +3089,9 @@ fun XServerScreen(
 
             // FrameRating teardown (gamescope)
             if (!isX11Display) {
+                GameNativeDrm.gameContentListener = null
                 GameNativeDrm.setFrameRating(null)
+                ContainerAffinity.disarm()
             }
 
             // A view released without exit() (the activity-destroyed fallback, a restart) still ends
@@ -5378,6 +5443,12 @@ private fun exit(
         return
     }
 
+    // Before container_config is read so the id rides into game_sessions and the rating payload.
+    GameSessionId.active()?.let { uuid ->
+        container.putSessionMetadata("session_uuid", uuid)
+        container.saveData()
+    }
+
     PerfSampler.halt()
 
     val exitProperties = mapOf(
@@ -5387,6 +5458,9 @@ private fun exit(
         "avg_fps" to (frameRating?.avgFPS ?: 0.0),
         "container_config" to container.containerJson,
     ) + runCatching {
+        PluviaApp.xServerView?.getxServer()?.effectiveScreenInfo
+            ?.let { mapOf("render_w" to it.width.toInt(), "render_h" to it.height.toInt()) }
+    }.getOrNull().orEmpty() + runCatching {
         SessionReport.exitProperties(frameRating?.context ?: PluviaApp.xServerView?.context, frameRating, windowActivity, container, reason)
     }.getOrElse { emptyMap() } + runCatching {
         GameCompatibilityService.badgeProperties(ContainerUtils.resolveGameName(appId))
@@ -5396,6 +5470,7 @@ private fun exit(
         properties = exitProperties,
     )
     CoroutineScope(Dispatchers.IO).launch { SessionReport.recordRun(container, exitProperties) }
+    (frameRating?.context ?: PluviaApp.xServerView?.context)?.let { ctx -> runCatching { AppExitRecorder.markSessionEnd(ctx) } }
     runCatching { windowActivity.stop() }
 
     // Store session data in container metadata
@@ -5405,8 +5480,10 @@ private fun exit(
         container.putSessionMetadata("total_frames", rating.totalFrames)
         container.saveData()
     }
+    GameSessionId.end()
 
     // only needed in exit() — OS reclaims on process death, so onDestroy fallback skips this
+    ContainerAffinity.disarm()
     try {
         winHandler?.stop()
     } catch (e: Exception) {
@@ -6027,6 +6104,29 @@ internal fun resolveDisplayX11(container: Container?): Boolean {
     return container == null || Container.isX11Display(container.containerVariant, container.displayServer)
 }
 
+/**
+ * The scan-out layout for buffers this process hands to SurfaceFlinger, "bgra" or "rgba": the container's
+ * GNDRM_SCANOUT_LAYOUT override, else the gndrm daemon's device rule (RGBA on Android 16 with a GLES render
+ * engine, which aborts surfaceflinger on a BGRA_8888 layer). The override is put in this process's
+ * environment first, the way the daemon reads it, and cleared otherwise so an earlier session's does not linger.
+ */
+internal fun resolveScanoutLayout(container: Container): String {
+    val override = EnvVars(container.envVars).get("GNDRM_SCANOUT_LAYOUT")
+    try {
+        if (override.isNotEmpty()) Os.setenv("GNDRM_SCANOUT_LAYOUT", override, true) else Os.unsetenv("GNDRM_SCANOUT_LAYOUT")
+    } catch (e: ErrnoException) {
+        Timber.w(e, "Could not set GNDRM_SCANOUT_LAYOUT")
+    }
+    val layout = try {
+        GameNativeDrm.nativeScanoutLayout() ?: "bgra"
+    } catch (e: LinkageError) {
+        Timber.w(e, "Scan-out layout rule unavailable, assuming bgra")
+        "bgra"
+    }
+    Timber.i("X11 scan-out layout %s (%s)", layout, if (override.isNotEmpty()) "container override" else "device rule")
+    return layout
+}
+
 private fun refreshComponentsFiles(context: Context) {
     val extractionPairs = listOf(
         "pulseaudio-gamenative-20260919.tzst" to File(context.filesDir, "pulseaudio"),
@@ -6037,6 +6137,10 @@ private fun refreshComponentsFiles(context: Context) {
         context.assets,
         TarCompressorUtils.Type.ZSTD
     )
+
+    // Always refresh redirect
+    val imageFs = ImageFs.find(context)
+    ImageFsInstaller.installRedirectLibs(context, imageFs.rootDir)
 }
 
 /**

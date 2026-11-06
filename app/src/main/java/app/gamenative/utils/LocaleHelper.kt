@@ -28,6 +28,7 @@ object LocaleHelper {
         "pt-BR" to "Português Brasileiro (Brazilian Portuguese)",
         "ro" to "Română (Romanian)",
         "ru" to "Русский",
+        "tr" to "Türkçe",
         "uk" to "Українська",
         "zh-CN" to "简体中文",
         "zh-TW" to "正體中文"

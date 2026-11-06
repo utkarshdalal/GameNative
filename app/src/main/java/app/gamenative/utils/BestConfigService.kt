@@ -45,10 +45,29 @@ object BestConfigService {
     data class BestConfigResponse(
         val bestConfig: JsonObject,
         val matchType: String, // "exact_gpu_match" | "gpu_family_match" | "fallback_match" | "no_match"
-        val matchedGpu: String,
-        val matchedDeviceId: Int,
+        val matchedGpu: String, // empty when the server sends null (overlay-only answer)
+        val matchedDeviceId: Int?,
         val matchedStore: String,
-    )
+    ) {
+        fun toMatch() = BestConfigMatch(matchType, matchedDeviceId?.takeIf { it > 0 }, matchedGpu.takeIf { it.isNotBlank() && it != "null" })
+    }
+
+    /** Which server row a known config came from; persisted per container for game_exited. */
+    data class BestConfigMatch(val matchType: String, val deviceId: Int? = null, val gpu: String? = null) {
+        fun toJson(): String = JSONObject().put("matchType", matchType).put("deviceId", deviceId).put("gpu", gpu).toString()
+
+        companion object {
+            /** Reads [toJson] output, or the older plain match-type string. */
+            fun parse(text: String): BestConfigMatch? {
+                val t = text.trim()
+                if (t.isEmpty()) return null
+                if (!t.startsWith("{")) return BestConfigMatch(t)
+                val o = JSONObject(t)
+                val type = o.optString("matchType").ifEmpty { return null }
+                return BestConfigMatch(type, o.optInt("deviceId").takeIf { it > 0 }, o.optString("gpu").ifEmpty { null })
+            }
+        }
+    }
 
     /**
      * Compatibility message with text and color.
@@ -103,6 +122,7 @@ object BestConfigService {
                 // doesn't require glibc when this is true.
                 put("modernBuild", BuildConfig.MODERN_ANDROID)
                 HardwareUtils.getSOCName()?.let { put("socModel", it) }
+                put("manufacturer", Build.MANUFACTURER)
                 put("model", Build.MODEL)
                 put("androidSdk", Build.VERSION.SDK_INT)
                 put("androidVersion", Build.VERSION.RELEASE)
@@ -146,16 +166,7 @@ object BestConfigService {
                 val responseBody = response.body?.string() ?: return@withContext null
                 val jsonResponse = JSONObject(responseBody)
 
-                val bestConfigJson = jsonResponse.getJSONObject("bestConfig")
-                val bestConfig = Json.parseToJsonElement(bestConfigJson.toString()).jsonObject
-
-                val bestConfigResponse = BestConfigResponse(
-                    bestConfig = bestConfig,
-                    matchType = jsonResponse.getString("matchType"),
-                    matchedGpu = jsonResponse.getString("matchedGpu"),
-                    matchedDeviceId = jsonResponse.getInt("matchedDeviceId"),
-                    matchedStore = jsonResponse.optString("matchedStore", gameStore),
-                )
+                val bestConfigResponse = parseBestConfigResponse(jsonResponse, gameStore)
 
                 cache[cacheKey] = bestConfigResponse
 
@@ -174,6 +185,22 @@ object BestConfigService {
     /**
      * Gets user-friendly compatibility message based on match type.
      */
+    /**
+     * Parses the best-config API body. matchedGpu and matchedDeviceId are JSON null when the
+     * answer comes from a config overlay alone (no learned row behind it); getString/getInt
+     * would throw on null and the whole config would be dropped.
+     */
+    internal fun parseBestConfigResponse(jsonResponse: JSONObject, gameStore: String): BestConfigResponse {
+        val bestConfigJson = jsonResponse.getJSONObject("bestConfig")
+        return BestConfigResponse(
+            bestConfig = Json.parseToJsonElement(bestConfigJson.toString()).jsonObject,
+            matchType = jsonResponse.getString("matchType"),
+            matchedGpu = jsonResponse.optString("matchedGpu").takeIf { it != "null" }.orEmpty(),
+            matchedDeviceId = jsonResponse.optInt("matchedDeviceId", -1).takeIf { it > 0 },
+            matchedStore = jsonResponse.optString("matchedStore").takeIf { it.isNotEmpty() && it != "null" } ?: gameStore,
+        )
+    }
+
     fun getCompatibilityMessage(context: Context, matchType: String?): CompatibilityMessage {
         return when (matchType) {
             "exact_gpu_match" -> CompatibilityMessage(
@@ -802,6 +829,8 @@ object BestConfigService {
      * Returns map with only fields present in config (no defaults), or empty map if validation fails.
      * When forceApply is true, missing components are replaced with defaults instead of rejecting.
      * When preserveConfigValues is true, match filtering and device-specific substitutions are skipped.
+     * Unless keepRedistOff is true (the user's own exported config), wincomponents drop the redist
+     * components the config turns off so launch-time detection decides them.
      */
     suspend fun parseConfigToContainerData(
         context: Context,
@@ -812,6 +841,7 @@ object BestConfigService {
         forceApply: Boolean = false,
         matchedGpu: String = "",
         preserveConfigValues: Boolean = false,
+        keepRedistOff: Boolean = false,
     ): Map<String, Any?>? = parseConfigResult(
         context = context,
         configJson = configJson,
@@ -821,6 +851,7 @@ object BestConfigService {
         forceApply = forceApply,
         matchedGpu = matchedGpu,
         preserveConfigValues = preserveConfigValues,
+        keepRedistOff = keepRedistOff,
     ).config
 
     suspend fun parseConfigResult(
@@ -832,6 +863,7 @@ object BestConfigService {
         forceApply: Boolean = false,
         matchedGpu: String = "",
         preserveConfigValues: Boolean = false,
+        keepRedistOff: Boolean = false,
     ): ParsedConfigResult {
         try {
             val originalJson = JSONObject(configJson.toString())
@@ -1029,7 +1061,10 @@ object BestConfigService {
                     resultMap["inputType"] = filteredJson.optInt("inputType", WinHandler.PreferredInputApi.BOTH.ordinal)
                 }
                 if (filteredJson.has("wincomponents") && !filteredJson.isNull("wincomponents")) {
-                    resultMap["wincomponents"] = filteredJson.optString("wincomponents", PrefManager.winComponents)
+                    val wincomponents = filteredJson.optString("wincomponents", PrefManager.winComponents)
+                        .let { if (keepRedistOff) it else RedistComponents.withoutExternalRedistOff(it) }
+                    // Only redist "=0" entries: nothing left to apply, the container keeps its own value
+                    if (wincomponents.isNotBlank()) resultMap["wincomponents"] = wincomponents
                 }
                 if (filteredJson.has("videoMemorySize") && !filteredJson.isNull("videoMemorySize")) {
                     resultMap["videoMemorySize"] = filteredJson.optString("videoMemorySize", PrefManager.videoMemorySize)

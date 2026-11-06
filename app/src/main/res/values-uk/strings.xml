@@ -422,6 +422,7 @@
     <string name="performance_hud_clock_time">Час</string>
     <string name="performance_hud_cpu_temperature">Температура CPU</string>
     <string name="performance_hud_gpu_temperature">Температура GPU</string>
+    <string name="performance_hud_bottleneck">Обмежувальний фактор</string>
     <string name="touchpad_help">Довідка сенсорної панелі</string>
     <string name="hide_controls_with_controller">Приховувати екранні елементи з контролером</string>
     <string name="hide_controls_with_controller_description">Автоматично приховувати екранні елементи керування, коли під\'єднано фізичний контролер</string>
@@ -1124,7 +1125,7 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Звіти Pro проходять без черги.</string>
     <string name="support_limit_title">Денний ліміт чесного використання вичерпано</string>
-    <string name="support_upgrade_reason_required">Для відповідей AI потрібна підписка GameNative. Якщо ви вже маєте підписку в Discord або на Ko-fi, підключіть Discord у налаштуваннях.</string>
+    <string name="support_upgrade_reason_required">Для відповідей AI потрібна підписка GameNative. Якщо ви вже маєте підписку в Discord або на Ko-fi: %1$s.</string>
     <string name="support_see_plans">Переглянути плани</string>
     <string name="support_plan_basic_title">$5/місяць · Basic</string>
     <string name="support_plan_basic_body">Запустіть свої ігри або змусьте їх працювати краще.</string>
@@ -1781,6 +1782,8 @@
     <string name="download_failed_title">Помилка завантаження</string>
     <string name="download_failed_message">Не вдалося завантажити необхідний файл. Перевірте підключення до мережі та спробуйте ще раз.</string>
     <string name="install_failed_title">Помилка інсталяції</string>
+    <string name="container_create_failed_title">Не вдалося створити контейнер гри</string>
+    <string name="container_create_failed_message">GameNative не вдалося створити теку, у якій запускається ця гра. Зазвичай це означає, що на пристрої закінчилося вільне місце.\n\n%1$s</string>
     <string name="install_failed_message">Не вдалося інсталювати системні файли. Спробуйте ще раз. Якщо проблема не зникає, спробуйте іншу мережу або скористайтеся VPN.</string>
     <string name="settings_interface_swap_face_buttons_title">Поміняти місцями кнопки дій</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Поміняти місцями значки кнопок A↔B і X↔Y</string>

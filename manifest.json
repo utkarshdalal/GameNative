@@ -1,8 +1,20 @@
 {
   "version": 1,
-  "updatedAt": "2026-10-13",
+  "updatedAt": "2026-11-04",
   "items": {
     "driver": [
+      {
+        "id": "Turnip Gen8 V38",
+        "name": "Turnip_Gen8_V38",
+        "url": "https://downloads.gamenative.app/drivers/Turnip_Gen8_V38.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "Turnip v27.0.0-R1",
+        "name": "Turnip_v27.0.0-R1",
+        "url": "https://downloads.gamenative.app/drivers/Turnip_v27.0.0-R1.zip",
+        "variant": "bionic"
+      },
       {
         "id": "Turnip Gen8 V37",
         "name": "Turnip_Gen8_V37",
@@ -714,6 +726,12 @@
         "variant": "bionic"
       },
       {
+        "id": "3.1.1-0",
+        "name": "DXVK 3.1.1",
+        "url": "https://github.com/Arihany/WinlatorWCPHub/releases/download/DXVK/dxvk-3.1.1.wcp",
+        "variant": "bionic"
+      },
+      {
         "id": "1.10.3",
         "name": "DXVK 1.10.3",
         "url": "https://downloads.gamenative.app/dxwrapper/dxvk-1.10.3.tzst",
@@ -945,6 +963,12 @@
       }
     ],
     "vkd3d": [
+      {
+        "id": "3.1-gn1-0",
+        "name": "VKD3D 3.1",
+        "url": "https://downloads.gamenative.app/dxwrapper/vkd3d-proton-3.1-gn1.wcp",
+        "variant": "bionic"
+      },
       {
         "id": "2.6",
         "name": "VKD3D 2.6",

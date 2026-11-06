@@ -89,13 +89,17 @@ public abstract class ImageFsInstaller {
 
     // Modern flavor ships an additional bionic preload shipped as a flat asset
     // (src/modern/assets/) until it's folded into redirect.tzst. Copy it next to
-    // the tarball-extracted variant so BionicProgramLauncherComponent can find it
+    // the tarball-extracted variant so BionicProgramLauncherComponent can find it.
+    // The stamp replaces an existing wx shim once: #2289's deadlocks on jemalloc libcs,
+    // and the exists check alone would keep it on installed images.
     private static void ensureBionicLib(Context context, File imagefs) {
         if (BuildConfig.MODERN_ANDROID) {
             File wxDest = new File(imagefs, "usr/lib/libredirect-bionic-wx.so");
-            if (!wxDest.exists()) {
+            File wxStamp = new File(imagefs, ".wx_shim_restored");
+            if (!wxDest.exists() || !wxStamp.exists()) {
                 FileUtils.copy(context, "libredirect-bionic-wx.so", wxDest);
                 chmod(wxDest);
+                FileUtils.writeString(wxStamp, "1");
             }
             File wxMinimalDest = new File(imagefs, "usr/lib/libredirect-bionic-wx-minimal.so");
             if (!wxMinimalDest.exists()) {
@@ -191,30 +195,25 @@ public abstract class ImageFsInstaller {
         });
     }
 
-    // Bump the date when a shim changes; an image stamped with another name unpacks it again.
-    private static final String REDIRECT_ARCHIVE = "redirect-gamenative-20261030.tzst";
-    private static final String REDIRECT_STAMP = ".redirect.version";
-
-    private static boolean installRedirectLibs(Context ctx, File imagefs) {
-        try (InputStream in = ctx.getAssets().open(REDIRECT_ARCHIVE)) {
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, in, imagefs);
+    // Called at every launch by XServerScreen.refreshComponentsFiles (#2322).
+    public static boolean installRedirectLibs(Context ctx, File imagefs) {
+        final String ASSET_TAR = "redirect.tzst";          // ➊  add this to assets/
+        // ➋  Unpack straight into imagefs, preserving relative paths.
+        try (InputStream in  = ctx.getAssets().open(ASSET_TAR)) {
+            TarCompressorUtils.extract(
+                    TarCompressorUtils.Type.ZSTD,      // you said .tzst
+                    in, imagefs);                      // helper already exists in the project
         } catch (IOException e) {
             Log.e("ImageFsInstaller", "redirect deploy failed", e);
             return false;
         }
+
+        // ➌  Make sure the new libs are world-readable / executable
         chmod(new File(imagefs, "usr/lib/libredirect.so"));
         chmod(new File(imagefs, "usr/lib/libredirect-bionic.so"));
-        ensureBionicLib(ctx, imagefs);
-        FileUtils.writeString(new File(imagefs, REDIRECT_STAMP), REDIRECT_ARCHIVE);
-        return true;
-    }
 
-    private static void refreshRedirectLibs(Context ctx, File imagefs) {
-        File stamp = new File(imagefs, REDIRECT_STAMP);
-        if (stamp.exists() && REDIRECT_ARCHIVE.equals(FileUtils.readString(stamp).trim())) return;
-        new File(imagefs, "usr/lib/libredirect-bionic-wx.so").delete();
-        new File(imagefs, "usr/lib/libredirect-bionic-wx-minimal.so").delete();
-        installRedirectLibs(ctx, imagefs);
+        ensureBionicLib(ctx, imagefs);
+        return true;
     }
 
     private static void installGuestLibs(Context ctx) {
@@ -284,7 +283,7 @@ public abstract class ImageFsInstaller {
         } else {
             Log.d("ImageFsInstaller", "Image FS already valid and at latest version");
             return Executors.newSingleThreadExecutor().submit(() -> {
-                refreshRedirectLibs(context, imageFs.getRootDir());
+                ensureBionicLib(context, imageFs.getRootDir());
                 return true;
             });
         }

@@ -473,6 +473,7 @@
     <string name="performance_hud_clock_time">Clock time</string>
     <string name="performance_hud_cpu_temperature">CPU temperature</string>
     <string name="performance_hud_gpu_temperature">GPU temperature</string>
+    <string name="performance_hud_bottleneck">Limiting factor</string>
     <string name="touchpad_help">Touchpad Help</string>
     <string name="hide_controls_with_controller">Hide on-screen controls with controller</string>
     <string name="hide_controls_with_controller_description">Automatically hide on-screen controls when a physical controller is connected</string>
@@ -1303,7 +1304,7 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Pro reports skip the queue.</string>
     <string name="support_limit_title">Daily fair-use limit reached</string>
-    <string name="support_upgrade_reason_required">AI replies need a GameNative subscription. If you already subscribe on Discord or Ko-fi, connect Discord in Settings.</string>
+    <string name="support_upgrade_reason_required">AI replies need a GameNative subscription. If you already subscribe on Discord or Ko-fi: %1$s.</string>
     <string name="support_see_plans">See plans</string>
     <string name="support_plan_basic_title">$5/month · Basic</string>
     <string name="support_plan_basic_body">Get your games running, or running better.</string>
@@ -1604,6 +1605,8 @@
     <string name="download_failed_title">Download Failed</string>
     <string name="download_failed_message">A required file could not be downloaded. Please check your network connection and try again.</string>
     <string name="install_failed_title">Installation Failed</string>
+    <string name="container_create_failed_title">Could not create the game container</string>
+    <string name="container_create_failed_message">GameNative could not create the folder this game runs in. This usually means the device is out of storage space.\n\n%1$s</string>
     <string name="install_failed_message">System files could not be installed. Please try again. If the problem persists, try a different network or use a VPN.</string>
 
     <!-- PluviaMain: Session Conflicts -->

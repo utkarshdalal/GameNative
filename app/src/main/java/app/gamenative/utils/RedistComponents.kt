@@ -86,6 +86,20 @@ object RedistComponents {
     const val OPENAL = "openal"
     const val INSTALLERS_EXTRA = "redist_installers"
 
+    /**
+     * [wincomponents] from a config applied from outside the user's own settings (a best or
+     * community config, an intent launch) without the redist components it turns off. A stored
+     * "=0" for one of Container.REDIST_WINCOMPONENTS persists across loads, so the key is left out
+     * instead and launch-time detection decides it.
+     */
+    fun withoutExternalRedistOff(wincomponents: String): String =
+        wincomponents.split(",")
+            .filterNot { entry ->
+                entry.substringBefore("=").trim() in Container.REDIST_WINCOMPONENTS &&
+                    entry.substringAfter("=", "").trim() == "0"
+            }
+            .joinToString(",")
+
     fun applyForLaunch(container: Container, appId: String) {
         val source = ContainerUtils.extractGameSourceFromContainerId(appId)
         if (source == GameSource.STEAM) {

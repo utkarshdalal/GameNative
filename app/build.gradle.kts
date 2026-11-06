@@ -104,6 +104,7 @@ android {
             "ro",      // Română
             "pl",      // Polish
             "ru",      // Russian
+            "tr",      // Turkish
             "ko",      // Korean
             "ja",      // Japanese
             // TODO: Add more languages here using the ISO 639-1 locale code with regional qualifiers (e.g., "pt-rPT" for European Portuguese)
@@ -231,8 +232,15 @@ android {
         unitTests {
             isIncludeAndroidResources = true
             all {
-                it.maxHeapSize = "4g"
+                // two 3 GB test JVMs on the 4-core / 16 GB CI runner; the Gradle daemon may grow to 8 GB
+                // (gradle.properties) but has finished compiling by the time the tests run
+                it.maxParallelForks = 2
+                it.maxHeapSize = "3g"
                 it.testLogging { events("started", "failed") }
+                // downloads and installs every manifest.json entry; run with -PmanifestTests
+                if (!project.hasProperty("manifestTests")) {
+                    it.exclude("**/ManifestIdCorrelationTest*")
+                }
             }
         }
     }
