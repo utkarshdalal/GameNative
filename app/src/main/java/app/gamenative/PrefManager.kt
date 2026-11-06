@@ -1959,4 +1959,10 @@ object PrefManager {
     var powerControlDefaultEnabled: Boolean
         get() = getPref(POWER_CONTROL_DEFAULT_ENABLED, DeviceGate.isDeviceSupported())
         set(value) { setPref(POWER_CONTROL_DEFAULT_ENABLED, value) }
+
+    // Setting that Toggles internal banner for Launcher that bypasses Connectivity notifications.
+    private val ENABLE_NETWORK_LAUNCHER_CONNECTIVITY_NOTIFICATION = booleanPreferencesKey("enable_network_launcher_connectivity_notification")
+    var enable_network_launcher_connectivity_notification: Boolean
+        get() = getPref(ENABLE_NETWORK_LAUNCHER_CONNECTIVITY_NOTIFICATION, true)
+        set(value) { setPref(ENABLE_NETWORK_LAUNCHER_CONNECTIVITY_NOTIFICATION, value) }
 }

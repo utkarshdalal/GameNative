@@ -1972,7 +1972,7 @@ fun PluviaMain(
 
             // Connection status banner (overlay) - dismissible so users can access navigation
             if (state.currentScreen != PluviaScreen.LoginUser && !connectionBannerDismissed && initialConnectDone && !state.isSteamConnected &&
-                SteamUtils.hasStoredCredentials()) {
+                SteamUtils.hasStoredCredentials() && PrefManager.enable_network_launcher_connectivity_notification) {
                 Box(modifier = Modifier.zIndex(5f)) {
                     ConnectionStatusBanner(
                         connectionState = state.connectionState,
