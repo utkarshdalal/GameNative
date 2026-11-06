@@ -1412,7 +1412,7 @@
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interface</string>
     <string name="settings_interface_network_connectivity_title">Launcher connectivity notification</string>
-    <string name="settings_interface_network_connectivity_subtitle">Toggle Connectivity notification in the main launcher when Steam connects.</string>
+    <string name="settings_interface_network_connectivity_subtitle">Toggle connectivity notification in the main launcher when Steam connects.</string>
     <string name="settings_interface_external_links_title">Open web links externally</string>
     <string name="settings_interface_external_links_subtitle">Links open with your main web browser</string>
     <string name="settings_interface_hide_statusbar_title">Hide status bar when not in game</string>
