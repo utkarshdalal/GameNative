@@ -62,6 +62,8 @@ class StorageUtilsTest {
         assertEquals(1024L, StorageUtils.directorySizeOnDisk(link.toPath()))
     }
 
+    private val defaultStorageUuid = UUID.fromString("41217664-9172-527a-b3d5-edabb50a7d69")
+
     @Test
     fun `built-in primary storage is not a separate install target`() {
         assertFalse(
