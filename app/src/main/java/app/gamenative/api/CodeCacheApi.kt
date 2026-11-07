@@ -59,7 +59,7 @@ object CodeCacheApi {
                     add(
                         HostedCache(
                             c.getString("imageSha256"),
-                            c.getString("codeSha256"),
+                            c.optString("codeSha256"),
                             c.getString("fileName"),
                             c.getLong("size"),
                             c.optLong("compressedSize", -1),

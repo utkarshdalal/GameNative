@@ -3,6 +3,7 @@ package app.gamenative.api
 import app.gamenative.BuildConfig
 import app.gamenative.utils.Net
 import app.gamenative.utils.PlayIntegrity
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -21,7 +22,7 @@ object GameNativeApi {
     private fun debugBaseUrlOverride(): String? = runCatching {
         val cls = Class.forName("android.os.SystemProperties")
         cls.getMethod("get", String::class.java).invoke(null, "debug.gamenative.api_base") as? String
-    }.getOrNull()?.trim()?.takeIf { it.startsWith("http") }
+    }.getOrNull()?.trim()?.takeIf { it.toHttpUrlOrNull() != null }?.trimEnd('/')
 
     val httpClient: OkHttpClient = Net.http
 

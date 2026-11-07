@@ -5498,7 +5498,8 @@ private fun exit(
     PluviaApp.shutdownEnvironment()
     EaLaunchSupport.stop()
 
-    // FEX flushed its code maps when the guest exited; ship them once the environment is down.
+    // FEX writes its code maps as it goes and flushes on a normal guest exit; a process the teardown
+    // had to kill loses only its unflushed tail. Ship what is on disk once the environment is down.
     (frameRating?.context ?: PluviaApp.xServerView?.context)?.applicationContext?.let { appContext ->
         val sessionLengthSec = frameRating?.sessionLengthSec?.toInt()
         CoroutineScope(Dispatchers.IO).launch {

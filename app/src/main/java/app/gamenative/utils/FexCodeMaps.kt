@@ -3,8 +3,8 @@ package app.gamenative.utils
 import android.content.Context
 import android.os.Build
 import app.gamenative.BuildConfig
-import app.gamenative.api.ApiResult
 import app.gamenative.PrefManager
+import app.gamenative.api.ApiResult
 import app.gamenative.api.CodeMapApi
 import com.winlator.container.Container
 import com.winlator.contents.ContentsManager
@@ -12,6 +12,7 @@ import com.winlator.core.GPUInformation
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.ByteArrayOutputStream
+import java.io.IOException
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -51,9 +52,14 @@ object FexCodeMaps {
         installDir != null && File(installDir, "system32/FEXOfflineCompiler64.exe").isFile
 
     @JvmStatic
-    fun supportsCodeMaps(context: Context, container: Container): Boolean {
+    fun supportsCodeMaps(context: Context, container: Container): Boolean =
+        supportsCodeMaps(context, ContentsManager(context), container)
+
+    /** Same check with a caller's [ContentsManager], which has already scanned the installed packs. */
+    @JvmStatic
+    fun supportsCodeMaps(context: Context, contentsManager: ContentsManager, container: Container): Boolean {
         if (!"fexcore".equals(container.emulator, ignoreCase = true)) return false
-        val profile = ContentsManager(context).getProfileByEntryName("fexcore-${container.fexCoreVersion}") ?: return false
+        val profile = contentsManager.getProfileByEntryName("fexcore-${container.fexCoreVersion}") ?: return false
         return packSupportsCodeCaches(ContentsManager.getInstallDir(context, profile))
     }
 
@@ -61,6 +67,10 @@ object FexCodeMaps {
     @JvmStatic
     fun captureEnabled(context: Context, container: Container): Boolean =
         PrefManager.fexCodeCacheEnabled && supportsCodeMaps(context, container)
+
+    @JvmStatic
+    fun captureEnabled(context: Context, contentsManager: ContentsManager, container: Container): Boolean =
+        PrefManager.fexCodeCacheEnabled && supportsCodeMaps(context, contentsManager, container)
 
     fun codeMapDir(container: Container): File = File(container.rootDir, CODEMAP_DIR)
 
@@ -94,7 +104,9 @@ object FexCodeMaps {
                     var end = buf.position()
                     while (end < buf.limit() && buf.get(end) != 0.toByte()) end++
                     if (end >= buf.limit()) return null
-                    buf.position(minOf(buf.limit(), (end + 1 + 3) and 3.inv()))
+                    val next = (end + 1 + 3) and 3.inv()
+                    if (next > buf.limit()) return null // padding cut off: not a complete record
+                    buf.position(next)
                     libraries++
                 }
                 -18, -17 -> { // 0xffffffee / 0xffffffef: main executable
@@ -132,31 +144,33 @@ object FexCodeMaps {
         val sent = readSentBlocks(container)
         val meta = sessionMeta(context, container, containerId, sessionLengthSec)
         for (file in files.take(MAX_FILES_PER_SESSION)) {
-            val info = readInfo(file)
-            if (info == null) {
-                Timber.tag(TAG).w("Dropping unreadable code map ${file.name} (${file.length()} B)")
-                file.delete()
-                continue
-            }
-            // Only blocks this device has never sent go up; FEX re-records cached code as nothing, so
-            // with a hosted cache in place a session's map is already just the misses.
-            val delta = File(context.cacheDir, "${file.name}.delta")
-            val newBlocks = writeDelta(file, delta, sent)
-            if (newBlocks == 0) {
-                Timber.tag(TAG).i("Code map ${file.name}: ${info.entries} entries, none new")
-                file.delete()
-                delta.delete()
-                continue
-            }
-            val deltaInfo = readInfo(delta)
-            if (deltaInfo == null) {
-                Timber.tag(TAG).w("Code map ${file.name}: delta unreadable")
-                file.delete()
-                delta.delete()
-                continue
-            }
-            val gz = File(context.cacheDir, "${file.name}.gz")
+            // The user may turn the feature off while a batch runs; stop before the next request.
+            if (!PrefManager.fexCodeCacheEnabled) return
+            var delta: File? = null
+            var gz: File? = null
             try {
+                val info = readInfo(file)
+                if (info == null) {
+                    Timber.tag(TAG).w("Dropping unreadable code map ${file.name} (${file.length()} B)")
+                    file.delete()
+                    continue
+                }
+                // Only blocks this device has never sent go up; FEX re-records cached code as nothing, so
+                // with a hosted cache in place a session's map is already just the misses.
+                delta = File.createTempFile("codemap-", ".delta", context.cacheDir)
+                val newBlocks = writeDelta(file, delta, sent)
+                if (newBlocks == 0) {
+                    Timber.tag(TAG).i("Code map ${file.name}: ${info.entries} entries, none new")
+                    file.delete()
+                    continue
+                }
+                val deltaInfo = readInfo(delta)
+                if (deltaInfo == null) {
+                    Timber.tag(TAG).w("Code map ${file.name}: delta unreadable")
+                    file.delete()
+                    continue
+                }
+                gz = File.createTempFile("codemap-", ".gz", context.cacheDir)
                 val sha256 = gzipAndHash(delta, gz)
                 val fileMeta = JSONObject(meta.toString()).apply {
                     put("mainExe", deltaInfo.mainExe)
@@ -171,7 +185,7 @@ object FexCodeMaps {
                     is ApiResult.Success -> {
                         Timber.tag(TAG).i("Uploaded code map ${file.name}: $newBlocks new of ${info.entries} entries -> ${result.data.key}")
                         file.delete()
-                        sent.addAll(appendSentBlocks(container, delta))
+                        appendSentBlocks(container, delta, sent)
                     }
                     is ApiResult.HttpError -> {
                         Timber.tag(TAG).w("Code map ${file.name} rejected: HTTP ${result.code} ${result.message}")
@@ -179,16 +193,17 @@ object FexCodeMaps {
                         if (result.code == 400 || result.code == 413) file.delete()
                     }
                     is ApiResult.NetworkError -> {
-                        // The server is unreachable; the rest would only wait out the same timeout.
                         Timber.tag(TAG).w("Code map ${file.name} not uploaded: ${result.exception.message}")
-                        return
+                        // Unreachable server: the rest would only wait out the same timeout. A bad
+                        // response for this one map is not a reason to skip the others.
+                        if (result.exception is IOException) return
                     }
                 }
             } catch (e: Exception) {
                 Timber.tag(TAG).w(e, "Code map ${file.name} failed")
             } finally {
-                gz.delete()
-                delta.delete()
+                gz?.delete()
+                delta?.delete()
             }
         }
     }
@@ -200,30 +215,54 @@ object FexCodeMaps {
         val set = HashSet<Long>()
         val file = sentBlocksFile(container)
         if (!file.isFile) return set
-        val buf = ByteBuffer.wrap(file.readBytes()).order(ByteOrder.LITTLE_ENDIAN)
+        val bytes = file.readBytes()
+        val buf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
         while (buf.remaining() >= ENTRY_BYTES) {
             set.add(blockKey(buf.long, buf.int))
+        }
+        // Duplicates from maps that overlapped only inflate the file; rewrite it with each block once.
+        val records = bytes.size / ENTRY_BYTES
+        if (records > set.size + set.size / 10) {
+            runCatching {
+                val out = ByteBuffer.allocate(set.size * ENTRY_BYTES).order(ByteOrder.LITTLE_ENDIAN)
+                val seen = HashSet<Long>(set.size)
+                buf.rewind()
+                while (buf.remaining() >= ENTRY_BYTES) {
+                    val fileId = buf.long
+                    val blockOffset = buf.int
+                    if (seen.add(blockKey(fileId, blockOffset))) out.putLong(fileId).putInt(blockOffset)
+                }
+                file.writeBytes(out.array())
+                Timber.tag(TAG).i("Compacted the sent-block file: $records -> ${seen.size} records")
+            }.onFailure { Timber.tag(TAG).w(it, "Could not compact the sent-block file") }
         }
         return set
     }
 
+    /** Keys of every block entry in a map (its records are skipped). */
+    internal fun blockKeysOf(map: File): Set<Long> {
+        val keys = HashSet<Long>()
+        forEachRecord(map.readBytes()) { fileId, blockOffset, _ ->
+            if (fileId != RESERVED_FILE_ID) keys.add(blockKey(fileId, blockOffset))
+        }
+        return keys
+    }
+
     /**
      * Appends the block entries of a delta map to the sent-block file (its records are skipped) and
-     * returns their keys, so the same pass does not send them again from another map.
+     * adds them to [sent], so the same pass does not send them again from another map.
      */
-    private fun appendSentBlocks(container: Container, delta: File): Set<Long> {
-        val keys = HashSet<Long>()
+    private fun appendSentBlocks(container: Container, delta: File, sent: MutableSet<Long>) {
         runCatching {
             val out = ByteArrayOutputStream()
             forEachRecord(delta.readBytes()) { fileId, blockOffset, _ ->
                 if (fileId != RESERVED_FILE_ID) {
-                    keys.add(blockKey(fileId, blockOffset))
+                    sent.add(blockKey(fileId, blockOffset))
                     out.write(ByteBuffer.allocate(ENTRY_BYTES).order(ByteOrder.LITTLE_ENDIAN).putLong(fileId).putInt(blockOffset).array())
                 }
             }
             sentBlocksFile(container).apply { parentFile?.mkdirs() }.appendBytes(out.toByteArray())
         }.onFailure { Timber.tag(TAG).w(it, "Could not update the sent-block file") }
-        return keys
     }
 
     /** Mixes a file id and block offset into one set key (file ids are hashes, so the low bits vary). */
@@ -263,7 +302,9 @@ object FexCodeMaps {
                         var end = buf.position()
                         while (end < buf.limit() && buf.get(end) != 0.toByte()) end++
                         if (end >= buf.limit()) return
-                        buf.position(minOf(buf.limit(), (end + 1 + 3) and 3.inv()))
+                        val next = (end + 1 + 3) and 3.inv()
+                        if (next > buf.limit()) return
+                        buf.position(next)
                     }
                     SET_EXECUTABLE_32, SET_EXECUTABLE_64 -> {
                         if (buf.remaining() < 8) return
@@ -279,7 +320,7 @@ object FexCodeMaps {
     private fun sessionMeta(context: Context, container: Container, containerId: String, sessionLengthSec: Int?) = JSONObject().apply {
         put("store", ContainerUtils.extractGameSourceFromContainerId(containerId).name)
         put("gameId", runCatching { ContainerUtils.extractGameIdFromContainerId(containerId) }.getOrDefault(0))
-        put("gameName", ContainerUtils.resolveGameName(containerId))
+        put("gameName", runCatching { ContainerUtils.resolveGameName(containerId) }.getOrDefault("Unknown"))
         put("fexVersion", container.fexCoreVersion)
         put("deviceModel", Build.MODEL)
         put("deviceManufacturer", Build.MANUFACTURER)

@@ -93,7 +93,8 @@ object FexCodeCacheDependency : LaunchDependency {
                 }
             }.filter { cache ->
                 // The name becomes a path in the prefix; anything but a plain file name is refused.
-                val plain = cache.fileName.isNotBlank() && cache.fileName != ".." && cache.fileName.none { it == '/' || it == '\\' }
+                val name = cache.fileName
+                val plain = name.isNotBlank() && name != "." && name != ".." && name.none { it == '/' || it == '\\' || it == '\u0000' }
                 if (!plain) Timber.tag(TAG).w("Ignoring cache with file name ${cache.fileName}")
                 plain
             }
@@ -119,7 +120,13 @@ object FexCodeCacheDependency : LaunchDependency {
                 callbacks.setLoadingProgress(if (missing.size > 1) index.toFloat() / missing.size else -1f)
                 val have = local[cache]?.takeIf { it.isNotEmpty() }
                 runCatching { CodeCacheApi.download(cache, File(dir, cache.fileName), have) }
-                    .onSuccess { Timber.tag(TAG).i("Updated ${cache.fileName} (${cache.size} B${if (have != null && have == cache.patchFrom) ", patched" else ""})") }
+                    .onSuccess { renamed ->
+                        if (renamed) {
+                            Timber.tag(TAG).i("Updated ${cache.fileName} (${cache.size} B${if (have != null && have == cache.patchFrom) ", patched" else ""})")
+                        } else {
+                            Timber.tag(TAG).w("Could not move ${cache.fileName} into place")
+                        }
+                    }
                     .onFailure { Timber.tag(TAG).w(it, "Download of ${cache.fileName} failed") }
             }
         }
@@ -149,7 +156,9 @@ object FexCodeCacheDependency : LaunchDependency {
         if (gameSource == GameSource.STEAM) {
             val steamDir = File(container.rootDir, STEAM_DIR)
             // The prefix keeps Steam's own casing (GameOverlayRenderer.dll) on a case-sensitive filesystem.
-            steamDir.listFiles { f -> f.isFile && f.name.lowercase() in STEAM_CLIENT_DLLS }?.let { files.addAll(it) }
+            steamDir.listFiles { f -> f.isFile && f.name.lowercase() in STEAM_CLIENT_DLLS }
+                ?.sortedBy { it.name.lowercase() }
+                ?.let { files.addAll(it) }
         }
         return files.filter { it.length() <= MAX_IMAGE_BYTES }.take(MAX_IMAGES)
     }

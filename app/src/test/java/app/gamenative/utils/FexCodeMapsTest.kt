@@ -87,7 +87,21 @@ class FexCodeMapsTest {
         }
         val second = tmp.newFile("second.exe-74ec33596a84c560.5.bin")
         assertEquals(0, FexCodeMaps.writeDelta(full, second, sent))
-        assertTrue(second.length() < full.length())
+        assertEquals(full.length() - 318L * 12, second.length()) // records kept, every block gone
         assertNull(FexCodeMaps.readInfo(second)) // no blocks: not worth sending
+    }
+
+    @Test
+    fun `blocks sent by one map are not sent again by an overlapping map in the same pass`() {
+        val first = fixture()
+        val sent = HashSet<Long>()
+        val firstDelta = tmp.newFile("first.exe-74ec33596a84c560.6.bin")
+        assertEquals(318, FexCodeMaps.writeDelta(first, firstDelta, sent))
+        sent.addAll(FexCodeMaps.blockKeysOf(firstDelta)) // what a successful upload records
+
+        // A second map from another process of the same session covering the same blocks.
+        val overlapping = tmp.newFile("second.exe-74ec33596a84c560.7.bin").apply { writeBytes(first.readBytes()) }
+        val secondDelta = tmp.newFile("second.delta")
+        assertEquals(0, FexCodeMaps.writeDelta(overlapping, secondDelta, sent))
     }
 }

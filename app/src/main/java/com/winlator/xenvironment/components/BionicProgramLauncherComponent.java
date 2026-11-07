@@ -283,10 +283,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         }
         addBox64EnvVars(envVars, enableBox86_64Logs);
         envVars.putAll(FEXCorePresetManager.getEnvVars(context, fexcorePreset));
-        if (FexCodeMaps.captureEnabled(context, container)) {
-            // FEX writes a code map per process (input for offline code caches); uploaded after exit.
-            envVars.put("FEX_ENABLECODECACHINGWIP", "1");
-        }
 
         String renderer = GPUInformation.getRenderer(context);
 
@@ -451,6 +447,14 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         // Merge any additional environment variables from external sources
         if (this.envVars != null) {
             envVars.putAll(this.envVars);
+        }
+
+        // Code-map capture (input for offline code caches, uploaded after exit) is decided here, after
+        // every preset and container variable has been merged, so nothing can override the gate.
+        if (FexCodeMaps.captureEnabled(context, contentsManager, container)) {
+            envVars.put("FEX_ENABLECODECACHINGWIP", "1");
+        } else {
+            envVars.remove("FEX_ENABLECODECACHINGWIP");
         }
 
         if (BuildConfig.XR_BUILD) {

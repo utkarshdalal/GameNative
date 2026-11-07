@@ -149,6 +149,9 @@ object FexImages {
                 val virtualAddress = sections.getInt(base + 12)
                 val rawSize = sections.getInt(base + 16).toLong() and 0xffffffffL
                 val rawPointer = sections.getInt(base + 20).toLong() and 0xffffffffL
+                // A section cannot be larger than the file it sits in; refuse to hash gigabytes of
+                // padding for a header that says otherwise.
+                if (rawSize > length || rawPointer > length) return null
                 fields.clear()
                 fields.putInt(virtualAddress).putInt(virtualSize).putInt(rawSize.toInt())
                 digest.update(fields.array())
