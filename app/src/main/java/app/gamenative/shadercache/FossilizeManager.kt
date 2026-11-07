@@ -23,6 +23,7 @@ import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -59,15 +60,18 @@ object FossilizeManager {
     private const val POOL_DIR = "pool"
     private const val FILTER_FILENAME = "application_filter.json"
     private const val LOCAL_POOL_FILENAME = "local.foz"
+    private const val SESSION_KEY_FILENAME = "key.json"
 
     private const val EXTRA_REPLAYED = "fossilizeReplayed"
 
     private const val FOZ_HEADER_BYTES = 16L
     private const val MAX_RETAINED_BYTES = 200L * 1024 * 1024
+    private const val MAX_TRANSFER_BYTES = 256L * 1024 * 1024
     private const val POOL_LOOKUP_TIMEOUT_MS = 15_000L
     private const val POOL_DOWNLOAD_TIMEOUT_MS = 3 * 60 * 1000L
     private const val REPLAY_WALL_CLOCK_MS = 10 * 60 * 1000L
     private const val REPLAY_STALL_SECONDS = 30
+    private const val CANCEL_POLL_MS = 250L
     private const val OUTPUT_TAIL_LINES = 20
 
     private val FILTERED_APPLICATIONS = listOf("gamescope", "Xwayland")
@@ -76,6 +80,9 @@ object FossilizeManager {
 
     private val uploadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val uploadMutex = Mutex()
+
+    @Volatile
+    private var activeSessionDir: File? = null
 
     private data class ReplayOutcome(val exitCode: Int, val timedOut: Boolean, val completed: Int, val total: Int, val tail: List<String>)
 
@@ -104,7 +111,7 @@ object FossilizeManager {
         val manifestFile = File(layerDir, MANIFEST_FILENAME)
         val versionFile = File(layerDir, VERSION_FILENAME)
         val runtimeVersion = "${source.length()}-${source.lastModified()}"
-        val installed = versionFile.takeIf { it.isFile }?.readText()?.trim()
+        val installed = versionFile.takeIf { it.isFile }?.let { runCatching { it.readText().trim() }.getOrNull() }
         if (installed == runtimeVersion && libFile.isFile && manifestFile.isFile) return true
         return try {
             libFile.parentFile?.mkdirs()
@@ -161,10 +168,13 @@ object FossilizeManager {
         return try {
             val sessionDir = File(recordDir(container), "session-${System.currentTimeMillis()}")
             sessionDir.mkdirs()
+            activeSessionDir = sessionDir
+            val key = ShaderCacheKey.of(container)
+            if (key != null) FileUtils.writeString(File(sessionDir, SESSION_KEY_FILENAME), key.toJson().toString())
             envVars.remove("DISABLE_FOSSILIZE")
             envVars.put("FOSSILIZE", "1")
             envVars.put("FOSSILIZE_DUMP_PATH", File(sessionDir, "fossilize").absolutePath)
-            (ShaderCacheKey.of(container)?.let { poolFile(container, it) }?.takeIf { it.isFile }
+            (key?.let { poolFile(container, it) }?.takeIf { it.isFile }
                 ?: localPoolFile(container).takeIf { it.isFile })?.let {
                 envVars.put("FOSSILIZE_DUMP_PATH_READ_ONLY", it.absolutePath)
             }
@@ -200,9 +210,9 @@ object FossilizeManager {
         return file
     }
 
-    /** Downloads the newest pool for this container and replays it. Blocking; never throws. */
+    /** Downloads the newest pool for this container and replays it. Blocking; never throws. Stops early once [isCancelled]. */
     @JvmStatic
-    fun prepareBeforeLaunch(context: Context, container: Container, launcher: BionicProgramLauncherComponent) {
+    fun prepareBeforeLaunch(context: Context, container: Container, launcher: BionicProgramLauncherComponent, isCancelled: () -> Boolean) {
         try {
             if (!isEnabled(container)) return
             val replayBin = File(context.applicationInfo.nativeLibraryDir, REPLAY_BIN)
@@ -223,7 +233,8 @@ object FossilizeManager {
                 Timber.tag(TAG).d("Replay of %s already done for version %s, skipping", key.fileName, version)
                 return
             }
-            replay(context, container, launcher, key, poolFile, version, meta?.optLong("entries") ?: 0L, replayBin, stamp)
+            if (isCancelled()) return
+            replay(context, container, launcher, key, poolFile, version, meta?.optLong("entries") ?: 0L, replayBin, stamp, isCancelled)
         } catch (t: Throwable) {
             Timber.tag(TAG).e(t, "Shader cache preparation failed")
         }
@@ -236,10 +247,14 @@ object FossilizeManager {
         val remote = runBlocking { withTimeoutOrNull(POOL_LOOKUP_TIMEOUT_MS) { ShaderCacheApi.fetchPool(key) } }
         val pool = if (remote is ApiResult.Success) remote.data ?: return local else return local
         if (local != null && local.optLong("version") >= pool.version) return local
+        if (pool.size > MAX_TRANSFER_BYTES) {
+            Timber.tag(TAG).w("Pool for %s is %d bytes, over the %d byte limit", key, pool.size, MAX_TRANSFER_BYTES)
+            return local
+        }
         PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(context.getString(R.string.shader_cache_preparing)))
         val target = poolFile(container, key)
         val partial = File(target.parentFile, target.name + ".part")
-        val result = runBlocking { withTimeoutOrNull(POOL_DOWNLOAD_TIMEOUT_MS) { SupportApi.downloadSigned(pool.url, partial) } }
+        val result = runBlocking { withTimeoutOrNull(POOL_DOWNLOAD_TIMEOUT_MS) { SupportApi.downloadSigned(pool.url, partial, if (pool.size > 0) pool.size else MAX_TRANSFER_BYTES) } }
         val hash = if (result is ApiResult.Success) result.data else null
         if (hash == null || !hash.equals(pool.sha256, ignoreCase = true)) {
             partial.delete()
@@ -274,6 +289,7 @@ object FossilizeManager {
         entries: Long,
         replayBin: File,
         stamp: String,
+        isCancelled: () -> Boolean,
     ) {
         val env = launcher.buildShellEnvVars(null, arrayOf("FOSSILIZE", "FOSSILIZE_DUMP_PATH", "FOSSILIZE_DUMP_PATH_READ_ONLY"))
             ?: return
@@ -294,18 +310,22 @@ object FossilizeManager {
         PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(context.getString(R.string.shader_cache_preparing)))
 
         var command = listOf(replayBin.absolutePath)
-        var outcome = runReplay(command + args + "--progress", env, workDir, started, context)
+        var outcome = runReplay(command + args + "--progress", env, workDir, started, context, isCancelled)
         if (outcome == null) {
             command = listOf("/system/bin/linker64", replayBin.absolutePath)
-            outcome = runReplay(command + args + "--progress", env, workDir, started, context)
+            outcome = runReplay(command + args + "--progress", env, workDir, started, context, isCancelled)
         }
         if (outcome == null) {
             Timber.tag(TAG).w("Could not start %s", REPLAY_BIN)
             return
         }
-        if (outcome.exitCode != 0 && !outcome.timedOut) {
+        if (outcome.exitCode != 0 && !outcome.timedOut && !isCancelled()) {
             Timber.tag(TAG).i("Multi-process replay failed (exit=%d); retrying in a single process", outcome.exitCode)
-            outcome = runReplay(command + args, env, workDir, started, context) ?: outcome
+            outcome = runReplay(command + args, env, workDir, started, context, isCancelled) ?: outcome
+        }
+        if (isCancelled()) {
+            Timber.tag(TAG).i("Replay of %s cancelled at %d/%d", key, outcome.completed, outcome.total)
+            return
         }
         val seconds = (System.currentTimeMillis() - started) / 1000.0
         val succeeded = outcome.exitCode == 0
@@ -334,7 +354,14 @@ object FossilizeManager {
         }
     }
 
-    private fun runReplay(command: List<String>, env: EnvVars, workDir: File, started: Long, context: Context): ReplayOutcome? {
+    private fun runReplay(
+        command: List<String>,
+        env: EnvVars,
+        workDir: File,
+        started: Long,
+        context: Context,
+        isCancelled: () -> Boolean,
+    ): ReplayOutcome? {
         val builder = ProcessBuilder(command).directory(workDir).redirectErrorStream(true)
         builder.environment().apply {
             clear()
@@ -383,8 +410,13 @@ object FossilizeManager {
         }, "fossilize-replay-output")
         reader.isDaemon = true
         reader.start()
-        val remaining = (REPLAY_WALL_CLOCK_MS - (System.currentTimeMillis() - started)).coerceAtLeast(0L)
-        val finished = process.waitFor(remaining, TimeUnit.MILLISECONDS)
+        val deadline = started + REPLAY_WALL_CLOCK_MS
+        var finished = false
+        while (!finished && !isCancelled()) {
+            val remaining = deadline - System.currentTimeMillis()
+            if (remaining <= 0) break
+            finished = process.waitFor(minOf(remaining, CANCEL_POLL_MS), TimeUnit.MILLISECONDS)
+        }
         if (!finished) {
             process.destroy()
             if (!process.waitFor(2, TimeUnit.SECONDS)) process.destroyForcibly()
@@ -401,10 +433,11 @@ object FossilizeManager {
 
     /** Uploads recorded session databases for [container] in the background. Never throws. */
     @JvmStatic
-    fun uploadPendingAsync(context: Context, container: Container) {
-        if (!isEnabled(container)) return
+    fun uploadPendingAsync(context: Context, container: Container): Job? {
+        activeSessionDir = null
+        if (!isEnabled(container)) return null
         val appContext = context.applicationContext
-        uploadScope.launch {
+        return uploadScope.launch {
             try {
                 uploadMutex.withLock { uploadPending(appContext, container) }
             } catch (t: Throwable) {
@@ -415,61 +448,76 @@ object FossilizeManager {
 
     private suspend fun uploadPending(context: Context, container: Container) {
         val root = recordDir(container)
-        val files = root.walkTopDown().filter { it.isFile && it.name.endsWith(".foz") }.sortedBy { it.lastModified() }.toList()
-        if (files.isEmpty()) {
-            pruneEmptyDirs(root)
-            return
-        }
-        val key = ShaderCacheKey.of(container) ?: return
-        var uploadedFiles = 0
-        var uploadedBytes = 0L
-        for (file in files) {
-            val size = file.length()
-            if (size <= FOZ_HEADER_BYTES) {
-                file.delete()
+        val active = activeSessionDir
+        val sessions = root.listFiles()?.filter { it.isDirectory && it != active }?.sortedBy { it.name }.orEmpty()
+        val uploaded = mutableMapOf<ShaderCacheKey, Pair<Int, Long>>()
+        upload@ for (session in sessions) {
+            val files = session.walkTopDown().filter { it.isFile && it.name.endsWith(".foz") }.sortedBy { it.lastModified() }.toList()
+            if (files.isEmpty()) continue
+            val key = readSessionKey(session)
+            if (key == null) {
+                Timber.tag(TAG).i("Dropping %s: no shader cache key was recorded with it", session.name)
+                session.deleteRecursively()
                 continue
             }
-            val sha256 = sha256(file)
-            val meta = ShaderCacheApi.UploadMeta(
-                sha256 = sha256,
-                size = size,
-                appVersion = BuildConfig.VERSION_NAME,
-                gpu = runCatching { GPUInformation.getRenderer(context) }.getOrDefault(""),
-                driver = driverIdentity(container),
-                displayServer = container.displayServer.orEmpty(),
-            )
-            when (val slot = ShaderCacheApi.beginUpload(key, meta)) {
-                is ApiResult.Success -> {
-                    val put = SupportApi.uploadToSignedUrl(slot.data.putUrl, file, size, sha256)
-                    if (put !is ApiResult.Success) break
-                    if (ShaderCacheApi.finishUpload(slot.data.key) !is ApiResult.Success) break
+            for (file in files) {
+                val size = file.length()
+                if (size <= FOZ_HEADER_BYTES || size > MAX_TRANSFER_BYTES) {
+                    if (size > MAX_TRANSFER_BYTES) Timber.tag(TAG).w("Dropping %s: %d bytes is over the upload limit", file.name, size)
                     file.delete()
-                    uploadedFiles++
-                    uploadedBytes += size
+                    continue
                 }
-                is ApiResult.HttpError -> {
-                    if (slot.code == 413) {
-                        Timber.tag(TAG).w("Server refused %s (%d bytes) as too large", file.name, size)
+                val sha256 = sha256(file)
+                val meta = ShaderCacheApi.UploadMeta(
+                    sha256 = sha256,
+                    size = size,
+                    appVersion = BuildConfig.VERSION_NAME,
+                    gpu = runCatching { GPUInformation.getRenderer(context) }.getOrDefault(""),
+                    driver = driverIdentity(container),
+                    displayServer = container.displayServer.orEmpty(),
+                )
+                when (val slot = ShaderCacheApi.beginUpload(key, meta)) {
+                    is ApiResult.Success -> {
+                        val put = SupportApi.uploadToSignedUrl(slot.data.putUrl, file, size, sha256)
+                        if (put !is ApiResult.Success) break@upload
+                        if (ShaderCacheApi.finishUpload(slot.data.key) !is ApiResult.Success) break@upload
                         file.delete()
-                        continue
+                        val (count, bytes) = uploaded[key] ?: (0 to 0L)
+                        uploaded[key] = (count + 1) to (bytes + size)
                     }
-                    break
+                    is ApiResult.HttpError -> {
+                        if (slot.code == 413) {
+                            Timber.tag(TAG).w("Server refused %s (%d bytes) as too large", file.name, size)
+                            file.delete()
+                            continue
+                        }
+                        break@upload
+                    }
+                    is ApiResult.NetworkError -> break@upload
                 }
-                is ApiResult.NetworkError -> break
             }
         }
         pruneEmptyDirs(root)
         enforceRetentionCap(root)
-        Timber.tag(TAG).i("Uploaded %d shader databases (%d bytes) for %s", uploadedFiles, uploadedBytes, key)
-        if (uploadedFiles > 0 && PrefManager.usageAnalyticsEnabled) {
-            runCatching {
-                PostHog.capture(
-                    event = "shader_cache_uploaded",
-                    properties = keyProperties(key) + mapOf("files" to uploadedFiles, "bytes" to uploadedBytes),
-                )
+        for ((key, totals) in uploaded) {
+            Timber.tag(TAG).i("Uploaded %d shader databases (%d bytes) for %s", totals.first, totals.second, key)
+            if (PrefManager.usageAnalyticsEnabled) {
+                runCatching {
+                    PostHog.capture(
+                        event = "shader_cache_uploaded",
+                        properties = keyProperties(key) + mapOf("files" to totals.first, "bytes" to totals.second),
+                    )
+                }
             }
         }
     }
+
+    private fun ShaderCacheKey.toJson(): JSONObject = JSONObject().put("game", game).put("dxvk", dxvk).put("vkd3d", vkd3d)
+
+    private fun readSessionKey(session: File): ShaderCacheKey? = runCatching {
+        val json = JSONObject(File(session, SESSION_KEY_FILENAME).readText())
+        ShaderCacheKey(json.getString("game"), json.getString("dxvk"), json.getString("vkd3d"))
+    }.getOrNull()
 
     private fun keyProperties(key: ShaderCacheKey): Map<String, Any> =
         mapOf("game" to key.game, "dxvk" to key.dxvk, "vkd3d" to key.vkd3d)
@@ -488,11 +536,14 @@ object FossilizeManager {
     }
 
     private fun pruneEmptyDirs(root: File) {
-        root.listFiles()?.filter { it.isDirectory && it.walkTopDown().none { f -> f.isFile } }?.forEach { it.deleteRecursively() }
+        val active = activeSessionDir
+        root.listFiles()
+            ?.filter { it.isDirectory && it != active && it.walkTopDown().none { f -> f.isFile && f.name.endsWith(".foz") } }
+            ?.forEach { it.deleteRecursively() }
     }
 
     private fun enforceRetentionCap(root: File) {
-        val files = root.walkTopDown().filter { it.isFile }.sortedBy { it.lastModified() }.toMutableList()
+        val files = root.walkTopDown().filter { it.isFile && it.name.endsWith(".foz") }.sortedBy { it.lastModified() }.toMutableList()
         var total = files.sumOf { it.length() }
         while (total > MAX_RETAINED_BYTES && files.isNotEmpty()) {
             val oldest = files.removeAt(0)

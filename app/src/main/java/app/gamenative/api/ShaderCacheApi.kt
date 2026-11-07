@@ -1,13 +1,20 @@
 package app.gamenative.api
 
 import app.gamenative.shadercache.ShaderCacheKey
+import java.io.IOException
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 import org.json.JSONObject
 import timber.log.Timber
 
@@ -80,9 +87,9 @@ object ShaderCacheApi {
     private suspend fun call(name: String, build: (Request.Builder) -> Request.Builder): ApiResult<Raw> =
         withContext(Dispatchers.IO) {
             try {
-                val raw = AccountApi.sendAuthorized(build) { Raw(it.code, it.body.string()) }
-                    ?: GameNativeApi.httpClient.newCall(build(Request.Builder()).build()).execute()
-                        .use { Raw(it.code, it.body.string()) }
+                val token = AccountApi.currentAccessTokenOrNull()
+                var raw = send(build(Request.Builder()).apply { if (token != null) header("Authorization", "Bearer $token") }.build())
+                if (raw.code == 401 && token != null) raw = send(build(Request.Builder()).build())
                 if (raw.code in 200..299 || (name == "pool" && raw.code == 404)) {
                     ApiResult.Success(raw)
                 } else {
@@ -96,6 +103,26 @@ object ShaderCacheApi {
                 ApiResult.NetworkError(e)
             }
         }
+
+    private suspend fun send(request: Request): Raw = suspendCancellableCoroutine { continuation ->
+        val call = GameNativeApi.httpClient.newCall(request)
+        continuation.invokeOnCancellation { call.cancel() }
+        call.enqueue(
+            object : Callback {
+                override fun onFailure(call: Call, e: IOException) = continuation.resumeWithException(e)
+
+                override fun onResponse(call: Call, response: Response) {
+                    val raw = try {
+                        response.use { Raw(it.code, it.body.string()) }
+                    } catch (e: IOException) {
+                        continuation.resumeWithException(e)
+                        return
+                    }
+                    continuation.resume(raw)
+                }
+            },
+        )
+    }
 
     private inline fun <T, R> ApiResult<T>.map(transform: (T) -> R): ApiResult<R> = when (this) {
         is ApiResult.Success -> try {

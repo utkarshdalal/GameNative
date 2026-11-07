@@ -2625,7 +2625,7 @@ fun XServerScreen(
                                 Timber.e(cleanupEx, "Error cleaning up environment after setup failure")
                             }
                             PluviaApp.xEnvironment = null
-                            onGameLaunchError?.invoke("Failed to setup wine: ${e.message}")
+                            if (!isExiting.get()) onGameLaunchError?.invoke("Failed to setup wine: ${e.message}")
                         } finally {
                             setupExecutor.shutdown()
                         }
@@ -4590,7 +4590,8 @@ private fun setupXEnvironment(
                 runSteamHostCegPass(appId, imageFs, guestProgramLauncherComponent, onGameLaunchError)
             }
             if (guestProgramLauncherComponent is BionicProgramLauncherComponent && !bootToContainer && !testGraphics) {
-                FossilizeManager.prepareBeforeLaunch(context, container, guestProgramLauncherComponent)
+                FossilizeManager.prepareBeforeLaunch(context, container, guestProgramLauncherComponent) { isExiting.get() }
+                if (isExiting.get()) throw IllegalStateException("Launch aborted while preparing shaders")
             }
             if (preInstallCommands.isNotEmpty()) {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing prerequisites..."))

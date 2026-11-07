@@ -76,10 +76,9 @@ cmake -S "$SRC_DIR" -B "$OUT_DIR" -G Ninja \
     -DPython3_EXECUTABLE="$PYTHON" \
     -DCMAKE_EXE_LINKER_FLAGS="-Wl,-z,max-page-size=16384" \
     -DCMAKE_SHARED_LINKER_FLAGS="-Wl,-z,max-page-size=16384 -Wl,--exclude-libs,ALL"
-ninja -C "$OUT_DIR" VkLayer_fossilize fossilize-replay fossilize-merge-db fossilize-prune fossilize-list
+ninja -C "$OUT_DIR" VkLayer_fossilize fossilize-replay
 
 echo "==> install into $JNI_DIR"
 cp "$OUT_DIR/layer/libVkLayer_fossilize.so" "$JNI_DIR/libfossilize_layer.so"
 "$STRIP" -o "$JNI_DIR/libfossilize_replay.so" "$OUT_DIR/cli/fossilize-replay"
 ls -la "$JNI_DIR"/libfossilize_layer.so "$JNI_DIR"/libfossilize_replay.so
-echo "merge/prune/list tools for the server side are in $OUT_DIR/cli/"
