@@ -32,6 +32,7 @@ VulkanRendererContext::~VulkanRendererContext() {
     vk_.DeviceWaitIdle(device);
     for (auto& [id, wt] : texMap) destroyWinTex(wt);
     texMap.clear();
+    cleanupAllAHBCache();
     
     for (auto& wt : deleteQueue) {
         if (wt.ds   != VK_NULL_HANDLE) vk_.FreeDescriptorSets(device, winTexPool, 1, &wt.ds);
@@ -1638,7 +1639,25 @@ void VulkanRendererContext::updateWindowContent(int64_t id, void* px, short w, s
 
 void VulkanRendererContext::updateWindowContentAHB(int64_t id, AHardwareBuffer* ahb, short, short, int, int) {
     if (!ahb) return;
+
+    // Some DRI3 partial-present paths allocate a fresh AHardwareBuffer for
+    // every update. Keeping each one until the window is destroyed eventually
+    // exhausts winTexPool and permanently freezes window updates. Pruning must
+    // serialize with renderFrame because vkDeviceWaitIdle requires exclusive
+    // access to the device queues.
+    bool pruneNeeded = false;
+    {
+        std::lock_guard<std::mutex> lk(renderMutex);
+        pruneNeeded = ahbImportCache.size() >= MAX_CACHED_AHB_IMPORTS;
+    }
+    std::unique_lock<std::shared_mutex> frameLock(frameMutex, std::defer_lock);
+    if (pruneNeeded) frameLock.lock();
     std::lock_guard<std::mutex> lk(renderMutex);
+
+    if (pruneNeeded && ahbImportCache.size() >= MAX_CACHED_AHB_IMPORTS) {
+        vk_.DeviceWaitIdle(device);
+        pruneStaleAHBImports();
+    }
 
 
 
@@ -1676,6 +1695,40 @@ void VulkanRendererContext::updateWindowContentAHB(int64_t id, AHardwareBuffer* 
         src.needsTransition = false;
     }
     needsRender.store(true); dirtyCV.notify_one();
+}
+
+void VulkanRendererContext::pruneStaleAHBImports() {
+    std::vector<AHardwareBuffer*> active;
+    active.reserve(texMap.size());
+    for (const auto& [id, wt] : texMap) {
+        if (wt.isAHB && wt.ahb) active.push_back(wt.ahb);
+    }
+
+    size_t pruned = 0;
+    for (auto it = ahbImportCache.begin(); it != ahbImportCache.end();) {
+        if (std::find(active.begin(), active.end(), it->first) != active.end()) {
+            ++it;
+            continue;
+        }
+
+        AHardwareBuffer* ahb = it->first;
+        WinTex& wt = it->second;
+        if (wt.ds   != VK_NULL_HANDLE) vk_.FreeDescriptorSets(device, winTexPool, 1, &wt.ds);
+        if (wt.view != VK_NULL_HANDLE) vk_.DestroyImageView(device, wt.view, nullptr);
+        if (wt.img  != VK_NULL_HANDLE) vk_.DestroyImage(device, wt.img, nullptr);
+        if (wt.mem  != VK_NULL_HANDLE) vk_.FreeMemory(device, wt.mem, nullptr);
+        AHardwareBuffer_release(ahb);
+        it = ahbImportCache.erase(it);
+        ++pruned;
+    }
+
+    for (auto& [id, ahbs] : windowAhbs) {
+        ahbs.erase(std::remove_if(ahbs.begin(), ahbs.end(), [this](AHardwareBuffer* ahb) {
+            return ahbImportCache.find(ahb) == ahbImportCache.end();
+        }), ahbs.end());
+    }
+
+    RLOG("pruneStaleAHBImports: released %zu stale imports, %zu remain", pruned, ahbImportCache.size());
 }
 
 void VulkanRendererContext::setRenderList(const int64_t* ids, const int* xs, const int* ys, int count) {
