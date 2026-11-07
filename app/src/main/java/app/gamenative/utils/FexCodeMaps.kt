@@ -4,8 +4,10 @@ import android.content.Context
 import android.os.Build
 import app.gamenative.BuildConfig
 import app.gamenative.api.ApiResult
+import app.gamenative.PrefManager
 import app.gamenative.api.CodeMapApi
 import com.winlator.container.Container
+import com.winlator.contents.ContentsManager
 import com.winlator.core.GPUInformation
 import org.json.JSONObject
 import timber.log.Timber
@@ -22,8 +24,8 @@ import java.util.zip.GZIPOutputStream
  * FEX code maps: the list of guest blocks FEX compiled for one process, written with
  * FEX_ENABLECODECACHINGWIP=1 to AppData/Local/fex-emu/codemap/new/ in the prefix. They are the
  * input to the offline code cache compiler and do not depend on the FEX build that wrote them,
- * so the app uploads them after a session when the container runs a FEX series build that has
- * the cache fixes (2611-gn-6 or newer).
+ * so the app uploads them after a session when the container's FEXCore pack supports caching (it ships
+ * the offline compiler) and the user has not turned the feature off.
  */
 object FexCodeMaps {
 
@@ -39,27 +41,26 @@ object FexCodeMaps {
     private const val SET_EXECUTABLE_32 = -18
     private const val SET_EXECUTABLE_64 = -17
 
-    // First GameNative series release whose FEX writes usable maps (GameNative/FEX gn-6, FEX-2611 base).
-    private const val MIN_RELEASE = 2611
-    private const val MIN_SERIES = 6
-
-    private val versionPattern = Regex("""^(\d{4})-gn-(\d+)$""")
-
-    /** True for FEXCore content ids like "2611-gn-6" at or above the first release with the cache fixes. */
+    /**
+     * A FEXCore pack that can write usable maps and load caches ships its offline compiler next to the
+     * DLLs (GameNative series gn-6 and later). Checking for that file is the capability test; no
+     * version string is parsed. Bundled upstream packs have no compiler and get nothing.
+     */
     @JvmStatic
-    fun supportsCodeMaps(fexcoreVersion: String?): Boolean {
-        val match = versionPattern.matchEntire(fexcoreVersion?.trim().orEmpty()) ?: return false
-        val release = match.groupValues[1].toInt()
-        val series = match.groupValues[2].toInt()
-        return release > MIN_RELEASE || (release == MIN_RELEASE && series >= MIN_SERIES)
-    }
+    fun packSupportsCodeCaches(installDir: File?): Boolean =
+        installDir != null && File(installDir, "system32/FEXOfflineCompiler64.exe").isFile
 
-    /** Whether this launch should have FEX write code maps: the container runs a supported FEX build. */
     @JvmStatic
-    fun captureEnabled(container: Container): Boolean {
+    fun supportsCodeMaps(context: Context, container: Container): Boolean {
         if (!"fexcore".equals(container.emulator, ignoreCase = true)) return false
-        return supportsCodeMaps(container.fexCoreVersion)
+        val profile = ContentsManager(context).getProfileByEntryName("fexcore-${container.fexCoreVersion}") ?: return false
+        return packSupportsCodeCaches(ContentsManager.getInstallDir(context, profile))
     }
+
+    /** Whether this launch should have FEX write code maps: the user has the feature on and the pack supports it. */
+    @JvmStatic
+    fun captureEnabled(context: Context, container: Container): Boolean =
+        PrefManager.fexCodeCacheEnabled && supportsCodeMaps(context, container)
 
     fun codeMapDir(container: Container): File = File(container.rootDir, CODEMAP_DIR)
 
@@ -115,7 +116,7 @@ object FexCodeMaps {
      * Runs after the game has exited and the environment is down, on an IO thread.
      */
     fun uploadAfterSession(context: Context, container: Container, containerId: String, sessionLengthSec: Int?) {
-        if (!supportsCodeMaps(container.fexCoreVersion)) return
+        if (!captureEnabled(context, container)) return
         val dir = codeMapDir(container)
         val files = dir.listFiles { f -> f.isFile && f.name.endsWith(".bin") }
             ?.sortedByDescending { it.lastModified() }

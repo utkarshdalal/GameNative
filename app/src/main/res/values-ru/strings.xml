@@ -1195,6 +1195,8 @@ https://gamenative.app
     <string name="settings_download_speed">Скорость загрузки</string>
     <string name="settings_downloads_title">Загрузки</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">Автоматически применять рекомендуемые настройки для игр Steam при первом запуске</string>
+	<string name="settings_emulation_fex_code_cache_title">Кэши кода FEX</string>
+	<string name="settings_emulation_fex_code_cache_subtitle">Делитесь тем, какой код перевёл FEX, и загружайте готовые переводы для более быстрого запуска. Кэши занимают место в префиксе игры.</string>
     <string name="settings_emulation_auto_apply_known_config_title">Автоматически применять известную конфигурацию</string>
     <string name="settings_emulation_box64_presets_subtitle">Просмотр, изменение и создание предустановок Box64</string>
     <string name="settings_emulation_box64_presets_title">Предустановки Box64</string>

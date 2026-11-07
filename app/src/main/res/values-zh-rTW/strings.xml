@@ -1171,6 +1171,8 @@
     <string name="settings_emulation_default_config_dialog_title">預設容器設定</string>
     <string name="settings_emulation_auto_apply_known_config_title">自動套用預設配置</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">首次執行 Steam 遊戲時，自動載入並套用社群推薦的最佳設定</string>
+	<string name="settings_emulation_fex_code_cache_title">FEX 程式碼快取</string>
+	<string name="settings_emulation_fex_code_cache_subtitle">分享 FEX 翻譯過的程式碼並下載預先編譯的翻譯以加快啟動。快取會佔用遊戲前綴中的儲存空間。</string>
     <string name="settings_emulation_box64_presets_title">Box64 預設集</string>
     <string name="settings_emulation_box64_presets_subtitle">檢視、修改及建立 Box64 預設集</string>
     <string name="settings_emulation_driver_manager_title">驅動程式管理員</string>

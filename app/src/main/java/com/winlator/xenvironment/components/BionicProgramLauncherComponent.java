@@ -283,7 +283,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         }
         addBox64EnvVars(envVars, enableBox86_64Logs);
         envVars.putAll(FEXCorePresetManager.getEnvVars(context, fexcorePreset));
-        if (FexCodeMaps.captureEnabled(container)) {
+        if (FexCodeMaps.captureEnabled(context, container)) {
             // FEX writes a code map per process (input for offline code caches); uploaded after exit.
             envVars.put("FEX_ENABLECODECACHINGWIP", "1");
         }

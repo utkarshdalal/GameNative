@@ -102,6 +102,17 @@ fun SettingsGroupEmulation() {
                 PrefManager.autoApplyKnownConfig = it
             },
         )
+        var fexCodeCacheEnabled by rememberSaveable { mutableStateOf(PrefManager.fexCodeCacheEnabled) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            state = fexCodeCacheEnabled,
+            title = { Text(text = stringResource(R.string.settings_emulation_fex_code_cache_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_emulation_fex_code_cache_subtitle)) },
+            onCheckedChange = {
+                fexCodeCacheEnabled = it
+                PrefManager.fexCodeCacheEnabled = it
+            },
+        )
         SettingsMenuLink(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.settings_emulation_box64_presets_title)) },
