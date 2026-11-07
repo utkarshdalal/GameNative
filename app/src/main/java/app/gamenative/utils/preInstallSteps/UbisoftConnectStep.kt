@@ -75,7 +75,14 @@ object UbisoftConnectStep : PreInstallStep {
             return commonRedistInstaller.exists()
         } catch (t: Throwable) {
             Timber.tag(TAG).w(t, "Failed creating Ubisoft symlink")
-            return false
+        }
+
+        return try {
+            rootInstaller.copyTo(commonRedistInstaller, overwrite = true)
+            commonRedistInstaller.isFile
+        } catch (t: Throwable) {
+            Timber.tag(TAG).w(t, "Failed copying Ubisoft installer")
+            false
         }
     }
 }
