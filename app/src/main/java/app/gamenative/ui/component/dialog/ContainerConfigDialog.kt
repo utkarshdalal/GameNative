@@ -598,8 +598,8 @@ fun ContainerConfigDialog(
         val exposedExtIndicesRef = rememberSaveable { mutableStateOf(listOf<Int>()) }
         var exposedExtIndices by exposedExtIndicesRef
         val inspectionMode = LocalInspectionMode.current
-        val gpuExtensions = remember(inspectionMode) {
-            if (inspectionMode) {
+        val gpuExtensions = remember(inspectionMode, config.containerVariant) {
+            val extensions = if (inspectionMode) {
                 listOf(
                     "VK_KHR_swapchain",
                     "VK_KHR_maintenance1",
@@ -608,8 +608,13 @@ fun ContainerConfigDialog(
             } else {
                 GPUHelper.vkGetDeviceExtensions().toList()
             }
+            if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
+                (extensions + "VK_KHR_win32_keyed_mutex").distinct()
+            } else {
+                extensions
+            }
         }
-        LaunchedEffect(config.graphicsDriverConfig) {
+        LaunchedEffect(config.graphicsDriverConfig, gpuExtensions) {
             val cfg = KeyValueSet(config.graphicsDriverConfig)
             // Sync Vulkan version index from config
             run {
