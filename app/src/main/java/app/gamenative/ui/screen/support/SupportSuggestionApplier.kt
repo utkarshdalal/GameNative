@@ -30,13 +30,24 @@ object SupportSuggestionApplier {
     private const val MATCH_TYPE = "exact_gpu_match"
 
     private val COMPONENT_KEYS = setOf(
-        "wineVersion", "dxwrapper", "dxwrapperConfig", "box64Version", "box64Preset", "emulator",
+        "containerVariant", "wineVersion", "dxwrapper", "dxwrapperConfig", "box64Version", "box64Preset", "emulator",
         "fexcoreVersion", "fexcorePreset", "graphicsDriver", "graphicsDriverVersion", "graphicsDriverConfig",
     )
+
+    private val RUNTIME_COMPATIBILITY_KEYS = setOf("containerVariant", "wineVersion")
 
     val WARNING_KEYS = setOf("wineVersion", "graphicsDriver", "graphicsDriverVersion", "graphicsDriverConfig")
 
     data class Edit(val key: String, val name: String?, val value: String?)
+
+    internal fun runtimeCompatibilityError(containerVariant: String, wineVersion: String): String? {
+        if (containerVariant.equals(Container.GLIBC, ignoreCase = true) &&
+            wineVersion.contains("arm64ec", ignoreCase = true)
+        ) {
+            return "ARM64EC Wine requires a bionic container"
+        }
+        return null
+    }
 
     sealed class Result {
         data object Done : Result()
@@ -198,6 +209,11 @@ object SupportSuggestionApplier {
         source: String,
     ): Result {
         val updated = ContainerUtils.applyBestConfigMapToContainerData(live, updatesFor(live, edits))
+        if (edits.any { it.key.substringBefore('.') in RUNTIME_COMPATIBILITY_KEYS }) {
+            runtimeCompatibilityError(updated.containerVariant, updated.wineVersion)?.let {
+                return Result.Failed(it)
+            }
+        }
         if (edits.any { it.key.substringBefore('.') in COMPONENT_KEYS }) {
             ensureComponents(context, updated, onProgress)?.let { return it }
         }
