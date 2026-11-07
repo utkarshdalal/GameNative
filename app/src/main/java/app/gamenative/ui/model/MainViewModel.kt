@@ -403,6 +403,8 @@ class MainViewModel @Inject constructor(
     }
 
     fun setLoadingDialogVisible(value: Boolean) {
+        // Raised here too: the collector below runs later and onStop can come first.
+        if (value) SteamService.isLaunchInProgress = true
         _state.update { it.copy(loadingDialogVisible = value) }
     }
 
@@ -840,6 +842,7 @@ class MainViewModel @Inject constructor(
                     _uiEvent.send(MainUiEvent.ShowMembershipPitch(appId, "long_session"))
                 }
             } finally {
+                SteamService.isExitInProgress = false
                 onComplete?.invoke()
             }
         }.invokeOnCompletion {
@@ -1095,6 +1098,7 @@ class MainViewModel @Inject constructor(
             // See onClearBootingSplash's kdoc — broadcast so MainActivity's own instance clears
             // too when this call is actually running on ImmersiveXrActivity's separate instance.
             PluviaApp.events.emit(AndroidEvent.ClearBootingSplash)
+            SteamService.isLaunchInProgress = false
 
             // You could also show an error dialog here if needed
             Timber.tag("MainViewModel").e("Game launch error: $error")
@@ -1151,6 +1155,7 @@ class MainViewModel @Inject constructor(
             setShowBootingSplash(false)
             PluviaApp.events.emit(AndroidEvent.ClearBootingSplash)
             PluviaApp.events.emit(SteamEvent.ForceCloseApp)
+            SteamService.isLaunchInProgress = false
         }
     }
 

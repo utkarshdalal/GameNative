@@ -5442,6 +5442,7 @@ private fun exit(
         Timber.i("Exit already in progress, ignoring duplicate request")
         return
     }
+    SteamService.isExitInProgress = true
 
     // Before container_config is read so the id rides into game_sessions and the rating payload.
     GameSessionId.active()?.let { uuid ->
