@@ -30,6 +30,10 @@ import android.widget.TextView;
 // import com.google.android.material.tabs.TabLayout;
 // import com.winlator.R;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Locale;
 
@@ -236,6 +240,44 @@ public abstract class AppUtils {
 
     public static String getNativeLibDir(Context context) {
         return context.getApplicationInfo().nativeLibraryDir;
+    }
+
+    /**
+     * Copies an APK native library to app-internal storage for child processes.
+     *
+     * Android may place an app's extracted native libraries under /mnt/asec when the app is
+     * installed on adopted/external storage. The app process can load libraries from there, but
+     * native child processes use a linker namespace which does not permit that path. Libraries
+     * passed through LD_PRELOAD therefore need a stable path below the app's files directory.
+     */
+    public static synchronized File stageNativeLibrary(Context context, String name) {
+        File source = new File(getNativeLibDir(context), name);
+        if (!source.isFile()) {
+            throw new IllegalStateException("Native library missing: " + source);
+        }
+
+        File directory = new File(context.getFilesDir(), "native-libs");
+        if (!directory.isDirectory() && !directory.mkdirs()) {
+            throw new IllegalStateException("Could not create native library staging directory: " + directory);
+        }
+
+        File destination = new File(directory, name);
+        if (destination.isFile() && destination.length() == source.length()
+                && destination.lastModified() == source.lastModified()) {
+            return destination;
+        }
+
+        File temporary = new File(directory, name + ".tmp");
+        try {
+            Files.copy(source.toPath(), temporary.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            temporary.setLastModified(source.lastModified());
+            Files.move(temporary.toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            return destination;
+        }
+        catch (IOException e) {
+            temporary.delete();
+            throw new IllegalStateException("Could not stage native library: " + source, e);
+        }
     }
 
     public static int getVersionCode(Context context) {
