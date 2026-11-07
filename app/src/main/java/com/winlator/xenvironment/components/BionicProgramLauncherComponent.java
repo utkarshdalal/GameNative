@@ -22,6 +22,7 @@ import com.winlator.PrefManager;
 import app.gamenative.PluviaApp;
 import app.gamenative.display.GameNativeDrm;
 import app.gamenative.display.GamescopeSettings;
+import app.gamenative.utils.FexCodeMaps;
 import app.gamenative.utils.LsfgQuickMenuHelper;
 import app.gamenative.shadercache.FossilizeManager;
 import app.gamenative.utils.LsfgVkManager;
@@ -451,6 +452,14 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         // Merge any additional environment variables from external sources
         if (this.envVars != null) {
             envVars.putAll(this.envVars);
+        }
+
+        // Code-map capture (input for offline code caches, uploaded after exit) is decided here, after
+        // every preset and container variable has been merged, so nothing can override the gate.
+        if (FexCodeMaps.captureEnabled(context, contentsManager, container)) {
+            envVars.put("FEX_ENABLECODECACHINGWIP", "1");
+        } else {
+            envVars.remove("FEX_ENABLECODECACHINGWIP");
         }
 
         if (BuildConfig.XR_BUILD) {
