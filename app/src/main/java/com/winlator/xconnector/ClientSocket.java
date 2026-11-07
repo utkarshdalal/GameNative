@@ -14,6 +14,8 @@ import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 
 public class ClientSocket {
+    public static class WouldBlockException extends IOException {}
+
     public final int fd;
     private final ArrayDeque<Integer> ancillaryFds = new ArrayDeque<>();
 
@@ -56,6 +58,7 @@ public class ClientSocket {
         if (bytesWritten >= 0) {
             data.position(bytesWritten);
         }
+        else if (bytesWritten == -2) throw new WouldBlockException();
         else throw new IOException("Failed to write data.");
     }
 
