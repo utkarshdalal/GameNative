@@ -113,36 +113,39 @@ class GOGManifestParser @Inject constructor() {
     }
 
     /**
-     * Depots to install: the base product's [languageDepots] plus each selected DLC's depots per
-     * [dlcDepotsWithFallback], restricted to products the user owns so an unowned id is never requested.
+     * Depots to install: the [languageDepots] of any of [baseProductIds] plus each selected DLC's
+     * depots per [dlcDepotsWithFallback], restricted to products the user owns so an unowned id is
+     * never requested.
      */
     fun filterDepotsForInstall(
         languageDepots: List<Depot>,
         allDepots: List<Depot>,
-        baseProductId: String,
+        baseProductIds: Set<String>,
         dlcIds: Set<String>,
         ownedProductIds: Set<String>,
     ): List<Depot> {
         val selected = buildSet {
-            addAll(languageDepots.filter { it.productId == baseProductId && it.productId in ownedProductIds })
-            dlcIds.filter { it != baseProductId && it in ownedProductIds }
+            addAll(languageDepots.filter { it.productId in baseProductIds && it.productId in ownedProductIds })
+            dlcIds.filter { it !in baseProductIds && it in ownedProductIds }
                 .forEach { addAll(dlcDepotsWithFallback(languageDepots, allDepots, it)) }
         }
         val filtered = (languageDepots + allDepots).distinct().filter { it in selected }
-        Timber.tag(TAG).d("Selected ${filtered.size}/${allDepots.size} depots (base $baseProductId, DLCs ${dlcIds.joinToString()})")
+        Timber.tag(TAG).d("Selected ${filtered.size}/${allDepots.size} depots (base ${baseProductIds.joinToString()}, DLCs ${dlcIds.joinToString()})")
         return filtered
     }
 
     /**
-     * Depots of DLC [dlcId]: those in [languageDepots]; when it ships none in that language, its
-     * English depots; else all of its depots.
+     * Depots of DLC [dlcId]: those in [languageDepots] when one of them is in a real language;
+     * otherwise its language-neutral (`*`) depots plus its English depots; else all of its depots.
      */
     fun dlcDepotsWithFallback(languageDepots: List<Depot>, allDepots: List<Depot>, dlcId: String): List<Depot> {
-        return languageDepots.filter { it.productId == dlcId }.ifEmpty {
-            val own = allDepots.filter { it.productId == dlcId }
-            val englishCodes = GOGConstants.CONTAINER_LANGUAGE_TO_GOG_CODES.getValue(GOGConstants.GOG_FALLBACK_DOWNLOAD_LANGUAGE)
-            own.filter { depot -> englishCodes.any { depot.matchesLanguage(it) } }.ifEmpty { own }
-        }
+        val inLanguage = languageDepots.filter { it.productId == dlcId }
+        if (inLanguage.any { depot -> depot.languages.any { it != "*" } }) return inLanguage
+        val own = allDepots.filter { it.productId == dlcId }
+        val englishCodes = GOGConstants.CONTAINER_LANGUAGE_TO_GOG_CODES.getValue(GOGConstants.GOG_FALLBACK_DOWNLOAD_LANGUAGE)
+        val english = own.filter { depot -> englishCodes.any { depot.matchesLanguage(it) } }
+        if (english.isEmpty()) return own
+        return (own.filter { it.matchesLanguage("*") } + english).distinct()
     }
 
     /**

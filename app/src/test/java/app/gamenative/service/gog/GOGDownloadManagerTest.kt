@@ -115,7 +115,7 @@ class GOGDownloadManagerTest {
         whenever(parser.selectBuild(any(), eq(2), eq("windows"))).thenReturn(selectedBuild)
         whenever(apiClient.fetchManifest(selectedBuild.link)).thenReturn(Result.success(manifest))
         whenever(parser.filterDepotsByLanguage(manifest, "english")).thenReturn(listOf(depot) to "en-US")
-        whenever(parser.filterDepotsForInstall(listOf(depot), manifest.depots, gameId, emptySet(), setOf(gameId))).thenReturn(listOf(depot))
+        whenever(parser.filterDepotsForInstall(listOf(depot), manifest.depots, setOf(gameId), emptySet(), setOf(gameId))).thenReturn(listOf(depot))
         whenever(apiClient.fetchDepotManifestWithRaw(depot.manifest)).thenReturn(
             Result.success(DepotManifest(files = listOf(gameFile, supportFile), directories = emptyList(), links = emptyList()) to "{}"),
         )
@@ -229,7 +229,7 @@ class GOGDownloadManagerTest {
         whenever(parser.selectBuild(any(), eq(1), eq("windows"))).thenReturn(gen1Build)
         whenever(apiClient.fetchManifest(gen1Build.link)).thenReturn(Result.success(manifest))
         whenever(parser.filterDepotsByLanguage(manifest, "english")).thenReturn(listOf(depot) to "en-US")
-        whenever(parser.filterDepotsForInstall(listOf(depot), manifest.depots, gameId, emptySet(), setOf(gameId))).thenReturn(listOf(depot))
+        whenever(parser.filterDepotsForInstall(listOf(depot), manifest.depots, setOf(gameId), emptySet(), setOf(gameId))).thenReturn(listOf(depot))
         whenever(
             apiClient.getSecureLink(
                 productId = gameId,
@@ -321,7 +321,7 @@ class GOGDownloadManagerTest {
         whenever(parser.selectBuild(any(), eq(2), eq("windows"))).thenReturn(selectedBuild)
         whenever(apiClient.fetchManifest(selectedBuild.link)).thenReturn(Result.success(manifest))
         whenever(parser.filterDepotsByLanguage(manifest, "english")).thenReturn(languageDepots to "en-US")
-        whenever(parser.filterDepotsForInstall(languageDepots, manifest.depots, gameId, selectedDlcIds, owned))
+        whenever(parser.filterDepotsForInstall(languageDepots, manifest.depots, setOf(gameId), selectedDlcIds, owned))
             .thenReturn(listOf(baseDepot, ownedDlcDepot))
         whenever(apiClient.fetchDepotManifestWithRaw(baseDepot.manifest)).thenReturn(
             Result.success(DepotManifest(files = listOf(baseFile), directories = emptyList(), links = emptyList()) to "{}"),
@@ -343,7 +343,7 @@ class GOGDownloadManagerTest {
         )
 
         assertTrue(result.isSuccess)
-        verify(parser).filterDepotsForInstall(languageDepots, manifest.depots, gameId, selectedDlcIds, owned)
+        verify(parser).filterDepotsForInstall(languageDepots, manifest.depots, setOf(gameId), selectedDlcIds, owned)
         verify(apiClient, never()).fetchDepotManifestWithRaw(unownedDlcDepot.manifest)
         assertTrue(File(installPath, "bin/game.exe").exists())
         assertTrue(File(installPath, "dlc/owned.pak").exists())

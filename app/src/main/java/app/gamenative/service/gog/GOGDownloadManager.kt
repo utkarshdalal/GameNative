@@ -232,7 +232,7 @@ class GOGDownloadManager @Inject constructor(
             // Base product plus the selected DLCs, never an unowned product
             val ownedGameIds = gogManager.getAllGameIds()
             val baseProductId = gameManifest.baseProductId.ifEmpty { gameId }
-            val depots = parser.filterDepotsForInstall(languageDepots, gameManifest.depots, baseProductId, dlcIds, ownedGameIds)
+            val depots = parser.filterDepotsForInstall(languageDepots, gameManifest.depots, setOf(baseProductId, gameId), dlcIds, ownedGameIds)
             if (depots.isEmpty()) {
                 return@withContext Result.failure(Exception("No owned depots found for language: $effectiveLang"))
             }
@@ -373,7 +373,7 @@ class GOGDownloadManager @Inject constructor(
                 """.trimMargin(),
             )
 
-            downloadInfo.setTotalExpectedBytes(fullUncompressedSize + bonusPlans.sumOf { it.pendingBytes })
+            downloadInfo.setTotalExpectedBytes(fullUncompressedSize + bonusPlans.sumOf { it.totalBytes })
 
             // Step 7: Get secure CDN links for chunks
             downloadInfo.updateStatusMessage("Getting secure download links...")
@@ -619,7 +619,7 @@ class GOGDownloadManager @Inject constructor(
                 val build = selectWindowsBuild(gameId).getOrElse { return@withContext Result.failure(it) }
                 val manifest = apiClient.fetchManifest(build.link).getOrElse { return@withContext Result.failure(it) }
                 val baseProductId = manifest.baseProductId.ifEmpty { gameId }
-                val installed = gogManager.getInstalledDlcIds(gameId)
+                val onDisk = gogManager.getDlcIdsOnDisk(gameId)
                 val (languageDepots, _) = parser.filterDepotsByLanguage(manifest, language)
 
                 val depotOptions = mutableListOf<GogDlcOption>()
@@ -639,7 +639,7 @@ class GOGDownloadManager @Inject constructor(
                                 title = product.name.ifBlank { dlcTitleFromDb(product.productId) },
                                 downloadSize = depots.sumOf { it.compressedSize },
                                 installSize = depots.sumOf { it.size },
-                                installed = product.productId in installed,
+                                installed = product.productId in onDisk,
                                 kind = GogDlcKind.DEPOT,
                             ),
                         )
@@ -664,7 +664,7 @@ class GOGDownloadManager @Inject constructor(
                                 title = title.ifBlank { dlcTitleFromDb(productId) },
                                 downloadSize = resolution?.downloadSize ?: 0L,
                                 installSize = 0L,
-                                installed = productId in installed,
+                                installed = productId in onDisk,
                                 kind = resolution?.kind ?: GogDlcKind.NONE,
                             )
                         }
@@ -818,7 +818,7 @@ class GOGDownloadManager @Inject constructor(
                 )
             }
             val baseProductId = gameManifest.baseProductId.ifEmpty { gameId }
-            val filesToDownload = parser.filterDepotsForInstall(languageDepots, gameManifest.depots, baseProductId, dlcIds, ownedGameIds)
+            val filesToDownload = parser.filterDepotsForInstall(languageDepots, gameManifest.depots, setOf(baseProductId, gameId), dlcIds, ownedGameIds)
             if (filesToDownload.isEmpty()) {
                 return@withContext Result.failure(Exception("No owned depots found"))
             }
@@ -866,7 +866,7 @@ class GOGDownloadManager @Inject constructor(
                     !fileExistsWithCorrectSize(outFile, f.file.size, f.file.hash.takeIf { it.isNotEmpty() })
                 }
             }
-            downloadInfo.setTotalExpectedBytes(fullInstallSize + bonusPlans.sumOf { it.pendingBytes })
+            downloadInfo.setTotalExpectedBytes(fullInstallSize + bonusPlans.sumOf { it.totalBytes })
             downloadInfo.updateStatusMessage("Downloading files...")
             downloadInfo.setProgress(0f)
             downloadInfo.setActive(true)

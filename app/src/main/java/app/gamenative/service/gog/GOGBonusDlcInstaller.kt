@@ -44,7 +44,7 @@ object GOGBonusDlcInstaller {
         val dlcId: String,
         val title: String,
         val items: List<GogDownloadItem>,
-        val pendingBytes: Long,
+        val totalBytes: Long,
         val reapplyOnly: Boolean,
     )
 
@@ -109,7 +109,7 @@ object GOGBonusDlcInstaller {
             val pending = files.sumOf { file -> (file.size - downloadedBytes(dir, file)).coerceAtLeast(0L) }
             val title = resolution.items.firstOrNull()?.name?.takeIf { it.isNotBlank() } ?: dlcId
             Timber.tag("GOG").i("DLC $dlcId is ${resolution.kind}: ${files.size} file(s), $pending byte(s) pending")
-            plans.add(Plan(dlcId, title, resolution.items, pending, reapplyOnly = false))
+            plans.add(Plan(dlcId, title, resolution.items, resolution.downloadSize, reapplyOnly = false))
         }
         return Result.success(plans)
     }

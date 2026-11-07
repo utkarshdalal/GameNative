@@ -792,6 +792,12 @@ class GOGAppScreen : BaseAppScreen() {
                 },
                 onInstall = { dlcIds ->
                     hideGameManagerDialog(appId)
+                    if (gameInstalled) {
+                        val installPath = GOGService.getInstallPath(libraryItem.gameId.toString())
+                            ?: GOGConstants.getGameInstallPath(libraryItem.name)
+                        MarkerUtils.removeMarker(installPath, Marker.GOG_SCRIPT_INSTALLED)
+                        MarkerUtils.removeMarker(installPath, Marker.GOG_SUPPORT_INSTALLED)
+                    }
                     performDownload(context, libraryItem, dlcIds = dlcIds) {}
                 },
                 onDismissRequest = {

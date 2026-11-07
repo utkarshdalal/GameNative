@@ -139,14 +139,31 @@ class GOGManager @Inject constructor(
     suspend fun getInstalledDlcIds(gameId: String): Set<String> = withContext(Dispatchers.IO) {
         val game = getGameFromDbById(gameId) ?: return@withContext emptySet()
         val recorded = game.installedDlcIds.toSet()
-        val installDir = game.installPath.takeIf { game.isInstalled && it.isNotEmpty() }?.let { File(it) }
-        if (installDir == null || !installDir.isDirectory) return@withContext recorded
-        val baseIds = setOfNotNull(
-            gameId,
-            GOGManifestUtils.readLocalManifest(installDir)?.optString("baseProductId", "")?.takeIf { it.isNotEmpty() },
-        )
-        recorded + (GOGManifestUtils.infoFileProductIds(installDir) - baseIds)
+        val installDir = installDirOf(game) ?: return@withContext recorded
+        recorded + (GOGManifestUtils.infoFileProductIds(installDir) - baseIdsOf(gameId, installDir))
     }
+
+    /**
+     * DLC of [gameId] whose content is on disk: a goggame-<id>.info in the install root for depot
+     * DLC, or an applied bonus/installer DLC.
+     */
+    suspend fun getDlcIdsOnDisk(gameId: String): Set<String> = withContext(Dispatchers.IO) {
+        val game = getGameFromDbById(gameId) ?: return@withContext emptySet()
+        val installDir = installDirOf(game) ?: return@withContext emptySet()
+        val bonusIds = File(installDir, GOGBonusDlcInstaller.BONUS_DIR).listFiles()
+            ?.filter { File(it, GOGBonusDlcInstaller.APPLIED_FILE).isFile }
+            ?.map { it.name }
+            .orEmpty()
+        GOGManifestUtils.infoFileProductIds(installDir) - baseIdsOf(gameId, installDir) + bonusIds
+    }
+
+    private fun installDirOf(game: GOGGame): File? =
+        game.installPath.takeIf { game.isInstalled && it.isNotEmpty() }?.let { File(it) }?.takeIf { it.isDirectory }
+
+    private fun baseIdsOf(gameId: String, installDir: File): Set<String> = setOfNotNull(
+        gameId,
+        GOGManifestUtils.readLocalManifest(installDir)?.optString("baseProductId", "")?.takeIf { it.isNotEmpty() },
+    )
 
     suspend fun addInstalledDlcIds(gameId: String, dlcIds: Set<String>) {
         if (dlcIds.isEmpty()) return

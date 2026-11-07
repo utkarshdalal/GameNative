@@ -203,7 +203,7 @@ class GOGManifestParserTest {
         val result = parser.filterDepotsForInstall(
             languageDepots = depots,
             allDepots = depots,
-            baseProductId = "100",
+            baseProductIds = setOf("100"),
             dlcIds = setOf("200", "300"),
             ownedProductIds = setOf("100", "200", "400"),
         )
@@ -221,7 +221,7 @@ class GOGManifestParserTest {
         val result = parser.filterDepotsForInstall(
             languageDepots = depots,
             allDepots = depots,
-            baseProductId = "100",
+            baseProductIds = setOf("100"),
             dlcIds = emptySet(),
             ownedProductIds = setOf("100", "200"),
         )
@@ -238,7 +238,7 @@ class GOGManifestParserTest {
         val result = parser.filterDepotsForInstall(
             languageDepots = depots,
             allDepots = depots,
-            baseProductId = "100",
+            baseProductIds = setOf("100"),
             dlcIds = setOf("200"),
             ownedProductIds = emptySet(),
         )
@@ -256,7 +256,7 @@ class GOGManifestParserTest {
         val result = parser.filterDepotsForInstall(
             languageDepots = listOf(base),
             allDepots = listOf(base, baseEnglish, dlcEnglish, dlcFrench),
-            baseProductId = "100",
+            baseProductIds = setOf("100"),
             dlcIds = setOf("200"),
             ownedProductIds = setOf("100", "200"),
         )
@@ -274,7 +274,7 @@ class GOGManifestParserTest {
         val result = parser.filterDepotsForInstall(
             languageDepots = listOf(base),
             allDepots = listOf(base, baseGerman, dlcGerman, dlcFrench),
-            baseProductId = "100",
+            baseProductIds = setOf("100"),
             dlcIds = setOf("200"),
             ownedProductIds = setOf("100", "200"),
         )
@@ -290,6 +290,59 @@ class GOGManifestParserTest {
         val result = parser.dlcDepotsWithFallback(listOf(dlcGerman), listOf(dlcGerman, dlcEnglish), "200")
 
         assertEquals(listOf("dlc-de"), result.map { it.manifest })
+    }
+
+    @Test
+    fun dlcDepotsWithFallback_starOnlyInLanguageAddsEnglishDepots() {
+        val dlcStar = createTestDepot(languages = listOf("*"), manifest = "dlc-star").copy(productId = "200")
+        val dlcEnglish = createTestDepot(languages = listOf("en-US"), manifest = "dlc-en").copy(productId = "200")
+
+        val result = parser.dlcDepotsWithFallback(listOf(dlcStar), listOf(dlcStar, dlcEnglish), "200")
+
+        assertEquals(listOf("dlc-star", "dlc-en"), result.map { it.manifest })
+    }
+
+    @Test
+    fun dlcDepotsWithFallback_starOnlyDlcKeepsItsStarDepots() {
+        val dlcStar = createTestDepot(languages = listOf("*"), manifest = "dlc-star").copy(productId = "200")
+
+        val result = parser.dlcDepotsWithFallback(listOf(dlcStar), listOf(dlcStar), "200")
+
+        assertEquals(listOf("dlc-star"), result.map { it.manifest })
+    }
+
+    @Test
+    fun filterDepotsForInstall_germanContainerGetsStarAndEnglishDepotsOfDlc() {
+        val baseGerman = createTestDepot(languages = listOf("de-DE"), manifest = "base-de").copy(productId = "100")
+        val dlcStar = createTestDepot(languages = listOf("*"), manifest = "dlc-star").copy(productId = "200")
+        val dlcEnglish = createTestDepot(languages = listOf("en-US"), manifest = "dlc-en").copy(productId = "200")
+
+        val result = parser.filterDepotsForInstall(
+            languageDepots = listOf(baseGerman, dlcStar),
+            allDepots = listOf(baseGerman, dlcStar, dlcEnglish),
+            baseProductIds = setOf("100"),
+            dlcIds = setOf("200"),
+            ownedProductIds = setOf("100", "200"),
+        )
+
+        assertEquals(listOf("base-de", "dlc-star", "dlc-en"), result.map { it.manifest })
+    }
+
+    @Test
+    fun filterDepotsForInstall_keepsDepotsOfEitherBaseId() {
+        val baseProduct = createTestDepot(manifest = "base-product").copy(productId = "100")
+        val gameProduct = createTestDepot(manifest = "game-product").copy(productId = "101")
+
+        val depots = listOf(baseProduct, gameProduct)
+        val result = parser.filterDepotsForInstall(
+            languageDepots = depots,
+            allDepots = depots,
+            baseProductIds = setOf("100", "101"),
+            dlcIds = emptySet(),
+            ownedProductIds = setOf("100", "101"),
+        )
+
+        assertEquals(listOf("base-product", "game-product"), result.map { it.manifest })
     }
 
     @Test
