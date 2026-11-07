@@ -11,6 +11,9 @@ object UbisoftConnectStep : PreInstallStep {
     private const val TAG = "UbisoftConnectStep"
     private val INSTALLER_NAMES = listOf("UbisoftConnectInstaller.exe", "UplayInstaller.exe")
     private const val COMMON_REDIST_SUBDIR = "_CommonRedist/UbisoftConnect"
+    private const val LAUNCHER_DIR = "drive_c/Program Files (x86)/Ubisoft/Ubisoft Game Launcher"
+    private val LAUNCHER_EXES = listOf("upc.exe", "UbisoftConnect.exe")
+    private const val LAUNCHER_REG_KEY = "[software\\\\wow6432node\\\\ubisoft\\\\launcher]"
 
     override val marker: Marker = Marker.UBISOFT_CONNECT_INSTALLED
 
@@ -19,9 +22,44 @@ object UbisoftConnectStep : PreInstallStep {
         gameSource: GameSource,
         gameDirPath: String,
     ): Boolean {
-         if (MarkerUtils.hasMarker(gameDirPath, Marker.UBISOFT_CONNECT_INSTALLED)) return false
+        if (!MarkerUtils.hasMarker(gameDirPath, Marker.UBISOFT_CONNECT_INSTALLED)) return true
+        if (isLauncherInstalled(container) != false) return false
 
+        Timber.tag(TAG).w("Ubisoft Connect marker present but the launcher is missing from the prefix; reinstalling")
+        MarkerUtils.removeMarker(gameDirPath, Marker.UBISOFT_CONNECT_INSTALLED)
         return true
+    }
+
+    override fun isDone(container: Container): Boolean = isLauncherInstalled(container) != false
+
+    /** Null when the prefix cannot be inspected. */
+    internal fun isLauncherInstalled(container: Container): Boolean? {
+        val root = container.rootDir?.absolutePath?.takeIf { it.isNotEmpty() } ?: return null
+        val prefix = File(root, ".wine")
+        if (!prefix.isDirectory) return null
+        val launcherDir = File(prefix, LAUNCHER_DIR)
+        if (LAUNCHER_EXES.none { File(launcherDir, it).isFile }) return false
+        return hasLauncherInstallDir(File(prefix, "system.reg"))
+    }
+
+    private fun hasLauncherInstallDir(systemReg: File): Boolean {
+        if (!systemReg.isFile) return false
+        return try {
+            systemReg.useLines { lines ->
+                var inKey = false
+                for (line in lines) {
+                    if (line.startsWith("[")) {
+                        inKey = line.lowercase().startsWith(LAUNCHER_REG_KEY)
+                    } else if (inKey && line.lowercase().startsWith("\"installdir\"=")) {
+                        return@useLines true
+                    }
+                }
+                false
+            }
+        } catch (t: Throwable) {
+            Timber.tag(TAG).w(t, "Failed reading %s", systemReg)
+            false
+        }
     }
 
     override fun buildCommand(
