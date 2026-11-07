@@ -180,7 +180,7 @@ internal object PerfGpuClock {
             ?.mapNotNull { it.toLongOrNull() }?.maxOrNull()?.let(::toMhz)
     }
 
-    fun readMhz(path: String?): Int? = SystemMetricsSources.readLongFromLine(path ?: return null)?.let(::toMhz)
+    fun readMhz(path: String?): Int? = path?.let { SystemMetricsSources.readLongFromLine(it) }?.let(::toMhz)
 
     fun toMhz(raw: Long): Int = when {
         raw >= 100_000_000L -> (raw / 1_000_000L).toInt()
