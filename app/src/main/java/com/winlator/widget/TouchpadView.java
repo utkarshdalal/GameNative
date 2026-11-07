@@ -2383,7 +2383,13 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
             dx += event.getAxisValue(MotionEvent.AXIS_RELATIVE_X);
             dy += event.getAxisValue(MotionEvent.AXIS_RELATIVE_Y);
-            this.xServer.injectPointerMoveDelta(Mathf.roundPoint(dx), Mathf.roundPoint(dy));
+            int moveX = Mathf.roundPoint(dx);
+            int moveY = Mathf.roundPoint(dy);
+            if (xServer.isRelativeMouseMovement()) {
+                xServer.getWinHandler().mouseEvent(MouseEventFlags.MOVE, moveX, moveY, 0);
+            } else {
+                xServer.injectPointerMoveDelta(moveX, moveY);
+            }
             return true;
         }
         event.setSource(event.getSource() | InputDevice.SOURCE_MOUSE);
