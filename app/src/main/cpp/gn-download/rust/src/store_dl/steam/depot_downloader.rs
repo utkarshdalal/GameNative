@@ -606,33 +606,20 @@ pub fn download_resolved_depots_with_cancel_progress(
     drop(probe_manifests);
     let probe_spawned = AtomicBool::new(false);
 
-    // Depots share one install dir, so a path this depot's update drops may still belong to
-    // another depot: every path ANY depot of this run installs is off-limits to the sweep below.
-    let mut protected: HashSet<String> = HashSet::new();
-    let mut resolved_ids: HashSet<u32> = HashSet::new();
-    for (depot, manifest) in &resolved {
-        resolved_ids.insert(depot.depot_id);
-        for file in &manifest.files {
-            protected.insert(crate::store_dl::steam::depot_writer::folded_entry_key(&file.filename));
-        }
-    }
-    // A depot `completed/` records but this run does not resolve cannot be enumerated — its
-    // manifest's filenames need a depot key this layer does not hold — so a removed path cannot be
-    // proven unowned. Skip the sweep for the whole run rather than risk deleting another depot's
-    // file; it runs again on the next update that resolves everything.
-    let unenumerable_installed: Vec<u32> = cfg
-        .installed_depots()
-        .into_iter()
-        .map(|(id, _)| id)
-        .filter(|id| !resolved_ids.contains(id))
+    // Every path this run's depots or installed depots outside it own is off-limits to the sweep.
+    let run_depots: Vec<(u32, &ContentManifest)> = resolved
+        .iter()
+        .map(|(depot, manifest)| (depot.depot_id, manifest))
         .collect();
+    let recorded = cfg.installed_depots();
+    let (protected, unenumerable_installed) = sweep_protection(&run_depots, &installed, &recorded);
     if !unenumerable_installed.is_empty() {
         if let Some(log) = log {
             log(&format!(
-                "depot-prune disabled: {} installed depot(s) not part of this run ({:?}) \
-cannot be enumerated for ownership",
-                unenumerable_installed.len(),
-                unenumerable_installed
+                "depot-prune disabled: installed depot(s) {:?} have no readable manifest ({}) — \
+their paths cannot be protected",
+                unenumerable_installed,
+                crate::store_dl::steam::depot_config::COMPLETED_DIR,
             ));
         }
     }
@@ -697,12 +684,7 @@ revalidated (DRM backup present)",
                 }
             }
         }
-        // Depots share one install dir, so a path this depot dropped may still belong to another
-        // depot: `protected` (built before the loop from the manifests of this run) holds every path
-        // any of them installs, and the sweep skips those. A depot recorded as installed that this
-        // run does NOT resolve cannot be added to that set — its cached manifest's filenames need a
-        // depot key this layer does not hold — so `unenumerable_installed` disables the sweep
-        // entirely for the run instead (see the guard below and its log line).
+        // `protected`: paths owned by this run or by an installed depot it does not resolve.
 
         match previous.as_ref() {
             Some(p) => {
@@ -892,6 +874,37 @@ paths cannot protect against a name clash"
     installed
 }
 
+/// Every path the sweep must keep, plus recorded depots whose manifest could not be read.
+fn sweep_protection(
+    run_depots: &[(u32, &ContentManifest)],
+    installed: &[(u32, ContentManifest)],
+    recorded: &[(u32, u64)],
+) -> (HashSet<String>, Vec<u32>) {
+    let fold = crate::store_dl::steam::depot_writer::folded_entry_key;
+    let mut protected = HashSet::new();
+    for (_, manifest) in run_depots {
+        for file in &manifest.files {
+            protected.insert(fold(&file.filename));
+        }
+    }
+    let resolving: HashSet<u32> = run_depots.iter().map(|(id, _)| *id).collect();
+    for (depot_id, manifest) in installed {
+        if resolving.contains(depot_id) {
+            continue;
+        }
+        for file in &manifest.files {
+            protected.insert(fold(&file.filename));
+        }
+    }
+    let readable: HashSet<u32> = installed.iter().map(|(id, _)| *id).collect();
+    let unenumerable = recorded
+        .iter()
+        .map(|(id, _)| *id)
+        .filter(|id| !readable.contains(id))
+        .collect();
+    (protected, unenumerable)
+}
+
 /// Folds away a depot set that cannot exist on one filesystem: the same case-folded path declared
 /// as a FILE by one depot and as a DIRECTORY by another.
 ///
@@ -1072,6 +1085,72 @@ fn a_file_shadows_a_directory_of_the_same_folded_path() {
         ["sound/music", "master.dat.bak"],
         "only an exact folded-path clash drops anything"
     );
+}
+
+/// A depot installed but left out of the run protects its files; before this it disabled the sweep.
+#[test]
+fn an_installed_depot_outside_the_run_protects_its_paths() {
+    let manifest = |files: &[&str]| ContentManifest {
+        metadata: crate::store_dl::steam::content_manifest::Metadata {
+            filenames_encrypted: false,
+            ..Default::default()
+        },
+        files: files
+            .iter()
+            .map(|name| crate::store_dl::steam::content_manifest::FileMapping {
+                filename: (*name).into(),
+                ..Default::default()
+            })
+            .collect(),
+        signature: Vec::new(),
+    };
+    let fold = crate::store_dl::steam::depot_writer::folded_entry_key;
+
+    let resolving = manifest(&["content\\base.bin"]);
+    // A resolved depot's old build is the sweep's diff base, so only the other depot is protected.
+    let installed = [
+        (100u32, manifest(&["content\\old.bin"])),
+        (200u32, manifest(&["content\\new.bin", "cache\\extra.bin"])),
+    ];
+    let run = [(100u32, &resolving)];
+    let recorded = [(100u32, 3u64), (200, 5)];
+
+    let (protected, unenumerable) = sweep_protection(&run, &installed, &recorded);
+
+    assert!(
+        unenumerable.is_empty(),
+        "every recorded manifest was readable, so the sweep must run"
+    );
+    assert!(protected.contains(&fold("content\\new.bin")));
+    assert!(protected.contains(&fold("cache\\extra.bin")));
+    assert!(protected.contains(&fold("content\\base.bin")));
+    assert!(
+        !protected.contains(&fold("content\\old.bin")),
+        "the resolved depot's own removed file must still be deletable"
+    );
+}
+
+/// A recorded depot whose manifest cannot be read still disables the sweep for the run.
+#[test]
+fn an_unreadable_installed_manifest_still_disables_the_sweep() {
+    let manifest = |name: &str| ContentManifest {
+        metadata: crate::store_dl::steam::content_manifest::Metadata {
+            filenames_encrypted: false,
+            ..Default::default()
+        },
+        files: vec![crate::store_dl::steam::content_manifest::FileMapping {
+            filename: name.into(),
+            ..Default::default()
+        }],
+        signature: Vec::new(),
+    };
+    let base = manifest("content\\base.bin");
+    let installed = [(100u32, manifest("content\\base.bin"))];
+    let recorded = [(100u32, 3u64), (200, 5)];
+
+    let (_, unenumerable) = sweep_protection(&[(100, &base)], &installed, &recorded);
+
+    assert_eq!(unenumerable, [200]);
 }
 
 /// True when any ancestor directory of `key` is itself a file in `files`
