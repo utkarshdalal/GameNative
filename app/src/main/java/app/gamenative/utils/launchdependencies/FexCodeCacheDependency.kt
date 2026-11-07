@@ -65,13 +65,16 @@ object FexCodeCacheDependency : LaunchDependency {
             Timber.tag(TAG).w("Cannot create ${dir.path}")
             return@withContext
         }
-        val missing = listed.filter { cache -> !matches(File(dir, cache.name), cache) }
+        // What the device holds, by sha256, so an older version can take a patch instead of a full file.
+        val local = listed.associateWith { cache -> File(dir, cache.name).takeIf { it.isFile }?.let { sha256(it) } }
+        val missing = listed.filter { cache -> local[cache] != cache.sha256 }
         Timber.tag(TAG).i("$fexVersion on $soc: ${listed.size} hosted caches, ${missing.size} to download")
         missing.forEachIndexed { index, cache ->
             callbacks.setLoadingMessage("Downloading FEX code cache (${index + 1}/${missing.size})")
             callbacks.setLoadingProgress(if (missing.size > 1) index.toFloat() / missing.size else -1f)
-            runCatching { CodeCacheApi.download(cache, File(dir, cache.name)) }
-                .onSuccess { Timber.tag(TAG).i("Downloaded ${cache.name} (${cache.size} B)") }
+            val have = local[cache]
+            runCatching { CodeCacheApi.download(cache, File(dir, cache.name), have) }
+                .onSuccess { Timber.tag(TAG).i("Updated ${cache.name} (${cache.size} B${if (have == cache.patchFrom) ", patched" else ""})") }
                 .onFailure { Timber.tag(TAG).w(it, "Download of ${cache.name} failed") }
         }
         stampFile(container).apply {
@@ -82,8 +85,7 @@ object FexCodeCacheDependency : LaunchDependency {
 
     private fun stampFile(container: Container) = File(container.rootDir, ".gamenative/fex-cache-check-${container.fexCoreVersion}")
 
-    private fun matches(file: File, cache: CodeCacheApi.HostedCache): Boolean {
-        if (!file.isFile || file.length() != cache.size) return false
+    private fun sha256(file: File): String {
         val digest = MessageDigest.getInstance("SHA-256")
         file.inputStream().use { input ->
             val buffer = ByteArray(256 * 1024)
@@ -93,6 +95,6 @@ object FexCodeCacheDependency : LaunchDependency {
                 digest.update(buffer, 0, n)
             }
         }
-        return digest.digest().joinToString("") { "%02x".format(it) } == cache.sha256
+        return digest.digest().joinToString("") { "%02x".format(it) }
     }
 }
