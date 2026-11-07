@@ -123,7 +123,10 @@ object FexCodeMaps {
         if (files.isEmpty()) return
 
         // Keep the newest few; a backlog from failed uploads must not grow without bound.
-        files.drop(MAX_FILES_PER_SESSION).forEach { it.delete() }
+        files.drop(MAX_FILES_PER_SESSION).forEach {
+            Timber.tag(TAG).w("Dropping old code map ${it.name}: more than $MAX_FILES_PER_SESSION pending")
+            it.delete()
+        }
 
         val sent = readSentBlocks(container)
         val meta = sessionMeta(context, container, containerId, sessionLengthSec)
@@ -167,7 +170,7 @@ object FexCodeMaps {
                     is ApiResult.Success -> {
                         Timber.tag(TAG).i("Uploaded code map ${file.name}: $newBlocks new of ${info.entries} entries -> ${result.data.key}")
                         file.delete()
-                        appendSentBlocks(container, delta)
+                        sent.addAll(appendSentBlocks(container, delta))
                     }
                     is ApiResult.HttpError -> {
                         Timber.tag(TAG).w("Code map ${file.name} rejected: HTTP ${result.code} ${result.message}")
@@ -203,17 +206,23 @@ object FexCodeMaps {
         return set
     }
 
-    /** Appends the block entries of a delta map to the sent-block file (its records are skipped). */
-    private fun appendSentBlocks(container: Container, delta: File) {
+    /**
+     * Appends the block entries of a delta map to the sent-block file (its records are skipped) and
+     * returns their keys, so the same pass does not send them again from another map.
+     */
+    private fun appendSentBlocks(container: Container, delta: File): Set<Long> {
+        val keys = HashSet<Long>()
         runCatching {
             val out = ByteArrayOutputStream()
             forEachRecord(delta.readBytes()) { fileId, blockOffset, _ ->
                 if (fileId != RESERVED_FILE_ID) {
+                    keys.add(blockKey(fileId, blockOffset))
                     out.write(ByteBuffer.allocate(ENTRY_BYTES).order(ByteOrder.LITTLE_ENDIAN).putLong(fileId).putInt(blockOffset).array())
                 }
             }
             sentBlocksFile(container).apply { parentFile?.mkdirs() }.appendBytes(out.toByteArray())
         }.onFailure { Timber.tag(TAG).w(it, "Could not update the sent-block file") }
+        return keys
     }
 
     /** Mixes a file id and block offset into one set key (file ids are hashes, so the low bits vary). */
