@@ -218,6 +218,8 @@ public class PresentExtension implements Extension {
         static final byte QUERY_VERSION = 0;
         static final byte PRESENT_PIXMAP = 1;
         static final byte SELECT_INPUT = 3;
+        static final byte NOTIFY_MSC = 2;
+        static final byte QUERY_CAPABILITIES = 4;
     }
 
     private static class Event {
@@ -285,6 +287,20 @@ public class PresentExtension implements Extension {
             outputStream.writeInt(1);
             outputStream.writeInt(0);
             outputStream.writePad(16);
+        }
+    }
+
+    // Mesa WSI asks for Present capabilities before creating a swapchain; without this reply the
+    // client gets BadImplementation and libX11 terminates the process (GTA V via wrapper-gamenative).
+    private static void queryCapabilities(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
+        inputStream.skip(4);   // target drawable
+        try (XStreamLock lock = outputStream.lock()) {
+            outputStream.writeByte(RESPONSE_CODE_SUCCESS);
+            outputStream.writeByte((byte)0);
+            outputStream.writeShort(client.getSequenceNumber());
+            outputStream.writeInt(0);
+            outputStream.writeInt(0);   // capabilities: none (no Async, Fence, UST)
+            outputStream.writePad(20);
         }
     }
 
@@ -407,6 +423,12 @@ public class PresentExtension implements Extension {
                 try (XLock lock = client.xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
                     selectInput(client, inputStream, outputStream);
                 }
+                break;
+            case ClientOpcodes.QUERY_CAPABILITIES:
+                queryCapabilities(client, inputStream, outputStream);
+                break;
+            case ClientOpcodes.NOTIFY_MSC:
+                inputStream.skip(36);   // window, serial, target_msc, divisor, remainder: accepted, no CompleteNotify sent
                 break;
             default:
                 throw new BadImplementation();
