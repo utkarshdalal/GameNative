@@ -62,4 +62,34 @@ class FexCodeMapsTest {
         val file = tmp.newFile("blocks.exe-0000000000000001.3.bin").apply { writeBytes(buf.array()) }
         assertNull(FexCodeMaps.readInfo(file))
     }
+
+    @Test
+    fun `a delta keeps the records and only the unsent blocks`() {
+        val full = fixture()
+        val first = tmp.newFile("first.exe-74ec33596a84c560.4.bin")
+        assertEquals(318, FexCodeMaps.writeDelta(full, first, emptySet()))
+        assertEquals(full.length(), first.length())
+
+        // Pretend every block of the first map was sent: the next delta has the records but no blocks.
+        val sent = HashSet<Long>()
+        val buf = java.nio.ByteBuffer.wrap(full.readBytes()).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+        while (buf.remaining() >= 12) {
+            val fileId = buf.long
+            val off = buf.int
+            if (fileId == -1L) {
+                buf.long
+                if (off == -1) {
+                    var end = buf.position()
+                    while (buf.get(end) != 0.toByte()) end++
+                    buf.position((end + 1 + 3) and 3.inv())
+                }
+            } else {
+                sent.add(fileId * 31 + off.toLong().and(0xffffffffL))
+            }
+        }
+        val second = tmp.newFile("second.exe-74ec33596a84c560.5.bin")
+        assertEquals(0, FexCodeMaps.writeDelta(full, second, sent))
+        assertTrue(second.length() < full.length())
+        assertNull(FexCodeMaps.readInfo(second)) // no blocks: not worth sending
+    }
 }
