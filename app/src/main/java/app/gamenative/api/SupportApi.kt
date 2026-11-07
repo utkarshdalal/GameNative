@@ -26,6 +26,7 @@ import org.json.JSONException
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
+import java.io.IOException
 import java.io.InterruptedIOException
 import java.security.MessageDigest
 import java.time.Instant
@@ -908,6 +909,7 @@ object SupportApi {
     suspend fun downloadSigned(
         url: String,
         destination: File,
+        maxBytes: Long = Long.MAX_VALUE,
         onProgress: ((Float) -> Unit)? = null,
     ): ApiResult<String> = withContext(Dispatchers.IO) {
         if (!url.startsWith("https://")) return@withContext ApiResult.HttpError(400, "bad_url")
@@ -918,6 +920,7 @@ object SupportApi {
             val result: Pair<String?, Int> = transferClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return@use null to response.code
                 val total = response.body.contentLength()
+                if (total > maxBytes) throw IOException("download of $total bytes exceeds $maxBytes")
                 val digest = MessageDigest.getInstance("SHA-256")
                 response.body.byteStream().use { input ->
                     destination.outputStream().use { output ->
@@ -930,6 +933,7 @@ object SupportApi {
                             output.write(buffer, 0, count)
                             digest.update(buffer, 0, count)
                             read += count
+                            if (read > maxBytes) throw IOException("download exceeds $maxBytes bytes")
                             if (total > 0) onProgress?.invoke((read.toFloat() / total).coerceIn(0f, 1f))
                         }
                     }

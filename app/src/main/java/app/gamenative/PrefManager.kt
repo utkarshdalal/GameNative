@@ -1966,4 +1966,9 @@ object PrefManager {
     var powerControlDefaultEnabled: Boolean
         get() = getPref(POWER_CONTROL_DEFAULT_ENABLED, DeviceGate.isDeviceSupported())
         set(value) { setPref(POWER_CONTROL_DEFAULT_ENABLED, value) }
+
+    private val SHARED_SHADER_CACHE = booleanPreferencesKey("shared_shader_cache")
+    var sharedShaderCache: Boolean
+        get() = getPref(SHARED_SHADER_CACHE, true)
+        set(value) { setPref(SHARED_SHADER_CACHE, value) }
 }

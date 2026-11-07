@@ -56,6 +56,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import app.gamenative.service.cloud.CloseSyncTracker
+import app.gamenative.shadercache.FossilizeManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
@@ -774,6 +775,9 @@ class MainViewModel @Inject constructor(
                     _uiEvent.send(MainUiEvent.ShowDebugReportDialog(appId))
                 }
 
+                runCatching {
+                    withContext(Dispatchers.IO) { ContainerUtils.getContainer(context, appId) }
+                }.getOrNull()?.let { FossilizeManager.uploadPendingAsync(context, it) }?.let { CloseSyncTracker.track(closeSyncKey, it) }
                 handleExitCloudSync(context, appId, gameId)
                 closeSync.complete()
 

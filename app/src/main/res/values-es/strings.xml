@@ -1040,6 +1040,10 @@
     <string name="settings_performance_title">Rendimiento</string>
     <string name="settings_performance_power_control_title">Control de rendimiento</string>
     <string name="settings_performance_power_control_subtitle">Activa el control de rendimiento en el juego de forma predeterminada (activado en dispositivos probados: AYN Odin 3, Retroid Pocket 6/Nova)</string>
+    <string name="settings_performance_shared_shader_cache_title">Subir cachés de shaders</string>
+    <string name="settings_performance_shared_shader_cache_subtitle">Comparte con otros jugadores los shaders registrados mientras juegas. Al desactivarlo tampoco se descargan las cachés compartidas que reducen los tirones</string>
+    <string name="shader_cache_preparing">Preparando shaders…</string>
+    <string name="shader_cache_preparing_progress">Preparando shaders %1$d%%</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulación</string>
