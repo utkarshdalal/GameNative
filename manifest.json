@@ -938,6 +938,12 @@
         "name": "FEX 2610-gn (5)",
         "url": "https://downloads.gamenative.app/FEXCore-2610-gn-5.wcp",
         "variant": "bionic"
+      },
+      {
+        "id": "2611-gn-6",
+        "name": "FEX 2611-gn (6)",
+        "url": "https://downloads.gamenative.app/FEXCore-2611-gn-6.wcp",
+        "variant": "bionic"
       }
     ],
     "box64": [
