@@ -1,6 +1,7 @@
 package app.gamenative.utils.launchdependencies
 
 import android.content.Context
+import app.gamenative.PrefManager
 import app.gamenative.api.ApiResult
 import app.gamenative.api.CodeCacheApi
 import app.gamenative.data.GameSource
@@ -26,9 +27,11 @@ object FexCodeCacheDependency : LaunchDependency {
     private const val RECHECK_MS = 6L * 60 * 60 * 1000
 
     override fun appliesTo(container: Container, gameSource: GameSource, gameId: Int): Boolean =
-        FexCodeMaps.captureEnabled(container)
+        PrefManager.fexCodeCacheEnabled && "fexcore".equals(container.emulator, ignoreCase = true)
 
     override fun isSatisfied(context: Context, container: Container, gameSource: GameSource, gameId: Int): Boolean {
+        // A pack without the offline compiler cannot load caches; nothing to do for it.
+        if (!FexCodeMaps.supportsCodeMaps(context, container)) return true
         val stamp = stampFile(container)
         return stamp.exists() && System.currentTimeMillis() - stamp.lastModified() < RECHECK_MS
     }
