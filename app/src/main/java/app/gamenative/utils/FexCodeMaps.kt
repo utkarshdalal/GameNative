@@ -9,6 +9,7 @@ import com.winlator.container.Container
 import com.winlator.core.GPUInformation
 import org.json.JSONObject
 import timber.log.Timber
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -31,6 +32,12 @@ object FexCodeMaps {
     private const val ENTRY_BYTES = 12
     private const val MAX_MAP_BYTES = 8L * 1024 * 1024
     private const val MAX_FILES_PER_SESSION = 10
+
+    // Reserved file id that introduces a record instead of a block, and the record kinds.
+    private const val RESERVED_FILE_ID = -1L
+    private const val LOAD_EXTERNAL_LIBRARY = -1
+    private const val SET_EXECUTABLE_32 = -18
+    private const val SET_EXECUTABLE_64 = -17
 
     // First GameNative series release whose FEX writes usable maps (GameNative/FEX gn-6, FEX-2611 base).
     private const val MIN_RELEASE = 2611
@@ -118,6 +125,7 @@ object FexCodeMaps {
         // Keep the newest few; a backlog from failed uploads must not grow without bound.
         files.drop(MAX_FILES_PER_SESSION).forEach { it.delete() }
 
+        val sent = readSentBlocks(container)
         val meta = sessionMeta(context, container, containerId, sessionLengthSec)
         for (file in files.take(MAX_FILES_PER_SESSION)) {
             val info = readInfo(file)
@@ -126,22 +134,40 @@ object FexCodeMaps {
                 file.delete()
                 continue
             }
+            // Only blocks this device has never sent go up; FEX re-records cached code as nothing, so
+            // with a hosted cache in place a session's map is already just the misses.
+            val delta = File(context.cacheDir, "${file.name}.delta")
+            val newBlocks = writeDelta(file, delta, sent)
+            if (newBlocks == 0) {
+                Timber.tag(TAG).i("Code map ${file.name}: ${info.entries} entries, none new")
+                file.delete()
+                delta.delete()
+                continue
+            }
+            val deltaInfo = readInfo(delta)
+            if (deltaInfo == null) {
+                Timber.tag(TAG).w("Code map ${file.name}: delta unreadable")
+                file.delete()
+                delta.delete()
+                continue
+            }
             val gz = File(context.cacheDir, "${file.name}.gz")
             try {
-                val sha256 = gzipAndHash(file, gz)
+                val sha256 = gzipAndHash(delta, gz)
                 val fileMeta = JSONObject(meta.toString()).apply {
-                    put("mainExe", info.mainExe)
-                    put("mainFileId", info.mainFileId)
-                    put("bitness", info.bitness)
-                    put("entries", info.entries)
-                    put("libraries", info.libraries)
-                    put("size", file.length())
+                    put("mainExe", deltaInfo.mainExe)
+                    put("mainFileId", deltaInfo.mainFileId)
+                    put("bitness", deltaInfo.bitness)
+                    put("entries", deltaInfo.entries)
+                    put("libraries", deltaInfo.libraries)
+                    put("size", delta.length())
                     put("sha256", sha256)
                 }
                 when (val result = CodeMapApi.upload(fileMeta, gz)) {
                     is ApiResult.Success -> {
-                        Timber.tag(TAG).i("Uploaded code map ${file.name}: ${info.entries} entries -> ${result.data.key}")
+                        Timber.tag(TAG).i("Uploaded code map ${file.name}: $newBlocks new of ${info.entries} entries -> ${result.data.key}")
                         file.delete()
+                        appendSentBlocks(container, delta)
                     }
                     is ApiResult.HttpError -> {
                         Timber.tag(TAG).w("Code map ${file.name} rejected: HTTP ${result.code} ${result.message}")
@@ -158,7 +184,85 @@ object FexCodeMaps {
                 Timber.tag(TAG).w(e, "Code map ${file.name} failed")
             } finally {
                 gz.delete()
+                delta.delete()
             }
+        }
+    }
+
+    /** Every (file id, block offset) this container has uploaded, as 12-byte records like the maps themselves. */
+    private fun sentBlocksFile(container: Container) = File(container.rootDir, ".gamenative/fex-codemap-sent.bin")
+
+    private fun readSentBlocks(container: Container): HashSet<Long> {
+        val set = HashSet<Long>()
+        val file = sentBlocksFile(container)
+        if (!file.isFile) return set
+        val buf = ByteBuffer.wrap(file.readBytes()).order(ByteOrder.LITTLE_ENDIAN)
+        while (buf.remaining() >= ENTRY_BYTES) {
+            set.add(blockKey(buf.long, buf.int))
+        }
+        return set
+    }
+
+    /** Appends the block entries of a delta map to the sent-block file (its records are skipped). */
+    private fun appendSentBlocks(container: Container, delta: File) {
+        runCatching {
+            val out = ByteArrayOutputStream()
+            forEachRecord(delta.readBytes()) { fileId, blockOffset, _ ->
+                if (fileId != RESERVED_FILE_ID) {
+                    out.write(ByteBuffer.allocate(ENTRY_BYTES).order(ByteOrder.LITTLE_ENDIAN).putLong(fileId).putInt(blockOffset).array())
+                }
+            }
+            sentBlocksFile(container).apply { parentFile?.mkdirs() }.appendBytes(out.toByteArray())
+        }.onFailure { Timber.tag(TAG).w(it, "Could not update the sent-block file") }
+    }
+
+    /** Mixes a file id and block offset into one set key (file ids are hashes, so the low bits vary). */
+    private fun blockKey(fileId: Long, blockOffset: Int): Long = fileId * 31 + blockOffset.toLong().and(0xffffffffL)
+
+    /**
+     * Writes [source] to [target] keeping every record (main executable, library loads) but only the
+     * blocks not in [sent]. Returns the number of blocks written. Records are kept because the
+     * compiler resolves file ids to paths through them.
+     */
+    fun writeDelta(source: File, target: File, sent: Set<Long>): Int {
+        val bytes = source.readBytes()
+        val out = ByteArrayOutputStream(bytes.size)
+        var blocks = 0
+        forEachRecord(bytes) { fileId, blockOffset, raw ->
+            if (fileId == RESERVED_FILE_ID || blockKey(fileId, blockOffset) !in sent) {
+                out.write(raw)
+                if (fileId != RESERVED_FILE_ID) blocks++
+            }
+        }
+        target.writeBytes(out.toByteArray())
+        return blocks
+    }
+
+    /** Walks a map and hands each entry or record to [visit] with its raw bytes. */
+    private fun forEachRecord(bytes: ByteArray, visit: (fileId: Long, blockOffset: Int, raw: ByteArray) -> Unit) {
+        val buf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+        while (buf.remaining() >= ENTRY_BYTES) {
+            val start = buf.position()
+            val fileId = buf.long
+            val blockOffset = buf.int
+            if (fileId == RESERVED_FILE_ID) {
+                when (blockOffset) {
+                    LOAD_EXTERNAL_LIBRARY -> {
+                        if (buf.remaining() < 8) return
+                        buf.long
+                        var end = buf.position()
+                        while (end < buf.limit() && buf.get(end) != 0.toByte()) end++
+                        if (end >= buf.limit()) return
+                        buf.position(minOf(buf.limit(), (end + 1 + 3) and 3.inv()))
+                    }
+                    SET_EXECUTABLE_32, SET_EXECUTABLE_64 -> {
+                        if (buf.remaining() < 8) return
+                        buf.long
+                    }
+                    else -> return
+                }
+            }
+            visit(fileId, blockOffset, bytes.copyOfRange(start, buf.position()))
         }
     }
 
