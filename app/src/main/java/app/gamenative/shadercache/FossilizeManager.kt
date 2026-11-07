@@ -363,9 +363,10 @@ object FossilizeManager {
                             completed = current
                             total = all
                             if (all > 0) {
+                                val percent = (current * 100 / all).coerceIn(0, 100)
                                 PluviaApp.events.emit(
                                     AndroidEvent.SetBootingSplashText(
-                                        context.getString(R.string.shader_cache_preparing_progress, current, all),
+                                        context.getString(R.string.shader_cache_preparing_progress, percent),
                                     ),
                                 )
                             }

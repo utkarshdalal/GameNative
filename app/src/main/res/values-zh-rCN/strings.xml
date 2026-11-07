@@ -1021,7 +1021,7 @@
     <string name="settings_performance_shared_shader_cache_title">上传着色器缓存</string>
     <string name="settings_performance_shared_shader_cache_subtitle">将游玩时记录的着色器与其他玩家共享。关闭后也不会下载可减少卡顿的共享缓存</string>
     <string name="shader_cache_preparing">正在准备着色器…</string>
-    <string name="shader_cache_preparing_progress">正在准备着色器 %1$d/%2$d</string>
+    <string name="shader_cache_preparing_progress">正在准备着色器 %1$d%%</string>
 
     <!-- 设置：模拟组 -->
     <string name="settings_emulation_title">模拟设置</string>

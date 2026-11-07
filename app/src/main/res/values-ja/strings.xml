@@ -1200,7 +1200,7 @@
     <string name="settings_performance_shared_shader_cache_title">シェーダーキャッシュをアップロード</string>
     <string name="settings_performance_shared_shader_cache_subtitle">プレイ中に記録したシェーダーを他のプレイヤーと共有します。オフにすると、カクつきを減らす共有キャッシュのダウンロードも行われません</string>
     <string name="shader_cache_preparing">シェーダーを準備中…</string>
-    <string name="shader_cache_preparing_progress">シェーダーを準備中 %1$d/%2$d</string>
+    <string name="shader_cache_preparing_progress">シェーダーを準備中 %1$d%%</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">エミュレーション</string>

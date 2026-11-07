@@ -1030,7 +1030,7 @@
     <string name="settings_performance_shared_shader_cache_title">Надсилати кеш шейдерів</string>
     <string name="settings_performance_shared_shader_cache_subtitle">Ділитися з іншими гравцями шейдерами, записаними під час гри. Якщо вимкнути, спільний кеш, що зменшує підвисання, теж не завантажуватиметься</string>
     <string name="shader_cache_preparing">Підготовка шейдерів…</string>
-    <string name="shader_cache_preparing_progress">Підготовка шейдерів %1$d/%2$d</string>
+    <string name="shader_cache_preparing_progress">Підготовка шейдерів %1$d%%</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Емуляція</string>
