@@ -20,7 +20,7 @@ import java.io.File
 /**
  * Puts the hosted FEX code caches for the images this game loads into the prefix's fex-emu/cache/
  * before launch, so FEX loads translated code instead of compiling it. Caches are hosted per image
- * sha256, FEX build and SoC; the server names each one the way FEX looks for it on this device
+ * code identity (FexImages.codeSha256), FEX build and SoC; the server names each one the way FEX looks for it on this device
  * (image name plus file id from the PE header), so a stale file after a game update is ignored.
  * The lookup is re-checked once per [RECHECK_MS]; failures never block the launch.
  */

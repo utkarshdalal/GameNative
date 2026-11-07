@@ -33,6 +33,38 @@ class FexImagesTest {
         return buf.array()
     }
 
+    private class Section(val name: String, val virtualAddress: Int, val bytes: ByteArray)
+
+    /** A PE32+ image with a 240-byte optional header followed by [sections], raw data packed after the table. */
+    private fun peWithSections(sections: List<Section>, timeDateStamp: Long = 1, truncateBy: Int = 0): ByteArray {
+        val optionalHeaderSize = 240
+        val tableOffset = peOffset + 24 + optionalHeaderSize
+        val dataStart = tableOffset + sections.size * 40
+        val total = dataStart + sections.sumOf { it.bytes.size }
+        val buf = ByteBuffer.allocate(total).order(ByteOrder.LITTLE_ENDIAN)
+        buf.put(0, 'M'.code.toByte()).put(1, 'Z'.code.toByte())
+        buf.putInt(0x3c, peOffset)
+        buf.putInt(peOffset, 0x00004550)
+        buf.putShort(peOffset + 4, 0x8664.toShort())
+        buf.putShort(peOffset + 6, sections.size.toShort())
+        buf.putInt(peOffset + 8, timeDateStamp.toInt())
+        buf.putShort(peOffset + 20, optionalHeaderSize.toShort())
+        buf.putShort(peOffset + 24, 0x20b.toShort())
+        buf.putInt(peOffset + 24 + 56, 0x10000)
+        var data = dataStart
+        sections.forEachIndexed { i, section ->
+            val h = tableOffset + i * 40
+            section.name.toByteArray().forEachIndexed { j, b -> buf.put(h + j, b) }
+            buf.putInt(h + 8, section.bytes.size)
+            buf.putInt(h + 12, section.virtualAddress)
+            buf.putInt(h + 16, section.bytes.size)
+            buf.putInt(h + 20, data)
+            section.bytes.forEachIndexed { j, b -> buf.put(data + j, b) }
+            data += section.bytes.size
+        }
+        return buf.array().copyOf(total - truncateBy)
+    }
+
     private fun file(name: String, bytes: ByteArray) = File(tmp.root, name).apply {
         parentFile?.mkdirs()
         writeBytes(bytes)
@@ -80,14 +112,71 @@ class FexImagesTest {
         val exe = file("game/Brotato.exe", bytes)
         val text = file("game/readme.dll", "hello".toByteArray())
         val images = FexImages.describe(tmp.root, listOf(exe, text))
-        assertEquals(listOf(FexImages.Image(sha256(bytes), "brotato.exe", 1_719_000_000, 41_000_000)), images)
+        assertEquals(
+            listOf(FexImages.Image(sha256(bytes), sha256(ByteArray(0)), "brotato.exe", 1_719_000_000, 41_000_000)),
+            images,
+        )
 
         val index = JSONObject(File(tmp.root, ".gamenative/fex-image-hashes.json").readText())
         val entry = index.getJSONObject(exe.absolutePath)
         assertEquals(bytes.size.toLong(), entry.getLong("size"))
         assertEquals(exe.lastModified(), entry.getLong("mtime"))
         assertEquals(sha256(bytes), entry.getString("sha256"))
+        assertEquals(sha256(ByteArray(0)), entry.getString("codeSha256"))
         assertFalse(index.has(text.absolutePath))
+    }
+
+    private fun sections(text: ByteArray, rsrc: ByteArray) = listOf(
+        Section(".text", 0x1000, text),
+        Section(".rsrc", 0x3000, rsrc),
+        Section(".reloc", 0x4000, ByteArray(16) { 7 }),
+    )
+
+    @Test
+    fun `codeSha256 hashes section headers and raw bytes except rsrc and reloc`() {
+        val text = ByteArray(64) { it.toByte() }
+        val bytes = peWithSections(sections(text, ByteArray(32) { 1 }))
+        val fields = ByteBuffer.allocate(12).order(ByteOrder.LITTLE_ENDIAN).putInt(0x1000).putInt(64).putInt(64).array()
+        assertEquals(sha256(fields + text), FexImages.codeSha256(file("game/a.exe", bytes)))
+    }
+
+    @Test
+    fun `changing rsrc keeps codeSha256 and changes sha256`() {
+        val text = ByteArray(64) { it.toByte() }
+        val a = file("game/a.exe", peWithSections(sections(text, ByteArray(32) { 1 })))
+        val b = file("other/a.exe", peWithSections(sections(text, ByteArray(32) { 2 }), timeDateStamp = 99))
+        val (imageA, imageB) = FexImages.describe(tmp.root, listOf(a, b))
+        assertEquals(imageA.codeSha256, imageB.codeSha256)
+        assertTrue(imageA.sha256 != imageB.sha256)
+    }
+
+    @Test
+    fun `changing text changes both hashes`() {
+        val a = file("game/a.exe", peWithSections(sections(ByteArray(64) { 1 }, ByteArray(32))))
+        val b = file("other/a.exe", peWithSections(sections(ByteArray(64) { 3 }, ByteArray(32))))
+        val (imageA, imageB) = FexImages.describe(tmp.root, listOf(a, b))
+        assertTrue(imageA.codeSha256 != imageB.codeSha256)
+        assertTrue(imageA.sha256 != imageB.sha256)
+    }
+
+    @Test
+    fun `a section cut short by the end of the file is padded with zeros`() {
+        val text = ByteArray(64) { 5 }.also { it.fill(0, 48, 64) }
+        val whole = peWithSections(listOf(Section(".text", 0x1000, text)))
+        val cut = peWithSections(listOf(Section(".text", 0x1000, text)), truncateBy = 16)
+        assertEquals(FexImages.codeSha256(file("whole.exe", whole)), FexImages.codeSha256(file("cut.exe", cut)))
+    }
+
+    @Test
+    fun `an index entry without codeSha256 is rehashed`() {
+        val exe = file("game/game.exe", peWithSections(sections(ByteArray(8) { 1 }, ByteArray(8))))
+        val expected = FexImages.describe(tmp.root, listOf(exe)).single()
+        val indexFile = File(tmp.root, ".gamenative/fex-image-hashes.json")
+        val index = JSONObject(indexFile.readText())
+        index.getJSONObject(exe.absolutePath).remove("codeSha256")
+        indexFile.writeText(index.toString())
+        assertEquals(expected, FexImages.describe(tmp.root, listOf(exe)).single())
+        assertEquals(expected.codeSha256, JSONObject(indexFile.readText()).getJSONObject(exe.absolutePath).getString("codeSha256"))
     }
 
     @Test

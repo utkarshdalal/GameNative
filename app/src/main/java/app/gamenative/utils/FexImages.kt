@@ -9,8 +9,8 @@ import java.nio.ByteOrder
 import java.security.MessageDigest
 
 /**
- * The PE images a hosted FEX code cache is looked up by. A cache is keyed by the image's sha256;
- * FEX finds it on disk by a name derived from the lowercase file name and two PE header fields
+ * The PE images a hosted FEX code cache is looked up by. A cache is keyed by the image's code
+ * identity ([codeSha256]), which survives per-game restamping of resources and timestamps; FEX finds it on disk by a name derived from the lowercase file name and two PE header fields
  * (TimeDateStamp, SizeOfImage), which the server turns into the file name for this device.
  * Hashes are kept in a per-container index keyed by host path, size and mtime, so each file
  * version is hashed once.
@@ -22,7 +22,15 @@ object FexImages {
 
     data class Header(val timeDateStamp: Long, val sizeOfImage: Long)
 
-    data class Image(val sha256: String, val name: String, val timeDateStamp: Long, val sizeOfImage: Long)
+    data class Image(
+        val sha256: String,
+        val codeSha256: String,
+        val name: String,
+        val timeDateStamp: Long,
+        val sizeOfImage: Long,
+    )
+
+    private val SKIPPED_SECTIONS = setOf(".rsrc", ".reloc")
 
     /**
      * Reads TimeDateStamp (e_lfanew+8) and SizeOfImage (e_lfanew+24+56, the same offset in PE32 and
@@ -62,24 +70,32 @@ object FexImages {
             val mtime = file.lastModified()
             val cached = index.optJSONObject(key)?.takeIf {
                 it.optLong("size", -1) == size && it.optLong("mtime", -1) == mtime &&
-                    it.optLong("timeDateStamp", -1) == header.timeDateStamp && it.optLong("sizeOfImage", -1) == header.sizeOfImage
-            }?.optString("sha256")?.takeIf { it.length == 64 }
-            val sha256 = cached ?: runCatching { sha256(file) }.getOrElse {
-                Timber.tag(TAG).w(it, "Cannot hash ${file.path}")
-                return@mapNotNull null
-            }.also {
+                    it.optLong("timeDateStamp", -1) == header.timeDateStamp && it.optLong("sizeOfImage", -1) == header.sizeOfImage &&
+                    it.optString("sha256").length == 64 && it.optString("codeSha256").length == 64
+            }
+            val (sha256, codeSha256) = if (cached != null) {
+                cached.getString("sha256") to cached.getString("codeSha256")
+            } else {
+                val hashes = runCatching {
+                    sha256(file) to (codeSha256(file) ?: throw IllegalArgumentException("malformed section table"))
+                }.getOrElse {
+                    Timber.tag(TAG).w(it, "Cannot hash ${file.path}")
+                    return@mapNotNull null
+                }
                 index.put(
                     key,
                     JSONObject()
                         .put("size", size)
                         .put("mtime", mtime)
-                        .put("sha256", it)
+                        .put("sha256", hashes.first)
+                        .put("codeSha256", hashes.second)
                         .put("timeDateStamp", header.timeDateStamp)
                         .put("sizeOfImage", header.sizeOfImage),
                 )
                 changed = true
+                hashes
             }
-            Image(sha256, file.name.lowercase(), header.timeDateStamp, header.sizeOfImage)
+            Image(sha256, codeSha256, file.name.lowercase(), header.timeDateStamp, header.sizeOfImage)
         }
         val gone = index.keys().asSequence().filter { !File(it).isFile }.toList()
         gone.forEach { index.remove(it) }
@@ -91,6 +107,74 @@ object FexImages {
         }
         return images
     }
+
+    /**
+     * SHA-256 over, in section-table order, every section other than .rsrc and .reloc: u32le
+     * VirtualAddress, VirtualSize and SizeOfRawData, then SizeOfRawData bytes at PointerToRawData,
+     * with any part past the end of the file counted as zeros. Null if the file is not a PE image
+     * or its section table does not fit in the file.
+     */
+    fun codeSha256(file: File): String? = runCatching {
+        RandomAccessFile(file, "r").use { raf ->
+            val length = raf.length()
+            if (length < 0x40) return null
+            val dos = ByteArray(0x40)
+            raf.readFully(dos)
+            if (dos[0] != 'M'.code.toByte() || dos[1] != 'Z'.code.toByte()) return null
+            val peOffset = ByteBuffer.wrap(dos).order(ByteOrder.LITTLE_ENDIAN).getInt(0x3c).toLong() and 0xffffffffL
+            if (peOffset + 24 > length) return null
+            val coff = ByteArray(24)
+            raf.seek(peOffset)
+            raf.readFully(coff)
+            val coffBuf = ByteBuffer.wrap(coff).order(ByteOrder.LITTLE_ENDIAN)
+            if (coffBuf.getInt(0) != 0x00004550) return null
+            val sectionCount = coffBuf.getShort(6).toInt() and 0xffff
+            val optionalHeaderSize = coffBuf.getShort(20).toInt() and 0xffff
+            val tableOffset = peOffset + 24 + optionalHeaderSize
+            if (tableOffset + sectionCount * 40L > length) return null
+            val table = ByteArray(sectionCount * 40)
+            raf.seek(tableOffset)
+            raf.readFully(table)
+            val sections = ByteBuffer.wrap(table).order(ByteOrder.LITTLE_ENDIAN)
+
+            val digest = MessageDigest.getInstance("SHA-256")
+            val buffer = ByteArray(256 * 1024)
+            val fields = ByteBuffer.allocate(12).order(ByteOrder.LITTLE_ENDIAN)
+            for (i in 0 until sectionCount) {
+                val base = i * 40
+                val nameEnd = (0 until 8).firstOrNull { table[base + it] == 0.toByte() } ?: 8
+                val name = String(table, base, nameEnd, Charsets.US_ASCII)
+                if (name in SKIPPED_SECTIONS) continue
+                val virtualSize = sections.getInt(base + 8)
+                val virtualAddress = sections.getInt(base + 12)
+                val rawSize = sections.getInt(base + 16).toLong() and 0xffffffffL
+                val rawPointer = sections.getInt(base + 20).toLong() and 0xffffffffL
+                fields.clear()
+                fields.putInt(virtualAddress).putInt(virtualSize).putInt(rawSize.toInt())
+                digest.update(fields.array())
+
+                var remaining = rawSize
+                var position = rawPointer
+                while (remaining > 0 && position < length) {
+                    raf.seek(position)
+                    val n = raf.read(buffer, 0, minOf(remaining, buffer.size.toLong()).toInt())
+                    if (n < 0) break
+                    digest.update(buffer, 0, n)
+                    remaining -= n
+                    position += n
+                }
+                if (remaining > 0) {
+                    buffer.fill(0)
+                    while (remaining > 0) {
+                        val n = minOf(remaining, buffer.size.toLong()).toInt()
+                        digest.update(buffer, 0, n)
+                        remaining -= n
+                    }
+                }
+            }
+            digest.digest().joinToString("") { "%02x".format(it) }
+        }
+    }.getOrNull()
 
     fun sha256(file: File): String {
         val digest = MessageDigest.getInstance("SHA-256")

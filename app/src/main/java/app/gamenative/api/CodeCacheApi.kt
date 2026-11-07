@@ -16,6 +16,8 @@ object CodeCacheApi {
 
     data class HostedCache(
         val imageSha256: String,
+        /** The code identity the cache was matched on (FexImages.codeSha256). */
+        val codeSha256: String,
         /** The name FEX looks for on this device, computed by the server from the image's name and PE header. */
         val fileName: String,
         val size: Long,
@@ -37,6 +39,7 @@ object CodeCacheApi {
                     images.forEach { image ->
                         put(
                             JSONObject()
+                                .put("codeSha256", image.codeSha256)
                                 .put("sha256", image.sha256)
                                 .put("name", image.name)
                                 .put("timeDateStamp", image.timeDateStamp)
@@ -56,6 +59,7 @@ object CodeCacheApi {
                     add(
                         HostedCache(
                             c.getString("imageSha256"),
+                            c.getString("codeSha256"),
                             c.getString("fileName"),
                             c.getLong("size"),
                             c.optLong("compressedSize", -1),
