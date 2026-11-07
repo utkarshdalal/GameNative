@@ -150,9 +150,13 @@ object SteamInstallScriptRegistry {
 
     private fun applyRegistrySection(container: Container, appId: Int, gameDir: File, prefixDir: File, scriptFile: File) {
         val prefixStamp = File(prefixDir, "${Marker.STEAM_INSTALL_SCRIPT_INSTALLED.fileName}_$appId")
-        if (MarkerUtils.hasMarker(gameDir.absolutePath, Marker.STEAM_INSTALL_SCRIPT_INSTALLED) && prefixStamp.isFile) return
-
         val entries = parse(scriptFile.readText(), GAME_DRIVE_ROOT, container.language)
+        if (
+            MarkerUtils.hasMarker(gameDir.absolutePath, Marker.STEAM_INSTALL_SCRIPT_INSTALLED) &&
+            prefixStamp.isFile &&
+            allPresent(prefixDir, entries)
+        ) return
+
         write(prefixDir, entries)
         Timber.i("Applied ${entries.size} install-script registry values for app $appId")
 
@@ -189,7 +193,7 @@ object SteamInstallScriptRegistry {
         return true
     }
 
-    private fun allPresent(prefixDir: File, entries: List<Entry>): Boolean =
+    internal fun allPresent(prefixDir: File, entries: List<Entry>): Boolean =
         Hive.entries.all { hive -> allPresentIn(prefixDir, hive, entries.filter { it.hive == hive }) }
 
     private fun allPresentIn(prefixDir: File, hive: Hive, entries: List<Entry>): Boolean {
