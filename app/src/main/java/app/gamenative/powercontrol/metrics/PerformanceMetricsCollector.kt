@@ -35,6 +35,7 @@ object PerformanceMetricsCollector {
     private const val MAX_SESSION_FILES = 5
     private const val DEFAULT_REFRESH_RATE = 60f
     private const val THERMAL_EVERY_N_SAMPLES = 20
+    private const val SESSION_SAMPLE_EVERY_N_SAMPLES = 2
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var samplingJob: Job? = null
@@ -97,6 +98,7 @@ object PerformanceMetricsCollector {
         FrameTimeRing.start()
         PowerTelemetry.start()
         SessionProcessTelemetry.start(appContext)
+        SessionPerfSampler.start()
         openLog(appContext, sessionStartMillis)
 
         val gpuPaths = SystemMetricsSources.gpuUsagePaths()
@@ -173,9 +175,18 @@ object PerformanceMetricsCollector {
         val gpuTemp = SystemMetricsSources.readTemperature(SystemMetricsSources.gpuTempPaths())
         PowerTelemetry.noteTemperatureSources(cpuTemp?.path, gpuTemp?.path)
         // Every 10 s: the headroom API rate-limits to one call a second, and status is
-        // sampled on the same cadence.
-        if (sampleCount % THERMAL_EVERY_N_SAMPLES == 0L) {
-            appContext?.let { PowerTelemetry.recordThermal(ThermalHeadroom.read(it), ThermalHeadroom.status(it)) }
+        // sampled on the same cadence. The session sampler reads both once a second
+        // without publishing them, so the 10 s readings above stay as they were.
+        val thermalTick = sampleCount % THERMAL_EVERY_N_SAMPLES == 0L
+        val sessionSampleTick = sampleCount % SESSION_SAMPLE_EVERY_N_SAMPLES == 0L
+        var headroom: Float? = null
+        var thermalStatus: Int? = null
+        if (thermalTick || sessionSampleTick) {
+            appContext?.let {
+                headroom = ThermalHeadroom.read(it, publish = thermalTick)
+                thermalStatus = ThermalHeadroom.status(it, publish = thermalTick)
+                if (thermalTick) PowerTelemetry.recordThermal(headroom, thermalStatus)
+            }
         }
         val coreMax = coreSampler.sample()
         latestCoreMaxPercent = coreMax
@@ -216,6 +227,23 @@ object PerformanceMetricsCollector {
         publish(snapshot)
         runCatching { PowerTelemetry.record(snapshot, cpu) }
         runCatching { SessionProcessTelemetry.tick(PowerTelemetry.currentBucket()) }
+        if (sessionSampleTick) {
+            runCatching {
+                SessionPerfSampler.tick(
+                    frames = frameScratch,
+                    frameCount = frameCount,
+                    frameStride = PowerManager.frameSampleStride,
+                    fps = frameStats.fps,
+                    refreshHz = PowerManager.panelRefreshHz.takeIf { it > 0 }?.toFloat() ?: displayRefreshRate,
+                    capFps = PowerManager.targetFps,
+                    cpu = cpu,
+                    gpuBusy = gpu?.percent,
+                    cpuTempC = cpuTemp?.celsius,
+                    thermalHeadroom = headroom,
+                    thermalStatus = thermalStatus,
+                )
+            }.onFailure { Timber.tag(TAG).w(it, "Session sample failed") }
+        }
         appendLog(snapshot)
 
         sampleCount++

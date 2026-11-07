@@ -15,6 +15,7 @@ import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import app.gamenative.filedetect.GameFileDetection
 import app.gamenative.powercontrol.metrics.PowerTelemetry
+import app.gamenative.powercontrol.metrics.SessionPerfSampler
 import app.gamenative.powercontrol.metrics.SessionProcessTelemetry
 import com.winlator.container.Container
 import java.io.File
@@ -244,6 +245,11 @@ object SessionReport {
                 .onFailure { Timber.w(it, "SessionReport: process properties failed") }
             put("fps_cap_configured", app.gamenative.powercontrol.PowerManager.targetFps.coerceAtLeast(0))
             put("optimize_state", OptimizeState.properties())
+            runCatching {
+                val designCap = frameRating?.fpsBy5Min?.takeIf { it.isNotEmpty() }
+                    ?.let { designCapDetected(it, PowerTelemetry.bucketLoads()) } ?: false
+                putAll(SessionPerfSampler.properties(designCap))
+            }.onFailure { Timber.w(it, "SessionReport: perf verdict failed") }
             if (frameRating != null) {
                 put("total_frames", frameRating.totalFrames)
                 frameRating.fpsBy5Min.takeIf { it.isNotEmpty() }?.let { fps ->

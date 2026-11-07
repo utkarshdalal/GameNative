@@ -18,7 +18,13 @@ object SessionProcessTelemetry {
     private const val SCAN_EVERY_TICKS = 20
     private const val MB = 1024L * 1024L
 
+    private const val FIRST_PICK_DELAY_MS = 60_000L
+    private val pickIgnoredPrefixes = listOf("audiotrack", "aaudio", "renderthread", "binder", "hwuitask")
+
     private class ThreadHot(val name: String, val pct: Int)
+
+    /** The game thread the per-second sampler follows. */
+    class HotPick(val pid: Int, val tid: Int, val name: String)
 
     private val lock = Any()
     private val selfPid = Process.myPid()
@@ -47,6 +53,38 @@ object SessionProcessTelemetry {
     private var availMinMb = -1L
     private var lastLowMemory = false
     private var lowMemoryEvents = 0
+    private var gamePidSeenMs = 0L
+    private var firstPickDone = false
+
+    @Volatile
+    private var pickRequested = false
+
+    @Volatile
+    var hotPick: HotPick? = null
+        private set
+
+    @Volatile
+    var latestWineserverPct: Int? = null
+        private set
+
+    @Volatile
+    var latestGamePct: Int? = null
+        private set
+
+    @Volatile
+    var latestAvailMb: Long? = null
+        private set
+
+    @Volatile
+    var latestLowMemory: Boolean = false
+        private set
+
+    val lowMemoryEventCount: Int get() = synchronized(lock) { lowMemoryEvents }
+
+    /** Re-picks the hot thread on the next tick, from the thread ticks since the last full pass. */
+    fun requestHotPick() {
+        pickRequested = true
+    }
 
     private val trimCallbacks = object : ComponentCallbacks2 {
         override fun onTrimMemory(level: Int) {
@@ -79,6 +117,14 @@ object SessionProcessTelemetry {
             availMinMb = -1L
             lastLowMemory = false
             lowMemoryEvents = 0
+            gamePidSeenMs = 0L
+            firstPickDone = false
+            pickRequested = false
+            hotPick = null
+            latestWineserverPct = null
+            latestGamePct = null
+            latestAvailMb = null
+            latestLowMemory = false
             appContext = context.applicationContext
             activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
         }
@@ -100,6 +146,9 @@ object SessionProcessTelemetry {
             if (bucket != lastBucket) {
                 if (lastBucket >= 0) runCatching { sampleThreads() }
                 lastBucket = bucket
+            }
+            if (gamePid >= 0 && (pickRequested || (!firstPickDone && SystemClock.elapsedRealtime() - gamePidSeenMs >= FIRST_PICK_DELAY_MS))) {
+                runCatching { pickHotThread(readThreadTicks(gamePid), SystemClock.elapsedRealtime()) }
             }
         }
     }
@@ -134,6 +183,8 @@ object SessionProcessTelemetry {
         if (availMinMb < 0L || availMb < availMinMb) availMinMb = availMb
         if (memoryInfo.lowMemory && !lastLowMemory) lowMemoryEvents++
         lastLowMemory = memoryInfo.lowMemory
+        latestAvailMb = availMb
+        latestLowMemory = memoryInfo.lowMemory
     }
 
     private fun scan() {
@@ -171,11 +222,16 @@ object SessionProcessTelemetry {
         prevProcMs = nowMs
         procNames.keys.retainAll(ticksNow.keys)
         wineserver?.let { wineserverPct += it }
+        latestWineserverPct = wineserver
         if (gameCandidate < 0) return
+        latestGamePct = gameCandidatePct
         if (gameCandidate != gamePid) {
             gamePid = gameCandidate
             threadBaseline = readThreadTicks(gamePid)?.mapValuesTo(HashMap()) { it.value.second } ?: HashMap()
             threadBaselineMs = nowMs
+            gamePidSeenMs = nowMs
+            firstPickDone = false
+            hotPick = null
         }
         readRssMb(gamePid)?.let { gameRssMb += it }
     }
@@ -190,8 +246,10 @@ object SessionProcessTelemetry {
             gamePid = -1
             threadBaseline = HashMap()
             threadBaselineMs = 0L
+            hotPick = null
             return
         }
+        pickHotThread(current, nowMs)
         if (dtSec > 1.0) {
             current.entries
                 .mapNotNull { (tid, value) ->
@@ -203,6 +261,27 @@ object SessionProcessTelemetry {
         }
         threadBaseline = current.mapValuesTo(HashMap()) { it.value.second }
         threadBaselineMs = nowMs
+    }
+
+    /** Picks the busiest non-system thread since the last full pass, leaving that pass's baseline as it is. */
+    private fun pickHotThread(current: Map<Int, Pair<String, Long>>?, nowMs: Long) {
+        val dtSec = (nowMs - threadBaselineMs) / 1000.0
+        if (current == null || threadBaselineMs == 0L || dtSec <= 1.0) return
+        pickRequested = false
+        firstPickDone = true
+        current.entries
+            .filter { (_, value) -> !pickIgnored(value.first) }
+            .mapNotNull { (tid, value) ->
+                val prev = threadBaseline[tid] ?: return@mapNotNull null
+                Triple(tid, value.first, value.second - prev)
+            }
+            .maxByOrNull { it.third }
+            ?.let { (tid, name, _) -> hotPick = HotPick(gamePid, tid, name) }
+    }
+
+    private fun pickIgnored(name: String): Boolean {
+        val lower = name.lowercase(Locale.US)
+        return lower == "main" || pickIgnoredPrefixes.any { lower.startsWith(it) }
     }
 
     private fun readThreadTicks(pid: Int): Map<Int, Pair<String, Long>>? {

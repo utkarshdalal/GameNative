@@ -139,6 +139,56 @@ internal object ProcStatParser {
     }
 }
 
+internal object PerfGpuClock {
+    private const val KGSL = "/sys/class/kgsl/kgsl-3d0"
+
+    fun discoverCurPath(): String? {
+        listOf(
+            "/sys/class/kgsl/kgsl-3d0/devfreq/cur_freq",
+            "/sys/class/kgsl/kgsl-3d0/gpuclk",
+            "/sys/class/kgsl/kgsl-3d0/clock_mhz",
+        ).firstOrNull { File(it).canRead() }?.let { return it }
+        for (root in listOf(File("/sys/class/devfreq"), File("/sys/devices/virtual/devfreq"))) {
+            val nodes = root.listFiles { file -> file.isDirectory } ?: continue
+            for (node in nodes) {
+                val path = node.path.lowercase(Locale.US)
+                if (listOf("gpu", "mali", "g3d", "kgsl").none { path.contains(it) }) continue
+                val file = File(node, "cur_freq")
+                if (file.canRead()) return file.path
+            }
+        }
+        return null
+    }
+
+    /** The node holding the GPU's current frequency cap, next to [discoverCurPath]'s node. */
+    fun maxPath(curPath: String?): String? = when {
+        curPath == null -> null
+        curPath == "$KGSL/gpuclk" -> "$KGSL/max_gpuclk"
+        curPath == "$KGSL/clock_mhz" -> "$KGSL/max_clock_mhz"
+        curPath.endsWith("/cur_freq") -> curPath.removeSuffix("cur_freq") + "max_freq"
+        else -> null
+    }?.takeIf { File(it).canRead() }
+
+    /** The GPU's highest operating point in MHz. */
+    fun topMhz(curPath: String?): Int? {
+        val list = when {
+            curPath == null -> null
+            curPath.startsWith(KGSL) && !curPath.contains("/devfreq/") -> "$KGSL/gpu_available_frequencies"
+            else -> curPath.substringBeforeLast('/') + "/available_frequencies"
+        } ?: return null
+        return SystemMetricsSources.readFirstLine(list)?.trim()?.split(Regex("\\s+"))
+            ?.mapNotNull { it.toLongOrNull() }?.maxOrNull()?.let(::toMhz)
+    }
+
+    fun readMhz(path: String?): Int? = SystemMetricsSources.readLongFromLine(path ?: return null)?.let(::toMhz)
+
+    fun toMhz(raw: Long): Int = when {
+        raw >= 100_000_000L -> (raw / 1_000_000L).toInt()
+        raw >= 100_000L -> (raw / 1_000L).toInt()
+        else -> raw.toInt()
+    }
+}
+
 internal class PerfSample(
     val t: Int,
     val fps: Float?,
@@ -468,7 +518,7 @@ object PerfSampler {
 
         private val clusters: List<PerfCluster> = runCatching { discoverClusters() }.getOrDefault(emptyList())
         private val coreCount: Int = runCatching { discoverCoreCount() }.getOrDefault(Runtime.getRuntime().availableProcessors())
-        private val gpuFreqPath: String? = runCatching { discoverGpuFreqPath() }.getOrNull()
+        private val gpuFreqPath: String? = runCatching { PerfGpuClock.discoverCurPath() }.getOrNull()
         private val skinTempPaths: List<String> = runCatching { SystemMetricsSources.skinTempPaths() }.getOrDefault(emptyList())
         private val refreshRateHz: Float = runCatching { readRefreshRate() }.getOrDefault(60f)
         private val maxAvailableKhz: Long? = runCatching { PowerManager.getAvailableCpuFrequencies().maxOrNull() }.getOrNull()
@@ -985,14 +1035,7 @@ object PerfSampler {
             mhz
         }
 
-        private fun readGpuMhz(): Int? {
-            val raw = SystemMetricsSources.readLongFromLine(gpuFreqPath ?: return null) ?: return null
-            return when {
-                raw >= 100_000_000L -> (raw / 1_000_000L).toInt()
-                raw >= 100_000L -> (raw / 1_000L).toInt()
-                else -> raw.toInt()
-            }
-        }
+        private fun readGpuMhz(): Int? = PerfGpuClock.readMhz(gpuFreqPath)
 
         @RequiresApi(Build.VERSION_CODES.Q)
         private fun readThermalStatus(): Int? =
@@ -1054,23 +1097,6 @@ object PerfSampler {
             return byMax.map { (max, cores) -> PerfCluster(cores.sorted().toIntArray(), max) }
         }
 
-        private fun discoverGpuFreqPath(): String? {
-            listOf(
-                "/sys/class/kgsl/kgsl-3d0/devfreq/cur_freq",
-                "/sys/class/kgsl/kgsl-3d0/gpuclk",
-                "/sys/class/kgsl/kgsl-3d0/clock_mhz",
-            ).firstOrNull { File(it).canRead() }?.let { return it }
-            for (root in listOf(File("/sys/class/devfreq"), File("/sys/devices/virtual/devfreq"))) {
-                val nodes = root.listFiles { file -> file.isDirectory } ?: continue
-                for (node in nodes) {
-                    val path = node.path.lowercase(Locale.US)
-                    if (listOf("gpu", "mali", "g3d", "kgsl").none { path.contains(it) }) continue
-                    val file = File(node, "cur_freq")
-                    if (file.canRead()) return file.path
-                }
-            }
-            return null
-        }
 
         private fun gameDrivePath(drives: String?): String? {
             if (drives.isNullOrBlank()) return null
