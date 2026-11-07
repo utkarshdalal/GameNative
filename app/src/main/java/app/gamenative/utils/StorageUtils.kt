@@ -17,7 +17,6 @@ import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.BasicFileAttributes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.yield
 import timber.log.Timber
 import java.io.IOException
 import java.nio.file.Files
@@ -88,24 +87,61 @@ object StorageUtils {
 
     suspend fun getFolderSize(folderPath: String): Long {
         val folder = File(folderPath)
-        if (folder.exists()) {
-            var bytes = 0L
-            val tree = folder.walk()
-            tree.forEach {
-                if (!it.isFile || hardLinkCount(it.toPath()) <= 1) {
-                    bytes += it.length()
-                }
-                // allow interruption if run as coroutine
-                yield()
-            }
-            return bytes
+        if (!folder.exists()) return 0L
+        return directorySizeOnDisk(folder.toPath())
+    }
+
+    /**
+     * Bytes of regular files under [root]. Symlinks (file or directory) are never followed
+     * or counted, so a link that points back into the tree (GOG's `_CommonRedist/ISI/rootdir`)
+     * or out to Workshop content cannot inflate the result. A file reachable through several
+     * hard links is counted once, the first time its (device, inode) pair is seen.
+     */
+    fun directorySizeOnDisk(root: Path): Long {
+        // The root itself may legitimately be a symlink (callers pass whatever path the store
+        // recorded); resolve it so the walk below, which never follows links, still descends.
+        val start = runCatching { root.toRealPath() }.getOrDefault(root)
+        if (!Files.isDirectory(start)) return 0L
+
+        var totalBytes = 0L
+        val seenInodes = HashSet<Pair<Long, Long>>()
+        runCatching {
+            Files.walkFileTree(
+                start,
+                object : SimpleFileVisitor<Path>() {
+                    override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
+                        if (!attrs.isRegularFile) return FileVisitResult.CONTINUE
+                        if (hardLinkCount(file) > 1) {
+                            val key = inodeKey(file)
+                            if (key != null && !seenInodes.add(key)) return FileVisitResult.CONTINUE
+                        }
+                        totalBytes += attrs.size()
+                        return FileVisitResult.CONTINUE
+                    }
+
+                    override fun visitFileFailed(file: Path, exc: IOException?): FileVisitResult {
+                        Timber.w(exc, "Failed to size file: $file")
+                        return FileVisitResult.CONTINUE
+                    }
+                },
+            )
+        }.onFailure {
+            Timber.w(it, "Failed to calculate size for $root")
         }
-        return 0L
+
+        return totalBytes
     }
 
     private fun hardLinkCount(path: Path): Int =
         runCatching { (Files.getAttribute(path, "unix:nlink", LinkOption.NOFOLLOW_LINKS) as Number).toInt() }
             .getOrDefault(1)
+
+    private fun inodeKey(path: Path): Pair<Long, Long>? =
+        runCatching {
+            val dev = (Files.getAttribute(path, "unix:dev", LinkOption.NOFOLLOW_LINKS) as Number).toLong()
+            val ino = (Files.getAttribute(path, "unix:ino", LinkOption.NOFOLLOW_LINKS) as Number).toLong()
+            dev to ino
+        }.getOrNull()
 
     fun formatBinarySize(bytes: Long, decimalPlaces: Int = 2): String {
         require(bytes > Long.MIN_VALUE) { "Out of range" }
