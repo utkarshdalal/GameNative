@@ -56,6 +56,12 @@
     <string name="gog_uninstall_confirmation_message">Sigur vrei să dezinstalezi %1$s? Această acțiune nu poate fi anulată.</string>
     <string name="gog_install_game_title">Descărcare joc</string>
     <string name="gog_install_confirmation_message">Aplicația ce urmează să fie instalată are următoarele cerințe de spațiu. Vrei să continui?\n\n\tDimensiune descărcare: %1$s\n\tSpațiu disponibil: %2$s</string>
+    <string name="gog_dlc_sizes">%1$s descărcare • %2$s instalare</string>
+    <string name="gog_dlc_not_installable">Nu este disponibil prin GOG Galaxy. Descarcă-l din conținutul bonus din biblioteca ta GOG.</string>
+    <string name="gog_dlc_load_failed">Nu s-a putut încărca DLC-ul: %1$s</string>
+    <string name="gog_dlc_deselect_all">Deselectează tot</string>
+    <string name="gog_dlc_download_size">%1$s descărcare</string>
+    <string name="gog_dlc_installs_on_launch">Se instalează la următoarea pornire a jocului</string>
     <string name="steam_never">Niciodată</string>
     <string name="epic_cancel_download_message">Sigur doriți să anulați descărcarea aplicației?</string>
     <string name="epic_delete_download_message">Ștergeți toate datele descărcate pentru acest joc?</string>

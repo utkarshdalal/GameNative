@@ -193,6 +193,159 @@ class GOGManifestParserTest {
     }
 
     @Test
+    fun filterDepotsForInstall_keepsBaseAndSelectedOwnedDlcs() {
+        val base = createTestDepot().copy(productId = "100", manifest = "base")
+        val selectedOwned = createTestDepot().copy(productId = "200", manifest = "dlc-owned")
+        val selectedUnowned = createTestDepot().copy(productId = "300", manifest = "dlc-unowned")
+        val notSelected = createTestDepot().copy(productId = "400", manifest = "dlc-not-selected")
+
+        val depots = listOf(base, selectedOwned, selectedUnowned, notSelected)
+        val result = parser.filterDepotsForInstall(
+            languageDepots = depots,
+            allDepots = depots,
+            baseProductIds = setOf("100"),
+            dlcIds = setOf("200", "300"),
+            ownedProductIds = setOf("100", "200", "400"),
+        )
+
+        assertEquals(listOf("base", "dlc-owned"), result.map { it.manifest })
+    }
+
+    @Test
+    fun filterDepotsForInstall_emptySelectionIsBaseOnly() {
+        val base = createTestDepot().copy(productId = "100", manifest = "base")
+        val baseSecond = createTestDepot().copy(productId = "100", manifest = "base-2")
+        val ownedDlc = createTestDepot().copy(productId = "200", manifest = "dlc")
+
+        val depots = listOf(base, ownedDlc, baseSecond)
+        val result = parser.filterDepotsForInstall(
+            languageDepots = depots,
+            allDepots = depots,
+            baseProductIds = setOf("100"),
+            dlcIds = emptySet(),
+            ownedProductIds = setOf("100", "200"),
+        )
+
+        assertEquals(listOf("base", "base-2"), result.map { it.manifest })
+    }
+
+    @Test
+    fun filterDepotsForInstall_neverIncludesUnownedProducts() {
+        val base = createTestDepot().copy(productId = "100", manifest = "base")
+        val dlc = createTestDepot().copy(productId = "200", manifest = "dlc")
+
+        val depots = listOf(base, dlc)
+        val result = parser.filterDepotsForInstall(
+            languageDepots = depots,
+            allDepots = depots,
+            baseProductIds = setOf("100"),
+            dlcIds = setOf("200"),
+            ownedProductIds = emptySet(),
+        )
+
+        assertTrue(result.isEmpty())
+    }
+
+    @Test
+    fun filterDepotsForInstall_selectedDlcWithoutLanguageDepotsFallsBackToEnglish() {
+        val base = createTestDepot(languages = listOf("de-DE"), manifest = "base-de").copy(productId = "100")
+        val dlcEnglish = createTestDepot(languages = listOf("en-US"), manifest = "dlc-en").copy(productId = "200")
+        val dlcFrench = createTestDepot(languages = listOf("fr-FR"), manifest = "dlc-fr").copy(productId = "200")
+        val baseEnglish = createTestDepot(languages = listOf("en-US"), manifest = "base-en").copy(productId = "100")
+
+        val result = parser.filterDepotsForInstall(
+            languageDepots = listOf(base),
+            allDepots = listOf(base, baseEnglish, dlcEnglish, dlcFrench),
+            baseProductIds = setOf("100"),
+            dlcIds = setOf("200"),
+            ownedProductIds = setOf("100", "200"),
+        )
+
+        assertEquals(listOf("base-de", "dlc-en"), result.map { it.manifest })
+    }
+
+    @Test
+    fun filterDepotsForInstall_selectedDlcWithoutEnglishDepotsTakesAllOfItsDepots() {
+        val base = createTestDepot(languages = listOf("en-US"), manifest = "base").copy(productId = "100")
+        val baseGerman = createTestDepot(languages = listOf("de-DE"), manifest = "base-de").copy(productId = "100")
+        val dlcGerman = createTestDepot(languages = listOf("de-DE"), manifest = "dlc-de").copy(productId = "200")
+        val dlcFrench = createTestDepot(languages = listOf("fr-FR"), manifest = "dlc-fr").copy(productId = "200")
+
+        val result = parser.filterDepotsForInstall(
+            languageDepots = listOf(base),
+            allDepots = listOf(base, baseGerman, dlcGerman, dlcFrench),
+            baseProductIds = setOf("100"),
+            dlcIds = setOf("200"),
+            ownedProductIds = setOf("100", "200"),
+        )
+
+        assertEquals(listOf("base", "dlc-de", "dlc-fr"), result.map { it.manifest })
+    }
+
+    @Test
+    fun dlcDepotsWithFallback_prefersLanguageDepots() {
+        val dlcGerman = createTestDepot(languages = listOf("de-DE"), manifest = "dlc-de").copy(productId = "200")
+        val dlcEnglish = createTestDepot(languages = listOf("en-US"), manifest = "dlc-en").copy(productId = "200")
+
+        val result = parser.dlcDepotsWithFallback(listOf(dlcGerman), listOf(dlcGerman, dlcEnglish), "200")
+
+        assertEquals(listOf("dlc-de"), result.map { it.manifest })
+    }
+
+    @Test
+    fun dlcDepotsWithFallback_starOnlyInLanguageAddsEnglishDepots() {
+        val dlcStar = createTestDepot(languages = listOf("*"), manifest = "dlc-star").copy(productId = "200")
+        val dlcEnglish = createTestDepot(languages = listOf("en-US"), manifest = "dlc-en").copy(productId = "200")
+
+        val result = parser.dlcDepotsWithFallback(listOf(dlcStar), listOf(dlcStar, dlcEnglish), "200")
+
+        assertEquals(listOf("dlc-star", "dlc-en"), result.map { it.manifest })
+    }
+
+    @Test
+    fun dlcDepotsWithFallback_starOnlyDlcKeepsItsStarDepots() {
+        val dlcStar = createTestDepot(languages = listOf("*"), manifest = "dlc-star").copy(productId = "200")
+
+        val result = parser.dlcDepotsWithFallback(listOf(dlcStar), listOf(dlcStar), "200")
+
+        assertEquals(listOf("dlc-star"), result.map { it.manifest })
+    }
+
+    @Test
+    fun filterDepotsForInstall_germanContainerGetsStarAndEnglishDepotsOfDlc() {
+        val baseGerman = createTestDepot(languages = listOf("de-DE"), manifest = "base-de").copy(productId = "100")
+        val dlcStar = createTestDepot(languages = listOf("*"), manifest = "dlc-star").copy(productId = "200")
+        val dlcEnglish = createTestDepot(languages = listOf("en-US"), manifest = "dlc-en").copy(productId = "200")
+
+        val result = parser.filterDepotsForInstall(
+            languageDepots = listOf(baseGerman, dlcStar),
+            allDepots = listOf(baseGerman, dlcStar, dlcEnglish),
+            baseProductIds = setOf("100"),
+            dlcIds = setOf("200"),
+            ownedProductIds = setOf("100", "200"),
+        )
+
+        assertEquals(listOf("base-de", "dlc-star", "dlc-en"), result.map { it.manifest })
+    }
+
+    @Test
+    fun filterDepotsForInstall_keepsDepotsOfEitherBaseId() {
+        val baseProduct = createTestDepot(manifest = "base-product").copy(productId = "100")
+        val gameProduct = createTestDepot(manifest = "game-product").copy(productId = "101")
+
+        val depots = listOf(baseProduct, gameProduct)
+        val result = parser.filterDepotsForInstall(
+            languageDepots = depots,
+            allDepots = depots,
+            baseProductIds = setOf("100", "101"),
+            dlcIds = emptySet(),
+            ownedProductIds = setOf("100", "101"),
+        )
+
+        assertEquals(listOf("base-product", "game-product"), result.map { it.manifest })
+    }
+
+    @Test
     fun testSeparateBaseDLC() {
         val baseFile = createTestDepotFile(path = "base.exe", productId = null)
         val dlcFile = createTestDepotFile(path = "dlc.dat", productId = "dlc_123")

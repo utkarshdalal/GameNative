@@ -31,6 +31,7 @@ import org.mockito.kotlin.atLeastOnce
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.robolectric.RobolectricTestRunner
@@ -114,12 +115,9 @@ class GOGDownloadManagerTest {
         whenever(parser.selectBuild(any(), eq(2), eq("windows"))).thenReturn(selectedBuild)
         whenever(apiClient.fetchManifest(selectedBuild.link)).thenReturn(Result.success(manifest))
         whenever(parser.filterDepotsByLanguage(manifest, "english")).thenReturn(listOf(depot) to "en-US")
-        whenever(parser.filterDepotsByOwnership(listOf(depot), setOf(gameId))).thenReturn(listOf(depot))
+        whenever(parser.filterDepotsForInstall(listOf(depot), manifest.depots, setOf(gameId), emptySet(), setOf(gameId))).thenReturn(listOf(depot))
         whenever(apiClient.fetchDepotManifestWithRaw(depot.manifest)).thenReturn(
             Result.success(DepotManifest(files = listOf(gameFile, supportFile), directories = emptyList(), links = emptyList()) to "{}"),
-        )
-        whenever(parser.separateBaseDLC(listOf(gameFile, supportFile), gameId)).thenReturn(
-            listOf(gameFile, supportFile) to emptyList(),
         )
         whenever(parser.separateSupportFiles(listOf(gameFile, supportFile))).thenReturn(
             listOf(gameFile) to listOf(supportFile),
@@ -133,7 +131,7 @@ class GOGDownloadManagerTest {
             installPath = installPath,
             downloadInfo = downloadInfo,
             language = "english",
-            withDlcs = false,
+            dlcIds = emptySet(),
             supportDir = null,
         )
 
@@ -231,7 +229,7 @@ class GOGDownloadManagerTest {
         whenever(parser.selectBuild(any(), eq(1), eq("windows"))).thenReturn(gen1Build)
         whenever(apiClient.fetchManifest(gen1Build.link)).thenReturn(Result.success(manifest))
         whenever(parser.filterDepotsByLanguage(manifest, "english")).thenReturn(listOf(depot) to "en-US")
-        whenever(parser.filterDepotsByOwnership(listOf(depot), setOf(gameId))).thenReturn(listOf(depot))
+        whenever(parser.filterDepotsForInstall(listOf(depot), manifest.depots, setOf(gameId), emptySet(), setOf(gameId))).thenReturn(listOf(depot))
         whenever(
             apiClient.getSecureLink(
                 productId = gameId,
@@ -254,7 +252,7 @@ class GOGDownloadManagerTest {
             installPath = installPath,
             downloadInfo = downloadInfo,
             language = "english",
-            withDlcs = false,
+            dlcIds = emptySet(),
             supportDir = supportDir,
         )
 
@@ -264,6 +262,93 @@ class GOGDownloadManagerTest {
 
         installPath.deleteRecursively()
         supportDir.deleteRecursively()
+    }
+
+    @Test
+    fun gen2_download_installs_selected_owned_dlc_depots_only() = runTest {
+        val gameId = "12345"
+        val ownedDlcId = "20001"
+        val unownedDlcId = "20002"
+        val installPath = Files.createTempDirectory("gog-gen2-dlc").toFile()
+        val downloadInfo = DownloadInfo(
+            jobCount = 1,
+            gameId = gameId.toInt(),
+            downloadingAppIds = CopyOnWriteArrayList(),
+        )
+        val selectedBuild = GOGBuild(
+            buildId = "build-1",
+            productId = gameId,
+            platform = "windows",
+            generation = 2,
+            versionName = "1.0.0",
+            branch = "master",
+            link = "https://manifest.test",
+            legacyBuildId = null,
+        )
+        fun depot(productId: String) = Depot(
+            productId = productId,
+            languages = listOf("en-US"),
+            manifest = "manifest-$productId",
+            compressedSize = 0L,
+            size = 0L,
+            osBitness = emptyList(),
+        )
+        val baseDepot = depot(gameId)
+        val ownedDlcDepot = depot(ownedDlcId)
+        val unownedDlcDepot = depot(unownedDlcId)
+        val languageDepots = listOf(baseDepot, ownedDlcDepot, unownedDlcDepot)
+        val manifest = GOGManifestMeta(
+            baseProductId = gameId,
+            installDirectory = "Game",
+            depots = languageDepots,
+            dependencies = emptyList(),
+            products = listOf(
+                Product(productId = gameId, name = "Game"),
+                Product(productId = ownedDlcId, name = "Owned DLC"),
+                Product(productId = unownedDlcId, name = "Unowned DLC"),
+            ),
+        )
+        val baseFile = depotFile(path = "bin/game.exe", support = false)
+        val dlcFile = depotFile(path = "dlc/owned.pak", support = false)
+        val selectedDlcIds = setOf(ownedDlcId, unownedDlcId)
+        val owned = setOf(gameId, ownedDlcId)
+
+        whenever(gogManager.getGameFromDbById(gameId)).thenReturn(GOGGame(id = gameId, title = "Test Game"))
+        whenever(gogManager.getAllGameIds()).thenReturn(owned)
+        whenever(apiClient.getBuildsForGame(gameId, "windows", 2)).thenReturn(
+            Result.success(BuildsResponse(totalCount = 1, count = 1, items = listOf(selectedBuild))),
+        )
+        whenever(parser.selectBuild(any(), eq(2), eq("windows"))).thenReturn(selectedBuild)
+        whenever(apiClient.fetchManifest(selectedBuild.link)).thenReturn(Result.success(manifest))
+        whenever(parser.filterDepotsByLanguage(manifest, "english")).thenReturn(languageDepots to "en-US")
+        whenever(parser.filterDepotsForInstall(languageDepots, manifest.depots, setOf(gameId), selectedDlcIds, owned))
+            .thenReturn(listOf(baseDepot, ownedDlcDepot))
+        whenever(apiClient.fetchDepotManifestWithRaw(baseDepot.manifest)).thenReturn(
+            Result.success(DepotManifest(files = listOf(baseFile), directories = emptyList(), links = emptyList()) to "{}"),
+        )
+        whenever(apiClient.fetchDepotManifestWithRaw(ownedDlcDepot.manifest)).thenReturn(
+            Result.success(DepotManifest(files = listOf(dlcFile), directories = emptyList(), links = emptyList()) to "{}"),
+        )
+        whenever(parser.separateSupportFiles(listOf(baseFile, dlcFile))).thenReturn(listOf(baseFile, dlcFile) to emptyList())
+        whenever(parser.calculateTotalSize(any())).thenReturn(0L)
+        whenever(parser.extractChunkHashes(any())).thenReturn(emptyList())
+
+        val result = manager.downloadGame(
+            gameId = gameId,
+            installPath = installPath,
+            downloadInfo = downloadInfo,
+            language = "english",
+            dlcIds = selectedDlcIds,
+            supportDir = null,
+        )
+
+        assertTrue(result.isSuccess)
+        verify(parser).filterDepotsForInstall(languageDepots, manifest.depots, setOf(gameId), selectedDlcIds, owned)
+        verify(apiClient, never()).fetchDepotManifestWithRaw(unownedDlcDepot.manifest)
+        assertTrue(File(installPath, "bin/game.exe").exists())
+        assertTrue(File(installPath, "dlc/owned.pak").exists())
+
+        installPath.deleteRecursively()
     }
 
     @Test

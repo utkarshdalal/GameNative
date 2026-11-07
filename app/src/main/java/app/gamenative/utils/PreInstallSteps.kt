@@ -26,6 +26,7 @@ object PreInstallSteps {
     private val steps: List<PreInstallStep> = listOf(
         GogScriptInterpreterStep,
         GogSupportCommandsStep,
+        GogBonusInstallerStep,
         UbisoftConnectStep,
     )
 

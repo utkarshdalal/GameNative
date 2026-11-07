@@ -164,8 +164,9 @@ class GOGService : Service() {
                     instance.gogManager.deleteAllNonInstalledGames()
                     Timber.i("[GOGService] All non-installed GOG games removed from database")
 
-                    // Hidden-game metadata belongs to the logged-out account.
+                    // Hidden-game metadata and the owned-id list belong to the logged-out account.
                     instance.gogManager.clearHiddenFlags()
+                    PrefManager.gogOwnedProductIds = emptySet()
 
                     // Stop the service
                     stop()
@@ -362,7 +363,17 @@ class GOGService : Service() {
                 ?: Result.failure(Exception("Service not available"))
         }
 
-        fun downloadGame(context: Context, gameId: String, installPath: String, containerLanguage: String): Result<DownloadInfo?> {
+        /**
+         * @param dlcIds DLC product ids to install with the base game; null keeps the DLCs already
+         * installed ([GOGManager.getInstalledDlcIds]), for verify, language change and resume.
+         */
+        fun downloadGame(
+            context: Context,
+            gameId: String,
+            installPath: String,
+            containerLanguage: String,
+            dlcIds: Set<String>? = null,
+        ): Result<DownloadInfo?> {
             val instance = getInstance() ?: return Result.failure(Exception("Service not available"))
 
             // Create DownloadInfo for progress tracking
@@ -394,9 +405,15 @@ class GOGService : Service() {
                     val commonRedistDir = File(installPath, "_CommonRedist")
                     Timber.tag("GOG").d("Will install dependencies to _CommonRedist")
 
+                    if (dlcIds != null) instance.gogManager.addInstalledDlcIds(gameId, dlcIds)
+                    val resolvedDlcIds = dlcIds ?: instance.gogManager.getInstalledDlcIds(gameId)
                     val result = instance.gogDownloadManager.downloadGame(
-                        gameId, File(installPath),
-                        downloadInfo, containerLanguage, true, commonRedistDir,
+                        gameId = gameId,
+                        installPath = File(installPath),
+                        downloadInfo = downloadInfo,
+                        language = containerLanguage,
+                        dlcIds = resolvedDlcIds,
+                        supportDir = commonRedistDir,
                     )
 
                     if (result.isFailure) {
@@ -465,6 +482,11 @@ class GOGService : Service() {
             downloadInfo.setDownloadJob(job)
 
             return Result.success(downloadInfo)
+        }
+
+        suspend fun getDlcOptions(context: Context, gameId: String, language: String): Result<List<GogDlcOption>> {
+            val instance = getInstance() ?: return Result.failure(Exception("Service not available"))
+            return instance.gogDownloadManager.getDlcOptions(context, gameId, language)
         }
 
         suspend fun refreshSingleGame(gameId: String, context: Context): Result<GOGGame?> {
