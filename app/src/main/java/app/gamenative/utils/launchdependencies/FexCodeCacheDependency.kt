@@ -148,7 +148,8 @@ object FexCodeCacheDependency : LaunchDependency {
         }
         if (gameSource == GameSource.STEAM) {
             val steamDir = File(container.rootDir, STEAM_DIR)
-            STEAM_CLIENT_DLLS.map { File(steamDir, it) }.filter { it.isFile }.let { files.addAll(it) }
+            // The prefix keeps Steam's own casing (GameOverlayRenderer.dll) on a case-sensitive filesystem.
+            steamDir.listFiles { f -> f.isFile && f.name.lowercase() in STEAM_CLIENT_DLLS }?.let { files.addAll(it) }
         }
         return files.filter { it.length() <= MAX_IMAGE_BYTES }.take(MAX_IMAGES)
     }
