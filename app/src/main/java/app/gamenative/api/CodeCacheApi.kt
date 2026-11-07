@@ -7,11 +7,12 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.net.URLEncoder
 import java.security.MessageDigest
+import java.util.zip.GZIPInputStream
 
 /** Lists and downloads hosted FEX code caches (GET /api/code-caches). */
 object CodeCacheApi {
 
-    data class HostedCache(val id: Long, val name: String, val size: Long, val sha256: String, val url: String)
+    data class HostedCache(val id: Long, val name: String, val size: Long, val compressedSize: Long, val sha256: String, val url: String)
 
     suspend fun list(store: String, gameId: Int, fexVersion: String, soc: String): ApiResult<List<HostedCache>> {
         val url = "${GameNativeApi.BASE_URL}/api/code-caches?store=$store&gameId=$gameId&fexVersion=$fexVersion&soc=${URLEncoder.encode(soc, "UTF-8")}"
@@ -21,13 +22,16 @@ object CodeCacheApi {
             buildList {
                 for (i in 0 until (caches?.length() ?: 0)) {
                     val c = caches!!.getJSONObject(i)
-                    add(HostedCache(c.getLong("id"), c.getString("name"), c.getLong("size"), c.getString("sha256"), c.getString("url")))
+                    add(HostedCache(c.getLong("id"), c.getString("name"), c.getLong("size"), c.optLong("compressedSize", -1), c.getString("sha256"), c.getString("url")))
                 }
             }
         }
     }
 
-    /** Streams one cache into [target] through a temp file; throws (and leaves nothing) on a size or hash mismatch. */
+    /**
+     * Streams one cache (served as gzip) into [target] through a temp file, inflating and hashing on
+     * the way; throws (and leaves nothing) when the inflated size or sha256 does not match.
+     */
     fun download(cache: HostedCache, target: File): Boolean {
         val tmp = File(target.parentFile, "${target.name}.part")
         try {
@@ -36,7 +40,7 @@ object CodeCacheApi {
                 if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
                 val digest = MessageDigest.getInstance("SHA-256")
                 var total = 0L
-                response.body!!.byteStream().use { input ->
+                GZIPInputStream(response.body!!.byteStream()).use { input ->
                     FileOutputStream(tmp).use { output ->
                         val buffer = ByteArray(256 * 1024)
                         while (true) {
