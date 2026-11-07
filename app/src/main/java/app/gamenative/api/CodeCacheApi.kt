@@ -28,10 +28,11 @@ object CodeCacheApi {
         val url = "${GameNativeApi.BASE_URL}/api/code-caches?store=$store&gameId=$gameId&fexVersion=$fexVersion&soc=${URLEncoder.encode(soc, "UTF-8")}"
         val request = GameNativeApi.buildGetRequest(url)
         return GameNativeApi.executeRequest(request) { body ->
-            val caches = JSONObject(body).optJSONArray("caches")
+            // An unrouted path on the API host answers 200 from another worker; only a real list counts.
+            val caches = JSONObject(body).optJSONArray("caches") ?: throw IOException("no cache list in response")
             buildList {
-                for (i in 0 until (caches?.length() ?: 0)) {
-                    val c = caches!!.getJSONObject(i)
+                for (i in 0 until caches.length()) {
+                    val c = caches.getJSONObject(i)
                     add(
                         HostedCache(
                             c.getLong("id"),
