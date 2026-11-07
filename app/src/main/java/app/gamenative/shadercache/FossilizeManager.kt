@@ -25,6 +25,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -224,7 +226,7 @@ object FossilizeManager {
                 Timber.tag(TAG).i("No shader cache key for %s", container.id)
                 return
             }
-            val meta = refreshPool(context, container, key)?.takeIf { poolFile(container, key).isFile }
+            val meta = refreshPool(context, container, key, isCancelled)?.takeIf { poolFile(container, key).isFile }
             val poolFile = meta?.let { poolFile(container, key) } ?: localPoolFile(container).takeIf { it.isFile } ?: return
             val version = meta?.optLong("version")?.toString() ?: "local-${poolFile.length()}-${poolFile.lastModified()}"
             val stamp = "${key.fileName}|$version|${driverIdentity(container)}"
@@ -240,11 +242,11 @@ object FossilizeManager {
         }
     }
 
-    private fun refreshPool(context: Context, container: Container, key: ShaderCacheKey): JSONObject? {
+    private fun refreshPool(context: Context, container: Container, key: ShaderCacheKey, isCancelled: () -> Boolean): JSONObject? {
         val metaFile = poolMetaFile(container, key)
         val local = runCatching { JSONObject(metaFile.readText()) }.getOrNull()
             ?.takeIf { poolFile(container, key).isFile }
-        val remote = runBlocking { withTimeoutOrNull(POOL_LOOKUP_TIMEOUT_MS) { ShaderCacheApi.fetchPool(key) } }
+        val remote = runUnlessCancelled(POOL_LOOKUP_TIMEOUT_MS, isCancelled) { ShaderCacheApi.fetchPool(key) }
         val pool = if (remote is ApiResult.Success) remote.data ?: return local else return local
         if (local != null && local.optLong("version") >= pool.version) return local
         if (pool.size > MAX_TRANSFER_BYTES) {
@@ -254,7 +256,9 @@ object FossilizeManager {
         PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(context.getString(R.string.shader_cache_preparing)))
         val target = poolFile(container, key)
         val partial = File(target.parentFile, target.name + ".part")
-        val result = runBlocking { withTimeoutOrNull(POOL_DOWNLOAD_TIMEOUT_MS) { SupportApi.downloadSigned(pool.url, partial, if (pool.size > 0) pool.size else MAX_TRANSFER_BYTES) } }
+        val result = runUnlessCancelled(POOL_DOWNLOAD_TIMEOUT_MS, isCancelled) {
+            SupportApi.downloadSigned(pool.url, partial, if (pool.size > 0) pool.size else MAX_TRANSFER_BYTES)
+        }
         val hash = if (result is ApiResult.Success) result.data else null
         if (hash == null || !hash.equals(pool.sha256, ignoreCase = true)) {
             partial.delete()
@@ -274,6 +278,18 @@ object FossilizeManager {
         FileUtils.writeString(metaFile, meta.toString())
         Timber.tag(TAG).i("Downloaded pool v%d for %s (%d entries)", pool.version, key, pool.entries)
         return meta
+    }
+
+    /** Runs [block] with a timeout, cancelling it once [isCancelled]; null if it timed out or was cancelled. */
+    private fun <T> runUnlessCancelled(timeoutMs: Long, isCancelled: () -> Boolean, block: suspend () -> T): T? = runBlocking {
+        val work = async(Dispatchers.IO) { withTimeoutOrNull(timeoutMs) { block() } }
+        while (work.isActive && !isCancelled()) delay(CANCEL_POLL_MS)
+        if (work.isActive) {
+            work.cancel()
+            null
+        } else {
+            work.await()
+        }
     }
 
     private fun driverIdentity(container: Container): String =
@@ -543,7 +559,11 @@ object FossilizeManager {
     }
 
     private fun enforceRetentionCap(root: File) {
-        val files = root.walkTopDown().filter { it.isFile && it.name.endsWith(".foz") }.sortedBy { it.lastModified() }.toMutableList()
+        val active = activeSessionDir?.let { it.path + File.separator }
+        val files = root.walkTopDown()
+            .filter { it.isFile && it.name.endsWith(".foz") && (active == null || !it.path.startsWith(active)) }
+            .sortedBy { it.lastModified() }
+            .toMutableList()
         var total = files.sumOf { it.length() }
         while (total > MAX_RETAINED_BYTES && files.isNotEmpty()) {
             val oldest = files.removeAt(0)

@@ -88,8 +88,8 @@ object ShaderCacheApi {
         withContext(Dispatchers.IO) {
             try {
                 val token = AccountApi.currentAccessTokenOrNull()
-                var raw = send(build(Request.Builder()).apply { if (token != null) header("Authorization", "Bearer $token") }.build())
-                if (raw.code == 401 && token != null) raw = send(build(Request.Builder()).build())
+                var raw = send(request(build, token))
+                if (raw.code == 401 && token != null) raw = send(request(build, AccountApi.refreshedAccessTokenOrNull(token)))
                 if (raw.code in 200..299 || (name == "pool" && raw.code == 404)) {
                     ApiResult.Success(raw)
                 } else {
@@ -103,6 +103,9 @@ object ShaderCacheApi {
                 ApiResult.NetworkError(e)
             }
         }
+
+    private fun request(build: (Request.Builder) -> Request.Builder, token: String?): Request =
+        build(Request.Builder()).apply { if (token != null) header("Authorization", "Bearer $token") }.build()
 
     private suspend fun send(request: Request): Raw = suspendCancellableCoroutine { continuation ->
         val call = GameNativeApi.httpClient.newCall(request)

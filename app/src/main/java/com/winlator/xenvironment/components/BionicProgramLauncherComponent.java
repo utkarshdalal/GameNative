@@ -62,6 +62,7 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.BooleanSupplier;
 
 import app.gamenative.BuildConfig;
 import app.gamenative.PluviaApp;
@@ -141,6 +142,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
     private Runnable preUnpack;
     public void setPreUnpack(Runnable r) { this.preUnpack = r; }
+    private BooleanSupplier launchCancelled;
+    public void setLaunchCancelled(BooleanSupplier launchCancelled) { this.launchCancelled = launchCancelled; }
     @Override
     public void start() {
         synchronized (lock) {
@@ -150,6 +153,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             else
                 extractBox64Files();
             if (preUnpack != null) preUnpack.run();
+            if (launchCancelled != null && launchCancelled.getAsBoolean()) throw new IllegalStateException("Launch cancelled before the guest started");
             pid = execGuestProgram();
             Log.d("BionicProgramLauncherComponent", "Process " + pid + " started");
             SteamService.setKeepAlive(true);

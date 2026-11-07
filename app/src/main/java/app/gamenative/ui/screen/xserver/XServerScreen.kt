@@ -293,6 +293,10 @@ private val isExiting = AtomicBoolean(false)
 
 // Bumped per launch so a previous session's leftover processes can't end the current one.
 private val guestSession = AtomicInteger(0)
+
+// The current launch's cancel flag, set by exit(). Each launch has its own, so a new screen can't clear an older launch's.
+@Volatile
+private var launchCancelled = AtomicBoolean(false)
 private val windowActivity = WindowActivity()
 
 private const val EXIT_PROCESS_TIMEOUT_MS = 30_000L
@@ -559,6 +563,7 @@ fun XServerScreen(
     val container = remember(appId) {
         ContainerUtils.getContainer(context, appId)
     }
+    val launchCancel = remember(appId) { AtomicBoolean(false).also { launchCancelled = it } }
     val ui = remember { XServerScreenState(container, context) }
     val activity = remember(context) { BrightnessManager.findActivity(context) }
     LaunchedEffect(appId) { GameSessionId.bind() }
@@ -2563,7 +2568,9 @@ fun XServerScreen(
                                 onGameLaunchError,
                                 isOffline,
                                 immersiveHooks,
+                                launchCancel,
                             )
+                            if (launchCancel.get()) throw IllegalStateException("Launch exited during setup")
 
                             // The game core set and the tuner's repeated-frame input differ by session type.
                             PowerManager.gamescopeSession = sessionDisplay == SessionDisplay.GAMESCOPE
@@ -2625,7 +2632,7 @@ fun XServerScreen(
                                 Timber.e(cleanupEx, "Error cleaning up environment after setup failure")
                             }
                             PluviaApp.xEnvironment = null
-                            if (!isExiting.get()) onGameLaunchError?.invoke("Failed to setup wine: ${e.message}")
+                            if (!launchCancel.get()) onGameLaunchError?.invoke("Failed to setup wine: ${e.message}")
                         } finally {
                             setupExecutor.shutdown()
                         }
@@ -4362,6 +4369,7 @@ private fun setupXEnvironment(
     onGameLaunchError: ((String) -> Unit)? = null,
     offline: Boolean = false,
     immersiveHooks: app.gamenative.ui.screen.xr.ImmersiveSessionHooks? = null,
+    launchCancel: AtomicBoolean,
 ): XEnvironment {
     val session = guestSession.incrementAndGet()
     val isX11Display = sessionDisplay == SessionDisplay.X11
@@ -4472,6 +4480,7 @@ private fun setupXEnvironment(
     // export its env.
     (guestProgramLauncherComponent as? BionicProgramLauncherComponent)
         ?.setGamescopeModeOverride(!isX11Display)
+    (guestProgramLauncherComponent as? BionicProgramLauncherComponent)?.setLaunchCancelled { launchCancel.get() }
 
     var preInstallCommands: List<PreInstallSteps.PreInstallCommand> = emptyList()
     var gameExecutable = ""
@@ -4590,8 +4599,7 @@ private fun setupXEnvironment(
                 runSteamHostCegPass(appId, imageFs, guestProgramLauncherComponent, onGameLaunchError)
             }
             if (guestProgramLauncherComponent is BionicProgramLauncherComponent && !bootToContainer && !testGraphics) {
-                FossilizeManager.prepareBeforeLaunch(context, container, guestProgramLauncherComponent) { isExiting.get() }
-                if (isExiting.get()) throw IllegalStateException("Launch aborted while preparing shaders")
+                FossilizeManager.prepareBeforeLaunch(context, container, guestProgramLauncherComponent) { launchCancel.get() }
             }
             if (preInstallCommands.isNotEmpty()) {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing prerequisites..."))
@@ -5447,6 +5455,7 @@ private fun exit(
         Timber.i("Exit already in progress, ignoring duplicate request")
         return
     }
+    launchCancelled.set(true)
 
     // Before container_config is read so the id rides into game_sessions and the rating payload.
     GameSessionId.active()?.let { uuid ->

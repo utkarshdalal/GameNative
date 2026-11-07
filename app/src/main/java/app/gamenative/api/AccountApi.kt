@@ -315,6 +315,13 @@ object AccountApi {
             null
         }
 
+    /** Refreshes after [rejectedAccessToken] got a 401; null once there is no account left to use. */
+    internal suspend fun refreshedAccessTokenOrNull(rejectedAccessToken: String): String? =
+        withContext(Dispatchers.IO) {
+            if (!refreshTokens(rejectedAccessToken)) return@withContext null
+            loadTokens()?.accessToken?.ifEmpty { null }
+        }
+
     private fun <T : Any> send(
         build: (Request.Builder) -> Request.Builder,
         accessToken: String,
