@@ -25,15 +25,13 @@ class FexCodeMapsTest {
     }
 
     @Test
-    fun `series builds from 2611-gn-6 support code maps`() {
-        assertTrue(FexCodeMaps.supportsCodeMaps("2611-gn-6"))
-        assertTrue(FexCodeMaps.supportsCodeMaps("2611-gn-7"))
-        assertTrue(FexCodeMaps.supportsCodeMaps("2612-gn-1"))
-        assertFalse(FexCodeMaps.supportsCodeMaps("2611-gn-5"))
-        assertFalse(FexCodeMaps.supportsCodeMaps("2610-gn-5"))
-        assertFalse(FexCodeMaps.supportsCodeMaps("2611"))
-        assertFalse(FexCodeMaps.supportsCodeMaps("2601-217d039-0"))
-        assertFalse(FexCodeMaps.supportsCodeMaps(null))
+    fun `a pack supports caches when it ships the offline compiler`() {
+        val pack = tmp.newFolder("2611-gn-6")
+        assertFalse(FexCodeMaps.packSupportsCodeCaches(pack))
+        assertFalse(FexCodeMaps.packSupportsCodeCaches(null))
+        File(pack, "system32").mkdirs()
+        File(pack, "system32/FEXOfflineCompiler64.exe").writeBytes(ByteArray(16))
+        assertTrue(FexCodeMaps.packSupportsCodeCaches(pack))
     }
 
     @Test

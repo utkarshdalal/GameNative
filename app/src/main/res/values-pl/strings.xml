@@ -1195,6 +1195,8 @@
     <string name="settings_emulation_default_config_dialog_title">Domyślna konfiguracja kontenera</string>
     <string name="settings_emulation_auto_apply_known_config_title">Automatycznie zastosuj znaną konfigurację</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">Automatycznie zastosuj zalecane ustawienia dla gier Steam przy pierwszym uruchomieniu</string>
+    <string name="settings_emulation_fex_code_cache_title">Pamięci podręczne kodu FEX</string>
+    <string name="settings_emulation_fex_code_cache_subtitle">Udostępniaj kod przetłumaczony przez FEX i pobieraj gotowe tłumaczenia dla szybszego uruchamiania. Pamięci podręczne zajmują miejsce w prefiksie gry.</string>
     <string name="settings_emulation_box64_presets_title">Presety Box64</string>
     <string name="settings_emulation_box64_presets_subtitle">Przeglądaj, modyfikuj i twórz presety Box64</string>
     <string name="settings_emulation_driver_manager_title">Menedżer sterowników</string>

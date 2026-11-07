@@ -1347,6 +1347,8 @@
     <string name="settings_emulation_default_config_dialog_title">デフォルトのコンテナ構成</string>
     <string name="settings_emulation_auto_apply_known_config_title">既知の構成を自動適用する</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">初回起動時に Steam ゲームの推奨設定を自動的に適用する</string>
+    <string name="settings_emulation_fex_code_cache_title">FEX コードキャッシュ</string>
+    <string name="settings_emulation_fex_code_cache_subtitle">FEX が変換したコードを共有し、ビルド済みの変換をダウンロードして起動を速くします。キャッシュはゲームのプレフィックスの容量を使います。</string>
     <string name="settings_emulation_box64_presets_title">Box64 プリセット</string>
     <string name="settings_emulation_box64_presets_subtitle">Box64 プリセットの表示、変更、作成</string>
     <string name="settings_emulation_driver_manager_title">ドライバーマネージャー</string>

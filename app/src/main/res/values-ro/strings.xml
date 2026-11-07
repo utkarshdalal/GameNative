@@ -1186,6 +1186,8 @@
 	<string name="settings_emulation_default_config_dialog_title">Config container implicit</string>
 	<string name="settings_emulation_auto_apply_known_config_title">Aplică automat configurația cunoscută</string>
 	<string name="settings_emulation_auto_apply_known_config_subtitle">Aplică automat setările recomandate pentru jocurile Steam la prima lansare</string>
+	<string name="settings_emulation_fex_code_cache_title">Cache-uri de cod FEX</string>
+	<string name="settings_emulation_fex_code_cache_subtitle">Partajează ce cod a tradus FEX și descarcă traduceri precompilate pentru porniri mai rapide. Cache-urile ocupă spațiu în prefixul jocului.</string>
 	<string name="settings_emulation_box64_presets_title">Presetări Box64</string>
 	<string name="settings_emulation_box64_presets_subtitle">Vizualizează, modifică și creează presetări Box64</string>
 	<string name="settings_emulation_driver_manager_title">Manager drivere</string>

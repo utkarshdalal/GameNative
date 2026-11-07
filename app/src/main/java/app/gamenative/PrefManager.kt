@@ -1871,6 +1871,12 @@ object PrefManager {
         get() = getPref(USAGE_ANALYTICS_ENABLED, true)
         set(value) { setPref(USAGE_ANALYTICS_ENABLED, value) }
 
+    // FEX code caches: share which code FEX translated and download prebuilt translations (FexCodeMaps).
+    private val FEX_CODE_CACHE_ENABLED = booleanPreferencesKey("fex_code_cache_enabled")
+    var fexCodeCacheEnabled: Boolean
+        get() = getPref(FEX_CODE_CACHE_ENABLED, true)
+        set(value) { setPref(FEX_CODE_CACHE_ENABLED, value) }
+
     private val NEXUS_LAST_PLACEMENT_JSON = stringPreferencesKey("nexus_last_placement_json")
     var nexusLastPlacementJson: String
         get() = getPref(NEXUS_LAST_PLACEMENT_JSON, "{}")

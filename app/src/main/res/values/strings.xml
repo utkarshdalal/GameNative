@@ -1358,6 +1358,8 @@
     <string name="settings_emulation_default_config_dialog_title">Default Container Config</string>
     <string name="settings_emulation_auto_apply_known_config_title">Auto-apply known config</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">Automatically apply recommended settings for Steam games on first launch</string>
+    <string name="settings_emulation_fex_code_cache_title">FEX code caches</string>
+    <string name="settings_emulation_fex_code_cache_subtitle">Share which code FEX translated and download prebuilt translations for faster launches. Caches take disk space in the game\'s prefix.</string>
     <string name="settings_emulation_box64_presets_title">Box64 Presets</string>
     <string name="settings_emulation_box64_presets_subtitle">View, modify, and create Box64 presets</string>
     <string name="settings_emulation_driver_manager_title">Driver Manager</string>

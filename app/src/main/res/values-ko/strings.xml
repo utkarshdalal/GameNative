@@ -1934,6 +1934,8 @@
     <string name="renderer_present_modes">렌더러 프레젠트 모드</string>
     <string name="settings_emulation_auto_apply_known_config_title">알려진 설정 자동 적용</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">Steam 게임을 처음 실행할 때 권장 설정을 자동으로 적용합니다</string>
+    <string name="settings_emulation_fex_code_cache_title">FEX 코드 캐시</string>
+    <string name="settings_emulation_fex_code_cache_subtitle">FEX가 변환한 코드를 공유하고 미리 빌드된 변환을 내려받아 더 빠르게 실행합니다. 캐시는 게임 프리픽스의 저장 공간을 사용합니다.</string>
     <string name="download_no_wifi">Wi-Fi 또는 LAN에 연결되어 있지 않습니다</string>
     <string name="download_paused_wifi">다운로드 일시 중지됨 - Wi-Fi 또는 LAN 연결 대기 중</string>
     <string name="main_downloading_entry">%s 다운로드 중</string>
