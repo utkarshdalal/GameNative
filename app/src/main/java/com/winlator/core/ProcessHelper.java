@@ -56,6 +56,43 @@ public abstract class ProcessHelper {
         Process.sendSignal(pid, SIGKILL);
     }
 
+    /**
+     * wineserver keeps the registry in memory and writes it to disk only on a clean exit or on
+     * SIGTERM, so it has to be asked to exit before the session's processes are SIGKILLed.
+     */
+    public static void flushWineRegistry(List<ProcessInfo> processes, long timeoutMs) {
+        List<Integer> pids = new ArrayList<>();
+        for (ProcessInfo info : processes) {
+            if (info.name != null && info.name.contains("wineserver")) {
+                terminateProcess(info.pid);
+                pids.add(info.pid);
+            }
+        }
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        for (int pid : pids) {
+            while (isRunning(pid) && System.currentTimeMillis() < deadline) {
+                try {
+                    Thread.sleep(20);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+            if (isRunning(pid)) Log.w("ProcessHelper", "wineserver " + pid + " still running after SIGTERM");
+        }
+    }
+
+    private static boolean isRunning(int pid) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream("/proc/" + pid + "/stat")))) {
+            String stat = reader.readLine();
+            if (stat == null) return false;
+            int end = stat.lastIndexOf(')');
+            return end < 0 || end + 2 >= stat.length() || stat.charAt(end + 2) != 'Z';
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
     public static void terminateAllWineProcesses() {
         for (String process : listRunningWineProcesses()) {
             terminateProcess(Integer.parseInt(process));
