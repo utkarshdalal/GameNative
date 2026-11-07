@@ -113,20 +113,36 @@ class GOGManifestParser @Inject constructor() {
     }
 
     /**
-     * Depots to install: the base product plus the selected DLC products, restricted to products
-     * the user owns so an unowned id is never requested.
+     * Depots to install: the base product's [languageDepots] plus each selected DLC's depots per
+     * [dlcDepotsWithFallback], restricted to products the user owns so an unowned id is never requested.
      */
     fun filterDepotsForInstall(
-        depots: List<Depot>,
+        languageDepots: List<Depot>,
+        allDepots: List<Depot>,
         baseProductId: String,
         dlcIds: Set<String>,
         ownedProductIds: Set<String>,
     ): List<Depot> {
-        val filtered = depots.filter { depot ->
-            (depot.productId == baseProductId || depot.productId in dlcIds) && depot.productId in ownedProductIds
+        val selected = buildSet {
+            addAll(languageDepots.filter { it.productId == baseProductId && it.productId in ownedProductIds })
+            dlcIds.filter { it != baseProductId && it in ownedProductIds }
+                .forEach { addAll(dlcDepotsWithFallback(languageDepots, allDepots, it)) }
         }
-        Timber.tag(TAG).d("Selected ${filtered.size}/${depots.size} depots (base $baseProductId, DLCs ${dlcIds.joinToString()})")
+        val filtered = (languageDepots + allDepots).distinct().filter { it in selected }
+        Timber.tag(TAG).d("Selected ${filtered.size}/${allDepots.size} depots (base $baseProductId, DLCs ${dlcIds.joinToString()})")
         return filtered
+    }
+
+    /**
+     * Depots of DLC [dlcId]: those in [languageDepots]; when it ships none in that language, its
+     * English depots; else all of its depots.
+     */
+    fun dlcDepotsWithFallback(languageDepots: List<Depot>, allDepots: List<Depot>, dlcId: String): List<Depot> {
+        return languageDepots.filter { it.productId == dlcId }.ifEmpty {
+            val own = allDepots.filter { it.productId == dlcId }
+            val englishCodes = GOGConstants.CONTAINER_LANGUAGE_TO_GOG_CODES.getValue(GOGConstants.GOG_FALLBACK_DOWNLOAD_LANGUAGE)
+            own.filter { depot -> englishCodes.any { depot.matchesLanguage(it) } }.ifEmpty { own }
+        }
     }
 
     /**

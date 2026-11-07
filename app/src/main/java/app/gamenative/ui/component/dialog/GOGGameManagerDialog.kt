@@ -50,6 +50,7 @@ import app.gamenative.R
 import app.gamenative.data.GOGGame
 import app.gamenative.service.gog.GOGConstants
 import app.gamenative.service.gog.GOGService
+import app.gamenative.service.gog.GogDlcKind
 import app.gamenative.service.gog.GogDlcOption
 import app.gamenative.ui.component.LoadingScreen
 import app.gamenative.ui.component.topbar.BackButton
@@ -320,7 +321,11 @@ fun GOGGameManagerDialog(
                             downloadSize = option.downloadSize,
                             installSize = option.installSize,
                             installed = option.installed,
-                            note = if (option.installable) null else stringResource(R.string.gog_dlc_not_installable),
+                            note = when (option.kind) {
+                                GogDlcKind.NONE -> stringResource(R.string.gog_dlc_not_installable)
+                                GogDlcKind.INSTALLER -> if (option.installed) null else stringResource(R.string.gog_dlc_installs_on_launch)
+                                else -> null
+                            },
                             checked = checked,
                             enabled = enabled,
                             onCheckedChange = { selectedIds[option.productId] = it },
@@ -383,19 +388,24 @@ private fun GOGContentRow(
         headlineContent = {
             Column {
                 Text(text = title)
-                if (note != null) {
+                if (downloadSize > 0 || installSize > 0) {
                     Text(
-                        text = note,
+                        text = if (installSize > 0) {
+                            stringResource(
+                                R.string.gog_dlc_sizes,
+                                StringUtils.formatBytes(downloadSize),
+                                StringUtils.formatBytes(installSize)
+                            )
+                        } else {
+                            stringResource(R.string.gog_dlc_download_size, StringUtils.formatBytes(downloadSize))
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
-                } else if (downloadSize > 0 || installSize > 0) {
+                }
+                if (note != null) {
                     Text(
-                        text = stringResource(
-                            R.string.gog_dlc_sizes,
-                            StringUtils.formatBytes(downloadSize),
-                            StringUtils.formatBytes(installSize)
-                        ),
+                        text = note,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )

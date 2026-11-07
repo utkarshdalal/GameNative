@@ -1677,6 +1677,8 @@
     <string name="gog_dlc_not_installable">Nicht über GOG Galaxy verfügbar. Lade es aus den Bonusinhalten in deiner GOG-Bibliothek herunter.</string>
     <string name="gog_dlc_load_failed">DLC konnte nicht geladen werden: %1$s</string>
     <string name="gog_dlc_deselect_all">Alle abwählen</string>
+    <string name="gog_dlc_download_size">%1$s Download</string>
+    <string name="gog_dlc_installs_on_launch">Wird beim nächsten Spielstart installiert</string>
 
     <!-- Epic Games Integration -->
     <string name="epic_integration_title">Epic Games Integration</string>

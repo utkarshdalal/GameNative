@@ -61,6 +61,8 @@
     <string name="gog_dlc_not_installable">GOG Galaxy üzerinden kullanılamıyor. GOG kütüphanenizdeki bonus içeriklerden indirin.</string>
     <string name="gog_dlc_load_failed">DLC yüklenemedi: %1$s</string>
     <string name="gog_dlc_deselect_all">Tüm seçimi kaldır</string>
+    <string name="gog_dlc_download_size">%1$s indirme</string>
+    <string name="gog_dlc_installs_on_launch">Oyunu bir sonraki başlatışınızda yüklenir</string>
     <string name="epic_uninstall_game_title">Oyunu kaldır</string>
     <string name="epic_uninstall_game_message">%1$s kaldırılsın mı? Bu işlem geri alınamaz.</string>
     <string name="epic_install_game_title">Oyunu indir</string>

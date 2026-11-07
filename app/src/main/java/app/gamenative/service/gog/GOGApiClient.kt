@@ -33,11 +33,35 @@ data class ParsedGogGame(
     val isSecret: Boolean,
     val isDlc: Boolean,
     val dlcs: List<GogDlcRef> = emptyList(),
+    val downloads: GogProductDownloads = GogProductDownloads(),
 )
 
 data class GogDlcRef(
     val id: String,
     val title: String,
+)
+
+/** `downloads.installers` and `downloads.bonus_content` of a products response. */
+data class GogProductDownloads(
+    val installers: List<GogDownloadItem> = emptyList(),
+    val bonusContent: List<GogDownloadItem> = emptyList(),
+)
+
+data class GogDownloadItem(
+    val id: String,
+    val name: String,
+    val type: String,
+    val os: String,
+    val language: String,
+    val totalSize: Long,
+    val files: List<GogDownloadFile>,
+)
+
+/** [downlink] resolves (with the bearer token) to `{downlink, checksum}`. */
+data class GogDownloadFile(
+    val id: String,
+    val size: Long,
+    val downlink: String,
 )
 
 /**
@@ -422,6 +446,51 @@ object GOGApiClient {
     suspend fun getDlcRefs(context: Context, gameId: String): Result<List<GogDlcRef>> =
         getGameById(context, gameId, listOf("expanded_dlcs")).map { it.dlcs }
 
+    suspend fun getProductDownloads(context: Context, productId: String): Result<GogProductDownloads> =
+        getGameById(context, productId, listOf("downloads")).map { it.downloads }
+
+    /**
+     * Resolves a `downlink` URL from [GogDownloadFile] to its JSON (`downlink`, `checksum`),
+     * refreshing the token once when GOG answers 401.
+     */
+    suspend fun resolveDownlink(context: Context, downlinkUrl: String): Result<JSONObject> = withContext(Dispatchers.IO) {
+        try {
+            repeat(2) { attempt ->
+                val credentials = GOGAuthManager.getStoredCredentials(context).getOrElse {
+                    return@withContext Result.failure(Exception("Not authenticated"))
+                }
+                val request = Request.Builder()
+                    .url(downlinkUrl)
+                    .addHeader("Authorization", "Bearer ${credentials.accessToken}")
+                    .addHeader("User-Agent", "GameNative/1.0")
+                    .get()
+                    .build()
+                val unauthorized = httpClient.newCall(request).execute().use { response ->
+                    if (response.code == 401 && attempt == 0) return@use true
+                    if (!response.isSuccessful) {
+                        return@withContext Result.failure(Exception("Failed to resolve downlink: HTTP ${response.code}"))
+                    }
+                    val json = JSONObject(response.body?.string().orEmpty())
+                    if (json.optString("downlink", "").isEmpty()) {
+                        return@withContext Result.failure(Exception("Downlink response has no downlink"))
+                    }
+                    return@withContext Result.success(json)
+                }
+                if (unauthorized) {
+                    GOGAuthManager.refreshStoredCredentials(context).onFailure {
+                        return@withContext Result.failure(Exception("Downlink unauthorized and token refresh failed"))
+                    }
+                }
+            }
+            Result.failure(Exception("Downlink unauthorized"))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.tag("GOG").e(e, "Exception resolving downlink: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
         /**
      * Fetch client secret from GOG build metadata API
      * @param gameId GOG game ID
@@ -670,7 +739,42 @@ object GOGApiClient {
             isSecret = isSecret,
             isDlc = isDlc,
             dlcs = parseDlcRefs(rawResponse),
+            downloads = parseProductDownloads(rawResponse),
         )
+    }
+
+    internal fun parseProductDownloads(rawResponse: JSONObject): GogProductDownloads {
+        val downloads = rawResponse.optJSONObject("downloads") ?: return GogProductDownloads()
+        fun items(key: String): List<GogDownloadItem> {
+            val array = downloads.optJSONArray(key) ?: return emptyList()
+            return (0 until array.length()).mapNotNull { i ->
+                val item = array.optJSONObject(i) ?: return@mapNotNull null
+                val filesArray = item.optJSONArray("files") ?: JSONArray()
+                val files = (0 until filesArray.length()).mapNotNull { j ->
+                    val file = filesArray.optJSONObject(j) ?: return@mapNotNull null
+                    val downlink = file.optString("downlink", "")
+                    if (downlink.isEmpty()) {
+                        null
+                    } else {
+                        GogDownloadFile(
+                            id = file.opt("id")?.toString().orEmpty(),
+                            size = file.optLong("size", 0L),
+                            downlink = downlink,
+                        )
+                    }
+                }
+                GogDownloadItem(
+                    id = item.opt("id")?.toString().orEmpty(),
+                    name = item.optString("name", ""),
+                    type = item.optString("type", ""),
+                    os = item.optString("os", ""),
+                    language = item.optString("language", ""),
+                    totalSize = item.optLong("total_size", 0L),
+                    files = files,
+                )
+            }
+        }
+        return GogProductDownloads(installers = items("installers"), bonusContent = items("bonus_content"))
     }
 
     internal fun parseDlcRefs(rawResponse: JSONObject): List<GogDlcRef> {

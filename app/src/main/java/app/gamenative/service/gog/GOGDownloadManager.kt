@@ -4,6 +4,7 @@ import android.content.Context
 import app.gamenative.R
 import app.gamenative.data.DownloadInfo
 import app.gamenative.data.GameSource
+import app.gamenative.service.gog.api.Depot
 import app.gamenative.service.gog.api.DepotDirectory
 import app.gamenative.service.gog.api.DepotFile
 import app.gamenative.service.gog.api.DepotLink
@@ -47,6 +48,10 @@ import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.async
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -227,11 +232,13 @@ class GOGDownloadManager @Inject constructor(
             // Base product plus the selected DLCs, never an unowned product
             val ownedGameIds = gogManager.getAllGameIds()
             val baseProductId = gameManifest.baseProductId.ifEmpty { gameId }
-            val depots = parser.filterDepotsForInstall(languageDepots, baseProductId, dlcIds, ownedGameIds)
+            val depots = parser.filterDepotsForInstall(languageDepots, gameManifest.depots, baseProductId, dlcIds, ownedGameIds)
             if (depots.isEmpty()) {
                 return@withContext Result.failure(Exception("No owned depots found for language: $effectiveLang"))
             }
             val includedDlcIds = depots.map { it.productId }.toSet() intersect dlcIds
+            val bonusPlans = planBonusDlcs(installPath, dlcIds, depots, baseProductId, ownedGameIds, language)
+                .getOrElse { return@withContext Result.failure(it) }
 
             Timber.tag("GOG").d("Found ${depots.size} owned depot(s) for $effectiveLang")
             depots.forEachIndexed { index, depot ->
@@ -366,7 +373,7 @@ class GOGDownloadManager @Inject constructor(
                 """.trimMargin(),
             )
 
-            downloadInfo.setTotalExpectedBytes(fullUncompressedSize)
+            downloadInfo.setTotalExpectedBytes(fullUncompressedSize + bonusPlans.sumOf { it.pendingBytes })
 
             // Step 7: Get secure CDN links for chunks
             downloadInfo.updateStatusMessage("Getting secure download links...")
@@ -546,6 +553,14 @@ class GOGDownloadManager @Inject constructor(
 
             saveManifestToGameDir(installPath, gameManifest, selectedBuild.buildId, selectedBuild.versionName, effectiveLang)
 
+            if (bonusPlans.isNotEmpty()) {
+                val bonusResult = GOGBonusDlcInstaller.install(context, installPath, bonusPlans, downloadInfo)
+                if (bonusResult.isFailure) {
+                    MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+                    return@withContext bonusResult
+                }
+            }
+
             finalizeInstallSuccess(gameId, installPath, downloadInfo)
             Timber.tag("GOG").i("Download completed successfully for game $gameId")
             Result.success(Unit)
@@ -594,7 +609,8 @@ class GOGDownloadManager @Inject constructor(
 
     /**
      * Owned DLCs of [gameId] for the install dialog. DLCs in the latest build carry the sizes of
-     * their [language] depots; owned DLCs the store lists but the build lacks are not installable.
+     * the depots the downloader would pick ([GOGManifestParser.dlcDepotsWithFallback]); owned DLCs
+     * without depots are resolved from their product downloads ([GOGBonusDlcInstaller.resolve]).
      */
     suspend fun getDlcOptions(context: Context, gameId: String, language: String): Result<List<GogDlcOption>> =
         withContext(Dispatchers.IO) {
@@ -606,56 +622,82 @@ class GOGDownloadManager @Inject constructor(
                 val installed = gogManager.getInstalledDlcIds(gameId)
                 val (languageDepots, _) = parser.filterDepotsByLanguage(manifest, language)
 
-                val manifestProductIds = manifest.products.map { it.productId }.toSet()
-                val options = mutableListOf<GogDlcOption>()
+                val depotOptions = mutableListOf<GogDlcOption>()
+                val withoutDepots = linkedMapOf<String, String>()
                 manifest.products
                     .filter { it.productId != baseProductId && it.productId != gameId && it.productId in owned }
                     .distinctBy { it.productId }
                     .forEach { product ->
-                        val depots = languageDepots.filter { it.productId == product.productId }
-                            .ifEmpty { manifest.depots.filter { it.productId == product.productId } }
-                        options.add(
+                        val depots = parser.dlcDepotsWithFallback(languageDepots, manifest.depots, product.productId)
+                        if (depots.isEmpty()) {
+                            withoutDepots[product.productId] = product.name
+                            return@forEach
+                        }
+                        depotOptions.add(
                             GogDlcOption(
                                 productId = product.productId,
                                 title = product.name.ifBlank { dlcTitleFromDb(product.productId) },
                                 downloadSize = depots.sumOf { it.compressedSize },
                                 installSize = depots.sumOf { it.size },
                                 installed = product.productId in installed,
-                                installable = depots.isNotEmpty(),
+                                kind = GogDlcKind.DEPOT,
                             ),
                         )
                     }
 
-                val storeDlcs = app.gamenative.service.gog.GOGApiClient.getDlcRefs(context, gameId)
+                val manifestProductIds = manifest.products.map { it.productId }.toSet()
+                app.gamenative.service.gog.GOGApiClient.getDlcRefs(context, gameId)
                     .onFailure { Timber.tag("GOG").w(it, "Failed to fetch store DLC list for $gameId") }
                     .getOrDefault(emptyList())
-                storeDlcs
                     .filter { it.id in owned && it.id !in manifestProductIds && it.id != gameId }
-                    .distinctBy { it.id }
-                    .forEach { ref ->
-                        options.add(
+                    .forEach { ref -> withoutDepots.putIfAbsent(ref.id, ref.title) }
+
+                val otherOptions = coroutineScope {
+                    withoutDepots.map { (productId, title) ->
+                        async {
+                            val resolution = app.gamenative.service.gog.GOGApiClient.getProductDownloads(context, productId)
+                                .onFailure { Timber.tag("GOG").w(it, "Failed to fetch downloads of DLC $productId") }
+                                .map { GOGBonusDlcInstaller.resolve(it, language) }
+                                .getOrNull()
                             GogDlcOption(
-                                productId = ref.id,
-                                title = ref.title.ifBlank { dlcTitleFromDb(ref.id) },
-                                downloadSize = 0L,
+                                productId = productId,
+                                title = title.ifBlank { dlcTitleFromDb(productId) },
+                                downloadSize = resolution?.downloadSize ?: 0L,
                                 installSize = 0L,
-                                installed = false,
-                                installable = false,
-                            ),
-                        )
-                    }
+                                installed = productId in installed,
+                                kind = resolution?.kind ?: GogDlcKind.NONE,
+                            )
+                        }
+                    }.awaitAll()
+                }
 
                 Result.success(
-                    options.sortedWith(
+                    (depotOptions + otherOptions).sortedWith(
                         compareByDescending<GogDlcOption> { it.installable }
                             .thenBy(String.CASE_INSENSITIVE_ORDER) { it.title },
                     ),
                 )
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Timber.tag("GOG").e(e, "Failed to get DLC options for $gameId")
                 Result.failure(e)
             }
         }
+
+    /** Selected owned DLC the build has no depots for, to fetch from their bonus content or installers. */
+    private suspend fun planBonusDlcs(
+        installPath: File,
+        dlcIds: Set<String>,
+        depots: List<Depot>,
+        baseProductId: String,
+        ownedGameIds: Set<String>,
+        language: String,
+    ): Result<List<GOGBonusDlcInstaller.Plan>> {
+        val candidates = (dlcIds intersect ownedGameIds) - depots.map { it.productId }.toSet() - baseProductId
+        if (candidates.isEmpty()) return Result.success(emptyList())
+        return GOGBonusDlcInstaller.plan(context, installPath, candidates, language)
+    }
 
     private suspend fun dlcTitleFromDb(productId: String): String =
         gogManager.getGameFromDbById(productId)?.title?.takeIf { it.isNotBlank() } ?: productId
@@ -776,10 +818,12 @@ class GOGDownloadManager @Inject constructor(
                 )
             }
             val baseProductId = gameManifest.baseProductId.ifEmpty { gameId }
-            val filesToDownload = parser.filterDepotsForInstall(languageDepots, baseProductId, dlcIds, ownedGameIds)
+            val filesToDownload = parser.filterDepotsForInstall(languageDepots, gameManifest.depots, baseProductId, dlcIds, ownedGameIds)
             if (filesToDownload.isEmpty()) {
                 return@withContext Result.failure(Exception("No owned depots found"))
             }
+            val bonusPlans = planBonusDlcs(installPath, dlcIds, filesToDownload, baseProductId, ownedGameIds, language)
+                .getOrElse { return@withContext Result.failure(it) }
 
             val productIds = filesToDownload.map { it.productId }.toSet()
             val securePath = "/$platform/$timestamp/"
@@ -822,7 +866,7 @@ class GOGDownloadManager @Inject constructor(
                     !fileExistsWithCorrectSize(outFile, f.file.size, f.file.hash.takeIf { it.isNotEmpty() })
                 }
             }
-            downloadInfo.setTotalExpectedBytes(fullInstallSize)
+            downloadInfo.setTotalExpectedBytes(fullInstallSize + bonusPlans.sumOf { it.pendingBytes })
             downloadInfo.updateStatusMessage("Downloading files...")
             downloadInfo.setProgress(0f)
             downloadInfo.setActive(true)
@@ -928,6 +972,11 @@ class GOGDownloadManager @Inject constructor(
             }
 
             saveManifestToGameDir(installPath, gameManifest, selectedBuild.buildId, selectedBuild.versionName, effectiveLang)
+
+            if (bonusPlans.isNotEmpty()) {
+                val bonusResult = GOGBonusDlcInstaller.install(context, installPath, bonusPlans, downloadInfo)
+                if (bonusResult.isFailure) return@withContext bonusResult
+            }
 
             finalizeInstallSuccess(gameId, installPath, downloadInfo)
             Timber.tag("GOG").i("Gen 1 download completed for game $gameId")

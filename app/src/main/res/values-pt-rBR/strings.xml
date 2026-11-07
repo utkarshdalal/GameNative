@@ -44,6 +44,8 @@
     <string name="gog_dlc_not_installable">Não disponível pelo GOG Galaxy. Baixe pelo conteúdo bônus na sua biblioteca da GOG.</string>
     <string name="gog_dlc_load_failed">Não foi possível carregar o DLC: %1$s</string>
     <string name="gog_dlc_deselect_all">Desmarcar tudo</string>
+    <string name="gog_dlc_download_size">%1$s de download</string>
+    <string name="gog_dlc_installs_on_launch">Será instalado na próxima vez que você iniciar o jogo</string>
     <string name="download_prompt_title">Instalar App</string>
     <string name="delete_prompt_title">Deletar App</string>
     <string name="cancel_download_prompt_title">Cancelar Download</string>

@@ -351,6 +351,10 @@ object GOGAuthManager {
         }
     }
 
+    /** Refreshes the Galaxy token now, for a request the API rejected with 401 before it expired. */
+    suspend fun refreshStoredCredentials(context: Context): Result<Boolean> =
+        refreshCredentials(context, GOGConstants.GOG_CLIENT_ID, GOGConstants.GOG_CLIENT_SECRET)
+
     /**
      * Refresh credentials using refresh token
      */

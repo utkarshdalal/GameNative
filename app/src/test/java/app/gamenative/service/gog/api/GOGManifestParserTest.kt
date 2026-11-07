@@ -199,8 +199,10 @@ class GOGManifestParserTest {
         val selectedUnowned = createTestDepot().copy(productId = "300", manifest = "dlc-unowned")
         val notSelected = createTestDepot().copy(productId = "400", manifest = "dlc-not-selected")
 
+        val depots = listOf(base, selectedOwned, selectedUnowned, notSelected)
         val result = parser.filterDepotsForInstall(
-            depots = listOf(base, selectedOwned, selectedUnowned, notSelected),
+            languageDepots = depots,
+            allDepots = depots,
             baseProductId = "100",
             dlcIds = setOf("200", "300"),
             ownedProductIds = setOf("100", "200", "400"),
@@ -215,8 +217,10 @@ class GOGManifestParserTest {
         val baseSecond = createTestDepot().copy(productId = "100", manifest = "base-2")
         val ownedDlc = createTestDepot().copy(productId = "200", manifest = "dlc")
 
+        val depots = listOf(base, ownedDlc, baseSecond)
         val result = parser.filterDepotsForInstall(
-            depots = listOf(base, ownedDlc, baseSecond),
+            languageDepots = depots,
+            allDepots = depots,
             baseProductId = "100",
             dlcIds = emptySet(),
             ownedProductIds = setOf("100", "200"),
@@ -230,14 +234,62 @@ class GOGManifestParserTest {
         val base = createTestDepot().copy(productId = "100", manifest = "base")
         val dlc = createTestDepot().copy(productId = "200", manifest = "dlc")
 
+        val depots = listOf(base, dlc)
         val result = parser.filterDepotsForInstall(
-            depots = listOf(base, dlc),
+            languageDepots = depots,
+            allDepots = depots,
             baseProductId = "100",
             dlcIds = setOf("200"),
             ownedProductIds = emptySet(),
         )
 
         assertTrue(result.isEmpty())
+    }
+
+    @Test
+    fun filterDepotsForInstall_selectedDlcWithoutLanguageDepotsFallsBackToEnglish() {
+        val base = createTestDepot(languages = listOf("de-DE"), manifest = "base-de").copy(productId = "100")
+        val dlcEnglish = createTestDepot(languages = listOf("en-US"), manifest = "dlc-en").copy(productId = "200")
+        val dlcFrench = createTestDepot(languages = listOf("fr-FR"), manifest = "dlc-fr").copy(productId = "200")
+        val baseEnglish = createTestDepot(languages = listOf("en-US"), manifest = "base-en").copy(productId = "100")
+
+        val result = parser.filterDepotsForInstall(
+            languageDepots = listOf(base),
+            allDepots = listOf(base, baseEnglish, dlcEnglish, dlcFrench),
+            baseProductId = "100",
+            dlcIds = setOf("200"),
+            ownedProductIds = setOf("100", "200"),
+        )
+
+        assertEquals(listOf("base-de", "dlc-en"), result.map { it.manifest })
+    }
+
+    @Test
+    fun filterDepotsForInstall_selectedDlcWithoutEnglishDepotsTakesAllOfItsDepots() {
+        val base = createTestDepot(languages = listOf("en-US"), manifest = "base").copy(productId = "100")
+        val baseGerman = createTestDepot(languages = listOf("de-DE"), manifest = "base-de").copy(productId = "100")
+        val dlcGerman = createTestDepot(languages = listOf("de-DE"), manifest = "dlc-de").copy(productId = "200")
+        val dlcFrench = createTestDepot(languages = listOf("fr-FR"), manifest = "dlc-fr").copy(productId = "200")
+
+        val result = parser.filterDepotsForInstall(
+            languageDepots = listOf(base),
+            allDepots = listOf(base, baseGerman, dlcGerman, dlcFrench),
+            baseProductId = "100",
+            dlcIds = setOf("200"),
+            ownedProductIds = setOf("100", "200"),
+        )
+
+        assertEquals(listOf("base", "dlc-de", "dlc-fr"), result.map { it.manifest })
+    }
+
+    @Test
+    fun dlcDepotsWithFallback_prefersLanguageDepots() {
+        val dlcGerman = createTestDepot(languages = listOf("de-DE"), manifest = "dlc-de").copy(productId = "200")
+        val dlcEnglish = createTestDepot(languages = listOf("en-US"), manifest = "dlc-en").copy(productId = "200")
+
+        val result = parser.dlcDepotsWithFallback(listOf(dlcGerman), listOf(dlcGerman, dlcEnglish), "200")
+
+        assertEquals(listOf("dlc-de"), result.map { it.manifest })
     }
 
     @Test

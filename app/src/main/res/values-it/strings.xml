@@ -60,6 +60,8 @@
     <string name="gog_dlc_not_installable">Non disponibile tramite GOG Galaxy. Scaricalo dai contenuti bonus della tua libreria GOG.</string>
     <string name="gog_dlc_load_failed">Impossibile caricare i DLC: %1$s</string>
     <string name="gog_dlc_deselect_all">Deseleziona tutto</string>
+    <string name="gog_dlc_download_size">%1$s di download</string>
+    <string name="gog_dlc_installs_on_launch">Viene installato al prossimo avvio del gioco</string>
     <string name="steam_never">Mai</string>
     <string name="epic_cancel_download_message">Sei sicuro di voler annullare il download dell\'app?</string>
     <string name="epic_delete_download_message">Eliminare tutti i dati scaricati per questo gioco?</string>
