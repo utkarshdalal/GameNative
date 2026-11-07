@@ -11,6 +11,8 @@ object UbisoftConnectStep : PreInstallStep {
     private const val TAG = "UbisoftConnectStep"
     private val INSTALLER_NAMES = listOf("UbisoftConnectInstaller.exe", "UplayInstaller.exe")
     private const val COMMON_REDIST_SUBDIR = "_CommonRedist/UbisoftConnect"
+    private const val INSTALLED_EXE_PATH =
+        ".wine/drive_c/Program Files (x86)/Ubisoft/Ubisoft Game Launcher/UbisoftConnect.exe"
 
     override val marker: Marker = Marker.UBISOFT_CONNECT_INSTALLED
 
@@ -19,7 +21,15 @@ object UbisoftConnectStep : PreInstallStep {
         gameSource: GameSource,
         gameDirPath: String,
     ): Boolean {
-         if (MarkerUtils.hasMarker(gameDirPath, Marker.UBISOFT_CONNECT_INSTALLED)) return false
+        if (MarkerUtils.hasMarker(gameDirPath, Marker.UBISOFT_CONNECT_INSTALLED)) {
+            val rootDir = container.rootDir ?: return false
+            if (File(rootDir, INSTALLED_EXE_PATH).isFile) return false
+
+            Timber.tag(TAG).w(
+                "Ubisoft install marker exists but UbisoftConnect.exe is missing; retrying installer",
+            )
+            MarkerUtils.removeMarker(gameDirPath, Marker.UBISOFT_CONNECT_INSTALLED)
+        }
 
         return true
     }
