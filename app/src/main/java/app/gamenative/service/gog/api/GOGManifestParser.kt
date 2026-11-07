@@ -113,6 +113,23 @@ class GOGManifestParser @Inject constructor() {
     }
 
     /**
+     * Depots to install: the base product plus the selected DLC products, restricted to products
+     * the user owns so an unowned id is never requested.
+     */
+    fun filterDepotsForInstall(
+        depots: List<Depot>,
+        baseProductId: String,
+        dlcIds: Set<String>,
+        ownedProductIds: Set<String>,
+    ): List<Depot> {
+        val filtered = depots.filter { depot ->
+            (depot.productId == baseProductId || depot.productId in dlcIds) && depot.productId in ownedProductIds
+        }
+        Timber.tag(TAG).d("Selected ${filtered.size}/${depots.size} depots (base $baseProductId, DLCs ${dlcIds.joinToString()})")
+        return filtered
+    }
+
+    /**
      * Separate base game files from DLC files
      *
      * @param files All depot files

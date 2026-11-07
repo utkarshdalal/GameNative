@@ -56,6 +56,10 @@
     <string name="gog_uninstall_confirmation_message">¿Deseas desinstalar %1$s? Esta acción no se puede deshacer.</string>
     <string name="gog_install_game_title">Instalar juego</string>
     <string name="gog_install_confirmation_message">La aplicación a instalar requiere el siguiente espacio. ¿Deseas continuar?\n\n\tTamaño de descarga: %1$s\n\tEspacio disponible: %2$s</string>
+    <string name="gog_dlc_sizes">%1$s de descarga • %2$s instalado</string>
+    <string name="gog_dlc_not_installable">No disponible a través de GOG Galaxy. Descárgalo desde el contenido adicional de tu biblioteca de GOG.</string>
+    <string name="gog_dlc_load_failed">No se pudo cargar el DLC: %1$s</string>
+    <string name="gog_dlc_deselect_all">Deseleccionar todo</string>
     <string name="epic_uninstall_game_title">Desinstalar juego</string>
     <string name="epic_uninstall_game_message">¿Deseas desinstalar %1$s? Esta acción no se puede deshacer.</string>
     <string name="epic_install_game_title">Instalar juego</string>

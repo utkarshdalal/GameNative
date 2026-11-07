@@ -40,6 +40,10 @@
     <string name="gog_uninstall_confirmation_message">Tem certeza que deseja desinstalar %1$s? Esta ação não pode ser desfeita.</string>
     <string name="gog_install_game_title">Baixar Jogo</string>
     <string name="gog_install_confirmation_message">O aplicativo sendo instalado tem os seguintes requisitos de espaço. Deseja continuar?\n\n\tTamanho do download: %1$s\n\tEspaço disponível: %2$s</string>
+    <string name="gog_dlc_sizes">%1$s de download • %2$s instalado</string>
+    <string name="gog_dlc_not_installable">Não disponível pelo GOG Galaxy. Baixe pelo conteúdo bônus na sua biblioteca da GOG.</string>
+    <string name="gog_dlc_load_failed">Não foi possível carregar o DLC: %1$s</string>
+    <string name="gog_dlc_deselect_all">Desmarcar tudo</string>
     <string name="download_prompt_title">Instalar App</string>
     <string name="delete_prompt_title">Deletar App</string>
     <string name="cancel_download_prompt_title">Cancelar Download</string>

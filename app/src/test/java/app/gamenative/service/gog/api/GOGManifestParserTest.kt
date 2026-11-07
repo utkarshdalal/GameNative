@@ -193,6 +193,54 @@ class GOGManifestParserTest {
     }
 
     @Test
+    fun filterDepotsForInstall_keepsBaseAndSelectedOwnedDlcs() {
+        val base = createTestDepot().copy(productId = "100", manifest = "base")
+        val selectedOwned = createTestDepot().copy(productId = "200", manifest = "dlc-owned")
+        val selectedUnowned = createTestDepot().copy(productId = "300", manifest = "dlc-unowned")
+        val notSelected = createTestDepot().copy(productId = "400", manifest = "dlc-not-selected")
+
+        val result = parser.filterDepotsForInstall(
+            depots = listOf(base, selectedOwned, selectedUnowned, notSelected),
+            baseProductId = "100",
+            dlcIds = setOf("200", "300"),
+            ownedProductIds = setOf("100", "200", "400"),
+        )
+
+        assertEquals(listOf("base", "dlc-owned"), result.map { it.manifest })
+    }
+
+    @Test
+    fun filterDepotsForInstall_emptySelectionIsBaseOnly() {
+        val base = createTestDepot().copy(productId = "100", manifest = "base")
+        val baseSecond = createTestDepot().copy(productId = "100", manifest = "base-2")
+        val ownedDlc = createTestDepot().copy(productId = "200", manifest = "dlc")
+
+        val result = parser.filterDepotsForInstall(
+            depots = listOf(base, ownedDlc, baseSecond),
+            baseProductId = "100",
+            dlcIds = emptySet(),
+            ownedProductIds = setOf("100", "200"),
+        )
+
+        assertEquals(listOf("base", "base-2"), result.map { it.manifest })
+    }
+
+    @Test
+    fun filterDepotsForInstall_neverIncludesUnownedProducts() {
+        val base = createTestDepot().copy(productId = "100", manifest = "base")
+        val dlc = createTestDepot().copy(productId = "200", manifest = "dlc")
+
+        val result = parser.filterDepotsForInstall(
+            depots = listOf(base, dlc),
+            baseProductId = "100",
+            dlcIds = setOf("200"),
+            ownedProductIds = emptySet(),
+        )
+
+        assertTrue(result.isEmpty())
+    }
+
+    @Test
     fun testSeparateBaseDLC() {
         val baseFile = createTestDepotFile(path = "base.exe", productId = null)
         val dlcFile = createTestDepotFile(path = "dlc.dat", productId = "dlc_123")

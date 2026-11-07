@@ -57,6 +57,10 @@
     <string name="gog_uninstall_confirmation_message">%1$s kaldırılsın mı? Bu işlem geri alınamaz.</string>
     <string name="gog_install_game_title">Oyunu indir</string>
     <string name="gog_install_confirmation_message">Yüklenecek uygulamanın alan gereksinimleri şöyle. Devam etmek istiyor musunuz?\n\n\tİndirme boyutu: %1$s\n\tKullanılabilir alan: %2$s</string>
+    <string name="gog_dlc_sizes">%1$s indirme • %2$s kurulum</string>
+    <string name="gog_dlc_not_installable">GOG Galaxy üzerinden kullanılamıyor. GOG kütüphanenizdeki bonus içeriklerden indirin.</string>
+    <string name="gog_dlc_load_failed">DLC yüklenemedi: %1$s</string>
+    <string name="gog_dlc_deselect_all">Tüm seçimi kaldır</string>
     <string name="epic_uninstall_game_title">Oyunu kaldır</string>
     <string name="epic_uninstall_game_message">%1$s kaldırılsın mı? Bu işlem geri alınamaz.</string>
     <string name="epic_install_game_title">Oyunu indir</string>

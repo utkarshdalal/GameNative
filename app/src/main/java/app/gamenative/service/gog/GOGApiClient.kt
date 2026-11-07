@@ -31,7 +31,13 @@ data class ParsedGogGame(
     val releaseDate: String,
     val downloadSize: Long,
     val isSecret: Boolean,
-    val isDlc: Boolean
+    val isDlc: Boolean,
+    val dlcs: List<GogDlcRef> = emptyList(),
+)
+
+data class GogDlcRef(
+    val id: String,
+    val title: String,
 )
 
 /**
@@ -409,6 +415,13 @@ object GOGApiClient {
         }
     }
 
+    /**
+     * DLC products the store lists for [gameId] (owned or not), from `dlcs.products` and
+     * `expanded_dlcs` of the products endpoint.
+     */
+    suspend fun getDlcRefs(context: Context, gameId: String): Result<List<GogDlcRef>> =
+        getGameById(context, gameId, listOf("expanded_dlcs")).map { it.dlcs }
+
         /**
      * Fetch client secret from GOG build metadata API
      * @param gameId GOG game ID
@@ -655,7 +668,27 @@ object GOGApiClient {
             releaseDate = rawResponse.optString("release_date", ""),
             downloadSize = downloadSize,
             isSecret = isSecret,
-            isDlc = isDlc
+            isDlc = isDlc,
+            dlcs = parseDlcRefs(rawResponse),
         )
+    }
+
+    internal fun parseDlcRefs(rawResponse: JSONObject): List<GogDlcRef> {
+        val titles = linkedMapOf<String, String>()
+        rawResponse.optJSONObject("dlcs")?.optJSONArray("products")?.let { products ->
+            for (i in 0 until products.length()) {
+                val id = products.optJSONObject(i)?.opt("id")?.toString().orEmpty()
+                if (id.isNotEmpty()) titles.putIfAbsent(id, "")
+            }
+        }
+        rawResponse.optJSONArray("expanded_dlcs")?.let { expanded ->
+            for (i in 0 until expanded.length()) {
+                val dlc = expanded.optJSONObject(i) ?: continue
+                val id = dlc.opt("id")?.toString().orEmpty()
+                if (id.isEmpty()) continue
+                titles[id] = dlc.optString("title", "").ifEmpty { titles[id].orEmpty() }
+            }
+        }
+        return titles.map { (id, title) -> GogDlcRef(id = id, title = title) }
     }
 }

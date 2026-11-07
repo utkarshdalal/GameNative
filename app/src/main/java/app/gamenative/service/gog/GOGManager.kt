@@ -2,6 +2,7 @@ package app.gamenative.service.gog
 
 import android.content.Context
 import app.gamenative.PluviaApp
+import app.gamenative.PrefManager
 import app.gamenative.data.GOGCloudSavesLocation
 import app.gamenative.data.GOGCloudSavesLocationTemplate
 import app.gamenative.data.GOGGame
@@ -121,11 +122,43 @@ class GOGManager @Inject constructor(
 
     suspend fun getAllGameIds(): Set<String> {
         return withContext(Dispatchers.IO) {
-            try {
+            val dbIds = try {
                 gogGameDao.getAllGameIdsIncludingExcluded().toSet()
             } catch (e: Exception) {
                 Timber.e(e, "Failed to get all game IDs")
                 emptySet()
+            }
+            dbIds + PrefManager.gogOwnedProductIds
+        }
+    }
+
+    /**
+     * DLC product ids installed alongside [gameId]: the recorded selection plus every
+     * goggame-<id>.info in the install root whose id is not the base game.
+     */
+    suspend fun getInstalledDlcIds(gameId: String): Set<String> = withContext(Dispatchers.IO) {
+        val game = getGameFromDbById(gameId) ?: return@withContext emptySet()
+        val recorded = game.installedDlcIds.toSet()
+        val installDir = game.installPath.takeIf { game.isInstalled && it.isNotEmpty() }?.let { File(it) }
+        if (installDir == null || !installDir.isDirectory) return@withContext recorded
+        val baseIds = setOfNotNull(
+            gameId,
+            GOGManifestUtils.readLocalManifest(installDir)?.optString("baseProductId", "")?.takeIf { it.isNotEmpty() },
+        )
+        recorded + (GOGManifestUtils.infoFileProductIds(installDir) - baseIds)
+    }
+
+    suspend fun addInstalledDlcIds(gameId: String, dlcIds: Set<String>) {
+        if (dlcIds.isEmpty()) return
+        withContext(Dispatchers.IO) {
+            try {
+                val game = gogGameDao.getById(gameId) ?: return@withContext
+                val merged = (game.installedDlcIds + dlcIds).distinct()
+                if (merged != game.installedDlcIds) {
+                    gogGameDao.updateInstalledDlcIds(gameId, merged)
+                }
+            } catch (e: Exception) {
+                Timber.tag("GOG").e(e, "Failed to record installed DLCs for $gameId")
             }
         }
     }
@@ -222,6 +255,7 @@ class GOGManager @Inject constructor(
 
             val gameIds = gameIdList.getOrNull() ?: emptyList()
             Timber.tag("GOG").i("Successfully fetched ${gameIds.size} game IDs from GOG")
+            PrefManager.gogOwnedProductIds = gameIds.toSet()
 
             // Refresh hidden-game metadata even when the owned library itself is unchanged.
             // A failure keeps the existing flags and must not fail the library refresh.
@@ -452,25 +486,28 @@ class GOGManager @Inject constructor(
         } ?: emptyArray()
 
         if (infoFiles.isNotEmpty()) {
-            // Try to parse game ID from .info file
-            val infoFile = infoFiles.first()
-            try {
-                val infoContent = infoFile.readText()
-                val infoJson = JSONObject(infoContent)
-                val gameId = infoJson.optString("gameId", "")
-                if (gameId.isNotEmpty()) {
-                    val game = getGameFromDbById(gameId)
-                    if (game != null) {
-                        val installSize = FileUtils.calculateDirectorySize(installDir)
-                        return game.copy(
-                            isInstalled = true,
-                            installPath = installDir.absolutePath,
-                            installSize = installSize,
-                        )
-                    }
+            val infos = infoFiles.sortedBy { it.name }.mapNotNull { infoFile ->
+                try {
+                    val infoJson = JSONObject(infoFile.readText())
+                    val gameId = infoJson.optString("gameId", "")
+                    if (gameId.isEmpty()) null else gameId to infoJson.optString("rootGameId", "")
+                } catch (e: Exception) {
+                    Timber.w(e, "Error parsing .info file: ${infoFile.name}")
+                    null
                 }
-            } catch (e: Exception) {
-                Timber.w(e, "Error parsing .info file: ${infoFile.name}")
+            }
+            val rows = infos.map { (gameId, _) -> getGameFromDbById(gameId) }
+            val game = rows.firstOrNull { it != null && !it.exclude }
+                ?: infos.indexOfFirst { (gameId, rootGameId) -> gameId == rootGameId }
+                    .takeIf { it >= 0 }?.let { rows[it] }
+                ?: rows.firstOrNull { it != null }
+            if (game != null) {
+                val installSize = FileUtils.calculateDirectorySize(installDir)
+                return game.copy(
+                    isInstalled = true,
+                    installPath = installDir.absolutePath,
+                    installSize = installSize,
+                )
             }
         }
 
@@ -578,7 +615,7 @@ class GOGManager @Inject constructor(
                 NativeTreeDelete.deleteTreeFast(File(context.cacheDir, "gog_chunks/$gameId"))
 
                 if (game != null) {
-                    val updatedGame = game.copy(isInstalled = false, installPath = "")
+                    val updatedGame = game.copy(isInstalled = false, installPath = "", installedDlcIds = emptyList())
                     gogGameDao.update(updatedGame)
                     Timber.d("Updated database: game marked as not installed")
                 }
@@ -673,18 +710,18 @@ class GOGManager @Inject constructor(
         // Try V2 structure first (game_$gameId subdirectory)
         val v2GameDir = File(installPath, "game_$gameId")
         if (v2GameDir.exists()) {
-            return getGamePlayTask(installPath, v2GameDir)
+            return getGamePlayTask(installPath, v2GameDir, gameId)
         }
 
         // Try V1 structure: goggame-*.info and exe can be in install root or in a subdir
         val installDirFile = File(installPath)
-        getGamePlayTask(installPath, installDirFile)?.let { return it }
+        getGamePlayTask(installPath, installDirFile, gameId)?.let { return it }
         val subdirs = installDirFile.listFiles()?.filter {
             it.isDirectory && it.name != "saves" && it.name != "_CommonRedist"
         } ?: emptyList()
 
         for (subdir in subdirs) {
-            getGamePlayTask(installPath, subdir)?.let { return it }
+            getGamePlayTask(installPath, subdir, gameId)?.let { return it }
         }
 
         return null
@@ -718,8 +755,8 @@ class GOGManager @Inject constructor(
         val workingDir: String,
     )
 
-    private fun getGamePlayTask(installPath: String, gameDir: File): GOGPlayTask? {
-        val result = getPrimaryPlayTaskFromGOGInfo(gameDir, installPath)
+    private fun getGamePlayTask(installPath: String, gameDir: File, gameId: String?): GOGPlayTask? {
+        val result = getPrimaryPlayTaskFromGOGInfo(gameDir, installPath, gameId)
         if (result.isSuccess) {
             val task = result.getOrNull()
             Timber.d("Found GOG game executable from info file: ${task?.executablePath}")
@@ -729,44 +766,36 @@ class GOGManager @Inject constructor(
         return null
     }
 
-    private fun findGOGInfoFile(directory: File, gameId: String? = null, maxDepth: Int = 3, currentDepth: Int = 0): File? {
+    internal fun findGOGInfoFile(directory: File, gameId: String? = null, maxDepth: Int = 3): File? {
+        if (gameId != null) {
+            searchInfoFile(directory, maxDepth, 0) { files -> files.firstOrNull { it.name == "goggame-$gameId.info" } }
+                ?.let { return it }
+        }
+        return searchInfoFile(directory, maxDepth, 0) { files -> GOGManifestUtils.selectBaseInfoFile(files, gameId) }
+    }
+
+    private fun searchInfoFile(directory: File, maxDepth: Int, currentDepth: Int, select: (List<File>) -> File?): File? {
         if (!directory.exists() || !directory.isDirectory) {
             return null
         }
 
-        // Check current directory first
-        val infoFile = directory.listFiles()?.find {
-            it.isFile && if (gameId != null) {
-                it.name == "goggame-$gameId.info"
-            } else {
-                it.name.startsWith("goggame-") && it.name.endsWith(".info")
-            }
-        }
+        val entries = directory.listFiles() ?: return null
+        select(entries.filter { GOGManifestUtils.isInfoFile(it) })?.let { return it }
 
-        if (infoFile != null) {
-            return infoFile
-        }
-
-        // If max depth reached, stop searching
         if (currentDepth >= maxDepth) {
             return null
         }
 
-        // Search subdirectories recursively
-        val subdirs = directory.listFiles()?.filter { it.isDirectory } ?: emptyList()
-        for (subdir in subdirs) {
-            val found = findGOGInfoFile(subdir, gameId, maxDepth, currentDepth + 1)
-            if (found != null) {
-                return found
-            }
+        for (subdir in entries.filter { it.isDirectory }) {
+            searchInfoFile(subdir, maxDepth, currentDepth + 1, select)?.let { return it }
         }
 
         return null
     }
 
-    private fun getPrimaryPlayTaskFromGOGInfo(gameDir: File, installPath: String): Result<GOGPlayTask> {
+    private fun getPrimaryPlayTaskFromGOGInfo(gameDir: File, installPath: String, gameId: String?): Result<GOGPlayTask> {
         return try {
-            val infoFile = findGOGInfoFile(gameDir)
+            val infoFile = findGOGInfoFile(gameDir, gameId)
                 ?: return Result.failure(Exception("GOG info file not found in ${gameDir.absolutePath}"))
 
             val content = infoFile.readText()
@@ -972,12 +1001,14 @@ class GOGManager @Inject constructor(
         val langCode = root.optString("language", "en").let { if (it.length <= 2) "$it-US" else it }
         val language = "English"
         val productsArray = root.optJSONArray("products") ?: return emptyList()
+        val installedProductIds = setOf(gameId.toString(), root.optString("baseProductId", "")) +
+            runBlocking { getInstalledDlcIds(gameId.toString()) }
 
         val parts = mutableListOf<String>()
         for (i in 0 until productsArray.length()) {
             val product = productsArray.getJSONObject(i)
             val productId = product.optString("productId", "")
-            if (productId.isEmpty()) continue
+            if (productId.isEmpty() || productId !in installedProductIds) continue
 
             val exePathWin = "$gameDriveLetter:\\$isiRelativePathWin"
             // HACK: /DIR and /supportDir point to a \"rootdir\" folder inside ISI, which is a symlink

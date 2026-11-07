@@ -1673,6 +1673,10 @@
     <string name="gog_uninstall_confirmation_message">Möchtest du %1$s wirklich deinstallieren? Diese Aktion kann nicht rückgängig gemacht werden.</string>
     <string name="gog_install_game_title">Spiel herunterladen</string>
     <string name="gog_install_confirmation_message">Die App benötigt folgenden Speicherplatz. Möchtest du fortfahren?\n\n\tDownloadgröße: %1$s\n\tVerfügbarer Speicher: %2$s</string>
+    <string name="gog_dlc_sizes">%1$s Download • %2$s Installation</string>
+    <string name="gog_dlc_not_installable">Nicht über GOG Galaxy verfügbar. Lade es aus den Bonusinhalten in deiner GOG-Bibliothek herunter.</string>
+    <string name="gog_dlc_load_failed">DLC konnte nicht geladen werden: %1$s</string>
+    <string name="gog_dlc_deselect_all">Alle abwählen</string>
 
     <!-- Epic Games Integration -->
     <string name="epic_integration_title">Epic Games Integration</string>
