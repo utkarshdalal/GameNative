@@ -1,21 +1,23 @@
 package app.gamenative.api
 
+import app.gamenative.utils.FexImages
 import com.github.luben.zstd.ZstdInputStream
 import okhttp3.Request
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import java.net.URLEncoder
 import java.security.MessageDigest
 import java.util.zip.GZIPInputStream
 
-/** Lists and downloads hosted FEX code caches (GET /api/code-caches). */
+/** Looks up and downloads hosted FEX code caches by image (POST /api/code-caches/lookup). */
 object CodeCacheApi {
 
     data class HostedCache(
-        val id: Long,
-        val name: String,
+        val imageSha256: String,
+        /** The name FEX looks for on this device, computed by the server from the image's name and PE header. */
+        val fileName: String,
         val size: Long,
         val compressedSize: Long,
         val sha256: String,
@@ -24,24 +26,42 @@ object CodeCacheApi {
         val patchFrom: String?,
     )
 
-    suspend fun list(store: String, gameId: Int, fexVersion: String, soc: String): ApiResult<List<HostedCache>> {
-        val url = "${GameNativeApi.BASE_URL}/api/code-caches?store=$store&gameId=$gameId&fexVersion=$fexVersion&soc=${URLEncoder.encode(soc, "UTF-8")}"
-        val request = GameNativeApi.buildGetRequest(url)
-        return GameNativeApi.executeRequest(request) { body ->
+    /** The hosted caches for [images] on this FEX build and SoC; images without one are left out. */
+    suspend fun lookup(fexVersion: String, soc: String, images: List<FexImages.Image>): ApiResult<List<HostedCache>> {
+        val body = JSONObject().apply {
+            put("fexVersion", fexVersion)
+            put("soc", soc)
+            put(
+                "images",
+                JSONArray().apply {
+                    images.forEach { image ->
+                        put(
+                            JSONObject()
+                                .put("sha256", image.sha256)
+                                .put("name", image.name)
+                                .put("timeDateStamp", image.timeDateStamp)
+                                .put("sizeOfImage", image.sizeOfImage),
+                        )
+                    }
+                },
+            )
+        }
+        val request = GameNativeApi.buildPostRequest("${GameNativeApi.BASE_URL}/api/code-caches/lookup", body)
+        return GameNativeApi.executeRequest(request) { response ->
             // An unrouted path on the API host answers 200 from another worker; only a real list counts.
-            val caches = JSONObject(body).optJSONArray("caches") ?: throw IOException("no cache list in response")
+            val caches = JSONObject(response).optJSONArray("caches") ?: throw IOException("no cache list in response")
             buildList {
                 for (i in 0 until caches.length()) {
                     val c = caches.getJSONObject(i)
                     add(
                         HostedCache(
-                            c.getLong("id"),
-                            c.getString("name"),
+                            c.getString("imageSha256"),
+                            c.getString("fileName"),
                             c.getLong("size"),
                             c.optLong("compressedSize", -1),
                             c.getString("sha256"),
                             c.getString("url"),
-                            c.optString("patchFrom").takeIf { it.isNotBlank() },
+                            c.optString("patchFrom").takeIf { it.isNotBlank() && it != "null" },
                         ),
                     )
                 }
@@ -89,7 +109,7 @@ object CodeCacheApi {
                     }
                 }
                 val sha256 = digest.digest().joinToString("") { "%02x".format(it) }
-                if (total != cache.size || sha256 != cache.sha256) throw IOException("cache ${cache.name} did not verify")
+                if (total != cache.size || sha256 != cache.sha256) throw IOException("cache ${cache.fileName} did not verify")
             }
             return tmp.renameTo(target)
         } catch (e: Exception) {
