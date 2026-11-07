@@ -27,6 +27,19 @@ class StorageUtilsTest {
     }
 
     @Test
+    fun getFolderSize_skipsFilesHardlinkedOutsideTheTree() {
+        val folder = tempFolder.newFolder("container")
+        val shared = tempFolder.newFolder("shared")
+        File(folder, "private.bin").writeBytes(ByteArray(1024))
+        val sharedFile = File(shared, "shared.bin").apply { writeBytes(ByteArray(4096)) }
+        Files.createLink(File(folder, "linked.bin").toPath(), sharedFile.toPath())
+        // Two of three links in-tree is still not all of them.
+        Files.createLink(File(folder, "linked-again.bin").toPath(), sharedFile.toPath())
+
+        assertEquals(1024L, runBlocking { StorageUtils.getFolderSize(folder.absolutePath) })
+    }
+
+    @Test
     fun getFolderSize_sumsRegularFiles() {
         val folder = tempFolder.newFolder("game")
         val sub = File(folder, "sub").apply { mkdirs() }

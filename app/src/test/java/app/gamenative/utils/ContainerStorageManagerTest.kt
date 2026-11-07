@@ -39,7 +39,18 @@ class ContainerStorageManagerTest {
     }
 
     @Test
-    fun getContainerDirectorySize_countsHardlinkedFilesOnce() {
+    fun getContainerDirectorySize_skipsHardlinkedFiles() {
+        val container = tempFolder.newFolder("container")
+        val shared = tempFolder.newFolder("shared")
+        File(container, "private.bin").writeBytes(ByteArray(1024))
+        val sharedFile = File(shared, "shared.bin").apply { writeBytes(ByteArray(4096)) }
+        Files.createLink(File(container, "linked.bin").toPath(), sharedFile.toPath())
+
+        assertEquals(1024L, ContainerStorageManager.getContainerDirectorySize(container.toPath()))
+    }
+
+    @Test
+    fun getContainerDirectorySize_countsInTreeHardlinksOnce() {
         val container = tempFolder.newFolder("container")
         File(container, "private.bin").writeBytes(ByteArray(1024))
         val original = File(container, "shared.bin").apply { writeBytes(ByteArray(4096)) }

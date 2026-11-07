@@ -18,8 +18,8 @@ import timber.log.Timber
 object FileUtils {
 
     /**
-     * Total size of the regular files under [directory]. Symlinks are not followed and
-     * hard-linked files are counted once; see [StorageUtils.directorySizeOnDisk].
+     * Total size of the regular files under [directory]. Symlinks are not followed and a
+     * hard-linked file counts once, only if all its links are inside; see [StorageUtils.directorySizeOnDisk].
      */
     fun calculateDirectorySize(directory: File): Long {
         return StorageUtils.directorySizeOnDisk(directory.toPath())
