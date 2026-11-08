@@ -257,6 +257,7 @@ import com.winlator.xserver.WindowManager
 import com.winlator.xserver.XServer
 import com.winlator.xserver.extensions.PresentExtension
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -5482,7 +5483,15 @@ private fun exit(
         SessionReport.exitProperties(frameRating?.context ?: PluviaApp.xServerView?.context, frameRating, windowActivity, container, reason)
     }.getOrElse { emptyMap() } + runCatching {
         GameCompatibilityService.badgeProperties(ContainerUtils.resolveGameName(appId))
-    }.getOrElse { emptyMap() }
+    }.getOrElse { emptyMap() } + runCatching {
+        val fingerprint = CoroutineScope(Dispatchers.IO).async { SessionReport.crashFingerprintProperties(container, reason) }
+        runBlocking { withTimeoutOrNull(200) { fingerprint.await() } }
+    }.getOrNull().orEmpty()
+    PostHog.capture(
+        event = "game_exited",
+        properties = exitProperties,
+    )
+    CoroutineScope(Dispatchers.IO).launch { SessionReport.recordRun(container, exitProperties) }
     (frameRating?.context ?: PluviaApp.xServerView?.context)?.let { ctx -> runCatching { AppExitRecorder.markSessionEnd(ctx) } }
     runCatching { windowActivity.stop() }
 
@@ -5507,18 +5516,7 @@ private fun exit(
     releasePanelRefreshListener()
 
     GameNativeDrm.nativeStop()
-    try {
-        PluviaApp.shutdownEnvironment()
-    } finally {
-        CoroutineScope(Dispatchers.IO).launch {
-            val properties = exitProperties + SessionReport.crashFingerprintProperties(container, reason)
-            PostHog.capture(
-                event = "game_exited",
-                properties = properties,
-            )
-            SessionReport.recordRun(container, properties)
-        }
-    }
+    PluviaApp.shutdownEnvironment()
     EaLaunchSupport.stop()
 
     // FEX writes its code maps as it goes and flushes on a normal guest exit; a process the teardown
