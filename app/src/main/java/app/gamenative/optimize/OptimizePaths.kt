@@ -11,9 +11,10 @@ class PathRoots(
 )
 
 /**
- * Resolves the `{placeholder}/a/b` paths levers carry. Segments match case-insensitively, `*` is exactly one folder
- * (the newest when several match), `**` is the newest file matching the rest of the path in any subfolder. A path
- * with an unknown placeholder, or one that leaves the prefix and the install folder, resolves to null.
+ * Resolves the `{placeholder}/a/b` paths levers carry. Segments match case-insensitively. `*` is exactly one folder:
+ * the newest one under which the rest of the path exists (for [resolve]'s createIfMissing, whose parent folder
+ * exists). `**` is the newest file matching the rest of the path in any subfolder. A path with an unknown
+ * placeholder, a wildcard nothing matches, or one that leaves the prefix and the install folder resolves to null.
  */
 object OptimizePaths {
 
@@ -23,7 +24,7 @@ object OptimizePaths {
 
     private val PLACEHOLDER = Regex("^\\{([A-Za-z]+)(?::([^}]*))?\\}")
 
-    fun resolve(roots: PathRoots, template: String): File? {
+    fun resolve(roots: PathRoots, template: String, createIfMissing: Boolean = false): File? {
         val userName = roots.userHome?.name ?: USER_NAME
         val normalized = template.replace('\\', '/').replace("{userName}", userName)
         val match = PLACEHOLDER.find(normalized) ?: return null
@@ -32,7 +33,7 @@ object OptimizePaths {
         if (rest.contains('{') || rest.contains('}')) return null
         val segments = rest.split('/').filter { it.isNotEmpty() }
         if (segments.any { it == "." || it == ".." }) return null
-        val target = walk(base, segments) ?: return null
+        val target = walk(base, segments, createIfMissing) ?: return null
         return target.takeIf { allowed(roots, it) }
     }
 
@@ -50,7 +51,7 @@ object OptimizePaths {
             "gameInstallPath" -> roots.install
             "steamUserdataPath" -> {
                 val account = roots.steamAccountId ?: return null
-                val steam = prefix?.let { walk(it, listOf("drive_c", "Program Files (x86)", "Steam", "userdata")) } ?: return null
+                val steam = prefix?.let { walk(it, listOf("drive_c", "Program Files (x86)", "Steam", "userdata"), false) } ?: return null
                 child(steam, account.toString())
             }
             "exeDir" -> {
@@ -81,23 +82,33 @@ object OptimizePaths {
         return dir.listFiles()?.firstOrNull { it.name.equals(name, ignoreCase = true) } ?: exact
     }
 
-    private fun walk(start: File, segments: List<String>): File? {
-        var cur = start
-        for ((i, seg) in segments.withIndex()) {
-            when (seg) {
-                "*" -> {
-                    val dirs = cur.listFiles()?.filter { it.isDirectory }.orEmpty()
-                    cur = dirs.maxByOrNull { it.lastModified() } ?: return null
-                }
-                "**" -> return deepNewest(cur, segments.subList(i + 1, segments.size))
-                else -> cur = child(cur, seg)
-            }
-        }
-        return cur
+    private fun walk(start: File, segments: List<String>, createIfMissing: Boolean): File? {
+        if (segments.none { it.isWildcard() }) return segments.fold(start) { dir, seg -> child(dir, seg) }
+        return wild(start, segments, createIfMissing)
     }
 
+    private fun String.isWildcard(): Boolean = this == "*" || this == "**"
+
+    /** A path with a wildcard: only a match that exists (or can be created next to an existing folder) counts. */
+    private fun wild(start: File, segments: List<String>, createIfMissing: Boolean): File? {
+        val at = segments.indexOfFirst { it.isWildcard() }
+        if (at < 0) {
+            val target = segments.fold(start) { dir, seg -> child(dir, seg) }
+            return target.takeIf { usable(it, createIfMissing) }
+        }
+        val head = segments.subList(0, at).fold(start) { dir, seg -> child(dir, seg) }
+        val rest = segments.subList(at + 1, segments.size)
+        if (segments[at] == "**") return deepNewest(head, rest)
+        val dirs = head.listFiles()?.filter { it.isDirectory }?.sortedByDescending { it.lastModified() }.orEmpty()
+        if (rest.isEmpty()) return dirs.firstOrNull()
+        return dirs.firstNotNullOfOrNull { wild(it, rest, createIfMissing) }
+    }
+
+    private fun usable(file: File, createIfMissing: Boolean): Boolean =
+        file.isFile || (createIfMissing && !file.exists() && file.parentFile?.isDirectory == true)
+
     private fun deepNewest(start: File, rest: List<String>): File? {
-        if (rest.isEmpty() || rest.any { it == "*" || it == "**" }) return null
+        if (rest.isEmpty() || rest.any { it.isWildcard() }) return null
         val found = mutableListOf<File>()
         var level = listOf(start)
         for (depth in 0..DEEP_SEARCH_DEPTH) {

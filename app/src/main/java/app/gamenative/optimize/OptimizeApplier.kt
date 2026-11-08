@@ -108,7 +108,7 @@ object OptimizeApplier {
     /** Null when a relative rung skipped every op of the lever and nothing was written. */
     private fun applyFile(index: Int, lever: Lever.EngineFile, roots: PathRoots, rungDir: File, relative: Boolean, count: OpCount): JSONObject? {
         val format = ConfigFormats.forName(lever.format) ?: throw LeverFailure("unknown format ${lever.format}")
-        val file = OptimizePaths.resolve(roots, lever.path) ?: throw LeverFailure("path not resolvable")
+        val file = OptimizePaths.resolve(roots, lever.path, lever.createIfMissing) ?: throw LeverFailure("path not resolvable")
         if (file.isDirectory) throw LeverFailure("path is a folder")
         val existed = file.isFile
         if (!existed && !lever.createIfMissing) throw LeverFailure("file missing")

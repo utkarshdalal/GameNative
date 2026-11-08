@@ -61,6 +61,49 @@ class OptimizePathsTest {
     }
 
     @Test
+    fun starSkipsNewerFoldersWithoutTheRestOfThePath() {
+        val engine = file(File(home, "AppData/Local/LunaGame/Saved/Config/Windows/Engine.ini"))
+        File(home, "AppData/Local/LunaGame").setLastModified(1_000_000L)
+        File(home, "AppData/Local/Temp/junk").mkdirs()
+        File(home, "AppData/Local/Temp").setLastModified(9_000_000L)
+        assertEquals(engine.canonicalPath, OptimizePaths.resolve(roots, "{localAppDataPath}/*/Saved/Config/Windows/Engine.ini")?.canonicalPath)
+        assertEquals(engine.canonicalPath, OptimizePaths.resolve(roots, "{localAppDataPath}/*/saved/config/windows/engine.ini")?.canonicalPath)
+    }
+
+    @Test
+    fun twoStarsPickTheFolderPairThatHoldsTheFile() {
+        val local = File(home, "AppData/Local")
+        val noEditor = file(File(local, "LunaGame/Saved/Config/WindowsNoEditor/Engine.ini"))
+        File(local, "LunaGame/Saved/Config/Windows").mkdirs()
+        File(local, "LunaGame/Saved/Config/Windows").setLastModified(9_000_000L)
+        noEditor.parentFile!!.setLastModified(1_000_000L)
+        File(local, "Temp/Saved/Config/Windows").mkdirs()
+        File(local, "Temp").setLastModified(9_000_000L)
+        File(local, "LunaGame").setLastModified(1_000_000L)
+        assertEquals(noEditor.canonicalPath, OptimizePaths.resolve(roots, "{localAppDataPath}/*/Saved/Config/*/Engine.ini")?.canonicalPath)
+
+        val windows = file(File(local, "LunaGame/Saved/Config/Windows/Engine.ini"))
+        File(local, "LunaGame/Saved/Config/Windows").setLastModified(9_000_000L)
+        assertEquals(windows.canonicalPath, OptimizePaths.resolve(roots, "{localAppDataPath}/*/Saved/Config/*/Engine.ini")?.canonicalPath)
+    }
+
+    @Test
+    fun starWithNoMatchResolvesToNullUnlessItMayCreateNextToAFolder() {
+        val local = File(home, "AppData/Local")
+        File(local, "Temp").mkdirs()
+        File(local, "LunaGame/Saved/Config/Windows").mkdirs()
+        File(local, "Temp").setLastModified(9_000_000L)
+        File(local, "LunaGame").setLastModified(1_000_000L)
+        val template = "{localAppDataPath}/*/Saved/Config/Windows/GameUserSettings.ini"
+        assertNull(OptimizePaths.resolve(roots, template))
+        assertEquals(
+            File(local, "LunaGame/Saved/Config/Windows/GameUserSettings.ini").canonicalPath,
+            OptimizePaths.resolve(roots, template, createIfMissing = true)?.canonicalPath,
+        )
+        assertNull(OptimizePaths.resolve(roots, "{localAppDataPath}/*/Nowhere/x.ini", createIfMissing = true))
+    }
+
+    @Test
     fun doubleStarPicksTheNewestMatchingFile() {
         val a = file(File(install, "a/b/config.cfg")).also { it.setLastModified(1_000_000L) }
         val b = file(File(install, "c/config.cfg")).also { it.setLastModified(3_000_000L) }
