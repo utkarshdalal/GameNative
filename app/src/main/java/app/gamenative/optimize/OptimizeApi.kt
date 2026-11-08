@@ -95,17 +95,17 @@ object OptimizeApi {
         }
     }
 
-    /** One attempt and one retry; false when neither was acknowledged. */
-    suspend fun postOutcome(body: JSONObject): Boolean {
+    /** One attempt and one retry; null when neither was acknowledged. */
+    suspend fun postOutcome(body: JSONObject): OutcomeAck? {
         repeat(2) {
             try {
-                if (post(OUTCOME_PATH, body)?.optBoolean("ok", false) == true) return true
+                OutcomeAck.parse(post(OUTCOME_PATH, body)).takeIf { it.ok }?.let { return it }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 Timber.tag("Optimize").w(e, "outcome report failed")
             }
         }
-        return false
+        return null
     }
 }

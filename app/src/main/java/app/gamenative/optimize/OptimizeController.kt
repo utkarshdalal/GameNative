@@ -71,10 +71,31 @@ object OptimizeController {
     /** Bumped after every state change so open screens read the state again. */
     val revision = MutableStateFlow(0)
 
-    /** The latest entitlement any next-rung answer carried, for games that have not asked yet. */
-    @Volatile
-    var lastEntitlement: Entitlement? = null
-        private set
+    private val entitlementLock = Any()
+    private var lastEntitlementCache: Entitlement? = null
+    private var lastEntitlementLoaded = false
+
+    /** The latest entitlement any game's next-rung or outcome answer carried, kept across restarts, for games that have not asked yet. */
+    val lastEntitlement: Entitlement?
+        get() = synchronized(entitlementLock) {
+            if (!lastEntitlementLoaded) {
+                lastEntitlementCache = runCatching {
+                    PrefManager.optimizeLastEntitlementJson.takeIf { it.isNotEmpty() }?.let { Entitlement.fromJson(JSONObject(it)) }
+                }.getOrNull()
+                lastEntitlementLoaded = true
+            }
+            lastEntitlementCache
+        }
+
+    private fun rememberEntitlement(entitlement: Entitlement?) {
+        if (entitlement == null) return
+        synchronized(entitlementLock) {
+            lastEntitlementCache = entitlement
+            lastEntitlementLoaded = true
+        }
+        runCatching { PrefManager.optimizeLastEntitlementJson = entitlement.toJson().toString() }
+            .onFailure { Timber.tag(TAG).w(it, "Saving the last entitlement failed") }
+    }
 
     fun isGameRunning(): Boolean = PluviaApp.xEnvironment != null
 
@@ -250,6 +271,7 @@ object OptimizeController {
         appliedOps: Int? = null,
         skippedOps: Int? = null,
         judgeReason: String? = null,
+        excludedWindows: List<Int> = emptyList(),
     ): JSONObject = JSONObject().apply {
         put("schema", 1)
         put("app_version_code", BuildConfig.VERSION_CODE)
@@ -259,7 +281,7 @@ object OptimizeController {
         put("profile", profile.wireId)
         put("game", gameJson(appId))
         put("before", before?.toReportJson() ?: JSONObject.NULL)
-        put("after", after?.toReportJson() ?: JSONObject.NULL)
+        put("after", after?.toReportJson()?.apply { if (excludedWindows.isNotEmpty()) put("excluded_windows", JSONArray(excludedWindows)) } ?: JSONObject.NULL)
         put("result", result)
         judgeReason?.let { put("judge_reason", it) }
         put(
@@ -296,21 +318,38 @@ object OptimizeController {
     private fun undoReport(appId: String, profile: OptimizeProfile, rungId: String, version: String, baseline: Metrics?, levers: Int): JSONObject =
         outcomeBody(appId, profile, rungId, version, baseline, null, OptimizeJudge.UNDO, levers, emptyList())
 
-    private suspend fun flush(context: Context, store: OptimizeStore) {
+    /**
+     * Sends the queued outcome reports. The entitlement the last acknowledged one carried is stored for the game and
+     * app-wide, and replaces the one on the game's waiting card, so the card counts the trial slot just taken.
+     */
+    private suspend fun flush(context: Context, appId: String, store: OptimizeStore) {
         try {
             val queue = mutex.withLock { store.read().outcomeQueue }
             if (queue.isEmpty()) return
             val device = deviceJson(context)
             val sent = mutableSetOf<String>()
+            var entitlement: Entitlement? = null
             for (item in queue) {
                 val body = JSONObject(item.toString()).put("device", device)
-                if (!OptimizeApi.postOutcome(body)) break
+                val ack = OptimizeApi.postOutcome(body) ?: break
                 sent += item.optString("outcome_id")
+                ack.entitlement?.let { entitlement = it }
             }
             if (sent.isEmpty()) return
+            rememberEntitlement(entitlement)
             mutex.withLock {
                 val state = store.read()
-                store.write(state.copy(outcomeQueue = state.outcomeQueue.filter { it.optString("outcome_id") !in sent }))
+                store.write(
+                    state.copy(
+                        outcomeQueue = state.outcomeQueue.filter { it.optString("outcome_id") !in sent },
+                        entitlement = entitlement ?: state.entitlement,
+                        entitlementCheckedAt = if (entitlement != null) System.currentTimeMillis() else state.entitlementCheckedAt,
+                    ),
+                )
+            }
+            entitlement?.let { e ->
+                cardRequest.value?.takeIf { it.appId == appId && it.entitlement != e }?.let { cardRequest.compareAndSet(it, it.copy(entitlement = e)) }
+                revision.value++
             }
         } catch (e: CancellationException) {
             throw e
@@ -378,7 +417,7 @@ object OptimizeController {
         source: String,
     ) {
         val response = (result as? NextRungResult.Answered)?.response ?: return
-        response.entitlement?.let { lastEntitlement = it }
+        rememberEntitlement(response.entitlement)
         mutex.withLock {
             val now = System.currentTimeMillis()
             var state = store.read()
@@ -472,7 +511,7 @@ object OptimizeController {
                     ok = false
                 }
                 is ApplyOutcome.NoOp -> {
-                    Timber.tag(TAG).i("Putting ${rung.rungId} back wrote nothing: values already at or below target")
+                    Timber.tag(TAG).i("Putting ${rung.rungId} back wrote nothing: values already at or below target or not in the file")
                     val back = kept.copy(levers = emptyList(), applied = true, appliedAt = System.currentTimeMillis())
                     s = s.withLadder(target, ladder.copy(kept = ladder.kept.map { if (it === kept) back else it }))
                 }
@@ -501,7 +540,7 @@ object OptimizeController {
             val budgetMs = NEXT_RUNG_LAUNCH_BUDGET_MS - (System.currentTimeMillis() - waitStart)
             mutex.withLock {
                 var state = store.read()
-                scope.launch { flush(context.applicationContext, store) }
+                scope.launch { flush(context.applicationContext, appId, store) }
                 val profile = state.activeProfile
                 val (reconciled, ok) = reconcile(context, appId, container, store, state, profile, onProgress)
                 val changed = reconciled != state
@@ -567,7 +606,7 @@ object OptimizeController {
                         val repeated = (first as? NextRungResult.Answered)?.response
                             ?.takeIf { it.status == NextRungResponse.STATUS_RUNG }?.rung?.takeIf { ladder.repeats(it) }
                         if (repeated == null || deadline <= System.currentTimeMillis()) return first
-                        Timber.tag(TAG).i("Optimize: skipping ${repeated.rungId} v${repeated.version}, same change already kept")
+                        Timber.tag(TAG).i("Optimize: skipping ${repeated.rungId} v${repeated.version}: ${ladder.repeatReason(repeated)}")
                         return ask()
                     }
 
@@ -580,7 +619,7 @@ object OptimizeController {
                             is NextRungResult.Answered -> {
                                 val response = result.response
                                 if (fromPrefetch == null) {
-                                    response.entitlement?.let { lastEntitlement = it }
+                                    rememberEntitlement(response.entitlement)
                                     state = state.copy(
                                         cardAction = null,
                                         capPreferred = false,
@@ -606,7 +645,7 @@ object OptimizeController {
                                         val offered = response.rung?.takeIf { it.rungId !in ladder.bad }
                                         val rung = offered?.takeUnless { ladder.repeats(it) }
                                         if (offered != null && rung == null) {
-                                            Timber.tag(TAG).i("Optimize: skipping ${offered.rungId} v${offered.version}, same change already kept")
+                                            Timber.tag(TAG).i("Optimize: skipping ${offered.rungId} v${offered.version}: ${ladder.repeatReason(offered)}")
                                         }
                                         if (rung != null) {
                                             val outcome = OptimizeApplier.apply(
@@ -624,7 +663,7 @@ object OptimizeController {
                                                     )
                                                     applyResult = "ok"
                                                     val types = rung.levers.map { it.type }.distinct().joinToString(", ")
-                                                    val skipped = if (outcome.skippedOps > 0) ", ${outcome.skippedOps} ops already lower" else ""
+                                                    val skipped = if (outcome.skippedOps > 0) ", ${outcome.skippedOps} ops skipped" else ""
                                                     Timber.tag(TAG).i("applied ${rung.rungId} v${rung.version} order ${rung.order} ($types$skipped)")
                                                 }
                                                 is ApplyOutcome.NoOp -> {
@@ -636,7 +675,7 @@ object OptimizeController {
                                                         ),
                                                     )
                                                     Timber.tag(TAG).i(
-                                                        "Optimize: ${rung.rungId} changed nothing (all ${outcome.skippedOps} ops already at or below target), asking for the next step",
+                                                        "Optimize: ${rung.rungId} changed nothing (all ${outcome.skippedOps} ops at or below target or not in the file), asking for the next step",
                                                     )
                                                     return true
                                                 }
@@ -756,6 +795,32 @@ object OptimizeController {
     }
 
     /**
+     * The menu-like windows the judge will leave out of the session that just ended, for perf_verdict.windows_excluded;
+     * null when no GPU-bound step is on trial. Telemetry only: the verdict class stays as measured.
+     */
+    private fun windowsExcluded(context: Context?, container: Container, props: Map<String, Any>): Int? {
+        val state = OptimizeStore(container.rootDir).read()
+        val pending = state.active?.pending?.takeIf { it.revert == null } ?: return null
+        val sessionRung = (props["optimize_state"] as? Map<*, *>)?.get("template_id") as? String
+        if (sessionRung != pending.rung.rungId) return null
+        val baseline = pending.baseline ?: return null
+        val fpsTarget = OptimizeTarget.fpsTarget(context?.let { refreshHz(it) }, fpsLimit(container))
+        return OptimizeJudge.comparableWindows(baseline, Metrics.fromRun(JSONObject(props)), fpsTarget)?.excluded?.size
+    }
+
+    /** game_exited properties with perf_verdict.card and, while a GPU-bound step is on trial, perf_verdict.windows_excluded. */
+    fun exitProperties(context: Context?, container: Container, props: Map<String, Any>): Map<String, Any> {
+        val withCard = OptimizeCards.withCard(props, cardBeforeJudging(container, props))
+        val excluded = try {
+            windowsExcluded(context, container, props)
+        } catch (e: Exception) {
+            Timber.tag(TAG).w(e, "Counting excluded windows at exit failed")
+            null
+        }
+        return OptimizeCards.withVerdictField(withCard, "windows_excluded", excluded)
+    }
+
+    /**
      * Judges the session that just ended; [props] are its game_exited properties. Changes that must come off are
      * taken off before the next launch, once Wine has written its registry. Leaves the card for the next screen.
      * Returns the session's perf_verdict.card value ("shown" or "suppressed:<reason>"), null when judging failed.
@@ -802,8 +867,17 @@ object OptimizeController {
                             is OptimizeJudge.Decision.Short ->
                                 state.withLadder(profile, ladder.copy(pending = pending.copy(shortSessions = decision.shortSessions)))
                             is OptimizeJudge.Decision.Crash -> finish(appId, state, profile, ladder, pending, OptimizeJudge.CRASH, null, after, refresh, cap)
-                            is OptimizeJudge.Decision.Final ->
-                                finish(appId, state, profile, ladder, pending, decision.result, decision.reason, after, refresh, cap)
+                            is OptimizeJudge.Decision.Final -> {
+                                if (decision.excludedWindows.isNotEmpty()) {
+                                    Timber.tag(TAG).i(
+                                        "Optimize: judging ${pending.rung.rungId} without menu-like windows ${decision.excludedWindows} (${decision.result})",
+                                    )
+                                }
+                                finish(
+                                    appId, state, profile, ladder, pending, decision.result, decision.reason, after, refresh, cap,
+                                    judged = decision.judged ?: after, excludedWindows = decision.excludedWindows,
+                                )
+                            }
                         }
                         store.write(state)
                     }
@@ -821,11 +895,11 @@ object OptimizeController {
                     if (context != null) prefetch = exitPrefetch(context.applicationContext, appId, container, store, state, profile, now)
                     cardField = OptimizeCards.cardField(state.card != null && state.card != cardBefore, OptimizeCards.SUPPRESSED_PROFILE)
                 }
-                state.card?.let { CardRequest(appId, it, state.entitlement ?: lastEntitlement) }
+                state.card?.let { CardRequest(appId, it, state.entitlement.orAppWide(lastEntitlement)) }
             }
             request?.let { cardRequest.value = it }
             revision.value++
-            if (context != null) scope.launch { flush(context.applicationContext, store) }
+            if (context != null) scope.launch { flush(context.applicationContext, appId, store) }
             prefetch?.invoke()
             cardField
         } catch (e: CancellationException) {
@@ -878,15 +952,17 @@ object OptimizeController {
         profile: OptimizeProfile,
         ladder: ProfileLadder,
         pending: PendingRung,
-        judged: String,
+        judgedResult: String,
         judgeReason: String?,
         after: Metrics,
         refreshHz: Double?,
         fpsCap: Int,
+        judged: Metrics = after,
+        excludedWindows: List<Int> = emptyList(),
     ): OptimizeLocalState {
         val rung = pending.rung
         val now = System.currentTimeMillis()
-        val settled = OptimizeTarget.settle(profile, judged, judgeReason, after, refreshHz, fpsCap)
+        val settled = OptimizeTarget.settle(profile, judgedResult, judgeReason, judged, refreshHz, fpsCap)
         val result = settled.result
         val report = outcomeBody(
             appId, profile, rung.rungId, rung.version, pending.baseline, after, result, pending.levers.size, emptyList(),
@@ -894,11 +970,12 @@ object OptimizeController {
             appliedOps = pending.appliedOps,
             skippedOps = pending.skippedOps,
             judgeReason = settled.reason,
+            excludedWindows = excludedWindows,
         )
         val keep = result == OptimizeJudge.HELPED || result == OptimizeJudge.NOT_COMPARABLE
         var l = ladder.triedWith(rung.rungId, rung.version, result, settled.reason)
         l = if (keep) {
-            l.copy(kept = l.kept + pending.toKept(after), pending = null, baselineOverride = null)
+            l.copy(kept = l.kept + pending.toKept(judged), pending = null, baselineOverride = null)
         } else {
             l.copy(
                 pending = pending.copy(revert = result),
@@ -917,8 +994,8 @@ object OptimizeController {
                 rungId = rung.rungId,
                 capFps = OptimizeCards.capFps(rung.raw),
                 outcome = OptimizeCards.helpedOutcome(rung.outcome, profile),
-                fpsGainPct = OptimizeCards.fpsGainPct(pending.baseline, after),
-                stutterDropPct = OptimizeCards.stutterDropPct(pending.baseline, after),
+                fpsGainPct = OptimizeCards.fpsGainPct(pending.baseline, judged),
+                stutterDropPct = OptimizeCards.stutterDropPct(pending.baseline, judged),
             )
             result == OptimizeJudge.NO_CHANGE -> {
                 if (l.noChangeStreak >= MAX_NO_CHANGE_STREAK) l = l.copy(state = LadderState.PAUSED)
@@ -1011,7 +1088,7 @@ object OptimizeController {
         if (cardRequest.value?.appId == appId) return
         val state = readState(context, appId) ?: return
         val card = state.card ?: return
-        cardRequest.value = CardRequest(appId, card, state.entitlement ?: lastEntitlement)
+        cardRequest.value = CardRequest(appId, card, state.entitlement.orAppWide(lastEntitlement))
     }
 
     enum class ChangeResult { DONE, GAME_RUNNING, NO_CONTAINER, FAILED }
@@ -1034,12 +1111,12 @@ object OptimizeController {
                 val current = store.read()
                 val (next, worked) = block(container, store, current)
                 store.write(next)
-                request = next.card?.takeIf { it != current.card }?.let { CardRequest(appId, it, next.entitlement ?: lastEntitlement) }
+                request = next.card?.takeIf { it != current.card }?.let { CardRequest(appId, it, next.entitlement.orAppWide(lastEntitlement)) }
                 worked
             }
             request?.let { cardRequest.value = it }
             revision.value++
-            scope.launch { flush(context.applicationContext, store) }
+            scope.launch { flush(context.applicationContext, appId, store) }
             if (ok) ChangeResult.DONE else ChangeResult.FAILED
         } catch (e: CancellationException) {
             throw e

@@ -139,7 +139,10 @@ internal fun JSONArray?.ints(): List<Int> =
 internal fun JSONArray?.strings(): List<String> =
     if (this == null) emptyList() else (0 until length()).mapNotNull { i -> optString(i).takeIf { it.isNotEmpty() } }
 
-/** [ladder] is the key's twelve values from lowest to highest quality and [lowerIs] which way lower quality goes. */
+/**
+ * [ladder] is the key's twelve values from lowest to highest quality and [lowerIs] which way lower quality goes.
+ * [onlyExisting] ops are skipped when the file does not have the key, for games whose variant the server cannot tell.
+ */
 data class FileOp(
     val op: String,
     val section: String,
@@ -147,6 +150,7 @@ data class FileOp(
     val value: String?,
     val ladder: List<String?>? = null,
     val lowerIs: String? = null,
+    val onlyExisting: Boolean = false,
 ) {
     val isDelete: Boolean get() = op == "delete"
 
@@ -166,7 +170,7 @@ data class FileOp(
             if (op == "set" && value == null) return null
             return FileOp(
                 op, o.optStringOrNull("section").orEmpty(), key, if (op == "set") value else null,
-                ladderOf(o), o.optStringOrNull("lower_is"),
+                ladderOf(o), o.optStringOrNull("lower_is"), o.optBoolean("only_existing", false),
             )
         }
     }
@@ -363,7 +367,18 @@ data class Entitlement(val state: String, val trialGamesUsed: Int, val trialGame
     }
 }
 
+/** The entitlement a surface shows for a game: its own when it has asked, otherwise the newest one seen app-wide. */
+fun Entitlement?.orAppWide(appWide: Entitlement?): Entitlement? = this ?: appWide
+
 fun Entitlement?.limitOrDefault(): Int = this?.trialGamesLimit?.takeIf { it > 0 } ?: Entitlement.DEFAULT_TRIAL_GAMES_LIMIT
+
+/** The outcome endpoint's answer: acknowledged, and the entitlement after the outcome was stored. */
+data class OutcomeAck(val ok: Boolean, val entitlement: Entitlement?) {
+    companion object {
+        fun parse(o: JSONObject?): OutcomeAck =
+            OutcomeAck(o?.optBoolean("ok", false) == true, Entitlement.fromJson(o?.optJSONObject("entitlement")))
+    }
+}
 
 data class NextRungResponse(
     val status: String,

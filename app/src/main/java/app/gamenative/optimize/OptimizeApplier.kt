@@ -22,10 +22,13 @@ import org.json.JSONObject
 import timber.log.Timber
 
 sealed class ApplyOutcome {
-    /** [appliedOps] and [skippedOps] count file keys and registry values; a relative rung skips those already lower. */
+    /**
+     * [appliedOps] and [skippedOps] count file keys and registry values; a relative rung skips those already lower,
+     * any rung the only_existing keys its file lacks.
+     */
     data class Applied(val levers: List<JSONObject>, val appliedOps: Int = 0, val skippedOps: Int = 0) : ApplyOutcome()
 
-    /** A relative rung whose every key was already at or below its target: nothing was written. */
+    /** Every key was already at or below its target, or absent from its file with only_existing: nothing was written. */
     data class NoOp(val skippedOps: Int) : ApplyOutcome()
 
     data class Failed(val leversOk: Int, val failedIndex: Int, val reason: String) : ApplyOutcome()
@@ -99,7 +102,7 @@ object OptimizeApplier {
                     return@withContext ApplyOutcome.Failed(i, i, e.message ?: e.javaClass.simpleName)
                 }
             }
-            if (rung.relative && applied.isEmpty() && count.skipped > 0) {
+            if (applied.isEmpty() && count.skipped > 0) {
                 rungDir.deleteRecursively()
                 ApplyOutcome.NoOp(count.skipped)
             } else {
@@ -108,7 +111,7 @@ object OptimizeApplier {
         }
     }
 
-    /** Null when a relative rung skipped every op of the lever and nothing was written. */
+    /** Null when every op of the lever was skipped (relative or only_existing) and nothing was written. */
     internal fun applyFile(index: Int, lever: Lever.EngineFile, roots: PathRoots, rungDir: File, relative: Boolean, count: OpCount): JSONObject? {
         val format = ConfigFormats.forName(lever.format) ?: throw LeverFailure("unknown format ${lever.format}")
         val file = OptimizePaths.resolve(roots, lever.path, lever.createIfMissing) ?: throw LeverFailure("path not resolvable")
@@ -119,11 +122,13 @@ object OptimizeApplier {
         val bytes = if (existed) file.readBytes() else ByteArray(0)
         val codec = if (existed) TextCodecs.codecFor(bytes, lever.encoding) else TextCodecs.forNewFile(lever.encoding)
         val text = TextCodecs.decode(bytes, codec)
-        val ops = if (!relative) {
-            lever.ops
-        } else {
-            lever.ops.filter { op ->
-                op.isDelete || OptimizeRelative.shouldApply(if (text.isBlank()) null else format.read(text, op), op.value!!, op.ladder, op.lowerIs)
+        val ops = lever.ops.filter { op ->
+            if (!op.onlyExisting && (!relative || op.isDelete)) return@filter true
+            val current = if (text.isBlank()) null else format.read(text, op)
+            when {
+                op.onlyExisting && current == null -> false
+                !relative || op.isDelete -> true
+                else -> OptimizeRelative.shouldApply(current, op.value!!, op.ladder, op.lowerIs)
             }
         }
         count.applied += ops.size

@@ -191,6 +191,15 @@ object PrefManager {
             }.also { optimizeDeviceIdCache = it }
         }
 
+    private val OPTIMIZE_LAST_ENTITLEMENT = stringPreferencesKey("optimize_last_entitlement")
+
+    /** The newest Optimize entitlement any game's request or outcome returned, as JSON; empty when none yet. */
+    var optimizeLastEntitlementJson: String
+        get() = getPref(OPTIMIZE_LAST_ENTITLEMENT, "")
+        set(value) {
+            setPref(OPTIMIZE_LAST_ENTITLEMENT, value)
+        }
+
     /* PICS */
     private val LAST_PICS_CHANGE_NUMBER = intPreferencesKey("last_pics_change_number")
     var lastPICSChangeNumber: Int

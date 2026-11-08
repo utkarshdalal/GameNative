@@ -360,4 +360,31 @@ class OptimizeStateTest {
         assertEquals("hex(4):00,00,00,00,00,00,4e,40", OptimizeFiles.encodeRegistryValue("binary_f64le", "60.0"))
         assertEquals("hex(b):05,00,00,00,00,00,00,00", OptimizeFiles.encodeRegistryValue("qword", "5"))
     }
+
+    @Test
+    fun aSettingsStepAlreadyKeptOrTriedIsRefused() {
+        fun rung(id: String, version: String, step: Int? = null) = Rung.parse(
+            JSONObject().put("rung_id", id).put("version", version).apply { step?.let { put("step", it) } },
+        )!!
+        val ladder = ProfileLadder(state = LadderState.TRYING)
+        val id = "cfg.the_witcher_3_wild_hunt.performance.gpu_pixel+gpu_geometry.s6"
+        // The server re-served a kept step under the same id with a new version.
+        val kept = KeptRung(
+            id, "v1", 1, emptyList(), 0L, emptyList(), null,
+            rung = JSONObject().put("rung_id", id).put("version", "v1").put("levers", org.json.JSONArray().put(JSONObject().put("lever_type", "container"))),
+        )
+        assertEquals("already kept", ladder.copy(kept = listOf(kept)).repeatReason(rung(id, "v2")))
+        // The verdict class moved, so the classes differ, but the step is the one already kept.
+        val otherClasses = "cfg.the_witcher_3_wild_hunt.performance.cpu.s6"
+        assertEquals("step 6 already kept", ladder.copy(kept = listOf(kept)).repeatReason(rung(otherClasses, "v3")))
+        assertEquals("step 6 already tried", ladder.copy(tried = listOf(TriedRung(id, "v1", "worse"))).repeatReason(rung(otherClasses, "v3")))
+        assertEquals("already tried", ladder.copy(tried = listOf(TriedRung(id, "v1", "worse"))).repeatReason(rung(id, "v2")))
+        // The step field outranks the id.
+        assertEquals(5, settingsStep("cfg.g.performance.cpu.s6", JSONObject().put("step", 5)))
+        assertTrue(ladder.copy(kept = listOf(kept)).repeats(rung("cfg.g.performance.cpu.s9", "v4", step = 6)))
+        assertFalse(ladder.copy(kept = listOf(kept)).repeats(rung("cfg.the_witcher_3_wild_hunt.performance.cpu.s5", "v4")))
+        // Cap rungs have no step.
+        assertNull(settingsStep("cap.balanced.30", null))
+        assertFalse(ladder.copy(kept = listOf(kept)).repeats(rung("cap.performance.s6", "v5")))
+    }
 }

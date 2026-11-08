@@ -212,4 +212,34 @@ class OptimizeKeepTest {
         assertEquals(2, OptimizeApplier.reverifyRegistry(file, regRecord(), null)!!.reset)
         assertEquals(emptyList<String>(), OptimizeDrift.registryDrift(OptimizeFiles.readHive(file), regRecord()))
     }
+
+    @Test
+    fun onlyExistingOpsSkipKeysTheFileLacks() {
+        val op = FileOp.fromJson(JSONObject("{\"op\":\"set\",\"section\":\"SystemSettings\",\"key\":\"r.Foo\",\"value\":\"2\",\"only_existing\":true}"))!!
+        assertTrue(op.onlyExisting)
+        assertFalse(FileOp.fromJson(JSONObject("{\"op\":\"set\",\"key\":\"k\",\"value\":\"1\"}"))!!.onlyExisting)
+
+        // A Next-Gen file has ShadowQuality but none of the Classic-only keys.
+        val lever = Lever.EngineFile(
+            "{userProfilePath}/Saved/Config/Windows/Engine.ini", "ini", "default", false,
+            listOf(
+                set("SystemSettings", "r.ShadowQuality", "1").copy(onlyExisting = true),
+                op,
+                set("Classic", "Grass", "0").copy(onlyExisting = true),
+                FileOp("delete", "Other", "Missing", null, onlyExisting = true),
+            ),
+        )
+        val count = OptimizeApplier.OpCount()
+        val record = OptimizeApplier.applyFile(0, lever, roots, tmp.newFolder("rung"), false, count)!!
+        assertEquals(1, count.applied)
+        assertEquals(3, count.skipped)
+        assertEquals(1, record.getJSONArray("keys").length())
+        assertEquals("[SystemSettings]\r\nr.ShadowQuality=1\r\nr.Bar=1\r\n\r\n[Other]\r\nKeep=yes\r\n", ini.readText())
+
+        val absent = lever.copy(ops = lever.ops.drop(1))
+        val none = OptimizeApplier.OpCount()
+        assertNull(OptimizeApplier.applyFile(0, absent, roots, tmp.newFolder("rung2"), false, none))
+        assertEquals(0, none.applied)
+        assertEquals(3, none.skipped)
+    }
 }

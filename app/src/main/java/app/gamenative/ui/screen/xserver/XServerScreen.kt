@@ -5489,7 +5489,9 @@ private fun exit(
         val fingerprint = CoroutineScope(Dispatchers.IO).async { SessionReport.crashFingerprintProperties(container, reason) }
         runBlocking { withTimeoutOrNull(200) { fingerprint.await() } }
     }.getOrNull().orEmpty()
-    val exitProperties = OptimizeCards.withCard(sessionProperties, OptimizeController.cardBeforeJudging(container, sessionProperties))
+    val exitProperties = OptimizeController.exitProperties(
+        (frameRating?.context ?: PluviaApp.xServerView?.context)?.applicationContext, container, sessionProperties,
+    )
     PostHog.capture(
         event = "game_exited",
         properties = exitProperties,

@@ -167,11 +167,27 @@ data class ProfileLadder(
 ) {
     val hasApplied: Boolean get() = pending != null || kept.any { it.applied }
 
-    /** True when [rung] makes a change this profile already kept or tried: its lever hash is on the ladder, or its levers equal a kept rung's. */
-    fun repeats(rung: Rung): Boolean {
-        if (rung.version.isNotEmpty() && (kept.any { it.version == rung.version } || tried.any { it.version == rung.version })) return true
+    /** True when [rung] makes a change this profile already kept or tried; [repeatReason] says why. */
+    fun repeats(rung: Rung): Boolean = repeatReason(rung) != null
+
+    /**
+     * Why [rung] repeats a change on this ladder, or null when it is new: its lever hash or rung id is already kept
+     * or tried, its levers equal a kept rung's, or it is a settings step whose number a kept or tried settings rung
+     * already has.
+     */
+    fun repeatReason(rung: Rung): String? {
+        if (rung.version.isNotEmpty() && (kept.any { it.version == rung.version } || tried.any { it.version == rung.version })) {
+            return "version ${rung.version} already kept/tried"
+        }
+        if (kept.any { it.rungId == rung.rungId }) return "already kept"
+        if (tried.any { it.rungId == rung.rungId }) return "already tried"
+        val step = settingsStep(rung.rungId, rung.raw)
+        if (step != null) {
+            if (kept.any { settingsStep(it.rungId, it.rung) == step }) return "step $step already kept"
+            if (tried.any { settingsStep(it.rungId, null) == step }) return "step $step already tried"
+        }
         val levers = canonicalJson(rung.raw.optJSONArray("levers"))
-        return kept.any { k -> k.rung?.let { canonicalJson(it.optJSONArray("levers")) == levers } == true }
+        return if (kept.any { k -> k.rung?.let { canonicalJson(it.optJSONArray("levers")) == levers } == true }) "same levers already kept" else null
     }
 
     fun toJson(): JSONObject = JSONObject().apply {
@@ -197,6 +213,15 @@ data class ProfileLadder(
             lastStatus = o.optStringOrNull("last_status"),
         )
     }
+}
+
+private val SETTINGS_STEP = Regex("""\.s(\d+)$""")
+
+/** A settings rung (id cfg.<game>.<profile>.<classes>.s<N>) is one step of its game's ladder; cap and other rungs have none. */
+internal fun settingsStep(rungId: String, raw: JSONObject?): Int? {
+    if (!rungId.startsWith("cfg.")) return null
+    raw?.optIntOrNull("step")?.let { return it }
+    return SETTINGS_STEP.find(rungId)?.groupValues?.get(1)?.toIntOrNull()
 }
 
 /** JSON text with object keys sorted at every level, so equal values compare equal whatever order they were written in. */

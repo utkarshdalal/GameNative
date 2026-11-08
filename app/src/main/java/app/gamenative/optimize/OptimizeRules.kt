@@ -192,12 +192,15 @@ object OptimizeCards {
     }
 
     /** game_exited properties with perf_verdict.card set to [card]; unchanged when either is missing. */
-    fun withCard(props: Map<String, Any>, card: String?): Map<String, Any> {
+    fun withCard(props: Map<String, Any>, card: String?): Map<String, Any> = withVerdictField(props, "card", card)
+
+    /** game_exited properties with perf_verdict.[key] set to [value]; unchanged when either is missing. */
+    fun withVerdictField(props: Map<String, Any>, key: String, value: Any?): Map<String, Any> {
         val verdict = props["perf_verdict"] as? Map<*, *> ?: return props
-        if (card == null) return props
+        if (value == null) return props
         val updated = buildMap<String, Any> {
             verdict.forEach { (k, v) -> if (k is String && v != null) put(k, v) }
-            put("card", card)
+            put(key, value)
         }
         return props + ("perf_verdict" to updated)
     }

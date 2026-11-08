@@ -235,4 +235,63 @@ class OptimizeJudgeTest {
         val long = Metrics(gameplaySec = 900, fpsBy5Min = List(60) { 30 }).toReportJson()
         assertEquals(Metrics.MAX_REPORT_WINDOWS, long.getJSONArray("fps_by_5min").length())
     }
+
+    // Witcher 3 on the RP6: baseline GPU median 72 %; the treated session spent ten minutes on the world map at 10-20 % GPU.
+    private val witcherBefore = Metrics(
+        gameplaySec = 1500, steadyFps = 45.0, stutterShare = 0.01, cls = "gpu",
+        fpsBy5Min = listOf(40, 45, 44, 46, 45), gpuBy5Min = listOf(60, 72, 70, 74, 72),
+    )
+    private val witcherAfter = Metrics(
+        gameplaySec = 1200, steadyFps = 54.5, stutterShare = 0.01, cls = "cpu_single",
+        fpsBy5Min = listOf(53, 47, 58, 59), gpuBy5Min = listOf(16, 66, 20, 11),
+    )
+
+    @Test
+    fun menuLikeWindowsOfAGpuBoundGameAreNotCompared() {
+        val windows = OptimizeJudge.comparableWindows(witcherBefore, witcherAfter, 60.0)!!
+        // The first window is the loading screens; windows 3 and 4 ran at the cap on an idle GPU.
+        assertEquals(listOf(2, 3), windows.excluded)
+        assertEquals(1, windows.left)
+        val decision = OptimizeJudge.judge(witcherAfter, witcherBefore, isFpsCap = false, shortSessions = 0, fpsCap = 60.0)
+        assertEquals(OptimizeJudge.NOT_COMPARABLE, (decision as OptimizeJudge.Decision.Final).result)
+        assertEquals(OptimizeJudge.REASON_MENU_WINDOWS, decision.reason)
+        assertEquals(listOf(2, 3), decision.excludedWindows)
+        // Without the filter the map windows read as a gain.
+        assertEquals(OptimizeJudge.HELPED, OptimizeJudge.compare(witcherBefore, witcherAfter, false, 60.0))
+    }
+
+    @Test
+    fun enoughWindowsLeftAreComparedWithoutTheMenuOnes() {
+        val after = witcherAfter.copy(fpsBy5Min = listOf(53, 47, 48, 58, 59), gpuBy5Min = listOf(16, 66, 70, 20, 11))
+        val windows = OptimizeJudge.comparableWindows(witcherBefore, after, 60.0)!!
+        assertEquals(listOf(3, 4), windows.excluded)
+        assertEquals(listOf(53, 47, 48), windows.after.fpsBy5Min)
+        assertEquals(listOf(16, 66, 70), windows.after.gpuBy5Min)
+        assertEquals(47.5, windows.after.steadyFps!!, 1e-9)
+        val decision = OptimizeJudge.judge(after, witcherBefore, isFpsCap = false, shortSessions = 0, fpsCap = 60.0) as OptimizeJudge.Decision.Final
+        assertEquals(OptimizeJudge.NO_CHANGE, decision.result)
+        assertEquals(listOf(3, 4), decision.excludedWindows)
+    }
+
+    @Test
+    fun theMenuFilterNeedsAGpuBoundBaselineAndACap() {
+        val cpuBound = witcherBefore.copy(cls = "cpu_single", gpuBy5Min = listOf(40, 50, 50, 50, 50))
+        assertNull(OptimizeJudge.comparableWindows(cpuBound, witcherAfter, 60.0))
+        // A GPU median of 60 % or more is GPU-bound whatever the class says.
+        assertEquals(listOf(2, 3), OptimizeJudge.comparableWindows(cpuBound.copy(gpuBy5Min = listOf(40, 60, 62, 61, 65)), witcherAfter, 60.0)!!.excluded)
+        assertNull(OptimizeJudge.comparableWindows(witcherBefore, witcherAfter, null))
+        assertNull(OptimizeJudge.comparableWindows(witcherBefore, witcherAfter.copy(gpuBy5Min = listOf(16, 66, 20)), 60.0))
+        // Below 0.95 x the cap a low-GPU window is gameplay.
+        assertEquals(emptyList<Int>(), OptimizeJudge.comparableWindows(witcherBefore, witcherAfter.copy(fpsBy5Min = listOf(53, 47, 50, 52)), 60.0)!!.excluded)
+    }
+
+    @Test
+    fun theOutcomeAfterRecordsTheExcludedWindows() {
+        val json = witcherAfter.toReportJson().put("excluded_windows", org.json.JSONArray(listOf(2, 3)))
+        assertEquals("[2,3]", json.getJSONArray("excluded_windows").toString())
+        val props = mapOf<String, Any>("perf_verdict" to mapOf("class" to "cpu_single"))
+        val tagged = OptimizeCards.withVerdictField(props, "windows_excluded", 2)
+        assertEquals(mapOf("class" to "cpu_single", "windows_excluded" to 2), tagged["perf_verdict"])
+        assertEquals(props, OptimizeCards.withVerdictField(props, "windows_excluded", null))
+    }
 }

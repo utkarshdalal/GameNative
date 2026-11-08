@@ -33,4 +33,25 @@ class EntitlementLineTest {
         assertEquals(EntitlementLine.Exhausted(4), line(Entitlement(Entitlement.TRIAL, 4, 4)))
         assertEquals(EntitlementLine.Exhausted(3), line(Entitlement(Entitlement.TRIAL, 1, 3), exhausted = true))
     }
+
+    @Test
+    fun theGamesOwnEntitlementWinsOverTheAppWideOne() {
+        val own = Entitlement(Entitlement.TRIAL, 1, 3)
+        val appWide = Entitlement(Entitlement.TRIAL, 2, 3)
+        val notAsked: Entitlement? = null
+        assertEquals(own, own.orAppWide(appWide))
+        assertEquals(appWide, notAsked.orAppWide(appWide))
+        assertNull(notAsked.orAppWide(null))
+        // A game that has not asked yet still shows the trial line from another game's answer.
+        assertEquals(EntitlementLine.Trial(2, 3), line(notAsked.orAppWide(appWide)))
+    }
+
+    @Test
+    fun theOutcomeAnswerCarriesTheEntitlementAfterTheInsert() {
+        val ack = OutcomeAck.parse(org.json.JSONObject("{\"ok\":true,\"entitlement\":{\"state\":\"trial\",\"trial_games_used\":1,\"trial_games_limit\":3}}"))
+        assertEquals(OutcomeAck(true, Entitlement(Entitlement.TRIAL, 1, 3)), ack)
+        assertEquals(OutcomeAck(true, null), OutcomeAck.parse(org.json.JSONObject("{\"ok\":true}")))
+        assertEquals(OutcomeAck(false, null), OutcomeAck.parse(null))
+        assertEquals(EntitlementLine.Trial(1, 3), line(ack.entitlement))
+    }
 }

@@ -47,6 +47,7 @@ import app.gamenative.optimize.OptimizeLocalState
 import app.gamenative.optimize.OptimizeProfile
 import app.gamenative.optimize.OptimizeStatus
 import app.gamenative.optimize.limitOrDefault
+import app.gamenative.optimize.orAppWide
 import app.gamenative.ui.util.SnackbarManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.NonCancellable
@@ -164,7 +165,7 @@ fun optimizeStatusText(state: OptimizeLocalState): String? = when (val status = 
 /** The one trial line for this game: the server's entitlement when known, otherwise the default offer. */
 @Composable
 fun optimizeEntitlementText(entitlement: Entitlement?, exhausted: Boolean = false, short: Boolean = false): String? {
-    val known = entitlement ?: OptimizeController.lastEntitlement
+    val known = entitlement.orAppWide(OptimizeController.lastEntitlement)
     val line = OptimizeStatus.entitlementLine(known, exhausted, PrefManager.gameNativeSignedIn.value, Membership.isMember())
     return when (line) {
         null -> null

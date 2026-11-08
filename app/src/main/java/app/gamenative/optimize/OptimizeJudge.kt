@@ -25,6 +25,9 @@ object OptimizeJudge {
     const val REASON_TARGET_MET = "target_met"
     const val REASON_NONE = "none"
 
+    /** Too few comparable windows were left once the menu-like ones of a GPU-bound game were taken out. */
+    const val REASON_MENU_WINDOWS = "menu_windows"
+
     const val CRASH_GAMEPLAY_SEC = 120
     const val COMPARABLE_GAMEPLAY_SEC = 600
     const val MAX_SHORT_SESSIONS = 3
@@ -48,10 +51,61 @@ object OptimizeJudge {
 
     private val CRASH_REASONS = setOf("guest_terminated", "force_close")
 
+    /** A GPU-bound baseline: a gpu or thermal_gpu verdict, or a gameplay GPU median at or above this. */
+    private const val GPU_BOUND_MEDIAN = 60.0
+    private val GPU_CLASSES = setOf("gpu", "thermal_gpu")
+
+    /** A window under this share of the baseline's GPU median while at 0.95 x the cap is a menu or map, not gameplay. */
+    private const val MENU_GPU_SHARE = 0.4
+    private const val MENU_CAP_SHARE = 0.95
+    const val MIN_COMPARABLE_WINDOWS = 2
+
     sealed class Decision {
         data object Crash : Decision()
         data class Short(val shortSessions: Int) : Decision()
-        data class Final(val result: String, val reason: String? = null) : Decision()
+
+        /** [judged] is the session as compared once menu-like windows were taken out, null when none were; [excludedWindows] their fps_by_5min indices. */
+        data class Final(
+            val result: String,
+            val reason: String? = null,
+            val judged: Metrics? = null,
+            val excludedWindows: List<Int> = emptyList(),
+        ) : Decision()
+    }
+
+    /** [after] with its menu-like windows taken out ([excluded], fps_by_5min indices) and how many gameplay windows are left. */
+    data class Windows(val after: Metrics, val excluded: List<Int>, val left: Int)
+
+    /** True when [baseline] was held back by the GPU, so a session that ran at the cap on an idle GPU was not playing. */
+    fun gpuBound(baseline: Metrics): Boolean =
+        baseline.cls in GPU_CLASSES || (median(gameplayWindows(baseline.gpuBy5Min)) ?: 0.0) >= GPU_BOUND_MEDIAN - EPS
+
+    /**
+     * The windows of [after] that compare with a GPU-bound [baseline]: a gameplay window with GPU busy under 0.4 x the
+     * baseline's gameplay GPU median and fps at 0.95 x [fpsCap] or more (a menu or the world map) is taken out of the
+     * steady fps, the min window and the GPU and clock medians. Null when the filter does not apply: the baseline is
+     * not GPU-bound, there is no cap or GPU median, or the session's fps and GPU windows do not line up.
+     */
+    fun comparableWindows(baseline: Metrics, after: Metrics, fpsCap: Double?): Windows? {
+        if (fpsCap == null || fpsCap <= 0 || !gpuBound(baseline)) return null
+        val baseGpu = median(gameplayWindows(baseline.gpuBy5Min))?.takeIf { it > 0 } ?: return null
+        val fps = after.fpsBy5Min
+        val gpu = after.gpuBy5Min
+        if (fps.isEmpty() || gpu.size != fps.size) return null
+        val first = if (fps.size >= 3) 1 else 0
+        val gameplay = first until fps.size
+        val excluded = gameplay.filter { i -> gpu[i] < MENU_GPU_SHARE * baseGpu - EPS && fps[i] >= MENU_CAP_SHARE * fpsCap - EPS }
+        if (excluded.isEmpty()) return Windows(after, emptyList(), gameplay.count())
+        val keep = (0 until fps.size).filter { it !in excluded }
+        val keptFps = gameplay.filter { it !in excluded }.map { fps[it] }
+        val clock = after.gpuClockBy5Min
+        val judged = after.copy(
+            steadyFps = if (keptFps.isEmpty()) after.steadyFps else keptFps.average(),
+            fpsBy5Min = keep.map { fps[it] },
+            gpuBy5Min = keep.map { gpu[it] },
+            gpuClockBy5Min = if (clock.size == fps.size) keep.map { clock[it] } else clock,
+        )
+        return Windows(judged, excluded, keptFps.size)
     }
 
     data class Verdict(val result: String, val reason: String)
@@ -73,8 +127,14 @@ object OptimizeJudge {
             val count = shortSessions + 1
             return if (count >= MAX_SHORT_SESSIONS) Decision.Final(NOT_COMPARABLE) else Decision.Short(count)
         }
-        val v = verdict(baseline, after, isFpsCap, fpsCap)
-        return Decision.Final(v.result, v.reason)
+        val windows = comparableWindows(baseline, after, fpsCap)
+        val excluded = windows?.excluded.orEmpty()
+        if (windows != null && excluded.isNotEmpty() && windows.left < MIN_COMPARABLE_WINDOWS) {
+            return Decision.Final(NOT_COMPARABLE, REASON_MENU_WINDOWS, windows.after, excluded)
+        }
+        val judged = windows?.after?.takeIf { excluded.isNotEmpty() }
+        val v = verdict(baseline, judged ?: after, isFpsCap, fpsCap)
+        return Decision.Final(v.result, v.reason, judged, excluded)
     }
 
     fun compare(before: Metrics, after: Metrics, isFpsCap: Boolean, fpsCap: Double? = null): String =
