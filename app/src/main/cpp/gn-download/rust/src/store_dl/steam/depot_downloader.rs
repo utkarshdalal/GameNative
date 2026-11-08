@@ -327,6 +327,26 @@ pub fn filter_by_reachability(
         .collect()
 }
 
+/// Whether a depot already at its installed manifest has an obviously incomplete on-disk tree (a
+/// missing regular file or one whose length differs). A verify pass over such a tree is expected to
+/// fetch repair chunks, so the pre-flight probe is worth running even though the depot itself is
+/// "installed". Corruption that keeps the correct length can only be found by the verify hash pass
+/// itself - which runs after the chunk pool is chosen, so those few repair fetches fall back to the
+/// normal host rotation/retry and the stall watchdog instead of a probe.
+fn installed_tree_needs_repair(manifest: &ContentManifest, install_dir: &str) -> bool {
+    manifest.files.iter().any(|file| {
+        let is_regular = file.linktarget.is_empty() && (file.flags & DEPOT_FILE_FLAG_DIRECTORY) == 0;
+        if !is_regular {
+            return false;
+        }
+        let rel = crate::store_dl::resolve_existing_case(install_dir, &file.filename);
+        match fs::metadata(Path::new(install_dir).join(&rel)) {
+            Ok(meta) => !meta.is_file() || meta.len() != file.size,
+            Err(_) => true,
+        }
+    })
+}
+
 /// Whether the run has a depot that can actually fetch CDN bytes, i.e. whether the pre-flight probe
 /// is worth its cost.
 ///
@@ -950,7 +970,10 @@ cannot be enumerated for ownership",
     // depots already at their installed manifest only re-hashes chunks instead of fetching them, so
     // it needs no probe either. This is the last point before Phase 2 can ask the CDN for bytes.
     let needs_probe = !resolved.is_empty()
-        && needs_preflight_probe(&cfg, resolved.iter().map(|entry| entry.0));
+        && resolved.iter().any(|(depot, manifest)| {
+            needs_preflight_probe(&cfg, [*depot].into_iter())
+                || installed_tree_needs_repair(manifest, install_dir)
+        });
     let usable_servers = if needs_probe {
         // Include the cache-seeded promoted hosts in the reachability check too: the depot loop
         // appends them via `probe_hints.extended_servers`, and a cached winner that is unreachable
@@ -1558,6 +1581,35 @@ mod tests {
         assert_eq!(refreshed_request_code(42, Some(42)), None, "unchanged, retrying changes nothing");
         assert_eq!(refreshed_request_code(42, Some(43)), Some(43));
         assert_eq!(refreshed_request_code(0, Some(7)), Some(7), "none → one is an improvement");
+    }
+
+    #[test]
+    fn an_incomplete_installed_tree_asks_for_the_preflight_probe() {
+        use crate::store_dl::steam::content_manifest::{ContentManifest, FileMapping};
+        let dir = temp_dir("verify_repair_gate");
+        fs::create_dir_all(dir.join("Game")).unwrap();
+        let mut manifest = ContentManifest::default();
+        manifest.files = vec![FileMapping {
+            filename: "Game/game.exe".into(),
+            size: 5,
+            ..Default::default()
+        }];
+        let root = dir.to_str().unwrap();
+        // Missing file: a verify pass will fetch this chunk, so probe.
+        assert!(installed_tree_needs_repair(&manifest, root));
+        // Wrong length: also a repair fetch.
+        fs::write(dir.join("Game/game.exe"), b"123").unwrap();
+        assert!(installed_tree_needs_repair(&manifest, root));
+        // Right length: nothing to fetch on shape alone (content is the hash pass's job).
+        fs::write(dir.join("Game/game.exe"), b"12345").unwrap();
+        assert!(!installed_tree_needs_repair(&manifest, root));
+        // Directories/symlinks have no chunk fetches of their own.
+        manifest.files.push(FileMapping {
+            filename: "Game".into(),
+            flags: DEPOT_FILE_FLAG_DIRECTORY,
+            ..Default::default()
+        });
+        assert!(!installed_tree_needs_repair(&manifest, root));
     }
 
     #[test]
