@@ -136,6 +136,17 @@ object OptimizeController {
         put("name", gameName(appId))
     }
 
+    /** Engine guesses by install folder; the app stores no engine of its own, so this is the only one it can send. */
+    private val engineHints = ConcurrentHashMap<String, String>()
+
+    private fun engineHint(context: Context, appId: String): String? {
+        val install = runCatching { SupportGameFiles.installRoot(context, appId) }.getOrNull() ?: return null
+        engineHints[install.absolutePath]?.let { return it.ifEmpty { null } }
+        val engine = runCatching { EngineHint.detect(install) }.getOrNull()
+        engineHints[install.absolutePath] = engine.orEmpty()
+        return engine
+    }
+
     private fun refreshHz(context: Context): Double? = runCatching {
         (context.getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager)?.getDisplay(Display.DEFAULT_DISPLAY)?.refreshRate?.toDouble()
     }.getOrNull()
@@ -172,6 +183,7 @@ object OptimizeController {
                 gameJson(appId).apply {
                     put("exe", container.executablePath.orEmpty())
                     put("anticheat", JSONArray(OptimizeFiles.anticheat(container).orEmpty()))
+                    engineHint(context, appId)?.let { put("engine", it) }
                 },
             )
             put(
