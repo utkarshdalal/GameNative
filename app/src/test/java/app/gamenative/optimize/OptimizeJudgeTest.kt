@@ -2,6 +2,7 @@ package app.gamenative.optimize
 
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -148,8 +149,25 @@ class OptimizeJudgeTest {
             OptimizeJudge.Verdict(OptimizeJudge.HELPED, OptimizeJudge.REASON_GPU_LOAD),
             OptimizeJudge.verdict(before, after, false, 60.0),
         )
-        // Lower load at lower fps is not a gain.
-        assertEquals(OptimizeJudge.NO_CHANGE, OptimizeJudge.compare(before, after.copy(steadyFps = 56.0), false, 60.0))
+        // Within 0.98 x the fps before still counts (56.7 -> 55.6); lower load at lower fps is not a gain.
+        assertEquals(OptimizeJudge.REASON_GPU_LOAD, OptimizeJudge.verdict(before, after.copy(steadyFps = 55.6), false, 60.0).reason)
+        assertEquals(OptimizeJudge.NO_CHANGE, OptimizeJudge.compare(before, after.copy(steadyFps = 55.5), false, 60.0))
+    }
+
+    @Test
+    fun nearTheCapAHigherGpuClockAtTheSameFpsHelps() {
+        val before = forestBefore.copy(fpsBy5Min = listOf(56, 55, 56, 57), gpuBy5Min = emptyList(), gpuClockBy5Min = listOf(980, 800, 780, 760))
+        val after = forestAfter.copy(
+            steadyFps = 56.0, throttleOnsetSec = null, fpsBy5Min = listOf(56, 55, 56, 57), gpuBy5Min = emptyList(),
+            gpuClockBy5Min = listOf(980, 900, 870, 860),
+        )
+        // Gameplay clock median 780 -> 870 (+11.5 %) at 56.0 vs 56.7 fps.
+        assertEquals(
+            OptimizeJudge.Verdict(OptimizeJudge.HELPED, OptimizeJudge.REASON_CLOCK),
+            OptimizeJudge.verdict(before, after, false, 60.0),
+        )
+        assertEquals(OptimizeJudge.NO_CHANGE, OptimizeJudge.compare(before, after.copy(gpuClockBy5Min = listOf(980, 850, 840, 830)), false, 60.0))
+        assertEquals(OptimizeJudge.NO_CHANGE, OptimizeJudge.compare(before, after.copy(steadyFps = 55.0), false, 60.0))
     }
 
     @Test
@@ -190,5 +208,31 @@ class OptimizeJudgeTest {
         val m = Metrics.fromRun(run)
         assertEquals(listOf(44, 81), m.gpuBy5Min)
         assertEquals(listOf(44, 81), Metrics.fromJson(m.toJson())!!.gpuBy5Min)
+    }
+
+    @Test
+    fun gpuClockIsReadFromTheRunRecordAndKeptInTheBaseline() {
+        val run = JSONObject().put("session_length", 1200).put("avg_fps", 56.7)
+            .put(
+                "perf_by_5min",
+                org.json.JSONArray().put(JSONObject().put("gpu_clk_mhz_avg", 980)).put(JSONObject().put("samples", 3))
+                    .put(JSONObject().put("gpu_clk_mhz_avg", 772)),
+            )
+        val m = Metrics.fromRun(run)
+        assertEquals(listOf(980, 772), m.gpuClockBy5Min)
+        assertEquals(m, Metrics.fromJson(m.toJson()))
+    }
+
+    @Test
+    fun theOutcomeReportCarriesTheWindows() {
+        val json = forestAfter.copy(gpuClockBy5Min = listOf(982, 930, 860, 798)).toReportJson()
+        assertEquals("[57,59,59,59]", json.getJSONArray("fps_by_5min").toString())
+        assertEquals("[49,58,58,55]", json.getJSONArray("gpu_by_5min").toString())
+        assertEquals("[982,930,860,798]", json.getJSONArray("gpu_clock_by_5min").toString())
+        assertEquals(59.3, json.getDouble("steady_fps"), 1e-9)
+        val bare = Metrics(gameplaySec = 900).toReportJson()
+        assertFalse(bare.has("fps_by_5min") || bare.has("gpu_by_5min") || bare.has("gpu_clock_by_5min"))
+        val long = Metrics(gameplaySec = 900, fpsBy5Min = List(60) { 30 }).toReportJson()
+        assertEquals(Metrics.MAX_REPORT_WINDOWS, long.getJSONArray("fps_by_5min").length())
     }
 }

@@ -68,7 +68,10 @@ class OptimizeRulesTest {
         assertFalse(OptimizeTarget.met(OptimizeProfile.PERFORMANCE, good.copy(fpsBy5Min = listOf(40, 59, 56, 60)), 120.0, 0))
         assertTrue(OptimizeTarget.met(OptimizeProfile.PERFORMANCE, good.copy(steadyFps = 44.0, fpsBy5Min = listOf(44, 43)), 60.0, 45))
         assertTrue(OptimizeTarget.met(OptimizeProfile.PERFORMANCE, good.copy(steadyFps = 29.5, fpsBy5Min = emptyList()), 30.0, 0))
-        assertFalse(OptimizeTarget.met(OptimizeProfile.PERFORMANCE, good.copy(throttleOnsetSec = 300), 60.0, 0))
+        // An onset that cost nothing does not count; one under which the GPU clock fell 10 % does.
+        assertTrue(OptimizeTarget.met(OptimizeProfile.PERFORMANCE, good.copy(throttleOnsetSec = 300), 60.0, 0))
+        val clockFell = good.copy(throttleOnsetSec = 300, gpuClockBy5Min = listOf(980, 950, 900, 850))
+        assertFalse(OptimizeTarget.met(OptimizeProfile.PERFORMANCE, clockFell, 60.0, 0))
         assertFalse(OptimizeTarget.met(OptimizeProfile.PERFORMANCE, good.copy(cls = "thermal_gpu"), 60.0, 0))
         assertFalse(OptimizeTarget.met(OptimizeProfile.PERFORMANCE, good.copy(steadyFps = null), 60.0, 0))
     }
@@ -105,7 +108,7 @@ class OptimizeRulesTest {
         val calm = Metrics(gameplaySec = 1056, steadyFps = 56.7, stutterShare = 0.0008)
         assertTrue(OptimizeTarget.met(OptimizeProfile.BALANCED, calm, 60.0, 60))
         assertFalse(OptimizeTarget.met(OptimizeProfile.BALANCED, calm.copy(throttleOnsetSec = 0), 60.0, 60))
-        assertFalse(OptimizeTarget.met(OptimizeProfile.BALANCED, calm.copy(cls = "thermal_gpu"), 60.0, 60))
+        assertFalse(OptimizeTarget.met(OptimizeProfile.BALANCED, calm.copy(cls = "thermal_gpu", confident = true), 60.0, 60))
     }
 
     @Test
@@ -372,16 +375,55 @@ class OptimizeRulesTest {
         assertEquals("continue", OptimizeCards.wireAction(OptimizeCards.WIRE_CONTINUE, OptimizeCard.DONE))
     }
 
+    // The Forest on an Odin 3, same loop: the game's own settings, then the s3 step, then the s0 step on top.
+    private val forestDefaults = Metrics(
+        gameplaySec = 1200, steadyFps = 54.9, stutterShare = 0.004, throttleOnsetSec = 87, cls = "gpu", confident = true,
+        fpsBy5Min = listOf(56, 55, 54, 53), gpuBy5Min = listOf(33, 86, 90, 83), gpuClockBy5Min = listOf(980, 930, 850, 772),
+    )
     private val forestAfter = Metrics(
-        gameplaySec = 1200, steadyFps = 59.3, stutterShare = 0.004, throttleOnsetSec = 12, cls = "none", confident = false,
-        fpsBy5Min = listOf(57, 59, 59, 59),
+        gameplaySec = 1200, steadyFps = 59.37, stutterShare = 0.004, throttleOnsetSec = 105, cls = "none", confident = false,
+        fpsBy5Min = listOf(56, 59, 60, 59), gpuBy5Min = listOf(20, 72, 74, 80), gpuClockBy5Min = listOf(982, 930, 860, 798),
+    )
+    private val forestS0 = Metrics(
+        gameplaySec = 1200, steadyFps = 59.22, stutterShare = 0.004, throttleOnsetSec = 70, cls = "none", confident = false,
+        fpsBy5Min = listOf(56, 59, 60, 59), gpuBy5Min = listOf(31, 64, 61, 61), gpuClockBy5Min = listOf(960, 935, 915, 901),
     )
 
     @Test
-    fun aThrottleOnsetIsHotEvenWithoutAThermalClass() {
-        assertTrue(OptimizeTarget.hot(forestAfter))
+    fun aThrottleOnsetIsHotOnlyWhenItCostsSomething() {
+        // Defaults: windows below 0.95 x 60 and the clock falling 930 -> 772.
+        assertTrue(OptimizeTarget.hot(forestDefaults, 120.0, 0))
+        // s3: windows hold 59-60 but the clock falls 930 -> 798.
+        assertTrue(OptimizeTarget.hot(forestAfter, 120.0, 0))
         assertFalse(OptimizeTarget.met(OptimizeProfile.PERFORMANCE, forestAfter, 120.0, 0))
-        assertTrue(OptimizeTarget.met(OptimizeProfile.PERFORMANCE, forestAfter.copy(throttleOnsetSec = null), 120.0, 0))
+        // s0: windows hold 59-60 and the clock stays flat: the onset is only the status flag.
+        assertFalse(OptimizeTarget.hot(forestS0, 120.0, 0))
+        assertTrue(OptimizeTarget.met(OptimizeProfile.PERFORMANCE, forestS0, 120.0, 0))
+        // Fps falling 3 from the second window to the last counts, and so does an onset with no windows to clear it.
+        assertTrue(OptimizeTarget.hot(forestS0.copy(fpsBy5Min = listOf(56, 62, 60, 59)), 120.0, 0))
+        assertTrue(OptimizeTarget.hot(forestS0.copy(fpsBy5Min = emptyList()), 120.0, 0))
+        assertFalse(OptimizeTarget.hot(forestS0.copy(throttleOnsetSec = null, fpsBy5Min = listOf(40, 40)), 120.0, 0))
+        assertTrue(OptimizeTarget.hot(forestS0.copy(throttleOnsetSec = null, cls = "thermal_gpu", confident = true), 120.0, 0))
+    }
+
+    @Test
+    fun forestS3IsKeptAndTheLadderKeepsTryingThenS0MeetsTheTarget() {
+        val s3 = OptimizeJudge.judge(forestAfter, forestDefaults, isFpsCap = false, shortSessions = 0, fpsCap = 60.0)
+        assertEquals(OptimizeJudge.Decision.Final(OptimizeJudge.HELPED, OptimizeJudge.REASON_FPS), s3)
+        assertEquals(
+            OptimizeTarget.Settled(OptimizeJudge.HELPED, OptimizeJudge.REASON_FPS, done = false),
+            OptimizeTarget.settle(OptimizeProfile.PERFORMANCE, OptimizeJudge.HELPED, OptimizeJudge.REASON_FPS, forestAfter, 120.0, 0),
+        )
+        val s0 = OptimizeJudge.judge(forestS0, forestAfter, isFpsCap = false, shortSessions = 0, fpsCap = 60.0)
+        assertEquals(OptimizeJudge.Decision.Final(OptimizeJudge.HELPED, OptimizeJudge.REASON_GPU_LOAD), s0)
+        assertEquals(
+            OptimizeTarget.Settled(OptimizeJudge.HELPED, OptimizeJudge.REASON_TARGET_MET, done = true),
+            OptimizeTarget.settle(OptimizeProfile.PERFORMANCE, OptimizeJudge.HELPED, OptimizeJudge.REASON_GPU_LOAD, forestS0, 120.0, 0),
+        )
+        // The ladder is done and the game holds 60: no cap question.
+        val done = ProfileLadder(state = LadderState.DONE)
+        assertNull(OptimizeCards.capDecision(forestS0.cls, forestS0, done, OptimizeProfile.PERFORMANCE, 0, 120.0))
+        assertEquals(40, OptimizeCards.capDecision(forestAfter.cls, forestAfter, done, OptimizeProfile.PERFORMANCE, 0, 120.0))
     }
 
     @Test
@@ -398,7 +440,7 @@ class OptimizeRulesTest {
 
     @Test
     fun anUnmetTargetLeavesTheJudgeStanding() {
-        // The Forest s3 session: throttled from 12 s, so Performance is not met and no_change still reverts.
+        // The Forest s3 session: throttled from 105 s with the GPU clock falling, so Performance is not met and no_change still reverts.
         assertEquals(
             OptimizeTarget.Settled(OptimizeJudge.NO_CHANGE, OptimizeJudge.REASON_NONE, done = false),
             OptimizeTarget.settle(OptimizeProfile.PERFORMANCE, OptimizeJudge.NO_CHANGE, OptimizeJudge.REASON_NONE, forestAfter, 120.0, 0),
@@ -410,7 +452,10 @@ class OptimizeRulesTest {
         )
         assertEquals(
             OptimizeTarget.Settled(OptimizeJudge.HELPED, OptimizeJudge.REASON_MIN_WINDOW, done = false),
-            OptimizeTarget.settle(OptimizeProfile.PERFORMANCE, OptimizeJudge.HELPED, OptimizeJudge.REASON_MIN_WINDOW, forestAfter.copy(cls = "thermal_gpu", throttleOnsetSec = null), 120.0, 0),
+            OptimizeTarget.settle(
+                OptimizeProfile.PERFORMANCE, OptimizeJudge.HELPED, OptimizeJudge.REASON_MIN_WINDOW,
+                forestAfter.copy(cls = "thermal_gpu", confident = true, throttleOnsetSec = null), 120.0, 0,
+            ),
         )
     }
 

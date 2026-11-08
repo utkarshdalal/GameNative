@@ -21,6 +21,7 @@ object OptimizeJudge {
     const val REASON_THROTTLE = "throttle"
     const val REASON_STUTTER = "stutter"
     const val REASON_GPU_LOAD = "gpu_load"
+    const val REASON_CLOCK = "clock"
     const val REASON_TARGET_MET = "target_met"
     const val REASON_NONE = "none"
 
@@ -40,6 +41,10 @@ object OptimizeJudge {
     private const val MIN_WINDOW_FPS = 3
     private const val MIN_WINDOW_CAP_SHARE = 0.95
     private const val GPU_LOAD_POINTS = 10
+
+    /** Near the cap, lower GPU load or a higher GPU clock counts while fps stays within this share of before. */
+    private const val NEAR_CAP_FPS_HOLD = 0.98
+    private const val GPU_CLOCK_UP_SHARE = 0.10
 
     private val CRASH_REASONS = setOf("guest_terminated", "force_close")
 
@@ -126,8 +131,12 @@ object OptimizeJudge {
         val minDown = minBefore != null && minAfter != null && minBefore - minAfter >= MIN_WINDOW_FPS
         val gpuBefore = median(gameplayWindows(before.gpuBy5Min))
         val gpuAfter = median(gameplayWindows(after.gpuBy5Min))
-        val gpuDown = gpuBefore != null && gpuAfter != null && fpsAfter != null && fpsAfter >= fpsBefore!! - EPS &&
-            gpuBefore - gpuAfter >= GPU_LOAD_POINTS - EPS
+        val fpsHeld = fpsAfter != null && fpsAfter >= NEAR_CAP_FPS_HOLD * fpsBefore!! - EPS
+        val gpuDown = gpuBefore != null && gpuAfter != null && fpsHeld && gpuBefore - gpuAfter >= GPU_LOAD_POINTS - EPS
+        val clockBefore = median(gameplayWindows(before.gpuClockBy5Min))
+        val clockAfter = median(gameplayWindows(after.gpuClockBy5Min))
+        val clockUp = clockBefore != null && clockAfter != null && clockBefore > 0 && fpsHeld &&
+            clockAfter >= (1 + GPU_CLOCK_UP_SHARE) * clockBefore - EPS
 
         if (fpsDown) return Verdict(WORSE, REASON_FPS)
         if (minDown) return Verdict(WORSE, REASON_MIN_WINDOW)
@@ -138,6 +147,7 @@ object OptimizeJudge {
         if (throttleLater) return Verdict(HELPED, REASON_THROTTLE)
         if (stutterDown) return Verdict(HELPED, REASON_STUTTER)
         if (gpuDown) return Verdict(HELPED, REASON_GPU_LOAD)
+        if (clockUp) return Verdict(HELPED, REASON_CLOCK)
         return Verdict(NO_CHANGE, REASON_NONE)
     }
 }

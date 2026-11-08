@@ -715,7 +715,7 @@ object OptimizeController {
                     cardField = OptimizeCards.cardField(block == null, block)
                     if (block == null) {
                         val suggested = OptimizeCards.suggestedProfile(after.cls, after, cap, refresh)
-                        val capFps = OptimizeCards.capQuestion(state, after, cap, now)
+                        val capFps = OptimizeCards.capQuestion(state, after, cap, now, refresh)
                         state = state.copy(
                             card = OptimizeCard(
                                 if (capFps != null) OptimizeCard.CAP else OptimizeCard.FIRST, now, gameName(appId),
@@ -750,7 +750,7 @@ object OptimizeController {
                             store.write(state)
                         }
                     }
-                    capCard(appId, state, after, cap, now)?.let {
+                    capCard(appId, state, after, cap, now, refresh)?.let {
                         state = it
                         store.write(state)
                     }
@@ -873,13 +873,20 @@ object OptimizeController {
      * lever, the cap question takes the place of the card the session would leave, or comes up on its own once the
      * ladder has ended. Null when the cap question is not asked.
      */
-    private fun capCard(appId: String, state: OptimizeLocalState, after: Metrics, fpsCap: Int, nowMillis: Long): OptimizeLocalState? {
+    private fun capCard(
+        appId: String,
+        state: OptimizeLocalState,
+        after: Metrics,
+        fpsCap: Int,
+        nowMillis: Long,
+        refreshHz: Double?,
+    ): OptimizeLocalState? {
         val profile = state.activeProfile ?: return null
         if (after.confident != true || after.gameplaySec < OptimizeCards.MIN_GAMEPLAY_SEC) return null
         val waiting = state.card
         if (waiting?.kind == OptimizeCard.CAP || waiting?.kind == OptimizeCard.ENTITLEMENT) return null
         if (waiting == null && state.ladder(profile).state !in setOf(LadderState.EXHAUSTED, LadderState.DONE)) return null
-        val capFps = OptimizeCards.capQuestion(state, after, fpsCap, nowMillis) ?: return null
+        val capFps = OptimizeCards.capQuestion(state, after, fpsCap, nowMillis, refreshHz) ?: return null
         Timber.tag(TAG).i("Optimize: heat is the limit, asking to hold ${profile.wireId} at $capFps fps")
         return state.copy(card = OptimizeCard(OptimizeCard.CAP, nowMillis, gameName(appId), profile, cls = after.cls, metrics = after, capFps = capFps))
     }
@@ -926,7 +933,9 @@ object OptimizeController {
             if (!ContainerUtils.hasContainer(context, appId)) return@withContext null
             val container = ContainerUtils.getContainer(context, appId)
             val baseline = baselineRun(container)?.takeIf { it.confident == true && it.cls in OptimizeCards.CLASSES } ?: return@withContext null
-            Suggestion(OptimizeCards.suggestedProfile(baseline.cls, baseline, fpsLimit(container), refreshHz(context)), OptimizeTarget.hot(baseline))
+            val cap = fpsLimit(container)
+            val refresh = refreshHz(context)
+            Suggestion(OptimizeCards.suggestedProfile(baseline.cls, baseline, cap, refresh), OptimizeTarget.hot(baseline, refresh, cap))
         } catch (e: Exception) {
             Timber.tag(TAG).w(e, "Reading the optimize suggestion failed")
             null

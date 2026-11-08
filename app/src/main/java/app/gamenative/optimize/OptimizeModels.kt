@@ -21,6 +21,8 @@ data class Metrics(
     val fpsBy5Min: List<Int> = emptyList(),
     /** Mean GPU busy percent of each five-minute window that sampled it (perf_by_5min gpu_avg), oldest first. */
     val gpuBy5Min: List<Int> = emptyList(),
+    /** Mean GPU clock in MHz of each five-minute window that sampled it (perf_by_5min gpu_clk_mhz_avg), oldest first. */
+    val gpuClockBy5Min: List<Int> = emptyList(),
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("gameplay_s", gameplaySec)
@@ -37,6 +39,7 @@ data class Metrics(
         thermalReporting?.let { put("thermal_reporting", it) }
         if (fpsBy5Min.isNotEmpty()) put("fps_by_5min", JSONArray(fpsBy5Min))
         if (gpuBy5Min.isNotEmpty()) put("gpu_by_5min", JSONArray(gpuBy5Min))
+        if (gpuClockBy5Min.isNotEmpty()) put("gpu_clock_by_5min", JSONArray(gpuClockBy5Min))
     }
 
     fun toReportJson(): JSONObject = JSONObject().apply {
@@ -46,6 +49,9 @@ data class Metrics(
         put("throttle_onset_s", throttleOnsetSec ?: JSONObject.NULL)
         put("class", cls ?: JSONObject.NULL)
         put("confidence", confidence ?: JSONObject.NULL)
+        if (fpsBy5Min.isNotEmpty()) put("fps_by_5min", JSONArray(fpsBy5Min.take(MAX_REPORT_WINDOWS)))
+        if (gpuBy5Min.isNotEmpty()) put("gpu_by_5min", JSONArray(gpuBy5Min.take(MAX_REPORT_WINDOWS)))
+        if (gpuClockBy5Min.isNotEmpty()) put("gpu_clock_by_5min", JSONArray(gpuClockBy5Min.take(MAX_REPORT_WINDOWS)))
     }
 
     fun toVerdictJson(): JSONObject? {
@@ -62,6 +68,9 @@ data class Metrics(
     }
 
     companion object {
+        /** The server accepts at most this many windows per series in an outcome. */
+        const val MAX_REPORT_WINDOWS = 48
+
         fun fromJson(o: JSONObject?): Metrics? {
             if (o == null || !o.has("gameplay_s")) return null
             return Metrics(
@@ -79,6 +88,7 @@ data class Metrics(
                 thermalReporting = if (o.has("thermal_reporting")) o.optBoolean("thermal_reporting") else null,
                 fpsBy5Min = o.optJSONArray("fps_by_5min").ints(),
                 gpuBy5Min = o.optJSONArray("gpu_by_5min").ints(),
+                gpuClockBy5Min = o.optJSONArray("gpu_clock_by_5min").ints(),
             )
         }
 
@@ -101,6 +111,7 @@ data class Metrics(
                 thermalReporting = run.has("thermal_headroom") || run.optInt("thermal_peak", 0) > 0,
                 fpsBy5Min = run.optJSONArray("fps_by_5min").ints(),
                 gpuBy5Min = run.optJSONArray("perf_by_5min").objects().mapNotNull { it.optIntOrNull("gpu_avg") },
+                gpuClockBy5Min = run.optJSONArray("perf_by_5min").objects().mapNotNull { it.optIntOrNull("gpu_clk_mhz_avg") },
             )
         }
     }

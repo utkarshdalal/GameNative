@@ -77,7 +77,8 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
     val gate = rememberOptimizeGate()
     val card = request.card
     val name = card.gameName.orEmpty()
-    val heatHint = card.kind == OptimizeCard.DONE && card.profile != OptimizeProfile.POWER && card.metrics?.let { OptimizeTarget.hot(it) } == true
+    val heatHint = card.kind == OptimizeCard.DONE && card.profile != OptimizeProfile.POWER &&
+        card.metrics?.let { OptimizeTarget.hot(it, null, card.capFps ?: 0) } == true
     var choosing by remember(request) { mutableStateOf(heatHint) }
     var chosen by remember(request) {
         mutableStateOf(if (heatHint) OptimizeProfile.POWER else card.profile.takeIf { card.kind == OptimizeCard.FIRST } ?: OptimizeProfile.BALANCED)

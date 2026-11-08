@@ -55,8 +55,24 @@ object OptimizeTarget {
     const val PERFORMANCE_WINDOW_SHARE = 0.95
     const val PERFORMANCE_FPS_CEILING = 60.0
 
-    /** The session throttled: an onset (sustained thermal status >= 2 counts) or a thermal verdict. */
-    fun hot(m: Metrics): Boolean = m.throttleOnsetSec != null || m.cls == "thermal_gpu"
+    const val HOT_FPS_DECLINE = 3
+    const val HOT_CLOCK_DROP_SHARE = 0.10
+
+    /**
+     * Heat held the session back: a confident thermal_gpu verdict, or a throttle onset that cost something. The
+     * onset costs when fps falls 3 or more from the second window to the last, the GPU clock falls 10 % or more
+     * from the first gameplay window to the last, or a gameplay window falls below 0.95 x the target. An onset
+     * with no fps windows to clear it counts.
+     */
+    fun hot(m: Metrics, refreshHz: Double?, fpsCap: Int): Boolean {
+        if (m.cls == "thermal_gpu" && m.confident == true) return true
+        if (m.throttleOnsetSec == null) return false
+        if (m.fpsBy5Min.isEmpty()) return true
+        val fpsDeclines = m.fpsBy5Min.size >= 2 && m.fpsBy5Min[1] - m.fpsBy5Min.last() >= HOT_FPS_DECLINE
+        val clocks = gameplayWindows(m.gpuClockBy5Min)
+        val clockFalls = clocks.size >= 2 && clocks.first() > 0 && clocks.last() <= (1 - HOT_CLOCK_DROP_SHARE) * clocks.first()
+        return fpsDeclines || clockFalls || dips(m, refreshHz, fpsCap)
+    }
 
     /** The frame rate Performance holds: min(refresh, 60), or the active cap when it is lower. */
     fun fpsTarget(refreshHz: Double?, fpsCap: Int): Double {
@@ -65,12 +81,12 @@ object OptimizeTarget {
     }
 
     /** The five-minute windows that count; the first holds the loading screens once there are three or more. */
-    private fun gameplayWindows(m: Metrics): List<Int> = if (m.fpsBy5Min.size >= 3) m.fpsBy5Min.drop(1) else m.fpsBy5Min
+    private fun gameplayWindows(values: List<Int>): List<Int> = if (values.size >= 3) values.drop(1) else values
 
     /** A five-minute window fell below 0.95 x the target. */
     fun dips(m: Metrics, refreshHz: Double?, fpsCap: Int): Boolean {
         val target = fpsTarget(refreshHz, fpsCap)
-        return gameplayWindows(m).any { it < PERFORMANCE_WINDOW_SHARE * target }
+        return gameplayWindows(m.fpsBy5Min).any { it < PERFORMANCE_WINDOW_SHARE * target }
     }
 
     /** Steady fps at 0.97 x the target and no five-minute window below 0.95 x it, heat aside. */
@@ -83,12 +99,13 @@ object OptimizeTarget {
     fun met(profile: OptimizeProfile, after: Metrics, refreshHz: Double?, fpsCap: Int): Boolean {
         val fps = after.steadyFps
         val stutter = after.stutterShare
+        val heat = hot(after, refreshHz, fpsCap)
         return when (profile) {
-            OptimizeProfile.PERFORMANCE -> holdsTarget(after, refreshHz, fpsCap) && !hot(after)
+            OptimizeProfile.PERFORMANCE -> holdsTarget(after, refreshHz, fpsCap) && !heat
             OptimizeProfile.BALANCED ->
-                fps != null && stutter != null && fps >= BALANCED_MIN_FPS && stutter < BALANCED_MAX_STUTTER && !hot(after)
+                fps != null && stutter != null && fps >= BALANCED_MIN_FPS && stutter < BALANCED_MAX_STUTTER && !heat
             OptimizeProfile.STABILITY -> stutter != null && stutter < STABILITY_MAX_STUTTER
-            OptimizeProfile.POWER -> after.gameplaySec >= POWER_MIN_GAMEPLAY_SEC && !hot(after)
+            OptimizeProfile.POWER -> after.gameplaySec >= POWER_MIN_GAMEPLAY_SEC && !heat
             OptimizeProfile.OFF -> false
         }
     }
@@ -262,13 +279,21 @@ object OptimizeCards {
 
     /**
      * The fps to propose holding the game at, or null when the cap is not the best lever. Heat has to be the limit
-     * (a thermal_gpu verdict or a throttle onset) and one of: steady fps under 45, so settings alone will not hold a
-     * cap; the profile's settings ladder ended (exhausted or done) or ran two no-change steps in a row; or Power is
-     * the active profile. Never while a cap is already on or on trial, or the container already holds the game at
+     * ([OptimizeTarget.hot] for [metrics]; with no metrics, a thermal_gpu verdict) and one of: steady fps under 45,
+     * so settings alone will not hold a cap; the profile's settings ladder ended (exhausted or done) or ran two
+     * no-change steps in a row; or Power is the active profile. Never while a cap is already on or on trial, or the container already holds the game at
      * or below it ([fpsCap] 0 is no cap).
      */
-    fun capDecision(verdict: String?, metrics: Metrics?, ladder: ProfileLadder?, profile: OptimizeProfile?, fpsCap: Int = 0): Int? {
-        if (verdict != "thermal_gpu" && metrics?.throttleOnsetSec == null) return null
+    fun capDecision(
+        verdict: String?,
+        metrics: Metrics?,
+        ladder: ProfileLadder?,
+        profile: OptimizeProfile?,
+        fpsCap: Int = 0,
+        refreshHz: Double? = null,
+    ): Int? {
+        val heat = metrics?.let { OptimizeTarget.hot(it, refreshHz, fpsCap) } ?: (verdict == "thermal_gpu")
+        if (!heat) return null
         if (ladder != null && (ladder.pending?.rung?.isFpsCap == true || ladder.kept.any { it.applied && capFps(it.rung) != null })) return null
         val steady = metrics?.steadyFps
         val cap = capValue(steady) ?: return null
@@ -280,12 +305,12 @@ object OptimizeCards {
     }
 
     /** [capDecision] for the session that just ended, unless the question is snoozed or already answered yes. */
-    fun capQuestion(state: OptimizeLocalState, session: Metrics, fpsCap: Int, nowMillis: Long): Int? {
+    fun capQuestion(state: OptimizeLocalState, session: Metrics, fpsCap: Int, nowMillis: Long, refreshHz: Double? = null): Int? {
         if (state.never || state.capPreferred || nowMillis < state.capSnoozedUntil) return null
         val profile = state.activeProfile
         val ladder = profile?.let { state.ladder(it) }
         if (ladder?.lastStatus == NextRungResponse.STATUS_ENTITLEMENT_REQUIRED) return null
-        return capDecision(session.cls, session, ladder, profile, fpsCap)
+        return capDecision(session.cls, session, ladder, profile, fpsCap, refreshHz)
     }
 
     fun notNow(card: OptimizeCard, nowMillis: Long): CardSuppression = CardSuppression(nowMillis + SUPPRESS_MS, card.metrics)
