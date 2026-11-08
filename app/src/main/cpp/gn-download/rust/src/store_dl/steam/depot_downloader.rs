@@ -115,9 +115,56 @@ pub fn validate_resolved_download_inputs(
 pub fn filter_usable_cdn_servers(
     servers: impl IntoIterator<Item = CContentServerDirectoryServerInfo>,
 ) -> Vec<CContentServerDirectoryServerInfo> {
-    servers
+    // Steam-China-only hosts reject accounts from the global realm, so they go last.
+    // They are kept rather than dropped: on a mainland network they are often the only
+    // servers the directory returns, and they out-deliver the global caches (measured
+    // there at 13 MB/s against 1-2 MB/s). The download marks a host bad when it 403s,
+    // so trying them after the global set costs nothing when they do not apply.
+    let (mut usable, china_only): (Vec<_>, Vec<_>) = servers
         .into_iter()
-        .filter(|server| !server.steam_china_only && !server.host.is_empty())
+        .filter(|server| !server.host.is_empty())
+        .partition(|server| !server.steam_china_only);
+    usable.extend(china_only);
+    if usable.is_empty() {
+        // The directory can come back empty or entirely unusable (poisoned DNS for
+        // cache*.steamcontent.com, no route to the assigned cell). A built-in set of
+        // Asia-Pacific edges keeps a mainland client from dead-ending with
+        // "no usable CDN server".
+        return builtin_fallback_cdn_servers();
+    }
+    usable
+}
+
+/// Valves's Asia-Pacific SteamPipe edges plus the Perfect World partner CDNs, used when
+/// the directory yields no usable server at all.
+///
+/// `https_support` decides the scheme: only "mandatory" selects TLS with port 443, so the
+/// partner CDNs (which speak plain HTTP on port 80) are marked "unavailable".
+pub fn builtin_fallback_cdn_servers() -> Vec<CContentServerDirectoryServerInfo> {
+    const FALLBACK: &[(&str, &str)] = &[
+        ("dist1-hkg1.steamcontent.com", "mandatory"),
+        ("dist2-hkg1.steamcontent.com", "mandatory"),
+        ("dist3-hkg1.steamcontent.com", "mandatory"),
+        ("dist1-sgp1.steamcontent.com", "mandatory"),
+        ("dist2-sgp1.steamcontent.com", "mandatory"),
+        ("dist3-sgp1.steamcontent.com", "mandatory"),
+        ("dl.steam.clngaa.com", "unavailable"),
+        ("st.dl.eccdnx.com", "unavailable"),
+        ("xz.pphimalayanrt.com", "unavailable"),
+    ];
+    FALLBACK
+        .iter()
+        .enumerate()
+        .map(
+            |(index, (host, https_support))| CContentServerDirectoryServerInfo {
+                server_type: "CDN".to_string(),
+                source_id: index as i32,
+                host: (*host).to_string(),
+                vhost: (*host).to_string(),
+                https_support: (*https_support).to_string(),
+                ..Default::default()
+            },
+        )
         .collect()
 }
 
@@ -1237,7 +1284,7 @@ mod tests {
     }
 
     #[test]
-    fn filters_non_china_servers_with_hosts() {
+    fn filters_hosts_and_keeps_china_servers_as_a_tail_fallback() {
         let servers = filter_usable_cdn_servers([
             CContentServerDirectoryServerInfo {
                 host: "ok".into(),
@@ -1253,8 +1300,31 @@ mod tests {
                 ..Default::default()
             },
         ]);
-        assert_eq!(servers.len(), 1);
-        assert_eq!(servers[0].host, "ok");
+        assert_eq!(servers.len(), 2, "the China-only host is a last resort, not dropped");
+        assert_eq!(servers[0].host, "ok", "global hosts keep their priority");
+        assert_eq!(servers[1].host, "china");
+    }
+
+    #[test]
+    fn an_empty_directory_falls_back_to_the_builtin_apac_edges() {
+        let servers = filter_usable_cdn_servers(std::iter::empty());
+        assert!(!servers.is_empty());
+        assert!(servers.iter().any(|server| server.host.contains("hkg1")));
+        assert!(servers.iter().any(|server| server.host == "dl.steam.clngaa.com"));
+
+        let fallback = builtin_fallback_cdn_servers();
+        let clngaa = fallback
+            .iter()
+            .find(|server| server.host == "dl.steam.clngaa.com")
+            .expect("partner CDN present");
+        assert!(!clngaa.use_https(), "the partner CDNs are plain HTTP on port 80");
+        assert_eq!(clngaa.port(), 80);
+        let hkg = fallback
+            .iter()
+            .find(|server| server.host.contains("hkg1"))
+            .expect("Valve edge present");
+        assert!(hkg.use_https());
+        assert_eq!(hkg.port(), 443);
     }
 
     #[test]
