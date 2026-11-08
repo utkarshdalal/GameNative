@@ -25,6 +25,16 @@ data class SwitchPlan(
     }
 }
 
+object OptimizeLadders {
+    /** A profile picked from the dialog, the options row or a card starts trying again when it was idle or paused. */
+    fun picked(ladder: ProfileLadder): ProfileLadder =
+        if (ladder.state == LadderState.IDLE || ladder.state == LadderState.PAUSED) ladder.copy(state = LadderState.TRYING, noChangeStreak = 0) else ladder
+
+    /** After Restore original settings: paused while a change is still kept or on trial, otherwise not started. */
+    fun afterRestore(ladder: ProfileLadder): LadderState =
+        if (ladder.kept.isNotEmpty() || ladder.pending != null) LadderState.PAUSED else LadderState.IDLE
+}
+
 object OptimizeTarget {
     const val BALANCED_MIN_FPS = 30.0
     const val BALANCED_MAX_STUTTER = 0.02
@@ -98,14 +108,59 @@ object OptimizeCards {
     const val ACTION_UNDO_ALL = "undo_all"
     const val ACTION_MEMBERSHIP = "membership"
 
-    /** Whether the session that just ended should leave the first card for a game nobody set up yet. */
-    fun offerFirst(state: OptimizeLocalState, session: Metrics, nowMillis: Long): Boolean {
-        if (state.never || state.activeProfile != null || state.profiles.isNotEmpty() || state.card != null) return false
-        if (session.confident != true || session.gameplaySec < MIN_GAMEPLAY_SEC || session.cls !in CLASSES) return false
-        val suppression = state.suppression ?: return true
-        if (nowMillis >= suppression.untilMillis) return true
-        val reference = suppression.metrics ?: return false
-        return OptimizeJudge.compare(reference, session, isFpsCap = false) == OptimizeJudge.WORSE
+    const val SUPPRESSED_NEVER = "never"
+    const val SUPPRESSED_PROFILE = "profile_active"
+    const val SUPPRESSED_CARD_WAITING = "card_waiting"
+    const val SUPPRESSED_NOT_CONFIDENT = "not_confident"
+    const val SUPPRESSED_SHORT = "short"
+    const val SUPPRESSED_CLASS = "class"
+    const val SUPPRESSED_NOT_NOW = "not_now"
+
+    /**
+     * Why the session that just ended leaves no first card, or null when it should. A game with no active profile
+     * gets it again after Off or Restore, ladders and all.
+     */
+    fun firstCardBlock(state: OptimizeLocalState, session: Metrics, nowMillis: Long): String? {
+        if (state.never) return SUPPRESSED_NEVER
+        if (state.activeProfile != null) return SUPPRESSED_PROFILE
+        if (state.card != null) return SUPPRESSED_CARD_WAITING
+        if (session.confident != true) return SUPPRESSED_NOT_CONFIDENT
+        if (session.gameplaySec < MIN_GAMEPLAY_SEC) return SUPPRESSED_SHORT
+        if (session.cls !in CLASSES) return SUPPRESSED_CLASS
+        val suppression = state.suppression ?: return null
+        if (nowMillis >= suppression.untilMillis) return null
+        val reference = suppression.metrics ?: return SUPPRESSED_NOT_NOW
+        return if (OptimizeJudge.compare(reference, session, isFpsCap = false) == OptimizeJudge.WORSE) null else SUPPRESSED_NOT_NOW
+    }
+
+    fun offerFirst(state: OptimizeLocalState, session: Metrics, nowMillis: Long): Boolean = firstCardBlock(state, session, nowMillis) == null
+
+    /** perf_verdict.card for a session: "shown" when it left a card, otherwise why not. */
+    fun cardField(shown: Boolean, block: String?): String = if (shown) "shown" else "suppressed:${block ?: "none"}"
+
+    /** game_exited properties with perf_verdict.card set to [card]; unchanged when either is missing. */
+    fun withCard(props: Map<String, Any>, card: String?): Map<String, Any> {
+        val verdict = props["perf_verdict"] as? Map<*, *> ?: return props
+        if (card == null) return props
+        val updated = buildMap<String, Any> {
+            verdict.forEach { (k, v) -> if (k is String && v != null) put(k, v) }
+            put("card", card)
+        }
+        return props + ("perf_verdict" to updated)
+    }
+
+    const val WIRE_ACCEPTED = "accepted"
+    const val WIRE_CONTINUE = "continue"
+
+    /** The card_action the server is sent for an answer: accepted, dismissed, never, happy, undo, continue, keep_going, stop or optimize. */
+    fun wireAction(action: String, cardKind: String?): String = when (action) {
+        ACTION_OPTIMIZE -> if (cardKind == OptimizeCard.FIRST) WIRE_ACCEPTED else ACTION_OPTIMIZE
+        ACTION_MEMBERSHIP -> WIRE_ACCEPTED
+        ACTION_NEVER, ACTION_HAPPY, ACTION_UNDO, ACTION_KEEP_GOING, ACTION_STOP -> action
+        ACTION_KEEP_CHANGES -> ACTION_HAPPY
+        ACTION_UNDO_ALL -> ACTION_UNDO
+        WIRE_CONTINUE -> WIRE_CONTINUE
+        else -> ACTION_DISMISSED
     }
 
     const val ENTITLEMENT_RECHECK_MS = 24L * 60 * 60 * 1000
@@ -170,5 +225,40 @@ object OptimizeCards {
             OptimizeProfile.BALANCED, OptimizeProfile.STABILITY -> OptimizeCard.OUTCOME_STUTTER
             OptimizeProfile.POWER, OptimizeProfile.OFF -> OptimizeCard.OUTCOME_STABLE
         }
+    }
+}
+
+/** A relative rung only lowers quality: each value is written only when it is below what the game has now. */
+object OptimizeRelative {
+    const val LESS = "less"
+    const val MORE = "more"
+
+    private fun number(s: String): Double? = s.trim().toDoubleOrNull()?.takeIf { !it.isNaN() && !it.isInfinite() }
+
+    /** Same value: trimmed, case-insensitive, and "1.000000" equals "1". */
+    fun same(a: String, b: String): Boolean {
+        if (a.trim().equals(b.trim(), ignoreCase = true)) return true
+        val x = number(a) ?: return false
+        val y = number(b) ?: return false
+        return x == y
+    }
+
+    /** The highest step whose value is [value], or null when the ladder does not hold it. */
+    fun stepOf(ladder: List<String?>, value: String): Int? = ladder.indices.lastOrNull { i -> ladder[i]?.let { same(it, value) } == true }
+
+    /**
+     * Whether a set to [target] lowers quality from [current]. A key the game does not have yet is written; numeric
+     * keys move strictly in [lowerIs]'s direction; other keys need a lower step than the current value's, and a
+     * current value outside the ladder is written.
+     */
+    fun shouldApply(current: String?, target: String, ladder: List<String?>?, lowerIs: String?): Boolean {
+        if (current == null || ladder == null || lowerIs == null) return true
+        val c = number(current)
+        val t = number(target)
+        if (c != null && t != null && (lowerIs == LESS || lowerIs == MORE)) return if (lowerIs == LESS) t < c else t > c
+        if (same(current, target)) return false
+        val currentStep = stepOf(ladder, current) ?: return true
+        val targetStep = stepOf(ladder, target) ?: return true
+        return targetStep < currentStep
     }
 }

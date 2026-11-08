@@ -22,7 +22,11 @@ import org.json.JSONObject
 import timber.log.Timber
 
 sealed class ApplyOutcome {
-    data class Applied(val levers: List<JSONObject>) : ApplyOutcome()
+    /** [appliedOps] and [skippedOps] count file keys and registry values; a relative rung skips those already lower. */
+    data class Applied(val levers: List<JSONObject>, val appliedOps: Int = 0, val skippedOps: Int = 0) : ApplyOutcome()
+
+    /** A relative rung whose every key was already at or below its target: nothing was written. */
+    data class NoOp(val skippedOps: Int) : ApplyOutcome()
 
     data class Failed(val leversOk: Int, val failedIndex: Int, val reason: String) : ApplyOutcome()
 
@@ -37,6 +41,8 @@ object OptimizeApplier {
     private val SCREEN_SIZE = Regex("^[0-9]{2,5}x[0-9]{2,5}$")
 
     private class LeverFailure(message: String) : Exception(message)
+
+    private class OpCount(var applied: Int = 0, var skipped: Int = 0)
 
     suspend fun apply(
         context: Context,
@@ -63,12 +69,13 @@ object OptimizeApplier {
         rungDir.deleteRecursively()
         rungDir.mkdirs()
         val applied = mutableListOf<JSONObject>()
+        val count = OpCount()
         withContext(NonCancellable) {
             for ((i, lever) in rung.levers.withIndex()) {
                 try {
                     applied += when (lever) {
-                        is Lever.EngineFile -> applyFile(i, lever, roots, rungDir)
-                        is Lever.Registry -> applyRegistry(i, lever, container)
+                        is Lever.EngineFile -> applyFile(i, lever, roots, rungDir, rung.relative, count) ?: continue
+                        is Lever.Registry -> applyRegistry(i, lever, container, rung.relative, count) ?: continue
                         is Lever.ContainerSet -> applyContainer(i, lever, context, container, onProgress)
                         // The bionic Turnip and wrapper are built without driconf files; Mesa still reads each option
                         // from an env var of the same name.
@@ -89,11 +96,17 @@ object OptimizeApplier {
                     return@withContext ApplyOutcome.Failed(i, i, e.message ?: e.javaClass.simpleName)
                 }
             }
-            ApplyOutcome.Applied(applied)
+            if (rung.relative && applied.isEmpty() && count.skipped > 0) {
+                rungDir.deleteRecursively()
+                ApplyOutcome.NoOp(count.skipped)
+            } else {
+                ApplyOutcome.Applied(applied, count.applied, count.skipped)
+            }
         }
     }
 
-    private fun applyFile(index: Int, lever: Lever.EngineFile, roots: PathRoots, rungDir: File): JSONObject {
+    /** Null when a relative rung skipped every op of the lever and nothing was written. */
+    private fun applyFile(index: Int, lever: Lever.EngineFile, roots: PathRoots, rungDir: File, relative: Boolean, count: OpCount): JSONObject? {
         val format = ConfigFormats.forName(lever.format) ?: throw LeverFailure("unknown format ${lever.format}")
         val file = OptimizePaths.resolve(roots, lever.path) ?: throw LeverFailure("path not resolvable")
         if (file.isDirectory) throw LeverFailure("path is a folder")
@@ -102,8 +115,18 @@ object OptimizeApplier {
         val bytes = if (existed) file.readBytes() else ByteArray(0)
         val codec = if (existed) TextCodecs.codecFor(bytes, lever.encoding) else TextCodecs.forNewFile(lever.encoding)
         val text = TextCodecs.decode(bytes, codec)
+        val ops = if (!relative) {
+            lever.ops
+        } else {
+            lever.ops.filter { op ->
+                op.isDelete || OptimizeRelative.shouldApply(if (text.isBlank()) null else format.read(text, op), op.value!!, op.ladder, op.lowerIs)
+            }
+        }
+        count.applied += ops.size
+        count.skipped += lever.ops.size - ops.size
+        if (ops.isEmpty()) return null
         val keys = JSONArray()
-        lever.ops.distinctBy { it.section to it.key }.forEach { op ->
+        ops.distinctBy { it.section to it.key }.forEach { op ->
             val prior = if (text.isBlank()) null else format.read(text, op)
             keys.put(
                 JSONObject().apply {
@@ -113,7 +136,7 @@ object OptimizeApplier {
                 },
             )
         }
-        val newBytes = TextCodecs.encode(ConfigFormats.applyVerified(format, text, lever.ops), codec)
+        val newBytes = TextCodecs.encode(ConfigFormats.applyVerified(format, text, ops), codec)
         val backup = File(rungDir, "files/$index")
         if (existed) {
             backup.parentFile?.mkdirs()
@@ -177,12 +200,26 @@ object OptimizeApplier {
         }
     }
 
-    private suspend fun applyRegistry(index: Int, lever: Lever.Registry, container: Container): JSONObject {
+    /** Null when a relative rung skipped every value of the lever and nothing was written. */
+    private suspend fun applyRegistry(index: Int, lever: Lever.Registry, container: Container, relative: Boolean, count: OpCount): JSONObject? {
         if (!lever.hive.equals("HKCU", ignoreCase = true)) throw LeverFailure("hive ${lever.hive} not allowed")
         if (!lever.key.startsWith("Software\\", ignoreCase = true)) throw LeverFailure("key outside Software")
         val hive = OptimizeFiles.userHive(container)
         if (!hive.isFile) throw LeverFailure("user.reg missing")
-        val changes = lever.values.map { v ->
+        val values = if (!relative) {
+            lever.values
+        } else {
+            val now = WineRegistryText.read(OptimizeFiles.readHive(hive), lever.key, lever.values.map { it.name })
+            lever.values.filter { v ->
+                v.delete || OptimizeRelative.shouldApply(
+                    now[v.name]?.let { OptimizeFiles.decodeRegistryValue(v.type!!, it) }, v.data!!, v.ladder, v.lowerIs,
+                )
+            }
+        }
+        count.applied += values.size
+        count.skipped += lever.values.size - values.size
+        if (values.isEmpty()) return null
+        val changes = values.map { v ->
             WineRegistryText.Change(v.name, if (v.delete) null else OptimizeFiles.encodeRegistryValue(v.type!!, v.data!!))
         }
         val merged = WineRegistryText.merge(OptimizeFiles.readHive(hive), lever.key, changes, System.currentTimeMillis())

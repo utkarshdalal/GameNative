@@ -153,17 +153,31 @@ object SessionReport {
 
     private fun appliedMatchFile(container: Container) = File(container.rootDir, "applied_match_type")
 
-    fun recordRun(container: Container, properties: Map<String, Any>) {
+    /** Writes the run file and returns it, or null when it could not be written. */
+    fun recordRun(container: Container, properties: Map<String, Any>): File? = try {
+        val dir = File(container.rootDir, ".gamenative/runs").also { it.mkdirs() }
+        val file = File(dir, "${System.currentTimeMillis()}.json")
+        writeRun(file, properties)
+        dir.listFiles { f -> f.name.endsWith(".json") }?.sortedBy { it.name }?.dropLast(MAX_RUN_FILES)?.forEach { it.delete() }
+        file.takeIf { it.isFile }
+    } catch (e: Exception) {
+        Timber.w(e, "SessionReport: record run failed")
+        null
+    }
+
+    /** Replaces a run file written by [recordRun], for properties settled after it was written. */
+    fun rewriteRun(file: File, properties: Map<String, Any>) {
         try {
-            val dir = File(container.rootDir, ".gamenative/runs").also { it.mkdirs() }
-            val file = File(dir, "${System.currentTimeMillis()}.json")
-            val tmp = File(dir, "${file.name}.tmp")
-            tmp.writeText(JSONObject(properties).toString())
-            if (!tmp.renameTo(file)) tmp.delete()
-            dir.listFiles { f -> f.name.endsWith(".json") }?.sortedBy { it.name }?.dropLast(MAX_RUN_FILES)?.forEach { it.delete() }
+            writeRun(file, properties)
         } catch (e: Exception) {
-            Timber.w(e, "SessionReport: record run failed")
+            Timber.w(e, "SessionReport: rewrite run failed")
         }
+    }
+
+    private fun writeRun(file: File, properties: Map<String, Any>) {
+        val tmp = File(file.parentFile, "${file.name}.tmp")
+        tmp.writeText(JSONObject(properties).toString())
+        if (!tmp.renameTo(file)) tmp.delete()
     }
 
     private const val MAX_RUN_FILES = 30

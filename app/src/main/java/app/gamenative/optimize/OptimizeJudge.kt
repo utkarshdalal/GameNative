@@ -12,6 +12,9 @@ object OptimizeJudge {
     const val NOT_COMPARABLE = "not_comparable"
     const val APPLY_FAILED = "apply_failed"
 
+    /** A relative rung found every key already at or below its target and wrote nothing. */
+    const val NO_OP = "no_op"
+
     const val CRASH_GAMEPLAY_SEC = 120
     const val COMPARABLE_GAMEPLAY_SEC = 600
     const val MAX_SHORT_SESSIONS = 3

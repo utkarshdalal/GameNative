@@ -10,9 +10,34 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
+
+/** Attestation gets [TIMEOUT_MS] per request; after a failure or timeout requests go without it for [SKIP_MS]. */
+internal object AttestationBudget {
+    const val TIMEOUT_MS = 2_000L
+    const val SKIP_MS = 60L * 60 * 1000
+
+    @Volatile
+    private var failedAtMillis: Long? = null
+
+    fun shouldTry(failedAtMillis: Long?, nowMillis: Long): Boolean = failedAtMillis == null || nowMillis - failedAtMillis !in 0 until SKIP_MS
+
+    fun shouldTry(nowMillis: Long = System.currentTimeMillis()): Boolean = shouldTry(failedAtMillis, nowMillis)
+
+    /** Records a failure; true when it starts a new skip window, so it is logged once per window. */
+    fun failed(nowMillis: Long = System.currentTimeMillis()): Boolean {
+        val fresh = shouldTry(nowMillis)
+        failedAtMillis = nowMillis
+        return fresh
+    }
+
+    fun succeeded() {
+        failedAtMillis = null
+    }
+}
 
 sealed class NextRungResult {
     data class Answered(val response: NextRungResponse) : NextRungResult()
@@ -42,8 +67,24 @@ object OptimizeApi {
             .build()
     }
 
+    /** The nonce and chain within [AttestationBudget.TIMEOUT_MS]; a slow attempt keeps running off the request's path. */
+    private suspend fun attestation(): Pair<String, List<String>>? {
+        if (!AttestationBudget.shouldTry()) return null
+        val attempt = scope.async { KeyAttestationHelper.getAttestationFields(ATTESTATION_BASE_URL) }
+        val fields = withTimeoutOrNull(AttestationBudget.TIMEOUT_MS) { attempt.await() }
+        if (fields != null) {
+            AttestationBudget.succeeded()
+            return fields
+        }
+        attempt.cancel()
+        if (AttestationBudget.failed()) Timber.tag("Optimize").w("attestation unavailable, continuing without it")
+        return null
+    }
+
     private suspend fun post(path: String, body: JSONObject): JSONObject? = withContext(Dispatchers.IO) {
-        KeyAttestationHelper.getAttestationFields(ATTESTATION_BASE_URL)?.let { (nonce, chain) ->
+        body.remove("nonce")
+        body.remove("attestationChain")
+        attestation()?.let { (nonce, chain) ->
             body.put("nonce", nonce)
             body.put("attestationChain", JSONArray(chain))
         }

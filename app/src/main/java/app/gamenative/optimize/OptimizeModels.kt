@@ -123,7 +123,15 @@ internal fun JSONArray?.ints(): List<Int> =
 internal fun JSONArray?.strings(): List<String> =
     if (this == null) emptyList() else (0 until length()).mapNotNull { i -> optString(i).takeIf { it.isNotEmpty() } }
 
-data class FileOp(val op: String, val section: String, val key: String, val value: String?) {
+/** [ladder] is the key's twelve values from lowest to highest quality and [lowerIs] which way lower quality goes. */
+data class FileOp(
+    val op: String,
+    val section: String,
+    val key: String,
+    val value: String?,
+    val ladder: List<String?>? = null,
+    val lowerIs: String? = null,
+) {
     val isDelete: Boolean get() = op == "delete"
 
     fun toJson(): JSONObject = JSONObject().apply {
@@ -140,12 +148,28 @@ data class FileOp(val op: String, val section: String, val key: String, val valu
             if (op != "set" && op != "delete") return null
             val value = o.optStringOrNull("value") ?: if (o.has("value") && !o.isNull("value")) "" else null
             if (op == "set" && value == null) return null
-            return FileOp(op, o.optStringOrNull("section").orEmpty(), key, if (op == "set") value else null)
+            return FileOp(
+                op, o.optStringOrNull("section").orEmpty(), key, if (op == "set") value else null,
+                ladderOf(o), o.optStringOrNull("lower_is"),
+            )
         }
     }
 }
 
-data class RegistryValue(val name: String, val type: String?, val data: String?, val delete: Boolean)
+/** A key's quality ladder as the server sends it: step 0 is the lowest quality, null where a step has no value. */
+internal fun ladderOf(o: JSONObject): List<String?>? {
+    val a = o.optJSONArray("ladder") ?: return null
+    return (0 until a.length()).map { i -> if (a.isNull(i)) null else a.opt(i).toString() }
+}
+
+data class RegistryValue(
+    val name: String,
+    val type: String?,
+    val data: String?,
+    val delete: Boolean,
+    val ladder: List<String?>? = null,
+    val lowerIs: String? = null,
+)
 
 sealed class Lever {
     abstract val type: String
@@ -212,7 +236,7 @@ sealed class Lever {
                         val valueType = v.optStringOrNull("type")
                         val data = if (v.has("data") && !v.isNull("data")) v.optString("data") else null
                         if (!delete && (valueType == null || data == null)) return@mapNotNull null
-                        RegistryValue(name, valueType, data, delete)
+                        RegistryValue(name, valueType, data, delete, ladderOf(v), v.optStringOrNull("lower_is"))
                     }
                     if (values.isEmpty() || values.size != raw.size) return Unknown(type)
                     Registry(payload.optString("hive", "HKCU"), key, values)
@@ -263,6 +287,8 @@ class Rung(
     val visualCostEn: String?,
     val levers: List<Lever>,
     val expiresAtMillis: Long?,
+    /** Each file and registry value only moves toward lower quality from what the game has now. */
+    val relative: Boolean = false,
 ) {
     fun isExpired(nowMillis: Long): Boolean = expiresAtMillis != null && nowMillis > expiresAtMillis
 
@@ -285,6 +311,7 @@ class Rung(
                 visualCostEn = o.optStringOrNull("visual_cost_en"),
                 levers = o.optJSONArray("levers").objects().map { Lever.parse(it) },
                 expiresAtMillis = o.optStringOrNull("expires_at")?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() },
+                relative = o.optBoolean("relative", false),
             )
         }
     }

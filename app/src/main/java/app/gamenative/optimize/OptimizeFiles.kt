@@ -73,4 +73,23 @@ internal object OptimizeFiles {
         }
         else -> throw IllegalArgumentException("unsupported registry type $type")
     }
+
+    private fun hexBytes(canonical: String, prefix: String): List<Int>? {
+        if (!canonical.startsWith(prefix)) return null
+        return canonical.substring(prefix.length).split(',').filter { it.isNotEmpty() }.map { it.toIntOrNull(16) ?: return null }
+    }
+
+    private fun littleEndian(bytes: List<Int>): Long = bytes.foldIndexed(0L) { i, acc, b -> acc or (b.toLong() shl (8 * i)) }
+
+    /** A user.reg value as lever data of [type] (the inverse of [encodeRegistryValue]); null when it is stored as another type. */
+    fun decodeRegistryValue(type: String, raw: String): String? {
+        val c = WineRegistryText.canonical(raw)
+        return when (type) {
+            "dword" -> c.takeIf { it.startsWith("dword:") }?.substring(6)?.toLongOrNull()?.toString()
+            "qword" -> hexBytes(c, "hex(b):")?.takeIf { it.size == 8 }?.let { java.lang.Long.toUnsignedString(littleEndian(it)) }
+            "sz" -> c.takeIf { it.startsWith("sz:") }?.substring(3)
+            "binary_f64le" -> hexBytes(c, "hex(4):")?.takeIf { it.size == 8 }?.let { java.lang.Double.longBitsToDouble(littleEndian(it)).toString() }
+            else -> null
+        }
+    }
 }

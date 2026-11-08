@@ -189,7 +189,7 @@ class OptimizeRulesTest {
         assertTrue(OptimizeCards.offerFirst(OptimizeLocalState(), session.copy(cls = OptimizeCards.SYNC_SPIN), 0L))
         assertFalse(OptimizeCards.offerFirst(OptimizeLocalState(never = true), session, 0L))
         assertFalse(OptimizeCards.offerFirst(OptimizeLocalState(activeProfile = OptimizeProfile.BALANCED), session, 0L))
-        assertFalse(OptimizeCards.offerFirst(OptimizeLocalState(profiles = mapOf(OptimizeProfile.POWER to ProfileLadder())), session, 0L))
+        assertTrue(OptimizeCards.offerFirst(OptimizeLocalState(profiles = mapOf(OptimizeProfile.POWER to ProfileLadder())), session, 0L))
         assertFalse(OptimizeCards.offerFirst(OptimizeLocalState(card = OptimizeCard(OptimizeCard.FIRST, 0L)), session, 0L))
     }
 
@@ -232,5 +232,121 @@ class OptimizeRulesTest {
         assertTrue(OptimizeCards.shouldAskAfterTrial(used, none, 1_000L, isMember = false, nowMillis = 1_000L + day))
         assertTrue(OptimizeCards.shouldAskAfterTrial(used, Entitlement(Entitlement.MEMBER, 0, 0), 1_000L, isMember = false, nowMillis = 2_000L))
         assertTrue(OptimizeCards.shouldAskAfterTrial(ProfileLadder(state = LadderState.TRYING), none, 1_000L, isMember = false, nowMillis = 2_000L))
+    }
+    private val cascade = listOf("5", "5", "4", "4", "3", "3", "2", "2", "1", "1", "0", "0")
+
+    @Test
+    fun relativeApplyOnTheForestNumbers() {
+        assertTrue(OptimizeRelative.shouldApply("0", "4", cascade, OptimizeRelative.MORE))
+        val bloom = listOf("0", "0", "0", "0", "0", "0", "1", "1", "1", "1", "1", "1")
+        assertFalse(OptimizeRelative.shouldApply("0", "1", bloom, OptimizeRelative.LESS))
+        val grass = listOf("0.1", "0.15", "0.2", "0.25", "0.3", "0.35", "0.4", "0.45", "0.5", "0.6", "0.8", "1")
+        assertTrue(OptimizeRelative.shouldApply("0.45", "0.30", grass, OptimizeRelative.LESS))
+        val draw = listOf("0", "0", "1", "1", "1", "2", "2", "2", "3", "3", "3", "3")
+        assertTrue(OptimizeRelative.shouldApply("3", "2", draw, OptimizeRelative.LESS))
+        assertFalse(OptimizeRelative.shouldApply("2", "2", draw, OptimizeRelative.LESS))
+        assertFalse(OptimizeRelative.shouldApply("1.000000", "1", draw, OptimizeRelative.LESS))
+    }
+
+    @Test
+    fun relativeApplyOnEnumKeys() {
+        val quality = listOf("Low", "Low", "Low", "Medium", "Medium", "Medium", "High", "High", "High", "Ultra", "Ultra", "Ultra")
+        assertFalse(OptimizeRelative.shouldApply("Low", "Medium", quality, "enum"))
+        assertFalse(OptimizeRelative.shouldApply(" low ", "Low", quality, "enum"))
+        assertTrue(OptimizeRelative.shouldApply("High", "Medium", quality, "enum"))
+        assertTrue(OptimizeRelative.shouldApply("Custom", "Medium", quality, "enum"))
+        assertEquals(11, OptimizeRelative.stepOf(quality, "ultra"))
+        assertEquals(5, OptimizeRelative.stepOf(listOf("0", "0", "0", "0", "0", "1.000000", null, null, null, null, null, null), "1"))
+    }
+
+    @Test
+    fun relativeApplyWritesMissingKeysAndKeysWithoutALadder() {
+        assertTrue(OptimizeRelative.shouldApply(null, "4", cascade, OptimizeRelative.MORE))
+        assertTrue(OptimizeRelative.shouldApply("0", "1", null, null))
+        assertTrue(OptimizeRelative.shouldApply("0", "1", cascade, null))
+    }
+
+    @Test
+    fun relativeRungsCarryLaddersOnEveryOpAndValue() {
+        val rung = Rung.parse(
+            JSONObject(
+                """{"rung_id":"r","relative":true,"levers":[
+                  {"lever_type":"engine_file","payload":{"path":"p","format":"ini","ops":[
+                    {"op":"set","section":"s","key":"CascadeCount","value":"4","ladder":[5,5,4,4,3,3,2,2,1,1,0,null],"lower_is":"more"}]}},
+                  {"lever_type":"registry","payload":{"key":"Software\\X","values":[
+                    {"name":"q","type":"dword","data":"1","ladder":["0","1"],"lower_is":"less"}]}}]}""",
+            ),
+        )!!
+        assertTrue(rung.relative)
+        val op = (rung.levers[0] as Lever.EngineFile).ops.single()
+        assertEquals("more", op.lowerIs)
+        assertEquals(listOf("5", "5", "4", "4", "3", "3", "2", "2", "1", "1", "0", null), op.ladder)
+        val value = (rung.levers[1] as Lever.Registry).values.single()
+        assertEquals(listOf("0", "1"), value.ladder)
+        assertEquals("less", value.lowerIs)
+        assertFalse(Rung.parse(JSONObject().put("rung_id", "c"))!!.relative)
+    }
+
+    @Test
+    fun registryValuesReadBackAsLeverData() {
+        listOf("dword" to "4", "qword" to "17179869184", "sz" to "High", "binary_f64le" to "0.3").forEach { (type, data) ->
+            val raw = OptimizeFiles.encodeRegistryValue(type, data)
+            val back = OptimizeFiles.decodeRegistryValue(type, raw)!!
+            assertTrue("$type $back", OptimizeRelative.same(back, data))
+        }
+        assertNull(OptimizeFiles.decodeRegistryValue("dword", "\"text\""))
+    }
+
+    @Test
+    fun attestationIsSkippedForAnHourAfterAFailure() {
+        assertTrue(AttestationBudget.shouldTry(null, 5_000L))
+        assertFalse(AttestationBudget.shouldTry(1_000L, 1_000L))
+        assertFalse(AttestationBudget.shouldTry(1_000L, 1_000L + AttestationBudget.SKIP_MS - 1))
+        assertTrue(AttestationBudget.shouldTry(1_000L, 1_000L + AttestationBudget.SKIP_MS))
+        assertTrue(AttestationBudget.shouldTry(10_000L, 1_000L))
+    }
+
+    @Test
+    fun cardActionsGoOutAsTheServerNamesThem() {
+        assertEquals("accepted", OptimizeCards.wireAction(OptimizeCards.ACTION_OPTIMIZE, OptimizeCard.FIRST))
+        assertEquals("optimize", OptimizeCards.wireAction(OptimizeCards.ACTION_OPTIMIZE, OptimizeCard.DONE))
+        assertEquals("dismissed", OptimizeCards.wireAction(OptimizeCards.ACTION_NOT_NOW, OptimizeCard.FIRST))
+        assertEquals("dismissed", OptimizeCards.wireAction(OptimizeCards.ACTION_OK, OptimizeCard.WORSE))
+        assertEquals("never", OptimizeCards.wireAction(OptimizeCards.ACTION_NEVER, OptimizeCard.FIRST))
+        assertEquals("happy", OptimizeCards.wireAction(OptimizeCards.ACTION_KEEP_CHANGES, OptimizeCard.EXHAUSTED))
+        assertEquals("undo", OptimizeCards.wireAction(OptimizeCards.ACTION_UNDO_ALL, OptimizeCard.EXHAUSTED))
+        assertEquals("keep_going", OptimizeCards.wireAction(OptimizeCards.ACTION_KEEP_GOING, OptimizeCard.HELPED))
+        assertEquals("stop", OptimizeCards.wireAction(OptimizeCards.ACTION_STOP, OptimizeCard.NO_CHANGE))
+        assertEquals("continue", OptimizeCards.wireAction(OptimizeCards.WIRE_CONTINUE, null))
+        val allowed = setOf("accepted", "dismissed", "never", "happy", "undo", "continue", "keep_going", "stop", "optimize")
+        listOf(
+            OptimizeCards.ACTION_OPTIMIZE, OptimizeCards.ACTION_NOT_NOW, OptimizeCards.ACTION_NEVER, OptimizeCards.ACTION_DISMISSED,
+            OptimizeCards.ACTION_KEEP_GOING, OptimizeCards.ACTION_HAPPY, OptimizeCards.ACTION_UNDO, OptimizeCards.ACTION_STOP,
+            OptimizeCards.ACTION_OK, OptimizeCards.ACTION_KEEP_CHANGES, OptimizeCards.ACTION_UNDO_ALL, OptimizeCards.ACTION_MEMBERSHIP,
+        ).forEach { assertTrue(it, OptimizeCards.wireAction(it, OptimizeCard.HELPED) in allowed) }
+    }
+
+    @Test
+    fun perfVerdictCardSaysShownOrWhyNot() {
+        assertEquals("suppressed:never", OptimizeCards.cardField(false, OptimizeCards.firstCardBlock(OptimizeLocalState(never = true), session, 0L)))
+        assertEquals("suppressed:short", OptimizeCards.cardField(false, OptimizeCards.firstCardBlock(OptimizeLocalState(), session.copy(gameplaySec = 10), 0L)))
+        assertEquals("shown", OptimizeCards.cardField(true, null))
+        val props = mapOf("avg_fps" to 40.0, "perf_verdict" to mapOf("class" to "gpu", "card" to "none"))
+        val out = OptimizeCards.withCard(props, "shown")
+        assertEquals(mapOf("class" to "gpu", "card" to "shown"), out["perf_verdict"])
+        assertEquals(40.0, out["avg_fps"])
+        assertTrue(OptimizeCards.withCard(props, null) === props)
+        assertTrue(OptimizeCards.withCard(mapOf("avg_fps" to 1), "shown")["perf_verdict"] == null)
+    }
+
+    @Test
+    fun pickingAProfileResumesItAndRestoreGoesBackToNotStarted() {
+        assertEquals(LadderState.TRYING, OptimizeLadders.picked(ProfileLadder(state = LadderState.IDLE)).state)
+        val paused = OptimizeLadders.picked(ProfileLadder(state = LadderState.PAUSED, noChangeStreak = 2))
+        assertEquals(LadderState.TRYING, paused.state)
+        assertEquals(0, paused.noChangeStreak)
+        assertEquals(LadderState.DONE, OptimizeLadders.picked(ProfileLadder(state = LadderState.DONE)).state)
+        assertEquals(LadderState.IDLE, OptimizeLadders.afterRestore(ProfileLadder(state = LadderState.TRYING)))
+        assertEquals(LadderState.PAUSED, OptimizeLadders.afterRestore(ProfileLadder(kept = listOf(kept("k")))))
     }
 }

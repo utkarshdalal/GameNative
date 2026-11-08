@@ -78,6 +78,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import app.gamenative.R
+import app.gamenative.optimize.OptimizeCards
 import app.gamenative.optimize.OptimizeController
 import app.gamenative.shadercache.FossilizeManager
 import app.gamenative.ui.util.applyScreenEffectsConfig
@@ -5488,14 +5489,20 @@ private fun exit(
         val fingerprint = CoroutineScope(Dispatchers.IO).async { SessionReport.crashFingerprintProperties(container, reason) }
         runBlocking { withTimeoutOrNull(200) { fingerprint.await() } }
     }.getOrNull().orEmpty()
-    PostHog.capture(
-        event = "game_exited",
-        properties = exitProperties,
-    )
     val optimizeContext = (frameRating?.context ?: PluviaApp.xServerView?.context)?.applicationContext
+    // game_exited goes out once the session is judged, so perf_verdict.card says whether it left a card.
     CoroutineScope(Dispatchers.IO).launch {
-        SessionReport.recordRun(container, exitProperties)
-        OptimizeController.afterExit(optimizeContext, appId, container, exitProperties)
+        var properties = exitProperties
+        try {
+            val run = SessionReport.recordRun(container, exitProperties)
+            properties = OptimizeCards.withCard(exitProperties, OptimizeController.afterExit(optimizeContext, appId, container, exitProperties))
+            if (run != null && properties !== exitProperties) SessionReport.rewriteRun(run, properties)
+        } finally {
+            PostHog.capture(
+                event = "game_exited",
+                properties = properties,
+            )
+        }
     }
     (frameRating?.context ?: PluviaApp.xServerView?.context)?.let { ctx -> runCatching { AppExitRecorder.markSessionEnd(ctx) } }
     runCatching { windowActivity.stop() }

@@ -198,9 +198,11 @@ fun OptimizeOptionsRow(appId: String) {
     val actions = rememberOptimizeActions(appId)
     val active = state?.activeProfile ?: OptimizeProfile.OFF
     val exhausted = state != null && OptimizeStatus.of(state) == OptimizeStatus.TrialUsed
+    val keptCount = state?.let { OptimizeStatus.keptCount(it) } ?: 0
     Column(modifier = Modifier.fillMaxWidth()) {
         listOfNotNull(
             state?.let { optimizeStatusText(it) },
+            if (keptCount > 0) pluralStringResource(R.plurals.optimize_status_kept, keptCount, keptCount) else null,
             optimizeEntitlementText(state?.entitlement, exhausted = exhausted, short = true),
         ).forEach {
             Text(

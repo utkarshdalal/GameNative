@@ -69,6 +69,9 @@ data class PendingRung(
     val levers: List<JSONObject>,
     /** Result the rung was judged with when it still has to be taken off before the next launch. */
     val revert: String? = null,
+    /** File keys and registry values written, and those a relative rung left because they were already lower. */
+    val appliedOps: Int? = null,
+    val skippedOps: Int? = null,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("rung", rung.raw)
@@ -77,6 +80,8 @@ data class PendingRung(
         put("short_sessions", shortSessions)
         put("levers", JSONArray().apply { levers.forEach { put(it) } })
         revert?.let { put("revert", it) }
+        appliedOps?.let { put("applied_ops", it) }
+        skippedOps?.let { put("skipped_ops", it) }
     }
 
     fun toKept(newBaseline: Metrics?): KeptRung = KeptRung(
@@ -104,6 +109,8 @@ data class PendingRung(
                 shortSessions = o.optInt("short_sessions", 0),
                 levers = o.optJSONArray("levers").objects(),
                 revert = o.optStringOrNull("revert"),
+                appliedOps = o.optIntOrNull("applied_ops"),
+                skippedOps = o.optIntOrNull("skipped_ops"),
             )
         }
     }
