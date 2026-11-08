@@ -54,6 +54,8 @@ object OptimizeController {
     private const val NEXT_RUNG_EXIT_BUDGET_MS = 20_000L
     private const val DEFAULT_FPS_LIMIT = 60
     private const val MAX_NO_CHANGE_STREAK = 2
+    /** Launches in a row a read-only file may be reset by the game before its rung is reported as not taking. */
+    private const val MAX_RESETS = 3
 
     val mutex = Mutex()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -384,15 +386,16 @@ object OptimizeController {
                 cardAction = state.cardAction.takeIf { it != sentCardAction },
                 entitlement = response.entitlement ?: state.entitlement,
                 entitlementCheckedAt = now,
+                lastRulesVersion = response.effectiveRulesVersion ?: state.lastRulesVersion,
             )
             // An answer asked for before the cap question was answered yes is not the cap rung.
             val waitsForCap = state.capPreferred && !sentPrefer
             if (sentPrefer) state = state.copy(capPreferred = false)
             val ladder = state.ladder(profile)
             val rung = response.rung?.takeIf { response.status == NextRungResponse.STATUS_RUNG }
-            val prefetched = rung?.let { PrefetchedRung(it, now, profile, key, kept) }
+            val prefetched = rung?.let { PrefetchedRung(it, now, profile, key, kept, response.effectiveRulesVersion) }
             if (prefetched != null && !waitsForCap && state.activeProfile == profile && wouldAsk(state, ladder, now) &&
-                prefetched.isUsable(now, profile, key, ladder)
+                prefetched.isUsable(now, profile, key, ladder, state.lastRulesVersion)
             ) {
                 state = state.copy(prefetched = prefetched)
                 Timber.tag(TAG).i("stored next rung ${prefetched.rung.rungId} v${prefetched.rung.version} for the next launch ($source)")
@@ -514,12 +517,14 @@ object OptimizeController {
                     return@withLock
                 }
 
-                var ladder = state.ladder(profile)
+                val (reverified, resetReports) = reverifyKept(appId, container, profile, state.ladder(profile))
+                var ladder = reverified
+                resetReports.forEach { state = state.queued(it) }
                 val flagged = ladder.pending?.takeIf { it.revert != null }
                 if (flagged != null) {
                     if (!OptimizeReverter.revertLevers(context, container, flagged.levers)) {
                         Timber.tag(TAG).w("Taking ${flagged.rung.rungId} off failed; trying again next launch")
-                        store.write(state)
+                        store.write(state.withLadder(profile, ladder))
                         telemetry(profile, null, "failed")
                         return@withLock
                     }
@@ -542,7 +547,12 @@ object OptimizeController {
                 if (ladder.pending == null && wouldAsk(state, ladder, now)) {
                     val baseline = ladder.baselineOverride ?: baselineRun(container)
                     val key = prefetchKey(container)
-                    val usable = prefetched?.takeIf { !state.capPreferred && it.isUsable(now, profile, key, ladder) }
+                    val usable = prefetched?.takeIf { !state.capPreferred && it.isUsable(now, profile, key, ladder, state.lastRulesVersion) }
+                    if (prefetched != null && usable == null && state.lastRulesVersion != null && prefetched.rulesVersion != state.lastRulesVersion) {
+                        Timber.tag(TAG).i(
+                            "Optimize: dropping ${prefetched.rung.rungId} v${prefetched.rung.version}, fetched from rules ${prefetched.rulesVersion}, server now ${state.lastRulesVersion}",
+                        )
+                    }
                     val deadline = System.currentTimeMillis() + budgetMs
                     suspend fun ask(): NextRungResult? {
                         val body = nextRungBody(context, appId, container, state, profile, ladder, baseline)
@@ -576,6 +586,7 @@ object OptimizeController {
                                         capPreferred = false,
                                         entitlement = response.entitlement ?: state.entitlement,
                                         entitlementCheckedAt = System.currentTimeMillis(),
+                                        lastRulesVersion = response.effectiveRulesVersion ?: state.lastRulesVersion,
                                     )
                                 }
                                 val previousStatus = ladder.lastStatus
@@ -639,6 +650,8 @@ object OptimizeController {
                                                     )
                                                     applyResult = "failed"
                                                     Timber.tag(TAG).w("Applying ${rung.rungId} failed: ${outcome.reason}")
+                                                    // A prefetched rung can be stale; the server is asked again with this one in tried.
+                                                    if (fromPrefetch != null) return true
                                                 }
                                                 is ApplyOutcome.Deferred -> {
                                                     if (fromPrefetch != null) state = state.copy(prefetched = fromPrefetch)
@@ -676,6 +689,45 @@ object OptimizeController {
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Optimize before launch failed; launching unchanged")
         }
+    }
+
+    /**
+     * Before a launch: puts back the file keys and registry values of applied kept rungs that the game reset since
+     * the last one. A rung reset on [MAX_RESETS] launches in a row despite a read-only file stays kept, flagged
+     * unstable, and is reported once as did_not_take. Returns the ladder and the reports to queue.
+     */
+    private fun reverifyKept(appId: String, container: Container, profile: OptimizeProfile, ladder: ProfileLadder): Pair<ProfileLadder, List<JSONObject>> {
+        val reports = mutableListOf<JSONObject>()
+        val kept = ladder.kept.map kept@{ k ->
+            if (!k.applied || k.levers.none { it.optString("type") == Lever.TYPE_ENGINE_FILE || it.optString("type") == Lever.TYPE_REGISTRY }) {
+                return@kept k
+            }
+            val rung = Rung.parse(k.rung)
+            var reset = 0
+            var readOnlyReset = false
+            val levers = k.levers.map { record ->
+                val lever = rung?.levers?.getOrNull(record.optInt("index", -1))
+                val checked = try {
+                    OptimizeApplier.reverify(container, record, lever)
+                } catch (e: Exception) {
+                    Timber.tag(TAG).w(e, "Optimize: re-checking ${k.rungId} lever ${record.optInt("index", -1)} failed")
+                    null
+                } ?: return@map record
+                reset += checked.reset
+                if (checked.reset > 0 && checked.readOnly) readOnlyReset = true
+                checked.record
+            }
+            if (reset == 0) return@kept if (k.resetCount != 0) k.copy(resetCount = 0) else k
+            Timber.tag(TAG).i("Optimize: re-applied ${k.rungId} v${k.version}: $reset keys were reset by the game")
+            var next = k.copy(levers = levers, resetCount = k.resetCount + 1)
+            if (readOnlyReset && next.resetCount >= MAX_RESETS && !k.unstable) {
+                Timber.tag(TAG).w("Optimize: ${k.rungId} v${k.version} reset on ${next.resetCount} launches in a row despite a read-only file")
+                next = next.copy(unstable = true)
+                reports += outcomeBody(appId, profile, k.rungId, k.version, k.baseline, null, OptimizeJudge.DID_NOT_TAKE, k.levers.size, emptyList())
+            }
+            next
+        }
+        return ladder.copy(kept = kept) to reports
     }
 
     /** Stores an answer that came after the launch stopped waiting, for the next launch. */
@@ -800,7 +852,7 @@ object OptimizeController {
         val ladder = state.ladder(profile)
         if (!wouldAsk(state, ladder, nowMillis)) return null
         val key = prefetchKey(container)
-        if (state.prefetched?.isUsable(nowMillis, profile, key, ladder) == true) return null
+        if (state.prefetched?.isUsable(nowMillis, profile, key, ladder, state.lastRulesVersion) == true) return null
         val flagged = ladder.pending?.takeIf { it.revert != null }
         val override = if (flagged != null) flagged.baseline ?: ladder.baselineOverride else ladder.baselineOverride
         val baseline = override ?: baselineRun(container)

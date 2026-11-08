@@ -24,6 +24,10 @@ data class KeptRung(
     val applied: Boolean = true,
     /** The session before the step, the baseline again once the step is undone. */
     val before: Metrics? = null,
+    /** Launches in a row on which the game had reset some of the rung's file or registry keys. */
+    val resetCount: Int = 0,
+    /** The game kept resetting a read-only file; reported as did_not_take, still kept. */
+    val unstable: Boolean = false,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("rung_id", rungId)
@@ -38,6 +42,8 @@ data class KeptRung(
         rung?.let { put("rung", it) }
         put("applied", applied)
         before?.let { put("before", it.toJson()) }
+        if (resetCount > 0) put("reset_count", resetCount)
+        if (unstable) put("unstable", true)
     }
 
     companion object {
@@ -56,6 +62,8 @@ data class KeptRung(
                 rung = o.optJSONObject("rung"),
                 applied = o.optBoolean("applied", true),
                 before = Metrics.fromJson(o.optJSONObject("before")),
+                resetCount = o.optInt("reset_count", 0),
+                unstable = o.optBoolean("unstable", false),
             )
         }
     }
@@ -211,9 +219,13 @@ data class PrefetchedRung(
     val key: PrefetchKey,
     /** Ids of the changes that were on when it was asked for. */
     val kept: List<String>,
+    /** The server rules build that answered. */
+    val rulesVersion: String? = null,
 ) {
-    fun isUsable(nowMillis: Long, profile: OptimizeProfile, key: PrefetchKey, ladder: ProfileLadder): Boolean =
+    /** [lastRulesVersion] is the rules build of the newest server answer; null when none said, which does not hold the rung back. */
+    fun isUsable(nowMillis: Long, profile: OptimizeProfile, key: PrefetchKey, ladder: ProfileLadder, lastRulesVersion: String?): Boolean =
         nowMillis - fetchedAt in 0..MAX_AGE_MS &&
+            (lastRulesVersion == null || rulesVersion == lastRulesVersion) &&
             !rung.isExpired(nowMillis) &&
             this.profile == profile &&
             this.key == key &&
@@ -230,6 +242,7 @@ data class PrefetchedRung(
         put("dxwrapper", key.dxwrapper)
         put("fps_limit", key.fpsLimit)
         put("kept", JSONArray(kept))
+        rulesVersion?.let { put("rules_version", it) }
     }
 
     companion object {
@@ -247,6 +260,7 @@ data class PrefetchedRung(
                 profile = profile,
                 key = PrefetchKey(o.optString("executable_path"), o.optString("dxwrapper"), o.optInt("fps_limit", 0)),
                 kept = o.optJSONArray("kept").strings(),
+                rulesVersion = o.optStringOrNull("rules_version"),
             )
         }
     }
@@ -351,6 +365,8 @@ data class OptimizeLocalState(
     val capPreferred: Boolean = false,
     /** No cap question before this time ("Not now"). */
     val capSnoozedUntil: Long = 0L,
+    /** The rules build of the newest server answer; a prefetched rung from another build is not used. */
+    val lastRulesVersion: String? = null,
 ) {
     val active: ProfileLadder? get() = activeProfile?.let { profiles[it] }
 
@@ -374,6 +390,7 @@ data class OptimizeLocalState(
         prefetched?.let { put("prefetched", it.toJson()) }
         if (capPreferred) put("ladder_prefer", PREFER_CAP)
         if (capSnoozedUntil > 0) put("cap_snoozed_until", capSnoozedUntil)
+        lastRulesVersion?.let { put("last_rules_version", it) }
     }
 
     companion object {
@@ -406,6 +423,7 @@ data class OptimizeLocalState(
                 prefetched = PrefetchedRung.fromJson(o.optJSONObject("prefetched")),
                 capPreferred = o.optStringOrNull("ladder_prefer") == PREFER_CAP,
                 capSnoozedUntil = o.optLong("cap_snoozed_until", 0L),
+                lastRulesVersion = o.optStringOrNull("last_rules_version"),
             )
         }
 

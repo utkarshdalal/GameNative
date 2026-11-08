@@ -43,8 +43,18 @@ object OptimizeReverter {
             ok
         }
 
-    private fun revertFile(record: JSONObject) {
+    /** Takes an engine_file lever off; a file Optimize made read-only is writable again unless it was read-only before. */
+    internal fun revertFile(record: JSONObject) {
         val file = File(record.getString("path"))
+        if (file.isFile && !file.canWrite()) file.setWritable(true)
+        try {
+            restoreFile(record, file)
+        } finally {
+            if (file.isFile && !record.optBoolean("was_writable", true)) file.setWritable(false, false)
+        }
+    }
+
+    private fun restoreFile(record: JSONObject, file: File) {
         val existed = record.optBoolean("existed", true)
         val backup = record.optStringOrNull("backup")?.let { File(it) }?.takeIf { it.isFile }
         if (!file.exists()) {

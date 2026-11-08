@@ -42,7 +42,10 @@ object OptimizeApplier {
 
     private class LeverFailure(message: String) : Exception(message)
 
-    private class OpCount(var applied: Int = 0, var skipped: Int = 0)
+    internal class OpCount(var applied: Int = 0, var skipped: Int = 0)
+
+    /** A kept lever checked before a launch: the [record] to keep, how many keys the game had [reset], and whether its file is kept read-only. */
+    data class Reverified(val record: JSONObject, val reset: Int, val readOnly: Boolean)
 
     suspend fun apply(
         context: Context,
@@ -106,12 +109,13 @@ object OptimizeApplier {
     }
 
     /** Null when a relative rung skipped every op of the lever and nothing was written. */
-    private fun applyFile(index: Int, lever: Lever.EngineFile, roots: PathRoots, rungDir: File, relative: Boolean, count: OpCount): JSONObject? {
+    internal fun applyFile(index: Int, lever: Lever.EngineFile, roots: PathRoots, rungDir: File, relative: Boolean, count: OpCount): JSONObject? {
         val format = ConfigFormats.forName(lever.format) ?: throw LeverFailure("unknown format ${lever.format}")
         val file = OptimizePaths.resolve(roots, lever.path, lever.createIfMissing) ?: throw LeverFailure("path not resolvable")
         if (file.isDirectory) throw LeverFailure("path is a folder")
         val existed = file.isFile
         if (!existed && !lever.createIfMissing) throw LeverFailure("file missing")
+        val wasWritable = !existed || file.canWrite()
         val bytes = if (existed) file.readBytes() else ByteArray(0)
         val codec = if (existed) TextCodecs.codecFor(bytes, lever.encoding) else TextCodecs.forNewFile(lever.encoding)
         val text = TextCodecs.decode(bytes, codec)
@@ -128,11 +132,14 @@ object OptimizeApplier {
         val keys = JSONArray()
         ops.distinctBy { it.section to it.key }.forEach { op ->
             val prior = if (text.isBlank()) null else format.read(text, op)
+            val last = ops.last { it.section == op.section && it.key == op.key }
             keys.put(
                 JSONObject().apply {
                     put("section", op.section)
                     put("key", op.key)
                     put("prior", prior ?: JSONObject.NULL)
+                    put("op", last.op)
+                    put("value", last.value ?: JSONObject.NULL)
                 },
             )
         }
@@ -142,12 +149,15 @@ object OptimizeApplier {
             backup.parentFile?.mkdirs()
             backup.writeBytes(bytes)
         }
+        if (existed && !wasWritable) file.setWritable(true)
         OptimizeFiles.atomicWrite(file, newBytes)
         val written = file.readBytes()
         if (!written.contentEquals(newBytes)) {
             if (existed) OptimizeFiles.atomicWrite(file, bytes) else file.delete()
+            if (existed && !wasWritable) file.setWritable(false, false)
             throw LeverFailure("file did not take")
         }
+        if ((lever.readOnly || !wasWritable) && !file.setWritable(false, false)) Timber.tag("Optimize").w("Could not make ${file.name} read-only")
         return JSONObject().apply {
             put("type", Lever.TYPE_ENGINE_FILE)
             put("index", index)
@@ -159,7 +169,70 @@ object OptimizeApplier {
             put("sha_before", if (existed) OptimizeFiles.sha256(bytes) else JSONObject.NULL)
             put("sha_after", OptimizeFiles.sha256(written))
             put("keys", keys)
+            put("read_only", lever.readOnly)
+            put("was_writable", wasWritable)
         }
+    }
+
+    /**
+     * Puts back the keys of a kept file or registry lever that the game has reset since it was written. The original
+     * backup and priors stay, so taking the rung off still restores what the game had before. Null for other levers,
+     * and when there is nothing to compare against.
+     */
+    internal fun reverify(container: Container, record: JSONObject, lever: Lever?): Reverified? = when (record.optString("type")) {
+        Lever.TYPE_ENGINE_FILE -> reverifyFile(record, lever)
+        Lever.TYPE_REGISTRY -> reverifyRegistry(OptimizeFiles.userHive(container), record, lever)
+        else -> null
+    }
+
+    internal fun reverifyFile(record: JSONObject, lever: Lever?): Reverified? {
+        val file = File(record.getString("path"))
+        if (!file.isFile) return null
+        val format = ConfigFormats.forName(record.optString("format")) ?: return null
+        val written = OptimizeDrift.writtenOps(record, lever) ?: return null
+        val readOnly = record.optBoolean("read_only", false)
+        val keepReadOnly = readOnly || !record.optBoolean("was_writable", true)
+        val bytes = file.readBytes()
+        val codec = TextCodecs.codecFor(bytes, record.optString("encoding", "default"))
+        val text = TextCodecs.decode(bytes, codec)
+        val drifted = OptimizeDrift.fileDrift(format, text, written)
+        if (drifted.isEmpty()) {
+            if (keepReadOnly && file.canWrite()) file.setWritable(false, false)
+            return Reverified(record, 0, readOnly)
+        }
+        val newBytes = TextCodecs.encode(ConfigFormats.applyVerified(format, text, drifted), codec)
+        if (!file.canWrite()) file.setWritable(true)
+        OptimizeFiles.atomicWrite(file, newBytes)
+        val after = file.readBytes()
+        if (!after.contentEquals(newBytes)) throw LeverFailure("file did not take")
+        if (keepReadOnly) file.setWritable(false, false)
+        return Reverified(JSONObject(record.toString()).put("sha_after", OptimizeFiles.sha256(after)), drifted.size, readOnly)
+    }
+
+    internal fun reverifyRegistry(hive: File, record: JSONObject, lever: Lever?): Reverified? {
+        if (!hive.isFile) return null
+        val text = OptimizeFiles.readHive(hive)
+        val drifted = OptimizeDrift.registryDrift(text, record)
+        if (drifted.isEmpty()) return Reverified(record, 0, false)
+        val entries = record.optJSONArray("values").objects()
+        val values = (lever as? Lever.Registry)?.values.orEmpty()
+        val changes = drifted.mapNotNull { name ->
+            val entry = entries.first { it.getString("name") == name }
+            val raw = when {
+                entry.isNull("applied") -> null
+                entry.has("raw") && !entry.isNull("raw") -> entry.getString("raw")
+                else -> values.lastOrNull { it.name.equals(name, ignoreCase = true) && !it.delete }
+                    ?.let { OptimizeFiles.encodeRegistryValue(it.type!!, it.data!!) } ?: return@mapNotNull null
+            }
+            WineRegistryText.Change(name, raw)
+        }
+        if (changes.isEmpty()) return Reverified(record, 0, false)
+        val key = record.getString("key")
+        OptimizeFiles.writeHive(hive, WineRegistryText.merge(text, key, changes, System.currentTimeMillis()).text)
+        if (OptimizeDrift.registryDrift(OptimizeFiles.readHive(hive), record).any { name -> changes.any { it.name == name } }) {
+            throw LeverFailure("registry values did not take")
+        }
+        return Reverified(record, changes.size, false)
     }
 
     /** Glibc Mesa reads $HOME/.drirc, and the guest HOME resolves to the container root. */
@@ -238,6 +311,7 @@ object OptimizeApplier {
                                 put("name", prior.name)
                                 put("prior", prior.lines?.let { JSONArray(it) } ?: JSONObject.NULL)
                                 put("applied", changes[i].raw?.let { WineRegistryText.canonical(it) } ?: JSONObject.NULL)
+                                put("raw", changes[i].raw ?: JSONObject.NULL)
                             },
                         )
                     }

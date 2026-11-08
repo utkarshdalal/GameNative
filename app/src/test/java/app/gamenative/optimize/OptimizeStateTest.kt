@@ -306,17 +306,17 @@ class OptimizeStateTest {
         assertEquals(listOf("k1"), back.kept)
 
         val day = 24L * 60 * 60 * 1000
-        assertTrue(back.isUsable(now + day, OptimizeProfile.BALANCED, key, ladder))
-        assertFalse(back.isUsable(now + 8 * day, OptimizeProfile.BALANCED, key, ladder))
-        assertFalse(back.isUsable(now, OptimizeProfile.PERFORMANCE, key, ladder))
-        assertFalse(back.isUsable(now, OptimizeProfile.BALANCED, key.copy(dxwrapper = "vkd3d"), ladder))
-        assertFalse(back.isUsable(now, OptimizeProfile.BALANCED, key.copy(fpsLimit = 30), ladder))
-        assertFalse(back.isUsable(now, OptimizeProfile.BALANCED, key, ladder.copy(kept = emptyList())))
-        assertFalse(back.isUsable(now, OptimizeProfile.BALANCED, key, ladder.copy(bad = listOf("witcher3_grass"))))
-        assertFalse(back.isUsable(now, OptimizeProfile.BALANCED, key, ladder.copy(tried = listOf(TriedRung("witcher3_grass", "a1b2c3d4", "worse")))))
+        assertTrue(back.isUsable(now + day, OptimizeProfile.BALANCED, key, ladder, null))
+        assertFalse(back.isUsable(now + 8 * day, OptimizeProfile.BALANCED, key, ladder, null))
+        assertFalse(back.isUsable(now, OptimizeProfile.PERFORMANCE, key, ladder, null))
+        assertFalse(back.isUsable(now, OptimizeProfile.BALANCED, key.copy(dxwrapper = "vkd3d"), ladder, null))
+        assertFalse(back.isUsable(now, OptimizeProfile.BALANCED, key.copy(fpsLimit = 30), ladder, null))
+        assertFalse(back.isUsable(now, OptimizeProfile.BALANCED, key, ladder.copy(kept = emptyList()), null))
+        assertFalse(back.isUsable(now, OptimizeProfile.BALANCED, key, ladder.copy(bad = listOf("witcher3_grass")), null))
+        assertFalse(back.isUsable(now, OptimizeProfile.BALANCED, key, ladder.copy(tried = listOf(TriedRung("witcher3_grass", "a1b2c3d4", "worse"))), null))
 
         val expiring = Rung.parse(JSONObject(rungJson).put("expires_at", "2027-01-01T00:00:00Z"))!!
-        assertFalse(prefetched.copy(rung = expiring).isUsable(now, OptimizeProfile.BALANCED, key, ladder))
+        assertFalse(prefetched.copy(rung = expiring).isUsable(now, OptimizeProfile.BALANCED, key, ladder, null))
         assertNull(OptimizeLocalState.fromJson(JSONObject(OptimizeLocalState().toJson().toString())).prefetched)
     }
 
@@ -345,8 +345,8 @@ class OptimizeStateTest {
         assertFalse(ladder.copy(kept = listOf(keptOtherLevers)).repeats(rung))
 
         val prefetched = PrefetchedRung(rung, now, OptimizeProfile.BALANCED, key, listOf("old_id"))
-        assertFalse(prefetched.isUsable(now, OptimizeProfile.BALANCED, key, ladder.copy(kept = listOf(keptSameLevers))))
-        assertTrue(prefetched.isUsable(now, OptimizeProfile.BALANCED, key, ladder.copy(kept = listOf(keptOtherLevers))))
+        assertFalse(prefetched.isUsable(now, OptimizeProfile.BALANCED, key, ladder.copy(kept = listOf(keptSameLevers)), null))
+        assertTrue(prefetched.isUsable(now, OptimizeProfile.BALANCED, key, ladder.copy(kept = listOf(keptOtherLevers)), null))
     }
 
     @Test

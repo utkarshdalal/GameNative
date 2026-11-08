@@ -196,6 +196,8 @@ sealed class Lever {
         val encoding: String,
         val createIfMissing: Boolean,
         val ops: List<FileOp>,
+        /** The file's write bits are cleared after the write, so the game cannot save over the changed keys. */
+        val readOnly: Boolean = false,
     ) : Lever() {
         override val type: String get() = TYPE_ENGINE_FILE
     }
@@ -241,6 +243,7 @@ sealed class Lever {
                         encoding = payload.optStringOrNull("encoding") ?: "default",
                         createIfMissing = payload.optBoolean("create_if_missing", false),
                         ops = ops,
+                        readOnly = payload.optBoolean("read_only", false),
                     )
                 }
                 TYPE_REGISTRY -> {
@@ -305,6 +308,8 @@ class Rung(
     val expiresAtMillis: Long?,
     /** Each file and registry value only moves toward lower quality from what the game has now. */
     val relative: Boolean = false,
+    /** The server rules build the rung came from. */
+    val rulesVersion: String? = null,
 ) {
     fun isExpired(nowMillis: Long): Boolean = expiresAtMillis != null && nowMillis > expiresAtMillis
 
@@ -328,6 +333,7 @@ class Rung(
                 levers = o.optJSONArray("levers").objects().map { Lever.parse(it) },
                 expiresAtMillis = o.optStringOrNull("expires_at")?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() },
                 relative = o.optBoolean("relative", false),
+                rulesVersion = o.optStringOrNull("rules_version"),
             )
         }
     }
@@ -359,7 +365,16 @@ data class Entitlement(val state: String, val trialGamesUsed: Int, val trialGame
 
 fun Entitlement?.limitOrDefault(): Int = this?.trialGamesLimit?.takeIf { it > 0 } ?: Entitlement.DEFAULT_TRIAL_GAMES_LIMIT
 
-data class NextRungResponse(val status: String, val messageId: String?, val rung: Rung?, val entitlement: Entitlement? = null) {
+data class NextRungResponse(
+    val status: String,
+    val messageId: String?,
+    val rung: Rung?,
+    val entitlement: Entitlement? = null,
+    val rulesVersion: String? = null,
+) {
+    /** The rules build that answered: the top-level value, else the rung's. */
+    val effectiveRulesVersion: String? get() = rulesVersion ?: rung?.rulesVersion
+
     companion object {
         const val STATUS_RUNG = "rung"
         const val STATUS_EXHAUSTED = "exhausted"
@@ -370,6 +385,7 @@ data class NextRungResponse(val status: String, val messageId: String?, val rung
             o.optStringOrNull("message_id"),
             Rung.parse(o.optJSONObject("rung")),
             Entitlement.fromJson(o.optJSONObject("entitlement")),
+            o.optStringOrNull("rules_version"),
         )
     }
 }
