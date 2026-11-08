@@ -390,7 +390,7 @@ object FrameThreadPlacement {
             }
             val errno = setAffinity(tid, mask(p.cores))
             if (errno == 0) placementApplied = true
-            if (prev?.role != p.role || prev.cores != p.cores) {
+            if (prev == null || prev.role != p.role || prev.cores != p.cores) {
                 val note = if (p.role == Role.FRAME) frameNote else ""
                 val failed = if (errno != 0) "; sched_setaffinity errno $errno" else ""
                 Timber.tag(TAG).i(
@@ -490,8 +490,11 @@ object FrameThreadPlacement {
                 return emptyList()
             }
 
-            val game = procs.filter { it.second !in ProcStatParser.excludedProcessNames }.maxByOrNull { it.third }
-            val tracked = buildList {
+            // Only Windows processes: gamescope, Xwayland or PulseAudio can outrun a light game.
+            val game = procs
+                .filter { it.second.endsWith(".exe") && it.second !in ProcStatParser.excludedProcessNames }
+                .maxByOrNull { it.third }
+            val tracked = buildList<Pair<Int, ProcessKind>> {
                 game?.let { add(it.first to ProcessKind.GAME) }
                 procs.filter { it.second == "wineserver" }.forEach { add(it.first to ProcessKind.WINESERVER) }
                 procs.filter { it.second in steamProcessNames }.forEach { add(it.first to ProcessKind.STEAM) }
