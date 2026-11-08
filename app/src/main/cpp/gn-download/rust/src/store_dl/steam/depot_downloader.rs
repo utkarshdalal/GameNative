@@ -316,6 +316,24 @@ pub fn filter_by_reachability(
         .collect()
 }
 
+/// Whether the run has a depot that can actually fetch CDN bytes, i.e. whether the pre-flight probe
+/// is worth its cost.
+///
+/// A depot already installed at the target manifest is a verify pass: its manifest is on disk and
+/// the write phase only re-hashes chunks, fetching none unless a hash fails. A depot that is NOT at
+/// the target manifest (install/update) or whose previous run was interrupted (the tree may hold a
+/// half-written build, so it is walked in full) can fetch bytes and benefits from the probe. A pure
+/// verify run (every resolved depot already at its target) therefore skips it; a verify that does
+/// find a mismatch pays one unprobed request, not the mainland stall this probe exists to prevent.
+fn needs_preflight_probe<'a>(
+    cfg: &DepotConfigStore,
+    depots: impl IntoIterator<Item = &'a ResolvedDepotSpec>,
+) -> bool {
+    depots.into_iter().any(|depot| {
+        !cfg.has_completed(depot.depot_id, depot.manifest_id) || cfg.interrupted(depot.depot_id)
+    })
+}
+
 /// Drops CDN hosts that do not answer one bounded HTTP request before the first chunk is
 /// requested (Phase 2).
 ///
@@ -327,6 +345,7 @@ pub fn filter_by_reachability(
 ///
 /// Runs right before Phase 2 on purpose: manifest resolution (and a run whose depots are all
 /// installed/skipped, which never reaches Phase 2) must not pay for a probe it does not need.
+/// The caller additionally skips it for a pure verify pass - see [`needs_preflight_probe`].
 ///
 /// The list is never emptied: when nothing answers the original set is kept, because the probe
 /// can also be wrong (ICMP-filtered host that still serves HTTP) and a pool of one dead host
@@ -915,14 +934,16 @@ cannot be enumerated for ownership",
         }
     }
 
-    // ── Pre-flight CDN probe, deferred to here on purpose: manifest resolution above (and a
-    // run with nothing resolved, which never reaches Phase 2) must not pay for a network probe
-    // it does not need. This is the last point before the first real CDN request; see the doc
-    // comment.
-    let usable_servers = if resolved.is_empty() {
-        usable_servers
-    } else {
+    // ── Pre-flight CDN probe, deferred AND gated on actual work: manifest resolution above (and a
+    // run with nothing resolved) must not pay for a network probe, and a pure verify pass over
+    // depots already at their installed manifest only re-hashes chunks instead of fetching them, so
+    // it needs no probe either. This is the last point before Phase 2 can ask the CDN for bytes.
+    let needs_probe = !resolved.is_empty()
+        && needs_preflight_probe(&cfg, resolved.iter().map(|entry| entry.0));
+    let usable_servers = if needs_probe {
         quarantine_unreachable_cdn_hosts(usable_servers, ca_bundle_path, cancel, log)
+    } else {
+        usable_servers
     };
 
     // ── Phase 2: all metadata resolved — download the depots in order.
@@ -1522,6 +1543,31 @@ mod tests {
         assert_eq!(refreshed_request_code(42, Some(42)), None, "unchanged, retrying changes nothing");
         assert_eq!(refreshed_request_code(42, Some(43)), Some(43));
         assert_eq!(refreshed_request_code(0, Some(7)), Some(7), "none → one is an improvement");
+    }
+
+    #[test]
+    fn preflight_probe_is_gated_on_a_depot_that_can_fetch_bytes() {
+        let dir = temp_dir("preflight_gate");
+        let config_dir = config_dir_path(&dir);
+        fs::create_dir_all(&config_dir).unwrap();
+        let spec = ResolvedDepotSpec {
+            depot_id: 100,
+            manifest_id: 555,
+            ..Default::default()
+        };
+        // Nothing installed yet: an install will fetch bytes, so the probe runs.
+        let store = DepotConfigStore::load(&config_dir);
+        assert!(needs_preflight_probe(&store, [&spec]));
+
+        // The target build is now the installed one: a verify pass only re-hashes, no probe.
+        fs::create_dir_all(store.completed_dir()).unwrap();
+        fs::write(store.completed_manifest_path(100, 555), b"m").unwrap();
+        let store = DepotConfigStore::load(&config_dir);
+        assert!(!needs_preflight_probe(&store, [&spec]));
+
+        // An interrupted previous run walks the depot in full and can re-fetch: probe again.
+        assert!(store.begin_depot(100, 555));
+        assert!(needs_preflight_probe(&store, [&spec]));
     }
 
     #[test]

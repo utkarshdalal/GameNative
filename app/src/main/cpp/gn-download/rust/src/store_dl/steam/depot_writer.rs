@@ -950,6 +950,10 @@ struct ServerHealth {
     /// `consecutive_errors` so a 5xx burst cannot escalate the first blackhole failure to a
     /// one-minute park. Drives the host-down ladder in [`FetchScheduler::on_error`].
     host_down_streak: u32,
+    /// When the current host-down park began. Only an attempt DISPATCHED after this instant is
+    /// fresh evidence for the ladder: a request that was already in flight when the host cooled
+    /// (dispatched before this instant) reports late and must not escalate 3 s → 15 s.
+    host_down_since: Option<Instant>,
     cooldown_until: Option<Instant>,
     /// Rolling (time, bytes) completion events for zombie detection: a trickling host resets the
     /// body-idle timeout forever, so liveness must be judged on THROUGHPUT, not on bytes-arrived.
@@ -1116,6 +1120,7 @@ impl FetchScheduler {
         h.consecutive_errors = 0;
         // The host answered: the next Timeout is a first host-down failure, not a continuation.
         h.host_down_streak = 0;
+        h.host_down_since = None;
         h.cooldown_until = None;
         h.recent.push_back((now, bytes));
     }
@@ -1178,21 +1183,33 @@ impl FetchScheduler {
         zombies
     }
 
-    fn on_error(&mut self, server_idx: usize, now: Instant, kind: FetchFailKind) {
+    /// Record one failed attempt. `dispatched_at` is when THIS attempt was sent: the ladder only
+    /// advances for requests dispatched after the current park began, so a late completion from the
+    /// batch that was already in flight when the host cooled cannot escalate 3 s → 15 s → 60 s.
+    fn on_error(
+        &mut self,
+        server_idx: usize,
+        now: Instant,
+        kind: FetchFailKind,
+        dispatched_at: Instant,
+    ) {
         let host_down = matches!(kind, FetchFailKind::Timeout | FetchFailKind::Connect);
         let h = self.server_health_mut(server_idx);
         h.consecutive_errors = h.consecutive_errors.saturating_add(1);
         if host_down {
-            // Only a NEW attempt advances the ladder: a cooldown already in force means the host is
-            // still parked, and failures arriving from requests dispatched before it cooled must
-            // not each advance 3 s → 15 s → 60 s.
-            if h.cooldown_until.map_or(true, |t| t <= now) {
+            // Only a NEW attempt advances the ladder: one dispatched after the current park began.
+            // Concurrent requests from the batch already in flight were dispatched before it, so
+            // their (possibly late) timeouts are the same failure episode, not fresh evidence.
+            let new_attempt = h.host_down_since.map_or(true, |since| dispatched_at > since);
+            if new_attempt {
                 h.host_down_streak = h.host_down_streak.saturating_add(1);
+                h.host_down_since = Some(now);
             }
         } else {
             // The host answered (5xx/429/404/...): it is not a blackhole, so a preceding error
             // burst must not escalate the next host-down failure.
             h.host_down_streak = 0;
+            h.host_down_since = None;
         }
         let mut backoff = retry_backoff_millis(h.consecutive_errors);
         if host_down {
@@ -1649,6 +1666,10 @@ struct FetchDone {
     attempts: u32,
     reserve: u64,
     server_idx: usize,
+    /// When this attempt was dispatched. The host-down ladder only advances for attempts that were
+    /// sent after the previous park began; a late completion from the batch already in flight when
+    /// the host cooled is not new evidence.
+    started: Instant,
     elapsed: Duration,
     res: Result<Vec<u8>, AsyncFetchError>,
 }
@@ -3333,6 +3354,7 @@ async fn run_async_fetch_driver(
                     attempts: attempts + 1,
                     reserve,
                     server_idx,
+                    started,
                     elapsed: started.elapsed(),
                     res,
                 }
@@ -3386,7 +3408,7 @@ async fn run_async_fetch_driver(
             }
             Err(err) => {
                 in_flight.fetch_sub(done.reserve, Ordering::Relaxed);
-                sched.on_error(done.server_idx, now, err.kind);
+                sched.on_error(done.server_idx, now, err.kind, done.started);
                 // Hang signature: repeated consecutive errors on one host (the body-idle timeout
                 // makes a mid-body stall visible HERE). Mark it bad so the CDN probe re-probes a
                 // replacement before the cache TTL expires.
@@ -6470,7 +6492,7 @@ rename, a missing hash and a new file all fall through to the normal walk"
         // Both sampled now → exploit picks the faster host.
         assert_eq!(sched.pick(now), Some(a));
         // An error cools + demotes the fast host; it recovers once the cooldown expires.
-        sched.on_error(a, now, FetchFailKind::Timeout);
+        sched.on_error(a, now, FetchFailKind::Timeout, now);
         assert!(!sched.eligible(a, now));
         let later = now + Duration::from_secs(10);
         assert!(sched.eligible(a, later));
@@ -6483,25 +6505,25 @@ rename, a missing hash and a new file all fall through to the normal walk"
         let servers = vec![srv("down")];
         let mut sched = FetchScheduler::new(&servers, 2);
         let t0 = Instant::now();
-        sched.on_error(0, t0, FetchFailKind::Timeout);
+        sched.on_error(0, t0, FetchFailKind::Timeout, t0);
         assert_eq!(
             sched.server_health(0).cooldown_until,
             Some(t0 + Duration::from_millis(3_000))
         );
         let t1 = t0 + Duration::from_millis(3_001);
-        sched.on_error(0, t1, FetchFailKind::Timeout);
+        sched.on_error(0, t1, FetchFailKind::Timeout, t1);
         assert_eq!(
             sched.server_health(0).cooldown_until,
             Some(t1 + Duration::from_millis(15_000))
         );
         let t2 = t1 + Duration::from_millis(15_001);
-        sched.on_error(0, t2, FetchFailKind::Timeout);
+        sched.on_error(0, t2, FetchFailKind::Timeout, t2);
         assert_eq!(
             sched.server_health(0).cooldown_until,
             Some(t2 + Duration::from_millis(60_000))
         );
         let t3 = t2 + Duration::from_millis(60_001);
-        sched.on_error(0, t3, FetchFailKind::Timeout);
+        sched.on_error(0, t3, FetchFailKind::Timeout, t3);
         assert_eq!(
             sched.server_health(0).cooldown_until,
             Some(t3 + Duration::from_millis(60_000)),
@@ -6510,11 +6532,38 @@ rename, a missing hash and a new file all fall through to the normal walk"
         // A success clears the ladder for the next blackhole failure.
         sched.on_success(0, 1_000_000, Duration::from_millis(100), t3);
         assert_eq!(sched.server_health(0).host_down_streak, 0);
-        sched.on_error(0, t3, FetchFailKind::Timeout);
+        sched.on_error(0, t3, FetchFailKind::Timeout, t3);
         assert_eq!(
             sched.server_health(0).cooldown_until,
             Some(t3 + Duration::from_millis(3_000)),
             "success restarts the ladder at 3 s"
+        );
+    }
+
+    #[test]
+    fn fetch_scheduler_ignores_late_failures_from_a_pre_cooldown_batch() {
+        // Two chunk requests are dispatched together. The first Timeout parks the host for 3 s; the
+        // second (same batch, dispatched before the park) reports LATE after the cooldown expired.
+        // That is the same failure episode, not a new probe, and must not advance the ladder.
+        let servers = vec![srv("down")];
+        let mut sched = FetchScheduler::new(&servers, 2);
+        let t0 = Instant::now();
+        sched.on_error(0, t0, FetchFailKind::Timeout, t0);
+        assert_eq!(sched.server_health(0).host_down_streak, 1);
+        let late = t0 + Duration::from_millis(5_000);
+        sched.on_error(0, late, FetchFailKind::Timeout, t0);
+        assert_eq!(
+            sched.server_health(0).host_down_streak,
+            1,
+            "a late completion from the batch already in flight is not fresh evidence"
+        );
+        // A request dispatched after the park began is fresh evidence: 15 s.
+        let fresh = late + Duration::from_millis(3_100);
+        sched.on_error(0, fresh, FetchFailKind::Timeout, fresh);
+        assert_eq!(sched.server_health(0).host_down_streak, 2);
+        assert_eq!(
+            sched.server_health(0).cooldown_until,
+            Some(fresh + Duration::from_millis(15_000))
         );
     }
 
@@ -6531,7 +6580,7 @@ rename, a missing hash and a new file all fall through to the normal walk"
             "health is per distinct host, not per entry"
         );
         let now = Instant::now();
-        sched.on_error(0, now, FetchFailKind::Timeout);
+        sched.on_error(0, now, FetchFailKind::Timeout, now);
         assert_eq!(
             sched.server_health(1).cooldown_until,
             sched.server_health(0).cooldown_until

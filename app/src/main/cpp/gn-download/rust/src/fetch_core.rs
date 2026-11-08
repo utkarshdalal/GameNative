@@ -949,6 +949,10 @@ struct FetchDone {
     attempts: u32,
     reserve: u64,
     server_idx: usize,
+    /// When this attempt was dispatched. The host-down ladder only advances for attempts that were
+    /// sent after the previous park began; a late completion from the batch already in flight when
+    /// the host cooled is not new evidence.
+    started: Instant,
     elapsed: Duration,
     res: Result<Fetched, AsyncFetchError>,
 }
@@ -1061,7 +1065,7 @@ async fn run_driver(ctx: DriverCtx<'_>) {
                 SinkVerdict::Fatal => break 'outer,
                 SinkVerdict::Retry(message) => {
                     let now = Instant::now();
-                    sched.on_error(fb.server_idx, now, FetchFailKind::Other);
+                    sched.on_error(fb.server_idx, now, FetchFailKind::Other, now);
                     if window.record_err(now, FetchFailKind::Other) {
                         log(&window.summary_line(label, inflight.len(), now));
                     }
@@ -1179,6 +1183,7 @@ async fn run_driver(ctx: DriverCtx<'_>) {
                     attempts: attempts + 1,
                     reserve,
                     server_idx,
+                    started,
                     elapsed: started.elapsed(),
                     res,
                 }
@@ -1293,7 +1298,7 @@ window_shrink={} msg={}",
                         ));
                     }
                 }
-                sched.on_error(done.server_idx, now, err.kind);
+                sched.on_error(done.server_idx, now, err.kind, done.started);
                 if !client_rejection && window.record_err(now, err.kind) {
                     log(&window.summary_line(label, inflight.len(), now));
                 }
@@ -1430,6 +1435,10 @@ struct ServerHealth {
     /// `consecutive_errors` so a 5xx burst cannot escalate the first blackhole failure to a
     /// one-minute park. Drives the host-down ladder in [`FetchScheduler::on_error`].
     host_down_streak: u32,
+    /// When the current host-down park began. Only an attempt DISPATCHED after this instant is
+    /// fresh evidence for the ladder: a request that was already in flight when the host cooled
+    /// (dispatched before this instant) reports late and must not escalate 3 s → 15 s.
+    host_down_since: Option<Instant>,
     cooldown_until: Option<Instant>,
 }
 
@@ -1542,24 +1551,37 @@ impl FetchScheduler {
         h.consecutive_errors = 0;
         // The host answered: the next Timeout is a first host-down failure, not a continuation.
         h.host_down_streak = 0;
+        h.host_down_since = None;
         h.cooldown_until = None;
     }
 
-    fn on_error(&mut self, server_idx: usize, now: Instant, kind: FetchFailKind) {
+    /// Record one failed attempt. `dispatched_at` is when THIS attempt was sent: the ladder only
+    /// advances for requests dispatched after the current park began, so a late completion from the
+    /// batch that was already in flight when the host cooled cannot escalate 3 s → 15 s → 60 s.
+    fn on_error(
+        &mut self,
+        server_idx: usize,
+        now: Instant,
+        kind: FetchFailKind,
+        dispatched_at: Instant,
+    ) {
         let host_down = matches!(kind, FetchFailKind::Timeout | FetchFailKind::Connect);
         let h = self.server_health_mut(server_idx);
         h.consecutive_errors = h.consecutive_errors.saturating_add(1);
         if host_down {
-            // Only a NEW attempt advances the ladder: a cooldown already in force means the host is
-            // still parked, and failures arriving from requests dispatched before it cooled must
-            // not each advance 3 s → 15 s → 60 s.
-            if h.cooldown_until.map_or(true, |t| t <= now) {
+            // Only a NEW attempt advances the ladder: one dispatched after the current park began.
+            // Concurrent requests from the batch already in flight were dispatched before it, so
+            // their (possibly late) timeouts are the same failure episode, not fresh evidence.
+            let new_attempt = h.host_down_since.map_or(true, |since| dispatched_at > since);
+            if new_attempt {
                 h.host_down_streak = h.host_down_streak.saturating_add(1);
+                h.host_down_since = Some(now);
             }
         } else {
             // The host answered (5xx/429/404/...): it is not a blackhole, so a preceding error
             // burst must not escalate the next host-down failure.
             h.host_down_streak = 0;
+            h.host_down_since = None;
         }
         let mut backoff = retry_backoff_millis(h.consecutive_errors);
         if host_down {
@@ -2062,9 +2084,9 @@ mod tests {
         assert_eq!(s.pick(now), Some(1));
         s.on_success(1, 1_000_000, Duration::from_millis(500));
         assert_eq!(s.pick(now), Some(0));
-        s.on_error(0, now, FetchFailKind::Timeout);
+        s.on_error(0, now, FetchFailKind::Timeout, now);
         assert_eq!(s.pick(now), Some(1));
-        s.on_error(1, now, FetchFailKind::RateLimited);
+        s.on_error(1, now, FetchFailKind::RateLimited, now);
         assert_eq!(s.pick(now), None);
         assert_eq!(s.pick(now + Duration::from_secs(6)), Some(0));
     }
@@ -2448,7 +2470,7 @@ mod tests {
     }
     /// Drive one failure through the scheduler and return the cooldown deadline it set.
     fn fail(s: &mut FetchScheduler, idx: usize, now: Instant, kind: FetchFailKind) -> Instant {
-        s.on_error(idx, now, kind);
+        s.on_error(idx, now, kind, now);
         s.server_health(idx)
             .cooldown_until
             .expect("on_error always sets a cooldown")
@@ -2544,6 +2566,36 @@ mod tests {
             t2 + Duration::from_millis(15_000)
         );
         assert_eq!(s.server_health(0).host_down_streak, 2);
+    }
+
+    #[test]
+    fn scheduler_late_failure_from_a_pre_cooldown_attempt_does_not_advance_the_ladder() {
+        let hosts = vec!["down".to_string()];
+        let mut s = FetchScheduler::new(&hosts, 2);
+        let t0 = Instant::now();
+        // Two requests go out together. The first failure parks the host for 3 s.
+        assert_eq!(
+            fail(&mut s, 0, t0, FetchFailKind::Timeout),
+            t0 + Duration::from_millis(3_000)
+        );
+        // The second request (same batch, dispatched at t0) reports LATE, after the cooldown
+        // expired. It is not a new probe of the host, so the ladder must stay at its first rung —
+        // only the park may be kept alive.
+        let late = t0 + Duration::from_millis(5_000);
+        s.on_error(0, late, FetchFailKind::Timeout, t0);
+        assert_eq!(
+            s.server_health(0).host_down_streak,
+            1,
+            "a late completion from the batch already in flight is not fresh evidence"
+        );
+        // A request dispatched after the park began IS new evidence: 15 s.
+        let fresh = late + Duration::from_millis(3_100);
+        s.on_error(0, fresh, FetchFailKind::Timeout, fresh);
+        assert_eq!(s.server_health(0).host_down_streak, 2);
+        assert_eq!(
+            s.server_health(0).cooldown_until,
+            Some(fresh + Duration::from_millis(15_000))
+        );
     }
 
     #[test]
