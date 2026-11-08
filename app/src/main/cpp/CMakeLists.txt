@@ -5,6 +5,18 @@ Project(Pluvia)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -Wno-unused-function -Wimplicit-function-declaration")
 set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} -s")
 
+# Android 15+ can boot with a 16 KB page size, and a shared (or module) library linked for 4 KB
+# pages cannot be mapped there at all (the loader requires p_align >= the system page size).
+# winlator and vulkan_renderer ask for 16 KB per target; virglrenderer, patchelf, adrenotools and
+# dxbc build their own .so and did not, so whatever is built from this CMakeLists ends up correct
+# by default. Note this only covers libraries built here: the shipped APK gets its jniLibs from
+# src/{legacy,modern}/jniLibs, which are refreshed by building the disabled externalNativeBuild
+# targets and copying the output - the modern flavour's copies are already 16 KB aligned, the
+# legacy ones are not.
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,max-page-size=16384")
+# CMAKE_SHARED_LINKER_FLAGS does not cover MODULE targets; keep both aligned.
+set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,-z,max-page-size=16384")
+
 #add_subdirectory(proot)
 add_subdirectory(virglrenderer)
 add_subdirectory(lsfg-vk-android/thirdparty/dxbc EXCLUDE_FROM_ALL)
