@@ -76,6 +76,7 @@ import app.gamenative.ui.component.dialog.LoadingDialog
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
@@ -655,6 +656,18 @@ fun SettingsGroupInterface(
                 // Steps are the positions BETWEEN the ends: 5 positions need 3.
                 steps = downloadSpeedValues.size - 2
             )
+            // Persist the latest selection even when the screen is torn down before the slider's
+            // settled callback runs (navigating away mid-drag): the ordered setter keeps this write
+            // in selection order with the settled one.
+            val latestSpeedIndex by rememberUpdatedState(downloadSpeedValue)
+            DisposableEffect(downloadSpeedValues) {
+                onDispose {
+                    val index = latestSpeedIndex
+                        .roundToInt()
+                        .coerceIn(0, downloadSpeedValues.lastIndex)
+                    PrefManager.setDownloadSpeedOrdered(downloadSpeedValues[index])
+                }
+            }
             // Labels below slider. Each label takes an equal share of the row (the Row is
             // fillMaxWidth) so five labels fit narrow windows instead of overflowing.
             Row(

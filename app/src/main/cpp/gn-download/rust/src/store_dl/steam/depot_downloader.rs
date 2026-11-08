@@ -333,13 +333,29 @@ pub fn filter_by_reachability(
 /// "installed". Corruption that keeps the correct length can only be found by the verify hash pass
 /// itself - which runs after the chunk pool is chosen, so those few repair fetches fall back to the
 /// normal host rotation/retry and the stall watchdog instead of a probe.
-fn installed_tree_needs_repair(manifest: &ContentManifest, install_dir: &str) -> bool {
+fn installed_tree_needs_repair(
+    manifest: &ContentManifest,
+    install_dir: &str,
+    cancel: Option<&AtomicBool>,
+) -> bool {
+    // One resolver for the whole walk: a big verify install has ~10^5 files over a handful of
+    // directories, and per-file `resolve_existing_case` would re-list the same directories over and
+    // over before the writer's own cached planning pass even starts.
+    let mut resolver = crate::store_dl::CaseResolver::new();
     manifest.files.iter().any(|file| {
+        if cancel.is_some_and(|cancel| cancel.load(Ordering::Relaxed)) {
+            return false; // the caller aborts at its next cancel check
+        }
         let is_regular = file.linktarget.is_empty() && (file.flags & DEPOT_FILE_FLAG_DIRECTORY) == 0;
         if !is_regular {
             return false;
         }
-        let rel = crate::store_dl::resolve_existing_case(install_dir, &file.filename);
+        // Validate BEFORE touching the filesystem: a malformed manifest path must not make this
+        // preflight scan outside install_dir. The writer's own guard runs later - too late here.
+        if !crate::store_dl::rel_path_is_safe(&file.filename) {
+            return false;
+        }
+        let rel = resolver.resolve(install_dir, &file.filename);
         match fs::metadata(Path::new(install_dir).join(&rel)) {
             Ok(meta) => !meta.is_file() || meta.len() != file.size,
             Err(_) => true,
@@ -365,6 +381,24 @@ fn needs_preflight_probe<'a>(
     })
 }
 
+/// What the pre-flight probe decided for this download: the pool to use, plus the effective host
+/// names (`vhost|host`) it removed. Callers must keep those names out of later pool extensions -
+/// `ProbeHints::extended_servers` re-adds cached winners from its own state.
+pub struct PreflightProbe {
+    pub servers: Vec<CContentServerDirectoryServerInfo>,
+    pub unreachable_hosts: Vec<String>,
+}
+
+impl PreflightProbe {
+    /// The input pool unchanged, with nothing quarantined.
+    fn unchanged(servers: Vec<CContentServerDirectoryServerInfo>) -> Self {
+        Self {
+            servers,
+            unreachable_hosts: Vec::new(),
+        }
+    }
+}
+
 /// Drops CDN hosts that do not answer one bounded HTTP request before the first chunk is
 /// requested (Phase 2).
 ///
@@ -387,12 +421,12 @@ pub fn quarantine_unreachable_cdn_hosts(
     ca_bundle_path: &str,
     cancel: Option<&AtomicBool>,
     log: Option<crate::store_dl::steam::depot_writer::DepotLogCallback<'_>>,
-) -> Vec<CContentServerDirectoryServerInfo> {
+) -> PreflightProbe {
     if servers.len() < 2 {
-        return servers;
+        return PreflightProbe::unchanged(servers);
     }
     if cancel.is_some_and(|cancel| cancel.load(Ordering::Relaxed)) {
-        return servers;
+        return PreflightProbe::unchanged(servers);
     }
     let endpoints: Vec<Option<ProbeEndpoint>> =
         servers.iter().map(ProbeEndpoint::from_server).collect();
@@ -402,10 +436,10 @@ pub fn quarantine_unreachable_cdn_hosts(
         if let Some(log) = log {
             log("cdn-probe: probe client unavailable, keeping the full pool");
         }
-        return servers;
+        return PreflightProbe::unchanged(servers);
     }
     if cancel.is_some_and(|cancel| cancel.load(Ordering::Relaxed)) {
-        return servers;
+        return PreflightProbe::unchanged(servers);
     }
     // Re-expand the probe answers onto the original server indices (servers without a hostname
     // have no probe target and stay unreachable).
@@ -446,7 +480,44 @@ pub fn quarantine_unreachable_cdn_hosts(
             dead.join(", ")
         ));
     }
-    kept
+    // Only report an exclusion set when the probe actually filtered the pool: if nothing answered
+    // the whole pool was kept (see above) and nothing may be filtered out of later extensions.
+    let unreachable_hosts: Vec<String> = if kept.len() == total {
+        Vec::new()
+    } else {
+        endpoints
+            .iter()
+            .zip(reachable_by_server.iter())
+            .filter(|(endpoint, reachable)| {
+                **reachable == false && endpoint.is_some()
+            })
+            .filter_map(|(endpoint, _)| endpoint.as_ref().map(|endpoint| endpoint.host.clone()))
+            .collect()
+    };
+    PreflightProbe {
+        servers: kept,
+        unreachable_hosts,
+    }
+}
+
+/// Drop servers whose effective host did not answer the pre-flight probe.
+///
+/// `ProbeHints` keeps cached winners in its own state and `extended_servers` re-adds them at every
+/// depot boundary; without this filter a quarantined cached winner would come back for later
+/// depots and could receive chunks again.
+fn without_unreachable_hosts(
+    servers: Vec<CContentServerDirectoryServerInfo>,
+    unreachable_hosts: &HashSet<String>,
+) -> Vec<CContentServerDirectoryServerInfo> {
+    if unreachable_hosts.is_empty() {
+        return servers;
+    }
+    servers
+        .into_iter()
+        .filter(|server| {
+            preferred_host(server).is_none_or(|host| !unreachable_hosts.contains(host))
+        })
+        .collect()
 }
 
 /// Region preference for the CDN pool: Valve's own SteamPipe caches are named
@@ -972,14 +1043,19 @@ cannot be enumerated for ownership",
     let needs_probe = !resolved.is_empty()
         && resolved.iter().any(|(depot, manifest)| {
             needs_preflight_probe(&cfg, [*depot].into_iter())
-                || installed_tree_needs_repair(manifest, install_dir)
+                || installed_tree_needs_repair(manifest, install_dir, cancel)
         });
+    // Effective hosts the probe removed: the per-depot pool extension below re-adds cached winners
+    // from `ProbeHints`, so it must be filtered by this set.
+    let mut unreachable_hosts: HashSet<String> = HashSet::new();
     let usable_servers = if needs_probe {
         // Include the cache-seeded promoted hosts in the reachability check too: the depot loop
         // appends them via `probe_hints.extended_servers`, and a cached winner that is unreachable
         // would otherwise skip the pre-flight and receive chunks.
         let seeded = probe_hints.extended_servers(&usable_servers);
-        quarantine_unreachable_cdn_hosts(seeded, ca_bundle_path, cancel, log)
+        let probe = quarantine_unreachable_cdn_hosts(seeded, ca_bundle_path, cancel, log);
+        unreachable_hosts.extend(probe.unreachable_hosts);
+        probe.servers
     } else {
         usable_servers
     };
@@ -1110,7 +1186,10 @@ chunks_trusted={}",
         // Promote median-beating foreign caches the probe has found so far (cache-seeded on
         // depot 1, live-probe winners from depot 2 onward). Assigned servers always come first;
         // promoted hosts are seeded/ranked/demoted by the same scheduler paths as assigned ones.
-        let depot_servers = probe_hints.extended_servers(&usable_servers);
+        let depot_servers = without_unreachable_hosts(
+            probe_hints.extended_servers(&usable_servers),
+            &unreachable_hosts,
+        );
         if depot_servers.len() != usable_servers.len() {
             if let Some(log) = log {
                 log(&format!(
@@ -1596,20 +1675,57 @@ mod tests {
         }];
         let root = dir.to_str().unwrap();
         // Missing file: a verify pass will fetch this chunk, so probe.
-        assert!(installed_tree_needs_repair(&manifest, root));
+        assert!(installed_tree_needs_repair(&manifest, root, None));
         // Wrong length: also a repair fetch.
         fs::write(dir.join("Game/game.exe"), b"123").unwrap();
-        assert!(installed_tree_needs_repair(&manifest, root));
+        assert!(installed_tree_needs_repair(&manifest, root, None));
         // Right length: nothing to fetch on shape alone (content is the hash pass's job).
         fs::write(dir.join("Game/game.exe"), b"12345").unwrap();
-        assert!(!installed_tree_needs_repair(&manifest, root));
+        assert!(!installed_tree_needs_repair(&manifest, root, None));
         // Directories/symlinks have no chunk fetches of their own.
         manifest.files.push(FileMapping {
             filename: "Game".into(),
             flags: DEPOT_FILE_FLAG_DIRECTORY,
             ..Default::default()
         });
-        assert!(!installed_tree_needs_repair(&manifest, root));
+        assert!(!installed_tree_needs_repair(&manifest, root, None));
+        // A path that escapes install_dir must not be stat'ed at all (the guard runs before the
+        // filesystem access); the writer validates it later.
+        manifest.files.push(FileMapping {
+            filename: "../outside.bin".into(),
+            size: 1,
+            ..Default::default()
+        });
+        assert!(!installed_tree_needs_repair(&manifest, root, None));
+    }
+
+    #[test]
+    fn unreachable_preflight_hosts_stay_out_of_later_pool_extensions() {
+        use crate::store_dl::steam::pb::ccontentserverdirectory::CContentServerDirectoryServerInfo;
+        let server = |host: &str, vhost: &str| CContentServerDirectoryServerInfo {
+            host: host.into(),
+            vhost: vhost.into(),
+            ..Default::default()
+        };
+        let pool = vec![
+            server("assigned.steamcontent.com", ""),
+            server("203.0.113.7", "dead-winner.example"),
+            server("203.0.113.8", "live-winner.example"),
+        ];
+        let mut unreachable = HashSet::new();
+        unreachable.insert("dead-winner.example".to_string());
+        let kept = without_unreachable_hosts(pool.clone(), &unreachable);
+        let hosts: Vec<&str> = kept
+            .iter()
+            .map(|server| preferred_host(server).unwrap_or_default())
+            .collect();
+        assert_eq!(
+            hosts,
+            ["assigned.steamcontent.com", "live-winner.example"],
+            "the quarantined cached winner must not be re-added by a later extension"
+        );
+        // No exclusions: the pool passes through untouched (full-pool fallback behaviour).
+        assert_eq!(without_unreachable_hosts(pool.clone(), &HashSet::new()), pool);
     }
 
     #[test]
@@ -2128,8 +2244,9 @@ mod tests {
         let cancel = AtomicBool::new(true);
         // Pre-cancelled: no probe thread is spawned, and the caller's own cancel check decides
         // what happens next.
-        let kept = quarantine_unreachable_cdn_hosts(pool.clone(), "", Some(&cancel), None);
-        assert_eq!(kept, pool);
+        let probed = quarantine_unreachable_cdn_hosts(pool.clone(), "", Some(&cancel), None);
+        assert_eq!(probed.servers, pool);
+        assert!(probed.unreachable_hosts.is_empty());
     }
 
     #[test]

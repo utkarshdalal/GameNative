@@ -950,10 +950,12 @@ struct ServerHealth {
     /// `consecutive_errors` so a 5xx burst cannot escalate the first blackhole failure to a
     /// one-minute park. Drives the host-down ladder in [`FetchScheduler::on_error`].
     host_down_streak: u32,
-    /// When the current host-down park began. Only an attempt DISPATCHED after this instant is
-    /// fresh evidence for the ladder: a request that was already in flight when the host cooled
-    /// (dispatched before this instant) reports late and must not escalate 3 s → 15 s.
-    host_down_since: Option<Instant>,
+    /// When a host-down failure last advanced the ladder. Only an attempt DISPATCHED after this
+    /// instant is fresh evidence: a request already in flight when the host cooled reports late and
+    /// must not escalate 3 s → 15 s. An ANSWERED error (5xx/429) resets the streak but deliberately
+    /// keeps this timestamp, so a queued timeout from before the answer cannot re-arm an expired
+    /// park either.
+    last_host_down_at: Option<Instant>,
     cooldown_until: Option<Instant>,
     /// Rolling (time, bytes) completion events for zombie detection: a trickling host resets the
     /// body-idle timeout forever, so liveness must be judged on THROUGHPUT, not on bytes-arrived.
@@ -1137,7 +1139,7 @@ impl FetchScheduler {
         h.consecutive_errors = 0;
         // The host answered: the next Timeout is a first host-down failure, not a continuation.
         h.host_down_streak = 0;
-        h.host_down_since = None;
+        h.last_host_down_at = None;
         h.cooldown_until = None;
         h.recent.push_back((now, bytes));
     }
@@ -1218,18 +1220,20 @@ impl FetchScheduler {
             // Concurrent requests from the batch already in flight were dispatched before it, so
             // their (possibly late) timeouts are the same failure episode. They must neither
             // advance the ladder nor extend/re-arm a park that may already have expired.
-            let new_attempt = h.host_down_since.map_or(true, |since| dispatched_at > since);
+            let new_attempt = h
+                .last_host_down_at
+                .map_or(true, |last| dispatched_at > last);
             if !new_attempt {
                 h.ewma_bps *= 0.5;
                 return;
             }
             h.host_down_streak = h.host_down_streak.saturating_add(1);
-            h.host_down_since = Some(now);
+            h.last_host_down_at = Some(now);
         } else {
             // The host answered (5xx/429/404/...): it is not a blackhole, so a preceding error
-            // burst must not escalate the next host-down failure.
+            // burst must not escalate the next host-down failure. Keep `last_host_down_at`: a
+            // timeout queued before the answer must not re-arm an expired park.
             h.host_down_streak = 0;
-            h.host_down_since = None;
         }
         let mut backoff = retry_backoff_millis(h.consecutive_errors);
         if host_down {
@@ -6591,6 +6595,45 @@ rename, a missing hash and a new file all fall through to the normal walk"
         assert_eq!(
             sched.server_health(0).cooldown_until,
             Some(fresh + Duration::from_millis(15_000))
+        );
+    }
+
+    #[test]
+    fn fetch_scheduler_answered_error_resets_streak_but_keeps_park_timestamp() {
+        // Steam-path parity: a 5xx proves the host answers (streak resets), but a timeout queued
+        // before that answer must not advance the ladder or re-arm an expired park.
+        let servers = vec![srv("down")];
+        let mut sched = FetchScheduler::new(&servers, 2);
+        let t0 = Instant::now();
+        sched.on_error(0, t0, FetchFailKind::Timeout, t0);
+        assert_eq!(sched.server_health(0).host_down_streak, 1);
+        sched.on_error(
+            0,
+            t0 + Duration::from_millis(1_000),
+            FetchFailKind::ServerFault,
+            t0,
+        );
+        assert_eq!(sched.server_health(0).host_down_streak, 0);
+        let queued = t0 + Duration::from_millis(4_000);
+        sched.on_error(0, queued, FetchFailKind::Timeout, t0);
+        assert_eq!(
+            sched.server_health(0).host_down_streak,
+            0,
+            "a queued timeout is not fresh evidence"
+        );
+        assert!(
+            sched
+                .server_health(0)
+                .cooldown_until
+                .map_or(true, |deadline| deadline <= queued),
+            "a queued timeout must not re-arm an expired park"
+        );
+        let fresh = t0 + Duration::from_millis(4_100);
+        sched.on_error(0, fresh, FetchFailKind::Timeout, fresh);
+        assert_eq!(sched.server_health(0).host_down_streak, 1);
+        assert_eq!(
+            sched.server_health(0).cooldown_until,
+            Some(fresh + Duration::from_millis(3_000))
         );
     }
 
