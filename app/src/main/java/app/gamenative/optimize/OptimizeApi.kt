@@ -1,7 +1,7 @@
 package app.gamenative.optimize
 
+import app.gamenative.api.AccountApi
 import app.gamenative.api.GameNativeApi
-import app.gamenative.utils.KeyAttestationHelper
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -10,34 +10,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
-import org.json.JSONArray
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import timber.log.Timber
-
-/** Attestation gets [TIMEOUT_MS] per request; after a failure or timeout requests go without it for [SKIP_MS]. */
-internal object AttestationBudget {
-    const val TIMEOUT_MS = 2_000L
-    const val SKIP_MS = 60L * 60 * 1000
-
-    @Volatile
-    private var failedAtMillis: Long? = null
-
-    fun shouldTry(failedAtMillis: Long?, nowMillis: Long): Boolean = failedAtMillis == null || nowMillis - failedAtMillis !in 0 until SKIP_MS
-
-    fun shouldTry(nowMillis: Long = System.currentTimeMillis()): Boolean = shouldTry(failedAtMillis, nowMillis)
-
-    /** Records a failure; true when it starts a new skip window, so it is logged once per window. */
-    fun failed(nowMillis: Long = System.currentTimeMillis()): Boolean {
-        val fresh = shouldTry(nowMillis)
-        failedAtMillis = nowMillis
-        return fresh
-    }
-
-    fun succeeded() {
-        failedAtMillis = null
-    }
-}
 
 sealed class NextRungResult {
     data class Answered(val response: NextRungResponse) : NextRungResult()
@@ -49,7 +26,6 @@ sealed class NextRungResult {
 }
 
 object OptimizeApi {
-    private const val ATTESTATION_BASE_URL = "https://api.gamenative.app"
     private const val NEXT_RUNG_PATH = "/api/optimize/next-rung"
     private const val OUTCOME_PATH = "/api/optimize/outcome"
     private const val CALL_TIMEOUT_SEC = 15L
@@ -67,28 +43,21 @@ object OptimizeApi {
             .build()
     }
 
-    /** The nonce and chain within [AttestationBudget.TIMEOUT_MS]; a slow attempt keeps running off the request's path. */
-    private suspend fun attestation(): Pair<String, List<String>>? {
-        if (!AttestationBudget.shouldTry()) return null
-        val attempt = scope.async { KeyAttestationHelper.getAttestationFields(ATTESTATION_BASE_URL) }
-        val fields = withTimeoutOrNull(AttestationBudget.TIMEOUT_MS) { attempt.await() }
-        if (fields != null) {
-            AttestationBudget.succeeded()
-            return fields
-        }
-        attempt.cancel()
-        if (AttestationBudget.failed()) Timber.tag("Optimize").w("attestation unavailable, continuing without it")
-        return null
+    /**
+     * A plain JSON POST with the account's bearer token, which is the auth for Optimize. No key attestation or Play
+     * Integrity token: both can take seconds, and the next-rung budget at launch is 10 s.
+     */
+    private suspend fun request(path: String, body: JSONObject): Request {
+        val builder = Request.Builder()
+            .url(GameNativeApi.BASE_URL + path)
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .header("Content-Type", "application/json")
+        AccountApi.currentAccessTokenOrNull()?.let { builder.header("Authorization", "Bearer $it") }
+        return builder.build()
     }
 
     private suspend fun post(path: String, body: JSONObject): JSONObject? = withContext(Dispatchers.IO) {
-        body.remove("nonce")
-        body.remove("attestationChain")
-        attestation()?.let { (nonce, chain) ->
-            body.put("nonce", nonce)
-            body.put("attestationChain", JSONArray(chain))
-        }
-        val request = GameNativeApi.buildPostRequest(GameNativeApi.BASE_URL + path, body)
+        val request = request(path, body)
         client.newCall(request).execute().use { response ->
             if (response.code == 401) throw Unauthorized()
             if (!response.isSuccessful) {
@@ -101,7 +70,7 @@ object OptimizeApi {
     }
 
     /**
-     * Starts a next-rung request, attestation included, that runs to its end even when the caller stops waiting.
+     * Starts a next-rung request that runs to its end even when the caller stops waiting.
      * A failed attempt is tried once more while at least [MIN_RETRY_MS] of [budgetMs] is left.
      */
     fun nextRung(body: JSONObject, budgetMs: Long): Deferred<NextRungResult> {

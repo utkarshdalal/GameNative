@@ -298,15 +298,6 @@ class OptimizeRulesTest {
     }
 
     @Test
-    fun attestationIsSkippedForAnHourAfterAFailure() {
-        assertTrue(AttestationBudget.shouldTry(null, 5_000L))
-        assertFalse(AttestationBudget.shouldTry(1_000L, 1_000L))
-        assertFalse(AttestationBudget.shouldTry(1_000L, 1_000L + AttestationBudget.SKIP_MS - 1))
-        assertTrue(AttestationBudget.shouldTry(1_000L, 1_000L + AttestationBudget.SKIP_MS))
-        assertTrue(AttestationBudget.shouldTry(10_000L, 1_000L))
-    }
-
-    @Test
     fun cardActionsGoOutAsTheServerNamesThem() {
         assertEquals("accepted", OptimizeCards.wireAction(OptimizeCards.ACTION_OPTIMIZE, OptimizeCard.FIRST))
         assertEquals("optimize", OptimizeCards.wireAction(OptimizeCards.ACTION_OPTIMIZE, OptimizeCard.DONE))
