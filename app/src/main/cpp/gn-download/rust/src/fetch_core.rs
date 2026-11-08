@@ -1525,12 +1525,33 @@ impl FetchScheduler {
         let h = &mut self.health[server_idx];
         h.consecutive_errors = h.consecutive_errors.saturating_add(1);
         let mut backoff = retry_backoff_millis(h.consecutive_errors);
+        if matches!(kind, FetchFailKind::Timeout | FetchFailKind::Connect) {
+            // "This host is not answering" is not the same failure as a 5xx: the item backoff caps
+            // at a few seconds, which meant a blackholed CDN host was retried every <=4 s and kept
+            // taking slots from hosts that do work. Escalate the host cooldown instead. The ladder
+            // stops at a minute rather than WinNative's five: its pool was 4-16 assigned hosts and
+            // could rotate around a parked one, while a small pool that cooled itself for minutes
+            // would stall the whole depot.
+            backoff = backoff.max(host_down_cooldown_millis(h.consecutive_errors));
+        }
         if kind == FetchFailKind::RateLimited {
             backoff = backoff.max(RATE_LIMIT_COOLDOWN_MS);
         }
         h.cooldown_until = Some(now + Duration::from_millis(backoff));
         h.ewma_bps *= 0.5;
     }
+}
+
+/// Host cooldowns for consecutive "not answering" failures (3 s, 15 s, 60 s).
+///
+/// A host that times out or refuses to connect is gone, not slow: retrying it on the item backoff
+/// ladder (which caps out at a few seconds) just steals slots. Values match the ladder WinNative
+/// measured on a mainland connection, minus its 300 s last step - see the comment in `on_error`.
+const HOST_DOWN_COOLDOWNS_MS: [u64; 3] = [3_000, 15_000, 60_000];
+
+fn host_down_cooldown_millis(consecutive_errors: u32) -> u64 {
+    let idx = (consecutive_errors.saturating_sub(1) as usize).min(HOST_DOWN_COOLDOWNS_MS.len() - 1);
+    HOST_DOWN_COOLDOWNS_MS[idx]
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -2397,4 +2418,21 @@ mod tests {
         assert!(outcome.cancelled);
         assert_eq!(outcome.items_ok, 0);
     }
+    #[test]
+    fn a_host_that_stops_answering_cools_like_the_winnative_ladder() {
+        let now = Instant::now();
+        assert_eq!(host_down_cooldown_millis(1), 3_000);
+        assert_eq!(host_down_cooldown_millis(2), 15_000);
+        assert_eq!(host_down_cooldown_millis(3), 60_000);
+        assert_eq!(host_down_cooldown_millis(9), 60_000, "the ladder caps at one minute");
+
+        let scheduler_health = {
+            let mut h = ServerHealth::default();
+            h.consecutive_errors = 3;
+            host_down_cooldown_millis(h.consecutive_errors)
+        };
+        assert_eq!(scheduler_health, 60_000);
+        let _ = now;
+    }
+
 }

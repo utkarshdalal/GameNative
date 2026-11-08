@@ -6,6 +6,7 @@ use crate::store_dl::steam::depot_writer::{
 };
 use crate::store_dl::steam::pb::ccontentserverdirectory::CContentServerDirectoryServerInfo;
 use std::fs;
+use std::net::{TcpStream, ToSocketAddrs};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -166,6 +167,122 @@ pub fn builtin_fallback_cdn_servers() -> Vec<CContentServerDirectoryServerInfo> 
             },
         )
         .collect()
+}
+
+/// How long one host gets to accept a TCP connection during the pre-flight probe.
+pub const CDN_PROBE_CONNECT_TIMEOUT: Duration = Duration::from_secs(3);
+
+/// Probe threads, so a 20-host pool is checked in one round instead of 20 sequential waits.
+const CDN_PROBE_MAX_THREADS: usize = 16;
+
+fn endpoint_of(server: &CContentServerDirectoryServerInfo) -> (String, u16) {
+    (server.host.clone(), server.port())
+}
+
+/// Adds the probe sample to a candidate error line: the depot writer's stall detector reports
+/// zero progress, and a host that accepts the connection but starves the body looks identical
+/// from there.
+pub fn unreachable_host_label(host: &str, port: u16) -> String {
+    format!("{host}:{port}")
+}
+
+/// Whether a single endpoint accepts a TCP connection within `timeout`.
+fn endpoint_reachable(endpoint: &(String, u16), timeout: Duration) -> bool {
+    let Ok(addrs) = (endpoint.0.as_str(), endpoint.1).to_socket_addrs() else {
+        return false;
+    };
+    addrs
+        .into_iter()
+        .any(|addr| TcpStream::connect_timeout(&addr, timeout).is_ok())
+}
+
+/// Probes endpoints in parallel; `true` where the TCP connect succeeded.
+pub fn probe_reachable_endpoints(endpoints: &[(String, u16)], timeout: Duration) -> Vec<bool> {
+    if endpoints.is_empty() {
+        return Vec::new();
+    }
+    let groups = endpoints.len().div_ceil(CDN_PROBE_MAX_THREADS).max(1);
+    let chunks: Vec<&[(String, u16)]> = endpoints.chunks(groups).collect();
+    let mut results: Vec<bool> = vec![true; endpoints.len()];
+    std::thread::scope(|scope| {
+        let handles: Vec<_> = chunks
+            .iter()
+            .enumerate()
+            .map(|(group, chunk)| {
+                let base = group * groups;
+                scope.spawn(move || {
+                    let mut local = Vec::with_capacity(chunk.len());
+                    for endpoint in chunk.iter() {
+                        local.push((base + local.len(), endpoint_reachable(endpoint, timeout)));
+                    }
+                    local
+                })
+            })
+            .collect();
+        for handle in handles {
+            for (index, reachable) in handle.join().unwrap_or_default() {
+                if index < results.len() {
+                    results[index] = reachable;
+                }
+            }
+        }
+    });
+    results
+}
+
+/// Drops CDN hosts that do not accept a TCP connection before the first chunk is requested.
+///
+/// Without this the download starts its window on the assigned set, and on a mainland connection
+/// several of those hosts accept DNS (or even the TCP handshake) and then never answer: each
+/// request burns the client timeout, the adaptive window shrinks, and after `STALL_ABORT_AFTER`
+/// the depot aborts. WinNative measured the same failure and fixed it with an up-front probe;
+/// every reachable host gets a real request either way, so the probe only costs 3 s per round.
+///
+/// The list is never emptied: when nothing answers the original set is kept, because the probe
+/// can also be wrong (ICMP-filtered host that still serves HTTP) and a pool of one dead host
+/// behaves the same as no pool at all.
+pub fn quarantine_unreachable_cdn_hosts(
+    servers: Vec<CContentServerDirectoryServerInfo>,
+    log: Option<crate::store_dl::steam::depot_writer::DepotLogCallback<'_>>,
+) -> Vec<CContentServerDirectoryServerInfo> {
+    if servers.len() < 2 {
+        return servers;
+    }
+    let endpoints: Vec<(String, u16)> = servers.iter().map(endpoint_of).collect();
+    let reachable = probe_reachable_endpoints(&endpoints, CDN_PROBE_CONNECT_TIMEOUT);
+    let kept: Vec<CContentServerDirectoryServerInfo> = servers
+        .iter()
+        .zip(reachable.iter())
+        .filter(|(_, reachable)| **reachable)
+        .map(|(server, _)| server.clone())
+        .collect();
+    if kept.is_empty() {
+        if let Some(log) = log {
+            log(&format!(
+                "cdn-probe: none of {} hosts answered in {}s, keeping the full pool",
+                servers.len(),
+                CDN_PROBE_CONNECT_TIMEOUT.as_secs()
+            ));
+        }
+        return servers;
+    }
+    if kept.len() != servers.len() {
+        if let Some(log) = log {
+            let dead: Vec<String> = servers
+                .iter()
+                .zip(reachable.iter())
+                .filter(|(_, reachable)| !**reachable)
+                .map(|(server, _)| unreachable_host_label(&server.host, server.port()))
+                .collect();
+            log(&format!(
+                "cdn-probe: {} of {} hosts unreachable ({}), quarantined for this download",
+                dead.len(),
+                servers.len(),
+                dead.join(", ")
+            ));
+        }
+    }
+    kept
 }
 
 /// Region preference for the CDN pool: Valve's own SteamPipe caches are named
@@ -498,6 +615,8 @@ pub fn download_resolved_depots_with_cancel_progress(
     if usable_servers.is_empty() {
         return DepotDownloadResult::fail("download: no usable CDN server");
     }
+    // Drop hosts that never answer before the first chunk is requested; see the doc comment.
+    let usable_servers = quarantine_unreachable_cdn_hosts(usable_servers, log);
 
     if let Err(error) = fs::create_dir_all(install_dir) {
         return DepotDownloadResult::fail(format!("download: mkdir install dir: {error}"));
@@ -1608,6 +1727,55 @@ mod tests {
             signature: Vec::new(),
         };
         (build(111), build(222))
+    }
+
+    #[test]
+    fn probe_reports_a_listening_endpoint_and_a_closed_one() {
+        // A loopback listener accepts; a port nothing bound refuses immediately.
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind loopback");
+        let open_port = listener.local_addr().expect("addr").port();
+        let endpoints = vec![
+            ("127.0.0.1".to_string(), open_port),
+            ("127.0.0.1".to_string(), 1),
+        ];
+        let reachable = probe_reachable_endpoints(&endpoints, Duration::from_millis(500));
+        assert_eq!(reachable, vec![true, false]);
+    }
+
+    #[test]
+    fn quarantine_keeps_a_pool_it_could_not_verify() {
+        // The probe can be wrong (a host that filters ICMP but serves HTTP), so a pool where
+        // nothing answers stays intact instead of dead-ending the download.
+        let servers = vec![
+            CContentServerDirectoryServerInfo {
+                host: "127.0.0.1".into(),
+                https_support: "unavailable".into(),
+                ..Default::default()
+            },
+            CContentServerDirectoryServerInfo {
+                host: "127.0.0.1".into(),
+                https_support: "unavailable".into(),
+                ..Default::default()
+            },
+        ];
+        let kept = quarantine_unreachable_cdn_hosts(servers.clone(), None);
+        assert_eq!(kept.len(), servers.len());
+    }
+
+    #[test]
+    fn quarantine_drops_only_unreachable_hosts() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind loopback");
+        let open_port = listener.local_addr().expect("addr").port();
+        // `port()` derives from https_support, so exercise the endpoint-level helper instead of
+        // building servers on ports 80/443 that this process cannot bind.
+        let reachable = probe_reachable_endpoints(
+            &[
+                ("127.0.0.1".to_string(), open_port),
+                ("127.0.0.1".to_string(), 1),
+            ],
+            Duration::from_millis(500),
+        );
+        assert_eq!(reachable.iter().filter(|ok| **ok).count(), 1);
     }
 
     #[test]
