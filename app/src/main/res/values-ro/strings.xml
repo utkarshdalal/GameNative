@@ -1869,7 +1869,7 @@
     <string name="optimize_card_body">Îl putem regla pentru tine. Modificările sunt reversibile.</string>
     <string name="optimize_card_not_now">Nu acum</string>
     <string name="optimize_card_never">Niciodată pentru acest joc</string>
-    <string name="optimize_sign_in_reason">Gratuit de încercat cu un cont</string>
+    <string name="optimize_trial_used_short">Jocuri gratuite folosite</string>
     <string name="optimize_see_membership">Vezi abonamentul</string>
     <string name="optimize_included">Inclus în abonamentul tău</string>
     <string name="optimize_after_helped_stutter">Modificarea a ajutat: mai puține sacadări</string>
@@ -1892,14 +1892,19 @@
     <string name="optimize_status_exhausted">Maximul pe acest dispozitiv</string>
     <string name="optimize_continue">Reia</string>
     <plurals name="optimize_trial_used">
-        <item quantity="one">Perioada ta de probă gratuită a acoperit %1$d joc. Abonamentul include Optimizare pentru fiecare joc.</item>
-        <item quantity="few">Perioada ta de probă gratuită a acoperit %1$d jocuri. Abonamentul include Optimizare pentru fiecare joc.</item>
-        <item quantity="other">Perioada ta de probă gratuită a acoperit %1$d de jocuri. Abonamentul include Optimizare pentru fiecare joc.</item>
+        <item quantity="one">Ai folosit %1$d joc gratuit. Abonamentul include Optimizare pentru fiecare joc.</item>
+        <item quantity="few">Ai folosit cele %1$d jocuri gratuite. Abonamentul include Optimizare pentru fiecare joc.</item>
+        <item quantity="other">Ai folosit cele %1$d de jocuri gratuite. Abonamentul include Optimizare pentru fiecare joc.</item>
     </plurals>
-    <plurals name="optimize_trial_left">
-        <item quantity="one">A mai rămas %1$d joc de probă</item>
-        <item quantity="few">Au mai rămas %1$d jocuri de probă</item>
-        <item quantity="other">Au mai rămas %1$d de jocuri de probă</item>
+    <plurals name="optimize_trial_offer">
+        <item quantity="one">Gratuit de încercat pe %1$d joc cu un cont</item>
+        <item quantity="few">Gratuit de încercat pe %1$d jocuri cu un cont</item>
+        <item quantity="other">Gratuit de încercat pe %1$d de jocuri cu un cont</item>
+    </plurals>
+    <plurals name="optimize_trial_progress">
+        <item quantity="one">%1$d din %2$d joc gratuit folosit</item>
+        <item quantity="few">%1$d din %2$d jocuri gratuite folosite</item>
+        <item quantity="other">%1$d din %2$d de jocuri gratuite folosite</item>
     </plurals>
     <string name="settings_group_cloud_saves">Salvări în cloud</string>
     <string name="settings_save_backups_to_keep">Copii de rezervă ale salvărilor păstrate</string>

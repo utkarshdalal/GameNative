@@ -1759,7 +1759,7 @@
     <string name="optimize_card_body">Podemos ajustar para você. As mudanças são reversíveis.</string>
     <string name="optimize_card_not_now">Agora não</string>
     <string name="optimize_card_never">Nunca para este jogo</string>
-    <string name="optimize_sign_in_reason">Grátis para testar com uma conta</string>
+    <string name="optimize_trial_used_short">Jogos grátis usados</string>
     <string name="optimize_see_membership">Ver assinatura</string>
     <string name="optimize_included">Incluído na sua assinatura</string>
     <string name="optimize_after_helped_stutter">Essa mudança ajudou: menos travadas</string>
@@ -1782,12 +1782,16 @@
     <string name="optimize_status_exhausted">O máximo neste dispositivo</string>
     <string name="optimize_continue">Retomar</string>
     <plurals name="optimize_trial_used">
-        <item quantity="one">Seu teste grátis cobriu %1$d jogo. A assinatura inclui Otimizar para todos os jogos.</item>
-        <item quantity="other">Seu teste grátis cobriu %1$d jogos. A assinatura inclui Otimizar para todos os jogos.</item>
+        <item quantity="one">Você usou seu %1$d jogo grátis. A assinatura inclui Otimizar para todos os jogos.</item>
+        <item quantity="other">Você usou seus %1$d jogos grátis. A assinatura inclui Otimizar para todos os jogos.</item>
     </plurals>
-    <plurals name="optimize_trial_left">
-        <item quantity="one">Resta %1$d jogo de teste</item>
-        <item quantity="other">Restam %1$d jogos de teste</item>
+    <plurals name="optimize_trial_offer">
+        <item quantity="one">Grátis para testar em %1$d jogo com uma conta</item>
+        <item quantity="other">Grátis para testar em %1$d jogos com uma conta</item>
+    </plurals>
+    <plurals name="optimize_trial_progress">
+        <item quantity="one">%1$d de %2$d jogo grátis usado</item>
+        <item quantity="other">%1$d de %2$d jogos grátis usados</item>
     </plurals>
     <string name="settings_group_cloud_saves">Saves na nuvem</string>
     <string name="settings_save_backups_to_keep">Backups de saves a manter</string>

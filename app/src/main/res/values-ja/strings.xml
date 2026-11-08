@@ -2098,7 +2098,7 @@
     <string name="optimize_card_body">こちらで調整できます。変更は元に戻せます。</string>
     <string name="optimize_card_not_now">今はしない</string>
     <string name="optimize_card_never">このゲームでは表示しない</string>
-    <string name="optimize_sign_in_reason">アカウントで無料でお試しいただけます</string>
+    <string name="optimize_trial_used_short">無料ゲームを使用済み</string>
     <string name="optimize_see_membership">メンバーシップを見る</string>
     <string name="optimize_included">メンバーシップに含まれています</string>
     <string name="optimize_after_helped_stutter">その変更が効果あり：カクつきが減りました</string>
@@ -2121,10 +2121,13 @@
     <string name="optimize_status_exhausted">このデバイスではここまでです</string>
     <string name="optimize_continue">再開</string>
     <plurals name="optimize_trial_used">
-        <item quantity="other">無料トライアルで %1$d 本のゲームを利用しました。メンバーシップならすべてのゲームで最適化を使えます。</item>
+        <item quantity="other">無料の %1$d 本をすべて使いました。メンバーシップならすべてのゲームで最適化を使えます。</item>
     </plurals>
-    <plurals name="optimize_trial_left">
-        <item quantity="other">トライアル残り %1$d 本</item>
+    <plurals name="optimize_trial_offer">
+        <item quantity="other">アカウントで %1$d 本まで無料でお試しいただけます</item>
+    </plurals>
+    <plurals name="optimize_trial_progress">
+        <item quantity="other">無料ゲーム %2$d 本中 %1$d 本を使用済み</item>
     </plurals>
     <string name="settings_group_cloud_saves">クラウドセーブ</string>
     <string name="settings_save_backups_to_keep">保持するセーブのバックアップ数</string>

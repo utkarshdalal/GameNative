@@ -19,7 +19,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
@@ -93,10 +92,7 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
         OptimizeCard.WORSE -> title = stringResource(R.string.optimize_after_worse)
         OptimizeCard.EXHAUSTED -> title = stringResource(R.string.optimize_after_exhausted, name)
         OptimizeCard.DONE -> title = stringResource(R.string.optimize_after_done, name)
-        else -> {
-            val limit = (request.entitlement ?: OptimizeController.lastEntitlement)?.trialGamesLimit ?: 0
-            title = pluralStringResource(R.plurals.optimize_trial_used, limit, limit)
-        }
+        else -> title = optimizeEntitlementText(request.entitlement, exhausted = true).orEmpty()
     }
     if (card.kind != OptimizeCard.ENTITLEMENT && card.cls != OptimizeCards.SYNC_SPIN) detail = optimizeEntitlementText(request.entitlement)
 

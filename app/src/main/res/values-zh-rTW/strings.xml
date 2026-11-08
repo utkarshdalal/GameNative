@@ -1856,7 +1856,7 @@
     <string name="optimize_card_body">我們可以幫你調整。所有變更都可以復原。</string>
     <string name="optimize_card_not_now">以後再說</string>
     <string name="optimize_card_never">此遊戲不再提示</string>
-    <string name="optimize_sign_in_reason">登入帳戶即可免費試用</string>
+    <string name="optimize_trial_used_short">免費遊戲已用完</string>
     <string name="optimize_see_membership">查看會員</string>
     <string name="optimize_included">已包含在你的會員中</string>
     <string name="optimize_after_helped_stutter">這項變更有效：卡頓更少</string>
@@ -1879,10 +1879,13 @@
     <string name="optimize_status_exhausted">此裝置上已到極限</string>
     <string name="optimize_continue">恢復</string>
     <plurals name="optimize_trial_used">
-        <item quantity="other">你的免費試用已涵蓋 %1$d 款遊戲。會員可在所有遊戲中使用最佳化。</item>
+        <item quantity="other">你已用完 %1$d 款免費遊戲。會員可在所有遊戲中使用最佳化。</item>
     </plurals>
-    <plurals name="optimize_trial_left">
-        <item quantity="other">還剩 %1$d 款試用遊戲</item>
+    <plurals name="optimize_trial_offer">
+        <item quantity="other">登入帳戶即可免費試用 %1$d 款遊戲</item>
+    </plurals>
+    <plurals name="optimize_trial_progress">
+        <item quantity="other">已使用 %1$d/%2$d 款免費遊戲</item>
     </plurals>
     <string name="settings_group_cloud_saves">雲端存檔</string>
     <string name="settings_save_backups_to_keep">保留的存檔備份數</string>

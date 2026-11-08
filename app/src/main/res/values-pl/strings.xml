@@ -1893,7 +1893,7 @@
     <string name="optimize_card_body">Możemy ją dostroić za ciebie. Zmiany można cofnąć.</string>
     <string name="optimize_card_not_now">Nie teraz</string>
     <string name="optimize_card_never">Nigdy dla tej gry</string>
-    <string name="optimize_sign_in_reason">Za darmo do wypróbowania z kontem</string>
+    <string name="optimize_trial_used_short">Darmowe gry wykorzystane</string>
     <string name="optimize_see_membership">Zobacz członkostwo</string>
     <string name="optimize_included">W ramach twojego członkostwa</string>
     <string name="optimize_after_helped_stutter">Ta zmiana pomogła: mniej przycięć</string>
@@ -1916,16 +1916,22 @@
     <string name="optimize_status_exhausted">Maksimum na tym urządzeniu</string>
     <string name="optimize_continue">Wznów</string>
     <plurals name="optimize_trial_used">
-        <item quantity="one">Twój darmowy okres próbny objął %1$d grę. Członkostwo obejmuje Optymalizację dla każdej gry.</item>
-        <item quantity="few">Twój darmowy okres próbny objął %1$d gry. Członkostwo obejmuje Optymalizację dla każdej gry.</item>
-        <item quantity="many">Twój darmowy okres próbny objął %1$d gier. Członkostwo obejmuje Optymalizację dla każdej gry.</item>
-        <item quantity="other">Twój darmowy okres próbny objął %1$d gry. Członkostwo obejmuje Optymalizację dla każdej gry.</item>
+        <item quantity="one">Wykorzystano wszystkie darmowe gry (%1$d). Członkostwo obejmuje Optymalizację dla każdej gry.</item>
+        <item quantity="few">Wykorzystano wszystkie darmowe gry (%1$d). Członkostwo obejmuje Optymalizację dla każdej gry.</item>
+        <item quantity="many">Wykorzystano wszystkie darmowe gry (%1$d). Członkostwo obejmuje Optymalizację dla każdej gry.</item>
+        <item quantity="other">Wykorzystano wszystkie darmowe gry (%1$d). Członkostwo obejmuje Optymalizację dla każdej gry.</item>
     </plurals>
-    <plurals name="optimize_trial_left">
-        <item quantity="one">Pozostała %1$d gra próbna</item>
-        <item quantity="few">Pozostały %1$d gry próbne</item>
-        <item quantity="many">Pozostało %1$d gier próbnych</item>
-        <item quantity="other">Pozostało %1$d gry próbnej</item>
+    <plurals name="optimize_trial_offer">
+        <item quantity="one">Wypróbuj za darmo na %1$d grze z kontem</item>
+        <item quantity="few">Wypróbuj za darmo na %1$d grach z kontem</item>
+        <item quantity="many">Wypróbuj za darmo na %1$d grach z kontem</item>
+        <item quantity="other">Wypróbuj za darmo na %1$d grach z kontem</item>
+    </plurals>
+    <plurals name="optimize_trial_progress">
+        <item quantity="one">Wykorzystano %1$d z %2$d darmowej gry</item>
+        <item quantity="few">Wykorzystano %1$d z %2$d darmowych gier</item>
+        <item quantity="many">Wykorzystano %1$d z %2$d darmowych gier</item>
+        <item quantity="other">Wykorzystano %1$d z %2$d darmowych gier</item>
     </plurals>
     <string name="settings_group_cloud_saves">Zapisy w chmurze</string>
     <string name="settings_save_backups_to_keep">Liczba przechowywanych kopii zapisów</string>

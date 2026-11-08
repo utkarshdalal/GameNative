@@ -1858,7 +1858,7 @@
     <string name="optimize_card_body">대신 조정해 드릴 수 있습니다. 변경 사항은 되돌릴 수 있습니다.</string>
     <string name="optimize_card_not_now">나중에</string>
     <string name="optimize_card_never">이 게임에서는 안 함</string>
-    <string name="optimize_sign_in_reason">계정이 있으면 무료로 사용해 볼 수 있습니다</string>
+    <string name="optimize_trial_used_short">무료 게임 모두 사용</string>
     <string name="optimize_see_membership">멤버십 보기</string>
     <string name="optimize_included">멤버십에 포함됨</string>
     <string name="optimize_after_helped_stutter">그 변경이 도움이 됐습니다: 끊김 감소</string>
@@ -1881,10 +1881,13 @@
     <string name="optimize_status_exhausted">이 기기에서는 여기까지입니다</string>
     <string name="optimize_continue">계속</string>
     <plurals name="optimize_trial_used">
-        <item quantity="other">무료 체험으로 게임 %1$d개를 이용했습니다. 멤버십에는 모든 게임의 최적화가 포함됩니다.</item>
+        <item quantity="other">무료 게임 %1$d개를 모두 사용했습니다. 멤버십에는 모든 게임의 최적화가 포함됩니다.</item>
     </plurals>
-    <plurals name="optimize_trial_left">
-        <item quantity="other">체험 게임 %1$d개 남음</item>
+    <plurals name="optimize_trial_offer">
+        <item quantity="other">계정이 있으면 게임 %1$d개까지 무료로 사용해 볼 수 있습니다</item>
+    </plurals>
+    <plurals name="optimize_trial_progress">
+        <item quantity="other">무료 게임 %2$d개 중 %1$d개 사용</item>
     </plurals>
     <string name="settings_group_cloud_saves">클라우드 세이브</string>
     <string name="settings_save_backups_to_keep">보관할 세이브 백업 수</string>

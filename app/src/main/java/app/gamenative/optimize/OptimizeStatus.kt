@@ -29,6 +29,20 @@ sealed class OptimizeStatus {
             }
         }
 
+        /**
+         * The one trial line a surface shows. Members never see trial text; [exhausted] is the game's
+         * own entitlement_required answer, which outranks a stale stored count.
+         */
+        fun entitlementLine(entitlement: Entitlement?, exhausted: Boolean, signedIn: Boolean, member: Boolean): EntitlementLine? = when {
+            member || entitlement?.isMember == true -> EntitlementLine.Member
+            exhausted -> EntitlementLine.Exhausted(entitlement.limitOrDefault())
+            !signedIn -> EntitlementLine.Offer(entitlement.limitOrDefault())
+            entitlement == null -> null
+            entitlement.state == Entitlement.TRIAL && entitlement.trialGamesLeft > 0 ->
+                EntitlementLine.Trial(entitlement.trialGamesUsed, entitlement.limitOrDefault())
+            else -> EntitlementLine.Exhausted(entitlement.limitOrDefault())
+        }
+
         fun keptCount(state: OptimizeLocalState): Int = state.active?.kept?.count { it.applied } ?: 0
 
         @StringRes
@@ -42,4 +56,11 @@ sealed class OptimizeStatus {
             else -> null
         }
     }
+}
+
+sealed class EntitlementLine {
+    data object Member : EntitlementLine()
+    data class Offer(val limit: Int) : EntitlementLine()
+    data class Trial(val used: Int, val limit: Int) : EntitlementLine()
+    data class Exhausted(val limit: Int) : EntitlementLine()
 }

@@ -1817,7 +1817,7 @@ https://gamenative.app
     <string name="optimize_card_body">Мы можем настроить её за вас. Изменения можно отменить.</string>
     <string name="optimize_card_not_now">Не сейчас</string>
     <string name="optimize_card_never">Никогда для этой игры</string>
-    <string name="optimize_sign_in_reason">Бесплатно попробовать с аккаунтом</string>
+    <string name="optimize_trial_used_short">Бесплатные игры использованы</string>
     <string name="optimize_see_membership">Посмотреть подписку</string>
     <string name="optimize_included">Входит в вашу подписку</string>
     <string name="optimize_after_helped_stutter">Это изменение помогло: меньше подтормаживаний</string>
@@ -1840,16 +1840,22 @@ https://gamenative.app
     <string name="optimize_status_exhausted">Предел для этого устройства</string>
     <string name="optimize_continue">Возобновить</string>
     <plurals name="optimize_trial_used">
-        <item quantity="one">Бесплатный пробный период охватил %1$d игру. Подписка включает Оптимизацию для всех игр.</item>
-        <item quantity="few">Бесплатный пробный период охватил %1$d игры. Подписка включает Оптимизацию для всех игр.</item>
-        <item quantity="many">Бесплатный пробный период охватил %1$d игр. Подписка включает Оптимизацию для всех игр.</item>
-        <item quantity="other">Бесплатный пробный период охватил %1$d игры. Подписка включает Оптимизацию для всех игр.</item>
+        <item quantity="one">Вы использовали все бесплатные игры (%1$d). Подписка включает Оптимизацию для всех игр.</item>
+        <item quantity="few">Вы использовали все бесплатные игры (%1$d). Подписка включает Оптимизацию для всех игр.</item>
+        <item quantity="many">Вы использовали все бесплатные игры (%1$d). Подписка включает Оптимизацию для всех игр.</item>
+        <item quantity="other">Вы использовали все бесплатные игры (%1$d). Подписка включает Оптимизацию для всех игр.</item>
     </plurals>
-    <plurals name="optimize_trial_left">
-        <item quantity="one">Осталась %1$d пробная игра</item>
-        <item quantity="few">Осталось %1$d пробные игры</item>
-        <item quantity="many">Осталось %1$d пробных игр</item>
-        <item quantity="other">Осталось %1$d пробной игры</item>
+    <plurals name="optimize_trial_offer">
+        <item quantity="one">С аккаунтом бесплатно для %1$d игры</item>
+        <item quantity="few">С аккаунтом бесплатно для %1$d игр</item>
+        <item quantity="many">С аккаунтом бесплатно для %1$d игр</item>
+        <item quantity="other">С аккаунтом бесплатно для %1$d игры</item>
+    </plurals>
+    <plurals name="optimize_trial_progress">
+        <item quantity="one">Использовано %1$d из %2$d бесплатной игры</item>
+        <item quantity="few">Использовано %1$d из %2$d бесплатных игр</item>
+        <item quantity="many">Использовано %1$d из %2$d бесплатных игр</item>
+        <item quantity="other">Использовано %1$d из %2$d бесплатной игры</item>
     </plurals>
     <string name="settings_group_cloud_saves">Облачные сохранения</string>
     <string name="settings_save_backups_to_keep">Количество сохраняемых резервных копий</string>

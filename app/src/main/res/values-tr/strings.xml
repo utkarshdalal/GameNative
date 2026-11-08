@@ -1907,7 +1907,7 @@
     <string name="optimize_card_body">Sizin için ayarlayabiliriz. Değişiklikler geri alınabilir.</string>
     <string name="optimize_card_not_now">Şimdi değil</string>
     <string name="optimize_card_never">Bu oyun için asla</string>
-    <string name="optimize_sign_in_reason">Bir hesapla ücretsiz deneyin</string>
+    <string name="optimize_trial_used_short">Ücretsiz oyunlar kullanıldı</string>
     <string name="optimize_see_membership">Üyeliği gör</string>
     <string name="optimize_included">Üyeliğinize dahil</string>
     <string name="optimize_after_helped_stutter">Bu değişiklik işe yaradı: daha az takılma</string>
@@ -1930,12 +1930,16 @@
     <string name="optimize_status_exhausted">Bu cihazda varılabilecek en son nokta</string>
     <string name="optimize_continue">Sürdür</string>
     <plurals name="optimize_trial_used">
-        <item quantity="one">Ücretsiz denemeniz %1$d oyunu kapsadı. Üyelik her oyun için Optimize et özelliğini içerir.</item>
-        <item quantity="other">Ücretsiz denemeniz %1$d oyunu kapsadı. Üyelik her oyun için Optimize et özelliğini içerir.</item>
+        <item quantity="one">%1$d ücretsiz oyununuzu kullandınız. Üyelik her oyun için Optimize et özelliğini içerir.</item>
+        <item quantity="other">%1$d ücretsiz oyununuzu kullandınız. Üyelik her oyun için Optimize et özelliğini içerir.</item>
     </plurals>
-    <plurals name="optimize_trial_left">
-        <item quantity="one">%1$d deneme oyunu kaldı</item>
-        <item quantity="other">%1$d deneme oyunu kaldı</item>
+    <plurals name="optimize_trial_offer">
+        <item quantity="one">Bir hesapla %1$d oyunda ücretsiz deneyin</item>
+        <item quantity="other">Bir hesapla %1$d oyunda ücretsiz deneyin</item>
+    </plurals>
+    <plurals name="optimize_trial_progress">
+        <item quantity="one">%2$d ücretsiz oyundan %1$d tanesi kullanıldı</item>
+        <item quantity="other">%2$d ücretsiz oyundan %1$d tanesi kullanıldı</item>
     </plurals>
     <string name="settings_group_cloud_saves">Bulut kayıtları</string>
     <string name="settings_save_backups_to_keep">Saklanacak kayıt yedekleri</string>

@@ -1829,7 +1829,7 @@
     <string name="optimize_card_body">Wir können es für dich abstimmen. Änderungen lassen sich rückgängig machen.</string>
     <string name="optimize_card_not_now">Nicht jetzt</string>
     <string name="optimize_card_never">Nie für dieses Spiel</string>
-    <string name="optimize_sign_in_reason">Kostenlos testen mit einem Konto</string>
+    <string name="optimize_trial_used_short">Kostenlose Spiele genutzt</string>
     <string name="optimize_see_membership">Mitgliedschaft ansehen</string>
     <string name="optimize_included">In deiner Mitgliedschaft enthalten</string>
     <string name="optimize_after_helped_stutter">Diese Änderung hat geholfen: weniger Ruckler</string>
@@ -1852,12 +1852,16 @@
     <string name="optimize_status_exhausted">Mehr geht auf diesem Gerät nicht</string>
     <string name="optimize_continue">Fortsetzen</string>
     <plurals name="optimize_trial_used">
-        <item quantity="one">Deine kostenlose Testphase umfasste %1$d Spiel. Die Mitgliedschaft enthält Optimieren für jedes Spiel.</item>
-        <item quantity="other">Deine kostenlose Testphase umfasste %1$d Spiele. Die Mitgliedschaft enthält Optimieren für jedes Spiel.</item>
+        <item quantity="one">Du hast dein %1$d kostenloses Spiel genutzt. Die Mitgliedschaft enthält Optimieren für jedes Spiel.</item>
+        <item quantity="other">Du hast deine %1$d kostenlosen Spiele genutzt. Die Mitgliedschaft enthält Optimieren für jedes Spiel.</item>
     </plurals>
-    <plurals name="optimize_trial_left">
-        <item quantity="one">Noch %1$d Testspiel</item>
-        <item quantity="other">Noch %1$d Testspiele</item>
+    <plurals name="optimize_trial_offer">
+        <item quantity="one">Mit einem Konto kostenlos für %1$d Spiel testen</item>
+        <item quantity="other">Mit einem Konto kostenlos für %1$d Spiele testen</item>
+    </plurals>
+    <plurals name="optimize_trial_progress">
+        <item quantity="one">%1$d von %2$d kostenlosem Spiel genutzt</item>
+        <item quantity="other">%1$d von %2$d kostenlosen Spielen genutzt</item>
     </plurals>
     <string name="settings_group_cloud_saves">Cloud-Spielstände</string>
     <string name="settings_save_backups_to_keep">Aufzubewahrende Spielstand-Backups</string>

@@ -296,6 +296,7 @@ data class Entitlement(val state: String, val trialGamesUsed: Int, val trialGame
         const val MEMBER = "member"
         const val TRIAL = "trial"
         const val NONE = "none"
+        const val DEFAULT_TRIAL_GAMES_LIMIT = 3
 
         fun fromJson(o: JSONObject?): Entitlement? {
             if (o == null) return null
@@ -304,6 +305,8 @@ data class Entitlement(val state: String, val trialGamesUsed: Int, val trialGame
         }
     }
 }
+
+fun Entitlement?.limitOrDefault(): Int = this?.trialGamesLimit?.takeIf { it > 0 } ?: Entitlement.DEFAULT_TRIAL_GAMES_LIMIT
 
 data class NextRungResponse(val status: String, val messageId: String?, val rung: Rung?, val entitlement: Entitlement? = null) {
     companion object {

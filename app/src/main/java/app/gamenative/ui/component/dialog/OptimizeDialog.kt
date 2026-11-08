@@ -35,14 +35,17 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.api.AccountApi
 import app.gamenative.billing.Membership
 import app.gamenative.optimize.Entitlement
+import app.gamenative.optimize.EntitlementLine
 import app.gamenative.optimize.OptimizeController
 import app.gamenative.optimize.OptimizeLocalState
 import app.gamenative.optimize.OptimizeProfile
 import app.gamenative.optimize.OptimizeStatus
+import app.gamenative.optimize.limitOrDefault
 import app.gamenative.ui.util.SnackbarManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.NonCancellable
@@ -63,7 +66,7 @@ fun rememberOptimizeGate(): OptimizeGate {
     val gate = remember { OptimizeGate() }
     AccountSignInDialog(
         visible = gate.pending != null,
-        reason = stringResource(R.string.optimize_sign_in_reason),
+        reason = OptimizeController.lastEntitlement.limitOrDefault().let { pluralStringResource(R.plurals.optimize_trial_offer, it, it) },
         onSignedIn = {
             val action = gate.pending
             gate.pending = null
@@ -145,20 +148,24 @@ fun optimizeStatusText(state: OptimizeLocalState): String? = when (val status = 
     OptimizeStatus.Paused -> stringResource(R.string.optimize_status_paused)
     OptimizeStatus.Done -> stringResource(R.string.optimize_status_done)
     OptimizeStatus.Exhausted -> stringResource(R.string.optimize_status_exhausted)
-    OptimizeStatus.TrialUsed -> {
-        val limit = (state.entitlement ?: OptimizeController.lastEntitlement)?.trialGamesLimit ?: 0
-        pluralStringResource(R.plurals.optimize_trial_used, limit, limit)
-    }
+    OptimizeStatus.TrialUsed -> null
 }
 
-/** "N trial games left" or "Included with your membership"; null when neither is known. */
+/** The one trial line for this game: the server's entitlement when known, otherwise the default offer. */
 @Composable
-fun optimizeEntitlementText(entitlement: Entitlement?): String? {
+fun optimizeEntitlementText(entitlement: Entitlement?, exhausted: Boolean = false, short: Boolean = false): String? {
     val known = entitlement ?: OptimizeController.lastEntitlement
-    return when {
-        known?.isMember == true || (known == null && Membership.isMember()) -> stringResource(R.string.optimize_included)
-        known != null && known.state == Entitlement.TRIAL -> pluralStringResource(R.plurals.optimize_trial_left, known.trialGamesLeft, known.trialGamesLeft)
-        else -> null
+    val line = OptimizeStatus.entitlementLine(known, exhausted, PrefManager.gameNativeSignedIn.value, Membership.isMember())
+    return when (line) {
+        null -> null
+        EntitlementLine.Member -> stringResource(R.string.optimize_included)
+        is EntitlementLine.Offer -> pluralStringResource(R.plurals.optimize_trial_offer, line.limit, line.limit)
+        is EntitlementLine.Trial -> pluralStringResource(R.plurals.optimize_trial_progress, line.limit, line.used, line.limit)
+        is EntitlementLine.Exhausted -> if (short) {
+            stringResource(R.string.optimize_trial_used_short)
+        } else {
+            pluralStringResource(R.plurals.optimize_trial_used, line.limit, line.limit)
+        }
     }
 }
 
@@ -189,8 +196,12 @@ fun OptimizeOptionsRow(appId: String) {
     val state = rememberOptimizeState(appId)
     val actions = rememberOptimizeActions(appId)
     val active = state?.activeProfile ?: OptimizeProfile.OFF
+    val exhausted = state != null && OptimizeStatus.of(state) == OptimizeStatus.TrialUsed
     Column(modifier = Modifier.fillMaxWidth()) {
-        state?.let { optimizeStatusText(it) }?.let {
+        listOfNotNull(
+            state?.let { optimizeStatusText(it) },
+            optimizeEntitlementText(state?.entitlement, exhausted = exhausted, short = true),
+        ).forEach {
             Text(
                 text = it,
                 style = MaterialTheme.typography.bodySmall,
@@ -222,6 +233,7 @@ fun OptimizeDialog(
     val status = state?.let { OptimizeStatus.of(it) }
     val keptCount = state?.let { OptimizeStatus.keptCount(it) } ?: 0
     val activeLadder = state?.active
+    val exhausted = status == OptimizeStatus.TrialUsed
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -268,7 +280,7 @@ fun OptimizeDialog(
                         modifier = Modifier.padding(start = 8.dp, top = 4.dp),
                     )
                 }
-                optimizeEntitlementText(state?.entitlement)?.let {
+                optimizeEntitlementText(state?.entitlement, exhausted = exhausted)?.let {
                     Text(
                         text = it,
                         style = MaterialTheme.typography.bodySmall,
@@ -285,6 +297,11 @@ fun OptimizeDialog(
         },
         dismissButton = {
             Row {
+                if (exhausted && !Membership.isMember()) {
+                    TextButton(onClick = { Membership.plansRequested.value = true }) {
+                        Text(text = stringResource(R.string.optimize_see_membership))
+                    }
+                }
                 if (status == OptimizeStatus.Paused) {
                     TextButton(enabled = !actions.busy, onClick = { actions.continueLadder() }) {
                         Text(text = stringResource(R.string.optimize_continue))
