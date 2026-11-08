@@ -9,6 +9,8 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.net.URLDecoder
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.zip.ZipFile
 import javax.xml.parsers.DocumentBuilderFactory
@@ -116,8 +118,8 @@ object GOGBonusDlcInstaller {
         return Result.success(plans)
     }
 
-    private fun appliedLanguageMatches(dir: File, language: String): Boolean {
-        val applied = File(dir, APPLIED_LANGUAGE_FILE).takeIf { it.isFile }?.readText()?.trim() ?: return true
+    internal fun appliedLanguageMatches(dir: File, language: String): Boolean {
+        val applied = File(dir, APPLIED_LANGUAGE_FILE).takeIf { it.isFile }?.readText()?.trim() ?: return false
         return applied.equals(language, ignoreCase = true)
     }
 
@@ -330,13 +332,19 @@ object GOGBonusDlcInstaller {
         }
     }
 
-    /** [resolved], prefixed with the file id when another file of the DLC already took that name. */
+    /** [resolved], prefixed with the file id (and a counter) until no other file of the DLC took that name. */
     internal fun targetNameFor(dir: File, file: GogDownloadFile, resolved: String): String {
         val own = doneRecord(dir, file)
         val taken = dir.listFiles()
             ?.filter { it.isFile && it.name.endsWith(".done") && it != own }
-            ?.any { it.readText().trim() == resolved } == true
-        return if (taken) "${safeName(file.id)}-$resolved" else resolved
+            ?.map { it.readText().trim() }
+            ?.toSet()
+            .orEmpty()
+        if (resolved !in taken) return resolved
+        val prefix = safeName(file.id)
+        return generateSequence(1) { it + 1 }
+            .map { if (it == 1) "$prefix-$resolved" else "$prefix-$it-$resolved" }
+            .first { it !in taken }
     }
 
     /** File name from Content-Disposition, else the URL's last path segment, else [fallback]; reduced to [A-Za-z0-9._-]. */
@@ -369,6 +377,7 @@ object GOGBonusDlcInstaller {
             }
         }
         if (installers.isNotEmpty()) {
+            installers.forEach { installedRecord(dir, File(it).name).delete() }
             File(dir, PENDING_INSTALLER_FILE).writeText(installers.joinToString("\n"))
             File(dir, INSTALLER_FAILED_FILE).delete()
         }
@@ -401,26 +410,35 @@ object GOGBonusDlcInstaller {
                     continue
                 }
                 out.parentFile?.mkdirs()
-                archive.getInputStream(entry).use { input ->
-                    FileOutputStream(out).use { output ->
-                        val buffer = ByteArray(256 * 1024)
-                        while (true) {
-                            checkActive()
-                            val n = input.read(buffer)
-                            if (n == -1) break
-                            output.write(buffer, 0, n)
+                val temp = File(out.parentFile, ".${out.name}.gog-part")
+                try {
+                    archive.getInputStream(entry).use { input ->
+                        FileOutputStream(temp).use { output ->
+                            val buffer = ByteArray(256 * 1024)
+                            while (true) {
+                                checkActive()
+                                val n = input.read(buffer)
+                                if (n == -1) break
+                                output.write(buffer, 0, n)
+                            }
                         }
                     }
+                    Files.move(temp.toPath(), out.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                } finally {
+                    temp.delete()
                 }
             }
         }
     }
 
+    private fun installedRecord(dir: File, exeName: String) = File(dir, "$exeName.installed")
+
     /**
-     * Command running the pending installers of [marker] in order, or null when their exes are gone
-     * or the `rootdir` link cannot be created. InnoSetup refuses a drive root for /DIR, so /DIR goes
-     * through a `rootdir` link to the game root (A:), as the support-command installers do. The
-     * marker is deleted only when every installer exits with code 0.
+     * Command running the pending installers of [marker] in order, or null when an exe is gone or
+     * the `rootdir` link cannot be created. InnoSetup refuses a drive root for /DIR, so /DIR goes
+     * through a `rootdir` link to the game root (A:), as the support-command installers do. Each
+     * installer exiting with code 0 is recorded so a retry skips it; the marker is deleted only
+     * when every installer has succeeded.
      */
     fun installerCommand(gameDir: File, marker: File): String? {
         val dir = marker.parentFile ?: return null
@@ -429,6 +447,15 @@ object GOGBonusDlcInstaller {
         (listed - exes.toSet()).forEach { Timber.tag("GOG").w("Pending DLC installer missing: ${it.absolutePath}") }
         if (exes.isEmpty()) {
             Timber.tag("GOG").w("No pending DLC installer left, dropping marker: ${marker.absolutePath}")
+            marker.delete()
+            return null
+        }
+        if (exes.size != listed.size) {
+            Timber.tag("GOG").w("DLC installers of ${dir.name} are incomplete; staying pending")
+            return null
+        }
+        val remaining = exes.filterNot { installedRecord(dir, it.name).isFile }
+        if (remaining.isEmpty()) {
             marker.delete()
             return null
         }
@@ -448,7 +475,9 @@ object GOGBonusDlcInstaller {
         }
         val base = "A:\\$BONUS_DIR\\${dir.name}"
         val args = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCEL /DIR=$base\\rootdir"
-        val run = exes.joinToString(" && ") { "$base\\${it.name} $args" }
+        val run = remaining.joinToString(" && ") {
+            "$base\\${it.name} $args && echo done> $base\\${installedRecord(dir, it.name).name}"
+        }
         return "$run && del /Q $base\\$PENDING_INSTALLER_FILE || echo failed> $base\\$INSTALLER_FAILED_FILE"
     }
 }

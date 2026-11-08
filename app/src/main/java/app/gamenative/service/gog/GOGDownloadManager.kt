@@ -653,8 +653,8 @@ class GOGDownloadManager @Inject constructor(
 
                 val manifestProductIds = manifest.products.map { it.productId }.toSet()
                 val dlcRefs = app.gamenative.service.gog.GOGApiClient.getDlcRefs(context, gameId).getOrElse {
-                    Timber.tag("GOG").w(it, "Failed to fetch store DLC list for $gameId")
-                    return@withContext Result.failure(it)
+                    Timber.tag("GOG").w(it, "Failed to fetch store DLC list for $gameId; showing depot DLC only")
+                    emptyList()
                 }
                 dlcRefs
                     .filter { it.id in owned && it.id !in manifestProductIds && it.id != gameId }

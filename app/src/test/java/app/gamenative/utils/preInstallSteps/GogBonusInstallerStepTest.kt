@@ -80,6 +80,7 @@ class GogBonusInstallerStepTest {
         val base = "A:\\_gog_bonus\\123"
         assertEquals(
             "$base\\setup_dlc.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCEL /DIR=$base\\rootdir" +
+                " && echo done> $base\\setup_dlc.exe.installed" +
                 " && del /Q $base\\pending_installer.txt || echo failed> $base\\installer_failed.txt",
             cmd,
         )
@@ -106,9 +107,57 @@ class GogBonusInstallerStepTest {
         val base = "A:\\_gog_bonus\\123"
         val args = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCEL /DIR=$base\\rootdir"
         assertEquals(
-            "$base\\setup_a.exe $args && $base\\setup_b.exe $args" +
+            "$base\\setup_a.exe $args && echo done> $base\\setup_a.exe.installed" +
+                " && $base\\setup_b.exe $args && echo done> $base\\setup_b.exe.installed" +
                 " && del /Q $base\\pending_installer.txt || echo failed> $base\\installer_failed.txt",
             cmd,
         )
+    }
+
+    @Test
+    fun buildCommand_skipsInstallersThatSucceededOnAnEarlierRun() {
+        File(dlcDir, "setup_a.exe").writeText("exe")
+        File(dlcDir, "setup_b.exe").writeText("exe")
+        File(dlcDir, "setup_a.exe.installed").writeText("done")
+        File(dlcDir, GOGBonusDlcInstaller.PENDING_INSTALLER_FILE).writeText(
+            listOf(File(dlcDir, "setup_a.exe"), File(dlcDir, "setup_b.exe")).joinToString("\n") { it.absolutePath },
+        )
+        Files.createSymbolicLink(File(dlcDir, "rootdir").toPath(), gameDir.toPath())
+
+        val cmd = GogBonusInstallerStep.buildCommand(
+            container = container,
+            appId = "GOG_1",
+            gameSource = GameSource.GOG,
+            gameDir = gameDir,
+            gameDirPath = gameDir.absolutePath,
+        )
+
+        val base = "A:\\_gog_bonus\\123"
+        val args = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCEL /DIR=$base\\rootdir"
+        assertEquals(
+            "$base\\setup_b.exe $args && echo done> $base\\setup_b.exe.installed" +
+                " && del /Q $base\\pending_installer.txt || echo failed> $base\\installer_failed.txt",
+            cmd,
+        )
+    }
+
+    @Test
+    fun buildCommand_keepsMarker_whenSomeInstallerExesAreMissing() {
+        File(dlcDir, "setup_a.exe").writeText("exe")
+        val marker = File(dlcDir, GOGBonusDlcInstaller.PENDING_INSTALLER_FILE)
+        marker.writeText(
+            listOf(File(dlcDir, "setup_a.exe"), File(dlcDir, "setup_b.exe")).joinToString("\n") { it.absolutePath },
+        )
+
+        val cmd = GogBonusInstallerStep.buildCommand(
+            container = container,
+            appId = "GOG_1",
+            gameSource = GameSource.GOG,
+            gameDir = gameDir,
+            gameDirPath = gameDir.absolutePath,
+        )
+
+        assertNull(cmd)
+        assertTrue(marker.exists())
     }
 }

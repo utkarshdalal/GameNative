@@ -123,4 +123,24 @@ class GOGManagerDlcIdsTest {
 
         assertEquals(emptySet<String>(), manager.getRecordedDlcIds("100"))
     }
+
+    @Test
+    fun setInstalledDlcIdsReplacesIdsOfAnEarlierInstall() = runBlocking {
+        val installDir = tmp.newFolder("game")
+        dao.insert(installedGame(installDir).copy(installedDlcIds = listOf("600", "700")))
+
+        manager.setInstalledDlcIds("100", setOf("800"))
+
+        assertEquals(listOf("800"), dao.getById("100")!!.installedDlcIds)
+        assertEquals(setOf("800"), manager.getRecordedDlcIds("100"))
+    }
+
+    @Test
+    fun setInstalledDlcIdsClearsIdsWhenNoneArePlanned() = runBlocking {
+        dao.insert(GOGGame(id = "100", installedDlcIds = listOf("600")))
+
+        manager.setInstalledDlcIds("100", emptySet())
+
+        assertEquals(emptyList<String>(), dao.getById("100")!!.installedDlcIds)
+    }
 }

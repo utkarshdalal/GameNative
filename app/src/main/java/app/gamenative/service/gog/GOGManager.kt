@@ -203,6 +203,17 @@ class GOGManager @Inject constructor(
         }
     }
 
+    /** Replaces the DLC ids recorded for [gameId] with [dlcIds], dropping ids left by an earlier install. */
+    suspend fun setInstalledDlcIds(gameId: String, dlcIds: Set<String>) {
+        withContext(Dispatchers.IO) {
+            try {
+                gogGameDao.setInstalledDlcIds(gameId, dlcIds.sorted())
+            } catch (e: Exception) {
+                Timber.tag("GOG").e(e, "Failed to record installed DLCs for $gameId")
+            }
+        }
+    }
+
     suspend fun startBackgroundSync(context: Context): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             if (!GOGAuthManager.hasStoredCredentials(context)) {

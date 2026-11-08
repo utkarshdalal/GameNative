@@ -452,7 +452,11 @@ class GOGService : Service() {
                         Timber.i("[Download] Completed successfully for game $gameId")
 
                         val plannedDlcIds = result.getOrDefault(emptySet())
-                        instance.gogManager.addInstalledDlcIds(gameId, plannedDlcIds - recordedDlcIds)
+                        if (wasInstalled && recordedDlcIds.isNotEmpty()) {
+                            instance.gogManager.addInstalledDlcIds(gameId, plannedDlcIds - recordedDlcIds)
+                        } else {
+                            instance.gogManager.setInstalledDlcIds(gameId, plannedDlcIds)
+                        }
                         val addedDlcIds = plannedDlcIds intersect newDlcIds
                         if (addedDlcIds.isNotEmpty()) {
                             MarkerUtils.removeMarker(installPath, Marker.GOG_SCRIPT_INSTALLED)

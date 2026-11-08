@@ -195,6 +195,7 @@ class GOGBonusDlcInstallerTest {
 
         assertEquals("new", File(root, "data/game.pak").readText())
         assertEquals("added", File(root, "data/extra/added.txt").readText())
+        assertEquals(listOf("game.pak", "extra").sorted(), File(root, "data").list()!!.sorted())
         root.deleteRecursively()
         zip.parentFile?.deleteRecursively()
     }
@@ -239,6 +240,21 @@ class GOGBonusDlcInstallerTest {
         assertEquals("patch.zip", GOGBonusDlcInstaller.targetNameFor(dir, first, "patch.zip"))
         assertEquals("2-patch.zip", GOGBonusDlcInstaller.targetNameFor(dir, second, "patch.zip"))
         assertEquals("other.zip", GOGBonusDlcInstaller.targetNameFor(dir, second, "other.zip"))
+        File(dir, "3.done").writeText("2-patch.zip")
+        assertEquals("2-2-patch.zip", GOGBonusDlcInstaller.targetNameFor(dir, second, "patch.zip"))
+        File(dir, "4.done").writeText("2-2-patch.zip")
+        assertEquals("2-3-patch.zip", GOGBonusDlcInstaller.targetNameFor(dir, second, "patch.zip"))
+        dir.deleteRecursively()
+    }
+
+    @Test
+    fun appliedLanguageMatches_requiresRecordedLanguage() {
+        val dir = Files.createTempDirectory("gog-bonus-language").toFile()
+
+        assertFalse(GOGBonusDlcInstaller.appliedLanguageMatches(dir, "english"))
+        File(dir, "applied_language").writeText("english")
+        assertTrue(GOGBonusDlcInstaller.appliedLanguageMatches(dir, "English"))
+        assertFalse(GOGBonusDlcInstaller.appliedLanguageMatches(dir, "german"))
         dir.deleteRecursively()
     }
 
