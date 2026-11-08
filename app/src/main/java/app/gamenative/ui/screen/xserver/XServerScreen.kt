@@ -148,6 +148,7 @@ import app.gamenative.utils.downloader.CoreDriverDownloader
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.DebugReportUtils
 import app.gamenative.utils.GameSessionId
+import app.gamenative.utils.GuestOutputTail
 import app.gamenative.utils.DebugRunParams
 import app.gamenative.utils.DebugRunParamsHolder
 import app.gamenative.utils.ExecutableSelectionUtils
@@ -4451,7 +4452,9 @@ private fun setupXEnvironment(
         if (debugRun) DebugReportUtils.startLogcatCapture(context, appId)
     }
 
+    GuestOutputTail.reset()
     ProcessHelper.addDebugCallback { line ->
+        GuestOutputTail.append(line)
         if (captureLogs) {
             logFile?.appendText(line + "\n")
         }
@@ -5480,11 +5483,6 @@ private fun exit(
     }.getOrElse { emptyMap() } + runCatching {
         GameCompatibilityService.badgeProperties(ContainerUtils.resolveGameName(appId))
     }.getOrElse { emptyMap() }
-    PostHog.capture(
-        event = "game_exited",
-        properties = exitProperties,
-    )
-    CoroutineScope(Dispatchers.IO).launch { SessionReport.recordRun(container, exitProperties) }
     (frameRating?.context ?: PluviaApp.xServerView?.context)?.let { ctx -> runCatching { AppExitRecorder.markSessionEnd(ctx) } }
     runCatching { windowActivity.stop() }
 
@@ -5509,7 +5507,18 @@ private fun exit(
     releasePanelRefreshListener()
 
     GameNativeDrm.nativeStop()
-    PluviaApp.shutdownEnvironment()
+    try {
+        PluviaApp.shutdownEnvironment()
+    } finally {
+        CoroutineScope(Dispatchers.IO).launch {
+            val properties = exitProperties + SessionReport.crashFingerprintProperties(container, reason)
+            PostHog.capture(
+                event = "game_exited",
+                properties = properties,
+            )
+            SessionReport.recordRun(container, properties)
+        }
+    }
     EaLaunchSupport.stop()
 
     // FEX writes its code maps as it goes and flushes on a normal guest exit; a process the teardown

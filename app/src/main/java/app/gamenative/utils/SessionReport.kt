@@ -20,8 +20,10 @@ import com.winlator.container.Container
 import java.io.File
 import org.json.JSONObject
 import com.posthog.PostHog
+import com.winlator.core.DXVKHelper
 import com.winlator.core.GPUHelper
 import com.winlator.core.GPUInformation
+import com.winlator.core.KeyValueSet
 import com.winlator.widget.FrameRating
 import com.winlator.xserver.Window
 import kotlin.math.roundToInt
@@ -164,6 +166,26 @@ object SessionReport {
     }
 
     private const val MAX_RUN_FILES = 30
+
+    fun crashFingerprintProperties(container: Container, reason: String): Map<String, Any> = try {
+        val versions = linkedMapOf(
+            "wine" to container.getWineVersion().orEmpty(),
+            "emulator" to container.getEmulator().orEmpty(),
+            "fexcore" to container.getFEXCoreVersion().orEmpty(),
+            "box64" to container.getBox64Version().orEmpty(),
+            "graphics_driver" to container.getGraphicsDriver().orEmpty(),
+            "graphics_driver_version" to KeyValueSet(container.getGraphicsDriverConfig()).get("version")
+                .ifEmpty { container.getGraphicsDriverVersion().orEmpty() },
+            "dxwrapper" to container.getDXWrapper().orEmpty(),
+            "dxwrapper_version" to DXVKHelper.parseConfig(container.getDXWrapperConfig()).get("version"),
+        ).filterValues { it.isNotEmpty() }
+        CrashFingerprint.extract(GuestOutputTail.snapshot(), reason, versions)
+            ?.let { mapOf("crash_fingerprint" to it.toMap(), "crash_fingerprint_hash" to it.hash) }
+            .orEmpty()
+    } catch (t: Throwable) {
+        Timber.w(t, "SessionReport: crash fingerprint failed")
+        emptyMap()
+    }
 
     private fun configSourceValue(raw: String?): String =
         raw.orEmpty().ifEmpty { if (PrefManager.autoApplyKnownConfig) "none" else "disabled" }
