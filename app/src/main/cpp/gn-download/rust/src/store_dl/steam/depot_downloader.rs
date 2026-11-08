@@ -175,7 +175,7 @@ pub fn builtin_fallback_cdn_servers() -> Vec<CContentServerDirectoryServerInfo> 
 pub const CDN_PROBE_TIMEOUT: Duration = Duration::from_secs(3);
 
 /// One probe target: the scheme, effective host and port the downloader will actually dial.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct ProbeEndpoint {
     pub https: bool,
     pub host: String,
@@ -342,25 +342,31 @@ fn installed_tree_needs_repair(
     // directories, and per-file `resolve_existing_case` would re-list the same directories over and
     // over before the writer's own cached planning pass even starts.
     let mut resolver = crate::store_dl::CaseResolver::new();
-    manifest.files.iter().any(|file| {
+    // A plain loop, not `any` over a closure: on cancellation this must return from the SCAN
+    // immediately, not just skip the remaining files' filesystem access while still visiting them.
+    for file in &manifest.files {
         if cancel.is_some_and(|cancel| cancel.load(Ordering::Relaxed)) {
             return false; // the caller aborts at its next cancel check
         }
         let is_regular = file.linktarget.is_empty() && (file.flags & DEPOT_FILE_FLAG_DIRECTORY) == 0;
         if !is_regular {
-            return false;
+            continue;
         }
         // Validate BEFORE touching the filesystem: a malformed manifest path must not make this
         // preflight scan outside install_dir. The writer's own guard runs later - too late here.
         if !crate::store_dl::rel_path_is_safe(&file.filename) {
-            return false;
+            continue;
         }
         let rel = resolver.resolve(install_dir, &file.filename);
-        match fs::metadata(Path::new(install_dir).join(&rel)) {
+        let needs_repair = match fs::metadata(Path::new(install_dir).join(&rel)) {
             Ok(meta) => !meta.is_file() || meta.len() != file.size,
             Err(_) => true,
+        };
+        if needs_repair {
+            return true;
         }
-    })
+    }
+    false
 }
 
 /// Whether the run has a depot that can actually fetch CDN bytes, i.e. whether the pre-flight probe
@@ -381,12 +387,14 @@ fn needs_preflight_probe<'a>(
     })
 }
 
-/// What the pre-flight probe decided for this download: the pool to use, plus the effective host
-/// names (`vhost|host`) it removed. Callers must keep those names out of later pool extensions -
-/// `ProbeHints::extended_servers` re-adds cached winners from its own state.
+/// What the pre-flight probe decided for this download: the pool to use, plus the effective
+/// ENDPOINTS (scheme + vhost|host + port) it removed. Callers must keep those endpoints out of
+/// later pool extensions - `ProbeHints::extended_servers` re-adds cached winners from its own state.
+/// Keying on the whole endpoint means an unreachable plain-HTTP entry cannot also exclude a
+/// reachable HTTPS entry that happens to share the hostname.
 pub struct PreflightProbe {
     pub servers: Vec<CContentServerDirectoryServerInfo>,
-    pub unreachable_hosts: Vec<String>,
+    pub unreachable_endpoints: Vec<ProbeEndpoint>,
 }
 
 impl PreflightProbe {
@@ -394,7 +402,7 @@ impl PreflightProbe {
     fn unchanged(servers: Vec<CContentServerDirectoryServerInfo>) -> Self {
         Self {
             servers,
-            unreachable_hosts: Vec::new(),
+            unreachable_endpoints: Vec::new(),
         }
     }
 }
@@ -430,7 +438,23 @@ pub fn quarantine_unreachable_cdn_hosts(
     }
     let endpoints: Vec<Option<ProbeEndpoint>> =
         servers.iter().map(ProbeEndpoint::from_server).collect();
-    let probe_targets: Vec<ProbeEndpoint> = endpoints.iter().flatten().cloned().collect();
+    // The same effective endpoint can appear under several directory entries (duplicate host
+    // entries with different metadata). Probe each endpoint ONCE and fan the answer back out to
+    // every entry: probing duplicates separately could split them on a flaky probe and exclude a
+    // host that did answer, and it also costs a thread per duplicate.
+    let mut probe_targets: Vec<ProbeEndpoint> = Vec::new();
+    let mut target_index: HashMap<ProbeEndpoint, usize> = HashMap::new();
+    let mut server_target: Vec<Option<usize>> = vec![None; servers.len()];
+    for (index, endpoint) in endpoints.iter().enumerate() {
+        let Some(endpoint) = endpoint else {
+            continue;
+        };
+        let target = *target_index.entry(endpoint.clone()).or_insert_with(|| {
+            probe_targets.push(endpoint.clone());
+            probe_targets.len() - 1
+        });
+        server_target[index] = Some(target);
+    }
     let reachable = probe_reachable_endpoints(&probe_targets, ca_bundle_path, CDN_PROBE_TIMEOUT);
     if reachable.len() != probe_targets.len() {
         if let Some(log) = log {
@@ -441,15 +465,16 @@ pub fn quarantine_unreachable_cdn_hosts(
     if cancel.is_some_and(|cancel| cancel.load(Ordering::Relaxed)) {
         return PreflightProbe::unchanged(servers);
     }
-    // Re-expand the probe answers onto the original server indices (servers without a hostname
-    // have no probe target and stay unreachable).
-    let mut reachable_by_server = vec![false; servers.len()];
-    let mut probed = reachable.iter();
-    for (index, endpoint) in endpoints.iter().enumerate() {
-        if endpoint.is_some() {
-            reachable_by_server[index] = probed.next().copied().unwrap_or(false);
-        }
-    }
+    // Fan the per-endpoint answers back out onto the original server indices (servers without a
+    // hostname have no probe target and stay unreachable).
+    let reachable_by_server: Vec<bool> = server_target
+        .iter()
+        .map(|target| {
+            target
+                .and_then(|index| reachable.get(index).copied())
+                .unwrap_or(false)
+        })
+        .collect();
     let total = servers.len();
     let dead: Vec<String> = servers
         .iter()
@@ -480,42 +505,63 @@ pub fn quarantine_unreachable_cdn_hosts(
             dead.join(", ")
         ));
     }
-    // Only report an exclusion set when the probe actually filtered the pool: if nothing answered
-    // the whole pool was kept (see above) and nothing may be filtered out of later extensions.
-    let unreachable_hosts: Vec<String> = if kept.len() == total {
-        Vec::new()
-    } else {
-        endpoints
-            .iter()
-            .zip(reachable_by_server.iter())
-            .filter(|(endpoint, reachable)| {
-                **reachable == false && endpoint.is_some()
-            })
-            .filter_map(|(endpoint, _)| endpoint.as_ref().map(|endpoint| endpoint.host.clone()))
-            .collect()
-    };
+    let unreachable_endpoints = unreachable_endpoint_set(
+        &endpoints,
+        &reachable_by_server,
+        kept.len(),
+        total,
+    );
     PreflightProbe {
         servers: kept,
-        unreachable_hosts,
+        unreachable_endpoints,
     }
 }
 
-/// Drop servers whose effective host did not answer the pre-flight probe.
+/// The effective endpoints to keep out of later pool extensions.
+///
+/// Empty when the probe did not actually filter (nothing answered, so the full pool was kept):
+/// later extensions must not be narrowed in that case either. Duplicate directory entries for one
+/// endpoint collapse to a single entry, and an unreachable HTTP endpoint does not exclude a
+/// reachable HTTPS entry on the same hostname.
+fn unreachable_endpoint_set(
+    endpoints: &[Option<ProbeEndpoint>],
+    reachable_by_server: &[bool],
+    kept_len: usize,
+    total: usize,
+) -> Vec<ProbeEndpoint> {
+    if kept_len == total {
+        return Vec::new();
+    }
+    let mut seen: HashSet<ProbeEndpoint> = HashSet::new();
+    let mut out = Vec::new();
+    for (endpoint, reachable) in endpoints.iter().zip(reachable_by_server.iter()) {
+        if let Some(endpoint) = endpoint {
+            if !*reachable && seen.insert(endpoint.clone()) {
+                out.push(endpoint.clone());
+            }
+        }
+    }
+    out
+}
+
+/// Drop servers whose effective ENDPOINT did not answer the pre-flight probe.
 ///
 /// `ProbeHints` keeps cached winners in its own state and `extended_servers` re-adds them at every
 /// depot boundary; without this filter a quarantined cached winner would come back for later
-/// depots and could receive chunks again.
-fn without_unreachable_hosts(
+/// depots and could receive chunks again. Matching on the whole endpoint (not just the hostname)
+/// keeps an unreachable plain-HTTP entry from excluding a reachable HTTPS entry on the same host.
+fn without_unreachable_endpoints(
     servers: Vec<CContentServerDirectoryServerInfo>,
-    unreachable_hosts: &HashSet<String>,
+    unreachable_endpoints: &HashSet<ProbeEndpoint>,
 ) -> Vec<CContentServerDirectoryServerInfo> {
-    if unreachable_hosts.is_empty() {
+    if unreachable_endpoints.is_empty() {
         return servers;
     }
     servers
         .into_iter()
         .filter(|server| {
-            preferred_host(server).is_none_or(|host| !unreachable_hosts.contains(host))
+            ProbeEndpoint::from_server(server)
+                .is_none_or(|endpoint| !unreachable_endpoints.contains(&endpoint))
         })
         .collect()
 }
@@ -1045,16 +1091,16 @@ cannot be enumerated for ownership",
             needs_preflight_probe(&cfg, [*depot].into_iter())
                 || installed_tree_needs_repair(manifest, install_dir, cancel)
         });
-    // Effective hosts the probe removed: the per-depot pool extension below re-adds cached winners
-    // from `ProbeHints`, so it must be filtered by this set.
-    let mut unreachable_hosts: HashSet<String> = HashSet::new();
+    // Effective endpoints the probe removed: the per-depot pool extension below re-adds cached
+    // winners from `ProbeHints`, so it must be filtered by this set.
+    let mut unreachable_endpoints: HashSet<ProbeEndpoint> = HashSet::new();
     let usable_servers = if needs_probe {
         // Include the cache-seeded promoted hosts in the reachability check too: the depot loop
         // appends them via `probe_hints.extended_servers`, and a cached winner that is unreachable
         // would otherwise skip the pre-flight and receive chunks.
         let seeded = probe_hints.extended_servers(&usable_servers);
         let probe = quarantine_unreachable_cdn_hosts(seeded, ca_bundle_path, cancel, log);
-        unreachable_hosts.extend(probe.unreachable_hosts);
+        unreachable_endpoints.extend(probe.unreachable_endpoints);
         probe.servers
     } else {
         usable_servers
@@ -1186,9 +1232,9 @@ chunks_trusted={}",
         // Promote median-beating foreign caches the probe has found so far (cache-seeded on
         // depot 1, live-probe winners from depot 2 onward). Assigned servers always come first;
         // promoted hosts are seeded/ranked/demoted by the same scheduler paths as assigned ones.
-        let depot_servers = without_unreachable_hosts(
+        let depot_servers = without_unreachable_endpoints(
             probe_hints.extended_servers(&usable_servers),
-            &unreachable_hosts,
+            &unreachable_endpoints,
         );
         if depot_servers.len() != usable_servers.len() {
             if let Some(log) = log {
@@ -1700,32 +1746,75 @@ mod tests {
     }
 
     #[test]
-    fn unreachable_preflight_hosts_stay_out_of_later_pool_extensions() {
+    fn quarantined_cached_winner_is_filtered_from_the_depot_pool() {
+        use crate::store_dl::steam::cdn_probe::{seed_from_cache, ProbeResult};
         use crate::store_dl::steam::pb::ccontentserverdirectory::CContentServerDirectoryServerInfo;
-        let server = |host: &str, vhost: &str| CContentServerDirectoryServerInfo {
+        let server = |host: &str| CContentServerDirectoryServerInfo {
             host: host.into(),
-            vhost: vhost.into(),
             ..Default::default()
         };
-        let pool = vec![
-            server("assigned.steamcontent.com", ""),
-            server("203.0.113.7", "dead-winner.example"),
-            server("203.0.113.8", "live-winner.example"),
-        ];
-        let mut unreachable = HashSet::new();
-        unreachable.insert("dead-winner.example".to_string());
-        let kept = without_unreachable_hosts(pool.clone(), &unreachable);
-        let hosts: Vec<&str> = kept
+        let assigned = vec![server("cache1-iad1.steamcontent.com")];
+        // Seed the hints with one cached winner the preflight will reject and one it accepts.
+        let hints = seed_from_cache("", &assigned);
+        let winner = |host: &str| ProbeResult {
+            host: host.into(),
+            ttfb_ms: 10,
+            bytes_per_sec: 1,
+        };
+        hints.publish_for_test(
+            vec![winner("dead-winner.example"), winner("live-winner.example")],
+            vec![],
+            vec![winner("dead-winner.example"), winner("live-winner.example")],
+        );
+        let extended = hints.extended_servers(&assigned);
+        assert_eq!(extended.len(), 3, "the per-depot extension re-adds cached winners");
+
+        // Preflight rejected the dead winner's endpoint: report it and filter the extended pool,
+        // exactly as the writer path does.
+        let dead = extended
+            .iter()
+            .find(|server| preferred_host(server) == Some("dead-winner.example"))
+            .expect("dead winner present");
+        let excluded = vec![ProbeEndpoint::from_server(dead).expect("endpoint")];
+        let unreachable: HashSet<ProbeEndpoint> = excluded.iter().cloned().collect();
+        let pool = without_unreachable_endpoints(extended, &unreachable);
+        let hosts: Vec<&str> = pool
             .iter()
             .map(|server| preferred_host(server).unwrap_or_default())
             .collect();
         assert_eq!(
             hosts,
-            ["assigned.steamcontent.com", "live-winner.example"],
-            "the quarantined cached winner must not be re-added by a later extension"
+            ["cache1-iad1.steamcontent.com", "live-winner.example"],
+            "a quarantined cached winner must not reach the writer"
         );
         // No exclusions: the pool passes through untouched (full-pool fallback behaviour).
-        assert_eq!(without_unreachable_hosts(pool.clone(), &HashSet::new()), pool);
+        assert_eq!(without_unreachable_endpoints(assigned.clone(), &HashSet::new()), assigned);
+    }
+
+    #[test]
+    fn exclusion_set_is_endpoint_keyed_and_deduped() {
+        let plain = |host: &str, https: bool| ProbeEndpoint {
+            https,
+            host: host.to_string(),
+            port: if https { 443 } else { 80 },
+        };
+        let endpoints = vec![
+            Some(plain("same.host", false)), // unreachable HTTP entry
+            Some(plain("same.host", true)),  // reachable HTTPS entry on the same hostname
+            Some(plain("same.host", false)), // duplicate of the first entry
+            None,
+        ];
+        let reachable = vec![false, true, false];
+        let _ = reachable; // per-server answers are expanded before this point
+        let reachable_by_server = vec![false, true, false, false];
+        let set = unreachable_endpoint_set(&endpoints, &reachable_by_server, 1, 4);
+        assert_eq!(
+            set,
+            vec![plain("same.host", false)],
+            "duplicates collapse and only the failed ENDPOINT is excluded"
+        );
+        // The probe did not filter: no exclusions, even for unreachable entries.
+        assert!(unreachable_endpoint_set(&endpoints, &reachable_by_server, 4, 4).is_empty());
     }
 
     #[test]
@@ -2246,7 +2335,7 @@ mod tests {
         // what happens next.
         let probed = quarantine_unreachable_cdn_hosts(pool.clone(), "", Some(&cancel), None);
         assert_eq!(probed.servers, pool);
-        assert!(probed.unreachable_hosts.is_empty());
+        assert!(probed.unreachable_endpoints.is_empty());
     }
 
     #[test]

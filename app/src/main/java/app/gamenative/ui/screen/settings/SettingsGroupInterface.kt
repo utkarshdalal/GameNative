@@ -76,7 +76,6 @@ import app.gamenative.ui.component.dialog.LoadingDialog
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
@@ -637,6 +636,10 @@ fun SettingsGroupInterface(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(modifier = Modifier.size(8.dp))
+            // Synchronous holder for the latest dragged index: `rememberUpdatedState` only catches
+            // up on recomposition, but a navigation can dispose this screen before that runs, and
+            // the teardown write must still save the selection the user actually made.
+            val latestSpeedIndex = remember { mutableStateOf(downloadSpeedValue) }
             Slider(
                 value = downloadSpeedValue,
                 onValueChange = { newIndex ->
@@ -644,6 +647,7 @@ fun SettingsGroupInterface(
                     // go through an async preferences commit, so an earlier queued write can
                     // land after the final one and leave the wrong tier saved.
                     downloadSpeedValue = newIndex
+                    latestSpeedIndex.value = newIndex
                 },
                 onValueChangeFinished = {
                     // Persist only the settled selection, in selection order: the ordered setter
@@ -659,10 +663,9 @@ fun SettingsGroupInterface(
             // Persist the latest selection even when the screen is torn down before the slider's
             // settled callback runs (navigating away mid-drag): the ordered setter keeps this write
             // in selection order with the settled one.
-            val latestSpeedIndex by rememberUpdatedState(downloadSpeedValue)
             DisposableEffect(downloadSpeedValues) {
                 onDispose {
-                    val index = latestSpeedIndex
+                    val index = latestSpeedIndex.value
                         .roundToInt()
                         .coerceIn(0, downloadSpeedValues.lastIndex)
                     PrefManager.setDownloadSpeedOrdered(downloadSpeedValues[index])

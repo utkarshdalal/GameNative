@@ -1571,9 +1571,10 @@ impl FetchScheduler {
         };
         h.samples = h.samples.saturating_add(1);
         h.consecutive_errors = 0;
-        // The host answered: the next Timeout is a first host-down failure, not a continuation.
+        // The host answered: the streak restarts (the next fresh Timeout is 3 s again), but the
+        // last-park timestamp is KEPT: a timeout queued before this success is stale evidence and
+        // must not park the recovered host again.
         h.host_down_streak = 0;
-        h.last_host_down_at = None;
         h.cooldown_until = None;
     }
 
@@ -2555,12 +2556,19 @@ mod tests {
             t3 + Duration::from_millis(60_000),
             "the ladder caps at one minute"
         );
-        // A success resets the streak, so the next Timeout starts at 3 s again.
+        // A success resets the streak, so the next FRESH Timeout starts at 3 s again. A timeout
+        // queued before the success (dispatched at t3) is stale and must not park the host.
         s.on_success(0, 1_000_000, Duration::from_millis(100));
         assert_eq!(s.server_health(0).host_down_streak, 0);
+        s.on_error(0, t3, FetchFailKind::Timeout, t3);
+        assert!(
+            s.server_health(0).cooldown_until.is_none(),
+            "a timeout queued before the success must not park the recovered host"
+        );
+        let fresh = t3 + Duration::from_millis(1);
         assert_eq!(
-            fail(&mut s, 0, t3, FetchFailKind::Timeout),
-            t3 + Duration::from_millis(3_000)
+            fail(&mut s, 0, fresh, FetchFailKind::Timeout),
+            fresh + Duration::from_millis(3_000)
         );
     }
 

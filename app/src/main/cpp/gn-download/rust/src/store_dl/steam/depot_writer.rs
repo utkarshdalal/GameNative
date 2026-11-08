@@ -1137,9 +1137,10 @@ impl FetchScheduler {
         };
         h.samples = h.samples.saturating_add(1);
         h.consecutive_errors = 0;
-        // The host answered: the next Timeout is a first host-down failure, not a continuation.
+        // The host answered: the streak restarts (the next fresh Timeout is 3 s again), but the
+        // last-park timestamp is KEPT: a timeout queued before this success is stale evidence and
+        // must not park the recovered host again.
         h.host_down_streak = 0;
-        h.last_host_down_at = None;
         h.cooldown_until = None;
         h.recent.push_back((now, bytes));
     }
@@ -6555,14 +6556,21 @@ rename, a missing hash and a new file all fall through to the normal walk"
             Some(t3 + Duration::from_millis(60_000)),
             "the ladder caps at one minute"
         );
-        // A success clears the ladder for the next blackhole failure.
+        // A success restarts the ladder for the next FRESH blackhole failure; a timeout queued
+        // before the success is stale and must not park the recovered host.
         sched.on_success(0, 1_000_000, Duration::from_millis(100), t3);
         assert_eq!(sched.server_health(0).host_down_streak, 0);
         sched.on_error(0, t3, FetchFailKind::Timeout, t3);
+        assert!(
+            sched.server_health(0).cooldown_until.is_none(),
+            "a timeout queued before the success must not park the recovered host"
+        );
+        let fresh = t3 + Duration::from_millis(1);
+        sched.on_error(0, fresh, FetchFailKind::Timeout, fresh);
         assert_eq!(
             sched.server_health(0).cooldown_until,
-            Some(t3 + Duration::from_millis(3_000)),
-            "success restarts the ladder at 3 s"
+            Some(fresh + Duration::from_millis(3_000)),
+            "a fresh failure after the success restarts the ladder at 3 s"
         );
     }
 
@@ -6634,6 +6642,27 @@ rename, a missing hash and a new file all fall through to the normal walk"
         assert_eq!(
             sched.server_health(0).cooldown_until,
             Some(fresh + Duration::from_millis(3_000))
+        );
+    }
+
+    #[test]
+    fn fetch_scheduler_ignores_old_cohort_failure_during_an_active_cooldown() {
+        // Steam-path parity with fetch_core: a staggered old-cohort timeout that reports while the
+        // park is still active must not advance the ladder or move the deadline.
+        let servers = vec![srv("down")];
+        let mut sched = FetchScheduler::new(&servers, 2);
+        let t0 = Instant::now();
+        sched.on_error(0, t0, FetchFailKind::Timeout, t0);
+        assert_eq!(
+            sched.server_health(0).cooldown_until,
+            Some(t0 + Duration::from_millis(3_000))
+        );
+        let during = t0 + Duration::from_millis(1_000);
+        sched.on_error(0, during, FetchFailKind::Timeout, t0);
+        assert_eq!(sched.server_health(0).host_down_streak, 1);
+        assert_eq!(
+            sched.server_health(0).cooldown_until,
+            Some(t0 + Duration::from_millis(3_000))
         );
     }
 

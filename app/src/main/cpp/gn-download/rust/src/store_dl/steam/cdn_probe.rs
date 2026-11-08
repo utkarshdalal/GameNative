@@ -490,6 +490,17 @@ impl ProbeHints {
         })
     }
 
+    /// Test-only seeding of a ranking/bad/winners set without a live probe or cache file.
+    #[cfg(test)]
+    pub(crate) fn publish_for_test(
+        &self,
+        results: Vec<ProbeResult>,
+        bad: Vec<String>,
+        winners: Vec<ProbeResult>,
+    ) {
+        self.publish(results, bad, winners);
+    }
+
     fn publish(&self, results: Vec<ProbeResult>, bad: Vec<String>, winners: Vec<ProbeResult>) {
         {
             let mut state = self.state.lock().expect("probe hints poisoned");
