@@ -19,6 +19,7 @@ import app.gamenative.data.DownloadInfo
 import app.gamenative.data.GameSource
 import app.gamenative.service.SteamService
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.DownloadSpeedConfig
 import com.winlator.xenvironment.ImageFs
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -901,15 +902,16 @@ object WorkshopManager {
         val totalItems = items.size
         val completedCount = AtomicInteger(0)
 
-        // Concurrent download limit based on speed setting
-        val concurrentLimit = when (PrefManager.downloadSpeed) {
+        // Concurrent download limit based on speed setting. Workshop item transfers have no
+        // adaptive scheduler, so the Adaptive tier uses the Blazing mapping here.
+        val effectiveSpeed =
+            if (PrefManager.downloadSpeed == DownloadSpeedConfig.ADAPTIVE_SPEED) 32
+            else PrefManager.downloadSpeed
+        val concurrentLimit = when (effectiveSpeed) {
             8 -> 1
             16 -> 2
             24 -> 3
             32 -> 4
-            // Adaptive: the same modest item-level concurrency as blazing; the width comes from
-            // the per-item chunk window, not from downloading more items at once.
-            app.gamenative.utils.DownloadSpeedConfig.ADAPTIVE_SPEED -> 4
             else -> 2
         }
 
@@ -1190,12 +1192,16 @@ object WorkshopManager {
     private fun computeDownloadThreads(): Pair<Int, Int> {
         var downloadRatio = 1.5
         var decompressRatio = 0.5
-        when (PrefManager.downloadSpeed) {
+        // Workshop item transfers have no adaptive scheduler, so the Adaptive tier uses the
+        // Blazing mapping here.
+        val effectiveSpeed =
+            if (PrefManager.downloadSpeed == DownloadSpeedConfig.ADAPTIVE_SPEED) 32
+            else PrefManager.downloadSpeed
+        when (effectiveSpeed) {
             8 -> { downloadRatio = 0.6; decompressRatio = 0.2 }
             16 -> { downloadRatio = 1.2; decompressRatio = 0.4 }
             24 -> { downloadRatio = 1.5; decompressRatio = 0.5 }
             32 -> { downloadRatio = 2.4; decompressRatio = 0.8 }
-            app.gamenative.utils.DownloadSpeedConfig.ADAPTIVE_SPEED -> { downloadRatio = 2.4; decompressRatio = 0.8 }
         }
         val cpuCores = Runtime.getRuntime().availableProcessors()
         val maxDownloads = (cpuCores * downloadRatio).toInt().coerceAtLeast(1)

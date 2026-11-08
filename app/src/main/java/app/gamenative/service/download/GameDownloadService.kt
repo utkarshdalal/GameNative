@@ -114,7 +114,14 @@ object GameDownloadService {
 
         // ── 1. Resolve the CDN server list (JavaSteam CM call) ──────────────────
         val servers = resolveCdnServers(steamContent, parentScope)
-        if (servers.isEmpty()) throw DownloadFailedException("No CDN servers available")
+        if (servers.isEmpty()) {
+            // Not fatal: an empty directory (poisoned DNS, no route to the assigned cell) is
+            // exactly the case the native engine's built-in Asia-Pacific fallback covers, so
+            // hand it the empty array instead of failing before the engine can recover.
+            Timber.tag(TAG).w(
+                "No CDN servers resolved; the native engine will use its built-in Asia-Pacific fallback"
+            )
+        }
 
         // ── 2. Resolve per-depot (gid, depot key, manifest request code) ────────
         val depotsJson = JSONArray()

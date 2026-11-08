@@ -1604,6 +1604,7 @@
     <string name="settings_download_medium">中等</string>
     <string name="settings_download_fast">快速</string>
     <string name="settings_download_blazing">極速</string>
+    <string name="settings_download_adaptive">自適應</string>
     <string name="settings_download_speed">下載速度</string>
     <string name="settings_download_heat_warning">較高的下載速度可能會導致裝置發熱</string>
     <string name="settings_region_default">預設</string>

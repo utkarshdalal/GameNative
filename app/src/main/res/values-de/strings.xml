@@ -1564,6 +1564,7 @@
     <string name="settings_download_medium">Mittel</string>
     <string name="settings_download_fast">Schnell</string>
     <string name="settings_download_blazing">Sehr schnell</string>
+    <string name="settings_download_adaptive">Adaptiv</string>
     <string name="settings_download_speed">Download-Geschwindigkeit</string>
     <string name="settings_download_heat_warning">Höhere Geschwindigkeit kann zu Hitzeentwicklung führen</string>
     <string name="settings_region_default">Standard</string>

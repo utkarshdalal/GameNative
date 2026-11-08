@@ -69,7 +69,6 @@ import com.alorma.compose.settings.ui.SettingsMenuLink
 import androidx.compose.material3.Slider
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.width
 import kotlin.math.roundToInt
 import com.winlator.core.AppUtils
 import app.gamenative.ui.component.dialog.MessageDialog
@@ -640,15 +639,22 @@ fun SettingsGroupInterface(
             Slider(
                 value = downloadSpeedValue,
                 onValueChange = { newIndex ->
+                    // Track the drag continuously, but do not persist here: PrefManager writes
+                    // go through an async preferences commit, so an earlier queued write can
+                    // land after the final one and leave the wrong tier saved.
                     downloadSpeedValue = newIndex
-                    val index = newIndex.roundToInt().coerceIn(0, downloadSpeedValues.lastIndex)
+                },
+                onValueChangeFinished = {
+                    // Persist only the settled selection once the drag ends.
+                    val index = downloadSpeedValue.roundToInt().coerceIn(0, downloadSpeedValues.lastIndex)
                     PrefManager.downloadSpeed = downloadSpeedValues[index]
                 },
                 valueRange = 0f..downloadSpeedValues.lastIndex.toFloat(),
                 // Steps are the positions BETWEEN the ends: 5 positions need 3.
                 steps = downloadSpeedValues.size - 2
             )
-            // Labels below slider
+            // Labels below slider. Each label takes an equal share of the row (the Row is
+            // fillMaxWidth) so five labels fit narrow windows instead of overflowing.
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -659,7 +665,7 @@ fun SettingsGroupInterface(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.width(52.dp)
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }

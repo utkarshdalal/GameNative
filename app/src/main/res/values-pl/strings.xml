@@ -1638,6 +1638,7 @@
     <string name="settings_download_medium">Średnie</string>
     <string name="settings_download_fast">Szybkie</string>
     <string name="settings_download_blazing">Błyskawiczne</string>
+    <string name="settings_download_adaptive">Adaptacyjna</string>
     <string name="settings_download_speed">Prędkość pobierania</string>
     <string name="settings_download_heat_warning">Wyższe prędkości mogą powodować nagrzewanie się urządzenia podczas pobierania</string>
     <string name="settings_region_default">Domyślny</string>

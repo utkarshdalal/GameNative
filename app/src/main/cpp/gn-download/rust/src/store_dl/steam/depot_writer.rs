@@ -195,6 +195,14 @@ pub const VERIFY_YIELD_BATCH: u32 = 256;
 /// one-off timeout.
 pub const RATE_LIMIT_COOLDOWN_MS: u64 = 5_000;
 
+/// Host cooldowns for consecutive "not answering" failures (3 s, 15 s, 60 s).
+///
+/// A host that times out or refuses to connect is gone, not slow: retrying it on the item backoff
+/// ladder (which caps out at a few seconds) just steals slots. Values match the ladder WinNative
+/// measured on a mainland connection, minus its 300 s last step - see [`FetchScheduler::on_error`].
+/// Shared with the store engines' `fetch_core.rs` scheduler so both copies use one set of numbers.
+pub const HOST_DOWN_COOLDOWNS_MS: [u64; 3] = [3_000, 15_000, 60_000];
+
 /// Sink for engine-side download diagnostics (throughput lines, fallocate fallback notice). Wired by
 /// the JNI layer to `android_log("GN_STEAM_DL", …)`; `None` in tests. Must be `Sync` — it is called
 /// from the fetch/process pools and the reporter thread.
@@ -318,6 +326,13 @@ pub fn retry_backoff_millis(attempt: u32) -> u64 {
         return 0;
     }
     (300u64 << (attempt - 1)).min(4000)
+}
+
+/// Cooldown for the Nth consecutive host-down failure (see [`HOST_DOWN_COOLDOWNS_MS`]); stops at the
+/// last rung instead of extrapolating.
+pub fn host_down_cooldown_millis(host_down_streak: u32) -> u64 {
+    let idx = (host_down_streak.saturating_sub(1) as usize).min(HOST_DOWN_COOLDOWNS_MS.len() - 1);
+    HOST_DOWN_COOLDOWNS_MS[idx]
 }
 
 pub fn chunk_attempt_server_indices(
@@ -922,12 +937,19 @@ fn distinct_host_count(servers: &[CContentServerDirectoryServerInfo]) -> usize {
 
 /// Per-CDN-server health used to rank selection. `ewma_bps` smooths measured speed (a fast CDN can
 /// throttle mid-download, so one sample is never trusted); `cooldown_until` demotes a host that just
-/// errored.
+/// errored. One row per DISTINCT host (see [`FetchScheduler::server_host`]), so duplicate directory
+/// entries that share a host share their cooldown and ladder.
 #[derive(Clone, Debug, Default)]
 struct ServerHealth {
     ewma_bps: f64,
     samples: u32,
+    /// Consecutive failures of ANY kind — drives the item backoff (`retry_backoff_millis`) and the
+    /// `should_mark_bad` decision.
     consecutive_errors: u32,
+    /// Consecutive "the host is not answering" failures (`Timeout`/`Connect`), kept apart from
+    /// `consecutive_errors` so a 5xx burst cannot escalate the first blackhole failure to a
+    /// one-minute park. Drives the host-down ladder in [`FetchScheduler::on_error`].
+    host_down_streak: u32,
     cooldown_until: Option<Instant>,
     /// Rolling (time, bytes) completion events for zombie detection: a trickling host resets the
     /// body-idle timeout forever, so liveness must be judged on THROUGHPUT, not on bytes-arrived.
@@ -950,8 +972,10 @@ const ZOMBIE_COOLDOWN: Duration = Duration::from_secs(30);
 /// Speed-ranked, per-host-capped server picker. Cold hosts are probed first, then selection is
 /// epsilon-greedy over the measured EWMA so a demoted-but-recovered host returns. Per-host caps key
 /// on the host STRING (one `tokio::sync::Semaphore` each) so two directory entries that share a host
-/// still share one cap.
+/// still share one cap — and likewise share ONE health row, so a failing hostname cannot be retried
+/// through a duplicate entry while it is parked.
 struct FetchScheduler {
+    /// One row per DISTINCT host (indexed through [`Self::server_host`]), not per directory entry.
     health: Vec<ServerHealth>,
     /// server index → distinct-host index.
     server_host: Vec<usize>,
@@ -984,13 +1008,22 @@ impl FetchScheduler {
             .map(|_| Arc::new(Semaphore::new(per_host_cap.max(1))))
             .collect();
         Self {
-            health: servers.iter().map(|_| ServerHealth::default()).collect(),
+            health: host_keys.iter().map(|_| ServerHealth::default()).collect(),
             server_host,
             host_keys,
             host_sems,
             per_host_cap,
             dispatch_counter: 0,
         }
+    }
+
+    /// Health row for a directory entry. Two entries that share a host share one row.
+    fn server_health(&self, server_idx: usize) -> &ServerHealth {
+        &self.health[self.server_host[server_idx]]
+    }
+
+    fn server_health_mut(&mut self, server_idx: usize) -> &mut ServerHealth {
+        &mut self.health[self.server_host[server_idx]]
     }
 
     /// Apply CDN-probe results: seed the EWMA of never-sampled hosts with their measured probe
@@ -1001,7 +1034,7 @@ impl FetchScheduler {
     /// download measurements keeps its own ranking.
     fn apply_probe_hints(&mut self, results: &[crate::store_dl::steam::cdn_probe::ProbeResult], bad: &[String]) {
         for i in 0..self.health.len() {
-            let host = &self.host_keys[self.server_host[i]];
+            let host = &self.host_keys[i];
             if bad.iter().any(|b| b == host) {
                 let h = &mut self.health[i];
                 h.ewma_bps *= 0.25;
@@ -1024,7 +1057,7 @@ impl FetchScheduler {
 
     fn eligible(&self, server_idx: usize, now: Instant) -> bool {
         self.host_sem(server_idx).available_permits() > 0
-            && self.health[server_idx]
+            && self.server_health(server_idx)
                 .cooldown_until
                 .map_or(true, |t| t <= now)
     }
@@ -1032,14 +1065,19 @@ impl FetchScheduler {
     /// Pick the server for the next request, or `None` if every host is at its cap or cooling down
     /// (the driver then waits for an in-flight request to complete).
     fn pick(&mut self, now: Instant) -> Option<usize> {
-        let eligible: Vec<usize> = (0..self.health.len())
+        // Health is per distinct host, but the returned value must be a directory entry (the URL is
+        // per entry): rank entries by their shared host's row.
+        let eligible: Vec<usize> = (0..self.server_host.len())
             .filter(|&i| self.eligible(i, now))
             .collect();
         if eligible.is_empty() {
             return None;
         }
         // Cold start: probe an unsampled host before exploiting anything.
-        if let Some(&cold) = eligible.iter().find(|&&i| self.health[i].samples == 0) {
+        if let Some(&cold) = eligible
+            .iter()
+            .find(|&&i| self.server_health(i).samples == 0)
+        {
             return Some(cold);
         }
         self.dispatch_counter = self.dispatch_counter.wrapping_add(1);
@@ -1048,13 +1086,13 @@ impl FetchScheduler {
             return eligible
                 .iter()
                 .copied()
-                .min_by_key(|&i| self.health[i].samples);
+                .min_by_key(|&i| self.server_health(i).samples);
         }
         // Exploit: highest EWMA, tie-break to the host with more free permits, then lower index.
         eligible.iter().copied().max_by(|&a, &b| {
-            self.health[a]
+            self.server_health(a)
                 .ewma_bps
-                .partial_cmp(&self.health[b].ewma_bps)
+                .partial_cmp(&self.server_health(b).ewma_bps)
                 .unwrap_or(std::cmp::Ordering::Equal)
                 .then(
                     self.host_sem(a)
@@ -1068,7 +1106,7 @@ impl FetchScheduler {
     fn on_success(&mut self, server_idx: usize, bytes: u64, elapsed: Duration, now: Instant) {
         let secs = elapsed.as_secs_f64().max(0.001);
         let bps = bytes as f64 / secs;
-        let h = &mut self.health[server_idx];
+        let h = self.server_health_mut(server_idx);
         h.ewma_bps = if h.samples == 0 {
             bps
         } else {
@@ -1076,19 +1114,22 @@ impl FetchScheduler {
         };
         h.samples = h.samples.saturating_add(1);
         h.consecutive_errors = 0;
+        // The host answered: the next Timeout is a first host-down failure, not a continuation.
+        h.host_down_streak = 0;
         h.cooldown_until = None;
         h.recent.push_back((now, bytes));
     }
 
-    /// Zombie sweep — see the `ZOMBIE_*` constants for the rule. Returns `(server_idx, held,
+    /// Zombie sweep — see the `ZOMBIE_*` constants for the rule. Returns `(host_idx, held,
     /// quiet_secs)` for each zombie so the log line carries the evidence (device runs are the
-    /// ground truth for tuning this). In-flight count is per HOST (the semaphore's missing
-    /// permits), so two entries sharing a host see the same pressure.
+    /// ground truth for tuning this); `host_idx` is a DISTINCT-host index (health/semaphore row),
+    /// so a host shared by duplicate directory entries is judged once. In-flight count is per HOST
+    /// (the semaphore's missing permits).
     fn check_zombies(&mut self, now: Instant) -> Vec<(usize, usize, u64)> {
         let mut zombies = Vec::new();
         let mut active_hosts = 0usize; // hosts currently holding permits
         for i in 0..self.health.len() {
-            let held = self.per_host_cap - self.host_sem(i).available_permits();
+            let held = self.per_host_cap - self.host_sems[i].available_permits();
             if held > 0 {
                 active_hosts += 1;
             }
@@ -1138,13 +1179,38 @@ impl FetchScheduler {
     }
 
     fn on_error(&mut self, server_idx: usize, now: Instant, kind: FetchFailKind) {
-        let h = &mut self.health[server_idx];
+        let host_down = matches!(kind, FetchFailKind::Timeout | FetchFailKind::Connect);
+        let h = self.server_health_mut(server_idx);
         h.consecutive_errors = h.consecutive_errors.saturating_add(1);
+        if host_down {
+            // Only a NEW attempt advances the ladder: a cooldown already in force means the host is
+            // still parked, and failures arriving from requests dispatched before it cooled must
+            // not each advance 3 s → 15 s → 60 s.
+            if h.cooldown_until.map_or(true, |t| t <= now) {
+                h.host_down_streak = h.host_down_streak.saturating_add(1);
+            }
+        } else {
+            // The host answered (5xx/429/404/...): it is not a blackhole, so a preceding error
+            // burst must not escalate the next host-down failure.
+            h.host_down_streak = 0;
+        }
         let mut backoff = retry_backoff_millis(h.consecutive_errors);
+        if host_down {
+            // "This host is not answering" is not the same failure as a 5xx: the item backoff caps
+            // at a few seconds, which meant a blackholed CDN host was retried every <=4 s and kept
+            // taking slots from hosts that do work. Escalate the host cooldown instead. The ladder
+            // stops at a minute rather than WinNative's five: its pool was 4-16 assigned hosts and
+            // could rotate around a parked one, while a small pool that cooled itself for minutes
+            // would stall the whole depot.
+            backoff = backoff.max(host_down_cooldown_millis(h.host_down_streak.max(1)));
+        }
         if kind == FetchFailKind::RateLimited {
             backoff = backoff.max(RATE_LIMIT_COOLDOWN_MS);
         }
-        h.cooldown_until = Some(now + Duration::from_millis(backoff));
+        // Never shorten an existing cooldown: a later error from another in-flight request must not
+        // overwrite a host-down deadline with the shorter item backoff.
+        let until = now + Duration::from_millis(backoff);
+        h.cooldown_until = Some(h.cooldown_until.map_or(until, |t| t.max(until)));
         // Demote so ranking avoids it even after the cooldown expires, until it re-earns speed.
         h.ewma_bps *= 0.5;
     }
@@ -3325,7 +3391,7 @@ async fn run_async_fetch_driver(
                 // makes a mid-body stall visible HERE). Mark it bad so the CDN probe re-probes a
                 // replacement before the cache TTL expires.
                 if crate::store_dl::steam::cdn_probe::should_mark_bad(
-                    sched.health[done.server_idx].consecutive_errors,
+                    sched.server_health(done.server_idx).consecutive_errors,
                 ) {
                     let host = &servers[done.server_idx].host;
                     crate::store_dl::steam::cdn_probe::mark_bad(install_dir, host);
@@ -3374,7 +3440,7 @@ async fn run_async_fetch_driver(
         // Zombie sweep (every completion): catches hosts that TRICKLE — the failure mode the
         // body-idle timeout is blind to (err_rate stays 0% while a host parks its permits).
         for (z, held, quiet) in sched.check_zombies(now) {
-            let host = &servers[z].host;
+            let host = &sched.host_keys[z];
             if let Some(log) = log {
                 log(&format!(
                     "cdn-zombie depot={depot_id} host={host} held={held} quiet={quiet}s cooldown=30s"
@@ -4980,6 +5046,19 @@ rename, a missing hash and a new file all fall through to the normal walk"
     }
 
     #[test]
+    fn host_down_ladder_matches_the_winnative_steps() {
+        assert_eq!(host_down_cooldown_millis(1), 3_000);
+        assert_eq!(host_down_cooldown_millis(2), 15_000);
+        assert_eq!(host_down_cooldown_millis(3), 60_000);
+        assert_eq!(host_down_cooldown_millis(9), 60_000, "the ladder caps at one minute");
+        assert_eq!(
+            host_down_cooldown_millis(0),
+            3_000,
+            "a sub-one streak starts at the first rung"
+        );
+    }
+
+    #[test]
     fn chunk_retry_rotates_across_servers_like_cpp_worker() {
         assert_eq!(chunk_attempt_server_indices(0, 3, 5), [0, 1, 2, 0, 1]);
         assert_eq!(chunk_attempt_server_indices(2, 3, 5), [2, 0, 1, 2, 0]);
@@ -6395,6 +6474,70 @@ rename, a missing hash and a new file all fall through to the normal walk"
         assert!(!sched.eligible(a, now));
         let later = now + Duration::from_secs(10);
         assert!(sched.eligible(a, later));
+    }
+
+    #[test]
+    fn fetch_scheduler_applies_the_host_down_ladder() {
+        // Steam path parity with fetch_core's scheduler: a host that stops answering escalates
+        // 3 s → 15 s → 60 s and caps there instead of retrying on the <=4 s item backoff.
+        let servers = vec![srv("down")];
+        let mut sched = FetchScheduler::new(&servers, 2);
+        let t0 = Instant::now();
+        sched.on_error(0, t0, FetchFailKind::Timeout);
+        assert_eq!(
+            sched.server_health(0).cooldown_until,
+            Some(t0 + Duration::from_millis(3_000))
+        );
+        let t1 = t0 + Duration::from_millis(3_001);
+        sched.on_error(0, t1, FetchFailKind::Timeout);
+        assert_eq!(
+            sched.server_health(0).cooldown_until,
+            Some(t1 + Duration::from_millis(15_000))
+        );
+        let t2 = t1 + Duration::from_millis(15_001);
+        sched.on_error(0, t2, FetchFailKind::Timeout);
+        assert_eq!(
+            sched.server_health(0).cooldown_until,
+            Some(t2 + Duration::from_millis(60_000))
+        );
+        let t3 = t2 + Duration::from_millis(60_001);
+        sched.on_error(0, t3, FetchFailKind::Timeout);
+        assert_eq!(
+            sched.server_health(0).cooldown_until,
+            Some(t3 + Duration::from_millis(60_000)),
+            "the ladder caps at one minute"
+        );
+        // A success clears the ladder for the next blackhole failure.
+        sched.on_success(0, 1_000_000, Duration::from_millis(100), t3);
+        assert_eq!(sched.server_health(0).host_down_streak, 0);
+        sched.on_error(0, t3, FetchFailKind::Timeout);
+        assert_eq!(
+            sched.server_health(0).cooldown_until,
+            Some(t3 + Duration::from_millis(3_000)),
+            "success restarts the ladder at 3 s"
+        );
+    }
+
+    #[test]
+    fn fetch_scheduler_shares_health_across_duplicate_directory_entries() {
+        // The CDN directory can list the same host twice (different vhosts / load buckets): both
+        // entries must share one health row, so cooling entry 0 also parks entry 1 instead of the
+        // failing hostname being retried through the duplicate.
+        let servers = vec![srv("cdnA"), srv("cdnA"), srv("cdnB")];
+        let mut sched = FetchScheduler::new(&servers, 2);
+        assert_eq!(
+            sched.health.len(),
+            2,
+            "health is per distinct host, not per entry"
+        );
+        let now = Instant::now();
+        sched.on_error(0, now, FetchFailKind::Timeout);
+        assert_eq!(
+            sched.server_health(1).cooldown_until,
+            sched.server_health(0).cooldown_until
+        );
+        assert!(!sched.eligible(0, now) && !sched.eligible(1, now));
+        assert_eq!(sched.pick(now), Some(2), "the duplicated host is not retried through entry 1");
     }
 
     #[test]

@@ -1,6 +1,7 @@
 package app.gamenative.service.gog
 
 import android.content.Context
+import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.DownloadInfo
 import app.gamenative.data.GameSource
@@ -1152,7 +1153,10 @@ class GOGDownloadManager @Inject constructor(
         try {
             val scope = CoroutineScope(Dispatchers.IO)
             val speedConfig = DownloadSpeedConfig()
-            val parallelDownloads = speedConfig.maxDownloads
+            // Kotlin fallback path: the Adaptive tier's maxDownloads is the native engine's
+            // window ceiling (256), so use the plain request count instead of flooding OkHttp.
+            val parallelDownloads =
+                app.gamenative.utils.DownloadSpeedConfig.parallelRequestsFor(PrefManager.downloadSpeed)
             val parallelAssemble = speedConfig.maxDecompress
             val downloadHttpClient = Net.httpForParallelDownloads(parallelDownloads)
 

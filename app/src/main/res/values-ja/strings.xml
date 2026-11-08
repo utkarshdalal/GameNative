@@ -1882,6 +1882,7 @@
     <string name="settings_download_medium">標準</string>
     <string name="settings_download_fast">速い</string>
     <string name="settings_download_blazing">超高速</string>
+    <string name="settings_download_adaptive">アダプティブ</string>
     <string name="settings_download_speed">ダウンロード速度</string>
     <string name="settings_download_heat_warning">速度が速いと、ダウンロード中にデバイスの熱が増加する可能性があります</string>
     <string name="settings_region_default">デフォルト</string>

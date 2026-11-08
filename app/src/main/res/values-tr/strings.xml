@@ -1709,6 +1709,7 @@
     <string name="settings_download_medium">Orta</string>
     <string name="settings_download_fast">Hızlı</string>
     <string name="settings_download_blazing">Çok hızlı</string>
+    <string name="settings_download_adaptive">Uyarlanabilir</string>
     <string name="settings_download_speed">İndirme hızı</string>
     <string name="settings_download_heat_warning">Daha yüksek hızlar indirme sırasında cihazın daha fazla ısınmasına yol açabilir</string>
     <string name="settings_region_default">Varsayılan</string>

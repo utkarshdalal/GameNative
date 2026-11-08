@@ -1624,6 +1624,7 @@
     <string name="settings_download_medium">Середня</string>
     <string name="settings_download_fast">Швидка</string>
     <string name="settings_download_blazing">Блискавична</string>
+    <string name="settings_download_adaptive">Адаптивна</string>
     <string name="settings_download_speed">Швидкість завантаження</string>
     <string name="settings_download_heat_warning">Вищі швидкості можуть спричинити надмірний нагрів пристрою під час завантаження.</string>
     <string name="settings_region_default">Стандартний</string>

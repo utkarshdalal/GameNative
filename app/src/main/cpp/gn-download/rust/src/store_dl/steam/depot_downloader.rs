@@ -1,4 +1,6 @@
-use crate::store_dl::steam::cdn_client::{auth_status, CdnClient, CdnManifestResult};
+use crate::store_dl::steam::cdn_client::{
+    auth_status, preferred_host, probe_http_client, CdnClient, CdnManifestResult,
+};
 use crate::store_dl::steam::content_manifest::ContentManifest;
 use crate::store_dl::steam::depot_config::DepotConfigStore;
 use crate::store_dl::steam::depot_writer::{
@@ -6,12 +8,12 @@ use crate::store_dl::steam::depot_writer::{
 };
 use crate::store_dl::steam::pb::ccontentserverdirectory::CContentServerDirectoryServerInfo;
 use std::fs;
-use std::net::{TcpStream, ToSocketAddrs};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 pub const MAX_MANIFEST_FETCH_ATTEMPTS: usize = 5;
 
@@ -94,21 +96,20 @@ pub fn validate_download_inputs(
     Ok(())
 }
 
+/// Validates the resolved plan's inputs. An empty server list is accepted on purpose: the content
+/// server directory can legitimately return no servers (poisoned DNS, no assigned cell), and
+/// [`filter_usable_cdn_servers`] substitutes the built-in Asia-Pacific fallback in that case.
+/// Only an empty install dir or an empty depot list makes the plan unusable.
 pub fn validate_resolved_download_inputs(
     install_dir: &str,
     depots: &[ResolvedDepotSpec],
-    servers: &[CContentServerDirectoryServerInfo],
+    _servers: &[CContentServerDirectoryServerInfo],
 ) -> Result<(), DepotDownloadResult> {
     if install_dir.is_empty() {
         return Err(DepotDownloadResult::fail("download: empty install dir"));
     }
     if depots.is_empty() {
         return Err(DepotDownloadResult::fail("download: no depots"));
-    }
-    if servers.is_empty() {
-        return Err(DepotDownloadResult::fail(
-            "download: no CDN servers available",
-        ));
     }
     Ok(())
 }
@@ -169,14 +170,43 @@ pub fn builtin_fallback_cdn_servers() -> Vec<CContentServerDirectoryServerInfo> 
         .collect()
 }
 
-/// How long one host gets to accept a TCP connection during the pre-flight probe.
-pub const CDN_PROBE_CONNECT_TIMEOUT: Duration = Duration::from_secs(3);
+/// How long the pre-flight probe waits for one host. It bounds the whole HTTP exchange (DNS, TCP,
+/// TLS and the response headers) through the shared client, not just the TCP connect.
+pub const CDN_PROBE_TIMEOUT: Duration = Duration::from_secs(3);
 
-/// Probe threads, so a 20-host pool is checked in one round instead of 20 sequential waits.
-const CDN_PROBE_MAX_THREADS: usize = 16;
+/// One probe target: the scheme, effective host and port the downloader will actually dial.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProbeEndpoint {
+    pub https: bool,
+    pub host: String,
+    pub port: u16,
+}
 
-fn endpoint_of(server: &CContentServerDirectoryServerInfo) -> (String, u16) {
-    (server.host.clone(), server.port())
+impl ProbeEndpoint {
+    /// The server's effective endpoint: `vhost` over `host`, and `https_support` deciding the
+    /// scheme/port — the same rules the URL builders use for real chunk and manifest requests.
+    fn from_server(server: &CContentServerDirectoryServerInfo) -> Option<Self> {
+        let host = preferred_host(server)?;
+        Some(Self {
+            https: server.use_https(),
+            host: host.to_string(),
+            port: server.port(),
+        })
+    }
+
+    fn url(&self) -> String {
+        format!(
+            "{}://{}:{}/",
+            if self.https { "https" } else { "http" },
+            self.host,
+            self.port
+        )
+    }
+
+    /// `host:port` for log lines: the effective hostname that was actually probed.
+    fn label(&self) -> String {
+        unreachable_host_label(&self.host, self.port)
+    }
 }
 
 /// Adds the probe sample to a candidate error line: the depot writer's stall detector reports
@@ -186,101 +216,185 @@ pub fn unreachable_host_label(host: &str, port: u16) -> String {
     format!("{host}:{port}")
 }
 
-/// Whether a single endpoint accepts a TCP connection within `timeout`.
-fn endpoint_reachable(endpoint: &(String, u16), timeout: Duration) -> bool {
-    let Ok(addrs) = (endpoint.0.as_str(), endpoint.1).to_socket_addrs() else {
-        return false;
-    };
-    addrs
-        .into_iter()
-        .any(|addr| TcpStream::connect_timeout(&addr, timeout).is_ok())
+/// Sends one bounded GET through the shared client. ANY HTTP response — 2xx, 3xx, 4xx or 5xx —
+/// proves the host resolved, accepted the connection and spoke HTTP; only a transport/TLS/URL
+/// error counts as unreachable. The body is never read: the response headers are the whole answer.
+fn probe_endpoint(
+    client: &reqwest::blocking::Client,
+    endpoint: &ProbeEndpoint,
+    timeout: Duration,
+) -> bool {
+    client
+        .get(endpoint.url())
+        .timeout(timeout)
+        .send()
+        .is_ok()
 }
 
-/// Probes endpoints in parallel; `true` where the TCP connect succeeded.
-pub fn probe_reachable_endpoints(endpoints: &[(String, u16)], timeout: Duration) -> Vec<bool> {
+/// Probes every endpoint concurrently through one shared bounded client.
+///
+/// One detached thread per endpoint (the directory pool is ~13-20 hosts) and a result channel keep
+/// each input index's answer separate, so the returned vector has exactly one boolean per endpoint
+/// in input order. The coordinator waits at most `timeout` and treats anything still missing at
+/// the deadline as unreachable: a request that ignores the client timeout cannot stretch the
+/// pre-flight. An EMPTY result means the shared client could not be built and nothing was verified
+/// — the caller must keep its pool untouched in that case.
+pub fn probe_reachable_endpoints(
+    endpoints: &[ProbeEndpoint],
+    ca_bundle_path: &str,
+    timeout: Duration,
+) -> Vec<bool> {
     if endpoints.is_empty() {
         return Vec::new();
     }
-    let groups = endpoints.len().div_ceil(CDN_PROBE_MAX_THREADS).max(1);
-    let chunks: Vec<&[(String, u16)]> = endpoints.chunks(groups).collect();
-    let mut results: Vec<bool> = vec![true; endpoints.len()];
-    std::thread::scope(|scope| {
-        let handles: Vec<_> = chunks
-            .iter()
-            .enumerate()
-            .map(|(group, chunk)| {
-                let base = group * groups;
-                scope.spawn(move || {
-                    let mut local = Vec::with_capacity(chunk.len());
-                    for endpoint in chunk.iter() {
-                        local.push((base + local.len(), endpoint_reachable(endpoint, timeout)));
-                    }
-                    local
-                })
-            })
-            .collect();
-        for handle in handles {
-            for (index, reachable) in handle.join().unwrap_or_default() {
-                if index < results.len() {
-                    results[index] = reachable;
-                }
-            }
+    let started = Instant::now();
+    let client = match probe_http_client(ca_bundle_path, timeout) {
+        Ok(client) => client,
+        Err(_) => return Vec::new(),
+    };
+    let mut reachable = vec![false; endpoints.len()];
+    let (sender, receiver) = mpsc::channel();
+    let mut pending = 0usize;
+    for (index, endpoint) in endpoints.iter().enumerate() {
+        let client = client.clone();
+        let endpoint = endpoint.clone();
+        let sender = sender.clone();
+        // Detached on purpose: the coordinator must not join a request that overruns the timeout.
+        let spawned = thread::Builder::new()
+            .name(format!("cdn-probe-{index}"))
+            .spawn(move || {
+                let _ = sender.send((index, probe_endpoint(&client, &endpoint, timeout)));
+            });
+        if spawned.is_ok() {
+            pending += 1;
         }
-    });
-    results
+    }
+    drop(sender);
+    let deadline = started + timeout;
+    while pending > 0 {
+        let Some(remaining) = deadline.checked_duration_since(Instant::now()) else {
+            break;
+        };
+        match receiver.recv_timeout(remaining) {
+            Ok((index, answered)) => {
+                if let Some(slot) = reachable.get_mut(index) {
+                    *slot = answered;
+                }
+                pending -= 1;
+            }
+            Err(_) => break,
+        }
+    }
+    reachable
 }
 
-/// Drops CDN hosts that do not accept a TCP connection before the first chunk is requested.
+/// Keeps only the servers the probe answered for, preserving directory order.
+///
+/// The pool is never emptied and a one-server pool is never cut: when nothing is reachable the
+/// original list comes back unchanged (the probe can also be wrong — an ICMP-filtered host can
+/// still serve HTTP — and a pool of one dead host behaves the same as no pool at all), and with a
+/// single server there is nothing to choose between. `reachable` is index-aligned with `servers`
+/// and a missing entry counts as unreachable.
+pub fn filter_by_reachability(
+    servers: Vec<CContentServerDirectoryServerInfo>,
+    reachable: &[bool],
+) -> Vec<CContentServerDirectoryServerInfo> {
+    if servers.len() < 2 {
+        return servers;
+    }
+    let kept_count = (0..servers.len())
+        .filter(|index| reachable.get(*index).copied().unwrap_or(false))
+        .count();
+    if kept_count == 0 {
+        return servers;
+    }
+    servers
+        .into_iter()
+        .enumerate()
+        .filter(|(index, _)| reachable.get(*index).copied().unwrap_or(false))
+        .map(|(_, server)| server)
+        .collect()
+}
+
+/// Drops CDN hosts that do not answer one bounded HTTP request before the first chunk is
+/// requested (Phase 2).
 ///
 /// Without this the download starts its window on the assigned set, and on a mainland connection
 /// several of those hosts accept DNS (or even the TCP handshake) and then never answer: each
 /// request burns the client timeout, the adaptive window shrinks, and after `STALL_ABORT_AFTER`
 /// the depot aborts. WinNative measured the same failure and fixed it with an up-front probe;
-/// every reachable host gets a real request either way, so the probe only costs 3 s per round.
+/// every reachable host gets a real request either way, so the probe only costs ~3 s per round.
+///
+/// Runs right before Phase 2 on purpose: manifest resolution (and a run whose depots are all
+/// installed/skipped, which never reaches Phase 2) must not pay for a probe it does not need.
 ///
 /// The list is never emptied: when nothing answers the original set is kept, because the probe
 /// can also be wrong (ICMP-filtered host that still serves HTTP) and a pool of one dead host
-/// behaves the same as no pool at all.
+/// behaves the same as no pool at all. A one-server pool is returned unchanged without probing.
+/// A cancelled run returns the input unchanged so the caller's own cancel check reports it.
 pub fn quarantine_unreachable_cdn_hosts(
     servers: Vec<CContentServerDirectoryServerInfo>,
+    ca_bundle_path: &str,
+    cancel: Option<&AtomicBool>,
     log: Option<crate::store_dl::steam::depot_writer::DepotLogCallback<'_>>,
 ) -> Vec<CContentServerDirectoryServerInfo> {
     if servers.len() < 2 {
         return servers;
     }
-    let endpoints: Vec<(String, u16)> = servers.iter().map(endpoint_of).collect();
-    let reachable = probe_reachable_endpoints(&endpoints, CDN_PROBE_CONNECT_TIMEOUT);
-    let kept: Vec<CContentServerDirectoryServerInfo> = servers
-        .iter()
-        .zip(reachable.iter())
-        .filter(|(_, reachable)| **reachable)
-        .map(|(server, _)| server.clone())
-        .collect();
-    if kept.is_empty() {
+    if cancel.is_some_and(|cancel| cancel.load(Ordering::Relaxed)) {
+        return servers;
+    }
+    let endpoints: Vec<Option<ProbeEndpoint>> =
+        servers.iter().map(ProbeEndpoint::from_server).collect();
+    let probe_targets: Vec<ProbeEndpoint> = endpoints.iter().flatten().cloned().collect();
+    let reachable = probe_reachable_endpoints(&probe_targets, ca_bundle_path, CDN_PROBE_TIMEOUT);
+    if reachable.len() != probe_targets.len() {
         if let Some(log) = log {
-            log(&format!(
-                "cdn-probe: none of {} hosts answered in {}s, keeping the full pool",
-                servers.len(),
-                CDN_PROBE_CONNECT_TIMEOUT.as_secs()
-            ));
+            log("cdn-probe: probe client unavailable, keeping the full pool");
         }
         return servers;
     }
-    if kept.len() != servers.len() {
-        if let Some(log) = log {
-            let dead: Vec<String> = servers
-                .iter()
-                .zip(reachable.iter())
-                .filter(|(_, reachable)| !**reachable)
-                .map(|(server, _)| unreachable_host_label(&server.host, server.port()))
-                .collect();
-            log(&format!(
-                "cdn-probe: {} of {} hosts unreachable ({}), quarantined for this download",
-                dead.len(),
-                servers.len(),
-                dead.join(", ")
-            ));
+    if cancel.is_some_and(|cancel| cancel.load(Ordering::Relaxed)) {
+        return servers;
+    }
+    // Re-expand the probe answers onto the original server indices (servers without a hostname
+    // have no probe target and stay unreachable).
+    let mut reachable_by_server = vec![false; servers.len()];
+    let mut probed = reachable.iter();
+    for (index, endpoint) in endpoints.iter().enumerate() {
+        if endpoint.is_some() {
+            reachable_by_server[index] = probed.next().copied().unwrap_or(false);
         }
+    }
+    let total = servers.len();
+    let dead: Vec<String> = servers
+        .iter()
+        .zip(endpoints.iter())
+        .zip(reachable_by_server.iter())
+        .filter(|((_, _), reachable)| !**reachable)
+        .map(|((server, endpoint), _)| match endpoint {
+            Some(endpoint) => endpoint.label(),
+            None => unreachable_host_label(&server.host, server.port()),
+        })
+        .collect();
+    let kept = filter_by_reachability(servers, &reachable_by_server);
+    if kept.len() == total {
+        if !dead.is_empty() {
+            if let Some(log) = log {
+                log(&format!(
+                    "cdn-probe: none of {} hosts answered in {}s, keeping the full pool",
+                    total,
+                    CDN_PROBE_TIMEOUT.as_secs()
+                ));
+            }
+        }
+    } else if let Some(log) = log {
+        log(&format!(
+            "cdn-probe: {} of {} hosts unreachable ({}), quarantined for this download",
+            dead.len(),
+            total,
+            dead.join(", ")
+        ));
     }
     kept
 }
@@ -615,8 +729,6 @@ pub fn download_resolved_depots_with_cancel_progress(
     if usable_servers.is_empty() {
         return DepotDownloadResult::fail("download: no usable CDN server");
     }
-    // Drop hosts that never answer before the first chunk is requested; see the doc comment.
-    let usable_servers = quarantine_unreachable_cdn_hosts(usable_servers, log);
 
     if let Err(error) = fs::create_dir_all(install_dir) {
         return DepotDownloadResult::fail(format!("download: mkdir install dir: {error}"));
@@ -802,6 +914,16 @@ cannot be enumerated for ownership",
             ));
         }
     }
+
+    // ── Pre-flight CDN probe, deferred to here on purpose: manifest resolution above (and a
+    // run with nothing resolved, which never reaches Phase 2) must not pay for a network probe
+    // it does not need. This is the last point before the first real CDN request; see the doc
+    // comment.
+    let usable_servers = if resolved.is_empty() {
+        usable_servers
+    } else {
+        quarantine_unreachable_cdn_hosts(usable_servers, ca_bundle_path, cancel, log)
+    };
 
     // ── Phase 2: all metadata resolved — download the depots in order.
     for (depot, manifest) in resolved {
@@ -1540,7 +1662,7 @@ mod tests {
     }
 
     #[test]
-    fn validates_resolved_inputs_and_filters_servers() {
+    fn validates_resolved_inputs_and_accepts_an_empty_server_list() {
         assert_eq!(
             validate_resolved_download_inputs("", &[ResolvedDepotSpec::default()], &[])
                 .unwrap_err()
@@ -1553,11 +1675,12 @@ mod tests {
                 .error,
             "download: no depots"
         );
-        assert_eq!(
+        // An empty directory result is not a failure: the native engine falls back to its
+        // built-in Asia-Pacific edges (see filter_usable_cdn_servers), so rejecting it here
+        // would make that fallback unreachable.
+        assert!(
             validate_resolved_download_inputs("/tmp/app", &[ResolvedDepotSpec::default()], &[])
-                .unwrap_err()
-                .error,
-            "download: no CDN servers available"
+                .is_ok()
         );
     }
 
@@ -1730,52 +1853,144 @@ mod tests {
     }
 
     #[test]
+    fn probe_targets_the_effective_host_endpoint() {
+        let bare = CContentServerDirectoryServerInfo {
+            host: "cache9-hkg1.steamcontent.com".into(),
+            https_support: "mandatory".into(),
+            ..Default::default()
+        };
+        assert_eq!(
+            ProbeEndpoint::from_server(&bare),
+            Some(ProbeEndpoint {
+                https: true,
+                host: "cache9-hkg1.steamcontent.com".into(),
+                port: 443,
+            })
+        );
+        // Requests dial the vhost when the directory sets one, so the probe and its log label must
+        // target that same name instead of the raw host (they can be different machines).
+        let vhosted = CContentServerDirectoryServerInfo {
+            host: "203.0.113.7".into(),
+            vhost: "cache9-hkg1.steamcontent.com".into(),
+            https_support: "unavailable".into(),
+            ..Default::default()
+        };
+        let endpoint = ProbeEndpoint::from_server(&vhosted).expect("vhost endpoint");
+        assert_eq!(endpoint.url(), "http://cache9-hkg1.steamcontent.com:80/");
+        assert_eq!(endpoint.label(), "cache9-hkg1.steamcontent.com:80");
+        // No hostname at all: nothing to probe.
+        assert_eq!(
+            ProbeEndpoint::from_server(&CContentServerDirectoryServerInfo::default()),
+            None
+        );
+    }
+
+    #[test]
     fn probe_reports_a_listening_endpoint_and_a_closed_one() {
-        // A loopback listener accepts; a port nothing bound refuses immediately.
+        // A loopback listener answers any request with a real HTTP response (a 204, so not just an
+        // open socket); a port nothing bound refuses immediately. The scheme/port come from the
+        // endpoint itself, so this never touches the 80/443 ports Steam hosts use.
         let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind loopback");
         let open_port = listener.local_addr().expect("addr").port();
+        let server = thread::spawn(move || {
+            use std::io::{Read, Write};
+            if let Ok((mut stream, _)) = listener.accept() {
+                let mut request = [0u8; 1024];
+                let _ = stream.read(&mut request);
+                let _ = stream.write_all(
+                    b"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+                );
+            }
+        });
         let endpoints = vec![
-            ("127.0.0.1".to_string(), open_port),
-            ("127.0.0.1".to_string(), 1),
+            ProbeEndpoint {
+                https: false,
+                host: "127.0.0.1".into(),
+                port: open_port,
+            },
+            ProbeEndpoint {
+                https: false,
+                host: "127.0.0.1".into(),
+                port: 1,
+            },
         ];
-        let reachable = probe_reachable_endpoints(&endpoints, Duration::from_millis(500));
+        let reachable = probe_reachable_endpoints(&endpoints, "", Duration::from_secs(1));
+        server.join().expect("probe listener");
         assert_eq!(reachable, vec![true, false]);
     }
 
     #[test]
-    fn quarantine_keeps_a_pool_it_could_not_verify() {
-        // The probe can be wrong (a host that filters ICMP but serves HTTP), so a pool where
-        // nothing answers stays intact instead of dead-ending the download.
-        let servers = vec![
-            CContentServerDirectoryServerInfo {
-                host: "127.0.0.1".into(),
-                https_support: "unavailable".into(),
-                ..Default::default()
-            },
-            CContentServerDirectoryServerInfo {
-                host: "127.0.0.1".into(),
-                https_support: "unavailable".into(),
-                ..Default::default()
-            },
-        ];
-        let kept = quarantine_unreachable_cdn_hosts(servers.clone(), None);
-        assert_eq!(kept.len(), servers.len());
+    fn probe_rejects_a_host_that_accepts_but_never_answers() {
+        // The mainland failure mode the HTTP probe exists for: the TCP handshake succeeds and then
+        // the host never sends a byte. A raw `TcpStream::connect` probe called this reachable; the
+        // bounded GET must call it unreachable and return at the timeout, not wait for the host.
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind loopback");
+        let silent_port = listener.local_addr().expect("addr").port();
+        let silence = thread::spawn(move || {
+            use std::io::Read;
+            if let Ok((mut stream, _)) = listener.accept() {
+                let mut request = [0u8; 1024];
+                let _ = stream.read(&mut request);
+                thread::sleep(Duration::from_millis(800));
+            }
+        });
+        let endpoints = vec![ProbeEndpoint {
+            https: false,
+            host: "127.0.0.1".into(),
+            port: silent_port,
+        }];
+        let started = Instant::now();
+        let reachable = probe_reachable_endpoints(&endpoints, "", Duration::from_millis(200));
+        let elapsed = started.elapsed();
+        silence.join().expect("silent listener");
+        assert_eq!(reachable, vec![false], "a TCP accept without an HTTP answer is not reachable");
+        assert!(
+            elapsed < Duration::from_millis(800),
+            "probe must be bounded by its timeout, took {elapsed:?}"
+        );
     }
 
     #[test]
-    fn quarantine_drops_only_unreachable_hosts() {
-        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind loopback");
-        let open_port = listener.local_addr().expect("addr").port();
-        // `port()` derives from https_support, so exercise the endpoint-level helper instead of
-        // building servers on ports 80/443 that this process cannot bind.
-        let reachable = probe_reachable_endpoints(
-            &[
-                ("127.0.0.1".to_string(), open_port),
-                ("127.0.0.1".to_string(), 1),
-            ],
-            Duration::from_millis(500),
+    fn filter_by_reachability_keeps_only_the_answered_hosts() {
+        let server = |host: &str| CContentServerDirectoryServerInfo {
+            host: host.into(),
+            ..Default::default()
+        };
+        let pool = vec![
+            server("cache1-iad1.steamcontent.com"),
+            server("cache2-iad1.steamcontent.com"),
+            server("cache3-iad1.steamcontent.com"),
+        ];
+        let kept = filter_by_reachability(pool.clone(), &[true, false, true]);
+        assert_eq!(
+            kept.iter()
+                .map(|server| server.host.as_str())
+                .collect::<Vec<_>>(),
+            ["cache1-iad1.steamcontent.com", "cache3-iad1.steamcontent.com"]
         );
-        assert_eq!(reachable.iter().filter(|ok| **ok).count(), 1);
+        // A pool it could not verify at all stays intact: the probe can be wrong (an
+        // ICMP-filtered host can still serve HTTP), and a dead pool must not dead-end the run.
+        assert_eq!(filter_by_reachability(pool.clone(), &[false, false, false]), pool);
+        // A single host is never cut: there is nothing to choose between.
+        let single = vec![server("cache1-iad1.steamcontent.com")];
+        assert_eq!(filter_by_reachability(single.clone(), &[false]), single);
+    }
+
+    #[test]
+    fn a_cancelled_probe_returns_the_pool_untouched() {
+        let server = |host: &str| CContentServerDirectoryServerInfo {
+            host: host.into(),
+            ..Default::default()
+        };
+        let pool = vec![
+            server("cache1-iad1.steamcontent.com"),
+            server("cache2-iad1.steamcontent.com"),
+        ];
+        let cancel = AtomicBool::new(true);
+        // Pre-cancelled: no probe thread is spawned, and the caller's own cancel check decides
+        // what happens next.
+        let kept = quarantine_unreachable_cdn_hosts(pool.clone(), "", Some(&cancel), None);
+        assert_eq!(kept, pool);
     }
 
     #[test]

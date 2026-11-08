@@ -1621,6 +1621,7 @@
 	<string name="settings_download_medium">Mediu</string>
 	<string name="settings_download_fast">Rapid</string>
 	<string name="settings_download_blazing">Foarte rapid</string>
+	<string name="settings_download_adaptive">Adaptiv</string>
 	<string name="settings_download_speed">Viteză descărcare</string>
 	<string name="settings_download_heat_warning">Vitezele mari pot cauza încălzirea dispozitivului în timpul descărcărilor</string>
 	<string name="settings_region_default">Implicit</string>
