@@ -594,7 +594,7 @@ class EpicDownloadManager @Inject constructor(
                 downloadingAppIds = java.util.concurrent.CopyOnWriteArrayList(),
             )
 
-            val parallelDownloads = PrefManager.downloadSpeed.coerceAtLeast(1)
+            val parallelDownloads = app.gamenative.utils.DownloadSpeedConfig.parallelRequestsFor(PrefManager.downloadSpeed)
             val downloadHttpClient = Net.httpForParallelDownloads(parallelDownloads)
 
             var downloadedChunks = 0

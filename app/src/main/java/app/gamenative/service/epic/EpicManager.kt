@@ -38,7 +38,7 @@ class EpicManager @Inject constructor(
     private val httpClient = Net.http
 
     private fun getCdnClient(): okhttp3.OkHttpClient {
-        val parallelDownloads = PrefManager.downloadSpeed.coerceAtLeast(1)
+        val parallelDownloads = app.gamenative.utils.DownloadSpeedConfig.parallelRequestsFor(PrefManager.downloadSpeed)
         return Net.httpForParallelDownloads(parallelDownloads)
     }
 

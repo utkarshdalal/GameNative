@@ -612,8 +612,11 @@ fun SettingsGroupInterface(
             stringResource(R.string.settings_download_medium),
             stringResource(R.string.settings_download_fast),
             stringResource(R.string.settings_download_blazing),
+            stringResource(R.string.settings_download_adaptive),
         )
-        val downloadSpeedValues = remember { listOf(8, 16, 24, 32) }
+        val downloadSpeedValues = remember {
+            listOf(8, 16, 24, 32, app.gamenative.utils.DownloadSpeedConfig.ADAPTIVE_SPEED)
+        }
         var downloadSpeedValue by rememberSaveable {
             mutableStateOf(
                 downloadSpeedValues.indexOf(PrefManager.downloadSpeed).takeIf { it >= 0 }?.toFloat() ?: 2f
@@ -638,11 +641,12 @@ fun SettingsGroupInterface(
                 value = downloadSpeedValue,
                 onValueChange = { newIndex ->
                     downloadSpeedValue = newIndex
-                    val index = newIndex.roundToInt().coerceIn(0, 3)
+                    val index = newIndex.roundToInt().coerceIn(0, downloadSpeedValues.lastIndex)
                     PrefManager.downloadSpeed = downloadSpeedValues[index]
                 },
-                valueRange = 0f..3f,
-                steps = 2, // Creates exactly 4 positions: 0, 1, 2, 3
+                valueRange = 0f..downloadSpeedValues.lastIndex.toFloat(),
+                // Steps are the positions BETWEEN the ends: 5 positions need 3.
+                steps = downloadSpeedValues.size - 2
             )
             // Labels below slider
             Row(
@@ -655,7 +659,7 @@ fun SettingsGroupInterface(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.width(60.dp)
+                        modifier = Modifier.width(52.dp)
                     )
                 }
             }

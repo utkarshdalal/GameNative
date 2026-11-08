@@ -1602,6 +1602,7 @@
     <string name="settings_download_medium">中等</string>
     <string name="settings_download_fast">快速</string>
     <string name="settings_download_blazing">极速</string>
+    <string name="settings_download_adaptive">自适应（模拟盖世）</string>
     <string name="settings_download_speed">下载速度</string>
     <string name="settings_download_heat_warning">较高的下载速度可能会导致设备发热</string>
     <string name="settings_region_default">默认</string>

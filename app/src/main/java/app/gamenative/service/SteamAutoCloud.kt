@@ -535,7 +535,8 @@ object SteamAutoCloud {
                 val filesDownloaded = AtomicInteger(0)
                 val bytesDownloaded = AtomicLong(0L)
                 val totalFiles = filesToDownload.size
-                val parallelism = PrefManager.downloadSpeed.coerceAtLeast(1)
+                // The adaptive tier has no request count of its own; map it onto a sane pool
+                val parallelism = app.gamenative.utils.DownloadSpeedConfig.parallelRequestsFor(PrefManager.downloadSpeed)
                 // A new client (and its Dispatcher thread pool) is created intentionally per sync,
                 // since cloud saves are downloaded at most once per game launch.
                 val downloadHttpClient = Net.httpForParallelDownloads(parallelism)

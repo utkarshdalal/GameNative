@@ -6,6 +6,25 @@ class DownloadSpeedConfig {
     val cpuCores: Int
         get() = Runtime.getRuntime().availableProcessors()
 
+    companion object {
+        /**
+         * The adaptive tier (the last position on the slider). It is not a bigger fixed number:
+         * the tier value only selects a strategy, and [maxDownloads] for it is the engine's hard
+         * window ceiling so its adaptive ramp decides the real width.
+         */
+        const val ADAPTIVE_SPEED = 100
+
+        /**
+         * Parallelism for the plain HTTP paths that treat the tier value as a request count
+         * (cloud saves, Epic/GOG file downloads). The adaptive tier has no request count of its
+         * own, so it reuses the fast tier's value instead of passing 100 downloads to OkHttp.
+         */
+        fun parallelRequestsFor(speed: Int): Int = when (speed) {
+            ADAPTIVE_SPEED -> 32
+            else -> speed.coerceIn(1, 32)
+        }
+    }
+
     /**
      * Process-pool size (inflate/decrypt/hash/write workers) — the ONLY core-scaled knob.
      * Ratios borrowed from Bannerlator's DownloadSpeedConfig.
@@ -16,6 +35,9 @@ class DownloadSpeedConfig {
             16 -> (cpuCores * 0.4).toInt().coerceAtLeast(1)
             24 -> (cpuCores * 0.5).toInt().coerceAtLeast(1)
             32 -> (cpuCores * 0.8).toInt().coerceAtLeast(1)
+            // A 256-wide window needs enough inflate/decrypt workers to feed it; still below
+            // one worker per core so the download threads keep a core to themselves.
+            ADAPTIVE_SPEED -> (cpuCores * 0.8).toInt().coerceAtLeast(2)
             else -> 1
         }
 
@@ -44,6 +66,11 @@ class DownloadSpeedConfig {
             16 -> 16
             24 -> 32
             32 -> 128
+            // Adaptive ("GameHub-style"): raise the ceiling to the engine's hard cap and let its
+            // ramp decide. The effective width still binds on distinct CDN hosts x PER_HOST_CAP
+            // (8), and the ramp only grows while throughput keeps rising with errors low, so a
+            // thin link settles far below this instead of being flooded.
+            ADAPTIVE_SPEED -> 256
             else -> 6
         }
 }

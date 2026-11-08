@@ -1586,7 +1586,7 @@ object PrefManager {
             setPref(DOWNLOAD_ON_WIFI_ONLY, value)
         }
 
-    // Maximum number of concurrent downloads (8=slow, 16=medium, 24=fast, 32=blazing)
+    // Download tier (8=slow, 16=medium, 24=fast, 32=blazing, 100=adaptive/GameHub-style)
     private val DOWNLOAD_SPEED = intPreferencesKey("download_speed")
     var downloadSpeed: Int
         get() = getPref(DOWNLOAD_SPEED, 24)
