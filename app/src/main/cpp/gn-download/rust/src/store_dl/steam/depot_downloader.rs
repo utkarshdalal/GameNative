@@ -381,6 +381,26 @@ fn is_mainland_network_context(servers: &[CContentServerDirectoryServerInfo]) ->
         || servers.iter().all(|server| server.host.is_empty())
 }
 
+/// True when the existing `cdn_probe` cache covers EVERY host in the current pool and marks none of
+/// them bad. The cache stores only the probes that succeeded, so a nonempty cache proves nothing
+/// about the hosts it does not mention - an untested (or dead) host must not skip the pre-flight.
+fn cdn_probe_cache_covers_pool(
+    hints: &crate::store_dl::steam::cdn_probe::ProbeHints,
+    pool: &[CContentServerDirectoryServerInfo],
+) -> bool {
+    let Some((_, results, bad)) = hints.take_update(0) else {
+        return false;
+    };
+    let mut hosts: Vec<&str> = pool.iter().filter_map(preferred_host).collect();
+    hosts.sort_unstable();
+    hosts.dedup();
+    !hosts.is_empty()
+        && hosts.iter().all(|host| {
+            !bad.iter().any(|bad_host| bad_host == host)
+                && results.iter().any(|result| result.host == *host)
+        })
+}
+
 /// Whether the run has a depot that can actually fetch CDN bytes, i.e. whether the pre-flight probe
 /// is worth its cost.
 ///
@@ -1107,13 +1127,15 @@ cannot be enumerated for ownership",
     // it needs no probe either. It is additionally scoped to mainland-China directory answers
     // (`mainland_network`) and skipped when the existing `cdn_probe` cache is still fresh - see the
     // helpers above. This is the last point before Phase 2 can ask the CDN for bytes.
-    // The existing cdn_probe cache is seeded from a REAL chunk-download probe (TTFB + throughput)
-    // within its 6 h TTL, so a usable cache already proves HTTP reachability for this pool: reuse it
-    // instead of paying for a second network pre-flight. A cache invalidated by `mark_bad` leaves the
-    // hints unseeded, which is exactly when the reachability pass below is worth running again.
-    let probe_cache_seeded = probe_hints.take_update(0).is_some();
+    // The existing cdn_probe cache is seeded from REAL chunk-download probes (TTFB + throughput)
+    // within its 6 h TTL, so a cache that covers the whole pool already proves HTTP reachability for
+    // it: reuse that signal instead of paying for a second network pre-flight. Coverage must be
+    // complete though - the cache holds only the probes that succeeded, so an untested or dead host
+    // must not slip through - and a cache invalidated by `mark_bad` fails the check, which is exactly
+    // when the reachability pass below is worth running again.
+    let probe_cache_covers_pool = cdn_probe_cache_covers_pool(&probe_hints, &usable_servers);
     let needs_probe = mainland_network
-        && !probe_cache_seeded
+        && !probe_cache_covers_pool
         && !resolved.is_empty()
         && resolved.iter().any(|(depot, manifest)| {
             needs_preflight_probe(&cfg, [*depot].into_iter())
@@ -1843,6 +1865,39 @@ mod tests {
         );
         // The probe did not filter: no exclusions, even for unreachable entries.
         assert!(unreachable_endpoint_set(&endpoints, &reachable_by_server, 4, 4).is_empty());
+    }
+
+    #[test]
+    fn cdn_probe_cache_must_cover_the_whole_pool_to_skip_the_preflight() {
+        use crate::store_dl::steam::cdn_probe::{seed_from_cache, ProbeResult};
+        let server = |host: &str| CContentServerDirectoryServerInfo {
+            host: host.into(),
+            ..Default::default()
+        };
+        let host_a = "cache1-hkg1.steamcontent.com";
+        let host_b = "cache2-hkg1.steamcontent.com";
+        let pool = vec![server(host_a), server(host_b)];
+        let hints = seed_from_cache("", &pool);
+        let result = |host: &str| ProbeResult {
+            host: host.into(),
+            ttfb_ms: 10,
+            bytes_per_sec: 1,
+        };
+        // No cache at all: the preflight must run.
+        assert!(!cdn_probe_cache_covers_pool(&hints, &pool));
+        // Partial cache (only the hosts that answered are stored): must NOT be treated as coverage.
+        hints.publish_for_test(vec![result(host_a)], vec![], vec![]);
+        assert!(!cdn_probe_cache_covers_pool(&hints, &pool));
+        // Full coverage: the cached real chunk probes are enough, skip the preflight.
+        hints.publish_for_test(vec![result(host_a), result(host_b)], vec![], vec![]);
+        assert!(cdn_probe_cache_covers_pool(&hints, &pool));
+        // A host marked bad invalidates that coverage even if a stale result exists for it.
+        hints.publish_for_test(
+            vec![result(host_a), result(host_b)],
+            vec![host_b.to_string()],
+            vec![],
+        );
+        assert!(!cdn_probe_cache_covers_pool(&hints, &pool));
     }
 
     #[test]
