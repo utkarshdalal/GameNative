@@ -360,6 +360,8 @@ class ContainerOverlayFilesTest {
         write(base, "system.reg", "base-system")
         write(upper, "user.reg", "game-saves")
         write(upper, "system.reg", "old-system")
+        write(base, "userdef.reg", "base-userdef")
+        write(upper, "userdef.reg", "old-userdef")
 
         ContainerOverlayMigrator.refreshSkeleton(upper, base)
 
@@ -367,5 +369,19 @@ class ContainerOverlayFilesTest {
         assertFalse(exists(File(upper, "user.reg.prev")))
         assertEquals("base-system", File(upper, "system.reg").readText())
         assertEquals("old-system", File(upper, "system.reg.prev").readText())
+        assertEquals("base-userdef", File(upper, "userdef.reg").readText())
+        assertEquals("old-userdef", File(upper, "userdef.reg.prev").readText())
+    }
+
+    @Test
+    fun refreshSkeleton_copiesUserHive_whenTheContainerHasNone() {
+        val base = tmp.newFolder("base3", ".wine")
+        val upper = tmp.newFolder("container3", ".wine")
+        write(base, "user.reg", "base-user")
+
+        ContainerOverlayMigrator.refreshSkeleton(upper, base)
+
+        assertEquals("base-user", File(upper, "user.reg").readText())
+        assertFalse(exists(File(upper, "user.reg.prev")))
     }
 }
