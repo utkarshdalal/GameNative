@@ -226,6 +226,19 @@ class FrameThreadPlacementTest {
     }
 
     @Test
+    fun `a thread created while a game thread is placed gets the game pin`() {
+        val plan = FrameThreadPlacement.placementPlan(rp6, gamePin = listOf(3, 4, 5, 6, 7))
+        val pin = listOf(3, 4, 5, 6, 7)
+        val window = listOf(game(2, cpu = 72, wakeups = 160))
+        FrameThreadPlacement.applyWindow(window, plan, pin, "", recordAffinity, noAllowedRead, listOf(9))
+        assertEquals(listOf(2 to 0x80), calls)
+
+        calls.clear()
+        FrameThreadPlacement.applyWindow(window, plan, pin, "", recordAffinity, noAllowedRead, listOf(9))
+        assertEquals(setOf(2 to 0x80, 9 to 0xF8), calls.toSet())
+    }
+
+    @Test
     fun `nothing is placed when the plan leaves every role alone`() {
         val plan = FrameThreadPlacement.placementPlan(unknownCapacity, gamePin = emptyList())
         FrameThreadPlacement.applyWindow(

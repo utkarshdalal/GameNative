@@ -352,7 +352,7 @@ object FrameThreadPlacement {
         // A stop that released everything while this window was being read wins.
         synchronized(this) {
             if (!active()) return
-            applyWindow(threads, plan, gamePin, clamp, TaskAffinity::set, ::readAllowedCores)
+            applyWindow(threads, plan, gamePin, clamp, TaskAffinity::set, ::readAllowedCores, scanner.newGameTids)
         }
     }
 
@@ -368,7 +368,9 @@ object FrameThreadPlacement {
         frameNote: String,
         setAffinity: (Int, Int) -> Int,
         readAllowed: (Int, Int) -> List<Int>?,
+        newGameTids: Collection<Int> = emptyList(),
     ) {
+        val gamePlaced = placed.values.any { it.kind == ProcessKind.GAME }
         if (!notesLogged && plan.notes.isNotEmpty()) {
             notesLogged = true
             Timber.tag(TAG).i("Frame thread placement: ${plan.notes.joinToString("; ")}")
@@ -397,6 +399,11 @@ object FrameThreadPlacement {
                     "${p.role.label} tid $tid (${p.comm}) -> cores ${PowerManager.formatRanges(p.cores)} (${p.reason}$note$failed)"
                 )
             }
+        }
+        if (gamePlaced) {
+            // A new thread inherits the mask of the thread that created it, often the frame thread.
+            val cores = gamePin.ifEmpty { plan.allCores }
+            newGameTids.forEach { setAffinity(it, mask(cores)) }
         }
         placed.clear()
         placed.putAll(desired)
@@ -447,9 +454,16 @@ object FrameThreadPlacement {
         private var prevThreadTicks = HashMap<Int, Long>()
         private var prevVoluntary = HashMap<Int, Long>()
         private val names = HashMap<Int, Pair<String, String>>()
+        private var prevGamePid: Int? = null
+
+        /** Game threads that appeared since the previous scan of the same game process. */
+        var newGameTids: List<Int> = emptyList()
+            private set
 
         fun reset() {
             prevMs = 0L
+            prevGamePid = null
+            newGameTids = emptyList()
             prevProcTicks = HashMap()
             prevThreadTicks = HashMap()
             prevVoluntary = HashMap()
@@ -487,6 +501,7 @@ object FrameThreadPlacement {
             if (dtSec <= 0.0) {
                 prevThreadTicks = HashMap()
                 prevVoluntary = HashMap()
+                newGameTids = emptyList()
                 return emptyList()
             }
 
@@ -503,6 +518,7 @@ object FrameThreadPlacement {
             val threadTicks = HashMap<Int, Long>()
             val voluntary = HashMap<Int, Long>()
             val result = ArrayList<ThreadSample>()
+            val newTids = ArrayList<Int>()
             for ((pid, kind) in tracked) {
                 val threads = ArrayList<Triple<Int, String, Int>>()
                 for (task in File("/proc/$pid/task").listFiles().orEmpty()) {
@@ -514,7 +530,11 @@ object FrameThreadPlacement {
                     } ?: continue
                     val ticks = fields.utime + fields.stime
                     threadTicks[tid] = ticks
-                    val prev = prevThreadTicks[tid] ?: continue
+                    val prev = prevThreadTicks[tid]
+                    if (prev == null) {
+                        if (kind == ProcessKind.GAME && pid == prevGamePid) newTids += tid
+                        continue
+                    }
                     threads += Triple(tid, fields.comm, ProcStatParser.cpuPercent(ticks - prev, dtSec, clkTck))
                 }
                 val rated = if (kind == ProcessKind.GAME) {
@@ -539,6 +559,8 @@ object FrameThreadPlacement {
             }
             prevThreadTicks = threadTicks
             prevVoluntary = voluntary
+            prevGamePid = game?.first
+            newGameTids = newTids
             return result
         }
 
