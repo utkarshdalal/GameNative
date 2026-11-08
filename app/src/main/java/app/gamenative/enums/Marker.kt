@@ -16,4 +16,5 @@ enum class Marker(val fileName: String ) {
     OPENAL_INSTALLED(".openal_installed"),
     XNA_INSTALLED(".xna_installed"),
     UBISOFT_CONNECT_INSTALLED(".ubisoft_connect_installed"),
+    PSPC_SDK_RUNTIME_INSTALLED(".pspc_sdk_runtime_installed"),
 }

@@ -28,6 +28,7 @@ object PreInstallSteps {
         GogSupportCommandsStep,
         GogBonusInstallerStep,
         UbisoftConnectStep,
+        PsPcSdkRuntimeStep,
     )
 
     private var stepsProvider: () -> List<PreInstallStep> = { steps }
