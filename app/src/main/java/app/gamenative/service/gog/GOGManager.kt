@@ -197,6 +197,8 @@ class GOGManager @Inject constructor(
         withContext(Dispatchers.IO) {
             try {
                 gogGameDao.updateInstalledDlcIds(gameId, dlcIds)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Timber.tag("GOG").e(e, "Failed to record installed DLCs for $gameId")
             }
@@ -208,6 +210,8 @@ class GOGManager @Inject constructor(
         withContext(Dispatchers.IO) {
             try {
                 gogGameDao.setInstalledDlcIds(gameId, dlcIds.sorted())
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Timber.tag("GOG").e(e, "Failed to record installed DLCs for $gameId")
             }

@@ -410,7 +410,7 @@ object GOGBonusDlcInstaller {
                     continue
                 }
                 out.parentFile?.mkdirs()
-                val temp = File(out.parentFile, ".${out.name}.gog-part")
+                val temp = File.createTempFile(".gog-", ".part", out.parentFile)
                 try {
                     archive.getInputStream(entry).use { input ->
                         FileOutputStream(temp).use { output ->
