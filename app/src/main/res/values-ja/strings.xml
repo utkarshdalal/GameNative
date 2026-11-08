@@ -1197,6 +1197,10 @@
     <string name="settings_performance_title">パフォーマンス</string>
     <string name="settings_performance_power_control_title">電力制御</string>
     <string name="settings_performance_power_control_subtitle">ゲーム内パフォーマンス制御をデフォルトで有効にする（テスト済みデバイスではオン: AYN Odin 3、Retroid Pocket 6/Nova）</string>
+    <string name="settings_performance_shared_shader_cache_title">シェーダーキャッシュをアップロード</string>
+    <string name="settings_performance_shared_shader_cache_subtitle">プレイ中に記録したシェーダーを他のプレイヤーと共有します。オフにすると、カクつきを減らす共有キャッシュのダウンロードも行われません</string>
+    <string name="shader_cache_preparing">シェーダーを準備中…</string>
+    <string name="shader_cache_preparing_progress">シェーダーを準備中 %1$d%%</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">エミュレーション</string>
@@ -1347,6 +1351,8 @@
     <string name="settings_emulation_default_config_dialog_title">デフォルトのコンテナ構成</string>
     <string name="settings_emulation_auto_apply_known_config_title">既知の構成を自動適用する</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">初回起動時に Steam ゲームの推奨設定を自動的に適用する</string>
+    <string name="settings_emulation_fex_code_cache_title">FEX コードキャッシュ</string>
+    <string name="settings_emulation_fex_code_cache_subtitle">FEX が変換したコードを共有し、ビルド済みの変換をダウンロードして起動を速くします。キャッシュはゲームのプレフィックスの容量を使います。</string>
     <string name="settings_emulation_box64_presets_title">Box64 プリセット</string>
     <string name="settings_emulation_box64_presets_subtitle">Box64 プリセットの表示、変更、作成</string>
     <string name="settings_emulation_driver_manager_title">ドライバーマネージャー</string>

@@ -1027,6 +1027,10 @@
     <string name="settings_performance_title">Продуктивність</string>
     <string name="settings_performance_power_control_title">Керування живленням</string>
     <string name="settings_performance_power_control_subtitle">Вмикати керування живленням у грі за замовчуванням (увімкнено на перевірених пристроях: AYN Odin 3, Retroid Pocket 6/Nova)</string>
+    <string name="settings_performance_shared_shader_cache_title">Надсилати кеш шейдерів</string>
+    <string name="settings_performance_shared_shader_cache_subtitle">Ділитися з іншими гравцями шейдерами, записаними під час гри. Якщо вимкнути, спільний кеш, що зменшує підвисання, теж не завантажуватиметься</string>
+    <string name="shader_cache_preparing">Підготовка шейдерів…</string>
+    <string name="shader_cache_preparing_progress">Підготовка шейдерів %1$d%%</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Емуляція</string>
@@ -1181,6 +1185,8 @@
     <string name="settings_emulation_default_config_dialog_title">Стандартні налаштування контейнера</string>
     <string name="settings_emulation_auto_apply_known_config_title">Автоматично застосовувати відому конфігурацію</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">Автоматично застосовувати рекомендовані налаштування для ігор Steam при першому запуску</string>
+	<string name="settings_emulation_fex_code_cache_title">Кеші коду FEX</string>
+	<string name="settings_emulation_fex_code_cache_subtitle">Діліться тим, який код переклав FEX, і завантажуйте готові переклади для швидшого запуску. Кеші займають місце в префіксі гри.</string>
     <string name="settings_emulation_box64_presets_title">Box64 Пресети</string>
     <string name="settings_emulation_box64_presets_subtitle">Перегляд, зміна та створення пресетів Box64</string>
     <string name="settings_emulation_driver_manager_title">Менеджер драйвера</string>

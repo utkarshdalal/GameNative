@@ -999,6 +999,10 @@
     <string name="settings_performance_title">Leistung</string>
     <string name="settings_performance_power_control_title">Energieverwaltung</string>
     <string name="settings_performance_power_control_subtitle">Energieverwaltung im Spiel standardmäßig aktivieren (auf getesteten Geräten aktiviert: AYN Odin 3, Retroid Pocket 6/Nova)</string>
+    <string name="settings_performance_shared_shader_cache_title">Shader-Caches hochladen</string>
+    <string name="settings_performance_shared_shader_cache_subtitle">Beim Spielen aufgezeichnete Shader mit anderen Spielern teilen. Ist dies aus, werden auch die geteilten Caches, die Ruckler verringern, nicht heruntergeladen</string>
+    <string name="shader_cache_preparing">Shader werden vorbereitet…</string>
+    <string name="shader_cache_preparing_progress">Shader werden vorbereitet %1$d%%</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulation</string>
@@ -1151,6 +1155,8 @@
     <string name="settings_emulation_default_config_dialog_title">Standard-Container-Konfiguration</string>
     <string name="settings_emulation_auto_apply_known_config_title">Bekannte Konfiguration automatisch anwenden</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">Beim ersten Start automatisch empfohlene Einstellungen für Steam-Spiele anwenden</string>
+    <string name="settings_emulation_fex_code_cache_title">FEX-Code-Caches</string>
+    <string name="settings_emulation_fex_code_cache_subtitle">Teile, welchen Code FEX übersetzt hat, und lade vorgefertigte Übersetzungen für schnellere Starts. Caches belegen Speicherplatz im Präfix des Spiels.</string>
     <string name="settings_emulation_box64_presets_title">Box64-Voreinstellungen</string>
     <string name="settings_emulation_box64_presets_subtitle">Voreinstellungen anzeigen, ändern oder neu erstellen</string>
     <string name="settings_emulation_driver_manager_title">Treiberverwaltung</string>

@@ -1207,6 +1207,10 @@
     <string name="settings_performance_title">Performance</string>
     <string name="settings_performance_power_control_title">Power Control</string>
     <string name="settings_performance_power_control_subtitle">Enable in-game power control by default (enabled on tested devices: AYN Odin 3, Retroid Pocket 6/Nova)</string>
+    <string name="settings_performance_shared_shader_cache_title">Upload shader caches</string>
+    <string name="settings_performance_shared_shader_cache_subtitle">Share the shaders recorded while you play with other players. Turning this off also stops downloading the shared caches that reduce stutter</string>
+    <string name="shader_cache_preparing">Preparing shaders…</string>
+    <string name="shader_cache_preparing_progress">Preparing shaders %1$d%%</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulation</string>
@@ -1358,6 +1362,8 @@
     <string name="settings_emulation_default_config_dialog_title">Default Container Config</string>
     <string name="settings_emulation_auto_apply_known_config_title">Auto-apply known config</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">Automatically apply recommended settings for Steam games on first launch</string>
+    <string name="settings_emulation_fex_code_cache_title">FEX code caches</string>
+    <string name="settings_emulation_fex_code_cache_subtitle">Share which code FEX translated and download prebuilt translations for faster launches. Caches take disk space in the game\'s prefix.</string>
     <string name="settings_emulation_box64_presets_title">Box64 Presets</string>
     <string name="settings_emulation_box64_presets_subtitle">View, modify, and create Box64 presets</string>
     <string name="settings_emulation_driver_manager_title">Driver Manager</string>
