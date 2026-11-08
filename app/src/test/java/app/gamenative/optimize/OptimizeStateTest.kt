@@ -258,6 +258,38 @@ class OptimizeStateTest {
     }
 
     @Test
+    fun prefetchedRungRoundTripsAndChecksWhatItWasAskedFor() {
+        val rung = Rung.parse(JSONObject(rungJson))!!
+        val now = 1_800_000_000_000L
+        val key = PrefetchKey("C:\\Game\\TheForest.exe", "dxvk-2.4", 60)
+        val kept = KeptRung("k1", "1", 1, emptyList(), 0L, emptyList(), null)
+        val ladder = ProfileLadder(state = LadderState.TRYING, kept = listOf(kept))
+        val prefetched = PrefetchedRung(rung, now, OptimizeProfile.BALANCED, key, listOf("k1"))
+
+        val state = OptimizeLocalState(activeProfile = OptimizeProfile.BALANCED, prefetched = prefetched)
+        val back = OptimizeLocalState.fromJson(JSONObject(state.toJson().toString())).prefetched!!
+        assertEquals("witcher3_grass", back.rung.rungId)
+        assertEquals(now, back.fetchedAt)
+        assertEquals(OptimizeProfile.BALANCED, back.profile)
+        assertEquals(key, back.key)
+        assertEquals(listOf("k1"), back.kept)
+
+        val day = 24L * 60 * 60 * 1000
+        assertTrue(back.isUsable(now + day, OptimizeProfile.BALANCED, key, ladder))
+        assertFalse(back.isUsable(now + 8 * day, OptimizeProfile.BALANCED, key, ladder))
+        assertFalse(back.isUsable(now, OptimizeProfile.PERFORMANCE, key, ladder))
+        assertFalse(back.isUsable(now, OptimizeProfile.BALANCED, key.copy(dxwrapper = "vkd3d"), ladder))
+        assertFalse(back.isUsable(now, OptimizeProfile.BALANCED, key.copy(fpsLimit = 30), ladder))
+        assertFalse(back.isUsable(now, OptimizeProfile.BALANCED, key, ladder.copy(kept = emptyList())))
+        assertFalse(back.isUsable(now, OptimizeProfile.BALANCED, key, ladder.copy(bad = listOf("witcher3_grass"))))
+        assertFalse(back.isUsable(now, OptimizeProfile.BALANCED, key, ladder.copy(tried = listOf(TriedRung("witcher3_grass", "a1b2c3d4", "worse")))))
+
+        val expiring = Rung.parse(JSONObject(rungJson).put("expires_at", "2027-01-01T00:00:00Z"))!!
+        assertFalse(prefetched.copy(rung = expiring).isUsable(now, OptimizeProfile.BALANCED, key, ladder))
+        assertNull(OptimizeLocalState.fromJson(JSONObject(OptimizeLocalState().toJson().toString())).prefetched)
+    }
+
+    @Test
     fun registryValuesEncodeLikeWine() {
         assertEquals("dword:00000003", OptimizeFiles.encodeRegistryValue("dword", "3"))
         assertEquals("dword:ffffffff", OptimizeFiles.encodeRegistryValue("dword", "-1"))

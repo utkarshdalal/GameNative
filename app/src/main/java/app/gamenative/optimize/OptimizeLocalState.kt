@@ -176,6 +176,57 @@ data class ProfileLadder(
     }
 }
 
+/** The container settings a next-rung answer was asked for; an answer is only used while they still hold. */
+data class PrefetchKey(val executablePath: String, val dxwrapper: String, val fpsLimit: Int)
+
+/** A next-rung answer fetched ahead of the launch that uses it: at exit, or after a launch that stopped waiting. */
+data class PrefetchedRung(
+    val rung: Rung,
+    val fetchedAt: Long,
+    val profile: OptimizeProfile,
+    val key: PrefetchKey,
+    /** Ids of the changes that were on when it was asked for. */
+    val kept: List<String>,
+) {
+    fun isUsable(nowMillis: Long, profile: OptimizeProfile, key: PrefetchKey, ladder: ProfileLadder): Boolean =
+        nowMillis - fetchedAt in 0..MAX_AGE_MS &&
+            !rung.isExpired(nowMillis) &&
+            this.profile == profile &&
+            this.key == key &&
+            kept == keptIds(ladder) &&
+            rung.rungId !in ladder.bad &&
+            ladder.tried.none { it.rungId == rung.rungId && it.version == rung.version }
+
+    fun toJson(): JSONObject = JSONObject().apply {
+        put("rung", rung.raw)
+        put("fetched_at", fetchedAt)
+        put("profile", profile.wireId)
+        put("executable_path", key.executablePath)
+        put("dxwrapper", key.dxwrapper)
+        put("fps_limit", key.fpsLimit)
+        put("kept", JSONArray(kept))
+    }
+
+    companion object {
+        const val MAX_AGE_MS = 7L * 24 * 60 * 60 * 1000
+
+        fun keptIds(ladder: ProfileLadder): List<String> = ladder.kept.filter { it.applied }.map { it.rungId }
+
+        fun fromJson(o: JSONObject?): PrefetchedRung? {
+            if (o == null) return null
+            val rung = Rung.parse(o.optJSONObject("rung")) ?: return null
+            val profile = OptimizeProfile.fromWire(o.optStringOrNull("profile")).takeIf { it != OptimizeProfile.OFF } ?: return null
+            return PrefetchedRung(
+                rung = rung,
+                fetchedAt = o.optLong("fetched_at", 0L),
+                profile = profile,
+                key = PrefetchKey(o.optString("executable_path"), o.optString("dxwrapper"), o.optInt("fps_limit", 0)),
+                kept = o.optJSONArray("kept").strings(),
+            )
+        }
+    }
+}
+
 /** A card waiting to be shown once on the game or library screen after a session. */
 data class OptimizeCard(
     val kind: String,
@@ -260,6 +311,7 @@ data class OptimizeLocalState(
     val entitlement: Entitlement? = null,
     val entitlementCheckedAt: Long = 0L,
     val outcomeQueue: List<JSONObject> = emptyList(),
+    val prefetched: PrefetchedRung? = null,
 ) {
     val active: ProfileLadder? get() = activeProfile?.let { profiles[it] }
 
@@ -280,6 +332,7 @@ data class OptimizeLocalState(
         put("entitlement", entitlement?.toJson() ?: JSONObject.NULL)
         put("entitlement_checked_at", entitlementCheckedAt)
         put("outcome_queue", JSONArray().apply { outcomeQueue.forEach { put(it) } })
+        prefetched?.let { put("prefetched", it.toJson()) }
     }
 
     companion object {
@@ -308,6 +361,7 @@ data class OptimizeLocalState(
                 entitlement = Entitlement.fromJson(o.optJSONObject("entitlement")),
                 entitlementCheckedAt = o.optLong("entitlement_checked_at", 0L),
                 outcomeQueue = o.optJSONArray("outcome_queue").objects(),
+                prefetched = PrefetchedRung.fromJson(o.optJSONObject("prefetched")),
             )
         }
 

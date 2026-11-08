@@ -25,15 +25,20 @@ import com.winlator.core.KeyValueSet
 import com.winlator.core.envvars.EnvVars
 import java.io.File
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
@@ -45,12 +50,16 @@ import timber.log.Timber
 object OptimizeController {
 
     private const val TAG = "Optimize"
-    private const val NEXT_RUNG_TIMEOUT_MS = 3_000L
+    private const val NEXT_RUNG_LAUNCH_BUDGET_MS = 10_000L
+    private const val NEXT_RUNG_EXIT_BUDGET_MS = 20_000L
     private const val DEFAULT_FPS_LIMIT = 60
     private const val MAX_NO_CHANGE_STREAK = 2
 
     val mutex = Mutex()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /** Next-rung requests still running, by state directory, so a launch waits for one instead of asking again. */
+    private val inflight = ConcurrentHashMap<String, Job>()
 
     data class CardRequest(val appId: String, val card: OptimizeCard, val entitlement: Entitlement?)
 
@@ -288,6 +297,69 @@ object OptimizeController {
         }
     }
 
+    private fun prefetchKey(container: Container): PrefetchKey {
+        val data = ContainerUtils.toContainerData(container)
+        return PrefetchKey(data.executablePath, data.dxwrapper, fpsLimit(container))
+    }
+
+    /** True when the next launch would ask for a rung: trying, nothing on trial, and not held back by the trial. */
+    private fun wouldAsk(state: OptimizeLocalState, ladder: ProfileLadder, nowMillis: Long): Boolean =
+        ladder.state == LadderState.TRYING &&
+            ladder.pending.let { it == null || it.revert != null } &&
+            OptimizeCards.shouldAskAfterTrial(ladder, state.entitlement, state.entitlementCheckedAt, Membership.isMember(), nowMillis)
+
+    /** Runs [block] on the controller's scope, registered so a launch of the same game waits for it. */
+    private fun track(store: OptimizeStore, what: String, block: suspend () -> Unit) {
+        val path = store.dir.absolutePath
+        val job = scope.launch(start = CoroutineStart.LAZY) {
+            try {
+                block()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.tag(TAG).w(e, "Optimize: $what failed")
+            }
+        }
+        inflight[path] = job
+        job.invokeOnCompletion { inflight.remove(path, job) }
+        job.start()
+    }
+
+    /** Keeps a rung answer for the next launch when the game still waits for one and the answer still fits it. */
+    private suspend fun storePrefetch(
+        store: OptimizeStore,
+        result: NextRungResult,
+        profile: OptimizeProfile,
+        key: PrefetchKey,
+        kept: List<String>,
+        sentCardAction: String?,
+        source: String,
+    ) {
+        val response = (result as? NextRungResult.Answered)?.response ?: return
+        response.entitlement?.let { lastEntitlement = it }
+        mutex.withLock {
+            val now = System.currentTimeMillis()
+            var state = store.read()
+            state = state.copy(
+                cardAction = state.cardAction.takeIf { it != sentCardAction },
+                entitlement = response.entitlement ?: state.entitlement,
+                entitlementCheckedAt = now,
+            )
+            val ladder = state.ladder(profile)
+            val rung = response.rung?.takeIf { response.status == NextRungResponse.STATUS_RUNG }
+            val prefetched = rung?.let { PrefetchedRung(it, now, profile, key, kept) }
+            if (prefetched != null && state.activeProfile == profile && wouldAsk(state, ladder, now) &&
+                prefetched.isUsable(now, profile, key, ladder)
+            ) {
+                state = state.copy(prefetched = prefetched)
+                Timber.tag(TAG).i("stored next rung ${prefetched.rung.rungId} v${prefetched.rung.version} for the next launch ($source)")
+            } else if (rung != null) {
+                Timber.tag(TAG).i("Dropping next rung ${rung.rungId} ($source): the game no longer waits for it")
+            }
+            store.write(state)
+        }
+    }
+
     /**
      * Makes the game files match [target]: every other profile's changes come off and [target]'s kept changes go
      * back on from the rungs it stored, without asking the server. The second value is false when something could
@@ -371,6 +443,11 @@ object OptimizeController {
         resetTelemetry()
         try {
             val store = OptimizeStore(container.rootDir)
+            val waitStart = System.currentTimeMillis()
+            val stillAsking = inflight[store.dir.absolutePath]?.let { job ->
+                withTimeoutOrNull(NEXT_RUNG_LAUNCH_BUDGET_MS) { job.join() } == null
+            } ?: false
+            val budgetMs = NEXT_RUNG_LAUNCH_BUDGET_MS - (System.currentTimeMillis() - waitStart)
             mutex.withLock {
                 var state = store.read()
                 scope.launch { flush(context.applicationContext, store) }
@@ -403,24 +480,45 @@ object OptimizeController {
                 }
 
                 var applyResult = if (ladder.pending != null) "ok" else "none"
-                val ask = OptimizeCards.shouldAskAfterTrial(
-                    ladder, state.entitlement, state.entitlementCheckedAt, Membership.isMember(), System.currentTimeMillis(),
-                )
-                if (ladder.pending == null && ladder.state == LadderState.TRYING && ask) {
+                val now = System.currentTimeMillis()
+                val prefetched = state.prefetched
+                state = state.copy(prefetched = null)
+                if (ladder.pending == null && wouldAsk(state, ladder, now)) {
                     val baseline = ladder.baselineOverride ?: baselineRun(container)
-                    val body = nextRungBody(context, appId, container, state, profile, ladder, baseline)
-                    when (val result = OptimizeApi.nextRung(body, NEXT_RUNG_TIMEOUT_MS)) {
-                        null, NextRungResult.Failed -> Timber.tag(TAG).i("No next-rung answer; launching with the kept changes")
+                    val key = prefetchKey(container)
+                    val usable = prefetched?.takeIf { it.isUsable(now, profile, key, ladder) }
+                    val result = when {
+                        usable != null -> {
+                            Timber.tag(TAG).i("Using the next rung fetched ${(now - usable.fetchedAt) / 60_000} min ago")
+                            NextRungResult.Answered(NextRungResponse(NextRungResponse.STATUS_RUNG, null, usable.rung))
+                        }
+                        stillAsking -> {
+                            Timber.tag(TAG).i("An earlier next-rung request is still running; its answer is kept for the next launch")
+                            null
+                        }
+                        else -> {
+                            val body = nextRungBody(context, appId, container, state, profile, ladder, baseline)
+                            val call = OptimizeApi.nextRung(body, budgetMs)
+                            val answer = withTimeoutOrNull(budgetMs.coerceAtLeast(0L)) { call.await() }
+                            if (answer == null) keepLateAnswer(store, call, profile, key, PrefetchedRung.keptIds(ladder), state.cardAction)
+                            answer
+                        }
+                    }
+                    when (result) {
+                        null -> Timber.tag(TAG).i("No next-rung answer within ${NEXT_RUNG_LAUNCH_BUDGET_MS / 1000} s; launching with the kept changes")
+                        NextRungResult.Failed -> Timber.tag(TAG).i("No next-rung answer; launching with the kept changes")
                         NextRungResult.SignedOut -> Timber.tag(TAG).i("Signed out; launching with the kept changes")
                         is NextRungResult.Answered -> {
                             val response = result.response
-                            response.entitlement?.let { lastEntitlement = it }
+                            if (usable == null) {
+                                response.entitlement?.let { lastEntitlement = it }
+                                state = state.copy(
+                                    cardAction = null,
+                                    entitlement = response.entitlement ?: state.entitlement,
+                                    entitlementCheckedAt = System.currentTimeMillis(),
+                                )
+                            }
                             val previousStatus = ladder.lastStatus
-                            state = state.copy(
-                                cardAction = null,
-                                entitlement = response.entitlement ?: state.entitlement,
-                                entitlementCheckedAt = System.currentTimeMillis(),
-                            )
                             ladder = ladder.copy(lastStatus = response.status)
                             when (response.status) {
                                 NextRungResponse.STATUS_EXHAUSTED -> {
@@ -444,6 +542,8 @@ object OptimizeController {
                                                     baselineOverride = null,
                                                 )
                                                 applyResult = "ok"
+                                                val types = rung.levers.map { it.type }.distinct().joinToString(", ")
+                                                Timber.tag(TAG).i("applied ${rung.rungId} v${rung.version} order ${rung.order} ($types)")
                                             }
                                             is ApplyOutcome.Failed -> {
                                                 ladder = ladder.triedWith(rung.rungId, rung.version, OptimizeJudge.APPLY_FAILED)
@@ -456,7 +556,10 @@ object OptimizeController {
                                                 applyResult = "failed"
                                                 Timber.tag(TAG).w("Applying ${rung.rungId} failed: ${outcome.reason}")
                                             }
-                                            is ApplyOutcome.Deferred -> Timber.tag(TAG).i("Not applying ${rung.rungId}: ${outcome.reason}")
+                                            is ApplyOutcome.Deferred -> {
+                                                if (usable != null) state = state.copy(prefetched = usable)
+                                                Timber.tag(TAG).i("Not applying ${rung.rungId}: ${outcome.reason}")
+                                            }
                                         }
                                     }
                                 }
@@ -476,6 +579,18 @@ object OptimizeController {
         }
     }
 
+    /** Stores an answer that came after the launch stopped waiting, for the next launch. */
+    private fun keepLateAnswer(
+        store: OptimizeStore,
+        call: Deferred<NextRungResult>,
+        profile: OptimizeProfile,
+        key: PrefetchKey,
+        kept: List<String>,
+        cardAction: String?,
+    ) {
+        track(store, "keeping a late next-rung answer") { storePrefetch(store, call.await(), profile, key, kept, cardAction, "late answer") }
+    }
+
     /**
      * Judges the session that just ended; [props] are its game_exited properties. Changes that must come off are
      * taken off before the next launch, once Wine has written its registry. Leaves the card for the next screen.
@@ -487,6 +602,7 @@ object OptimizeController {
             val after = Metrics.fromRun(JSONObject(props))
             val refresh = context?.let { refreshHz(it) }
             val cap = fpsLimit(container)
+            var prefetch: (() -> Unit)? = null
             val request = mutex.withLock {
                 var state = store.read()
                 val now = System.currentTimeMillis()
@@ -511,16 +627,53 @@ object OptimizeController {
                         }
                         store.write(state)
                     }
+                    if (context != null) prefetch = exitPrefetch(context.applicationContext, appId, container, store, state, profile, now)
                 }
                 state.card?.let { CardRequest(appId, it, state.entitlement ?: lastEntitlement) }
             }
             request?.let { cardRequest.value = it }
             revision.value++
             if (context != null) scope.launch { flush(context.applicationContext, store) }
+            prefetch?.invoke()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Optimize judging failed")
+        }
+    }
+
+    /**
+     * At exit the game is closed, so the next rung can be asked for without holding up a launch. Returns the request
+     * to start once the lock is released, or null when the next launch would not ask or already has an answer.
+     */
+    private fun exitPrefetch(
+        context: Context,
+        appId: String,
+        container: Container,
+        store: OptimizeStore,
+        state: OptimizeLocalState,
+        profile: OptimizeProfile,
+        nowMillis: Long,
+    ): (() -> Unit)? {
+        val ladder = state.ladder(profile)
+        if (!wouldAsk(state, ladder, nowMillis)) return null
+        val key = prefetchKey(container)
+        if (state.prefetched?.isUsable(nowMillis, profile, key, ladder) == true) return null
+        val flagged = ladder.pending?.takeIf { it.revert != null }
+        val override = if (flagged != null) flagged.baseline ?: ladder.baselineOverride else ladder.baselineOverride
+        val baseline = override ?: baselineRun(container)
+        val body = nextRungBody(context, appId, container, state, profile, ladder, baseline)
+        val kept = PrefetchedRung.keptIds(ladder)
+        val cardAction = state.cardAction
+        return {
+            track(store, "asking for the next rung at exit") {
+                val result = withTimeoutOrNull(NEXT_RUNG_EXIT_BUDGET_MS) { OptimizeApi.nextRung(body, NEXT_RUNG_EXIT_BUDGET_MS).await() }
+                if (result == null) {
+                    Timber.tag(TAG).i("No next-rung answer within ${NEXT_RUNG_EXIT_BUDGET_MS / 1000} s of exit; the next launch asks again")
+                } else {
+                    storePrefetch(store, result, profile, key, kept, cardAction, "exit")
+                }
+            }
         }
     }
 

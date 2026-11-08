@@ -5,11 +5,11 @@ import app.gamenative.utils.KeyAttestationHelper
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
@@ -28,13 +28,18 @@ object OptimizeApi {
     private const val NEXT_RUNG_PATH = "/api/optimize/next-rung"
     private const val OUTCOME_PATH = "/api/optimize/outcome"
     private const val CALL_TIMEOUT_SEC = 15L
+    private const val CONNECT_TIMEOUT_SEC = 4L
+    private const val MIN_RETRY_MS = 2_000L
 
     private class Unauthorized : Exception("HTTP 401")
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val client by lazy {
-        GameNativeApi.httpClient.newBuilder().callTimeout(CALL_TIMEOUT_SEC, TimeUnit.SECONDS).build()
+        GameNativeApi.httpClient.newBuilder()
+            .connectTimeout(CONNECT_TIMEOUT_SEC, TimeUnit.SECONDS)
+            .callTimeout(CALL_TIMEOUT_SEC, TimeUnit.SECONDS)
+            .build()
     }
 
     private suspend fun post(path: String, body: JSONObject): JSONObject? = withContext(Dispatchers.IO) {
@@ -54,21 +59,30 @@ object OptimizeApi {
         }
     }
 
-    /** Returns null when the server did not answer within [timeoutMs]; the request is left to finish on its own. */
-    suspend fun nextRung(body: JSONObject, timeoutMs: Long): NextRungResult? {
-        val call = scope.async {
-            try {
-                post(NEXT_RUNG_PATH, body)?.let { NextRungResult.Answered(NextRungResponse.parse(it)) } ?: NextRungResult.Failed
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Unauthorized) {
-                NextRungResult.SignedOut
-            } catch (e: Exception) {
-                Timber.tag("Optimize").w(e, "next-rung failed")
-                NextRungResult.Failed
+    /**
+     * Starts a next-rung request, attestation included, that runs to its end even when the caller stops waiting.
+     * A failed attempt is tried once more while at least [MIN_RETRY_MS] of [budgetMs] is left.
+     */
+    fun nextRung(body: JSONObject, budgetMs: Long): Deferred<NextRungResult> {
+        val startMs = System.currentTimeMillis()
+        return scope.async {
+            var result: NextRungResult = NextRungResult.Failed
+            for (attempt in 0..1) {
+                if (attempt > 0 && budgetMs - (System.currentTimeMillis() - startMs) < MIN_RETRY_MS) break
+                result = try {
+                    post(NEXT_RUNG_PATH, body)?.let { NextRungResult.Answered(NextRungResponse.parse(it)) } ?: NextRungResult.Failed
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Unauthorized) {
+                    NextRungResult.SignedOut
+                } catch (e: Exception) {
+                    Timber.tag("Optimize").w(e, "next-rung attempt ${attempt + 1} failed")
+                    NextRungResult.Failed
+                }
+                if (result != NextRungResult.Failed) break
             }
+            result
         }
-        return withTimeoutOrNull(timeoutMs) { call.await() }
     }
 
     /** One attempt and one retry; false when neither was acknowledged. */
