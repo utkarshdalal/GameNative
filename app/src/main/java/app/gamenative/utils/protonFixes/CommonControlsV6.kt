@@ -93,11 +93,16 @@ object CommonControlsV6 {
                 continue
             }
             if (upper == null) continue
-            if (prune(upper, name, src) == Prune.KEPT) {
-                // The local copy is this build's and stays, so its manifest has to agree with it or
-                // it shadows the one just written under the base prefix.
-                writeManifest(File(upper, "manifests/$name.manifest"), arch)
-            }
+            if (prune(upper, name, src) != Prune.KEPT) continue
+            // The local copy is this build's and stays, so its manifest has to agree with it or it
+            // shadows the one just written under the base prefix.
+            val localManifest = File(upper, "manifests/$name.manifest")
+            if (writeManifest(localManifest, arch)) continue
+            // Not repairable: drop the local manifest so the base pair is what Wine resolves, and
+            // if that file cannot be removed either, drop the local assembly along with it.
+            if (!localManifest.exists() || localManifest.delete()) continue
+            Timber.tag(TAG).w("Could not repair or drop ${localManifest.name}; removing the local assembly")
+            if (FileUtils.delete(File(upper, name))) localManifest.delete()
         }
 
         // Arches this build cannot serve: an assembly left by another build would shadow the DLL
@@ -222,7 +227,7 @@ object CommonControlsV6 {
             return false
         }
         return try {
-            Files.move(tmp.toPath(), dst.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            Files.move(tmp.toPath(), dst.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
             true
         } catch (e: Exception) {
             Timber.tag(TAG).w(e, "move $tmp -> $dst failed")
@@ -232,8 +237,10 @@ object CommonControlsV6 {
     }
 
     /**
-     * Publishes [file] through a sibling temp file, so a failed write cannot leave a truncated
-     * manifest where a working one was.
+     * Publishes [file] through a sibling temp file and an atomic move, so a failed write cannot
+     * leave a truncated manifest where a working one was. An implementation that cannot move
+     * atomically throws `AtomicMoveNotSupportedException`, which surfaces here as a failed
+     * publication rather than a partial file.
      */
     private fun writeManifest(file: File, arch: String): Boolean {
         val xml = manifestXml(arch)
@@ -248,7 +255,7 @@ object CommonControlsV6 {
         val tmp = File(dir, "${file.name}.$TMP_SUFFIX")
         return try {
             tmp.writeText(xml)
-            Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
             true
         } catch (e: Exception) {
             Timber.tag(TAG).w(e, "writing $file failed")
