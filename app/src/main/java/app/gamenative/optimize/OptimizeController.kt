@@ -21,6 +21,8 @@ import app.gamenative.utils.HardwareUtils
 import app.gamenative.utils.OptimizeState
 import com.winlator.container.Container
 import com.winlator.core.GPUInformation
+import com.winlator.core.KeyValueSet
+import com.winlator.core.envvars.EnvVars
 import java.io.File
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
@@ -189,6 +191,8 @@ object OptimizeController {
                     put("fps_limit", fpsLimit(container))
                     put("emulator", data.emulator)
                     put("fex_preset", data.fexcorePreset)
+                    put("env_vars", JSONObject().apply { EnvVars(data.envVars).let { env -> env.forEach { put(it, env.get(it)) } } })
+                    put("dxwrapper_config", JSONObject().apply { KeyValueSet(data.dxwrapperConfig).forEach { put(it[0], it[1]) } })
                 },
             )
             put(
