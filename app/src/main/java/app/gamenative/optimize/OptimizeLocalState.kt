@@ -151,6 +151,13 @@ data class ProfileLadder(
 ) {
     val hasApplied: Boolean get() = pending != null || kept.any { it.applied }
 
+    /** True when [rung] makes a change this profile already kept or tried: its lever hash is on the ladder, or its levers equal a kept rung's. */
+    fun repeats(rung: Rung): Boolean {
+        if (rung.version.isNotEmpty() && (kept.any { it.version == rung.version } || tried.any { it.version == rung.version })) return true
+        val levers = canonicalJson(rung.raw.optJSONArray("levers"))
+        return kept.any { k -> k.rung?.let { canonicalJson(it.optJSONArray("levers")) == levers } == true }
+    }
+
     fun toJson(): JSONObject = JSONObject().apply {
         put("state", state.wireId)
         put("kept", JSONArray().apply { kept.forEach { put(it.toJson()) } })
@@ -176,6 +183,15 @@ data class ProfileLadder(
     }
 }
 
+/** JSON text with object keys sorted at every level, so equal values compare equal whatever order they were written in. */
+internal fun canonicalJson(value: Any?): String = when (value) {
+    null, JSONObject.NULL -> "null"
+    is JSONObject -> value.keys().asSequence().sorted().joinToString(",", "{", "}") { JSONObject.quote(it) + ":" + canonicalJson(value.opt(it)) }
+    is JSONArray -> (0 until value.length()).joinToString(",", "[", "]") { canonicalJson(value.opt(it)) }
+    is String -> JSONObject.quote(value)
+    else -> value.toString()
+}
+
 /** The container settings a next-rung answer was asked for; an answer is only used while they still hold. */
 data class PrefetchKey(val executablePath: String, val dxwrapper: String, val fpsLimit: Int)
 
@@ -195,7 +211,8 @@ data class PrefetchedRung(
             this.key == key &&
             kept == keptIds(ladder) &&
             rung.rungId !in ladder.bad &&
-            ladder.tried.none { it.rungId == rung.rungId && it.version == rung.version }
+            ladder.tried.none { it.rungId == rung.rungId && it.version == rung.version } &&
+            !ladder.repeats(rung)
 
     fun toJson(): JSONObject = JSONObject().apply {
         put("rung", rung.raw)

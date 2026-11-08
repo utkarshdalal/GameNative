@@ -234,6 +234,7 @@ object OptimizeController {
         crash: Metrics? = null,
     ): JSONObject = JSONObject().apply {
         put("schema", 1)
+        put("app_version_code", BuildConfig.VERSION_CODE)
         put("outcome_id", UUID.randomUUID().toString())
         put("rung_id", rungId)
         put("version", version)
@@ -498,10 +499,23 @@ object OptimizeController {
                         }
                         else -> {
                             val body = nextRungBody(context, appId, container, state, profile, ladder, baseline)
-                            val call = OptimizeApi.nextRung(body, budgetMs)
-                            val answer = withTimeoutOrNull(budgetMs.coerceAtLeast(0L)) { call.await() }
-                            if (answer == null) keepLateAnswer(store, call, profile, key, PrefetchedRung.keptIds(ladder), state.cardAction)
-                            answer
+                            val deadline = System.currentTimeMillis() + budgetMs
+                            suspend fun ask(): NextRungResult? {
+                                val remaining = (deadline - System.currentTimeMillis()).coerceAtLeast(0L)
+                                val call = OptimizeApi.nextRung(body, remaining)
+                                val answer = withTimeoutOrNull(remaining) { call.await() }
+                                if (answer == null) keepLateAnswer(store, call, profile, key, PrefetchedRung.keptIds(ladder), state.cardAction)
+                                return answer
+                            }
+                            val first = ask()
+                            val repeated = (first as? NextRungResult.Answered)?.response
+                                ?.takeIf { it.status == NextRungResponse.STATUS_RUNG }?.rung?.takeIf { ladder.repeats(it) }
+                            if (repeated != null && deadline > System.currentTimeMillis()) {
+                                Timber.tag(TAG).i("Optimize: skipping ${repeated.rungId} v${repeated.version}, same change already kept")
+                                ask()
+                            } else {
+                                first
+                            }
                         }
                     }
                     when (result) {
@@ -520,6 +534,9 @@ object OptimizeController {
                             }
                             val previousStatus = ladder.lastStatus
                             ladder = ladder.copy(lastStatus = response.status)
+                            if (response.status != NextRungResponse.STATUS_RUNG) {
+                                Timber.tag(TAG).i("Optimize: next rung status ${response.status} (message ${response.messageId}); nothing applied")
+                            }
                             when (response.status) {
                                 NextRungResponse.STATUS_EXHAUSTED -> {
                                     ladder = ladder.copy(state = LadderState.EXHAUSTED)
@@ -529,7 +546,11 @@ object OptimizeController {
                                     state = state.copy(card = OptimizeCard(OptimizeCard.ENTITLEMENT, System.currentTimeMillis(), gameName(appId), profile))
                                 }
                                 NextRungResponse.STATUS_RUNG -> {
-                                    val rung = response.rung?.takeIf { it.rungId !in ladder.bad }
+                                    val offered = response.rung?.takeIf { it.rungId !in ladder.bad }
+                                    val rung = offered?.takeUnless { ladder.repeats(it) }
+                                    if (offered != null && rung == null) {
+                                        Timber.tag(TAG).i("Optimize: skipping ${offered.rungId} v${offered.version}, same change already kept")
+                                    }
                                     if (rung != null) {
                                         val outcome = OptimizeApplier.apply(
                                             context, container, roots(context, appId, container), store.rungDir(profile, rung.rungId), rung,

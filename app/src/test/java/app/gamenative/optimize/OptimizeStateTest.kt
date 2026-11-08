@@ -290,12 +290,43 @@ class OptimizeStateTest {
     }
 
     @Test
+    fun aRungRepeatingAKeptOrTriedChangeIsRefused() {
+        val rung = Rung.parse(JSONObject(rungJson))!!
+        val now = 1_800_000_000_000L
+        val key = PrefetchKey("C:\\Game\\TheForest.exe", "dxvk-2.4", 60)
+        val ladder = ProfileLadder(state = LadderState.TRYING)
+        assertFalse(ladder.repeats(rung))
+
+        val keptSameHash = KeptRung("other_id", "a1b2c3d4", 1, emptyList(), 0L, emptyList(), null)
+        assertTrue(ladder.copy(kept = listOf(keptSameHash)).repeats(rung))
+        assertTrue(ladder.copy(tried = listOf(TriedRung("other_id", "a1b2c3d4", "no_change"))).repeats(rung))
+        assertFalse(ladder.copy(tried = listOf(TriedRung("other_id", "ffff", "no_change"))).repeats(rung))
+
+        val reordered = JSONObject(rungJson).getJSONArray("levers").getJSONObject(1).getJSONObject("payload").let { p ->
+            JSONObject().put("values", p.getJSONArray("values")).put("key", p.getString("key")).put("hive", p.getString("hive"))
+        }
+        val keptLevers = JSONObject(rungJson).apply {
+            getJSONArray("levers").put(1, JSONObject().put("payload", reordered).put("lever_type", "registry"))
+        }
+        val keptSameLevers = KeptRung("old_id", "0000", 1, emptyList(), 0L, emptyList(), null, rung = keptLevers)
+        assertTrue(ladder.copy(kept = listOf(keptSameLevers)).repeats(rung))
+        val keptOtherLevers = keptSameLevers.copy(rung = JSONObject(rungJson).put("levers", org.json.JSONArray()))
+        assertFalse(ladder.copy(kept = listOf(keptOtherLevers)).repeats(rung))
+
+        val prefetched = PrefetchedRung(rung, now, OptimizeProfile.BALANCED, key, listOf("old_id"))
+        assertFalse(prefetched.isUsable(now, OptimizeProfile.BALANCED, key, ladder.copy(kept = listOf(keptSameLevers))))
+        assertTrue(prefetched.isUsable(now, OptimizeProfile.BALANCED, key, ladder.copy(kept = listOf(keptOtherLevers))))
+    }
+
+    @Test
     fun registryValuesEncodeLikeWine() {
         assertEquals("dword:00000003", OptimizeFiles.encodeRegistryValue("dword", "3"))
         assertEquals("dword:ffffffff", OptimizeFiles.encodeRegistryValue("dword", "-1"))
         assertEquals("dword:000000ff", OptimizeFiles.encodeRegistryValue("dword", "0xff"))
         assertEquals("\"High\"", OptimizeFiles.encodeRegistryValue("sz", "High"))
-        assertEquals("hex:00,00,00,00,00,00,f0,3f", OptimizeFiles.encodeRegistryValue("binary_f64le", "1.0"))
+        assertEquals("hex(4):00,00,00,00,00,00,f0,3f", OptimizeFiles.encodeRegistryValue("binary_f64le", "1.0"))
+        assertEquals("hex(4):33,33,33,33,33,33,d3,3f", OptimizeFiles.encodeRegistryValue("binary_f64le", "0.30"))
+        assertEquals("hex(4):00,00,00,00,00,00,4e,40", OptimizeFiles.encodeRegistryValue("binary_f64le", "60.0"))
         assertEquals("hex(b):05,00,00,00,00,00,00,00", OptimizeFiles.encodeRegistryValue("qword", "5"))
     }
 }

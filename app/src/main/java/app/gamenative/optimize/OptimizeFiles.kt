@@ -55,7 +55,8 @@ internal object OptimizeFiles {
 
     /**
      * Encodes a lever registry value: dword and qword data are decimal (or 0x-prefixed hex) integers, sz is text,
-     * binary_f64le is a decimal number stored as 8 little-endian IEEE-754 bytes.
+     * binary_f64le is a decimal number stored as 8 little-endian IEEE-754 bytes typed REG_DWORD (`hex(4):`), the way Unity
+     * PlayerPrefs writes doubles.
      */
     fun encodeRegistryValue(type: String, data: String): String = when (type) {
         "dword" -> {
@@ -68,7 +69,7 @@ internal object OptimizeFiles {
         "binary_f64le" -> {
             val bits = java.lang.Double.doubleToRawLongBits(data.trim().toDouble())
             val hex = (0 until 8).joinToString("") { "%02x".format((bits ushr (8 * it)) and 0xff) }
-            WineRegistryText.encodeValue("binary", hex)
+            WineRegistryText.encodeValue("binary_dword", hex)
         }
         else -> throw IllegalArgumentException("unsupported registry type $type")
     }
