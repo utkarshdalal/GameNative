@@ -1909,6 +1909,7 @@
     <string name="optimize_suggested_balanced">Consigliato: Bilanciato, perché nessun limite spicca sugli altri.</string>
     <string name="optimize_status_exhausted">Il massimo su questo dispositivo</string>
     <string name="optimize_continue">Riprendi</string>
+    <string name="optimize_keep_tuning">Continua a regolare</string>
     <plurals name="optimize_trial_used">
         <item quantity="one">Hai usato il tuo %1$d gioco gratuito. L\'abbonamento include Ottimizza per ogni gioco.</item>
         <item quantity="other">Hai usato i tuoi %1$d giochi gratuiti. L\'abbonamento include Ottimizza per ogni gioco.</item>

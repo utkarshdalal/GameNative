@@ -1898,6 +1898,7 @@
     <string name="optimize_suggested_balanced">Sugerat: Echilibrat, pentru că nicio limită nu iese în evidență.</string>
     <string name="optimize_status_exhausted">Maximul pe acest dispozitiv</string>
     <string name="optimize_continue">Reia</string>
+    <string name="optimize_keep_tuning">Continuă reglarea</string>
     <plurals name="optimize_trial_used">
         <item quantity="one">Ai folosit %1$d joc gratuit. Abonamentul include Optimizare pentru fiecare joc.</item>
         <item quantity="few">Ai folosit cele %1$d jocuri gratuite. Abonamentul include Optimizare pentru fiecare joc.</item>

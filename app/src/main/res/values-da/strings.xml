@@ -1788,6 +1788,7 @@
     <string name="optimize_suggested_balanced">Foreslået: Balanceret, fordi intet skiller sig ud som den største begrænsning.</string>
     <string name="optimize_status_exhausted">Så langt det kan komme på denne enhed</string>
     <string name="optimize_continue">Genoptag</string>
+    <string name="optimize_keep_tuning">Bliv ved med at justere</string>
     <plurals name="optimize_trial_used">
         <item quantity="one">Du har brugt dit %1$d gratis spil. Medlemskab inkluderer Optimer for alle spil.</item>
         <item quantity="other">Du har brugt dine %1$d gratis spil. Medlemskab inkluderer Optimer for alle spil.</item>

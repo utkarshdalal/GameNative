@@ -1922,6 +1922,7 @@
     <string name="optimize_suggested_balanced">Sugerowane: Zrównoważony, bo żadne ograniczenie się nie wyróżnia.</string>
     <string name="optimize_status_exhausted">Maksimum na tym urządzeniu</string>
     <string name="optimize_continue">Wznów</string>
+    <string name="optimize_keep_tuning">Dostrajaj dalej</string>
     <plurals name="optimize_trial_used">
         <item quantity="one">Wykorzystano wszystkie darmowe gry (%1$d). Członkostwo obejmuje Optymalizację dla każdej gry.</item>
         <item quantity="few">Wykorzystano wszystkie darmowe gry (%1$d). Członkostwo obejmuje Optymalizację dla każdej gry.</item>

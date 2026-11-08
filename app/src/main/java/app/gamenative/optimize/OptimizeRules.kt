@@ -26,9 +26,23 @@ data class SwitchPlan(
 }
 
 object OptimizeLadders {
-    /** A profile picked from the dialog, the options row or a card starts trying again when it was idle or paused. */
+    private val RESUMABLE = setOf(LadderState.IDLE, LadderState.PAUSED, LadderState.DONE)
+
+    /** A profile picked from the dialog, the options row or a card starts trying again when it was idle, paused or done. */
     fun picked(ladder: ProfileLadder): ProfileLadder =
-        if (ladder.state == LadderState.IDLE || ladder.state == LadderState.PAUSED) ladder.copy(state = LadderState.TRYING, noChangeStreak = 0) else ladder
+        if (ladder.state in RESUMABLE) ladder.copy(state = LadderState.TRYING, noChangeStreak = 0) else ladder
+
+    /** Continue is offered while the active ladder is paused or done. */
+    fun canContinue(status: OptimizeStatus?): Boolean = status == OptimizeStatus.Paused || status == OptimizeStatus.Done
+
+    enum class Tap { SWITCH, CONTINUE, NONE }
+
+    /** Tapping another profile switches to it; tapping the active one continues its ladder when that is offered. */
+    fun tap(active: OptimizeProfile, tapped: OptimizeProfile, status: OptimizeStatus?): Tap = when {
+        tapped != active -> Tap.SWITCH
+        canContinue(status) -> Tap.CONTINUE
+        else -> Tap.NONE
+    }
 }
 
 object OptimizeTarget {

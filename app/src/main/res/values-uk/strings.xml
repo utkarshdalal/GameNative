@@ -1918,6 +1918,7 @@
     <string name="optimize_suggested_balanced">Рекомендовано: «Баланс», бо жодне обмеження не виділяється.</string>
     <string name="optimize_status_exhausted">Межа для цього пристрою</string>
     <string name="optimize_continue">Відновити</string>
+    <string name="optimize_keep_tuning">Продовжити налаштування</string>
     <plurals name="optimize_trial_used">
         <item quantity="one">Ви використали всі безкоштовні ігри (%1$d). Підписка включає Оптимізацію для всіх ігор.</item>
         <item quantity="few">Ви використали всі безкоштовні ігри (%1$d). Підписка включає Оптимізацію для всіх ігор.</item>

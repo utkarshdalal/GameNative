@@ -1936,6 +1936,7 @@
     <string name="optimize_suggested_balanced">Önerilen: Dengeli, çünkü öne çıkan bir sınır yok.</string>
     <string name="optimize_status_exhausted">Bu cihazda varılabilecek en son nokta</string>
     <string name="optimize_continue">Sürdür</string>
+    <string name="optimize_keep_tuning">Ayarlamaya devam et</string>
     <plurals name="optimize_trial_used">
         <item quantity="one">%1$d ücretsiz oyununuzu kullandınız. Üyelik her oyun için Optimize et özelliğini içerir.</item>
         <item quantity="other">%1$d ücretsiz oyununuzu kullandınız. Üyelik her oyun için Optimize et özelliğini içerir.</item>

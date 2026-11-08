@@ -339,7 +339,37 @@ class OptimizeRulesTest {
         val paused = OptimizeLadders.picked(ProfileLadder(state = LadderState.PAUSED, noChangeStreak = 2))
         assertEquals(LadderState.TRYING, paused.state)
         assertEquals(0, paused.noChangeStreak)
-        assertEquals(LadderState.DONE, OptimizeLadders.picked(ProfileLadder(state = LadderState.DONE)).state)
+        val done = OptimizeLadders.picked(ProfileLadder(state = LadderState.DONE, noChangeStreak = 3))
+        assertEquals(LadderState.TRYING, done.state)
+        assertEquals(0, done.noChangeStreak)
+        assertEquals(LadderState.EXHAUSTED, OptimizeLadders.picked(ProfileLadder(state = LadderState.EXHAUSTED)).state)
+        val trying = ProfileLadder(state = LadderState.TRYING, noChangeStreak = 1)
+        assertTrue(OptimizeLadders.picked(trying) === trying)
+    }
+
+    @Test
+    fun tappingTheActiveProfileContinuesAPausedOrDoneLadder() {
+        val balanced = OptimizeProfile.BALANCED
+        assertEquals(OptimizeLadders.Tap.CONTINUE, OptimizeLadders.tap(balanced, balanced, OptimizeStatus.Paused))
+        assertEquals(OptimizeLadders.Tap.CONTINUE, OptimizeLadders.tap(balanced, balanced, OptimizeStatus.Done))
+        assertEquals(OptimizeLadders.Tap.NONE, OptimizeLadders.tap(balanced, balanced, OptimizeStatus.Trying(null, null)))
+        assertEquals(OptimizeLadders.Tap.NONE, OptimizeLadders.tap(balanced, balanced, OptimizeStatus.TuningNext))
+        assertEquals(OptimizeLadders.Tap.NONE, OptimizeLadders.tap(OptimizeProfile.OFF, OptimizeProfile.OFF, OptimizeStatus.Off))
+        assertEquals(OptimizeLadders.Tap.SWITCH, OptimizeLadders.tap(balanced, OptimizeProfile.POWER, OptimizeStatus.Done))
+        assertEquals(OptimizeLadders.Tap.SWITCH, OptimizeLadders.tap(balanced, OptimizeProfile.OFF, OptimizeStatus.Trying(null, null)))
+    }
+
+    @Test
+    fun continueIsOfferedForPausedAndDoneOnly() {
+        assertTrue(OptimizeLadders.canContinue(OptimizeStatus.Paused))
+        assertTrue(OptimizeLadders.canContinue(OptimizeStatus.Done))
+        listOf(null, OptimizeStatus.Off, OptimizeStatus.TuningNext, OptimizeStatus.Exhausted, OptimizeStatus.TrialUsed, OptimizeStatus.Measuring)
+            .forEach { assertFalse(OptimizeLadders.canContinue(it)) }
+    }
+
+    @Test
+    fun keepTuningIsSentAsContinue() {
+        assertEquals("continue", OptimizeCards.wireAction(OptimizeCards.WIRE_CONTINUE, OptimizeCard.DONE))
     }
 
     private val forestAfter = Metrics(

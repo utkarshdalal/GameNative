@@ -42,6 +42,7 @@ import app.gamenative.billing.Membership
 import app.gamenative.optimize.Entitlement
 import app.gamenative.optimize.EntitlementLine
 import app.gamenative.optimize.OptimizeController
+import app.gamenative.optimize.OptimizeLadders
 import app.gamenative.optimize.OptimizeLocalState
 import app.gamenative.optimize.OptimizeProfile
 import app.gamenative.optimize.OptimizeStatus
@@ -111,6 +112,13 @@ class OptimizeActions(
     fun continueLadder() = gated { perform(null) { OptimizeController.continueLadder(context, appId) } }
 
     fun restore() = perform(R.string.optimize_restored) { OptimizeController.restoreOriginal(context, appId) }
+
+    /** A profile row or chip was tapped while [active] is on with [status]. */
+    fun tap(active: OptimizeProfile, tapped: OptimizeProfile, status: OptimizeStatus?) = when (OptimizeLadders.tap(active, tapped, status)) {
+        OptimizeLadders.Tap.SWITCH -> switchTo(tapped)
+        OptimizeLadders.Tap.CONTINUE -> continueLadder()
+        OptimizeLadders.Tap.NONE -> Unit
+    }
 }
 
 @Composable
@@ -197,7 +205,8 @@ fun OptimizeOptionsRow(appId: String) {
     val state = rememberOptimizeState(appId)
     val actions = rememberOptimizeActions(appId)
     val active = state?.activeProfile ?: OptimizeProfile.OFF
-    val exhausted = state != null && OptimizeStatus.of(state) == OptimizeStatus.TrialUsed
+    val status = state?.let { OptimizeStatus.of(it) }
+    val exhausted = status == OptimizeStatus.TrialUsed
     val keptCount = state?.let { OptimizeStatus.keptCount(it) } ?: 0
     Column(modifier = Modifier.fillMaxWidth()) {
         listOfNotNull(
@@ -215,9 +224,9 @@ fun OptimizeOptionsRow(appId: String) {
             selected = active,
             profiles = OptimizeProfile.entries,
             enabled = state != null && !actions.busy,
-            onSelect = { if (it != active) actions.switchTo(it) },
+            onSelect = { actions.tap(active, it, status) },
         )
-        if (state != null && OptimizeStatus.of(state) == OptimizeStatus.Paused) {
+        if (OptimizeLadders.canContinue(status)) {
             TextButton(enabled = !actions.busy, onClick = { actions.continueLadder() }) {
                 Text(text = stringResource(R.string.optimize_continue))
             }
@@ -262,7 +271,7 @@ fun OptimizeDialog(
                             .selectable(
                                 selected = option == profile,
                                 enabled = state != null && !actions.busy,
-                                onClick = { if (option != profile) actions.switchTo(option) },
+                                onClick = { actions.tap(profile, option, status) },
                                 role = Role.RadioButton,
                             )
                             .padding(horizontal = 8.dp, vertical = 8.dp),
@@ -323,7 +332,7 @@ fun OptimizeDialog(
                         Text(text = stringResource(R.string.optimize_see_membership))
                     }
                 }
-                if (status == OptimizeStatus.Paused) {
+                if (OptimizeLadders.canContinue(status)) {
                     TextButton(enabled = !actions.busy, onClick = { actions.continueLadder() }) {
                         Text(text = stringResource(R.string.optimize_continue))
                     }

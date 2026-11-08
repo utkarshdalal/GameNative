@@ -1885,6 +1885,7 @@
     <string name="optimize_suggested_balanced">建議：平衡，因為沒有明顯的主要瓶頸。</string>
     <string name="optimize_status_exhausted">此裝置上已到極限</string>
     <string name="optimize_continue">恢復</string>
+    <string name="optimize_keep_tuning">繼續調整</string>
     <plurals name="optimize_trial_used">
         <item quantity="other">你已用完 %1$d 款免費遊戲。會員可在所有遊戲中使用最佳化。</item>
     </plurals>

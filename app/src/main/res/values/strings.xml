@@ -2140,6 +2140,7 @@
     <string name="optimize_suggested_balanced">Suggested: Balanced, because nothing stands out as the main limit.</string>
     <string name="optimize_status_exhausted">As far as it goes on this device</string>
     <string name="optimize_continue">Continue</string>
+    <string name="optimize_keep_tuning">Keep tuning</string>
     <plurals name="optimize_trial_used">
         <item quantity="one">You\'ve used your %1$d free game. Membership includes Optimize for every game.</item>
         <item quantity="other">You\'ve used your %1$d free games. Membership includes Optimize for every game.</item>

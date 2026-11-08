@@ -507,6 +507,7 @@ object OptimizeController {
                         return@withLock
                     }
                     store.dropRungDir(profile, flagged.rung.rungId)
+                    Timber.tag(TAG).i("Optimize: reverted ${flagged.rung.rungId} v${flagged.rung.version} (${flagged.revert}) before launch")
                     ladder = ladder.copy(pending = null, baselineOverride = flagged.baseline ?: ladder.baselineOverride)
                 }
 
@@ -967,9 +968,11 @@ object OptimizeController {
         var s = state
         var ladder = s.ladder(profile)
         var ok = true
+        val reverted = mutableListOf<String>()
         ladder.pending?.let { pending ->
             if (OptimizeReverter.revertLevers(context, container, pending.levers)) {
                 store.dropRungDir(profile, pending.rung.rungId)
+                reverted += "${pending.rung.rungId} v${pending.rung.version}"
                 if (pending.revert == null) {
                     s = s.queued(undoReport(appId, profile, pending.rung.rungId, pending.rung.version, pending.baseline, pending.levers.size))
                 }
@@ -984,10 +987,15 @@ object OptimizeController {
                 continue
             }
             store.dropRungDir(profile, kept.rungId)
+            reverted += "${kept.rungId} v${kept.version}"
             ladder = ladder.copy(kept = ladder.kept - kept)
             s = s.queued(undoReport(appId, profile, kept.rungId, kept.version, kept.baseline, kept.levers.size))
         }
         if (ok) ladder = ladder.copy(state = nextState, noChangeStreak = 0, baselineOverride = null)
+        Timber.tag(TAG).i(
+            "Optimize: restore ${profile.wireId} reverted ${reverted.ifEmpty { listOf("nothing") }.joinToString()}" +
+                if (ok) "; ladder ${nextState.wireId}" else "; some changes failed to come off",
+        )
         return s.withLadder(profile, ladder) to ok
     }
 
@@ -997,13 +1005,16 @@ object OptimizeController {
             restore(context, appId, container, store, state, LadderState.PAUSED)
         }
 
-    /** Resumes a paused ladder: the next launch asks for the next step again. */
+    /** The active ladder tries again with a fresh no-change streak, recorded as card_action continue. */
+    private fun resumed(state: OptimizeLocalState): OptimizeLocalState {
+        val profile = state.activeProfile ?: return state
+        return state.copy(cardAction = OptimizeCards.WIRE_CONTINUE)
+            .withLadder(profile, state.ladder(profile).copy(state = LadderState.TRYING, noChangeStreak = 0))
+    }
+
+    /** Resumes a paused or done ladder: the next launch asks for the next step again. */
     suspend fun continueLadder(context: Context, appId: String): ChangeResult =
-        change(context, appId, touchesFiles = false, what = "continuing") { _, _, state ->
-            val profile = state.activeProfile ?: return@change (state to true)
-            state.copy(cardAction = OptimizeCards.WIRE_CONTINUE)
-                .withLadder(profile, state.ladder(profile).copy(state = LadderState.TRYING, noChangeStreak = 0)) to true
-        }
+        change(context, appId, touchesFiles = false, what = "continuing") { _, _, state -> resumed(state) to true }
 
     /** Takes off the step a helped card was about; the ladder keeps trying, so the next launch asks again. */
     private suspend fun undoStep(
@@ -1058,6 +1069,7 @@ object OptimizeController {
                 OptimizeCards.ACTION_KEEP_GOING -> setLadder(LadderState.TRYING) to true
                 OptimizeCards.ACTION_HAPPY -> setLadder(LadderState.DONE) to true
                 OptimizeCards.ACTION_STOP -> setLadder(LadderState.PAUSED) to true
+                OptimizeCards.WIRE_CONTINUE -> resumed(state) to true
                 OptimizeCards.ACTION_UNDO -> undoStep(context, appId, container, store, state, card.rungId)
                 OptimizeCards.ACTION_UNDO_ALL -> restore(context, appId, container, store, state, LadderState.EXHAUSTED)
                 OptimizeCards.ACTION_DISMISSED -> when (card.kind) {

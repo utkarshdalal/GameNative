@@ -1887,6 +1887,7 @@
     <string name="optimize_suggested_balanced">추천: 균형 (눈에 띄는 주요 한계가 없어서)</string>
     <string name="optimize_status_exhausted">이 기기에서는 여기까지입니다</string>
     <string name="optimize_continue">계속</string>
+    <string name="optimize_keep_tuning">계속 조정</string>
     <plurals name="optimize_trial_used">
         <item quantity="other">무료 게임 %1$d개를 모두 사용했습니다. 멤버십에는 모든 게임의 최적화가 포함됩니다.</item>
     </plurals>

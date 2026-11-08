@@ -209,10 +209,11 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
                     TextButton(onClick = { answer(OptimizeCards.ACTION_UNDO_ALL) }) { Text(stringResource(R.string.optimize_undo_all)) }
                 OptimizeCard.ENTITLEMENT ->
                     TextButton(onClick = { answer(OptimizeCards.ACTION_DISMISSED) }) { Text(stringResource(R.string.close)) }
-                OptimizeCard.DONE -> if (heatHint) {
-                    TextButton(onClick = { answer(OptimizeCards.ACTION_OK) }) { Text(stringResource(R.string.ok)) }
-                } else {
-                    Unit
+                OptimizeCard.DONE -> Row {
+                    TextButton(onClick = { scope.launch { gate.require { answer(OptimizeCards.WIRE_CONTINUE) } } }) {
+                        Text(stringResource(R.string.optimize_keep_tuning))
+                    }
+                    if (heatHint) TextButton(onClick = { answer(OptimizeCards.ACTION_OK) }) { Text(stringResource(R.string.ok)) }
                 }
                 else -> Unit
             }

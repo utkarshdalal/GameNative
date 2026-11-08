@@ -2127,6 +2127,7 @@
     <string name="optimize_suggested_balanced">おすすめ：バランス（目立った制約がないため）。</string>
     <string name="optimize_status_exhausted">このデバイスではここまでです</string>
     <string name="optimize_continue">再開</string>
+    <string name="optimize_keep_tuning">調整を続ける</string>
     <plurals name="optimize_trial_used">
         <item quantity="other">無料の %1$d 本をすべて使いました。メンバーシップならすべてのゲームで最適化を使えます。</item>
     </plurals>

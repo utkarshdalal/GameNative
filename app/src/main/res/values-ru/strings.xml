@@ -1846,6 +1846,7 @@ https://gamenative.app
     <string name="optimize_suggested_balanced">Рекомендуется: «Баланс», потому что ни одно ограничение не выделяется.</string>
     <string name="optimize_status_exhausted">Предел для этого устройства</string>
     <string name="optimize_continue">Возобновить</string>
+    <string name="optimize_keep_tuning">Продолжить настройку</string>
     <plurals name="optimize_trial_used">
         <item quantity="one">Вы использовали все бесплатные игры (%1$d). Подписка включает Оптимизацию для всех игр.</item>
         <item quantity="few">Вы использовали все бесплатные игры (%1$d). Подписка включает Оптимизацию для всех игр.</item>

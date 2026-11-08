@@ -1788,6 +1788,7 @@
     <string name="optimize_suggested_balanced">Sugerido: Equilibrado, porque nenhum limite se destaca.</string>
     <string name="optimize_status_exhausted">O máximo neste dispositivo</string>
     <string name="optimize_continue">Retomar</string>
+    <string name="optimize_keep_tuning">Continuar ajustando</string>
     <plurals name="optimize_trial_used">
         <item quantity="one">Você usou seu %1$d jogo grátis. A assinatura inclui Otimizar para todos os jogos.</item>
         <item quantity="other">Você usou seus %1$d jogos grátis. A assinatura inclui Otimizar para todos os jogos.</item>
