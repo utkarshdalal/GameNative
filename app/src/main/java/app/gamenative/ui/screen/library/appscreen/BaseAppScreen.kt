@@ -53,6 +53,7 @@ import app.gamenative.ui.component.dialog.ExportFilesDialog
 import app.gamenative.ui.component.dialog.ImportFilesDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.NexusModsDialog
+import app.gamenative.ui.component.dialog.OptimizeDialog
 import app.gamenative.ui.component.dialog.SaveBackupRestoreDialog
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.Achievement
@@ -189,6 +190,7 @@ abstract class BaseAppScreen {
         private val exportSavesRequests = mutableStateMapOf<String, Boolean>()
         private val importSavesRequests = mutableStateMapOf<String, Boolean>()
         private val restoreSaveBackupRequests = mutableStateMapOf<String, Boolean>()
+        private val optimizeRequests = mutableStateMapOf<String, Boolean>()
         private var saveBackupsRevision by mutableIntStateOf(0)
         private val importFilesRequests = mutableStateMapOf<String, Boolean>()
         private val exportFilesRequests = mutableStateMapOf<String, Boolean>()
@@ -254,6 +256,10 @@ abstract class BaseAppScreen {
 
         fun shouldImportSaves(appId: String): Boolean {
             return importSavesRequests[appId] == true
+        }
+
+        fun requestOptimize(appId: String) {
+            optimizeRequests[appId] = true
         }
 
         fun requestRestoreSaveBackup(appId: String) {
@@ -648,6 +654,15 @@ abstract class BaseAppScreen {
     }
 
     @Composable
+    protected open fun getOptimizeOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption? = AppMenuOption(
+        optionType = AppOptionMenuType.Optimize,
+        onClick = { requestOptimize(libraryItem.appId) },
+    )
+
+    @Composable
     protected open fun getBrowseCommunityConfigsOption(
         context: Context,
         libraryItem: LibraryItem,
@@ -788,6 +803,7 @@ abstract class BaseAppScreen {
         val configOptions = if (supportsContainerConfig()) {
             listOfNotNull(
                 getUseKnownConfigOption(context, libraryItem),
+                getOptimizeOption(context, libraryItem),
                 getBrowseCommunityConfigsOption(context, libraryItem),
                 getExportConfigOption(context, libraryItem),
                 getImportConfigOption(context, libraryItem),
@@ -2081,6 +2097,10 @@ abstract class BaseAppScreen {
                 },
                 onDismiss = { clearRestoreSaveBackupRequest(appId) },
             )
+        }
+
+        if (optimizeRequests[appId] == true) {
+            OptimizeDialog(appId = appId, onDismiss = { optimizeRequests.remove(appId) })
         }
 
         if (importFilesRequested) {

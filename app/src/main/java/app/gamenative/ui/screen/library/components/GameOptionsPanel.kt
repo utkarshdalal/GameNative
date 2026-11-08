@@ -57,6 +57,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SdStorage
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Sync
@@ -340,6 +341,7 @@ private fun getIconForOption(type: AppOptionMenuType): ImageVector {
         AppOptionMenuType.SubmitFeedback -> Icons.Default.Feedback
         AppOptionMenuType.ResetDrm -> Icons.Default.Key
         AppOptionMenuType.UseKnownConfig -> Icons.Default.Build
+        AppOptionMenuType.Optimize -> Icons.Default.Speed
         AppOptionMenuType.BrowseCommunityConfigs -> Icons.Default.Search
         AppOptionMenuType.Uninstall -> Icons.Default.Delete
         AppOptionMenuType.VerifyFiles -> Icons.Default.VerifiedUser
@@ -406,6 +408,7 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
             AppOptionMenuType.ResetToDefaults,
             AppOptionMenuType.ResetDrm,
             AppOptionMenuType.UseKnownConfig,
+            AppOptionMenuType.Optimize,
             AppOptionMenuType.BrowseCommunityConfigs,
             AppOptionMenuType.ImportConfig,
             AppOptionMenuType.ExportConfig,

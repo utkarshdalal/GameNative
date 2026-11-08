@@ -178,6 +178,19 @@ object PrefManager {
             setPref(COMPONENT_MANIFEST_FETCHED_AT, value)
         }
 
+    private val OPTIMIZE_DEVICE_ID = stringPreferencesKey("optimize_device_id")
+
+    @Volatile
+    private var optimizeDeviceIdCache: String? = null
+
+    /** Random id created once; Optimize outcome reports carry only its sha256. */
+    val optimizeDeviceId: String
+        get() = optimizeDeviceIdCache ?: synchronized(OPTIMIZE_DEVICE_ID) {
+            optimizeDeviceIdCache ?: getPref(OPTIMIZE_DEVICE_ID, "").ifEmpty {
+                java.util.UUID.randomUUID().toString().also { setPref(OPTIMIZE_DEVICE_ID, it) }
+            }.also { optimizeDeviceIdCache = it }
+        }
+
     /* PICS */
     private val LAST_PICS_CHANGE_NUMBER = intPreferencesKey("last_pics_change_number")
     var lastPICSChangeNumber: Int

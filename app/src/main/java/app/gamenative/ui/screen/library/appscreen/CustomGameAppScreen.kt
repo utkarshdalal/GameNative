@@ -438,6 +438,7 @@ class CustomGameAppScreen : BaseAppScreen() {
     ): List<AppMenuOption> {
         return listOfNotNull(
             getUseKnownConfigOption(context, libraryItem),
+            getOptimizeOption(context, libraryItem),
             getBrowseCommunityConfigsOption(context, libraryItem),
             getExportConfigOption(context, libraryItem),
             getImportConfigOption(context, libraryItem),

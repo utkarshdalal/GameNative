@@ -1,0 +1,279 @@
+package app.gamenative.optimize
+
+import android.content.Context
+import app.gamenative.PluviaApp
+import app.gamenative.api.SuggestionConfigKeys
+import app.gamenative.api.SupportSuggestion
+import app.gamenative.ui.component.parsePositiveFpsLimit
+import app.gamenative.ui.screen.support.SupportSuggestionApplier
+import app.gamenative.ui.screen.support.WineRegistryText
+import app.gamenative.utils.ContainerUtils
+import com.winlator.container.Container
+import com.winlator.container.ContainerData
+import com.winlator.core.KeyValueSet
+import com.winlator.core.envvars.EnvVars
+import java.io.File
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import timber.log.Timber
+
+sealed class ApplyOutcome {
+    data class Applied(val levers: List<JSONObject>) : ApplyOutcome()
+
+    data class Failed(val leversOk: Int, val failedIndex: Int, val reason: String) : ApplyOutcome()
+
+    /** Nothing was written and nothing should be recorded; the rung can be asked for again later. */
+    data class Deferred(val reason: String) : ApplyOutcome()
+}
+
+/** Applies a rung's levers all-or-nothing, keeping what each lever needs to be taken off again. */
+object OptimizeApplier {
+
+    const val SOURCE = "optimize"
+    private val SCREEN_SIZE = Regex("^[0-9]{2,5}x[0-9]{2,5}$")
+
+    private class LeverFailure(message: String) : Exception(message)
+
+    suspend fun apply(
+        context: Context,
+        container: Container,
+        roots: PathRoots,
+        store: OptimizeStore,
+        rung: Rung,
+        nowMillis: Long = System.currentTimeMillis(),
+    ): ApplyOutcome = withContext(Dispatchers.IO) {
+        if (PluviaApp.xEnvironment != null) return@withContext ApplyOutcome.Deferred("game running")
+        if (rung.isExpired(nowMillis)) return@withContext ApplyOutcome.Deferred("expired")
+        if (rung.levers.isEmpty()) return@withContext ApplyOutcome.Failed(0, -1, "no levers")
+        rung.levers.indexOfFirst { it is Lever.Unknown }.takeIf { it >= 0 }?.let {
+            return@withContext ApplyOutcome.Failed(0, it, "unknown lever ${rung.levers[it].type}")
+        }
+        val fileLever = rung.levers.indexOfFirst { it is Lever.EngineFile || it is Lever.Registry }
+        if (fileLever >= 0) {
+            val anticheat = OptimizeFiles.anticheat(container) ?: return@withContext ApplyOutcome.Deferred("game files not scanned yet")
+            if (anticheat.isNotEmpty()) return@withContext ApplyOutcome.Failed(0, fileLever, "anti-cheat ${anticheat.joinToString()}")
+        }
+
+        val rungDir = store.rungDir(rung.rungId)
+        rungDir.deleteRecursively()
+        rungDir.mkdirs()
+        val applied = mutableListOf<JSONObject>()
+        withContext(NonCancellable) {
+            for ((i, lever) in rung.levers.withIndex()) {
+                try {
+                    applied += when (lever) {
+                        is Lever.EngineFile -> applyFile(i, lever, roots, rungDir)
+                        is Lever.Registry -> applyRegistry(i, lever, container)
+                        is Lever.ContainerSet -> applyContainer(i, lever, context, container)
+                        is Lever.Unknown -> throw LeverFailure("unknown lever")
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Timber.tag("Optimize").w(e, "Lever $i of ${rung.rungId} failed, taking the others off")
+                    OptimizeReverter.revertLevers(context, container, applied)
+                    rungDir.deleteRecursively()
+                    return@withContext ApplyOutcome.Failed(i, i, e.message ?: e.javaClass.simpleName)
+                }
+            }
+            ApplyOutcome.Applied(applied)
+        }
+    }
+
+    private fun applyFile(index: Int, lever: Lever.EngineFile, roots: PathRoots, rungDir: File): JSONObject {
+        val format = ConfigFormats.forName(lever.format) ?: throw LeverFailure("unknown format ${lever.format}")
+        val file = OptimizePaths.resolve(roots, lever.path) ?: throw LeverFailure("path not resolvable")
+        if (file.isDirectory) throw LeverFailure("path is a folder")
+        val existed = file.isFile
+        if (!existed && !lever.createIfMissing) throw LeverFailure("file missing")
+        val bytes = if (existed) file.readBytes() else ByteArray(0)
+        val codec = if (existed) TextCodecs.codecFor(bytes, lever.encoding) else TextCodecs.forNewFile(lever.encoding)
+        val text = TextCodecs.decode(bytes, codec)
+        val keys = JSONArray()
+        lever.ops.distinctBy { it.section to it.key }.forEach { op ->
+            val prior = if (text.isBlank()) null else format.read(text, op)
+            keys.put(
+                JSONObject().apply {
+                    put("section", op.section)
+                    put("key", op.key)
+                    put("prior", prior ?: JSONObject.NULL)
+                },
+            )
+        }
+        val newBytes = TextCodecs.encode(ConfigFormats.applyVerified(format, text, lever.ops), codec)
+        val backup = File(rungDir, "files/$index")
+        if (existed) {
+            backup.parentFile?.mkdirs()
+            backup.writeBytes(bytes)
+        }
+        OptimizeFiles.atomicWrite(file, newBytes)
+        val written = file.readBytes()
+        if (!written.contentEquals(newBytes)) {
+            if (existed) OptimizeFiles.atomicWrite(file, bytes) else file.delete()
+            throw LeverFailure("file did not take")
+        }
+        return JSONObject().apply {
+            put("type", Lever.TYPE_ENGINE_FILE)
+            put("index", index)
+            put("path", file.absolutePath)
+            put("format", lever.format)
+            put("encoding", lever.encoding)
+            put("existed", existed)
+            put("backup", if (existed) backup.absolutePath else JSONObject.NULL)
+            put("sha_before", if (existed) OptimizeFiles.sha256(bytes) else JSONObject.NULL)
+            put("sha_after", OptimizeFiles.sha256(written))
+            put("keys", keys)
+        }
+    }
+
+    private suspend fun applyRegistry(index: Int, lever: Lever.Registry, container: Container): JSONObject {
+        if (!lever.hive.equals("HKCU", ignoreCase = true)) throw LeverFailure("hive ${lever.hive} not allowed")
+        if (!lever.key.startsWith("Software\\", ignoreCase = true)) throw LeverFailure("key outside Software")
+        val hive = OptimizeFiles.userHive(container)
+        if (!hive.isFile) throw LeverFailure("user.reg missing")
+        val changes = lever.values.map { v ->
+            WineRegistryText.Change(v.name, if (v.delete) null else OptimizeFiles.encodeRegistryValue(v.type!!, v.data!!))
+        }
+        val merged = WineRegistryText.merge(OptimizeFiles.readHive(hive), lever.key, changes, System.currentTimeMillis())
+        val record = JSONObject().apply {
+            put("type", Lever.TYPE_REGISTRY)
+            put("index", index)
+            put("hive", "HKCU")
+            put("key", lever.key)
+            put("section_existed", merged.sectionExisted)
+            put(
+                "values",
+                JSONArray().apply {
+                    merged.priors.forEachIndexed { i, prior ->
+                        put(
+                            JSONObject().apply {
+                                put("name", prior.name)
+                                put("prior", prior.lines?.let { JSONArray(it) } ?: JSONObject.NULL)
+                                put("applied", changes[i].raw?.let { WineRegistryText.canonical(it) } ?: JSONObject.NULL)
+                            },
+                        )
+                    }
+                },
+            )
+        }
+        OptimizeFiles.writeHive(hive, merged.text)
+        val check = WineRegistryText.read(OptimizeFiles.readHive(hive), lever.key, changes.map { it.name })
+        changes.forEach { change ->
+            val now = check[change.name]
+            val ok = if (change.raw == null) {
+                now == null
+            } else {
+                now != null && WineRegistryText.canonical(now) == WineRegistryText.canonical(change.raw)
+            }
+            if (!ok) {
+                OptimizeReverter.revertLevers(null, container, listOf(record))
+                throw LeverFailure("registry value ${change.name} did not take")
+            }
+        }
+        return record
+    }
+
+    internal fun liveValue(container: Container, live: ContainerData, key: String): String? = when {
+        key == "screenSize" -> container.screenSize
+        key.startsWith("envVars.") -> {
+            val env = EnvVars(live.envVars)
+            val name = key.substringAfter('.')
+            if (env.has(name)) env.get(name) else null
+        }
+        key.contains('.') -> KeyValueSet(SuggestionConfigKeys.configValueOf(live, key.substringBefore('.')).orEmpty())
+            .firstOrNull { it[0] == key.substringAfter('.') }?.get(1)
+        else -> SuggestionConfigKeys.configValueOf(live, key)
+    }
+
+    internal fun editFor(key: String, value: String?): SupportSuggestionApplier.Edit? = when {
+        key.startsWith("envVars.") -> SupportSuggestionApplier.Edit(SupportSuggestion.ENV_KEY, key.substringAfter('.'), value)
+        key.contains('.') -> SupportSuggestionApplier.Edit(key, null, value)
+        value == null -> null
+        else -> SupportSuggestionApplier.Edit(key, null, value)
+    }
+
+    internal fun isAllowedContainerKey(key: String): Boolean = when {
+        key == "fpsLimit" || key == "screenSize" -> true
+        key.startsWith("envVars.") -> key.length > "envVars.".length
+        key.contains('.') -> key.substringBefore('.') in SupportSuggestion.KV_PARENTS
+        else -> key in SuggestionConfigKeys.APPLICABLE_CONFIG_KEYS && key != SupportSuggestion.ENV_KEY
+    }
+
+    internal fun applyFps(container: Container, value: String) {
+        val target = parsePositiveFpsLimit(value.trim())
+        if (target == null) {
+            if (value.trim() != "0") throw LeverFailure("bad fps limit $value")
+            container.putExtra(OptimizeFiles.FPS_LIMITER_ENABLED_EXTRA, false)
+        } else {
+            container.putExtra(OptimizeFiles.FPS_LIMITER_ENABLED_EXTRA, true)
+            container.putExtra(OptimizeFiles.FPS_LIMITER_TARGET_EXTRA, target)
+        }
+    }
+
+    private suspend fun applyContainer(index: Int, lever: Lever.ContainerSet, context: Context, container: Container): JSONObject {
+        lever.set.firstOrNull { !isAllowedContainerKey(it.first) }?.let { throw LeverFailure("container key ${it.first} not allowed") }
+        lever.set.firstOrNull { it.first == "screenSize" && !SCREEN_SIZE.matches(it.second) }?.let { throw LeverFailure("bad screen size") }
+        val live = ContainerUtils.toContainerData(container)
+        val before = JSONArray()
+        val edits = mutableListOf<SupportSuggestionApplier.Edit>()
+        for ((key, value) in lever.set) {
+            if (key == "fpsLimit") {
+                before.put(
+                    JSONObject().apply {
+                        put("key", key)
+                        put("enabled", container.getExtra(OptimizeFiles.FPS_LIMITER_ENABLED_EXTRA))
+                        put("target", container.getExtra(OptimizeFiles.FPS_LIMITER_TARGET_EXTRA))
+                    },
+                )
+                continue
+            }
+            before.put(
+                JSONObject().apply {
+                    put("key", key)
+                    put("value", liveValue(container, live, key) ?: JSONObject.NULL)
+                },
+            )
+            if (key != "screenSize") editFor(key, value)?.let { edits += it }
+        }
+        val record = JSONObject().apply {
+            put("type", Lever.TYPE_CONTAINER)
+            put("index", index)
+            put("before", before)
+        }
+        try {
+            if (edits.isNotEmpty()) {
+                val result = SupportSuggestionApplier.applyEdits(
+                    context = context,
+                    container = container,
+                    live = live,
+                    edits = edits,
+                    onProgress = { _, _ -> },
+                    beforeSave = {},
+                    source = SOURCE,
+                )
+                if (result != SupportSuggestionApplier.Result.Done) throw LeverFailure("container edit failed: $result")
+            }
+            var direct = false
+            lever.set.forEach { (key, value) ->
+                when (key) {
+                    "fpsLimit" -> { applyFps(container, value); direct = true }
+                    "screenSize" -> { container.screenSize = value; direct = true }
+                }
+            }
+            if (direct) container.saveData()
+            val now = ContainerUtils.toContainerData(container)
+            lever.set.forEach { (key, value) ->
+                if (key == "fpsLimit") return@forEach
+                if (!liveValue(container, now, key).equals(value, ignoreCase = true)) throw LeverFailure("$key did not take")
+            }
+        } catch (e: Exception) {
+            OptimizeReverter.revertLevers(context, container, listOf(record))
+            throw e
+        }
+        return record
+    }
+}

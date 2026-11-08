@@ -67,6 +67,7 @@ import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
 import app.gamenative.gamefixes.GameFixesRegistry
+import app.gamenative.optimize.OptimizeController
 import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.SteamService
 import app.gamenative.service.download.SteamDownloadMode
@@ -2404,6 +2405,12 @@ fun preLaunchApp(
             GameFixesRegistry.applyFor(context, appId, container)
         } catch (e: Exception) {
             Timber.tag("GameFixes").w(e, "Game fixes failed in preLaunchApp")
+        }
+
+        if (!bootToContainer && !useTemporaryOverride) {
+            OptimizeController.beforeLaunch(context, appId, container)
+        } else {
+            OptimizeController.resetTelemetry()
         }
 
         val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)

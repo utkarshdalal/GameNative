@@ -78,6 +78,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import app.gamenative.R
+import app.gamenative.optimize.OptimizeController
 import app.gamenative.ui.util.applyScreenEffectsConfig
 import app.gamenative.ui.util.loadScreenEffectsConfig
 import androidx.core.content.ContextCompat
@@ -5469,7 +5470,11 @@ private fun exit(
         event = "game_exited",
         properties = exitProperties,
     )
-    CoroutineScope(Dispatchers.IO).launch { SessionReport.recordRun(container, exitProperties) }
+    val optimizeContext = (frameRating?.context ?: PluviaApp.xServerView?.context)?.applicationContext
+    CoroutineScope(Dispatchers.IO).launch {
+        SessionReport.recordRun(container, exitProperties)
+        OptimizeController.afterExit(optimizeContext, appId, container, exitProperties)
+    }
     (frameRating?.context ?: PluviaApp.xServerView?.context)?.let { ctx -> runCatching { AppExitRecorder.markSessionEnd(ctx) } }
     runCatching { windowActivity.stop() }
 
