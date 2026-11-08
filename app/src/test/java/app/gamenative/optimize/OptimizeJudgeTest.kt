@@ -1,6 +1,8 @@
 package app.gamenative.optimize
 
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class OptimizeJudgeTest {
@@ -85,5 +87,23 @@ class OptimizeJudgeTest {
             OptimizeJudge.Decision.Final(OptimizeJudge.HELPED),
             OptimizeJudge.judge(session(fps = 50.0), session(fps = 40.0), isFpsCap = false, shortSessions = 0),
         )
+    }
+
+    @Test
+    fun baselineIsTheNewestLongEnoughRun() {
+        fun record(length: Int, fps: Double, verdictGameplay: Int? = null) = JSONObject().put("session_length", length).put("avg_fps", fps).apply {
+            verdictGameplay?.let { put("perf_verdict", JSONObject().put("gameplay_s", it)) }
+        }
+        val aborted = record(length = 95, fps = 20.0)
+        val menuOnly = record(length = 900, fps = 60.0, verdictGameplay = 300)
+        val played = record(length = 1000, fps = 51.0, verdictGameplay = 874)
+        val older = record(length = 1500, fps = 40.0)
+
+        val baseline = OptimizeJudge.baselineOf(sequenceOf(aborted, menuOnly, played, older))!!
+        assertEquals(874, baseline.gameplaySec)
+        assertEquals(51.0, baseline.steadyFps!!, 1e-9)
+        assertEquals(1500, OptimizeJudge.baselineOf(sequenceOf(aborted, older))!!.gameplaySec)
+        assertNull(OptimizeJudge.baselineOf(sequenceOf(aborted, menuOnly)))
+        assertNull(OptimizeJudge.baselineOf(emptySequence()))
     }
 }

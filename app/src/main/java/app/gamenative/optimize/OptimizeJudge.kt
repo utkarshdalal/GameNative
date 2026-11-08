@@ -1,5 +1,7 @@
 package app.gamenative.optimize
 
+import org.json.JSONObject
+
 object OptimizeJudge {
     const val HELPED = "helped"
     const val NO_CHANGE = "no_change"
@@ -28,6 +30,10 @@ object OptimizeJudge {
         data class Short(val shortSessions: Int) : Decision()
         data class Final(val result: String) : Decision()
     }
+
+    /** The baseline to judge against: the newest run, of [runsNewestFirst], long enough to compare; short runs are skipped. */
+    fun baselineOf(runsNewestFirst: Sequence<JSONObject>): Metrics? =
+        runsNewestFirst.map { Metrics.fromRun(it) }.firstOrNull { it.gameplaySec >= COMPARABLE_GAMEPLAY_SEC }
 
     fun isCrash(m: Metrics): Boolean =
         m.gameplaySec < CRASH_GAMEPLAY_SEC && (m.exitReason in CRASH_REASONS || !m.windowSeen)

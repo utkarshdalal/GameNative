@@ -101,10 +101,11 @@ object OptimizeController {
         )
     }
 
-    fun latestRun(container: Container): JSONObject? {
-        val dir = File(container.rootDir, ".gamenative/runs")
-        val newest = dir.listFiles { f -> f.name.endsWith(".json") }?.maxByOrNull { it.name } ?: return null
-        return runCatching { JSONObject(newest.readText()) }.getOrNull()
+    /** The newest run of this game with enough gameplay to judge against; aborted short runs are skipped. */
+    fun baselineRun(container: Container): Metrics? {
+        val files = File(container.rootDir, ".gamenative/runs").listFiles { f -> f.name.endsWith(".json") } ?: return null
+        val runs = files.sortedByDescending { it.name }.asSequence().mapNotNull { runCatching { JSONObject(it.readText()) }.getOrNull() }
+        return OptimizeJudge.baselineOf(runs)
     }
 
     private fun storeId(appId: String): String = when (ContainerUtils.extractGameSourceFromContainerId(appId)) {
@@ -406,7 +407,7 @@ object OptimizeController {
                     ladder, state.entitlement, state.entitlementCheckedAt, Membership.isMember(), System.currentTimeMillis(),
                 )
                 if (ladder.pending == null && ladder.state == LadderState.TRYING && ask) {
-                    val baseline = ladder.baselineOverride ?: latestRun(container)?.let { Metrics.fromRun(it) }
+                    val baseline = ladder.baselineOverride ?: baselineRun(container)
                     val body = nextRungBody(context, appId, container, state, profile, ladder, baseline)
                     when (val result = OptimizeApi.nextRung(body, NEXT_RUNG_TIMEOUT_MS)) {
                         null, NextRungResult.Failed -> Timber.tag(TAG).i("No next-rung answer; launching with the kept changes")
