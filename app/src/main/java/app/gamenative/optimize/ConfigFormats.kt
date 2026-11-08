@@ -316,7 +316,7 @@ object XmlFormat : ConfigFormat {
             isExpandEntityReferences = false
             runCatching { setFeature("http://apache.org/xml/features/disallow-doctype-decl", true) }
         }
-        factory.newDocumentBuilder().parse(InputSource(StringReader(text.removePrefix("﻿"))))
+        factory.newDocumentBuilder().parse(InputSource(StringReader(text.removePrefix("\uFEFF"))))
     } catch (e: Exception) {
         throw FormatException("not valid xml: ${e.message}")
     }
@@ -376,7 +376,7 @@ object XmlFormat : ConfigFormat {
         val writer = StringWriter()
         transformer.transform(DOMSource(doc), StreamResult(writer))
         val eol = ConfigFormats.eolOf(text)
-        val declaration = DECLARATION.find(text)?.value?.removePrefix("﻿").orEmpty()
+        val declaration = DECLARATION.find(text)?.value?.removePrefix("\uFEFF").orEmpty()
         var out = declaration + writer.toString().trimStart()
         if (eol == "\r\n") out = out.replace(Regex("(?<!\r)\n"), "\r\n")
         if (text.endsWith("\n") && !out.endsWith("\n")) out += eol
@@ -517,7 +517,11 @@ object TextCodecs {
         val bom = detected(bytes)
         return when (encoding) {
             "UTF8UnixLF" -> TextCodec(Charsets.UTF_8, if (bom?.charset == Charsets.UTF_8) UTF8_BOM else ByteArray(0), true)
-            "UTF16" -> if (bom?.charset == Charsets.UTF_16BE) bom else TextCodec(Charsets.UTF_16LE, if (bom != null) UTF16LE_BOM else ByteArray(0), false)
+            "UTF16" -> if (bom != null && bom.charset == Charsets.UTF_16BE) {
+                bom
+            } else {
+                TextCodec(Charsets.UTF_16LE, if (bom?.charset == Charsets.UTF_16LE) UTF16LE_BOM else ByteArray(0), false)
+            }
             "UTF16LE" -> TextCodec(Charsets.UTF_16LE, if (bom?.charset == Charsets.UTF_16LE) UTF16LE_BOM else ByteArray(0), false)
             "UTF16UnixLE" -> TextCodec(Charsets.UTF_16LE, if (bom?.charset == Charsets.UTF_16LE) UTF16LE_BOM else ByteArray(0), true)
             else -> bom ?: TextCodec(Charsets.UTF_8, ByteArray(0), false)

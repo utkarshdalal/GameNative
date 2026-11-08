@@ -139,6 +139,7 @@ object OptimizeController {
                     put("android_sdk", Build.VERSION.SDK_INT)
                     put("proc_stat_real", baseline?.procStatReal ?: false)
                     put("thermal_reporting", baseline?.thermalReporting ?: false)
+                    put("device_id_hash", deviceIdHash())
                 },
             )
             put("profile", state.profile.wireId)
@@ -174,7 +175,7 @@ object OptimizeController {
         appId: String,
         profile: OptimizeProfile,
         rungId: String,
-        version: Int,
+        version: String,
         before: Metrics?,
         after: Metrics?,
         result: String,
@@ -205,17 +206,19 @@ object OptimizeController {
         )
     }
 
+    private fun deviceIdHash(): String = OptimizeFiles.sha256(PrefManager.optimizeDeviceId.toByteArray())
+
     private fun deviceJson(context: Context): JSONObject = JSONObject().apply {
         put("model", Build.MODEL)
         put("soc_model", HardwareUtils.getSOCName() ?: JSONObject.NULL)
         put("gpu_name", gpuName(context))
-        put("device_id_hash", OptimizeFiles.sha256(PrefManager.optimizeDeviceId.toByteArray()))
+        put("device_id_hash", deviceIdHash())
     }
 
     private fun OptimizeLocalState.queued(report: JSONObject): OptimizeLocalState =
         copy(outcomeQueue = (outcomeQueue + report).takeLast(OptimizeLocalState.MAX_QUEUE))
 
-    private fun OptimizeLocalState.triedWith(rungId: String, version: Int, result: String): OptimizeLocalState =
+    private fun OptimizeLocalState.triedWith(rungId: String, version: String, result: String): OptimizeLocalState =
         copy(tried = (tried + TriedRung(rungId, version, result)).takeLast(OptimizeLocalState.MAX_TRIED))
 
     private suspend fun flush(context: Context, store: OptimizeStore) {
@@ -269,8 +272,13 @@ object OptimizeController {
                 if (state.pending == null) {
                     val baseline = state.baselineOverride ?: latestRun(container)?.let { Metrics.fromRun(it) }
                     val response = OptimizeApi.nextRung(nextRungBody(context, appId, container, state, baseline), NEXT_RUNG_TIMEOUT_MS)
-                    if (response != null) state = state.copy(lastStatus = response.status)
-                    val rung = response?.rung?.takeIf { response.status == NextRungResponse.STATUS_RUNG && it.rungId !in state.bad }
+                    if (response == null) {
+                        Timber.tag(TAG).i("No next-rung answer; launching unchanged")
+                        if (flagged != null) store.write(state)
+                        return@withLock
+                    }
+                    state = state.copy(lastStatus = response.status)
+                    val rung = response.rung?.takeIf { response.status == NextRungResponse.STATUS_RUNG && it.rungId !in state.bad }
                     if (rung != null) {
                         when (val outcome = OptimizeApplier.apply(context, container, roots(context, appId, container), store, rung)) {
                             is ApplyOutcome.Applied -> {

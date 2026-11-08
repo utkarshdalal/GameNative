@@ -1864,6 +1864,7 @@
     <string name="optimize_vc_textures_softer">texture più morbide</string>
     <string name="optimize_vc_effects_simpler">effetti più semplici</string>
     <string name="optimize_vc_fps_held">frame rate tenuto un po\' più basso</string>
+    <string name="optimize_vc_dx11_version">Usa la versione DirectX 11 del gioco.</string>
     <string name="settings_group_cloud_saves">Salvataggi cloud</string>
     <string name="settings_save_backups_to_keep">Backup dei salvataggi da conservare</string>
     <string name="settings_save_backups_off">Disattivato</string>

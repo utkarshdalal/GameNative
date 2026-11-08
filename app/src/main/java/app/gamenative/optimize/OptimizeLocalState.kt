@@ -10,7 +10,7 @@ import timber.log.Timber
 
 data class KeptRung(
     val rungId: String,
-    val version: Int,
+    val version: String,
     val order: Int,
     val leverClasses: List<String>,
     val appliedAt: Long,
@@ -36,7 +36,7 @@ data class KeptRung(
             val id = o.optStringOrNull("rung_id") ?: return null
             return KeptRung(
                 rungId = id,
-                version = o.optInt("version", 0),
+                version = o.optStringOrNull("version").orEmpty(),
                 order = o.optInt("order", 0),
                 leverClasses = o.optJSONArray("lever_classes").strings(),
                 appliedAt = o.optLong("applied_at", 0L),
@@ -95,7 +95,7 @@ data class PendingRung(
     }
 }
 
-data class TriedRung(val rungId: String, val version: Int, val result: String) {
+data class TriedRung(val rungId: String, val version: String, val result: String) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("rung_id", rungId)
         put("version", version)
@@ -105,7 +105,7 @@ data class TriedRung(val rungId: String, val version: Int, val result: String) {
     companion object {
         fun fromJson(o: JSONObject): TriedRung? {
             val id = o.optStringOrNull("rung_id") ?: return null
-            return TriedRung(id, o.optInt("version", 0), o.optString("result"))
+            return TriedRung(id, o.optStringOrNull("version").orEmpty(), o.optString("result"))
         }
     }
 }

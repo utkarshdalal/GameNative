@@ -213,7 +213,7 @@ sealed class Lever {
 class Rung(
     val raw: JSONObject,
     val rungId: String,
-    val version: Int,
+    val version: String,
     val profile: String,
     val cls: String?,
     val leverClasses: List<String>,
@@ -235,7 +235,7 @@ class Rung(
             return Rung(
                 raw = o,
                 rungId = id,
-                version = o.optInt("version", 0),
+                version = o.optStringOrNull("version").orEmpty(),
                 profile = o.optString("profile"),
                 cls = o.optStringOrNull("class"),
                 leverClasses = o.optJSONArray("lever_classes").strings(),

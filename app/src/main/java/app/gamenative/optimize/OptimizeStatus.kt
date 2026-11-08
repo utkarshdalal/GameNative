@@ -29,6 +29,7 @@ sealed class OptimizeStatus {
             "vc_textures_softer" -> R.string.optimize_vc_textures_softer
             "vc_effects_simpler" -> R.string.optimize_vc_effects_simpler
             "vc_fps_held" -> R.string.optimize_vc_fps_held
+            "vc_dx11_version" -> R.string.optimize_vc_dx11_version
             else -> null
         }
     }

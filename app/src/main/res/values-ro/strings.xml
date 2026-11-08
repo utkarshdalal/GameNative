@@ -1853,6 +1853,7 @@
     <string name="optimize_vc_textures_softer">texturi mai puțin detaliate</string>
     <string name="optimize_vc_effects_simpler">efecte mai simple</string>
     <string name="optimize_vc_fps_held">cadre pe secundă menținute puțin mai jos</string>
+    <string name="optimize_vc_dx11_version">Folosește versiunea DirectX 11 a jocului.</string>
     <string name="settings_group_cloud_saves">Salvări în cloud</string>
     <string name="settings_save_backups_to_keep">Copii de rezervă ale salvărilor păstrate</string>
     <string name="settings_save_backups_off">Dezactivat</string>
