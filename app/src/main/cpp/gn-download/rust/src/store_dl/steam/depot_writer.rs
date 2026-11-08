@@ -199,7 +199,14 @@ pub const RATE_LIMIT_COOLDOWN_MS: u64 = 5_000;
 ///
 /// A host that times out or refuses to connect is gone, not slow: retrying it on the item backoff
 /// ladder (which caps out at a few seconds) just steals slots. Values match the ladder WinNative
-/// measured on a mainland connection, minus its 300 s last step - see [`FetchScheduler::on_error`].
+/// measured on a mainland connection, minus its 300 s last step - see [`FetchScheduler::on_error`];
+/// they are deliberately below WinNative's 300 s top rung so a small pool cannot park itself for
+/// minutes.
+///
+/// This is LIVENESS parking, not congestion control: the adaptive window and its LEDBAT
+/// queueing-delay signal (`queue_delay.rs`, 40 ms target) still decide how much is in flight; this
+/// only removes a non-answering host from rotation. 5xx/429/404 failures keep the pre-existing item
+/// backoff, EWMA demotion and window reaction untouched.
 /// Shared with the store engines' `fetch_core.rs` scheduler so both copies use one set of numbers.
 pub const HOST_DOWN_COOLDOWNS_MS: [u64; 3] = [3_000, 15_000, 60_000];
 

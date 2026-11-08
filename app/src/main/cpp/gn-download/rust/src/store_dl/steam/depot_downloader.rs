@@ -369,6 +369,18 @@ fn installed_tree_needs_repair(
     false
 }
 
+/// Whether this run's directory answer marks a mainland-China network: the content server
+/// directory returned Steam-China-only hosts, or nothing usable at all (the built-in APAC fallback
+/// path). The pre-flight reachability probe is scoped to these runs, so a normal global pool keeps
+/// the existing gn-download behaviour untouched - there the background `cdn_probe` throughput probe
+/// is already the reachability/ranking signal, and LEDBAT / the adaptive window keep owning
+/// congestion control.
+fn is_mainland_network_context(servers: &[CContentServerDirectoryServerInfo]) -> bool {
+    servers.is_empty()
+        || servers.iter().any(|server| server.steam_china_only)
+        || servers.iter().all(|server| server.host.is_empty())
+}
+
 /// Whether the run has a depot that can actually fetch CDN bytes, i.e. whether the pre-flight probe
 /// is worth its cost.
 ///
@@ -418,7 +430,13 @@ impl PreflightProbe {
 ///
 /// Runs right before Phase 2 on purpose: manifest resolution (and a run whose depots are all
 /// installed/skipped, which never reaches Phase 2) must not pay for a probe it does not need.
-/// The caller additionally skips it for a pure verify pass - see [`needs_preflight_probe`].
+/// The caller additionally skips it for a pure verify pass - see [`needs_preflight_probe`] - and
+/// scopes it to mainland directory answers, reusing the existing `cdn_probe` cache when fresh.
+///
+/// This is a LIVENESS check, not congestion control: the adaptive window and its LEDBAT
+/// queueing-delay signal keep deciding how much is in flight, and the background `cdn_probe`
+/// throughput probe keeps ranking hosts. A host that never answers HTTP before the first byte
+/// produces no window samples, no throughput ranking and no log line, which is the gap this covers.
 ///
 /// The list is never emptied: when nothing answers the original set is kept, because the probe
 /// can also be wrong (ICMP-filtered host that still serves HTTP) and a pool of one dead host
@@ -892,6 +910,7 @@ pub fn download_resolved_depots_with_cancel_progress(
     if let Err(error) = validate_resolved_download_inputs(install_dir, depots, servers) {
         return error;
     }
+    let mainland_network = is_mainland_network_context(servers);
     let usable_servers = filter_usable_cdn_servers(servers.iter().cloned());
     if usable_servers.is_empty() {
         return DepotDownloadResult::fail("download: no usable CDN server");
@@ -1085,8 +1104,17 @@ cannot be enumerated for ownership",
     // ── Pre-flight CDN probe, deferred AND gated on actual work: manifest resolution above (and a
     // run with nothing resolved) must not pay for a network probe, and a pure verify pass over
     // depots already at their installed manifest only re-hashes chunks instead of fetching them, so
-    // it needs no probe either. This is the last point before Phase 2 can ask the CDN for bytes.
-    let needs_probe = !resolved.is_empty()
+    // it needs no probe either. It is additionally scoped to mainland-China directory answers
+    // (`mainland_network`) and skipped when the existing `cdn_probe` cache is still fresh - see the
+    // helpers above. This is the last point before Phase 2 can ask the CDN for bytes.
+    // The existing cdn_probe cache is seeded from a REAL chunk-download probe (TTFB + throughput)
+    // within its 6 h TTL, so a usable cache already proves HTTP reachability for this pool: reuse it
+    // instead of paying for a second network pre-flight. A cache invalidated by `mark_bad` leaves the
+    // hints unseeded, which is exactly when the reachability pass below is worth running again.
+    let probe_cache_seeded = probe_hints.take_update(0).is_some();
+    let needs_probe = mainland_network
+        && !probe_cache_seeded
+        && !resolved.is_empty()
         && resolved.iter().any(|(depot, manifest)| {
             needs_preflight_probe(&cfg, [*depot].into_iter())
                 || installed_tree_needs_repair(manifest, install_dir, cancel)
@@ -1815,6 +1843,32 @@ mod tests {
         );
         // The probe did not filter: no exclusions, even for unreachable entries.
         assert!(unreachable_endpoint_set(&endpoints, &reachable_by_server, 4, 4).is_empty());
+    }
+
+    #[test]
+    fn preflight_probe_is_scoped_to_mainland_directory_answers() {
+        let server = |host: &str, china_only: bool| CContentServerDirectoryServerInfo {
+            host: host.into(),
+            steam_china_only: china_only,
+            ..Default::default()
+        };
+        // A normal global pool keeps the pre-existing behaviour: no pre-flight network probe.
+        assert!(!is_mainland_network_context(&[server(
+            "cache1-iad1.steamcontent.com",
+            false
+        )]));
+        // China-only directory answer: mainland context.
+        assert!(is_mainland_network_context(&[server(
+            "cache1-hkg1.steamcontent.com",
+            true
+        )]));
+        // Empty/unusable directory (built-in APAC fallback path): mainland context.
+        assert!(is_mainland_network_context(&[]));
+        assert!(is_mainland_network_context(&[server("", false)]));
+        assert!(is_mainland_network_context(&[
+            server("cache1-iad1.steamcontent.com", false),
+            server("cache9-hkg1.steamcontent.com", true),
+        ]));
     }
 
     #[test]
