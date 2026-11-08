@@ -4724,7 +4724,7 @@ private fun setupXEnvironment(
 
     fun chainPreInstallSteps(remaining: List<PreInstallSteps.PreInstallCommand>) {
         (guestProgramLauncherComponent as? BionicProgramLauncherComponent)?.setFEXCorePreset(
-            if (remaining.firstOrNull()?.marker == Marker.GOG_SCRIPT_INSTALLED) FEXCorePreset.STABILITY else container.fexCorePreset,
+            if (remaining.firstOrNull()?.marker.let { it == Marker.GOG_SCRIPT_INSTALLED || it == Marker.GOG_BONUS_INSTALLER_RUN }) FEXCorePreset.STABILITY else container.fexCorePreset,
         )
         if (remaining.isEmpty()) {
             guestProgramLauncherComponent.setGuestExecutable(gameExecutable)

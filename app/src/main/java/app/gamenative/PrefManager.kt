@@ -1409,6 +1409,20 @@ object PrefManager {
             setPref(GOG_GAMES_COUNT, value)
         }
 
+    private val GOG_OWNED_PRODUCT_IDS = stringPreferencesKey("gog_owned_product_ids")
+    var gogOwnedProductIds: Set<String>
+        get() {
+            val value = getPref(GOG_OWNED_PRODUCT_IDS, "[]")
+            return try {
+                Json.decodeFromString<Set<String>>(value)
+            } catch (e: Exception) {
+                emptySet()
+            }
+        }
+        set(value) {
+            setPref(GOG_OWNED_PRODUCT_IDS, Json.encodeToString(value))
+        }
+
     private val EPIC_GAMES_COUNT = intPreferencesKey("epic_games_count")
     var epicGamesCount: Int
         get() = getPref(EPIC_GAMES_COUNT, 0)

@@ -56,6 +56,13 @@
     <string name="gog_uninstall_confirmation_message">Are you sure you want to uninstall %1$s? This action cannot be undone.</string>
     <string name="gog_install_game_title">Download Game</string>
     <string name="gog_install_confirmation_message">The app being installed has the following space requirements. Would you like to proceed?\n\n\tDownload Size: %1$s\n\tAvailable Space: %2$s</string>
+    <string name="gog_dlc_sizes">%1$s download • %2$s install</string>
+    <string name="gog_dlc_not_installable">Not available through GOG Galaxy. Download it from the bonus content in your GOG library.</string>
+    <string name="gog_dlc_load_failed">Could not load DLC: %1$s</string>
+    <string name="gog_dlc_deselect_all">Deselect all</string>
+    <string name="gog_dlc_download_size">%1$s download</string>
+    <string name="gog_dlc_installs_on_launch">Installs the next time you launch the game</string>
+    <string name="gog_dlc_unresolved">Could not load this DLC. Retry to install it.</string>
     <string name="epic_uninstall_game_title">Uninstall Game</string>
     <string name="epic_uninstall_game_message">Are you sure you want to uninstall %1$s? This action cannot be undone.</string>
     <string name="epic_install_game_title">Download Game</string>

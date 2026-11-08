@@ -55,6 +55,13 @@
     <string name="gog_uninstall_confirmation_message">您確定要卸載 %1$s 嗎? 此操作無法撤回</string>
     <string name="gog_install_game_title">下載遊戲</string>
     <string name="gog_install_confirmation_message">正在安裝的應用程式有以下空間需求:\n\n\t下載大小: %1$s\n\t可用空間: %2$s</string>
+    <string name="gog_dlc_sizes">下載 %1$s • 安裝 %2$s</string>
+    <string name="gog_dlc_not_installable">無法透過 GOG Galaxy 取得。請從 GOG 收藏庫中的額外內容下載。</string>
+    <string name="gog_dlc_load_failed">無法載入 DLC：%1$s</string>
+    <string name="gog_dlc_deselect_all">取消全選</string>
+    <string name="gog_dlc_download_size">下載 %1$s</string>
+    <string name="gog_dlc_installs_on_launch">將在下次啟動遊戲時安裝</string>
+    <string name="gog_dlc_unresolved">無法載入此 DLC。請重試以安裝。</string>
     <string name="steam_never">從不</string>
     <string name="epic_cancel_download_message">確定要取消下載應用程式嗎？</string>
     <string name="epic_delete_download_message">刪除此遊戲的所有已下載資料？</string>
