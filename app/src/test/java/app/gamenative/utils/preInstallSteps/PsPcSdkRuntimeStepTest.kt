@@ -7,7 +7,6 @@ import io.mockk.every
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -31,7 +30,16 @@ class PsPcSdkRuntimeStepTest {
         every { container.rootDir } returns prefixDir
     }
 
-    private fun build(): String? = PsPcSdkRuntimeStep.buildCommand(
+    /** The runtime as a title ships it: the script and both packages in one directory. */
+    private fun runtime(dir: String) {
+        val target = File(gameDir, dir)
+        target.mkdirs()
+        File(target, PsPcSdkFiles.SCRIPT).writeText("@echo off\r\n")
+        File(target, PsPcSdkFiles.MANAGER_MSI).writeText("m")
+        File(target, PsPcSdkFiles.INSTALLER_MSI).writeText("i")
+    }
+
+    private fun build(step: PreInstallStep): String? = step.buildCommand(
         container = container,
         appId = "STEAM_3489700",
         gameSource = GameSource.STEAM,
@@ -39,65 +47,107 @@ class PsPcSdkRuntimeStepTest {
         gameDirPath = gameDir.absolutePath,
     )
 
-    private fun script(relative: String): File =
-        File(gameDir, relative).apply {
-            parentFile?.mkdirs()
-            writeText("@echo off\r\nmsiexec /i \"%~dp0PsPcSdkRuntimeInstaller.msi\" /qn\r\n")
-        }
-
     @Test
-    fun appliesTo_isFalse_whenMarkerAndPrefixStampBothExist() {
+    fun appliesTo_followsTheMarkerTheFrameworkClearsWithThePrefix() {
         MarkerUtils.addMarker(gameDir.absolutePath, Marker.PSPC_SDK_RUNTIME_INSTALLED)
-        File(prefixDir, ".wine").mkdirs()
-        File(prefixDir, ".wine/${Marker.PSPC_SDK_RUNTIME_INSTALLED.fileName}").writeText("")
-
         assertFalse(PsPcSdkRuntimeStep.appliesTo(container, GameSource.STEAM, gameDir.absolutePath))
-    }
 
-    @Test
-    fun appliesTo_isTrue_whenARecreatedPrefixLostTheStamp() {
-        MarkerUtils.addMarker(gameDir.absolutePath, Marker.PSPC_SDK_RUNTIME_INSTALLED)
-
+        // A recreated prefix is `PreInstallSteps.markersStale`'s business: it clears every
+        // game-dir marker, so the step only has to follow the marker.
+        MarkerUtils.removeMarker(gameDir.absolutePath, Marker.PSPC_SDK_RUNTIME_INSTALLED)
         assertTrue(PsPcSdkRuntimeStep.appliesTo(container, GameSource.STEAM, gameDir.absolutePath))
     }
 
     @Test
-    fun buildCommand_returnsNull_whenTheGameShipsNoScript() {
-        assertNull(build())
+    fun buildCommand_writesNothing() {
+        runtime("SB/Binaries/Win64")
+
+        // It also runs for the `hasPendingSteps` probe, which launches nothing — a stamp
+        // written here would claim an install that a cancelled launch never did.
+        build(PsPcSdkManagerStep)
+        build(PsPcSdkRuntimeStep)
+
+        assertFalse(File(prefixDir, ".wine").exists())
+        assertFalse(File(gameDir, Marker.PSPC_SDK_MANAGER_INSTALLED.fileName).exists())
     }
 
     @Test
-    fun buildCommand_runsTheShippingSdkScriptAtItsKnownPath() {
-        script("SB/Binaries/Win64/install_pspc_sdk_runtime.bat")
-
-        // The shipped script's own quiet switch, not a bare invocation: without it
-        // both MSIs open a UI and the script ends on a `pause`.
-        assertEquals("A:\\SB\\Binaries\\Win64\\install_pspc_sdk_runtime.bat quiet < nul", build())
+    fun bothStepsDoNothing_whenTheGameShipsNoRuntime() {
+        assertNull(build(PsPcSdkManagerStep))
+        assertNull(build(PsPcSdkRuntimeStep))
     }
 
     @Test
-    fun buildCommand_findsTheScriptThreeDirectoriesDown() {
+    fun eachStepInstallsItsOwnPackage() {
+        runtime("SB/Binaries/Win64")
+
+        assertEquals(
+            "msiexec /i A:\\SB\\Binaries\\Win64\\${PsPcSdkFiles.MANAGER_MSI} /quiet",
+            build(PsPcSdkManagerStep),
+        )
+        assertEquals(
+            "msiexec /i A:\\SB\\Binaries\\Win64\\${PsPcSdkFiles.INSTALLER_MSI} /quiet",
+            build(PsPcSdkRuntimeStep),
+        )
+    }
+
+    @Test
+    fun theRuntimeIsFoundThreeDirectoriesDown() {
         // <game>/a/b/c/script — the shape of <game>/SB/Binaries/Win64/script.
-        script("a/b/c/install_pspc_sdk_runtime.bat")
+        runtime("a/b/c")
 
-        val cmd = build()
-        assertNotNull(cmd)
-        assertTrue(cmd!!, cmd.startsWith("A:\\a\\b\\c\\install_pspc_sdk_runtime.bat quiet"))
+        assertEquals(
+            "msiexec /i A:\\a\\b\\c\\${PsPcSdkFiles.INSTALLER_MSI} /quiet",
+            build(PsPcSdkRuntimeStep),
+        )
     }
 
     @Test
-    fun buildCommand_ignoresTheScriptFourDirectoriesDown() {
-        script("a/b/c/d/install_pspc_sdk_runtime.bat")
+    fun theRuntimeIsNotSearchedForFourDirectoriesDown() {
+        runtime("a/b/c/d")
 
-        assertNull(build())
+        assertNull(build(PsPcSdkRuntimeStep))
     }
 
     @Test
-    fun buildCommand_refusesAPathThatNeedsQuoting() {
-        script("SB with space/Binaries/Win64/install_pspc_sdk_runtime.bat")
+    fun aMissingPackageSkipsOnlyItsOwnStep() {
+        val dir = File(gameDir, "SB/Binaries/Win64")
+        dir.mkdirs()
+        File(dir, PsPcSdkFiles.SCRIPT).writeText("@echo off\r\n")
+        File(dir, PsPcSdkFiles.INSTALLER_MSI).writeText("i")
 
-        // The framework wraps the command in `cmd /c "…"`, so a space cannot be
-        // escaped here; refusing beats running half a command line.
-        assertNull(build())
+        assertNull(build(PsPcSdkManagerStep))
+        assertEquals(
+            "msiexec /i A:\\SB\\Binaries\\Win64\\${PsPcSdkFiles.INSTALLER_MSI} /quiet",
+            build(PsPcSdkRuntimeStep),
+        )
+    }
+
+    @Test
+    fun aPathThatNeedsQuotingIsRefused() {
+        runtime("SB with space/Binaries/Win64")
+
+        // The launcher splits the command line it is handed, so a space cannot be escaped.
+        assertNull(build(PsPcSdkRuntimeStep))
+    }
+
+    @Test
+    fun bothStepsRunWithoutAShell() {
+        runtime("SB/Binaries/Win64")
+
+        // `msiexec` is a windowed program; through `cmd /c` it costs a console window for the
+        // length of the install, which is why these two opt out of the shell.
+        assertFalse(PsPcSdkManagerStep.viaShell)
+        assertFalse(PsPcSdkRuntimeStep.viaShell)
+    }
+
+    @Test
+    fun theManagerInstallsBeforeTheRuntime() {
+        // The vendor script's order. `PreInstallSteps` runs the list in order, so this is the
+        // registration the order depends on.
+        assertEquals(
+            listOf(Marker.PSPC_SDK_MANAGER_INSTALLED, Marker.PSPC_SDK_RUNTIME_INSTALLED),
+            listOf(PsPcSdkManagerStep.marker, PsPcSdkRuntimeStep.marker),
+        )
     }
 }
