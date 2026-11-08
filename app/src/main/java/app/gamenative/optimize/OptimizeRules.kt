@@ -78,6 +78,21 @@ object OptimizeTarget {
         }
     }
 
+    /** What a judged session settles: the result recorded and kept or reverted by, why, and whether the ladder is done. */
+    data class Settled(val result: String, val reason: String?, val done: Boolean)
+
+    /**
+     * Done implies keep: a compared session that meets the target keeps the step as helped (target_met) whatever the
+     * judge said, so the ladder never ends while the step is still flagged to come off. Otherwise the judge stands.
+     */
+    fun settle(profile: OptimizeProfile, result: String, reason: String?, after: Metrics, refreshHz: Double?, fpsCap: Int): Settled {
+        val compared = result == OptimizeJudge.HELPED || result == OptimizeJudge.NO_CHANGE || result == OptimizeJudge.WORSE
+        if (compared && met(profile, after, refreshHz, fpsCap)) {
+            return Settled(OptimizeJudge.HELPED, OptimizeJudge.REASON_TARGET_MET, done = true)
+        }
+        return Settled(result, reason, done = false)
+    }
+
     /** Before the first step of [ladder]: true when the game already meets the profile's target on its own settings. */
     fun metAtBaseline(profile: OptimizeProfile, ladder: ProfileLadder, baseline: Metrics?, refreshHz: Double?, fpsCap: Int): Boolean =
         ladder.state == LadderState.TRYING && ladder.kept.isEmpty() && ladder.pending == null && ladder.tried.isEmpty() &&

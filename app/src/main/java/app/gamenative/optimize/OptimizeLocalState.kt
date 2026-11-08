@@ -116,17 +116,18 @@ data class PendingRung(
     }
 }
 
-data class TriedRung(val rungId: String, val version: String, val result: String) {
+data class TriedRung(val rungId: String, val version: String, val result: String, val reason: String? = null) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("rung_id", rungId)
         put("version", version)
         put("result", result)
+        reason?.let { put("judge_reason", it) }
     }
 
     companion object {
         fun fromJson(o: JSONObject): TriedRung? {
             val id = o.optStringOrNull("rung_id") ?: return null
-            return TriedRung(id, o.optStringOrNull("version").orEmpty(), o.optString("result"))
+            return TriedRung(id, o.optStringOrNull("version").orEmpty(), o.optString("result"), o.optStringOrNull("judge_reason"))
         }
     }
 }

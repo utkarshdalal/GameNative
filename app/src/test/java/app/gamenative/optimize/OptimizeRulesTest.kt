@@ -341,4 +341,54 @@ class OptimizeRulesTest {
         assertEquals(0, paused.noChangeStreak)
         assertEquals(LadderState.DONE, OptimizeLadders.picked(ProfileLadder(state = LadderState.DONE)).state)
     }
+
+    private val forestAfter = Metrics(
+        gameplaySec = 1200, steadyFps = 59.3, stutterShare = 0.004, throttleOnsetSec = 12, cls = "none", confident = false,
+        fpsBy5Min = listOf(57, 59, 59, 59),
+    )
+
+    @Test
+    fun aThrottleOnsetIsHotEvenWithoutAThermalClass() {
+        assertTrue(OptimizeTarget.hot(forestAfter))
+        assertFalse(OptimizeTarget.met(OptimizeProfile.PERFORMANCE, forestAfter, 120.0, 0))
+        assertTrue(OptimizeTarget.met(OptimizeProfile.PERFORMANCE, forestAfter.copy(throttleOnsetSec = null), 120.0, 0))
+    }
+
+    @Test
+    fun aMetTargetKeepsTheStepAndEndsTheLadder() {
+        val cool = forestAfter.copy(throttleOnsetSec = null)
+        for (judged in listOf(OptimizeJudge.NO_CHANGE, OptimizeJudge.WORSE, OptimizeJudge.HELPED)) {
+            assertEquals(
+                judged,
+                OptimizeTarget.Settled(OptimizeJudge.HELPED, OptimizeJudge.REASON_TARGET_MET, done = true),
+                OptimizeTarget.settle(OptimizeProfile.PERFORMANCE, judged, OptimizeJudge.REASON_NONE, cool, 120.0, 0),
+            )
+        }
+    }
+
+    @Test
+    fun anUnmetTargetLeavesTheJudgeStanding() {
+        // The Forest s3 session: throttled from 12 s, so Performance is not met and no_change still reverts.
+        assertEquals(
+            OptimizeTarget.Settled(OptimizeJudge.NO_CHANGE, OptimizeJudge.REASON_NONE, done = false),
+            OptimizeTarget.settle(OptimizeProfile.PERFORMANCE, OptimizeJudge.NO_CHANGE, OptimizeJudge.REASON_NONE, forestAfter, 120.0, 0),
+        )
+        // With the cap-aware judge it is helped by min_window: kept, but the ladder keeps trying.
+        assertEquals(
+            OptimizeTarget.Settled(OptimizeJudge.HELPED, OptimizeJudge.REASON_MIN_WINDOW, done = false),
+            OptimizeTarget.settle(OptimizeProfile.PERFORMANCE, OptimizeJudge.HELPED, OptimizeJudge.REASON_MIN_WINDOW, forestAfter, 120.0, 0),
+        )
+        assertEquals(
+            OptimizeTarget.Settled(OptimizeJudge.HELPED, OptimizeJudge.REASON_MIN_WINDOW, done = false),
+            OptimizeTarget.settle(OptimizeProfile.PERFORMANCE, OptimizeJudge.HELPED, OptimizeJudge.REASON_MIN_WINDOW, forestAfter.copy(cls = "thermal_gpu", throttleOnsetSec = null), 120.0, 0),
+        )
+    }
+
+    @Test
+    fun crashesAndShortRunsNeverEndTheLadder() {
+        val cool = forestAfter.copy(throttleOnsetSec = null)
+        for (judged in listOf(OptimizeJudge.CRASH, OptimizeJudge.NOT_COMPARABLE)) {
+            assertFalse(OptimizeTarget.settle(OptimizeProfile.PERFORMANCE, judged, null, cool, 120.0, 0).done)
+        }
+    }
 }

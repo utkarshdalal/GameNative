@@ -234,6 +234,7 @@ object OptimizeController {
         crash: Metrics? = null,
         appliedOps: Int? = null,
         skippedOps: Int? = null,
+        judgeReason: String? = null,
     ): JSONObject = JSONObject().apply {
         put("schema", 1)
         put("app_version_code", BuildConfig.VERSION_CODE)
@@ -245,6 +246,7 @@ object OptimizeController {
         put("before", before?.toReportJson() ?: JSONObject.NULL)
         put("after", after?.toReportJson() ?: JSONObject.NULL)
         put("result", result)
+        judgeReason?.let { put("judge_reason", it) }
         put(
             "apply",
             JSONObject().apply {
@@ -273,8 +275,8 @@ object OptimizeController {
     private fun OptimizeLocalState.queued(report: JSONObject): OptimizeLocalState =
         copy(outcomeQueue = (outcomeQueue + report).takeLast(OptimizeLocalState.MAX_QUEUE))
 
-    private fun ProfileLadder.triedWith(rungId: String, version: String, result: String): ProfileLadder =
-        copy(tried = (tried + TriedRung(rungId, version, result)).takeLast(OptimizeLocalState.MAX_TRIED))
+    private fun ProfileLadder.triedWith(rungId: String, version: String, result: String, reason: String? = null): ProfileLadder =
+        copy(tried = (tried + TriedRung(rungId, version, result, reason)).takeLast(OptimizeLocalState.MAX_TRIED))
 
     private fun undoReport(appId: String, profile: OptimizeProfile, rungId: String, version: String, baseline: Metrics?, levers: Int): JSONObject =
         outcomeBody(appId, profile, rungId, version, baseline, null, OptimizeJudge.UNDO, levers, emptyList())
@@ -721,11 +723,13 @@ object OptimizeController {
                     val ladder = state.ladder(profile)
                     val pending = ladder.pending
                     if (pending != null && pending.revert == null && sessionRung == pending.rung.rungId) {
-                        state = when (val decision = OptimizeJudge.judge(after, pending.baseline, pending.rung.isFpsCap, pending.shortSessions)) {
+                        val fpsTarget = OptimizeTarget.fpsTarget(refresh, cap)
+                        state = when (val decision = OptimizeJudge.judge(after, pending.baseline, pending.rung.isFpsCap, pending.shortSessions, fpsTarget)) {
                             is OptimizeJudge.Decision.Short ->
                                 state.withLadder(profile, ladder.copy(pending = pending.copy(shortSessions = decision.shortSessions)))
-                            is OptimizeJudge.Decision.Crash -> finish(appId, state, profile, ladder, pending, OptimizeJudge.CRASH, after, refresh, cap)
-                            is OptimizeJudge.Decision.Final -> finish(appId, state, profile, ladder, pending, decision.result, after, refresh, cap)
+                            is OptimizeJudge.Decision.Crash -> finish(appId, state, profile, ladder, pending, OptimizeJudge.CRASH, null, after, refresh, cap)
+                            is OptimizeJudge.Decision.Final ->
+                                finish(appId, state, profile, ladder, pending, decision.result, decision.reason, after, refresh, cap)
                         }
                         store.write(state)
                     }
@@ -795,21 +799,25 @@ object OptimizeController {
         profile: OptimizeProfile,
         ladder: ProfileLadder,
         pending: PendingRung,
-        result: String,
+        judged: String,
+        judgeReason: String?,
         after: Metrics,
         refreshHz: Double?,
         fpsCap: Int,
     ): OptimizeLocalState {
         val rung = pending.rung
         val now = System.currentTimeMillis()
+        val settled = OptimizeTarget.settle(profile, judged, judgeReason, after, refreshHz, fpsCap)
+        val result = settled.result
         val report = outcomeBody(
             appId, profile, rung.rungId, rung.version, pending.baseline, after, result, pending.levers.size, emptyList(),
             crash = after.takeIf { result == OptimizeJudge.CRASH },
             appliedOps = pending.appliedOps,
             skippedOps = pending.skippedOps,
+            judgeReason = settled.reason,
         )
         val keep = result == OptimizeJudge.HELPED || result == OptimizeJudge.NOT_COMPARABLE
-        var l = ladder.triedWith(rung.rungId, rung.version, result)
+        var l = ladder.triedWith(rung.rungId, rung.version, result, settled.reason)
         l = if (keep) {
             l.copy(kept = l.kept + pending.toKept(after), pending = null, baselineOverride = null)
         } else {
@@ -819,10 +827,9 @@ object OptimizeController {
             )
         }
         l = l.copy(noChangeStreak = if (result == OptimizeJudge.NO_CHANGE) l.noChangeStreak + 1 else 0)
-        val comparable = result == OptimizeJudge.HELPED || result == OptimizeJudge.NO_CHANGE
         val name = gameName(appId)
         val card = when {
-            comparable && OptimizeTarget.met(profile, after, refreshHz, fpsCap) -> {
+            settled.done -> {
                 l = l.copy(state = LadderState.DONE)
                 OptimizeCard(OptimizeCard.DONE, now, name, profile, rungId = rung.rungId)
             }

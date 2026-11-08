@@ -19,6 +19,8 @@ data class Metrics(
     val thermalReporting: Boolean? = null,
     /** Mean fps of each five-minute window, oldest first. */
     val fpsBy5Min: List<Int> = emptyList(),
+    /** Mean GPU busy percent of each five-minute window that sampled it (perf_by_5min gpu_avg), oldest first. */
+    val gpuBy5Min: List<Int> = emptyList(),
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("gameplay_s", gameplaySec)
@@ -34,6 +36,7 @@ data class Metrics(
         procStatReal?.let { put("proc_stat_real", it) }
         thermalReporting?.let { put("thermal_reporting", it) }
         if (fpsBy5Min.isNotEmpty()) put("fps_by_5min", JSONArray(fpsBy5Min))
+        if (gpuBy5Min.isNotEmpty()) put("gpu_by_5min", JSONArray(gpuBy5Min))
     }
 
     fun toReportJson(): JSONObject = JSONObject().apply {
@@ -75,6 +78,7 @@ data class Metrics(
                 procStatReal = if (o.has("proc_stat_real")) o.optBoolean("proc_stat_real") else null,
                 thermalReporting = if (o.has("thermal_reporting")) o.optBoolean("thermal_reporting") else null,
                 fpsBy5Min = o.optJSONArray("fps_by_5min").ints(),
+                gpuBy5Min = o.optJSONArray("gpu_by_5min").ints(),
             )
         }
 
@@ -96,6 +100,7 @@ data class Metrics(
                 procStatReal = verdict?.optStringOrNull("proc_stat")?.let { it == "real" },
                 thermalReporting = run.has("thermal_headroom") || run.optInt("thermal_peak", 0) > 0,
                 fpsBy5Min = run.optJSONArray("fps_by_5min").ints(),
+                gpuBy5Min = run.optJSONArray("perf_by_5min").objects().mapNotNull { it.optIntOrNull("gpu_avg") },
             )
         }
     }

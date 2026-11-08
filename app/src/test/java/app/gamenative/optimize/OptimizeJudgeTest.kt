@@ -84,7 +84,7 @@ class OptimizeJudgeTest {
     @Test
     fun longSessionsAreCompared() {
         assertEquals(
-            OptimizeJudge.Decision.Final(OptimizeJudge.HELPED),
+            OptimizeJudge.Decision.Final(OptimizeJudge.HELPED, OptimizeJudge.REASON_FPS),
             OptimizeJudge.judge(session(fps = 50.0), session(fps = 40.0), isFpsCap = false, shortSessions = 0),
         )
     }
@@ -105,5 +105,90 @@ class OptimizeJudgeTest {
         assertEquals(1500, OptimizeJudge.baselineOf(sequenceOf(aborted, older))!!.gameplaySec)
         assertNull(OptimizeJudge.baselineOf(sequenceOf(aborted, menuOnly)))
         assertNull(OptimizeJudge.baselineOf(emptySequence()))
+    }
+
+    // The Forest on an Odin 3: baseline 56.7 fps, the s3 session 59.3 fps, both against a 60 fps target.
+    private val forestBefore = Metrics(
+        gameplaySec = 1200, steadyFps = 56.7, stutterShare = 0.004, cls = "thermal_gpu",
+        fpsBy5Min = listOf(56, 54, 57, 58), gpuBy5Min = listOf(44, 73, 81, 80),
+    )
+    private val forestAfter = Metrics(
+        gameplaySec = 1200, steadyFps = 59.3, stutterShare = 0.004, throttleOnsetSec = 12, cls = "none", confident = false,
+        fpsBy5Min = listOf(57, 59, 59, 59), gpuBy5Min = listOf(49, 58, 58, 55),
+    )
+
+    @Test
+    fun nearTheCapTheLowestWindowDecides() {
+        // Without the cap the average needs +8 % (61.3 fps), above the 60 cap: no_change.
+        assertEquals(OptimizeJudge.NO_CHANGE, OptimizeJudge.compare(forestBefore, forestAfter, isFpsCap = false))
+        // Near the cap the lowest gameplay window (first window skipped) went 54 -> 59: helped. The cave run lands here.
+        assertEquals(
+            OptimizeJudge.Verdict(OptimizeJudge.HELPED, OptimizeJudge.REASON_MIN_WINDOW),
+            OptimizeJudge.verdict(forestBefore, forestAfter, isFpsCap = false, fpsCap = 60.0),
+        )
+        assertEquals(
+            OptimizeJudge.Decision.Final(OptimizeJudge.HELPED, OptimizeJudge.REASON_MIN_WINDOW),
+            OptimizeJudge.judge(forestAfter, forestBefore, isFpsCap = false, shortSessions = 0, fpsCap = 60.0),
+        )
+    }
+
+    @Test
+    fun nearTheCapAWindowReachingTheCapHelps() {
+        val before = forestBefore.copy(fpsBy5Min = listOf(50, 55, 56, 58))
+        val after = forestAfter.copy(fpsBy5Min = listOf(50, 57, 58, 58))
+        assertEquals(OptimizeJudge.REASON_MIN_WINDOW, OptimizeJudge.verdict(before, after, false, 60.0).reason)
+    }
+
+    @Test
+    fun nearTheCapLowerGpuLoadAtTheSameFpsHelps() {
+        val after = forestAfter.copy(fpsBy5Min = listOf(57, 55, 56, 57), throttleOnsetSec = null)
+        val before = forestBefore.copy(fpsBy5Min = listOf(56, 55, 56, 57))
+        // GPU median of the gameplay windows 80 -> 58 at higher fps.
+        assertEquals(
+            OptimizeJudge.Verdict(OptimizeJudge.HELPED, OptimizeJudge.REASON_GPU_LOAD),
+            OptimizeJudge.verdict(before, after, false, 60.0),
+        )
+        // Lower load at lower fps is not a gain.
+        assertEquals(OptimizeJudge.NO_CHANGE, OptimizeJudge.compare(before, after.copy(steadyFps = 56.0), false, 60.0))
+    }
+
+    @Test
+    fun nearTheCapThrottleAndStutterCount() {
+        val before = forestBefore.copy(throttleOnsetSec = 300, fpsBy5Min = emptyList(), gpuBy5Min = emptyList())
+        val after = forestAfter.copy(steadyFps = 57.0, throttleOnsetSec = 600, fpsBy5Min = emptyList(), gpuBy5Min = emptyList())
+        assertEquals(OptimizeJudge.REASON_THROTTLE, OptimizeJudge.verdict(before, after, false, 60.0).reason)
+        assertEquals(OptimizeJudge.HELPED, OptimizeJudge.compare(before, after.copy(throttleOnsetSec = null), false, 60.0))
+        val stutterBefore = before.copy(throttleOnsetSec = null, stutterShare = 0.02)
+        val stutterAfter = after.copy(throttleOnsetSec = null, stutterShare = 0.01)
+        assertEquals(OptimizeJudge.Verdict(OptimizeJudge.HELPED, OptimizeJudge.REASON_STUTTER), OptimizeJudge.verdict(stutterBefore, stutterAfter, false, 60.0))
+    }
+
+    @Test
+    fun nearTheCapRegressionsAreWorse() {
+        val lowerWindow = forestAfter.copy(fpsBy5Min = listOf(57, 59, 51, 59))
+        assertEquals(
+            OptimizeJudge.Verdict(OptimizeJudge.WORSE, OptimizeJudge.REASON_MIN_WINDOW),
+            OptimizeJudge.verdict(forestBefore, lowerWindow, false, 60.0),
+        )
+        val hotterBefore = forestBefore.copy(throttleOnsetSec = 600)
+        val hotterAfter = forestAfter.copy(throttleOnsetSec = 300)
+        assertEquals(OptimizeJudge.Verdict(OptimizeJudge.WORSE, OptimizeJudge.REASON_THROTTLE), OptimizeJudge.verdict(hotterBefore, hotterAfter, false, 60.0))
+        assertEquals(OptimizeJudge.WORSE, OptimizeJudge.compare(forestBefore, forestAfter.copy(stutterShare = 0.02), false, 60.0))
+    }
+
+    @Test
+    fun farBelowTheCapTheAverageStillDecides() {
+        val before = forestBefore.copy(steadyFps = 40.0, fpsBy5Min = listOf(40, 36, 40, 41))
+        val after = forestAfter.copy(steadyFps = 41.0, fpsBy5Min = listOf(40, 41, 41, 41))
+        assertEquals(OptimizeJudge.Verdict(OptimizeJudge.NO_CHANGE, OptimizeJudge.REASON_NONE), OptimizeJudge.verdict(before, after, false, 60.0))
+    }
+
+    @Test
+    fun gpuLoadIsReadFromTheRunRecordAndKeptInTheBaseline() {
+        val run = JSONObject().put("session_length", 1200).put("avg_fps", 56.7)
+            .put("perf_by_5min", org.json.JSONArray().put(JSONObject().put("gpu_avg", 44)).put(JSONObject().put("samples", 3)).put(JSONObject().put("gpu_avg", 81)))
+        val m = Metrics.fromRun(run)
+        assertEquals(listOf(44, 81), m.gpuBy5Min)
+        assertEquals(listOf(44, 81), Metrics.fromJson(m.toJson())!!.gpuBy5Min)
     }
 }
