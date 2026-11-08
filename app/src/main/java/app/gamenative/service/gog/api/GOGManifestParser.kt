@@ -97,9 +97,10 @@ class GOGManifestParser @Inject constructor() {
     }
 
     /**
-     * Depots to install: the [languageDepots] of any of [baseProductIds] plus each selected DLC's
-     * depots per [dlcDepotsWithFallback], restricted to products the user owns so an unowned id is
-     * never requested.
+     * Depots to install: the depots of each of [baseProductIds] and each selected DLC per
+     * [dlcDepotsWithFallback], so a base whose language depots are missing because the language
+     * matched only a DLC falls back to English too, restricted to products the user owns so an
+     * unowned id is never requested.
      */
     fun filterDepotsForInstall(
         languageDepots: List<Depot>,
@@ -109,7 +110,8 @@ class GOGManifestParser @Inject constructor() {
         ownedProductIds: Set<String>,
     ): List<Depot> {
         val selected = buildSet {
-            addAll(languageDepots.filter { it.productId in baseProductIds && it.productId in ownedProductIds })
+            baseProductIds.filter { it in ownedProductIds }
+                .forEach { addAll(dlcDepotsWithFallback(languageDepots, allDepots, it)) }
             dlcIds.filter { it !in baseProductIds && it in ownedProductIds }
                 .forEach { addAll(dlcDepotsWithFallback(languageDepots, allDepots, it)) }
         }
@@ -119,7 +121,7 @@ class GOGManifestParser @Inject constructor() {
     }
 
     /**
-     * Depots of DLC [dlcId]: those in [languageDepots] when one of them is not a language-neutral
+     * Depots of product [dlcId] (a DLC or the base game): those in [languageDepots] when one of them is not a language-neutral
      * (`*`) depot, so matched the install language; otherwise its `*` depots plus its English
      * depots; else all of its depots.
      */

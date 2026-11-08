@@ -386,9 +386,9 @@ class GOGService : Service() {
 
         /**
          * @param dlcIds DLC product ids to install with the base game. The DLCs already installed
-         * ([GOGManager.getInstalledDlcIds]) are always kept; null adds only the selection of a
-         * paused download, for verify, language change and resume. New DLCs are recorded as
-         * installed only once the download succeeds.
+         * ([GOGManager.getInstalledDlcIds]) are always kept; null adds only the selection of an
+         * unfinished download, for verify, language change and resume. DLCs are recorded as
+         * installed only once the download succeeds, and only those the download actually planned.
          */
         fun downloadGame(
             context: Context,
@@ -430,7 +430,8 @@ class GOGService : Service() {
 
                     val wasInstalled = instance.gogManager.getGameFromDbById(gameId)?.isInstalled == true
                     val installedDlcIds = instance.gogManager.getInstalledDlcIds(gameId)
-                    val newDlcIds = (dlcIds ?: readPendingDlcIds(installPath)) - installedDlcIds
+                    val recordedDlcIds = instance.gogManager.getRecordedDlcIds(gameId)
+                    val newDlcIds = (dlcIds ?: readPendingDlcIds(installPath)) - recordedDlcIds
                     if (newDlcIds.isEmpty()) clearPendingDlcIds(installPath) else writePendingDlcIds(installPath, newDlcIds)
                     val result = instance.gogDownloadManager.downloadGame(
                         gameId = gameId,
@@ -444,15 +445,16 @@ class GOGService : Service() {
                     if (result.isFailure) {
                         val error = result.exceptionOrNull()
                         Timber.e(error, "[Download] Failed for game $gameId")
-                        if (downloadInfo.isActive()) clearPendingDlcIds(installPath)
                         downloadInfo.setProgress(-1.0f)
 
                         SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
                     } else {
                         Timber.i("[Download] Completed successfully for game $gameId")
 
-                        if (newDlcIds.isNotEmpty()) {
-                            instance.gogManager.addInstalledDlcIds(gameId, newDlcIds)
+                        val plannedDlcIds = result.getOrDefault(emptySet())
+                        instance.gogManager.addInstalledDlcIds(gameId, plannedDlcIds - recordedDlcIds)
+                        val addedDlcIds = plannedDlcIds intersect newDlcIds
+                        if (addedDlcIds.isNotEmpty()) {
                             MarkerUtils.removeMarker(installPath, Marker.GOG_SCRIPT_INSTALLED)
                             MarkerUtils.removeMarker(installPath, Marker.GOG_SUPPORT_INSTALLED)
                         }
@@ -466,7 +468,7 @@ class GOGService : Service() {
                         // A DLC added to an installed game leaves its saves to the launch sync.
                         val appId = "GOG_$gameId"
                         val numericGameId = gameId.toIntOrNull()
-                        val addedDlcToInstall = wasInstalled && newDlcIds.isNotEmpty()
+                        val addedDlcToInstall = wasInstalled && addedDlcIds.isNotEmpty()
                         try {
                             val gogGame = instance.gogManager.getGameFromDbById(gameId)
                             val locations = if (gogGame != null) instance.gogManager.getSaveDirectoryPath(context, appId, gogGame.title) else null

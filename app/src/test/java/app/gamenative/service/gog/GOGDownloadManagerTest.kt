@@ -343,6 +343,7 @@ class GOGDownloadManagerTest {
         )
 
         assertTrue(result.isSuccess)
+        assertEquals(setOf(ownedDlcId), result.getOrThrow())
         verify(parser).filterDepotsForInstall(languageDepots, manifest.depots, setOf(gameId), selectedDlcIds, owned)
         verify(apiClient, never()).fetchDepotManifestWithRaw(unownedDlcDepot.manifest)
         assertTrue(File(installPath, "bin/game.exe").exists())

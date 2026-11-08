@@ -140,7 +140,8 @@ class GOGDownloadManager @Inject constructor(
      * @param language Container language name (e.g. "english", "german"). Used to resolve GOG manifest language codes when filtering depots. See [GOGConstants.containerLanguageToGogCodes].
      * @param dlcIds DLC product ids to install alongside the base game (owned ones only are used)
      * @param supportDir Optional directory for support files (redistributables)
-     * @return Result indicating success or failure
+     * @return the DLC ids among [dlcIds] that were installed (depots in the plan or a bonus/installer
+     * plan), or the failure
      */
     suspend fun downloadGame(
         gameId: String,
@@ -149,7 +150,7 @@ class GOGDownloadManager @Inject constructor(
         language: String = GOGConstants.GOG_FALLBACK_DOWNLOAD_LANGUAGE,
         dlcIds: Set<String> = emptySet(),
         supportDir: File? = null,
-    ): Result<Unit> = withContext(Dispatchers.IO) {
+    ): Result<Set<String>> = withContext(Dispatchers.IO) {
         try {
             Timber.tag("GOG").i("Starting download for game $gameId to ${installPath.absolutePath}")
 
@@ -242,6 +243,7 @@ class GOGDownloadManager @Inject constructor(
             val includedDlcIds = depots.map { it.productId }.toSet() intersect dlcIds
             val bonusPlans = planBonusDlcs(installPath, dlcIds, depots, baseProductId, ownedGameIds, language)
                 .getOrElse { return@withContext Result.failure(it) }
+            val plannedDlcIds = includedDlcIds + bonusPlans.map { it.dlcId }
 
             Timber.tag("GOG").d("Found ${depots.size} owned depot(s) for $effectiveLang")
             depots.forEachIndexed { index, depot ->
@@ -523,7 +525,7 @@ class GOGDownloadManager @Inject constructor(
             if (downloadAndAssembleResult.isFailure) {
                 // Keep the chunk cache so an interrupted download can resume from it
                 MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
-                return@withContext downloadAndAssembleResult
+                return@withContext failureOf(downloadAndAssembleResult)
             }
 
             NativeTreeDelete.deleteTreeFast(chunkCacheDir)
@@ -544,7 +546,7 @@ class GOGDownloadManager @Inject constructor(
                 if (dependencyResult.isFailure) {
                     if (!downloadInfo.isActive()) {
                         MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
-                        return@withContext dependencyResult
+                        return@withContext failureOf(dependencyResult)
                     }
                     Timber.tag("GOG").w("Failed to install Dependencies: ${dependencyResult.exceptionOrNull()?.message}")
                 }
@@ -561,13 +563,13 @@ class GOGDownloadManager @Inject constructor(
                 if (bonusResult.isFailure) {
                     markBonusInstallFailed(gameId, downloadInfo, bonusResult)
                     MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
-                    return@withContext bonusResult
+                    return@withContext failureOf(bonusResult)
                 }
             }
 
             finalizeInstallSuccess(gameId, installPath, downloadInfo)
             Timber.tag("GOG").i("Download completed successfully for game $gameId")
-            Result.success(Unit)
+            Result.success(plannedDlcIds)
         } catch (e: Exception) {
             Timber.tag("GOG").e(e, "Download failed: ${e.message}")
             downloadInfo.updateStatusMessage("Failed: ${e.message}")
@@ -650,9 +652,11 @@ class GOGDownloadManager @Inject constructor(
                     }
 
                 val manifestProductIds = manifest.products.map { it.productId }.toSet()
-                app.gamenative.service.gog.GOGApiClient.getDlcRefs(context, gameId)
-                    .onFailure { Timber.tag("GOG").w(it, "Failed to fetch store DLC list for $gameId") }
-                    .getOrDefault(emptyList())
+                val dlcRefs = app.gamenative.service.gog.GOGApiClient.getDlcRefs(context, gameId).getOrElse {
+                    Timber.tag("GOG").w(it, "Failed to fetch store DLC list for $gameId")
+                    return@withContext Result.failure(it)
+                }
+                dlcRefs
                     .filter { it.id in owned && it.id !in manifestProductIds && it.id != gameId }
                     .forEach { ref -> withoutDepots.putIfAbsent(ref.id, ref.title) }
 
@@ -669,7 +673,7 @@ class GOGDownloadManager @Inject constructor(
                                 productId = productId,
                                 title = title.ifBlank { dlcTitleFromDb(productId) },
                                 downloadSize = resolution?.downloadSize ?: 0L,
-                                installSize = resolution?.downloadSize ?: 0L,
+                                installSize = 0L,
                                 installed = productId in onDisk,
                                 kind = resolution?.kind ?: GogDlcKind.UNKNOWN,
                             )
@@ -690,6 +694,9 @@ class GOGDownloadManager @Inject constructor(
                 Result.failure(e)
             }
         }
+
+    private fun <T> failureOf(result: Result<*>): Result<T> =
+        Result.failure(result.exceptionOrNull() ?: Exception("Download failed"))
 
     /** Selected owned DLC the build has no depots for, to fetch from their bonus content or installers. */
     private suspend fun planBonusDlcs(
@@ -821,7 +828,7 @@ class GOGDownloadManager @Inject constructor(
         language: String,
         dlcIds: Set<String>,
         supportDir: File?,
-    ): Result<Unit> = withContext(Dispatchers.IO) {
+    ): Result<Set<String>> = withContext(Dispatchers.IO) {
         try {
             Timber.tag("GOG").i("Starting Gen 1 (legacy) download for game $gameId")
             val timestamp = gameManifest.productTimestamp ?: return@withContext Result.failure(Exception("Gen 1 manifest missing productTimestamp"))
@@ -843,6 +850,7 @@ class GOGDownloadManager @Inject constructor(
             }
             val bonusPlans = planBonusDlcs(installPath, dlcIds, filesToDownload, baseProductId, ownedGameIds, language)
                 .getOrElse { return@withContext Result.failure(it) }
+            val plannedDlcIds = (filesToDownload.map { it.productId }.toSet() intersect dlcIds) + bonusPlans.map { it.dlcId }
 
             val productIds = filesToDownload.map { it.productId }.toSet()
             val securePath = "/$platform/$timestamp/"
@@ -976,7 +984,7 @@ class GOGDownloadManager @Inject constructor(
                 if (!downloadInfo.isActive()) return@withContext Result.failure(Exception("Download cancelled"))
                 downloadInfo.updateStatusMessage("Downloading ${f.file.path}")
                 val res = downloadOneFile(f, installPath)
-                if (res.isFailure) return@withContext res
+                if (res.isFailure) return@withContext failureOf(res)
                 doneFiles++
             }
             if (supportDir != null) {
@@ -985,7 +993,7 @@ class GOGDownloadManager @Inject constructor(
                     if (!downloadInfo.isActive()) return@withContext Result.failure(Exception("Download cancelled"))
                     downloadInfo.updateStatusMessage("Downloading support ${f.file.path}")
                     val res = downloadOneFile(f, supportDir)
-                    if (res.isFailure) return@withContext res
+                    if (res.isFailure) return@withContext failureOf(res)
                     doneFiles++
                 }
             }
@@ -996,13 +1004,13 @@ class GOGDownloadManager @Inject constructor(
                 val bonusResult = GOGBonusDlcInstaller.install(context, installPath, bonusPlans, downloadInfo)
                 if (bonusResult.isFailure) {
                     markBonusInstallFailed(gameId, downloadInfo, bonusResult)
-                    return@withContext bonusResult
+                    return@withContext failureOf(bonusResult)
                 }
             }
 
             finalizeInstallSuccess(gameId, installPath, downloadInfo)
             Timber.tag("GOG").i("Gen 1 download completed for game $gameId")
-            Result.success(Unit)
+            Result.success(plannedDlcIds)
         } catch (e: Exception) {
             Timber.tag("GOG").e(e, "Gen 1 download failed: ${e.message}")
             downloadInfo.updateStatusMessage("Failed: ${e.message}")

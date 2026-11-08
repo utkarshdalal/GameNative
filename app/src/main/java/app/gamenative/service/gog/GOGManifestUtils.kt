@@ -21,39 +21,40 @@ object GOGManifestUtils {
     }
 
     /**
-     * Picks the base game's info file among [infoFiles]: goggame-<gameId>.info when [gameId] is
-     * known, else a file whose rootGameId equals its own gameId. Without [gameId] it falls back to
-     * the first by name; with one it never returns a file that names another product as its root.
+     * Picks the base game's info file among [infoFiles]. With [gameId], goggame-<gameId>.info wins
+     * whatever its rootGameId; otherwise a readable file whose rootGameId equals its gameId, then a
+     * readable one that names no other product as its root, else null. Without [gameId], a file
+     * whose rootGameId equals its gameId, else the first by name.
      */
     fun selectBaseInfoFile(infoFiles: List<File>, gameId: String?): File? {
         if (infoFiles.isEmpty()) return null
         val sorted = infoFiles.sortedBy { it.name }
         if (gameId != null) {
-            return sorted.firstOrNull { it.name == "goggame-$gameId.info" }
-                ?: sorted.firstOrNull { isBaseInfoFile(it) }
-                ?: sorted.firstOrNull { !isDlcInfoFile(it) }
+            sorted.firstOrNull { it.name == "goggame-$gameId.info" }?.let { return it }
+            val readable = sorted.mapNotNull { file -> readInfoJson(file)?.let { file to it } }
+            return readable.firstOrNull { isBaseInfo(it.second) }?.first
+                ?: readable.firstOrNull { !isDlcInfo(it.second) }?.first
         }
         return sorted.firstOrNull { isBaseInfoFile(it) } ?: sorted.first()
     }
 
-    fun isBaseInfoFile(infoFile: File): Boolean {
-        return try {
-            val json = JSONObject(infoFile.readText())
-            val id = json.optString("gameId", "")
-            id.isNotEmpty() && id == json.optString("rootGameId", "")
+    fun isBaseInfoFile(infoFile: File): Boolean = readInfoJson(infoFile)?.let { isBaseInfo(it) } == true
+
+    private fun readInfoJson(infoFile: File): JSONObject? =
+        try {
+            JSONObject(infoFile.readText())
         } catch (e: Exception) {
-            false
+            null
         }
+
+    private fun isBaseInfo(json: JSONObject): Boolean {
+        val id = json.optString("gameId", "")
+        return id.isNotEmpty() && id == json.optString("rootGameId", "")
     }
 
-    private fun isDlcInfoFile(infoFile: File): Boolean {
-        return try {
-            val json = JSONObject(infoFile.readText())
-            val root = json.optString("rootGameId", "")
-            root.isNotEmpty() && root != json.optString("gameId", "")
-        } catch (e: Exception) {
-            false
-        }
+    private fun isDlcInfo(json: JSONObject): Boolean {
+        val root = json.optString("rootGameId", "")
+        return root.isNotEmpty() && root != json.optString("gameId", "")
     }
 
     fun readLocalManifest(installDir: File): JSONObject? {

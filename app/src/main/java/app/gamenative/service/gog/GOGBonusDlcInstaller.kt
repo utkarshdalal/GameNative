@@ -30,6 +30,7 @@ object GOGBonusDlcInstaller {
     const val PENDING_INSTALLER_FILE = "pending_installer.txt"
     const val INSTALLER_FAILED_FILE = "installer_failed.txt"
     const val APPLIED_FILE = "applied"
+    private const val APPLIED_LANGUAGE_FILE = "applied_language"
     private const val ADD_ON_TYPE = "game add-ons"
     private const val WINDOWS_OS = "windows"
     private const val PROGRESS_INTERVAL_MS = 200L
@@ -46,6 +47,7 @@ object GOGBonusDlcInstaller {
         val items: List<GogDownloadItem>,
         val totalBytes: Long,
         val reapplyOnly: Boolean,
+        val language: String,
     )
 
     data class ChecksumChunk(val id: Int, val from: Long, val to: Long, val method: String, val hash: String)
@@ -86,15 +88,15 @@ object GOGBonusDlcInstaller {
             .orEmpty()
 
     /**
-     * Bonus/installer DLC among [dlcIds] to fetch or re-apply. An already applied DLC needs no
-     * network: its kept files are re-applied, since a verify restores the base files it patched.
+     * Bonus/installer DLC among [dlcIds] to fetch or re-apply. A DLC already applied for [language]
+     * needs no network: its kept files are re-applied, since a verify restores the base files it patched.
      */
     suspend fun plan(context: Context, installDir: File, dlcIds: Set<String>, language: String): Result<List<Plan>> {
         val plans = mutableListOf<Plan>()
         for (dlcId in dlcIds.sorted()) {
             val dir = dlcDir(installDir, dlcId)
-            if (File(dir, APPLIED_FILE).isFile) {
-                plans.add(Plan(dlcId, dlcId, emptyList(), 0L, reapplyOnly = true))
+            if (File(dir, APPLIED_FILE).isFile && appliedLanguageMatches(dir, language)) {
+                plans.add(Plan(dlcId, dlcId, emptyList(), 0L, reapplyOnly = true, language = language))
                 continue
             }
             val downloads = GOGApiClient.getProductDownloads(context, dlcId).getOrElse {
@@ -109,9 +111,14 @@ object GOGBonusDlcInstaller {
             val pending = files.sumOf { file -> (file.size - downloadedBytes(dir, file)).coerceAtLeast(0L) }
             val title = resolution.items.firstOrNull()?.name?.takeIf { it.isNotBlank() } ?: dlcId
             Timber.tag("GOG").i("DLC $dlcId is ${resolution.kind}: ${files.size} file(s), $pending byte(s) pending")
-            plans.add(Plan(dlcId, title, resolution.items, resolution.downloadSize, reapplyOnly = false))
+            plans.add(Plan(dlcId, title, resolution.items, resolution.downloadSize, reapplyOnly = false, language = language))
         }
         return Result.success(plans)
+    }
+
+    private fun appliedLanguageMatches(dir: File, language: String): Boolean {
+        val applied = File(dir, APPLIED_LANGUAGE_FILE).takeIf { it.isFile }?.readText()?.trim() ?: return true
+        return applied.equals(language, ignoreCase = true)
     }
 
     suspend fun install(context: Context, installDir: File, plans: List<Plan>, downloadInfo: DownloadInfo): Result<Unit> =
@@ -137,8 +144,11 @@ object GOGBonusDlcInstaller {
                         downloaded
                     }
                     downloadInfo.updateStatusMessage("Applying ${plan.title}...")
-                    applyFiles(installDir, dir, names)
-                    if (!plan.reapplyOnly) File(dir, APPLIED_FILE).writeText(names.joinToString("\n"))
+                    applyFiles(installDir, dir, names, downloadInfo)
+                    if (!plan.reapplyOnly) {
+                        File(dir, APPLIED_FILE).writeText(names.joinToString("\n"))
+                        File(dir, APPLIED_LANGUAGE_FILE).writeText(plan.language)
+                    }
                     Timber.tag("GOG").i("Applied DLC ${plan.dlcId}: ${names.joinToString()}")
                 }
                 Result.success(Unit)
@@ -187,7 +197,7 @@ object GOGBonusDlcInstaller {
 
         val requestBuilder = Request.Builder().url(url).header("User-Agent", "GOG Galaxy")
         if (offset > 0L) requestBuilder.header("Range", "bytes=$offset-")
-        val name = Net.http.newCall(requestBuilder.build()).execute().use { response ->
+        val resolved = Net.http.newCall(requestBuilder.build()).execute().use { response ->
             val resolvedName = fileNameFor(
                 response.header("Content-Disposition"),
                 response.request.url.encodedPath,
@@ -235,6 +245,7 @@ object GOGBonusDlcInstaller {
             return Result.failure(it)
         }
 
+        val name = targetNameFor(dir, file, resolved)
         val target = File(dir, name)
         if (target.exists()) target.delete()
         if (!part.renameTo(target)) {
@@ -319,6 +330,15 @@ object GOGBonusDlcInstaller {
         }
     }
 
+    /** [resolved], prefixed with the file id when another file of the DLC already took that name. */
+    internal fun targetNameFor(dir: File, file: GogDownloadFile, resolved: String): String {
+        val own = doneRecord(dir, file)
+        val taken = dir.listFiles()
+            ?.filter { it.isFile && it.name.endsWith(".done") && it != own }
+            ?.any { it.readText().trim() == resolved } == true
+        return if (taken) "${safeName(file.id)}-$resolved" else resolved
+    }
+
     /** File name from Content-Disposition, else the URL's last path segment, else [fallback]; reduced to [A-Za-z0-9._-]. */
     internal fun fileNameFor(contentDisposition: String?, encodedPath: String, fallback: String): String {
         val fromHeader = contentDisposition?.let { header ->
@@ -333,27 +353,35 @@ object GOGBonusDlcInstaller {
 
     private fun safeName(name: String): String = name.trim().replace(Regex("[^A-Za-z0-9._-]"), "_")
 
-    private fun applyFiles(installDir: File, dir: File, names: List<String>) {
-        var installerArmed = false
+    private fun applyFiles(installDir: File, dir: File, names: List<String>, downloadInfo: DownloadInfo) {
+        val installers = mutableListOf<String>()
         File(dir, PENDING_INSTALLER_FILE).delete()
         for (name in names) {
             val file = File(dir, name)
             if (!file.isFile) throw IOException("Downloaded DLC file missing: ${file.absolutePath}")
             when (file.extension.lowercase()) {
-                "zip" -> extractZip(file, installDir)
-                "exe" -> if (!installerArmed) {
-                    File(dir, PENDING_INSTALLER_FILE).writeText(file.absolutePath)
-                    File(dir, INSTALLER_FAILED_FILE).delete()
-                    installerArmed = true
+                "zip" -> extractZip(file, installDir, downloadInfo)
+                "exe" -> {
+                    installers.add(file.absolutePath)
                     Timber.tag("GOG").i("Installer ${file.name} will run before the next launch")
                 }
                 else -> Timber.tag("GOG").i("Left ${file.name} in ${dir.absolutePath}; not an archive or installer")
             }
         }
+        if (installers.isNotEmpty()) {
+            File(dir, PENDING_INSTALLER_FILE).writeText(installers.joinToString("\n"))
+            File(dir, INSTALLER_FAILED_FILE).delete()
+        }
     }
 
-    /** Extracts [zip] over [root], overwriting; fails before writing anything if an entry escapes [root]. */
-    internal fun extractZip(zip: File, root: File) {
+    /**
+     * Extracts [zip] over [root], overwriting; fails before writing anything if an entry escapes [root],
+     * and stops with a failure once [downloadInfo] is no longer active.
+     */
+    internal fun extractZip(zip: File, root: File, downloadInfo: DownloadInfo? = null) {
+        fun checkActive() {
+            if (downloadInfo != null && !downloadInfo.isActive()) throw IOException("Download cancelled")
+        }
         val rootCanonical = root.canonicalFile
         fun target(entryName: String): File {
             val out = File(rootCanonical, entryName).canonicalFile
@@ -366,6 +394,7 @@ object GOGBonusDlcInstaller {
             val entries = archive.entries().toList()
             entries.forEach { target(it.name) }
             for (entry in entries) {
+                checkActive()
                 val out = target(entry.name)
                 if (entry.isDirectory) {
                     out.mkdirs()
@@ -373,37 +402,53 @@ object GOGBonusDlcInstaller {
                 }
                 out.parentFile?.mkdirs()
                 archive.getInputStream(entry).use { input ->
-                    FileOutputStream(out).use { output -> input.copyTo(output, 256 * 1024) }
+                    FileOutputStream(out).use { output ->
+                        val buffer = ByteArray(256 * 1024)
+                        while (true) {
+                            checkActive()
+                            val n = input.read(buffer)
+                            if (n == -1) break
+                            output.write(buffer, 0, n)
+                        }
+                    }
                 }
             }
         }
     }
 
     /**
-     * Command for the pending installer of [marker], or null when its exe is gone. InnoSetup
-     * refuses a drive root for /DIR, so /DIR goes through a `rootdir` link to the game root (A:),
-     * as the support-command installers do. The marker is deleted only on exit code 0.
+     * Command running the pending installers of [marker] in order, or null when their exes are gone
+     * or the `rootdir` link cannot be created. InnoSetup refuses a drive root for /DIR, so /DIR goes
+     * through a `rootdir` link to the game root (A:), as the support-command installers do. The
+     * marker is deleted only when every installer exits with code 0.
      */
     fun installerCommand(gameDir: File, marker: File): String? {
         val dir = marker.parentFile ?: return null
-        val exe = File(dir, File(marker.readText().trim()).name)
-        if (!exe.isFile) {
-            Timber.tag("GOG").w("Pending DLC installer missing, dropping marker: ${exe.absolutePath}")
+        val listed = marker.readLines().filter { it.isNotBlank() }.map { File(dir, File(it.trim()).name) }
+        val exes = listed.filter { it.isFile }
+        (listed - exes.toSet()).forEach { Timber.tag("GOG").w("Pending DLC installer missing: ${it.absolutePath}") }
+        if (exes.isEmpty()) {
+            Timber.tag("GOG").w("No pending DLC installer left, dropping marker: ${marker.absolutePath}")
             marker.delete()
             return null
         }
         val failed = File(dir, INSTALLER_FAILED_FILE)
         if (failed.exists()) {
-            Timber.tag("GOG").w("DLC installer ${exe.name} exited non-zero last launch; retrying")
+            Timber.tag("GOG").w("DLC installer of ${dir.name} exited non-zero last launch; retrying")
             failed.delete()
         }
         val rootDirLink = File(dir, "rootdir")
         if (!WinlatorFileUtils.isSymlink(rootDirLink)) {
             if (rootDirLink.exists()) rootDirLink.delete()
             WinlatorFileUtils.symlink(gameDir, rootDirLink)
+            if (!WinlatorFileUtils.isSymlink(rootDirLink)) {
+                Timber.tag("GOG").e("Failed to create ${rootDirLink.absolutePath}; DLC installer of ${dir.name} stays pending")
+                return null
+            }
         }
         val base = "A:\\$BONUS_DIR\\${dir.name}"
         val args = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCEL /DIR=$base\\rootdir"
-        return "$base\\${exe.name} $args && del /Q $base\\$PENDING_INSTALLER_FILE || echo failed> $base\\$INSTALLER_FAILED_FILE"
+        val run = exes.joinToString(" && ") { "$base\\${it.name} $args" }
+        return "$run && del /Q $base\\$PENDING_INSTALLER_FILE || echo failed> $base\\$INSTALLER_FAILED_FILE"
     }
 }

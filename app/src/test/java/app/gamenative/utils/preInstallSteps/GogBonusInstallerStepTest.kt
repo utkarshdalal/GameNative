@@ -85,4 +85,30 @@ class GogBonusInstallerStepTest {
         )
         assertFalse(failed.exists())
     }
+
+    @Test
+    fun buildCommand_runsEveryPendingInstallerBeforeDroppingMarker() {
+        File(dlcDir, "setup_a.exe").writeText("exe")
+        File(dlcDir, "setup_b.exe").writeText("exe")
+        File(dlcDir, GOGBonusDlcInstaller.PENDING_INSTALLER_FILE).writeText(
+            listOf(File(dlcDir, "setup_a.exe"), File(dlcDir, "setup_b.exe")).joinToString("\n") { it.absolutePath },
+        )
+        Files.createSymbolicLink(File(dlcDir, "rootdir").toPath(), gameDir.toPath())
+
+        val cmd = GogBonusInstallerStep.buildCommand(
+            container = container,
+            appId = "GOG_1",
+            gameSource = GameSource.GOG,
+            gameDir = gameDir,
+            gameDirPath = gameDir.absolutePath,
+        )
+
+        val base = "A:\\_gog_bonus\\123"
+        val args = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCEL /DIR=$base\\rootdir"
+        assertEquals(
+            "$base\\setup_a.exe $args && $base\\setup_b.exe $args" +
+                " && del /Q $base\\pending_installer.txt || echo failed> $base\\installer_failed.txt",
+            cmd,
+        )
+    }
 }

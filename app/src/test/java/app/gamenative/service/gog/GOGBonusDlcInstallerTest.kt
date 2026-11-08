@@ -1,9 +1,11 @@
 package app.gamenative.service.gog
 
+import app.gamenative.data.DownloadInfo
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.nio.file.Files
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import org.json.JSONObject
@@ -209,6 +211,35 @@ class GOGBonusDlcInstallerTest {
         assertFalse(File(parent, "escaped.txt").exists())
         assertFalse(File(root, "ok.txt").exists())
         parent.deleteRecursively()
+    }
+
+    @Test
+    fun extractZip_stopsWhenDownloadIsCancelled() {
+        val root = Files.createTempDirectory("gog-bonus-cancel").toFile()
+        val zip = File(Files.createTempDirectory("gog-bonus-cancel-zip").toFile(), "patch.zip")
+        writeZip(zip, mapOf("data/game.pak" to "new"))
+        val downloadInfo = DownloadInfo(jobCount = 1, gameId = 1, downloadingAppIds = CopyOnWriteArrayList())
+        downloadInfo.setActive(false)
+
+        assertThrows(IOException::class.java) { GOGBonusDlcInstaller.extractZip(zip, root, downloadInfo) }
+
+        assertFalse(File(root, "data/game.pak").exists())
+        root.deleteRecursively()
+        zip.parentFile?.deleteRecursively()
+    }
+
+    @Test
+    fun targetNameFor_prefixesFileIdWhenAnotherFileTookTheName() {
+        val dir = Files.createTempDirectory("gog-bonus-names").toFile()
+        val first = GogDownloadFile(id = "1", size = 1L, downlink = "https://api.gog.com/1")
+        val second = GogDownloadFile(id = "2", size = 1L, downlink = "https://api.gog.com/2")
+
+        assertEquals("patch.zip", GOGBonusDlcInstaller.targetNameFor(dir, first, "patch.zip"))
+        File(dir, "1.done").writeText("patch.zip")
+        assertEquals("patch.zip", GOGBonusDlcInstaller.targetNameFor(dir, first, "patch.zip"))
+        assertEquals("2-patch.zip", GOGBonusDlcInstaller.targetNameFor(dir, second, "patch.zip"))
+        assertEquals("other.zip", GOGBonusDlcInstaller.targetNameFor(dir, second, "other.zip"))
+        dir.deleteRecursively()
     }
 
     @Test

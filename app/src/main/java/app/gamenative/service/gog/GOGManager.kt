@@ -140,13 +140,20 @@ class GOGManager @Inject constructor(
 
     /**
      * DLC product ids installed alongside [gameId]: the recorded selection plus every
-     * goggame-<id>.info in the install root or a game subdirectory whose id is not the base game.
+     * goggame-<id>.info in the install root or a game subdirectory whose id is not the base game,
+     * plus every applied bonus/installer DLC whose installer is not pending. Empty unless the game
+     * is installed and its install folder exists, so recorded ids of a deleted install are ignored.
      */
     suspend fun getInstalledDlcIds(gameId: String): Set<String> = withContext(Dispatchers.IO) {
         val game = getGameFromDbById(gameId) ?: return@withContext emptySet()
-        val recorded = game.installedDlcIds.toSet()
         val installDir = installDirOf(game) ?: return@withContext emptySet()
-        recorded + (infoFileProductIdsOf(installDir) - baseIdsOf(gameId, installDir))
+        game.installedDlcIds.toSet() + dlcIdsOnDiskOf(gameId, installDir)
+    }
+
+    /** DLC ids recorded as installed for [gameId]; empty unless the game is installed and its install folder exists. */
+    suspend fun getRecordedDlcIds(gameId: String): Set<String> = withContext(Dispatchers.IO) {
+        val game = getGameFromDbById(gameId) ?: return@withContext emptySet()
+        if (installDirOf(game) == null) emptySet() else game.installedDlcIds.toSet()
     }
 
     /**
@@ -156,6 +163,10 @@ class GOGManager @Inject constructor(
     suspend fun getDlcIdsOnDisk(gameId: String): Set<String> = withContext(Dispatchers.IO) {
         val game = getGameFromDbById(gameId) ?: return@withContext emptySet()
         val installDir = installDirOf(game) ?: return@withContext emptySet()
+        dlcIdsOnDiskOf(gameId, installDir)
+    }
+
+    private fun dlcIdsOnDiskOf(gameId: String, installDir: File): Set<String> {
         val bonusIds = File(installDir, GOGBonusDlcInstaller.BONUS_DIR).listFiles()
             ?.filter {
                 File(it, GOGBonusDlcInstaller.APPLIED_FILE).isFile &&
@@ -163,7 +174,7 @@ class GOGManager @Inject constructor(
             }
             ?.map { it.name }
             .orEmpty()
-        infoFileProductIdsOf(installDir) - baseIdsOf(gameId, installDir) + bonusIds
+        return infoFileProductIdsOf(installDir) - baseIdsOf(gameId, installDir) + bonusIds
     }
 
     private fun installDirOf(game: GOGGame): File? =

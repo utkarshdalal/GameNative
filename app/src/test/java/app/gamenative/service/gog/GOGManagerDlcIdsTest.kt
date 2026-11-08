@@ -102,4 +102,25 @@ class GOGManagerDlcIdsTest {
 
         assertEquals(setOf("200", "600"), manager.getInstalledDlcIds("100"))
     }
+
+    @Test
+    fun installedDlcIdsIncludeAppliedBonusDlcButRecordedIdsDoNot() = runBlocking {
+        val installDir = tmp.newFolder("game")
+        installDir.resolve("goggame-200.info").writeText("{}")
+        val bonusDir = installDir.resolve(GOGBonusDlcInstaller.BONUS_DIR)
+        bonusDir.resolve("400").mkdirs()
+        bonusDir.resolve("400/${GOGBonusDlcInstaller.APPLIED_FILE}").writeText("a.zip")
+        dao.insert(installedGame(installDir).copy(installedDlcIds = listOf("600")))
+
+        assertEquals(setOf("200", "400", "600"), manager.getInstalledDlcIds("100"))
+        assertEquals(setOf("600"), manager.getRecordedDlcIds("100"))
+    }
+
+    @Test
+    fun recordedDlcIdsAreEmptyWhenInstallFolderIsGone() = runBlocking {
+        val installDir = File(tmp.root, "deleted")
+        dao.insert(installedGame(installDir).copy(installedDlcIds = listOf("600")))
+
+        assertEquals(emptySet<String>(), manager.getRecordedDlcIds("100"))
+    }
 }

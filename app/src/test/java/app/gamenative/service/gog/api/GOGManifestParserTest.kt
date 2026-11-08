@@ -326,6 +326,24 @@ class GOGManifestParserTest {
     }
 
     @Test
+    fun filterDepotsForInstall_languageMatchingOnlyDlcFallsBackToEnglishForBase() {
+        val baseStar = createTestDepot(languages = listOf("*"), manifest = "base-star").copy(productId = "100")
+        val baseEnglish = createTestDepot(languages = listOf("en-US"), manifest = "base-en").copy(productId = "100")
+        val baseFrench = createTestDepot(languages = listOf("fr-FR"), manifest = "base-fr").copy(productId = "100")
+        val dlcGerman = createTestDepot(languages = listOf("de-DE"), manifest = "dlc-de").copy(productId = "200")
+
+        val result = parser.filterDepotsForInstall(
+            languageDepots = listOf(dlcGerman, baseStar),
+            allDepots = listOf(baseStar, baseEnglish, baseFrench, dlcGerman),
+            baseProductIds = setOf("100"),
+            dlcIds = setOf("200"),
+            ownedProductIds = setOf("100", "200"),
+        )
+
+        assertEquals(listOf("dlc-de", "base-star", "base-en"), result.map { it.manifest })
+    }
+
+    @Test
     fun filterDepotsForInstall_keepsDepotsOfEitherBaseId() {
         val baseProduct = createTestDepot(manifest = "base-product").copy(productId = "100")
         val gameProduct = createTestDepot(manifest = "game-product").copy(productId = "101")

@@ -59,6 +59,16 @@ class GOGManifestUtilsTest {
     }
 
     @Test
+    fun selectBaseInfoFile_knownGameIdMissingSkipsUnreadableFiles() {
+        val dir = tmp.newFolder("unreadable")
+        val broken = dir.resolve("goggame-010.info").apply { writeText("not json") }
+        val base = dir.resolve("goggame-100.info").apply { writeText("""{"gameId": "100"}""") }
+
+        assertEquals(base, GOGManifestUtils.selectBaseInfoFile(listOf(base, broken), "777"))
+        assertNull(GOGManifestUtils.selectBaseInfoFile(listOf(broken), "777"))
+    }
+
+    @Test
     fun selectBaseInfoFile_withoutGameIdPicksRootGame() {
         val dir = tmp.newFolder("unknown")
         val dlc = writeInfo(dir, "050", "100")
