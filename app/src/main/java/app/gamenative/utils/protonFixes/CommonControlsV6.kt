@@ -35,7 +35,8 @@ object CommonControlsV6 {
 
     private const val SRC_DLL = "comctl32_v6.dll"
     private const val DST_DLL = "comctl32.dll"
-    private const val TMP_DLL = "comctl32.dll.gnnew"
+    private const val TMP_SUFFIX = "gnnew"
+    private const val TMP_DLL = "$DST_DLL.$TMP_SUFFIX"
     private const val ASSEMBLY = "microsoft.windows.common-controls_6595b64144ccf1df_6.0.2600.2982_none_deadbeef"
 
     /** Every name a process may resolve on the builds we ship (x86_64, arm64ec, aarch64). */
@@ -85,10 +86,18 @@ object CommonControlsV6 {
                 Timber.tag(TAG).i("Installed $name (${src.parentFile?.name}) into ${dst.parent}")
                 installed++
             }
-            // The manifest is what makes the directory discoverable, so it is repaired even when
-            // the DLL itself was already in place.
-            writeManifest(File(target, "manifests/$name.manifest"), arch)
-            if (upper != null) prune(upper, name, src)
+            // The manifest is what makes the directory discoverable, so it is repaired even when the
+            // DLL was already in place — and a prefix-local copy is only dropped once it is published.
+            if (!writeManifest(File(target, "manifests/$name.manifest"), arch)) {
+                Timber.tag(TAG).w("Manifest for $name not published, keeping any prefix-local copy")
+                continue
+            }
+            if (upper == null) continue
+            if (prune(upper, name, src) == Prune.KEPT) {
+                // The local copy is this build's and stays, so its manifest has to agree with it or
+                // it shadows the one just written under the base prefix.
+                writeManifest(File(upper, "manifests/$name.manifest"), arch)
+            }
         }
 
         // Arches this build cannot serve: an assembly left by another build would shadow the DLL
@@ -150,35 +159,41 @@ object CommonControlsV6 {
         }
     }
 
+    private enum class Prune { NONE, REMOVED, KEPT }
+
     /**
-     * Removes an assembly directory that is not [keep]: empty (setupapi created it and had no PE to
-     * copy), or holding another build's DLL — the container pattern ships an x86_64 v6 DLL under
-     * `amd64_`, which an arm64ec process cannot load and which wins the lookup over the base prefix.
+     * Removes an assembly directory that is not [keep]: empty, holding only the temp file an
+     * interrupted install left behind, or holding another build's DLL — the container pattern ships
+     * an x86_64 v6 DLL under `amd64_`, which an arm64ec process cannot load and which wins the
+     * lookup over the base prefix. Returns [Prune.KEPT] when the directory holds [keep] itself.
      *
      * The manifest goes with the directory: a manifest whose directory is gone makes the whole
-     * lookup fail. With no directory present nothing is touched, because the other prefix layer may
-     * legitimately be serving that manifest.
+     * lookup fail. A manifest without a directory is left alone for that same reason — under the
+     * overlay the other layer may be serving both — so the pair is only ever edited together.
      */
-    private fun prune(winsxs: File, name: String, keep: File?) {
+    private fun prune(winsxs: File, name: String, keep: File?): Prune {
         val dir = File(winsxs, name)
-        if (!dir.isDirectory) return
+        if (!dir.isDirectory) return Prune.NONE
         val dll = File(dir, DST_DLL)
-        if (dll.isFile && keep != null && isCurrentBuild(dll, keep)) return
+        if (dll.isFile && keep != null && isCurrentBuild(dll, keep)) return Prune.KEPT
+        val entries = dir.list() ?: return Prune.NONE
         if (dll.isFile) {
             Timber.tag(TAG).i(
                 if (keep == null) "Removing $name at ${dir.parent}: this build has no $SRC_DLL for that arch"
                 else "Removing stale $name at ${dir.parent}: ${dll.length()} bytes, not this build's $SRC_DLL",
             )
-        } else if (dir.list()?.isEmpty() == true) {
-            Timber.tag(TAG).d("Removing empty $name at ${dir.parent}")
+        } else if (entries.isEmpty() || (entries.size == 1 && entries[0] == TMP_DLL)) {
+            File(dir, TMP_DLL).delete()
+            Timber.tag(TAG).d("Removing leftover $name at ${dir.parent}")
         } else {
-            return
+            return Prune.NONE
         }
         if (!FileUtils.delete(dir)) {
             Timber.tag(TAG).w("Could not remove $dir")
-            return
+            return Prune.NONE
         }
         File(winsxs, "manifests/$name.manifest").delete()
+        return Prune.REMOVED
     }
 
     /**
@@ -216,14 +231,29 @@ object CommonControlsV6 {
         }
     }
 
-    private fun writeManifest(file: File, arch: String) {
+    /**
+     * Publishes [file] through a sibling temp file, so a failed write cannot leave a truncated
+     * manifest where a working one was.
+     */
+    private fun writeManifest(file: File, arch: String): Boolean {
         val xml = manifestXml(arch)
-        try {
-            if (file.isFile && file.readText() == xml) return
-            file.parentFile?.mkdirs()
-            file.writeText(xml)
+        val current = try {
+            file.isFile && file.readText() == xml
+        } catch (_: Exception) {
+            false
+        }
+        if (current) return true
+        val dir = file.parentFile ?: return false
+        if (!dir.isDirectory && !dir.mkdirs()) return false
+        val tmp = File(dir, "${file.name}.$TMP_SUFFIX")
+        return try {
+            tmp.writeText(xml)
+            Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            true
         } catch (e: Exception) {
             Timber.tag(TAG).w(e, "writing $file failed")
+            tmp.delete()
+            false
         }
     }
 
