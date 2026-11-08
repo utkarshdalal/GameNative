@@ -1834,6 +1834,7 @@
     <string name="optimize_profile_power_description">발열로 인한 느려짐 감소 및 배터리 사용 시간 증가</string>
     <string name="optimize_status_not_started">아직 시작하지 않음</string>
     <string name="optimize_status_measuring">다음 세션을 측정하는 중</string>
+    <string name="optimize_status_tuning_next">다음 실행 때 조정합니다</string>
     <string name="optimize_status_trying">변경 사항 시험 중: %1$s</string>
     <string name="optimize_status_trying_plain">변경 사항 시험 중</string>
     <plurals name="optimize_status_kept">

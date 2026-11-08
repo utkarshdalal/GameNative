@@ -1804,6 +1804,7 @@
     <string name="optimize_profile_power_description">Weniger Einbrüche durch Hitze und längere Akkulaufzeit</string>
     <string name="optimize_status_not_started">Noch nicht gestartet</string>
     <string name="optimize_status_measuring">Deine nächste Sitzung wird gemessen</string>
+    <string name="optimize_status_tuning_next">Wird beim nächsten Start abgestimmt</string>
     <string name="optimize_status_trying">Eine Änderung wird getestet: %1$s</string>
     <string name="optimize_status_trying_plain">Eine Änderung wird getestet</string>
     <plurals name="optimize_status_kept">

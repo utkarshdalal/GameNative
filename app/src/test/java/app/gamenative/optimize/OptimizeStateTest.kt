@@ -237,7 +237,11 @@ class OptimizeStateTest {
         assertEquals(OptimizeStatus.Off, OptimizeStatus.of(OptimizeLocalState()))
         assertEquals(OptimizeStatus.Never, OptimizeStatus.of(OptimizeLocalState(never = true)))
         assertEquals(OptimizeStatus.NotStarted, OptimizeStatus.of(with(ProfileLadder())))
-        assertEquals(OptimizeStatus.Measuring, OptimizeStatus.of(with(ProfileLadder(state = LadderState.TRYING))))
+        assertEquals(OptimizeStatus.TuningNext, OptimizeStatus.of(with(ProfileLadder(state = LadderState.TRYING))))
+        assertEquals(
+            OptimizeStatus.Measuring,
+            OptimizeStatus.of(with(ProfileLadder(state = LadderState.TRYING, pending = PendingRung(rung, 0L, null, 1, emptyList())))),
+        )
         assertEquals(
             OptimizeStatus.Trying("vc_less_grass_view_distance", "less grass"),
             OptimizeStatus.of(with(ProfileLadder(state = LadderState.TRYING, pending = PendingRung(rung, 0L, null, 0, emptyList())))),

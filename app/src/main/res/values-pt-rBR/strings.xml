@@ -1734,6 +1734,7 @@
     <string name="optimize_profile_power_description">Menos lentidão por calor e bateria mais duradoura</string>
     <string name="optimize_status_not_started">Ainda não começou</string>
     <string name="optimize_status_measuring">Medindo sua próxima sessão</string>
+    <string name="optimize_status_tuning_next">Ajuste no seu próximo início</string>
     <string name="optimize_status_trying">Testando uma mudança: %1$s</string>
     <string name="optimize_status_trying_plain">Testando uma mudança</string>
     <plurals name="optimize_status_kept">

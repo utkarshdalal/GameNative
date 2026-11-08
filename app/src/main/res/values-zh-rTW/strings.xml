@@ -1832,6 +1832,7 @@
     <string name="optimize_profile_power_description">減少因發熱造成的降速，延長電池續航力</string>
     <string name="optimize_status_not_started">尚未開始</string>
     <string name="optimize_status_measuring">正在測量你的下一次遊戲</string>
+    <string name="optimize_status_tuning_next">將在你下次啟動時調整</string>
     <string name="optimize_status_trying">正在嘗試一項變更：%1$s</string>
     <string name="optimize_status_trying_plain">正在嘗試一項變更</string>
     <plurals name="optimize_status_kept">

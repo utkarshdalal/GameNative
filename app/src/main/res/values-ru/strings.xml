@@ -1790,6 +1790,7 @@ https://gamenative.app
     <string name="optimize_profile_power_description">Меньше замедлений от нагрева и дольше работа от батареи</string>
     <string name="optimize_status_not_started">Ещё не начато</string>
     <string name="optimize_status_measuring">Измеряем следующую сессию</string>
+    <string name="optimize_status_tuning_next">Настроим при следующем запуске</string>
     <string name="optimize_status_trying">Пробуем изменение: %1$s</string>
     <string name="optimize_status_trying_plain">Пробуем изменение</string>
     <plurals name="optimize_status_kept">

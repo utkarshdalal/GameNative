@@ -7,7 +7,11 @@ sealed class OptimizeStatus {
     data object Off : OptimizeStatus()
     data object Never : OptimizeStatus()
     data object NotStarted : OptimizeStatus()
+    /** A change is on and a short session left it unjudged; the next one is measured. */
     data object Measuring : OptimizeStatus()
+
+    /** A profile is picked and no change is on trial; the next launch asks for one. */
+    data object TuningNext : OptimizeStatus()
     data class Trying(val visualCostId: String?, val visualCostEn: String?) : OptimizeStatus()
     data object Paused : OptimizeStatus()
     data object Done : OptimizeStatus()
@@ -19,10 +23,11 @@ sealed class OptimizeStatus {
             val ladder = state.active ?: return if (state.never) Never else Off
             val trying = ladder.pending?.takeIf { it.revert == null }
             return when {
+                trying != null && trying.shortSessions > 0 -> Measuring
                 trying != null -> Trying(trying.rung.visualCostId, trying.rung.visualCostEn)
                 ladder.state == LadderState.TRYING && ladder.lastStatus == NextRungResponse.STATUS_ENTITLEMENT_REQUIRED -> TrialUsed
                 ladder.state == LadderState.IDLE -> NotStarted
-                ladder.state == LadderState.TRYING -> Measuring
+                ladder.state == LadderState.TRYING -> TuningNext
                 ladder.state == LadderState.PAUSED -> Paused
                 ladder.state == LadderState.DONE -> Done
                 else -> Exhausted

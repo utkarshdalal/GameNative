@@ -1882,6 +1882,7 @@
     <string name="optimize_profile_power_description">Isıdan kaynaklı daha az yavaşlama ve daha uzun pil ömrü</string>
     <string name="optimize_status_not_started">Henüz başlamadı</string>
     <string name="optimize_status_measuring">Sonraki oturumunuz ölçülüyor</string>
+    <string name="optimize_status_tuning_next">Bir sonraki açılışta ayarlanacak</string>
     <string name="optimize_status_trying">Bir değişiklik deneniyor: %1$s</string>
     <string name="optimize_status_trying_plain">Bir değişiklik deneniyor</string>
     <plurals name="optimize_status_kept">
