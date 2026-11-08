@@ -351,4 +351,21 @@ class ContainerOverlayFilesTest {
         assertEquals("wine", ContainerFiles.resolve(upper, base, "drive_c/windows/system32/d3d11.dll")!!.readText())
         assertEquals("wine32", ContainerFiles.resolve(upper, base, "drive_c/windows/syswow64/d3d11.dll")!!.readText())
     }
+
+    @Test
+    fun refreshSkeleton_keepsUserHive_backsUpTheOthers() {
+        val base = tmp.newFolder("base2", ".wine")
+        val upper = tmp.newFolder("container2", ".wine")
+        write(base, "user.reg", "base-user")
+        write(base, "system.reg", "base-system")
+        write(upper, "user.reg", "game-saves")
+        write(upper, "system.reg", "old-system")
+
+        ContainerOverlayMigrator.refreshSkeleton(upper, base)
+
+        assertEquals("game-saves", File(upper, "user.reg").readText())
+        assertFalse(exists(File(upper, "user.reg.prev")))
+        assertEquals("base-system", File(upper, "system.reg").readText())
+        assertEquals("old-system", File(upper, "system.reg.prev").readText())
+    }
 }
