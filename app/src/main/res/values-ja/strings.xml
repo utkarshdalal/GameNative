@@ -2075,6 +2075,7 @@
     <string name="optimize_status_not_started">まだ開始していません</string>
     <string name="optimize_status_measuring">次のセッションを計測中</string>
     <string name="optimize_status_tuning_next">次回の起動時に調整します</string>
+    <string name="optimize_status_retry_next">前回の変更を適用できませんでした。次回の起動時にもう一度試します</string>
     <string name="optimize_status_trying">変更を試しています: %1$s</string>
     <string name="optimize_status_trying_plain">変更を試しています</string>
     <plurals name="optimize_status_kept">

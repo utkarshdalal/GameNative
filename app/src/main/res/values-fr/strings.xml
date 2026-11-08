@@ -1883,6 +1883,7 @@
     <string name="optimize_status_not_started">Pas encore commencé</string>
     <string name="optimize_status_measuring">Mesure de votre prochaine session</string>
     <string name="optimize_status_tuning_next">Réglage à votre prochain lancement</string>
+    <string name="optimize_status_retry_next">Impossible d\'appliquer la dernière modification ; nouvel essai au prochain lancement</string>
     <string name="optimize_status_trying">Essai d\'un changement : %1$s</string>
     <string name="optimize_status_trying_plain">Essai d\'un changement</string>
     <plurals name="optimize_status_kept">

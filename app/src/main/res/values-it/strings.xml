@@ -1856,6 +1856,7 @@
     <string name="optimize_status_not_started">Non ancora iniziato</string>
     <string name="optimize_status_measuring">Misurazione della prossima sessione</string>
     <string name="optimize_status_tuning_next">Ottimizzazione al prossimo avvio</string>
+    <string name="optimize_status_retry_next">Impossibile applicare l\'ultima modifica; nuovo tentativo al prossimo avvio</string>
     <string name="optimize_status_trying">Prova di una modifica: %1$s</string>
     <string name="optimize_status_trying_plain">Prova di una modifica</string>
     <plurals name="optimize_status_kept">

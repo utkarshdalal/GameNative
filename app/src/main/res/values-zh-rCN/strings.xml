@@ -1831,6 +1831,7 @@
     <string name="optimize_status_not_started">尚未开始</string>
     <string name="optimize_status_measuring">正在测量你的下一次游戏</string>
     <string name="optimize_status_tuning_next">将在你下次启动时调整</string>
+    <string name="optimize_status_retry_next">无法应用上一项更改；将在下次启动时重试</string>
     <string name="optimize_status_trying">正在尝试一项更改：%1$s</string>
     <string name="optimize_status_trying_plain">正在尝试一项更改</string>
     <plurals name="optimize_status_kept">

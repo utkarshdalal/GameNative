@@ -1735,6 +1735,7 @@
     <string name="optimize_status_not_started">Ainda não começou</string>
     <string name="optimize_status_measuring">Medindo sua próxima sessão</string>
     <string name="optimize_status_tuning_next">Ajuste no seu próximo início</string>
+    <string name="optimize_status_retry_next">Não foi possível aplicar a última alteração; tentando de novo na próxima inicialização</string>
     <string name="optimize_status_trying">Testando uma mudança: %1$s</string>
     <string name="optimize_status_trying_plain">Testando uma mudança</string>
     <plurals name="optimize_status_kept">

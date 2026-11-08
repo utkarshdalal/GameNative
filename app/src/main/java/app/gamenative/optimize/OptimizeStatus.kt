@@ -12,6 +12,9 @@ sealed class OptimizeStatus {
 
     /** A profile is picked and no change is on trial; the next launch asks for one. */
     data object TuningNext : OptimizeStatus()
+
+    /** The last change could not be written and nothing is on; the next launch asks for another. */
+    data object RetryNext : OptimizeStatus()
     data class Trying(val visualCostId: String?, val visualCostEn: String?) : OptimizeStatus()
     data object Paused : OptimizeStatus()
     data object Done : OptimizeStatus()
@@ -27,6 +30,7 @@ sealed class OptimizeStatus {
                 trying != null -> Trying(trying.rung.visualCostId, trying.rung.visualCostEn)
                 ladder.state == LadderState.TRYING && ladder.lastStatus == NextRungResponse.STATUS_ENTITLEMENT_REQUIRED -> TrialUsed
                 ladder.state == LadderState.IDLE -> NotStarted
+                ladder.state == LadderState.TRYING && ladder.tried.lastOrNull()?.result == OptimizeJudge.APPLY_FAILED -> RetryNext
                 ladder.state == LadderState.TRYING -> TuningNext
                 ladder.state == LadderState.PAUSED -> Paused
                 ladder.state == LadderState.DONE -> Done

@@ -259,6 +259,16 @@ class OptimizeStateTest {
         assertEquals(OptimizeStatus.Never, OptimizeStatus.of(OptimizeLocalState(never = true)))
         assertEquals(OptimizeStatus.NotStarted, OptimizeStatus.of(with(ProfileLadder())))
         assertEquals(OptimizeStatus.TuningNext, OptimizeStatus.of(with(ProfileLadder(state = LadderState.TRYING))))
+        val failed = TriedRung("r1", "1", OptimizeJudge.APPLY_FAILED)
+        assertEquals(OptimizeStatus.RetryNext, OptimizeStatus.of(with(ProfileLadder(state = LadderState.TRYING, tried = listOf(failed)))))
+        assertEquals(
+            OptimizeStatus.TuningNext,
+            OptimizeStatus.of(with(ProfileLadder(state = LadderState.TRYING, tried = listOf(failed, TriedRung("r2", "1", OptimizeJudge.NO_OP))))),
+        )
+        assertEquals(
+            OptimizeStatus.Trying("vc_less_grass_view_distance", "less grass"),
+            OptimizeStatus.of(with(ProfileLadder(state = LadderState.TRYING, tried = listOf(failed), pending = PendingRung(rung, 0L, null, 0, emptyList())))),
+        )
         assertEquals(
             OptimizeStatus.Measuring,
             OptimizeStatus.of(with(ProfileLadder(state = LadderState.TRYING, pending = PendingRung(rung, 0L, null, 1, emptyList())))),

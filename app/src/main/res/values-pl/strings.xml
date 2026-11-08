@@ -1867,6 +1867,7 @@
     <string name="optimize_status_not_started">Jeszcze nie rozpoczęto</string>
     <string name="optimize_status_measuring">Mierzenie następnej sesji</string>
     <string name="optimize_status_tuning_next">Dostrajanie przy następnym uruchomieniu</string>
+    <string name="optimize_status_retry_next">Nie udało się zastosować ostatniej zmiany; ponowna próba przy następnym uruchomieniu</string>
     <string name="optimize_status_trying">Testowanie zmiany: %1$s</string>
     <string name="optimize_status_trying_plain">Testowanie zmiany</string>
     <plurals name="optimize_status_kept">

@@ -1835,6 +1835,7 @@
     <string name="optimize_status_not_started">아직 시작하지 않음</string>
     <string name="optimize_status_measuring">다음 세션을 측정하는 중</string>
     <string name="optimize_status_tuning_next">다음 실행 때 조정합니다</string>
+    <string name="optimize_status_retry_next">마지막 변경 사항을 적용하지 못했습니다. 다음 실행 시 다시 시도합니다</string>
     <string name="optimize_status_trying">변경 사항 시험 중: %1$s</string>
     <string name="optimize_status_trying_plain">변경 사항 시험 중</string>
     <plurals name="optimize_status_kept">

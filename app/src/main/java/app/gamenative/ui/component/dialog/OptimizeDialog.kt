@@ -146,6 +146,7 @@ fun optimizeStatusText(state: OptimizeLocalState): String? = when (val status = 
     OptimizeStatus.NotStarted -> stringResource(R.string.optimize_status_not_started)
     OptimizeStatus.Measuring -> stringResource(R.string.optimize_status_measuring)
     OptimizeStatus.TuningNext -> stringResource(R.string.optimize_status_tuning_next)
+    OptimizeStatus.RetryNext -> stringResource(R.string.optimize_status_retry_next)
     is OptimizeStatus.Trying -> {
         val cost = OptimizeStatus.visualCostRes(status.visualCostId)?.let { stringResource(it) } ?: status.visualCostEn
         if (cost.isNullOrBlank()) {

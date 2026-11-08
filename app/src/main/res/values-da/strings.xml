@@ -1735,6 +1735,7 @@
     <string name="optimize_status_not_started">Ikke startet endnu</string>
     <string name="optimize_status_measuring">Måler din næste session</string>
     <string name="optimize_status_tuning_next">Justeres ved din næste start</string>
+    <string name="optimize_status_retry_next">Den sidste ændring kunne ikke anvendes; prøver igen ved næste start</string>
     <string name="optimize_status_trying">Prøver en ændring: %1$s</string>
     <string name="optimize_status_trying_plain">Prøver en ændring</string>
     <plurals name="optimize_status_kept">
