@@ -207,6 +207,17 @@ internal object SessionVerdict {
     private const val GPU_BEFORE_ONSET_SEC = 120
     private const val HARD_MEMORY_TRIM_EVENTS = 3
     private const val LOW_AVAIL_MB = 300
+    private const val GPU_BUSY_SATURATED = 85
+    private const val GPU_CPU_MAX = 60
+    private const val GPU_THROTTLED_CPU_MAX = 70
+    private const val GPU_FULL_CLOCK_RATIO = 0.9
+    private const val THERMAL_GPU_BUSY = 70
+    private const val HOT_BEFORE_ONSET_SHARE = 0.5
+    private const val FIVE_MIN_DECLINE_RATIO = 0.9
+    private const val LEGACY_MIN_SHARE = 0.4
+    private const val LEGACY_THERMAL_SHARE = 0.5
+    private const val LEGACY_MAX_CONFIDENCE = 0.6
+    const val SOURCE_LEGACY = "legacy"
 
     class Input(
         val samples: List<SessionSample>,
@@ -219,6 +230,10 @@ internal object SessionVerdict {
         val designCapDetected: Boolean = false,
         val fpsCap: Int = 0,
         val stutterShare: Double? = null,
+        /** The session's fps_by_5min, oldest first; when empty, five-minute means of [samples] stand in. */
+        val fpsBy5Min: List<Int> = emptyList(),
+        /** The older per-tick classifier's bottleneck_share (cpu, gpu, thermal, ...), the fallback verdict. */
+        val legacyShare: Map<String, Double>? = null,
     )
 
     class Result(
@@ -236,6 +251,8 @@ internal object SessionVerdict {
         val fpsAfterOnset: Double?,
         val hot: Map<String, Any>?,
         val stutterShare: Double?,
+        /** [SOURCE_LEGACY] when the class came from the older classifier; null when the sampler decided. */
+        val source: String? = null,
     ) {
         /** The four game_exited properties of spec section 10. */
         fun properties(): Map<String, Any> = buildMap {
@@ -256,6 +273,7 @@ internal object SessionVerdict {
                     fpsBeforeOnset?.let { put("fps_before_onset", round1(it)) }
                     fpsAfterOnset?.let { put("fps_after_onset", round1(it)) }
                     put("card", "none")
+                    source?.let { put("source", it) }
                 },
             )
             stutterShare?.let { put("stutter_share", Math.round(it * 10_000) / 10_000.0) }
@@ -291,12 +309,15 @@ internal object SessionVerdict {
             val wineserverSync = (s.wineserverPct ?: 0) >= 80 && hot != null && hot < 50
             if ((spin || sleepSync || wineserverSync) && (gpuBusy == null || gpuBusy < 60)) sync++
 
+            // A GPU held below full clock by a power cap is not GPU-bound, but one held down by heat still is.
             val mhzRatio = if (s.gpuMhz != null && gpuTop != null && gpuTop > 0) s.gpuMhz.toDouble() / gpuTop else null
-            if (gpuBusy != null && gpuBusy >= 85 && (mhzRatio == null || mhzRatio >= 0.9) &&
-                (hot == null || hot < HOT_SATURATED) && (s.cpuTotal == null || s.cpuTotal < 60)
-            ) {
-                gpu++
+            val throttled = (s.thermalStatus ?: 0) >= THERMAL_MODERATE || clockThrottled(s, input, gpuTop)
+            val gpuFed = if (throttled) {
+                s.cpuTotal == null || s.cpuTotal < GPU_THROTTLED_CPU_MAX
+            } else {
+                (mhzRatio == null || mhzRatio >= GPU_FULL_CLOCK_RATIO) && (s.cpuTotal == null || s.cpuTotal < GPU_CPU_MAX)
             }
+            if (gpuBusy != null && gpuBusy >= GPU_BUSY_SATURATED && (hot == null || hot < HOT_SATURATED) && gpuFed) gpu++
             if (hot != null && hot >= HOT_SATURATED && ks != null && ks < 0.4 && (gpuBusy == null || gpuBusy < 75)) cpu1++
             if (s.cpuTotal != null && s.cpuTotal >= 80 && (s.coreMax ?: 0) < 90 && (gpuBusy == null || gpuBusy < 75)) cpuN++
             if (s.frames > 0 && s.refreshMultipleFrames * 10 > s.frames * 7 &&
@@ -330,8 +351,18 @@ internal object SessionVerdict {
         val gpuBeforeOnset = onsetT?.let { t ->
             median(g.filter { it.t in (t - GPU_BEFORE_ONSET_SEC) until t }.mapNotNull { it.gpuBusy?.toDouble() })
         }
-        val thermalGpu = onsetIndex != null && gameplaySec >= MIN_THERMAL_GAMEPLAY_SEC &&
-            onsetIndex * stride >= WARMUP_SEC && gpuBeforeOnset != null && gpuBeforeOnset >= 70 && framesDropped
+        // Hot from the start: no cool stretch exists to compare against, so a busy GPU over the session decides.
+        val hotBeforeOnset = onsetT?.let { t -> g.filter { it.t < t } }.orEmpty()
+        val hotAtLaunch = onsetIndex != null && (
+            onsetIndex * stride < WARMUP_SEC ||
+                hotBeforeOnset.count { (it.thermalStatus ?: 0) >= THERMAL_MODERATE } >= HOT_BEFORE_ONSET_SHARE * hotBeforeOnset.size
+            )
+        val gpuMedian = median(g.mapNotNull { it.gpuBusy?.toDouble() })
+        val thermalGpu = gameplaySec >= MIN_THERMAL_GAMEPLAY_SEC && if (hotAtLaunch) {
+            gpuMedian != null && gpuMedian >= THERMAL_GPU_BUSY
+        } else {
+            onsetIndex != null && gpuBeforeOnset != null && gpuBeforeOnset >= THERMAL_GPU_BUSY && framesDropped
+        }
 
         val memoryHard = input.trimEvents >= HARD_MEMORY_TRIM_EVENTS
         val steadyFps = minuteMedianFps(g)
@@ -389,6 +420,7 @@ internal object SessionVerdict {
             else -> chosenShare >= CONFIDENT_SHARE && chosenShare - runnerUp >= CONFIDENT_LEAD && coverage >= CONFIDENT_COVERAGE
         }
         val confidence = (chosenShare * coverage).coerceIn(0.0, 1.0)
+        val legacy = if (gameplaySec >= MIN_GAMEPLAY_SEC && (cls == NONE || !confident)) legacyVerdict(input.legacyShare) else null
 
         val stutter = input.stutterShare
         val third = n / 3
@@ -397,6 +429,7 @@ internal object SessionVerdict {
         val heatDrop = (fpsBefore != null && fpsAfter != null && fpsAfter < 0.9 * fpsBefore) ||
             (firstThird != null && lastThird != null && lastThird < 0.85 * firstThird)
         val symptom = when {
+            legacy == null && cls == THERMAL_GPU && hotAtLaunch -> if (fpsDeclines(input.fpsBy5Min, g)) "heat_drop" else "low_fps"
             steadyFps != null && (steadyFps < 30 || (input.fpsCap > 0 && steadyFps < 0.9 * input.fpsCap)) -> "low_fps"
             stutter != null && stutter >= 0.01 -> "stutter"
             heatDrop -> "heat_drop"
@@ -404,9 +437,9 @@ internal object SessionVerdict {
         }
 
         return Result(
-            cls = cls,
-            confident = confident,
-            confidence = confidence,
+            cls = legacy?.first ?: cls,
+            confident = if (legacy != null) legacy.second >= LEGACY_MIN_SHARE else confident,
+            confidence = legacy?.let { minOf(LEGACY_MAX_CONFIDENCE, it.second) } ?: confidence,
             symptom = symptom,
             gameplaySec = gameplaySec,
             shares = shares,
@@ -418,7 +451,40 @@ internal object SessionVerdict {
             fpsAfterOnset = fpsAfter,
             hot = hotSummary(g, input),
             stutterShare = stutter,
+            source = legacy?.let { SOURCE_LEGACY },
         )
+    }
+
+    /** The older classifier's verdict as (class, share): GPU-bound, or GPU-bound under heat; null when it names neither. */
+    private fun legacyVerdict(share: Map<String, Double>?): Pair<String, Double>? {
+        if (share == null) return null
+        val gpu = share["gpu"] ?: return null
+        val thermal = share["thermal"] ?: 0.0
+        return when {
+            gpu < LEGACY_MIN_SHARE -> null
+            thermal >= LEGACY_THERMAL_SHARE -> THERMAL_GPU to gpu
+            else -> GPU to gpu
+        }
+    }
+
+    /** Whether fps fell by a tenth from the first to the last five minutes, the first (loading) bucket set aside. */
+    private fun fpsDeclines(fpsBy5Min: List<Int>, g: List<SessionSample>): Boolean {
+        val buckets = fpsBy5Min.map { it.toDouble() }.ifEmpty {
+            g.groupBy { it.t / 300 }.toSortedMap().values.map { w -> w.sumOf { it.fps.toDouble() } / w.size }
+        }
+        val steady = if (fpsBy5Min.size >= 3) buckets.drop(1) else buckets
+        return steady.size >= 2 && steady.last() < FIVE_MIN_DECLINE_RATIO * steady.first()
+    }
+
+    /** The big CPU cluster or the GPU held below [CLOCK_RATIO] of its top clock while hot, outside the user's cap. */
+    private fun clockThrottled(s: SessionSample, input: Input, gpuTop: Int?): Boolean {
+        val big = input.clusterCpuinfoMaxMhz.lastIndex
+        val bigMax = input.clusterCpuinfoMaxMhz.getOrNull(big)
+        val bigCap = s.clusterMaxMhz?.getOrNull(big)?.takeIf { it > 0 }
+        val cpuClockDown = bigMax != null && bigCap != null && bigCap < CLOCK_RATIO * bigMax
+        val gpuClockDown = gpuTop != null && s.gpuMaxMhz != null && s.gpuMaxMhz > 0 && s.gpuMaxMhz < CLOCK_RATIO * gpuTop
+        val hot = (s.cpuTempC ?: 0) >= HOT_CPU_TEMP_C || (s.skinTempC ?: 0) >= HOT_SKIN_TEMP_C
+        return !s.capActive && (cpuClockDown || gpuClockDown) && hot
     }
 
     /** stime / (utime + stime) of the hot thread over the last [KSHARE_WINDOW_SEC] seconds, per sample. */
@@ -444,15 +510,7 @@ internal object SessionVerdict {
     private fun thermalOnset(g: List<SessionSample>, input: Input, gpuTop: Int?): Pair<String, Int>? {
         sustainedStart(g, STATUS_SUSTAINED_SEC) { (it.thermalStatus ?: 0) >= THERMAL_MODERATE }?.let { return "status" to it }
         if (g.any { (it.thermalStatus ?: 0) >= 1 }) return null
-        val big = input.clusterCpuinfoMaxMhz.lastIndex
-        val bigMax = input.clusterCpuinfoMaxMhz.getOrNull(big)
-        return sustainedStart(g, CLOCK_SUSTAINED_SEC) { s ->
-            val bigCap = s.clusterMaxMhz?.getOrNull(big)?.takeIf { it > 0 }
-            val cpuClockDown = bigMax != null && bigCap != null && bigCap < CLOCK_RATIO * bigMax
-            val gpuClockDown = gpuTop != null && s.gpuMaxMhz != null && s.gpuMaxMhz > 0 && s.gpuMaxMhz < CLOCK_RATIO * gpuTop
-            val hot = (s.cpuTempC ?: 0) >= HOT_CPU_TEMP_C || (s.skinTempC ?: 0) >= HOT_SKIN_TEMP_C
-            !s.capActive && (cpuClockDown || gpuClockDown) && hot
-        }?.let { "clock_temp" to it }
+        return sustainedStart(g, CLOCK_SUSTAINED_SEC) { clockThrottled(it, input, gpuTop) }?.let { "clock_temp" to it }
     }
 
     private fun sustainedStart(g: List<SessionSample>, minSec: Int, condition: (SessionSample) -> Boolean): Int? {

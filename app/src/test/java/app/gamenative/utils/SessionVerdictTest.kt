@@ -226,6 +226,70 @@ class SessionVerdictTest {
         assertFalse(r.properties().containsKey("throttle_onset_s"))
     }
 
+    /** The Odin 3 The Forest session: hot from the first minute, GPU busy at 70 % clock, the game thread near full. */
+    private fun forestSession(status: Int?, cpuTemp: Int?) = gameplay(874) {
+        base(it, fps = 51f, gpu = 88, gpuMhz = 630, cpu = 65, hot = 89, status = status?.let { s -> s + it % 3 }, cpuTemp = cpuTemp)
+    }
+
+    @Test
+    fun hotFromLaunchWithBusyGpuIsThermalGpu() {
+        val r = compute(forestSession(status = 3, cpuTemp = 101), gpuTopMhz = 900)
+        assertEquals(SessionVerdict.THERMAL_GPU, r.cls)
+        assertTrue(r.confident)
+        assertTrue(r.thermalGpu)
+        assertEquals(0, r.throttleOnsetSec)
+        assertEquals("low_fps", r.symptom)
+        assertNull((r.properties()["perf_verdict"] as Map<*, *>)["source"])
+    }
+
+    @Test
+    fun hotFromLaunchWithFallingFiveMinuteFpsIsHeatDrop() {
+        val r = SessionVerdict.compute(
+            SessionVerdict.Input(forestSession(status = 3, cpuTemp = 101), gpuTopMhz = 900, fpsBy5Min = listOf(30, 60, 55, 48)),
+        )
+        assertEquals(SessionVerdict.THERMAL_GPU, r.cls)
+        assertEquals("heat_drop", r.symptom)
+    }
+
+    @Test
+    fun throttledGpuBelowFullClockStillCountsAsGpu() {
+        val throttled = compute(gameplay(400) { base(it, gpu = 92, gpuMhz = 630, cpu = 65, hot = 60, status = 2) }, gpuTopMhz = 900)
+        assertEquals(1.0, throttled.shares.getValue("gpu"), 1e-9)
+        assertEquals(SessionVerdict.GPU, throttled.cls)
+        assertTrue(throttled.confident)
+        val capped = compute(gameplay(400) { base(it, gpu = 92, gpuMhz = 630, cpu = 65, hot = 60, status = 0) }, gpuTopMhz = 900)
+        assertEquals(0.0, capped.shares.getValue("gpu"), 1e-9)
+    }
+
+    @Test
+    fun legacyClassifierFillsInWhenTheSamplerNamesNothing() {
+        val samples = forestSession(status = null, cpuTemp = null)
+        fun withLegacy(share: Map<String, Double>?) = SessionVerdict.compute(SessionVerdict.Input(samples, gpuTopMhz = 900, legacyShare = share))
+        assertEquals(SessionVerdict.NONE, withLegacy(null).cls)
+
+        val r = withLegacy(mapOf("cpu" to 0.1, "gpu" to 0.46, "thermal" to 0.88))
+        assertEquals(SessionVerdict.THERMAL_GPU, r.cls)
+        assertTrue(r.confident)
+        assertEquals(0.46, r.confidence, 1e-9)
+        val verdict = r.properties()["perf_verdict"] as Map<*, *>
+        assertEquals(SessionVerdict.SOURCE_LEGACY, verdict["source"])
+        assertEquals(SessionVerdict.THERMAL_GPU, verdict["class"])
+
+        val gpuOnly = withLegacy(mapOf("gpu" to 0.9, "thermal" to 0.1))
+        assertEquals(SessionVerdict.GPU, gpuOnly.cls)
+        assertEquals(0.6, gpuOnly.confidence, 1e-9)
+        assertEquals(SessionVerdict.NONE, withLegacy(mapOf("gpu" to 0.3, "thermal" to 0.9)).cls)
+    }
+
+    @Test
+    fun confidentSamplerVerdictOutranksTheLegacyClassifier() {
+        val r = SessionVerdict.compute(
+            SessionVerdict.Input(gameplay { base(it, gpu = 92, cpu = 40, hot = 60, gpuMhz = 900) }, gpuTopMhz = 900, legacyShare = mapOf("gpu" to 0.5, "thermal" to 0.9)),
+        )
+        assertEquals(SessionVerdict.GPU, r.cls)
+        assertNull(r.source)
+    }
+
     @Test
     fun propertiesCarryTheSpecKeys() {
         val props = SessionVerdict.compute(

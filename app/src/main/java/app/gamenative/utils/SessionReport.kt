@@ -270,7 +270,10 @@ object SessionReport {
             runCatching {
                 val designCap = frameRating?.fpsBy5Min?.takeIf { it.isNotEmpty() }
                     ?.let { designCapDetected(it, PowerTelemetry.bucketLoads()) } ?: false
-                putAll(SessionPerfSampler.properties(designCap))
+                val legacyShare = (get("bottleneck_share") as? Map<*, *>)?.entries
+                    ?.mapNotNull { (k, v) -> (k as? String)?.let { key -> (v as? Number)?.let { key to it.toDouble() } } }
+                    ?.toMap()
+                putAll(SessionPerfSampler.properties(designCap, frameRating?.fpsBy5Min.orEmpty(), legacyShare))
             }.onFailure { Timber.w(it, "SessionReport: perf verdict failed") }
             if (frameRating != null) {
                 put("total_frames", frameRating.totalFrames)

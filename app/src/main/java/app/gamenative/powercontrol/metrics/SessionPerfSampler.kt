@@ -147,9 +147,14 @@ object SessionPerfSampler {
 
     /**
      * The session's perf_verdict, stutter_share, throttle_onset_s and throttle_signal; empty when no frame was
-     * sampled. Clears the session's samples so a later session never reports them.
+     * sampled. Clears the session's samples so a later session never reports them. [legacyShare] is the older
+     * classifier's bottleneck_share, used when the sampler cannot name a cause.
      */
-    fun properties(designCapDetected: Boolean): Map<String, Any> = synchronized(lock) {
+    fun properties(
+        designCapDetected: Boolean,
+        fpsBy5Min: List<Int> = emptyList(),
+        legacyShare: Map<String, Double>? = null,
+    ): Map<String, Any> = synchronized(lock) {
         val buf = buffer ?: return@synchronized emptyMap()
         buffer = null
         if (buf.size == 0) return@synchronized emptyMap()
@@ -165,6 +170,8 @@ object SessionPerfSampler {
                 designCapDetected = designCapDetected,
                 fpsCap = PowerManager.targetFps,
                 stutterShare = SessionVerdict.stutterShare(histogramMs),
+                fpsBy5Min = fpsBy5Min,
+                legacyShare = legacyShare,
             ),
         ).properties()
     }
