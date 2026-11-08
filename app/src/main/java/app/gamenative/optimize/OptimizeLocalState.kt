@@ -246,11 +246,18 @@ data class PrefetchedRung(
     val kept: List<String>,
     /** The server rules build that answered. */
     val rulesVersion: String? = null,
+    /** It was asked for with ladder.prefer "cap", after a yes to the cap question. */
+    val capAsked: Boolean = false,
 ) {
-    /** [lastRulesVersion] is the rules build of the newest server answer; null when none said, which does not hold the rung back. */
+    /** Stale: no rules build said (an answer from before rules versions), or not the build of the newest server answer. */
+    fun staleRules(lastRulesVersion: String?): Boolean =
+        rulesVersion == null || (lastRulesVersion != null && rulesVersion != lastRulesVersion)
+
+    /** [lastRulesVersion] is the rules build of the newest server answer. A cap rung is only used when it was asked for. */
     fun isUsable(nowMillis: Long, profile: OptimizeProfile, key: PrefetchKey, ladder: ProfileLadder, lastRulesVersion: String?): Boolean =
         nowMillis - fetchedAt in 0..MAX_AGE_MS &&
-            (lastRulesVersion == null || rulesVersion == lastRulesVersion) &&
+            !staleRules(lastRulesVersion) &&
+            (!rung.isFpsCap || capAsked) &&
             !rung.isExpired(nowMillis) &&
             this.profile == profile &&
             this.key == key &&
@@ -268,6 +275,7 @@ data class PrefetchedRung(
         put("fps_limit", key.fpsLimit)
         put("kept", JSONArray(kept))
         rulesVersion?.let { put("rules_version", it) }
+        if (capAsked) put("cap_asked", true)
     }
 
     companion object {
@@ -286,6 +294,7 @@ data class PrefetchedRung(
                 key = PrefetchKey(o.optString("executable_path"), o.optString("dxwrapper"), o.optInt("fps_limit", 0)),
                 kept = o.optJSONArray("kept").strings(),
                 rulesVersion = o.optStringOrNull("rules_version"),
+                capAsked = o.optBoolean("cap_asked", false),
             )
         }
     }

@@ -1895,6 +1895,7 @@
     <string name="optimize_cap_body">Jocul ar rula mai mult timp cu mai puține sacadări, fără să încetinească.</string>
     <string name="optimize_cap_yes">Da, menține</string>
     <string name="optimize_after_cap_held">Menținut la %1$d fps: mai puține sacadări, rămâne rece mai mult timp</string>
+    <string name="optimize_after_cap_removed">Menținerea la %1$d fps nu a ajutat; limita a fost eliminată</string>
     <string name="optimize_status_cap_held">Menținut la %1$d fps</string>
     <string name="optimize_hint_heat">Aici limita este căldura. Încearcă Energie și căldură.</string>
     <string name="optimize_suggested_power">Sugerat: Energie și căldură, pentru că dispozitivul se încălzește.</string>

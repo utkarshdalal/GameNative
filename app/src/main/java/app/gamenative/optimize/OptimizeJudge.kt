@@ -23,6 +23,9 @@ object OptimizeJudge {
     const val REASON_GPU_LOAD = "gpu_load"
     const val REASON_CLOCK = "clock"
     const val REASON_TARGET_MET = "target_met"
+
+    /** A cap ran the device cooler: the hottest CPU or GPU reading down 3 °C or more with a lower peak thermal status. */
+    const val REASON_TEMP = "temp"
     const val REASON_NONE = "none"
 
     /** Too few comparable windows were left once the menu-like ones of a GPU-bound game were taken out. */
@@ -37,6 +40,7 @@ object OptimizeJudge {
     private const val STUTTER_RELATIVE = 0.30
     private const val STUTTER_ABSOLUTE = 0.005
     private const val THROTTLE_LATER_SEC = 180
+    private const val CAP_TEMP_DROP_C = 3
     private const val EPS = 1e-9
 
     /** At or above this share of the fps cap the average cannot show a gain; the judge reads the other signals. */
@@ -149,6 +153,17 @@ object OptimizeJudge {
         return if (s.size % 2 == 1) s[s.size / 2].toDouble() else (s[s.size / 2 - 1] + s[s.size / 2]) / 2.0
     }
 
+    /** The hottest CPU or GPU reading fell [CAP_TEMP_DROP_C] °C or more and the peak thermal status is lower. */
+    fun cooler(before: Metrics, after: Metrics): Boolean {
+        fun dropped(b: Int?, a: Int?) = b != null && a != null && b - a >= CAP_TEMP_DROP_C
+        val statusLower = before.thermalPeak != null && after.thermalPeak != null && after.thermalPeak < before.thermalPeak
+        return statusLower && (dropped(before.cpuTempMax, after.cpuTempMax) || dropped(before.gpuTempMax, after.gpuTempMax))
+    }
+
+    /**
+     * A cap rung ([isFpsCap]) is helped only when the throttle onset came 180 s or more later (or not at all, past the
+     * baseline's onset + 180 s), stutter share fell 30 % and 0.005, or [cooler]; otherwise it is no change.
+     */
     fun verdict(before: Metrics, after: Metrics, isFpsCap: Boolean, fpsCap: Double? = null): Verdict {
         val fpsBefore = before.steadyFps
         val fpsAfter = after.steadyFps
@@ -172,6 +187,14 @@ object OptimizeJudge {
         }
 
         val throttleEarlier = tb != null && ta != null && tb - ta >= THROTTLE_LATER_SEC
+
+        // A cap lowers fps by design and holds the target trivially; it is judged only by what a cap is for.
+        if (isFpsCap) {
+            if (throttleLater) return Verdict(HELPED, REASON_THROTTLE)
+            if (stutterDown) return Verdict(HELPED, REASON_STUTTER)
+            if (cooler(before, after)) return Verdict(HELPED, REASON_TEMP)
+            return Verdict(NO_CHANGE, REASON_NONE)
+        }
 
         val nearCap = !isFpsCap && fpsCap != null && fpsCap > 0 && fpsBefore != null && fpsBefore >= NEAR_CAP_SHARE * fpsCap - EPS
         if (!nearCap) {

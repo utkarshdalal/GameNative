@@ -1933,6 +1933,7 @@
     <string name="optimize_cap_body">Le jeu tournerait avec moins de saccades plus longtemps, sans ralentir.</string>
     <string name="optimize_cap_yes">Oui, le maintenir</string>
     <string name="optimize_after_cap_held">Maintenu à %1$d fps : moins de saccades, reste frais plus longtemps</string>
+    <string name="optimize_after_cap_removed">Maintenir à %1$d fps n\'a pas aidé ; la limite a été retirée</string>
     <string name="optimize_status_cap_held">Maintenu à %1$d fps</string>
     <string name="optimize_hint_heat">Ici, c\'est la chaleur qui limite. Essayez Énergie et chaleur.</string>
     <string name="optimize_suggested_power">Suggéré : Énergie et chaleur, car l\'appareil chauffe.</string>

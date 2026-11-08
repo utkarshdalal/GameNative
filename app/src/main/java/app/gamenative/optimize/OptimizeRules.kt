@@ -1,5 +1,7 @@
 package app.gamenative.optimize
 
+import app.gamenative.ui.component.parseBooleanExtra
+import app.gamenative.ui.component.parsePositiveFpsLimit
 import kotlin.math.roundToInt
 import org.json.JSONObject
 
@@ -74,10 +76,27 @@ object OptimizeTarget {
         return fpsDeclines || clockFalls || dips(m, refreshHz, fpsCap)
     }
 
-    /** The frame rate Performance holds: min(refresh, 60), or the active cap when it is lower. */
+    /**
+     * The frame rate Performance holds: min(refresh, 60), or the user's own limiter when it is lower. [fpsCap] must be
+     * the user's limiter ([userFpsCap]), never a cap Optimize put on: holding that would meet the target trivially.
+     */
     fun fpsTarget(refreshHz: Double?, fpsCap: Int): Double {
         val ceiling = minOf(refreshHz?.takeIf { it > 0 } ?: PERFORMANCE_FPS_CEILING, PERFORMANCE_FPS_CEILING)
         return if (fpsCap > 0) minOf(ceiling, fpsCap.toDouble()) else ceiling
+    }
+
+    /**
+     * The fps limiter the user set: when a kept (applied) or trial step of [ladder] set the container fpsLimit, the value
+     * the first of them found before it, from its lever record; otherwise [containerFps]. 0 is no limiter.
+     */
+    fun userFpsCap(ladder: ProfileLadder?, containerFps: Int, defaultFps: Int): Int {
+        val records = ladder?.let { l -> l.kept.filter { it.applied }.flatMap { it.levers } + l.pending?.levers.orEmpty() }.orEmpty()
+        val before = records.asSequence()
+            .filter { it.optString("type") == Lever.TYPE_CONTAINER }
+            .flatMap { it.optJSONArray("before").objects().asSequence() }
+            .firstOrNull { it.optString("key") == "fpsLimit" } ?: return containerFps
+        if (parseBooleanExtra(before.optString("enabled")) == false) return 0
+        return parsePositiveFpsLimit(before.optString("target").trim()) ?: defaultFps
     }
 
     /** The five-minute windows that count; the first holds the loading screens once there are three or more. */
@@ -116,8 +135,18 @@ object OptimizeTarget {
     /**
      * Done implies keep: a compared session that meets the target keeps the step as helped (target_met) whatever the
      * judge said, so the ladder never ends while the step is still flagged to come off. Otherwise the judge stands.
+     * A cap step ([isFpsCap]) never meets the target: the judge's cap rules alone keep or revert it.
      */
-    fun settle(profile: OptimizeProfile, result: String, reason: String?, after: Metrics, refreshHz: Double?, fpsCap: Int): Settled {
+    fun settle(
+        profile: OptimizeProfile,
+        result: String,
+        reason: String?,
+        after: Metrics,
+        refreshHz: Double?,
+        fpsCap: Int,
+        isFpsCap: Boolean = false,
+    ): Settled {
+        if (isFpsCap) return Settled(result, reason, done = false)
         val compared = result == OptimizeJudge.HELPED || result == OptimizeJudge.NO_CHANGE || result == OptimizeJudge.WORSE
         if (compared && met(profile, after, refreshHz, fpsCap)) {
             return Settled(OptimizeJudge.HELPED, OptimizeJudge.REASON_TARGET_MET, done = true)

@@ -1915,6 +1915,7 @@
     <string name="optimize_cap_body">Гра довше працюватиме з меншими підвисаннями й без сповільнення.</string>
     <string name="optimize_cap_yes">Так, тримати</string>
     <string name="optimize_after_cap_held">Тримається на %1$d fps: менше підвисань, довше лишається холодною</string>
+    <string name="optimize_after_cap_removed">Обмеження до %1$d fps не допомогло; його знято</string>
     <string name="optimize_status_cap_held">Тримається на %1$d fps</string>
     <string name="optimize_hint_heat">Тут обмежує нагрів. Спробуйте «Живлення й нагрів».</string>
     <string name="optimize_suggested_power">Рекомендовано: «Живлення й нагрів», бо пристрій нагрівається.</string>

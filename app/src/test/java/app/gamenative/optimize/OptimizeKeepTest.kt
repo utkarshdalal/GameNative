@@ -70,7 +70,24 @@ class OptimizeKeepTest {
         assertTrue(back.prefetched!!.isUsable(now, OptimizeProfile.BALANCED, key, ladder, "rules-1"))
         assertTrue(back.prefetched!!.isUsable(now, OptimizeProfile.BALANCED, key, ladder, null))
         assertFalse(prefetched.copy(rulesVersion = null).isUsable(now, OptimizeProfile.BALANCED, key, ladder, "rules-2"))
+        // The Odin 3 case: a rung fetched before the server said a rules build, used before any answer said one.
+        assertFalse(prefetched.copy(rulesVersion = null).isUsable(now, OptimizeProfile.BALANCED, key, ladder, null))
+        assertTrue(prefetched.copy(rulesVersion = null).staleRules(null))
+        assertFalse(prefetched.staleRules(null))
         assertNull(OptimizeLocalState.fromJson(JSONObject(OptimizeLocalState().toJson().toString())).lastRulesVersion)
+    }
+
+    @Test
+    fun aPrefetchedCapIsOnlyUsedWhenAskedFor() {
+        val now = 1_800_000_000_000L
+        val key = PrefetchKey("C:\\Game\\Game.exe", "dxvk", 60)
+        val ladder = ProfileLadder(state = LadderState.TRYING)
+        val cap = Rung.parse(JSONObject("{\"rung_id\":\"cap45\",\"version\":\"v1\",\"is_fps_cap\":true,\"levers\":[]}"))!!
+        val prefetched = PrefetchedRung(cap, now, OptimizeProfile.PERFORMANCE, key, emptyList(), "rules-1")
+        assertFalse(prefetched.isUsable(now, OptimizeProfile.PERFORMANCE, key, ladder, "rules-1"))
+        val asked = PrefetchedRung.fromJson(JSONObject(prefetched.copy(capAsked = true).toJson().toString()))!!
+        assertTrue(asked.capAsked)
+        assertTrue(asked.isUsable(now, OptimizeProfile.PERFORMANCE, key, ladder, "rules-1"))
     }
 
     @Test
@@ -163,6 +180,25 @@ class OptimizeKeepTest {
         OptimizeReverter.revertFile(checked.record)
         assertEquals(original, ini.readText())
         assertTrue(ini.canWrite())
+    }
+
+    @Test
+    fun theFlaggedStepComesOffBeforeKeptStepsAreRechecked() {
+        val kept = apply(readOnly = false)
+        val trial = Lever.EngineFile(
+            "{userProfilePath}/Saved/Config/Windows/Engine.ini", "ini", "default", false,
+            listOf(set("SystemSettings", "r.ShadowQuality", "0")),
+        )
+        val pending = OptimizeApplier.applyFile(0, trial, roots, tmp.newFolder("trial"), false, OptimizeApplier.OpCount())!!
+        // Checked while the trial step is still on, its value reads as the game resetting the kept key.
+        val withTrial = ini.readBytes()
+        assertEquals(1, OptimizeApplier.reverifyFile(JSONObject(kept.toString()), null)!!.reset)
+        ini.writeBytes(withTrial)
+
+        // beforeLaunch order: the flagged step comes off first, then the kept step finds nothing reset.
+        OptimizeReverter.revertFile(pending)
+        assertTrue(ini.readText().contains("r.ShadowQuality=1"))
+        assertEquals(0, OptimizeApplier.reverifyFile(kept, null)!!.reset)
     }
 
     private val regKey = "Software\\Epic\\Game"

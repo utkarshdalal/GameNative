@@ -1884,6 +1884,7 @@
     <string name="optimize_cap_body">느려지지 않고 끊김 없이 더 오래 실행할 수 있습니다.</string>
     <string name="optimize_cap_yes">예, 고정</string>
     <string name="optimize_after_cap_held">%1$d fps로 고정 중: 끊김이 줄고 더 오래 시원하게 실행</string>
+    <string name="optimize_after_cap_removed">%1$d fps로 고정해도 효과가 없어 제한을 해제했습니다</string>
     <string name="optimize_status_cap_held">%1$d fps로 고정됨</string>
     <string name="optimize_hint_heat">여기서는 발열이 한계입니다. 전력 및 발열을 사용해 보세요.</string>
     <string name="optimize_suggested_power">추천: 전력 및 발열 (기기가 뜨거워지고 있어서)</string>

@@ -542,4 +542,92 @@ class OptimizeRulesTest {
         assertNull(OptimizeStatus.heldCapFps(held.withLadder(OptimizeProfile.BALANCED, ProfileLadder(kept = listOf(capKept.copy(applied = false))))))
         assertEquals(OptimizeCards.ACTION_CAP, OptimizeCards.wireAction(OptimizeCards.ACTION_CAP, OptimizeCard.CAP))
     }
+
+    // The Odin 3 Forest cap trial: kept s3 at 59.4 fps throttling from 105 s, then the 45 fps cap, still at thermal status 5.
+    private val forestKept = Metrics(
+        gameplaySec = 1800, steadyFps = 59.4, stutterShare = 0.012, throttleOnsetSec = 105, cls = "gpu", confident = true,
+        fpsBy5Min = listOf(58, 60, 59, 60, 59, 60), cpuTempMax = 100, gpuTempMax = 90, thermalPeak = 5,
+    )
+    private val forestCap = forestKept.copy(
+        steadyFps = 44.6, stutterShare = 0.011, throttleOnsetSec = 119,
+        fpsBy5Min = listOf(44, 45, 45, 45, 44, 45), cpuTempMax = 101, gpuTempMax = 91,
+    )
+
+    private fun capRecord(enabled: String?, target: String?) = JSONObject()
+        .put("type", Lever.TYPE_CONTAINER).put("index", 0)
+        .put("before", org.json.JSONArray().put(JSONObject().put("key", "fpsLimit").put("enabled", enabled).put("target", target)))
+
+    @Test
+    fun theTargetIgnoresTheCapOptimizePutOn() {
+        val cap = PendingRung(Rung.parse(capRungJson)!!, 0L, forestKept, 0, listOf(capRecord("false", null)))
+        val ladder = ProfileLadder(state = LadderState.TRYING, pending = cap)
+        assertEquals(0, OptimizeTarget.userFpsCap(ladder, 45, 60))
+        assertEquals(60.0, OptimizeTarget.fpsTarget(120.0, OptimizeTarget.userFpsCap(ladder, 45, 60)), 1e-9)
+        assertEquals(40, OptimizeTarget.userFpsCap(ladder.copy(pending = cap.copy(levers = listOf(capRecord("true", "40")))), 30, 60))
+        assertEquals(60, OptimizeTarget.userFpsCap(ladder.copy(pending = cap.copy(levers = listOf(capRecord(null, null)))), 30, 60))
+        val kept = KeptRung("cap.balanced.30", "c1", 1, listOf("framecap"), 0L, listOf(capRecord("true", "50")), null, rung = capRungJson)
+        assertEquals(50, OptimizeTarget.userFpsCap(ProfileLadder(kept = listOf(kept)), 30, 60))
+        // A cap whose profile is not on leaves the container as the user set it.
+        assertEquals(30, OptimizeTarget.userFpsCap(ProfileLadder(kept = listOf(kept.copy(applied = false))), 30, 60))
+        assertEquals(45, OptimizeTarget.userFpsCap(ProfileLadder(), 45, 60))
+        assertEquals(45, OptimizeTarget.userFpsCap(null, 45, 60))
+        // Against our own 45 the cap session held the target; against the user's own it does not.
+        assertTrue(OptimizeTarget.met(OptimizeProfile.PERFORMANCE, forestCap, 120.0, 45))
+        assertFalse(OptimizeTarget.met(OptimizeProfile.PERFORMANCE, forestCap, 120.0, OptimizeTarget.userFpsCap(ladder, 45, 60)))
+    }
+
+    @Test
+    fun theForestCapDidNotHelpAndComesOff() {
+        val decision = OptimizeJudge.judge(forestCap, forestKept, isFpsCap = true, shortSessions = 0, fpsCap = 60.0)
+        assertEquals(OptimizeJudge.Decision.Final(OptimizeJudge.NO_CHANGE, OptimizeJudge.REASON_NONE), decision)
+        // A cap never settles as target_met, even where the session would meet the profile's target.
+        assertEquals(
+            OptimizeTarget.Settled(OptimizeJudge.NO_CHANGE, OptimizeJudge.REASON_NONE, done = false),
+            OptimizeTarget.settle(
+                OptimizeProfile.PERFORMANCE, OptimizeJudge.NO_CHANGE, OptimizeJudge.REASON_NONE, forestCap, 120.0, 45, isFpsCap = true,
+            ),
+        )
+        assertEquals(
+            OptimizeTarget.Settled(OptimizeJudge.HELPED, OptimizeJudge.REASON_TARGET_MET, done = true),
+            OptimizeTarget.settle(OptimizeProfile.PERFORMANCE, OptimizeJudge.NO_CHANGE, OptimizeJudge.REASON_NONE, forestCap, 120.0, 45),
+        )
+    }
+
+    @Test
+    fun aCapIsHelpedOnlyByLaterThrottlingFewerStuttersOrACoolerDevice() {
+        fun verdict(after: Metrics) = OptimizeJudge.verdict(forestKept, after, isFpsCap = true, fpsCap = 60.0)
+        val throttle = OptimizeJudge.Verdict(OptimizeJudge.HELPED, OptimizeJudge.REASON_THROTTLE)
+        assertEquals(throttle, verdict(forestCap.copy(throttleOnsetSec = null)))
+        assertEquals(throttle, verdict(forestCap.copy(throttleOnsetSec = 285)))
+        assertEquals(OptimizeJudge.REASON_STUTTER, verdict(forestCap.copy(stutterShare = 0.006)).reason)
+        assertEquals(
+            OptimizeJudge.Verdict(OptimizeJudge.HELPED, OptimizeJudge.REASON_TEMP),
+            verdict(forestCap.copy(gpuTempMax = 87, thermalPeak = 4)),
+        )
+        // Cooler without a lower thermal status, or a lower status without 3 °C, is no change.
+        assertEquals(OptimizeJudge.NO_CHANGE, verdict(forestCap.copy(gpuTempMax = 85)).result)
+        assertEquals(OptimizeJudge.NO_CHANGE, verdict(forestCap.copy(cpuTempMax = 98, thermalPeak = 4)).result)
+        // Lower fps and more stutter are what a cap may cost; neither makes it worse.
+        assertEquals(OptimizeJudge.NO_CHANGE, verdict(forestCap.copy(stutterShare = 0.03)).result)
+    }
+
+    @Test
+    fun peakTemperaturesComeFromTheRunRecord() {
+        val run = JSONObject()
+            .put("avg_fps", 44.6).put("session_length", 1800).put("thermal_peak", 5)
+            .put(
+                "perf_by_5min",
+                org.json.JSONArray()
+                    .put(JSONObject().put("cpu_temp_max", 99).put("gpu_temp_max", 88).put("thermal_status_max", 4))
+                    .put(JSONObject().put("cpu_temp_max", 101).put("gpu_temp_max", 91).put("thermal_status_max", 5)),
+            )
+        val m = Metrics.fromRun(run)
+        assertEquals(101, m.cpuTempMax)
+        assertEquals(91, m.gpuTempMax)
+        assertEquals(5, m.thermalPeak)
+        assertEquals(m, Metrics.fromJson(JSONObject(m.toJson().toString())))
+        val noPeak = JSONObject(run.toString()).apply { remove("thermal_peak") }
+        assertEquals(5, Metrics.fromRun(noPeak).thermalPeak)
+        assertNull(Metrics.fromRun(JSONObject().put("session_length", 600)).cpuTempMax)
+    }
 }

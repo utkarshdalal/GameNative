@@ -1882,6 +1882,7 @@
     <string name="optimize_cap_body">這樣遊戲能更長時間少卡頓地執行，且不會變慢。</string>
     <string name="optimize_cap_yes">是，維持</string>
     <string name="optimize_after_cap_held">維持在 %1$d fps：卡頓更少，更長時間不發熱</string>
+    <string name="optimize_after_cap_removed">維持在 %1$d fps 沒有幫助，已取消限制</string>
     <string name="optimize_status_cap_held">維持在 %1$d fps</string>
     <string name="optimize_hint_heat">這裡的瓶頸是發熱。試試「電源與發熱」。</string>
     <string name="optimize_suggested_power">建議：電源與發熱，因為裝置正在發熱。</string>

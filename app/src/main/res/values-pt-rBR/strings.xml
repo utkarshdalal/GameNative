@@ -1785,6 +1785,7 @@
     <string name="optimize_cap_body">O jogo rodaria com menos travadas por mais tempo, sem ficar lento.</string>
     <string name="optimize_cap_yes">Sim, manter</string>
     <string name="optimize_after_cap_held">Mantido a %1$d fps: menos travadas, fica frio por mais tempo</string>
+    <string name="optimize_after_cap_removed">Manter a %1$d fps não ajudou; o limite foi removido</string>
     <string name="optimize_status_cap_held">Mantido a %1$d fps</string>
     <string name="optimize_hint_heat">Aqui o limite é o calor. Experimente Energia e calor.</string>
     <string name="optimize_suggested_power">Sugerido: Energia e calor, porque o dispositivo está esquentando.</string>

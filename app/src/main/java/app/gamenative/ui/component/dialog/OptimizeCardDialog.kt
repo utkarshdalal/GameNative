@@ -111,8 +111,10 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
             }
             body = measuredText(card)
         }
-        OptimizeCard.NO_CHANGE -> title = stringResource(R.string.optimize_after_no_change)
-        OptimizeCard.WORSE -> title = stringResource(R.string.optimize_after_worse)
+        OptimizeCard.NO_CHANGE -> title = card.capFps?.let { stringResource(R.string.optimize_after_cap_removed, it) }
+            ?: stringResource(R.string.optimize_after_no_change)
+        OptimizeCard.WORSE -> title = card.capFps?.let { stringResource(R.string.optimize_after_cap_removed, it) }
+            ?: stringResource(R.string.optimize_after_worse)
         OptimizeCard.EXHAUSTED -> title = stringResource(R.string.optimize_after_exhausted, name)
         OptimizeCard.DONE -> {
             title = stringResource(R.string.optimize_after_done, name)

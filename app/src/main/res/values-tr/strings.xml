@@ -1933,6 +1933,7 @@
     <string name="optimize_cap_body">Oyun yavaşlamadan daha uzun süre daha az takılmayla çalışır.</string>
     <string name="optimize_cap_yes">Evet, sabitle</string>
     <string name="optimize_after_cap_held">%1$d fps\'de sabit: daha az takılma, daha uzun süre serin kalır</string>
+    <string name="optimize_after_cap_removed">%1$d fps\'de sabitlemek işe yaramadı; sınır kaldırıldı</string>
     <string name="optimize_status_cap_held">%1$d fps\'de sabit</string>
     <string name="optimize_hint_heat">Burada sınır ısı. Güç ve ısı\'yı deneyin.</string>
     <string name="optimize_suggested_power">Önerilen: Güç ve ısı, çünkü cihaz ısınıyor.</string>

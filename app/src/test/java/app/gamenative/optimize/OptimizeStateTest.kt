@@ -295,7 +295,7 @@ class OptimizeStateTest {
         val key = PrefetchKey("C:\\Game\\TheForest.exe", "dxvk-2.4", 60)
         val kept = KeptRung("k1", "1", 1, emptyList(), 0L, emptyList(), null)
         val ladder = ProfileLadder(state = LadderState.TRYING, kept = listOf(kept))
-        val prefetched = PrefetchedRung(rung, now, OptimizeProfile.BALANCED, key, listOf("k1"))
+        val prefetched = PrefetchedRung(rung, now, OptimizeProfile.BALANCED, key, listOf("k1"), "rules-1")
 
         val state = OptimizeLocalState(activeProfile = OptimizeProfile.BALANCED, prefetched = prefetched)
         val back = OptimizeLocalState.fromJson(JSONObject(state.toJson().toString())).prefetched!!
@@ -344,7 +344,7 @@ class OptimizeStateTest {
         val keptOtherLevers = keptSameLevers.copy(rung = JSONObject(rungJson).put("levers", org.json.JSONArray()))
         assertFalse(ladder.copy(kept = listOf(keptOtherLevers)).repeats(rung))
 
-        val prefetched = PrefetchedRung(rung, now, OptimizeProfile.BALANCED, key, listOf("old_id"))
+        val prefetched = PrefetchedRung(rung, now, OptimizeProfile.BALANCED, key, listOf("old_id"), "rules-1")
         assertFalse(prefetched.isUsable(now, OptimizeProfile.BALANCED, key, ladder.copy(kept = listOf(keptSameLevers)), null))
         assertTrue(prefetched.isUsable(now, OptimizeProfile.BALANCED, key, ladder.copy(kept = listOf(keptOtherLevers)), null))
     }

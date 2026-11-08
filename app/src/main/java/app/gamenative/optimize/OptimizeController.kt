@@ -188,6 +188,10 @@ object OptimizeController {
         return parsePositiveFpsLimit(container.getExtra(OptimizeFiles.FPS_LIMITER_TARGET_EXTRA)) ?: DEFAULT_FPS_LIMIT
     }
 
+    /** The user's own limiter, not a cap Optimize put on: what the profile targets are measured against. */
+    private fun userFpsLimit(container: Container, ladder: ProfileLadder?): Int =
+        OptimizeTarget.userFpsCap(ladder, fpsLimit(container), DEFAULT_FPS_LIMIT)
+
     private fun nextRungBody(
         context: Context,
         appId: String,
@@ -432,7 +436,9 @@ object OptimizeController {
             if (sentPrefer) state = state.copy(capPreferred = false)
             val ladder = state.ladder(profile)
             val rung = response.rung?.takeIf { response.status == NextRungResponse.STATUS_RUNG }
-            val prefetched = rung?.let { PrefetchedRung(it, now, profile, key, kept, response.effectiveRulesVersion) }
+            val prefetched = rung?.let {
+                PrefetchedRung(it, now, profile, key, kept, response.effectiveRulesVersion, capAsked = sentPrefer)
+            }
             if (prefetched != null && !waitsForCap && state.activeProfile == profile && wouldAsk(state, ladder, now) &&
                 prefetched.isUsable(now, profile, key, ladder, state.lastRulesVersion)
             ) {
@@ -556,14 +562,13 @@ object OptimizeController {
                     return@withLock
                 }
 
-                val (reverified, resetReports) = reverifyKept(appId, container, profile, state.ladder(profile))
-                var ladder = reverified
-                resetReports.forEach { state = state.queued(it) }
+                // The flagged step comes off first, so the kept steps' keys it wrote over are not read as reset by the game.
+                var ladder = state.ladder(profile)
                 val flagged = ladder.pending?.takeIf { it.revert != null }
                 if (flagged != null) {
                     if (!OptimizeReverter.revertLevers(context, container, flagged.levers)) {
                         Timber.tag(TAG).w("Taking ${flagged.rung.rungId} off failed; trying again next launch")
-                        store.write(state.withLadder(profile, ladder))
+                        store.write(state)
                         telemetry(profile, null, "failed")
                         return@withLock
                     }
@@ -571,6 +576,9 @@ object OptimizeController {
                     Timber.tag(TAG).i("Optimize: reverted ${flagged.rung.rungId} v${flagged.rung.version} (${flagged.revert}) before launch")
                     ladder = ladder.copy(pending = null, baselineOverride = flagged.baseline ?: ladder.baselineOverride)
                 }
+                val (reverified, resetReports) = reverifyKept(appId, container, profile, ladder)
+                ladder = reverified
+                resetReports.forEach { state = state.queued(it) }
 
                 var applyResult = if (ladder.pending != null) "ok" else "none"
                 val now = System.currentTimeMillis()
@@ -578,7 +586,8 @@ object OptimizeController {
                 state = state.copy(prefetched = null)
                 if (ladder.pending == null && !state.capPreferred && wouldAsk(state, ladder, now)) {
                     val baseline = ladder.baselineOverride ?: baselineRun(container)
-                    doneAtBaseline(appId, state.withLadder(profile, ladder), profile, baseline, refreshHz(context), fpsLimit(container))?.let {
+                    val userCap = userFpsLimit(container, ladder)
+                    doneAtBaseline(appId, state.withLadder(profile, ladder), profile, baseline, refreshHz(context), userCap)?.let {
                         state = it
                         ladder = it.ladder(profile)
                     }
@@ -587,9 +596,11 @@ object OptimizeController {
                     val baseline = ladder.baselineOverride ?: baselineRun(container)
                     val key = prefetchKey(container)
                     val usable = prefetched?.takeIf { !state.capPreferred && it.isUsable(now, profile, key, ladder, state.lastRulesVersion) }
-                    if (prefetched != null && usable == null && state.lastRulesVersion != null && prefetched.rulesVersion != state.lastRulesVersion) {
+                    if (prefetched != null && usable == null && prefetched.staleRules(state.lastRulesVersion)) {
                         Timber.tag(TAG).i(
-                            "Optimize: dropping ${prefetched.rung.rungId} v${prefetched.rung.version}, fetched from rules ${prefetched.rulesVersion}, server now ${state.lastRulesVersion}",
+                            "Optimize: dropping ${prefetched.rung.rungId} v${prefetched.rung.version}, " +
+                                "fetched from rules ${prefetched.rulesVersion ?: "unknown"}, " +
+                                "server now ${state.lastRulesVersion ?: "unknown"}; asking the server",
                         )
                     }
                     val deadline = System.currentTimeMillis() + budgetMs
@@ -610,8 +621,11 @@ object OptimizeController {
                         return ask()
                     }
 
-                    /** Takes one answer; true when its rung changed nothing and the next one may be asked for. */
-                    suspend fun take(result: NextRungResult?, fromPrefetch: PrefetchedRung?): Boolean {
+                    /**
+                     * Takes one answer; true when its rung changed nothing and the next one may be asked for. [capAsked]: the
+                     * request said ladder.prefer "cap". A cap the user did not ask for ends the ladder; the cap stays a question.
+                     */
+                    suspend fun take(result: NextRungResult?, fromPrefetch: PrefetchedRung?, capAsked: Boolean): Boolean {
                         when (result) {
                             null -> Timber.tag(TAG).i("No next-rung answer within ${NEXT_RUNG_LAUNCH_BUDGET_MS / 1000} s; launching with the kept changes")
                             NextRungResult.Failed -> Timber.tag(TAG).i("No next-rung answer; launching with the kept changes")
@@ -629,11 +643,18 @@ object OptimizeController {
                                     )
                                 }
                                 val previousStatus = ladder.lastStatus
-                                ladder = ladder.copy(lastStatus = response.status)
-                                if (response.status != NextRungResponse.STATUS_RUNG) {
+                                val unaskedCap = !capAsked && response.status == NextRungResponse.STATUS_RUNG &&
+                                    response.rung?.isFpsCap == true
+                                val status = if (unaskedCap) NextRungResponse.STATUS_EXHAUSTED else response.status
+                                ladder = ladder.copy(lastStatus = status)
+                                if (unaskedCap) {
+                                    Timber.tag(TAG).i(
+                                        "Optimize: only the cap ${response.rung?.rungId} is left, not asked for; the ladder ends here",
+                                    )
+                                } else if (response.status != NextRungResponse.STATUS_RUNG) {
                                     Timber.tag(TAG).i("Optimize: next rung status ${response.status} (message ${response.messageId}); nothing applied")
                                 }
-                                when (response.status) {
+                                when (status) {
                                     NextRungResponse.STATUS_EXHAUSTED -> {
                                         ladder = ladder.copy(state = LadderState.EXHAUSTED)
                                         state = state.copy(card = OptimizeCard(OptimizeCard.EXHAUSTED, System.currentTimeMillis(), gameName(appId), profile))
@@ -705,6 +726,7 @@ object OptimizeController {
                         return false
                     }
 
+                    val firstAsksCap = usable?.capAsked ?: state.capPreferred
                     val first = when {
                         usable != null -> {
                             Timber.tag(TAG).i("Using the next rung fetched ${(now - usable.fetchedAt) / 60_000} min ago")
@@ -716,7 +738,10 @@ object OptimizeController {
                         }
                         else -> askSkippingRepeat()
                     }
-                    if (take(first, usable) && deadline > System.currentTimeMillis()) take(askSkippingRepeat(), null)
+                    if (take(first, usable, firstAsksCap) && deadline > System.currentTimeMillis()) {
+                        val asksCap = state.capPreferred
+                        take(askSkippingRepeat(), null, asksCap)
+                    }
                 }
                 state = state.withLadder(profile, ladder)
                 telemetry(profile, ladder.pending, applyResult)
@@ -804,7 +829,8 @@ object OptimizeController {
         val sessionRung = (props["optimize_state"] as? Map<*, *>)?.get("template_id") as? String
         if (sessionRung != pending.rung.rungId) return null
         val baseline = pending.baseline ?: return null
-        val fpsTarget = OptimizeTarget.fpsTarget(context?.let { refreshHz(it) }, fpsLimit(container))
+        val judgedCap = if (pending.rung.isFpsCap) userFpsLimit(container, state.active) else fpsLimit(container)
+        val fpsTarget = OptimizeTarget.fpsTarget(context?.let { refreshHz(it) }, judgedCap)
         return OptimizeJudge.comparableWindows(baseline, Metrics.fromRun(JSONObject(props)), fpsTarget)?.excluded?.size
     }
 
@@ -839,6 +865,8 @@ object OptimizeController {
                 val now = System.currentTimeMillis()
                 val profile = state.activeProfile
                 val cardBefore = state.card
+                // The judge compares against the limiter the game ran under; the targets against the user's own.
+                val userCap = userFpsLimit(container, profile?.let { state.ladder(it) })
                 if (profile == null) {
                     val block = OptimizeCards.firstCardBlock(state, after, now)
                     cardField = OptimizeCards.cardField(block == null, block)
@@ -862,11 +890,13 @@ object OptimizeController {
                     val ladder = state.ladder(profile)
                     val pending = ladder.pending
                     if (pending != null && pending.revert == null && sessionRung == pending.rung.rungId) {
-                        val fpsTarget = OptimizeTarget.fpsTarget(refresh, cap)
+                        // A cap step is judged against the user's own limiter, so its own cap never reads as menu windows.
+                        val fpsTarget = OptimizeTarget.fpsTarget(refresh, if (pending.rung.isFpsCap) userCap else cap)
                         state = when (val decision = OptimizeJudge.judge(after, pending.baseline, pending.rung.isFpsCap, pending.shortSessions, fpsTarget)) {
                             is OptimizeJudge.Decision.Short ->
                                 state.withLadder(profile, ladder.copy(pending = pending.copy(shortSessions = decision.shortSessions)))
-                            is OptimizeJudge.Decision.Crash -> finish(appId, state, profile, ladder, pending, OptimizeJudge.CRASH, null, after, refresh, cap)
+                            is OptimizeJudge.Decision.Crash ->
+                                finish(appId, state, profile, ladder, pending, OptimizeJudge.CRASH, null, after, refresh, userCap)
                             is OptimizeJudge.Decision.Final -> {
                                 if (decision.excludedWindows.isNotEmpty()) {
                                     Timber.tag(TAG).i(
@@ -874,7 +904,7 @@ object OptimizeController {
                                     )
                                 }
                                 finish(
-                                    appId, state, profile, ladder, pending, decision.result, decision.reason, after, refresh, cap,
+                                    appId, state, profile, ladder, pending, decision.result, decision.reason, after, refresh, userCap,
                                     judged = decision.judged ?: after, excludedWindows = decision.excludedWindows,
                                 )
                             }
@@ -883,12 +913,12 @@ object OptimizeController {
                     }
                     val current = state.ladder(profile)
                     if (current.pending == null && !state.capPreferred) {
-                        doneAtBaseline(appId, state, profile, current.baselineOverride ?: baselineRun(container), refresh, cap)?.let {
+                        doneAtBaseline(appId, state, profile, current.baselineOverride ?: baselineRun(container), refresh, userCap)?.let {
                             state = it
                             store.write(state)
                         }
                     }
-                    capCard(appId, state, after, cap, now, refresh)?.let {
+                    capCard(appId, state, after, userFpsLimit(container, state.ladder(profile)), now, refresh)?.let {
                         state = it
                         store.write(state)
                     }
@@ -962,7 +992,7 @@ object OptimizeController {
     ): OptimizeLocalState {
         val rung = pending.rung
         val now = System.currentTimeMillis()
-        val settled = OptimizeTarget.settle(profile, judgedResult, judgeReason, judged, refreshHz, fpsCap)
+        val settled = OptimizeTarget.settle(profile, judgedResult, judgeReason, judged, refreshHz, fpsCap, rung.isFpsCap)
         val result = settled.result
         val report = outcomeBody(
             appId, profile, rung.rungId, rung.version, pending.baseline, after, result, pending.levers.size, emptyList(),
@@ -999,10 +1029,10 @@ object OptimizeController {
             )
             result == OptimizeJudge.NO_CHANGE -> {
                 if (l.noChangeStreak >= MAX_NO_CHANGE_STREAK) l = l.copy(state = LadderState.PAUSED)
-                OptimizeCard(OptimizeCard.NO_CHANGE, now, name, profile, rungId = rung.rungId)
+                OptimizeCard(OptimizeCard.NO_CHANGE, now, name, profile, rungId = rung.rungId, capFps = OptimizeCards.capFps(rung.raw))
             }
             result == OptimizeJudge.WORSE || result == OptimizeJudge.CRASH ->
-                OptimizeCard(OptimizeCard.WORSE, now, name, profile, rungId = rung.rungId)
+                OptimizeCard(OptimizeCard.WORSE, now, name, profile, rungId = rung.rungId, capFps = OptimizeCards.capFps(rung.raw))
             else -> null
         }
         val s = state.queued(report).withLadder(profile, l)
@@ -1074,7 +1104,7 @@ object OptimizeController {
             if (!ContainerUtils.hasContainer(context, appId)) return@withContext null
             val container = ContainerUtils.getContainer(context, appId)
             val baseline = baselineRun(container)?.takeIf { it.confident == true && it.cls in OptimizeCards.CLASSES } ?: return@withContext null
-            val cap = fpsLimit(container)
+            val cap = userFpsLimit(container, OptimizeStore(container.rootDir).read().active)
             val refresh = refreshHz(context)
             Suggestion(OptimizeCards.suggestedProfile(baseline.cls, baseline, cap, refresh), OptimizeTarget.hot(baseline, refresh, cap))
         } catch (e: Exception) {
@@ -1145,7 +1175,7 @@ object OptimizeController {
             val ladder = s.ladder(target)
             s = s.withLadder(target, OptimizeLadders.picked(ladder))
             val baseline = s.ladder(target).baselineOverride ?: baselineRun(container)
-            s = doneAtBaseline(appId, s, target, baseline, refreshHz(context), fpsLimit(container)) ?: s
+            s = doneAtBaseline(appId, s, target, baseline, refreshHz(context), userFpsLimit(container, s.ladder(target))) ?: s
         }
         return s to true
     }

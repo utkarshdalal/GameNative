@@ -1919,6 +1919,7 @@
     <string name="optimize_cap_body">Gra działałaby dłużej z mniejszą liczbą przycięć, bez zwalniania.</string>
     <string name="optimize_cap_yes">Tak, utrzymaj</string>
     <string name="optimize_after_cap_held">Utrzymywane na %1$d fps: mniej przycięć, dłużej pozostaje chłodna</string>
+    <string name="optimize_after_cap_removed">Utrzymywanie %1$d fps nie pomogło; limit został usunięty</string>
     <string name="optimize_status_cap_held">Utrzymywane na %1$d fps</string>
     <string name="optimize_hint_heat">Tutaj ograniczeniem jest temperatura. Spróbuj Zasilanie i temperatura.</string>
     <string name="optimize_suggested_power">Sugerowane: Zasilanie i temperatura, bo urządzenie się nagrzewa.</string>

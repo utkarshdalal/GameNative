@@ -1913,6 +1913,7 @@
     <string name="optimize_cap_body">Así el juego funcionaría con menos tirones durante más tiempo sin ralentizarse.</string>
     <string name="optimize_cap_yes">Sí, mantenerlo</string>
     <string name="optimize_after_cap_held">Mantenido a %1$d fps: menos tirones, se mantiene fresco más tiempo</string>
+    <string name="optimize_after_cap_removed">Mantener a %1$d fps no ayudó; se quitó el límite</string>
     <string name="optimize_status_cap_held">Mantenido a %1$d fps</string>
     <string name="optimize_hint_heat">Aquí el límite es el calor. Prueba Energía y calor.</string>
     <string name="optimize_suggested_power">Sugerido: Energía y calor, porque el dispositivo se está calentando.</string>

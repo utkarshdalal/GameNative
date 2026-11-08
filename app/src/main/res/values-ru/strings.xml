@@ -1843,6 +1843,7 @@ https://gamenative.app
     <string name="optimize_cap_body">Игра будет дольше работать с меньшими подтормаживаниями и без замедления.</string>
     <string name="optimize_cap_yes">Да, держать</string>
     <string name="optimize_after_cap_held">Держится на %1$d fps: меньше подтормаживаний, дольше остаётся холодной</string>
+    <string name="optimize_after_cap_removed">Ограничение до %1$d fps не помогло; оно снято</string>
     <string name="optimize_status_cap_held">Держится на %1$d fps</string>
     <string name="optimize_hint_heat">Здесь ограничивает нагрев. Попробуйте «Питание и нагрев».</string>
     <string name="optimize_suggested_power">Рекомендуется: «Питание и нагрев», потому что устройство нагревается.</string>

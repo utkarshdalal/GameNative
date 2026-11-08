@@ -1785,6 +1785,7 @@
     <string name="optimize_cap_body">Så kan spillet køre med færre hak i længere tid uden at blive langsommere.</string>
     <string name="optimize_cap_yes">Ja, hold det</string>
     <string name="optimize_after_cap_held">Holder %1$d fps: færre hak, kører køligt længere</string>
+    <string name="optimize_after_cap_removed">At holde %1$d fps hjalp ikke; grænsen er fjernet</string>
     <string name="optimize_status_cap_held">Holdt på %1$d fps</string>
     <string name="optimize_hint_heat">Varme er grænsen her. Prøv Strøm og varme.</string>
     <string name="optimize_suggested_power">Foreslået: Strøm og varme, fordi enheden kører varm.</string>

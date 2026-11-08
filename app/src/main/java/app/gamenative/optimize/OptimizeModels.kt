@@ -23,6 +23,11 @@ data class Metrics(
     val gpuBy5Min: List<Int> = emptyList(),
     /** Mean GPU clock in MHz of each five-minute window that sampled it (perf_by_5min gpu_clk_mhz_avg), oldest first. */
     val gpuClockBy5Min: List<Int> = emptyList(),
+    /** Hottest CPU and GPU reading of the session in °C (perf_by_5min cpu_temp_max, gpu_temp_max); null when not read. */
+    val cpuTempMax: Int? = null,
+    val gpuTempMax: Int? = null,
+    /** Highest Android thermal status of the session (thermal_peak, else perf_by_5min thermal_status_max). */
+    val thermalPeak: Int? = null,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("gameplay_s", gameplaySec)
@@ -40,6 +45,9 @@ data class Metrics(
         if (fpsBy5Min.isNotEmpty()) put("fps_by_5min", JSONArray(fpsBy5Min))
         if (gpuBy5Min.isNotEmpty()) put("gpu_by_5min", JSONArray(gpuBy5Min))
         if (gpuClockBy5Min.isNotEmpty()) put("gpu_clock_by_5min", JSONArray(gpuClockBy5Min))
+        cpuTempMax?.let { put("cpu_temp_max", it) }
+        gpuTempMax?.let { put("gpu_temp_max", it) }
+        thermalPeak?.let { put("thermal_peak", it) }
     }
 
     fun toReportJson(): JSONObject = JSONObject().apply {
@@ -89,6 +97,9 @@ data class Metrics(
                 fpsBy5Min = o.optJSONArray("fps_by_5min").ints(),
                 gpuBy5Min = o.optJSONArray("gpu_by_5min").ints(),
                 gpuClockBy5Min = o.optJSONArray("gpu_clock_by_5min").ints(),
+                cpuTempMax = o.optIntOrNull("cpu_temp_max"),
+                gpuTempMax = o.optIntOrNull("gpu_temp_max"),
+                thermalPeak = o.optIntOrNull("thermal_peak"),
             )
         }
 
@@ -96,6 +107,7 @@ data class Metrics(
         fun fromRun(run: JSONObject): Metrics {
             val verdict = run.optJSONObject("perf_verdict")
             val gameplay = verdict?.optIntOrNull("gameplay_s") ?: run.optInt("session_length", 0)
+            val perf = run.optJSONArray("perf_by_5min").objects()
             return Metrics(
                 gameplaySec = gameplay,
                 steadyFps = run.optDoubleOrNull("avg_fps")?.takeIf { it > 0.0 },
@@ -110,8 +122,11 @@ data class Metrics(
                 procStatReal = verdict?.optStringOrNull("proc_stat")?.let { it == "real" },
                 thermalReporting = run.has("thermal_headroom") || run.optInt("thermal_peak", 0) > 0,
                 fpsBy5Min = run.optJSONArray("fps_by_5min").ints(),
-                gpuBy5Min = run.optJSONArray("perf_by_5min").objects().mapNotNull { it.optIntOrNull("gpu_avg") },
-                gpuClockBy5Min = run.optJSONArray("perf_by_5min").objects().mapNotNull { it.optIntOrNull("gpu_clk_mhz_avg") },
+                gpuBy5Min = perf.mapNotNull { it.optIntOrNull("gpu_avg") },
+                gpuClockBy5Min = perf.mapNotNull { it.optIntOrNull("gpu_clk_mhz_avg") },
+                cpuTempMax = perf.mapNotNull { it.optIntOrNull("cpu_temp_max")?.takeIf { t -> t > 0 } }.maxOrNull(),
+                gpuTempMax = perf.mapNotNull { it.optIntOrNull("gpu_temp_max")?.takeIf { t -> t > 0 } }.maxOrNull(),
+                thermalPeak = run.optIntOrNull("thermal_peak") ?: perf.mapNotNull { it.optIntOrNull("thermal_status_max") }.maxOrNull(),
             )
         }
     }
