@@ -1928,6 +1928,12 @@
     <string name="optimize_after_done">%1$s istediğiniz gibi çalışıyor</string>
     <string name="optimize_status_paused">Duraklatıldı</string>
     <string name="optimize_status_done">İstediğiniz gibi çalışıyor</string>
+    <string name="optimize_hint_heat">Burada sınır ısı. Güç ve ısı\'yı deneyin.</string>
+    <string name="optimize_suggested_power">Önerilen: Güç ve ısı, çünkü cihaz ısınıyor.</string>
+    <string name="optimize_suggested_performance">Önerilen: Performans, çünkü kare hızı hedefini tutamıyor.</string>
+    <string name="optimize_suggested_performance_heat">Önerilen: Performans, kare hızını daha az ısıyla tutmak için.</string>
+    <string name="optimize_suggested_stability">Önerilen: Kararlılık, çünkü oyun takılıyor.</string>
+    <string name="optimize_suggested_balanced">Önerilen: Dengeli, çünkü öne çıkan bir sınır yok.</string>
     <string name="optimize_status_exhausted">Bu cihazda varılabilecek en son nokta</string>
     <string name="optimize_continue">Sürdür</string>
     <plurals name="optimize_trial_used">

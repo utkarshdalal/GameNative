@@ -27,6 +27,7 @@ import app.gamenative.optimize.OptimizeCard
 import app.gamenative.optimize.OptimizeCards
 import app.gamenative.optimize.OptimizeController
 import app.gamenative.optimize.OptimizeProfile
+import app.gamenative.optimize.OptimizeTarget
 import kotlinx.coroutines.launch
 
 /** Shows the waiting Optimize card once the user is back on the library or game screen. */
@@ -48,6 +49,16 @@ private fun firstCardTitle(cls: String?, name: String): String = when (cls) {
     else -> stringResource(R.string.optimize_card_title_sync_spin, name)
 }
 
+/** Why a profile is suggested, in outcome words; [reason] is an [OptimizeCards] REASON_ id. */
+@Composable
+fun optimizeSuggestedText(reason: String?): String = when (reason) {
+    OptimizeCards.REASON_HOT -> stringResource(R.string.optimize_suggested_power)
+    OptimizeCards.REASON_HEAT_DIPS -> stringResource(R.string.optimize_suggested_performance_heat)
+    OptimizeCards.REASON_LOW_FPS -> stringResource(R.string.optimize_suggested_performance)
+    OptimizeCards.REASON_STUTTER -> stringResource(R.string.optimize_suggested_stability)
+    else -> stringResource(R.string.optimize_suggested_balanced)
+}
+
 @Composable
 private fun measuredText(card: OptimizeCard): String? {
     val fps = card.fpsGainPct?.let { stringResource(R.string.optimize_measured_fps, it) }
@@ -66,8 +77,11 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
     val gate = rememberOptimizeGate()
     val card = request.card
     val name = card.gameName.orEmpty()
-    var choosing by remember(request) { mutableStateOf(false) }
-    var chosen by remember(request) { mutableStateOf(OptimizeProfile.BALANCED) }
+    val heatHint = card.kind == OptimizeCard.DONE && card.profile != OptimizeProfile.POWER && card.metrics?.let { OptimizeTarget.hot(it) } == true
+    var choosing by remember(request) { mutableStateOf(heatHint) }
+    var chosen by remember(request) {
+        mutableStateOf(if (heatHint) OptimizeProfile.POWER else card.profile.takeIf { card.kind == OptimizeCard.FIRST } ?: OptimizeProfile.BALANCED)
+    }
 
     fun answer(action: String, profile: OptimizeProfile? = null) =
         OptimizeController.answer(context, request.appId, card, action, profile)
@@ -75,10 +89,14 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
     val title: String
     var body: String? = null
     var detail: String? = null
+    var reason: String? = null
     when (card.kind) {
         OptimizeCard.FIRST -> {
             title = firstCardTitle(card.cls, name)
-            if (card.cls != OptimizeCards.SYNC_SPIN) body = stringResource(R.string.optimize_card_body)
+            if (card.cls != OptimizeCards.SYNC_SPIN) {
+                body = stringResource(R.string.optimize_card_body)
+                reason = card.reason?.let { optimizeSuggestedText(it) }
+            }
         }
         OptimizeCard.HELPED -> {
             title = when (card.outcome) {
@@ -91,7 +109,10 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
         OptimizeCard.NO_CHANGE -> title = stringResource(R.string.optimize_after_no_change)
         OptimizeCard.WORSE -> title = stringResource(R.string.optimize_after_worse)
         OptimizeCard.EXHAUSTED -> title = stringResource(R.string.optimize_after_exhausted, name)
-        OptimizeCard.DONE -> title = stringResource(R.string.optimize_after_done, name)
+        OptimizeCard.DONE -> {
+            title = stringResource(R.string.optimize_after_done, name)
+            if (heatHint) body = stringResource(R.string.optimize_hint_heat)
+        }
         else -> title = optimizeEntitlementText(request.entitlement, exhausted = true).orEmpty()
     }
     if (card.kind != OptimizeCard.ENTITLEMENT && card.cls != OptimizeCards.SYNC_SPIN) detail = optimizeEntitlementText(request.entitlement)
@@ -105,6 +126,7 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
             {
                 Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                     body?.let { Text(text = it, style = MaterialTheme.typography.bodyMedium) }
+                    reason?.let { Text(text = it, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp)) }
                     if (choosing) {
                         OptimizeProfileChips(
                             selected = chosen,
@@ -150,6 +172,16 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
                     Button(onClick = { answer(OptimizeCards.ACTION_KEEP_GOING) }) { Text(stringResource(R.string.optimize_keep_going)) }
                 OptimizeCard.EXHAUSTED ->
                     Button(onClick = { answer(OptimizeCards.ACTION_KEEP_CHANGES) }) { Text(stringResource(R.string.optimize_keep_changes)) }
+                OptimizeCard.DONE -> if (heatHint) {
+                    Button(
+                        onClick = {
+                            val profile = chosen
+                            scope.launch { gate.require { answer(OptimizeCards.ACTION_OPTIMIZE, profile) } }
+                        },
+                    ) { Text(stringResource(R.string.option_optimize)) }
+                } else {
+                    Button(onClick = { answer(OptimizeCards.ACTION_OK) }) { Text(stringResource(R.string.ok)) }
+                }
                 OptimizeCard.ENTITLEMENT -> Button(
                     onClick = {
                         answer(OptimizeCards.ACTION_MEMBERSHIP)
@@ -177,6 +209,11 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
                     TextButton(onClick = { answer(OptimizeCards.ACTION_UNDO_ALL) }) { Text(stringResource(R.string.optimize_undo_all)) }
                 OptimizeCard.ENTITLEMENT ->
                     TextButton(onClick = { answer(OptimizeCards.ACTION_DISMISSED) }) { Text(stringResource(R.string.close)) }
+                OptimizeCard.DONE -> if (heatHint) {
+                    TextButton(onClick = { answer(OptimizeCards.ACTION_OK) }) { Text(stringResource(R.string.ok)) }
+                } else {
+                    Unit
+                }
                 else -> Unit
             }
         },

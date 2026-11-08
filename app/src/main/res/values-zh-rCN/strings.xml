@@ -1875,6 +1875,12 @@
     <string name="optimize_after_done">%1$s 正按你的要求运行</string>
     <string name="optimize_status_paused">已暂停</string>
     <string name="optimize_status_done">正按你的要求运行</string>
+    <string name="optimize_hint_heat">这里的瓶颈是发热。试试“功耗与发热”。</string>
+    <string name="optimize_suggested_power">建议：功耗与发热，因为设备正在发热。</string>
+    <string name="optimize_suggested_performance">建议：性能，因为帧率达不到目标。</string>
+    <string name="optimize_suggested_performance_heat">建议：性能，在减少发热的同时稳住帧率。</string>
+    <string name="optimize_suggested_stability">建议：稳定，因为游戏有卡顿。</string>
+    <string name="optimize_suggested_balanced">建议：均衡，因为没有明显的主要瓶颈。</string>
     <string name="optimize_status_exhausted">此设备上已到极限</string>
     <string name="optimize_continue">恢复</string>
     <plurals name="optimize_trial_used">

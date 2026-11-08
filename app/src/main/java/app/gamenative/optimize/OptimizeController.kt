@@ -309,6 +309,25 @@ object OptimizeController {
             ladder.pending.let { it == null || it.revert != null } &&
             OptimizeCards.shouldAskAfterTrial(ladder, state.entitlement, state.entitlementCheckedAt, Membership.isMember(), nowMillis)
 
+    /**
+     * Before the first step: when the game's own settings already meet [profile]'s target, the ladder is done and a
+     * done card says so; nothing is asked for. Null when the ladder still has to try.
+     */
+    private fun doneAtBaseline(
+        appId: String,
+        state: OptimizeLocalState,
+        profile: OptimizeProfile,
+        baseline: Metrics?,
+        refreshHz: Double?,
+        fpsCap: Int,
+    ): OptimizeLocalState? {
+        val ladder = state.ladder(profile)
+        if (!OptimizeTarget.metAtBaseline(profile, ladder, baseline, refreshHz, fpsCap)) return null
+        Timber.tag(TAG).i("Optimize: ${profile.wireId} target already met at the baseline (${baseline?.steadyFps} fps); not asking")
+        return state.withLadder(profile, ladder.copy(state = LadderState.DONE))
+            .copy(card = OptimizeCard(OptimizeCard.DONE, System.currentTimeMillis(), gameName(appId), profile, metrics = baseline))
+    }
+
     /** Runs [block] on the controller's scope, registered so a launch of the same game waits for it. */
     private fun track(store: OptimizeStore, what: String, block: suspend () -> Unit) {
         val path = store.dir.absolutePath
@@ -486,6 +505,13 @@ object OptimizeController {
                 state = state.copy(prefetched = null)
                 if (ladder.pending == null && wouldAsk(state, ladder, now)) {
                     val baseline = ladder.baselineOverride ?: baselineRun(container)
+                    doneAtBaseline(appId, state.withLadder(profile, ladder), profile, baseline, refreshHz(context), fpsLimit(container))?.let {
+                        state = it
+                        ladder = it.ladder(profile)
+                    }
+                }
+                if (ladder.pending == null && wouldAsk(state, ladder, now)) {
+                    val baseline = ladder.baselineOverride ?: baselineRun(container)
                     val key = prefetchKey(container)
                     val usable = prefetched?.takeIf { it.isUsable(now, profile, key, ladder) }
                     val result = when {
@@ -630,8 +656,15 @@ object OptimizeController {
                 val profile = state.activeProfile
                 if (profile == null) {
                     if (OptimizeCards.offerFirst(state, after, now)) {
+                        val suggested = OptimizeCards.suggestedProfile(after.cls, after, cap, refresh)
                         state = state.copy(
-                            card = OptimizeCard(OptimizeCard.FIRST, now, gameName(appId), cls = after.cls, metrics = after),
+                            card = OptimizeCard(
+                                OptimizeCard.FIRST, now, gameName(appId),
+                                profile = suggested.profile,
+                                cls = after.cls,
+                                metrics = after,
+                                reason = suggested.reason,
+                            ),
                             suppression = null,
                         )
                         store.write(state)
@@ -647,6 +680,13 @@ object OptimizeController {
                             is OptimizeJudge.Decision.Final -> finish(appId, state, profile, ladder, pending, decision.result, after, refresh, cap)
                         }
                         store.write(state)
+                    }
+                    val current = state.ladder(profile)
+                    if (current.pending == null) {
+                        doneAtBaseline(appId, state, profile, current.baselineOverride ?: baselineRun(container), refresh, cap)?.let {
+                            state = it
+                            store.write(state)
+                        }
                     }
                     if (context != null) prefetch = exitPrefetch(context.applicationContext, appId, container, store, state, profile, now)
                 }
@@ -763,6 +803,21 @@ object OptimizeController {
         }
     }
 
+    /** What the game's newest judged session suggests, and whether heat held it back. */
+    data class Suggestion(val suggested: OptimizeCards.Suggestion, val hot: Boolean)
+
+    suspend fun suggestion(context: Context, appId: String): Suggestion? = withContext(Dispatchers.IO) {
+        try {
+            if (!ContainerUtils.hasContainer(context, appId)) return@withContext null
+            val container = ContainerUtils.getContainer(context, appId)
+            val baseline = baselineRun(container)?.takeIf { it.confident == true && it.cls in OptimizeCards.CLASSES } ?: return@withContext null
+            Suggestion(OptimizeCards.suggestedProfile(baseline.cls, baseline, fpsLimit(container), refreshHz(context)), OptimizeTarget.hot(baseline))
+        } catch (e: Exception) {
+            Timber.tag(TAG).w(e, "Reading the optimize suggestion failed")
+            null
+        }
+    }
+
     /** Publishes a card the game still has waiting, for when its screen is shown again. */
     suspend fun surfaceCard(context: Context, appId: String) {
         if (cardRequest.value?.appId == appId) return
@@ -786,11 +841,15 @@ object OptimizeController {
             if (!ContainerUtils.hasContainer(context, appId)) return@withContext ChangeResult.NO_CONTAINER
             val container = ContainerUtils.getContainer(context, appId)
             val store = OptimizeStore(container.rootDir)
+            var request: CardRequest? = null
             val ok = mutex.withLock {
-                val (next, worked) = block(container, store, store.read())
+                val current = store.read()
+                val (next, worked) = block(container, store, current)
                 store.write(next)
+                request = next.card?.takeIf { it != current.card }?.let { CardRequest(appId, it, next.entitlement ?: lastEntitlement) }
                 worked
             }
+            request?.let { cardRequest.value = it }
             revision.value++
             scope.launch { flush(context.applicationContext, store) }
             if (ok) ChangeResult.DONE else ChangeResult.FAILED
@@ -820,6 +879,8 @@ object OptimizeController {
         if (target != null) {
             val ladder = s.ladder(target)
             s = s.withLadder(target, if (ladder.state == LadderState.IDLE) ladder.copy(state = LadderState.TRYING) else ladder)
+            val baseline = s.ladder(target).baselineOverride ?: baselineRun(container)
+            s = doneAtBaseline(appId, s, target, baseline, refreshHz(context), fpsLimit(container)) ?: s
         }
         return s to true
     }

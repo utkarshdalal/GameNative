@@ -17,6 +17,8 @@ data class Metrics(
     val windowSeen: Boolean = true,
     val procStatReal: Boolean? = null,
     val thermalReporting: Boolean? = null,
+    /** Mean fps of each five-minute window, oldest first. */
+    val fpsBy5Min: List<Int> = emptyList(),
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("gameplay_s", gameplaySec)
@@ -31,6 +33,7 @@ data class Metrics(
         put("window_seen", windowSeen)
         procStatReal?.let { put("proc_stat_real", it) }
         thermalReporting?.let { put("thermal_reporting", it) }
+        if (fpsBy5Min.isNotEmpty()) put("fps_by_5min", JSONArray(fpsBy5Min))
     }
 
     fun toReportJson(): JSONObject = JSONObject().apply {
@@ -71,6 +74,7 @@ data class Metrics(
                 windowSeen = o.optBoolean("window_seen", true),
                 procStatReal = if (o.has("proc_stat_real")) o.optBoolean("proc_stat_real") else null,
                 thermalReporting = if (o.has("thermal_reporting")) o.optBoolean("thermal_reporting") else null,
+                fpsBy5Min = o.optJSONArray("fps_by_5min").ints(),
             )
         }
 
@@ -91,6 +95,7 @@ data class Metrics(
                 windowSeen = run.has("main_window_class"),
                 procStatReal = verdict?.optStringOrNull("proc_stat")?.let { it == "real" },
                 thermalReporting = run.has("thermal_headroom") || run.optInt("thermal_peak", 0) > 0,
+                fpsBy5Min = run.optJSONArray("fps_by_5min").ints(),
             )
         }
     }
@@ -111,6 +116,9 @@ internal fun JSONObject.optDoubleOrNull(key: String): Double? =
 
 internal fun JSONArray?.objects(): List<JSONObject> =
     if (this == null) emptyList() else (0 until length()).mapNotNull { optJSONObject(it) }
+
+internal fun JSONArray?.ints(): List<Int> =
+    if (this == null) emptyList() else (0 until length()).mapNotNull { i -> (opt(i) as? Number)?.toInt() }
 
 internal fun JSONArray?.strings(): List<String> =
     if (this == null) emptyList() else (0 until length()).mapNotNull { i -> optString(i).takeIf { it.isNotEmpty() } }

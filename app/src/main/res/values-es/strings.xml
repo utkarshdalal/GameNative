@@ -1908,6 +1908,12 @@
     <string name="optimize_after_done">%1$s funciona como pediste</string>
     <string name="optimize_status_paused">En pausa</string>
     <string name="optimize_status_done">Funciona como pediste</string>
+    <string name="optimize_hint_heat">Aquí el límite es el calor. Prueba Energía y calor.</string>
+    <string name="optimize_suggested_power">Sugerido: Energía y calor, porque el dispositivo se está calentando.</string>
+    <string name="optimize_suggested_performance">Sugerido: Rendimiento, porque la tasa de fotogramas no se mantiene en su objetivo.</string>
+    <string name="optimize_suggested_performance_heat">Sugerido: Rendimiento, para mantener la tasa de fotogramas con menos calor.</string>
+    <string name="optimize_suggested_stability">Sugerido: Estabilidad, porque el juego da tirones.</string>
+    <string name="optimize_suggested_balanced">Sugerido: Equilibrado, porque ningún límite destaca sobre los demás.</string>
     <string name="optimize_status_exhausted">Lo máximo posible en este dispositivo</string>
     <string name="optimize_continue">Continuar</string>
     <plurals name="optimize_trial_used">

@@ -1928,6 +1928,12 @@
     <string name="optimize_after_done">%1$s tourne comme vous l\'avez demandé</string>
     <string name="optimize_status_paused">En pause</string>
     <string name="optimize_status_done">Tourne comme vous l\'avez demandé</string>
+    <string name="optimize_hint_heat">Ici, c\'est la chaleur qui limite. Essayez Énergie et chaleur.</string>
+    <string name="optimize_suggested_power">Suggéré : Énergie et chaleur, car l\'appareil chauffe.</string>
+    <string name="optimize_suggested_performance">Suggéré : Performances, car la fréquence d\'images ne tient pas son objectif.</string>
+    <string name="optimize_suggested_performance_heat">Suggéré : Performances, pour tenir la fréquence d\'images avec moins de chaleur.</string>
+    <string name="optimize_suggested_stability">Suggéré : Stabilité, car le jeu saccade.</string>
+    <string name="optimize_suggested_balanced">Suggéré : Équilibré, car aucune limite ne ressort plus qu\'une autre.</string>
     <string name="optimize_status_exhausted">Le maximum possible sur cet appareil</string>
     <string name="optimize_continue">Reprendre</string>
     <plurals name="optimize_trial_used">

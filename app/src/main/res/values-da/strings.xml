@@ -1780,6 +1780,12 @@
     <string name="optimize_after_done">%1$s kører, som du bad om</string>
     <string name="optimize_status_paused">Sat på pause</string>
     <string name="optimize_status_done">Kører, som du bad om</string>
+    <string name="optimize_hint_heat">Varme er grænsen her. Prøv Strøm og varme.</string>
+    <string name="optimize_suggested_power">Foreslået: Strøm og varme, fordi enheden kører varm.</string>
+    <string name="optimize_suggested_performance">Foreslået: Ydeevne, fordi billedhastigheden ikke holder sit mål.</string>
+    <string name="optimize_suggested_performance_heat">Foreslået: Ydeevne, for at holde billedhastigheden med mindre varme.</string>
+    <string name="optimize_suggested_stability">Foreslået: Stabilitet, fordi spillet hakker.</string>
+    <string name="optimize_suggested_balanced">Foreslået: Balanceret, fordi intet skiller sig ud som den største begrænsning.</string>
     <string name="optimize_status_exhausted">Så langt det kan komme på denne enhed</string>
     <string name="optimize_continue">Genoptag</string>
     <plurals name="optimize_trial_used">

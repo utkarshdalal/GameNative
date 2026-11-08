@@ -238,6 +238,7 @@ class SessionVerdictTest {
         assertTrue(r.confident)
         assertTrue(r.thermalGpu)
         assertEquals(0, r.throttleOnsetSec)
+        assertEquals(0.8, r.confidence, 1e-9)
         assertEquals("low_fps", r.symptom)
         assertNull((r.properties()["perf_verdict"] as Map<*, *>)["source"])
     }

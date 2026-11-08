@@ -1877,6 +1877,12 @@
     <string name="optimize_after_done">%1$s 正依你的要求執行</string>
     <string name="optimize_status_paused">已暫停</string>
     <string name="optimize_status_done">正依你的要求執行</string>
+    <string name="optimize_hint_heat">這裡的瓶頸是發熱。試試「電源與發熱」。</string>
+    <string name="optimize_suggested_power">建議：電源與發熱，因為裝置正在發熱。</string>
+    <string name="optimize_suggested_performance">建議：效能，因為影格率達不到目標。</string>
+    <string name="optimize_suggested_performance_heat">建議：效能，在減少發熱的同時穩住影格率。</string>
+    <string name="optimize_suggested_stability">建議：穩定，因為遊戲有卡頓。</string>
+    <string name="optimize_suggested_balanced">建議：平衡，因為沒有明顯的主要瓶頸。</string>
     <string name="optimize_status_exhausted">此裝置上已到極限</string>
     <string name="optimize_continue">恢復</string>
     <plurals name="optimize_trial_used">

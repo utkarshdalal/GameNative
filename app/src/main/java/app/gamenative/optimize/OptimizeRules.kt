@@ -30,29 +30,52 @@ object OptimizeTarget {
     const val BALANCED_MAX_STUTTER = 0.02
     const val STABILITY_MAX_STUTTER = 0.01
     const val POWER_MIN_GAMEPLAY_SEC = 1200
-    const val PERFORMANCE_FPS_SHARE = 0.9
+    const val PERFORMANCE_FPS_SHARE = 0.97
+    const val PERFORMANCE_WINDOW_SHARE = 0.95
     const val PERFORMANCE_FPS_CEILING = 60.0
 
-    private val LIMITING_CLASSES = setOf("gpu", "cpu_single", "cpu_multi", "thermal_gpu")
+    /** The session throttled: an onset (sustained thermal status >= 2 counts) or a thermal verdict. */
+    fun hot(m: Metrics): Boolean = m.throttleOnsetSec != null || m.cls == "thermal_gpu"
+
+    /** The frame rate Performance holds: min(refresh, 60), or the active cap when it is lower. */
+    fun fpsTarget(refreshHz: Double?, fpsCap: Int): Double {
+        val ceiling = minOf(refreshHz?.takeIf { it > 0 } ?: PERFORMANCE_FPS_CEILING, PERFORMANCE_FPS_CEILING)
+        return if (fpsCap > 0) minOf(ceiling, fpsCap.toDouble()) else ceiling
+    }
+
+    /** The five-minute windows that count; the first holds the loading screens once there are three or more. */
+    private fun gameplayWindows(m: Metrics): List<Int> = if (m.fpsBy5Min.size >= 3) m.fpsBy5Min.drop(1) else m.fpsBy5Min
+
+    /** A five-minute window fell below 0.95 x the target. */
+    fun dips(m: Metrics, refreshHz: Double?, fpsCap: Int): Boolean {
+        val target = fpsTarget(refreshHz, fpsCap)
+        return gameplayWindows(m).any { it < PERFORMANCE_WINDOW_SHARE * target }
+    }
+
+    /** Steady fps at 0.97 x the target and no five-minute window below 0.95 x it, heat aside. */
+    fun holdsTarget(m: Metrics, refreshHz: Double?, fpsCap: Int): Boolean {
+        val fps = m.steadyFps ?: return false
+        return fps >= PERFORMANCE_FPS_SHARE * fpsTarget(refreshHz, fpsCap) && !dips(m, refreshHz, fpsCap)
+    }
 
     /** True when the session after a step already reached what the profile asks for; inconclusive sessions are false. */
     fun met(profile: OptimizeProfile, after: Metrics, refreshHz: Double?, fpsCap: Int): Boolean {
         val fps = after.steadyFps
         val stutter = after.stutterShare
         return when (profile) {
-            OptimizeProfile.PERFORMANCE -> {
-                if (after.confident == true && after.cls in LIMITING_CLASSES) return false
-                if (fps == null) return false
-                val ceiling = minOf(refreshHz?.takeIf { it > 0 } ?: PERFORMANCE_FPS_CEILING, PERFORMANCE_FPS_CEILING)
-                fps >= PERFORMANCE_FPS_SHARE * ceiling || (fpsCap > 0 && fps >= PERFORMANCE_FPS_SHARE * fpsCap)
-            }
+            OptimizeProfile.PERFORMANCE -> holdsTarget(after, refreshHz, fpsCap) && !hot(after)
             OptimizeProfile.BALANCED ->
-                fps != null && stutter != null && fps >= BALANCED_MIN_FPS && stutter < BALANCED_MAX_STUTTER && after.throttleOnsetSec == null
+                fps != null && stutter != null && fps >= BALANCED_MIN_FPS && stutter < BALANCED_MAX_STUTTER && !hot(after)
             OptimizeProfile.STABILITY -> stutter != null && stutter < STABILITY_MAX_STUTTER
-            OptimizeProfile.POWER -> after.gameplaySec >= POWER_MIN_GAMEPLAY_SEC && after.throttleOnsetSec == null
+            OptimizeProfile.POWER -> after.gameplaySec >= POWER_MIN_GAMEPLAY_SEC && !hot(after)
             OptimizeProfile.OFF -> false
         }
     }
+
+    /** Before the first step of [ladder]: true when the game already meets the profile's target on its own settings. */
+    fun metAtBaseline(profile: OptimizeProfile, ladder: ProfileLadder, baseline: Metrics?, refreshHz: Double?, fpsCap: Int): Boolean =
+        ladder.state == LadderState.TRYING && ladder.kept.isEmpty() && ladder.pending == null && ladder.tried.isEmpty() &&
+            baseline != null && met(profile, baseline, refreshHz, fpsCap)
 }
 
 object OptimizeCards {
@@ -92,6 +115,33 @@ object OptimizeCards {
         if (ladder.lastStatus != NextRungResponse.STATUS_ENTITLEMENT_REQUIRED) return true
         if (entitlement?.state != Entitlement.NONE || isMember) return true
         return nowMillis - checkedAtMillis >= ENTITLEMENT_RECHECK_MS
+    }
+
+    private val FPS_CLASSES = setOf("gpu", "cpu_single", "cpu_multi")
+    const val SUGGEST_STUTTER_SHARE = 0.02
+
+    const val REASON_HOT = "hot"
+    const val REASON_HEAT_DIPS = "heat_dips"
+    const val REASON_LOW_FPS = "low_fps"
+    const val REASON_STUTTER = "stutter"
+    const val REASON_NONE = "none"
+
+    data class Suggestion(val profile: OptimizeProfile, val reason: String)
+
+    /**
+     * The profile a game's verdict points at. Heat with dips wants the frame rate held with less load (Performance);
+     * heat while the target holds wants Power and heat; then a frame rate short of the target, then stutter.
+     */
+    fun suggestedProfile(verdict: String?, metrics: Metrics?, capFps: Int, refreshHz: Double?): Suggestion {
+        val holds = metrics != null && OptimizeTarget.holdsTarget(metrics, refreshHz, capFps)
+        if (verdict == "thermal_gpu" || metrics?.throttleOnsetSec != null) {
+            return if (holds) Suggestion(OptimizeProfile.POWER, REASON_HOT) else Suggestion(OptimizeProfile.PERFORMANCE, REASON_HEAT_DIPS)
+        }
+        if (verdict in FPS_CLASSES && metrics?.steadyFps != null && !holds) return Suggestion(OptimizeProfile.PERFORMANCE, REASON_LOW_FPS)
+        if ((metrics?.stutterShare ?: 0.0) >= SUGGEST_STUTTER_SHARE || metrics?.symptom == "stutter") {
+            return Suggestion(OptimizeProfile.STABILITY, REASON_STUTTER)
+        }
+        return Suggestion(OptimizeProfile.BALANCED, REASON_NONE)
     }
 
     fun notNow(card: OptimizeCard, nowMillis: Long): CardSuppression = CardSuppression(nowMillis + SUPPRESS_MS, card.metrics)

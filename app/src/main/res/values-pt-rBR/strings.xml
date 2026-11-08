@@ -1780,6 +1780,12 @@
     <string name="optimize_after_done">%1$s está rodando do jeito que você pediu</string>
     <string name="optimize_status_paused">Pausado</string>
     <string name="optimize_status_done">Rodando do jeito que você pediu</string>
+    <string name="optimize_hint_heat">Aqui o limite é o calor. Experimente Energia e calor.</string>
+    <string name="optimize_suggested_power">Sugerido: Energia e calor, porque o dispositivo está esquentando.</string>
+    <string name="optimize_suggested_performance">Sugerido: Desempenho, porque a taxa de quadros não se mantém no alvo.</string>
+    <string name="optimize_suggested_performance_heat">Sugerido: Desempenho, para manter a taxa de quadros com menos calor.</string>
+    <string name="optimize_suggested_stability">Sugerido: Estabilidade, porque o jogo engasga.</string>
+    <string name="optimize_suggested_balanced">Sugerido: Equilibrado, porque nenhum limite se destaca.</string>
     <string name="optimize_status_exhausted">O máximo neste dispositivo</string>
     <string name="optimize_continue">Retomar</string>
     <plurals name="optimize_trial_used">

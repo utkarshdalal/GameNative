@@ -235,6 +235,17 @@ fun OptimizeDialog(
     val keptCount = state?.let { OptimizeStatus.keptCount(it) } ?: 0
     val activeLadder = state?.active
     val exhausted = status == OptimizeStatus.TrialUsed
+    val context = LocalContext.current
+    val revision by OptimizeController.revision.collectAsState()
+    val suggestion by produceState<OptimizeController.Suggestion?>(null, appId, revision) {
+        value = OptimizeController.suggestion(context, appId)
+    }
+    val hint = when {
+        state == null -> null
+        state.activeProfile == null -> suggestion?.let { optimizeSuggestedText(it.suggested.reason) }
+        status == OptimizeStatus.Done && profile != OptimizeProfile.POWER && suggestion?.hot == true -> stringResource(R.string.optimize_hint_heat)
+        else -> null
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -272,6 +283,13 @@ fun OptimizeDialog(
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(start = 8.dp, top = 12.dp),
+                    )
+                }
+                hint?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(start = 8.dp, top = 4.dp),
                     )
                 }
                 if (keptCount > 0 && status !is OptimizeStatus.Trying) {

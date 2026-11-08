@@ -2119,6 +2119,12 @@
     <string name="optimize_after_done">%1$s は希望どおりに動作しています</string>
     <string name="optimize_status_paused">一時停止中</string>
     <string name="optimize_status_done">希望どおりに動作しています</string>
+    <string name="optimize_hint_heat">ここでは発熱が限界です。電力と発熱を試してください。</string>
+    <string name="optimize_suggested_power">おすすめ：電力と発熱（デバイスが熱くなっているため）。</string>
+    <string name="optimize_suggested_performance">おすすめ：パフォーマンス（フレームレートが目標を維持できていないため）。</string>
+    <string name="optimize_suggested_performance_heat">おすすめ：パフォーマンス（発熱を抑えながらフレームレートを維持するため）。</string>
+    <string name="optimize_suggested_stability">おすすめ：安定性（ゲームがカクつくため）。</string>
+    <string name="optimize_suggested_balanced">おすすめ：バランス（目立った制約がないため）。</string>
     <string name="optimize_status_exhausted">このデバイスではここまでです</string>
     <string name="optimize_continue">再開</string>
     <plurals name="optimize_trial_used">

@@ -1879,6 +1879,12 @@
     <string name="optimize_after_done">%1$s이(가) 원하는 대로 실행되고 있습니다</string>
     <string name="optimize_status_paused">일시 중지됨</string>
     <string name="optimize_status_done">원하는 대로 실행 중</string>
+    <string name="optimize_hint_heat">여기서는 발열이 한계입니다. 전력 및 발열을 사용해 보세요.</string>
+    <string name="optimize_suggested_power">추천: 전력 및 발열 (기기가 뜨거워지고 있어서)</string>
+    <string name="optimize_suggested_performance">추천: 성능 (프레임 속도가 목표를 유지하지 못해서)</string>
+    <string name="optimize_suggested_performance_heat">추천: 성능 (발열을 줄이면서 프레임 속도를 유지하기 위해)</string>
+    <string name="optimize_suggested_stability">추천: 안정성 (게임이 끊겨서)</string>
+    <string name="optimize_suggested_balanced">추천: 균형 (눈에 띄는 주요 한계가 없어서)</string>
     <string name="optimize_status_exhausted">이 기기에서는 여기까지입니다</string>
     <string name="optimize_continue">계속</string>
     <plurals name="optimize_trial_used">

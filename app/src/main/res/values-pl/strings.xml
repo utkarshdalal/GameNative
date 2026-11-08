@@ -1914,6 +1914,12 @@
     <string name="optimize_after_done">Gra %1$s działa tak, jak chciałeś</string>
     <string name="optimize_status_paused">Wstrzymano</string>
     <string name="optimize_status_done">Działa tak, jak chciałeś</string>
+    <string name="optimize_hint_heat">Tutaj ograniczeniem jest temperatura. Spróbuj Zasilanie i temperatura.</string>
+    <string name="optimize_suggested_power">Sugerowane: Zasilanie i temperatura, bo urządzenie się nagrzewa.</string>
+    <string name="optimize_suggested_performance">Sugerowane: Wydajność, bo liczba klatek nie utrzymuje celu.</string>
+    <string name="optimize_suggested_performance_heat">Sugerowane: Wydajność, aby utrzymać liczbę klatek przy mniejszym nagrzewaniu.</string>
+    <string name="optimize_suggested_stability">Sugerowane: Stabilność, bo gra się zacina.</string>
+    <string name="optimize_suggested_balanced">Sugerowane: Zrównoważony, bo żadne ograniczenie się nie wyróżnia.</string>
     <string name="optimize_status_exhausted">Maksimum na tym urządzeniu</string>
     <string name="optimize_continue">Wznów</string>
     <plurals name="optimize_trial_used">

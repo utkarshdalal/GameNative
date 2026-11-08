@@ -1890,6 +1890,12 @@
     <string name="optimize_after_done">%1$s rulează așa cum ai cerut</string>
     <string name="optimize_status_paused">Întrerupt</string>
     <string name="optimize_status_done">Rulează așa cum ai cerut</string>
+    <string name="optimize_hint_heat">Aici limita este căldura. Încearcă Energie și căldură.</string>
+    <string name="optimize_suggested_power">Sugerat: Energie și căldură, pentru că dispozitivul se încălzește.</string>
+    <string name="optimize_suggested_performance">Sugerat: Performanță, pentru că rata de cadre nu își ține ținta.</string>
+    <string name="optimize_suggested_performance_heat">Sugerat: Performanță, pentru a ține rata de cadre cu mai puțină căldură.</string>
+    <string name="optimize_suggested_stability">Sugerat: Stabilitate, pentru că jocul sacadează.</string>
+    <string name="optimize_suggested_balanced">Sugerat: Echilibrat, pentru că nicio limită nu iese în evidență.</string>
     <string name="optimize_status_exhausted">Maximul pe acest dispozitiv</string>
     <string name="optimize_continue">Reia</string>
     <plurals name="optimize_trial_used">

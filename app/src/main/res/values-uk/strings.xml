@@ -1910,6 +1910,12 @@
     <string name="optimize_after_done">Гра %1$s працює так, як ви хотіли</string>
     <string name="optimize_status_paused">Призупинено</string>
     <string name="optimize_status_done">Працює так, як ви хотіли</string>
+    <string name="optimize_hint_heat">Тут обмежує нагрів. Спробуйте «Живлення й нагрів».</string>
+    <string name="optimize_suggested_power">Рекомендовано: «Живлення й нагрів», бо пристрій нагрівається.</string>
+    <string name="optimize_suggested_performance">Рекомендовано: «Продуктивність», бо частота кадрів не тримає ціль.</string>
+    <string name="optimize_suggested_performance_heat">Рекомендовано: «Продуктивність», щоб тримати частоту кадрів із меншим нагрівом.</string>
+    <string name="optimize_suggested_stability">Рекомендовано: «Стабільність», бо гра підгальмовує.</string>
+    <string name="optimize_suggested_balanced">Рекомендовано: «Баланс», бо жодне обмеження не виділяється.</string>
     <string name="optimize_status_exhausted">Межа для цього пристрою</string>
     <string name="optimize_continue">Відновити</string>
     <plurals name="optimize_trial_used">

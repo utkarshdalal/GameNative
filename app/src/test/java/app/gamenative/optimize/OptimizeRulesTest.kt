@@ -61,15 +61,100 @@ class OptimizeRulesTest {
     }
 
     @Test
-    fun performanceIsMetNearTheRefreshOrTheCap() {
-        val good = Metrics(gameplaySec = 900, steadyFps = 55.0, cls = "none", confident = true)
+    fun performanceHoldsTheTargetInEveryWindowWithoutHeat() {
+        val good = Metrics(gameplaySec = 900, steadyFps = 59.0, cls = "none", confident = true, fpsBy5Min = listOf(40, 59, 58, 60))
         assertTrue(OptimizeTarget.met(OptimizeProfile.PERFORMANCE, good, 120.0, 0))
-        assertFalse(OptimizeTarget.met(OptimizeProfile.PERFORMANCE, good.copy(steadyFps = 50.0), 120.0, 0))
-        assertTrue(OptimizeTarget.met(OptimizeProfile.PERFORMANCE, good.copy(steadyFps = 41.0), 60.0, 45))
-        assertTrue(OptimizeTarget.met(OptimizeProfile.PERFORMANCE, good.copy(steadyFps = 28.0), 30.0, 0))
-        assertFalse(OptimizeTarget.met(OptimizeProfile.PERFORMANCE, good.copy(cls = "gpu"), 60.0, 0))
-        assertTrue(OptimizeTarget.met(OptimizeProfile.PERFORMANCE, good.copy(cls = "gpu", confident = false), 60.0, 0))
+        assertFalse(OptimizeTarget.met(OptimizeProfile.PERFORMANCE, good.copy(steadyFps = 58.0), 120.0, 0))
+        assertFalse(OptimizeTarget.met(OptimizeProfile.PERFORMANCE, good.copy(fpsBy5Min = listOf(40, 59, 56, 60)), 120.0, 0))
+        assertTrue(OptimizeTarget.met(OptimizeProfile.PERFORMANCE, good.copy(steadyFps = 44.0, fpsBy5Min = listOf(44, 43)), 60.0, 45))
+        assertTrue(OptimizeTarget.met(OptimizeProfile.PERFORMANCE, good.copy(steadyFps = 29.5, fpsBy5Min = emptyList()), 30.0, 0))
+        assertFalse(OptimizeTarget.met(OptimizeProfile.PERFORMANCE, good.copy(throttleOnsetSec = 300), 60.0, 0))
+        assertFalse(OptimizeTarget.met(OptimizeProfile.PERFORMANCE, good.copy(cls = "thermal_gpu"), 60.0, 0))
         assertFalse(OptimizeTarget.met(OptimizeProfile.PERFORMANCE, good.copy(steadyFps = null), 60.0, 0))
+    }
+
+    /** The Odin 3 The Forest baseline: 56.7 fps at a 60 cap, windows 54-58, thermal status 5 throughout. */
+    private val forest = Metrics(
+        gameplaySec = 1056, steadyFps = 56.7, stutterShare = 0.0008, throttleOnsetSec = 0,
+        cls = "thermal_gpu", confidence = 0.8, confident = true, symptom = "low_fps", fpsBy5Min = listOf(54, 58, 57, 56),
+    )
+
+    @Test
+    fun forestBaselineMeetsNoTargetSoEveryProfileKeepsTrying() {
+        val trying = ProfileLadder(state = LadderState.TRYING)
+        for (profile in listOf(OptimizeProfile.PERFORMANCE, OptimizeProfile.POWER, OptimizeProfile.BALANCED)) {
+            assertFalse(profile.name, OptimizeTarget.metAtBaseline(profile, trying, forest, 60.0, 60))
+        }
+        assertTrue(OptimizeTarget.metAtBaseline(OptimizeProfile.STABILITY, trying, forest, 60.0, 60))
+    }
+
+    @Test
+    fun baselineCheckOnlyBeforeTheFirstStep() {
+        val cool = forest.copy(steadyFps = 59.5, throttleOnsetSec = null, cls = "gpu", confident = false, fpsBy5Min = listOf(59, 60, 59))
+        val trying = ProfileLadder(state = LadderState.TRYING)
+        assertTrue(OptimizeTarget.metAtBaseline(OptimizeProfile.PERFORMANCE, trying, cool, 60.0, 60))
+        assertFalse(OptimizeTarget.metAtBaseline(OptimizeProfile.PERFORMANCE, trying.copy(kept = listOf(kept("a"))), cool, 60.0, 60))
+        assertFalse(OptimizeTarget.metAtBaseline(OptimizeProfile.PERFORMANCE, trying.copy(pending = pending("a")), cool, 60.0, 60))
+        assertFalse(OptimizeTarget.metAtBaseline(OptimizeProfile.PERFORMANCE, trying.copy(tried = listOf(TriedRung("a", "1", "worse"))), cool, 60.0, 60))
+        assertFalse(OptimizeTarget.metAtBaseline(OptimizeProfile.PERFORMANCE, ProfileLadder(state = LadderState.DONE), cool, 60.0, 60))
+        assertFalse(OptimizeTarget.metAtBaseline(OptimizeProfile.PERFORMANCE, trying, null, 60.0, 60))
+    }
+
+    @Test
+    fun balancedWithFewStuttersIsMetOnlyWithoutHeat() {
+        val calm = Metrics(gameplaySec = 1056, steadyFps = 56.7, stutterShare = 0.0008)
+        assertTrue(OptimizeTarget.met(OptimizeProfile.BALANCED, calm, 60.0, 60))
+        assertFalse(OptimizeTarget.met(OptimizeProfile.BALANCED, calm.copy(throttleOnsetSec = 0), 60.0, 60))
+        assertFalse(OptimizeTarget.met(OptimizeProfile.BALANCED, calm.copy(cls = "thermal_gpu"), 60.0, 60))
+    }
+
+    @Test
+    fun suggestionHeatWithDipsIsPerformance() {
+        val s = OptimizeCards.suggestedProfile("thermal_gpu", forest, 60, 60.0)
+        assertEquals(OptimizeProfile.PERFORMANCE, s.profile)
+        assertEquals(OptimizeCards.REASON_HEAT_DIPS, s.reason)
+    }
+
+    @Test
+    fun suggestionHeatHoldingTheCapIsPower() {
+        val holding = forest.copy(steadyFps = 59.6, fpsBy5Min = listOf(50, 59, 60, 59))
+        val s = OptimizeCards.suggestedProfile("thermal_gpu", holding, 60, 60.0)
+        assertEquals(OptimizeProfile.POWER, s.profile)
+        assertEquals(OptimizeCards.REASON_HOT, s.reason)
+        assertEquals(OptimizeProfile.POWER, OptimizeCards.suggestedProfile("gpu", holding.copy(cls = "gpu"), 60, 60.0).profile)
+    }
+
+    @Test
+    fun suggestionLowFpsIsPerformance() {
+        val m = Metrics(gameplaySec = 900, steadyFps = 40.0, stutterShare = 0.03, cls = "gpu")
+        for (cls in listOf("gpu", "cpu_single", "cpu_multi")) {
+            assertEquals(OptimizeCards.Suggestion(OptimizeProfile.PERFORMANCE, OptimizeCards.REASON_LOW_FPS), OptimizeCards.suggestedProfile(cls, m, 60, 60.0))
+        }
+    }
+
+    @Test
+    fun suggestionStutterIsStability() {
+        val m = Metrics(gameplaySec = 900, steadyFps = 59.5, stutterShare = 0.02, cls = "gpu")
+        assertEquals(OptimizeCards.Suggestion(OptimizeProfile.STABILITY, OptimizeCards.REASON_STUTTER), OptimizeCards.suggestedProfile("gpu", m, 60, 60.0))
+        val bySymptom = m.copy(stutterShare = 0.001, symptom = "stutter", cls = "memory")
+        assertEquals(OptimizeProfile.STABILITY, OptimizeCards.suggestedProfile("memory", bySymptom, 60, 60.0).profile)
+    }
+
+    @Test
+    fun suggestionOtherwiseIsBalanced() {
+        val m = Metrics(gameplaySec = 900, steadyFps = 45.0, stutterShare = 0.005, cls = "memory")
+        assertEquals(OptimizeCards.Suggestion(OptimizeProfile.BALANCED, OptimizeCards.REASON_NONE), OptimizeCards.suggestedProfile("memory", m, 60, 60.0))
+        assertEquals(OptimizeProfile.BALANCED, OptimizeCards.suggestedProfile(null, null, 0, null).profile)
+    }
+
+    @Test
+    fun windowsSurviveTheRunRecordAndState() {
+        val run = JSONObject(mapOf("avg_fps" to 56.7, "session_length" to 1100, "fps_by_5min" to listOf(54, 58, 57, 56)))
+        val m = Metrics.fromRun(run)
+        assertEquals(listOf(54, 58, 57, 56), m.fpsBy5Min)
+        assertEquals(m, Metrics.fromJson(m.toJson()))
+        val card = OptimizeCard(OptimizeCard.FIRST, 1L, profile = OptimizeProfile.PERFORMANCE, metrics = m, reason = OptimizeCards.REASON_HEAT_DIPS)
+        assertEquals(card, OptimizeCard.fromJson(card.toJson()))
     }
 
     @Test

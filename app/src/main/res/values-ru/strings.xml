@@ -1838,6 +1838,12 @@ https://gamenative.app
     <string name="optimize_after_done">Игра %1$s работает так, как вы хотели</string>
     <string name="optimize_status_paused">Приостановлено</string>
     <string name="optimize_status_done">Работает так, как вы хотели</string>
+    <string name="optimize_hint_heat">Здесь ограничивает нагрев. Попробуйте «Питание и нагрев».</string>
+    <string name="optimize_suggested_power">Рекомендуется: «Питание и нагрев», потому что устройство нагревается.</string>
+    <string name="optimize_suggested_performance">Рекомендуется: «Производительность», потому что частота кадров не держит цель.</string>
+    <string name="optimize_suggested_performance_heat">Рекомендуется: «Производительность», чтобы держать частоту кадров при меньшем нагреве.</string>
+    <string name="optimize_suggested_stability">Рекомендуется: «Стабильность», потому что игра подтормаживает.</string>
+    <string name="optimize_suggested_balanced">Рекомендуется: «Баланс», потому что ни одно ограничение не выделяется.</string>
     <string name="optimize_status_exhausted">Предел для этого устройства</string>
     <string name="optimize_continue">Возобновить</string>
     <plurals name="optimize_trial_used">

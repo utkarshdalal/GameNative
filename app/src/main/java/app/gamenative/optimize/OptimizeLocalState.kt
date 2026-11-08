@@ -257,6 +257,8 @@ data class OptimizeCard(
     val stutterDropPct: Int? = null,
     /** The session that produced the card. */
     val metrics: Metrics? = null,
+    /** Why [profile] is suggested on a first card, an [OptimizeCards] REASON_ id. */
+    val reason: String? = null,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("kind", kind)
@@ -269,6 +271,7 @@ data class OptimizeCard(
         fpsGainPct?.let { put("fps_gain_pct", it) }
         stutterDropPct?.let { put("stutter_drop_pct", it) }
         metrics?.let { put("metrics", it.toJson()) }
+        reason?.let { put("reason", it) }
     }
 
     companion object {
@@ -298,6 +301,7 @@ data class OptimizeCard(
                 fpsGainPct = o.optIntOrNull("fps_gain_pct"),
                 stutterDropPct = o.optIntOrNull("stutter_drop_pct"),
                 metrics = Metrics.fromJson(o.optJSONObject("metrics")),
+                reason = o.optStringOrNull("reason"),
             )
         }
     }

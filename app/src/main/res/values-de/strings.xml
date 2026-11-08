@@ -1850,6 +1850,12 @@
     <string name="optimize_after_done">%1$s läuft so, wie du es wolltest</string>
     <string name="optimize_status_paused">Pausiert</string>
     <string name="optimize_status_done">Läuft so, wie du es wolltest</string>
+    <string name="optimize_hint_heat">Hier begrenzt die Wärme. Versuche Strom und Wärme.</string>
+    <string name="optimize_suggested_power">Vorschlag: Strom und Wärme, weil das Gerät heiß läuft.</string>
+    <string name="optimize_suggested_performance">Vorschlag: Leistung, weil die Bildrate ihr Ziel nicht hält.</string>
+    <string name="optimize_suggested_performance_heat">Vorschlag: Leistung, um die Bildrate mit weniger Wärme zu halten.</string>
+    <string name="optimize_suggested_stability">Vorschlag: Stabilität, weil das Spiel ruckelt.</string>
+    <string name="optimize_suggested_balanced">Vorschlag: Ausgewogen, weil keine Grenze besonders hervorsticht.</string>
     <string name="optimize_status_exhausted">Mehr geht auf diesem Gerät nicht</string>
     <string name="optimize_continue">Fortsetzen</string>
     <plurals name="optimize_trial_used">

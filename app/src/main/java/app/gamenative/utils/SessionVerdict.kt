@@ -213,6 +213,7 @@ internal object SessionVerdict {
     private const val GPU_FULL_CLOCK_RATIO = 0.9
     private const val THERMAL_GPU_BUSY = 70
     private const val HOT_BEFORE_ONSET_SHARE = 0.5
+    private const val HOT_AT_LAUNCH_MAX_CONFIDENCE = 0.8
     private const val FIVE_MIN_DECLINE_RATIO = 0.9
     private const val LEGACY_MIN_SHARE = 0.4
     private const val LEGACY_THERMAL_SHARE = 0.5
@@ -419,7 +420,9 @@ internal object SessionVerdict {
             !shareBased -> coverage >= CONFIDENT_COVERAGE
             else -> chosenShare >= CONFIDENT_SHARE && chosenShare - runnerUp >= CONFIDENT_LEAD && coverage >= CONFIDENT_COVERAGE
         }
+        // Hot from launch has no cool stretch to compare against, so the thermal verdict is never fully certain.
         val confidence = (chosenShare * coverage).coerceIn(0.0, 1.0)
+            .let { if (cls == THERMAL_GPU && hotAtLaunch) minOf(it, HOT_AT_LAUNCH_MAX_CONFIDENCE) else it }
         val legacy = if (gameplaySec >= MIN_GAMEPLAY_SEC && (cls == NONE || !confident)) legacyVerdict(input.legacyShare) else null
 
         val stutter = input.stutterShare

@@ -2132,6 +2132,12 @@
     <string name="optimize_after_done">%1$s is running the way you asked</string>
     <string name="optimize_status_paused">Paused</string>
     <string name="optimize_status_done">Running the way you asked</string>
+    <string name="optimize_hint_heat">Heat is the limit here. Try Power and heat.</string>
+    <string name="optimize_suggested_power">Suggested: Power and heat, because the device is running hot.</string>
+    <string name="optimize_suggested_performance">Suggested: Performance, because the frame rate does not hold its target.</string>
+    <string name="optimize_suggested_performance_heat">Suggested: Performance, to hold the frame rate with less heat.</string>
+    <string name="optimize_suggested_stability">Suggested: Stability, because the game stutters.</string>
+    <string name="optimize_suggested_balanced">Suggested: Balanced, because nothing stands out as the main limit.</string>
     <string name="optimize_status_exhausted">As far as it goes on this device</string>
     <string name="optimize_continue">Continue</string>
     <plurals name="optimize_trial_used">
