@@ -20,6 +20,7 @@ import app.gamenative.powercontrol.profiles.CpuGovernor
 import app.gamenative.powercontrol.profiles.PerformancePreset
 import com.winlator.container.Container
 import com.winlator.core.ProcessHelper
+import com.winlator.core.envvars.EnvVars
 import com.winlator.winhandler.WinHandler
 import com.winlator.xserver.extensions.PresentExtension
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -189,6 +190,10 @@ object PowerManager {
     var ownsGameAffinity: Boolean = false
         private set
 
+    /** The container's explicit CPU list, which the winhandler applies to the game; empty without one. */
+    @Volatile
+    private var containerGameCores: List<Int> = emptyList()
+
     /**
      * Bumped whenever a pin run starts or is called off, so a retry loop left over from an earlier
      * run stops instead of pinning the game again.
@@ -203,7 +208,8 @@ object PowerManager {
         containerDir = rootDir
         compositorRestoreCores = null
         compositorOffLogged = false
-        resolveGameAffinityOwnership()
+        val container = loadContainer(rootDir)
+        resolveGameAffinityOwnership(container)
         loadCurrentProfile()
         if (isProfilePowerControlEnabled()) {
             startPowerControl()
@@ -216,6 +222,9 @@ object PowerManager {
         appContext.let { PerformanceMetricsCollector.start(it) }
 
         isGameStarted = true
+        FrameThreadPlacement.start(
+            envOff = container?.let { EnvVars(it.envVars).get("GN_FRAME_PLACEMENT") } == "0",
+        )
         if (gamescopeSession) {
             // The gamescope session may have connected before the profile was loaded.
             Thread({ applyCompositorAffinity("power control start") }, "compositor-affinity").start()
@@ -320,6 +329,7 @@ object PowerManager {
     fun stop() {
         // Save the current profile if available, otherwise read from driver
         saveProfile()
+        FrameThreadPlacement.stop("session end")
         AdaptiveFpsCapController.stop()
         PerformanceMetricsCollector.stop()
         stopPowerControl()
@@ -332,6 +342,7 @@ object PowerManager {
         pinnedGameProcessName = null
         pinnedGamePid = null
         pinnedGameCores = emptyList()
+        containerGameCores = emptyList()
         gamePinVerified = null
         ownsGameAffinity = false
     }
@@ -1160,6 +1171,19 @@ object PowerManager {
         return coreClusters(pserver).takeIf { clusters -> clusters.any { it.cores.isNotEmpty() } }
     }
 
+    /**
+     * [placementClusters] behind the profile's power control toggle: unlike the compositor chain,
+     * [FrameThreadPlacement] moves the game's own threads and places nothing with the toggle off.
+     */
+    internal fun threadPlacementClusters(): List<CoreCluster>? =
+        if (::currentProfile.isInitialized && isProfilePowerControlEnabled()) placementClusters() else null
+
+    /** Cores the game is held to: the power control pin, else the container's CPU list, else none. */
+    internal fun threadPlacementGamePin(): List<Int> = pinnedGameCores.ifEmpty { containerGameCores }
+
+    internal fun threadPlacementAllCores(): List<Int> =
+        placementClusters()?.flatMap { it.cores }?.sorted() ?: parseCpuList(Container.getFallbackCPUList()).sorted()
+
     private const val CAPACITY_UNKNOWN = "cluster capacity unknown (max_freq only); placement skipped"
 
     /** One CPU cluster from PServer's grouping, with its capacity in the driver's units. */
@@ -1777,11 +1801,12 @@ object PowerManager {
      * with an explicit CPU list keeps its own pin, anything else (no list, or the all-cores
      * default) leaves the game affinity to power control.
      */
-    private fun resolveGameAffinityOwnership() {
-        val cpuList = containerCpuList(containerDir)
+    private fun resolveGameAffinityOwnership(container: Container?) {
+        val cpuList = container?.getCPUList(false)
         val allCores = parseCpuList(Container.getFallbackCPUList())
         val explicit = cpuList != null && parseCpuList(cpuList) != allCores
         ownsGameAffinity = !explicit
+        containerGameCores = if (explicit) parseCpuList(cpuList!!).sorted() else emptyList()
 
         if (explicit) {
             Timber.tag("PowerManager").i(
@@ -1794,18 +1819,15 @@ object PowerManager {
         }
     }
 
-    /**
-     * The CPU list the container stores, or null when it has none.
-     */
-    private fun containerCpuList(dir: File?): String? {
+    private fun loadContainer(dir: File?): Container? {
         if (dir == null) return null
         return runCatching {
             val container = Container(dir.name.substringAfterLast('-'))
             container.rootDir = dir
             container.loadData(JSONObject(container.containerJson))
-            container.getCPUList(false)
+            container
         }.onFailure {
-            Timber.tag("PowerManager").w(it, "Failed to read the CPU list of ${dir.absolutePath}")
+            Timber.tag("PowerManager").w(it, "Failed to read the container at ${dir.absolutePath}")
         }.getOrNull()
     }
 

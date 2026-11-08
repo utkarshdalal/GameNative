@@ -242,6 +242,7 @@ object SessionReport {
                 .onFailure { Timber.w(it, "SessionReport: power properties failed") }
             runCatching { putAll(SessionProcessTelemetry.properties()) }
                 .onFailure { Timber.w(it, "SessionReport: process properties failed") }
+            runCatching { putAll(app.gamenative.powercontrol.FrameThreadPlacement.properties()) }
             put("fps_cap_configured", app.gamenative.powercontrol.PowerManager.targetFps.coerceAtLeast(0))
             put("optimize_state", OptimizeState.properties())
             if (frameRating != null) {

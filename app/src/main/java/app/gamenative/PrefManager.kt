@@ -1977,4 +1977,9 @@ object PrefManager {
     var sharedShaderCache: Boolean
         get() = getPref(SHARED_SHADER_CACHE, true)
         set(value) { setPref(SHARED_SHADER_CACHE, value) }
+
+    private val FRAME_THREAD_PLACEMENT = booleanPreferencesKey("frame_thread_placement")
+    var frameThreadPlacement: Boolean
+        get() = getPref(FRAME_THREAD_PLACEMENT, true)
+        set(value) { setPref(FRAME_THREAD_PLACEMENT, value) }
 }
