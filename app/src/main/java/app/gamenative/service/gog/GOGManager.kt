@@ -145,7 +145,7 @@ class GOGManager @Inject constructor(
     suspend fun getInstalledDlcIds(gameId: String): Set<String> = withContext(Dispatchers.IO) {
         val game = getGameFromDbById(gameId) ?: return@withContext emptySet()
         val recorded = game.installedDlcIds.toSet()
-        val installDir = installDirOf(game) ?: return@withContext recorded
+        val installDir = installDirOf(game) ?: return@withContext emptySet()
         recorded + (infoFileProductIdsOf(installDir) - baseIdsOf(gameId, installDir))
     }
 

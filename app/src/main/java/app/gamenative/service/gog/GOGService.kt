@@ -365,6 +365,25 @@ class GOGService : Service() {
                 ?: Result.failure(Exception("Service not available"))
         }
 
+        private const val PENDING_DLC_IDS_FILE = ".pending_dlc_ids"
+
+        /** New DLC ids of an unfinished download, kept beside it so a resume after a restart still installs them. */
+        private fun readPendingDlcIds(installPath: String): Set<String> =
+            File(installPath, PENDING_DLC_IDS_FILE).takeIf { it.isFile }?.readLines()?.filter { it.isNotBlank() }?.toSet().orEmpty()
+
+        private fun writePendingDlcIds(installPath: String, dlcIds: Set<String>) {
+            try {
+                File(installPath).mkdirs()
+                File(installPath, PENDING_DLC_IDS_FILE).writeText(dlcIds.joinToString("\n"))
+            } catch (e: Exception) {
+                Timber.tag("GOG").w(e, "Failed to save pending DLC ids for $installPath")
+            }
+        }
+
+        private fun clearPendingDlcIds(installPath: String) {
+            File(installPath, PENDING_DLC_IDS_FILE).delete()
+        }
+
         /**
          * @param dlcIds DLC product ids to install with the base game. The DLCs already installed
          * ([GOGManager.getInstalledDlcIds]) are always kept; null adds only the selection of a
@@ -411,8 +430,8 @@ class GOGService : Service() {
 
                     val wasInstalled = instance.gogManager.getGameFromDbById(gameId)?.isInstalled == true
                     val installedDlcIds = instance.gogManager.getInstalledDlcIds(gameId)
-                    val newDlcIds = (dlcIds ?: instance.pendingDlcIds[gameId].orEmpty()) - installedDlcIds
-                    if (newDlcIds.isEmpty()) instance.pendingDlcIds.remove(gameId) else instance.pendingDlcIds[gameId] = newDlcIds
+                    val newDlcIds = (dlcIds ?: readPendingDlcIds(installPath)) - installedDlcIds
+                    if (newDlcIds.isEmpty()) clearPendingDlcIds(installPath) else writePendingDlcIds(installPath, newDlcIds)
                     val result = instance.gogDownloadManager.downloadGame(
                         gameId = gameId,
                         installPath = File(installPath),
@@ -425,7 +444,7 @@ class GOGService : Service() {
                     if (result.isFailure) {
                         val error = result.exceptionOrNull()
                         Timber.e(error, "[Download] Failed for game $gameId")
-                        if (downloadInfo.isActive()) instance.pendingDlcIds.remove(gameId)
+                        if (downloadInfo.isActive()) clearPendingDlcIds(installPath)
                         downloadInfo.setProgress(-1.0f)
 
                         SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
@@ -437,7 +456,7 @@ class GOGService : Service() {
                             MarkerUtils.removeMarker(installPath, Marker.GOG_SCRIPT_INSTALLED)
                             MarkerUtils.removeMarker(installPath, Marker.GOG_SUPPORT_INSTALLED)
                         }
-                        instance.pendingDlcIds.remove(gameId)
+                        clearPendingDlcIds(installPath)
 
                         // Transfer is complete - unregister from GameDownloadService
                         GameDownloadService.unregisterDownload(context, GameSource.GOG, gameId)
@@ -521,7 +540,6 @@ class GOGService : Service() {
             app.gamenative.service.cloud.CloseSyncTracker.awaitIdle(
                 app.gamenative.service.cloud.CloseSyncTracker.keyOf(GameSource.GOG, libraryItem.gameId),
             )
-            getInstance()?.pendingDlcIds?.remove(libraryItem.gameId.toString())
             return getInstance()?.gogManager?.deleteGame(context, libraryItem)
                 ?: Result.failure(Exception("Service not available"))
         }
@@ -792,9 +810,6 @@ class GOGService : Service() {
 
     // Track active downloads by game ID
     private val activeDownloads = ConcurrentHashMap<String, DownloadInfo>()
-
-    // New DLC ids of an unfinished download, kept for its resume
-    private val pendingDlcIds = ConcurrentHashMap<String, Set<String>>()
 
     private val onEndProcess: (AndroidEvent.EndProcess) -> Unit = { stop() }
 
