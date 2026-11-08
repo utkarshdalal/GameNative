@@ -322,6 +322,9 @@ class OptimizeRulesTest {
         assertEquals("suppressed:never", OptimizeCards.cardField(false, OptimizeCards.firstCardBlock(OptimizeLocalState(never = true), session, 0L)))
         assertEquals("suppressed:short", OptimizeCards.cardField(false, OptimizeCards.firstCardBlock(OptimizeLocalState(), session.copy(gameplaySec = 10), 0L)))
         assertEquals("shown", OptimizeCards.cardField(true, null))
+        assertEquals("shown", OptimizeCards.cardBeforeJudging(OptimizeLocalState(), session, 0L))
+        assertEquals("suppressed:card_waiting", OptimizeCards.cardBeforeJudging(OptimizeLocalState(card = OptimizeCard(OptimizeCard.HELPED, 0L)), session, 0L))
+        assertEquals("pending", OptimizeCards.cardBeforeJudging(OptimizeLocalState(activeProfile = OptimizeProfile.BALANCED), session, 0L))
         val props = mapOf("avg_fps" to 40.0, "perf_verdict" to mapOf("class" to "gpu", "card" to "none"))
         val out = OptimizeCards.withCard(props, "shown")
         assertEquals(mapOf("class" to "gpu", "card" to "shown"), out["perf_verdict"])
@@ -331,13 +334,11 @@ class OptimizeRulesTest {
     }
 
     @Test
-    fun pickingAProfileResumesItAndRestoreGoesBackToNotStarted() {
+    fun pickingAProfileResumesIt() {
         assertEquals(LadderState.TRYING, OptimizeLadders.picked(ProfileLadder(state = LadderState.IDLE)).state)
         val paused = OptimizeLadders.picked(ProfileLadder(state = LadderState.PAUSED, noChangeStreak = 2))
         assertEquals(LadderState.TRYING, paused.state)
         assertEquals(0, paused.noChangeStreak)
         assertEquals(LadderState.DONE, OptimizeLadders.picked(ProfileLadder(state = LadderState.DONE)).state)
-        assertEquals(LadderState.IDLE, OptimizeLadders.afterRestore(ProfileLadder(state = LadderState.TRYING)))
-        assertEquals(LadderState.PAUSED, OptimizeLadders.afterRestore(ProfileLadder(kept = listOf(kept("k")))))
     }
 }

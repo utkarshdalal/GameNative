@@ -665,6 +665,18 @@ object OptimizeController {
     }
 
     /**
+     * perf_verdict.card as far as it is known before the session is judged: the first-card decision when no profile is
+     * active, "pending" when judging may leave a card. Reads state.json without the lock; null when it cannot.
+     */
+    fun cardBeforeJudging(container: Container, props: Map<String, Any>): String? = try {
+        val state = OptimizeStore(container.rootDir).read()
+        OptimizeCards.cardBeforeJudging(state, Metrics.fromRun(JSONObject(props)), System.currentTimeMillis())
+    } catch (e: Exception) {
+        Timber.tag(TAG).w(e, "Reading the card state at exit failed")
+        null
+    }
+
+    /**
      * Judges the session that just ended; [props] are its game_exited properties. Changes that must come off are
      * taken off before the next launch, once Wine has written its registry. Leaves the card for the next screen.
      * Returns the session's perf_verdict.card value ("shown" or "suppressed:<reason>"), null when judging failed.
@@ -930,15 +942,14 @@ object OptimizeController {
             switchTo(context, appId, container, store, state, profile.takeIf { it != OptimizeProfile.OFF })
         }
 
-    /** Takes the active profile's changes off and forgets what it kept; what it tried stays. */
+    /** Takes the active profile's changes off and forgets what it kept; what it tried stays, and the profile stays active. */
     private suspend fun restore(
         context: Context,
         appId: String,
         container: Container,
         store: OptimizeStore,
         state: OptimizeLocalState,
-        /** Null picks it from what is left: [OptimizeLadders.afterRestore]. */
-        nextState: LadderState?,
+        nextState: LadderState,
     ): Pair<OptimizeLocalState, Boolean> {
         val profile = state.activeProfile ?: return (state to true)
         var s = state
@@ -964,21 +975,14 @@ object OptimizeController {
             ladder = ladder.copy(kept = ladder.kept - kept)
             s = s.queued(undoReport(appId, profile, kept.rungId, kept.version, kept.baseline, kept.levers.size))
         }
-        if (ok) {
-            ladder = ladder.copy(state = nextState ?: OptimizeLadders.afterRestore(ladder), noChangeStreak = 0, baselineOverride = null)
-        } else if (nextState == null) {
-            ladder = ladder.copy(state = OptimizeLadders.afterRestore(ladder))
-        }
-        s = s.withLadder(profile, ladder)
-        // Nothing left on: the game is back to Off, so a later session can offer the first card again.
-        if (nextState == null && ladder.state == LadderState.IDLE) s = s.copy(activeProfile = null)
-        return s to ok
+        if (ok) ladder = ladder.copy(state = nextState, noChangeStreak = 0, baselineOverride = null)
+        return s.withLadder(profile, ladder) to ok
     }
 
-    /** "Restore original settings": paused while something is still kept, otherwise back to not started. */
+    /** "Restore original settings": the profile stays active and paused, so Continue picks it up again. */
     suspend fun restoreOriginal(context: Context, appId: String): ChangeResult =
         change(context, appId, touchesFiles = true, what = "restoring original settings") { container, store, state ->
-            restore(context, appId, container, store, state, null)
+            restore(context, appId, container, store, state, LadderState.PAUSED)
         }
 
     /** Resumes a paused ladder: the next launch asks for the next step again. */

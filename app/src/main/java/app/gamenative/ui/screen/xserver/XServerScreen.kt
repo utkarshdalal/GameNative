@@ -5472,7 +5472,7 @@ private fun exit(
 
     PerfSampler.halt()
 
-    val exitProperties = mapOf(
+    val sessionProperties = mapOf(
         "game_name" to ContainerUtils.resolveGameName(appId),
         "game_store" to ContainerUtils.extractGameSourceFromContainerId(appId).name,
         "session_length" to (frameRating?.sessionLengthSec ?: 0),
@@ -5489,20 +5489,16 @@ private fun exit(
         val fingerprint = CoroutineScope(Dispatchers.IO).async { SessionReport.crashFingerprintProperties(container, reason) }
         runBlocking { withTimeoutOrNull(200) { fingerprint.await() } }
     }.getOrNull().orEmpty()
+    val exitProperties = OptimizeCards.withCard(sessionProperties, OptimizeController.cardBeforeJudging(container, sessionProperties))
+    PostHog.capture(
+        event = "game_exited",
+        properties = exitProperties,
+    )
     val optimizeContext = (frameRating?.context ?: PluviaApp.xServerView?.context)?.applicationContext
-    // game_exited goes out once the session is judged, so perf_verdict.card says whether it left a card.
     CoroutineScope(Dispatchers.IO).launch {
-        var properties = exitProperties
-        try {
-            val run = SessionReport.recordRun(container, exitProperties)
-            properties = OptimizeCards.withCard(exitProperties, OptimizeController.afterExit(optimizeContext, appId, container, exitProperties))
-            if (run != null && properties !== exitProperties) SessionReport.rewriteRun(run, properties)
-        } finally {
-            PostHog.capture(
-                event = "game_exited",
-                properties = properties,
-            )
-        }
+        val run = SessionReport.recordRun(container, exitProperties)
+        val judged = OptimizeCards.withCard(exitProperties, OptimizeController.afterExit(optimizeContext, appId, container, exitProperties))
+        if (run != null && judged !== exitProperties) SessionReport.rewriteRun(run, judged)
     }
     (frameRating?.context ?: PluviaApp.xServerView?.context)?.let { ctx -> runCatching { AppExitRecorder.markSessionEnd(ctx) } }
     runCatching { windowActivity.stop() }

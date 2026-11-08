@@ -29,10 +29,6 @@ object OptimizeLadders {
     /** A profile picked from the dialog, the options row or a card starts trying again when it was idle or paused. */
     fun picked(ladder: ProfileLadder): ProfileLadder =
         if (ladder.state == LadderState.IDLE || ladder.state == LadderState.PAUSED) ladder.copy(state = LadderState.TRYING, noChangeStreak = 0) else ladder
-
-    /** After Restore original settings: paused while a change is still kept or on trial, otherwise not started. */
-    fun afterRestore(ladder: ProfileLadder): LadderState =
-        if (ladder.kept.isNotEmpty() || ladder.pending != null) LadderState.PAUSED else LadderState.IDLE
 }
 
 object OptimizeTarget {
@@ -137,6 +133,15 @@ object OptimizeCards {
 
     /** perf_verdict.card for a session: "shown" when it left a card, otherwise why not. */
     fun cardField(shown: Boolean, block: String?): String = if (shown) "shown" else "suppressed:${block ?: "none"}"
+
+    const val CARD_PENDING = "pending"
+
+    /** perf_verdict.card before judging: a profile's ladder may still leave a card, so it is "pending" then. */
+    fun cardBeforeJudging(state: OptimizeLocalState, session: Metrics, nowMillis: Long): String {
+        if (state.activeProfile != null) return CARD_PENDING
+        val block = firstCardBlock(state, session, nowMillis)
+        return cardField(block == null, block)
+    }
 
     /** game_exited properties with perf_verdict.card set to [card]; unchanged when either is missing. */
     fun withCard(props: Map<String, Any>, card: String?): Map<String, Any> {
