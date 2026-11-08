@@ -449,6 +449,11 @@ object OptimizeController {
                     Timber.tag(TAG).i("Putting ${rung.rungId} back deferred: ${outcome.reason}")
                     ok = false
                 }
+                is ApplyOutcome.NoOp -> {
+                    Timber.tag(TAG).i("Putting ${rung.rungId} back wrote nothing: values already at or below target")
+                    val back = kept.copy(levers = emptyList(), applied = true, appliedAt = System.currentTimeMillis())
+                    s = s.withLadder(target, ladder.copy(kept = ladder.kept.map { if (it === kept) back else it }))
+                }
             }
         }
         return s to ok
