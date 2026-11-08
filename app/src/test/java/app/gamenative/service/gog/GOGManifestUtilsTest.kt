@@ -42,10 +42,20 @@ class GOGManifestUtilsTest {
     @Test
     fun selectBaseInfoFile_prefersKnownGameId() {
         val dir = tmp.newFolder("known")
+        val other = writeInfo(dir, "050", "050")
+        val base = writeInfo(dir, "100", "999")
+
+        assertEquals(base, GOGManifestUtils.selectBaseInfoFile(listOf(other, base), "100"))
+    }
+
+    @Test
+    fun selectBaseInfoFile_knownGameIdMissingNeverPicksDlc() {
+        val dir = tmp.newFolder("missing-known")
         val dlc = writeInfo(dir, "050", "100")
         val base = writeInfo(dir, "100", "100")
 
-        assertEquals(base, GOGManifestUtils.selectBaseInfoFile(listOf(dlc, base), "100"))
+        assertEquals(base, GOGManifestUtils.selectBaseInfoFile(listOf(dlc, base), "777"))
+        assertNull(GOGManifestUtils.selectBaseInfoFile(listOf(dlc), "777"))
     }
 
     @Test

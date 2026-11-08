@@ -62,6 +62,7 @@
     <string name="gog_dlc_deselect_all">모두 선택 해제</string>
     <string name="gog_dlc_download_size">다운로드 %1$s</string>
     <string name="gog_dlc_installs_on_launch">다음에 게임을 실행할 때 설치됩니다</string>
+    <string name="gog_dlc_unresolved">이 DLC를 불러올 수 없습니다. 다시 시도하여 설치하세요.</string>
     <string name="epic_uninstall_game_title">게임 제거</string>
     <string name="epic_uninstall_game_message">%1$s을(를) 제거하시겠습니까? 이 작업은 취소할 수 없습니다.</string>
     <string name="epic_install_game_title">게임 다운로드</string>

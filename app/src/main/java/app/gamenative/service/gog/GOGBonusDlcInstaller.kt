@@ -202,21 +202,25 @@ object GOGBonusDlcInstaller {
             val body = response.body ?: return Result.failure(Exception("Empty response for DLC file ${file.id}"))
             val buffer = ByteArray(256 * 1024)
             var lastEmit = System.currentTimeMillis()
-            FileOutputStream(part, append).use { out ->
-                body.byteStream().use { input ->
-                    while (true) {
-                        val n = input.read(buffer)
-                        if (n == -1) break
-                        if (!downloadInfo.isActive()) return Result.failure(Exception("Download cancelled"))
-                        out.write(buffer, 0, n)
-                        downloadInfo.updateBytesDownloaded(n.toLong())
-                        val now = System.currentTimeMillis()
-                        if (now - lastEmit >= PROGRESS_INTERVAL_MS) {
-                            downloadInfo.emitProgressChange()
-                            lastEmit = now
+            try {
+                FileOutputStream(part, append).use { out ->
+                    body.byteStream().use { input ->
+                        while (true) {
+                            val n = input.read(buffer)
+                            if (n == -1) break
+                            if (!downloadInfo.isActive()) return Result.failure(Exception("Download cancelled"))
+                            out.write(buffer, 0, n)
+                            downloadInfo.updateBytesDownloaded(n.toLong())
+                            val now = System.currentTimeMillis()
+                            if (now - lastEmit >= PROGRESS_INTERVAL_MS) {
+                                downloadInfo.emitProgressChange()
+                                lastEmit = now
+                            }
                         }
                     }
                 }
+            } finally {
+                downloadInfo.persistProgressSnapshot()
             }
             downloadInfo.emitProgressChange()
             resolvedName
@@ -225,7 +229,8 @@ object GOGBonusDlcInstaller {
         if (file.size > 0L && part.length() != file.size) {
             return Result.failure(Exception("Size mismatch for DLC file ${file.id}: ${part.length()} != ${file.size}"))
         }
-        verifyChecksum(part, checksumUrl).onFailure {
+        val checksum = fetchChecksum(checksumUrl).getOrElse { return Result.failure(it) }
+        verifyChecksum(part, checksum).onFailure {
             part.delete()
             return Result.failure(it)
         }
@@ -240,20 +245,21 @@ object GOGBonusDlcInstaller {
         return Result.success(target)
     }
 
-    private fun verifyChecksum(file: File, checksumUrl: String): Result<Unit> {
-        if (checksumUrl.isEmpty()) {
-            Timber.tag("GOG").i("No checksum for ${file.name}; skipping verification")
-            return Result.success(Unit)
-        }
-        val info = try {
+    /** Checksum behind [checksumUrl]; null when none is offered or it is unparseable, a failure when the fetch fails. */
+    private fun fetchChecksum(checksumUrl: String): Result<ChecksumInfo?> {
+        if (checksumUrl.isEmpty()) return Result.success(null)
+        return try {
             Net.http.newCall(Request.Builder().url(checksumUrl).header("User-Agent", "GOG Galaxy").build()).execute().use { response ->
                 if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
-                parseChecksumXml(response.body?.string().orEmpty())
+                Result.success(parseChecksumXml(response.body?.string().orEmpty()))
             }
         } catch (e: Exception) {
-            Timber.tag("GOG").w(e, "Checksum fetch failed for ${file.name}; skipping verification")
-            null
+            Timber.tag("GOG").w(e, "Checksum fetch failed: $checksumUrl")
+            Result.failure(IOException("Failed to fetch DLC checksum: ${e.message}", e))
         }
+    }
+
+    private fun verifyChecksum(file: File, info: ChecksumInfo?): Result<Unit> {
         if (info == null || info.md5.isEmpty()) {
             Timber.tag("GOG").i("Checksum unavailable for ${file.name}; skipping verification")
             return Result.success(Unit)

@@ -62,6 +62,7 @@
     <string name="gog_dlc_deselect_all">Deseleccionar todo</string>
     <string name="gog_dlc_download_size">%1$s de descarga</string>
     <string name="gog_dlc_installs_on_launch">Se instala la próxima vez que inicies el juego</string>
+    <string name="gog_dlc_unresolved">No se pudo cargar este DLC. Reintenta para instalarlo.</string>
     <string name="epic_uninstall_game_title">Desinstalar juego</string>
     <string name="epic_uninstall_game_message">¿Deseas desinstalar %1$s? Esta acción no se puede deshacer.</string>
     <string name="epic_install_game_title">Instalar juego</string>

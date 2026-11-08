@@ -1679,6 +1679,7 @@
     <string name="gog_dlc_deselect_all">Alle abwählen</string>
     <string name="gog_dlc_download_size">%1$s Download</string>
     <string name="gog_dlc_installs_on_launch">Wird beim nächsten Spielstart installiert</string>
+    <string name="gog_dlc_unresolved">Dieser DLC konnte nicht geladen werden. Erneut versuchen, um ihn zu installieren.</string>
 
     <!-- Epic Games Integration -->
     <string name="epic_integration_title">Epic Games Integration</string>

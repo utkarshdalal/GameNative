@@ -22,13 +22,16 @@ object GOGManifestUtils {
 
     /**
      * Picks the base game's info file among [infoFiles]: goggame-<gameId>.info when [gameId] is
-     * known, else a file whose rootGameId equals its own gameId, else the first by name.
+     * known, else a file whose rootGameId equals its own gameId. Without [gameId] it falls back to
+     * the first by name; with one it never returns a file that names another product as its root.
      */
     fun selectBaseInfoFile(infoFiles: List<File>, gameId: String?): File? {
         if (infoFiles.isEmpty()) return null
         val sorted = infoFiles.sortedBy { it.name }
         if (gameId != null) {
-            sorted.firstOrNull { it.name == "goggame-$gameId.info" }?.let { return it }
+            return sorted.firstOrNull { it.name == "goggame-$gameId.info" }
+                ?: sorted.firstOrNull { isBaseInfoFile(it) }
+                ?: sorted.firstOrNull { !isDlcInfoFile(it) }
         }
         return sorted.firstOrNull { isBaseInfoFile(it) } ?: sorted.first()
     }
@@ -38,6 +41,16 @@ object GOGManifestUtils {
             val json = JSONObject(infoFile.readText())
             val id = json.optString("gameId", "")
             id.isNotEmpty() && id == json.optString("rootGameId", "")
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun isDlcInfoFile(infoFile: File): Boolean {
+        return try {
+            val json = JSONObject(infoFile.readText())
+            val root = json.optString("rootGameId", "")
+            root.isNotEmpty() && root != json.optString("gameId", "")
         } catch (e: Exception) {
             false
         }

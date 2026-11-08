@@ -89,14 +89,14 @@ class GOGManagerPlayTaskTest {
     }
 
     @Test
-    fun findInstalledPlayTask_ignoresDlcInfoFileInInstallRoot() {
+    fun findInstalledPlayTask_unmatchedGameIdSkipsDlcInfoFile() {
         val installDir = tmp.newFolder("with-dlc")
         writeDosBoxGame(installDir)
         installDir.resolve("goggame-1000000001.info").writeText(
             """{"gameId": "1000000001", "rootGameId": "1808582759"}""",
         )
 
-        val task = manager().findInstalledPlayTask(installDir.absolutePath, "1808582759")
+        val task = manager().findInstalledPlayTask(installDir.absolutePath, "1207658930")
 
         assertNotNull(task)
         assertEquals("DOSBOX/DOSBox.exe", task!!.executablePath.replace('\\', '/'))

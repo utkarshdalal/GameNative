@@ -124,18 +124,20 @@ fun GOGGameManagerDialog(
         options = loaded.orEmpty()
         loadError = result.exceptionOrNull()?.let { it.message.orEmpty() }
         selectedIds.clear()
-        options.forEach { selectedIds[it.productId] = it.installed || it.installable }
+        options.forEach { selectedIds[it.productId] = it.installed || it.isSelectable() }
         loading = false
     }
 
-    val selectableIds = options.filter { it.installable && !it.installed }.map { it.productId }
+    val selectableIds = options.filter { it.isSelectable() && !it.installed }.map { it.productId }
     val allSelectableSelected = selectableIds.isNotEmpty() && selectableIds.all { selectedIds[it] == true }
-    val newSelections = options.filter { it.installable && !it.installed && selectedIds[it.productId] == true }
+    val newSelections = options.filter { it.isSelectable() && !it.installed && selectedIds[it.productId] == true }
+    val unresolvedTitles = options.filter { it.kind == GogDlcKind.UNKNOWN }.map { it.title }
 
     val baseDownloadBytes = if (isInstalled) 0L else baseGame?.downloadSize ?: 0L
     val baseInstallBytes = if (isInstalled) 0L else baseGame?.installSize ?: 0L
     val totalDownloadBytes = baseDownloadBytes + newSelections.sumOf { it.downloadSize }
-    val totalInstallBytes = baseInstallBytes + newSelections.sumOf { it.installSize }
+    val totalInstallBytes = maxOf(baseInstallBytes, baseDownloadBytes) +
+        newSelections.sumOf { maxOf(it.installSize, it.downloadSize) }
 
     val installButtonEnabled = availableBytes >= totalInstallBytes &&
         (!isInstalled || newSelections.isNotEmpty())
@@ -258,7 +260,8 @@ fun GOGGameManagerDialog(
                 Column(
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    loadError?.let { error ->
+                    val retryMessage = loadError ?: unresolvedTitles.takeIf { it.isNotEmpty() }?.joinToString()
+                    retryMessage?.let { error ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -304,8 +307,8 @@ fun GOGGameManagerDialog(
 
                     GOGContentRow(
                         title = displayInfo.name,
-                        downloadSize = baseGame?.downloadSize ?: 0L,
-                        installSize = baseGame?.installSize ?: 0L,
+                        downloadSize = baseDownloadBytes,
+                        installSize = baseInstallBytes,
                         installed = isInstalled,
                         note = null,
                         checked = true,
@@ -315,7 +318,7 @@ fun GOGGameManagerDialog(
 
                     options.forEach { option ->
                         val checked = selectedIds[option.productId] ?: false
-                        val enabled = option.installable && !option.installed
+                        val enabled = option.isSelectable() && !option.installed
                         GOGContentRow(
                             title = option.title,
                             downloadSize = option.downloadSize,
@@ -323,6 +326,7 @@ fun GOGGameManagerDialog(
                             installed = option.installed,
                             note = when (option.kind) {
                                 GogDlcKind.NONE -> stringResource(R.string.gog_dlc_not_installable)
+                                GogDlcKind.UNKNOWN -> stringResource(R.string.gog_dlc_unresolved)
                                 GogDlcKind.INSTALLER -> if (option.installed) null else stringResource(R.string.gog_dlc_installs_on_launch)
                                 else -> null
                             },
@@ -357,7 +361,7 @@ fun GOGGameManagerDialog(
                             enabled = installButtonEnabled,
                             onClick = {
                                 val dlcIds = options
-                                    .filter { it.installed || (it.installable && selectedIds[it.productId] == true) }
+                                    .filter { it.installed || (it.isSelectable() && selectedIds[it.productId] == true) }
                                     .map { it.productId }
                                     .toSet()
                                 onInstall(dlcIds)
@@ -371,6 +375,8 @@ fun GOGGameManagerDialog(
         },
     )
 }
+
+private fun GogDlcOption.isSelectable(): Boolean = installable && kind != GogDlcKind.UNKNOWN
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

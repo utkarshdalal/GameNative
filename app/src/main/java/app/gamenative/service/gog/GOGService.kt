@@ -15,12 +15,14 @@ import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.GameSource
+import app.gamenative.enums.Marker
 import app.gamenative.service.download.GameDownloadService
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.service.NotificationHelper
 import app.gamenative.utils.CloudSaveBackupManager
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.LocaleHelper
+import app.gamenative.utils.MarkerUtils
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
@@ -364,8 +366,10 @@ class GOGService : Service() {
         }
 
         /**
-         * @param dlcIds DLC product ids to install with the base game; null keeps the DLCs already
-         * installed ([GOGManager.getInstalledDlcIds]), for verify, language change and resume.
+         * @param dlcIds DLC product ids to install with the base game. The DLCs already installed
+         * ([GOGManager.getInstalledDlcIds]) are always kept; null adds only the selection of a
+         * paused download, for verify, language change and resume. New DLCs are recorded as
+         * installed only once the download succeeds.
          */
         fun downloadGame(
             context: Context,
@@ -405,37 +409,49 @@ class GOGService : Service() {
                     val commonRedistDir = File(installPath, "_CommonRedist")
                     Timber.tag("GOG").d("Will install dependencies to _CommonRedist")
 
-                    if (dlcIds != null) instance.gogManager.addInstalledDlcIds(gameId, dlcIds)
-                    val resolvedDlcIds = dlcIds ?: instance.gogManager.getInstalledDlcIds(gameId)
+                    val wasInstalled = instance.gogManager.getGameFromDbById(gameId)?.isInstalled == true
+                    val installedDlcIds = instance.gogManager.getInstalledDlcIds(gameId)
+                    val newDlcIds = (dlcIds ?: instance.pendingDlcIds[gameId].orEmpty()) - installedDlcIds
+                    if (newDlcIds.isEmpty()) instance.pendingDlcIds.remove(gameId) else instance.pendingDlcIds[gameId] = newDlcIds
                     val result = instance.gogDownloadManager.downloadGame(
                         gameId = gameId,
                         installPath = File(installPath),
                         downloadInfo = downloadInfo,
                         language = containerLanguage,
-                        dlcIds = resolvedDlcIds,
+                        dlcIds = installedDlcIds + newDlcIds,
                         supportDir = commonRedistDir,
                     )
 
                     if (result.isFailure) {
                         val error = result.exceptionOrNull()
                         Timber.e(error, "[Download] Failed for game $gameId")
+                        if (downloadInfo.isActive()) instance.pendingDlcIds.remove(gameId)
                         downloadInfo.setProgress(-1.0f)
 
                         SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
                     } else {
                         Timber.i("[Download] Completed successfully for game $gameId")
 
+                        if (newDlcIds.isNotEmpty()) {
+                            instance.gogManager.addInstalledDlcIds(gameId, newDlcIds)
+                            MarkerUtils.removeMarker(installPath, Marker.GOG_SCRIPT_INSTALLED)
+                            MarkerUtils.removeMarker(installPath, Marker.GOG_SUPPORT_INSTALLED)
+                        }
+                        instance.pendingDlcIds.remove(gameId)
+
                         // Transfer is complete - unregister from GameDownloadService
                         GameDownloadService.unregisterDownload(context, GameSource.GOG, gameId)
 
                         // Download cloud saves so they're ready before first launch.
                         // Status message keeps isDownloading() true so Play stays hidden during sync.
+                        // A DLC added to an installed game leaves its saves to the launch sync.
                         val appId = "GOG_$gameId"
                         val numericGameId = gameId.toIntOrNull()
+                        val addedDlcToInstall = wasInstalled && newDlcIds.isNotEmpty()
                         try {
                             val gogGame = instance.gogManager.getGameFromDbById(gameId)
                             val locations = if (gogGame != null) instance.gogManager.getSaveDirectoryPath(context, appId, gogGame.title) else null
-                            if (numericGameId != null && !locations.isNullOrEmpty() && !ContainerUtils.isLocalSavesOnly(context, appId)) {
+                            if (!addedDlcToInstall && numericGameId != null && !locations.isNullOrEmpty() && !ContainerUtils.isLocalSavesOnly(context, appId)) {
                                 try {
                                     downloadInfo.setPostInstallSyncing(true)
                                     PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(numericGameId, true))
@@ -505,6 +521,7 @@ class GOGService : Service() {
             app.gamenative.service.cloud.CloseSyncTracker.awaitIdle(
                 app.gamenative.service.cloud.CloseSyncTracker.keyOf(GameSource.GOG, libraryItem.gameId),
             )
+            getInstance()?.pendingDlcIds?.remove(libraryItem.gameId.toString())
             return getInstance()?.gogManager?.deleteGame(context, libraryItem)
                 ?: Result.failure(Exception("Service not available"))
         }
@@ -775,6 +792,9 @@ class GOGService : Service() {
 
     // Track active downloads by game ID
     private val activeDownloads = ConcurrentHashMap<String, DownloadInfo>()
+
+    // New DLC ids of an unfinished download, kept for its resume
+    private val pendingDlcIds = ConcurrentHashMap<String, Set<String>>()
 
     private val onEndProcess: (AndroidEvent.EndProcess) -> Unit = { stop() }
 

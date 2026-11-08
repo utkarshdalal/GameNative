@@ -224,6 +224,16 @@ class GOGBonusDlcInstallerTest {
         assertEquals("dlc-1", GOGBonusDlcInstaller.fileNameFor(null, "/", "dlc-1"))
     }
 
+    @Test
+    fun isTrustedGogUrl_acceptsOnlyHttpsGogHosts() {
+        assertTrue(GOGApiClient.isTrustedGogUrl("https://api.gog.com/products/1/downlink/installer/en1installer0"))
+        assertTrue(GOGApiClient.isTrustedGogUrl("https://gog.com/downlink"))
+        assertFalse(GOGApiClient.isTrustedGogUrl("http://api.gog.com/products/1/downlink"))
+        assertFalse(GOGApiClient.isTrustedGogUrl("https://api.gog.com.evil.example/downlink"))
+        assertFalse(GOGApiClient.isTrustedGogUrl("https://evilgog.com/downlink"))
+        assertFalse(GOGApiClient.isTrustedGogUrl("not a url"))
+    }
+
     private fun writeZip(zip: File, entries: Map<String, String>) {
         ZipOutputStream(FileOutputStream(zip)).use { out ->
             entries.forEach { (name, content) ->

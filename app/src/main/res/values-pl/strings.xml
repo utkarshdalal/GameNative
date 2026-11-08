@@ -62,6 +62,7 @@
     <string name="gog_dlc_deselect_all">Odznacz wszystko</string>
     <string name="gog_dlc_download_size">%1$s pobierania</string>
     <string name="gog_dlc_installs_on_launch">Zostanie zainstalowane przy następnym uruchomieniu gry</string>
+    <string name="gog_dlc_unresolved">Nie udało się wczytać tego DLC. Spróbuj ponownie, aby je zainstalować.</string>
     <string name="epic_uninstall_game_title">Odinstaluj grę</string>
     <string name="epic_uninstall_game_message">Czy na pewno chcesz odinstalować %1$s? Tej akcji nie można cofnąć.</string>
     <string name="epic_install_game_title">Pobierz grę</string>

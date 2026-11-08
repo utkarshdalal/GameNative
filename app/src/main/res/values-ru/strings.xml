@@ -636,6 +636,7 @@
     <string name="gog_dlc_deselect_all">Снять выделение</string>
     <string name="gog_dlc_download_size">Загрузка %1$s</string>
     <string name="gog_dlc_installs_on_launch">Установится при следующем запуске игры</string>
+    <string name="gog_dlc_unresolved">Не удалось загрузить это DLC. Повторите попытку, чтобы установить его.</string>
     <string name="gog_install_game_title">Загрузить игру</string>
     <string name="gog_login_cancel">Отмена</string>
     <string name="gog_login_success_title">Вход выполнен успешно</string>

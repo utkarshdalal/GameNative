@@ -61,6 +61,8 @@ import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -126,6 +128,7 @@ class GOGDownloadManager @Inject constructor(
         private const val RETRY_DELAY_MS = 1000L // Initial retry delay in milliseconds
         private const val DEPENDENCY_URL = "https://content-system.gog.com/dependencies/repository?generation=2"
         private const val STREAM_PROGRESS_TIME_INTERVAL_MS = 200L
+        private const val DLC_DOWNLOADS_CONCURRENCY = 4
     }
 
     /**
@@ -556,6 +559,7 @@ class GOGDownloadManager @Inject constructor(
             if (bonusPlans.isNotEmpty()) {
                 val bonusResult = GOGBonusDlcInstaller.install(context, installPath, bonusPlans, downloadInfo)
                 if (bonusResult.isFailure) {
+                    markBonusInstallFailed(gameId, downloadInfo, bonusResult)
                     MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                     return@withContext bonusResult
                 }
@@ -652,10 +656,12 @@ class GOGDownloadManager @Inject constructor(
                     .filter { it.id in owned && it.id !in manifestProductIds && it.id != gameId }
                     .forEach { ref -> withoutDepots.putIfAbsent(ref.id, ref.title) }
 
+                val requests = Semaphore(DLC_DOWNLOADS_CONCURRENCY)
                 val otherOptions = coroutineScope {
                     withoutDepots.map { (productId, title) ->
                         async {
-                            val resolution = app.gamenative.service.gog.GOGApiClient.getProductDownloads(context, productId)
+                            val resolution = requests
+                                .withPermit { app.gamenative.service.gog.GOGApiClient.getProductDownloads(context, productId) }
                                 .onFailure { Timber.tag("GOG").w(it, "Failed to fetch downloads of DLC $productId") }
                                 .map { GOGBonusDlcInstaller.resolve(it, language) }
                                 .getOrNull()
@@ -663,9 +669,9 @@ class GOGDownloadManager @Inject constructor(
                                 productId = productId,
                                 title = title.ifBlank { dlcTitleFromDb(productId) },
                                 downloadSize = resolution?.downloadSize ?: 0L,
-                                installSize = 0L,
+                                installSize = resolution?.downloadSize ?: 0L,
                                 installed = productId in onDisk,
-                                kind = resolution?.kind ?: GogDlcKind.NONE,
+                                kind = resolution?.kind ?: GogDlcKind.UNKNOWN,
                             )
                         }
                     }.awaitAll()
@@ -697,6 +703,19 @@ class GOGDownloadManager @Inject constructor(
         val candidates = (dlcIds intersect ownedGameIds) - depots.map { it.productId }.toSet() - baseProductId
         if (candidates.isEmpty()) return Result.success(emptyList())
         return GOGBonusDlcInstaller.plan(context, installPath, candidates, language)
+    }
+
+    /** Leaves [downloadInfo] in the failed state the download's catch path sets, unless the user cancelled. */
+    private fun markBonusInstallFailed(gameId: String, downloadInfo: DownloadInfo, result: Result<Unit>) {
+        if (!downloadInfo.isActive()) return
+        Timber.tag("GOG").e(result.exceptionOrNull(), "Bonus DLC install failed for game $gameId")
+        downloadInfo.updateStatusMessage("Failed: ${result.exceptionOrNull()?.message}")
+        downloadInfo.setProgress(-1.0f)
+        downloadInfo.setActive(false)
+        downloadInfo.emitProgressChange()
+        app.gamenative.PluviaApp.events.emitJava(
+            app.gamenative.events.AndroidEvent.DownloadStatusChanged(gameId.toIntOrNull() ?: 0, false),
+        )
     }
 
     private suspend fun dlcTitleFromDb(productId: String): String =
@@ -766,7 +785,7 @@ class GOGDownloadManager @Inject constructor(
             val game = gogManager.getGameFromDbById(gameId)
             if (game != null) {
                 val installSize = calculateDirectorySize(installPath)
-                gogManager.updateGame(game.copy(isInstalled = true, installPath = installPath.absolutePath, installSize = installSize))
+                gogManager.updateInstallState(gameId, true, installPath.absolutePath, installSize)
                 downloadInfo.clearPersistedBytesDownloaded(installPath.absolutePath)
                 Timber.tag("GOG").i("Updated database: game marked as installed, size: ${installSize / 1_000_000} MB")
             } else {
@@ -975,7 +994,10 @@ class GOGDownloadManager @Inject constructor(
 
             if (bonusPlans.isNotEmpty()) {
                 val bonusResult = GOGBonusDlcInstaller.install(context, installPath, bonusPlans, downloadInfo)
-                if (bonusResult.isFailure) return@withContext bonusResult
+                if (bonusResult.isFailure) {
+                    markBonusInstallFailed(gameId, downloadInfo, bonusResult)
+                    return@withContext bonusResult
+                }
             }
 
             finalizeInstallSuccess(gameId, installPath, downloadInfo)

@@ -180,19 +180,6 @@ class GOGManifestParserTest {
     }
 
     @Test
-    fun testFilterDepotsByOwnership() {
-        val ownedDepot = createTestDepot().copy(productId = "12345")
-        val unownedDepot = createTestDepot().copy(productId = "67890")
-        val depots = listOf(ownedDepot, unownedDepot)
-        val ownedProductIds = setOf("12345")
-
-        val result = parser.filterDepotsByOwnership(depots, ownedProductIds)
-
-        assertEquals(1, result.size)
-        assertEquals("12345", result[0].productId)
-    }
-
-    @Test
     fun filterDepotsForInstall_keepsBaseAndSelectedOwnedDlcs() {
         val base = createTestDepot().copy(productId = "100", manifest = "base")
         val selectedOwned = createTestDepot().copy(productId = "200", manifest = "dlc-owned")
@@ -300,6 +287,16 @@ class GOGManifestParserTest {
         val result = parser.dlcDepotsWithFallback(listOf(dlcStar), listOf(dlcStar, dlcEnglish), "200")
 
         assertEquals(listOf("dlc-star", "dlc-en"), result.map { it.manifest })
+    }
+
+    @Test
+    fun dlcDepotsWithFallback_starDepotListingAnotherLocaleStillAddsEnglishDepots() {
+        val dlcStarFrench = createTestDepot(languages = listOf("*", "fr-FR"), manifest = "dlc-star-fr").copy(productId = "200")
+        val dlcEnglish = createTestDepot(languages = listOf("en-US"), manifest = "dlc-en").copy(productId = "200")
+
+        val result = parser.dlcDepotsWithFallback(listOf(dlcStarFrench), listOf(dlcStarFrench, dlcEnglish), "200")
+
+        assertEquals(listOf("dlc-star-fr", "dlc-en"), result.map { it.manifest })
     }
 
     @Test

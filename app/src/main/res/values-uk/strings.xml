@@ -90,6 +90,7 @@
     <string name="gog_dlc_deselect_all">Зняти виділення</string>
     <string name="gog_dlc_download_size">Завантаження %1$s</string>
     <string name="gog_dlc_installs_on_launch">Встановиться під час наступного запуску гри</string>
+    <string name="gog_dlc_unresolved">Не вдалося завантажити це DLC. Повторіть спробу, щоб установити його.</string>
     <string name="download_prompt_title">Інсталювати застосунок</string>
     <string name="calculating_space_requirements">Розрахунок необхідного місця...</string>
     <string name="delete_prompt_title">Деінсталювати застосунок</string>

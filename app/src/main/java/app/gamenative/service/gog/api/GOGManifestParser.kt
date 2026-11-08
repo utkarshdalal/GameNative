@@ -97,22 +97,6 @@ class GOGManifestParser @Inject constructor() {
     }
 
     /**
-     * Filter depots based on ownership
-     *
-     * @param depots List of depots to filter
-     * @param ownedProductIds Set of product IDs the user owns
-     * @return Filtered list of depots for owned products only
-     */
-    fun filterDepotsByOwnership(depots: List<Depot>, ownedProductIds: Set<String>): List<Depot> {
-        val filtered = depots.filter { depot ->
-            depot.productId in ownedProductIds
-        }
-
-        Timber.tag(TAG).d("Filtered ${filtered.size}/${depots.size} depots for owned products")
-        return filtered
-    }
-
-    /**
      * Depots to install: the [languageDepots] of any of [baseProductIds] plus each selected DLC's
      * depots per [dlcDepotsWithFallback], restricted to products the user owns so an unowned id is
      * never requested.
@@ -135,12 +119,13 @@ class GOGManifestParser @Inject constructor() {
     }
 
     /**
-     * Depots of DLC [dlcId]: those in [languageDepots] when one of them is in a real language;
-     * otherwise its language-neutral (`*`) depots plus its English depots; else all of its depots.
+     * Depots of DLC [dlcId]: those in [languageDepots] when one of them is not a language-neutral
+     * (`*`) depot, so matched the install language; otherwise its `*` depots plus its English
+     * depots; else all of its depots.
      */
     fun dlcDepotsWithFallback(languageDepots: List<Depot>, allDepots: List<Depot>, dlcId: String): List<Depot> {
         val inLanguage = languageDepots.filter { it.productId == dlcId }
-        if (inLanguage.any { depot -> depot.languages.any { it != "*" } }) return inLanguage
+        if (inLanguage.any { depot -> depot.languages.any { it != "*" } && !depot.matchesLanguage("*") }) return inLanguage
         val own = allDepots.filter { it.productId == dlcId }
         val englishCodes = GOGConstants.CONTAINER_LANGUAGE_TO_GOG_CODES.getValue(GOGConstants.GOG_FALLBACK_DOWNLOAD_LANGUAGE)
         val english = own.filter { depot -> englishCodes.any { depot.matchesLanguage(it) } }

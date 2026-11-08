@@ -114,6 +114,12 @@ class GOGManager @Inject constructor(
         }
     }
 
+    suspend fun updateInstallState(gameId: String, isInstalled: Boolean, installPath: String, installSize: Long) {
+        withContext(Dispatchers.IO) {
+            gogGameDao.updateInstallState(gameId, isInstalled, installPath, installSize)
+        }
+    }
+
     suspend fun deleteAllNonInstalledGames() {
         withContext(Dispatchers.IO) {
             gogGameDao.deleteAllNonInstalledGames()
@@ -134,31 +140,41 @@ class GOGManager @Inject constructor(
 
     /**
      * DLC product ids installed alongside [gameId]: the recorded selection plus every
-     * goggame-<id>.info in the install root whose id is not the base game.
+     * goggame-<id>.info in the install root or a game subdirectory whose id is not the base game.
      */
     suspend fun getInstalledDlcIds(gameId: String): Set<String> = withContext(Dispatchers.IO) {
         val game = getGameFromDbById(gameId) ?: return@withContext emptySet()
         val recorded = game.installedDlcIds.toSet()
         val installDir = installDirOf(game) ?: return@withContext recorded
-        recorded + (GOGManifestUtils.infoFileProductIds(installDir) - baseIdsOf(gameId, installDir))
+        recorded + (infoFileProductIdsOf(installDir) - baseIdsOf(gameId, installDir))
     }
 
     /**
-     * DLC of [gameId] whose content is on disk: a goggame-<id>.info in the install root for depot
-     * DLC, or an applied bonus/installer DLC.
+     * DLC of [gameId] whose content is on disk: a goggame-<id>.info in the install root or a game
+     * subdirectory for depot DLC, or an applied bonus/installer DLC whose installer is not pending.
      */
     suspend fun getDlcIdsOnDisk(gameId: String): Set<String> = withContext(Dispatchers.IO) {
         val game = getGameFromDbById(gameId) ?: return@withContext emptySet()
         val installDir = installDirOf(game) ?: return@withContext emptySet()
         val bonusIds = File(installDir, GOGBonusDlcInstaller.BONUS_DIR).listFiles()
-            ?.filter { File(it, GOGBonusDlcInstaller.APPLIED_FILE).isFile }
+            ?.filter {
+                File(it, GOGBonusDlcInstaller.APPLIED_FILE).isFile &&
+                    !File(it, GOGBonusDlcInstaller.PENDING_INSTALLER_FILE).isFile
+            }
             ?.map { it.name }
             .orEmpty()
-        GOGManifestUtils.infoFileProductIds(installDir) - baseIdsOf(gameId, installDir) + bonusIds
+        infoFileProductIdsOf(installDir) - baseIdsOf(gameId, installDir) + bonusIds
     }
 
     private fun installDirOf(game: GOGGame): File? =
         game.installPath.takeIf { game.isInstalled && it.isNotEmpty() }?.let { File(it) }?.takeIf { it.isDirectory }
+
+    private fun infoFileProductIdsOf(installDir: File): Set<String> {
+        val subdirs = installDir.listFiles()?.filter {
+            it.isDirectory && it.name != "saves" && it.name != "_CommonRedist" && it.name != GOGBonusDlcInstaller.BONUS_DIR
+        }.orEmpty()
+        return GOGManifestUtils.infoFileProductIds(installDir) + subdirs.flatMap { GOGManifestUtils.infoFileProductIds(it) }
+    }
 
     private fun baseIdsOf(gameId: String, installDir: File): Set<String> = setOfNotNull(
         gameId,
@@ -169,11 +185,7 @@ class GOGManager @Inject constructor(
         if (dlcIds.isEmpty()) return
         withContext(Dispatchers.IO) {
             try {
-                val game = gogGameDao.getById(gameId) ?: return@withContext
-                val merged = (game.installedDlcIds + dlcIds).distinct()
-                if (merged != game.installedDlcIds) {
-                    gogGameDao.updateInstalledDlcIds(gameId, merged)
-                }
+                gogGameDao.updateInstalledDlcIds(gameId, dlcIds)
             } catch (e: Exception) {
                 Timber.tag("GOG").e(e, "Failed to record installed DLCs for $gameId")
             }
@@ -459,12 +471,12 @@ class GOGManager @Inject constructor(
                             // Update database with installation info
                             val existingGame = getGameFromDbById(detectedGame.id)
                             if (existingGame != null && !existingGame.isInstalled) {
-                                val updatedGame = existingGame.copy(
+                                updateInstallState(
+                                    existingGame.id,
                                     isInstalled = true,
                                     installPath = detectedGame.installPath,
                                     installSize = FileUtils.calculateDirectorySize(installDir),
                                 )
-                                updateGame(updatedGame)
                                 detectedCount++
                                 Timber.i("Detected existing installation: ${existingGame.title} at ${installDir.absolutePath}")
                             } else if (existingGame != null) {
@@ -670,8 +682,7 @@ class GOGManager @Inject constructor(
             val game = runBlocking { getGameFromDbById(gameId) }
             if (game != null && isInstalled != game.isInstalled) {
                 val installPath = if (isInstalled) getGameInstallPath(gameId, libraryItem.name) else ""
-                val updatedGame = game.copy(isInstalled = isInstalled, installPath = installPath)
-                runBlocking { gogGameDao.update(updatedGame) }
+                runBlocking { gogGameDao.updateInstallState(gameId, isInstalled, installPath, game.installSize) }
             }
 
             return isInstalled

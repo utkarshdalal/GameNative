@@ -6,6 +6,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import app.gamenative.ui.component.dialog.LoadingDialog
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -21,7 +22,6 @@ import app.gamenative.data.GOGGame
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.StoreGameDetails
 import app.gamenative.data.sanitizeGogDescription
-import app.gamenative.enums.Marker
 import app.gamenative.service.DownloadService
 import app.gamenative.service.gog.GOGConstants
 import app.gamenative.service.gog.GOGService
@@ -138,7 +138,7 @@ class GOGAppScreen : BaseAppScreen() {
         var refreshTrigger by remember { mutableStateOf(0) }
 
         // Listen for install status changes to refresh game data
-        LaunchedEffect(gameId) {
+        DisposableEffect(gameId) {
             val installListener: (app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged) -> Unit = { event ->
                 if (event.appId == libraryItem.gameId) {
                     Timber.tag(TAG).d("Install status changed, refreshing game data for $gameId")
@@ -146,6 +146,9 @@ class GOGAppScreen : BaseAppScreen() {
                 }
             }
             app.gamenative.PluviaApp.events.on<app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged, Unit>(installListener)
+            onDispose {
+                app.gamenative.PluviaApp.events.off<app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged, Unit>(installListener)
+            }
         }
 
         var gogGame by remember(gameId, refreshTrigger) { mutableStateOf<GOGGame?>(null) }
@@ -792,12 +795,6 @@ class GOGAppScreen : BaseAppScreen() {
                 },
                 onInstall = { dlcIds ->
                     hideGameManagerDialog(appId)
-                    if (gameInstalled) {
-                        val installPath = GOGService.getInstallPath(libraryItem.gameId.toString())
-                            ?: GOGConstants.getGameInstallPath(libraryItem.name)
-                        MarkerUtils.removeMarker(installPath, Marker.GOG_SCRIPT_INSTALLED)
-                        MarkerUtils.removeMarker(installPath, Marker.GOG_SUPPORT_INSTALLED)
-                    }
                     performDownload(context, libraryItem, dlcIds = dlcIds) {}
                 },
                 onDismissRequest = {

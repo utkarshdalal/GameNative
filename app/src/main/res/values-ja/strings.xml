@@ -62,6 +62,7 @@
     <string name="gog_dlc_deselect_all">すべて選択解除</string>
     <string name="gog_dlc_download_size">ダウンロード %1$s</string>
     <string name="gog_dlc_installs_on_launch">次回ゲーム起動時にインストールされます</string>
+    <string name="gog_dlc_unresolved">このDLCを読み込めませんでした。再試行してインストールしてください。</string>
     <string name="epic_uninstall_game_title">ゲームをアンインストールする</string>
     <string name="epic_uninstall_game_message">%1$s をアンインストールしてもよろしいですか？この操作は元に戻すことができません。</string>
     <string name="epic_install_game_title">ゲームをダウンロード</string>

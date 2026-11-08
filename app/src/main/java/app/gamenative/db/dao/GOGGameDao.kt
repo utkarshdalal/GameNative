@@ -75,10 +75,14 @@ interface GOGGameDao {
     suspend fun updateVerticalCoverUrl(gameId: String, url: String)
 
     @Transaction
-    suspend fun updateInstalledDlcIds(gameId: String, dlcIds: List<String>) {
+    suspend fun updateInstalledDlcIds(gameId: String, dlcIds: Collection<String>) {
         val game = getById(gameId) ?: return
-        update(game.copy(installedDlcIds = dlcIds))
+        val merged = (game.installedDlcIds + dlcIds).distinct()
+        if (merged != game.installedDlcIds) update(game.copy(installedDlcIds = merged))
     }
+
+    @Query("UPDATE gog_games SET is_installed = :isInstalled, install_path = :installPath, install_size = :installSize WHERE id = :gameId")
+    suspend fun updateInstallState(gameId: String, isInstalled: Boolean, installPath: String, installSize: Long)
 
     /** Clears the hidden flag on every GOG row (used before applying a fresh hidden set). */
     @Query("UPDATE gog_games SET hidden = 0")

@@ -62,6 +62,7 @@
     <string name="gog_dlc_deselect_all">Deselectează tot</string>
     <string name="gog_dlc_download_size">%1$s descărcare</string>
     <string name="gog_dlc_installs_on_launch">Se instalează la următoarea pornire a jocului</string>
+    <string name="gog_dlc_unresolved">Acest DLC nu a putut fi încărcat. Reîncearcă pentru a-l instala.</string>
     <string name="steam_never">Niciodată</string>
     <string name="epic_cancel_download_message">Sigur doriți să anulați descărcarea aplicației?</string>
     <string name="epic_delete_download_message">Ștergeți toate datele descărcate pentru acest joc?</string>

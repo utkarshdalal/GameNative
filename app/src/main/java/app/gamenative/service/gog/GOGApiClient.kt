@@ -6,6 +6,7 @@ import app.gamenative.data.GOGCredentials
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
@@ -454,6 +455,9 @@ object GOGApiClient {
      * refreshing the token once when GOG answers 401.
      */
     suspend fun resolveDownlink(context: Context, downlinkUrl: String): Result<JSONObject> = withContext(Dispatchers.IO) {
+        if (!isTrustedGogUrl(downlinkUrl)) {
+            return@withContext Result.failure(Exception("Refusing downlink outside gog.com: $downlinkUrl"))
+        }
         try {
             repeat(2) { attempt ->
                 val credentials = GOGAuthManager.getStoredCredentials(context).getOrElse {
@@ -489,6 +493,12 @@ object GOGApiClient {
             Timber.tag("GOG").e(e, "Exception resolving downlink: ${e.message}")
             Result.failure(e)
         }
+    }
+
+    /** HTTPS on gog.com or a subdomain: the only hosts the bearer token may be sent to. */
+    internal fun isTrustedGogUrl(url: String): Boolean {
+        val parsed = url.toHttpUrlOrNull() ?: return false
+        return parsed.isHttps && (parsed.host == "gog.com" || parsed.host.endsWith(".gog.com"))
     }
 
         /**
