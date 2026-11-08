@@ -65,58 +65,142 @@ class OptimizeStateTest {
     @Test
     fun stateRoundTripsThroughTheStore() {
         val rung = Rung.parse(JSONObject(rungJson))!!
-        val baseline = Metrics(gameplaySec = 900, steadyFps = 41.5, stutterShare = 0.012, throttleOnsetSec = 420, cls = "gpu", confidence = 0.8, exitReason = "quick_menu")
-        val state = OptimizeLocalState(
-            profile = OptimizeProfile.POWER,
-            started = true,
+        val baseline = Metrics(gameplaySec = 900, steadyFps = 41.5, stutterShare = 0.012, throttleOnsetSec = 420, cls = "gpu", confidence = 0.8, confident = true, exitReason = "quick_menu")
+        val power = ProfileLadder(
+            state = LadderState.PAUSED,
             kept = listOf(
-                KeptRung("k1", "12", 1, listOf("cpu"), 1000L, listOf(JSONObject().put("type", "container")), baseline, "vc_fps_held", "fps held"),
+                KeptRung("k1", "12", 1, listOf("cpu"), 1000L, listOf(JSONObject().put("type", "container")), baseline, "vc_fps_held", "fps held", JSONObject(rungJson), applied = true, before = baseline.copy(gameplaySec = 700)),
             ),
             pending = PendingRung(rung, 2000L, baseline, 1, listOf(JSONObject().put("type", "registry")), revert = "worse"),
             tried = listOf(TriedRung("t1", "3", OptimizeJudge.NO_CHANGE)),
             bad = listOf("b1"),
-            outcomeQueue = listOf(JSONObject().put("outcome_id", "o1")),
-            lastCard = JSONObject().put("result", "helped"),
+            noChangeStreak = 1,
             baselineOverride = baseline.copy(gameplaySec = 1000),
             lastStatus = "rung",
+        )
+        val balanced = ProfileLadder(
+            state = LadderState.DONE,
+            kept = listOf(KeptRung("k2", "1", 1, emptyList(), 0L, emptyList(), null, applied = false)),
+        )
+        val state = OptimizeLocalState(
+            activeProfile = OptimizeProfile.POWER,
+            profiles = mapOf(OptimizeProfile.POWER to power, OptimizeProfile.BALANCED to balanced),
+            never = true,
+            card = OptimizeCard(OptimizeCard.HELPED, 5L, "Game", OptimizeProfile.POWER, rungId = "k1", outcome = OptimizeCard.OUTCOME_FPS, fpsGainPct = 12, metrics = baseline),
+            suppression = CardSuppression(99L, baseline),
+            cardAction = OptimizeCards.ACTION_NOT_NOW,
+            entitlement = Entitlement(Entitlement.TRIAL, 1, 3),
+            outcomeQueue = listOf(JSONObject().put("outcome_id", "o1")),
         )
         val store = OptimizeStore(tmp.root)
         store.write(state)
         assertTrue(File(tmp.root, ".gamenative/optimize/state.json").isFile)
+        assertEquals(2, JSONObject(store.file.readText()).getInt("v"))
         val back = store.read()
 
-        assertEquals(OptimizeProfile.POWER, back.profile)
-        assertTrue(back.started)
-        assertEquals(1, back.kept.size)
-        val kept = back.kept[0]
+        assertEquals(OptimizeProfile.POWER, back.activeProfile)
+        val p = back.profiles.getValue(OptimizeProfile.POWER)
+        assertEquals(LadderState.PAUSED, p.state)
+        val kept = p.kept.single()
         assertEquals("k1", kept.rungId)
         assertEquals("12", kept.version)
         assertEquals(listOf("cpu"), kept.leverClasses)
         assertEquals("container", kept.levers[0].getString("type"))
         assertEquals(baseline, kept.baseline)
+        assertEquals(700, kept.before!!.gameplaySec)
+        assertEquals("witcher3_grass", Rung.parse(kept.rung)!!.rungId)
+        assertTrue(kept.applied)
         assertEquals("vc_fps_held", kept.visualCostId)
-        val pending = back.pending!!
+        val pending = p.pending!!
         assertEquals("witcher3_grass", pending.rung.rungId)
         assertEquals(4, pending.rung.levers.size)
         assertEquals(1, pending.shortSessions)
         assertEquals("worse", pending.revert)
         assertEquals(baseline, pending.baseline)
-        assertEquals(listOf(TriedRung("t1", "3", OptimizeJudge.NO_CHANGE)), back.tried)
-        assertEquals(listOf("b1"), back.bad)
+        assertEquals(listOf(TriedRung("t1", "3", OptimizeJudge.NO_CHANGE)), p.tried)
+        assertEquals(listOf("b1"), p.bad)
+        assertEquals(1, p.noChangeStreak)
+        assertEquals(1000, p.baselineOverride!!.gameplaySec)
+        assertEquals("rung", p.lastStatus)
+        val b = back.profiles.getValue(OptimizeProfile.BALANCED)
+        assertEquals(LadderState.DONE, b.state)
+        assertFalse(b.kept.single().applied)
+        assertTrue(back.never)
+        assertEquals(OptimizeCard.HELPED, back.card!!.kind)
+        assertEquals(12, back.card!!.fpsGainPct)
+        assertEquals(baseline, back.card!!.metrics)
+        assertEquals(99L, back.suppression!!.untilMillis)
+        assertEquals(OptimizeCards.ACTION_NOT_NOW, back.cardAction)
+        assertEquals(Entitlement(Entitlement.TRIAL, 1, 3), back.entitlement)
+        assertEquals(2, back.entitlement!!.trialGamesLeft)
         assertEquals("o1", back.outcomeQueue[0].getString("outcome_id"))
-        assertEquals("helped", back.lastCard!!.getString("result"))
-        assertEquals(1000, back.baselineOverride!!.gameplaySec)
-        assertEquals("rung", back.lastStatus)
         assertTrue(back.hasChanges)
+    }
+
+    @Test
+    fun v1StateMigratesToTheActiveProfile() {
+        val v1 = JSONObject()
+            .put("v", 1)
+            .put("profile", "stability")
+            .put("started", true)
+            .put("kept", org.json.JSONArray().put(KeptRung("k1", "2", 1, emptyList(), 10L, listOf(JSONObject().put("type", "registry")), null).toJson().apply { remove("applied") }))
+            .put("pending", PendingRung(Rung.parse(JSONObject(rungJson))!!, 20L, null, 2, emptyList()).toJson())
+            .put("tried", org.json.JSONArray().put(TriedRung("k1", "2", OptimizeJudge.HELPED).toJson()))
+            .put("bad", org.json.JSONArray().put("x"))
+            .put("outcome_queue", org.json.JSONArray().put(JSONObject().put("outcome_id", "o9")))
+            .put("last_card", JSONObject().put("result", "helped"))
+            .put("baseline_override", JSONObject.NULL)
+            .put("last_status", "rung")
+        val store = OptimizeStore(tmp.root)
+        store.dir.mkdirs()
+        store.file.writeText(v1.toString())
+        val state = store.read()
+        assertEquals(OptimizeProfile.STABILITY, state.activeProfile)
+        val ladder = state.profiles.getValue(OptimizeProfile.STABILITY)
+        assertEquals(LadderState.TRYING, ladder.state)
+        assertEquals("k1", ladder.kept.single().rungId)
+        assertTrue(ladder.kept.single().applied)
+        assertNull(ladder.kept.single().rung)
+        assertEquals(2, ladder.pending!!.shortSessions)
+        assertEquals(listOf(TriedRung("k1", "2", OptimizeJudge.HELPED)), ladder.tried)
+        assertEquals(listOf("x"), ladder.bad)
+        assertEquals("o9", state.outcomeQueue.single().getString("outcome_id"))
+        assertNull(state.card)
+        assertFalse(state.never)
+
+        store.write(state)
+        assertEquals(state.activeProfile, store.read().activeProfile)
+        assertEquals(2, JSONObject(store.file.readText()).getInt("v"))
+    }
+
+    @Test
+    fun v1ExhaustedAndOffMigrate() {
+        val exhausted = OptimizeLocalState.fromJson(JSONObject().put("v", 1).put("profile", "power").put("last_status", "exhausted"))
+        assertEquals(LadderState.EXHAUSTED, exhausted.profiles.getValue(OptimizeProfile.POWER).state)
+        val off = OptimizeLocalState.fromJson(JSONObject().put("v", 1).put("profile", "off").put("outcome_queue", org.json.JSONArray().put(JSONObject().put("outcome_id", "o1"))))
+        assertNull(off.activeProfile)
+        assertTrue(off.profiles.isEmpty())
+        assertEquals(1, off.outcomeQueue.size)
     }
 
     @Test
     fun missingOrBrokenStateIsTheDefault() {
         val store = OptimizeStore(tmp.root)
-        assertEquals(OptimizeProfile.OFF, store.read().profile)
+        assertNull(store.read().activeProfile)
         store.dir.mkdirs()
         store.file.writeText("{not json")
         assertEquals(OptimizeLocalState(), store.read())
+    }
+
+    @Test
+    fun nextRungResponseCarriesTheEntitlement() {
+        val response = NextRungResponse.parse(
+            JSONObject("{\"status\":\"entitlement_required\",\"rung\":null,\"entitlement\":{\"state\":\"none\",\"trial_games_used\":3,\"trial_games_limit\":3}}"),
+        )
+        assertEquals(NextRungResponse.STATUS_ENTITLEMENT_REQUIRED, response.status)
+        assertNull(response.rung)
+        assertEquals(Entitlement(Entitlement.NONE, 3, 3), response.entitlement)
+        assertEquals(0, response.entitlement!!.trialGamesLeft)
     }
 
     @Test
@@ -149,13 +233,24 @@ class OptimizeStateTest {
     @Test
     fun statusFollowsTheState() {
         val rung = Rung.parse(JSONObject(rungJson))!!
+        fun with(ladder: ProfileLadder) = OptimizeLocalState(activeProfile = OptimizeProfile.BALANCED, profiles = mapOf(OptimizeProfile.BALANCED to ladder))
         assertEquals(OptimizeStatus.Off, OptimizeStatus.of(OptimizeLocalState()))
-        assertEquals(OptimizeStatus.NotStarted, OptimizeStatus.of(OptimizeLocalState(profile = OptimizeProfile.BALANCED)))
-        assertEquals(OptimizeStatus.Measuring, OptimizeStatus.of(OptimizeLocalState(profile = OptimizeProfile.BALANCED, started = true)))
-        val trying = OptimizeLocalState(profile = OptimizeProfile.BALANCED, started = true, pending = PendingRung(rung, 0L, null, 0, emptyList()))
-        assertEquals(OptimizeStatus.Trying("vc_less_grass_view_distance", "less grass"), OptimizeStatus.of(trying))
+        assertEquals(OptimizeStatus.Never, OptimizeStatus.of(OptimizeLocalState(never = true)))
+        assertEquals(OptimizeStatus.NotStarted, OptimizeStatus.of(with(ProfileLadder())))
+        assertEquals(OptimizeStatus.Measuring, OptimizeStatus.of(with(ProfileLadder(state = LadderState.TRYING))))
+        assertEquals(
+            OptimizeStatus.Trying("vc_less_grass_view_distance", "less grass"),
+            OptimizeStatus.of(with(ProfileLadder(state = LadderState.TRYING, pending = PendingRung(rung, 0L, null, 0, emptyList())))),
+        )
+        assertEquals(OptimizeStatus.Paused, OptimizeStatus.of(with(ProfileLadder(state = LadderState.PAUSED))))
+        assertEquals(OptimizeStatus.Done, OptimizeStatus.of(with(ProfileLadder(state = LadderState.DONE))))
+        assertEquals(OptimizeStatus.Exhausted, OptimizeStatus.of(with(ProfileLadder(state = LadderState.EXHAUSTED))))
+        assertEquals(
+            OptimizeStatus.TrialUsed,
+            OptimizeStatus.of(with(ProfileLadder(state = LadderState.TRYING, lastStatus = NextRungResponse.STATUS_ENTITLEMENT_REQUIRED))),
+        )
         val kept = KeptRung("k", "1", 1, emptyList(), 0L, emptyList(), null)
-        assertEquals(OptimizeStatus.Kept(1), OptimizeStatus.of(OptimizeLocalState(profile = OptimizeProfile.STABILITY, started = true, kept = listOf(kept))))
+        assertEquals(1, OptimizeStatus.keptCount(with(ProfileLadder(state = LadderState.DONE, kept = listOf(kept)))))
     }
 
     @Test

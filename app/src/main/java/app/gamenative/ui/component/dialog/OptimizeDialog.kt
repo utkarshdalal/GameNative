@@ -1,6 +1,10 @@
 package app.gamenative.ui.component.dialog
 
+import android.content.Context
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -10,15 +14,17 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -30,61 +36,192 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
+import app.gamenative.api.AccountApi
+import app.gamenative.billing.Membership
+import app.gamenative.optimize.Entitlement
 import app.gamenative.optimize.OptimizeController
 import app.gamenative.optimize.OptimizeLocalState
 import app.gamenative.optimize.OptimizeProfile
 import app.gamenative.optimize.OptimizeStatus
 import app.gamenative.ui.util.SnackbarManager
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-@Composable
-fun OptimizeDialog(
-    appId: String,
-    onDismiss: () -> Unit,
-) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var state by remember(appId) { mutableStateOf<OptimizeLocalState?>(null) }
-    var busy by remember { mutableStateOf(false) }
-    var revision by remember { mutableIntStateOf(0) }
+/** Optimize needs an account: actions behind it wait for sign-in and run once it succeeds. */
+class OptimizeGate {
+    var pending by mutableStateOf<(() -> Unit)?>(null)
 
-    LaunchedEffect(appId, revision) {
-        state = OptimizeController.readState(context, appId) ?: OptimizeLocalState()
+    suspend fun require(action: () -> Unit) {
+        if (AccountApi.loadSignedInState()) action() else pending = action
     }
+}
 
-    fun perform(doneMessage: Int?, action: suspend () -> OptimizeController.ChangeResult) {
+@Composable
+fun rememberOptimizeGate(): OptimizeGate {
+    val gate = remember { OptimizeGate() }
+    AccountSignInDialog(
+        visible = gate.pending != null,
+        reason = stringResource(R.string.optimize_sign_in_reason),
+        onSignedIn = {
+            val action = gate.pending
+            gate.pending = null
+            action?.invoke()
+        },
+        onDismiss = { gate.pending = null },
+    )
+    return gate
+}
+
+class OptimizeActions(
+    private val context: Context,
+    private val scope: CoroutineScope,
+    private val gate: OptimizeGate,
+    private val appId: String,
+) {
+    var busy by mutableStateOf(false)
+        private set
+
+    private fun perform(doneMessage: Int?, action: suspend () -> OptimizeController.ChangeResult) {
         busy = true
         scope.launch {
-            val result = withContext(NonCancellable) { action() }
-            when (result) {
+            when (withContext(NonCancellable) { action() }) {
                 OptimizeController.ChangeResult.GAME_RUNNING -> SnackbarManager.show(context.getString(R.string.optimize_game_running))
                 OptimizeController.ChangeResult.FAILED -> SnackbarManager.show(context.getString(R.string.optimize_undo_failed))
                 OptimizeController.ChangeResult.DONE -> doneMessage?.let { SnackbarManager.show(context.getString(it)) }
                 OptimizeController.ChangeResult.NO_CONTAINER -> Unit
             }
             busy = false
-            revision++
         }
     }
 
-    val current = state
-    val profile = current?.profile ?: OptimizeProfile.OFF
-    val statusText = when (val status = current?.let { OptimizeStatus.of(it) } ?: OptimizeStatus.Off) {
-        OptimizeStatus.Off -> null
-        OptimizeStatus.NotStarted -> stringResource(R.string.optimize_status_not_started)
-        OptimizeStatus.Measuring -> stringResource(R.string.optimize_status_measuring)
-        is OptimizeStatus.Trying -> {
-            val cost = OptimizeStatus.visualCostRes(status.visualCostId)?.let { stringResource(it) } ?: status.visualCostEn
-            if (cost.isNullOrBlank()) {
-                stringResource(R.string.optimize_status_trying_plain)
-            } else {
-                stringResource(R.string.optimize_status_trying, cost)
+    private fun gated(action: () -> Unit) {
+        scope.launch { gate.require(action) }
+    }
+
+    fun switchTo(profile: OptimizeProfile) {
+        val run = { perform(null) { OptimizeController.setProfile(context, appId, profile) } }
+        if (profile == OptimizeProfile.OFF) run() else gated(run)
+    }
+
+    fun continueLadder() = gated { perform(null) { OptimizeController.continueLadder(context, appId) } }
+
+    fun restore() = perform(R.string.optimize_restored) { OptimizeController.restoreOriginal(context, appId) }
+}
+
+@Composable
+fun rememberOptimizeActions(appId: String): OptimizeActions {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val gate = rememberOptimizeGate()
+    return remember(appId, gate) { OptimizeActions(context, scope, gate, appId) }
+}
+
+@Composable
+fun rememberOptimizeState(appId: String): OptimizeLocalState? {
+    val context = LocalContext.current
+    val revision by OptimizeController.revision.collectAsState()
+    val state by produceState<OptimizeLocalState?>(null, appId, revision) {
+        value = OptimizeController.readState(context, appId) ?: OptimizeLocalState()
+    }
+    return state
+}
+
+@Composable
+fun optimizeStatusText(state: OptimizeLocalState): String? = when (val status = OptimizeStatus.of(state)) {
+    OptimizeStatus.Off -> null
+    OptimizeStatus.Never -> stringResource(R.string.optimize_card_never)
+    OptimizeStatus.NotStarted -> stringResource(R.string.optimize_status_not_started)
+    OptimizeStatus.Measuring -> stringResource(R.string.optimize_status_measuring)
+    is OptimizeStatus.Trying -> {
+        val cost = OptimizeStatus.visualCostRes(status.visualCostId)?.let { stringResource(it) } ?: status.visualCostEn
+        if (cost.isNullOrBlank()) {
+            stringResource(R.string.optimize_status_trying_plain)
+        } else {
+            stringResource(R.string.optimize_status_trying, cost)
+        }
+    }
+    OptimizeStatus.Paused -> stringResource(R.string.optimize_status_paused)
+    OptimizeStatus.Done -> stringResource(R.string.optimize_status_done)
+    OptimizeStatus.Exhausted -> stringResource(R.string.optimize_status_exhausted)
+    OptimizeStatus.TrialUsed -> {
+        val limit = (state.entitlement ?: OptimizeController.lastEntitlement)?.trialGamesLimit ?: 0
+        pluralStringResource(R.plurals.optimize_trial_used, limit, limit)
+    }
+}
+
+/** "N trial games left" or "Included with your membership"; null when neither is known. */
+@Composable
+fun optimizeEntitlementText(entitlement: Entitlement?): String? {
+    val known = entitlement ?: OptimizeController.lastEntitlement
+    return when {
+        known?.isMember == true || (known == null && Membership.isMember()) -> stringResource(R.string.optimize_included)
+        known != null && known.state == Entitlement.TRIAL -> pluralStringResource(R.plurals.optimize_trial_left, known.trialGamesLeft, known.trialGamesLeft)
+        else -> null
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@Composable
+fun OptimizeProfileChips(
+    selected: OptimizeProfile,
+    profiles: List<OptimizeProfile>,
+    enabled: Boolean,
+    onSelect: (OptimizeProfile) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    FlowRow(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        profiles.forEach { profile ->
+            FilterChip(
+                selected = profile == selected,
+                enabled = enabled,
+                onClick = { onSelect(profile) },
+                label = { Text(text = stringResource(profile.title)) },
+            )
+        }
+    }
+}
+
+/** The Optimize row of the game options panel: the state in words and one chip per profile. */
+@Composable
+fun OptimizeOptionsRow(appId: String) {
+    val state = rememberOptimizeState(appId)
+    val actions = rememberOptimizeActions(appId)
+    val active = state?.activeProfile ?: OptimizeProfile.OFF
+    Column(modifier = Modifier.fillMaxWidth()) {
+        state?.let { optimizeStatusText(it) }?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        OptimizeProfileChips(
+            selected = active,
+            profiles = OptimizeProfile.entries,
+            enabled = state != null && !actions.busy,
+            onSelect = { if (it != active) actions.switchTo(it) },
+        )
+        if (state != null && OptimizeStatus.of(state) == OptimizeStatus.Paused) {
+            TextButton(enabled = !actions.busy, onClick = { actions.continueLadder() }) {
+                Text(text = stringResource(R.string.optimize_continue))
             }
         }
-        is OptimizeStatus.Kept -> pluralStringResource(R.plurals.optimize_status_kept, status.count, status.count)
     }
+}
+
+@Composable
+fun OptimizeDialog(
+    appId: String,
+    onDismiss: () -> Unit,
+) {
+    val state = rememberOptimizeState(appId)
+    val actions = rememberOptimizeActions(appId)
+    val profile = state?.activeProfile ?: OptimizeProfile.OFF
+    val status = state?.let { OptimizeStatus.of(it) }
+    val keptCount = state?.let { OptimizeStatus.keptCount(it) } ?: 0
+    val activeLadder = state?.active
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -98,10 +235,8 @@ fun OptimizeDialog(
                             .heightIn(min = 56.dp)
                             .selectable(
                                 selected = option == profile,
-                                enabled = current != null && !busy,
-                                onClick = {
-                                    if (option != profile) perform(null) { OptimizeController.setProfile(context, appId, option) }
-                                },
+                                enabled = state != null && !actions.busy,
+                                onClick = { if (option != profile) actions.switchTo(option) },
                                 role = Role.RadioButton,
                             )
                             .padding(horizontal = 8.dp, vertical = 8.dp),
@@ -118,12 +253,27 @@ fun OptimizeDialog(
                         }
                     }
                 }
-                statusText?.let {
+                state?.let { optimizeStatusText(it) }?.let {
                     Text(
                         text = it,
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(start = 8.dp, top = 12.dp),
+                    )
+                }
+                if (keptCount > 0 && status !is OptimizeStatus.Trying) {
+                    Text(
+                        text = pluralStringResource(R.plurals.optimize_status_kept, keptCount, keptCount),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(start = 8.dp, top = 4.dp),
+                    )
+                }
+                optimizeEntitlementText(state?.entitlement)?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 8.dp, top = 4.dp),
                     )
                 }
             }
@@ -134,11 +284,18 @@ fun OptimizeDialog(
             }
         },
         dismissButton = {
-            TextButton(
-                enabled = current?.hasChanges == true && !busy,
-                onClick = { perform(R.string.optimize_restored) { OptimizeController.restoreOriginal(context, appId) } },
-            ) {
-                Text(text = stringResource(R.string.optimize_restore_original))
+            Row {
+                if (status == OptimizeStatus.Paused) {
+                    TextButton(enabled = !actions.busy, onClick = { actions.continueLadder() }) {
+                        Text(text = stringResource(R.string.optimize_continue))
+                    }
+                }
+                TextButton(
+                    enabled = activeLadder != null && (activeLadder.kept.isNotEmpty() || activeLadder.pending != null) && !actions.busy,
+                    onClick = { actions.restore() },
+                ) {
+                    Text(text = stringResource(R.string.optimize_restore_original))
+                }
             }
         },
     )

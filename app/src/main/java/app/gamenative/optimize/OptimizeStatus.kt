@@ -5,22 +5,31 @@ import app.gamenative.R
 
 sealed class OptimizeStatus {
     data object Off : OptimizeStatus()
+    data object Never : OptimizeStatus()
     data object NotStarted : OptimizeStatus()
     data object Measuring : OptimizeStatus()
     data class Trying(val visualCostId: String?, val visualCostEn: String?) : OptimizeStatus()
-    data class Kept(val count: Int) : OptimizeStatus()
+    data object Paused : OptimizeStatus()
+    data object Done : OptimizeStatus()
+    data object Exhausted : OptimizeStatus()
+    data object TrialUsed : OptimizeStatus()
 
     companion object {
         fun of(state: OptimizeLocalState): OptimizeStatus {
-            if (state.profile == OptimizeProfile.OFF) return Off
-            val trying = state.pending?.takeIf { it.revert == null }
+            val ladder = state.active ?: return if (state.never) Never else Off
+            val trying = ladder.pending?.takeIf { it.revert == null }
             return when {
                 trying != null -> Trying(trying.rung.visualCostId, trying.rung.visualCostEn)
-                state.kept.isNotEmpty() -> Kept(state.kept.size)
-                !state.started -> NotStarted
-                else -> Measuring
+                ladder.state == LadderState.TRYING && ladder.lastStatus == NextRungResponse.STATUS_ENTITLEMENT_REQUIRED -> TrialUsed
+                ladder.state == LadderState.IDLE -> NotStarted
+                ladder.state == LadderState.TRYING -> Measuring
+                ladder.state == LadderState.PAUSED -> Paused
+                ladder.state == LadderState.DONE -> Done
+                else -> Exhausted
             }
         }
+
+        fun keptCount(state: OptimizeLocalState): Int = state.active?.kept?.count { it.applied } ?: 0
 
         @StringRes
         fun visualCostRes(id: String?): Int? = when (id) {

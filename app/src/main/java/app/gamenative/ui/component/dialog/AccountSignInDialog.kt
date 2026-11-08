@@ -129,6 +129,7 @@ fun AccountSignInDialog(
     visible: Boolean,
     onSignedIn: () -> Unit,
     onDismiss: () -> Unit,
+    reason: String? = null,
 ) {
     if (!visible) return
 
@@ -243,6 +244,7 @@ fun AccountSignInDialog(
                     ) {
                         SignInBody(
                             state = state,
+                            reason = reason,
                             noBrowser = noBrowser,
                             hasPrimary = hasPrimary,
                             primaryFocus = primaryFocus,
@@ -264,6 +266,7 @@ fun AccountSignInDialog(
                     Spacer(modifier = Modifier.height(16.dp))
                     SignInBody(
                         state = state,
+                        reason = reason,
                         noBrowser = noBrowser,
                         hasPrimary = hasPrimary,
                         primaryFocus = primaryFocus,
@@ -312,6 +315,7 @@ private fun SignInQrPanel(state: SignInState, size: Dp) {
 @Composable
 private fun SignInBody(
     state: SignInState,
+    reason: String?,
     noBrowser: Boolean,
     hasPrimary: Boolean,
     primaryFocus: FocusRequester,
@@ -325,6 +329,15 @@ private fun SignInBody(
             style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.padding(bottom = 12.dp),
         )
+
+        reason?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+        }
 
         val message = when (state) {
             SignInState.Starting -> stringResource(R.string.gamenative_sign_in_starting)

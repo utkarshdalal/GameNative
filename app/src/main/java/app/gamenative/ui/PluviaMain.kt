@@ -97,6 +97,7 @@ import app.gamenative.billing.Membership
 import app.gamenative.api.DebugReportApi
 import app.gamenative.api.SupportApi
 import app.gamenative.ui.component.dialog.AccountSignInDialog
+import app.gamenative.ui.component.dialog.OptimizeCardHost
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.component.dialog.DebugPreRunDialog
 import app.gamenative.ui.component.dialog.DebugReportDialog
@@ -1930,6 +1931,12 @@ fun PluviaMain(
                     membershipSignInVisible = false
                     if (!Membership.isMember()) membershipPlansVisible = true
                 },
+            )
+
+            OptimizeCardHost(
+                gameRunning = state.currentScreen == PluviaScreen.XServer,
+                blocked = msgDialogState.visible || gameFeedbackState.visible || debugReportState.visible ||
+                    membershipPlansVisible || membershipSignInVisible || debugAccountPrompt != null,
             )
 
             debugPaywallReason?.let { reason ->

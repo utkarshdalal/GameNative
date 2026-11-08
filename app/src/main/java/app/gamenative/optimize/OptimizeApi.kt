@@ -14,11 +14,22 @@ import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
 
+sealed class NextRungResult {
+    data class Answered(val response: NextRungResponse) : NextRungResult()
+
+    /** The server did not take the account token: the user is signed out. */
+    data object SignedOut : NextRungResult()
+
+    data object Failed : NextRungResult()
+}
+
 object OptimizeApi {
     private const val ATTESTATION_BASE_URL = "https://api.gamenative.app"
     private const val NEXT_RUNG_PATH = "/api/optimize/next-rung"
     private const val OUTCOME_PATH = "/api/optimize/outcome"
     private const val CALL_TIMEOUT_SEC = 15L
+
+    private class Unauthorized : Exception("HTTP 401")
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -33,6 +44,7 @@ object OptimizeApi {
         }
         val request = GameNativeApi.buildPostRequest(GameNativeApi.BASE_URL + path, body)
         client.newCall(request).execute().use { response ->
+            if (response.code == 401) throw Unauthorized()
             if (!response.isSuccessful) {
                 Timber.tag("Optimize").w("POST $path failed: HTTP ${response.code}")
                 return@withContext null
@@ -43,15 +55,17 @@ object OptimizeApi {
     }
 
     /** Returns null when the server did not answer within [timeoutMs]; the request is left to finish on its own. */
-    suspend fun nextRung(body: JSONObject, timeoutMs: Long): NextRungResponse? {
+    suspend fun nextRung(body: JSONObject, timeoutMs: Long): NextRungResult? {
         val call = scope.async {
             try {
-                post(NEXT_RUNG_PATH, body)?.let { NextRungResponse.parse(it) }
+                post(NEXT_RUNG_PATH, body)?.let { NextRungResult.Answered(NextRungResponse.parse(it)) } ?: NextRungResult.Failed
             } catch (e: CancellationException) {
                 throw e
+            } catch (e: Unauthorized) {
+                NextRungResult.SignedOut
             } catch (e: Exception) {
                 Timber.tag("Optimize").w(e, "next-rung failed")
-                null
+                NextRungResult.Failed
             }
         }
         return withTimeoutOrNull(timeoutMs) { call.await() }

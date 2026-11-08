@@ -315,16 +315,19 @@ private fun OptionItem(
             modifier = Modifier.size(24.dp),
         )
 
-        Text(
-            text = stringResource(option.optionType.title),
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = if (isFocused) FontWeight.Medium else FontWeight.Normal,
-            color = when {
-                isDestructive -> MaterialTheme.colorScheme.error
-                isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
-                else -> MaterialTheme.colorScheme.onSurface
-            },
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(option.optionType.title),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = if (isFocused) FontWeight.Medium else FontWeight.Normal,
+                color = when {
+                    isDestructive -> MaterialTheme.colorScheme.error
+                    isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
+                    else -> MaterialTheme.colorScheme.onSurface
+                },
+            )
+            option.content?.invoke()
+        }
     }
 }
 

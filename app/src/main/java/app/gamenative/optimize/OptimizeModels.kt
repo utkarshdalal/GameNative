@@ -11,6 +11,7 @@ data class Metrics(
     val throttleOnsetSec: Int? = null,
     val cls: String? = null,
     val confidence: Double? = null,
+    val confident: Boolean? = null,
     val symptom: String? = null,
     val exitReason: String? = null,
     val windowSeen: Boolean = true,
@@ -24,6 +25,7 @@ data class Metrics(
         throttleOnsetSec?.let { put("throttle_onset_s", it) }
         cls?.let { put("class", it) }
         confidence?.let { put("confidence", it) }
+        confident?.let { put("confident", it) }
         symptom?.let { put("symptom", it) }
         exitReason?.let { put("exit_reason", it) }
         put("window_seen", windowSeen)
@@ -63,6 +65,7 @@ data class Metrics(
                 throttleOnsetSec = o.optIntOrNull("throttle_onset_s"),
                 cls = o.optStringOrNull("class"),
                 confidence = o.optDoubleOrNull("confidence"),
+                confident = if (o.has("confident") && !o.isNull("confident")) o.optBoolean("confident") else null,
                 symptom = o.optStringOrNull("symptom"),
                 exitReason = o.optStringOrNull("exit_reason"),
                 windowSeen = o.optBoolean("window_seen", true),
@@ -82,6 +85,7 @@ data class Metrics(
                 throttleOnsetSec = run.optIntOrNull("throttle_onset_s"),
                 cls = verdict?.optStringOrNull("class"),
                 confidence = verdict?.optDoubleOrNull("confidence"),
+                confident = verdict?.takeIf { it.has("confident") && !it.isNull("confident") }?.optBoolean("confident"),
                 symptom = verdict?.optStringOrNull("symptom"),
                 exitReason = run.optStringOrNull("exit_reason"),
                 windowSeen = run.has("main_window_class"),
@@ -252,11 +256,40 @@ class Rung(
     }
 }
 
-data class NextRungResponse(val status: String, val messageId: String?, val rung: Rung?) {
+data class Entitlement(val state: String, val trialGamesUsed: Int, val trialGamesLimit: Int) {
+    val isMember: Boolean get() = state == MEMBER
+    val trialGamesLeft: Int get() = (trialGamesLimit - trialGamesUsed).coerceAtLeast(0)
+
+    fun toJson(): JSONObject = JSONObject().apply {
+        put("state", state)
+        put("trial_games_used", trialGamesUsed)
+        put("trial_games_limit", trialGamesLimit)
+    }
+
+    companion object {
+        const val MEMBER = "member"
+        const val TRIAL = "trial"
+        const val NONE = "none"
+
+        fun fromJson(o: JSONObject?): Entitlement? {
+            if (o == null) return null
+            val state = o.optStringOrNull("state") ?: return null
+            return Entitlement(state, o.optInt("trial_games_used", 0), o.optInt("trial_games_limit", 0))
+        }
+    }
+}
+
+data class NextRungResponse(val status: String, val messageId: String?, val rung: Rung?, val entitlement: Entitlement? = null) {
     companion object {
         const val STATUS_RUNG = "rung"
+        const val STATUS_EXHAUSTED = "exhausted"
+        const val STATUS_ENTITLEMENT_REQUIRED = "entitlement_required"
 
-        fun parse(o: JSONObject): NextRungResponse =
-            NextRungResponse(o.optString("status"), o.optStringOrNull("message_id"), Rung.parse(o.optJSONObject("rung")))
+        fun parse(o: JSONObject): NextRungResponse = NextRungResponse(
+            o.optString("status"),
+            o.optStringOrNull("message_id"),
+            Rung.parse(o.optJSONObject("rung")),
+            Entitlement.fromJson(o.optJSONObject("entitlement")),
+        )
     }
 }

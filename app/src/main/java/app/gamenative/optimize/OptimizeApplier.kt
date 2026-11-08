@@ -42,12 +42,13 @@ object OptimizeApplier {
         context: Context,
         container: Container,
         roots: PathRoots,
-        store: OptimizeStore,
+        rungDir: File,
         rung: Rung,
         nowMillis: Long = System.currentTimeMillis(),
+        reapply: Boolean = false,
     ): ApplyOutcome = withContext(Dispatchers.IO) {
         if (PluviaApp.xEnvironment != null) return@withContext ApplyOutcome.Deferred("game running")
-        if (rung.isExpired(nowMillis)) return@withContext ApplyOutcome.Deferred("expired")
+        if (!reapply && rung.isExpired(nowMillis)) return@withContext ApplyOutcome.Deferred("expired")
         if (rung.levers.isEmpty()) return@withContext ApplyOutcome.Failed(0, -1, "no levers")
         rung.levers.indexOfFirst { it is Lever.Unknown }.takeIf { it >= 0 }?.let {
             return@withContext ApplyOutcome.Failed(0, it, "unknown lever ${rung.levers[it].type}")
@@ -58,7 +59,6 @@ object OptimizeApplier {
             if (anticheat.isNotEmpty()) return@withContext ApplyOutcome.Failed(0, fileLever, "anti-cheat ${anticheat.joinToString()}")
         }
 
-        val rungDir = store.rungDir(rung.rungId)
         rungDir.deleteRecursively()
         rungDir.mkdirs()
         val applied = mutableListOf<JSONObject>()
