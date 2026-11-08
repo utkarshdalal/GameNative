@@ -9,6 +9,7 @@ import app.gamenative.BuildConfig
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.billing.Membership
 import app.gamenative.data.GameSource
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.parseBooleanExtra
@@ -387,7 +388,10 @@ object OptimizeController {
                 }
 
                 var applyResult = if (ladder.pending != null) "ok" else "none"
-                if (ladder.pending == null && ladder.state == LadderState.TRYING) {
+                val ask = OptimizeCards.shouldAskAfterTrial(
+                    ladder, state.entitlement, state.entitlementCheckedAt, Membership.isMember(), System.currentTimeMillis(),
+                )
+                if (ladder.pending == null && ladder.state == LadderState.TRYING && ask) {
                     val baseline = ladder.baselineOverride ?: latestRun(container)?.let { Metrics.fromRun(it) }
                     val body = nextRungBody(context, appId, container, state, profile, ladder, baseline)
                     when (val result = OptimizeApi.nextRung(body, NEXT_RUNG_TIMEOUT_MS)) {
@@ -397,7 +401,11 @@ object OptimizeController {
                             val response = result.response
                             response.entitlement?.let { lastEntitlement = it }
                             val previousStatus = ladder.lastStatus
-                            state = state.copy(cardAction = null, entitlement = response.entitlement ?: state.entitlement)
+                            state = state.copy(
+                                cardAction = null,
+                                entitlement = response.entitlement ?: state.entitlement,
+                                entitlementCheckedAt = System.currentTimeMillis(),
+                            )
                             ladder = ladder.copy(lastStatus = response.status)
                             when (response.status) {
                                 NextRungResponse.STATUS_EXHAUSTED -> {

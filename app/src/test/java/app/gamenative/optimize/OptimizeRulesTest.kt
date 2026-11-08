@@ -133,5 +133,19 @@ class OptimizeRulesTest {
         assertEquals(OptimizeCard.OUTCOME_FPS, OptimizeCards.helpedOutcome("fps", OptimizeProfile.STABILITY))
         assertEquals(OptimizeCard.OUTCOME_STUTTER, OptimizeCards.helpedOutcome(null, OptimizeProfile.BALANCED))
         assertEquals(OptimizeCard.OUTCOME_STABLE, OptimizeCards.helpedOutcome(null, OptimizeProfile.POWER))
+        assertEquals(OptimizeCard.OUTCOME_STABLE, OptimizeCards.helpedOutcome("stable", OptimizeProfile.PERFORMANCE))
+        assertEquals(OptimizeCard.OUTCOME_FPS, OptimizeCards.helpedOutcome("thermal", OptimizeProfile.PERFORMANCE))
+    }
+
+    @Test
+    fun aUsedUpTrialIsAskedAgainOnlyForMembersOrAfterADay() {
+        val used = ProfileLadder(state = LadderState.TRYING, lastStatus = NextRungResponse.STATUS_ENTITLEMENT_REQUIRED)
+        val none = Entitlement(Entitlement.NONE, 3, 3)
+        val day = OptimizeCards.ENTITLEMENT_RECHECK_MS
+        assertFalse(OptimizeCards.shouldAskAfterTrial(used, none, 1_000L, isMember = false, nowMillis = 2_000L))
+        assertTrue(OptimizeCards.shouldAskAfterTrial(used, none, 1_000L, isMember = true, nowMillis = 2_000L))
+        assertTrue(OptimizeCards.shouldAskAfterTrial(used, none, 1_000L, isMember = false, nowMillis = 1_000L + day))
+        assertTrue(OptimizeCards.shouldAskAfterTrial(used, Entitlement(Entitlement.MEMBER, 0, 0), 1_000L, isMember = false, nowMillis = 2_000L))
+        assertTrue(OptimizeCards.shouldAskAfterTrial(ProfileLadder(state = LadderState.TRYING), none, 1_000L, isMember = false, nowMillis = 2_000L))
     }
 }

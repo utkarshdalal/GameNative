@@ -258,6 +258,7 @@ data class OptimizeLocalState(
     val suppression: CardSuppression? = null,
     val cardAction: String? = null,
     val entitlement: Entitlement? = null,
+    val entitlementCheckedAt: Long = 0L,
     val outcomeQueue: List<JSONObject> = emptyList(),
 ) {
     val active: ProfileLadder? get() = activeProfile?.let { profiles[it] }
@@ -277,6 +278,7 @@ data class OptimizeLocalState(
         put("suppression", suppression?.toJson() ?: JSONObject.NULL)
         put("card_action", cardAction ?: JSONObject.NULL)
         put("entitlement", entitlement?.toJson() ?: JSONObject.NULL)
+        put("entitlement_checked_at", entitlementCheckedAt)
         put("outcome_queue", JSONArray().apply { outcomeQueue.forEach { put(it) } })
     }
 
@@ -304,6 +306,7 @@ data class OptimizeLocalState(
                 suppression = CardSuppression.fromJson(o.optJSONObject("suppression")),
                 cardAction = o.optStringOrNull("card_action"),
                 entitlement = Entitlement.fromJson(o.optJSONObject("entitlement")),
+                entitlementCheckedAt = o.optLong("entitlement_checked_at", 0L),
                 outcomeQueue = o.optJSONArray("outcome_queue").objects(),
             )
         }

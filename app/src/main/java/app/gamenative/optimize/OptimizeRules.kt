@@ -85,6 +85,15 @@ object OptimizeCards {
         return OptimizeJudge.compare(reference, session, isFpsCap = false) == OptimizeJudge.WORSE
     }
 
+    const val ENTITLEMENT_RECHECK_MS = 24L * 60 * 60 * 1000
+
+    /** After the trial ran out, ask again only once the user is a member or a day has passed. */
+    fun shouldAskAfterTrial(ladder: ProfileLadder, entitlement: Entitlement?, checkedAtMillis: Long, isMember: Boolean, nowMillis: Long): Boolean {
+        if (ladder.lastStatus != NextRungResponse.STATUS_ENTITLEMENT_REQUIRED) return true
+        if (entitlement?.state != Entitlement.NONE || isMember) return true
+        return nowMillis - checkedAtMillis >= ENTITLEMENT_RECHECK_MS
+    }
+
     fun notNow(card: OptimizeCard, nowMillis: Long): CardSuppression = CardSuppression(nowMillis + SUPPRESS_MS, card.metrics)
 
     fun fpsGainPct(before: Metrics?, after: Metrics): Int? {
@@ -103,9 +112,9 @@ object OptimizeCards {
 
     /** Which outcome a helped card names: the rung's own outcome when it says, otherwise what the profile is for. */
     fun helpedOutcome(rungOutcome: String?, profile: OptimizeProfile): String = when (rungOutcome) {
-        "fps", "frame_rate" -> OptimizeCard.OUTCOME_FPS
-        "stutter", "stutters", "frame_pacing" -> OptimizeCard.OUTCOME_STUTTER
-        "stability", "thermal", "power", "stable" -> OptimizeCard.OUTCOME_STABLE
+        OptimizeCard.OUTCOME_FPS -> OptimizeCard.OUTCOME_FPS
+        OptimizeCard.OUTCOME_STUTTER -> OptimizeCard.OUTCOME_STUTTER
+        OptimizeCard.OUTCOME_STABLE -> OptimizeCard.OUTCOME_STABLE
         else -> when (profile) {
             OptimizeProfile.PERFORMANCE -> OptimizeCard.OUTCOME_FPS
             OptimizeProfile.BALANCED, OptimizeProfile.STABILITY -> OptimizeCard.OUTCOME_STUTTER
