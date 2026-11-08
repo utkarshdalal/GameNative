@@ -462,7 +462,7 @@ class GOGManager @Inject constructor(
                                 val updatedGame = existingGame.copy(
                                     isInstalled = true,
                                     installPath = detectedGame.installPath,
-                                    installSize = detectedGame.installSize,
+                                    installSize = FileUtils.calculateDirectorySize(installDir),
                                 )
                                 updateGame(updatedGame)
                                 detectedCount++
@@ -484,7 +484,8 @@ class GOGManager @Inject constructor(
     }
 
     /**
-     * Try to detect which game is installed in the given directory
+     * Try to detect which game is installed in the given directory. The returned copy carries
+     * the install path only; the caller sizes the directory if it actually updates the row.
      *
      * @param installDir The directory to check
      * @return GOGGame with installation info, or null if no game detected
@@ -519,11 +520,9 @@ class GOGManager @Inject constructor(
                     .takeIf { it >= 0 }?.let { rows[it] }
                 ?: rows.firstOrNull { it != null }
             if (game != null) {
-                val installSize = FileUtils.calculateDirectorySize(installDir)
                 return game.copy(
                     isInstalled = true,
                     installPath = installDir.absolutePath,
-                    installSize = installSize,
                 )
             }
         }
@@ -541,12 +540,10 @@ class GOGManager @Inject constructor(
                 } == true
 
                 if (hasContent) {
-                    val installSize = FileUtils.calculateDirectorySize(installDir)
                     Timber.d("Matched directory '$dirName' to game '${game.title}'")
                     return game.copy(
                         isInstalled = true,
                         installPath = installDir.absolutePath,
-                        installSize = installSize,
                     )
                 }
             }

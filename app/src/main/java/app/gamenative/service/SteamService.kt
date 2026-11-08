@@ -2108,6 +2108,9 @@ class SteamService : Service(), IChallengeUrlChanged {
         fun dropMissingExecutable(gameId: Int, container: Container) {
             val exe = container.executablePath
             if (exe.isEmpty() || ContainerUtils.isAbsoluteWindowsPath(exe)) return
+            // no app info (service not up yet on a cold offline launch): getAppDirPath falls back
+            // to the bare install root, where no exe can be found, so the check would wipe a valid path
+            if (getAppInfoOf(gameId) == null) return
             val appDir = getAppDirPath(gameId)
             if (appDir.isEmpty() || !File(appDir).isDirectory) return
             if (File(appDir, exe.replace('\\', '/')).isFile) return
