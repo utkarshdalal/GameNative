@@ -211,6 +211,7 @@ fun OptimizeOptionsRow(appId: String) {
     Column(modifier = Modifier.fillMaxWidth()) {
         listOfNotNull(
             state?.let { optimizeStatusText(it) },
+            state?.let { OptimizeStatus.heldCapFps(it) }?.let { stringResource(R.string.optimize_status_cap_held, it) },
             if (keptCount > 0) pluralStringResource(R.plurals.optimize_status_kept, keptCount, keptCount) else null,
             optimizeEntitlementText(state?.entitlement, exhausted = exhausted, short = true),
         ).forEach {
@@ -294,6 +295,13 @@ fun OptimizeDialog(
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(start = 8.dp, top = 12.dp),
+                    )
+                }
+                state?.let { OptimizeStatus.heldCapFps(it) }?.let {
+                    Text(
+                        text = stringResource(R.string.optimize_status_cap_held, it),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(start = 8.dp, top = 4.dp),
                     )
                 }
                 hint?.let {

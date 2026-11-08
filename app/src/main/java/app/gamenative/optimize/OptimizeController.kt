@@ -216,6 +216,7 @@ object OptimizeController {
                         },
                     )
                     put("tried", JSONArray().apply { ladder.tried.forEach { put(it.toJson()) } })
+                    if (state.capPreferred) put("prefer", OptimizeLocalState.PREFER_CAP)
                 },
             )
         }
@@ -359,6 +360,7 @@ object OptimizeController {
         key: PrefetchKey,
         kept: List<String>,
         sentCardAction: String?,
+        sentPrefer: Boolean,
         source: String,
     ) {
         val response = (result as? NextRungResult.Answered)?.response ?: return
@@ -371,10 +373,13 @@ object OptimizeController {
                 entitlement = response.entitlement ?: state.entitlement,
                 entitlementCheckedAt = now,
             )
+            // An answer asked for before the cap question was answered yes is not the cap rung.
+            val waitsForCap = state.capPreferred && !sentPrefer
+            if (sentPrefer) state = state.copy(capPreferred = false)
             val ladder = state.ladder(profile)
             val rung = response.rung?.takeIf { response.status == NextRungResponse.STATUS_RUNG }
             val prefetched = rung?.let { PrefetchedRung(it, now, profile, key, kept) }
-            if (prefetched != null && state.activeProfile == profile && wouldAsk(state, ladder, now) &&
+            if (prefetched != null && !waitsForCap && state.activeProfile == profile && wouldAsk(state, ladder, now) &&
                 prefetched.isUsable(now, profile, key, ladder)
             ) {
                 state = state.copy(prefetched = prefetched)
@@ -515,7 +520,7 @@ object OptimizeController {
                 val now = System.currentTimeMillis()
                 val prefetched = state.prefetched
                 state = state.copy(prefetched = null)
-                if (ladder.pending == null && wouldAsk(state, ladder, now)) {
+                if (ladder.pending == null && !state.capPreferred && wouldAsk(state, ladder, now)) {
                     val baseline = ladder.baselineOverride ?: baselineRun(container)
                     doneAtBaseline(appId, state.withLadder(profile, ladder), profile, baseline, refreshHz(context), fpsLimit(container))?.let {
                         state = it
@@ -525,14 +530,14 @@ object OptimizeController {
                 if (ladder.pending == null && wouldAsk(state, ladder, now)) {
                     val baseline = ladder.baselineOverride ?: baselineRun(container)
                     val key = prefetchKey(container)
-                    val usable = prefetched?.takeIf { it.isUsable(now, profile, key, ladder) }
+                    val usable = prefetched?.takeIf { !state.capPreferred && it.isUsable(now, profile, key, ladder) }
                     val deadline = System.currentTimeMillis() + budgetMs
                     suspend fun ask(): NextRungResult? {
                         val body = nextRungBody(context, appId, container, state, profile, ladder, baseline)
                         val remaining = (deadline - System.currentTimeMillis()).coerceAtLeast(0L)
                         val call = OptimizeApi.nextRung(body, remaining)
                         val answer = withTimeoutOrNull(remaining) { call.await() }
-                        if (answer == null) keepLateAnswer(store, call, profile, key, PrefetchedRung.keptIds(ladder), state.cardAction)
+                        if (answer == null) keepLateAnswer(store, call, profile, key, PrefetchedRung.keptIds(ladder), state.cardAction, state.capPreferred)
                         return answer
                     }
                     suspend fun askSkippingRepeat(): NextRungResult? {
@@ -556,6 +561,7 @@ object OptimizeController {
                                     response.entitlement?.let { lastEntitlement = it }
                                     state = state.copy(
                                         cardAction = null,
+                                        capPreferred = false,
                                         entitlement = response.entitlement ?: state.entitlement,
                                         entitlementCheckedAt = System.currentTimeMillis(),
                                     )
@@ -668,8 +674,9 @@ object OptimizeController {
         key: PrefetchKey,
         kept: List<String>,
         cardAction: String?,
+        prefer: Boolean,
     ) {
-        track(store, "keeping a late next-rung answer") { storePrefetch(store, call.await(), profile, key, kept, cardAction, "late answer") }
+        track(store, "keeping a late next-rung answer") { storePrefetch(store, call.await(), profile, key, kept, cardAction, prefer, "late answer") }
     }
 
     /**
@@ -708,13 +715,15 @@ object OptimizeController {
                     cardField = OptimizeCards.cardField(block == null, block)
                     if (block == null) {
                         val suggested = OptimizeCards.suggestedProfile(after.cls, after, cap, refresh)
+                        val capFps = OptimizeCards.capQuestion(state, after, cap, now)
                         state = state.copy(
                             card = OptimizeCard(
-                                OptimizeCard.FIRST, now, gameName(appId),
+                                if (capFps != null) OptimizeCard.CAP else OptimizeCard.FIRST, now, gameName(appId),
                                 profile = suggested.profile,
                                 cls = after.cls,
                                 metrics = after,
                                 reason = suggested.reason,
+                                capFps = capFps,
                             ),
                             suppression = null,
                         )
@@ -735,11 +744,15 @@ object OptimizeController {
                         store.write(state)
                     }
                     val current = state.ladder(profile)
-                    if (current.pending == null) {
+                    if (current.pending == null && !state.capPreferred) {
                         doneAtBaseline(appId, state, profile, current.baselineOverride ?: baselineRun(container), refresh, cap)?.let {
                             state = it
                             store.write(state)
                         }
+                    }
+                    capCard(appId, state, after, cap, now)?.let {
+                        state = it
+                        store.write(state)
                     }
                     if (context != null) prefetch = exitPrefetch(context.applicationContext, appId, container, store, state, profile, now)
                     cardField = OptimizeCards.cardField(state.card != null && state.card != cardBefore, OptimizeCards.SUPPRESSED_PROFILE)
@@ -782,13 +795,14 @@ object OptimizeController {
         val body = nextRungBody(context, appId, container, state, profile, ladder, baseline)
         val kept = PrefetchedRung.keptIds(ladder)
         val cardAction = state.cardAction
+        val prefer = state.capPreferred
         return {
             track(store, "asking for the next rung at exit") {
                 val result = withTimeoutOrNull(NEXT_RUNG_EXIT_BUDGET_MS) { OptimizeApi.nextRung(body, NEXT_RUNG_EXIT_BUDGET_MS).await() }
                 if (result == null) {
                     Timber.tag(TAG).i("No next-rung answer within ${NEXT_RUNG_EXIT_BUDGET_MS / 1000} s of exit; the next launch asks again")
                 } else {
-                    storePrefetch(store, result, profile, key, kept, cardAction, "exit")
+                    storePrefetch(store, result, profile, key, kept, cardAction, prefer, "exit")
                 }
             }
         }
@@ -832,11 +846,12 @@ object OptimizeController {
         val card = when {
             settled.done -> {
                 l = l.copy(state = LadderState.DONE)
-                OptimizeCard(OptimizeCard.DONE, now, name, profile, rungId = rung.rungId)
+                OptimizeCard(OptimizeCard.DONE, now, name, profile, rungId = rung.rungId, capFps = OptimizeCards.capFps(rung.raw))
             }
             result == OptimizeJudge.HELPED -> OptimizeCard(
                 OptimizeCard.HELPED, now, name, profile,
                 rungId = rung.rungId,
+                capFps = OptimizeCards.capFps(rung.raw),
                 outcome = OptimizeCards.helpedOutcome(rung.outcome, profile),
                 fpsGainPct = OptimizeCards.fpsGainPct(pending.baseline, after),
                 stutterDropPct = OptimizeCards.stutterDropPct(pending.baseline, after),
@@ -851,6 +866,45 @@ object OptimizeController {
         }
         val s = state.queued(report).withLadder(profile, l)
         return if (card != null) s.copy(card = card) else s
+    }
+
+    /**
+     * After a judged or long enough session of an active profile: when heat is the limit and a frame cap is the
+     * lever, the cap question takes the place of the card the session would leave, or comes up on its own once the
+     * ladder has ended. Null when the cap question is not asked.
+     */
+    private fun capCard(appId: String, state: OptimizeLocalState, after: Metrics, fpsCap: Int, nowMillis: Long): OptimizeLocalState? {
+        val profile = state.activeProfile ?: return null
+        if (after.confident != true || after.gameplaySec < OptimizeCards.MIN_GAMEPLAY_SEC) return null
+        val waiting = state.card
+        if (waiting?.kind == OptimizeCard.CAP || waiting?.kind == OptimizeCard.ENTITLEMENT) return null
+        if (waiting == null && state.ladder(profile).state !in setOf(LadderState.EXHAUSTED, LadderState.DONE)) return null
+        val capFps = OptimizeCards.capQuestion(state, after, fpsCap, nowMillis) ?: return null
+        Timber.tag(TAG).i("Optimize: heat is the limit, asking to hold ${profile.wireId} at $capFps fps")
+        return state.copy(card = OptimizeCard(OptimizeCard.CAP, nowMillis, gameName(appId), profile, cls = after.cls, metrics = after, capFps = capFps))
+    }
+
+    /**
+     * Yes to the cap question: the next request sends ladder.prefer "cap", so the server serves the cap rung first.
+     * With no active profile the card's suggested one is picked; the ladder tries again either way.
+     */
+    private suspend fun holdCap(
+        context: Context,
+        appId: String,
+        container: Container,
+        store: OptimizeStore,
+        state: OptimizeLocalState,
+        card: OptimizeCard,
+    ): Pair<OptimizeLocalState, Boolean> {
+        val base = state.copy(capPreferred = true, prefetched = null, suppression = null)
+        val (switched, ok) = if (base.activeProfile == null) {
+            switchTo(context, appId, container, store, base, card.profile ?: OptimizeProfile.BALANCED)
+        } else {
+            base to true
+        }
+        val profile = switched.activeProfile ?: return switched to ok
+        val trying = switched.ladder(profile).copy(state = LadderState.TRYING, noChangeStreak = 0)
+        return switched.withLadder(profile, trying).copy(card = switched.card?.takeIf { it.kind != OptimizeCard.DONE }) to ok
     }
 
     suspend fun readState(context: Context, appId: String): OptimizeLocalState? = withContext(Dispatchers.IO) {
@@ -1050,7 +1104,8 @@ object OptimizeController {
 
     /** [profile] is the profile chosen with Optimize. */
     private suspend fun answerCard(context: Context, appId: String, card: OptimizeCard, action: String, profile: OptimizeProfile?): ChangeResult {
-        val touchesFiles = action == OptimizeCards.ACTION_OPTIMIZE || action == OptimizeCards.ACTION_UNDO || action == OptimizeCards.ACTION_UNDO_ALL
+        val touchesFiles = action == OptimizeCards.ACTION_OPTIMIZE || action == OptimizeCards.ACTION_UNDO ||
+            action == OptimizeCards.ACTION_UNDO_ALL || action == OptimizeCards.ACTION_CAP
         return change(context, appId, touchesFiles, what = "answering a card") { container, store, current ->
             val now = System.currentTimeMillis()
             val state = current.copy(card = null, cardAction = OptimizeCards.wireAction(action, card.kind))
@@ -1061,6 +1116,11 @@ object OptimizeController {
                 if (only != null && ladder.state !in only) return state
                 return state.withLadder(active, ladder.copy(state = next, noChangeStreak = 0))
             }
+            when {
+                card.kind == OptimizeCard.CAP && action == OptimizeCards.ACTION_CAP -> holdCap(context, appId, container, store, state, card)
+                card.kind == OptimizeCard.CAP -> state.copy(capSnoozedUntil = now + OptimizeCards.CAP_SNOOZE_MS) to true
+                else -> null
+            }?.let { return@change it }
             when (action) {
                 OptimizeCards.ACTION_OPTIMIZE ->
                     switchTo(context, appId, container, store, state.copy(suppression = null), profile ?: OptimizeProfile.BALANCED)

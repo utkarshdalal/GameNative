@@ -50,6 +50,10 @@ sealed class OptimizeStatus {
 
         fun keptCount(state: OptimizeLocalState): Int = state.active?.kept?.count { it.applied } ?: 0
 
+        /** The fps the active profile's kept cap holds the game at, or null when no cap is kept. */
+        fun heldCapFps(state: OptimizeLocalState): Int? =
+            state.active?.kept?.lastOrNull { it.applied && OptimizeCards.capFps(it.rung) != null }?.let { OptimizeCards.capFps(it.rung) }
+
         @StringRes
         fun visualCostRes(id: String?): Int? = when (id) {
             "vc_shadows_simpler" -> R.string.optimize_vc_shadows_simpler

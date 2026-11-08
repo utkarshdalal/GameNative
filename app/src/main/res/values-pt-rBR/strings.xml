@@ -1780,6 +1780,11 @@
     <string name="optimize_after_done">%1$s está rodando do jeito que você pediu</string>
     <string name="optimize_status_paused">Pausado</string>
     <string name="optimize_status_done">Rodando do jeito que você pediu</string>
+    <string name="optimize_cap_title">Manter %1$s a %2$d fps?</string>
+    <string name="optimize_cap_body">O jogo rodaria com menos travadas por mais tempo, sem ficar lento.</string>
+    <string name="optimize_cap_yes">Sim, manter</string>
+    <string name="optimize_after_cap_held">Mantido a %1$d fps: menos travadas, fica frio por mais tempo</string>
+    <string name="optimize_status_cap_held">Mantido a %1$d fps</string>
     <string name="optimize_hint_heat">Aqui o limite é o calor. Experimente Energia e calor.</string>
     <string name="optimize_suggested_power">Sugerido: Energia e calor, porque o dispositivo está esquentando.</string>
     <string name="optimize_suggested_performance">Sugerido: Desempenho, porque a taxa de quadros não se mantém no alvo.</string>

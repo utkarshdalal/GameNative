@@ -1928,6 +1928,11 @@
     <string name="optimize_after_done">%1$s istediğiniz gibi çalışıyor</string>
     <string name="optimize_status_paused">Duraklatıldı</string>
     <string name="optimize_status_done">İstediğiniz gibi çalışıyor</string>
+    <string name="optimize_cap_title">%1$s %2$d fps\'de sabitlensin mi?</string>
+    <string name="optimize_cap_body">Oyun yavaşlamadan daha uzun süre daha az takılmayla çalışır.</string>
+    <string name="optimize_cap_yes">Evet, sabitle</string>
+    <string name="optimize_after_cap_held">%1$d fps\'de sabit: daha az takılma, daha uzun süre serin kalır</string>
+    <string name="optimize_status_cap_held">%1$d fps\'de sabit</string>
     <string name="optimize_hint_heat">Burada sınır ısı. Güç ve ısı\'yı deneyin.</string>
     <string name="optimize_suggested_power">Önerilen: Güç ve ısı, çünkü cihaz ısınıyor.</string>
     <string name="optimize_suggested_performance">Önerilen: Performans, çünkü kare hızı hedefini tutamıyor.</string>

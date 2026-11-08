@@ -2132,6 +2132,11 @@
     <string name="optimize_after_done">%1$s is running the way you asked</string>
     <string name="optimize_status_paused">Paused</string>
     <string name="optimize_status_done">Running the way you asked</string>
+    <string name="optimize_cap_title">Hold %1$s at %2$d fps?</string>
+    <string name="optimize_cap_body">It would let the game run with fewer stutters for longer without slowing down.</string>
+    <string name="optimize_cap_yes">Yes, hold it</string>
+    <string name="optimize_after_cap_held">Holding at %1$d fps: fewer stutters, runs cool longer</string>
+    <string name="optimize_status_cap_held">Held at %1$d fps</string>
     <string name="optimize_hint_heat">Heat is the limit here. Try Power and heat.</string>
     <string name="optimize_suggested_power">Suggested: Power and heat, because the device is running hot.</string>
     <string name="optimize_suggested_performance">Suggested: Performance, because the frame rate does not hold its target.</string>

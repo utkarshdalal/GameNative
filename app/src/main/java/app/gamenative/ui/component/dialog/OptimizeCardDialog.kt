@@ -98,8 +98,12 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
                 reason = card.reason?.let { optimizeSuggestedText(it) }
             }
         }
+        OptimizeCard.CAP -> {
+            title = stringResource(R.string.optimize_cap_title, name, card.capFps ?: OptimizeCards.CAP_HEAT_FPS.toInt())
+            body = stringResource(R.string.optimize_cap_body)
+        }
         OptimizeCard.HELPED -> {
-            title = when (card.outcome) {
+            title = card.capFps?.let { stringResource(R.string.optimize_after_cap_held, it) } ?: when (card.outcome) {
                 OptimizeCard.OUTCOME_FPS -> stringResource(R.string.optimize_after_helped_fps)
                 OptimizeCard.OUTCOME_STUTTER -> stringResource(R.string.optimize_after_helped_stutter)
                 else -> stringResource(R.string.optimize_after_helped_stable)
@@ -111,7 +115,11 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
         OptimizeCard.EXHAUSTED -> title = stringResource(R.string.optimize_after_exhausted, name)
         OptimizeCard.DONE -> {
             title = stringResource(R.string.optimize_after_done, name)
-            if (heatHint) body = stringResource(R.string.optimize_hint_heat)
+            body = if (heatHint) {
+                stringResource(R.string.optimize_hint_heat)
+            } else {
+                card.capFps?.let { stringResource(R.string.optimize_after_cap_held, it) }
+            }
         }
         else -> title = optimizeEntitlementText(request.entitlement, exhausted = true).orEmpty()
     }
@@ -168,6 +176,12 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
                         },
                     ) { Text(stringResource(R.string.option_optimize)) }
                 }
+                OptimizeCard.CAP -> Button(
+                    onClick = {
+                        val profile = card.profile
+                        scope.launch { gate.require { answer(OptimizeCards.ACTION_CAP, profile) } }
+                    },
+                ) { Text(stringResource(R.string.optimize_cap_yes)) }
                 OptimizeCard.HELPED, OptimizeCard.NO_CHANGE ->
                     Button(onClick = { answer(OptimizeCards.ACTION_KEEP_GOING) }) { Text(stringResource(R.string.optimize_keep_going)) }
                 OptimizeCard.EXHAUSTED ->
@@ -199,6 +213,8 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
                     }
                     TextButton(onClick = { answer(OptimizeCards.ACTION_NEVER) }) { Text(stringResource(R.string.optimize_card_never)) }
                 }
+                OptimizeCard.CAP ->
+                    TextButton(onClick = { answer(OptimizeCards.ACTION_NOT_NOW) }) { Text(stringResource(R.string.optimize_card_not_now)) }
                 OptimizeCard.HELPED -> Row {
                     TextButton(onClick = { answer(OptimizeCards.ACTION_UNDO) }) { Text(stringResource(R.string.optimize_undo)) }
                     TextButton(onClick = { answer(OptimizeCards.ACTION_HAPPY) }) { Text(stringResource(R.string.optimize_happy)) }

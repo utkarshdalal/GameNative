@@ -138,6 +138,27 @@ class OptimizeStateTest {
     }
 
     @Test
+    fun capPreferAndSnoozeRoundTripThroughTheStore() {
+        val store = OptimizeStore(tmp.root)
+        val card = OptimizeCard(OptimizeCard.CAP, 5L, "Game", OptimizeProfile.POWER, cls = "thermal_gpu", capFps = 30)
+        store.write(OptimizeLocalState(capPreferred = true, capSnoozedUntil = 1234L, card = card))
+        val json = JSONObject(store.file.readText())
+        assertEquals("cap", json.getString("ladder_prefer"))
+        val back = store.read()
+        assertTrue(back.capPreferred)
+        assertEquals(1234L, back.capSnoozedUntil)
+        assertEquals(OptimizeCard.CAP, back.card!!.kind)
+        assertEquals(30, back.card!!.capFps)
+
+        store.write(back.copy(capPreferred = false, capSnoozedUntil = 0L))
+        assertFalse(JSONObject(store.file.readText()).has("ladder_prefer"))
+        val cleared = store.read()
+        assertFalse(cleared.capPreferred)
+        assertEquals(0L, cleared.capSnoozedUntil)
+        assertFalse(OptimizeLocalState.fromJson(JSONObject("{\"v\":2,\"profiles\":{}}")).capPreferred)
+    }
+
+    @Test
     fun v1StateMigratesToTheActiveProfile() {
         val v1 = JSONObject()
             .put("v", 1)

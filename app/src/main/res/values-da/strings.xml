@@ -1780,6 +1780,11 @@
     <string name="optimize_after_done">%1$s kører, som du bad om</string>
     <string name="optimize_status_paused">Sat på pause</string>
     <string name="optimize_status_done">Kører, som du bad om</string>
+    <string name="optimize_cap_title">Hold %1$s på %2$d fps?</string>
+    <string name="optimize_cap_body">Så kan spillet køre med færre hak i længere tid uden at blive langsommere.</string>
+    <string name="optimize_cap_yes">Ja, hold det</string>
+    <string name="optimize_after_cap_held">Holder %1$d fps: færre hak, kører køligt længere</string>
+    <string name="optimize_status_cap_held">Holdt på %1$d fps</string>
     <string name="optimize_hint_heat">Varme er grænsen her. Prøv Strøm og varme.</string>
     <string name="optimize_suggested_power">Foreslået: Strøm og varme, fordi enheden kører varm.</string>
     <string name="optimize_suggested_performance">Foreslået: Ydeevne, fordi billedhastigheden ikke holder sit mål.</string>

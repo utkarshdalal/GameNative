@@ -1875,6 +1875,11 @@
     <string name="optimize_after_done">%1$s 正按你的要求运行</string>
     <string name="optimize_status_paused">已暂停</string>
     <string name="optimize_status_done">正按你的要求运行</string>
+    <string name="optimize_cap_title">将%1$s保持在 %2$d fps？</string>
+    <string name="optimize_cap_body">这样游戏能更长时间少卡顿地运行，且不会变慢。</string>
+    <string name="optimize_cap_yes">是，保持</string>
+    <string name="optimize_after_cap_held">保持在 %1$d fps：卡顿更少，更长时间不发热</string>
+    <string name="optimize_status_cap_held">保持在 %1$d fps</string>
     <string name="optimize_hint_heat">这里的瓶颈是发热。试试“功耗与发热”。</string>
     <string name="optimize_suggested_power">建议：功耗与发热，因为设备正在发热。</string>
     <string name="optimize_suggested_performance">建议：性能，因为帧率达不到目标。</string>

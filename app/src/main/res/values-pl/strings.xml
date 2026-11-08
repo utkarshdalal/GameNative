@@ -1914,6 +1914,11 @@
     <string name="optimize_after_done">Gra %1$s działa tak, jak chciałeś</string>
     <string name="optimize_status_paused">Wstrzymano</string>
     <string name="optimize_status_done">Działa tak, jak chciałeś</string>
+    <string name="optimize_cap_title">Utrzymać %1$s na %2$d fps?</string>
+    <string name="optimize_cap_body">Gra działałaby dłużej z mniejszą liczbą przycięć, bez zwalniania.</string>
+    <string name="optimize_cap_yes">Tak, utrzymaj</string>
+    <string name="optimize_after_cap_held">Utrzymywane na %1$d fps: mniej przycięć, dłużej pozostaje chłodna</string>
+    <string name="optimize_status_cap_held">Utrzymywane na %1$d fps</string>
     <string name="optimize_hint_heat">Tutaj ograniczeniem jest temperatura. Spróbuj Zasilanie i temperatura.</string>
     <string name="optimize_suggested_power">Sugerowane: Zasilanie i temperatura, bo urządzenie się nagrzewa.</string>
     <string name="optimize_suggested_performance">Sugerowane: Wydajność, bo liczba klatek nie utrzymuje celu.</string>

@@ -1910,6 +1910,11 @@
     <string name="optimize_after_done">Гра %1$s працює так, як ви хотіли</string>
     <string name="optimize_status_paused">Призупинено</string>
     <string name="optimize_status_done">Працює так, як ви хотіли</string>
+    <string name="optimize_cap_title">Тримати %1$s на %2$d fps?</string>
+    <string name="optimize_cap_body">Гра довше працюватиме з меншими підвисаннями й без сповільнення.</string>
+    <string name="optimize_cap_yes">Так, тримати</string>
+    <string name="optimize_after_cap_held">Тримається на %1$d fps: менше підвисань, довше лишається холодною</string>
+    <string name="optimize_status_cap_held">Тримається на %1$d fps</string>
     <string name="optimize_hint_heat">Тут обмежує нагрів. Спробуйте «Живлення й нагрів».</string>
     <string name="optimize_suggested_power">Рекомендовано: «Живлення й нагрів», бо пристрій нагрівається.</string>
     <string name="optimize_suggested_performance">Рекомендовано: «Продуктивність», бо частота кадрів не тримає ціль.</string>

@@ -2119,6 +2119,11 @@
     <string name="optimize_after_done">%1$s は希望どおりに動作しています</string>
     <string name="optimize_status_paused">一時停止中</string>
     <string name="optimize_status_done">希望どおりに動作しています</string>
+    <string name="optimize_cap_title">%1$sを%2$d fpsに固定しますか？</string>
+    <string name="optimize_cap_body">カクつきを減らし、遅くならずに長く快適に動作します。</string>
+    <string name="optimize_cap_yes">はい、固定する</string>
+    <string name="optimize_after_cap_held">%1$d fpsに固定中：カクつきが減り、長く熱くなりにくい</string>
+    <string name="optimize_status_cap_held">%1$d fpsに固定中</string>
     <string name="optimize_hint_heat">ここでは発熱が限界です。電力と発熱を試してください。</string>
     <string name="optimize_suggested_power">おすすめ：電力と発熱（デバイスが熱くなっているため）。</string>
     <string name="optimize_suggested_performance">おすすめ：パフォーマンス（フレームレートが目標を維持できていないため）。</string>

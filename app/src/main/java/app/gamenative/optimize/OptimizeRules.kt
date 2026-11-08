@@ -1,6 +1,7 @@
 package app.gamenative.optimize
 
 import kotlin.math.roundToInt
+import org.json.JSONObject
 
 /** What has to come off and what has to go back on so that only [target]'s kept changes are on the game. */
 data class SwitchPlan(
@@ -132,6 +133,7 @@ object OptimizeCards {
     const val ACTION_KEEP_CHANGES = "keep_changes"
     const val ACTION_UNDO_ALL = "undo_all"
     const val ACTION_MEMBERSHIP = "membership"
+    const val ACTION_CAP = "cap"
 
     const val SUPPRESSED_NEVER = "never"
     const val SUPPRESSED_PROFILE = "profile_active"
@@ -190,7 +192,7 @@ object OptimizeCards {
     fun wireAction(action: String, cardKind: String?): String = when (action) {
         ACTION_OPTIMIZE -> if (cardKind == OptimizeCard.FIRST) WIRE_ACCEPTED else ACTION_OPTIMIZE
         ACTION_MEMBERSHIP -> WIRE_ACCEPTED
-        ACTION_NEVER, ACTION_HAPPY, ACTION_UNDO, ACTION_KEEP_GOING, ACTION_STOP -> action
+        ACTION_NEVER, ACTION_HAPPY, ACTION_UNDO, ACTION_KEEP_GOING, ACTION_STOP, ACTION_CAP -> action
         ACTION_KEEP_CHANGES -> ACTION_HAPPY
         ACTION_UNDO_ALL -> ACTION_UNDO
         WIRE_CONTINUE -> WIRE_CONTINUE
@@ -231,6 +233,59 @@ object OptimizeCards {
             return Suggestion(OptimizeProfile.STABILITY, REASON_STUTTER)
         }
         return Suggestion(OptimizeProfile.BALANCED, REASON_NONE)
+    }
+
+    /** Below this steady fps under heat, settings alone will not hold a cap, so the cap is the lever. */
+    const val CAP_HEAT_FPS = 45.0
+    const val CAP_NO_CHANGE_STREAK = 2
+    const val CAP_SNOOZE_MS = SUPPRESS_MS
+    private val CAP_VALUES = listOf(45, 40, 30)
+    private const val CAP_SHARE = 0.75
+    private val ENDED = setOf(LadderState.EXHAUSTED, LadderState.DONE)
+
+    /** The fps a cap rung holds the game at, from its container fpsLimit lever; null for any other rung. */
+    fun capFps(rung: JSONObject?): Int? {
+        val parsed = rung?.let { Rung.parse(it) }?.takeIf { it.isFpsCap } ?: return null
+        return parsed.levers.filterIsInstance<Lever.ContainerSet>().flatMap { it.set }
+            .firstOrNull { it.first == "fpsLimit" }?.second?.trim()?.toIntOrNull()?.takeIf { it > 0 }
+    }
+
+    /**
+     * The cap the server serves on ladder.prefer "cap": the highest of 45, 40, 30 at most 0.75 x steady fps, else
+     * 30; 30 with no steady fps; none when the game already runs at 30 or less.
+     */
+    fun capValue(steadyFps: Double?): Int? {
+        if (steadyFps == null || steadyFps <= 0) return CAP_VALUES.last()
+        if (steadyFps <= CAP_VALUES.last()) return null
+        return CAP_VALUES.firstOrNull { it <= CAP_SHARE * steadyFps } ?: CAP_VALUES.last()
+    }
+
+    /**
+     * The fps to propose holding the game at, or null when the cap is not the best lever. Heat has to be the limit
+     * (a thermal_gpu verdict or a throttle onset) and one of: steady fps under 45, so settings alone will not hold a
+     * cap; the profile's settings ladder ended (exhausted or done) or ran two no-change steps in a row; or Power is
+     * the active profile. Never while a cap is already on or on trial, or the container already holds the game at
+     * or below it ([fpsCap] 0 is no cap).
+     */
+    fun capDecision(verdict: String?, metrics: Metrics?, ladder: ProfileLadder?, profile: OptimizeProfile?, fpsCap: Int = 0): Int? {
+        if (verdict != "thermal_gpu" && metrics?.throttleOnsetSec == null) return null
+        if (ladder != null && (ladder.pending?.rung?.isFpsCap == true || ladder.kept.any { it.applied && capFps(it.rung) != null })) return null
+        val steady = metrics?.steadyFps
+        val cap = capValue(steady) ?: return null
+        if (fpsCap in 1..cap) return null
+        val fires = (steady != null && steady < CAP_HEAT_FPS) ||
+            (ladder != null && (ladder.state in ENDED || ladder.noChangeStreak >= CAP_NO_CHANGE_STREAK)) ||
+            profile == OptimizeProfile.POWER
+        return cap.takeIf { fires }
+    }
+
+    /** [capDecision] for the session that just ended, unless the question is snoozed or already answered yes. */
+    fun capQuestion(state: OptimizeLocalState, session: Metrics, fpsCap: Int, nowMillis: Long): Int? {
+        if (state.never || state.capPreferred || nowMillis < state.capSnoozedUntil) return null
+        val profile = state.activeProfile
+        val ladder = profile?.let { state.ladder(it) }
+        if (ladder?.lastStatus == NextRungResponse.STATUS_ENTITLEMENT_REQUIRED) return null
+        return capDecision(session.cls, session, ladder, profile, fpsCap)
     }
 
     fun notNow(card: OptimizeCard, nowMillis: Long): CardSuppression = CardSuppression(nowMillis + SUPPRESS_MS, card.metrics)

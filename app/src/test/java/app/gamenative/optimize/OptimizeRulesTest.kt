@@ -421,4 +421,80 @@ class OptimizeRulesTest {
             assertFalse(OptimizeTarget.settle(OptimizeProfile.PERFORMANCE, judged, null, cool, 120.0, 0).done)
         }
     }
+
+    private val capRungJson = JSONObject(
+        """{"rung_id":"cap.balanced.30","version":"c1","is_fps_cap":true,"outcome":"stable","visual_cost_id":"vc_fps_held",
+           "levers":[{"lever_type":"container","payload":{"set":[{"key":"fpsLimit","value":"30"}]}}]}""",
+    )
+
+    private val hot = Metrics(gameplaySec = 900, steadyFps = 40.0, stutterShare = 0.03, cls = "thermal_gpu", confidence = 0.8, confident = true)
+
+    @Test
+    fun capValueMatchesWhatTheServerServesOnPreferCap() {
+        assertEquals(30, OptimizeCards.capValue(null))
+        assertEquals(45, OptimizeCards.capValue(80.0))
+        assertEquals(45, OptimizeCards.capValue(60.0))
+        assertEquals(40, OptimizeCards.capValue(56.0))
+        assertEquals(30, OptimizeCards.capValue(50.0))
+        assertEquals(30, OptimizeCards.capValue(44.0))
+        assertEquals(30, OptimizeCards.capValue(35.0))
+        assertNull(OptimizeCards.capValue(30.0))
+    }
+
+    @Test
+    fun capIsProposedOnlyWhenHeatIsTheLimit() {
+        assertNull(OptimizeCards.capDecision("gpu", hot.copy(cls = "gpu"), null, null))
+        assertEquals(30, OptimizeCards.capDecision("thermal_gpu", hot, null, null))
+        assertEquals(30, OptimizeCards.capDecision("gpu", hot.copy(cls = "gpu", throttleOnsetSec = 300), null, null))
+    }
+
+    @Test
+    fun capIsProposedBelow45FpsOrOnceSettingsRanOutOrForPower() {
+        val fast = hot.copy(steadyFps = 58.0)
+        val trying = ProfileLadder(state = LadderState.TRYING)
+        // Settings may still hold the frame rate: no question yet.
+        assertNull(OptimizeCards.capDecision("thermal_gpu", fast, trying, OptimizeProfile.PERFORMANCE))
+        assertEquals(40, OptimizeCards.capDecision("thermal_gpu", fast, trying.copy(state = LadderState.EXHAUSTED), OptimizeProfile.PERFORMANCE))
+        assertEquals(40, OptimizeCards.capDecision("thermal_gpu", fast, trying.copy(state = LadderState.DONE), OptimizeProfile.BALANCED))
+        assertEquals(40, OptimizeCards.capDecision("thermal_gpu", fast, trying.copy(noChangeStreak = 2), OptimizeProfile.PERFORMANCE))
+        assertNull(OptimizeCards.capDecision("thermal_gpu", fast, trying.copy(noChangeStreak = 1), OptimizeProfile.PERFORMANCE))
+        assertEquals(40, OptimizeCards.capDecision("thermal_gpu", fast, trying, OptimizeProfile.POWER))
+        assertEquals(30, OptimizeCards.capDecision("thermal_gpu", hot, trying, OptimizeProfile.PERFORMANCE))
+    }
+
+    @Test
+    fun capIsNotProposedWhenACapIsAlreadyOnOrTheGameRunsAt30() {
+        val capKept = KeptRung("cap.balanced.30", "c1", 1, listOf("framecap"), 0L, emptyList(), null, rung = capRungJson)
+        assertNull(OptimizeCards.capDecision("thermal_gpu", hot, ProfileLadder(kept = listOf(capKept)), OptimizeProfile.BALANCED))
+        val onTrial = PendingRung(Rung.parse(capRungJson)!!, 0L, null, 0, emptyList())
+        assertNull(OptimizeCards.capDecision("thermal_gpu", hot, ProfileLadder(pending = onTrial), OptimizeProfile.BALANCED))
+        assertNull(OptimizeCards.capDecision("thermal_gpu", hot, null, null, fpsCap = 30))
+        assertEquals(30, OptimizeCards.capDecision("thermal_gpu", hot, null, null, fpsCap = 60))
+        assertNull(OptimizeCards.capDecision("thermal_gpu", hot.copy(steadyFps = 29.0), null, null))
+    }
+
+    @Test
+    fun capQuestionWaitsOutNotNowAndAYes() {
+        val state = OptimizeLocalState()
+        assertEquals(30, OptimizeCards.capQuestion(state, hot, 0, 1000L))
+        assertNull(OptimizeCards.capQuestion(state.copy(capSnoozedUntil = 2000L), hot, 0, 1000L))
+        assertEquals(30, OptimizeCards.capQuestion(state.copy(capSnoozedUntil = 2000L), hot, 0, 2000L))
+        assertNull(OptimizeCards.capQuestion(state.copy(capPreferred = true), hot, 0, 1000L))
+        assertNull(OptimizeCards.capQuestion(state.copy(never = true), hot, 0, 1000L))
+    }
+
+    @Test
+    fun capFpsReadsTheKeptCap() {
+        assertEquals(30, OptimizeCards.capFps(capRungJson))
+        assertNull(OptimizeCards.capFps(JSONObject(capRungJson.toString()).put("is_fps_cap", false)))
+        assertNull(OptimizeCards.capFps(null))
+        val capKept = KeptRung("cap.balanced.30", "c1", 1, listOf("framecap"), 0L, emptyList(), null, rung = capRungJson)
+        val held = OptimizeLocalState(
+            activeProfile = OptimizeProfile.BALANCED,
+            profiles = mapOf(OptimizeProfile.BALANCED to ProfileLadder(kept = listOf(kept("b1"), capKept))),
+        )
+        assertEquals(30, OptimizeStatus.heldCapFps(held))
+        assertNull(OptimizeStatus.heldCapFps(held.withLadder(OptimizeProfile.BALANCED, ProfileLadder(kept = listOf(capKept.copy(applied = false))))))
+        assertEquals(OptimizeCards.ACTION_CAP, OptimizeCards.wireAction(OptimizeCards.ACTION_CAP, OptimizeCard.CAP))
+    }
 }

@@ -267,6 +267,8 @@ data class OptimizeCard(
     val metrics: Metrics? = null,
     /** Why [profile] is suggested on a first card, an [OptimizeCards] REASON_ id. */
     val reason: String? = null,
+    /** The fps a cap question proposes, or a kept cap holds on an after-card. */
+    val capFps: Int? = null,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("kind", kind)
@@ -280,6 +282,7 @@ data class OptimizeCard(
         stutterDropPct?.let { put("stutter_drop_pct", it) }
         metrics?.let { put("metrics", it.toJson()) }
         reason?.let { put("reason", it) }
+        capFps?.let { put("cap_fps", it) }
     }
 
     companion object {
@@ -290,6 +293,8 @@ data class OptimizeCard(
         const val EXHAUSTED = "exhausted"
         const val DONE = "done"
         const val ENTITLEMENT = "entitlement"
+        /** Heat is the limit and a frame cap is the lever: asks whether to hold the game at [capFps]. */
+        const val CAP = "cap"
 
         const val OUTCOME_FPS = "fps"
         const val OUTCOME_STUTTER = "stutter"
@@ -310,6 +315,7 @@ data class OptimizeCard(
                 stutterDropPct = o.optIntOrNull("stutter_drop_pct"),
                 metrics = Metrics.fromJson(o.optJSONObject("metrics")),
                 reason = o.optStringOrNull("reason"),
+                capFps = o.optIntOrNull("cap_fps"),
             )
         }
     }
@@ -341,6 +347,10 @@ data class OptimizeLocalState(
     val entitlementCheckedAt: Long = 0L,
     val outcomeQueue: List<JSONObject> = emptyList(),
     val prefetched: PrefetchedRung? = null,
+    /** One-shot: the user said yes to the cap question, so the next next-rung request sends ladder.prefer "cap". */
+    val capPreferred: Boolean = false,
+    /** No cap question before this time ("Not now"). */
+    val capSnoozedUntil: Long = 0L,
 ) {
     val active: ProfileLadder? get() = activeProfile?.let { profiles[it] }
 
@@ -362,12 +372,15 @@ data class OptimizeLocalState(
         put("entitlement_checked_at", entitlementCheckedAt)
         put("outcome_queue", JSONArray().apply { outcomeQueue.forEach { put(it) } })
         prefetched?.let { put("prefetched", it.toJson()) }
+        if (capPreferred) put("ladder_prefer", PREFER_CAP)
+        if (capSnoozedUntil > 0) put("cap_snoozed_until", capSnoozedUntil)
     }
 
     companion object {
         const val VERSION = 2
         const val MAX_QUEUE = 50
         const val MAX_TRIED = 200
+        const val PREFER_CAP = "cap"
 
         private fun profileOf(id: String?): OptimizeProfile? = OptimizeProfile.fromWire(id).takeIf { it != OptimizeProfile.OFF }
 
@@ -391,6 +404,8 @@ data class OptimizeLocalState(
                 entitlementCheckedAt = o.optLong("entitlement_checked_at", 0L),
                 outcomeQueue = o.optJSONArray("outcome_queue").objects(),
                 prefetched = PrefetchedRung.fromJson(o.optJSONObject("prefetched")),
+                capPreferred = o.optStringOrNull("ladder_prefer") == PREFER_CAP,
+                capSnoozedUntil = o.optLong("cap_snoozed_until", 0L),
             )
         }
 

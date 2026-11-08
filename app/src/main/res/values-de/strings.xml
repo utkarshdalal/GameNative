@@ -1850,6 +1850,11 @@
     <string name="optimize_after_done">%1$s läuft so, wie du es wolltest</string>
     <string name="optimize_status_paused">Pausiert</string>
     <string name="optimize_status_done">Läuft so, wie du es wolltest</string>
+    <string name="optimize_cap_title">%1$s bei %2$d fps halten?</string>
+    <string name="optimize_cap_body">So läuft das Spiel länger mit weniger Rucklern, ohne langsamer zu werden.</string>
+    <string name="optimize_cap_yes">Ja, halten</string>
+    <string name="optimize_after_cap_held">Bei %1$d fps gehalten: weniger Ruckler, bleibt länger kühl</string>
+    <string name="optimize_status_cap_held">Bei %1$d fps gehalten</string>
     <string name="optimize_hint_heat">Hier begrenzt die Wärme. Versuche Strom und Wärme.</string>
     <string name="optimize_suggested_power">Vorschlag: Strom und Wärme, weil das Gerät heiß läuft.</string>
     <string name="optimize_suggested_performance">Vorschlag: Leistung, weil die Bildrate ihr Ziel nicht hält.</string>

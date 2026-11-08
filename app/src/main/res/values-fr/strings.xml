@@ -1928,6 +1928,11 @@
     <string name="optimize_after_done">%1$s tourne comme vous l\'avez demandé</string>
     <string name="optimize_status_paused">En pause</string>
     <string name="optimize_status_done">Tourne comme vous l\'avez demandé</string>
+    <string name="optimize_cap_title">Maintenir %1$s à %2$d fps ?</string>
+    <string name="optimize_cap_body">Le jeu tournerait avec moins de saccades plus longtemps, sans ralentir.</string>
+    <string name="optimize_cap_yes">Oui, le maintenir</string>
+    <string name="optimize_after_cap_held">Maintenu à %1$d fps : moins de saccades, reste frais plus longtemps</string>
+    <string name="optimize_status_cap_held">Maintenu à %1$d fps</string>
     <string name="optimize_hint_heat">Ici, c\'est la chaleur qui limite. Essayez Énergie et chaleur.</string>
     <string name="optimize_suggested_power">Suggéré : Énergie et chaleur, car l\'appareil chauffe.</string>
     <string name="optimize_suggested_performance">Suggéré : Performances, car la fréquence d\'images ne tient pas son objectif.</string>

@@ -1901,6 +1901,11 @@
     <string name="optimize_after_done">%1$s funziona come hai chiesto</string>
     <string name="optimize_status_paused">In pausa</string>
     <string name="optimize_status_done">Funziona come hai chiesto</string>
+    <string name="optimize_cap_title">Tenere %1$s a %2$d fps?</string>
+    <string name="optimize_cap_body">Il gioco girerebbe con meno scatti più a lungo senza rallentare.</string>
+    <string name="optimize_cap_yes">Sì, tienilo</string>
+    <string name="optimize_after_cap_held">Tenuto a %1$d fps: meno scatti, resta fresco più a lungo</string>
+    <string name="optimize_status_cap_held">Tenuto a %1$d fps</string>
     <string name="optimize_hint_heat">Qui il limite è il calore. Prova Energia e calore.</string>
     <string name="optimize_suggested_power">Consigliato: Energia e calore, perché il dispositivo si sta scaldando.</string>
     <string name="optimize_suggested_performance">Consigliato: Prestazioni, perché il frame rate non tiene il suo obiettivo.</string>
