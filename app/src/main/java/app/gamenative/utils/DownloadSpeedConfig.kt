@@ -23,6 +23,32 @@ class DownloadSpeedConfig {
             ADAPTIVE_SPEED -> 32
             else -> speed.coerceIn(1, 32)
         }
+
+        /**
+         * The tier's native engine window ceiling (see [maxDownloads]). Pure so the Kotlin
+         * fallbacks can ask for the fixed tiers' established values without an instance.
+         */
+        fun nativeMaxDownloadsFor(speed: Int): Int = when (speed) {
+            8 -> 6
+            16 -> 16
+            24 -> 32
+            32 -> 128
+            // Adaptive ("GameHub-style"): the engine's hard cap; its adaptive ramp decides the
+            // effective width, still bound by distinct CDN hosts x per-host cap.
+            ADAPTIVE_SPEED -> 256
+            else -> 6
+        }
+
+        /**
+         * Request concurrency for the legacy Kotlin chunk fallbacks. They used [maxDownloads]
+         * directly before the Adaptive tier existed, so fixed tiers keep those established values
+         * (6/16/32/128); only Adaptive - whose 256 is a *window ceiling*, not a request count - is
+         * capped at 32 so it cannot flood a thin link when the native engine is unavailable.
+         */
+        fun fallbackRequestsFor(speed: Int): Int = when (speed) {
+            ADAPTIVE_SPEED -> 32
+            else -> nativeMaxDownloadsFor(speed).coerceAtLeast(1)
+        }
     }
 
     /**
@@ -61,16 +87,5 @@ class DownloadSpeedConfig {
      * over-parking was, and the engine's latency-congestion shrink now handles that.
      */
     val maxDownloads: Int
-        get() = when (PrefManager.downloadSpeed) {
-            8 -> 6
-            16 -> 16
-            24 -> 32
-            32 -> 128
-            // Adaptive ("GameHub-style"): raise the ceiling to the engine's hard cap and let its
-            // ramp decide. The effective width still binds on distinct CDN hosts x PER_HOST_CAP
-            // (8), and the ramp only grows while throughput keeps rising with errors low, so a
-            // thin link settles far below this instead of being flooded.
-            ADAPTIVE_SPEED -> 256
-            else -> 6
-        }
+        get() = nativeMaxDownloadsFor(PrefManager.downloadSpeed)
 }

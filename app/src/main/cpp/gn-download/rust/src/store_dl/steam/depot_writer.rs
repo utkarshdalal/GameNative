@@ -989,6 +989,9 @@ struct FetchScheduler {
     host_sems: Vec<Arc<Semaphore>>,
     per_host_cap: usize,
     dispatch_counter: u64,
+    /// Per directory entry: the dispatch sequence number of its last pick. Entries that share a
+    /// host have equal health, so this rotates between them instead of always dialling the same one.
+    last_pick: Vec<u64>,
 }
 
 impl FetchScheduler {
@@ -1018,6 +1021,7 @@ impl FetchScheduler {
             host_sems,
             per_host_cap,
             dispatch_counter: 0,
+            last_pick: vec![0; servers.len()],
         }
     }
 
@@ -1077,34 +1081,47 @@ impl FetchScheduler {
         if eligible.is_empty() {
             return None;
         }
-        // Cold start: probe an unsampled host before exploiting anything.
-        if let Some(&cold) = eligible
-            .iter()
-            .find(|&&i| self.server_health(i).samples == 0)
-        {
-            return Some(cold);
-        }
         self.dispatch_counter = self.dispatch_counter.wrapping_add(1);
-        // Epsilon-greedy exploration: revisit the least-sampled eligible host.
-        if SERVER_EXPLORE_EVERY > 0 && self.dispatch_counter % SERVER_EXPLORE_EVERY == 0 {
-            return eligible
+        let seq = self.dispatch_counter;
+        // Duplicate directory entries share one health row, so without this tie-break the ranking
+        // would always pick the lower entry index and never dial the others. Least-recently-picked
+        // wins inside a host.
+        let pick = if let Some(&cold) = eligible
+            .iter()
+            .filter(|&&i| self.server_health(i).samples == 0)
+            .min_by_key(|&&i| self.last_pick[i])
+        {
+            cold
+        } else if SERVER_EXPLORE_EVERY > 0 && seq % SERVER_EXPLORE_EVERY == 0 {
+            eligible.iter().copied().min_by(|&a, &b| {
+                self.server_health(a)
+                    .samples
+                    .cmp(&self.server_health(b).samples)
+                    .then(self.last_pick[a].cmp(&self.last_pick[b]))
+                    .then(a.cmp(&b))
+            })?
+        } else {
+            eligible
                 .iter()
                 .copied()
-                .min_by_key(|&i| self.server_health(i).samples);
-        }
-        // Exploit: highest EWMA, tie-break to the host with more free permits, then lower index.
-        eligible.iter().copied().max_by(|&a, &b| {
-            self.server_health(a)
-                .ewma_bps
-                .partial_cmp(&self.server_health(b).ewma_bps)
-                .unwrap_or(std::cmp::Ordering::Equal)
-                .then(
-                    self.host_sem(a)
-                        .available_permits()
-                        .cmp(&self.host_sem(b).available_permits()),
-                )
-                .then(b.cmp(&a))
-        })
+                .max_by(|&a, &b| {
+                    self.server_health(a)
+                        .ewma_bps
+                        .partial_cmp(&self.server_health(b).ewma_bps)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                        .then(
+                            self.host_sem(a)
+                                .available_permits()
+                                .cmp(&self.host_sem(b).available_permits()),
+                        )
+                        // Prefer the least-recently-picked entry among equal hosts, then the lower
+                        // index as the deterministic fallback.
+                        .then(self.last_pick[b].cmp(&self.last_pick[a]))
+                        .then(b.cmp(&a))
+                })?
+        };
+        self.last_pick[pick] = seq;
+        Some(pick)
     }
 
     fn on_success(&mut self, server_idx: usize, bytes: u64, elapsed: Duration, now: Instant) {
@@ -1197,14 +1214,17 @@ impl FetchScheduler {
         let h = self.server_health_mut(server_idx);
         h.consecutive_errors = h.consecutive_errors.saturating_add(1);
         if host_down {
-            // Only a NEW attempt advances the ladder: one dispatched after the current park began.
+            // Only a NEW attempt moves the ladder: one dispatched after the current park began.
             // Concurrent requests from the batch already in flight were dispatched before it, so
-            // their (possibly late) timeouts are the same failure episode, not fresh evidence.
+            // their (possibly late) timeouts are the same failure episode. They must neither
+            // advance the ladder nor extend/re-arm a park that may already have expired.
             let new_attempt = h.host_down_since.map_or(true, |since| dispatched_at > since);
-            if new_attempt {
-                h.host_down_streak = h.host_down_streak.saturating_add(1);
-                h.host_down_since = Some(now);
+            if !new_attempt {
+                h.ewma_bps *= 0.5;
+                return;
             }
+            h.host_down_streak = h.host_down_streak.saturating_add(1);
+            h.host_down_since = Some(now);
         } else {
             // The host answered (5xx/429/404/...): it is not a blackhole, so a preceding error
             // burst must not escalate the next host-down failure.
@@ -3415,7 +3435,9 @@ async fn run_async_fetch_driver(
                 if crate::store_dl::steam::cdn_probe::should_mark_bad(
                     sched.server_health(done.server_idx).consecutive_errors,
                 ) {
-                    let host = &servers[done.server_idx].host;
+                    // The probe cache is keyed on the scheduler's effective host (vhost|host), not
+                    // the raw `host` field; mark the same key so replacement probing is triggered.
+                    let host = &sched.host_keys[sched.server_host[done.server_idx]];
                     crate::store_dl::steam::cdn_probe::mark_bad(install_dir, host);
                 }
                 if window.record_err(now, err.kind) {
@@ -6557,6 +6579,11 @@ rename, a missing hash and a new file all fall through to the normal walk"
             1,
             "a late completion from the batch already in flight is not fresh evidence"
         );
+        assert_eq!(
+            sched.server_health(0).cooldown_until,
+            Some(t0 + Duration::from_millis(3_000)),
+            "an old-cohort completion must not extend or re-arm the park"
+        );
         // A request dispatched after the park began is fresh evidence: 15 s.
         let fresh = late + Duration::from_millis(3_100);
         sched.on_error(0, fresh, FetchFailKind::Timeout, fresh);
@@ -6617,6 +6644,29 @@ rename, a missing hash and a new file all fall through to the normal walk"
              dir + symlink survive"
         );
         assert_eq!(m.files[3].linktarget, "Game/a.pk4");
+    }
+
+    #[test]
+    fn fetch_scheduler_rotates_entries_that_share_a_host() {
+        // Two directory entries for the same host share one health row; picks must alternate
+        // between them instead of always dialling the same entry.
+        let servers = vec![srv("same"), srv("same"), srv("other")];
+        let mut sched = FetchScheduler::new(&servers, 4);
+        let now = Instant::now();
+        assert_eq!(sched.pick(now), Some(0), "first cold pick");
+        assert_eq!(
+            sched.pick(now),
+            Some(1),
+            "second cold pick rotates to the duplicate entry"
+        );
+        sched.on_success(0, 10_000_000, Duration::from_millis(100), now);
+        assert_eq!(sched.pick(now), Some(2), "the unsampled host is still probed first");
+        sched.on_success(2, 1_000_000, Duration::from_millis(100), now);
+        let picks: Vec<usize> = (0..4).filter_map(|_| sched.pick(now)).collect();
+        assert!(
+            picks.contains(&0) && picks.contains(&1),
+            "both entries get used: {picks:?}"
+        );
     }
 
     #[test]

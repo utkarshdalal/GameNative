@@ -270,7 +270,19 @@ pub fn probe_reachable_endpoints(
         }
     }
     drop(sender);
-    let deadline = started + timeout;
+    collect_probe_results(&receiver, pending, started + timeout, &mut reachable);
+    reachable
+}
+
+/// Drain probe answers until every spawned worker answered or `deadline` passes; missing answers
+/// count as unreachable. Split out so a test can prove the coordinator's own deadline bounds the
+/// wait even when a worker never answers at all (which a per-request timeout cannot cover).
+fn collect_probe_results(
+    receiver: &mpsc::Receiver<(usize, bool)>,
+    mut pending: usize,
+    deadline: Instant,
+    reachable: &mut [bool],
+) {
     while pending > 0 {
         let Some(remaining) = deadline.checked_duration_since(Instant::now()) else {
             break;
@@ -285,7 +297,6 @@ pub fn probe_reachable_endpoints(
             Err(_) => break,
         }
     }
-    reachable
 }
 
 /// Keeps only the servers the probe answered for, preserving directory order.
@@ -941,7 +952,11 @@ cannot be enumerated for ownership",
     let needs_probe = !resolved.is_empty()
         && needs_preflight_probe(&cfg, resolved.iter().map(|entry| entry.0));
     let usable_servers = if needs_probe {
-        quarantine_unreachable_cdn_hosts(usable_servers, ca_bundle_path, cancel, log)
+        // Include the cache-seeded promoted hosts in the reachability check too: the depot loop
+        // appends them via `probe_hints.extended_servers`, and a cached winner that is unreachable
+        // would otherwise skip the pre-flight and receive chunks.
+        let seeded = probe_hints.extended_servers(&usable_servers);
+        quarantine_unreachable_cdn_hosts(seeded, ca_bundle_path, cancel, log)
     } else {
         usable_servers
     };
@@ -1994,6 +2009,32 @@ mod tests {
             elapsed < Duration::from_millis(800),
             "probe must be bounded by its timeout, took {elapsed:?}"
         );
+    }
+
+    #[test]
+    fn probe_coordinator_deadline_bounds_a_silent_worker() {
+        // The request timeout cannot cover this: the worker never answers at all. The coordinator
+        // must give up at its own deadline and report the endpoint unreachable.
+        let (tx, rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel::<()>();
+        let worker = thread::spawn(move || {
+            let _ = release_rx.recv_timeout(Duration::from_secs(5));
+            let _ = tx.send((0usize, true));
+        });
+        let started = Instant::now();
+        // The caller starts every endpoint as unreachable; only an actual answer flips it.
+        let mut reachable = vec![false];
+        collect_probe_results(&rx, 1, started + Duration::from_millis(120), &mut reachable);
+        let elapsed = started.elapsed();
+        // Release the worker before asserting, so a failure cannot leave it blocked forever.
+        let _ = release_tx.send(());
+        worker.join().expect("probe worker");
+        assert_eq!(reachable, vec![false], "a silent worker is unreachable at the deadline");
+        assert!(
+            elapsed >= Duration::from_millis(110),
+            "the coordinator waited for its deadline: {elapsed:?}"
+        );
+        assert!(elapsed < Duration::from_secs(2), "bounded by the deadline: {elapsed:?}");
     }
 
     #[test]

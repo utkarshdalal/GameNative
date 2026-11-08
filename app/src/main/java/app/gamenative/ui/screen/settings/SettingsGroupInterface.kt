@@ -645,9 +645,11 @@ fun SettingsGroupInterface(
                     downloadSpeedValue = newIndex
                 },
                 onValueChangeFinished = {
-                    // Persist only the settled selection once the drag ends.
+                    // Persist only the settled selection, in selection order: the ordered setter
+                    // queues the write on the DataStore thread so two quick gestures cannot land
+                    // out of order and leave the earlier tier saved.
                     val index = downloadSpeedValue.roundToInt().coerceIn(0, downloadSpeedValues.lastIndex)
-                    PrefManager.downloadSpeed = downloadSpeedValues[index]
+                    PrefManager.setDownloadSpeedOrdered(downloadSpeedValues[index])
                 },
                 valueRange = 0f..downloadSpeedValues.lastIndex.toFloat(),
                 // Steps are the positions BETWEEN the ends: 5 positions need 3.

@@ -1454,6 +1454,9 @@ struct FetchScheduler {
     server_host: Vec<usize>,
     host_sems: Vec<Arc<Semaphore>>,
     dispatch_counter: u64,
+    /// Per server entry: the dispatch sequence number of its last pick. Entries that share a host
+    /// have equal health, so this rotates between them instead of always dialling the first one.
+    last_pick: Vec<u64>,
 }
 
 impl FetchScheduler {
@@ -1479,6 +1482,7 @@ impl FetchScheduler {
             server_host,
             host_sems,
             dispatch_counter: 0,
+            last_pick: vec![0; hosts.len()],
         }
     }
 
@@ -1511,31 +1515,47 @@ impl FetchScheduler {
         if eligible.is_empty() {
             return None;
         }
-        if let Some(&cold) = eligible
-            .iter()
-            .find(|&&i| self.server_health(i).samples == 0)
-        {
-            return Some(cold);
-        }
         self.dispatch_counter = self.dispatch_counter.wrapping_add(1);
-        if SERVER_EXPLORE_EVERY > 0 && self.dispatch_counter % SERVER_EXPLORE_EVERY == 0 {
-            return eligible
+        let seq = self.dispatch_counter;
+        // Duplicate directory entries share one health row, so without this tie-break the ranking
+        // would always pick the lower entry index and never dial the others. Least-recently-picked
+        // wins inside a host.
+        let pick = if let Some(&cold) = eligible
+            .iter()
+            .filter(|&&i| self.server_health(i).samples == 0)
+            .min_by_key(|&&i| self.last_pick[i])
+        {
+            cold
+        } else if SERVER_EXPLORE_EVERY > 0 && seq % SERVER_EXPLORE_EVERY == 0 {
+            eligible.iter().copied().min_by(|&a, &b| {
+                self.server_health(a)
+                    .samples
+                    .cmp(&self.server_health(b).samples)
+                    .then(self.last_pick[a].cmp(&self.last_pick[b]))
+                    .then(a.cmp(&b))
+            })?
+        } else {
+            eligible
                 .iter()
                 .copied()
-                .min_by_key(|&i| self.server_health(i).samples);
-        }
-        eligible.iter().copied().max_by(|&a, &b| {
-            self.server_health(a)
-                .ewma_bps
-                .partial_cmp(&self.server_health(b).ewma_bps)
-                .unwrap_or(std::cmp::Ordering::Equal)
-                .then(
-                    self.host_sem(a)
-                        .available_permits()
-                        .cmp(&self.host_sem(b).available_permits()),
-                )
-                .then(b.cmp(&a))
-        })
+                .max_by(|&a, &b| {
+                    self.server_health(a)
+                        .ewma_bps
+                        .partial_cmp(&self.server_health(b).ewma_bps)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                        .then(
+                            self.host_sem(a)
+                                .available_permits()
+                                .cmp(&self.host_sem(b).available_permits()),
+                        )
+                        // Prefer the least-recently-picked entry among equal hosts, then the lower
+                        // index as the deterministic fallback.
+                        .then(self.last_pick[b].cmp(&self.last_pick[a]))
+                        .then(b.cmp(&a))
+                })?
+        };
+        self.last_pick[pick] = seq;
+        Some(pick)
     }
 
     fn on_success(&mut self, server_idx: usize, bytes: u64, elapsed: Duration) {
@@ -1569,14 +1589,17 @@ impl FetchScheduler {
         let h = self.server_health_mut(server_idx);
         h.consecutive_errors = h.consecutive_errors.saturating_add(1);
         if host_down {
-            // Only a NEW attempt advances the ladder: one dispatched after the current park began.
+            // Only a NEW attempt moves the ladder: one dispatched after the current park began.
             // Concurrent requests from the batch already in flight were dispatched before it, so
-            // their (possibly late) timeouts are the same failure episode, not fresh evidence.
+            // their (possibly late) timeouts are the same failure episode. They must neither
+            // advance the ladder nor extend/re-arm a park that may already have expired.
             let new_attempt = h.host_down_since.map_or(true, |since| dispatched_at > since);
-            if new_attempt {
-                h.host_down_streak = h.host_down_streak.saturating_add(1);
-                h.host_down_since = Some(now);
+            if !new_attempt {
+                h.ewma_bps *= 0.5;
+                return;
             }
+            h.host_down_streak = h.host_down_streak.saturating_add(1);
+            h.host_down_since = Some(now);
         } else {
             // The host answered (5xx/429/404/...): it is not a blackhole, so a preceding error
             // burst must not escalate the next host-down failure.
@@ -2072,6 +2095,30 @@ mod tests {
         assert_eq!(classify_status(429), FetchFailKind::RateLimited);
         assert_eq!(classify_status(503), FetchFailKind::ServerFault);
         assert_eq!(classify_status(404), FetchFailKind::Other);
+    }
+
+    #[test]
+    fn scheduler_rotates_eligible_entries_that_share_a_host() {
+        // Two directory entries for the same host share one health row; the picker must alternate
+        // between them instead of always dialling the same entry.
+        let hosts = vec!["same".to_string(), "same".to_string(), "other".to_string()];
+        let mut s = FetchScheduler::new(&hosts, 4);
+        let now = Instant::now();
+        assert_eq!(s.pick(now), Some(0), "first cold pick");
+        assert_eq!(
+            s.pick(now),
+            Some(1),
+            "second cold pick rotates to the duplicate entry"
+        );
+        // Sample both hosts, then exploitation ties must keep rotating between the duplicates.
+        s.on_success(0, 10_000_000, Duration::from_millis(100));
+        assert_eq!(s.pick(now), Some(2), "the unsampled host is still probed first");
+        s.on_success(2, 1_000_000, Duration::from_millis(100));
+        let picks: Vec<usize> = (0..4).filter_map(|_| s.pick(now)).collect();
+        assert!(
+            picks.contains(&0) && picks.contains(&1),
+            "both entries get used: {picks:?}"
+        );
     }
 
     #[test]
@@ -2579,8 +2626,8 @@ mod tests {
             t0 + Duration::from_millis(3_000)
         );
         // The second request (same batch, dispatched at t0) reports LATE, after the cooldown
-        // expired. It is not a new probe of the host, so the ladder must stay at its first rung —
-        // only the park may be kept alive.
+        // expired. It is not a new probe of the host: the ladder stays at its first rung AND the
+        // expired park is not re-armed.
         let late = t0 + Duration::from_millis(5_000);
         s.on_error(0, late, FetchFailKind::Timeout, t0);
         assert_eq!(
@@ -2588,6 +2635,12 @@ mod tests {
             1,
             "a late completion from the batch already in flight is not fresh evidence"
         );
+        assert_eq!(
+            s.server_health(0).cooldown_until,
+            Some(t0 + Duration::from_millis(3_000)),
+            "an old-cohort completion must not extend or re-arm the park"
+        );
+        assert!(s.eligible(0, late), "the park expired before the late failure");
         // A request dispatched after the park began IS new evidence: 15 s.
         let fresh = late + Duration::from_millis(3_100);
         s.on_error(0, fresh, FetchFailKind::Timeout, fresh);
