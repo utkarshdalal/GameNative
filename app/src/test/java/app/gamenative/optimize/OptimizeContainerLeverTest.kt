@@ -1,0 +1,71 @@
+package app.gamenative.optimize
+
+import android.app.Application
+import app.gamenative.ui.screen.support.SupportSuggestionApplier
+import app.gamenative.utils.ContainerUtils
+import com.winlator.container.ContainerData
+import com.winlator.core.envvars.EnvVars
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+@RunWith(RobolectricTestRunner::class)
+@Config(application = Application::class)
+class OptimizeContainerLeverTest {
+
+    private fun edit(live: ContainerData, key: String, value: String?): ContainerData {
+        val edit = OptimizeApplier.editFor(key, value) ?: return live
+        return ContainerUtils.applyBestConfigMapToContainerData(live, SupportSuggestionApplier.updatesFor(live, listOf(edit)))
+    }
+
+    @Test
+    fun envVarThatDidNotExistIsRemovedOnRevert() {
+        val live = ContainerData(envVars = "A=1 B=two\\ words")
+        val prior = OptimizeApplier.configValue(live, "envVars.GN_NEW")
+        assertNull(prior)
+        val applied = edit(live, "envVars.GN_NEW", "5")
+        assertEquals("5", OptimizeApplier.configValue(applied, "envVars.GN_NEW"))
+        val reverted = edit(applied, "envVars.GN_NEW", prior)
+        assertFalse(EnvVars(reverted.envVars).has("GN_NEW"))
+        assertEquals(live.envVars, reverted.envVars)
+    }
+
+    @Test
+    fun emptyEnvVarComesBackEmpty() {
+        val live = ContainerData(envVars = "A=1 GN_EMPTY=")
+        val prior = OptimizeApplier.configValue(live, "envVars.GN_EMPTY")
+        assertEquals("", prior)
+        val reverted = edit(edit(live, "envVars.GN_EMPTY", "1"), "envVars.GN_EMPTY", prior)
+        assertTrue(EnvVars(reverted.envVars).has("GN_EMPTY"))
+        assertEquals("", EnvVars(reverted.envVars).get("GN_EMPTY"))
+    }
+
+    @Test
+    fun dxvkOptionsGoThroughDxvkConfig() {
+        assertTrue(OptimizeApplier.isDxvkOption("dxwrapperConfig.dxvk.numCompilerThreads"))
+        assertFalse(OptimizeApplier.isDxvkOption("dxwrapperConfig.maxDeviceMemory"))
+        val live = ContainerData(envVars = "A=1")
+        val config = OptimizeApplier.dxvkConfigPut("", "dxvk.numCompilerThreads", "2")
+        val applied = edit(live, OptimizeApplier.DXVK_CONFIG_KEY, config)
+        assertEquals("2", OptimizeApplier.configValue(applied, "dxwrapperConfig.dxvk.numCompilerThreads"))
+        assertEquals("dxvk.numCompilerThreads = 2", EnvVars(applied.envVars).get("DXVK_CONFIG"))
+        assertFalse(EnvVars(edit(applied, OptimizeApplier.DXVK_CONFIG_KEY, null).envVars).has("DXVK_CONFIG"))
+    }
+
+    @Test
+    fun dxvkConfigKeepsOtherEntriesAndSections() {
+        val existing = "dxgi.syncInterval = 0;[game.exe];d3d11.cachedDynamicResources = a"
+        val set = OptimizeApplier.dxvkConfigPut(existing, "dxvk.numCompilerThreads", "2")
+        assertEquals("dxgi.syncInterval = 0;dxvk.numCompilerThreads = 2;[game.exe];d3d11.cachedDynamicResources = a", set)
+        assertEquals("1", OptimizeApplier.dxvkConfigGet(OptimizeApplier.dxvkConfigPut(set, "dxgi.syncInterval", "1"), "dxgi.syncInterval"))
+        assertNull(OptimizeApplier.dxvkConfigGet(set, "d3d11.cachedDynamicResources"))
+        assertEquals(existing, OptimizeApplier.dxvkConfigPut(set, "dxvk.numCompilerThreads", null))
+        assertEquals("dxgi.customDeviceDesc = \"Some GPU\"", OptimizeApplier.dxvkConfigPut("", "dxgi.customDeviceDesc", "Some GPU"))
+        assertEquals("Some GPU", OptimizeApplier.dxvkConfigGet("dxgi.customDeviceDesc = \"Some GPU\"", "dxgi.customDeviceDesc"))
+    }
+}

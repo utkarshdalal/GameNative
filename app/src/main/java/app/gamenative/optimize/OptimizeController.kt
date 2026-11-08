@@ -295,6 +295,7 @@ object OptimizeController {
         store: OptimizeStore,
         state: OptimizeLocalState,
         target: OptimizeProfile?,
+        onProgress: (Float, String) -> Unit = { _, _ -> },
     ): Pair<OptimizeLocalState, Boolean> {
         val plan = SwitchPlan.of(state, target)
         if (plan.isEmpty) return state to true
@@ -331,7 +332,8 @@ object OptimizeController {
                 continue
             }
             val outcome = OptimizeApplier.apply(
-                context, container, roots(context, appId, container), store.rungDir(target, rungId), rung, reapply = true,
+                context, container, roots(context, appId, container), store.rungDir(target, rungId), rung,
+                reapply = true, onProgress = onProgress,
             )
             when (outcome) {
                 is ApplyOutcome.Applied -> {
@@ -351,8 +353,16 @@ object OptimizeController {
         return s to ok
     }
 
-    /** Runs before a game starts, off the main thread. Never throws; on any failure the game launches unchanged. */
-    suspend fun beforeLaunch(context: Context, appId: String, container: Container) = withContext(Dispatchers.IO) {
+    /**
+     * Runs before a game starts, off the main thread. Never throws; on any failure the game launches unchanged.
+     * [onProgress] reports component downloads a change needs; only the next-rung request has a time limit.
+     */
+    suspend fun beforeLaunch(
+        context: Context,
+        appId: String,
+        container: Container,
+        onProgress: (Float, String) -> Unit = { _, _ -> },
+    ) = withContext(Dispatchers.IO) {
         resetTelemetry()
         try {
             val store = OptimizeStore(container.rootDir)
@@ -360,7 +370,7 @@ object OptimizeController {
                 var state = store.read()
                 scope.launch { flush(context.applicationContext, store) }
                 val profile = state.activeProfile
-                val (reconciled, ok) = reconcile(context, appId, container, store, state, profile)
+                val (reconciled, ok) = reconcile(context, appId, container, store, state, profile, onProgress)
                 val changed = reconciled != state
                 state = reconciled
                 if (profile == null) {
@@ -420,6 +430,7 @@ object OptimizeController {
                                     if (rung != null) {
                                         val outcome = OptimizeApplier.apply(
                                             context, container, roots(context, appId, container), store.rungDir(profile, rung.rungId), rung,
+                                            onProgress = onProgress,
                                         )
                                         when (outcome) {
                                             is ApplyOutcome.Applied -> {

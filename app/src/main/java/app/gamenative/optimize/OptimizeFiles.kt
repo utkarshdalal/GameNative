@@ -34,6 +34,9 @@ internal object OptimizeFiles {
 
     fun userHive(container: Container): File = File(container.rootDir, ".wine/user.reg")
 
+    /** The guest's HOME is the imagefs home/xuser link, which points at the active container's root. */
+    fun drirc(container: Container): File = File(container.rootDir, ".drirc")
+
     fun readHive(file: File): String = file.readText(Charsets.ISO_8859_1)
 
     fun writeHive(file: File, text: String) = atomicWrite(file, text.toByteArray(Charsets.ISO_8859_1))

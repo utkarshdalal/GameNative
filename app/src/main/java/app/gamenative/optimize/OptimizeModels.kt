@@ -160,12 +160,23 @@ sealed class Lever {
         override val type: String get() = TYPE_CONTAINER
     }
 
+    /** Mesa driconf options; [executable] is an exe file name, or null for every process. */
+    data class Drirc(val options: List<Pair<String, String>>, val executable: String?) : Lever() {
+        override val type: String get() = TYPE_DRIRC
+    }
+
     data class Unknown(override val type: String) : Lever()
 
     companion object {
         const val TYPE_ENGINE_FILE = "engine_file"
         const val TYPE_REGISTRY = "registry"
         const val TYPE_CONTAINER = "container"
+        const val TYPE_DRIRC = "drirc"
+
+        private val DRIRC_OPTION = Regex("^[A-Za-z0-9_]{1,64}$")
+        private val CONTROL = Regex("[\\x00-\\x1f\\x7f]")
+
+        private fun plainText(s: String, max: Int): Boolean = s.length <= max && !CONTROL.containsMatchIn(s)
 
         fun parse(o: JSONObject): Lever {
             val type = o.optString("lever_type")
@@ -207,6 +218,21 @@ sealed class Lever {
                     }
                     if (set.isEmpty() || set.size != raw.size) return Unknown(type)
                     ContainerSet(set)
+                }
+                TYPE_DRIRC -> {
+                    val raw = payload.optJSONObject("options") ?: return Unknown(type)
+                    val options = raw.keys().asSequence().toList().map { name ->
+                        if (!DRIRC_OPTION.matches(name) || raw.isNull(name)) return Unknown(type)
+                        val value = raw.optString(name)
+                        if (!plainText(value, 256)) return Unknown(type)
+                        name to value
+                    }
+                    if (options.isEmpty()) return Unknown(type)
+                    val executable = payload.optStringOrNull("executable")
+                    if (executable != null && (!plainText(executable, 128) || executable.contains('/') || executable.contains('\\'))) {
+                        return Unknown(type)
+                    }
+                    Drirc(options, executable)
                 }
                 else -> Unknown(type)
             }

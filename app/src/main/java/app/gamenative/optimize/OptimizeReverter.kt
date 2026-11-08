@@ -26,6 +26,7 @@ object OptimizeReverter {
                 try {
                     when (record.optString("type")) {
                         Lever.TYPE_ENGINE_FILE -> revertFile(record)
+                        Lever.TYPE_DRIRC -> revertDrirc(record)
                         Lever.TYPE_REGISTRY -> revertRegistry(container, record)
                         Lever.TYPE_CONTAINER -> {
                             if (context == null) throw IllegalStateException("no context for a container revert")
@@ -69,6 +70,36 @@ object OptimizeReverter {
         }
         val text = TextCodecs.decode(current, codec)
         OptimizeFiles.atomicWrite(file, TextCodecs.encode(format.apply(text, ops), codec))
+    }
+
+    private fun revertDrirc(record: JSONObject) {
+        val file = File(record.getString("path"))
+        val existed = record.optBoolean("existed", true)
+        val backup = record.optStringOrNull("backup")?.let { File(it) }?.takeIf { it.isFile }
+        if (!file.exists()) {
+            if (existed && backup != null) OptimizeFiles.atomicWrite(file, backup.readBytes())
+            return
+        }
+        val current = file.readBytes()
+        if (OptimizeFiles.sha256(current) == record.optString("sha_after")) {
+            if (!existed) {
+                file.delete()
+                return
+            }
+            if (backup != null) {
+                OptimizeFiles.atomicWrite(file, backup.readBytes())
+                return
+            }
+        }
+        val priors = record.optJSONArray("keys").objects().map { key ->
+            key.getString("name") to (if (key.isNull("prior")) null else key.optString("prior"))
+        }
+        val text = Driconf.merge(current.toString(Charsets.UTF_8), record.optStringOrNull("executable"), priors).text
+        if (!existed && Driconf.applicationCount(text) == 0) {
+            file.delete()
+        } else {
+            OptimizeFiles.atomicWrite(file, text.toByteArray(Charsets.UTF_8))
+        }
     }
 
     private fun revertRegistry(container: Container, record: JSONObject) {

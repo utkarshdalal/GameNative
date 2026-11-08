@@ -46,6 +46,7 @@ object OptimizeApplier {
         rung: Rung,
         nowMillis: Long = System.currentTimeMillis(),
         reapply: Boolean = false,
+        onProgress: (Float, String) -> Unit = { _, _ -> },
     ): ApplyOutcome = withContext(Dispatchers.IO) {
         if (PluviaApp.xEnvironment != null) return@withContext ApplyOutcome.Deferred("game running")
         if (!reapply && rung.isExpired(nowMillis)) return@withContext ApplyOutcome.Deferred("expired")
@@ -68,7 +69,15 @@ object OptimizeApplier {
                     applied += when (lever) {
                         is Lever.EngineFile -> applyFile(i, lever, roots, rungDir)
                         is Lever.Registry -> applyRegistry(i, lever, container)
-                        is Lever.ContainerSet -> applyContainer(i, lever, context, container)
+                        is Lever.ContainerSet -> applyContainer(i, lever, context, container, onProgress)
+                        // The bionic Turnip and wrapper are built without driconf files; Mesa still reads each option
+                        // from an env var of the same name.
+                        is Lever.Drirc -> if (Container.GLIBC.equals(container.containerVariant, ignoreCase = true)) {
+                            applyDrirc(i, lever, container, rungDir)
+                        } else {
+                            val env = Lever.ContainerSet(lever.options.map { "envVars.${it.first}" to it.second })
+                            applyContainer(i, env, context, container, onProgress)
+                        }
                         is Lever.Unknown -> throw LeverFailure("unknown lever")
                     }
                 } catch (e: CancellationException) {
@@ -130,6 +139,44 @@ object OptimizeApplier {
         }
     }
 
+    /** Glibc Mesa reads $HOME/.drirc, and the guest HOME resolves to the container root. */
+    private fun applyDrirc(index: Int, lever: Lever.Drirc, container: Container, rungDir: File): JSONObject {
+        val file = OptimizeFiles.drirc(container)
+        if (file.isDirectory) throw LeverFailure("drirc is a folder")
+        val existed = file.isFile
+        val bytes = if (existed) file.readBytes() else ByteArray(0)
+        val merged = Driconf.merge(bytes.toString(Charsets.UTF_8), lever.executable, lever.options)
+        val newBytes = merged.text.toByteArray(Charsets.UTF_8)
+        val backup = File(rungDir, "files/$index")
+        if (existed) {
+            backup.parentFile?.mkdirs()
+            backup.writeBytes(bytes)
+        }
+        OptimizeFiles.atomicWrite(file, newBytes)
+        val written = file.readBytes()
+        val now = runCatching { Driconf.read(written.toString(Charsets.UTF_8), lever.executable) }.getOrNull()
+        if (!written.contentEquals(newBytes) || now == null || lever.options.any { (name, value) -> now[name] != value }) {
+            if (existed) OptimizeFiles.atomicWrite(file, bytes) else file.delete()
+            throw LeverFailure("drirc did not take")
+        }
+        return JSONObject().apply {
+            put("type", Lever.TYPE_DRIRC)
+            put("index", index)
+            put("path", file.absolutePath)
+            put("executable", lever.executable ?: JSONObject.NULL)
+            put("existed", existed)
+            put("backup", if (existed) backup.absolutePath else JSONObject.NULL)
+            put("sha_before", if (existed) OptimizeFiles.sha256(bytes) else JSONObject.NULL)
+            put("sha_after", OptimizeFiles.sha256(written))
+            put(
+                "keys",
+                JSONArray().apply {
+                    merged.priors.forEach { (name, prior) -> put(JSONObject().put("name", name).put("prior", prior ?: JSONObject.NULL)) }
+                },
+            )
+        }
+    }
+
     private suspend fun applyRegistry(index: Int, lever: Lever.Registry, container: Container): JSONObject {
         if (!lever.hive.equals("HKCU", ignoreCase = true)) throw LeverFailure("hive ${lever.hive} not allowed")
         if (!lever.key.startsWith("Software\\", ignoreCase = true)) throw LeverFailure("key outside Software")
@@ -177,8 +224,48 @@ object OptimizeApplier {
         return record
     }
 
-    internal fun liveValue(container: Container, live: ContainerData, key: String): String? = when {
-        key == "screenSize" -> container.screenSize
+    const val DXVK_CONFIG_KEY = "envVars.DXVK_CONFIG"
+    private val DXVK_VALUE = Regex("^[^;\"\\[\\x00-\\x1f\\x7f]{1,128}$")
+
+    /**
+     * A dxwrapperConfig sub-key named like a DXVK option ("dxvk.numCompilerThreads"). DXVKHelper only turns its own
+     * keys into DXVK settings, so these go into the container's DXVK_CONFIG instead, which DXVK reads last.
+     */
+    internal fun isDxvkOption(key: String): Boolean = key.startsWith("dxwrapperConfig.") && key.substringAfter('.').contains('.')
+
+    private fun dxvkKey(part: String): String? = part.indexOf('=').takeIf { it > 0 }?.let { part.substring(0, it).trim() }
+
+    /** A DXVK_CONFIG value's entries, and where its first per-exe section starts. */
+    private fun dxvkGlobalParts(config: String): Pair<MutableList<String>, Int> {
+        val parts = config.split(';').map { it.trim() }.filter { it.isNotEmpty() }.toMutableList()
+        val firstSection = parts.indexOfFirst { it.startsWith("[") }.takeIf { it >= 0 } ?: parts.size
+        return parts to firstSection
+    }
+
+    internal fun dxvkConfigGet(config: String, name: String): String? {
+        val (parts, globalEnd) = dxvkGlobalParts(config)
+        val part = parts.subList(0, globalEnd).lastOrNull { dxvkKey(it) == name } ?: return null
+        return part.substringAfter('=').trim().removeSurrounding("\"")
+    }
+
+    /** Sets or, for a null [value], removes [name] in a DXVK_CONFIG value, keeping every other entry. */
+    internal fun dxvkConfigPut(config: String, name: String, value: String?): String {
+        val (parts, globalEnd) = dxvkGlobalParts(config)
+        val at = parts.subList(0, globalEnd).indexOfFirst { dxvkKey(it) == name }
+        val entry = value?.let { "$name = ${if (it.any(Char::isWhitespace)) "\"$it\"" else it}" }
+        when {
+            entry == null -> if (at >= 0) parts.removeAt(at)
+            at >= 0 -> parts[at] = entry
+            else -> parts.add(globalEnd, entry)
+        }
+        return parts.joinToString(";")
+    }
+
+    internal fun liveValue(container: Container, live: ContainerData, key: String): String? =
+        if (key == "screenSize") container.screenSize else configValue(live, key)
+
+    internal fun configValue(live: ContainerData, key: String): String? = when {
+        isDxvkOption(key) -> configValue(live, DXVK_CONFIG_KEY)?.let { dxvkConfigGet(it, key.substringAfter('.')) }
         key.startsWith("envVars.") -> {
             val env = EnvVars(live.envVars)
             val name = key.substringAfter('.')
@@ -214,13 +301,23 @@ object OptimizeApplier {
         }
     }
 
-    private suspend fun applyContainer(index: Int, lever: Lever.ContainerSet, context: Context, container: Container): JSONObject {
+    private suspend fun applyContainer(
+        index: Int,
+        lever: Lever.ContainerSet,
+        context: Context,
+        container: Container,
+        onProgress: (Float, String) -> Unit,
+    ): JSONObject {
         lever.set.firstOrNull { !isAllowedContainerKey(it.first) }?.let { throw LeverFailure("container key ${it.first} not allowed") }
         lever.set.firstOrNull { it.first == "screenSize" && !SCREEN_SIZE.matches(it.second) }?.let { throw LeverFailure("bad screen size") }
+        val dxvk = lever.set.filter { isDxvkOption(it.first) }
+        if (dxvk.isNotEmpty() && lever.set.any { it.first == DXVK_CONFIG_KEY }) throw LeverFailure("DXVK_CONFIG set twice")
+        dxvk.firstOrNull { !DXVK_VALUE.matches(it.second) }?.let { throw LeverFailure("bad DXVK value for ${it.first}") }
         val live = ContainerUtils.toContainerData(container)
         val before = JSONArray()
         val edits = mutableListOf<SupportSuggestionApplier.Edit>()
         for ((key, value) in lever.set) {
+            if (isDxvkOption(key)) continue
             if (key == "fpsLimit") {
                 before.put(
                     JSONObject().apply {
@@ -239,6 +336,12 @@ object OptimizeApplier {
             )
             if (key != "screenSize") editFor(key, value)?.let { edits += it }
         }
+        if (dxvk.isNotEmpty()) {
+            val prior = configValue(live, DXVK_CONFIG_KEY)
+            before.put(JSONObject().put("key", DXVK_CONFIG_KEY).put("value", prior ?: JSONObject.NULL))
+            val merged = dxvk.fold(prior.orEmpty()) { config, (key, value) -> dxvkConfigPut(config, key.substringAfter('.'), value) }
+            edits += SupportSuggestionApplier.Edit(SupportSuggestion.ENV_KEY, "DXVK_CONFIG", merged)
+        }
         val record = JSONObject().apply {
             put("type", Lever.TYPE_CONTAINER)
             put("index", index)
@@ -251,7 +354,7 @@ object OptimizeApplier {
                     container = container,
                     live = live,
                     edits = edits,
-                    onProgress = { _, _ -> },
+                    onProgress = onProgress,
                     beforeSave = {},
                     source = SOURCE,
                 )

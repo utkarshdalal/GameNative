@@ -2415,7 +2415,10 @@ fun preLaunchApp(
         }
 
         if (!bootToContainer && !useTemporaryOverride) {
-            OptimizeController.beforeLaunch(context, appId, container)
+            OptimizeController.beforeLaunch(context, appId, container) { progress, label ->
+                setLoadingMessage(context.getString(R.string.main_downloading_entry, label))
+                setLoadingProgress(if (progress < 0) -1f else progress)
+            }
         } else {
             OptimizeController.resetTelemetry()
         }
