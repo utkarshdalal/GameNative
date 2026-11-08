@@ -594,7 +594,7 @@ class EpicDownloadManager @Inject constructor(
                 downloadingAppIds = java.util.concurrent.CopyOnWriteArrayList(),
             )
 
-            val parallelDownloads = app.gamenative.utils.DownloadSpeedConfig.parallelRequestsFor(PrefManager.downloadSpeed)
+            val parallelDownloads = PrefManager.downloadSpeed.coerceAtLeast(1)
             val downloadHttpClient = Net.httpForParallelDownloads(parallelDownloads)
 
             var downloadedChunks = 0
@@ -1208,11 +1208,7 @@ class EpicDownloadManager @Inject constructor(
         try {
             val scope = CoroutineScope(Dispatchers.IO)
             val speedConfig = DownloadSpeedConfig()
-            // Kotlin fallback path: fixed tiers keep their established maxDownloads request
-            // count; only Adaptive's 256 window ceiling is capped at 32 here instead of flooding
-            // OkHttp with a window size.
-            val parallelDownloads =
-                DownloadSpeedConfig.fallbackRequestsFor(PrefManager.downloadSpeed)
+            val parallelDownloads = speedConfig.maxDownloads
             val parallelAssemble = speedConfig.maxDecompress
             val downloadHttpClient = Net.httpForParallelDownloads(parallelDownloads)
 

@@ -1,7 +1,6 @@
 package app.gamenative.service.gog
 
 import android.content.Context
-import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.DownloadInfo
 import app.gamenative.data.GameSource
@@ -1153,11 +1152,7 @@ class GOGDownloadManager @Inject constructor(
         try {
             val scope = CoroutineScope(Dispatchers.IO)
             val speedConfig = DownloadSpeedConfig()
-            // Kotlin fallback path: fixed tiers keep their established maxDownloads request
-            // count; only Adaptive's 256 window ceiling is capped at 32 here instead of flooding
-            // OkHttp with a window size.
-            val parallelDownloads =
-                DownloadSpeedConfig.fallbackRequestsFor(PrefManager.downloadSpeed)
+            val parallelDownloads = speedConfig.maxDownloads
             val parallelAssemble = speedConfig.maxDecompress
             val downloadHttpClient = Net.httpForParallelDownloads(parallelDownloads)
 

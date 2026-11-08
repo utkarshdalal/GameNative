@@ -1586,28 +1586,13 @@ object PrefManager {
             setPref(DOWNLOAD_ON_WIFI_ONLY, value)
         }
 
-    // Download tier (8=slow, 16=medium, 24=fast, 32=blazing, 100=adaptive/GameHub-style)
+    // Maximum number of concurrent downloads (8=slow, 16=medium, 24=fast, 32=blazing)
     private val DOWNLOAD_SPEED = intPreferencesKey("download_speed")
     var downloadSpeed: Int
         get() = getPref(DOWNLOAD_SPEED, 24)
         set(value) {
             setPref(DOWNLOAD_SPEED, value)
         }
-
-    // Serialises download-speed writes on the DataStore's single thread. The plain setter above
-    // launches on Dispatchers.IO, so two rapid slider gestures can race and persist the earlier
-    // value last; this queue keeps the final selection authoritative.
-    private val orderedPrefWrites = CoroutineScope(dataStoreDispatcher + SupervisorJob())
-
-    /**
-     * Persists [value] as the download-speed tier in CALL order. Used by the settings slider so a
-     * slower earlier write cannot overwrite the user's latest selection.
-     */
-    fun setDownloadSpeedOrdered(value: Int) {
-        orderedPrefWrites.launch {
-            dataStore.edit { pref -> pref[DOWNLOAD_SPEED] = value }
-        }
-    }
 
     private val SAVE_BACKUPS_TO_KEEP = intPreferencesKey("save_backups_to_keep")
     var saveBackupsToKeep: Int

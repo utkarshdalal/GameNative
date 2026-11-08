@@ -1443,7 +1443,6 @@
     <string name="settings_download_medium">Mellem</string>
     <string name="settings_download_fast">Hurtig</string>
     <string name="settings_download_blazing">Lynhurtig</string>
-    <string name="settings_download_adaptive">Adaptiv</string>
     <string name="settings_download_speed">Download-hastighed</string>
     <string name="settings_download_heat_warning">Højere hastigheder kan forårsage øget varme på enheden under downloads</string>
     <string name="settings_region_default">Standard</string>

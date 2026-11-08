@@ -19,7 +19,6 @@ import app.gamenative.data.DownloadInfo
 import app.gamenative.data.GameSource
 import app.gamenative.service.SteamService
 import app.gamenative.utils.ContainerUtils
-import app.gamenative.utils.DownloadSpeedConfig
 import com.winlator.xenvironment.ImageFs
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -902,12 +901,8 @@ object WorkshopManager {
         val totalItems = items.size
         val completedCount = AtomicInteger(0)
 
-        // Concurrent download limit based on speed setting. Workshop item transfers have no
-        // adaptive scheduler, so the Adaptive tier uses the Blazing mapping here.
-        val effectiveSpeed =
-            if (PrefManager.downloadSpeed == DownloadSpeedConfig.ADAPTIVE_SPEED) 32
-            else PrefManager.downloadSpeed
-        val concurrentLimit = when (effectiveSpeed) {
+        // Concurrent download limit based on speed setting
+        val concurrentLimit = when (PrefManager.downloadSpeed) {
             8 -> 1
             16 -> 2
             24 -> 3
@@ -1192,12 +1187,7 @@ object WorkshopManager {
     private fun computeDownloadThreads(): Pair<Int, Int> {
         var downloadRatio = 1.5
         var decompressRatio = 0.5
-        // Workshop item transfers have no adaptive scheduler, so the Adaptive tier uses the
-        // Blazing mapping here.
-        val effectiveSpeed =
-            if (PrefManager.downloadSpeed == DownloadSpeedConfig.ADAPTIVE_SPEED) 32
-            else PrefManager.downloadSpeed
-        when (effectiveSpeed) {
+        when (PrefManager.downloadSpeed) {
             8 -> { downloadRatio = 0.6; decompressRatio = 0.2 }
             16 -> { downloadRatio = 1.2; decompressRatio = 0.4 }
             24 -> { downloadRatio = 1.5; decompressRatio = 0.5 }

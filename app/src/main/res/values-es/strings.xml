@@ -1634,7 +1634,6 @@
     <string name="settings_download_medium">Media</string>
     <string name="settings_download_fast">Rápida</string>
     <string name="settings_download_blazing">Ultrarrápida</string>
-    <string name="settings_download_adaptive">Adaptativa</string>
     <string name="settings_download_speed">Velocidad de descarga</string>
     <string name="settings_download_heat_warning">Las velocidades más altas pueden causar un aumento de la temperatura del dispositivo durante las descargas.</string>
     <string name="settings_region_default">Por defecto</string>

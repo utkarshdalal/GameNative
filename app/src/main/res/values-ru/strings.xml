@@ -1188,7 +1188,6 @@ https://gamenative.app
     <string name="settings_debug_wine_logs_subtitle">Записать вывод отладки Wine в файл</string>
     <string name="settings_debug_wine_logs_title">Включить логи отладки Wine</string>
     <string name="settings_download_blazing">Молниеносный</string>
-    <string name="settings_download_adaptive">Адаптивный</string>
     <string name="settings_download_fast">Быстро</string>
     <string name="settings_download_heat_warning">Более высокие скорости могут вызвать повышенное нагревание устройства во время загрузок</string>
     <string name="settings_download_medium">Средний</string>

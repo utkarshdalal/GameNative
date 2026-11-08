@@ -69,6 +69,7 @@ import com.alorma.compose.settings.ui.SettingsMenuLink
 import androidx.compose.material3.Slider
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
 import kotlin.math.roundToInt
 import com.winlator.core.AppUtils
 import app.gamenative.ui.component.dialog.MessageDialog
@@ -611,11 +612,8 @@ fun SettingsGroupInterface(
             stringResource(R.string.settings_download_medium),
             stringResource(R.string.settings_download_fast),
             stringResource(R.string.settings_download_blazing),
-            stringResource(R.string.settings_download_adaptive),
         )
-        val downloadSpeedValues = remember {
-            listOf(8, 16, 24, 32, app.gamenative.utils.DownloadSpeedConfig.ADAPTIVE_SPEED)
-        }
+        val downloadSpeedValues = remember { listOf(8, 16, 24, 32) }
         var downloadSpeedValue by rememberSaveable {
             mutableStateOf(
                 downloadSpeedValues.indexOf(PrefManager.downloadSpeed).takeIf { it >= 0 }?.toFloat() ?: 2f
@@ -636,43 +634,17 @@ fun SettingsGroupInterface(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(modifier = Modifier.size(8.dp))
-            // Synchronous holder for the latest dragged index: `rememberUpdatedState` only catches
-            // up on recomposition, but a navigation can dispose this screen before that runs, and
-            // the teardown write must still save the selection the user actually made.
-            val latestSpeedIndex = remember { mutableStateOf(downloadSpeedValue) }
             Slider(
                 value = downloadSpeedValue,
                 onValueChange = { newIndex ->
-                    // Track the drag continuously, but do not persist here: PrefManager writes
-                    // go through an async preferences commit, so an earlier queued write can
-                    // land after the final one and leave the wrong tier saved.
                     downloadSpeedValue = newIndex
-                    latestSpeedIndex.value = newIndex
+                    val index = newIndex.roundToInt().coerceIn(0, 3)
+                    PrefManager.downloadSpeed = downloadSpeedValues[index]
                 },
-                onValueChangeFinished = {
-                    // Persist only the settled selection, in selection order: the ordered setter
-                    // queues the write on the DataStore thread so two quick gestures cannot land
-                    // out of order and leave the earlier tier saved.
-                    val index = downloadSpeedValue.roundToInt().coerceIn(0, downloadSpeedValues.lastIndex)
-                    PrefManager.setDownloadSpeedOrdered(downloadSpeedValues[index])
-                },
-                valueRange = 0f..downloadSpeedValues.lastIndex.toFloat(),
-                // Steps are the positions BETWEEN the ends: 5 positions need 3.
-                steps = downloadSpeedValues.size - 2
+                valueRange = 0f..3f,
+                steps = 2, // Creates exactly 4 positions: 0, 1, 2, 3
             )
-            // Persist the latest selection even when the screen is torn down before the slider's
-            // settled callback runs (navigating away mid-drag): the ordered setter keeps this write
-            // in selection order with the settled one.
-            DisposableEffect(downloadSpeedValues) {
-                onDispose {
-                    val index = latestSpeedIndex.value
-                        .roundToInt()
-                        .coerceIn(0, downloadSpeedValues.lastIndex)
-                    PrefManager.setDownloadSpeedOrdered(downloadSpeedValues[index])
-                }
-            }
-            // Labels below slider. Each label takes an equal share of the row (the Row is
-            // fillMaxWidth) so five labels fit narrow windows instead of overflowing.
+            // Labels below slider
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -683,7 +655,7 @@ fun SettingsGroupInterface(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.width(60.dp)
                     )
                 }
             }
