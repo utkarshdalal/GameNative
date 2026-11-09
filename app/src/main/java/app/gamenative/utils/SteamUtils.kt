@@ -1601,16 +1601,26 @@ object SteamUtils {
     }
 
     /**
-     * A game that ships its own Steam Input action manifest hands input to Steam Input, so it is driven
-     * only when that manifest has a layout for a pad type we can present, whatever the container switch
-     * says. Every other game follows the container switch.
+     * Under headless Steam a game that ships its own Steam Input action manifest hands input to Steam
+     * Input and gets nothing otherwise, so it is driven whenever that manifest has a layout for a pad
+     * type the host can present, whatever the container switch says. Every other launch follows the
+     * container switch: the emulator never hides the physical pad from a game, so its Steam Input
+     * controller sits next to the XInput one, and a layout it converts only partly loses actions.
      */
     fun isSteamInputEnabled(container: Container, appId: Int): Boolean =
-        if (SteamService.hasOwnSteamInputManifest(appId)) {
-            SteamService.hasCompatibleSteamInputManifest(appId, container.isLaunchHeadlessSteam)
-        } else {
-            container.getExtra("useSteamInput", "false").toBoolean()
-        }
+        steamInputEnabledFor(
+            headless = container.isLaunchHeadlessSteam,
+            switchOn = container.getExtra("useSteamInput", "false").toBoolean(),
+            ownManifest = SteamService.hasOwnSteamInputManifest(appId),
+            compatibleManifest = { SteamService.hasCompatibleSteamInputManifest(appId, headless = true) },
+        )
+
+    internal fun steamInputEnabledFor(
+        headless: Boolean,
+        switchOn: Boolean,
+        ownManifest: Boolean,
+        compatibleManifest: () -> Boolean,
+    ): Boolean = if (headless && ownManifest) compatibleManifest() else switchOn
 
     /**
      * Per-app Steam Input preference the client reads from localconfig
