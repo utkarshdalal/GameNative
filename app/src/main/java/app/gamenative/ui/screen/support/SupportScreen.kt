@@ -75,6 +75,7 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.api.AccountApi
 import app.gamenative.api.SupportApi
+import app.gamenative.ui.component.OutcomePill
 import app.gamenative.ui.component.dialog.AccountSignInDialog
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.theme.PluviaTheme
@@ -554,23 +555,5 @@ private fun ConversationRow(
 
 @Composable
 internal fun StateChip(state: String, outcome: Boolean? = null, label: String? = null) {
-    val color = stateColor(state, outcome)
-    Row(
-        modifier = Modifier
-            .background(color.copy(alpha = 0.15f), RoundedCornerShape(50))
-            .padding(horizontal = 10.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .background(color, CircleShape),
-        )
-        Text(
-            text = label ?: stateLabel(state, outcome),
-            style = MaterialTheme.typography.labelMedium,
-            color = color,
-        )
-    }
+    OutcomePill(text = label ?: stateLabel(state, outcome), color = stateColor(state, outcome))
 }

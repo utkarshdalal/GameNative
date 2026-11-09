@@ -17,10 +17,8 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,14 +42,12 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -73,6 +69,7 @@ import app.gamenative.api.AccountApi
 import app.gamenative.api.ApiResult
 import app.gamenative.api.SupportApi
 import app.gamenative.ui.component.dialog.openAccountUrl
+import app.gamenative.ui.component.PremiumDialogButton
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.screen.login.QrCodeImage
 import app.gamenative.ui.theme.PluviaTheme
@@ -508,54 +505,6 @@ internal fun fixResetDate(resetsAt: Long): String =
     DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(resetsAt))
 
 @Composable
-private fun DialogButton(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    primary: Boolean = true,
-    enabled: Boolean = true,
-    subtitle: String? = null,
-) {
-    val interaction = remember { MutableInteractionSource() }
-    val shape = RoundedCornerShape(12.dp)
-    val content: @Composable () -> Unit = {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(text = text, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
-            if (subtitle != null) {
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
-            }
-        }
-    }
-    val buttonModifier = modifier
-        .fillMaxWidth()
-        .focusRing(interaction, shape, width = 2.dp)
-    if (primary) {
-        Button(
-            onClick = onClick,
-            enabled = enabled,
-            interactionSource = interaction,
-            shape = shape,
-            colors = supportButtonColors(),
-            modifier = buttonModifier,
-        ) {
-            content()
-        }
-    } else {
-        OutlinedButton(onClick = onClick, enabled = enabled, interactionSource = interaction, shape = shape, modifier = buttonModifier) {
-            content()
-        }
-    }
-}
-
-@Composable
 private fun UpgradeBody(
     phase: String,
     reason: String?,
@@ -607,7 +556,7 @@ private fun UpgradeBody(
                     }
                 } else {
                     if (showBasic) {
-                        DialogButton(
+                        PremiumDialogButton(
                             text = basicPrice?.let { stringResource(R.string.support_plan_basic_title_priced, it) }
                                 ?: stringResource(R.string.support_plan_basic_title),
                             subtitle = stringResource(R.string.debug_paywall_tier5_body),
@@ -617,7 +566,7 @@ private fun UpgradeBody(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                     }
-                    DialogButton(
+                    PremiumDialogButton(
                         text = proPrice?.let { stringResource(R.string.support_plan_pro_title_priced, it) }
                             ?: stringResource(R.string.debug_paywall_tier10_title),
                         subtitle = stringResource(R.string.debug_paywall_tier10_body),
@@ -660,7 +609,7 @@ private fun UpgradeBody(
                         modifier = Modifier.padding(bottom = 8.dp),
                     )
                 }
-                DialogButton(
+                PremiumDialogButton(
                     text = stringResource(R.string.support_checkout_open),
                     onClick = onOpenCheckout,
                     modifier = Modifier.focusRequester(firstFocus),
@@ -680,7 +629,7 @@ private fun UpgradeBody(
                         modifier = Modifier.padding(bottom = 8.dp),
                     )
                 }
-                DialogButton(
+                PremiumDialogButton(
                     text = stringResource(R.string.gamenative_account_manage_subscription),
                     onClick = onManage,
                     modifier = Modifier.focusRequester(firstFocus),
@@ -692,7 +641,7 @@ private fun UpgradeBody(
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(bottom = 16.dp),
                 )
-                DialogButton(
+                PremiumDialogButton(
                     text = stringResource(R.string.gamenative_sign_in_try_again),
                     onClick = onRetry,
                     modifier = Modifier.focusRequester(firstFocus),
