@@ -51,7 +51,7 @@ sealed class OptimizeStatus {
             val plan = entitlement?.plan
             return when {
                 plan == Entitlement.Plan.UNLIMITED -> EntitlementLine.Unlimited
-                plan == Entitlement.Plan.MONTHLY -> {
+                entitlement != null && plan == Entitlement.Plan.MONTHLY -> {
                     val quota = entitlement.quota
                     EntitlementLine.Monthly(if (exhausted) quota else entitlement.used.coerceAtMost(quota), quota, entitlement.periodResetsAt)
                 }
