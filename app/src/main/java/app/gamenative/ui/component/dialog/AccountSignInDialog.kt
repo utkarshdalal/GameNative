@@ -11,6 +11,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -130,6 +131,8 @@ fun AccountSignInDialog(
     onSignedIn: () -> Unit,
     onDismiss: () -> Unit,
     reason: String? = null,
+    hero: (@Composable () -> Unit)? = null,
+    benefits: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     if (!visible) return
 
@@ -242,6 +245,7 @@ fun AccountSignInDialog(
                             .weight(1f)
                             .verticalScroll(rememberScrollState()),
                     ) {
+                        SignInHeader(hero = hero, benefits = benefits)
                         SignInBody(
                             state = state,
                             reason = reason,
@@ -262,6 +266,7 @@ fun AccountSignInDialog(
                         .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
+                    SignInHeader(hero = hero, benefits = benefits)
                     SignInQrPanel(state = state, size = 200.dp)
                     Spacer(modifier = Modifier.height(16.dp))
                     SignInBody(
@@ -277,6 +282,21 @@ fun AccountSignInDialog(
                 }
             }
         }
+    }
+}
+
+/** What the caller is selling, above the sign-in steps: a hero row and benefit rows, each optional. */
+@Composable
+private fun SignInHeader(hero: (@Composable () -> Unit)?, benefits: (@Composable ColumnScope.() -> Unit)?) {
+    if (hero == null && benefits == null) return
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        hero?.invoke()
+        benefits?.invoke(this)
     }
 }
 
