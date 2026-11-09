@@ -56,6 +56,13 @@
     <string name="gog_uninstall_confirmation_message">Czy na pewno chcesz odinstalować %1$s? Tej akcji nie można cofnąć.</string>
     <string name="gog_install_game_title">Pobierz grę</string>
     <string name="gog_install_confirmation_message">Instalowana aplikacja ma następujące wymagania dotyczące miejsca. Czy chcesz kontynuować?\n\n\tRozmiar pobierania: %1$s\n\tDostępne miejsce: %2$s</string>
+    <string name="gog_dlc_sizes">%1$s pobierania • %2$s po instalacji</string>
+    <string name="gog_dlc_not_installable">Niedostępne przez GOG Galaxy. Pobierz je z materiałów dodatkowych w swojej bibliotece GOG.</string>
+    <string name="gog_dlc_load_failed">Nie udało się wczytać DLC: %1$s</string>
+    <string name="gog_dlc_deselect_all">Odznacz wszystko</string>
+    <string name="gog_dlc_download_size">%1$s pobierania</string>
+    <string name="gog_dlc_installs_on_launch">Zostanie zainstalowane przy następnym uruchomieniu gry</string>
+    <string name="gog_dlc_unresolved">Nie udało się wczytać tego DLC. Spróbuj ponownie, aby je zainstalować.</string>
     <string name="epic_uninstall_game_title">Odinstaluj grę</string>
     <string name="epic_uninstall_game_message">Czy na pewno chcesz odinstalować %1$s? Tej akcji nie można cofnąć.</string>
     <string name="epic_install_game_title">Pobierz grę</string>

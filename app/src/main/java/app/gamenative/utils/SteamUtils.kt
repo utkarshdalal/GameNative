@@ -922,22 +922,7 @@ object SteamUtils {
     }
 
     private fun calculateDirectorySize(directory: File): Long {
-        if (!directory.exists() || !directory.isDirectory()) {
-            return 0L
-        }
-
-        var size = 0L
-        try {
-            directory.walkTopDown().forEach { file ->
-                if (file.isFile()) {
-                    size += file.length()
-                }
-            }
-        } catch (e: Exception) {
-            Timber.w(e, "Error calculating directory size")
-        }
-
-        return size
+        return StorageUtils.directorySizeOnDisk(directory.toPath())
     }
 
     /**
