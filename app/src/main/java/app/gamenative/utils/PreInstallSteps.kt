@@ -4,6 +4,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
 import com.winlator.container.Container
 import java.io.File
+import timber.log.Timber
 
 /**
  * Determines whether pre-install steps (GOG script interpreter, Ubisoft Connect) need to run
@@ -21,6 +22,8 @@ object PreInstallSteps {
     data class PreInstallCommand(
         val marker: Marker,
         val executable: String,
+        /** See [PreInstallStep.viaShell]: false means the command runs without a `cmd` wrapper. */
+        val viaShell: Boolean,
     )
 
     private val steps: List<PreInstallStep> = listOf(
@@ -28,6 +31,7 @@ object PreInstallSteps {
         GogSupportCommandsStep,
         GogBonusInstallerStep,
         UbisoftConnectStep,
+        KnownInstallScriptStep,
     )
 
     private var stepsProvider: () -> List<PreInstallStep> = { steps }
@@ -66,10 +70,19 @@ object PreInstallSteps {
                     gameDir = gameDir,
                     gameDirPath = gameDirPath,
                 )?.let { cmd ->
+                    // Logged here rather than by the step: a step's `buildCommand` also runs for
+                    // `hasPendingSteps`, which stops at the first hit and launches nothing.
+                    Timber.i(
+                        "pre-install: %s -> %s%s",
+                        step.marker.name,
+                        cmd,
+                        if (step.viaShell) "" else " (no shell)",
+                    )
                     commands.add(
                         PreInstallCommand(
                             marker = step.marker,
-                            executable = wrapAsGuestExecutable(cmd, screenInfo),
+                            executable = wrapAsGuestExecutable(cmd, screenInfo, step.viaShell),
+                            viaShell = step.viaShell,
                         ),
                     )
                 }
@@ -146,9 +159,19 @@ object PreInstallSteps {
         }
     }
 
-    private fun wrapAsGuestExecutable(cmdChain: String, screenInfo: String): String {
+    private fun wrapAsGuestExecutable(
+        cmdChain: String,
+        screenInfo: String,
+        viaShell: Boolean,
+    ): String {
+        val desktop = "wine explorer /desktop=shell,$screenInfo"
+        // A step that is one program needs neither the shell nor its console: `cmd.exe` is a
+        // console application, so wrapping it puts a black window on the virtual desktop for as
+        // long as the step runs. The session ends when the program exits, and
+        // `chainPreInstallSteps` runs `wineserver -k` after it either way.
+        if (!viaShell) return "$desktop $cmdChain"
         val wrapped = "winhandler.exe cmd /c \"$cmdChain & taskkill /F /IM explorer.exe & wineserver -k\""
-        return "wine explorer /desktop=shell,$screenInfo $wrapped"
+        return "$desktop $wrapped"
     }
 
     internal fun getGameDir(container: Container): File? {

@@ -56,6 +56,13 @@ object SteamInstallScriptRegistry {
         val file: File?,
         val hasRunKey: String?,
         val requirementOs: Map<String, String>,
+        /**
+         * The step's `command N` whose index matches this process's, token-expanded.
+         *
+         * Quotes are kept: the command line is rebuilt from this text, so a path the script quoted
+         * because it contains spaces has to keep its quotes to stay one argument.
+         */
+        val command: String? = null,
     ) {
         val requires64BitWindows: Boolean?
             get() = requirementOs.entries.firstOrNull { it.key.equals("Is64BitWindows", ignoreCase = true) }?.value?.let { it == "1" }
@@ -246,6 +253,9 @@ object SteamInstallScriptRegistry {
             val requirementOs = step["Requirement_OS"].children
                 .filter { it.name != null && it.value != null }
                 .associate { it.name!! to it.value!!.trim() }
+            // `command N` pairs with `process N` by index, so a block with two processes gives
+            // each its own arguments rather than both of them all of them.
+            val commands = rawValues(step, COMMAND_KEY_PATTERN)
             val processes = step.children
                 .mapNotNull { child ->
                     val index = PROCESS_KEY_PATTERN.find(child.name?.trim().orEmpty())?.groupValues?.get(1)?.toIntOrNull()
@@ -253,7 +263,7 @@ object SteamInstallScriptRegistry {
                     if (index == null || value == null) null else Triple(index, child.name!!.trim(), value)
                 }
                 .sortedBy { it.first }
-            for ((_, key, value) in processes) {
+            for ((index, key, value) in processes) {
                 val path = expandTokens(value, tokens)
                 steps += RunProcessStep(
                     script = script,
@@ -263,6 +273,7 @@ object SteamInstallScriptRegistry {
                     file = hostFileFor(gameDir, path),
                     hasRunKey = step.stringValue("HasRunKey"),
                     requirementOs = requirementOs,
+                    command = commands[index]?.takeIf { it.isNotEmpty() }?.let { expandTokens(it, tokens) },
                 )
             }
         }
@@ -366,6 +377,14 @@ object SteamInstallScriptRegistry {
     }
 
     private fun namesRedist(text: String): Boolean = REDIST_PROCESS.containsMatchIn(text.replace('/', '\\'))
+
+    /** As [indexedValues], but with the value's own quotes left on. */
+    private fun rawValues(step: KeyValue, pattern: Regex): Map<Int, String> =
+        step.children.mapNotNull { child ->
+            val index = pattern.find(child.name?.trim().orEmpty())?.groupValues?.get(1)?.toIntOrNull()
+            val value = child.value?.trim()
+            if (index == null || value == null) null else index to value
+        }.toMap()
 
     private fun indexedValues(step: KeyValue, pattern: Regex): Map<Int, String> =
         step.children.mapNotNull { child ->
