@@ -133,6 +133,7 @@ class BestConfigServiceTest {
         assertEquals(true, result["loadMods"])
     }
 
+    /** A best config shared from a Samsung Adreno 740 must not carry its UBWC flag hint to other devices. */
     @Test
     fun testUbwcFlagHintKeptOnlyOnSamsung() {
         val withHint = cs2MaliExactMatchResponse.replace("DXVK_FRAME_RATE=60", "FD_DEV_FEATURES=enable_tp_ubwc_flag_hint=1 PULSE_LATENCY_MSEC=144")

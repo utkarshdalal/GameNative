@@ -855,6 +855,10 @@ object BestConfigService {
         keepRedistOff = keepRedistOff,
     ).config
 
+    /**
+     * [parseConfigToContainerData] plus the components the config needs that aren't available.
+     * Env vars lose backend frame-rate caps, and on non-Samsung devices the Samsung-only UBWC flag hint.
+     */
     suspend fun parseConfigResult(
         context: Context,
         configJson: JsonObject,
