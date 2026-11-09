@@ -1,26 +1,32 @@
 package app.gamenative.ui.component.dialog
 
 import android.content.Context
+import android.content.res.Configuration
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,11 +36,19 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.api.AccountApi
@@ -48,6 +62,15 @@ import app.gamenative.optimize.OptimizeProfile
 import app.gamenative.optimize.OptimizeStatus
 import app.gamenative.optimize.limitOrDefault
 import app.gamenative.optimize.orAppWide
+import app.gamenative.ui.component.BenefitRow
+import app.gamenative.ui.component.GradientBorderSurface
+import app.gamenative.ui.component.HeroBadge
+import app.gamenative.ui.component.OutcomePill
+import app.gamenative.ui.component.PremiumDialogButton
+import app.gamenative.ui.component.PremiumTextButton
+import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.screen.support.requestFocusAfterLayout
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.SnackbarManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.NonCancellable
@@ -72,9 +95,32 @@ class OptimizeGate {
 @Composable
 fun rememberOptimizeGate(): OptimizeGate {
     val gate = remember { OptimizeGate() }
+    val trialLimit = OptimizeController.lastEntitlement.limitOrDefault()
     AccountSignInDialog(
         visible = gate.pending != null,
-        reason = OptimizeController.lastEntitlement.limitOrDefault().let { pluralStringResource(R.plurals.optimize_trial_offer, it, it) },
+        hero = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                HeroBadge(icon = Icons.Filled.Speed, accent = PluviaTheme.colors.accentCyan)
+                OutcomePill(
+                    text = pluralStringResource(R.plurals.optimize_trial_offer, trialLimit, trialLimit),
+                    color = PluviaTheme.colors.accentCyan,
+                )
+            }
+        },
+        benefits = {
+            BenefitRow(
+                title = stringResource(R.string.optimize_benefit_fps),
+                icon = Icons.Filled.Speed,
+                iconTint = PluviaTheme.colors.accentCyan,
+                compact = true,
+            )
+            BenefitRow(
+                title = stringResource(R.string.optimize_benefit_undo),
+                icon = Icons.AutoMirrored.Filled.Undo,
+                iconTint = PluviaTheme.colors.accentSuccess,
+                compact = true,
+            )
+        },
         onSignedIn = {
             val action = gate.pending
             gate.pending = null
@@ -187,59 +233,65 @@ fun optimizeEntitlementText(entitlement: Entitlement?, exhausted: Boolean = fals
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+/** The pill color for a status: in progress cyan, paused warning, done success, the rest muted. */
 @Composable
-fun OptimizeProfileChips(
-    selected: OptimizeProfile,
-    profiles: List<OptimizeProfile>,
-    enabled: Boolean,
-    onSelect: (OptimizeProfile) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    FlowRow(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        profiles.forEach { profile ->
-            FilterChip(
-                selected = profile == selected,
-                enabled = enabled,
-                onClick = { onSelect(profile) },
-                label = { Text(text = stringResource(profile.title)) },
-            )
-        }
-    }
+fun optimizeStatusColor(status: OptimizeStatus): Color = when (status) {
+    OptimizeStatus.Paused -> PluviaTheme.colors.accentWarning
+    OptimizeStatus.Done -> PluviaTheme.colors.accentSuccess
+    OptimizeStatus.Exhausted -> PluviaTheme.colors.accentPurple
+    OptimizeStatus.Waiting, OptimizeStatus.Never, OptimizeStatus.TrialUsed, OptimizeStatus.Off -> PluviaTheme.colors.textMuted
+    else -> PluviaTheme.colors.accentCyan
 }
 
-/** The Optimize row of the game options panel: the state in words and one chip per profile. */
+/** The Optimize row of the game options panel: the state as a pill and Continue when it is offered; the row opens the dialog. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun OptimizeOptionsRow(appId: String) {
     val state = rememberOptimizeState(appId)
     val actions = rememberOptimizeActions(appId)
-    val active = state?.activeProfile ?: OptimizeProfile.OFF
     val status = state?.let { OptimizeStatus.of(it) }
     val exhausted = status == OptimizeStatus.TrialUsed
     val keptCount = state?.let { OptimizeStatus.keptCount(it) } ?: 0
     Column(modifier = Modifier.fillMaxWidth()) {
+        FlowRow(
+            modifier = Modifier.padding(top = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            val statusText = state?.let { optimizeStatusText(it) }
+            if (status != null && statusText != null) {
+                OutcomePill(text = statusText, color = optimizeStatusColor(status), modifier = Modifier.align(Alignment.CenterVertically))
+            } else if (exhausted) {
+                OptimizeEntitlementPill(state?.entitlement, exhausted = true, modifier = Modifier.align(Alignment.CenterVertically))
+            }
+            if (OptimizeLadders.canContinue(status)) {
+                val interaction = remember { MutableInteractionSource() }
+                val shape = RoundedCornerShape(50)
+                FilledTonalButton(
+                    onClick = { actions.continueLadder() },
+                    enabled = !actions.busy,
+                    interactionSource = interaction,
+                    shape = shape,
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                    modifier = Modifier
+                        .height(32.dp)
+                        .focusRing(interaction, shape, width = 2.dp),
+                ) {
+                    Text(text = stringResource(R.string.optimize_continue), style = MaterialTheme.typography.labelLarge)
+                }
+            }
+        }
         listOfNotNull(
-            state?.let { optimizeStatusText(it) },
             state?.let { OptimizeStatus.heldCapFps(it) }?.let { stringResource(R.string.optimize_status_cap_held, it) },
             if (keptCount > 0) pluralStringResource(R.plurals.optimize_status_kept, keptCount, keptCount) else null,
-            optimizeEntitlementText(state?.entitlement, exhausted = exhausted, short = true),
+            if (exhausted) null else optimizeEntitlementText(state?.entitlement, short = true),
         ).forEach {
             Text(
                 text = it,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = PluviaTheme.colors.textMuted,
+                modifier = Modifier.padding(top = 4.dp),
             )
-        }
-        OptimizeProfileChips(
-            selected = active,
-            profiles = OptimizeProfile.entries,
-            enabled = state != null && !actions.busy,
-            onSelect = { actions.tap(active, it, status) },
-        )
-        if (OptimizeLadders.canContinue(status)) {
-            TextButton(enabled = !actions.busy, onClick = { actions.continueLadder() }) {
-                Text(text = stringResource(R.string.optimize_continue))
-            }
         }
     }
 }
@@ -267,100 +319,158 @@ fun OptimizeDialog(
         status == OptimizeStatus.Done && profile != OptimizeProfile.POWER && suggestion?.hot == true -> stringResource(R.string.optimize_hint_heat)
         else -> null
     }
+    val suggested = when {
+        state == null -> null
+        state.activeProfile == null -> suggestion?.suggested?.profile
+        status == OptimizeStatus.Done && profile != OptimizeProfile.POWER && suggestion?.hot == true -> OptimizeProfile.POWER
+        else -> null
+    }
+    val canRestore = activeLadder != null && (activeLadder.kept.isNotEmpty() || activeLadder.pending != null) && !actions.busy
+    val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val firstFocus = remember { FocusRequester() }
 
-    AlertDialog(
+    val header: @Composable ColumnScope.() -> Unit = {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            HeroBadge(icon = Icons.Filled.Speed, accent = PluviaTheme.colors.accentCyan)
+            Text(
+                text = stringResource(R.string.option_optimize),
+                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+        Text(
+            text = stringResource(R.string.optimize_choose_goal),
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(top = 12.dp, bottom = 8.dp),
+        )
+        OptimizeGoalCards(
+            selected = profile,
+            suggested = suggested,
+            enabled = state != null && !actions.busy,
+            onSelect = { actions.tap(profile, it, status) },
+            includeOff = true,
+            firstModifier = Modifier.focusRequester(firstFocus),
+        )
+    }
+
+    val statusBlock: @Composable ColumnScope.() -> Unit = {
+        val statusText = state?.let { optimizeStatusText(it) }
+        if (status != null && statusText != null) {
+            OutcomePill(text = statusText, color = optimizeStatusColor(status))
+        }
+        listOfNotNull(
+            state?.let { OptimizeStatus.heldCapFps(it) }?.let { stringResource(R.string.optimize_status_cap_held, it) },
+            hint,
+            if (keptCount > 0 && status !is OptimizeStatus.Trying) pluralStringResource(R.plurals.optimize_status_kept, keptCount, keptCount) else null,
+        ).forEach {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+        OptimizeEntitlementPill(state?.entitlement, exhausted = exhausted, modifier = Modifier.padding(top = 8.dp))
+        if (exhausted) {
+            optimizeEntitlementText(state?.entitlement, exhausted = true)?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = PluviaTheme.colors.textMuted,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+        }
+    }
+
+    val footer: @Composable ColumnScope.() -> Unit = {
+        if (OptimizeLadders.canContinue(status)) {
+            PremiumDialogButton(
+                text = stringResource(R.string.optimize_continue),
+                onClick = { actions.continueLadder() },
+                enabled = !actions.busy,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+        if (exhausted && !Membership.isMember()) {
+            PremiumDialogButton(
+                text = stringResource(R.string.optimize_see_membership),
+                onClick = { Membership.plansRequested.value = true },
+                primary = false,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+        PremiumTextButton(
+            text = stringResource(R.string.optimize_restore_original),
+            onClick = { actions.restore() },
+            enabled = canRestore,
+            color = PluviaTheme.colors.accentDanger,
+        )
+        Text(
+            text = stringResource(R.string.optimize_restore_original_body),
+            style = MaterialTheme.typography.bodySmall,
+            color = PluviaTheme.colors.textMuted,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        PremiumTextButton(text = stringResource(R.string.close), onClick = onDismiss)
+    }
+
+    Dialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = stringResource(R.string.option_optimize)) },
-        text = {
-            Column(modifier = Modifier.selectableGroup().verticalScroll(rememberScrollState())) {
-                OptimizeProfile.entries.forEach { option ->
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 56.dp)
-                            .selectable(
-                                selected = option == profile,
-                                enabled = state != null && !actions.busy,
-                                onClick = { actions.tap(profile, option, status) },
-                                role = Role.RadioButton,
-                            )
-                            .padding(horizontal = 8.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        RadioButton(selected = option == profile, onClick = null)
-                        Column(modifier = Modifier.padding(start = 16.dp)) {
-                            Text(text = stringResource(option.title), style = MaterialTheme.typography.bodyLarge)
-                            Text(
-                                text = stringResource(option.description),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-                state?.let { optimizeStatusText(it) }?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(start = 8.dp, top = 12.dp),
-                    )
-                }
-                state?.let { OptimizeStatus.heldCapFps(it) }?.let {
-                    Text(
-                        text = stringResource(R.string.optimize_status_cap_held, it),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(start = 8.dp, top = 4.dp),
-                    )
-                }
-                hint?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(start = 8.dp, top = 4.dp),
-                    )
-                }
-                if (keptCount > 0 && status !is OptimizeStatus.Trying) {
-                    Text(
-                        text = pluralStringResource(R.plurals.optimize_status_kept, keptCount, keptCount),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(start = 8.dp, top = 4.dp),
-                    )
-                }
-                optimizeEntitlementText(state?.entitlement, exhausted = exhausted)?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 8.dp, top = 4.dp),
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(text = stringResource(R.string.close))
-            }
-        },
-        dismissButton = {
-            Row {
-                if (exhausted && !Membership.isMember()) {
-                    TextButton(onClick = { Membership.plansRequested.value = true }) {
-                        Text(text = stringResource(R.string.optimize_see_membership))
-                    }
-                }
-                if (OptimizeLadders.canContinue(status)) {
-                    TextButton(enabled = !actions.busy, onClick = { actions.continueLadder() }) {
-                        Text(text = stringResource(R.string.optimize_continue))
-                    }
-                }
-                TextButton(
-                    enabled = activeLadder != null && (activeLadder.kept.isNotEmpty() || activeLadder.pending != null) && !actions.busy,
-                    onClick = { actions.restore() },
+        properties = DialogProperties(usePlatformDefaultWidth = !landscape),
+    ) {
+        LaunchedEffect(Unit) { firstFocus.requestFocusAfterLayout() }
+
+        GradientBorderSurface(
+            modifier = Modifier
+                .then(if (landscape) Modifier.widthIn(max = 760.dp).padding(16.dp) else Modifier.fillMaxWidth())
+                .wrapContentHeight(),
+            accent = PluviaTheme.colors.accentCyan,
+        ) {
+            if (landscape) {
+                Row(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(24.dp),
                 ) {
-                    Text(text = stringResource(R.string.optimize_restore_original))
+                    Column(
+                        modifier = Modifier
+                            .weight(1.3f)
+                            .verticalScroll(rememberScrollState()),
+                        content = header,
+                    )
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .verticalScroll(rememberScrollState()),
+                    ) {
+                        statusBlock()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        footer()
+                    }
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f, fill = false)
+                            .verticalScroll(rememberScrollState()),
+                    ) {
+                        header()
+                        Spacer(modifier = Modifier.height(12.dp))
+                        statusBlock()
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    footer()
                 }
             }
-        },
-    )
+        }
+    }
 }
