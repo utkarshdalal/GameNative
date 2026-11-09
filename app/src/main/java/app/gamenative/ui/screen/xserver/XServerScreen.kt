@@ -4739,15 +4739,7 @@ private fun setupXEnvironment(
                 return@setTerminationCallback
             }
             val current = remaining.first()
-            // -1 is `ProcessHelper`'s "the command never started", not the installer's own exit
-            // code: the guest executable was not run at all. Marking the step then would skip it
-            // for good on a machine where it never happened, so leave the marker unset and let
-            // the next launch try again.
-            if (status == -1) {
-                Timber.w("Pre-install step %s did not start; leaving its marker unset", current.marker.name)
-            } else {
-                PreInstallSteps.markStepDone(container, current.marker)
-            }
+            PreInstallSteps.markStepDone(container, current.marker)
             guestProgramLauncherComponent.setPreUnpack(null)
             try {
                 guestProgramLauncherComponent.execShellCommand("wineserver -k")
