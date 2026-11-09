@@ -8,6 +8,7 @@ import com.winlator.winhandler.ProcessInfo
 import com.winlator.winhandler.WinHandler
 import timber.log.Timber
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 /**
@@ -96,6 +97,35 @@ object ContainerAffinity {
             )
         }
     }
+
+    private val windowProcessExecutor = Executors.newSingleThreadExecutor { Thread(it, "container-affinity-window") }
+
+    /**
+     * X11 path for a Wine build that sets no _NET_WM_WOW64 on its windows (Proton 10 and later):
+     * the window cannot say whether its process is WoW64, so the winhandler's process list
+     * decides. Without that answer the process gets [mask], as before.
+     */
+    fun applyToWindowProcess(winHandler: WinHandler, pid: Int, name: String, mask: Int, maskWoW64: Int) {
+        windowProcessExecutor.execute {
+            var processes: List<ProcessInfo>? = null
+            for (attempt in 1..REPLY_ATTEMPTS) {
+                if (WinHandler.getActiveInstance() !== winHandler) return@execute
+                processes = listProcesses(winHandler)
+                if (processes != null) break
+            }
+            val info = processes?.firstOrNull { it.pid == pid }
+            val target = windowProcessMask(info, mask, maskWoW64) ?: return@execute
+            if (WinHandler.getActiveInstance() !== winHandler) return@execute
+            winHandler.setProcessAffinity(pid, target)
+            Timber.tag(TAG).i(
+                "Applied mask 0x${Integer.toHexString(target)} to $name (PID $pid, wow64=${info?.wow64Process ?: "unknown"})"
+            )
+        }
+    }
+
+    /** The mask for a window's process: the WoW64 list when the winhandler reports it WoW64. */
+    internal fun windowProcessMask(info: ProcessInfo?, mask: Int, maskWoW64: Int): Int? =
+        (if (info?.wow64Process == true) maskWoW64 else mask).takeIf { it != 0 }
 
     /**
      * The mask [info] should get, or null when the process is left alone.

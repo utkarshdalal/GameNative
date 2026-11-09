@@ -1,5 +1,6 @@
 package com.winlator.core;
 
+import app.gamenative.powercontrol.ContainerAffinity;
 import app.gamenative.powercontrol.PowerManager;
 import com.winlator.core.envvars.EnvVars;
 import com.winlator.winhandler.WinHandler;
@@ -95,7 +96,7 @@ public class Win32AppWorkarounds {
         applyWorkaround(workaround);
     }
 
-    private void setProcessAffinity(Window window, int processAffinity) {
+    private void setProcessAffinity(Window window) {
         int processId = window.getProcessId();
         String className = window.getClassName();
         WinHandler winHandler = this.xServer.getWinHandler();
@@ -109,6 +110,12 @@ public class Win32AppWorkarounds {
             Timber.tag("PowerManager").i("Power control holds the affinity of %s, container CPU list not applied", className);
             return;
         }
+        if (!window.hasWoW64Property() && processId > 0) {
+            ContainerAffinity.INSTANCE.applyToWindowProcess(winHandler, processId, className, taskAffinityMask, taskAffinityMaskWoW64);
+            return;
+        }
+        int processAffinity = window.isWoW64() ? this.taskAffinityMaskWoW64 : this.taskAffinityMask;
+        if (processAffinity == 0) return;
         if (processId > 0) {
             winHandler.setProcessAffinity(processId, processAffinity);
         } else if (!className.isEmpty()) {
@@ -142,11 +149,8 @@ public class Win32AppWorkarounds {
         if (window.isRenderable() && !window.getClassName().isEmpty() && windowGroup == window.id) {
             canApplyProcessAffinity = true;
         }
-        if (canApplyProcessAffinity) {
-            int processAffinity = window.isWoW64() ? this.taskAffinityMaskWoW64 : this.taskAffinityMask;
-            if (processAffinity != 0) {
-                setProcessAffinity(window, processAffinity);
-            }
+        if (canApplyProcessAffinity && (this.taskAffinityMask != 0 || this.taskAffinityMaskWoW64 != 0)) {
+            setProcessAffinity(window);
         }
     }
 

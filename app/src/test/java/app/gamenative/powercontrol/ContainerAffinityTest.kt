@@ -55,6 +55,27 @@ class ContainerAffinityTest {
     }
 
     @Test
+    fun windowProcessReportedWoW64GetsTheWoW64List() {
+        assertEquals(maskWoW64, ContainerAffinity.windowProcessMask(process("Borderlands2.exe", wow64 = true), mask, maskWoW64))
+    }
+
+    @Test
+    fun windowProcessReported64BitGetsTheMainList() {
+        assertEquals(mask, ContainerAffinity.windowProcessMask(process("Game.exe"), mask, maskWoW64))
+    }
+
+    @Test
+    fun windowProcessMissingFromTheListGetsTheMainList() {
+        assertEquals(mask, ContainerAffinity.windowProcessMask(null, mask, maskWoW64))
+    }
+
+    @Test
+    fun windowProcessWithAnEmptyMaskGetsNoRequest() {
+        assertNull(ContainerAffinity.windowProcessMask(process("Game32.exe", wow64 = true), mask, 0))
+        assertNull(ContainerAffinity.windowProcessMask(process("Game.exe"), 0, maskWoW64))
+    }
+
+    @Test
     fun reportedMaskComparesOnTheLowSixteenBits() {
         assertTrue(ContainerAffinity.sameMask(0xF0, 0xF0))
         assertTrue(ContainerAffinity.sameMask(0xFFFF00F0.toInt(), 0xF0))
