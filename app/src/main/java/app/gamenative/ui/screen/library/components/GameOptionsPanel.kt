@@ -466,12 +466,11 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
         }
     }
 
-    // Optimize leads the list, directly above Get AI help when that is offered.
+    // Optimize sits directly above Get AI help, or first when that is not offered.
     quickActions.firstOrNull { it.optionType == AppOptionMenuType.Optimize }?.let { optimize ->
         quickActions.remove(optimize)
         val aiHelp = quickActions.indexOfFirst { it.optionType == AppOptionMenuType.AiDebugRun }
-        if (aiHelp > 0) quickActions.removeAt(aiHelp).let { quickActions.add(0, it) }
-        quickActions.add(0, optimize)
+        quickActions.add(aiHelp.coerceAtLeast(0), optimize)
     }
 
     return linkedMapOf(
