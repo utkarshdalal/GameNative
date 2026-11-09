@@ -52,8 +52,17 @@ class SteamControllerVdfUtilsTest {
     }
 
     @Test
-    fun `a dpad source in a camera mode is still left out`() {
+    fun `a dpad source in a camera mode gets no stick binding`() {
         val sets = generate(portal2Like.replace("\"35\" \"right_joystick active\"", "\"35\" \"dpad active\""))
-        assertFalse(sets.getValue("FPSControls").any { it.startsWith("Camera=") })
+        assertEquals(listOf("Move=LJOY=joystick_move"), sets.getValue("FPSControls"))
+    }
+
+    @Test
+    fun `an outer ring binding on a camera stick does not become the stick button`() {
+        val vdf = portal2Like.replace(
+            "\"inputs\" { \"click\" { \"activators\" { \"Full_Press\" { \"bindings\" { \"binding\" \"game_action FPSControls use\" } } } } }",
+            "\"inputs\" { \"edge\" { \"activators\" { \"Full_Press\" { \"bindings\" { \"binding\" \"game_action FPSControls zoom\" } } } } }",
+        )
+        assertEquals(listOf("Move=LJOY=joystick_move", "Camera=RJOY=joystick_camera"), generate(vdf).getValue("FPSControls"))
     }
 }

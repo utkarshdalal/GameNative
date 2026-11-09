@@ -282,9 +282,7 @@ object SteamUtils {
         val appDirPath = SteamService.getAppDirPath(steamAppId)
         if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_DLL_REPLACED)) {
             val container = ContainerUtils.getContainer(context, appId)
-            Paths.get(appDirPath).toFile().walkTopDown().maxDepth(10)
-                .filter { it.isDirectory && it.name == "steam_settings" }
-                .forEach { syncSteamInputActionSets(container, steamAppId, it.toPath()) }
+            replacedSteamApiSettingsDirs(appDirPath).forEach { syncSteamInputActionSets(container, steamAppId, it) }
             return
         }
         MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_RESTORED)
@@ -1586,54 +1584,59 @@ object SteamUtils {
     }
 
     /**
-     * Writes the emulator's Steam Input action sets when Steam Input is on for the game and removes them
-     * when it is off. The emulator takes the mere presence of `steam_settings/controller` as Steam Input
-     * being on, so this runs on every emulator launch, including the ones that keep the installed
-     * emulator files and skip the full settings rewrite.
+     * Rebuilds the emulator's Steam Input action sets when Steam Input is on for the game and removes them
+     * when it is off or no layout resolves. The emulator takes the mere presence of `steam_settings/controller`
+     * as Steam Input being on, so this runs on every emulator launch, including the ones that keep the
+     * installed emulator files and skip the full settings rewrite, and never leaves an older layout behind.
      */
     private fun syncSteamInputActionSets(container: Container, steamAppId: Int, settingsDir: Path) {
         val controllerDir = settingsDir.resolve("controller")
-        if (isSteamInputEnabled(container, steamAppId)) {
-            val controllerVdfText = SteamService.resolveSteamControllerVdfText(steamAppId)
-            if (!controllerVdfText.isNullOrEmpty()) {
-                runCatching {
-                    SteamControllerVdfUtils.generateControllerConfig(controllerVdfText, controllerDir)
-                }.onFailure { error ->
-                    Timber.w(error, "Failed to generate controller config for $steamAppId")
-                }
-            }
-        } else {
-            runCatching {
-                if (Files.exists(controllerDir)) {
-                    controllerDir.toFile().deleteRecursively()
-                }
-            }.onFailure { error ->
-                Timber.w(error, "Failed to delete controller config for $steamAppId")
-            }
+        if (Files.exists(controllerDir) && !controllerDir.toFile().deleteRecursively()) {
+            Timber.w("Failed to delete controller config for $steamAppId at $controllerDir")
+        }
+        if (!isSteamInputEnabled(container, steamAppId)) return
+        val controllerVdfText = SteamService.resolveSteamControllerVdfText(steamAppId)
+        if (controllerVdfText.isNullOrEmpty()) return
+        runCatching {
+            SteamControllerVdfUtils.generateControllerConfig(controllerVdfText, controllerDir)
+        }.onFailure { error ->
+            Timber.w(error, "Failed to generate controller config for $steamAppId")
         }
     }
 
+    /** The emulator settings directories next to each replaced steam_api dll, as recorded at replacement time. */
+    private fun replacedSteamApiSettingsDirs(appDirPath: String): List<Path> {
+        val root = Paths.get(appDirPath)
+        val list = root.resolve("orig_dll_path.txt")
+        if (Files.notExists(list)) return emptyList()
+        return Files.readAllLines(list)
+            .filter { it.isNotBlank() }
+            .mapNotNull { root.resolve(it.trim()).parent?.resolve("steam_settings") }
+            .distinct()
+            .filter { Files.isDirectory(it) }
+    }
+
     /**
-     * Under headless Steam a game that ships its own Steam Input action manifest hands input to Steam
-     * Input and gets nothing otherwise, so it is driven whenever that manifest has a layout for a pad
-     * type the host can present, whatever the container switch says. Every other launch follows the
-     * container switch: the emulator never hides the physical pad from a game, so its Steam Input
+     * A game that ships its own Steam Input action manifest hands input to Steam Input and gets nothing
+     * otherwise, so under the real Steam client (headless, GUI or Bionic) it is driven whenever that manifest
+     * has a layout for a pad type the client can present, whatever the container switch says. The emulator
+     * follows the container switch for every game: it never hides the physical pad, so its Steam Input
      * controller sits next to the XInput one, and a layout it converts only partly loses actions.
      */
     fun isSteamInputEnabled(container: Container, appId: Int): Boolean =
         steamInputEnabledFor(
-            headless = container.isLaunchHeadlessSteam,
+            realClient = container.isLaunchRealSteam || container.isLaunchBionicSteam,
             switchOn = container.getExtra("useSteamInput", "false").toBoolean(),
             ownManifest = SteamService.hasOwnSteamInputManifest(appId),
-            compatibleManifest = { SteamService.hasCompatibleSteamInputManifest(appId, headless = true) },
+            compatibleManifest = { SteamService.hasCompatibleSteamInputManifest(appId, container.isLaunchHeadlessSteam) },
         )
 
     internal fun steamInputEnabledFor(
-        headless: Boolean,
+        realClient: Boolean,
         switchOn: Boolean,
         ownManifest: Boolean,
         compatibleManifest: () -> Boolean,
-    ): Boolean = if (headless && ownManifest) compatibleManifest() else switchOn
+    ): Boolean = if (realClient && ownManifest) compatibleManifest() else switchOn
 
     /**
      * Per-app Steam Input preference the client reads from localconfig
