@@ -22,10 +22,13 @@ object OptimizeServer {
     /**
      * The first card a session leaves. With a [server] verdict that says show_card, it decides: no card when false
      * (its block_reason), otherwise [card] with the server's class, suggested profile and card kind ([capFps] is the
-     * cap a cap card proposes). Without one the local [localBlock] stands, exactly as before.
+     * cap a cap card proposes). Without one, or when the server had no samples to read (no_samples), the local
+     * [localBlock] stands, exactly as before.
      */
     fun firstDecision(localBlock: String?, card: OptimizeCard, server: ServerVerdict?, capFps: Int?): FirstDecision {
-        val show = server?.showCard ?: return if (localBlock != null) FirstDecision(null, localBlock) else FirstDecision(card, null)
+        val local = if (localBlock != null) FirstDecision(null, localBlock) else FirstDecision(card, null)
+        if (server?.blockReason == ServerVerdict.BLOCK_NO_SAMPLES) return local
+        val show = server?.showCard ?: return local
         if (!show) return FirstDecision(null, server.blockReason ?: BLOCK_SERVER)
         val profile = server.suggestedProfile ?: card.profile
         val cap = capFps ?: card.capFps
@@ -106,6 +109,15 @@ object OptimizeServer {
             )
         }
         return next
+    }
+
+    /**
+     * An outcome's fps_limit (the limiter the after session ran under, an Optimize cap included) and user_fps_cap (the
+     * user's own), 0 for none; the server judge reads both. Left out when not known.
+     */
+    fun putLimits(outcome: JSONObject, fpsLimit: Int?, userFpsCap: Int?): JSONObject = outcome.apply {
+        fpsLimit?.let { put("fps_limit", it.coerceAtLeast(0)) }
+        userFpsCap?.let { put("user_fps_cap", it.coerceAtLeast(0)) }
     }
 
     /** The outcome report's after session, for a step the server keeps. */

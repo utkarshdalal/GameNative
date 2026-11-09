@@ -262,6 +262,12 @@ object OptimizeCards {
      */
     enum class UnaskedCap { ASK, END, APPLY }
 
+    /**
+     * No to the cap question: it is not asked again for [CAP_SNOOZE_MS]. The declined ask is left out of ladder.tried,
+     * so it never counts against the server's rung budget and the cap can still be served once the snooze ends.
+     */
+    fun capDeclined(state: OptimizeLocalState, nowMillis: Long): OptimizeLocalState = state.copy(capSnoozedUntil = nowMillis + CAP_SNOOZE_MS)
+
     fun unaskedCap(state: OptimizeLocalState, rung: Rung, nowMillis: Long): UnaskedCap = when {
         rung.askFirst == false -> UnaskedCap.APPLY
         state.never || nowMillis < state.capSnoozedUntil || capFps(rung.raw) == null -> UnaskedCap.END

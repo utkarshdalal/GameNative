@@ -8,6 +8,7 @@ import app.gamenative.utils.PerfGpuClock
 import app.gamenative.utils.ProcStatParser
 import app.gamenative.utils.SessionSample
 import app.gamenative.utils.SessionSampleBuffer
+import app.gamenative.utils.SessionSeries
 import app.gamenative.utils.SessionVerdict
 import java.io.File
 import kotlin.math.abs
@@ -34,6 +35,10 @@ object SessionPerfSampler {
     private val clkTck = runCatching { Os.sysconf(OsConstants._SC_CLK_TCK) }.getOrDefault(100L).coerceAtLeast(1L)
 
     private var buffer: SessionSampleBuffer? = null
+
+    /** The last finished session's records, until the next session starts. */
+    @Volatile
+    private var lastSeries: SessionSeries? = null
     private var firstFrameMs = 0L
     private var lastFrameNs = 0L
     private val histogramMs = LongArray(HIST_CAP_MS + 1)
@@ -90,6 +95,7 @@ object SessionPerfSampler {
     fun start() {
         synchronized(lock) {
             buffer = SessionSampleBuffer(PowerTelemetry.clusterMaxKhz.size)
+            lastSeries = null
             firstFrameMs = 0L
             lastFrameNs = 0L
             histogramMs.fill(0L)
@@ -206,8 +212,8 @@ object SessionPerfSampler {
 
     /**
      * The session's perf_verdict, stutter_share, throttle_onset_s and throttle_signal; empty when no frame was
-     * sampled. Clears the session's samples so a later session never reports them. [legacyShare] is the older
-     * classifier's bottleneck_share, used when the sampler cannot name a cause.
+     * sampled. The session's records move to [seriesFor] until the next session starts, so a later verdict never
+     * reads them. [legacyShare] is the older classifier's bottleneck_share, used when the sampler cannot name a cause.
      */
     fun properties(
         designCapDetected: Boolean,
@@ -216,17 +222,20 @@ object SessionPerfSampler {
     ): Map<String, Any> = synchronized(lock) {
         val buf = buffer ?: return@synchronized emptyMap()
         buffer = null
+        lastSeries = null
         if (buf.size == 0) return@synchronized emptyMap()
         val cache = stateCacheResult()
-        SessionVerdict.compute(
+        val clusterMaxMhz = PowerTelemetry.clusterMaxKhz.map { (it / 1000L).toInt() }.toIntArray()
+        val trimEvents = SessionProcessTelemetry.lowMemoryEventCount
+        val result = SessionVerdict.compute(
             SessionVerdict.Input(
                 samples = buf.toList(),
                 intervalSec = buf.keepEvery,
-                clusterCpuinfoMaxMhz = PowerTelemetry.clusterMaxKhz.map { (it / 1000L).toInt() }.toIntArray(),
+                clusterCpuinfoMaxMhz = clusterMaxMhz,
                 clusterCores = PowerTelemetry.clusterCores,
                 gpuTopMhz = gpuTopMhz,
                 hotThreadName = hotNames.maxByOrNull { it.value }?.key,
-                trimEvents = SessionProcessTelemetry.lowMemoryEventCount,
+                trimEvents = trimEvents,
                 designCapDetected = designCapDetected,
                 fpsCap = PowerManager.targetFps,
                 stutterShare = SessionVerdict.stutterShare(histogramMs),
@@ -239,8 +248,17 @@ object SessionPerfSampler {
                 pipelineCompilesBy5Min = cache?.first,
                 tessellationPipelines = cache?.second,
             ),
-        ).properties()
+        )
+        lastSeries = SessionSeries(buf, result.gameplaySec, clusterMaxMhz, gpuTopMhz, trimEvents, designCapDetected, legacyShare)
+        result.properties()
     }
+
+    /**
+     * The records of the session that just ended when [metricsGameplaySec] is its gameplay_s, for the exit requests;
+     * null once the next session has started, or for an older run.
+     */
+    internal fun seriesFor(metricsGameplaySec: Int?): SessionSeries? =
+        lastSeries?.takeIf { metricsGameplaySec != null && it.gameplaySec == metricsGameplaySec }
 
     /** One /proc/vmstat read: the major faults and pages scanned for reclaim since the last second, system-wide. */
     private fun readVmStat(window: Int) {

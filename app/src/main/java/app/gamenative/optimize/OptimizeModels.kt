@@ -118,6 +118,10 @@ data class Metrics(
         putLoad(report = false)
     }
 
+    /**
+     * The session as outcome before/after and the next-rung metrics block send it: what the server's judge reads
+     * (crash, exit, window, temperatures and thermal peak included), with the series cut to [MAX_REPORT_WINDOWS].
+     */
     fun toReportJson(): JSONObject = JSONObject().apply {
         put("gameplay_s", gameplaySec)
         put("steady_fps", steadyFps ?: JSONObject.NULL)
@@ -125,6 +129,16 @@ data class Metrics(
         put("throttle_onset_s", throttleOnsetSec ?: JSONObject.NULL)
         put("class", cls ?: JSONObject.NULL)
         put("confidence", confidence ?: JSONObject.NULL)
+        confident?.let { put("confident", it) }
+        symptom?.let { put("symptom", it) }
+        exitReason?.let { put("exit_reason", it) }
+        put("window_seen", windowSeen)
+        cpuTempMax?.let { put("cpu_temp_max", it) }
+        gpuTempMax?.let { put("gpu_temp_max", it) }
+        thermalPeak?.let { put("thermal_peak", it) }
+        crashKind?.let { put("crash_kind", it) }
+        crashCode?.let { put("crash_code", it) }
+        crashHash?.let { put("crash_hash", it) }
         if (fpsBy5Min.isNotEmpty()) put("fps_by_5min", JSONArray(fpsBy5Min.take(MAX_REPORT_WINDOWS)))
         if (gpuBy5Min.isNotEmpty()) put("gpu_by_5min", JSONArray(gpuBy5Min.take(MAX_REPORT_WINDOWS)))
         if (gpuClockBy5Min.isNotEmpty()) put("gpu_clock_by_5min", JSONArray(gpuClockBy5Min.take(MAX_REPORT_WINDOWS)))
@@ -482,12 +496,17 @@ class Rung(
     val visualCostEn: String?,
     val levers: List<Lever>,
     val expiresAtMillis: Long?,
-    /** Each file and registry value only moves toward lower quality from what the game has now. */
+    /** Each file and registry value only moves toward lower quality from what the game has now; never on a [recovery] rung. */
     val relative: Boolean = false,
     /** The server rules build the rung came from. */
     val rulesVersion: String? = null,
     /** A cap rung the user has to say yes to first; null when the server does not say. */
     val askFirst: Boolean? = null,
+    /**
+     * A settings step back up above a kept step (Balanced ran well past its target): its values are written as sent,
+     * raising quality, the one exception to lower-only. It is judged, kept and taken off like any other step.
+     */
+    val recovery: Boolean = false,
 ) {
     fun isExpired(nowMillis: Long): Boolean = expiresAtMillis != null && nowMillis > expiresAtMillis
 
@@ -510,9 +529,10 @@ class Rung(
                 visualCostEn = o.optStringOrNull("visual_cost_en"),
                 levers = o.optJSONArray("levers").objects().map { Lever.parse(it) },
                 expiresAtMillis = o.optStringOrNull("expires_at")?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() },
-                relative = o.optBoolean("relative", false),
+                relative = o.optBoolean("relative", false) && !o.optBoolean("recovery", false),
                 rulesVersion = o.optStringOrNull("rules_version"),
                 askFirst = if (o.has("ask_first") && !o.isNull("ask_first")) o.optBoolean("ask_first") else null,
+                recovery = o.optBoolean("recovery", false),
             )
         }
     }
@@ -560,8 +580,13 @@ data class ServerVerdict(
     val cardKind: String?,
     val suggestedProfile: OptimizeProfile?,
     val blockReason: String?,
+    /** samples: read from the per-second records the request sent; client: the metrics block's own class. */
+    val source: String? = null,
 ) {
     companion object {
+        /** The server could read neither samples nor a confident flag and leaves the card to the app. */
+        const val BLOCK_NO_SAMPLES = "no_samples"
+
         fun parse(o: JSONObject?): ServerVerdict? {
             if (o == null) return null
             return ServerVerdict(
@@ -572,6 +597,7 @@ data class ServerVerdict(
                 cardKind = o.optStringOrNull("card_kind"),
                 suggestedProfile = OptimizeProfile.fromWire(o.optStringOrNull("suggested_profile")).takeIf { it != OptimizeProfile.OFF },
                 blockReason = o.optStringOrNull("block_reason"),
+                source = o.optStringOrNull("source"),
             )
         }
     }

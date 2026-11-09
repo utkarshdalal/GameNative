@@ -12,6 +12,7 @@ import app.gamenative.R
 import app.gamenative.billing.Membership
 import app.gamenative.data.GameSource
 import app.gamenative.powercontrol.metrics.CpuClusterLayout
+import app.gamenative.powercontrol.metrics.SessionPerfSampler
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.parseBooleanExtra
 import app.gamenative.ui.component.parsePositiveFpsLimit
@@ -21,6 +22,7 @@ import app.gamenative.utils.AppExitRecorder
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.HardwareUtils
 import app.gamenative.utils.OptimizeState
+import app.gamenative.utils.SessionSeries
 import com.winlator.container.Container
 import com.winlator.core.GPUInformation
 import com.winlator.core.KeyValueSet
@@ -288,6 +290,7 @@ object OptimizeController {
         ladder: ProfileLadder,
         baseline: Metrics?,
         dryRun: Boolean = false,
+        series: SessionSeries? = null,
     ): JSONObject {
         val data = ContainerUtils.toContainerData(container)
         val install = runCatching { SupportGameFiles.installRoot(context, appId) }.getOrNull()
@@ -339,7 +342,7 @@ object OptimizeController {
             put("card_action", state.cardAction?.takeIf { !dryRun } ?: JSONObject.NULL)
             put("verdict", baseline?.toVerdictJson()?.apply { state.gpuWorkScaling?.let { put("gpu_work_scaling", it) } } ?: JSONObject.NULL)
             // The raw measurements the server reads its own verdict from (verdict_server); verdict above is the local one.
-            put("metrics", metricsBlock(baseline, state, container, context))
+            put("metrics", metricsBlock(baseline, state, container, context, series))
             put(
                 "container",
                 JSONObject().apply {
@@ -372,14 +375,19 @@ object OptimizeController {
         }
     }
 
-    /** The session's raw measurements for the server: what outcome before/after carry, plus refresh rate, cap and scaling. */
-    private fun metricsBlock(baseline: Metrics?, state: OptimizeLocalState, container: Container, context: Context): Any {
+    /**
+     * The session's raw measurements for the server: what outcome before/after carry, plus refresh rate, cap and
+     * scaling, and with [series] (the session that just ended) its per-second records, from which the server reads
+     * its own verdict.
+     */
+    private fun metricsBlock(baseline: Metrics?, state: OptimizeLocalState, container: Container, context: Context, series: SessionSeries?): Any {
         val m = baseline ?: return JSONObject.NULL
         return m.toReportJson().apply {
             put("refresh_hz", m.refreshHz ?: refreshHz(context) ?: JSONObject.NULL)
             put("cap", fpsLimit(container))
             put("gameplay_s", m.gameplaySec)
             state.gpuWorkScaling?.let { put("gpu_work_scaling", it) }
+            series?.takeIf { it.gameplaySec == m.gameplaySec }?.putInto(this)
         }
     }
 
@@ -399,6 +407,8 @@ object OptimizeController {
         judgeReason: String? = null,
         excludedWindows: List<Int> = emptyList(),
         gpuWorkScaling: Double? = null,
+        fpsLimit: Int? = null,
+        userFpsCap: Int? = null,
     ): JSONObject = JSONObject().apply {
         put("schema", 1)
         put("app_version_code", BuildConfig.VERSION_CODE)
@@ -412,6 +422,7 @@ object OptimizeController {
         put("result", result)
         judgeReason?.let { put("judge_reason", it) }
         gpuWorkScaling?.let { put("gpu_work_scaling", it) }
+        OptimizeServer.putLimits(this, fpsLimit, userFpsCap)
         put(
             "apply",
             JSONObject().apply {
@@ -427,6 +438,7 @@ object OptimizeController {
             crash?.let {
                 JSONObject().put("exit_reason", it.exitReason ?: JSONObject.NULL).put("gameplay_s", it.gameplaySec).apply {
                     it.crashKind?.let { kind -> put("crash_kind", kind) }
+                    it.crashCode?.let { code -> put("crash_code", code) }
                     it.crashHash?.let { hash -> put("crash_hash", hash) }
                 }
             } ?: JSONObject.NULL,
@@ -1023,7 +1035,7 @@ object OptimizeController {
                 val cleared = pending.copy(trialStartedAt = null, unjudged = 0)
                 finish(
                     appId, state, profile, ladder.copy(pending = cleared), cleared, OptimizeJudge.CRASH, null, lost.after,
-                    refreshHz(context), userFpsLimit(container, ladder),
+                    refreshHz(context), userFpsLimit(container, ladder), fpsLimit(container),
                 )
             }
             is OptimizeJudge.Lost.Again -> {
@@ -1210,6 +1222,7 @@ object OptimizeController {
                             // The card is only written once the server says it has a change for the game.
                             val body = nextRungBody(
                                 context.applicationContext, appId, container, state, suggested.profile, state.ladder(suggested.profile), after, dryRun = true,
+                                series = SessionPerfSampler.seriesFor(after.gameplaySec),
                             )
                             offer = FirstOffer(card, body, block)
                         } else {
@@ -1232,7 +1245,7 @@ object OptimizeController {
                             is OptimizeJudge.Decision.Short ->
                                 state.withLadder(profile, ladder.copy(pending = pending.copy(shortSessions = decision.shortSessions)))
                             is OptimizeJudge.Decision.Crash ->
-                                finish(appId, state, profile, ladder, pending, OptimizeJudge.CRASH, null, after, refresh, userCap)
+                                finish(appId, state, profile, ladder, pending, OptimizeJudge.CRASH, null, after, refresh, userCap, cap)
                             is OptimizeJudge.Decision.Final -> {
                                 if (decision.excludedWindows.isNotEmpty()) {
                                     Timber.tag(TAG).i(
@@ -1240,7 +1253,7 @@ object OptimizeController {
                                     )
                                 }
                                 finish(
-                                    appId, state, profile, ladder, pending, decision.result, decision.reason, after, refresh, userCap,
+                                    appId, state, profile, ladder, pending, decision.result, decision.reason, after, refresh, userCap, cap,
                                     judged = decision.judged ?: after, excludedWindows = decision.excludedWindows,
                                 )
                             }
@@ -1304,7 +1317,7 @@ object OptimizeController {
         val choice = OptimizeCards.offerOf(response)
         val server = response?.verdictServer
         Timber.tag(TAG).i(
-            "Optimize: first offer ${choice.name.lowercase()} (${response?.status ?: "no answer"}), server verdict ${server?.cls ?: "none"} show ${server?.showCard}",
+            "Optimize: first offer ${choice.name.lowercase()} (${response?.status ?: "no answer"}), server verdict ${server?.cls ?: "none"} from ${server?.source ?: "none"} show ${server?.showCard}",
         )
         return mutex.withLock {
             var state = store.read()
@@ -1383,7 +1396,7 @@ object OptimizeController {
         val flagged = ladder.pending?.takeIf { it.revert != null }
         val override = if (flagged != null) flagged.baseline ?: ladder.baselineOverride else ladder.baselineOverride
         val baseline = override ?: baselineRun(container)
-        val body = nextRungBody(context, appId, container, state, profile, ladder, baseline)
+        val body = nextRungBody(context, appId, container, state, profile, ladder, baseline, series = SessionPerfSampler.seriesFor(baseline?.gameplaySec))
         val kept = PrefetchedRung.keptIds(ladder)
         val cardAction = state.cardAction
         val prefer = state.capPreferred
@@ -1410,6 +1423,7 @@ object OptimizeController {
         after: Metrics,
         refreshHz: Double?,
         fpsCap: Int,
+        sessionFpsLimit: Int,
         judged: Metrics = after,
         excludedWindows: List<Int> = emptyList(),
     ): OptimizeLocalState {
@@ -1426,6 +1440,8 @@ object OptimizeController {
             judgeReason = settled.reason,
             excludedWindows = excludedWindows,
             gpuWorkScaling = scaling,
+            fpsLimit = sessionFpsLimit,
+            userFpsCap = fpsCap,
         )
         val keep = result == OptimizeJudge.HELPED || result == OptimizeJudge.NOT_COMPARABLE
         var l = ladder.triedWith(rung.rungId, rung.version, result, settled.reason)
@@ -1754,7 +1770,7 @@ object OptimizeController {
             }
             when {
                 card.kind == OptimizeCard.CAP && action == OptimizeCards.ACTION_CAP -> holdCap(context, appId, container, store, state, card)
-                card.kind == OptimizeCard.CAP -> state.copy(capSnoozedUntil = now + OptimizeCards.CAP_SNOOZE_MS) to true
+                card.kind == OptimizeCard.CAP -> OptimizeCards.capDeclined(state, now) to true
                 else -> null
             }?.let { return@change it }
             when (action) {

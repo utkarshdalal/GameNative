@@ -184,7 +184,8 @@ data class ProfileLadder(
     /**
      * Why [rung] repeats a change on this ladder, or null when it is new: its lever hash or rung id is already kept
      * or tried, its levers equal a kept rung's, or it is a settings step whose number a kept or tried settings rung
-     * already has.
+     * already has. A recovery step may share its number with another phase's step (the server checks its own
+     * phase), so only its id, version and levers count.
      */
     fun repeatReason(rung: Rung): String? {
         if (rung.version.isNotEmpty() && (kept.any { it.version == rung.version } || tried.any { it.version == rung.version })) {
@@ -192,7 +193,7 @@ data class ProfileLadder(
         }
         if (kept.any { it.rungId == rung.rungId }) return "already kept"
         if (tried.any { it.rungId == rung.rungId }) return "already tried"
-        val step = settingsStep(rung.rungId, rung.raw)
+        val step = settingsStep(rung.rungId, rung.raw)?.takeUnless { rung.recovery }
         if (step != null) {
             if (kept.any { settingsStep(it.rungId, it.rung) == step }) return "step $step already kept"
             if (tried.any { settingsStep(it.rungId, null) == step }) return "step $step already tried"
