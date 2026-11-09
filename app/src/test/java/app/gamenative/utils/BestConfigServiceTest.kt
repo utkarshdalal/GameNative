@@ -137,8 +137,8 @@ class BestConfigServiceTest {
     fun testUbwcFlagHintKeptOnlyOnSamsung() {
         val withHint = cs2MaliExactMatchResponse.replace("DXVK_FRAME_RATE=60", "FD_DEV_FEATURES=enable_tp_ubwc_flag_hint=1 PULSE_LATENCY_MSEC=144")
         val bestConfig = parseBestConfig(withHint)
-        fun envVars() = runBlocking {
-            BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
+        fun envVars(config: JsonObject = bestConfig) = runBlocking {
+            BestConfigService.parseConfigToContainerData(context, config, "exact_gpu_match", true)
         }!!["envVars"] as String
 
         val original = android.os.Build.MANUFACTURER
@@ -146,6 +146,9 @@ class BestConfigServiceTest {
             org.robolectric.util.ReflectionHelpers.setStaticField(android.os.Build::class.java, "MANUFACTURER", "AYN")
             assertFalse(envVars().contains("FD_DEV_FEATURES"))
             assertTrue(envVars().endsWith("TU_DEBUG=noconform PULSE_LATENCY_MSEC=144"))
+            // An escaped space keeps the lookalike inside another variable's value; it must survive.
+            val escaped = "WINEDLLOVERRIDES=a\\ FD_DEV_FEATURES=enable_tp_ubwc_flag_hint=1"
+            assertEquals(escaped, envVars(JsonObject(bestConfig + ("envVars" to JsonPrimitive(escaped)))))
 
             org.robolectric.util.ReflectionHelpers.setStaticField(android.os.Build::class.java, "MANUFACTURER", "samsung")
             assertTrue(envVars().contains("FD_DEV_FEATURES=enable_tp_ubwc_flag_hint=1"))

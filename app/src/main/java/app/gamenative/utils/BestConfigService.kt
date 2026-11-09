@@ -14,6 +14,7 @@ import com.winlator.contents.ContentProfile
 import com.winlator.core.DefaultVersion
 import com.winlator.core.GPUInformation
 import com.winlator.core.KeyValueSet
+import com.winlator.core.envvars.EnvVars
 import com.winlator.fexcore.FEXCorePresetManager
 import com.winlator.winhandler.WinHandler
 import java.util.Locale
@@ -1049,7 +1050,11 @@ object BestConfigService {
                     // The UBWC flag hint is a Samsung-only flicker fix (ContainerUtils re-adds it there); configs shared by
                     // GPU carry it to other Adreno 740 devices, where it flashes tile garbage (Octopath Traveler 0, Odin 2).
                     if (!Build.MANUFACTURER.equals("samsung", ignoreCase = true)) {
-                        envVars = envVars.replace(Regex("""\s*FD_DEV_FEATURES=enable_tp_ubwc_flag_hint=1(?=\s|$)"""), "")
+                        val parsed = EnvVars(envVars)
+                        if (parsed.get("FD_DEV_FEATURES") == "enable_tp_ubwc_flag_hint=1") {
+                            parsed.remove("FD_DEV_FEATURES")
+                            envVars = parsed.toString()
+                        }
                     }
                     resultMap["envVars"] = envVars.trim()
                 }
