@@ -28,6 +28,7 @@ sealed class NextRungResult {
 object OptimizeApi {
     private const val NEXT_RUNG_PATH = "/api/optimize/next-rung"
     private const val OUTCOME_PATH = "/api/optimize/outcome"
+    private const val EVENTS_PATH = "/api/optimize/events"
     private const val CALL_TIMEOUT_SEC = 15L
     private const val CONNECT_TIMEOUT_SEC = 4L
     private const val MIN_RETRY_MS = 2_000L
@@ -92,6 +93,21 @@ object OptimizeApi {
                 if (result != NextRungResult.Failed) break
             }
             result
+        }
+    }
+
+    /** One attempt; true when the server took the batch (it answers 204). */
+    suspend fun postEvents(body: JSONObject): Boolean = withContext(Dispatchers.IO) {
+        try {
+            client.newCall(request(EVENTS_PATH, body)).execute().use { response ->
+                if (!response.isSuccessful) Timber.tag("Optimize").w("POST $EVENTS_PATH failed: HTTP ${response.code}")
+                response.isSuccessful
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.tag("Optimize").w(e, "optimize events failed")
+            false
         }
     }
 
