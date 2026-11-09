@@ -1046,6 +1046,11 @@ object BestConfigService {
                     // Strip DXVK/VKD3D frame rate caps from backend config - client-side limiter handles this
                     envVars = envVars.replace(Regex("""\s*DXVK_FRAME_RATE=\d+"""), "")
                     envVars = envVars.replace(Regex("""\s*VKD3D_FRAME_RATE=\d+"""), "")
+                    // The UBWC flag hint is a Samsung-only flicker fix (ContainerUtils re-adds it there); configs shared by
+                    // GPU carry it to other Adreno 740 devices, where it flashes tile garbage (Octopath Traveler 0, Odin 2).
+                    if (!Build.MANUFACTURER.equals("samsung", ignoreCase = true)) {
+                        envVars = envVars.replace(Regex("""\s*FD_DEV_FEATURES=enable_tp_ubwc_flag_hint=1(?=\s|$)"""), "")
+                    }
                     resultMap["envVars"] = envVars.trim()
                 }
                 if (filteredJson.has("cpuList") && !filteredJson.isNull("cpuList")) {

@@ -134,6 +134,27 @@ class BestConfigServiceTest {
     }
 
     @Test
+    fun testUbwcFlagHintKeptOnlyOnSamsung() {
+        val withHint = cs2MaliExactMatchResponse.replace("DXVK_FRAME_RATE=60", "FD_DEV_FEATURES=enable_tp_ubwc_flag_hint=1 PULSE_LATENCY_MSEC=144")
+        val bestConfig = parseBestConfig(withHint)
+        fun envVars() = runBlocking {
+            BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true)
+        }!!["envVars"] as String
+
+        val original = android.os.Build.MANUFACTURER
+        try {
+            org.robolectric.util.ReflectionHelpers.setStaticField(android.os.Build::class.java, "MANUFACTURER", "AYN")
+            assertFalse(envVars().contains("FD_DEV_FEATURES"))
+            assertTrue(envVars().endsWith("TU_DEBUG=noconform PULSE_LATENCY_MSEC=144"))
+
+            org.robolectric.util.ReflectionHelpers.setStaticField(android.os.Build::class.java, "MANUFACTURER", "samsung")
+            assertTrue(envVars().contains("FD_DEV_FEATURES=enable_tp_ubwc_flag_hint=1"))
+        } finally {
+            org.robolectric.util.ReflectionHelpers.setStaticField(android.os.Build::class.java, "MANUFACTURER", original)
+        }
+    }
+
+    @Test
     fun testGpuFamilyMatch_parsesAllFields() {
         // Test gpu_family_match - should behave the same as exact_gpu_match (apply all fields)
         val bestConfig = parseBestConfig(dota2Adreno835FamilyMatchResponse)
