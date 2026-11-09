@@ -89,8 +89,8 @@ abstract class PsPcSdkPackageStep : PreInstallStep {
     override val viaShell: Boolean = false
 
     /**
-     * Packages already reported as unquotable, keyed by host path: a title installed under a
-     * name with a space can never be installed, and two such titles are two separate problems.
+     * Packages already reported as unquotable, keyed by host path. The check covers the path below
+     * the game directory (the `A:` drive), so only a space in a subfolder refuses a package.
      */
     private val warnedUnquotable = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
