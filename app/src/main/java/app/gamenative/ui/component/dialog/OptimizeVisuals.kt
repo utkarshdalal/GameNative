@@ -13,13 +13,15 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Thermostat
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -44,11 +46,18 @@ import app.gamenative.optimize.EntitlementLine
 import app.gamenative.optimize.OptimizeController
 import app.gamenative.optimize.OptimizeProfile
 import app.gamenative.optimize.OptimizeStatus
+import app.gamenative.optimize.PlanText
 import app.gamenative.optimize.orAppWide
+import app.gamenative.ui.component.BenefitRow
+import app.gamenative.ui.component.GradientBorderSurface
+import app.gamenative.ui.component.HeroBadge
 import app.gamenative.ui.component.IconTile
 import app.gamenative.ui.component.OutcomePill
+import app.gamenative.ui.component.PremiumDialogButton
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.theme.PluviaTheme
+import java.text.DateFormat
+import java.util.Date
 
 /** The icon and accent color that stand for one Optimize diagnosis or goal. */
 data class OptimizeAccent(val icon: ImageVector, val color: Color)
@@ -187,18 +196,86 @@ private fun OptimizeGoalCard(
     }
 }
 
-/** The trial or membership line as a pill: free to try, games used, included, or used up. */
+/** [text] resolved: its string or plural with the arguments, the reset date formatted for the locale last. */
+@Composable
+fun planText(text: PlanText): String {
+    val date = text.date?.let { DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(it)) }
+    val args: Array<Any> = (text.args + listOfNotNull(date)).toTypedArray()
+    return if (text.quantity != null) pluralStringResource(text.res, text.quantity, *args) else stringResource(text.res, *args)
+}
+
+/** The plan line for a game: the server's entitlement when known, otherwise the app-wide one. */
+@Composable
+fun optimizeEntitlementLine(entitlement: Entitlement?, exhausted: Boolean = false): EntitlementLine? {
+    val known = entitlement.orAppWide(OptimizeController.lastEntitlement)
+    return OptimizeStatus.entitlementLine(known, exhausted, PrefManager.gameNativeSignedIn.value, Membership.isMember())
+}
+
+@Composable
+fun optimizeEntitlementColor(line: EntitlementLine): Color = when (line) {
+    EntitlementLine.Unlimited -> PluviaTheme.colors.accentSuccess
+    is EntitlementLine.Offer, is EntitlementLine.Trial -> PluviaTheme.colors.accentCyan
+    is EntitlementLine.Exhausted -> PluviaTheme.colors.textMuted
+    is EntitlementLine.Monthly -> if (line.usedUp) PluviaTheme.colors.textMuted else PluviaTheme.colors.accentCyan
+}
+
+/** The plan line as a pill: free games used, games this month, unlimited, or free to try with an account. */
 @Composable
 fun OptimizeEntitlementPill(entitlement: Entitlement?, exhausted: Boolean = false, modifier: Modifier = Modifier) {
-    val known = entitlement.orAppWide(OptimizeController.lastEntitlement)
-    val line = OptimizeStatus.entitlementLine(known, exhausted, PrefManager.gameNativeSignedIn.value, Membership.isMember())
-    val (text, color) = when (line) {
-        null -> return
-        EntitlementLine.Member -> stringResource(R.string.optimize_included) to PluviaTheme.colors.accentSuccess
-        is EntitlementLine.Offer -> stringResource(R.string.optimize_badge_free_to_try) to PluviaTheme.colors.accentCyan
-        is EntitlementLine.Trial ->
-            pluralStringResource(R.plurals.optimize_trial_progress, line.limit, line.used, line.limit) to PluviaTheme.colors.accentCyan
-        is EntitlementLine.Exhausted -> stringResource(R.string.optimize_trial_used_short) to PluviaTheme.colors.textMuted
+    val line = optimizeEntitlementLine(entitlement, exhausted) ?: return
+    OutcomePill(text = planText(OptimizeStatus.entitlementPill(line)), color = optimizeEntitlementColor(line), modifier = modifier)
+}
+
+/** The short status pill the cards and the game options row show; nothing while Optimize is off. */
+@Composable
+fun OptimizeStatusPill(status: OptimizeStatus?, modifier: Modifier = Modifier) {
+    val res = status?.let { OptimizeStatus.pillRes(it) } ?: return
+    OutcomePill(text = stringResource(res), color = optimizeStatusColor(status), modifier = modifier)
+}
+
+/**
+ * The membership pitch when [line] has no games left to optimize, or the user is signed out: what a plan gives in
+ * outcome words, the plan line from the quotas, See plans, and the quota that applies. Nothing otherwise.
+ */
+@Composable
+fun OptimizeUpsell(line: EntitlementLine?, modifier: Modifier = Modifier, buttonModifier: Modifier = Modifier) {
+    if (!OptimizeStatus.showsUpsell(line)) return
+    val accent = PluviaTheme.colors.accentPurple
+    GradientBorderSurface(modifier = modifier.fillMaxWidth(), accent = accent) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                HeroBadge(icon = Icons.Filled.WorkspacePremium, accent = accent, size = 44.dp, iconSize = 22.dp)
+                Text(
+                    text = stringResource(R.string.optimize_upsell_title),
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+            BenefitRow(
+                title = stringResource(R.string.optimize_upsell_benefit_perf),
+                icon = Icons.Filled.Speed,
+                iconTint = PluviaTheme.colors.accentCyan,
+                compact = true,
+            )
+            BenefitRow(
+                title = stringResource(R.string.optimize_upsell_benefit_device),
+                icon = Icons.AutoMirrored.Filled.Undo,
+                iconTint = PluviaTheme.colors.accentSuccess,
+                compact = true,
+            )
+            val monthly = OptimizeStatus.upsellMonthlyGames(line)
+            BenefitRow(
+                title = pluralStringResource(R.plurals.optimize_upsell_plan_line, monthly, monthly),
+                icon = Icons.Filled.WorkspacePremium,
+                iconTint = accent,
+                compact = true,
+            )
+            PremiumDialogButton(
+                text = stringResource(R.string.support_see_plans),
+                onClick = { Membership.plansRequested.value = true },
+                subtitle = OptimizeStatus.upsellSubtitle(line)?.let { planText(it) },
+                modifier = buttonModifier,
+            )
+        }
     }
-    OutcomePill(text = text, color = color, modifier = modifier)
 }

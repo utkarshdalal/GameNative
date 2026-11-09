@@ -2105,7 +2105,7 @@ abstract class BaseAppScreen {
         LaunchedEffect(appId) { OptimizeController.surfaceCard(context, appId) }
 
         if (optimizeRequests[appId] == true) {
-            OptimizeDialog(appId = appId, onDismiss = { optimizeRequests.remove(appId) })
+            OptimizeDialog(appId = appId, gameName = displayInfo.name, onDismiss = { optimizeRequests.remove(appId) })
         }
 
         if (importFilesRequested) {

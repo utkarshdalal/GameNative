@@ -1918,6 +1918,34 @@
     <string name="optimize_benefit_undo">언제든지 되돌리기</string>
     <string name="optimize_badge_free_to_try">무료 체험</string>
     <string name="optimize_badge_suggested">추천</string>
+    <string name="optimize_pill_measuring">측정 중</string>
+    <string name="optimize_pill_tuning">조정 중</string>
+    <string name="optimize_pill_done">완료</string>
+    <string name="optimize_pill_waiting">대기 중</string>
+    <string name="optimize_pill_trial_used">체험 사용 완료</string>
+    <string name="optimize_plan_unlimited">무제한</string>
+    <string name="optimize_plan_signed_out">계정으로 무료 체험</string>
+    <string name="optimize_upsell_title">모든 게임을 최상의 상태로</string>
+    <string name="optimize_upsell_benefit_perf">더 높은 프레임과 더 적은 끊김</string>
+    <string name="optimize_upsell_benefit_device">기기에 맞게 조정, 언제든 되돌리기 가능</string>
+    <plurals name="optimize_plan_monthly">
+        <item quantity="other">이번 달 %2$d개 중 %1$d개</item>
+    </plurals>
+    <plurals name="optimize_plan_monthly_resets">
+        <item quantity="other">이번 달 %2$d개 중 %1$d개, %3$s에 초기화</item>
+    </plurals>
+    <plurals name="optimize_upsell_plan_line">
+        <item quantity="other">월 %1$d개 또는 무제한</item>
+    </plurals>
+    <plurals name="optimize_upsell_free_used">
+        <item quantity="other">무료 게임 %1$d개를 모두 사용했습니다</item>
+    </plurals>
+    <plurals name="optimize_upsell_monthly_used">
+        <item quantity="other">이번 달 %1$d개를 모두 사용했습니다</item>
+    </plurals>
+    <plurals name="optimize_upsell_monthly_used_resets">
+        <item quantity="other">이번 달 %1$d개를 모두 사용했습니다. %2$s에 다시 채워집니다</item>
+    </plurals>
     <string name="optimize_choose_goal">무엇이 가장 중요한가요?</string>
     <string name="optimize_restore_original_body">최적화가 변경하기 전의 게임 설정으로 되돌립니다.</string>
     <string name="optimize_metric_fps">프레임 속도</string>

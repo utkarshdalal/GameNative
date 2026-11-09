@@ -1962,6 +1962,52 @@
     <string name="optimize_benefit_undo">Cofniesz w każdej chwili</string>
     <string name="optimize_badge_free_to_try">Wypróbuj za darmo</string>
     <string name="optimize_badge_suggested">Sugerowany</string>
+    <string name="optimize_pill_measuring">Pomiar</string>
+    <string name="optimize_pill_tuning">Dostrajanie</string>
+    <string name="optimize_pill_done">Gotowe</string>
+    <string name="optimize_pill_waiting">Oczekiwanie</string>
+    <string name="optimize_pill_trial_used">Wersja próbna wykorzystana</string>
+    <string name="optimize_plan_unlimited">Bez limitu</string>
+    <string name="optimize_plan_signed_out">Za darmo do wypróbowania z kontem</string>
+    <string name="optimize_upsell_title">Każda gra w najlepszej formie</string>
+    <string name="optimize_upsell_benefit_perf">Więcej klatek i mniej przycięć</string>
+    <string name="optimize_upsell_benefit_device">Dostrojone do Twojego urządzenia, cofniesz w każdej chwili</string>
+    <plurals name="optimize_plan_monthly">
+        <item quantity="one">%1$d z %2$d gry w tym miesiącu</item>
+        <item quantity="few">%1$d z %2$d gier w tym miesiącu</item>
+        <item quantity="many">%1$d z %2$d gier w tym miesiącu</item>
+        <item quantity="other">%1$d z %2$d gier w tym miesiącu</item>
+    </plurals>
+    <plurals name="optimize_plan_monthly_resets">
+        <item quantity="one">%1$d z %2$d gry w tym miesiącu, odnowienie %3$s</item>
+        <item quantity="few">%1$d z %2$d gier w tym miesiącu, odnowienie %3$s</item>
+        <item quantity="many">%1$d z %2$d gier w tym miesiącu, odnowienie %3$s</item>
+        <item quantity="other">%1$d z %2$d gier w tym miesiącu, odnowienie %3$s</item>
+    </plurals>
+    <plurals name="optimize_upsell_plan_line">
+        <item quantity="one">%1$d gra miesięcznie lub bez limitu</item>
+        <item quantity="few">%1$d gry miesięcznie lub bez limitu</item>
+        <item quantity="many">%1$d gier miesięcznie lub bez limitu</item>
+        <item quantity="other">%1$d gry miesięcznie lub bez limitu</item>
+    </plurals>
+    <plurals name="optimize_upsell_free_used">
+        <item quantity="one">Wykorzystano %1$d darmową grę</item>
+        <item quantity="few">Wykorzystano %1$d darmowe gry</item>
+        <item quantity="many">Wykorzystano %1$d darmowych gier</item>
+        <item quantity="other">Wykorzystano %1$d darmowej gry</item>
+    </plurals>
+    <plurals name="optimize_upsell_monthly_used">
+        <item quantity="one">Wykorzystano %1$d grę w tym miesiącu</item>
+        <item quantity="few">Wykorzystano %1$d gry w tym miesiącu</item>
+        <item quantity="many">Wykorzystano %1$d gier w tym miesiącu</item>
+        <item quantity="other">Wykorzystano %1$d gry w tym miesiącu</item>
+    </plurals>
+    <plurals name="optimize_upsell_monthly_used_resets">
+        <item quantity="one">Wykorzystano %1$d grę w tym miesiącu. Kolejne od %2$s</item>
+        <item quantity="few">Wykorzystano %1$d gry w tym miesiącu. Kolejne od %2$s</item>
+        <item quantity="many">Wykorzystano %1$d gier w tym miesiącu. Kolejne od %2$s</item>
+        <item quantity="other">Wykorzystano %1$d gry w tym miesiącu. Kolejne od %2$s</item>
+    </plurals>
     <string name="optimize_choose_goal">Co jest najważniejsze?</string>
     <string name="optimize_restore_original_body">Przywraca ustawienia tej gry sprzed jakichkolwiek zmian wprowadzonych przez optymalizację.</string>
     <string name="optimize_metric_fps">Liczba klatek</string>

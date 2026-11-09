@@ -1886,6 +1886,52 @@ https://gamenative.app
     <string name="optimize_benefit_undo">Можно отменить в любой момент</string>
     <string name="optimize_badge_free_to_try">Попробуйте бесплатно</string>
     <string name="optimize_badge_suggested">Рекомендуется</string>
+    <string name="optimize_pill_measuring">Замер</string>
+    <string name="optimize_pill_tuning">Настройка</string>
+    <string name="optimize_pill_done">Готово</string>
+    <string name="optimize_pill_waiting">Ожидание</string>
+    <string name="optimize_pill_trial_used">Пробный период использован</string>
+    <string name="optimize_plan_unlimited">Без ограничений</string>
+    <string name="optimize_plan_signed_out">Бесплатно с аккаунтом</string>
+    <string name="optimize_upsell_title">Каждая игра в лучшей форме</string>
+    <string name="optimize_upsell_benefit_perf">Выше FPS и меньше подтормаживаний</string>
+    <string name="optimize_upsell_benefit_device">Под ваше устройство, отменить можно в любой момент</string>
+    <plurals name="optimize_plan_monthly">
+        <item quantity="one">%1$d из %2$d игры в этом месяце</item>
+        <item quantity="few">%1$d из %2$d игр в этом месяце</item>
+        <item quantity="many">%1$d из %2$d игр в этом месяце</item>
+        <item quantity="other">%1$d из %2$d игры в этом месяце</item>
+    </plurals>
+    <plurals name="optimize_plan_monthly_resets">
+        <item quantity="one">%1$d из %2$d игры в этом месяце, сброс %3$s</item>
+        <item quantity="few">%1$d из %2$d игр в этом месяце, сброс %3$s</item>
+        <item quantity="many">%1$d из %2$d игр в этом месяце, сброс %3$s</item>
+        <item quantity="other">%1$d из %2$d игры в этом месяце, сброс %3$s</item>
+    </plurals>
+    <plurals name="optimize_upsell_plan_line">
+        <item quantity="one">%1$d игра в месяц или без ограничений</item>
+        <item quantity="few">%1$d игры в месяц или без ограничений</item>
+        <item quantity="many">%1$d игр в месяц или без ограничений</item>
+        <item quantity="other">%1$d игры в месяц или без ограничений</item>
+    </plurals>
+    <plurals name="optimize_upsell_free_used">
+        <item quantity="one">Вы использовали %1$d бесплатную игру</item>
+        <item quantity="few">Вы использовали %1$d бесплатные игры</item>
+        <item quantity="many">Вы использовали %1$d бесплатных игр</item>
+        <item quantity="other">Вы использовали %1$d бесплатной игры</item>
+    </plurals>
+    <plurals name="optimize_upsell_monthly_used">
+        <item quantity="one">Вы использовали %1$d игру этого месяца</item>
+        <item quantity="few">Вы использовали %1$d игры этого месяца</item>
+        <item quantity="many">Вы использовали %1$d игр этого месяца</item>
+        <item quantity="other">Вы использовали %1$d игры этого месяца</item>
+    </plurals>
+    <plurals name="optimize_upsell_monthly_used_resets">
+        <item quantity="one">Вы использовали %1$d игру этого месяца. Новые с %2$s</item>
+        <item quantity="few">Вы использовали %1$d игры этого месяца. Новые с %2$s</item>
+        <item quantity="many">Вы использовали %1$d игр этого месяца. Новые с %2$s</item>
+        <item quantity="other">Вы использовали %1$d игры этого месяца. Новые с %2$s</item>
+    </plurals>
     <string name="optimize_choose_goal">Что важнее всего?</string>
     <string name="optimize_restore_original_body">Возвращает настройки этой игры к тем, что были до изменений оптимизации.</string>
     <string name="optimize_metric_fps">FPS</string>

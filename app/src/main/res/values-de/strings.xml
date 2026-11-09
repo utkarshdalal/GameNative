@@ -1892,6 +1892,40 @@
     <string name="optimize_benefit_undo">Jederzeit rückgängig machen</string>
     <string name="optimize_badge_free_to_try">Kostenlos testen</string>
     <string name="optimize_badge_suggested">Empfohlen</string>
+    <string name="optimize_pill_measuring">Wird gemessen</string>
+    <string name="optimize_pill_tuning">Wird optimiert</string>
+    <string name="optimize_pill_done">Fertig</string>
+    <string name="optimize_pill_waiting">Wartet</string>
+    <string name="optimize_pill_trial_used">Testphase aufgebraucht</string>
+    <string name="optimize_plan_unlimited">Unbegrenzt</string>
+    <string name="optimize_plan_signed_out">Mit einem Konto kostenlos testen</string>
+    <string name="optimize_upsell_title">Jedes Spiel in Bestform</string>
+    <string name="optimize_upsell_benefit_perf">Höhere Bildraten und weniger Ruckler</string>
+    <string name="optimize_upsell_benefit_device">Auf dein Gerät abgestimmt, jederzeit rückgängig</string>
+    <plurals name="optimize_plan_monthly">
+        <item quantity="one">%1$d von %2$d Spiel diesen Monat</item>
+        <item quantity="other">%1$d von %2$d Spielen diesen Monat</item>
+    </plurals>
+    <plurals name="optimize_plan_monthly_resets">
+        <item quantity="one">%1$d von %2$d Spiel diesen Monat, neu ab %3$s</item>
+        <item quantity="other">%1$d von %2$d Spielen diesen Monat, neu ab %3$s</item>
+    </plurals>
+    <plurals name="optimize_upsell_plan_line">
+        <item quantity="one">%1$d Spiel im Monat oder unbegrenzt</item>
+        <item quantity="other">%1$d Spiele im Monat oder unbegrenzt</item>
+    </plurals>
+    <plurals name="optimize_upsell_free_used">
+        <item quantity="one">Du hast dein %1$d kostenloses Spiel genutzt</item>
+        <item quantity="other">Du hast deine %1$d kostenlosen Spiele genutzt</item>
+    </plurals>
+    <plurals name="optimize_upsell_monthly_used">
+        <item quantity="one">Du hast das %1$d Spiel dieses Monats genutzt</item>
+        <item quantity="other">Du hast die %1$d Spiele dieses Monats genutzt</item>
+    </plurals>
+    <plurals name="optimize_upsell_monthly_used_resets">
+        <item quantity="one">Du hast das %1$d Spiel dieses Monats genutzt. Neue ab %2$s</item>
+        <item quantity="other">Du hast die %1$d Spiele dieses Monats genutzt. Neue ab %2$s</item>
+    </plurals>
     <string name="optimize_choose_goal">Was ist dir am wichtigsten?</string>
     <string name="optimize_restore_original_body">Setzt die Einstellungen dieses Spiels auf den Stand zurück, bevor Optimieren etwas geändert hat.</string>
     <string name="optimize_metric_fps">Bildrate</string>

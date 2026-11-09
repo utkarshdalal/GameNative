@@ -1970,6 +1970,40 @@
     <string name="optimize_benefit_undo">İstediğiniz zaman geri alın</string>
     <string name="optimize_badge_free_to_try">Ücretsiz deneyin</string>
     <string name="optimize_badge_suggested">Önerilen</string>
+    <string name="optimize_pill_measuring">Ölçülüyor</string>
+    <string name="optimize_pill_tuning">Ayarlanıyor</string>
+    <string name="optimize_pill_done">Tamamlandı</string>
+    <string name="optimize_pill_waiting">Bekleniyor</string>
+    <string name="optimize_pill_trial_used">Deneme kullanıldı</string>
+    <string name="optimize_plan_unlimited">Sınırsız</string>
+    <string name="optimize_plan_signed_out">Bir hesapla ücretsiz deneyin</string>
+    <string name="optimize_upsell_title">Her oyun en iyi hâliyle çalışsın</string>
+    <string name="optimize_upsell_benefit_perf">Daha yüksek kare hızı ve daha az takılma</string>
+    <string name="optimize_upsell_benefit_device">Cihazınıza göre ayarlanır, istediğiniz zaman geri alın</string>
+    <plurals name="optimize_plan_monthly">
+        <item quantity="one">Bu ay %2$d oyundan %1$d tanesi</item>
+        <item quantity="other">Bu ay %2$d oyundan %1$d tanesi</item>
+    </plurals>
+    <plurals name="optimize_plan_monthly_resets">
+        <item quantity="one">Bu ay %2$d oyundan %1$d tanesi, %3$s tarihinde yenilenir</item>
+        <item quantity="other">Bu ay %2$d oyundan %1$d tanesi, %3$s tarihinde yenilenir</item>
+    </plurals>
+    <plurals name="optimize_upsell_plan_line">
+        <item quantity="one">Ayda %1$d oyun veya sınırsız</item>
+        <item quantity="other">Ayda %1$d oyun veya sınırsız</item>
+    </plurals>
+    <plurals name="optimize_upsell_free_used">
+        <item quantity="one">%1$d ücretsiz oyununuzu kullandınız</item>
+        <item quantity="other">%1$d ücretsiz oyununuzu kullandınız</item>
+    </plurals>
+    <plurals name="optimize_upsell_monthly_used">
+        <item quantity="one">Bu ayın %1$d oyununu kullandınız</item>
+        <item quantity="other">Bu ayın %1$d oyununu kullandınız</item>
+    </plurals>
+    <plurals name="optimize_upsell_monthly_used_resets">
+        <item quantity="one">Bu ayın %1$d oyununu kullandınız. %2$s tarihinde yenileri gelir</item>
+        <item quantity="other">Bu ayın %1$d oyununu kullandınız. %2$s tarihinde yenileri gelir</item>
+    </plurals>
     <string name="optimize_choose_goal">En çok ne önemli?</string>
     <string name="optimize_restore_original_body">Bu oyunun ayarlarını, Optimize et herhangi bir şeyi değiştirmeden önceki hâline döndürür.</string>
     <string name="optimize_metric_fps">Kare hızı</string>

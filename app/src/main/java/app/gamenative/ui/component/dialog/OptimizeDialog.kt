@@ -45,14 +45,13 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.api.AccountApi
-import app.gamenative.billing.Membership
 import app.gamenative.optimize.Entitlement
 import app.gamenative.optimize.EntitlementLine
 import app.gamenative.optimize.OptimizeController
@@ -61,7 +60,6 @@ import app.gamenative.optimize.OptimizeLocalState
 import app.gamenative.optimize.OptimizeProfile
 import app.gamenative.optimize.OptimizeStatus
 import app.gamenative.optimize.limitOrDefault
-import app.gamenative.optimize.orAppWide
 import app.gamenative.ui.component.BenefitRow
 import app.gamenative.ui.component.GradientBorderSurface
 import app.gamenative.ui.component.HeroBadge
@@ -215,23 +213,24 @@ fun optimizeStatusText(state: OptimizeLocalState): String? = when (val status = 
     OptimizeStatus.TrialUsed -> null
 }
 
-/** The one trial line for this game: the server's entitlement when known, otherwise the default offer. */
+/** The one plan line for this game as text: the server's entitlement when known, otherwise the default offer. */
 @Composable
-fun optimizeEntitlementText(entitlement: Entitlement?, exhausted: Boolean = false, short: Boolean = false): String? {
-    val known = entitlement.orAppWide(OptimizeController.lastEntitlement)
-    val line = OptimizeStatus.entitlementLine(known, exhausted, PrefManager.gameNativeSignedIn.value, Membership.isMember())
-    return when (line) {
+fun optimizeEntitlementText(entitlement: Entitlement?, exhausted: Boolean = false, short: Boolean = false): String? =
+    when (val line = optimizeEntitlementLine(entitlement, exhausted)) {
         null -> null
-        EntitlementLine.Member -> stringResource(R.string.optimize_included)
+        EntitlementLine.Unlimited -> stringResource(R.string.optimize_included)
         is EntitlementLine.Offer -> pluralStringResource(R.plurals.optimize_trial_offer, line.limit, line.limit)
-        is EntitlementLine.Trial -> pluralStringResource(R.plurals.optimize_trial_progress, line.limit, line.used, line.limit)
         is EntitlementLine.Exhausted -> if (short) {
-            stringResource(R.string.optimize_trial_used_short)
+            planText(OptimizeStatus.entitlementPill(line))
         } else {
             pluralStringResource(R.plurals.optimize_trial_used, line.limit, line.limit)
         }
+        is EntitlementLine.Monthly -> {
+            val used = if (short) null else OptimizeStatus.upsellSubtitle(line)
+            planText(used ?: OptimizeStatus.entitlementPill(line))
+        }
+        is EntitlementLine.Trial -> planText(OptimizeStatus.entitlementPill(line))
     }
-}
 
 /** The pill color for a status: in progress cyan, paused warning, done success, the rest muted. */
 @Composable
@@ -243,14 +242,13 @@ fun optimizeStatusColor(status: OptimizeStatus): Color = when (status) {
     else -> PluviaTheme.colors.accentCyan
 }
 
-/** The Optimize row of the game options panel: the state as a pill and Continue when it is offered; the row opens the dialog. */
+/** The Optimize row of the game options panel: the same status pill as the dialog, Continue when it is offered; the row opens the dialog. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun OptimizeOptionsRow(appId: String) {
     val state = rememberOptimizeState(appId)
     val actions = rememberOptimizeActions(appId)
     val status = state?.let { OptimizeStatus.of(it) }
-    val exhausted = status == OptimizeStatus.TrialUsed
     val keptCount = state?.let { OptimizeStatus.keptCount(it) } ?: 0
     Column(modifier = Modifier.fillMaxWidth()) {
         FlowRow(
@@ -258,12 +256,7 @@ fun OptimizeOptionsRow(appId: String) {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            val statusText = state?.let { optimizeStatusText(it) }
-            if (status != null && statusText != null) {
-                OutcomePill(text = statusText, color = optimizeStatusColor(status), modifier = Modifier.align(Alignment.CenterVertically))
-            } else if (exhausted) {
-                OptimizeEntitlementPill(state?.entitlement, exhausted = true, modifier = Modifier.align(Alignment.CenterVertically))
-            }
+            OptimizeStatusPill(status, modifier = Modifier.align(Alignment.CenterVertically))
             if (OptimizeLadders.canContinue(status)) {
                 val interaction = remember { MutableInteractionSource() }
                 val shape = RoundedCornerShape(50)
@@ -284,7 +277,7 @@ fun OptimizeOptionsRow(appId: String) {
         listOfNotNull(
             state?.let { OptimizeStatus.heldCapFps(it) }?.let { stringResource(R.string.optimize_status_cap_held, it) },
             if (keptCount > 0) pluralStringResource(R.plurals.optimize_status_kept, keptCount, keptCount) else null,
-            if (exhausted) null else optimizeEntitlementText(state?.entitlement, short = true),
+            optimizeEntitlementLine(state?.entitlement, exhausted = status == OptimizeStatus.TrialUsed)?.let { planText(OptimizeStatus.entitlementPill(it)) },
         ).forEach {
             Text(
                 text = it,
@@ -300,6 +293,7 @@ fun OptimizeOptionsRow(appId: String) {
 fun OptimizeDialog(
     appId: String,
     onDismiss: () -> Unit,
+    gameName: String? = null,
 ) {
     val state = rememberOptimizeState(appId)
     val actions = rememberOptimizeActions(appId)
@@ -308,6 +302,7 @@ fun OptimizeDialog(
     val keptCount = state?.let { OptimizeStatus.keptCount(it) } ?: 0
     val activeLadder = state?.active
     val exhausted = status == OptimizeStatus.TrialUsed
+    val line = optimizeEntitlementLine(state?.entitlement, exhausted)
     val context = LocalContext.current
     val revision by OptimizeController.revision.collectAsState()
     val suggestion by produceState<OptimizeController.Suggestion?>(null, appId, revision) {
@@ -332,17 +327,33 @@ fun OptimizeDialog(
     val header: @Composable ColumnScope.() -> Unit = {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             HeroBadge(icon = Icons.Filled.Speed, accent = PluviaTheme.colors.accentCyan)
-            Text(
-                text = stringResource(R.string.option_optimize),
-                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = gameName?.takeIf { it.isNotBlank() } ?: stringResource(R.string.option_optimize),
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (!gameName.isNullOrBlank()) {
+                    Text(
+                        text = stringResource(R.string.option_optimize),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = PluviaTheme.colors.textMuted,
+                    )
+                }
+            }
+            OptimizeStatusPill(status)
         }
+        OptimizeEntitlementPill(state?.entitlement, exhausted = exhausted, modifier = Modifier.padding(top = 12.dp))
+    }
+
+    val goals: @Composable ColumnScope.() -> Unit = {
         Text(
             text = stringResource(R.string.optimize_choose_goal),
             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(top = 12.dp, bottom = 8.dp),
+            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
         )
         OptimizeGoalCards(
             selected = profile,
@@ -354,12 +365,9 @@ fun OptimizeDialog(
         )
     }
 
-    val statusBlock: @Composable ColumnScope.() -> Unit = {
-        val statusText = state?.let { optimizeStatusText(it) }
-        if (status != null && statusText != null) {
-            OutcomePill(text = statusText, color = optimizeStatusColor(status))
-        }
+    val details: @Composable ColumnScope.() -> Unit = {
         listOfNotNull(
+            state?.let { optimizeStatusText(it) },
             state?.let { OptimizeStatus.heldCapFps(it) }?.let { stringResource(R.string.optimize_status_cap_held, it) },
             hint,
             if (keptCount > 0 && status !is OptimizeStatus.Trying) pluralStringResource(R.plurals.optimize_status_kept, keptCount, keptCount) else null,
@@ -368,19 +376,11 @@ fun OptimizeDialog(
                 text = it,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(top = 6.dp),
+                modifier = Modifier.padding(bottom = 6.dp),
             )
         }
-        OptimizeEntitlementPill(state?.entitlement, exhausted = exhausted, modifier = Modifier.padding(top = 8.dp))
-        if (exhausted) {
-            optimizeEntitlementText(state?.entitlement, exhausted = true)?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = PluviaTheme.colors.textMuted,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-            }
+        if (OptimizeStatus.showsUpsell(line)) {
+            OptimizeUpsell(line, modifier = Modifier.padding(top = 6.dp))
         }
     }
 
@@ -393,19 +393,12 @@ fun OptimizeDialog(
             )
             Spacer(modifier = Modifier.height(8.dp))
         }
-        if (exhausted && !Membership.isMember()) {
-            PremiumDialogButton(
-                text = stringResource(R.string.optimize_see_membership),
-                onClick = { Membership.plansRequested.value = true },
-                primary = false,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-        }
         PremiumTextButton(
             text = stringResource(R.string.optimize_restore_original),
             onClick = { actions.restore() },
             enabled = canRestore,
             color = PluviaTheme.colors.accentDanger,
+            modifier = Modifier.fillMaxWidth(),
         )
         Text(
             text = stringResource(R.string.optimize_restore_original_body),
@@ -415,7 +408,7 @@ fun OptimizeDialog(
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(modifier = Modifier.height(4.dp))
-        PremiumTextButton(text = stringResource(R.string.close), onClick = onDismiss)
+        PremiumTextButton(text = stringResource(R.string.close), onClick = onDismiss, modifier = Modifier.fillMaxWidth())
     }
 
     Dialog(
@@ -437,16 +430,18 @@ fun OptimizeDialog(
                 ) {
                     Column(
                         modifier = Modifier
-                            .weight(1.3f)
+                            .weight(1.2f)
                             .verticalScroll(rememberScrollState()),
-                        content = header,
-                    )
+                    ) {
+                        header()
+                        goals()
+                    }
                     Column(
                         modifier = Modifier
                             .weight(1f)
                             .verticalScroll(rememberScrollState()),
                     ) {
-                        statusBlock()
+                        details()
                         Spacer(modifier = Modifier.height(16.dp))
                         footer()
                     }
@@ -464,8 +459,9 @@ fun OptimizeDialog(
                             .verticalScroll(rememberScrollState()),
                     ) {
                         header()
-                        Spacer(modifier = Modifier.height(12.dp))
-                        statusBlock()
+                        goals()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        details()
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     footer()

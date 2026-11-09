@@ -1958,6 +1958,52 @@
     <string name="optimize_benefit_undo">Можна скасувати будь-коли</string>
     <string name="optimize_badge_free_to_try">Спробуйте безкоштовно</string>
     <string name="optimize_badge_suggested">Рекомендовано</string>
+    <string name="optimize_pill_measuring">Вимірювання</string>
+    <string name="optimize_pill_tuning">Налаштування</string>
+    <string name="optimize_pill_done">Готово</string>
+    <string name="optimize_pill_waiting">Очікування</string>
+    <string name="optimize_pill_trial_used">Пробний період використано</string>
+    <string name="optimize_plan_unlimited">Без обмежень</string>
+    <string name="optimize_plan_signed_out">Безкоштовно з обліковим записом</string>
+    <string name="optimize_upsell_title">Кожна гра в найкращій формі</string>
+    <string name="optimize_upsell_benefit_perf">Вищий FPS і менше підгальмовувань</string>
+    <string name="optimize_upsell_benefit_device">Під ваш пристрій, скасувати можна будь-коли</string>
+    <plurals name="optimize_plan_monthly">
+        <item quantity="one">%1$d з %2$d гри цього місяця</item>
+        <item quantity="few">%1$d з %2$d ігор цього місяця</item>
+        <item quantity="many">%1$d з %2$d ігор цього місяця</item>
+        <item quantity="other">%1$d з %2$d гри цього місяця</item>
+    </plurals>
+    <plurals name="optimize_plan_monthly_resets">
+        <item quantity="one">%1$d з %2$d гри цього місяця, скидання %3$s</item>
+        <item quantity="few">%1$d з %2$d ігор цього місяця, скидання %3$s</item>
+        <item quantity="many">%1$d з %2$d ігор цього місяця, скидання %3$s</item>
+        <item quantity="other">%1$d з %2$d гри цього місяця, скидання %3$s</item>
+    </plurals>
+    <plurals name="optimize_upsell_plan_line">
+        <item quantity="one">%1$d гра на місяць або без обмежень</item>
+        <item quantity="few">%1$d гри на місяць або без обмежень</item>
+        <item quantity="many">%1$d ігор на місяць або без обмежень</item>
+        <item quantity="other">%1$d гри на місяць або без обмежень</item>
+    </plurals>
+    <plurals name="optimize_upsell_free_used">
+        <item quantity="one">Ви використали %1$d безкоштовну гру</item>
+        <item quantity="few">Ви використали %1$d безкоштовні гри</item>
+        <item quantity="many">Ви використали %1$d безкоштовних ігор</item>
+        <item quantity="other">Ви використали %1$d безкоштовної гри</item>
+    </plurals>
+    <plurals name="optimize_upsell_monthly_used">
+        <item quantity="one">Ви використали %1$d гру цього місяця</item>
+        <item quantity="few">Ви використали %1$d гри цього місяця</item>
+        <item quantity="many">Ви використали %1$d ігор цього місяця</item>
+        <item quantity="other">Ви використали %1$d гри цього місяця</item>
+    </plurals>
+    <plurals name="optimize_upsell_monthly_used_resets">
+        <item quantity="one">Ви використали %1$d гру цього місяця. Нові з %2$s</item>
+        <item quantity="few">Ви використали %1$d гри цього місяця. Нові з %2$s</item>
+        <item quantity="many">Ви використали %1$d ігор цього місяця. Нові з %2$s</item>
+        <item quantity="other">Ви використали %1$d гри цього місяця. Нові з %2$s</item>
+    </plurals>
     <string name="optimize_choose_goal">Що найважливіше?</string>
     <string name="optimize_restore_original_body">Повертає налаштування цієї гри до стану, у якому вони були до змін оптимізації.</string>
     <string name="optimize_metric_fps">FPS</string>

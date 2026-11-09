@@ -538,14 +538,54 @@ class Rung(
     }
 }
 
-data class Entitlement(val state: String, val trialGamesUsed: Int, val trialGamesLimit: Int) {
+/**
+ * What the account may optimize. [tier], [gamesUsed], [gamesQuota] and [periodResetsAt] come from newer servers;
+ * [quotaUnlimited] is a games_quota sent as null. Older answers only carry the trial fields.
+ */
+data class Entitlement(
+    val state: String,
+    val trialGamesUsed: Int,
+    val trialGamesLimit: Int,
+    val tier: String? = null,
+    val gamesUsed: Int? = null,
+    val gamesQuota: Int? = null,
+    val quotaUnlimited: Boolean = false,
+    val periodResetsAt: Long? = null,
+) {
     val isMember: Boolean get() = state == MEMBER
     val trialGamesLeft: Int get() = (trialGamesLimit - trialGamesUsed).coerceAtLeast(0)
+
+    /** The plan the counts belong to, from the tier when sent, otherwise from the quota and the member flag. */
+    val plan: Plan get() {
+        val t = tier?.lowercase()
+        return when {
+            quotaUnlimited || t in UNLIMITED_TIERS -> Plan.UNLIMITED
+            t in MONTHLY_TIERS -> Plan.MONTHLY
+            t in FREE_TIERS -> Plan.FREE
+            isMember -> if (gamesQuota != null) Plan.MONTHLY else Plan.UNLIMITED
+            else -> Plan.FREE
+        }
+    }
+
+    /** Games counted against the plan's quota, the new count when sent. */
+    val used: Int get() = (gamesUsed ?: trialGamesUsed).coerceAtLeast(0)
+
+    /** The plan's quota: the new field when sent, otherwise the trial limit or the default. */
+    val quota: Int get() = gamesQuota?.takeIf { it > 0 } ?: limitOrDefault()
+
+    enum class Plan { FREE, MONTHLY, UNLIMITED }
 
     fun toJson(): JSONObject = JSONObject().apply {
         put("state", state)
         put("trial_games_used", trialGamesUsed)
         put("trial_games_limit", trialGamesLimit)
+        tier?.let { put("tier", it) }
+        gamesUsed?.let { put("games_used", it) }
+        when {
+            quotaUnlimited -> put("games_quota", JSONObject.NULL)
+            gamesQuota != null -> put("games_quota", gamesQuota)
+        }
+        periodResetsAt?.let { put("period_resets_at", it) }
     }
 
     companion object {
@@ -553,11 +593,49 @@ data class Entitlement(val state: String, val trialGamesUsed: Int, val trialGame
         const val TRIAL = "trial"
         const val NONE = "none"
         const val DEFAULT_TRIAL_GAMES_LIMIT = 3
+        const val DEFAULT_MONTHLY_GAMES = 3
+
+        private val UNLIMITED_TIERS = setOf("unlimited", "pro")
+        private val MONTHLY_TIERS = setOf("monthly", "basic")
+        private val FREE_TIERS = setOf("free", "trial", "none")
 
         fun fromJson(o: JSONObject?): Entitlement? {
             if (o == null) return null
-            val state = o.optStringOrNull("state") ?: return null
-            return Entitlement(state, o.optInt("trial_games_used", 0), o.optInt("trial_games_limit", 0))
+            val tier = o.optStringOrNull("tier")
+            val state = o.optStringOrNull("state")
+                ?: tier?.let { if (it.lowercase() in FREE_TIERS) TRIAL else MEMBER }
+                ?: return null
+            return Entitlement(
+                state = state,
+                trialGamesUsed = o.optIntOrNull("trial_games_used") ?: 0,
+                trialGamesLimit = o.optIntOrNull("trial_games_limit") ?: 0,
+                tier = tier,
+                gamesUsed = o.optIntOrNull("games_used"),
+                gamesQuota = o.optIntOrNull("games_quota"),
+                quotaUnlimited = o.has("games_quota") && o.isNull("games_quota"),
+                periodResetsAt = resetsAt(o),
+            )
+        }
+
+        /** period_resets_at as epoch milliseconds: an ISO-8601 time, or a number in seconds or milliseconds. */
+        private fun resetsAt(o: JSONObject): Long? {
+            if (!o.has("period_resets_at") || o.isNull("period_resets_at")) return null
+            val raw = o.opt("period_resets_at")
+            val number = (raw as? Number)?.toLong() ?: raw.toString().toLongOrNull()
+            if (number != null) return if (number < 100_000_000_000L) number * 1000L else number
+            return try {
+                Instant.parse(raw.toString()).toEpochMilli()
+            } catch (e: Exception) {
+                try {
+                    java.time.OffsetDateTime.parse(raw.toString()).toInstant().toEpochMilli()
+                } catch (e: Exception) {
+                    try {
+                        java.time.LocalDate.parse(raw.toString()).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+            }
         }
     }
 }

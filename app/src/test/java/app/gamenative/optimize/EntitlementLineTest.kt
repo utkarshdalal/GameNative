@@ -1,7 +1,11 @@
 package app.gamenative.optimize
 
+import app.gamenative.R
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class EntitlementLineTest {
@@ -11,8 +15,8 @@ class EntitlementLineTest {
 
     @Test
     fun membersNeverSeeTrialText() {
-        assertEquals(EntitlementLine.Member, line(Entitlement(Entitlement.MEMBER, 0, 3), exhausted = true, signedIn = false))
-        assertEquals(EntitlementLine.Member, line(Entitlement(Entitlement.NONE, 3, 3), exhausted = true, member = true))
+        assertEquals(EntitlementLine.Unlimited, line(Entitlement(Entitlement.MEMBER, 0, 3), exhausted = true, signedIn = false))
+        assertEquals(EntitlementLine.Unlimited, line(Entitlement(Entitlement.NONE, 3, 3), exhausted = true, member = true))
     }
 
     @Test
@@ -53,5 +57,96 @@ class EntitlementLineTest {
         assertEquals(OutcomeAck(true, null), OutcomeAck.parse(org.json.JSONObject("{\"ok\":true}")))
         assertEquals(OutcomeAck(false, null), OutcomeAck.parse(null))
         assertEquals(EntitlementLine.Trial(1, 3), line(ack.entitlement))
+    }
+
+    private fun parse(json: String) = Entitlement.fromJson(JSONObject(json))!!
+
+    @Test
+    fun newPlanFieldsParseLenientlyAndRoundTrip() {
+        val monthly = parse("{\"tier\":\"monthly\",\"games_used\":2,\"games_quota\":3,\"period_resets_at\":\"2026-12-01T00:00:00Z\"}")
+        assertEquals(Entitlement.Plan.MONTHLY, monthly.plan)
+        assertEquals(2, monthly.used)
+        assertEquals(3, monthly.quota)
+        assertEquals(1_796_083_200_000L, monthly.periodResetsAt)
+        assertEquals(monthly, Entitlement.fromJson(JSONObject(monthly.toJson().toString())))
+
+        val unlimited = parse("{\"state\":\"member\",\"tier\":\"pro\",\"games_used\":9,\"games_quota\":null}")
+        assertTrue(unlimited.quotaUnlimited)
+        assertEquals(Entitlement.Plan.UNLIMITED, unlimited.plan)
+        assertEquals(unlimited, Entitlement.fromJson(JSONObject(unlimited.toJson().toString())))
+
+        // Seconds, milliseconds and a bare date are all read; garbage is dropped, not fatal.
+        assertEquals(1_796_083_200_000L, parse("{\"tier\":\"monthly\",\"period_resets_at\":1796083200}").periodResetsAt)
+        assertEquals(1_796_083_200_000L, parse("{\"tier\":\"monthly\",\"period_resets_at\":1796083200000}").periodResetsAt)
+        assertEquals(1_796_083_200_000L, parse("{\"tier\":\"monthly\",\"period_resets_at\":\"2026-12-01\"}").periodResetsAt)
+        assertNull(parse("{\"tier\":\"monthly\",\"period_resets_at\":\"soon\"}").periodResetsAt)
+        assertEquals(3, parse("{\"tier\":\"monthly\",\"games_quota\":\"x\"}").quota)
+
+        // Today's answer, with no new fields, is the free trial it always was.
+        val old = parse("{\"state\":\"trial\",\"trial_games_used\":1,\"trial_games_limit\":3}")
+        assertEquals(Entitlement.Plan.FREE, old.plan)
+        assertEquals(1, old.used)
+        assertEquals(3, old.quota)
+        assertEquals(Entitlement.Plan.UNLIMITED, Entitlement(Entitlement.MEMBER, 0, 0).plan)
+        assertEquals(Entitlement.Plan.MONTHLY, Entitlement(Entitlement.MEMBER, 0, 0, gamesQuota = 3).plan)
+    }
+
+    @Test
+    fun linesFollowTheTier() {
+        val reset = 1_796_083_200_000L
+        assertEquals(EntitlementLine.Trial(1, 3), line(parse("{\"tier\":\"free\",\"games_used\":1,\"games_quota\":3}")))
+        assertEquals(EntitlementLine.Exhausted(3), line(parse("{\"tier\":\"free\",\"games_used\":3,\"games_quota\":3}")))
+        assertEquals(EntitlementLine.Monthly(1, 3, reset), line(parse("{\"tier\":\"monthly\",\"games_used\":1,\"games_quota\":3,\"period_resets_at\":$reset}")))
+        assertEquals(EntitlementLine.Monthly(3, 3, null), line(parse("{\"tier\":\"monthly\",\"games_used\":1,\"games_quota\":3}"), exhausted = true))
+        assertEquals(EntitlementLine.Unlimited, line(parse("{\"tier\":\"unlimited\",\"games_quota\":null}"), exhausted = true))
+        // The app's member flag only stands in when the server has not named a tier.
+        assertEquals(EntitlementLine.Monthly(2, 3, null), line(parse("{\"tier\":\"monthly\",\"games_used\":2,\"games_quota\":3}"), member = true))
+        assertEquals(EntitlementLine.Unlimited, line(null, member = true))
+    }
+
+    @Test
+    fun pillTextForEachPlan() {
+        assertEquals(PlanText(R.string.optimize_plan_unlimited), OptimizeStatus.entitlementPill(EntitlementLine.Unlimited))
+        assertEquals(PlanText(R.string.optimize_plan_signed_out), OptimizeStatus.entitlementPill(EntitlementLine.Offer(3)))
+        assertEquals(PlanText(R.plurals.optimize_trial_progress, 3, listOf(1, 3)), OptimizeStatus.entitlementPill(EntitlementLine.Trial(1, 3)))
+        assertEquals(PlanText(R.plurals.optimize_trial_progress, 3, listOf(3, 3)), OptimizeStatus.entitlementPill(EntitlementLine.Exhausted(3)))
+        assertEquals(
+            PlanText(R.plurals.optimize_plan_monthly_resets, 3, listOf(2, 3), 42L),
+            OptimizeStatus.entitlementPill(EntitlementLine.Monthly(2, 3, 42L)),
+        )
+        assertEquals(PlanText(R.plurals.optimize_plan_monthly, 3, listOf(2, 3)), OptimizeStatus.entitlementPill(EntitlementLine.Monthly(2, 3, null)))
+    }
+
+    @Test
+    fun upsellShowsOnlyWhenSignedOutOrTheQuotaIsUsed() {
+        assertTrue(OptimizeStatus.showsUpsell(EntitlementLine.Offer(3)))
+        assertTrue(OptimizeStatus.showsUpsell(EntitlementLine.Exhausted(3)))
+        assertTrue(OptimizeStatus.showsUpsell(EntitlementLine.Monthly(3, 3, null)))
+        assertFalse(OptimizeStatus.showsUpsell(EntitlementLine.Monthly(2, 3, null)))
+        assertFalse(OptimizeStatus.showsUpsell(EntitlementLine.Trial(2, 3)))
+        assertFalse(OptimizeStatus.showsUpsell(EntitlementLine.Unlimited))
+        assertFalse(OptimizeStatus.showsUpsell(null))
+
+        assertEquals(PlanText(R.plurals.optimize_trial_offer, 3, listOf(3)), OptimizeStatus.upsellSubtitle(EntitlementLine.Offer(3)))
+        assertEquals(PlanText(R.plurals.optimize_upsell_free_used, 3, listOf(3)), OptimizeStatus.upsellSubtitle(EntitlementLine.Exhausted(3)))
+        assertEquals(
+            PlanText(R.plurals.optimize_upsell_monthly_used_resets, 5, listOf(5), 42L),
+            OptimizeStatus.upsellSubtitle(EntitlementLine.Monthly(5, 5, 42L)),
+        )
+        assertNull(OptimizeStatus.upsellSubtitle(EntitlementLine.Monthly(1, 5, 42L)))
+        assertEquals(5, OptimizeStatus.upsellMonthlyGames(EntitlementLine.Monthly(5, 5, null)))
+        assertEquals(Entitlement.DEFAULT_MONTHLY_GAMES, OptimizeStatus.upsellMonthlyGames(EntitlementLine.Exhausted(3)))
+    }
+
+    @Test
+    fun statusPillsUseTheShortWords() {
+        assertEquals(R.string.optimize_pill_measuring, OptimizeStatus.pillRes(OptimizeStatus.Measuring))
+        assertEquals(R.string.optimize_pill_tuning, OptimizeStatus.pillRes(OptimizeStatus.Trying(null, null)))
+        assertEquals(R.string.optimize_pill_tuning, OptimizeStatus.pillRes(OptimizeStatus.TuningNext))
+        assertEquals(R.string.optimize_status_paused, OptimizeStatus.pillRes(OptimizeStatus.Paused))
+        assertEquals(R.string.optimize_pill_done, OptimizeStatus.pillRes(OptimizeStatus.Done))
+        assertEquals(R.string.optimize_pill_waiting, OptimizeStatus.pillRes(OptimizeStatus.Waiting))
+        assertEquals(R.string.optimize_pill_trial_used, OptimizeStatus.pillRes(OptimizeStatus.TrialUsed))
+        assertNull(OptimizeStatus.pillRes(OptimizeStatus.Off))
     }
 }

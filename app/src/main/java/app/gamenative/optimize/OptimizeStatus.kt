@@ -43,17 +43,74 @@ sealed class OptimizeStatus {
         }
 
         /**
-         * The one trial line a surface shows. Members never see trial text; [exhausted] is the game's
-         * own entitlement_required answer, which outranks a stale stored count.
+         * The one plan line a surface shows. Unlimited plans never see counts; [exhausted] is the game's own
+         * entitlement_required answer, which outranks a stale stored count. [member] is the app's own flag, used
+         * when the server has not said which plan the account is on.
          */
-        fun entitlementLine(entitlement: Entitlement?, exhausted: Boolean, signedIn: Boolean, member: Boolean): EntitlementLine? = when {
-            member || entitlement?.isMember == true -> EntitlementLine.Member
-            exhausted -> EntitlementLine.Exhausted(entitlement.limitOrDefault())
-            !signedIn -> EntitlementLine.Offer(entitlement.limitOrDefault())
-            entitlement == null -> null
-            entitlement.state == Entitlement.TRIAL && entitlement.trialGamesLeft > 0 ->
-                EntitlementLine.Trial(entitlement.trialGamesUsed, entitlement.limitOrDefault())
-            else -> EntitlementLine.Exhausted(entitlement.limitOrDefault())
+        fun entitlementLine(entitlement: Entitlement?, exhausted: Boolean, signedIn: Boolean, member: Boolean): EntitlementLine? {
+            val plan = entitlement?.plan
+            return when {
+                plan == Entitlement.Plan.UNLIMITED -> EntitlementLine.Unlimited
+                plan == Entitlement.Plan.MONTHLY -> {
+                    val quota = entitlement.quota
+                    EntitlementLine.Monthly(if (exhausted) quota else entitlement.used.coerceAtMost(quota), quota, entitlement.periodResetsAt)
+                }
+                member && entitlement?.tier == null -> EntitlementLine.Unlimited
+                exhausted -> EntitlementLine.Exhausted(entitlement.limitOrDefault())
+                !signedIn -> EntitlementLine.Offer(entitlement.limitOrDefault())
+                entitlement == null -> null
+                entitlement.state == Entitlement.NONE && entitlement.tier == null -> EntitlementLine.Exhausted(entitlement.quota)
+                entitlement.used < entitlement.quota -> EntitlementLine.Trial(entitlement.used, entitlement.quota)
+                else -> EntitlementLine.Exhausted(entitlement.quota)
+            }
+        }
+
+        /** What the plan pill says for [line]. */
+        fun entitlementPill(line: EntitlementLine): PlanText = when (line) {
+            EntitlementLine.Unlimited -> PlanText(R.string.optimize_plan_unlimited)
+            is EntitlementLine.Offer -> PlanText(R.string.optimize_plan_signed_out)
+            is EntitlementLine.Trial -> PlanText(R.plurals.optimize_trial_progress, line.limit, listOf(line.used, line.limit))
+            is EntitlementLine.Exhausted -> PlanText(R.plurals.optimize_trial_progress, line.limit, listOf(line.limit, line.limit))
+            is EntitlementLine.Monthly -> if (line.resetsAt != null) {
+                PlanText(R.plurals.optimize_plan_monthly_resets, line.limit, listOf(line.used, line.limit), line.resetsAt)
+            } else {
+                PlanText(R.plurals.optimize_plan_monthly, line.limit, listOf(line.used, line.limit))
+            }
+        }
+
+        /** The upsell shows when signed out or when the free or monthly games are all used; never for unlimited. */
+        fun showsUpsell(line: EntitlementLine?): Boolean = when (line) {
+            is EntitlementLine.Offer, is EntitlementLine.Exhausted -> true
+            is EntitlementLine.Monthly -> line.usedUp
+            else -> false
+        }
+
+        /** The upsell's subtitle: the quota that applies to [line]; null when the upsell does not show. */
+        fun upsellSubtitle(line: EntitlementLine?): PlanText? = when (line) {
+            is EntitlementLine.Offer -> PlanText(R.plurals.optimize_trial_offer, line.limit, listOf(line.limit))
+            is EntitlementLine.Exhausted -> PlanText(R.plurals.optimize_upsell_free_used, line.limit, listOf(line.limit))
+            is EntitlementLine.Monthly -> when {
+                !line.usedUp -> null
+                line.resetsAt != null -> PlanText(R.plurals.optimize_upsell_monthly_used_resets, line.limit, listOf(line.limit), line.resetsAt)
+                else -> PlanText(R.plurals.optimize_upsell_monthly_used, line.limit, listOf(line.limit))
+            }
+            else -> null
+        }
+
+        /** The monthly games the plan line offers: the account's own monthly quota when on one, otherwise the default. */
+        fun upsellMonthlyGames(line: EntitlementLine?): Int =
+            (line as? EntitlementLine.Monthly)?.limit ?: Entitlement.DEFAULT_MONTHLY_GAMES
+
+        /** The short status pill for [status], the words the cards use; null when there is nothing to show. */
+        @StringRes
+        fun pillRes(status: OptimizeStatus): Int? = when (status) {
+            Measuring -> R.string.optimize_pill_measuring
+            NotStarted, TuningNext, RetryNext, is Trying -> R.string.optimize_pill_tuning
+            Paused -> R.string.optimize_status_paused
+            Done, Exhausted -> R.string.optimize_pill_done
+            Waiting -> R.string.optimize_pill_waiting
+            TrialUsed -> R.string.optimize_pill_trial_used
+            Off, Never -> null
         }
 
         fun keptCount(state: OptimizeLocalState): Int = state.active?.kept?.count { it.applied } ?: 0
@@ -81,8 +138,22 @@ sealed class OptimizeStatus {
 }
 
 sealed class EntitlementLine {
-    data object Member : EntitlementLine()
+    data object Unlimited : EntitlementLine()
+
+    /** Signed out: free to try on [limit] games with an account. */
     data class Offer(val limit: Int) : EntitlementLine()
+
+    /** Free tier with games left. */
     data class Trial(val used: Int, val limit: Int) : EntitlementLine()
+
+    /** Free tier with every game used. */
     data class Exhausted(val limit: Int) : EntitlementLine()
+
+    /** Monthly plan: [used] of [limit] games this period, which starts over at [resetsAt] when known. */
+    data class Monthly(val used: Int, val limit: Int, val resetsAt: Long?) : EntitlementLine() {
+        val usedUp: Boolean get() = used >= limit
+    }
 }
+
+/** A string or plural resource with its arguments; [date], when set, is formatted and passed last. */
+data class PlanText(val res: Int, val quantity: Int? = null, val args: List<Int> = emptyList(), val date: Long? = null)

@@ -1822,6 +1822,40 @@
     <string name="optimize_benefit_undo">Desfaça quando quiser</string>
     <string name="optimize_badge_free_to_try">Grátis para testar</string>
     <string name="optimize_badge_suggested">Sugerido</string>
+    <string name="optimize_pill_measuring">Medindo</string>
+    <string name="optimize_pill_tuning">Ajustando</string>
+    <string name="optimize_pill_done">Concluído</string>
+    <string name="optimize_pill_waiting">Aguardando</string>
+    <string name="optimize_pill_trial_used">Teste usado</string>
+    <string name="optimize_plan_unlimited">Ilimitado</string>
+    <string name="optimize_plan_signed_out">Teste grátis com uma conta</string>
+    <string name="optimize_upsell_title">Todos os jogos rodando da melhor forma</string>
+    <string name="optimize_upsell_benefit_perf">Mais quadros por segundo e menos travadas</string>
+    <string name="optimize_upsell_benefit_device">Ajustado para o seu dispositivo, desfaça quando quiser</string>
+    <plurals name="optimize_plan_monthly">
+        <item quantity="one">%1$d de %2$d jogo este mês</item>
+        <item quantity="other">%1$d de %2$d jogos este mês</item>
+    </plurals>
+    <plurals name="optimize_plan_monthly_resets">
+        <item quantity="one">%1$d de %2$d jogo este mês, renova em %3$s</item>
+        <item quantity="other">%1$d de %2$d jogos este mês, renova em %3$s</item>
+    </plurals>
+    <plurals name="optimize_upsell_plan_line">
+        <item quantity="one">%1$d jogo por mês, ou ilimitado</item>
+        <item quantity="other">%1$d jogos por mês, ou ilimitado</item>
+    </plurals>
+    <plurals name="optimize_upsell_free_used">
+        <item quantity="one">Você usou seu %1$d jogo grátis</item>
+        <item quantity="other">Você usou seus %1$d jogos grátis</item>
+    </plurals>
+    <plurals name="optimize_upsell_monthly_used">
+        <item quantity="one">Você usou o %1$d jogo deste mês</item>
+        <item quantity="other">Você usou os %1$d jogos deste mês</item>
+    </plurals>
+    <plurals name="optimize_upsell_monthly_used_resets">
+        <item quantity="one">Você usou o %1$d jogo deste mês. Mais em %2$s</item>
+        <item quantity="other">Você usou os %1$d jogos deste mês. Mais em %2$s</item>
+    </plurals>
     <string name="optimize_choose_goal">O que importa mais?</string>
     <string name="optimize_restore_original_body">Volta as configurações deste jogo para como estavam antes de o Otimizar mudar qualquer coisa.</string>
     <string name="optimize_metric_fps">Taxa de quadros</string>

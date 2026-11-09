@@ -1822,6 +1822,40 @@
     <string name="optimize_benefit_undo">Fortryd når som helst</string>
     <string name="optimize_badge_free_to_try">Gratis at prøve</string>
     <string name="optimize_badge_suggested">Foreslået</string>
+    <string name="optimize_pill_measuring">Måler</string>
+    <string name="optimize_pill_tuning">Justerer</string>
+    <string name="optimize_pill_done">Færdig</string>
+    <string name="optimize_pill_waiting">Venter</string>
+    <string name="optimize_pill_trial_used">Prøveperiode brugt</string>
+    <string name="optimize_plan_unlimited">Ubegrænset</string>
+    <string name="optimize_plan_signed_out">Gratis at prøve med en konto</string>
+    <string name="optimize_upsell_title">Få alle dine spil til at køre bedst muligt</string>
+    <string name="optimize_upsell_benefit_perf">Højere billedhastighed og færre hak</string>
+    <string name="optimize_upsell_benefit_device">Tilpasset din enhed, kan fortrydes når som helst</string>
+    <plurals name="optimize_plan_monthly">
+        <item quantity="one">%1$d af %2$d spil denne måned</item>
+        <item quantity="other">%1$d af %2$d spil denne måned</item>
+    </plurals>
+    <plurals name="optimize_plan_monthly_resets">
+        <item quantity="one">%1$d af %2$d spil denne måned, nulstilles %3$s</item>
+        <item quantity="other">%1$d af %2$d spil denne måned, nulstilles %3$s</item>
+    </plurals>
+    <plurals name="optimize_upsell_plan_line">
+        <item quantity="one">%1$d spil om måneden eller ubegrænset</item>
+        <item quantity="other">%1$d spil om måneden eller ubegrænset</item>
+    </plurals>
+    <plurals name="optimize_upsell_free_used">
+        <item quantity="one">Du har brugt dit %1$d gratis spil</item>
+        <item quantity="other">Du har brugt dine %1$d gratis spil</item>
+    </plurals>
+    <plurals name="optimize_upsell_monthly_used">
+        <item quantity="one">Du har brugt månedens %1$d spil</item>
+        <item quantity="other">Du har brugt månedens %1$d spil</item>
+    </plurals>
+    <plurals name="optimize_upsell_monthly_used_resets">
+        <item quantity="one">Du har brugt månedens %1$d spil. Flere fra %2$s</item>
+        <item quantity="other">Du har brugt månedens %1$d spil. Flere fra %2$s</item>
+    </plurals>
     <string name="optimize_choose_goal">Hvad betyder mest?</string>
     <string name="optimize_restore_original_body">Sætter spillets indstillinger tilbage til, hvordan de var, før Optimer ændrede noget.</string>
     <string name="optimize_metric_fps">Billedhastighed</string>

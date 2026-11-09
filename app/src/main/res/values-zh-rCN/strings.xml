@@ -1914,6 +1914,34 @@
     <string name="optimize_benefit_undo">随时可以撤销</string>
     <string name="optimize_badge_free_to_try">免费试用</string>
     <string name="optimize_badge_suggested">推荐</string>
+    <string name="optimize_pill_measuring">测量中</string>
+    <string name="optimize_pill_tuning">调整中</string>
+    <string name="optimize_pill_done">已完成</string>
+    <string name="optimize_pill_waiting">等待中</string>
+    <string name="optimize_pill_trial_used">试用已用完</string>
+    <string name="optimize_plan_unlimited">无限制</string>
+    <string name="optimize_plan_signed_out">登录账号即可免费试用</string>
+    <string name="optimize_upsell_title">让每款游戏都以最佳状态运行</string>
+    <string name="optimize_upsell_benefit_perf">帧率更高，卡顿更少</string>
+    <string name="optimize_upsell_benefit_device">针对你的设备调整，随时可撤销</string>
+    <plurals name="optimize_plan_monthly">
+        <item quantity="other">本月已用 %1$d/%2$d 款游戏</item>
+    </plurals>
+    <plurals name="optimize_plan_monthly_resets">
+        <item quantity="other">本月已用 %1$d/%2$d 款游戏，%3$s 重置</item>
+    </plurals>
+    <plurals name="optimize_upsell_plan_line">
+        <item quantity="other">每月 %1$d 款游戏，或无限制</item>
+    </plurals>
+    <plurals name="optimize_upsell_free_used">
+        <item quantity="other">你已用完 %1$d 款免费游戏</item>
+    </plurals>
+    <plurals name="optimize_upsell_monthly_used">
+        <item quantity="other">你已用完本月的 %1$d 款游戏</item>
+    </plurals>
+    <plurals name="optimize_upsell_monthly_used_resets">
+        <item quantity="other">你已用完本月的 %1$d 款游戏，%2$s 起可继续</item>
+    </plurals>
     <string name="optimize_choose_goal">你最看重什么？</string>
     <string name="optimize_restore_original_body">将此游戏的设置恢复到优化做出任何更改之前的状态。</string>
     <string name="optimize_metric_fps">帧率</string>
