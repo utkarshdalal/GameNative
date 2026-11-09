@@ -14,6 +14,7 @@ import com.winlator.contents.ContentProfile
 import com.winlator.core.DefaultVersion
 import com.winlator.core.GPUInformation
 import com.winlator.core.KeyValueSet
+import com.winlator.core.envvars.EnvVars
 import com.winlator.fexcore.FEXCorePresetManager
 import com.winlator.winhandler.WinHandler
 import java.util.Locale
@@ -854,6 +855,10 @@ object BestConfigService {
         keepRedistOff = keepRedistOff,
     ).config
 
+    /**
+     * [parseConfigToContainerData] plus the components the config needs that aren't available.
+     * Env vars lose backend frame-rate caps and, unless preserveConfigValues, the Samsung-only UBWC flag hint on other devices.
+     */
     suspend fun parseConfigResult(
         context: Context,
         configJson: JsonObject,
@@ -1046,6 +1051,15 @@ object BestConfigService {
                     // Strip DXVK/VKD3D frame rate caps from backend config - client-side limiter handles this
                     envVars = envVars.replace(Regex("""\s*DXVK_FRAME_RATE=\d+"""), "")
                     envVars = envVars.replace(Regex("""\s*VKD3D_FRAME_RATE=\d+"""), "")
+                    // The UBWC flag hint is a Samsung-only flicker fix (ContainerUtils re-adds it there); configs shared by
+                    // GPU carry it to other Adreno 740 devices, where it flashes tile garbage (Octopath Traveler 0, Odin 2).
+                    if (!preserveConfigValues && !Build.MANUFACTURER.equals("samsung", ignoreCase = true)) {
+                        val parsed = EnvVars(envVars)
+                        if (parsed.get("FD_DEV_FEATURES") == "enable_tp_ubwc_flag_hint=1") {
+                            parsed.remove("FD_DEV_FEATURES")
+                            envVars = parsed.toString()
+                        }
+                    }
                     resultMap["envVars"] = envVars.trim()
                 }
                 if (filteredJson.has("cpuList") && !filteredJson.isNull("cpuList")) {
