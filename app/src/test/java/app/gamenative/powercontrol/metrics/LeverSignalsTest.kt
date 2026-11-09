@@ -126,6 +126,49 @@ class LeverSignalsTest {
     }
 
     @Test
+    fun `the running scan reads only what was appended and waits for a half-written entry`() {
+        val vsFs = 0x1 or 0x10
+        val tess = 0x1 or 0x2 or 0x4 or 0x10
+        val file = java.io.File.createTempFile("game", ".dxvk-cache").apply { deleteOnExit() }
+        val start = cache(16, listOf(vsFs to 100))
+        file.writeBytes(start)
+        val scanner = DxvkStateCache.Incremental(file, start.size.toLong())
+        scanner.advance { false }
+        assertEquals(0, scanner.latest!!.entries)
+        assertEquals(false, scanner.latest!!.tessellation)
+        assertTrue(scanner.caughtUp)
+
+        val grown = cache(16, listOf(vsFs to 100, vsFs to 60, tess to 80))
+        // The last entry is still being written: only the complete one counts for now.
+        file.writeBytes(grown.copyOf(grown.size - 30))
+        scanner.advance { false }
+        assertEquals(1, scanner.latest!!.entries)
+        assertEquals(false, scanner.latest!!.tessellation)
+
+        file.writeBytes(grown)
+        scanner.advance { false }
+        assertEquals(2, scanner.latest!!.entries)
+        assertEquals((4 + 20 + 60L) + (4 + 20 + 80L), scanner.latest!!.bytes)
+        assertEquals(true, scanner.latest!!.tessellation)
+
+        // Out of time before the end: no claim about tessellation, and the next pass carries on.
+        val many = cache(16, List(100) { vsFs to 40 })
+        file.writeBytes(many)
+        val slow = DxvkStateCache.Incremental(file, 0)
+        slow.advance { true }
+        assertFalse(slow.caughtUp)
+        assertNull(slow.latest!!.tessellation)
+        slow.advance { false }
+        assertEquals(100, slow.latest!!.entries)
+        assertEquals(false, slow.latest!!.tessellation)
+
+        file.writeBytes(cache(7, emptyList()))
+        val old = DxvkStateCache.Incremental(file, 0)
+        old.advance { false }
+        assertNull(old.latest)
+    }
+
+    @Test
     fun `state cache scan that runs out of time does not claim no tessellation`() {
         val bytes = cache(16, List(600) { 0x11 to 40 })
         assertNull(DxvkStateCache.scan(ByteArrayInputStream(bytes), 0) { true }!!.tessellation)

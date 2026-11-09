@@ -11,6 +11,8 @@ import app.gamenative.utils.SessionSampleBuffer
 import app.gamenative.utils.SessionSeries
 import app.gamenative.utils.SessionVerdict
 import java.io.File
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -29,7 +31,7 @@ object SessionPerfSampler {
     private const val WINDOW_SEC = 300
     private const val CACHE_LIST_EVERY_MS = 30_000L
     private const val CACHE_LIST_FOR_MS = 600_000L
-    private const val CACHE_SCAN_BUDGET_MS = 200L
+    private const val CACHE_SCAN_BUDGET_MS = 50L
 
     private val lock = Any()
     private val clkTck = runCatching { Os.sysconf(OsConstants._SC_CLK_TCK) }.getOrDefault(100L).coerceAtLeast(1L)
@@ -68,6 +70,7 @@ object SessionPerfSampler {
     private var cacheFile: File? = null
     private var cacheHeader: DxvkStateCache.Header? = null
     private var cacheBaseBytes = 0L
+    private var cacheScanner: DxvkStateCache.Incremental? = null
     private var cacheHighBytes = 0L
     private var cacheListedMs = 0L
     private val cacheGrowth = WindowCounter()
@@ -113,6 +116,7 @@ object SessionPerfSampler {
             cacheFile = null
             cacheHeader = null
             cacheBaseBytes = 0L
+            cacheScanner = null
             cacheHighBytes = 0L
             cacheListedMs = 0L
             cacheGrowth.clear()
@@ -296,13 +300,38 @@ object SessionPerfSampler {
             cacheBaseBytes = file.length().coerceAtLeast(DxvkStateCache.HEADER_BYTES.toLong())
             cacheHighBytes = cacheBaseBytes
             cacheGrowth.touch(window)
+            if (cacheHeader?.variable == true) cacheScanner = DxvkStateCache.Incremental(file, cacheBaseBytes).also { scanCache(it) }
             return
         }
         val size = file.length()
         cacheGrowth.touch(window)
-        if (size > cacheHighBytes) {
+        val grew = size > cacheHighBytes
+        if (grew) {
             cacheGrowth.add(window, size - cacheHighBytes)
             cacheHighBytes = size
+        }
+        cacheScanner?.let { if (grew || !it.caughtUp) scanCache(it) }
+    }
+
+    private val cacheScanQueued = AtomicBoolean(false)
+    private val cacheScanExecutor by lazy {
+        Executors.newSingleThreadExecutor { Thread(it, "dxvk-cache-scan").apply { isDaemon = true } }
+    }
+
+    /** One pass of [scanner] off the sampler's thread and lock, unless one is still running. */
+    private fun scanCache(scanner: DxvkStateCache.Incremental) {
+        if (!cacheScanQueued.compareAndSet(false, true)) return
+        try {
+            cacheScanExecutor.execute {
+                try {
+                    val deadline = SystemClock.elapsedRealtime() + CACHE_SCAN_BUDGET_MS
+                    scanner.advance { SystemClock.elapsedRealtime() > deadline }
+                } finally {
+                    cacheScanQueued.set(false)
+                }
+            }
+        } catch (e: Exception) {
+            cacheScanQueued.set(false)
         }
     }
 
@@ -318,20 +347,13 @@ object SessionPerfSampler {
     }
 
     /**
-     * pipeline_compiles_by_5min and tessellation_pipelines, from one read of the state cache at exit (at most
-     * [CACHE_SCAN_BUDGET_MS]); null when the session was not on DXVK or no cache file was found.
+     * pipeline_compiles_by_5min and tessellation_pipelines from what the background scan read of the state cache
+     * while the game ran, without touching the file; null when the session was not on DXVK or no cache was found.
      */
     private fun stateCacheResult(): Pair<List<Int>, Boolean?>? {
-        val file = cacheFile ?: return null
-        val header = cacheHeader ?: DxvkStateCache.readHeader(file)
-        val scan = if (header?.variable == true) {
-            val deadline = SystemClock.elapsedRealtime() + CACHE_SCAN_BUDGET_MS
-            runCatching {
-                file.inputStream().use { DxvkStateCache.scan(it, cacheBaseBytes) { SystemClock.elapsedRealtime() > deadline } }
-            }.getOrNull()
-        } else {
-            null
-        }
+        if (cacheFile == null) return null
+        val header = cacheHeader
+        val scan = cacheScanner?.latest
         return DxvkStateCache.compilesByWindow(cacheGrowth.toList(), DxvkStateCache.entryBytes(header, scan)) to scan?.tessellation
     }
 

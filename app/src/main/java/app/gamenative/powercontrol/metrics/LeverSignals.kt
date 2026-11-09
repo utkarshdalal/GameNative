@@ -2,6 +2,7 @@ package app.gamenative.powercontrol.metrics
 
 import app.gamenative.powercontrol.PowerManager
 import java.io.File
+import java.io.FileInputStream
 import java.io.InputStream
 import kotlin.math.roundToInt
 
@@ -247,6 +248,88 @@ internal object DxvkStateCache {
             offset += ENTRY_HEADER_BYTES + body
         }
         return Scan(entries, bytes, if (tessellation) true else if (complete) false else null)
+    }
+
+    /**
+     * Reads a version 8+ cache [file] a piece at a time while the game runs, from where the last [advance] stopped,
+     * so the exit never reads the file. An entry still being written is read on a later pass. [latest] is the scan
+     * so far; its tessellation is false only once every entry to the end of the file has been read.
+     */
+    class Incremental(private val file: File, private val fromOffset: Long) {
+        private var offset = HEADER_BYTES.toLong()
+        private var headerChecked = false
+        private var stopped = false
+        private var entries = 0
+        private var bytes = 0L
+        private var tessellation = false
+
+        @Volatile
+        var latest: Scan? = null
+            private set
+
+        /** True once the last pass read to the end of the file as it was then. */
+        @Volatile
+        var caughtUp = false
+            private set
+
+        /** One pass from where the last one stopped; [expired] is checked every [CHECK_EVERY] entries. Call from one thread. */
+        fun advance(expired: () -> Boolean) {
+            if (stopped) return
+            val length = file.length()
+            var atEnd = false
+            try {
+                FileInputStream(file).use { raw ->
+                    val stream = raw.buffered(64 * 1024)
+                    if (!headerChecked) {
+                        val head = ByteArray(HEADER_BYTES)
+                        if (!readFully(stream, head)) return
+                        if (parseHeader(head)?.variable != true) {
+                            stopped = true
+                            return
+                        }
+                        headerChecked = true
+                    } else if (!skipFully(stream, offset)) {
+                        return
+                    }
+                    val entryHead = ByteArray(ENTRY_HEADER_BYTES)
+                    var count = 0
+                    while (true) {
+                        if (++count % CHECK_EVERY == 0 && expired()) break
+                        if (offset + ENTRY_HEADER_BYTES > length || !readFully(stream, entryHead)) {
+                            atEnd = true
+                            break
+                        }
+                        val word = le32(entryHead, 0)
+                        val stages = (word and 0xFF).toInt()
+                        val size = (word ushr 8).toInt()
+                        if (size <= 0 || size > MAX_ENTRY_BYTES) {
+                            stopped = true
+                            atEnd = true
+                            break
+                        }
+                        val body = HASH_BYTES.toLong() + size
+                        if (offset + ENTRY_HEADER_BYTES + body > length || !skipFully(stream, body)) {
+                            atEnd = true
+                            break
+                        }
+                        if ((stages and TESSELLATION_STAGES) != 0) tessellation = true
+                        if (offset >= fromOffset) {
+                            entries++
+                            bytes += ENTRY_HEADER_BYTES + body
+                        }
+                        offset += ENTRY_HEADER_BYTES + body
+                    }
+                }
+            } catch (e: Exception) {
+                atEnd = false
+            }
+            caughtUp = atEnd
+            latest = Scan(entries, bytes, if (tessellation) true else if (atEnd) false else null)
+        }
+
+        companion object {
+            const val CHECK_EVERY = 16
+        }
     }
 
     /** Bytes per new entry: the exit scan's own, else the header's fixed size, else [DEFAULT_ENTRY_BYTES]. */
