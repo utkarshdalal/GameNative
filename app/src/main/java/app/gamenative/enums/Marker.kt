@@ -11,6 +11,7 @@ enum class Marker(val fileName: String ) {
     GOG_SUPPORT_INSTALLED(".gog_support_installed"),
     GOG_BONUS_INSTALLER_RUN(".gog_bonus_installer_run"),
     STEAM_INSTALL_SCRIPT_INSTALLED(".steam_install_script_installed"),
+    KNOWN_INSTALL_SCRIPT_RUN(".known_install_script_run"),
     STEAM_CEG_WRAPPED(".steam_ceg_wrapped"),
     PHYSX_INSTALLED(".physx_installed"),
     OPENAL_INSTALLED(".openal_installed"),

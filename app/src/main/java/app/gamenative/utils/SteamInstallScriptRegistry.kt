@@ -56,6 +56,8 @@ object SteamInstallScriptRegistry {
         val file: File?,
         val hasRunKey: String?,
         val requirementOs: Map<String, String>,
+        /** The step's own `command N` values, in order, token-expanded. */
+        val commands: List<String> = emptyList(),
     ) {
         val requires64BitWindows: Boolean?
             get() = requirementOs.entries.firstOrNull { it.key.equals("Is64BitWindows", ignoreCase = true) }?.value?.let { it == "1" }
@@ -246,6 +248,9 @@ object SteamInstallScriptRegistry {
             val requirementOs = step["Requirement_OS"].children
                 .filter { it.name != null && it.value != null }
                 .associate { it.name!! to it.value!!.trim() }
+            // A step's arguments are its own `command N` values, in index order.
+            val commands = indexedValues(step, COMMAND_KEY_PATTERN).toSortedMap()
+                .values.filter { it.isNotEmpty() }.map { expandTokens(it, tokens) }
             val processes = step.children
                 .mapNotNull { child ->
                     val index = PROCESS_KEY_PATTERN.find(child.name?.trim().orEmpty())?.groupValues?.get(1)?.toIntOrNull()
@@ -263,6 +268,7 @@ object SteamInstallScriptRegistry {
                     file = hostFileFor(gameDir, path),
                     hasRunKey = step.stringValue("HasRunKey"),
                     requirementOs = requirementOs,
+                    commands = commands,
                 )
             }
         }
