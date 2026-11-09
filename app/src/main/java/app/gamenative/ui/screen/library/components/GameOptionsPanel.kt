@@ -66,6 +66,7 @@ import androidx.compose.material.icons.filled.StarOutline
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material.icons.filled.VerifiedUser
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -89,6 +90,7 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.enums.AppOptionMenuType
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.adaptivePanelWidth
 
 @Composable
@@ -259,6 +261,7 @@ private fun OptionItem(
     )
 
     val icon = getIconForOption(option.optionType)
+    val isPremium = option.optionType == AppOptionMenuType.Optimize || option.optionType == AppOptionMenuType.AiDebugRun
     val isDestructive = option.optionType == AppOptionMenuType.Uninstall ||
         option.optionType == AppOptionMenuType.ResetToDefaults ||
         option.optionType == AppOptionMenuType.ResetDrm
@@ -312,7 +315,10 @@ private fun OptionItem(
                 isFocused -> MaterialTheme.colorScheme.primary
                 else -> MaterialTheme.colorScheme.onSurfaceVariant
             },
-            modifier = Modifier.size(24.dp),
+            // With a second line under the title, the icon sits on the title line.
+            modifier = Modifier
+                .size(24.dp)
+                .then(if (option.content != null) Modifier.align(Alignment.Top) else Modifier),
         )
 
         Column(modifier = Modifier.weight(1f)) {
@@ -327,6 +333,22 @@ private fun OptionItem(
                 },
             )
             option.content?.invoke()
+        }
+
+        if (isPremium) {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .then(if (option.content != null) Modifier.align(Alignment.Top) else Modifier),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.WorkspacePremium,
+                    contentDescription = null,
+                    tint = PluviaTheme.colors.accentPurple,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
         }
     }
 }
@@ -387,6 +409,7 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
     options.forEach { option ->
         when (option.optionType) {
             // Quick Actions
+            AppOptionMenuType.Optimize,
             AppOptionMenuType.EditContainer,
             AppOptionMenuType.RunContainer,
             AppOptionMenuType.AiDebugRun,
@@ -411,7 +434,6 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
             AppOptionMenuType.ResetToDefaults,
             AppOptionMenuType.ResetDrm,
             AppOptionMenuType.UseKnownConfig,
-            AppOptionMenuType.Optimize,
             AppOptionMenuType.BrowseCommunityConfigs,
             AppOptionMenuType.ImportConfig,
             AppOptionMenuType.ExportConfig,
@@ -442,6 +464,14 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
             AppOptionMenuType.ManageMods,
             -> helpInfo.add(option)
         }
+    }
+
+    // Optimize leads the list, directly above Get AI help when that is offered.
+    quickActions.firstOrNull { it.optionType == AppOptionMenuType.Optimize }?.let { optimize ->
+        quickActions.remove(optimize)
+        val aiHelp = quickActions.indexOfFirst { it.optionType == AppOptionMenuType.AiDebugRun }
+        if (aiHelp > 0) quickActions.removeAt(aiHelp).let { quickActions.add(0, it) }
+        quickActions.add(0, optimize)
     }
 
     return linkedMapOf(

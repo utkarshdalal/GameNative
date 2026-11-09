@@ -314,7 +314,7 @@ fun GradientBorderSurface(
     }
 }
 
-/** One measured result: [label], the [before] value, the [after] value in [accent] and an optional [delta] pill. */
+/** One measured result: [label], the [before] value, the [after] value in [accent] and an optional [delta] in [deltaColor]. */
 @Composable
 fun MetricDeltaTile(
     label: String,
@@ -351,7 +351,12 @@ fun MetricDeltaTile(
             color = accent,
         )
         if (delta != null) {
-            OutcomePill(text = delta, color = deltaColor, dot = false, modifier = Modifier.padding(top = 4.dp))
+            Text(
+                text = delta,
+                style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 0.3.sp),
+                color = deltaColor,
+                modifier = Modifier.padding(top = 2.dp),
+            )
         }
     }
 }

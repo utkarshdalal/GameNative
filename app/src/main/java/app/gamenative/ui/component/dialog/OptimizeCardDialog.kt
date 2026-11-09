@@ -4,8 +4,6 @@ import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -64,7 +62,6 @@ import app.gamenative.ui.component.BenefitRow
 import app.gamenative.ui.component.GradientBorderSurface
 import app.gamenative.ui.component.HeroBadge
 import app.gamenative.ui.component.MetricDeltaTile
-import app.gamenative.ui.component.OutcomePill
 import app.gamenative.ui.component.PremiumDialogButton
 import app.gamenative.ui.component.PremiumTextButton
 import app.gamenative.ui.screen.support.requestFocusAfterLayout
@@ -431,8 +428,7 @@ private fun OptimizeChooser(
     }
 }
 
-/** The card on the premium surface: hero, pills, results and benefits, then the actions; side by side in landscape. */
-@OptIn(ExperimentalLayoutApi::class)
+/** The card on the premium surface: hero, status and plan lines, results and benefits, then the actions; side by side in landscape. */
 @Composable
 private fun OptimizeCardLayout(
     spec: CardSpec,
@@ -463,16 +459,8 @@ private fun OptimizeCardLayout(
                 modifier = Modifier.padding(top = 4.dp),
             )
         }
-        if (spec.statusPill != null || spec.showEntitlement) {
-            FlowRow(
-                modifier = Modifier.padding(top = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                spec.statusPill?.let { (text, color) -> OutcomePill(text = text, color = color) }
-                if (spec.showEntitlement) OptimizeEntitlementPill(entitlement)
-            }
-        }
+        spec.statusPill?.let { (text, color) -> OptimizeLabel(text = text, color = color, modifier = Modifier.padding(top = 6.dp)) }
+        if (spec.showEntitlement) OptimizePlanLine(entitlement, modifier = Modifier.padding(top = 4.dp))
         if (spec.tiles.isNotEmpty()) {
             Row(
                 modifier = Modifier

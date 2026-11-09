@@ -38,7 +38,9 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.billing.Membership
@@ -54,7 +56,6 @@ import app.gamenative.ui.component.BenefitRow
 import app.gamenative.ui.component.GradientBorderSurface
 import app.gamenative.ui.component.HeroBadge
 import app.gamenative.ui.component.IconTile
-import app.gamenative.ui.component.OutcomePill
 import app.gamenative.ui.component.PremiumDialogButton
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.theme.PluviaTheme
@@ -154,7 +155,7 @@ private fun OptimizeGoalCard(
             .clip(shape)
             .background(if (selected) accent.color.copy(alpha = 0.12f) else PluviaTheme.colors.surfacePanel.copy(alpha = if (muted) 0.4f else 1f))
             .border(1.dp, if (selected) accent.color else PluviaTheme.colors.borderDefault.copy(alpha = 0.3f), shape)
-            .focusRing(interaction, shape, width = 2.dp)
+            .focusRing(interaction, shape, width = 3.dp)
             .selectable(
                 selected = selected,
                 interactionSource = interaction,
@@ -179,7 +180,7 @@ private fun OptimizeGoalCard(
                     color = if (muted) PluviaTheme.colors.textMuted else MaterialTheme.colorScheme.onSurface,
                 )
                 if (suggested) {
-                    OutcomePill(text = stringResource(R.string.optimize_badge_suggested), color = accent.color, dot = false)
+                    OptimizeTag(text = stringResource(R.string.optimize_badge_suggested), color = accent.color)
                 }
             }
             Text(
@@ -224,26 +225,44 @@ fun optimizeEntitlementLine(entitlement: Entitlement?, exhausted: Boolean = fals
     return OptimizeStatus.entitlementLine(known, exhausted, PrefManager.gameNativeSignedIn.value, Membership.isMember())
 }
 
+/** A short status or plan line: plain label text in [color], no background. */
 @Composable
-fun optimizeEntitlementColor(line: EntitlementLine): Color = when (line) {
-    EntitlementLine.Unlimited -> PluviaTheme.colors.accentSuccess
-    is EntitlementLine.Offer, is EntitlementLine.Trial -> PluviaTheme.colors.accentCyan
-    is EntitlementLine.Exhausted -> PluviaTheme.colors.textMuted
-    is EntitlementLine.Monthly -> if (line.usedUp) PluviaTheme.colors.textMuted else PluviaTheme.colors.accentCyan
+fun OptimizeLabel(text: String, color: Color, modifier: Modifier = Modifier, textAlign: TextAlign? = null) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 0.3.sp),
+        color = color,
+        textAlign = textAlign,
+        modifier = modifier,
+    )
 }
 
-/** The plan line as a pill: free games used, games this month, unlimited, or free to try with an account. */
+/** A thin outlined tag in [color], used to mark the suggested goal. */
 @Composable
-fun OptimizeEntitlementPill(entitlement: Entitlement?, exhausted: Boolean = false, modifier: Modifier = Modifier) {
+fun OptimizeTag(text: String, color: Color, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(4.dp)
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = color,
+        modifier = modifier
+            .border(1.dp, color, shape)
+            .padding(horizontal = 6.dp, vertical = 1.dp),
+    )
+}
+
+/** The plan line in muted text: free games used, games this month, unlimited, or free to try with an account. */
+@Composable
+fun OptimizePlanLine(entitlement: Entitlement?, exhausted: Boolean = false, modifier: Modifier = Modifier) {
     val line = optimizeEntitlementLine(entitlement, exhausted) ?: return
-    OutcomePill(text = planText(OptimizeStatus.entitlementPill(line)), color = optimizeEntitlementColor(line), modifier = modifier)
+    OptimizeLabel(text = planText(OptimizeStatus.entitlementPill(line)), color = PluviaTheme.colors.textMuted, modifier = modifier)
 }
 
-/** The short status pill the cards and the game options row show; nothing while Optimize is off. */
+/** The short status line the cards and the game options row show, in the state's colour; nothing while Optimize is off. */
 @Composable
-fun OptimizeStatusPill(status: OptimizeStatus?, modifier: Modifier = Modifier) {
+fun OptimizeStatusLine(status: OptimizeStatus?, modifier: Modifier = Modifier) {
     val res = status?.let { OptimizeStatus.pillRes(it) } ?: return
-    OutcomePill(text = stringResource(res), color = optimizeStatusColor(status), modifier = modifier)
+    OptimizeLabel(text = stringResource(res), color = optimizeStatusColor(status), modifier = modifier)
 }
 
 /**

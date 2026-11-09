@@ -38,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -63,7 +64,6 @@ import app.gamenative.optimize.limitOrDefault
 import app.gamenative.ui.component.BenefitRow
 import app.gamenative.ui.component.GradientBorderSurface
 import app.gamenative.ui.component.HeroBadge
-import app.gamenative.ui.component.OutcomePill
 import app.gamenative.ui.component.PremiumDialogButton
 import app.gamenative.ui.component.PremiumTextButton
 import app.gamenative.ui.component.focusRing
@@ -99,9 +99,10 @@ fun rememberOptimizeGate(): OptimizeGate {
         hero = {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 HeroBadge(icon = Icons.Filled.Speed, accent = PluviaTheme.colors.accentCyan)
-                OutcomePill(
+                OptimizeLabel(
                     text = pluralStringResource(R.plurals.optimize_trial_offer, trialLimit, trialLimit),
-                    color = PluviaTheme.colors.accentCyan,
+                    color = PluviaTheme.colors.textMuted,
+                    modifier = Modifier.weight(1f),
                 )
             }
         },
@@ -243,7 +244,7 @@ fun optimizeEntitlementText(entitlement: Entitlement?, exhausted: Boolean = fals
         is EntitlementLine.Trial -> planText(OptimizeStatus.entitlementPill(line))
     }
 
-/** The pill color for a status: in progress cyan, paused warning, done success, the rest muted. */
+/** The colour for a status: in progress cyan, paused warning, done success, the rest muted. */
 @Composable
 fun optimizeStatusColor(status: OptimizeStatus): Color = when (status) {
     OptimizeStatus.Paused -> PluviaTheme.colors.accentWarning
@@ -253,7 +254,7 @@ fun optimizeStatusColor(status: OptimizeStatus): Color = when (status) {
     else -> PluviaTheme.colors.accentCyan
 }
 
-/** The Optimize row of the game options panel: the same status pill as the dialog, Continue when it is offered; the row opens the dialog. */
+/** The Optimize row of the game options panel: the same status line as the dialog, Continue when it is offered; the row opens the dialog. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun OptimizeOptionsRow(appId: String) {
@@ -267,7 +268,7 @@ fun OptimizeOptionsRow(appId: String) {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            OptimizeStatusPill(status, modifier = Modifier.align(Alignment.CenterVertically))
+            OptimizeStatusLine(status, modifier = Modifier.align(Alignment.CenterVertically))
             if (OptimizeLadders.canContinue(status)) {
                 val interaction = remember { MutableInteractionSource() }
                 val shape = RoundedCornerShape(50)
@@ -331,7 +332,7 @@ fun OptimizeDialog(
         status == OptimizeStatus.Done && profile != OptimizeProfile.POWER && suggestion?.hot == true -> OptimizeProfile.POWER
         else -> null
     }
-    val canRestore = activeLadder != null && (activeLadder.kept.isNotEmpty() || activeLadder.pending != null) && !actions.busy
+    val showRestore = state?.activeProfile != null || (activeLadder != null && (activeLadder.kept.isNotEmpty() || activeLadder.pending != null))
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val firstFocus = remember { FocusRequester() }
 
@@ -353,10 +354,10 @@ fun OptimizeDialog(
                         color = PluviaTheme.colors.textMuted,
                     )
                 }
+                OptimizeStatusLine(status)
+                OptimizePlanLine(state?.entitlement, exhausted = exhausted)
             }
-            OptimizeStatusPill(status)
         }
-        OptimizeEntitlementPill(state?.entitlement, exhausted = exhausted, modifier = Modifier.padding(top = 12.dp))
     }
 
     val goals: @Composable ColumnScope.() -> Unit = {
@@ -372,6 +373,7 @@ fun OptimizeDialog(
             enabled = state != null && !actions.busy,
             onSelect = { actions.tap(profile, it, status) },
             includeOff = true,
+            modifier = Modifier.focusRestorer(firstFocus),
             firstModifier = Modifier.focusRequester(firstFocus),
         )
     }
@@ -405,41 +407,50 @@ fun OptimizeDialog(
             Spacer(modifier = Modifier.height(8.dp))
         }
         actions.confirmation?.let {
-            OutcomePill(
+            OptimizeLabel(
                 text = stringResource(it),
                 color = PluviaTheme.colors.accentSuccess,
+                textAlign = TextAlign.Center,
                 modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
+                    .fillMaxWidth()
                     .padding(bottom = 8.dp),
             )
         }
-        PremiumTextButton(
-            text = stringResource(R.string.optimize_restore_original),
-            onClick = { actions.restore() },
-            enabled = canRestore,
-            color = PluviaTheme.colors.accentDanger,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Text(
-            text = stringResource(R.string.optimize_restore_original_body),
-            style = MaterialTheme.typography.bodySmall,
-            color = PluviaTheme.colors.textMuted,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Spacer(modifier = Modifier.height(4.dp))
+        if (showRestore) {
+            PremiumTextButton(
+                text = stringResource(R.string.optimize_restore_original),
+                onClick = { actions.restore() },
+                enabled = !actions.busy,
+                color = PluviaTheme.colors.accentDanger,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text(
+                text = stringResource(R.string.optimize_restore_original_body),
+                style = MaterialTheme.typography.bodySmall,
+                color = PluviaTheme.colors.textMuted,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+        }
         PremiumTextButton(text = stringResource(R.string.close), onClick = onDismiss, modifier = Modifier.fillMaxWidth())
     }
 
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = !landscape),
+        properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         LaunchedEffect(Unit) { firstFocus.requestFocusAfterLayout() }
 
         GradientBorderSurface(
             modifier = Modifier
-                .then(if (landscape) Modifier.widthIn(max = 760.dp).padding(16.dp) else Modifier.fillMaxWidth())
+                .then(
+                    if (landscape) {
+                        Modifier.widthIn(max = 760.dp).padding(16.dp)
+                    } else {
+                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 32.dp)
+                    },
+                )
                 .wrapContentHeight(),
             accent = PluviaTheme.colors.accentCyan,
         ) {
@@ -482,6 +493,7 @@ fun OptimizeDialog(
                         goals()
                         Spacer(modifier = Modifier.height(16.dp))
                         details()
+                        Spacer(modifier = Modifier.height(4.dp))
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     footer()

@@ -541,13 +541,14 @@ object OptimizeController {
         baseline: Metrics?,
         refreshHz: Double?,
         fpsCap: Int,
+        withCard: Boolean = true,
     ): OptimizeLocalState? {
         val ladder = state.ladder(profile)
         if (!OptimizeTarget.metAtBaseline(profile, ladder, baseline, refreshHz, fpsCap, state.cardAction)) return null
         Timber.tag(TAG).i("Optimize: ${profile.wireId} target already met at the baseline (${baseline?.steadyFps} fps); not asking")
-        val done = state.withLadder(profile, ladder.copy(state = LadderState.DONE))
-            .copy(card = OptimizeCard(OptimizeCard.DONE, System.currentTimeMillis(), gameName(appId), profile, metrics = baseline))
-        event(appId, OptimizeEvents.DONE, done, profile, baseline?.cls, OptimizeCard.DONE)
+        var done = state.withLadder(profile, ladder.copy(state = LadderState.DONE))
+        if (withCard) done = done.copy(card = OptimizeCard(OptimizeCard.DONE, System.currentTimeMillis(), gameName(appId), profile, metrics = baseline))
+        event(appId, OptimizeEvents.DONE, done, profile, baseline?.cls, OptimizeCard.DONE.takeIf { withCard })
         return done
     }
 
@@ -1631,6 +1632,7 @@ object OptimizeController {
         state: OptimizeLocalState,
         target: OptimizeProfile?,
         cardSession: Metrics? = null,
+        doneCard: Boolean = true,
     ): Pair<OptimizeLocalState, Boolean> {
         val (reconciled, ok) = reconcile(context, appId, container, store, state, target)
         if (!ok) return reconciled to false
@@ -1644,7 +1646,7 @@ object OptimizeController {
             s = s.withLadder(target, OptimizeLadders.accepted(OptimizeLadders.picked(ladder), cardSession))
             s = OptimizeLadders.held(s, target, System.currentTimeMillis(), appRulesVersion())
             val baseline = s.ladder(target).baselineOverride ?: baselineRun(container)
-            s = doneAtBaseline(appId, s, target, baseline, refreshHz(context), userFpsLimit(container, s.ladder(target))) ?: s
+            s = doneAtBaseline(appId, s, target, baseline, refreshHz(context), userFpsLimit(container, s.ladder(target)), doneCard) ?: s
         }
         return s to true
     }
@@ -1652,10 +1654,11 @@ object OptimizeController {
     /**
      * Switches the active profile: the current profile's changes come off and the new one's kept changes go back on.
      * No profile's ladder is reset. [OptimizeProfile.OFF] takes everything off and keeps every ladder.
+     * A goal already met is marked done without a card: the dialog that switched it shows the status itself.
      */
     suspend fun setProfile(context: Context, appId: String, profile: OptimizeProfile): ChangeResult =
         change(context, appId, touchesFiles = true, what = "changing the profile") { container, store, state ->
-            switchTo(context, appId, container, store, state, profile.takeIf { it != OptimizeProfile.OFF })
+            switchTo(context, appId, container, store, state, profile.takeIf { it != OptimizeProfile.OFF }, doneCard = false)
         }
 
     /** Takes the active profile's changes off and forgets what it kept; what it tried stays, and the profile stays active. */
