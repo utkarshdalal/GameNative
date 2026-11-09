@@ -304,8 +304,12 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
             secondary = CardAction(stringResource(R.string.optimize_stop_here)) { answer(OptimizeCards.ACTION_STOP) },
         )
         OptimizeCard.WORSE -> CardSpec(
-            title = card.capFps?.let { stringResource(R.string.optimize_after_cap_removed, it) }
-                ?: stringResource(R.string.optimize_after_worse),
+            title = if (card.outcome == OptimizeCard.OUTCOME_CRASH) {
+                stringResource(R.string.optimize_after_crash_undone, name)
+            } else {
+                card.capFps?.let { stringResource(R.string.optimize_after_cap_removed, it) }
+                    ?: stringResource(R.string.optimize_after_worse)
+            },
             accent = OptimizeAccent(Icons.AutoMirrored.Filled.Undo, PluviaTheme.colors.accentWarning),
             showEntitlement = showEntitlement,
             primary = CardAction(ok) { answer(OptimizeCards.ACTION_OK) },

@@ -377,6 +377,38 @@ object OptimizeApplier {
         return parts.joinToString(";")
     }
 
+    /** The graphics driver's present mode; the launch derives MESA_VK_WSI_PRESENT_MODE from it. */
+    const val PRESENT_MODE_KEY = "graphicsDriverConfig.presentMode"
+    val PRESENT_MODES = setOf("fifo", "mailbox", "immediate")
+
+    /** A container key as the server may send it, in the form the container stores: a bare presentMode is the driver's. */
+    internal fun canonicalContainerKey(key: String): String = if (key == "presentMode") PRESENT_MODE_KEY else key
+
+    /** The global "name = value" entries of a DXVK_CONFIG value a lever sets, quotes taken off; sections are not merged. */
+    internal fun dxvkConfigEntries(config: String): List<Pair<String, String>> {
+        val (parts, globalEnd) = dxvkGlobalParts(config)
+        return parts.subList(0, globalEnd).mapNotNull { part ->
+            val name = dxvkKey(part) ?: return@mapNotNull null
+            name to part.substringAfter('=').trim().removeSurrounding("\"")
+        }
+    }
+
+    /**
+     * The DXVK options a lever sets, by DXVK name: dxwrapperConfig.dxvk.* keys and the entries of an
+     * envVars.DXVK_CONFIG value. Both merge into the container's DXVK_CONFIG; neither replaces it.
+     */
+    internal fun dxvkOptions(set: List<Pair<String, String>>): List<Pair<String, String>> = set.flatMap { (key, value) ->
+        when {
+            isDxvkOption(key) -> listOf(key.substringAfter('.') to value)
+            key == DXVK_CONFIG_KEY -> dxvkConfigEntries(value).ifEmpty { throw LeverFailure("DXVK_CONFIG has no entries") }
+            else -> emptyList()
+        }
+    }
+
+    /** [prior] DXVK_CONFIG with [options] set in it, every other entry and section kept. */
+    internal fun dxvkMerged(prior: String?, options: List<Pair<String, String>>): String =
+        options.fold(prior.orEmpty()) { config, (name, value) -> dxvkConfigPut(config, name, value) }
+
     internal fun liveValue(container: Container, live: ContainerData, key: String): String? =
         if (key == "screenSize") container.screenSize else configValue(live, key)
 
@@ -424,16 +456,17 @@ object OptimizeApplier {
         container: Container,
         onProgress: (Float, String) -> Unit,
     ): JSONObject {
-        lever.set.firstOrNull { !isAllowedContainerKey(it.first) }?.let { throw LeverFailure("container key ${it.first} not allowed") }
-        lever.set.firstOrNull { it.first == "screenSize" && !SCREEN_SIZE.matches(it.second) }?.let { throw LeverFailure("bad screen size") }
-        val dxvk = lever.set.filter { isDxvkOption(it.first) }
-        if (dxvk.isNotEmpty() && lever.set.any { it.first == DXVK_CONFIG_KEY }) throw LeverFailure("DXVK_CONFIG set twice")
+        val set = lever.set.map { (key, value) -> canonicalContainerKey(key) to value }
+        set.firstOrNull { !isAllowedContainerKey(it.first) }?.let { throw LeverFailure("container key ${it.first} not allowed") }
+        set.firstOrNull { it.first == "screenSize" && !SCREEN_SIZE.matches(it.second) }?.let { throw LeverFailure("bad screen size") }
+        set.firstOrNull { it.first == PRESENT_MODE_KEY && it.second !in PRESENT_MODES }?.let { throw LeverFailure("bad present mode ${it.second}") }
+        val dxvk = dxvkOptions(set)
         dxvk.firstOrNull { !DXVK_VALUE.matches(it.second) }?.let { throw LeverFailure("bad DXVK value for ${it.first}") }
         val live = ContainerUtils.toContainerData(container)
         val before = JSONArray()
         val edits = mutableListOf<SupportSuggestionApplier.Edit>()
-        for ((key, value) in lever.set) {
-            if (isDxvkOption(key)) continue
+        for ((key, value) in set) {
+            if (isDxvkOption(key) || key == DXVK_CONFIG_KEY) continue
             if (key == "fpsLimit") {
                 before.put(
                     JSONObject().apply {
@@ -455,8 +488,7 @@ object OptimizeApplier {
         if (dxvk.isNotEmpty()) {
             val prior = configValue(live, DXVK_CONFIG_KEY)
             before.put(JSONObject().put("key", DXVK_CONFIG_KEY).put("value", prior ?: JSONObject.NULL))
-            val merged = dxvk.fold(prior.orEmpty()) { config, (key, value) -> dxvkConfigPut(config, key.substringAfter('.'), value) }
-            edits += SupportSuggestionApplier.Edit(SupportSuggestion.ENV_KEY, "DXVK_CONFIG", merged)
+            edits += SupportSuggestionApplier.Edit(SupportSuggestion.ENV_KEY, "DXVK_CONFIG", dxvkMerged(prior, dxvk))
         }
         val record = JSONObject().apply {
             put("type", Lever.TYPE_CONTAINER)
@@ -477,7 +509,7 @@ object OptimizeApplier {
                 if (result != SupportSuggestionApplier.Result.Done) throw LeverFailure("container edit failed: $result")
             }
             var direct = false
-            lever.set.forEach { (key, value) ->
+            set.forEach { (key, value) ->
                 when (key) {
                     "fpsLimit" -> { applyFps(container, value); direct = true }
                     "screenSize" -> { container.screenSize = value; direct = true }
@@ -485,9 +517,13 @@ object OptimizeApplier {
             }
             if (direct) container.saveData()
             val now = ContainerUtils.toContainerData(container)
-            lever.set.forEach { (key, value) ->
-                if (key == "fpsLimit") return@forEach
+            set.forEach { (key, value) ->
+                if (key == "fpsLimit" || isDxvkOption(key) || key == DXVK_CONFIG_KEY) return@forEach
                 if (!liveValue(container, now, key).equals(value, ignoreCase = true)) throw LeverFailure("$key did not take")
+            }
+            val config = configValue(now, DXVK_CONFIG_KEY).orEmpty()
+            dxvk.forEach { (name, value) ->
+                if (dxvkConfigGet(config, name) != value) throw LeverFailure("DXVK option $name did not take")
             }
         } catch (e: Exception) {
             OptimizeReverter.revertLevers(context, container, listOf(record))

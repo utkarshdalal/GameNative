@@ -1847,10 +1847,15 @@
     <string name="optimize_game_running">먼저 게임을 종료하세요</string>
     <string name="optimize_vc_shadows_simpler">더 단순한 그림자</string>
     <string name="optimize_vc_less_grass_view_distance">풀 감소 및 시야 거리 단축</string>
-    <string name="optimize_vc_textures_softer">더 부드러운 텍스처</string>
+    <string name="optimize_vc_textures_softer">멀리 있는 텍스처가 약간 부드러워집니다.</string>
     <string name="optimize_vc_effects_simpler">더 단순한 효과</string>
     <string name="optimize_vc_fps_held">프레임 속도를 조금 낮게 유지</string>
     <string name="optimize_vc_dx11_version">게임의 DirectX 11 버전을 사용합니다.</string>
+    <string name="optimize_vc_sharpness_lower">이미지가 약간 부드러워집니다.</string>
+    <string name="optimize_vc_none_may_be_unstable">시각적 변화는 없습니다. 일부 게임에서는 불안정할 수 있습니다.</string>
+    <string name="optimize_vc_none">시각적 변화는 없습니다.</string>
+    <string name="optimize_vc_textures_stream_later">텍스처를 불러오는 데 시간이 조금 더 걸릴 수 있습니다.</string>
+    <string name="optimize_after_crash_undone">이 변경이 %1$s와(과) 맞지 않아 되돌렸습니다.</string>
     <string name="optimize_card_title_gpu">%1$s에서 GPU가 따라가지 못했습니다</string>
     <string name="optimize_card_title_thermal">%1$s이(가) 뜨거워지면서 프레임이 떨어지기 시작했습니다</string>
     <string name="optimize_card_title_cpu">%1$s은(는) 프로세서 성능에 제한을 받고 있습니다</string>

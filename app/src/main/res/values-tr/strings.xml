@@ -1896,10 +1896,15 @@
     <string name="optimize_game_running">Önce oyunu kapatın</string>
     <string name="optimize_vc_shadows_simpler">daha basit gölgeler</string>
     <string name="optimize_vc_less_grass_view_distance">daha az çimen ve daha kısa görüş mesafesi</string>
-    <string name="optimize_vc_textures_softer">daha yumuşak dokular</string>
+    <string name="optimize_vc_textures_softer">Uzaktaki dokular biraz daha yumuşak.</string>
     <string name="optimize_vc_effects_simpler">daha basit efektler</string>
     <string name="optimize_vc_fps_held">kare hızı biraz daha düşük tutuldu</string>
     <string name="optimize_vc_dx11_version">Oyunun DirectX 11 sürümünü kullanır.</string>
+    <string name="optimize_vc_sharpness_lower">Biraz daha yumuşak görüntü.</string>
+    <string name="optimize_vc_none_may_be_unstable">Görsel değişiklik yok. Bazı oyunlarda kararsız olabilir.</string>
+    <string name="optimize_vc_none">Görsel değişiklik yok.</string>
+    <string name="optimize_vc_textures_stream_later">Dokuların yüklenmesi biraz daha uzun sürebilir.</string>
+    <string name="optimize_after_crash_undone">Bu değişiklik %1$s ile uyuşmadı, bu yüzden geri alındı.</string>
     <string name="optimize_card_title_gpu">GPU\'nuz %1$s oyununda yetişemedi</string>
     <string name="optimize_card_title_thermal">%1$s ısındı ve kare düşürmeye başladı</string>
     <string name="optimize_card_title_cpu">%1$s işlemciniz tarafından sınırlanıyor</string>

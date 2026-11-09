@@ -1818,10 +1818,15 @@
     <string name="optimize_game_running">Beende zuerst das Spiel</string>
     <string name="optimize_vc_shadows_simpler">einfachere Schatten</string>
     <string name="optimize_vc_less_grass_view_distance">weniger Gras und geringere Sichtweite</string>
-    <string name="optimize_vc_textures_softer">weichere Texturen</string>
+    <string name="optimize_vc_textures_softer">Texturen in der Ferne etwas weicher.</string>
     <string name="optimize_vc_effects_simpler">einfachere Effekte</string>
     <string name="optimize_vc_fps_held">Bildrate etwas niedriger gehalten</string>
     <string name="optimize_vc_dx11_version">Nutzt die DirectX-11-Version des Spiels.</string>
+    <string name="optimize_vc_sharpness_lower">Etwas weicheres Bild.</string>
+    <string name="optimize_vc_none_may_be_unstable">Keine sichtbare Änderung. Kann in manchen Spielen instabil sein.</string>
+    <string name="optimize_vc_none">Keine sichtbare Änderung.</string>
+    <string name="optimize_vc_textures_stream_later">Texturen laden eventuell einen Moment länger.</string>
+    <string name="optimize_after_crash_undone">Diese Änderung hat sich mit %1$s nicht vertragen und wurde rückgängig gemacht.</string>
     <string name="optimize_card_title_gpu">Deine GPU kam in %1$s nicht hinterher</string>
     <string name="optimize_card_title_thermal">%1$s wurde heiß und begann, Bilder zu verlieren</string>
     <string name="optimize_card_title_cpu">%1$s wird von deinem Prozessor ausgebremst</string>

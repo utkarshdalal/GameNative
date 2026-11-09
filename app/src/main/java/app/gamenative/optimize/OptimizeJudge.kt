@@ -68,6 +68,19 @@ object OptimizeJudge {
 
     private val CRASH_REASONS = setOf("guest_terminated", "force_close")
 
+    /** Exits the game made on its own (every guest process gone), as opposed to the user leaving through the app. */
+    private val SELF_EXITS = setOf("guest_terminated", "processes_exited")
+
+    /** Crash fingerprint kinds that end a process: an unhandled exception, a failed assertion, a lost GPU device. */
+    private val FATAL_KINDS = setOf("exception", "assert", "device_lost")
+
+    /** Exit reasons for a trial session the app never judged: the app process died hard, or two launches went unjudged. */
+    const val EXIT_APP_KILLED = "app_killed"
+    const val EXIT_NO_EXIT = "no_exit"
+
+    /** Unjudged trial launches, with no hard app exit recorded, after which the step counts as a crash. */
+    const val MAX_UNJUDGED_LAUNCHES = 2
+
     /** A GPU-bound baseline: a gpu or thermal_gpu verdict, or a gameplay GPU median at or above this. */
     private const val GPU_BOUND_MEDIAN = 60.0
     private val GPU_CLASSES = setOf("gpu", "thermal_gpu")
@@ -132,13 +145,49 @@ object OptimizeJudge {
     fun baselineOf(runsNewestFirst: Sequence<JSONObject>): Metrics? =
         runsNewestFirst.map { Metrics.fromRun(it) }.firstOrNull { it.gameplaySec >= COMPARABLE_GAMEPLAY_SEC }
 
+    /**
+     * A crash: under [CRASH_GAMEPLAY_SEC] of gameplay with a crash exit or no game window ever seen, or under
+     * [COMPARABLE_GAMEPLAY_SEC] ending on its own with a fatal crash fingerprint (a session that died before it could
+     * be judged, which would otherwise count as short and in the end be kept as not comparable).
+     */
     fun isCrash(m: Metrics): Boolean =
-        m.gameplaySec < CRASH_GAMEPLAY_SEC && (m.exitReason in CRASH_REASONS || !m.windowSeen)
+        (m.gameplaySec < CRASH_GAMEPLAY_SEC && (m.exitReason in CRASH_REASONS || !m.windowSeen)) || fatalEnd(m)
+
+    /** The session ended by itself on a fatal fingerprint before it was long enough to judge. */
+    fun fatalEnd(m: Metrics): Boolean =
+        m.gameplaySec < COMPARABLE_GAMEPLAY_SEC && m.exitReason in SELF_EXITS && fatalFingerprint(m.crashKind, m.crashCode)
+
+    /** A fingerprint that ends the process; an unimplemented instruction or function does, an unimplemented syscall does not. */
+    fun fatalFingerprint(kind: String?, code: String?): Boolean =
+        kind in FATAL_KINDS || (kind == "unimplemented" && code != null && !code.startsWith("syscall_"))
+
+    /** What the next launch makes of a trial session that was started but never judged (the app did not run afterExit). */
+    sealed class Lost {
+        /** The step is judged a crash; [after] stands in for the session. */
+        data class Crash(val after: Metrics) : Lost()
+
+        /** Not enough to blame the step: launch it once more, counting [unjudged] launches. */
+        data class Again(val unjudged: Int) : Lost()
+    }
+
+    /**
+     * [run] is the session's run record if it was written (exit ran, judging did not); [hardExitReason] the Android exit
+     * reason of the app process if it died hard since the session started. A run that crashed is a crash; a run that
+     * did not leaves the step on trial; with no run a hard app exit is a crash, and so is the second unjudged launch.
+     */
+    fun lostSession(unjudgedBefore: Int, run: Metrics?, hardExitReason: String?): Lost = when {
+        run != null && isCrash(run) -> Lost.Crash(run)
+        run != null -> Lost.Again(0)
+        hardExitReason != null -> Lost.Crash(Metrics(gameplaySec = 0, exitReason = EXIT_APP_KILLED, windowSeen = false))
+        unjudgedBefore + 1 >= MAX_UNJUDGED_LAUNCHES -> Lost.Crash(Metrics(gameplaySec = 0, exitReason = EXIT_NO_EXIT, windowSeen = false))
+        else -> Lost.Again(unjudgedBefore + 1)
+    }
 
     /** [fpsCap] is the frame rate the game is held to (the limiter, or min(refresh, 60)); null judges without it. */
     fun judge(after: Metrics, baseline: Metrics?, isFpsCap: Boolean, shortSessions: Int, fpsCap: Double? = null): Decision {
         if (isCrash(after)) {
-            val sameAsBefore = baseline != null && isCrash(baseline) && baseline.exitReason == after.exitReason
+            val sameAsBefore = baseline != null && isCrash(baseline) && baseline.exitReason == after.exitReason &&
+                baseline.crashHash == after.crashHash
             if (!sameAsBefore) return Decision.Crash
         }
         if (after.gameplaySec < COMPARABLE_GAMEPLAY_SEC || baseline == null || baseline.gameplaySec < COMPARABLE_GAMEPLAY_SEC) {

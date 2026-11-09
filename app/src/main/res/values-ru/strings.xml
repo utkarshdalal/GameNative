@@ -1806,10 +1806,15 @@ https://gamenative.app
     <string name="optimize_game_running">Сначала закройте игру</string>
     <string name="optimize_vc_shadows_simpler">упрощённые тени</string>
     <string name="optimize_vc_less_grass_view_distance">меньше травы и меньше дальность прорисовки</string>
-    <string name="optimize_vc_textures_softer">более мягкие текстуры</string>
+    <string name="optimize_vc_textures_softer">Текстуры вдали чуть мягче.</string>
     <string name="optimize_vc_effects_simpler">упрощённые эффекты</string>
     <string name="optimize_vc_fps_held">FPS удерживается немного ниже</string>
     <string name="optimize_vc_dx11_version">Использует версию игры для DirectX 11.</string>
+    <string name="optimize_vc_sharpness_lower">Чуть более мягкое изображение.</string>
+    <string name="optimize_vc_none_may_be_unstable">Внешне ничего не меняется. В некоторых играх возможна нестабильность.</string>
+    <string name="optimize_vc_none">Внешне ничего не меняется.</string>
+    <string name="optimize_vc_textures_stream_later">Текстуры могут загружаться чуть дольше.</string>
+    <string name="optimize_after_crash_undone">Это изменение не подошло для %1$s, поэтому оно отменено.</string>
     <string name="optimize_card_title_gpu">Видеокарта не справлялась в игре %1$s</string>
     <string name="optimize_card_title_thermal">Игра %1$s перегрелась и начала терять кадры</string>
     <string name="optimize_card_title_cpu">Игра %1$s упирается в ваш процессор</string>

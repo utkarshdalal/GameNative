@@ -68,4 +68,50 @@ class OptimizeContainerLeverTest {
         assertEquals("dxgi.customDeviceDesc = \"Some GPU\"", OptimizeApplier.dxvkConfigPut("", "dxgi.customDeviceDesc", "Some GPU"))
         assertEquals("Some GPU", OptimizeApplier.dxvkConfigGet("dxgi.customDeviceDesc = \"Some GPU\"", "dxgi.customDeviceDesc"))
     }
+
+    @Test
+    fun presentModeIsTheGraphicsDriverKey() {
+        assertEquals(OptimizeApplier.PRESENT_MODE_KEY, OptimizeApplier.canonicalContainerKey("presentMode"))
+        assertEquals("envVars.A", OptimizeApplier.canonicalContainerKey("envVars.A"))
+        assertTrue(OptimizeApplier.isAllowedContainerKey(OptimizeApplier.PRESENT_MODE_KEY))
+        assertEquals(setOf("fifo", "mailbox", "immediate"), OptimizeApplier.PRESENT_MODES)
+        val live = ContainerData(graphicsDriverConfig = "version=26.0.0,presentMode=mailbox,syncFrame=0")
+        val prior = OptimizeApplier.configValue(live, OptimizeApplier.PRESENT_MODE_KEY)
+        assertEquals("mailbox", prior)
+        val applied = edit(live, OptimizeApplier.PRESENT_MODE_KEY, "fifo")
+        assertEquals("fifo", OptimizeApplier.configValue(applied, OptimizeApplier.PRESENT_MODE_KEY))
+        assertEquals("0", OptimizeApplier.configValue(applied, "graphicsDriverConfig.syncFrame"))
+        assertEquals("mailbox", OptimizeApplier.configValue(edit(applied, OptimizeApplier.PRESENT_MODE_KEY, prior), OptimizeApplier.PRESENT_MODE_KEY))
+    }
+
+    @Test
+    fun aDxvkConfigEnvLeverMergesIntoTheExistingValue() {
+        val existing = "dxgi.syncInterval = 0;[game.exe];d3d11.cachedDynamicResources = a"
+        val options = OptimizeApplier.dxvkOptions(
+            listOf(OptimizeApplier.DXVK_CONFIG_KEY to "dxgi.maxDeviceMemory = 4096;dxgi.syncInterval = 1", "envVars.OTHER" to "1"),
+        )
+        assertEquals(listOf("dxgi.maxDeviceMemory" to "4096", "dxgi.syncInterval" to "1"), options)
+        val merged = OptimizeApplier.dxvkMerged(existing, options)
+        assertEquals("dxgi.syncInterval = 1;dxgi.maxDeviceMemory = 4096;[game.exe];d3d11.cachedDynamicResources = a", merged)
+        assertEquals("dxgi.maxDeviceMemory = 4096;dxgi.syncInterval = 1", OptimizeApplier.dxvkMerged(null, options))
+        val both = OptimizeApplier.dxvkOptions(
+            listOf("dxwrapperConfig.dxvk.numCompilerThreads" to "3", OptimizeApplier.DXVK_CONFIG_KEY to "dxgi.maxDeviceMemory = \"2048\""),
+        )
+        assertEquals(listOf("dxvk.numCompilerThreads" to "3", "dxgi.maxDeviceMemory" to "2048"), both)
+    }
+
+    @Test
+    fun theMergedDxvkConfigIsStoredWithoutQuotesAroundIt() {
+        val live = ContainerData(envVars = "A=1 DXVK_CONFIG=dxgi.syncInterval\\ =\\ 0")
+        assertEquals("dxgi.syncInterval = 0", OptimizeApplier.configValue(live, OptimizeApplier.DXVK_CONFIG_KEY))
+        val merged = OptimizeApplier.dxvkMerged(
+            OptimizeApplier.configValue(live, OptimizeApplier.DXVK_CONFIG_KEY),
+            listOf("dxgi.maxDeviceMemory" to "4096"),
+        )
+        val applied = edit(live, OptimizeApplier.DXVK_CONFIG_KEY, merged)
+        val env = EnvVars(applied.envVars)
+        assertEquals("dxgi.syncInterval = 0;dxgi.maxDeviceMemory = 4096", env.get("DXVK_CONFIG"))
+        assertTrue(env.toStringArray().contains("DXVK_CONFIG=dxgi.syncInterval = 0;dxgi.maxDeviceMemory = 4096"))
+        assertEquals("1", env.get("A"))
+    }
 }

@@ -46,6 +46,10 @@ data class Metrics(
     val frameTimeP99Ms: Double? = null,
     /** Panel refresh rate in Hz (perf_verdict.refresh_hz, else display_refresh_hz). */
     val refreshHz: Double? = null,
+    /** The crash fingerprint of the guest output at exit (game_exited crash_fingerprint kind, code, hash); null when none. */
+    val crashKind: String? = null,
+    val crashCode: String? = null,
+    val crashHash: String? = null,
 ) {
     /** Session GPU work per frame: the median of the gameplay windows, else [gpuWorkPerFrame]. */
     fun workPerFrame(): Double? {
@@ -87,6 +91,9 @@ data class Metrics(
         cpuTempMax?.let { put("cpu_temp_max", it) }
         gpuTempMax?.let { put("gpu_temp_max", it) }
         thermalPeak?.let { put("thermal_peak", it) }
+        crashKind?.let { put("crash_kind", it) }
+        crashCode?.let { put("crash_code", it) }
+        crashHash?.let { put("crash_hash", it) }
         putLoad(report = false)
     }
 
@@ -153,6 +160,9 @@ data class Metrics(
                 frameTimeP50Ms = o.optDoubleOrNull("frame_time_p50_ms"),
                 frameTimeP99Ms = o.optDoubleOrNull("frame_time_p99_ms"),
                 refreshHz = o.optDoubleOrNull("refresh_hz")?.takeIf { it > 0 },
+                crashKind = o.optStringOrNull("crash_kind"),
+                crashCode = o.optStringOrNull("crash_code"),
+                crashHash = o.optStringOrNull("crash_hash"),
             )
         }
 
@@ -163,6 +173,7 @@ data class Metrics(
             val perf = run.optJSONArray("perf_by_5min").objects()
             val fps = run.optJSONArray("fps_by_5min").ints()
             val work = verdict?.optJSONArray("gpu_work_by_5min")?.works()?.takeIf { it.isNotEmpty() } ?: workFromPerf(perf, fps)
+            val fingerprint = run.optJSONObject("crash_fingerprint")
             return Metrics(
                 gameplaySec = gameplay,
                 steadyFps = run.optDoubleOrNull("avg_fps")?.takeIf { it > 0.0 },
@@ -191,6 +202,9 @@ data class Metrics(
                 frameTimeP50Ms = run.optDoubleOrNull("frame_p50_ms")?.takeIf { it > 0 },
                 frameTimeP99Ms = run.optDoubleOrNull("frame_p99_ms")?.takeIf { it > 0 },
                 refreshHz = (verdict?.optDoubleOrNull("refresh_hz") ?: run.optDoubleOrNull("display_refresh_hz"))?.takeIf { it > 0 },
+                crashKind = fingerprint?.optStringOrNull("kind"),
+                crashCode = fingerprint?.optStringOrNull("code"),
+                crashHash = run.optStringOrNull("crash_fingerprint_hash") ?: fingerprint?.optStringOrNull("hash"),
             )
         }
 
@@ -221,6 +235,9 @@ internal fun JSONObject.optStringOrNull(key: String): String? =
 
 internal fun JSONObject.optIntOrNull(key: String): Int? =
     if (!has(key) || isNull(key)) null else (opt(key) as? Number)?.toInt() ?: optString(key).toIntOrNull()
+
+internal fun JSONObject.optLongOrNull(key: String): Long? =
+    if (!has(key) || isNull(key)) null else (opt(key) as? Number)?.toLong() ?: optString(key).toLongOrNull()
 
 internal fun JSONObject.optDoubleOrNull(key: String): Double? =
     if (!has(key) || isNull(key)) {

@@ -1748,10 +1748,15 @@
     <string name="optimize_game_running">Feche o jogo primeiro</string>
     <string name="optimize_vc_shadows_simpler">sombras mais simples</string>
     <string name="optimize_vc_less_grass_view_distance">menos grama e distância de visão menor</string>
-    <string name="optimize_vc_textures_softer">texturas mais suaves</string>
+    <string name="optimize_vc_textures_softer">Texturas um pouco mais suaves à distância.</string>
     <string name="optimize_vc_effects_simpler">efeitos mais simples</string>
     <string name="optimize_vc_fps_held">taxa de quadros mantida um pouco mais baixa</string>
     <string name="optimize_vc_dx11_version">Usa a versão DirectX 11 do jogo.</string>
+    <string name="optimize_vc_sharpness_lower">Imagem um pouco mais suave.</string>
+    <string name="optimize_vc_none_may_be_unstable">Nenhuma mudança visual. Pode ficar instável em alguns jogos.</string>
+    <string name="optimize_vc_none">Nenhuma mudança visual.</string>
+    <string name="optimize_vc_textures_stream_later">As texturas podem demorar um pouco mais para carregar.</string>
+    <string name="optimize_after_crash_undone">Essa mudança não se deu bem com %1$s, então foi desfeita.</string>
     <string name="optimize_card_title_gpu">Sua GPU não conseguiu acompanhar em %1$s</string>
     <string name="optimize_card_title_thermal">%1$s esquentou e começou a perder quadros</string>
     <string name="optimize_card_title_cpu">%1$s está limitado pelo seu processador</string>

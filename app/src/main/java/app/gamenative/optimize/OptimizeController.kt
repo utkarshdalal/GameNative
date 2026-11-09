@@ -16,6 +16,7 @@ import app.gamenative.ui.component.parseBooleanExtra
 import app.gamenative.ui.component.parsePositiveFpsLimit
 import app.gamenative.ui.screen.support.SupportGameFiles
 import app.gamenative.ui.util.SnackbarManager
+import app.gamenative.utils.AppExitRecorder
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.HardwareUtils
 import app.gamenative.utils.OptimizeState
@@ -400,7 +401,12 @@ object OptimizeController {
         )
         put(
             "crash",
-            crash?.let { JSONObject().put("exit_reason", it.exitReason ?: JSONObject.NULL).put("gameplay_s", it.gameplaySec) } ?: JSONObject.NULL,
+            crash?.let {
+                JSONObject().put("exit_reason", it.exitReason ?: JSONObject.NULL).put("gameplay_s", it.gameplaySec).apply {
+                    it.crashKind?.let { kind -> put("crash_kind", kind) }
+                    it.crashHash?.let { hash -> put("crash_hash", hash) }
+                }
+            } ?: JSONObject.NULL,
         )
     }
 
@@ -677,20 +683,20 @@ object OptimizeController {
                 // A game the server had nothing for waits until its hold lets go; then the ladder tries again.
                 state = OptimizeLadders.held(state, profile, System.currentTimeMillis(), appRulesVersion())
 
+                // A step whose last trial session was never judged (the app died, or exit never ran) is judged now.
+                state = judgeLostSession(context, appId, container, state, profile)
+
                 // The flagged step comes off first, so the kept steps' keys it wrote over are not read as reset by the game.
-                var ladder = state.ladder(profile)
-                val flagged = ladder.pending?.takeIf { it.revert != null }
-                if (flagged != null) {
-                    if (!OptimizeReverter.revertLevers(context, container, flagged.levers)) {
-                        Timber.tag(TAG).w("Taking ${flagged.rung.rungId} off failed; trying again next launch")
+                if (state.ladder(profile).pending?.revert != null) {
+                    val off = takeOffFlagged(context, container, store, state, profile, "before launch")
+                    if (off == null) {
                         store.write(state)
                         telemetry(profile, null, "failed")
                         return@withLock
                     }
-                    store.dropRungDir(profile, flagged.rung.rungId)
-                    Timber.tag(TAG).i("Optimize: reverted ${flagged.rung.rungId} v${flagged.rung.version} (${flagged.revert}) before launch")
-                    ladder = ladder.copy(pending = null, baselineOverride = flagged.baseline ?: ladder.baselineOverride)
+                    state = off
                 }
+                var ladder = state.ladder(profile)
                 val (reverified, resetReports) = reverifyKept(appId, container, profile, ladder)
                 ladder = reverified
                 resetReports.forEach { state = state.queued(it) }
@@ -907,6 +913,126 @@ object OptimizeController {
     }
 
     /**
+     * Takes the flagged step of [profile] (pending with a revert result) off from its backup records: file keys,
+     * registry values and container settings such as fexcorePreset. Null when something could not come off; the step
+     * stays flagged and the next launch tries again.
+     */
+    private suspend fun takeOffFlagged(
+        context: Context,
+        container: Container,
+        store: OptimizeStore,
+        state: OptimizeLocalState,
+        profile: OptimizeProfile,
+        moment: String,
+    ): OptimizeLocalState? {
+        val ladder = state.ladder(profile)
+        val flagged = ladder.pending?.takeIf { it.revert != null } ?: return state
+        if (!OptimizeReverter.revertLevers(context, container, flagged.levers)) {
+            Timber.tag(TAG).w("Taking ${flagged.rung.rungId} off failed; trying again next launch")
+            return null
+        }
+        store.dropRungDir(profile, flagged.rung.rungId)
+        Timber.tag(TAG).i("Optimize: reverted ${flagged.rung.rungId} v${flagged.rung.version} (${flagged.revert}) $moment")
+        return state.withLadder(profile, ladder.copy(pending = null, baselineOverride = flagged.baseline ?: ladder.baselineOverride))
+    }
+
+    /** The newest run record written since [sinceMillis] for a session that had [rungId] on trial, or null. */
+    private fun trialRun(container: Container, sinceMillis: Long, rungId: String): Metrics? {
+        val files = File(container.rootDir, ".gamenative/runs").listFiles { f -> f.name.endsWith(".json") } ?: return null
+        return files.filter { (it.name.removeSuffix(".json").toLongOrNull() ?: 0L) >= sinceMillis }
+            .sortedByDescending { it.name }
+            .firstNotNullOfOrNull { file ->
+                val run = runCatching { JSONObject(file.readText()) }.getOrNull() ?: return@firstNotNullOfOrNull null
+                val sessionRung = run.optJSONObject("optimize_state")?.optStringOrNull("template_id")
+                if (sessionRung == rungId) Metrics.fromRun(run) else null
+            }
+    }
+
+    /**
+     * A pending step whose trial session started ([PendingRung.trialStartedAt]) but was never judged: its run record
+     * is judged for a crash if it was written; with none, a hard death of the app since the session started, or a
+     * second unjudged launch, counts as a crash. A crash is finished like one judged at exit (reported, marked bad,
+     * a worse card) and flagged to come off.
+     */
+    private fun judgeLostSession(
+        context: Context,
+        appId: String,
+        container: Container,
+        state: OptimizeLocalState,
+        profile: OptimizeProfile,
+    ): OptimizeLocalState {
+        val ladder = state.ladder(profile)
+        val pending = ladder.pending?.takeIf { it.revert == null } ?: return state
+        val started = pending.trialStartedAt ?: return state
+        val run = trialRun(container, started, pending.rung.rungId)
+        val hardExit = if (run == null) {
+            runCatching { AppExitRecorder.newestHardExit(context, started)?.optStringOrNull("reason") }.getOrNull()
+        } else {
+            null
+        }
+        return when (val lost = OptimizeJudge.lostSession(pending.unjudged, run, hardExit)) {
+            is OptimizeJudge.Lost.Crash -> {
+                Timber.tag(TAG).w(
+                    "Optimize: the trial session of ${pending.rung.rungId} was never judged (${lost.after.exitReason}, app exit ${hardExit ?: "none"}); treating it as a crash",
+                )
+                val cleared = pending.copy(trialStartedAt = null, unjudged = 0)
+                finish(
+                    appId, state, profile, ladder.copy(pending = cleared), cleared, OptimizeJudge.CRASH, null, lost.after,
+                    refreshHz(context), userFpsLimit(container, ladder),
+                )
+            }
+            is OptimizeJudge.Lost.Again -> {
+                Timber.tag(TAG).i("Optimize: the trial session of ${pending.rung.rungId} was never judged; trying it again (${lost.unjudged} unjudged)")
+                state.withLadder(profile, ladder.copy(pending = pending.copy(trialStartedAt = null, unjudged = lost.unjudged)))
+            }
+        }
+    }
+
+    /**
+     * Called when a game session starts: marks the step on trial, so a session that is never judged (the app is
+     * killed, or exit never runs) is still caught at the next launch.
+     */
+    suspend fun trialStarted(container: Container) = withContext(Dispatchers.IO) {
+        val rungId = OptimizeState.templateId ?: return@withContext
+        try {
+            mutex.withLock {
+                val store = OptimizeStore(container.rootDir)
+                val state = store.read()
+                val profile = state.activeProfile ?: return@withLock
+                val ladder = state.ladder(profile)
+                val pending = ladder.pending?.takeIf { it.revert == null && it.rung.rungId == rungId } ?: return@withLock
+                store.write(state.withLadder(profile, ladder.copy(pending = pending.copy(trialStartedAt = System.currentTimeMillis()))))
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.tag(TAG).w(e, "Optimize: marking the trial session failed")
+        }
+    }
+
+    /**
+     * Once the game's environment is down after a session judged a crash, takes the step off straight away instead of
+     * at the next launch, so the container settings already read as before (and a launch that skips Optimize does not
+     * run with it). Anything that cannot come off now is taken off before the next launch.
+     */
+    suspend fun revertCrashed(context: Context, container: Container) = withContext(Dispatchers.IO) {
+        try {
+            mutex.withLock {
+                val store = OptimizeStore(container.rootDir)
+                val state = store.read()
+                val profile = state.activeProfile ?: return@withLock
+                if (state.ladder(profile).pending?.revert != OptimizeJudge.CRASH) return@withLock
+                takeOffFlagged(context, container, store, state, profile, "after the crash")?.let { store.write(it) }
+            }
+            revision.value++
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.tag(TAG).w(e, "Optimize: taking the crashed step off at exit failed; the next launch does it")
+        }
+    }
+
+    /**
      * Before a launch: puts back the file keys and registry values of applied kept rungs that the game reset since
      * the last one. A rung reset on [MAX_RESETS] launches in a row despite a read-only file stays kept, flagged
      * unstable, and is reported once as did_not_take. Returns the ladder and the reports to queue.
@@ -1049,7 +1175,10 @@ object OptimizeController {
                     }
                 } else {
                     val ladder = state.ladder(profile)
-                    val pending = ladder.pending
+                    // The session was judged, so the trial mark comes off whatever the decision.
+                    val pending = ladder.pending?.let {
+                        if (it.revert == null && sessionRung == it.rung.rungId) it.copy(trialStartedAt = null, unjudged = 0) else it
+                    }
                     if (pending != null && pending.revert == null && sessionRung == pending.rung.rungId) {
                         // A cap step is judged against the user's own limiter, so its own cap never reads as menu windows.
                         val fpsTarget = OptimizeTarget.fpsTarget(refresh, if (pending.rung.isFpsCap) userCap else cap)
@@ -1274,7 +1403,11 @@ object OptimizeController {
                 if (l.noChangeStreak >= MAX_NO_CHANGE_STREAK) l = l.copy(state = LadderState.PAUSED)
                 OptimizeCard(OptimizeCard.NO_CHANGE, now, name, profile, rungId = rung.rungId, capFps = capFps, metrics = judged, before = before)
             }
-            result == OptimizeJudge.WORSE || result == OptimizeJudge.CRASH ->
+            result == OptimizeJudge.CRASH -> OptimizeCard(
+                OptimizeCard.WORSE, now, name, profile,
+                rungId = rung.rungId, capFps = capFps, outcome = OptimizeCard.OUTCOME_CRASH, metrics = judged, before = before,
+            )
+            result == OptimizeJudge.WORSE ->
                 OptimizeCard(OptimizeCard.WORSE, now, name, profile, rungId = rung.rungId, capFps = capFps, metrics = judged, before = before)
             else -> null
         }

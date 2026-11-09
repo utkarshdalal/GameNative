@@ -80,6 +80,10 @@ data class PendingRung(
     /** File keys and registry values written, and those a relative rung left because they were already lower. */
     val appliedOps: Int? = null,
     val skippedOps: Int? = null,
+    /** When a game session started with this step on trial; cleared once a session is judged. Set means judging never ran. */
+    val trialStartedAt: Long? = null,
+    /** Trial launches in a row that were never judged and left no sign of a crash. */
+    val unjudged: Int = 0,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("rung", rung.raw)
@@ -90,6 +94,8 @@ data class PendingRung(
         revert?.let { put("revert", it) }
         appliedOps?.let { put("applied_ops", it) }
         skippedOps?.let { put("skipped_ops", it) }
+        trialStartedAt?.let { put("trial_started_at", it) }
+        if (unjudged > 0) put("unjudged", unjudged)
     }
 
     fun toKept(newBaseline: Metrics?): KeptRung = KeptRung(
@@ -119,6 +125,8 @@ data class PendingRung(
                 revert = o.optStringOrNull("revert"),
                 appliedOps = o.optIntOrNull("applied_ops"),
                 skippedOps = o.optIntOrNull("skipped_ops"),
+                trialStartedAt = o.optLongOrNull("trial_started_at"),
+                unjudged = o.optInt("unjudged", 0),
             )
         }
     }
@@ -358,6 +366,9 @@ data class OptimizeCard(
         const val OUTCOME_FPS = "fps"
         const val OUTCOME_STUTTER = "stutter"
         const val OUTCOME_STABLE = "stable"
+
+        /** On a worse card: the step crashed the game or kept it from reaching gameplay, and was taken off. */
+        const val OUTCOME_CRASH = "crash"
 
         fun fromJson(o: JSONObject?): OptimizeCard? {
             if (o == null) return null

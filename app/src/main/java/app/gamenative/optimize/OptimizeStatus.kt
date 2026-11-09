@@ -70,6 +70,10 @@ sealed class OptimizeStatus {
             "vc_effects_simpler" -> R.string.optimize_vc_effects_simpler
             "vc_fps_held" -> R.string.optimize_vc_fps_held
             "vc_dx11_version" -> R.string.optimize_vc_dx11_version
+            "vc_sharpness_lower" -> R.string.optimize_vc_sharpness_lower
+            "vc_none_may_be_unstable" -> R.string.optimize_vc_none_may_be_unstable
+            "vc_none" -> R.string.optimize_vc_none
+            "vc_textures_stream_later" -> R.string.optimize_vc_textures_stream_later
             else -> null
         }
     }

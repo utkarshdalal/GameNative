@@ -2087,10 +2087,15 @@
     <string name="optimize_game_running">先にゲームを終了してください</string>
     <string name="optimize_vc_shadows_simpler">影を簡略化</string>
     <string name="optimize_vc_less_grass_view_distance">草を減らし描画距離を短く</string>
-    <string name="optimize_vc_textures_softer">テクスチャを控えめに</string>
+    <string name="optimize_vc_textures_softer">遠くのテクスチャがわずかに柔らかくなります。</string>
     <string name="optimize_vc_effects_simpler">エフェクトを簡略化</string>
     <string name="optimize_vc_fps_held">フレームレートを少し低めに固定</string>
     <string name="optimize_vc_dx11_version">ゲームの DirectX 11 版を使用します。</string>
+    <string name="optimize_vc_sharpness_lower">画像がわずかに柔らかくなります。</string>
+    <string name="optimize_vc_none_may_be_unstable">見た目は変わりません。一部のゲームでは不安定になる場合があります。</string>
+    <string name="optimize_vc_none">見た目は変わりません。</string>
+    <string name="optimize_vc_textures_stream_later">テクスチャの読み込みに少し時間がかかる場合があります。</string>
+    <string name="optimize_after_crash_undone">この変更は%1$sと相性が悪かったため、元に戻しました。</string>
     <string name="optimize_card_title_gpu">%1$s でGPUの処理が追いつきませんでした</string>
     <string name="optimize_card_title_thermal">%1$s が熱くなり、フレームが落ち始めました</string>
     <string name="optimize_card_title_cpu">%1$s はプロセッサーの性能で制限されています</string>
