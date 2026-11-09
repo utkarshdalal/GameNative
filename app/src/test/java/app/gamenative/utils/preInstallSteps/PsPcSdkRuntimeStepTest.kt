@@ -41,19 +41,42 @@ class PsPcSdkRuntimeStepTest {
         prefixDir.deleteRecursively()
     }
 
-    /** The runtime as a title ships it: the script and both packages in one directory. */
-    private fun runtime(dir: String) {
+    /**
+     * The runtime as a Steam title ships it: the script and both packages in one directory, and
+     * an install script whose Run Process step names the script — the lookup Steam launches use.
+     */
+    private fun runtime(dir: String, installScript: Boolean = true) {
         val target = File(gameDir, dir)
         target.mkdirs()
         File(target, PsPcSdkFiles.SCRIPT).writeText("@echo off\r\n")
         File(target, PsPcSdkFiles.MANAGER_MSI).writeText("m")
         File(target, PsPcSdkFiles.INSTALLER_MSI).writeText("i")
+        if (installScript) installScript(dir)
     }
 
-    private fun build(step: PreInstallStep): String? = step.buildCommand(
+    private fun installScript(dir: String) {
+        val guestDir = dir.replace('/', '\\')
+        File(gameDir, "installscript.vdf").writeText(
+            """
+            "InstallScript"
+            {
+                "Run Process"
+                {
+                    "PsPcSdkRuntime"
+                    {
+                        "process 1" "%INSTALLDIR%\\$guestDir\\${PsPcSdkFiles.SCRIPT}"
+                        "NoCleanUp" "1"
+                    }
+                }
+            }
+            """.trimIndent(),
+        )
+    }
+
+    private fun build(step: PreInstallStep, gameSource: GameSource = GameSource.STEAM): String? = step.buildCommand(
         container = container,
-        appId = "STEAM_3489700",
-        gameSource = GameSource.STEAM,
+        appId = "${gameSource.name}_3489700",
+        gameSource = gameSource,
         gameDir = gameDir,
         gameDirPath = gameDir.absolutePath,
     )
@@ -132,24 +155,65 @@ class PsPcSdkRuntimeStepTest {
     }
 
     @Test
-    fun theRuntimeIsFoundThreeDirectoriesDown() {
-        // <game>/a/b/c/script — the shape of <game>/SB/Binaries/Win64/script.
-        runtime("a/b/c")
+    fun aSteamTitleIsReadFromItsInstallScript_whereverTheScriptSits() {
+        // The install script says where the vendor script is; no layout is assumed.
+        runtime("Some/Other/Place/Deeper/Still")
 
         assertEquals(
-            "msiexec /i A:\\a\\b\\c\\${PsPcSdkFiles.INSTALLER_MSI} /quiet",
+            "msiexec /i A:\\Some\\Other\\Place\\Deeper\\Still\\${PsPcSdkFiles.INSTALLER_MSI} /quiet",
             build(PsPcSdkRuntimeStep),
         )
     }
 
     @Test
-    fun aScriptBeyondTheSearchBoundIsNotUsed() {
-        // `MAX_DEPTH` counts entries from the game directory, its own children being 1: a script
-        // four directories down is entry 5, one past the bound of 4. Three directories down — the
-        // shape every title in play ships — is entry 4 and is found above.
-        runtime("a/b/c/d")
+    fun aSteamTitleWithoutAnInstallScriptStepIsNotSearched() {
+        // The files are there, but nothing names them: a Steam launch never walks the game
+        // directory, so this title installs nothing.
+        runtime("SB/Binaries/Win64", installScript = false)
 
         assertNull(build(PsPcSdkRuntimeStep))
+    }
+
+    @Test
+    fun anInstallScriptNamingAnotherScriptIsNotEnough() {
+        runtime("SB/Binaries/Win64", installScript = false)
+        File(gameDir, "installscript.vdf").writeText(
+            """
+            "InstallScript"
+            {
+                "Run Process"
+                {
+                    "Other"
+                    {
+                        "process 1" "%INSTALLDIR%\\_CommonRedist\\vcredist\\VC_redist.x64.exe"
+                    }
+                }
+            }
+            """.trimIndent(),
+        )
+
+        assertNull(build(PsPcSdkRuntimeStep))
+    }
+
+    @Test
+    fun aNonSteamTitleIsFoundThreeDirectoriesDown() {
+        // No install script to consult: <game>/a/b/c/script — the shape of
+        // <game>/SB/Binaries/Win64/script — is found by the bounded walk.
+        runtime("a/b/c", installScript = false)
+
+        assertEquals(
+            "msiexec /i A:\\a\\b\\c\\${PsPcSdkFiles.INSTALLER_MSI} /quiet",
+            build(PsPcSdkRuntimeStep, GameSource.EPIC),
+        )
+    }
+
+    @Test
+    fun aScriptBeyondTheSearchBoundIsNotUsed_forANonSteamTitle() {
+        // `MAX_DEPTH` counts entries from the game directory, its own children being 1: a script
+        // four directories down is entry 5, one past the bound of 4.
+        runtime("a/b/c/d", installScript = false)
+
+        assertNull(build(PsPcSdkRuntimeStep, GameSource.EPIC))
     }
 
     @Test
@@ -158,6 +222,7 @@ class PsPcSdkRuntimeStepTest {
         dir.mkdirs()
         File(dir, PsPcSdkFiles.SCRIPT).writeText("@echo off\r\n")
         File(dir, PsPcSdkFiles.INSTALLER_MSI).writeText("i")
+        installScript("SB/Binaries/Win64")
 
         assertNull(build(PsPcSdkManagerStep))
         assertEquals(
