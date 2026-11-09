@@ -52,10 +52,17 @@ object OptimizeController {
     private const val TAG = "Optimize"
     private const val NEXT_RUNG_LAUNCH_BUDGET_MS = 10_000L
     private const val NEXT_RUNG_EXIT_BUDGET_MS = 20_000L
+    /** How long the exit check waits for the server to say whether it has a change before a first card is written. */
+    private const val FIRST_OFFER_BUDGET_MS = 8_000L
     private const val DEFAULT_FPS_LIMIT = 60
     private const val MAX_NO_CHANGE_STREAK = 2
     /** Launches in a row a read-only file may be reset by the game before its rung is reported as not taking. */
     private const val MAX_RESETS = 3
+
+    /** Answers after which a no_rule card is not shown again: the ladder already said it has nothing. */
+    private val NOTHING_STATUSES = setOf(
+        NextRungResponse.STATUS_NO_RULE, NextRungResponse.STATUS_NOT_SETTINGS, NextRungResponse.STATUS_EXHAUSTED,
+    )
 
     val mutex = Mutex()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -95,6 +102,30 @@ object OptimizeController {
         }
         runCatching { PrefManager.optimizeLastEntitlementJson = entitlement.toJson().toString() }
             .onFailure { Timber.tag(TAG).w(it, "Saving the last entitlement failed") }
+    }
+
+    private val rulesVersionLock = Any()
+    private var appRulesVersionCache: String? = null
+    private var appRulesVersionLoaded = false
+
+    /** The newest rules build any game's answer carried, kept across restarts: a held game is asked again once it changes. */
+    private fun appRulesVersion(): String? = synchronized(rulesVersionLock) {
+        if (!appRulesVersionLoaded) {
+            appRulesVersionCache = runCatching { PrefManager.optimizeLastRulesVersion.ifEmpty { null } }.getOrNull()
+            appRulesVersionLoaded = true
+        }
+        appRulesVersionCache
+    }
+
+    private fun rememberRulesVersion(version: String?) {
+        if (version == null) return
+        synchronized(rulesVersionLock) {
+            if (appRulesVersionLoaded && appRulesVersionCache == version) return
+            appRulesVersionCache = version
+            appRulesVersionLoaded = true
+        }
+        runCatching { PrefManager.optimizeLastRulesVersion = version }
+            .onFailure { Timber.tag(TAG).w(it, "Saving the last rules version failed") }
     }
 
     fun isGameRunning(): Boolean = PluviaApp.xEnvironment != null
@@ -140,7 +171,7 @@ object OptimizeController {
         return OptimizeJudge.baselineOf(runs)
     }
 
-    private fun storeId(appId: String): String = when (ContainerUtils.extractGameSourceFromContainerId(appId)) {
+    private fun storeName(appId: String): String = when (ContainerUtils.extractGameSourceFromContainerId(appId)) {
         GameSource.STEAM -> "steam"
         GameSource.GOG -> "gog"
         GameSource.EPIC -> "epic"
@@ -153,22 +184,75 @@ object OptimizeController {
 
     private fun gameName(appId: String): String = runCatching { ContainerUtils.resolveGameName(appId) }.getOrDefault("Unknown")
 
+    /** The store's own id for the game; app_id stays the container's id, which is a local row id for Epic and Amazon. */
+    private fun storeId(appId: String): String? = runCatching {
+        OptimizeIdentity.storeId(ContainerUtils.extractGameSourceFromContainerId(appId), ContainerUtils.extractGameIdFromContainerId(appId), appId)
+    }.getOrNull()
+
+    private fun gameBuild(appId: String, install: File?): String? = runCatching {
+        OptimizeIdentity.build(ContainerUtils.extractGameSourceFromContainerId(appId), ContainerUtils.extractGameIdFromContainerId(appId), install)
+    }.getOrNull()
+
     private fun gameJson(appId: String): JSONObject = JSONObject().apply {
-        put("store", storeId(appId))
+        put("store", storeName(appId))
+        storeId(appId)?.let { put("store_id", it) }
         put("app_id", gameId(appId))
         put("name", gameName(appId))
     }
 
-    /** Engine guesses by install folder; the app stores no engine of its own, so this is the only one it can send. */
-    private val engineHints = ConcurrentHashMap<String, String>()
+    private data class Hint(val engine: String?, val meta: EngineHint.Meta?)
 
-    private fun engineHint(context: Context, appId: String): String? {
-        val install = runCatching { SupportGameFiles.installRoot(context, appId) }.getOrNull() ?: return null
-        engineHints[install.absolutePath]?.let { return it.ifEmpty { null } }
+    /** Engine guesses by install folder; the app stores no engine of its own, so this is the only one it can send. */
+    private val engineHints = ConcurrentHashMap<String, Hint>()
+
+    private fun engineHint(install: File?): Hint? {
+        if (install == null) return null
+        engineHints[install.absolutePath]?.let { return it }
         val engine = runCatching { EngineHint.detect(install) }.getOrNull()
-        engineHints[install.absolutePath] = engine.orEmpty()
-        return engine
+        val meta = if (engine == EngineHint.UNITY) runCatching { EngineHint.unityMeta(install) }.getOrNull() else null
+        return Hint(engine, meta).also { engineHints[install.absolutePath] = it }
     }
+
+    private fun eventDevice(): JSONObject = JSONObject().apply {
+        put("model", Build.MODEL)
+        put("manufacturer", Build.MANUFACTURER)
+        put("soc_model", HardwareUtils.getSOCName() ?: JSONObject.NULL)
+        put("device_id_hash", deviceIdHash())
+    }
+
+    /** Queues a funnel event for [appId]; never throws and never blocks the caller. */
+    private fun event(
+        appId: String,
+        name: String,
+        state: OptimizeLocalState?,
+        profile: OptimizeProfile?,
+        cls: String? = null,
+        cardKind: String? = null,
+        rungId: String? = null,
+        unverified: Boolean = false,
+    ) {
+        val rulesVersion = state?.lastRulesVersion
+        val now = System.currentTimeMillis()
+        scope.launch {
+            try {
+                val ev = OptimizeEvents.event(name, gameJson(appId), profile, cls, cardKind, rungId, rulesVersion ?: appRulesVersion(), now, unverified)
+                OptimizeEvents.record(ev) { eventDevice() }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.tag(TAG).w(e, "Optimize: recording $name failed")
+            }
+        }
+    }
+
+    private fun cardEvent(appId: String, name: String, state: OptimizeLocalState?, card: OptimizeCard, profile: OptimizeProfile? = card.profile) =
+        event(appId, name, state, profile, card.cls ?: card.metrics?.cls, card.kind, card.rungId, card.unverified)
+
+    /** The waiting card [request] is on screen. */
+    fun cardShown(request: CardRequest) = cardEvent(request.appId, OptimizeEvents.CARD_SHOWN, null, request.card)
+
+    /** An Optimize action waits for the user to sign in. */
+    fun signInRequired(appId: String) = event(appId, OptimizeEvents.SIGNIN_REQUIRED, null, null)
 
     private fun refreshHz(context: Context): Double? = runCatching {
         (context.getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager)?.getDisplay(Display.DEFAULT_DISPLAY)?.refreshRate?.toDouble()
@@ -200,17 +284,31 @@ object OptimizeController {
         profile: OptimizeProfile,
         ladder: ProfileLadder,
         baseline: Metrics?,
+        dryRun: Boolean = false,
     ): JSONObject {
         val data = ContainerUtils.toContainerData(container)
+        val install = runCatching { SupportGameFiles.installRoot(context, appId) }.getOrNull()
+        val hint = engineHint(install)
         return JSONObject().apply {
             put("schema", 1)
             put("app_version_code", BuildConfig.VERSION_CODE)
+            if (dryRun) put("dry_run", true)
             put(
                 "game",
                 gameJson(appId).apply {
+                    put("build", gameBuild(appId, install) ?: JSONObject.NULL)
                     put("exe", container.executablePath.orEmpty())
                     put("anticheat", JSONArray(OptimizeFiles.anticheat(container).orEmpty()))
-                    engineHint(context, appId)?.let { put("engine", it) }
+                    hint?.engine?.let { put("engine", it) }
+                    hint?.meta?.let { meta ->
+                        put(
+                            "engine_meta",
+                            JSONObject().apply {
+                                meta.company?.let { put("company", it) }
+                                meta.product?.let { put("product", it) }
+                            },
+                        )
+                    }
                 },
             )
             put(
@@ -228,7 +326,7 @@ object OptimizeController {
                 },
             )
             put("profile", profile.wireId)
-            put("card_action", state.cardAction ?: JSONObject.NULL)
+            put("card_action", state.cardAction?.takeIf { !dryRun } ?: JSONObject.NULL)
             put("verdict", baseline?.toVerdictJson() ?: JSONObject.NULL)
             put(
                 "container",
@@ -388,8 +486,10 @@ object OptimizeController {
         val ladder = state.ladder(profile)
         if (!OptimizeTarget.metAtBaseline(profile, ladder, baseline, refreshHz, fpsCap)) return null
         Timber.tag(TAG).i("Optimize: ${profile.wireId} target already met at the baseline (${baseline?.steadyFps} fps); not asking")
-        return state.withLadder(profile, ladder.copy(state = LadderState.DONE))
+        val done = state.withLadder(profile, ladder.copy(state = LadderState.DONE))
             .copy(card = OptimizeCard(OptimizeCard.DONE, System.currentTimeMillis(), gameName(appId), profile, metrics = baseline))
+        event(appId, OptimizeEvents.DONE, done, profile, baseline?.cls, OptimizeCard.DONE)
+        return done
     }
 
     /** Runs [block] on the controller's scope, registered so a launch of the same game waits for it. */
@@ -411,6 +511,7 @@ object OptimizeController {
 
     /** Keeps a rung answer for the next launch when the game still waits for one and the answer still fits it. */
     private suspend fun storePrefetch(
+        appId: String,
         store: OptimizeStore,
         result: NextRungResult,
         profile: OptimizeProfile,
@@ -422,6 +523,7 @@ object OptimizeController {
     ) {
         val response = (result as? NextRungResult.Answered)?.response ?: return
         rememberEntitlement(response.entitlement)
+        rememberRulesVersion(response.effectiveRulesVersion)
         mutex.withLock {
             val now = System.currentTimeMillis()
             var state = store.read()
@@ -446,6 +548,14 @@ object OptimizeController {
                 Timber.tag(TAG).i("stored next rung ${prefetched.rung.rungId} v${prefetched.rung.version} for the next launch ($source)")
             } else if (rung != null) {
                 Timber.tag(TAG).i("Dropping next rung ${rung.rungId} ($source): the game no longer waits for it")
+            } else if (response.hasNothing && state.activeProfile == profile && wouldAsk(state, ladder, now)) {
+                // Nothing for the game: the ladder waits now, so the next launch does not ask again.
+                val hold = NoRuleHold.of(response, now)
+                Timber.tag(TAG).i("Optimize: nothing to try (${hold.status}, $source); not asking again before ${hold.untilMillis} or new rules")
+                state = state.copy(noRule = hold).withLadder(profile, ladder.copy(state = LadderState.WAITING, lastStatus = hold.status))
+                if (ladder.lastStatus !in NOTHING_STATUSES && state.card == null) {
+                    state = state.copy(card = OptimizeCard(OptimizeCard.NO_RULE, now, gameName(appId), profile))
+                }
             }
             store.write(state)
         }
@@ -562,6 +672,9 @@ object OptimizeController {
                     return@withLock
                 }
 
+                // A game the server had nothing for waits until its hold lets go; then the ladder tries again.
+                state = OptimizeLadders.held(state, profile, System.currentTimeMillis(), appRulesVersion())
+
                 // The flagged step comes off first, so the kept steps' keys it wrote over are not read as reset by the game.
                 var ladder = state.ladder(profile)
                 val flagged = ladder.pending?.takeIf { it.revert != null }
@@ -609,7 +722,7 @@ object OptimizeController {
                         val remaining = (deadline - System.currentTimeMillis()).coerceAtLeast(0L)
                         val call = OptimizeApi.nextRung(body, remaining)
                         val answer = withTimeoutOrNull(remaining) { call.await() }
-                        if (answer == null) keepLateAnswer(store, call, profile, key, PrefetchedRung.keptIds(ladder), state.cardAction, state.capPreferred)
+                        if (answer == null) keepLateAnswer(appId, store, call, profile, key, PrefetchedRung.keptIds(ladder), state.cardAction, state.capPreferred)
                         return answer
                     }
                     suspend fun askSkippingRepeat(): NextRungResult? {
@@ -629,11 +742,15 @@ object OptimizeController {
                         when (result) {
                             null -> Timber.tag(TAG).i("No next-rung answer within ${NEXT_RUNG_LAUNCH_BUDGET_MS / 1000} s; launching with the kept changes")
                             NextRungResult.Failed -> Timber.tag(TAG).i("No next-rung answer; launching with the kept changes")
-                            NextRungResult.SignedOut -> Timber.tag(TAG).i("Signed out; launching with the kept changes")
+                            NextRungResult.SignedOut -> {
+                                Timber.tag(TAG).i("Signed out; launching with the kept changes")
+                                event(appId, OptimizeEvents.SIGNIN_REQUIRED, state, profile)
+                            }
                             is NextRungResult.Answered -> {
                                 val response = result.response
                                 if (fromPrefetch == null) {
                                     rememberEntitlement(response.entitlement)
+                                    rememberRulesVersion(response.effectiveRulesVersion)
                                     state = state.copy(
                                         cardAction = null,
                                         capPreferred = false,
@@ -643,26 +760,56 @@ object OptimizeController {
                                     )
                                 }
                                 val previousStatus = ladder.lastStatus
-                                val unaskedCap = !capAsked && response.status == NextRungResponse.STATUS_RUNG &&
-                                    response.rung?.isFpsCap == true
-                                val status = if (unaskedCap) NextRungResponse.STATUS_EXHAUSTED else response.status
-                                ladder = ladder.copy(lastStatus = status)
-                                if (unaskedCap) {
-                                    Timber.tag(TAG).i(
-                                        "Optimize: only the cap ${response.rung?.rungId} is left, not asked for; the ladder ends here",
-                                    )
-                                } else if (response.status != NextRungResponse.STATUS_RUNG) {
+                                val at = System.currentTimeMillis()
+                                val unaskedCap = response.rung?.takeIf { response.status == NextRungResponse.STATUS_RUNG && it.isFpsCap && !capAsked }
+                                val capChoice = unaskedCap?.let { OptimizeCards.unaskedCap(state, it, at) }
+                                if (response.status != NextRungResponse.STATUS_RUNG) {
                                     Timber.tag(TAG).i("Optimize: next rung status ${response.status} (message ${response.messageId}); nothing applied")
                                 }
-                                when (status) {
-                                    NextRungResponse.STATUS_EXHAUSTED -> {
-                                        ladder = ladder.copy(state = LadderState.EXHAUSTED)
-                                        state = state.copy(card = OptimizeCard(OptimizeCard.EXHAUSTED, System.currentTimeMillis(), gameName(appId), profile))
+                                when {
+                                    unaskedCap != null && capChoice == OptimizeCards.UnaskedCap.ASK -> {
+                                        // The cap stays a question: the ladder waits for the answer instead of ending.
+                                        val capFps = OptimizeCards.capFps(unaskedCap.raw)
+                                        Timber.tag(TAG).i("Optimize: the next step is the cap ${unaskedCap.rungId} at $capFps fps; asking first")
+                                        ladder = ladder.copy(state = LadderState.PAUSED, lastStatus = NextRungResponse.STATUS_CAP_QUESTION)
+                                        val card = OptimizeCard(
+                                            OptimizeCard.CAP, at, gameName(appId), profile, cls = baseline?.cls, metrics = baseline, capFps = capFps,
+                                        )
+                                        state = state.copy(card = card)
+                                        cardEvent(appId, OptimizeEvents.CAP_ASKED, state, card)
                                     }
-                                    NextRungResponse.STATUS_ENTITLEMENT_REQUIRED -> if (previousStatus != response.status) {
-                                        state = state.copy(card = OptimizeCard(OptimizeCard.ENTITLEMENT, System.currentTimeMillis(), gameName(appId), profile))
+                                    response.hasNothing || response.status == NextRungResponse.STATUS_EXHAUSTED || capChoice == OptimizeCards.UnaskedCap.END -> {
+                                        if (unaskedCap != null) Timber.tag(TAG).i("Optimize: only the cap ${unaskedCap.rungId} is left and was not wanted; the ladder ends here")
+                                        val endKind = if (response.hasNothing) OptimizeCard.NO_RULE else OptimizeCards.endCard(ladder)
+                                        if (endKind == OptimizeCard.EXHAUSTED) {
+                                            ladder = ladder.copy(state = LadderState.EXHAUSTED, lastStatus = NextRungResponse.STATUS_EXHAUSTED)
+                                            state = state.copy(card = OptimizeCard(OptimizeCard.EXHAUSTED, at, gameName(appId), profile))
+                                            event(appId, OptimizeEvents.EXHAUSTED, state, profile, baseline?.cls, OptimizeCard.EXHAUSTED)
+                                        } else {
+                                            val hold = if (unaskedCap != null) {
+                                                NoRuleHold(at + NoRuleHold.DEFAULT_RETRY_SEC * 1000L, response.effectiveRulesVersion, NextRungResponse.STATUS_EXHAUSTED)
+                                            } else {
+                                                NoRuleHold.of(response, at)
+                                            }
+                                            Timber.tag(TAG).i("Optimize: nothing to try (${hold.status}); not asking again before ${hold.untilMillis} or new rules")
+                                            ladder = ladder.copy(state = LadderState.WAITING, lastStatus = hold.status)
+                                            state = state.copy(noRule = hold)
+                                            if (previousStatus !in NOTHING_STATUSES) {
+                                                state = state.copy(card = OptimizeCard(OptimizeCard.NO_RULE, at, gameName(appId), profile, cls = baseline?.cls))
+                                            }
+                                        }
                                     }
-                                    NextRungResponse.STATUS_RUNG -> {
+                                    response.status == NextRungResponse.STATUS_ENTITLEMENT_REQUIRED -> {
+                                        ladder = ladder.copy(lastStatus = response.status)
+                                        if (previousStatus != response.status) {
+                                            state = state.copy(card = OptimizeCard(OptimizeCard.ENTITLEMENT, at, gameName(appId), profile))
+                                        }
+                                    }
+                                    response.status != NextRungResponse.STATUS_RUNG -> {
+                                        ladder = ladder.copy(lastStatus = response.status)
+                                    }
+                                    else -> {
+                                        ladder = ladder.copy(lastStatus = response.status)
                                         val offered = response.rung?.takeIf { it.rungId !in ladder.bad }
                                         val rung = offered?.takeUnless { ladder.repeats(it) }
                                         if (offered != null && rung == null) {
@@ -683,6 +830,7 @@ object OptimizeController {
                                                         baselineOverride = null,
                                                     )
                                                     applyResult = "ok"
+                                                    event(appId, OptimizeEvents.APPLY_OK, state, profile, baseline?.cls, rungId = rung.rungId)
                                                     val types = rung.levers.map { it.type }.distinct().joinToString(", ")
                                                     val skipped = if (outcome.skippedOps > 0) ", ${outcome.skippedOps} ops skipped" else ""
                                                     Timber.tag(TAG).i("applied ${rung.rungId} v${rung.version} order ${rung.order} ($types$skipped)")
@@ -709,6 +857,7 @@ object OptimizeController {
                                                         ),
                                                     )
                                                     applyResult = "failed"
+                                                    event(appId, OptimizeEvents.APPLY_FAILED, state, profile, baseline?.cls, rungId = rung.rungId)
                                                     Timber.tag(TAG).w("Applying ${rung.rungId} failed: ${outcome.reason}")
                                                     // A prefetched rung can be stale; the server is asked again with this one in tried.
                                                     if (fromPrefetch != null) return true
@@ -796,6 +945,7 @@ object OptimizeController {
 
     /** Stores an answer that came after the launch stopped waiting, for the next launch. */
     private fun keepLateAnswer(
+        appId: String,
         store: OptimizeStore,
         call: Deferred<NextRungResult>,
         profile: OptimizeProfile,
@@ -804,7 +954,7 @@ object OptimizeController {
         cardAction: String?,
         prefer: Boolean,
     ) {
-        track(store, "keeping a late next-rung answer") { storePrefetch(store, call.await(), profile, key, kept, cardAction, prefer, "late answer") }
+        track(store, "keeping a late next-rung answer") { storePrefetch(appId, store, call.await(), profile, key, kept, cardAction, prefer, "late answer") }
     }
 
     /**
@@ -860,7 +1010,8 @@ object OptimizeController {
             val cap = fpsLimit(container)
             var prefetch: (() -> Unit)? = null
             var cardField: String? = null
-            val request = mutex.withLock {
+            var offer: FirstOffer? = null
+            var request = mutex.withLock {
                 var state = store.read()
                 val now = System.currentTimeMillis()
                 val profile = state.activeProfile
@@ -868,23 +1019,31 @@ object OptimizeController {
                 // The judge compares against the limiter the game ran under; the targets against the user's own.
                 val userCap = userFpsLimit(container, profile?.let { state.ladder(it) })
                 if (profile == null) {
-                    val block = OptimizeCards.firstCardBlock(state, after, now)
+                    val block = OptimizeCards.firstCardBlock(state, after, now, appRulesVersion())
                     cardField = OptimizeCards.cardField(block == null, block)
                     if (block == null) {
                         val suggested = OptimizeCards.suggestedProfile(after.cls, after, cap, refresh)
                         val capFps = OptimizeCards.capQuestion(state, after, cap, now, refresh)
-                        state = state.copy(
-                            card = OptimizeCard(
-                                if (capFps != null) OptimizeCard.CAP else OptimizeCard.FIRST, now, gameName(appId),
-                                profile = suggested.profile,
-                                cls = after.cls,
-                                metrics = after,
-                                reason = suggested.reason,
-                                capFps = capFps,
-                            ),
-                            suppression = null,
+                        val card = OptimizeCard(
+                            if (capFps != null) OptimizeCard.CAP else OptimizeCard.FIRST, now, gameName(appId),
+                            profile = suggested.profile,
+                            cls = after.cls,
+                            metrics = after,
+                            reason = suggested.reason,
+                            capFps = capFps,
                         )
-                        store.write(state)
+                        if (context != null) {
+                            // The card is only written once the server says it has a change for the game.
+                            val body = nextRungBody(
+                                context.applicationContext, appId, container, state, suggested.profile, state.ladder(suggested.profile), after, dryRun = true,
+                            )
+                            offer = FirstOffer(card, body)
+                        } else {
+                            val unverified = card.copy(unverified = true)
+                            state = state.copy(card = unverified, suppression = null)
+                            store.write(state)
+                            if (unverified.kind == OptimizeCard.CAP) cardEvent(appId, OptimizeEvents.CAP_ASKED, state, unverified)
+                        }
                     }
                 } else {
                     val ladder = state.ladder(profile)
@@ -922,10 +1081,19 @@ object OptimizeController {
                         state = it
                         store.write(state)
                     }
+                    OptimizeLadders.held(state, profile, now, appRulesVersion()).takeIf { it != state }?.let {
+                        state = it
+                        store.write(state)
+                    }
                     if (context != null) prefetch = exitPrefetch(context.applicationContext, appId, container, store, state, profile, now)
                     cardField = OptimizeCards.cardField(state.card != null && state.card != cardBefore, OptimizeCards.SUPPRESSED_PROFILE)
                 }
                 state.card?.let { CardRequest(appId, it, state.entitlement.orAppWide(lastEntitlement)) }
+            }
+            offer?.let { o ->
+                val (offered, field) = offerFirst(appId, store, o)
+                cardField = field
+                if (offered != null) request = offered
             }
             request?.let { cardRequest.value = it }
             revision.value++
@@ -937,6 +1105,74 @@ object OptimizeController {
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Optimize judging failed")
             null
+        }
+    }
+
+    /** A first or cap card the session would leave, and the dry-run request that decides whether it is written. */
+    private class FirstOffer(val card: OptimizeCard, val body: JSONObject)
+
+    /**
+     * Asks the server, without applying or recording anything, whether it has a change for the game before the first
+     * card is written. A rung writes the card; a cap it wants asked first writes the cap question; no_rule and
+     * not_settings write none and hold the game until retry_after_s passes or the rules change. With no answer the
+     * card is written as before, marked unverified. Returns the card to show and perf_verdict.card.
+     */
+    private suspend fun offerFirst(appId: String, store: OptimizeStore, offer: FirstOffer): Pair<CardRequest?, String> {
+        val result = withTimeoutOrNull(FIRST_OFFER_BUDGET_MS) { OptimizeApi.nextRung(offer.body, FIRST_OFFER_BUDGET_MS).await() }
+        val response = (result as? NextRungResult.Answered)?.response
+        if (response != null) {
+            rememberEntitlement(response.entitlement)
+            rememberRulesVersion(response.effectiveRulesVersion)
+        }
+        val choice = OptimizeCards.offerOf(response)
+        Timber.tag(TAG).i("Optimize: first offer ${choice.name.lowercase()} (${response?.status ?: "no answer"})")
+        return mutex.withLock {
+            var state = store.read()
+            val now = System.currentTimeMillis()
+            if (response != null) {
+                state = state.copy(
+                    entitlement = response.entitlement ?: state.entitlement,
+                    entitlementCheckedAt = if (response.entitlement != null) now else state.entitlementCheckedAt,
+                    lastRulesVersion = response.effectiveRulesVersion ?: state.lastRulesVersion,
+                )
+            }
+            // The user may have picked a profile or answered something while the server was asked.
+            if (state.never || state.activeProfile != null || state.card != null) {
+                store.write(state)
+                val why = when {
+                    state.never -> OptimizeCards.SUPPRESSED_NEVER
+                    state.activeProfile != null -> OptimizeCards.SUPPRESSED_PROFILE
+                    else -> OptimizeCards.SUPPRESSED_CARD_WAITING
+                }
+                return@withLock null to OptimizeCards.cardField(false, why)
+            }
+            val capFromRung = OptimizeCards.capFps(response?.rung?.raw)
+            val card = when (choice) {
+                OptimizeCards.Offer.CARD -> offer.card
+                OptimizeCards.Offer.UNVERIFIED -> offer.card.copy(unverified = true)
+                OptimizeCards.Offer.CAP -> when {
+                    now < state.capSnoozedUntil -> null
+                    offer.card.kind == OptimizeCard.CAP -> offer.card
+                    capFromRung != null -> offer.card.copy(kind = OptimizeCard.CAP, capFps = capFromRung, reason = null)
+                    else -> offer.card
+                }
+                OptimizeCards.Offer.HOLD -> null
+            }
+            val field = when {
+                card != null -> OptimizeCards.cardField(true, null)
+                choice == OptimizeCards.Offer.HOLD -> OptimizeCards.cardField(false, OptimizeCards.SUPPRESSED_NO_RULE)
+                else -> OptimizeCards.cardField(false, OptimizeCards.SUPPRESSED_CAP_SNOOZED)
+            }
+            state = if (card != null) {
+                state.copy(card = card, suppression = null, noRule = null)
+            } else if (choice == OptimizeCards.Offer.HOLD && response != null) {
+                state.copy(noRule = NoRuleHold.of(response, now))
+            } else {
+                state
+            }
+            store.write(state)
+            if (card?.kind == OptimizeCard.CAP) cardEvent(appId, OptimizeEvents.CAP_ASKED, state, card)
+            card?.let { CardRequest(appId, it, state.entitlement.orAppWide(lastEntitlement)) } to field
         }
     }
 
@@ -970,7 +1206,7 @@ object OptimizeController {
                 if (result == null) {
                     Timber.tag(TAG).i("No next-rung answer within ${NEXT_RUNG_EXIT_BUDGET_MS / 1000} s of exit; the next launch asks again")
                 } else {
-                    storePrefetch(store, result, profile, key, kept, cardAction, prefer, "exit")
+                    storePrefetch(appId, store, result, profile, key, kept, cardAction, prefer, "exit")
                 }
             }
         }
@@ -1014,28 +1250,35 @@ object OptimizeController {
         }
         l = l.copy(noChangeStreak = if (result == OptimizeJudge.NO_CHANGE) l.noChangeStreak + 1 else 0)
         val name = gameName(appId)
+        val capFps = OptimizeCards.capFps(rung.raw)
+        // After-cards carry both sessions the judge compared: before is the step's baseline, metrics the session after it.
+        val before = pending.baseline
         val card = when {
             settled.done -> {
                 l = l.copy(state = LadderState.DONE)
-                OptimizeCard(OptimizeCard.DONE, now, name, profile, rungId = rung.rungId, capFps = OptimizeCards.capFps(rung.raw))
+                OptimizeCard(OptimizeCard.DONE, now, name, profile, rungId = rung.rungId, capFps = capFps, metrics = judged, before = before)
             }
             result == OptimizeJudge.HELPED -> OptimizeCard(
                 OptimizeCard.HELPED, now, name, profile,
                 rungId = rung.rungId,
-                capFps = OptimizeCards.capFps(rung.raw),
+                capFps = capFps,
                 outcome = OptimizeCards.helpedOutcome(rung.outcome, profile),
-                fpsGainPct = OptimizeCards.fpsGainPct(pending.baseline, judged),
-                stutterDropPct = OptimizeCards.stutterDropPct(pending.baseline, judged),
+                fpsGainPct = OptimizeCards.fpsGainPct(before, judged),
+                stutterDropPct = OptimizeCards.stutterDropPct(before, judged),
+                metrics = judged,
+                before = before,
             )
             result == OptimizeJudge.NO_CHANGE -> {
                 if (l.noChangeStreak >= MAX_NO_CHANGE_STREAK) l = l.copy(state = LadderState.PAUSED)
-                OptimizeCard(OptimizeCard.NO_CHANGE, now, name, profile, rungId = rung.rungId, capFps = OptimizeCards.capFps(rung.raw))
+                OptimizeCard(OptimizeCard.NO_CHANGE, now, name, profile, rungId = rung.rungId, capFps = capFps, metrics = judged, before = before)
             }
             result == OptimizeJudge.WORSE || result == OptimizeJudge.CRASH ->
-                OptimizeCard(OptimizeCard.WORSE, now, name, profile, rungId = rung.rungId, capFps = OptimizeCards.capFps(rung.raw))
+                OptimizeCard(OptimizeCard.WORSE, now, name, profile, rungId = rung.rungId, capFps = capFps, metrics = judged, before = before)
             else -> null
         }
         val s = state.queued(report).withLadder(profile, l)
+        OptimizeEvents.judged(result)?.let { event(appId, it, s, profile, judged.cls ?: before?.cls, card?.kind, rung.rungId) }
+        if (settled.done) event(appId, OptimizeEvents.DONE, s, profile, judged.cls ?: before?.cls, OptimizeCard.DONE, rung.rungId)
         return if (card != null) s.copy(card = card) else s
     }
 
@@ -1056,10 +1299,11 @@ object OptimizeController {
         if (after.confident != true || after.gameplaySec < OptimizeCards.MIN_GAMEPLAY_SEC) return null
         val waiting = state.card
         if (waiting?.kind == OptimizeCard.CAP || waiting?.kind == OptimizeCard.ENTITLEMENT) return null
-        if (waiting == null && state.ladder(profile).state !in setOf(LadderState.EXHAUSTED, LadderState.DONE)) return null
+        if (waiting == null && state.ladder(profile).state !in setOf(LadderState.EXHAUSTED, LadderState.DONE, LadderState.WAITING)) return null
         val capFps = OptimizeCards.capQuestion(state, after, fpsCap, nowMillis, refreshHz) ?: return null
         Timber.tag(TAG).i("Optimize: heat is the limit, asking to hold ${profile.wireId} at $capFps fps")
-        return state.copy(card = OptimizeCard(OptimizeCard.CAP, nowMillis, gameName(appId), profile, cls = after.cls, metrics = after, capFps = capFps))
+        val card = OptimizeCard(OptimizeCard.CAP, nowMillis, gameName(appId), profile, cls = after.cls, metrics = after, capFps = capFps)
+        return state.copy(card = card).also { cardEvent(appId, OptimizeEvents.CAP_ASKED, it, card) }
     }
 
     /**
@@ -1074,7 +1318,7 @@ object OptimizeController {
         state: OptimizeLocalState,
         card: OptimizeCard,
     ): Pair<OptimizeLocalState, Boolean> {
-        val base = state.copy(capPreferred = true, prefetched = null, suppression = null)
+        val base = state.copy(capPreferred = true, prefetched = null, suppression = null, noRule = null)
         val (switched, ok) = if (base.activeProfile == null) {
             switchTo(context, appId, container, store, base, card.profile ?: OptimizeProfile.BALANCED)
         } else {
@@ -1174,6 +1418,7 @@ object OptimizeController {
         if (target != null) {
             val ladder = s.ladder(target)
             s = s.withLadder(target, OptimizeLadders.picked(ladder))
+            s = OptimizeLadders.held(s, target, System.currentTimeMillis(), appRulesVersion())
             val baseline = s.ladder(target).baselineOverride ?: baselineRun(container)
             s = doneAtBaseline(appId, s, target, baseline, refreshHz(context), userFpsLimit(container, s.ladder(target))) ?: s
         }
@@ -1226,6 +1471,7 @@ object OptimizeController {
             s = s.queued(undoReport(appId, profile, kept.rungId, kept.version, kept.baseline, kept.levers.size))
         }
         if (ok) ladder = ladder.copy(state = nextState, noChangeStreak = 0, baselineOverride = null)
+        if (reverted.isNotEmpty()) event(appId, OptimizeEvents.RESTORED, s, profile)
         Timber.tag(TAG).i(
             "Optimize: restore ${profile.wireId} reverted ${reverted.ifEmpty { listOf("nothing") }.joinToString()}" +
                 if (ok) "; ladder ${nextState.wireId}" else "; some changes failed to come off",
@@ -1282,12 +1528,27 @@ object OptimizeController {
         }
     }
 
+    /** The funnel event an answer to [card] is, if any. */
+    private fun answerEvent(appId: String, state: OptimizeLocalState, card: OptimizeCard, action: String, profile: OptimizeProfile?) {
+        val name = when {
+            card.kind == OptimizeCard.CAP -> if (action == OptimizeCards.ACTION_CAP) OptimizeEvents.CAP_ACCEPTED else OptimizeEvents.CAP_DECLINED
+            action == OptimizeCards.ACTION_OPTIMIZE -> OptimizeEvents.CARD_ACCEPTED
+            action == OptimizeCards.ACTION_NOT_NOW -> OptimizeEvents.CARD_NOT_NOW
+            action == OptimizeCards.ACTION_DISMISSED && card.kind == OptimizeCard.FIRST -> OptimizeEvents.CARD_NOT_NOW
+            action == OptimizeCards.ACTION_NEVER -> OptimizeEvents.CARD_NEVER
+            action == OptimizeCards.ACTION_HAPPY -> OptimizeEvents.DONE
+            else -> null
+        } ?: return
+        cardEvent(appId, name, state, card, profile ?: card.profile)
+    }
+
     /** [profile] is the profile chosen with Optimize. */
     private suspend fun answerCard(context: Context, appId: String, card: OptimizeCard, action: String, profile: OptimizeProfile?): ChangeResult {
         val touchesFiles = action == OptimizeCards.ACTION_OPTIMIZE || action == OptimizeCards.ACTION_UNDO ||
             action == OptimizeCards.ACTION_UNDO_ALL || action == OptimizeCards.ACTION_CAP
         return change(context, appId, touchesFiles, what = "answering a card") { container, store, current ->
             val now = System.currentTimeMillis()
+            answerEvent(appId, current, card, action, profile)
             val state = current.copy(card = null, cardAction = OptimizeCards.wireAction(action, card.kind))
             val active = state.activeProfile
             fun setLadder(next: LadderState, only: Set<LadderState>? = null): OptimizeLocalState {

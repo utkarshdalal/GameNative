@@ -1886,6 +1886,7 @@
     <string name="optimize_stop_here">Oprește aici</string>
     <string name="optimize_after_worse">Modificarea a înrăutățit lucrurile și a fost anulată</string>
     <string name="optimize_after_exhausted">Acesta este maximul pentru %1$s pe acest dispozitiv</string>
+    <string name="optimize_after_no_rule">Încă nu există o modificare sigură pentru %1$s. Vom verifica din nou mai târziu.</string>
     <string name="optimize_keep_changes">Păstrează modificările</string>
     <string name="optimize_undo_all">Anulează tot</string>
     <string name="optimize_after_done">%1$s rulează așa cum ai cerut</string>
@@ -1894,7 +1895,7 @@
     <string name="optimize_cap_title">Menții %1$s la %2$d fps?</string>
     <string name="optimize_cap_body">Jocul ar rula mai mult timp cu mai puține sacadări, fără să încetinească.</string>
     <string name="optimize_cap_yes">Da, menține</string>
-    <string name="optimize_after_cap_held">Menținut la %1$d fps: mai puține sacadări, rămâne rece mai mult timp</string>
+    <string name="optimize_after_cap_held">Menținut la %1$d fps: mai puține sacadări, performanță mai stabilă</string>
     <string name="optimize_after_cap_removed">Menținerea la %1$d fps nu a ajutat; limita a fost eliminată</string>
     <string name="optimize_status_cap_held">Menținut la %1$d fps</string>
     <string name="optimize_hint_heat">Aici limita este căldura. Încearcă Energie și căldură.</string>
@@ -1904,6 +1905,7 @@
     <string name="optimize_suggested_stability">Sugerat: Stabilitate, pentru că jocul sacadează.</string>
     <string name="optimize_suggested_balanced">Sugerat: Echilibrat, pentru că nicio limită nu iese în evidență.</string>
     <string name="optimize_status_exhausted">Maximul pe acest dispozitiv</string>
+    <string name="optimize_status_waiting">Încă nu există o modificare sigură. Vom verifica din nou mai târziu.</string>
     <string name="optimize_continue">Reia</string>
     <string name="optimize_keep_tuning">Continuă reglarea</string>
     <plurals name="optimize_trial_used">

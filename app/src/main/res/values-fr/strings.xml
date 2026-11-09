@@ -1924,6 +1924,7 @@
     <string name="optimize_stop_here">Arrêter ici</string>
     <string name="optimize_after_worse">Cette modification a empiré les choses, elle a été annulée</string>
     <string name="optimize_after_exhausted">C\'est le maximum possible pour %1$s sur cet appareil</string>
+    <string name="optimize_after_no_rule">Pas encore de modification sûre pour %1$s. Nous vérifierons de nouveau plus tard.</string>
     <string name="optimize_keep_changes">Garder les modifications</string>
     <string name="optimize_undo_all">Tout annuler</string>
     <string name="optimize_after_done">%1$s tourne comme vous l\'avez demandé</string>
@@ -1932,7 +1933,7 @@
     <string name="optimize_cap_title">Maintenir %1$s à %2$d fps ?</string>
     <string name="optimize_cap_body">Le jeu tournerait avec moins de saccades plus longtemps, sans ralentir.</string>
     <string name="optimize_cap_yes">Oui, le maintenir</string>
-    <string name="optimize_after_cap_held">Maintenu à %1$d fps : moins de saccades, reste frais plus longtemps</string>
+    <string name="optimize_after_cap_held">Maintenu à %1$d fps : moins de saccades, performances plus stables</string>
     <string name="optimize_after_cap_removed">Maintenir à %1$d fps n\'a pas aidé ; la limite a été retirée</string>
     <string name="optimize_status_cap_held">Maintenu à %1$d fps</string>
     <string name="optimize_hint_heat">Ici, c\'est la chaleur qui limite. Essayez Énergie et chaleur.</string>
@@ -1942,6 +1943,7 @@
     <string name="optimize_suggested_stability">Suggéré : Stabilité, car le jeu saccade.</string>
     <string name="optimize_suggested_balanced">Suggéré : Équilibré, car aucune limite ne ressort plus qu\'une autre.</string>
     <string name="optimize_status_exhausted">Le maximum possible sur cet appareil</string>
+    <string name="optimize_status_waiting">Pas encore de modification sûre. Nous vérifierons de nouveau plus tard.</string>
     <string name="optimize_continue">Reprendre</string>
     <string name="optimize_keep_tuning">Continuer à ajuster</string>
     <plurals name="optimize_trial_used">

@@ -1834,6 +1834,7 @@ https://gamenative.app
     <string name="optimize_stop_here">Остановиться</string>
     <string name="optimize_after_worse">Это изменение ухудшило ситуацию, оно отменено</string>
     <string name="optimize_after_exhausted">Это предел для игры %1$s на этом устройстве</string>
+    <string name="optimize_after_no_rule">Для игры %1$s пока нет безопасного изменения. Мы проверим позже.</string>
     <string name="optimize_keep_changes">Оставить изменения</string>
     <string name="optimize_undo_all">Отменить все</string>
     <string name="optimize_after_done">Игра %1$s работает так, как вы хотели</string>
@@ -1842,7 +1843,7 @@ https://gamenative.app
     <string name="optimize_cap_title">Держать %1$s на %2$d fps?</string>
     <string name="optimize_cap_body">Игра будет дольше работать с меньшими подтормаживаниями и без замедления.</string>
     <string name="optimize_cap_yes">Да, держать</string>
-    <string name="optimize_after_cap_held">Держится на %1$d fps: меньше подтормаживаний, дольше остаётся холодной</string>
+    <string name="optimize_after_cap_held">Держится на %1$d fps: меньше подтормаживаний, стабильнее производительность</string>
     <string name="optimize_after_cap_removed">Ограничение до %1$d fps не помогло; оно снято</string>
     <string name="optimize_status_cap_held">Держится на %1$d fps</string>
     <string name="optimize_hint_heat">Здесь ограничивает нагрев. Попробуйте «Питание и нагрев».</string>
@@ -1852,6 +1853,7 @@ https://gamenative.app
     <string name="optimize_suggested_stability">Рекомендуется: «Стабильность», потому что игра подтормаживает.</string>
     <string name="optimize_suggested_balanced">Рекомендуется: «Баланс», потому что ни одно ограничение не выделяется.</string>
     <string name="optimize_status_exhausted">Предел для этого устройства</string>
+    <string name="optimize_status_waiting">Безопасного изменения пока нет. Мы проверим позже.</string>
     <string name="optimize_continue">Возобновить</string>
     <string name="optimize_keep_tuning">Продолжить настройку</string>
     <plurals name="optimize_trial_used">

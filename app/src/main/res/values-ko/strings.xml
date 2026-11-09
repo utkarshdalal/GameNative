@@ -1875,6 +1875,7 @@
     <string name="optimize_stop_here">여기서 멈추기</string>
     <string name="optimize_after_worse">그 변경으로 더 나빠져서 되돌렸습니다</string>
     <string name="optimize_after_exhausted">이 기기에서 %1$s은(는) 여기까지입니다</string>
+    <string name="optimize_after_no_rule">%1$s에 적용할 안전한 변경이 아직 없습니다. 나중에 다시 확인합니다.</string>
     <string name="optimize_keep_changes">변경 사항 유지</string>
     <string name="optimize_undo_all">모두 되돌리기</string>
     <string name="optimize_after_done">%1$s이(가) 원하는 대로 실행되고 있습니다</string>
@@ -1883,7 +1884,7 @@
     <string name="optimize_cap_title">%1$s을(를) %2$d fps로 고정할까요?</string>
     <string name="optimize_cap_body">느려지지 않고 끊김 없이 더 오래 실행할 수 있습니다.</string>
     <string name="optimize_cap_yes">예, 고정</string>
-    <string name="optimize_after_cap_held">%1$d fps로 고정 중: 끊김이 줄고 더 오래 시원하게 실행</string>
+    <string name="optimize_after_cap_held">%1$d fps로 고정 중: 끊김이 줄고 성능이 더 안정적</string>
     <string name="optimize_after_cap_removed">%1$d fps로 고정해도 효과가 없어 제한을 해제했습니다</string>
     <string name="optimize_status_cap_held">%1$d fps로 고정됨</string>
     <string name="optimize_hint_heat">여기서는 발열이 한계입니다. 전력 및 발열을 사용해 보세요.</string>
@@ -1893,6 +1894,7 @@
     <string name="optimize_suggested_stability">추천: 안정성 (게임이 끊겨서)</string>
     <string name="optimize_suggested_balanced">추천: 균형 (눈에 띄는 주요 한계가 없어서)</string>
     <string name="optimize_status_exhausted">이 기기에서는 여기까지입니다</string>
+    <string name="optimize_status_waiting">적용할 안전한 변경이 아직 없습니다. 나중에 다시 확인합니다.</string>
     <string name="optimize_continue">계속</string>
     <string name="optimize_keep_tuning">계속 조정</string>
     <plurals name="optimize_trial_used">

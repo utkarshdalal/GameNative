@@ -1904,6 +1904,7 @@
     <string name="optimize_stop_here">Parar aquí</string>
     <string name="optimize_after_worse">Ese cambio empeoró las cosas y se ha deshecho</string>
     <string name="optimize_after_exhausted">Esto es lo máximo que se puede conseguir con %1$s en este dispositivo</string>
+    <string name="optimize_after_no_rule">Aún no hay un cambio seguro para %1$s. Lo volveremos a comprobar más tarde.</string>
     <string name="optimize_keep_changes">Mantener cambios</string>
     <string name="optimize_undo_all">Deshacer todo</string>
     <string name="optimize_after_done">%1$s funciona como pediste</string>
@@ -1912,7 +1913,7 @@
     <string name="optimize_cap_title">¿Mantener %1$s a %2$d fps?</string>
     <string name="optimize_cap_body">Así el juego funcionaría con menos tirones durante más tiempo sin ralentizarse.</string>
     <string name="optimize_cap_yes">Sí, mantenerlo</string>
-    <string name="optimize_after_cap_held">Mantenido a %1$d fps: menos tirones, se mantiene fresco más tiempo</string>
+    <string name="optimize_after_cap_held">Mantenido a %1$d fps: menos tirones, rendimiento más estable</string>
     <string name="optimize_after_cap_removed">Mantener a %1$d fps no ayudó; se quitó el límite</string>
     <string name="optimize_status_cap_held">Mantenido a %1$d fps</string>
     <string name="optimize_hint_heat">Aquí el límite es el calor. Prueba Energía y calor.</string>
@@ -1922,6 +1923,7 @@
     <string name="optimize_suggested_stability">Sugerido: Estabilidad, porque el juego da tirones.</string>
     <string name="optimize_suggested_balanced">Sugerido: Equilibrado, porque ningún límite destaca sobre los demás.</string>
     <string name="optimize_status_exhausted">Lo máximo posible en este dispositivo</string>
+    <string name="optimize_status_waiting">Aún no hay un cambio seguro. Lo volveremos a comprobar más tarde.</string>
     <string name="optimize_continue">Continuar</string>
     <string name="optimize_keep_tuning">Seguir ajustando</string>
     <plurals name="optimize_trial_used">

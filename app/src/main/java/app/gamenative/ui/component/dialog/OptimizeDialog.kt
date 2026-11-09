@@ -58,8 +58,14 @@ import kotlinx.coroutines.withContext
 class OptimizeGate {
     var pending by mutableStateOf<(() -> Unit)?>(null)
 
-    suspend fun require(action: () -> Unit) {
-        if (AccountApi.loadSignedInState()) action() else pending = action
+    /** [appId] names the game the action is for, so the sign-in prompt is counted for it. */
+    suspend fun require(appId: String? = null, action: () -> Unit) {
+        if (AccountApi.loadSignedInState()) {
+            action()
+        } else {
+            appId?.let { OptimizeController.signInRequired(it) }
+            pending = action
+        }
     }
 }
 
@@ -102,7 +108,7 @@ class OptimizeActions(
     }
 
     private fun gated(action: () -> Unit) {
-        scope.launch { gate.require(action) }
+        scope.launch { gate.require(appId, action) }
     }
 
     fun switchTo(profile: OptimizeProfile) {
@@ -159,6 +165,7 @@ fun optimizeStatusText(state: OptimizeLocalState): String? = when (val status = 
     OptimizeStatus.Paused -> stringResource(R.string.optimize_status_paused)
     OptimizeStatus.Done -> stringResource(R.string.optimize_status_done)
     OptimizeStatus.Exhausted -> stringResource(R.string.optimize_status_exhausted)
+    OptimizeStatus.Waiting -> stringResource(R.string.optimize_status_waiting)
     OptimizeStatus.TrialUsed -> null
 }
 

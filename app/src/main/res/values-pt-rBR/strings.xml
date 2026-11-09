@@ -1776,6 +1776,7 @@
     <string name="optimize_stop_here">Parar aqui</string>
     <string name="optimize_after_worse">Essa mudança piorou as coisas e foi desfeita</string>
     <string name="optimize_after_exhausted">Este é o máximo para %1$s neste dispositivo</string>
+    <string name="optimize_after_no_rule">Ainda não há uma mudança segura para %1$s. Vamos verificar de novo mais tarde.</string>
     <string name="optimize_keep_changes">Manter mudanças</string>
     <string name="optimize_undo_all">Desfazer tudo</string>
     <string name="optimize_after_done">%1$s está rodando do jeito que você pediu</string>
@@ -1784,7 +1785,7 @@
     <string name="optimize_cap_title">Manter %1$s a %2$d fps?</string>
     <string name="optimize_cap_body">O jogo rodaria com menos travadas por mais tempo, sem ficar lento.</string>
     <string name="optimize_cap_yes">Sim, manter</string>
-    <string name="optimize_after_cap_held">Mantido a %1$d fps: menos travadas, fica frio por mais tempo</string>
+    <string name="optimize_after_cap_held">Mantido a %1$d fps: menos travadas, desempenho mais estável</string>
     <string name="optimize_after_cap_removed">Manter a %1$d fps não ajudou; o limite foi removido</string>
     <string name="optimize_status_cap_held">Mantido a %1$d fps</string>
     <string name="optimize_hint_heat">Aqui o limite é o calor. Experimente Energia e calor.</string>
@@ -1794,6 +1795,7 @@
     <string name="optimize_suggested_stability">Sugerido: Estabilidade, porque o jogo engasga.</string>
     <string name="optimize_suggested_balanced">Sugerido: Equilibrado, porque nenhum limite se destaca.</string>
     <string name="optimize_status_exhausted">O máximo neste dispositivo</string>
+    <string name="optimize_status_waiting">Ainda não há uma mudança segura. Vamos verificar de novo mais tarde.</string>
     <string name="optimize_continue">Retomar</string>
     <string name="optimize_keep_tuning">Continuar ajustando</string>
     <plurals name="optimize_trial_used">

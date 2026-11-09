@@ -19,6 +19,9 @@ sealed class OptimizeStatus {
     data object Paused : OptimizeStatus()
     data object Done : OptimizeStatus()
     data object Exhausted : OptimizeStatus()
+
+    /** The server has no safe change for the game yet; it is checked again later. */
+    data object Waiting : OptimizeStatus()
     data object TrialUsed : OptimizeStatus()
 
     companion object {
@@ -34,6 +37,7 @@ sealed class OptimizeStatus {
                 ladder.state == LadderState.TRYING -> TuningNext
                 ladder.state == LadderState.PAUSED -> Paused
                 ladder.state == LadderState.DONE -> Done
+                ladder.state == LadderState.WAITING -> Waiting
                 else -> Exhausted
             }
         }

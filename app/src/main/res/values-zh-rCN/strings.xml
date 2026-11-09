@@ -1871,6 +1871,7 @@
     <string name="optimize_stop_here">到此为止</string>
     <string name="optimize_after_worse">这项更改让情况变差，已撤销</string>
     <string name="optimize_after_exhausted">在此设备上，%1$s 只能优化到这里</string>
+    <string name="optimize_after_no_rule">%1$s 暂时没有安全的更改。我们稍后会再检查。</string>
     <string name="optimize_keep_changes">保留更改</string>
     <string name="optimize_undo_all">全部撤销</string>
     <string name="optimize_after_done">%1$s 正按你的要求运行</string>
@@ -1879,7 +1880,7 @@
     <string name="optimize_cap_title">将%1$s保持在 %2$d fps？</string>
     <string name="optimize_cap_body">这样游戏能更长时间少卡顿地运行，且不会变慢。</string>
     <string name="optimize_cap_yes">是，保持</string>
-    <string name="optimize_after_cap_held">保持在 %1$d fps：卡顿更少，更长时间不发热</string>
+    <string name="optimize_after_cap_held">保持在 %1$d fps：卡顿更少，性能更稳定</string>
     <string name="optimize_after_cap_removed">保持在 %1$d fps 没有帮助，已取消限制</string>
     <string name="optimize_status_cap_held">保持在 %1$d fps</string>
     <string name="optimize_hint_heat">这里的瓶颈是发热。试试“功耗与发热”。</string>
@@ -1889,6 +1890,7 @@
     <string name="optimize_suggested_stability">建议：稳定，因为游戏有卡顿。</string>
     <string name="optimize_suggested_balanced">建议：均衡，因为没有明显的主要瓶颈。</string>
     <string name="optimize_status_exhausted">此设备上已到极限</string>
+    <string name="optimize_status_waiting">暂时没有安全的更改。我们稍后会再检查。</string>
     <string name="optimize_continue">恢复</string>
     <string name="optimize_keep_tuning">继续调整</string>
     <plurals name="optimize_trial_used">

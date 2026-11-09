@@ -1906,6 +1906,7 @@
     <string name="optimize_stop_here">Зупинитися</string>
     <string name="optimize_after_worse">Ця зміна погіршила ситуацію, її скасовано</string>
     <string name="optimize_after_exhausted">Це межа для гри %1$s на цьому пристрої</string>
+    <string name="optimize_after_no_rule">Для гри %1$s поки немає безпечної зміни. Ми перевіримо пізніше.</string>
     <string name="optimize_keep_changes">Залишити зміни</string>
     <string name="optimize_undo_all">Скасувати все</string>
     <string name="optimize_after_done">Гра %1$s працює так, як ви хотіли</string>
@@ -1914,7 +1915,7 @@
     <string name="optimize_cap_title">Тримати %1$s на %2$d fps?</string>
     <string name="optimize_cap_body">Гра довше працюватиме з меншими підвисаннями й без сповільнення.</string>
     <string name="optimize_cap_yes">Так, тримати</string>
-    <string name="optimize_after_cap_held">Тримається на %1$d fps: менше підвисань, довше лишається холодною</string>
+    <string name="optimize_after_cap_held">Тримається на %1$d fps: менше підвисань, стабільніша продуктивність</string>
     <string name="optimize_after_cap_removed">Обмеження до %1$d fps не допомогло; його знято</string>
     <string name="optimize_status_cap_held">Тримається на %1$d fps</string>
     <string name="optimize_hint_heat">Тут обмежує нагрів. Спробуйте «Живлення й нагрів».</string>
@@ -1924,6 +1925,7 @@
     <string name="optimize_suggested_stability">Рекомендовано: «Стабільність», бо гра підгальмовує.</string>
     <string name="optimize_suggested_balanced">Рекомендовано: «Баланс», бо жодне обмеження не виділяється.</string>
     <string name="optimize_status_exhausted">Межа для цього пристрою</string>
+    <string name="optimize_status_waiting">Безпечної зміни поки немає. Ми перевіримо пізніше.</string>
     <string name="optimize_continue">Відновити</string>
     <string name="optimize_keep_tuning">Продовжити налаштування</string>
     <plurals name="optimize_trial_used">

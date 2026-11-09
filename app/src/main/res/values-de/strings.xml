@@ -1846,6 +1846,7 @@
     <string name="optimize_stop_here">Hier aufhören</string>
     <string name="optimize_after_worse">Diese Änderung hat es verschlechtert und wurde rückgängig gemacht</string>
     <string name="optimize_after_exhausted">Weiter geht es für %1$s auf diesem Gerät nicht</string>
+    <string name="optimize_after_no_rule">Noch keine sichere Änderung für %1$s. Wir prüfen später erneut.</string>
     <string name="optimize_keep_changes">Änderungen behalten</string>
     <string name="optimize_undo_all">Alle rückgängig machen</string>
     <string name="optimize_after_done">%1$s läuft so, wie du es wolltest</string>
@@ -1854,7 +1855,7 @@
     <string name="optimize_cap_title">%1$s bei %2$d fps halten?</string>
     <string name="optimize_cap_body">So läuft das Spiel länger mit weniger Rucklern, ohne langsamer zu werden.</string>
     <string name="optimize_cap_yes">Ja, halten</string>
-    <string name="optimize_after_cap_held">Bei %1$d fps gehalten: weniger Ruckler, bleibt länger kühl</string>
+    <string name="optimize_after_cap_held">Bei %1$d fps gehalten: weniger Ruckler, stabilere Leistung</string>
     <string name="optimize_after_cap_removed">Das Halten bei %1$d fps hat nicht geholfen; die Begrenzung wurde entfernt</string>
     <string name="optimize_status_cap_held">Bei %1$d fps gehalten</string>
     <string name="optimize_hint_heat">Hier begrenzt die Wärme. Versuche Strom und Wärme.</string>
@@ -1864,6 +1865,7 @@
     <string name="optimize_suggested_stability">Vorschlag: Stabilität, weil das Spiel ruckelt.</string>
     <string name="optimize_suggested_balanced">Vorschlag: Ausgewogen, weil keine Grenze besonders hervorsticht.</string>
     <string name="optimize_status_exhausted">Mehr geht auf diesem Gerät nicht</string>
+    <string name="optimize_status_waiting">Noch keine sichere Änderung. Wir prüfen später erneut.</string>
     <string name="optimize_continue">Fortsetzen</string>
     <string name="optimize_keep_tuning">Weiter optimieren</string>
     <plurals name="optimize_trial_used">

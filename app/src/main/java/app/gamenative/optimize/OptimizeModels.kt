@@ -329,6 +329,8 @@ class Rung(
     val relative: Boolean = false,
     /** The server rules build the rung came from. */
     val rulesVersion: String? = null,
+    /** A cap rung the user has to say yes to first; null when the server does not say. */
+    val askFirst: Boolean? = null,
 ) {
     fun isExpired(nowMillis: Long): Boolean = expiresAtMillis != null && nowMillis > expiresAtMillis
 
@@ -353,6 +355,7 @@ class Rung(
                 expiresAtMillis = o.optStringOrNull("expires_at")?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() },
                 relative = o.optBoolean("relative", false),
                 rulesVersion = o.optStringOrNull("rules_version"),
+                askFirst = if (o.has("ask_first") && !o.isNull("ask_first")) o.optBoolean("ask_first") else null,
             )
         }
     }
@@ -401,14 +404,24 @@ data class NextRungResponse(
     val rung: Rung?,
     val entitlement: Entitlement? = null,
     val rulesVersion: String? = null,
+    /** On no_rule and not_settings: seconds before the game is worth asking about again. */
+    val retryAfterSec: Int? = null,
 ) {
     /** The rules build that answered: the top-level value, else the rung's. */
     val effectiveRulesVersion: String? get() = rulesVersion ?: rung?.rulesVersion
+
+    /** The server has nothing for the game: no rule for it, or its limit is not in its settings. */
+    val hasNothing: Boolean get() = status == STATUS_NO_RULE || status == STATUS_NOT_SETTINGS
 
     companion object {
         const val STATUS_RUNG = "rung"
         const val STATUS_EXHAUSTED = "exhausted"
         const val STATUS_ENTITLEMENT_REQUIRED = "entitlement_required"
+        const val STATUS_NO_RULE = "no_rule"
+        const val STATUS_NOT_SETTINGS = "not_settings"
+
+        /** Client-side only: an unasked cap rung raised the cap question, so the ladder waits for the answer. */
+        const val STATUS_CAP_QUESTION = "cap_question"
 
         fun parse(o: JSONObject): NextRungResponse = NextRungResponse(
             o.optString("status"),
@@ -416,6 +429,7 @@ data class NextRungResponse(
             Rung.parse(o.optJSONObject("rung")),
             Entitlement.fromJson(o.optJSONObject("entitlement")),
             o.optStringOrNull("rules_version"),
+            o.optIntOrNull("retry_after_s")?.takeIf { it >= 0 },
         )
     }
 }

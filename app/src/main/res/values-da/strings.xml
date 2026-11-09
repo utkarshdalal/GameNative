@@ -1776,6 +1776,7 @@
     <string name="optimize_stop_here">Stop her</string>
     <string name="optimize_after_worse">Den ændring gjorde det værre, den er blevet fortrudt</string>
     <string name="optimize_after_exhausted">Længere kan %1$s ikke komme på denne enhed</string>
+    <string name="optimize_after_no_rule">Ingen sikker ændring for %1$s endnu. Vi tjekker igen senere.</string>
     <string name="optimize_keep_changes">Behold ændringer</string>
     <string name="optimize_undo_all">Fortryd alle</string>
     <string name="optimize_after_done">%1$s kører, som du bad om</string>
@@ -1784,7 +1785,7 @@
     <string name="optimize_cap_title">Hold %1$s på %2$d fps?</string>
     <string name="optimize_cap_body">Så kan spillet køre med færre hak i længere tid uden at blive langsommere.</string>
     <string name="optimize_cap_yes">Ja, hold det</string>
-    <string name="optimize_after_cap_held">Holder %1$d fps: færre hak, kører køligt længere</string>
+    <string name="optimize_after_cap_held">Holder %1$d fps: færre hak, mere stabil ydeevne</string>
     <string name="optimize_after_cap_removed">At holde %1$d fps hjalp ikke; grænsen er fjernet</string>
     <string name="optimize_status_cap_held">Holdt på %1$d fps</string>
     <string name="optimize_hint_heat">Varme er grænsen her. Prøv Strøm og varme.</string>
@@ -1794,6 +1795,7 @@
     <string name="optimize_suggested_stability">Foreslået: Stabilitet, fordi spillet hakker.</string>
     <string name="optimize_suggested_balanced">Foreslået: Balanceret, fordi intet skiller sig ud som den største begrænsning.</string>
     <string name="optimize_status_exhausted">Så langt det kan komme på denne enhed</string>
+    <string name="optimize_status_waiting">Ingen sikker ændring endnu. Vi tjekker igen senere.</string>
     <string name="optimize_continue">Genoptag</string>
     <string name="optimize_keep_tuning">Bliv ved med at justere</string>
     <plurals name="optimize_trial_used">

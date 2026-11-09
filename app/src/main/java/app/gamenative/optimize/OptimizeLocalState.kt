@@ -146,6 +146,9 @@ enum class LadderState(val wireId: String) {
     PAUSED("paused"),
     DONE("done"),
     EXHAUSTED("exhausted"),
+
+    /** The server has no safe change for the game yet; nothing is asked until [NoRuleHold] lets go. */
+    WAITING("waiting"),
     ;
 
     companion object {
@@ -257,7 +260,7 @@ data class PrefetchedRung(
     fun isUsable(nowMillis: Long, profile: OptimizeProfile, key: PrefetchKey, ladder: ProfileLadder, lastRulesVersion: String?): Boolean =
         nowMillis - fetchedAt in 0..MAX_AGE_MS &&
             !staleRules(lastRulesVersion) &&
-            (!rung.isFpsCap || capAsked) &&
+            (!rung.isFpsCap || capAsked || rung.askFirst == false) &&
             !rung.isExpired(nowMillis) &&
             this.profile == profile &&
             this.key == key &&
@@ -317,6 +320,10 @@ data class OptimizeCard(
     val reason: String? = null,
     /** The fps a cap question proposes, or a kept cap holds on an after-card. */
     val capFps: Int? = null,
+    /** On an after-card, the session before the step; [metrics] is the session after it. */
+    val before: Metrics? = null,
+    /** A first or cap card written without the server confirming it has a change for the game (it did not answer). */
+    val unverified: Boolean = false,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("kind", kind)
@@ -331,6 +338,8 @@ data class OptimizeCard(
         metrics?.let { put("metrics", it.toJson()) }
         reason?.let { put("reason", it) }
         capFps?.let { put("cap_fps", it) }
+        before?.let { put("before", it.toJson()) }
+        if (unverified) put("unverified", true)
     }
 
     companion object {
@@ -343,6 +352,8 @@ data class OptimizeCard(
         const val ENTITLEMENT = "entitlement"
         /** Heat is the limit and a frame cap is the lever: asks whether to hold the game at [capFps]. */
         const val CAP = "cap"
+        /** The server has no safe change for the game yet; it is checked again later. */
+        const val NO_RULE = "no_rule"
 
         const val OUTCOME_FPS = "fps"
         const val OUTCOME_STUTTER = "stutter"
@@ -364,7 +375,40 @@ data class OptimizeCard(
                 metrics = Metrics.fromJson(o.optJSONObject("metrics")),
                 reason = o.optStringOrNull("reason"),
                 capFps = o.optIntOrNull("cap_fps"),
+                before = Metrics.fromJson(o.optJSONObject("before")),
+                unverified = o.optBoolean("unverified", false),
             )
+        }
+    }
+}
+
+/**
+ * The server answered no_rule or not_settings for the game: no first card and no next-rung request until [untilMillis],
+ * or until the server's rules build is no longer [rulesVersion].
+ */
+data class NoRuleHold(val untilMillis: Long, val rulesVersion: String?, val status: String) {
+    /** [currentRulesVersion] is the newest rules build any answer carried; null compares by time alone. */
+    fun holds(nowMillis: Long, currentRulesVersion: String?): Boolean =
+        nowMillis < untilMillis && (currentRulesVersion == null || rulesVersion == null || currentRulesVersion == rulesVersion)
+
+    fun toJson(): JSONObject = JSONObject().apply {
+        put("until", untilMillis)
+        put("rules_version", rulesVersion ?: JSONObject.NULL)
+        put("status", status)
+    }
+
+    companion object {
+        const val DEFAULT_RETRY_SEC = 7 * 24 * 60 * 60
+
+        fun of(response: NextRungResponse, nowMillis: Long): NoRuleHold = NoRuleHold(
+            nowMillis + (response.retryAfterSec ?: DEFAULT_RETRY_SEC) * 1000L,
+            response.effectiveRulesVersion,
+            response.status,
+        )
+
+        fun fromJson(o: JSONObject?): NoRuleHold? {
+            if (o == null || !o.has("until")) return null
+            return NoRuleHold(o.optLong("until", 0L), o.optStringOrNull("rules_version"), o.optString("status"))
         }
     }
 }
@@ -401,6 +445,8 @@ data class OptimizeLocalState(
     val capSnoozedUntil: Long = 0L,
     /** The rules build of the newest server answer; a prefetched rung from another build is not used. */
     val lastRulesVersion: String? = null,
+    /** The server had nothing for the game; set while it is not asked again. */
+    val noRule: NoRuleHold? = null,
 ) {
     val active: ProfileLadder? get() = activeProfile?.let { profiles[it] }
 
@@ -425,6 +471,7 @@ data class OptimizeLocalState(
         if (capPreferred) put("ladder_prefer", PREFER_CAP)
         if (capSnoozedUntil > 0) put("cap_snoozed_until", capSnoozedUntil)
         lastRulesVersion?.let { put("last_rules_version", it) }
+        noRule?.let { put("no_rule", it.toJson()) }
     }
 
     companion object {
@@ -458,6 +505,7 @@ data class OptimizeLocalState(
                 capPreferred = o.optStringOrNull("ladder_prefer") == PREFER_CAP,
                 capSnoozedUntil = o.optLong("cap_snoozed_until", 0L),
                 lastRulesVersion = o.optStringOrNull("last_rules_version"),
+                noRule = NoRuleHold.fromJson(o.optJSONObject("no_rule")),
             )
         }
 

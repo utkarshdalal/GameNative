@@ -2115,6 +2115,7 @@
     <string name="optimize_stop_here">ここでやめる</string>
     <string name="optimize_after_worse">その変更で悪化したため、元に戻しました</string>
     <string name="optimize_after_exhausted">このデバイスでの %1$s の改善はここまでです</string>
+    <string name="optimize_after_no_rule">%1$s に安全な変更はまだありません。後でもう一度確認します。</string>
     <string name="optimize_keep_changes">変更を保持</string>
     <string name="optimize_undo_all">すべて元に戻す</string>
     <string name="optimize_after_done">%1$s は希望どおりに動作しています</string>
@@ -2123,7 +2124,7 @@
     <string name="optimize_cap_title">%1$sを%2$d fpsに固定しますか？</string>
     <string name="optimize_cap_body">カクつきを減らし、遅くならずに長く快適に動作します。</string>
     <string name="optimize_cap_yes">はい、固定する</string>
-    <string name="optimize_after_cap_held">%1$d fpsに固定中：カクつきが減り、長く熱くなりにくい</string>
+    <string name="optimize_after_cap_held">%1$d fpsに固定中：カクつきが減り、パフォーマンスが安定</string>
     <string name="optimize_after_cap_removed">%1$d fpsに固定しても効果がなかったため、制限を解除しました</string>
     <string name="optimize_status_cap_held">%1$d fpsに固定中</string>
     <string name="optimize_hint_heat">ここでは発熱が限界です。電力と発熱を試してください。</string>
@@ -2133,6 +2134,7 @@
     <string name="optimize_suggested_stability">おすすめ：安定性（ゲームがカクつくため）。</string>
     <string name="optimize_suggested_balanced">おすすめ：バランス（目立った制約がないため）。</string>
     <string name="optimize_status_exhausted">このデバイスではここまでです</string>
+    <string name="optimize_status_waiting">安全な変更はまだありません。後でもう一度確認します。</string>
     <string name="optimize_continue">再開</string>
     <string name="optimize_keep_tuning">調整を続ける</string>
     <plurals name="optimize_trial_used">

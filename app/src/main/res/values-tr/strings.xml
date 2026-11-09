@@ -1924,6 +1924,7 @@
     <string name="optimize_stop_here">Burada dur</string>
     <string name="optimize_after_worse">Bu değişiklik durumu kötüleştirdi, geri alındı</string>
     <string name="optimize_after_exhausted">Bu cihazda %1$s için gidilebilecek en son nokta bu</string>
+    <string name="optimize_after_no_rule">%1$s için henüz güvenli bir değişiklik yok. Daha sonra tekrar kontrol edeceğiz.</string>
     <string name="optimize_keep_changes">Değişiklikleri koru</string>
     <string name="optimize_undo_all">Tümünü geri al</string>
     <string name="optimize_after_done">%1$s istediğiniz gibi çalışıyor</string>
@@ -1932,7 +1933,7 @@
     <string name="optimize_cap_title">%1$s %2$d fps\'de sabitlensin mi?</string>
     <string name="optimize_cap_body">Oyun yavaşlamadan daha uzun süre daha az takılmayla çalışır.</string>
     <string name="optimize_cap_yes">Evet, sabitle</string>
-    <string name="optimize_after_cap_held">%1$d fps\'de sabit: daha az takılma, daha uzun süre serin kalır</string>
+    <string name="optimize_after_cap_held">%1$d fps\'de sabit: daha az takılma, daha kararlı performans</string>
     <string name="optimize_after_cap_removed">%1$d fps\'de sabitlemek işe yaramadı; sınır kaldırıldı</string>
     <string name="optimize_status_cap_held">%1$d fps\'de sabit</string>
     <string name="optimize_hint_heat">Burada sınır ısı. Güç ve ısı\'yı deneyin.</string>
@@ -1942,6 +1943,7 @@
     <string name="optimize_suggested_stability">Önerilen: Kararlılık, çünkü oyun takılıyor.</string>
     <string name="optimize_suggested_balanced">Önerilen: Dengeli, çünkü öne çıkan bir sınır yok.</string>
     <string name="optimize_status_exhausted">Bu cihazda varılabilecek en son nokta</string>
+    <string name="optimize_status_waiting">Henüz güvenli bir değişiklik yok. Daha sonra tekrar kontrol edeceğiz.</string>
     <string name="optimize_continue">Sürdür</string>
     <string name="optimize_keep_tuning">Ayarlamaya devam et</string>
     <plurals name="optimize_trial_used">

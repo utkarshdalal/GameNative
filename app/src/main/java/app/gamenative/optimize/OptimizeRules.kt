@@ -35,6 +35,24 @@ object OptimizeLadders {
     fun picked(ladder: ProfileLadder): ProfileLadder =
         if (ladder.state in RESUMABLE) ladder.copy(state = LadderState.TRYING, noChangeStreak = 0) else ladder
 
+    /**
+     * Holds [profile]'s ladder while the server has nothing for the game: a trying ladder with nothing on trial waits,
+     * and a waiting ladder tries again once [OptimizeLocalState.noRule] lets go, which is then cleared.
+     * [rulesVersion] is the newest rules build any answer carried.
+     */
+    fun held(state: OptimizeLocalState, profile: OptimizeProfile, nowMillis: Long, rulesVersion: String?): OptimizeLocalState {
+        val ladder = state.ladder(profile)
+        val holds = state.noRule?.holds(nowMillis, rulesVersion) == true
+        return when {
+            holds && ladder.state == LadderState.TRYING && ladder.pending.let { it == null || it.revert != null } ->
+                state.withLadder(profile, ladder.copy(state = LadderState.WAITING))
+            !holds && ladder.state == LadderState.WAITING ->
+                state.copy(noRule = null).withLadder(profile, ladder.copy(state = LadderState.TRYING, noChangeStreak = 0))
+            !holds && state.noRule != null -> state.copy(noRule = null)
+            else -> state
+        }
+    }
+
     /** Continue is offered while the active ladder is paused or done. */
     fun canContinue(status: OptimizeStatus?): Boolean = status == OptimizeStatus.Paused || status == OptimizeStatus.Done
 
@@ -188,18 +206,22 @@ object OptimizeCards {
     const val SUPPRESSED_SHORT = "short"
     const val SUPPRESSED_CLASS = "class"
     const val SUPPRESSED_NOT_NOW = "not_now"
+    const val SUPPRESSED_NO_RULE = "no_rule"
+    const val SUPPRESSED_CAP_SNOOZED = "cap_snoozed"
 
     /**
      * Why the session that just ended leaves no first card, or null when it should. A game with no active profile
-     * gets it again after Off or Restore, ladders and all.
+     * gets it again after Off or Restore, ladders and all. A game the server had nothing for is not offered again
+     * until its hold lets go ([rulesVersion] is the newest rules build any answer carried).
      */
-    fun firstCardBlock(state: OptimizeLocalState, session: Metrics, nowMillis: Long): String? {
+    fun firstCardBlock(state: OptimizeLocalState, session: Metrics, nowMillis: Long, rulesVersion: String? = null): String? {
         if (state.never) return SUPPRESSED_NEVER
         if (state.activeProfile != null) return SUPPRESSED_PROFILE
         if (state.card != null) return SUPPRESSED_CARD_WAITING
         if (session.confident != true) return SUPPRESSED_NOT_CONFIDENT
         if (session.gameplaySec < MIN_GAMEPLAY_SEC) return SUPPRESSED_SHORT
         if (session.cls !in CLASSES) return SUPPRESSED_CLASS
+        if (state.noRule?.holds(nowMillis, rulesVersion) == true) return SUPPRESSED_NO_RULE
         val suppression = state.suppression ?: return null
         if (nowMillis >= suppression.untilMillis) return null
         val reference = suppression.metrics ?: return SUPPRESSED_NOT_NOW
@@ -207,6 +229,50 @@ object OptimizeCards {
     }
 
     fun offerFirst(state: OptimizeLocalState, session: Metrics, nowMillis: Long): Boolean = firstCardBlock(state, session, nowMillis) == null
+
+    /** What the dry-run answer at exit lets the first card be. */
+    enum class Offer {
+        /** The server has a settings change: the first card (or the cap question the session already asks). */
+        CARD,
+
+        /** The server's only change is a frame cap it wants asked first: the cap question. */
+        CAP,
+
+        /** The server has nothing for the game: no card, and the game is held. */
+        HOLD,
+
+        /** No answer: the card is shown as before, marked unverified. */
+        UNVERIFIED,
+    }
+
+    /** [response] is the dry-run answer, null when there was none in time, the request failed or the user is signed out. */
+    fun offerOf(response: NextRungResponse?): Offer = when {
+        response == null -> Offer.UNVERIFIED
+        response.hasNothing || response.status == NextRungResponse.STATUS_EXHAUSTED -> Offer.HOLD
+        response.status == NextRungResponse.STATUS_RUNG && response.rung == null -> Offer.UNVERIFIED
+        response.status == NextRungResponse.STATUS_RUNG && response.rung?.isFpsCap == true && response.rung.askFirst != false -> Offer.CAP
+        response.status == NextRungResponse.STATUS_RUNG || response.status == NextRungResponse.STATUS_ENTITLEMENT_REQUIRED -> Offer.CARD
+        else -> Offer.UNVERIFIED
+    }
+
+    /**
+     * What a launch does with a cap rung it did not ask for. [ASK]: raise the cap question and wait for the answer,
+     * the first time. [END]: the question was declined or cannot be asked, so the ladder ends here. [APPLY]: the
+     * server says the cap needs no question (ask_first false), so it is tried like any other step.
+     */
+    enum class UnaskedCap { ASK, END, APPLY }
+
+    fun unaskedCap(state: OptimizeLocalState, rung: Rung, nowMillis: Long): UnaskedCap = when {
+        rung.askFirst == false -> UnaskedCap.APPLY
+        state.never || nowMillis < state.capSnoozedUntil || capFps(rung.raw) == null -> UnaskedCap.END
+        else -> UnaskedCap.ASK
+    }
+
+    /**
+     * The card a ladder the server has no more for ends with: exhausted (keep or undo) when one of its changes is on,
+     * otherwise no_rule, since there is nothing to keep or undo.
+     */
+    fun endCard(ladder: ProfileLadder): String = if (ladder.kept.any { it.applied }) OptimizeCard.EXHAUSTED else OptimizeCard.NO_RULE
 
     /** perf_verdict.card for a session: "shown" when it left a card, otherwise why not. */
     fun cardField(shown: Boolean, block: String?): String = if (shown) "shown" else "suppressed:${block ?: "none"}"
@@ -290,7 +356,7 @@ object OptimizeCards {
     const val CAP_SNOOZE_MS = SUPPRESS_MS
     private val CAP_VALUES = listOf(45, 40, 30)
     private const val CAP_SHARE = 0.75
-    private val ENDED = setOf(LadderState.EXHAUSTED, LadderState.DONE)
+    private val ENDED = setOf(LadderState.EXHAUSTED, LadderState.DONE, LadderState.WAITING)
 
     /** The fps a cap rung holds the game at, from its container fpsLimit lever; null for any other rung. */
     fun capFps(rung: JSONObject?): Int? {
@@ -312,7 +378,7 @@ object OptimizeCards {
     /**
      * The fps to propose holding the game at, or null when the cap is not the best lever. Heat has to be the limit
      * ([OptimizeTarget.hot] for [metrics]; with no metrics, a thermal_gpu verdict) and one of: steady fps under 45,
-     * so settings alone will not hold a cap; the profile's settings ladder ended (exhausted or done) or ran two
+     * so settings alone will not hold a cap; the profile's settings ladder ended (exhausted, done or waiting) or ran two
      * no-change steps in a row; or Power is the active profile. Never while a cap is already on or on trial, or the container already holds the game at
      * or below it ([fpsCap] 0 is no cap).
      */

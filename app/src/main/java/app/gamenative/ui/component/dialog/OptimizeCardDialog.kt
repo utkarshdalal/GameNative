@@ -11,6 +11,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -77,7 +78,9 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
     val gate = rememberOptimizeGate()
     val card = request.card
     val name = card.gameName.orEmpty()
-    val heatHint = card.kind == OptimizeCard.DONE && card.profile != OptimizeProfile.POWER &&
+    LaunchedEffect(request.appId, request.card) { OptimizeController.cardShown(request) }
+    // Only the done-at-baseline card (no step behind it) reads its session for heat.
+    val heatHint = card.kind == OptimizeCard.DONE && card.rungId == null && card.profile != OptimizeProfile.POWER &&
         card.metrics?.let { OptimizeTarget.hot(it, null, card.capFps ?: 0) } == true
     var choosing by remember(request.appId, request.card) { mutableStateOf(heatHint) }
     var chosen by remember(request.appId, request.card) {
@@ -116,6 +119,7 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
         OptimizeCard.WORSE -> title = card.capFps?.let { stringResource(R.string.optimize_after_cap_removed, it) }
             ?: stringResource(R.string.optimize_after_worse)
         OptimizeCard.EXHAUSTED -> title = stringResource(R.string.optimize_after_exhausted, name)
+        OptimizeCard.NO_RULE -> title = stringResource(R.string.optimize_after_no_rule, name)
         OptimizeCard.DONE -> {
             title = stringResource(R.string.optimize_after_done, name)
             body = if (heatHint) {
@@ -126,7 +130,9 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
         }
         else -> title = optimizeEntitlementText(request.entitlement, exhausted = true).orEmpty()
     }
-    if (card.kind != OptimizeCard.ENTITLEMENT && card.cls != OptimizeCards.SYNC_SPIN) detail = optimizeEntitlementText(request.entitlement)
+    if (card.kind != OptimizeCard.ENTITLEMENT && card.kind != OptimizeCard.NO_RULE && card.cls != OptimizeCards.SYNC_SPIN) {
+        detail = optimizeEntitlementText(request.entitlement)
+    }
 
     AlertDialog(
         onDismissRequest = { answer(OptimizeCards.ACTION_DISMISSED) },
@@ -174,7 +180,7 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
                                 choosing = true
                             } else {
                                 val profile = chosen
-                                scope.launch { gate.require { answer(OptimizeCards.ACTION_OPTIMIZE, profile) } }
+                                scope.launch { gate.require(request.appId) { answer(OptimizeCards.ACTION_OPTIMIZE, profile) } }
                             }
                         },
                     ) { Text(stringResource(R.string.option_optimize)) }
@@ -182,7 +188,7 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
                 OptimizeCard.CAP -> Button(
                     onClick = {
                         val profile = card.profile
-                        scope.launch { gate.require { answer(OptimizeCards.ACTION_CAP, profile) } }
+                        scope.launch { gate.require(request.appId) { answer(OptimizeCards.ACTION_CAP, profile) } }
                     },
                 ) { Text(stringResource(R.string.optimize_cap_yes)) }
                 OptimizeCard.HELPED, OptimizeCard.NO_CHANGE ->
@@ -193,7 +199,7 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
                     Button(
                         onClick = {
                             val profile = chosen
-                            scope.launch { gate.require { answer(OptimizeCards.ACTION_OPTIMIZE, profile) } }
+                            scope.launch { gate.require(request.appId) { answer(OptimizeCards.ACTION_OPTIMIZE, profile) } }
                         },
                     ) { Text(stringResource(R.string.option_optimize)) }
                 } else {
@@ -229,7 +235,7 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
                 OptimizeCard.ENTITLEMENT ->
                     TextButton(onClick = { answer(OptimizeCards.ACTION_DISMISSED) }) { Text(stringResource(R.string.close)) }
                 OptimizeCard.DONE -> Row {
-                    TextButton(onClick = { scope.launch { gate.require { answer(OptimizeCards.WIRE_CONTINUE) } } }) {
+                    TextButton(onClick = { scope.launch { gate.require(request.appId) { answer(OptimizeCards.WIRE_CONTINUE) } } }) {
                         Text(stringResource(R.string.optimize_keep_tuning))
                     }
                     if (heatHint) TextButton(onClick = { answer(OptimizeCards.ACTION_OK) }) { Text(stringResource(R.string.ok)) }

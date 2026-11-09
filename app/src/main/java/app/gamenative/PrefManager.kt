@@ -200,6 +200,15 @@ object PrefManager {
             setPref(OPTIMIZE_LAST_ENTITLEMENT, value)
         }
 
+    private val OPTIMIZE_LAST_RULES_VERSION = stringPreferencesKey("optimize_last_rules_version")
+
+    /** The newest Optimize rules build any game's answer carried; empty when none yet. */
+    var optimizeLastRulesVersion: String
+        get() = getPref(OPTIMIZE_LAST_RULES_VERSION, "")
+        set(value) {
+            setPref(OPTIMIZE_LAST_RULES_VERSION, value)
+        }
+
     /* PICS */
     private val LAST_PICS_CHANGE_NUMBER = intPreferencesKey("last_pics_change_number")
     var lastPICSChangeNumber: Int
