@@ -13,8 +13,23 @@ object OptimizeServer {
 
     const val BLOCK_SERVER = "server"
 
-    /** Whether the exit dry-run is sent for a session the local rules would [localBlock]: always, unless the user's own choices block it. */
-    fun asksAtExit(localBlock: String?): Boolean = localBlock == null || localBlock in VERDICT_BLOCKS
+    /** The verdict blocks the server is still asked about at exit; a short session never is. */
+    val ASKED_BLOCKS = setOf(OptimizeCards.SUPPRESSED_NOT_CONFIDENT, OptimizeCards.SUPPRESSED_CLASS)
+
+    /** Marks a game asked at exit while no rules build was known yet. */
+    const val UNKNOWN_RULES = "unknown"
+
+    /**
+     * Whether the exit dry-run is sent for a session the local rules would [localBlock]. Always when nothing blocks
+     * it. For an unsure or unlisted verdict only after [gameplaySec] of real play, with no [userHold], and once per
+     * rules build: [askedRulesVersion] is the build this game was last asked under, [rulesVersion] the current one.
+     */
+    fun asksAtExit(localBlock: String?, gameplaySec: Int, userHold: String?, askedRulesVersion: String?, rulesVersion: String?): Boolean = when {
+        localBlock == null -> true
+        localBlock !in ASKED_BLOCKS || userHold != null -> false
+        gameplaySec < OptimizeCards.MIN_GAMEPLAY_SEC -> false
+        else -> askedRulesVersion != (rulesVersion ?: UNKNOWN_RULES)
+    }
 
     /** [card] when one is left, else null and why not. */
     data class FirstDecision(val card: OptimizeCard?, val block: String?)

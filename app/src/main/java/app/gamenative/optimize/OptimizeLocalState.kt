@@ -474,6 +474,8 @@ data class OptimizeLocalState(
     val noRule: NoRuleHold? = null,
     /** How GPU work per frame followed the pixels of the last judged resolution step (verdict gpu_work_scaling). */
     val gpuWorkScaling: Double? = null,
+    /** The rules build this game was last asked about at exit for a session its verdict alone would leave no card. */
+    val exitAskedRulesVersion: String? = null,
 ) {
     val active: ProfileLadder? get() = activeProfile?.let { profiles[it] }
 
@@ -500,6 +502,7 @@ data class OptimizeLocalState(
         lastRulesVersion?.let { put("last_rules_version", it) }
         noRule?.let { put("no_rule", it.toJson()) }
         gpuWorkScaling?.let { put("gpu_work_scaling", it) }
+        exitAskedRulesVersion?.let { put("exit_asked_rules_version", it) }
     }
 
     companion object {
@@ -535,6 +538,7 @@ data class OptimizeLocalState(
                 lastRulesVersion = o.optStringOrNull("last_rules_version"),
                 noRule = NoRuleHold.fromJson(o.optJSONObject("no_rule")),
                 gpuWorkScaling = o.optDoubleOrNull("gpu_work_scaling")?.coerceIn(OptimizeJudge.GPU_WORK_SCALING_MIN, OptimizeJudge.GPU_WORK_SCALING_MAX),
+                exitAskedRulesVersion = o.optStringOrNull("exit_asked_rules_version"),
             )
         }
 

@@ -59,10 +59,44 @@ class OptimizeServerTest {
 
     @Test
     fun `only verdict blocks ask the server at exit`() {
-        assertTrue(OptimizeServer.asksAtExit(null))
-        assertTrue(OptimizeServer.asksAtExit(OptimizeCards.SUPPRESSED_SHORT))
-        assertFalse(OptimizeServer.asksAtExit(OptimizeCards.SUPPRESSED_NEVER))
-        assertFalse(OptimizeServer.asksAtExit(OptimizeCards.SUPPRESSED_NOT_NOW))
+        fun asks(block: String?, sec: Int = 600, hold: String? = null, asked: String? = null, rules: String? = "r1") =
+            OptimizeServer.asksAtExit(block, sec, hold, asked, rules)
+        assertTrue(asks(null, sec = 10))
+        assertTrue(asks(OptimizeCards.SUPPRESSED_NOT_CONFIDENT))
+        assertTrue(asks(OptimizeCards.SUPPRESSED_CLASS))
+        // Short sessions, the user's own holds and a game already asked under this rules build never ask.
+        assertFalse(asks(OptimizeCards.SUPPRESSED_SHORT))
+        assertFalse(asks(OptimizeCards.SUPPRESSED_NOT_CONFIDENT, sec = 299))
+        assertFalse(asks(OptimizeCards.SUPPRESSED_NEVER))
+        assertFalse(asks(OptimizeCards.SUPPRESSED_NOT_NOW))
+        assertFalse(asks(OptimizeCards.SUPPRESSED_CAP_SNOOZED))
+        assertFalse(asks(OptimizeCards.SUPPRESSED_CLASS, hold = OptimizeCards.SUPPRESSED_NO_RULE))
+        assertFalse(asks(OptimizeCards.SUPPRESSED_CLASS, asked = "r1"))
+        assertTrue(asks(OptimizeCards.SUPPRESSED_CLASS, asked = "r0"))
+        assertTrue(asks(OptimizeCards.SUPPRESSED_CLASS, rules = null))
+        assertFalse(asks(OptimizeCards.SUPPRESSED_CLASS, asked = OptimizeServer.UNKNOWN_RULES, rules = null))
+    }
+
+    @Test
+    fun `the user's holds come before the session's verdict`() {
+        val unsure = Metrics(gameplaySec = 900, confident = false, cls = "gpu")
+        val hold = NoRuleHold(10_000L, "r1", "no_rule")
+        assertEquals(OptimizeCards.SUPPRESSED_NO_RULE, OptimizeCards.firstCardBlock(OptimizeLocalState(noRule = hold), unsure, 1_000L, "r1"))
+        assertEquals(OptimizeCards.SUPPRESSED_CAP_SNOOZED, OptimizeCards.firstCardBlock(OptimizeLocalState(capSnoozedUntil = 5_000L), unsure, 1_000L))
+        assertEquals(
+            OptimizeCards.SUPPRESSED_NOT_NOW,
+            OptimizeCards.firstCardBlock(OptimizeLocalState(suppression = CardSuppression(5_000L, null)), unsure, 1_000L),
+        )
+        assertEquals(OptimizeCards.SUPPRESSED_NOT_CONFIDENT, OptimizeCards.firstCardBlock(OptimizeLocalState(capSnoozedUntil = 5_000L), unsure, 5_000L))
+        assertNull(OptimizeCards.userHold(OptimizeLocalState(), unsure, 1_000L))
+        assertEquals(OptimizeCards.SUPPRESSED_NOT_NOW, OptimizeCards.userHold(OptimizeLocalState(suppression = CardSuppression(5_000L, unsure)), null, 1_000L))
+    }
+
+    @Test
+    fun `the exit ask is remembered per rules build`() {
+        val state = OptimizeLocalState(exitAskedRulesVersion = "r1")
+        assertEquals("r1", OptimizeLocalState.fromJson(JSONObject(state.toJson().toString())).exitAskedRulesVersion)
+        assertNull(OptimizeLocalState.fromJson(JSONObject(OptimizeLocalState().toJson().toString())).exitAskedRulesVersion)
     }
 
     @Test

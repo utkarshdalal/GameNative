@@ -1074,14 +1074,16 @@ object OptimizeController {
      */
     suspend fun revertCrashed(context: Context, container: Container) = withContext(Dispatchers.IO) {
         try {
-            mutex.withLock {
+            val tookOff = mutex.withLock {
                 val store = OptimizeStore(container.rootDir)
                 val state = store.read()
-                val profile = state.activeProfile ?: return@withLock
-                if (state.ladder(profile).pending?.revert != OptimizeJudge.CRASH) return@withLock
-                takeOffFlagged(context, container, store, state, profile, "after the crash")?.let { store.write(it) }
+                val profile = state.activeProfile ?: return@withLock false
+                if (state.ladder(profile).pending?.revert != OptimizeJudge.CRASH) return@withLock false
+                val off = takeOffFlagged(context, container, store, state, profile, "after the crash") ?: return@withLock false
+                store.write(off)
+                true
             }
-            revision.value++
+            if (tookOff) revision.value++
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -1206,10 +1208,19 @@ object OptimizeController {
                 // The judge compares against the limiter the game ran under; the targets against the user's own.
                 val userCap = userFpsLimit(container, profile?.let { state.ladder(it) })
                 if (profile == null) {
-                    val block = OptimizeCards.firstCardBlock(state, after, now, appRulesVersion())
+                    val rulesVersion = appRulesVersion()
+                    val block = OptimizeCards.firstCardBlock(state, after, now, rulesVersion)
                     cardField = OptimizeCards.cardField(block == null, block)
-                    // A block from the verdict alone still asks the server, whose own verdict may leave the card.
-                    if (block == null || (context != null && OptimizeServer.asksAtExit(block))) {
+                    // An unsure or unlisted verdict on a real session still asks the server once per rules build;
+                    // its own verdict may leave the card. The user's holds and short sessions never ask.
+                    val hold = OptimizeCards.userHold(state, after, now, rulesVersion)
+                    val asks = block == null ||
+                        (context != null && OptimizeServer.asksAtExit(block, after.gameplaySec, hold, state.exitAskedRulesVersion, rulesVersion))
+                    if (asks && block != null) {
+                        state = state.copy(exitAskedRulesVersion = rulesVersion ?: OptimizeServer.UNKNOWN_RULES)
+                        store.write(state)
+                    }
+                    if (asks) {
                         val suggested = OptimizeCards.suggestedProfile(after.cls, after, cap, refresh)
                         val capFps = OptimizeCards.capQuestion(state, after, cap, now, refresh)
                         val card = OptimizeCard(
@@ -1322,7 +1333,8 @@ object OptimizeController {
             "Optimize: first offer ${choice.name.lowercase()} (${response?.status ?: "no answer"}), server verdict ${server?.cls ?: "none"} from ${server?.source ?: "none"} show ${server?.showCard}",
         )
         return mutex.withLock {
-            var state = store.read()
+            val read = store.read()
+            var state = read
             val now = System.currentTimeMillis()
             if (response != null) {
                 state = state.copy(
@@ -1331,14 +1343,10 @@ object OptimizeController {
                     lastRulesVersion = response.effectiveRulesVersion ?: state.lastRulesVersion,
                 )
             }
-            // The user may have picked a profile or answered something while the server was asked.
-            if (state.never || state.activeProfile != null || state.card != null) {
-                store.write(state)
-                val why = when {
-                    state.never -> OptimizeCards.SUPPRESSED_NEVER
-                    state.activeProfile != null -> OptimizeCards.SUPPRESSED_PROFILE
-                    else -> OptimizeCards.SUPPRESSED_CARD_WAITING
-                }
+            // The user may have picked a profile or answered something while the server was asked, and the server's
+            // verdict never overrules a hold or snooze of the user's own.
+            OptimizeCards.userHold(state, offer.card.metrics, now, appRulesVersion())?.let { why ->
+                if (state != read) store.write(state)
                 return@withLock null to OptimizeCards.cardField(false, why)
             }
             val capFromRung = OptimizeCards.capFps(response?.rung?.raw)
@@ -1346,7 +1354,7 @@ object OptimizeController {
             val decision = OptimizeServer.firstDecision(offer.localBlock, offer.card, server, capFromRung)
             val base = decision.card
             if (base == null) {
-                store.write(state)
+                if (state != read) store.write(state)
                 return@withLock null to OptimizeCards.cardField(false, decision.block)
             }
             val card = when (choice) {
@@ -1372,7 +1380,7 @@ object OptimizeController {
             } else {
                 state
             }
-            store.write(state)
+            if (state != read) store.write(state)
             if (card?.kind == OptimizeCard.CAP) cardEvent(appId, OptimizeEvents.CAP_ASKED, state, card)
             card?.let { CardRequest(appId, it, state.entitlement.orAppWide(lastEntitlement)) } to field
         }

@@ -210,22 +210,33 @@ object OptimizeCards {
     const val SUPPRESSED_CAP_SNOOZED = "cap_snoozed"
 
     /**
-     * Why the session that just ended leaves no first card, or null when it should. A game with no active profile
-     * gets it again after Off or Restore, ladders and all. A game the server had nothing for is not offered again
-     * until its hold lets go ([rulesVersion] is the newest rules build any answer carried).
+     * The user's own reasons for no first card, checked before anything the session or the server says: Never, a
+     * profile on, a card waiting, the no-rule hold ([rulesVersion] is the newest rules build any answer carried),
+     * a declined cap question, or "Not now" ([session] lifts it when it ran worse than the session it was said after).
      */
-    fun firstCardBlock(state: OptimizeLocalState, session: Metrics, nowMillis: Long, rulesVersion: String? = null): String? {
+    fun userHold(state: OptimizeLocalState, session: Metrics?, nowMillis: Long, rulesVersion: String? = null): String? {
         if (state.never) return SUPPRESSED_NEVER
         if (state.activeProfile != null) return SUPPRESSED_PROFILE
         if (state.card != null) return SUPPRESSED_CARD_WAITING
-        if (session.confident != true) return SUPPRESSED_NOT_CONFIDENT
-        if (session.gameplaySec < MIN_GAMEPLAY_SEC) return SUPPRESSED_SHORT
-        if (session.cls !in CLASSES) return SUPPRESSED_CLASS
         if (state.noRule?.holds(nowMillis, rulesVersion) == true) return SUPPRESSED_NO_RULE
+        if (nowMillis < state.capSnoozedUntil) return SUPPRESSED_CAP_SNOOZED
         val suppression = state.suppression ?: return null
         if (nowMillis >= suppression.untilMillis) return null
         val reference = suppression.metrics ?: return SUPPRESSED_NOT_NOW
+        if (session == null) return SUPPRESSED_NOT_NOW
         return if (OptimizeJudge.compare(reference, session, isFpsCap = false) == OptimizeJudge.WORSE) null else SUPPRESSED_NOT_NOW
+    }
+
+    /**
+     * Why the session that just ended leaves no first card, or null when it should: the user's own holds first,
+     * then the session's verdict. A game with no active profile gets it again after Off or Restore, ladders and all.
+     */
+    fun firstCardBlock(state: OptimizeLocalState, session: Metrics, nowMillis: Long, rulesVersion: String? = null): String? {
+        userHold(state, session, nowMillis, rulesVersion)?.let { return it }
+        if (session.confident != true) return SUPPRESSED_NOT_CONFIDENT
+        if (session.gameplaySec < MIN_GAMEPLAY_SEC) return SUPPRESSED_SHORT
+        if (session.cls !in CLASSES) return SUPPRESSED_CLASS
+        return null
     }
 
     fun offerFirst(state: OptimizeLocalState, session: Metrics, nowMillis: Long): Boolean = firstCardBlock(state, session, nowMillis) == null
