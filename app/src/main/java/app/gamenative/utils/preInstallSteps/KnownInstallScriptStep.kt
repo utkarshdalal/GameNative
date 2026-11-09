@@ -8,7 +8,6 @@ import com.winlator.container.Container
 import `in`.dragonbra.javasteam.enums.EDepotFileFlag
 import `in`.dragonbra.javasteam.types.DepotManifest
 import java.io.File
-import java.util.concurrent.ConcurrentHashMap
 import timber.log.Timber
 
 /** Runs the known steps of a game's Steam install scripts, and nothing else.
@@ -39,7 +38,8 @@ import timber.log.Timber
  * `taskkill`/`wineserver -k` on the end — the framework ends each install session itself.
  *
  * Completion is the game-dir marker, cleared by Verify Files and by `PreInstallSteps.markersStale`
- * when the prefix is recreated.
+ * when the prefix is recreated. A title with no known step gets the same marker the first time it
+ * is asked, so the manifests are read once per install, not on every launch.
  */
 object KnownInstallScriptStep : PreInstallStep {
     private const val TAG = "KnownInstallScriptStep"
@@ -55,9 +55,6 @@ object KnownInstallScriptStep : PreInstallStep {
 
     /** What Steam looks for at the install root when an app's info carries no `installScript`. */
     private const val INSTALL_SCRIPT = "installscript.vdf"
-
-    /** Game directories already reported as having nothing to run. */
-    private val explained = ConcurrentHashMap.newKeySet<String>()
 
     override val marker: Marker = Marker.KNOWN_INSTALL_SCRIPT_RUN
 
@@ -79,8 +76,13 @@ object KnownInstallScriptStep : PreInstallStep {
         val scripts = installScripts(gameDir, appInfoScriptName(container))
         val step = knownSteps(scripts, gameDir).firstOrNull()
         if (step == null) {
-            // Once per process: `hasPendingSteps` probes this too, on every launch.
-            if (explained.add(gameDirPath)) explainAbsence(gameDir, scripts)
+            // Nothing to run is a settled answer, so it is marked like a run would be — the way
+            // `GogSupportCommandsStep` marks a game whose manifest lists no support commands — and
+            // the manifests are not parsed again until Verify Files or a recreated prefix clears
+            // the marker. This is also the `hasPendingSteps` probe, and writing here is fine for
+            // that: the marker claims no install, only that there is none to make, which stays
+            // true whatever happens to the launch.
+            if (MarkerUtils.addMarker(gameDirPath, marker)) explainAbsence(gameDir, scripts)
             return null
         }
 
@@ -165,7 +167,7 @@ object KnownInstallScriptStep : PreInstallStep {
     }
 
     /**
-     * Why nothing is scheduled, in one line, once per game directory.
+     * Why nothing is scheduled, in one line, when the marker is first written.
      *
      * Silence is the wrong default here: a title whose runtime install is skipped fails with the
      * same dialog as a title that never had one, so the difference has to be readable in a log.

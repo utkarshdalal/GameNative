@@ -161,6 +161,48 @@ class KnownInstallScriptStepTest {
         assertNull(build())
     }
 
+    /**
+     * Nothing to run is marked the way a run is, so a title without a known step is asked once per
+     * install rather than parsing its depot manifests on every launch. The marker is the one Verify
+     * Files and a recreated prefix clear, so a later change is still seen.
+     */
+    @Test
+    fun aGameWithNothingToRunIsMarkedAndNotAskedAgain() {
+        File(gameDir, "installscript.vdf").writeText(vdf)
+        File(gameDir, "tools/something_else.bat").apply {
+            parentFile?.mkdirs()
+            writeText("@echo off\r\n")
+        }
+
+        assertNull(build())
+        assertTrue(MarkerUtils.hasMarker(gameDir.absolutePath, Marker.KNOWN_INSTALL_SCRIPT_RUN))
+        assertFalse(KnownInstallScriptStep.appliesTo(container, GameSource.STEAM, gameDir.absolutePath))
+
+        // The marker stands in for the answer: even once the step is on disk, nothing is asked until
+        // the marker is cleared.
+        File(gameDir, "SB/Binaries/Win64").mkdirs()
+        File(gameDir, "SB/Binaries/Win64/install_pspc_sdk_runtime.bat").writeText("@echo off\r\n")
+        assertFalse(KnownInstallScriptStep.appliesTo(container, GameSource.STEAM, gameDir.absolutePath))
+        MarkerUtils.clearInstalledPrerequisiteMarkers(gameDir.absolutePath)
+        assertTrue(KnownInstallScriptStep.appliesTo(container, GameSource.STEAM, gameDir.absolutePath))
+        assertEquals(
+            "\"A:\\SB\\Binaries\\Win64\\install_pspc_sdk_runtime.bat\" quiet",
+            build(),
+        )
+    }
+
+    /** A scheduled step writes no marker from here: the framework marks it when its session ends. */
+    @Test
+    fun aScheduledStepIsNotMarkedByTheProbe() {
+        ship("SB/Binaries/Win64/install_pspc_sdk_runtime.bat")
+
+        assertEquals(
+            "\"A:\\SB\\Binaries\\Win64\\install_pspc_sdk_runtime.bat\" quiet",
+            build(),
+        )
+        assertFalse(MarkerUtils.hasMarker(gameDir.absolutePath, Marker.KNOWN_INSTALL_SCRIPT_RUN))
+    }
+
     @Test
     fun itRunsWithoutAShell() {
         // `viaShell = false`: the command is the guest executable, not a `cmd /c` line, so no
