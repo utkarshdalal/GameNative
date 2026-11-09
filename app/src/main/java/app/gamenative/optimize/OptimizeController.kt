@@ -536,10 +536,7 @@ object OptimizeController {
             ladder.pending.let { it == null || it.revert != null } &&
             OptimizeCards.shouldAskAfterTrial(ladder, state.entitlement, state.entitlementCheckedAt, Membership.isMember(), nowMillis)
 
-    /**
-     * Before the first step: when the game's own settings already meet [profile]'s target, the ladder is done and a
-     * done card says so; nothing is asked for. Null when the ladder still has to try.
-     */
+    /** Before the first step: a done card when the game already meets [profile]'s target; null otherwise. */
     private fun doneAtBaseline(
         appId: String,
         state: OptimizeLocalState,
@@ -1503,11 +1500,7 @@ object OptimizeController {
         return if (card != null) s.copy(card = card) else s
     }
 
-    /**
-     * After a judged or long enough session of an active profile: when heat is the limit and a frame cap is the
-     * lever, the cap question takes the place of the card the session would leave, or comes up on its own once the
-     * ladder has ended. Null when the cap question is not asked.
-     */
+    /** The cap question for the session that just ended, or null when it is not asked. */
     private fun capCard(
         appId: String,
         state: OptimizeLocalState,

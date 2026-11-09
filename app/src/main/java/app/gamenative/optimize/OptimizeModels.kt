@@ -118,10 +118,7 @@ data class Metrics(
         putLoad(report = false)
     }
 
-    /**
-     * The session as outcome before/after and the next-rung metrics block send it: what the server's judge reads
-     * (crash, exit, window, temperatures and thermal peak included), with the series cut to [MAX_REPORT_WINDOWS].
-     */
+    /** The session as the outcome and next-rung requests send it, with the series cut to [MAX_REPORT_WINDOWS]. */
     fun toReportJson(): JSONObject = JSONObject().apply {
         put("gameplay_s", gameplaySec)
         put("steady_fps", steadyFps ?: JSONObject.NULL)
@@ -325,10 +322,7 @@ internal fun JSONArray?.works(): List<Double?> =
 internal fun JSONArray?.strings(): List<String> =
     if (this == null) emptyList() else (0 until length()).mapNotNull { i -> optString(i).takeIf { it.isNotEmpty() } }
 
-/**
- * [ladder] is the key's twelve values from lowest to highest quality and [lowerIs] which way lower quality goes.
- * [onlyExisting] ops are skipped when the file does not have the key, for games whose variant the server cannot tell.
- */
+/** [ladder] is the key's values from lowest to highest quality and [lowerIs] which way lower quality goes; [onlyExisting] ops are skipped when the file does not have the key. */
 data class FileOp(
     val op: String,
     val section: String,
@@ -502,10 +496,7 @@ class Rung(
     val rulesVersion: String? = null,
     /** A cap rung the user has to say yes to first; null when the server does not say. */
     val askFirst: Boolean? = null,
-    /**
-     * A settings step back up above a kept step (Balanced ran well past its target): its values are written as sent,
-     * raising quality, the one exception to lower-only. It is judged, kept and taken off like any other step.
-     */
+    /** A step that raises quality: its values are written as sent. It is judged, kept and taken off like any other step. */
     val recovery: Boolean = false,
 ) {
     fun isExpired(nowMillis: Long): Boolean = expiresAtMillis != null && nowMillis > expiresAtMillis
@@ -662,7 +653,7 @@ data class ServerVerdict(
     val source: String? = null,
 ) {
     companion object {
-        /** The server could read neither samples nor a confident flag and leaves the card to the app. */
+        /** The server left the card to the app. */
         const val BLOCK_NO_SAMPLES = "no_samples"
 
         fun parse(o: JSONObject?): ServerVerdict? {
@@ -713,7 +704,7 @@ data class NextRungResponse(
     val rung: Rung?,
     val entitlement: Entitlement? = null,
     val rulesVersion: String? = null,
-    /** On no_rule and not_settings: seconds before the game is worth asking about again. */
+    /** Seconds before the game is worth asking about again. */
     val retryAfterSec: Int? = null,
     /** The server's verdict of the metrics block; null from older servers. */
     val verdictServer: ServerVerdict? = null,
@@ -721,7 +712,7 @@ data class NextRungResponse(
     /** The rules build that answered: the top-level value, else the rung's. */
     val effectiveRulesVersion: String? get() = rulesVersion ?: rung?.rulesVersion
 
-    /** The server has nothing for the game: no rule for it, or its limit is not in its settings. */
+    /** The server has nothing for the game yet. */
     val hasNothing: Boolean get() = status == STATUS_NO_RULE || status == STATUS_NOT_SETTINGS
 
     companion object {

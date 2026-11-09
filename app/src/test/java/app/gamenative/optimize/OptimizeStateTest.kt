@@ -367,22 +367,22 @@ class OptimizeStateTest {
             JSONObject().put("rung_id", id).put("version", version).apply { step?.let { put("step", it) } },
         )!!
         val ladder = ProfileLadder(state = LadderState.TRYING)
-        val id = "cfg.the_witcher_3_wild_hunt.performance.gpu_pixel+gpu_geometry.s6"
+        val id = "cfg.game.performance.a+b.s6"
         // The server re-served a kept step under the same id with a new version.
         val kept = KeptRung(
             id, "v1", 1, emptyList(), 0L, emptyList(), null,
             rung = JSONObject().put("rung_id", id).put("version", "v1").put("levers", org.json.JSONArray().put(JSONObject().put("lever_type", "container"))),
         )
         assertEquals("already kept", ladder.copy(kept = listOf(kept)).repeatReason(rung(id, "v2")))
-        // The verdict class moved, so the classes differ, but the step is the one already kept.
-        val otherClasses = "cfg.the_witcher_3_wild_hunt.performance.cpu.s6"
+        // Another id with the same step number is the step already kept.
+        val otherClasses = "cfg.game.performance.c.s6"
         assertEquals("step 6 already kept", ladder.copy(kept = listOf(kept)).repeatReason(rung(otherClasses, "v3")))
         assertEquals("step 6 already tried", ladder.copy(tried = listOf(TriedRung(id, "v1", "worse"))).repeatReason(rung(otherClasses, "v3")))
         assertEquals("already tried", ladder.copy(tried = listOf(TriedRung(id, "v1", "worse"))).repeatReason(rung(id, "v2")))
         // The step field outranks the id.
-        assertEquals(5, settingsStep("cfg.g.performance.cpu.s6", JSONObject().put("step", 5)))
-        assertTrue(ladder.copy(kept = listOf(kept)).repeats(rung("cfg.g.performance.cpu.s9", "v4", step = 6)))
-        assertFalse(ladder.copy(kept = listOf(kept)).repeats(rung("cfg.the_witcher_3_wild_hunt.performance.cpu.s5", "v4")))
+        assertEquals(5, settingsStep("cfg.g.performance.c.s6", JSONObject().put("step", 5)))
+        assertTrue(ladder.copy(kept = listOf(kept)).repeats(rung("cfg.g.performance.c.s9", "v4", step = 6)))
+        assertFalse(ladder.copy(kept = listOf(kept)).repeats(rung("cfg.game.performance.c.s5", "v4")))
         // Cap rungs have no step.
         assertNull(settingsStep("cap.balanced.30", null))
         assertFalse(ladder.copy(kept = listOf(kept)).repeats(rung("cap.performance.s6", "v5")))

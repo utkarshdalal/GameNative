@@ -181,12 +181,7 @@ data class ProfileLadder(
     /** True when [rung] makes a change this profile already kept or tried; [repeatReason] says why. */
     fun repeats(rung: Rung): Boolean = repeatReason(rung) != null
 
-    /**
-     * Why [rung] repeats a change on this ladder, or null when it is new: its lever hash or rung id is already kept
-     * or tried, its levers equal a kept rung's, or it is a settings step whose number a kept or tried settings rung
-     * already has. A recovery step may share its number with another phase's step (the server checks its own
-     * phase), so only its id, version and levers count.
-     */
+    /** Why [rung] repeats a change this ladder already kept or tried, or null when it is new. */
     fun repeatReason(rung: Rung): String? {
         if (rung.version.isNotEmpty() && (kept.any { it.version == rung.version } || tried.any { it.version == rung.version })) {
             return "version ${rung.version} already kept/tried"
@@ -229,7 +224,7 @@ data class ProfileLadder(
 
 private val SETTINGS_STEP = Regex("""\.s(\d+)$""")
 
-/** A settings rung (id cfg.<game>.<profile>.<classes>.s<N>) is one step of its game's ladder; cap and other rungs have none. */
+/** The step number of a settings rung, from its id; null for other rungs. */
 internal fun settingsStep(rungId: String, raw: JSONObject?): Int? {
     if (!rungId.startsWith("cfg.")) return null
     raw?.optIntOrNull("step")?.let { return it }
@@ -371,7 +366,7 @@ data class OptimizeCard(
         const val EXHAUSTED = "exhausted"
         const val DONE = "done"
         const val ENTITLEMENT = "entitlement"
-        /** Heat is the limit and a frame cap is the lever: asks whether to hold the game at [capFps]. */
+        /** Asks whether to hold the game at [capFps]. */
         const val CAP = "cap"
         /** The server has no safe change for the game yet; it is checked again later. */
         const val NO_RULE = "no_rule"

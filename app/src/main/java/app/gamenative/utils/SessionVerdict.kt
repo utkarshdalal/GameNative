@@ -173,10 +173,7 @@ internal class SessionSampleBuffer(private val clusterCount: Int, private val ca
     }
 }
 
-/**
- * Session-end verdict of the Optimize loop (optimize-loop-spec sections 5.2-5.6), computed from the light
- * sampler's per-second records. Pure: no Android, no I/O.
- */
+/** Session-end verdict computed from the light sampler's per-second records. Pure: no Android, no I/O. */
 internal object SessionVerdict {
 
     const val WARMUP_SEC = 120
@@ -302,7 +299,7 @@ internal object SessionVerdict {
         val load: Load? = null,
         val signals: LeverSignals? = null,
     ) {
-        /** The four game_exited properties of spec section 10. */
+        /** The game_exited properties of the verdict. */
         fun properties(): Map<String, Any> = buildMap {
             put(
                 "perf_verdict",
@@ -566,11 +563,7 @@ internal object SessionVerdict {
         return gpuBusyMeanPct / 100.0 * gpuClockMhzMean / fpsMean
     }
 
-    /**
-     * Why fps stops where it does. cap: steady fps within 3 % of the limiter or refresh rate. both: GPU p95 >= 85 and
-     * hot thread p95 >= 75 with fps within 10 % of the cap or of the session's own ceiling (p90 of per-second fps).
-     * main_thread: hot thread p95 >= 75 and GPU p95 < 85. gpu: GPU p95 >= 90. Otherwise none.
-     */
+    /** Why fps stops where it does: cap, both, main_thread, gpu or none. */
     fun fpsCeilingReason(
         steadyFps: Double?,
         sessionCeilingFps: Double?,

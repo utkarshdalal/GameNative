@@ -23,11 +23,11 @@ object OptimizeJudge {
     const val REASON_GPU_LOAD = "gpu_load"
     const val REASON_CLOCK = "clock"
 
-    /** A GPU-bound step took GPU work off each frame at held fps (see [workVerdict]). */
+    /** GPU work per frame went down. */
     const val REASON_GPU_WORK = "gpu_work"
     const val REASON_TARGET_MET = "target_met"
 
-    /** A cap ran the device cooler: the hottest CPU or GPU reading down 3 °C or more with a lower peak thermal status. */
+    /** The device ran cooler. */
     const val REASON_TEMP = "temp"
     const val REASON_NONE = "none"
 
@@ -46,20 +46,17 @@ object OptimizeJudge {
     private const val CAP_TEMP_DROP_C = 3
     private const val EPS = 1e-9
 
-    /** At or above this share of the fps cap the average cannot show a gain; the judge reads the other signals. */
+    /** Offline fallback tuning; the server's judgement takes precedence. */
     private const val NEAR_CAP_SHARE = 0.9
     private const val MIN_WINDOW_FPS = 3
     private const val MIN_WINDOW_CAP_SHARE = 0.95
     private const val GPU_LOAD_POINTS = 10
 
-    /** Near the cap, lower GPU load or a higher GPU clock counts while fps stays within this share of before. */
+    /** Offline fallback tuning. */
     private const val NEAR_CAP_FPS_HOLD = 0.98
     private const val GPU_CLOCK_UP_SHARE = 0.10
 
-    /**
-     * GPU work per frame rules for a gpu or thermal_gpu baseline (see [workVerdict]). Equal work is within
-     * [WORK_EQUAL_SHARE] of before, the run-to-run spread of the same workload.
-     */
+    /** Offline fallback tuning. */
     const val WORK_DROP_SHARE = 0.08
     const val WORK_FPS_HOLD = 0.98
     const val WORK_FPS_UP_SHARE = 0.05
@@ -78,14 +75,14 @@ object OptimizeJudge {
     const val EXIT_APP_KILLED = "app_killed"
     const val EXIT_NO_EXIT = "no_exit"
 
-    /** Unjudged trial launches, with no hard app exit recorded, after which the step counts as a crash. */
+    /** Unjudged trial launches after which the step counts as a crash. */
     const val MAX_UNJUDGED_LAUNCHES = 2
 
-    /** A GPU-bound baseline: a gpu or thermal_gpu verdict, or a gameplay GPU median at or above this. */
+    /** Offline fallback tuning. */
     private const val GPU_BOUND_MEDIAN = 60.0
     private val GPU_CLASSES = setOf("gpu", "thermal_gpu")
 
-    /** A window under this share of the baseline's GPU median while at 0.95 x the cap is a menu or map, not gameplay. */
+    /** Offline fallback tuning. */
     private const val MENU_GPU_SHARE = 0.4
     private const val MENU_CAP_SHARE = 0.95
     const val MIN_COMPARABLE_WINDOWS = 2
@@ -110,12 +107,7 @@ object OptimizeJudge {
     fun gpuBound(baseline: Metrics): Boolean =
         baseline.cls in GPU_CLASSES || (median(gameplayWindows(baseline.gpuBy5Min)) ?: 0.0) >= GPU_BOUND_MEDIAN - EPS
 
-    /**
-     * The windows of [after] that compare with a GPU-bound [baseline]: a gameplay window with GPU busy under 0.4 x the
-     * baseline's gameplay GPU median and fps at 0.95 x [fpsCap] or more (a menu or the world map) is taken out of the
-     * steady fps, the min window and the GPU and clock medians. Null when the filter does not apply: the baseline is
-     * not GPU-bound, there is no cap or GPU median, or the session's fps and GPU windows do not line up.
-     */
+    /** The windows of [after] that compare with [baseline]; null when the filter does not apply. */
     fun comparableWindows(baseline: Metrics, after: Metrics, fpsCap: Double?): Windows? {
         if (fpsCap == null || fpsCap <= 0 || !gpuBound(baseline)) return null
         val baseGpu = median(gameplayWindows(baseline.gpuBy5Min))?.takeIf { it > 0 } ?: return null
@@ -145,11 +137,7 @@ object OptimizeJudge {
     fun baselineOf(runsNewestFirst: Sequence<JSONObject>): Metrics? =
         runsNewestFirst.map { Metrics.fromRun(it) }.firstOrNull { it.gameplaySec >= COMPARABLE_GAMEPLAY_SEC }
 
-    /**
-     * A crash: under [CRASH_GAMEPLAY_SEC] of gameplay with a crash exit or no game window ever seen, or under
-     * [COMPARABLE_GAMEPLAY_SEC] ending on its own with a fatal crash fingerprint (a session that died before it could
-     * be judged, which would otherwise count as short and in the end be kept as not comparable).
-     */
+    /** Whether the session counts as a crash. */
     fun isCrash(m: Metrics): Boolean =
         (m.gameplaySec < CRASH_GAMEPLAY_SEC && (m.exitReason in CRASH_REASONS || !m.windowSeen)) || fatalEnd(m)
 
@@ -183,7 +171,7 @@ object OptimizeJudge {
         else -> Lost.Again(unjudgedBefore + 1)
     }
 
-    /** [fpsCap] is the frame rate the game is held to (the limiter, or min(refresh, 60)); null judges without it. */
+    /** [fpsCap] is the frame rate the game is held to; null judges without it. */
     fun judge(after: Metrics, baseline: Metrics?, isFpsCap: Boolean, shortSessions: Int, fpsCap: Double? = null): Decision {
         if (isCrash(after)) {
             val sameAsBefore = baseline != null && isCrash(baseline) && baseline.exitReason == after.exitReason &&
@@ -207,7 +195,7 @@ object OptimizeJudge {
     fun compare(before: Metrics, after: Metrics, isFpsCap: Boolean, fpsCap: Double? = null): String =
         verdict(before, after, isFpsCap, fpsCap).result
 
-    /** The five-minute windows that count; the first holds the loading screens once there are three or more. */
+    /** The five-minute windows that count. */
     private fun gameplayWindows(values: List<Int>): List<Int> = if (values.size >= 3) values.drop(1) else values
 
     private fun median(values: List<Int>): Double? {
@@ -216,22 +204,7 @@ object OptimizeJudge {
         return if (s.size % 2 == 1) s[s.size / 2].toDouble() else (s[s.size / 2 - 1] + s[s.size / 2]) / 2.0
     }
 
-    /**
-     * The judge for a GPU-bound baseline (class gpu or thermal_gpu) when both sessions carry GPU work per frame
-     * (GPU busy 0-1 x GPU clock MHz / fps, the median of the gameplay windows left after menu-window dropping).
-     * Thermal clock swings move fps by about 15 % between runs of the same workload, while work per frame stays
-     * within a few percent, so fps alone cannot tell a step's effect from the device's temperature.
-     *
-     *   worse      stutter up (30 % and 0.005, as everywhere)
-     *   helped     work per frame down 8 % or more while fps holds at 0.98 x before or better (gpu_work)
-     *   helped     fps up 5 % or more at equal or lower work per frame (fps)
-     *   worse      fps down more than 5 % at equal or higher work per frame (fps)
-     *   helped     stutter down, or the throttle onset 180 s or more later
-     *   no_change  anything else, including fps down at lower work (the device ran hotter, not the step)
-     *
-     * Equal work is within 3 % of before. Null when the rule does not apply; the fps-only rules judge then. Cap steps
-     * never come here: they are judged by the cap rules only.
-     */
+    /** Offline fallback judge on GPU work per frame; null when it does not apply. */
     private fun workVerdict(
         before: Metrics,
         after: Metrics,
@@ -255,17 +228,14 @@ object OptimizeJudge {
         return Verdict(NO_CHANGE, REASON_NONE)
     }
 
-    /** The hottest CPU or GPU reading fell [CAP_TEMP_DROP_C] °C or more and the peak thermal status is lower. */
+    /** Whether the device ran cooler. */
     fun cooler(before: Metrics, after: Metrics): Boolean {
         fun dropped(b: Int?, a: Int?) = b != null && a != null && b - a >= CAP_TEMP_DROP_C
         val statusLower = before.thermalPeak != null && after.thermalPeak != null && after.thermalPeak < before.thermalPeak
         return statusLower && (dropped(before.cpuTempMax, after.cpuTempMax) || dropped(before.gpuTempMax, after.gpuTempMax))
     }
 
-    /**
-     * A cap rung ([isFpsCap]) is helped only when the throttle onset came 180 s or more later (or not at all, past the
-     * baseline's onset + 180 s), stutter share fell 30 % and 0.005, or [cooler]; otherwise it is no change.
-     */
+    /** Offline fallback judge for a cap step. */
     fun verdict(before: Metrics, after: Metrics, isFpsCap: Boolean, fpsCap: Double? = null): Verdict {
         val fpsBefore = before.steadyFps
         val fpsAfter = after.steadyFps
@@ -290,7 +260,7 @@ object OptimizeJudge {
 
         val throttleEarlier = tb != null && ta != null && tb - ta >= THROTTLE_LATER_SEC
 
-        // A cap lowers fps by design and holds the target trivially; it is judged only by what a cap is for.
+        // A cap step has its own judge.
         if (isFpsCap) {
             if (throttleLater) return Verdict(HELPED, REASON_THROTTLE)
             if (stutterDown) return Verdict(HELPED, REASON_STUTTER)
@@ -364,12 +334,7 @@ object OptimizeJudge {
         return before to after
     }
 
-    /**
-     * How GPU work per frame followed the pixels a resolution step took off: the work's relative drop over the
-     * pixels' relative drop, clamped to [-1, 2]. 1 is work in step with pixels, 0 work that did not move (the GPU
-     * is busy with something resolution does not touch), above 1 more saved than the pixels alone explain. Null
-     * without both works or when the pixel count did not change.
-     */
+    /** How GPU work per frame followed the pixels of a resolution step; null when unknown. */
     fun gpuWorkScaling(workBefore: Double?, workAfter: Double?, pixelsBefore: Long?, pixelsAfter: Long?): Double? {
         if (workBefore == null || workAfter == null || pixelsBefore == null || pixelsAfter == null) return null
         if (workBefore <= 0 || workAfter <= 0 || pixelsBefore <= 0 || pixelsAfter <= 0 || pixelsBefore == pixelsAfter) return null

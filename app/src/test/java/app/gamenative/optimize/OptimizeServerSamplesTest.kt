@@ -19,7 +19,7 @@ class OptimizeServerSamplesTest {
     private lateinit var roots: PathRoots
     private lateinit var ini: File
 
-    // The kept step left shadows at 1; Balanced overshot, so the server steps back up to 2.
+    // The kept step left shadows at 1; a step that raises quality sets them to 2.
     private val kept = "[SystemSettings]\r\nr.ShadowQuality=1\r\n"
 
     @Before
@@ -34,7 +34,7 @@ class OptimizeServerSamplesTest {
 
     private fun stepUp(recovery: Boolean) = Rung.parse(
         JSONObject(
-            """{"rung_id":"cfg.game.balanced.shadows.s8","version":"h8","step":8,"relative":${!recovery},"recovery":$recovery,"levers":[
+            """{"rung_id":"cfg.game.balanced.b.s8","version":"h8","step":8,"relative":${!recovery},"recovery":$recovery,"levers":[
               {"lever_type":"engine_file","payload":{"path":"{userProfilePath}/Saved/Config/Windows/Engine.ini","format":"ini","ops":[
                 {"op":"set","section":"SystemSettings","key":"r.ShadowQuality","value":"2",
                  "ladder":["0","0","0","1","1","1","2","2","2","3","3","3"],"lower_is":"less"}]}}]}""",
@@ -72,17 +72,17 @@ class OptimizeServerSamplesTest {
 
     @Test
     fun `a recovery step may reuse another phase's step number`() {
-        val ladder = ProfileLadder(tried = listOf(TriedRung("cfg.game.balanced.object_count.s8", "h1", OptimizeJudge.NO_CHANGE)))
+        val ladder = ProfileLadder(tried = listOf(TriedRung("cfg.game.balanced.a.s8", "h1", OptimizeJudge.NO_CHANGE)))
         assertEquals("step 8 already tried", ladder.repeatReason(stepUp(recovery = false)))
         assertNull(ladder.repeatReason(stepUp(recovery = true)))
         // Its own id and version still count.
-        val again = ladder.copy(tried = ladder.tried + TriedRung("cfg.game.balanced.shadows.s8", "h8", OptimizeJudge.WORSE))
+        val again = ladder.copy(tried = ladder.tried + TriedRung("cfg.game.balanced.b.s8", "h8", OptimizeJudge.WORSE))
         assertTrue(again.repeats(stepUp(recovery = true)))
     }
 
     @Test
     fun `a declined cap ask is no tried rung`() {
-        val ladder = ProfileLadder(state = LadderState.PAUSED, tried = listOf(TriedRung("cfg.game.balanced.shadows.s6", "h6", OptimizeJudge.HELPED)))
+        val ladder = ProfileLadder(state = LadderState.PAUSED, tried = listOf(TriedRung("cfg.game.balanced.b.s6", "h6", OptimizeJudge.HELPED)))
         val state = OptimizeLocalState(activeProfile = OptimizeProfile.BALANCED).withLadder(OptimizeProfile.BALANCED, ladder)
         val declined = OptimizeCards.capDeclined(state, 1_000L)
         assertEquals(ladder.tried, declined.ladder(OptimizeProfile.BALANCED).tried)

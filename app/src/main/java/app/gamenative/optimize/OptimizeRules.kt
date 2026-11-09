@@ -78,12 +78,7 @@ object OptimizeTarget {
     const val HOT_FPS_DECLINE = 3
     const val HOT_CLOCK_DROP_SHARE = 0.10
 
-    /**
-     * Heat held the session back: a confident thermal_gpu verdict, or a throttle onset that cost something. The
-     * onset costs when fps falls 3 or more from the second window to the last, the GPU clock falls 10 % or more
-     * from the first gameplay window to the last, or a gameplay window falls below 0.95 x the target. An onset
-     * with no fps windows to clear it counts.
-     */
+    /** Whether heat held the session back (offline fallback). */
     fun hot(m: Metrics, refreshHz: Double?, fpsCap: Int): Boolean {
         if (m.cls == "thermal_gpu" && m.confident == true) return true
         if (m.throttleOnsetSec == null) return false
@@ -94,10 +89,7 @@ object OptimizeTarget {
         return fpsDeclines || clockFalls || dips(m, refreshHz, fpsCap)
     }
 
-    /**
-     * The frame rate Performance holds: min(refresh, 60), or the user's own limiter when it is lower. [fpsCap] must be
-     * the user's limiter ([userFpsCap]), never a cap Optimize put on: holding that would meet the target trivially.
-     */
+    /** The frame rate Performance holds; [fpsCap] must be the user's own limiter. */
     fun fpsTarget(refreshHz: Double?, fpsCap: Int): Double {
         val ceiling = minOf(refreshHz?.takeIf { it > 0 } ?: PERFORMANCE_FPS_CEILING, PERFORMANCE_FPS_CEILING)
         return if (fpsCap > 0) minOf(ceiling, fpsCap.toDouble()) else ceiling
@@ -117,16 +109,16 @@ object OptimizeTarget {
         return parsePositiveFpsLimit(before.optString("target").trim()) ?: defaultFps
     }
 
-    /** The five-minute windows that count; the first holds the loading screens once there are three or more. */
+    /** The five-minute windows that count. */
     private fun gameplayWindows(values: List<Int>): List<Int> = if (values.size >= 3) values.drop(1) else values
 
-    /** A five-minute window fell below 0.95 x the target. */
+    /** Whether a five-minute window fell short of the target (offline fallback). */
     fun dips(m: Metrics, refreshHz: Double?, fpsCap: Int): Boolean {
         val target = fpsTarget(refreshHz, fpsCap)
         return gameplayWindows(m.fpsBy5Min).any { it < PERFORMANCE_WINDOW_SHARE * target }
     }
 
-    /** Steady fps at 0.97 x the target and no five-minute window below 0.95 x it, heat aside. */
+    /** Whether the session holds the target (offline fallback). */
     fun holdsTarget(m: Metrics, refreshHz: Double?, fpsCap: Int): Boolean {
         val fps = m.steadyFps ?: return false
         return fps >= PERFORMANCE_FPS_SHARE * fpsTarget(refreshHz, fpsCap) && !dips(m, refreshHz, fpsCap)
@@ -150,11 +142,7 @@ object OptimizeTarget {
     /** What a judged session settles: the result recorded and kept or reverted by, why, and whether the ladder is done. */
     data class Settled(val result: String, val reason: String?, val done: Boolean)
 
-    /**
-     * Done implies keep: a compared session that meets the target keeps the step as helped (target_met) whatever the
-     * judge said, so the ladder never ends while the step is still flagged to come off. Otherwise the judge stands.
-     * A cap step ([isFpsCap]) never meets the target: the judge's cap rules alone keep or revert it.
-     */
+    /** What a judged session settles to. */
     fun settle(
         profile: OptimizeProfile,
         result: String,
@@ -273,10 +261,7 @@ object OptimizeCards {
      */
     enum class UnaskedCap { ASK, END, APPLY }
 
-    /**
-     * No to the cap question: it is not asked again for [CAP_SNOOZE_MS]. The declined ask is left out of ladder.tried,
-     * so it never counts against the server's rung budget and the cap can still be served once the snooze ends.
-     */
+    /** No to the cap question: it is not asked again for a while. */
     fun capDeclined(state: OptimizeLocalState, nowMillis: Long): OptimizeLocalState = state.copy(capSnoozedUntil = nowMillis + CAP_SNOOZE_MS)
 
     fun unaskedCap(state: OptimizeLocalState, rung: Rung, nowMillis: Long): UnaskedCap = when {
@@ -333,7 +318,7 @@ object OptimizeCards {
 
     const val ENTITLEMENT_RECHECK_MS = 24L * 60 * 60 * 1000
 
-    /** After the trial ran out, ask again only once the user is a member or a day has passed. */
+    /** When to ask again after the trial ran out. */
     fun shouldAskAfterTrial(ladder: ProfileLadder, entitlement: Entitlement?, checkedAtMillis: Long, isMember: Boolean, nowMillis: Long): Boolean {
         if (ladder.lastStatus != NextRungResponse.STATUS_ENTITLEMENT_REQUIRED) return true
         if (entitlement?.state != Entitlement.NONE || isMember) return true
@@ -351,10 +336,7 @@ object OptimizeCards {
 
     data class Suggestion(val profile: OptimizeProfile, val reason: String)
 
-    /**
-     * The profile a game's verdict points at. Heat with dips wants the frame rate held with less load (Performance);
-     * heat while the target holds wants Power and heat; then a frame rate short of the target, then stutter.
-     */
+    /** The profile a game's verdict points at (offline fallback). */
     fun suggestedProfile(verdict: String?, metrics: Metrics?, capFps: Int, refreshHz: Double?): Suggestion {
         val holds = metrics != null && OptimizeTarget.holdsTarget(metrics, refreshHz, capFps)
         if (verdict == "thermal_gpu" || metrics?.throttleOnsetSec != null) {
@@ -367,7 +349,7 @@ object OptimizeCards {
         return Suggestion(OptimizeProfile.BALANCED, REASON_NONE)
     }
 
-    /** Below this steady fps under heat, settings alone will not hold a cap, so the cap is the lever. */
+    /** Offline fallback tuning. */
     const val CAP_HEAT_FPS = 45.0
     const val CAP_NO_CHANGE_STREAK = 2
     const val CAP_SNOOZE_MS = SUPPRESS_MS
@@ -382,23 +364,14 @@ object OptimizeCards {
             .firstOrNull { it.first == "fpsLimit" }?.second?.trim()?.toIntOrNull()?.takeIf { it > 0 }
     }
 
-    /**
-     * The cap the server serves on ladder.prefer "cap": the highest of 45, 40, 30 at most 0.75 x steady fps, else
-     * 30; 30 with no steady fps; none when the game already runs at 30 or less.
-     */
+    /** The cap to propose (offline fallback). */
     fun capValue(steadyFps: Double?): Int? {
         if (steadyFps == null || steadyFps <= 0) return CAP_VALUES.last()
         if (steadyFps <= CAP_VALUES.last()) return null
         return CAP_VALUES.firstOrNull { it <= CAP_SHARE * steadyFps } ?: CAP_VALUES.last()
     }
 
-    /**
-     * The fps to propose holding the game at, or null when the cap is not the best lever. Heat has to be the limit
-     * ([OptimizeTarget.hot] for [metrics]; with no metrics, a thermal_gpu verdict) and one of: steady fps under 45,
-     * so settings alone will not hold a cap; the profile's settings ladder ended (exhausted, done or waiting) or ran two
-     * no-change steps in a row; or Power is the active profile. Never while a cap is already on or on trial, or the container already holds the game at
-     * or below it ([fpsCap] 0 is no cap).
-     */
+    /** The fps to propose holding the game at, or null (offline fallback). */
     fun capDecision(
         verdict: String?,
         metrics: Metrics?,

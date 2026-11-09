@@ -17,11 +17,11 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
- * Light per-session sampler of the Optimize loop (optimize-loop-spec 5.1). Runs once a second on the
+ * Light per-session sampler of the Optimize loop. Runs once a second on the
  * [PerformanceMetricsCollector] tick and reuses that tick's readings; its own reads are the tracked hot thread's
  * stat and status files, the GPU's current max clock and, where the collector has no GPU clock, the GPU's cur_freq.
  * From the first frame on it also reads /proc/vmstat and, in a DXVK session, stats the game's state cache file,
- * one each a second. The state cache itself is read once, when the session's verdict is built at exit.
+ * one each a second, and reads the appended cache entries in the background.
  */
 object SessionPerfSampler {
     private const val HIST_CAP_MS = 200

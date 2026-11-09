@@ -36,7 +36,7 @@ class OptimizeOfferTest {
     @Test
     fun theDryRunAnswerDecidesTheFirstCard() {
         assertEquals(OptimizeCards.Offer.UNVERIFIED, OptimizeCards.offerOf(null))
-        assertEquals(OptimizeCards.Offer.CARD, OptimizeCards.offerOf(response("""{"status":"rung","rung":{"rung_id":"cfg.x.balanced.gpu.s3"}}""")))
+        assertEquals(OptimizeCards.Offer.CARD, OptimizeCards.offerOf(response("""{"status":"rung","rung":{"rung_id":"cfg.x.balanced.a.s3"}}""")))
         assertEquals(OptimizeCards.Offer.CARD, OptimizeCards.offerOf(response("""{"status":"entitlement_required"}""")))
         assertEquals(OptimizeCards.Offer.HOLD, OptimizeCards.offerOf(response("""{"status":"no_rule","retry_after_s":60}""")))
         assertEquals(OptimizeCards.Offer.HOLD, OptimizeCards.offerOf(response("""{"status":"not_settings"}""")))
