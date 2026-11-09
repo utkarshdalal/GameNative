@@ -17,12 +17,18 @@ import kotlin.math.roundToInt
  * Light per-session sampler of the Optimize loop (optimize-loop-spec 5.1). Runs once a second on the
  * [PerformanceMetricsCollector] tick and reuses that tick's readings; its own reads are the tracked hot thread's
  * stat and status files, the GPU's current max clock and, where the collector has no GPU clock, the GPU's cur_freq.
+ * From the first frame on it also reads /proc/vmstat and, in a DXVK session, stats the game's state cache file,
+ * one each a second. The state cache itself is read once, when the session's verdict is built at exit.
  */
 object SessionPerfSampler {
     private const val HIST_CAP_MS = 200
     private const val LOW_HOT_PCT = 50
     private const val LOW_HOT_REPICK_MS = 30_000L
     private const val GAME_BUSY_PCT = 100
+    private const val WINDOW_SEC = 300
+    private const val CACHE_LIST_EVERY_MS = 30_000L
+    private const val CACHE_LIST_FOR_MS = 600_000L
+    private const val CACHE_SCAN_BUDGET_MS = 200L
 
     private val lock = Any()
     private val clkTck = runCatching { Os.sysconf(OsConstants._SC_CLK_TCK) }.getOrDefault(100L).coerceAtLeast(1L)
@@ -48,6 +54,37 @@ object SessionPerfSampler {
     private val hotNames = HashMap<String, Int>()
     private var lastRefreshHz = 0f
 
+    /** The state cache folder and the game's exe for the next session; null when it does not run on DXVK. */
+    private class CacheTarget(val dir: File, val exeBase: String?)
+
+    @Volatile
+    private var nextCache: CacheTarget? = null
+    private var cacheTarget: CacheTarget? = null
+    private var cacheFile: File? = null
+    private var cacheHeader: DxvkStateCache.Header? = null
+    private var cacheBaseBytes = 0L
+    private var cacheHighBytes = 0L
+    private var cacheListedMs = 0L
+    private val cacheGrowth = WindowCounter()
+
+    private var vmPrev: VmStat.Reading? = null
+    private var vmRead = false
+    private var vmFailures = 0
+    private val majorFaults = WindowCounter()
+    private val reclaimed = WindowCounter()
+
+    /**
+     * Set before the session starts: the folder DXVK keeps its state cache in (DXVK_STATE_CACHE_PATH) and the
+     * game's executable, or null for a session that does not run on DXVK.
+     */
+    fun armStateCache(dir: String?, executablePath: String?) {
+        nextCache = dir?.takeIf { it.isNotBlank() }?.let {
+            val exe = executablePath?.substringAfterLast('/')?.substringAfterLast('\\')
+                ?.replace(Regex("\\.exe$", RegexOption.IGNORE_CASE), "")?.takeIf { e -> e.isNotEmpty() }
+            CacheTarget(File(it), exe)
+        }
+    }
+
     private class HotReading(val pct: Int, val user: Int, val sys: Int, val state: Char, val core: Int?, val vol: Int?, val invol: Int?)
 
     fun start() {
@@ -65,6 +102,19 @@ object SessionPerfSampler {
             lastLowMemoryEvents = 0
             hotNames.clear()
             lastRefreshHz = 0f
+            cacheTarget = nextCache
+            nextCache = null
+            cacheFile = null
+            cacheHeader = null
+            cacheBaseBytes = 0L
+            cacheHighBytes = 0L
+            cacheListedMs = 0L
+            cacheGrowth.clear()
+            vmPrev = null
+            vmRead = false
+            vmFailures = 0
+            majorFaults.clear()
+            reclaimed.clear()
         }
     }
 
@@ -86,8 +136,14 @@ object SessionPerfSampler {
         val nowMs = SystemClock.elapsedRealtime()
         val deltas = newFrameDeltas(frames, frameCount, frameStride)
         val hot = readHot(nowMs)
-        if (!fps.isFinite() || fps <= 0f) return@synchronized
-        if (firstFrameMs == 0L) firstFrameMs = nowMs
+        val playing = fps.isFinite() && fps > 0f
+        if (playing && firstFrameMs == 0L) firstFrameMs = nowMs
+        if (firstFrameMs != 0L) {
+            val window = ((nowMs - firstFrameMs) / 1000L / WINDOW_SEC).toInt()
+            readVmStat(window)
+            readStateCache(nowMs, window)
+        }
+        if (!playing) return@synchronized
         val t = ((nowMs - firstFrameMs) / 1000L).toInt()
         val gameplay = t >= SessionVerdict.WARMUP_SEC
 
@@ -161,6 +217,7 @@ object SessionPerfSampler {
         val buf = buffer ?: return@synchronized emptyMap()
         buffer = null
         if (buf.size == 0) return@synchronized emptyMap()
+        val cache = stateCacheResult()
         SessionVerdict.compute(
             SessionVerdict.Input(
                 samples = buf.toList(),
@@ -176,8 +233,88 @@ object SessionPerfSampler {
                 fpsBy5Min = fpsBy5Min,
                 legacyShare = legacyShare,
                 refreshHz = lastRefreshHz.toDouble(),
+                clusterKinds = runCatching { CpuClusterLayout.device() }.getOrNull(),
+                majorFaultsBy5Min = if (vmRead) majorFaults.toList() else null,
+                memReclaimBy5Min = if (vmRead) reclaimed.toList() else null,
+                pipelineCompilesBy5Min = cache?.first,
+                tessellationPipelines = cache?.second,
             ),
         ).properties()
+    }
+
+    /** One /proc/vmstat read: the major faults and pages scanned for reclaim since the last second, system-wide. */
+    private fun readVmStat(window: Int) {
+        if (vmFailures >= 3) return
+        val reading = try {
+            File(VmStat.PATH).bufferedReader().useLines { VmStat.parse(it) }
+        } catch (_: Exception) {
+            null
+        }
+        if (reading == null) {
+            vmFailures++
+            return
+        }
+        vmFailures = 0
+        val prev = vmPrev
+        vmPrev = reading
+        if (prev == null) return
+        vmRead = true
+        majorFaults.add(window, reading.majorFaults - prev.majorFaults)
+        reclaimed.add(window, reading.reclaimScanned - prev.reclaimScanned)
+    }
+
+    /**
+     * One stat of the game's state cache file a second; growth past the largest size seen is new pipelines. Until
+     * the file is found the expected `<exe>.dxvk-cache` is stat'ed once a second and, for the first ten minutes,
+     * the folder is listed every 30 s for a cache written since the session started (a launcher exe).
+     */
+    private fun readStateCache(nowMs: Long, window: Int) {
+        val target = cacheTarget ?: return
+        var file = cacheFile
+        if (file == null) {
+            file = locateStateCache(target, nowMs) ?: return
+            cacheFile = file
+            cacheHeader = DxvkStateCache.readHeader(file)
+            cacheBaseBytes = file.length().coerceAtLeast(DxvkStateCache.HEADER_BYTES.toLong())
+            cacheHighBytes = cacheBaseBytes
+            cacheGrowth.touch(window)
+            return
+        }
+        val size = file.length()
+        cacheGrowth.touch(window)
+        if (size > cacheHighBytes) {
+            cacheGrowth.add(window, size - cacheHighBytes)
+            cacheHighBytes = size
+        }
+    }
+
+    private fun locateStateCache(target: CacheTarget, nowMs: Long): File? {
+        target.exeBase?.let { exe -> File(target.dir, exe + DxvkStateCache.SUFFIX).takeIf { it.isFile }?.let { return it } }
+        val sinceFirstFrame = nowMs - firstFrameMs
+        if (sinceFirstFrame > CACHE_LIST_FOR_MS || (cacheListedMs != 0L && nowMs - cacheListedMs < CACHE_LIST_EVERY_MS)) return null
+        cacheListedMs = nowMs
+        val startedWall = System.currentTimeMillis() - sinceFirstFrame
+        return target.dir.listFiles { f -> f.name.endsWith(DxvkStateCache.SUFFIX) }
+            ?.filter { it.lastModified() >= startedWall }
+            ?.maxByOrNull { it.lastModified() }
+    }
+
+    /**
+     * pipeline_compiles_by_5min and tessellation_pipelines, from one read of the state cache at exit (at most
+     * [CACHE_SCAN_BUDGET_MS]); null when the session was not on DXVK or no cache file was found.
+     */
+    private fun stateCacheResult(): Pair<List<Int>, Boolean?>? {
+        val file = cacheFile ?: return null
+        val header = cacheHeader ?: DxvkStateCache.readHeader(file)
+        val scan = if (header?.variable == true) {
+            val deadline = SystemClock.elapsedRealtime() + CACHE_SCAN_BUDGET_MS
+            runCatching {
+                file.inputStream().use { DxvkStateCache.scan(it, cacheBaseBytes) { SystemClock.elapsedRealtime() > deadline } }
+            }.getOrNull()
+        } else {
+            null
+        }
+        return DxvkStateCache.compilesByWindow(cacheGrowth.toList(), DxvkStateCache.entryBytes(header, scan)) to scan?.tessellation
     }
 
     /** Copies the frame intervals that arrived since the last tick into [deltaScratch]; returns their count. */

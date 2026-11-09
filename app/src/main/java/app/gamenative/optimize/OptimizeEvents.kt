@@ -82,16 +82,25 @@ object OptimizeEvents {
         extra?.keys()?.forEach { key -> if (!has(key)) put(key, extra.get(key)) }
     }
 
-    /** The load signals a judged_ event carries: GPU work per frame before and after, and the session's ceiling. */
-    fun judgedExtra(before: Metrics?, after: Metrics): JSONObject = JSONObject().apply {
+    /**
+     * The load signals a judged_ event carries: GPU work per frame before and after, the session's ceiling, where its
+     * hot thread ran, whether it tessellates, and [gpuWorkScaling] for a resolution step.
+     */
+    fun judgedExtra(before: Metrics?, after: Metrics, gpuWorkScaling: Double? = null): JSONObject = JSONObject().apply {
         before?.workPerFrame()?.let { put("gpu_work_per_frame_before", Math.round(it * 100) / 100.0) }
         after.workPerFrame()?.let { put("gpu_work_per_frame_after", Math.round(it * 100) / 100.0) }
         after.gpuBusyP95?.let { put("gpu_busy_p95", it) }
         after.hotThreadP95?.let { put("hot_thread_p95", it) }
         after.fpsCeilingReason?.let { put("fps_ceiling_reason", it) }
+        after.hotThreadCoreShare?.let { share -> put("hot_thread_core_share", JSONObject().apply { share.forEach { (k, v) -> put(k, v) } }) }
+        after.tessellationPipelines?.let { put("tessellation_pipelines", it) }
+        gpuWorkScaling?.let { put("gpu_work_scaling", it) }
     }
 
-    private val MIRRORED_EXTRA = listOf("gpu_work_per_frame_before", "gpu_work_per_frame_after", "gpu_busy_p95", "hot_thread_p95", "fps_ceiling_reason")
+    private val MIRRORED_EXTRA = listOf(
+        "gpu_work_per_frame_before", "gpu_work_per_frame_after", "gpu_busy_p95", "hot_thread_p95", "fps_ceiling_reason",
+        "tessellation_pipelines", "gpu_work_scaling",
+    )
 
     /** Queues [event] for the next batch; [device] is the device block every batch carries. */
     fun record(event: JSONObject, device: () -> JSONObject) {

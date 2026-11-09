@@ -53,7 +53,7 @@ class OptimizeContainerLeverTest {
         val config = OptimizeApplier.dxvkConfigPut("", "dxvk.numCompilerThreads", "2")
         val applied = edit(live, OptimizeApplier.DXVK_CONFIG_KEY, config)
         assertEquals("2", OptimizeApplier.configValue(applied, "dxwrapperConfig.dxvk.numCompilerThreads"))
-        assertEquals("dxvk.numCompilerThreads = 2", EnvVars(applied.envVars).get("DXVK_CONFIG"))
+        assertEquals("dxvk.numCompilerThreads=2", EnvVars(applied.envVars).get("DXVK_CONFIG"))
         assertFalse(EnvVars(edit(applied, OptimizeApplier.DXVK_CONFIG_KEY, null).envVars).has("DXVK_CONFIG"))
     }
 
@@ -61,11 +61,11 @@ class OptimizeContainerLeverTest {
     fun dxvkConfigKeepsOtherEntriesAndSections() {
         val existing = "dxgi.syncInterval = 0;[game.exe];d3d11.cachedDynamicResources = a"
         val set = OptimizeApplier.dxvkConfigPut(existing, "dxvk.numCompilerThreads", "2")
-        assertEquals("dxgi.syncInterval = 0;dxvk.numCompilerThreads = 2;[game.exe];d3d11.cachedDynamicResources = a", set)
+        assertEquals("dxgi.syncInterval = 0;dxvk.numCompilerThreads=2;[game.exe];d3d11.cachedDynamicResources = a", set)
         assertEquals("1", OptimizeApplier.dxvkConfigGet(OptimizeApplier.dxvkConfigPut(set, "dxgi.syncInterval", "1"), "dxgi.syncInterval"))
         assertNull(OptimizeApplier.dxvkConfigGet(set, "d3d11.cachedDynamicResources"))
         assertEquals(existing, OptimizeApplier.dxvkConfigPut(set, "dxvk.numCompilerThreads", null))
-        assertEquals("dxgi.customDeviceDesc = \"Some GPU\"", OptimizeApplier.dxvkConfigPut("", "dxgi.customDeviceDesc", "Some GPU"))
+        assertEquals("dxgi.customDeviceDesc=Some GPU", OptimizeApplier.dxvkConfigPut("", "dxgi.customDeviceDesc", "Some GPU"))
         assertEquals("Some GPU", OptimizeApplier.dxvkConfigGet("dxgi.customDeviceDesc = \"Some GPU\"", "dxgi.customDeviceDesc"))
     }
 
@@ -92,8 +92,8 @@ class OptimizeContainerLeverTest {
         )
         assertEquals(listOf("dxgi.maxDeviceMemory" to "4096", "dxgi.syncInterval" to "1"), options)
         val merged = OptimizeApplier.dxvkMerged(existing, options)
-        assertEquals("dxgi.syncInterval = 1;dxgi.maxDeviceMemory = 4096;[game.exe];d3d11.cachedDynamicResources = a", merged)
-        assertEquals("dxgi.maxDeviceMemory = 4096;dxgi.syncInterval = 1", OptimizeApplier.dxvkMerged(null, options))
+        assertEquals("dxgi.syncInterval=1;dxgi.maxDeviceMemory=4096;[game.exe];d3d11.cachedDynamicResources = a", merged)
+        assertEquals("dxgi.maxDeviceMemory=4096;dxgi.syncInterval=1", OptimizeApplier.dxvkMerged(null, options))
         val both = OptimizeApplier.dxvkOptions(
             listOf("dxwrapperConfig.dxvk.numCompilerThreads" to "3", OptimizeApplier.DXVK_CONFIG_KEY to "dxgi.maxDeviceMemory = \"2048\""),
         )
@@ -110,8 +110,22 @@ class OptimizeContainerLeverTest {
         )
         val applied = edit(live, OptimizeApplier.DXVK_CONFIG_KEY, merged)
         val env = EnvVars(applied.envVars)
-        assertEquals("dxgi.syncInterval = 0;dxgi.maxDeviceMemory = 4096", env.get("DXVK_CONFIG"))
-        assertTrue(env.toStringArray().contains("DXVK_CONFIG=dxgi.syncInterval = 0;dxgi.maxDeviceMemory = 4096"))
+        assertEquals("dxgi.syncInterval = 0;dxgi.maxDeviceMemory=4096", env.get("DXVK_CONFIG"))
+        assertTrue(env.toStringArray().contains("DXVK_CONFIG=dxgi.syncInterval = 0;dxgi.maxDeviceMemory=4096"))
         assertEquals("1", env.get("A"))
+    }
+
+    @Test
+    fun aDxvkOptionOpIsWrittenUnquotedWithoutSpaces() {
+        val options = OptimizeApplier.dxvkOptions(
+            listOf("dxwrapperConfig.dxvk.numCompilerThreads" to "2", "dxwrapperConfig.d3d11.samplerAnisotropy" to "4"),
+        )
+        val merged = OptimizeApplier.dxvkMerged("", options)
+        assertEquals("dxvk.numCompilerThreads=2;d3d11.samplerAnisotropy=4", merged)
+        assertFalse(merged.contains(" = "))
+        assertFalse(merged.contains('"'))
+        val applied = edit(ContainerData(envVars = "A=1"), OptimizeApplier.DXVK_CONFIG_KEY, merged)
+        assertEquals("dxvk.numCompilerThreads=2;d3d11.samplerAnisotropy=4", EnvVars(applied.envVars).get("DXVK_CONFIG"))
+        assertEquals("4", OptimizeApplier.configValue(applied, "dxwrapperConfig.d3d11.samplerAnisotropy"))
     }
 }

@@ -11,6 +11,7 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.billing.Membership
 import app.gamenative.data.GameSource
+import app.gamenative.powercontrol.metrics.CpuClusterLayout
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.parseBooleanExtra
 import app.gamenative.ui.component.parsePositiveFpsLimit
@@ -326,11 +327,19 @@ object OptimizeController {
                     put("thermal_reporting", baseline?.thermalReporting ?: false)
                     put("refresh_hz", baseline?.refreshHz ?: refreshHz(context) ?: JSONObject.NULL)
                     put("device_id_hash", deviceIdHash())
+                    runCatching { CpuClusterLayout.device() }.getOrNull()?.let { layout ->
+                        put(
+                            "cpu_clusters",
+                            JSONArray().apply { layout.forEach { put(JSONObject().put("cores", JSONArray(it.cores)).put("kind", it.kind)) } },
+                        )
+                    }
                 },
             )
             put("profile", profile.wireId)
             put("card_action", state.cardAction?.takeIf { !dryRun } ?: JSONObject.NULL)
-            put("verdict", baseline?.toVerdictJson() ?: JSONObject.NULL)
+            put("verdict", baseline?.toVerdictJson()?.apply { state.gpuWorkScaling?.let { put("gpu_work_scaling", it) } } ?: JSONObject.NULL)
+            // The raw measurements the server reads its own verdict from (verdict_server); verdict above is the local one.
+            put("metrics", metricsBlock(baseline, state, container, context))
             put(
                 "container",
                 JSONObject().apply {
@@ -343,6 +352,7 @@ object OptimizeController {
                     put("fex_preset", data.fexcorePreset)
                     put("env_vars", JSONObject().apply { EnvVars(data.envVars).let { env -> env.forEach { put(it, env.get(it)) } } })
                     put("dxwrapper_config", JSONObject().apply { KeyValueSet(data.dxwrapperConfig).forEach { put(it[0], it[1]) } })
+                    put("graphics_driver_config", data.graphicsDriverConfig)
                 },
             )
             put(
@@ -362,6 +372,17 @@ object OptimizeController {
         }
     }
 
+    /** The session's raw measurements for the server: what outcome before/after carry, plus refresh rate, cap and scaling. */
+    private fun metricsBlock(baseline: Metrics?, state: OptimizeLocalState, container: Container, context: Context): Any {
+        val m = baseline ?: return JSONObject.NULL
+        return m.toReportJson().apply {
+            put("refresh_hz", m.refreshHz ?: refreshHz(context) ?: JSONObject.NULL)
+            put("cap", fpsLimit(container))
+            put("gameplay_s", m.gameplaySec)
+            state.gpuWorkScaling?.let { put("gpu_work_scaling", it) }
+        }
+    }
+
     private fun outcomeBody(
         appId: String,
         profile: OptimizeProfile,
@@ -377,6 +398,7 @@ object OptimizeController {
         skippedOps: Int? = null,
         judgeReason: String? = null,
         excludedWindows: List<Int> = emptyList(),
+        gpuWorkScaling: Double? = null,
     ): JSONObject = JSONObject().apply {
         put("schema", 1)
         put("app_version_code", BuildConfig.VERSION_CODE)
@@ -389,6 +411,7 @@ object OptimizeController {
         put("after", after?.toReportJson()?.apply { if (excludedWindows.isNotEmpty()) put("excluded_windows", JSONArray(excludedWindows)) } ?: JSONObject.NULL)
         put("result", result)
         judgeReason?.let { put("judge_reason", it) }
+        gpuWorkScaling?.let { put("gpu_work_scaling", it) }
         put(
             "apply",
             JSONObject().apply {
@@ -432,23 +455,38 @@ object OptimizeController {
      * Sends the queued outcome reports. The entitlement the last acknowledged one carried is stored for the game and
      * app-wide, and replaces the one on the game's waiting card, so the card counts the trial slot just taken.
      */
-    private suspend fun flush(context: Context, appId: String, store: OptimizeStore) {
+    private suspend fun flush(context: Context, appId: String, store: OptimizeStore, graphicsDriverConfig: String? = null) {
         try {
             val queue = mutex.withLock { store.read().outcomeQueue }
             if (queue.isEmpty()) return
             val device = deviceJson(context)
             val sent = mutableSetOf<String>()
+            val judged = mutableListOf<Pair<JSONObject, ServerJudgement>>()
             var entitlement: Entitlement? = null
             for (item in queue) {
                 val body = JSONObject(item.toString()).put("device", device)
+                if (graphicsDriverConfig != null && !body.has("container")) {
+                    body.put("container", JSONObject().put("graphics_driver_config", graphicsDriverConfig))
+                }
                 val ack = OptimizeApi.postOutcome(body) ?: break
                 sent += item.optString("outcome_id")
                 ack.entitlement?.let { entitlement = it }
+                ack.judgement?.let { judged += item to it }
             }
             if (sent.isEmpty()) return
             rememberEntitlement(entitlement)
+            var request: CardRequest? = null
             mutex.withLock {
-                val state = store.read()
+                var state = store.read()
+                val cardBefore = state.card
+                // The server's judgement stands in for the local one; a local crash revert has already happened.
+                judged.forEach { (report, judgement) ->
+                    val profile = OptimizeProfile.fromWire(report.optStringOrNull("profile")).takeIf { it != OptimizeProfile.OFF } ?: return@forEach
+                    val rungId = report.optStringOrNull("rung_id") ?: return@forEach
+                    if (report.optString("result") == OptimizeJudge.UNDO || report.optString("result") == OptimizeJudge.DID_NOT_TAKE) return@forEach
+                    state = OptimizeServer.applyJudgement(state, profile, rungId, judgement, OptimizeServer.afterOf(report))
+                    Timber.tag(TAG).i("Optimize: server judged $rungId ${judgement.result} (${judgement.reason ?: "no reason"}), local ${report.optString("result")}")
+                }
                 store.write(
                     state.copy(
                         outcomeQueue = state.outcomeQueue.filter { it.optString("outcome_id") !in sent },
@@ -456,6 +494,13 @@ object OptimizeController {
                         entitlementCheckedAt = if (entitlement != null) System.currentTimeMillis() else state.entitlementCheckedAt,
                     ),
                 )
+                if (state.card != null && state.card != cardBefore) {
+                    request = CardRequest(appId, state.card!!, (entitlement ?: state.entitlement).orAppWide(lastEntitlement))
+                }
+            }
+            request?.let {
+                cardRequest.value = it
+                revision.value++
             }
             entitlement?.let { e ->
                 cardRequest.value?.takeIf { it.appId == appId && it.entitlement != e }?.let { cardRequest.compareAndSet(it, it.copy(entitlement = e)) }
@@ -664,7 +709,7 @@ object OptimizeController {
             val budgetMs = NEXT_RUNG_LAUNCH_BUDGET_MS - (System.currentTimeMillis() - waitStart)
             mutex.withLock {
                 var state = store.read()
-                scope.launch { flush(context.applicationContext, appId, store) }
+                scope.launch { flush(context.applicationContext, appId, store, container.graphicsDriverConfig) }
                 val profile = state.activeProfile
                 val (reconciled, ok) = reconcile(context, appId, container, store, state, profile, onProgress)
                 val changed = reconciled != state
@@ -1149,7 +1194,8 @@ object OptimizeController {
                 if (profile == null) {
                     val block = OptimizeCards.firstCardBlock(state, after, now, appRulesVersion())
                     cardField = OptimizeCards.cardField(block == null, block)
-                    if (block == null) {
+                    // A block from the verdict alone still asks the server, whose own verdict may leave the card.
+                    if (block == null || (context != null && OptimizeServer.asksAtExit(block))) {
                         val suggested = OptimizeCards.suggestedProfile(after.cls, after, cap, refresh)
                         val capFps = OptimizeCards.capQuestion(state, after, cap, now, refresh)
                         val card = OptimizeCard(
@@ -1165,7 +1211,7 @@ object OptimizeController {
                             val body = nextRungBody(
                                 context.applicationContext, appId, container, state, suggested.profile, state.ladder(suggested.profile), after, dryRun = true,
                             )
-                            offer = FirstOffer(card, body)
+                            offer = FirstOffer(card, body, block)
                         } else {
                             val unverified = card.copy(unverified = true)
                             state = state.copy(card = unverified, suppression = null)
@@ -1228,7 +1274,7 @@ object OptimizeController {
             }
             request?.let { cardRequest.value = it }
             revision.value++
-            if (context != null) scope.launch { flush(context.applicationContext, appId, store) }
+            if (context != null) scope.launch { flush(context.applicationContext, appId, store, container.graphicsDriverConfig) }
             prefetch?.invoke()
             cardField
         } catch (e: CancellationException) {
@@ -1240,7 +1286,7 @@ object OptimizeController {
     }
 
     /** A first or cap card the session would leave, and the dry-run request that decides whether it is written. */
-    private class FirstOffer(val card: OptimizeCard, val body: JSONObject)
+    private class FirstOffer(val card: OptimizeCard, val body: JSONObject, val localBlock: String? = null)
 
     /**
      * Asks the server, without applying or recording anything, whether it has a change for the game before the first
@@ -1256,7 +1302,10 @@ object OptimizeController {
             rememberRulesVersion(response.effectiveRulesVersion)
         }
         val choice = OptimizeCards.offerOf(response)
-        Timber.tag(TAG).i("Optimize: first offer ${choice.name.lowercase()} (${response?.status ?: "no answer"})")
+        val server = response?.verdictServer
+        Timber.tag(TAG).i(
+            "Optimize: first offer ${choice.name.lowercase()} (${response?.status ?: "no answer"}), server verdict ${server?.cls ?: "none"} show ${server?.showCard}",
+        )
         return mutex.withLock {
             var state = store.read()
             val now = System.currentTimeMillis()
@@ -1278,14 +1327,21 @@ object OptimizeController {
                 return@withLock null to OptimizeCards.cardField(false, why)
             }
             val capFromRung = OptimizeCards.capFps(response?.rung?.raw)
+            // The server's verdict decides the card when it gives one; otherwise the local block stands.
+            val decision = OptimizeServer.firstDecision(offer.localBlock, offer.card, server, capFromRung)
+            val base = decision.card
+            if (base == null) {
+                store.write(state)
+                return@withLock null to OptimizeCards.cardField(false, decision.block)
+            }
             val card = when (choice) {
-                OptimizeCards.Offer.CARD -> offer.card
-                OptimizeCards.Offer.UNVERIFIED -> offer.card.copy(unverified = true)
+                OptimizeCards.Offer.CARD -> base
+                OptimizeCards.Offer.UNVERIFIED -> base.copy(unverified = true)
                 OptimizeCards.Offer.CAP -> when {
                     now < state.capSnoozedUntil -> null
-                    offer.card.kind == OptimizeCard.CAP -> offer.card
-                    capFromRung != null -> offer.card.copy(kind = OptimizeCard.CAP, capFps = capFromRung, reason = null)
-                    else -> offer.card
+                    base.kind == OptimizeCard.CAP -> base
+                    capFromRung != null -> base.copy(kind = OptimizeCard.CAP, capFps = capFromRung, reason = null)
+                    else -> base
                 }
                 OptimizeCards.Offer.HOLD -> null
             }
@@ -1361,6 +1417,7 @@ object OptimizeController {
         val now = System.currentTimeMillis()
         val settled = OptimizeTarget.settle(profile, judgedResult, judgeReason, judged, refreshHz, fpsCap, rung.isFpsCap)
         val result = settled.result
+        val scaling = if (result == OptimizeJudge.CRASH) null else OptimizeJudge.gpuWorkScaling(rung, pending.levers, pending.baseline, judged)
         val report = outcomeBody(
             appId, profile, rung.rungId, rung.version, pending.baseline, after, result, pending.levers.size, emptyList(),
             crash = after.takeIf { result == OptimizeJudge.CRASH },
@@ -1368,6 +1425,7 @@ object OptimizeController {
             skippedOps = pending.skippedOps,
             judgeReason = settled.reason,
             excludedWindows = excludedWindows,
+            gpuWorkScaling = scaling,
         )
         val keep = result == OptimizeJudge.HELPED || result == OptimizeJudge.NOT_COMPARABLE
         var l = ladder.triedWith(rung.rungId, rung.version, result, settled.reason)
@@ -1411,9 +1469,9 @@ object OptimizeController {
                 OptimizeCard(OptimizeCard.WORSE, now, name, profile, rungId = rung.rungId, capFps = capFps, metrics = judged, before = before)
             else -> null
         }
-        val s = state.queued(report).withLadder(profile, l)
+        val s = state.queued(report).withLadder(profile, l).let { if (scaling != null) it.copy(gpuWorkScaling = scaling) else it }
         OptimizeEvents.judged(result)?.let {
-            event(appId, it, s, profile, judged.cls ?: before?.cls, card?.kind, rung.rungId, extra = OptimizeEvents.judgedExtra(before, judged))
+            event(appId, it, s, profile, judged.cls ?: before?.cls, card?.kind, rung.rungId, extra = OptimizeEvents.judgedExtra(before, judged, scaling))
         }
         if (settled.done) event(appId, OptimizeEvents.DONE, s, profile, judged.cls ?: before?.cls, OptimizeCard.DONE, rung.rungId)
         return if (card != null) s.copy(card = card) else s
@@ -1527,7 +1585,7 @@ object OptimizeController {
             }
             request?.let { cardRequest.value = it }
             revision.value++
-            scope.launch { flush(context.applicationContext, appId, store) }
+            scope.launch { flush(context.applicationContext, appId, store, container.graphicsDriverConfig) }
             if (ok) ChangeResult.DONE else ChangeResult.FAILED
         } catch (e: CancellationException) {
             throw e

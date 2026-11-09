@@ -50,6 +50,15 @@ data class Metrics(
     val crashKind: String? = null,
     val crashCode: String? = null,
     val crashHash: String? = null,
+    /** Share of the hot thread's busy seconds on little, big and prime cores (perf_verdict.hot_thread_core_share). */
+    val hotThreadCoreShare: Map<String, Double>? = null,
+    /** New DXVK state cache entries per five-minute window; empty when not on DXVK or not measured. */
+    val pipelineCompilesBy5Min: List<Int> = emptyList(),
+    /** Whether the game's state cache holds a hull or domain shader pipeline; null when unknown. */
+    val tessellationPipelines: Boolean? = null,
+    /** System-wide major page faults and pages scanned for reclaim per five-minute window (/proc/vmstat deltas). */
+    val majorFaultsBy5Min: List<Int> = emptyList(),
+    val memReclaimBy5Min: List<Int> = emptyList(),
 ) {
     /** Session GPU work per frame: the median of the gameplay windows, else [gpuWorkPerFrame]. */
     fun workPerFrame(): Double? {
@@ -70,6 +79,18 @@ data class Metrics(
             val windows = if (report) gpuWorkBy5Min.take(MAX_REPORT_WINDOWS) else gpuWorkBy5Min
             put("gpu_work_by_5min", JSONArray().apply { windows.forEach { put(it?.let { v -> round2(v) } ?: JSONObject.NULL) } })
         }
+        putSignals(report)
+    }
+
+    private fun JSONObject.putSignals(report: Boolean) {
+        hotThreadCoreShare?.let { share -> put("hot_thread_core_share", JSONObject().apply { share.forEach { (k, v) -> put(k, v) } }) }
+        fun series(key: String, values: List<Int>) {
+            if (values.isNotEmpty()) put(key, JSONArray(if (report) values.take(MAX_REPORT_WINDOWS) else values))
+        }
+        series("pipeline_compiles_by_5min", pipelineCompilesBy5Min)
+        tessellationPipelines?.let { put("tessellation_pipelines", it) }
+        series("major_faults_by_5min", majorFaultsBy5Min)
+        series("mem_reclaim_by_5min", memReclaimBy5Min)
     }
 
     fun toJson(): JSONObject = JSONObject().apply {
@@ -163,6 +184,11 @@ data class Metrics(
                 crashKind = o.optStringOrNull("crash_kind"),
                 crashCode = o.optStringOrNull("crash_code"),
                 crashHash = o.optStringOrNull("crash_hash"),
+                hotThreadCoreShare = coreShareOf(o.optJSONObject("hot_thread_core_share")),
+                pipelineCompilesBy5Min = o.optJSONArray("pipeline_compiles_by_5min").counts(),
+                tessellationPipelines = o.optBooleanOrNull("tessellation_pipelines"),
+                majorFaultsBy5Min = o.optJSONArray("major_faults_by_5min").counts(),
+                memReclaimBy5Min = o.optJSONArray("mem_reclaim_by_5min").counts(),
             )
         }
 
@@ -205,7 +231,19 @@ data class Metrics(
                 crashKind = fingerprint?.optStringOrNull("kind"),
                 crashCode = fingerprint?.optStringOrNull("code"),
                 crashHash = run.optStringOrNull("crash_fingerprint_hash") ?: fingerprint?.optStringOrNull("hash"),
+                hotThreadCoreShare = coreShareOf(verdict?.optJSONObject("hot_thread_core_share")),
+                pipelineCompilesBy5Min = verdict?.optJSONArray("pipeline_compiles_by_5min").counts(),
+                tessellationPipelines = verdict?.optBooleanOrNull("tessellation_pipelines"),
+                majorFaultsBy5Min = verdict?.optJSONArray("major_faults_by_5min").counts(),
+                memReclaimBy5Min = verdict?.optJSONArray("mem_reclaim_by_5min").counts(),
             )
+        }
+
+        /** hot_thread_core_share as sent: little, big and prime, each 0-1; null when absent or empty. */
+        internal fun coreShareOf(o: JSONObject?): Map<String, Double>? {
+            if (o == null) return null
+            val share = listOf("little", "big", "prime").mapNotNull { k -> o.optDoubleOrNull(k)?.takeIf { it in 0.0..1.0 }?.let { k to it } }.toMap()
+            return share.takeIf { it.isNotEmpty() }
         }
 
         /**
@@ -248,6 +286,16 @@ internal fun JSONObject.optDoubleOrNull(key: String): Double? =
 
 internal fun JSONArray?.objects(): List<JSONObject> =
     if (this == null) emptyList() else (0 until length()).mapNotNull { optJSONObject(it) }
+
+internal fun JSONObject.optBooleanOrNull(key: String): Boolean? = when (val v = if (has(key)) opt(key) else null) {
+    is Boolean -> v
+    is String -> v.toBooleanStrictOrNull()
+    else -> null
+}
+
+/** A count per window: numbers kept, negative or non-numeric entries read as 0 so the windows stay aligned. */
+internal fun JSONArray?.counts(): List<Int> =
+    if (this == null) emptyList() else (0 until length()).map { i -> (opt(i) as? Number)?.toInt()?.coerceAtLeast(0) ?: 0 }
 
 internal fun JSONArray?.ints(): List<Int> =
     if (this == null) emptyList() else (0 until length()).mapNotNull { i -> (opt(i) as? Number)?.toInt() }
@@ -499,11 +547,59 @@ fun Entitlement?.orAppWide(appWide: Entitlement?): Entitlement? = this ?: appWid
 
 fun Entitlement?.limitOrDefault(): Int = this?.trialGamesLimit?.takeIf { it > 0 } ?: Entitlement.DEFAULT_TRIAL_GAMES_LIMIT
 
-/** The outcome endpoint's answer: acknowledged, and the entitlement after the outcome was stored. */
-data class OutcomeAck(val ok: Boolean, val entitlement: Entitlement?) {
+/**
+ * The server's own reading of a session (next-rung verdict_server), computed from the raw metrics block. When an
+ * answer carries one it decides the first card; the app's local verdict is the offline fallback.
+ */
+data class ServerVerdict(
+    val cls: String?,
+    val confidence: Double?,
+    val fpsCeilingReason: String?,
+    /** Whether the session should leave a first card; null when the server did not say, which leaves it to the app. */
+    val showCard: Boolean?,
+    val cardKind: String?,
+    val suggestedProfile: OptimizeProfile?,
+    val blockReason: String?,
+) {
     companion object {
-        fun parse(o: JSONObject?): OutcomeAck =
-            OutcomeAck(o?.optBoolean("ok", false) == true, Entitlement.fromJson(o?.optJSONObject("entitlement")))
+        fun parse(o: JSONObject?): ServerVerdict? {
+            if (o == null) return null
+            return ServerVerdict(
+                cls = o.optStringOrNull("class"),
+                confidence = o.optDoubleOrNull("confidence")?.coerceIn(0.0, 1.0),
+                fpsCeilingReason = o.optStringOrNull("fps_ceiling_reason"),
+                showCard = o.optBooleanOrNull("show_card"),
+                cardKind = o.optStringOrNull("card_kind"),
+                suggestedProfile = OptimizeProfile.fromWire(o.optStringOrNull("suggested_profile")).takeIf { it != OptimizeProfile.OFF },
+                blockReason = o.optStringOrNull("block_reason"),
+            )
+        }
+    }
+}
+
+/** The server's judgement of a step's session (outcome judgement_server); the local judge is the fallback. */
+data class ServerJudgement(val result: String, val reason: String?, val afterCardKind: String?, val deltas: JSONObject?) {
+    companion object {
+        private val RESULTS = setOf(
+            OptimizeJudge.HELPED, OptimizeJudge.NO_CHANGE, OptimizeJudge.WORSE, OptimizeJudge.CRASH, OptimizeJudge.NOT_COMPARABLE,
+        )
+
+        fun parse(o: JSONObject?): ServerJudgement? {
+            if (o == null) return null
+            val result = o.optStringOrNull("result")?.takeIf { it in RESULTS } ?: return null
+            return ServerJudgement(result, o.optStringOrNull("reason"), o.optStringOrNull("after_card_kind"), o.optJSONObject("deltas"))
+        }
+    }
+}
+
+/** The outcome endpoint's answer: acknowledged, the entitlement after the outcome was stored, and the server's judgement. */
+data class OutcomeAck(val ok: Boolean, val entitlement: Entitlement?, val judgement: ServerJudgement? = null) {
+    companion object {
+        fun parse(o: JSONObject?): OutcomeAck = OutcomeAck(
+            o?.optBoolean("ok", false) == true,
+            Entitlement.fromJson(o?.optJSONObject("entitlement")),
+            runCatching { ServerJudgement.parse(o?.optJSONObject("judgement_server")) }.getOrNull(),
+        )
     }
 }
 
@@ -515,6 +611,8 @@ data class NextRungResponse(
     val rulesVersion: String? = null,
     /** On no_rule and not_settings: seconds before the game is worth asking about again. */
     val retryAfterSec: Int? = null,
+    /** The server's verdict of the metrics block; null from older servers. */
+    val verdictServer: ServerVerdict? = null,
 ) {
     /** The rules build that answered: the top-level value, else the rung's. */
     val effectiveRulesVersion: String? get() = rulesVersion ?: rung?.rulesVersion
@@ -539,6 +637,7 @@ data class NextRungResponse(
             Entitlement.fromJson(o.optJSONObject("entitlement")),
             o.optStringOrNull("rules_version"),
             o.optIntOrNull("retry_after_s")?.takeIf { it >= 0 },
+            runCatching { ServerVerdict.parse(o.optJSONObject("verdict_server")) }.getOrNull(),
         )
     }
 }

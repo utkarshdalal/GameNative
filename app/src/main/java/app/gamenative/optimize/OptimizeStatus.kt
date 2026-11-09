@@ -66,7 +66,7 @@ sealed class OptimizeStatus {
         fun visualCostRes(id: String?): Int? = when (id) {
             "vc_shadows_simpler" -> R.string.optimize_vc_shadows_simpler
             "vc_less_grass_view_distance" -> R.string.optimize_vc_less_grass_view_distance
-            "vc_textures_softer" -> R.string.optimize_vc_textures_softer
+            "vc_textures_softer", "vc_textures_softer_distance" -> R.string.optimize_vc_textures_softer
             "vc_effects_simpler" -> R.string.optimize_vc_effects_simpler
             "vc_fps_held" -> R.string.optimize_vc_fps_held
             "vc_dx11_version" -> R.string.optimize_vc_dx11_version

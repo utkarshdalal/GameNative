@@ -332,6 +332,8 @@ data class OptimizeCard(
     val before: Metrics? = null,
     /** A first or cap card written without the server confirming it has a change for the game (it did not answer). */
     val unverified: Boolean = false,
+    /** On an after-card the server judged: its judgement_server deltas, shown in place of the local comparison. */
+    val serverDeltas: JSONObject? = null,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("kind", kind)
@@ -348,7 +350,17 @@ data class OptimizeCard(
         capFps?.let { put("cap_fps", it) }
         before?.let { put("before", it.toJson()) }
         if (unverified) put("unverified", true)
+        serverDeltas?.let { put("server_deltas", it) }
     }
+
+    /** Equality ignores [serverDeltas]' identity: two cards with the same deltas text are the same card. */
+    override fun equals(other: Any?): Boolean =
+        other is OptimizeCard && copy(serverDeltas = null).fields() == other.copy(serverDeltas = null).fields() &&
+            serverDeltas?.toString() == other.serverDeltas?.toString()
+
+    override fun hashCode(): Int = copy(serverDeltas = null).fields().hashCode()
+
+    private fun fields(): List<Any?> = listOf(kind, at, gameName, profile, cls, rungId, outcome, fpsGainPct, stutterDropPct, metrics, reason, capFps, before, unverified)
 
     companion object {
         const val FIRST = "first"
@@ -388,6 +400,7 @@ data class OptimizeCard(
                 capFps = o.optIntOrNull("cap_fps"),
                 before = Metrics.fromJson(o.optJSONObject("before")),
                 unverified = o.optBoolean("unverified", false),
+                serverDeltas = o.optJSONObject("server_deltas"),
             )
         }
     }
@@ -458,6 +471,8 @@ data class OptimizeLocalState(
     val lastRulesVersion: String? = null,
     /** The server had nothing for the game; set while it is not asked again. */
     val noRule: NoRuleHold? = null,
+    /** How GPU work per frame followed the pixels of the last judged resolution step (verdict gpu_work_scaling). */
+    val gpuWorkScaling: Double? = null,
 ) {
     val active: ProfileLadder? get() = activeProfile?.let { profiles[it] }
 
@@ -483,6 +498,7 @@ data class OptimizeLocalState(
         if (capSnoozedUntil > 0) put("cap_snoozed_until", capSnoozedUntil)
         lastRulesVersion?.let { put("last_rules_version", it) }
         noRule?.let { put("no_rule", it.toJson()) }
+        gpuWorkScaling?.let { put("gpu_work_scaling", it) }
     }
 
     companion object {
@@ -517,6 +533,7 @@ data class OptimizeLocalState(
                 capSnoozedUntil = o.optLong("cap_snoozed_until", 0L),
                 lastRulesVersion = o.optStringOrNull("last_rules_version"),
                 noRule = NoRuleHold.fromJson(o.optJSONObject("no_rule")),
+                gpuWorkScaling = o.optDoubleOrNull("gpu_work_scaling")?.coerceIn(OptimizeJudge.GPU_WORK_SCALING_MIN, OptimizeJudge.GPU_WORK_SCALING_MAX),
             )
         }
 

@@ -364,11 +364,14 @@ object OptimizeApplier {
         return part.substringAfter('=').trim().removeSurrounding("\"")
     }
 
-    /** Sets or, for a null [value], removes [name] in a DXVK_CONFIG value, keeping every other entry. */
+    /**
+     * Sets or, for a null [value], removes [name] in a DXVK_CONFIG value, keeping every other entry as it was. The
+     * entry is written `name=value`, no spaces around '=' and no quotes: the form DXVK reads from the environment.
+     */
     internal fun dxvkConfigPut(config: String, name: String, value: String?): String {
         val (parts, globalEnd) = dxvkGlobalParts(config)
         val at = parts.subList(0, globalEnd).indexOfFirst { dxvkKey(it) == name }
-        val entry = value?.let { "$name = ${if (it.any(Char::isWhitespace)) "\"$it\"" else it}" }
+        val entry = value?.let { "$name=$it" }
         when {
             entry == null -> if (at >= 0) parts.removeAt(at)
             at >= 0 -> parts[at] = entry

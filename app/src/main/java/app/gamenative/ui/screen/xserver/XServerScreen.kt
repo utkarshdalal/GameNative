@@ -118,6 +118,7 @@ import app.gamenative.externaldisplay.ExternalDisplaySwapController
 import app.gamenative.externaldisplay.SwapInputOverlayView
 import app.gamenative.powercontrol.ContainerAffinity
 import app.gamenative.powercontrol.PowerManager
+import app.gamenative.powercontrol.metrics.SessionPerfSampler
 import app.gamenative.service.AchievementWatcher
 import app.gamenative.service.SteamHostAchievementPoller
 import app.gamenative.service.SteamService
@@ -2577,6 +2578,14 @@ fun XServerScreen(
                                 launchCancel,
                             )
                             if (launchCancel.get()) throw IllegalStateException("Launch exited during setup")
+
+                            // Where DXVK keeps this game's pipeline cache, for the session's compile count.
+                            SessionPerfSampler.armStateCache(
+                                envVars.get("DXVK_STATE_CACHE_PATH").takeIf {
+                                    container.dxWrapper?.contains("dxvk") == true && envVars.get("DXVK_STATE_CACHE") != "0"
+                                },
+                                container.executablePath,
+                            )
 
                             // The game core set and the tuner's repeated-frame input differ by session type.
                             PowerManager.gamescopeSession = sessionDisplay == SessionDisplay.GAMESCOPE

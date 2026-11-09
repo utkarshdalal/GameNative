@@ -1,5 +1,7 @@
 package app.gamenative.utils
 
+import app.gamenative.powercontrol.metrics.CpuClusterKind
+import app.gamenative.powercontrol.metrics.CpuClusterLayout
 import kotlin.math.roundToInt
 
 /** One second of the light per-session sampler. [t] is seconds since the session's first frame. */
@@ -237,7 +239,48 @@ internal object SessionVerdict {
         val legacyShare: Map<String, Double>? = null,
         /** The panel refresh rate in Hz; 0 when unknown. */
         val refreshHz: Double = 0.0,
+        /** Which cores are little, big and prime; null when the device tells none apart. */
+        val clusterKinds: List<CpuClusterKind>? = null,
+        /** System-wide major faults and pages scanned for reclaim per five-minute window; null when /proc/vmstat was not read. */
+        val majorFaultsBy5Min: List<Long>? = null,
+        val memReclaimBy5Min: List<Long>? = null,
+        /** New DXVK state cache entries per five-minute window; null when not on DXVK or no cache file was found. */
+        val pipelineCompilesBy5Min: List<Int>? = null,
+        /** Whether the state cache holds a pipeline with hull or domain shaders; null when not read to the end. */
+        val tessellationPipelines: Boolean? = null,
     )
+
+    /**
+     * The per-lever diagnosis signals: where the hot thread ran, how many pipelines were compiled, whether the game
+     * tessellates, and how hard the system paged. Each is null when it was not measured.
+     */
+    class LeverSignals(
+        val hotThreadCoreShare: Map<String, Double>? = null,
+        val pipelineCompilesBy5Min: List<Int>? = null,
+        val tessellationPipelines: Boolean? = null,
+        val majorFaultsBy5Min: List<Int>? = null,
+        val memReclaimBy5Min: List<Int>? = null,
+    ) {
+        fun putInto(out: MutableMap<String, Any>) {
+            hotThreadCoreShare?.let { out["hot_thread_core_share"] = it }
+            pipelineCompilesBy5Min?.let { out["pipeline_compiles_by_5min"] = it }
+            tessellationPipelines?.let { out["tessellation_pipelines"] = it }
+            majorFaultsBy5Min?.let { out["major_faults_by_5min"] = it }
+            memReclaimBy5Min?.let { out["mem_reclaim_by_5min"] = it }
+        }
+
+        companion object {
+            fun of(input: Input, gameplay: List<SessionSample>): LeverSignals = LeverSignals(
+                hotThreadCoreShare = CpuClusterLayout.coreShare(gameplay.map { it.hotPct to it.hotCore }, input.clusterKinds),
+                pipelineCompilesBy5Min = input.pipelineCompilesBy5Min,
+                tessellationPipelines = input.tessellationPipelines,
+                majorFaultsBy5Min = input.majorFaultsBy5Min?.map(::clampInt),
+                memReclaimBy5Min = input.memReclaimBy5Min?.map(::clampInt),
+            )
+
+            private fun clampInt(v: Long): Int = v.coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
+        }
+    }
 
     class Result(
         val cls: String,
@@ -257,6 +300,7 @@ internal object SessionVerdict {
         /** [SOURCE_LEGACY] when the class came from the older classifier; null when the sampler decided. */
         val source: String? = null,
         val load: Load? = null,
+        val signals: LeverSignals? = null,
     ) {
         /** The four game_exited properties of spec section 10. */
         fun properties(): Map<String, Any> = buildMap {
@@ -290,6 +334,7 @@ internal object SessionVerdict {
                             put("gpu_clock_mhz_by_5min", l.windows.map { w -> w.gpuClockMhz ?: -1 })
                         }
                     }
+                    signals?.putInto(this)
                 },
             )
             stutterShare?.let { put("stutter_share", Math.round(it * 10_000) / 10_000.0) }
@@ -471,6 +516,7 @@ internal object SessionVerdict {
             stutterShare = stutter,
             source = legacy?.let { SOURCE_LEGACY },
             load = load(input.samples.filter { it.fps > 0f }, g, steadyFps, input),
+            signals = LeverSignals.of(input, g),
         )
     }
 

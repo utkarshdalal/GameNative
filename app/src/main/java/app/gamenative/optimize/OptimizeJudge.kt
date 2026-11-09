@@ -337,4 +337,52 @@ object OptimizeJudge {
         if (clockUp) return Verdict(HELPED, REASON_CLOCK)
         return Verdict(NO_CHANGE, REASON_NONE)
     }
+
+    private val SCREEN_SIZE = Regex("^\\s*([0-9]{2,5})\\s*x\\s*([0-9]{2,5})\\s*$", RegexOption.IGNORE_CASE)
+    private const val SCREEN_SIZE_KEY = "screenSize"
+    const val GPU_WORK_SCALING_MIN = -1.0
+    const val GPU_WORK_SCALING_MAX = 2.0
+
+    /** Pixels of a "WxH" screen size; null when it is not one. */
+    fun screenPixels(size: String?): Long? {
+        val m = size?.let { SCREEN_SIZE.matchEntire(it) } ?: return null
+        val pixels = m.groupValues[1].toLong() * m.groupValues[2].toLong()
+        return pixels.takeIf { it > 0 }
+    }
+
+    /**
+     * The screen size a resolution step changed, as (before, after): the value its apply record kept and the value
+     * the rung set. Null when the step does not set screenSize.
+     */
+    fun resolutionChange(rung: Rung, applyRecords: List<JSONObject>): Pair<String, String>? {
+        val after = rung.levers.filterIsInstance<Lever.ContainerSet>()
+            .flatMap { it.set }.lastOrNull { it.first == SCREEN_SIZE_KEY }?.second ?: return null
+        val before = applyRecords.filter { it.optString("type") == Lever.TYPE_CONTAINER }
+            .flatMap { it.optJSONArray("before").objects() }
+            .lastOrNull { it.optString("key") == SCREEN_SIZE_KEY }
+            ?.optStringOrNull("value") ?: return null
+        return before to after
+    }
+
+    /**
+     * How GPU work per frame followed the pixels a resolution step took off: the work's relative drop over the
+     * pixels' relative drop, clamped to [-1, 2]. 1 is work in step with pixels, 0 work that did not move (the GPU
+     * is busy with something resolution does not touch), above 1 more saved than the pixels alone explain. Null
+     * without both works or when the pixel count did not change.
+     */
+    fun gpuWorkScaling(workBefore: Double?, workAfter: Double?, pixelsBefore: Long?, pixelsAfter: Long?): Double? {
+        if (workBefore == null || workAfter == null || pixelsBefore == null || pixelsAfter == null) return null
+        if (workBefore <= 0 || workAfter <= 0 || pixelsBefore <= 0 || pixelsAfter <= 0 || pixelsBefore == pixelsAfter) return null
+        val work = (workBefore - workAfter) / workBefore
+        val pixels = (pixelsBefore - pixelsAfter).toDouble() / pixelsBefore
+        val ratio = work / pixels
+        if (ratio.isNaN() || ratio.isInfinite()) return null
+        return Math.round(ratio.coerceIn(GPU_WORK_SCALING_MIN, GPU_WORK_SCALING_MAX) * 1000) / 1000.0
+    }
+
+    /** gpu_work_scaling for a judged resolution step; null for any other step or without GPU work on both sides. */
+    fun gpuWorkScaling(rung: Rung, applyRecords: List<JSONObject>, before: Metrics?, after: Metrics): Double? {
+        val (sizeBefore, sizeAfter) = resolutionChange(rung, applyRecords) ?: return null
+        return gpuWorkScaling(before?.workPerFrame(), after.workPerFrame(), screenPixels(sizeBefore), screenPixels(sizeAfter))
+    }
 }
