@@ -1880,6 +1880,7 @@
         <item quantity="other">Збережено %1$d зміни</item>
     </plurals>
     <string name="optimize_restore_original">Відновити початкові налаштування</string>
+    <string name="optimize_restore_confirm">Відновити початкові налаштування?</string>
     <string name="optimize_restored">Початкові налаштування відновлено</string>
     <string name="optimize_undo_failed">Деякі зміни не вдалося скасувати. Спробуйте пізніше.</string>
     <string name="optimize_game_running">Спершу закрийте гру</string>

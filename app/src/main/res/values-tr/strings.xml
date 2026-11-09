@@ -1898,6 +1898,7 @@
         <item quantity="other">%1$d değişiklik korundu</item>
     </plurals>
     <string name="optimize_restore_original">Orijinal ayarları geri yükle</string>
+    <string name="optimize_restore_confirm">Orijinal ayarlar geri yüklensin mi?</string>
     <string name="optimize_restored">Orijinal ayarlar geri yüklendi</string>
     <string name="optimize_undo_failed">Bazı değişiklikler geri alınamadı. Daha sonra tekrar deneyin.</string>
     <string name="optimize_game_running">Önce oyunu kapatın</string>

@@ -289,6 +289,36 @@ class OptimizeStateTest {
     }
 
     @Test
+    fun suggestedGoalShowsWheneverOneIsKnown() {
+        fun with(state: LadderState) =
+            OptimizeLocalState(activeProfile = OptimizeProfile.BALANCED, profiles = mapOf(OptimizeProfile.BALANCED to ProfileLadder(state = state)))
+        val off = OptimizeLocalState()
+        assertEquals(OptimizeProfile.PERFORMANCE, OptimizeStatus.suggestedProfile(off, OptimizeProfile.PERFORMANCE, hot = false))
+        assertEquals(OptimizeProfile.STABILITY, OptimizeStatus.suggestedProfile(with(LadderState.TRYING), OptimizeProfile.STABILITY, hot = false))
+        assertEquals(OptimizeProfile.STABILITY, OptimizeStatus.suggestedProfile(with(LadderState.PAUSED), OptimizeProfile.STABILITY, hot = true))
+        assertEquals(OptimizeProfile.POTATO, OptimizeStatus.suggestedProfile(with(LadderState.DONE), OptimizeProfile.POTATO, hot = false))
+        assertEquals(OptimizeProfile.POWER, OptimizeStatus.suggestedProfile(with(LadderState.DONE), OptimizeProfile.POTATO, hot = true))
+
+        val firstCard = OptimizeCard(OptimizeCard.FIRST, 0L, profile = OptimizeProfile.STABILITY)
+        assertEquals(OptimizeProfile.STABILITY, OptimizeStatus.suggestedProfile(off.copy(card = firstCard), null, hot = false))
+        assertEquals(OptimizeProfile.BALANCED, OptimizeStatus.suggestedProfile(off.copy(card = firstCard), OptimizeProfile.BALANCED, hot = false))
+        val doneCard = OptimizeCard(OptimizeCard.DONE, 0L, profile = OptimizeProfile.STABILITY)
+        assertNull(OptimizeStatus.suggestedProfile(off.copy(card = doneCard), null, hot = false))
+        assertNull(OptimizeStatus.suggestedProfile(with(LadderState.DONE), null, hot = false))
+        assertNull(OptimizeStatus.suggestedProfile(off, OptimizeProfile.OFF, hot = false))
+    }
+
+    @Test
+    fun restoreOnlyWhenSomethingIsOn() {
+        val rung = Rung.parse(JSONObject(rungJson))!!
+        val kept = KeptRung("k", "1", 1, emptyList(), 0L, emptyList(), null)
+        assertFalse(OptimizeLadders.hasRestorable(null))
+        assertFalse(OptimizeLadders.hasRestorable(ProfileLadder(state = LadderState.DONE)))
+        assertTrue(OptimizeLadders.hasRestorable(ProfileLadder(state = LadderState.DONE, kept = listOf(kept))))
+        assertTrue(OptimizeLadders.hasRestorable(ProfileLadder(state = LadderState.TRYING, pending = PendingRung(rung, 0L, null, 0, emptyList()))))
+    }
+
+    @Test
     fun prefetchedRungRoundTripsAndChecksWhatItWasAskedFor() {
         val rung = Rung.parse(JSONObject(rungJson))!!
         val now = 1_800_000_000_000L

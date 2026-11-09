@@ -1898,6 +1898,7 @@
         <item quantity="other">%1$d changements conservés</item>
     </plurals>
     <string name="optimize_restore_original">Restaurer les réglages d\'origine</string>
+    <string name="optimize_restore_confirm">Restaurer les réglages d\'origine ?</string>
     <string name="optimize_restored">Réglages d\'origine restaurés</string>
     <string name="optimize_undo_failed">Certains changements n\'ont pas pu être annulés. Réessayez plus tard.</string>
     <string name="optimize_game_running">Fermez d\'abord le jeu</string>

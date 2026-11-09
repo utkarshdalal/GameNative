@@ -1750,6 +1750,7 @@
         <item quantity="other">%1$d mudanças mantidas</item>
     </plurals>
     <string name="optimize_restore_original">Restaurar configurações originais</string>
+    <string name="optimize_restore_confirm">Restaurar configurações originais?</string>
     <string name="optimize_restored">Configurações originais restauradas</string>
     <string name="optimize_undo_failed">Algumas mudanças não puderam ser desfeitas. Tente novamente mais tarde.</string>
     <string name="optimize_game_running">Feche o jogo primeiro</string>

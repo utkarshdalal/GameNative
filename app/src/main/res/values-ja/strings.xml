@@ -2089,6 +2089,7 @@
         <item quantity="other">%1$d 件の変更を維持</item>
     </plurals>
     <string name="optimize_restore_original">元の設定に戻す</string>
+    <string name="optimize_restore_confirm">元の設定に戻しますか？</string>
     <string name="optimize_restored">元の設定に戻しました</string>
     <string name="optimize_undo_failed">一部の変更を元に戻せませんでした。後でもう一度お試しください。</string>
     <string name="optimize_game_running">先にゲームを終了してください</string>

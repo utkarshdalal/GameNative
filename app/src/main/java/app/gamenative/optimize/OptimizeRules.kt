@@ -88,6 +88,9 @@ object OptimizeLadders {
         }
     }
 
+    /** Restore has something to take off: a step on trial or a kept step. */
+    fun hasRestorable(ladder: ProfileLadder?): Boolean = ladder != null && (ladder.pending != null || ladder.kept.isNotEmpty())
+
     /** Continue is offered while the active ladder is paused or done. */
     fun canContinue(status: OptimizeStatus?): Boolean = status == OptimizeStatus.Paused || status == OptimizeStatus.Done
 

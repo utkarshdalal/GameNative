@@ -1849,6 +1849,7 @@
         <item quantity="other">변경 사항 %1$d개 유지</item>
     </plurals>
     <string name="optimize_restore_original">원래 설정 복원</string>
+    <string name="optimize_restore_confirm">원래 설정으로 복원할까요?</string>
     <string name="optimize_restored">원래 설정을 복원했습니다</string>
     <string name="optimize_undo_failed">일부 변경 사항을 되돌리지 못했습니다. 나중에 다시 시도하세요.</string>
     <string name="optimize_game_running">먼저 게임을 종료하세요</string>

@@ -1860,6 +1860,7 @@
         <item quantity="other">%1$d de modificări păstrate</item>
     </plurals>
     <string name="optimize_restore_original">Restaurează setările originale</string>
+    <string name="optimize_restore_confirm">Restaurezi setările originale?</string>
     <string name="optimize_restored">Setările originale au fost restaurate</string>
     <string name="optimize_undo_failed">Unele modificări nu au putut fi anulate. Încearcă mai târziu.</string>
     <string name="optimize_game_running">Închide mai întâi jocul</string>

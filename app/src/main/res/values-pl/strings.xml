@@ -1884,6 +1884,7 @@
         <item quantity="other">Zachowano %1$d zmiany</item>
     </plurals>
     <string name="optimize_restore_original">Przywróć oryginalne ustawienia</string>
+    <string name="optimize_restore_confirm">Przywrócić oryginalne ustawienia?</string>
     <string name="optimize_restored">Przywrócono oryginalne ustawienia</string>
     <string name="optimize_undo_failed">Nie udało się cofnąć niektórych zmian. Spróbuj ponownie później.</string>
     <string name="optimize_game_running">Najpierw zamknij grę</string>

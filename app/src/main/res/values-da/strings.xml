@@ -1750,6 +1750,7 @@
         <item quantity="other">Beholdt %1$d ændringer</item>
     </plurals>
     <string name="optimize_restore_original">Gendan oprindelige indstillinger</string>
+    <string name="optimize_restore_confirm">Gendan oprindelige indstillinger?</string>
     <string name="optimize_restored">Oprindelige indstillinger gendannet</string>
     <string name="optimize_undo_failed">Nogle ændringer kunne ikke fortrydes. Prøv igen senere.</string>
     <string name="optimize_game_running">Luk spillet først</string>

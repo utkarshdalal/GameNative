@@ -1633,6 +1633,7 @@ object OptimizeController {
         target: OptimizeProfile?,
         cardSession: Metrics? = null,
         doneCard: Boolean = true,
+        doneAtPick: Boolean = true,
     ): Pair<OptimizeLocalState, Boolean> {
         val (reconciled, ok) = reconcile(context, appId, container, store, state, target)
         if (!ok) return reconciled to false
@@ -1646,7 +1647,9 @@ object OptimizeController {
             s = s.withLadder(target, OptimizeLadders.accepted(OptimizeLadders.picked(ladder), cardSession))
             s = OptimizeLadders.held(s, target, System.currentTimeMillis(), appRulesVersion())
             val baseline = s.ladder(target).baselineOverride ?: baselineRun(container)
-            s = doneAtBaseline(appId, s, target, baseline, refreshHz(context), userFpsLimit(container, s.ladder(target)), doneCard) ?: s
+            if (doneAtPick) {
+                s = doneAtBaseline(appId, s, target, baseline, refreshHz(context), userFpsLimit(container, s.ladder(target)), doneCard) ?: s
+            }
         }
         return s to true
     }
@@ -1654,11 +1657,11 @@ object OptimizeController {
     /**
      * Switches the active profile: the current profile's changes come off and the new one's kept changes go back on.
      * No profile's ladder is reset. [OptimizeProfile.OFF] takes everything off and keeps every ladder.
-     * A goal already met is marked done without a card: the dialog that switched it shows the status itself.
+     * The goal picked reads as tuning on the next launch; whether it is already met is judged at that launch.
      */
     suspend fun setProfile(context: Context, appId: String, profile: OptimizeProfile): ChangeResult =
         change(context, appId, touchesFiles = true, what = "changing the profile") { container, store, state ->
-            switchTo(context, appId, container, store, state, profile.takeIf { it != OptimizeProfile.OFF }, doneCard = false)
+            switchTo(context, appId, container, store, state, profile.takeIf { it != OptimizeProfile.OFF }, doneCard = false, doneAtPick = false)
         }
 
     /** Takes the active profile's changes off and forgets what it kept; what it tried stays, and the profile stays active. */
@@ -1707,10 +1710,17 @@ object OptimizeController {
         return s.withLadder(profile, ladder) to ok
     }
 
-    /** "Restore original settings": the profile stays active and paused, so Continue picks it up again. */
+    /**
+     * "Restore original settings": the profile stays active and paused, so Continue picks it up again.
+     * With nothing on to take off, the ladder is left as it is.
+     */
     suspend fun restoreOriginal(context: Context, appId: String): ChangeResult =
         change(context, appId, touchesFiles = true, what = "restoring original settings") { container, store, state ->
-            restore(context, appId, container, store, state, LadderState.PAUSED)
+            if (!OptimizeLadders.hasRestorable(state.active)) {
+                state to true
+            } else {
+                restore(context, appId, container, store, state, LadderState.PAUSED)
+            }
         }
 
     /** Resumes a paused or done ladder: the next launch asks for the next step again. */

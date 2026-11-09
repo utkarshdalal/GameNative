@@ -1820,6 +1820,7 @@
         <item quantity="other">%1$d Änderungen behalten</item>
     </plurals>
     <string name="optimize_restore_original">Ursprüngliche Einstellungen wiederherstellen</string>
+    <string name="optimize_restore_confirm">Ursprüngliche Einstellungen wiederherstellen?</string>
     <string name="optimize_restored">Ursprüngliche Einstellungen wiederhergestellt</string>
     <string name="optimize_undo_failed">Einige Änderungen konnten nicht rückgängig gemacht werden. Versuche es später erneut.</string>
     <string name="optimize_game_running">Beende zuerst das Spiel</string>

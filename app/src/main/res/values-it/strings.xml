@@ -1871,6 +1871,7 @@
         <item quantity="other">%1$d modifiche mantenute</item>
     </plurals>
     <string name="optimize_restore_original">Ripristina impostazioni originali</string>
+    <string name="optimize_restore_confirm">Ripristinare le impostazioni originali?</string>
     <string name="optimize_restored">Impostazioni originali ripristinate</string>
     <string name="optimize_undo_failed">Alcune modifiche non sono state annullate. Riprova più tardi.</string>
     <string name="optimize_game_running">Chiudi prima il gioco</string>

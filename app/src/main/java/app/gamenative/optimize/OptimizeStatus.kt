@@ -119,6 +119,17 @@ sealed class OptimizeStatus {
             Off, Never -> null
         }
 
+        /**
+         * The goal the dialog marks Suggested: Power when heat held a done goal back, otherwise the game's newest
+         * verdict, otherwise the profile a first card still waiting suggested. Off is never suggested.
+         */
+        fun suggestedProfile(state: OptimizeLocalState, verdict: OptimizeProfile?, hot: Boolean): OptimizeProfile? {
+            val active = state.activeProfile
+            if (active != null && active != OptimizeProfile.POWER && hot && of(state) == Done) return OptimizeProfile.POWER
+            val stored = state.card?.takeIf { it.kind == OptimizeCard.FIRST }?.profile
+            return (verdict ?: stored)?.takeIf { it != OptimizeProfile.OFF }
+        }
+
         fun keptCount(state: OptimizeLocalState): Int = state.active?.kept?.count { it.applied } ?: 0
 
         /** The fps the active profile's kept cap holds the game at, or null when no cap is kept. */

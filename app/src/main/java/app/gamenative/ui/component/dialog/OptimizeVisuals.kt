@@ -3,9 +3,11 @@ package app.gamenative.ui.component.dialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -28,6 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -107,10 +110,11 @@ fun OptimizeGoalCards(
     modifier: Modifier = Modifier,
     includeOff: Boolean = false,
     firstModifier: Modifier = Modifier,
+    cardModifier: (OptimizeProfile) -> Modifier = { Modifier },
 ) {
     Column(
+        // Each card pads itself by 4.dp for its focus ring, which makes the 8.dp between cards.
         modifier = modifier.selectableGroup(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         OPTIMIZE_GOAL_ORDER.forEachIndexed { index, profile ->
             OptimizeGoalCard(
@@ -119,7 +123,7 @@ fun OptimizeGoalCards(
                 suggested = profile == suggested,
                 enabled = enabled,
                 onClick = { onSelect(profile) },
-                modifier = if (index == 0) firstModifier else Modifier,
+                modifier = (if (index == 0) firstModifier else Modifier).then(cardModifier(profile)),
             )
         }
         if (includeOff) {
@@ -130,7 +134,7 @@ fun OptimizeGoalCards(
                 enabled = enabled,
                 onClick = { onSelect(OptimizeProfile.OFF) },
                 muted = true,
-                modifier = Modifier.padding(top = 8.dp),
+                modifier = Modifier.padding(top = 8.dp).then(cardModifier(OptimizeProfile.OFF)),
             )
         }
     }
@@ -148,14 +152,22 @@ private fun OptimizeGoalCard(
 ) {
     val accent = optimizeProfileAccent(profile)
     val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
     val shape = RoundedCornerShape(16.dp)
+    // Focus has its own cue apart from the selection border: a bright border and the animated ring outside the card.
+    val borderColor = when {
+        focused -> MaterialTheme.colorScheme.onSurface
+        selected -> accent.color
+        else -> PluviaTheme.colors.borderDefault.copy(alpha = 0.3f)
+    }
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .focusRing(interaction, RoundedCornerShape(20.dp), width = 2.dp)
+            .padding(4.dp)
             .clip(shape)
             .background(if (selected) accent.color.copy(alpha = 0.12f) else PluviaTheme.colors.surfacePanel.copy(alpha = if (muted) 0.4f else 1f))
-            .border(1.dp, if (selected) accent.color else PluviaTheme.colors.borderDefault.copy(alpha = 0.3f), shape)
-            .focusRing(interaction, shape, width = 3.dp)
+            .border(if (focused) 2.dp else 1.dp, borderColor, shape)
             .selectable(
                 selected = selected,
                 interactionSource = interaction,
@@ -171,6 +183,7 @@ private fun OptimizeGoalCard(
         IconTile(icon = accent.icon, tint = accent.color)
         Column(modifier = Modifier.weight(1f)) {
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -182,20 +195,22 @@ private fun OptimizeGoalCard(
                 if (suggested) {
                     OptimizeTag(text = stringResource(R.string.optimize_badge_suggested), color = accent.color)
                 }
+                // The check sits on the title line, so the description below keeps the card's full width.
+                if (selected) {
+                    Spacer(modifier = Modifier.weight(1f))
+                    Icon(
+                        imageVector = Icons.Filled.CheckCircle,
+                        contentDescription = null,
+                        tint = accent.color,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
             }
             Text(
                 text = stringResource(profile.description),
                 style = MaterialTheme.typography.bodySmall,
                 color = PluviaTheme.colors.textMuted,
                 modifier = Modifier.padding(top = 2.dp),
-            )
-        }
-        if (selected) {
-            Icon(
-                imageVector = Icons.Filled.CheckCircle,
-                contentDescription = null,
-                tint = accent.color,
-                modifier = Modifier.size(20.dp),
             )
         }
     }

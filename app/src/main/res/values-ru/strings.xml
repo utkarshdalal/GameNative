@@ -1808,6 +1808,7 @@ https://gamenative.app
         <item quantity="other">Сохранено %1$d изменения</item>
     </plurals>
     <string name="optimize_restore_original">Восстановить исходные настройки</string>
+    <string name="optimize_restore_confirm">Восстановить исходные настройки?</string>
     <string name="optimize_restored">Исходные настройки восстановлены</string>
     <string name="optimize_undo_failed">Некоторые изменения не удалось отменить. Попробуйте позже.</string>
     <string name="optimize_game_running">Сначала закройте игру</string>

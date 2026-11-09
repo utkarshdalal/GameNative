@@ -1847,6 +1847,7 @@
         <item quantity="other">已保留 %1$d 項變更</item>
     </plurals>
     <string name="optimize_restore_original">還原原始設定</string>
+    <string name="optimize_restore_confirm">還原原始設定？</string>
     <string name="optimize_restored">已還原原始設定</string>
     <string name="optimize_undo_failed">部分變更無法復原，請稍後再試。</string>
     <string name="optimize_game_running">請先關閉遊戲</string>

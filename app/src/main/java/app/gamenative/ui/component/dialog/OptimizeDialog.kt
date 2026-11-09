@@ -33,8 +33,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -274,15 +276,37 @@ fun OptimizeDialog(
         status == OptimizeStatus.Done && profile != OptimizeProfile.POWER && suggestion?.hot == true -> stringResource(R.string.optimize_hint_heat)
         else -> null
     }
-    val suggested = when {
-        state == null -> null
-        state.activeProfile == null -> suggestion?.suggested?.profile
-        status == OptimizeStatus.Done && profile != OptimizeProfile.POWER && suggestion?.hot == true -> OptimizeProfile.POWER
-        else -> null
-    }
-    val showRestore = state?.activeProfile != null || (activeLadder != null && (activeLadder.kept.isNotEmpty() || activeLadder.pending != null))
+    val suggested = state?.let { OptimizeStatus.suggestedProfile(it, suggestion?.suggested?.profile, suggestion?.hot == true) }
+    val showRestore = OptimizeLadders.hasRestorable(activeLadder)
+    val canContinue = OptimizeLadders.canContinue(status)
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val firstFocus = remember { FocusRequester() }
+    // Hoisted so a rotation keeps where the goal list and the side column were scrolled to.
+    val mainScroll = rememberScrollState()
+    val sideScroll = rememberScrollState()
+
+    // D-pad: Right from any goal lands on the first action; Left from an action returns to the goal focused last.
+    val goalFocus = remember { (OPTIMIZE_GOAL_ORDER + OptimizeProfile.OFF).associateWith { FocusRequester() } }
+    var lastGoal by remember { mutableStateOf<OptimizeProfile?>(null) }
+    val continueFocus = remember { FocusRequester() }
+    val restoreFocus = remember { FocusRequester() }
+    val confirmCancelFocus = remember { FocusRequester() }
+    val closeFocus = remember { FocusRequester() }
+    var askedRestore by remember { mutableStateOf(false) }
+    val confirmingRestore = askedRestore && showRestore
+    var focusNext by remember { mutableStateOf<FocusRequester?>(null) }
+    val lastGoalFocus = goalFocus.getValue(lastGoal ?: profile)
+    val firstAction = when {
+        canContinue -> continueFocus
+        confirmingRestore -> confirmCancelFocus
+        showRestore -> restoreFocus
+        else -> closeFocus
+    }
+    val actionModifier: (FocusRequester) -> Modifier = { requester ->
+        Modifier
+            .focusRequester(requester)
+            .focusProperties { left = lastGoalFocus }
+    }
 
     val header: @Composable ColumnScope.() -> Unit = {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -306,6 +330,20 @@ fun OptimizeDialog(
                 OptimizePlanLine(state?.entitlement, exhausted = exhausted)
             }
         }
+        // The status sentence sits under the header in both orientations, and only when it says more than the pill.
+        val pill = status?.let { OptimizeStatus.pillRes(it) }?.let { stringResource(it) }
+        listOfNotNull(
+            state?.let { optimizeStatusText(it) }?.takeIf { it != pill },
+            state?.let { OptimizeStatus.heldCapFps(it) }?.let { stringResource(R.string.optimize_status_cap_held, it) },
+            if (keptCount > 0 && status !is OptimizeStatus.Trying) pluralStringResource(R.plurals.optimize_status_kept, keptCount, keptCount) else null,
+        ).forEachIndexed { index, text ->
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(top = if (index == 0) 12.dp else 6.dp),
+            )
+        }
     }
 
     val goals: @Composable ColumnScope.() -> Unit = {
@@ -323,16 +361,17 @@ fun OptimizeDialog(
             includeOff = true,
             modifier = Modifier.focusRestorer(firstFocus),
             firstModifier = Modifier.focusRequester(firstFocus),
+            cardModifier = { goal ->
+                Modifier
+                    .focusRequester(goalFocus.getValue(goal))
+                    .onFocusChanged { if (it.hasFocus) lastGoal = goal }
+                    .focusProperties { right = firstAction }
+            },
         )
     }
 
     val details: @Composable ColumnScope.() -> Unit = {
-        listOfNotNull(
-            state?.let { optimizeStatusText(it) },
-            state?.let { OptimizeStatus.heldCapFps(it) }?.let { stringResource(R.string.optimize_status_cap_held, it) },
-            hint,
-            if (keptCount > 0 && status !is OptimizeStatus.Trying) pluralStringResource(R.plurals.optimize_status_kept, keptCount, keptCount) else null,
-        ).forEach {
+        hint?.let {
             Text(
                 text = it,
                 style = MaterialTheme.typography.bodyMedium,
@@ -346,11 +385,12 @@ fun OptimizeDialog(
     }
 
     val footer: @Composable ColumnScope.() -> Unit = {
-        if (OptimizeLadders.canContinue(status)) {
+        if (canContinue) {
             PremiumDialogButton(
                 text = stringResource(R.string.optimize_continue),
                 onClick = { actions.continueLadder() },
                 enabled = !actions.busy,
+                modifier = actionModifier(continueFocus),
             )
             Spacer(modifier = Modifier.height(8.dp))
         }
@@ -364,13 +404,53 @@ fun OptimizeDialog(
                     .padding(bottom = 8.dp),
             )
         }
-        if (showRestore) {
+        if (confirmingRestore) {
+            Text(
+                text = stringResource(R.string.optimize_restore_confirm),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text(
+                text = stringResource(R.string.optimize_restore_original_body),
+                style = MaterialTheme.typography.bodySmall,
+                color = PluviaTheme.colors.textMuted,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                PremiumTextButton(
+                    text = stringResource(R.string.cancel),
+                    onClick = {
+                        askedRestore = false
+                        focusNext = restoreFocus
+                    },
+                    modifier = Modifier.weight(1f).then(actionModifier(confirmCancelFocus)),
+                )
+                PremiumTextButton(
+                    text = stringResource(R.string.yes),
+                    onClick = {
+                        askedRestore = false
+                        focusNext = lastGoalFocus
+                        actions.restore()
+                    },
+                    enabled = !actions.busy,
+                    color = PluviaTheme.colors.accentDanger,
+                    modifier = Modifier.weight(1f).focusProperties { left = confirmCancelFocus },
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+        } else if (showRestore) {
             PremiumTextButton(
                 text = stringResource(R.string.optimize_restore_original),
-                onClick = { actions.restore() },
+                onClick = {
+                    askedRestore = true
+                    focusNext = confirmCancelFocus
+                },
                 enabled = !actions.busy,
                 color = PluviaTheme.colors.accentDanger,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().then(actionModifier(restoreFocus)),
             )
             Text(
                 text = stringResource(R.string.optimize_restore_original_body),
@@ -381,7 +461,11 @@ fun OptimizeDialog(
             )
             Spacer(modifier = Modifier.height(4.dp))
         }
-        PremiumTextButton(text = stringResource(R.string.close), onClick = onDismiss, modifier = Modifier.fillMaxWidth())
+        PremiumTextButton(
+            text = stringResource(R.string.close),
+            onClick = onDismiss,
+            modifier = Modifier.fillMaxWidth().then(actionModifier(closeFocus)),
+        )
     }
 
     Dialog(
@@ -389,6 +473,10 @@ fun OptimizeDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         LaunchedEffect(Unit) { firstFocus.requestFocusAfterLayout() }
+        LaunchedEffect(focusNext) {
+            focusNext?.requestFocusAfterLayout()
+            focusNext = null
+        }
 
         GradientBorderSurface(
             modifier = Modifier
@@ -410,7 +498,7 @@ fun OptimizeDialog(
                     Column(
                         modifier = Modifier
                             .weight(1.2f)
-                            .verticalScroll(rememberScrollState()),
+                            .verticalScroll(mainScroll),
                     ) {
                         header()
                         goals()
@@ -418,7 +506,7 @@ fun OptimizeDialog(
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .verticalScroll(rememberScrollState()),
+                            .verticalScroll(sideScroll),
                     ) {
                         details()
                         Spacer(modifier = Modifier.height(16.dp))
@@ -435,7 +523,7 @@ fun OptimizeDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f, fill = false)
-                            .verticalScroll(rememberScrollState()),
+                            .verticalScroll(mainScroll),
                     ) {
                         header()
                         goals()
