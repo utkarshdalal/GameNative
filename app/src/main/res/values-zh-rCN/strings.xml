@@ -1902,6 +1902,25 @@
     <plurals name="optimize_trial_progress">
         <item quantity="other">已使用 %1$d/%2$d 款免费游戏</item>
     </plurals>
+    <string name="optimize_benefit_fps">更高的帧率</string>
+    <string name="optimize_benefit_stutter">卡顿更少</string>
+    <string name="optimize_benefit_stable_longer">更持久的稳定性能</string>
+    <string name="optimize_benefit_undo">随时可以撤销</string>
+    <string name="optimize_badge_free_to_try">免费试用</string>
+    <string name="optimize_badge_suggested">推荐</string>
+    <string name="optimize_choose_goal">你最看重什么？</string>
+    <string name="optimize_restore_original_body">将此游戏的设置恢复到优化做出任何更改之前的状态。</string>
+    <string name="optimize_metric_fps">帧率</string>
+    <string name="optimize_metric_stutter">卡顿</string>
+    <string name="optimize_metric_stable_for">稳定时长</string>
+    <string name="optimize_metric_fps_value">%1$d fps</string>
+    <string name="optimize_metric_percent_value">%1$d%%</string>
+    <string name="optimize_metric_delta_up">+%1$d%%</string>
+    <string name="optimize_metric_delta_down">-%1$d%%</string>
+    <string name="optimize_metric_before">之前：%1$s</string>
+    <plurals name="optimize_metric_minutes">
+        <item quantity="other">%1$d 分钟</item>
+    </plurals>
     <string name="settings_group_cloud_saves">云存档</string>
     <string name="settings_save_backups_to_keep">保留的存档备份数</string>
     <string name="settings_save_backups_off">关闭</string>

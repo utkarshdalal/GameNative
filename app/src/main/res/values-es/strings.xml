@@ -1938,6 +1938,26 @@
         <item quantity="one">%1$d de %2$d juego gratis usado</item>
         <item quantity="other">%1$d de %2$d juegos gratis usados</item>
     </plurals>
+    <string name="optimize_benefit_fps">Más fotogramas por segundo</string>
+    <string name="optimize_benefit_stutter">Menos tirones</string>
+    <string name="optimize_benefit_stable_longer">Rendimiento estable durante más tiempo</string>
+    <string name="optimize_benefit_undo">Deshaz cuando quieras</string>
+    <string name="optimize_badge_free_to_try">Prueba gratis</string>
+    <string name="optimize_badge_suggested">Sugerido</string>
+    <string name="optimize_choose_goal">¿Qué es lo más importante?</string>
+    <string name="optimize_restore_original_body">Devuelve los ajustes de este juego a como estaban antes de que Optimizar cambiara nada.</string>
+    <string name="optimize_metric_fps">Fotogramas</string>
+    <string name="optimize_metric_stutter">Tirones</string>
+    <string name="optimize_metric_stable_for">Estable durante</string>
+    <string name="optimize_metric_fps_value">%1$d FPS</string>
+    <string name="optimize_metric_percent_value">%1$d %%</string>
+    <string name="optimize_metric_delta_up">+%1$d %%</string>
+    <string name="optimize_metric_delta_down">-%1$d %%</string>
+    <string name="optimize_metric_before">Antes: %1$s</string>
+    <plurals name="optimize_metric_minutes">
+        <item quantity="one">%1$d min</item>
+        <item quantity="other">%1$d min</item>
+    </plurals>
     <string name="settings_group_cloud_saves">Partidas en la nube</string>
     <string name="settings_save_backups_to_keep">Copias de seguridad de partidas a conservar</string>
     <string name="settings_save_backups_off">Desactivado</string>

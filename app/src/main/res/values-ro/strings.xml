@@ -1923,6 +1923,27 @@
         <item quantity="few">%1$d din %2$d jocuri gratuite folosite</item>
         <item quantity="other">%1$d din %2$d de jocuri gratuite folosite</item>
     </plurals>
+    <string name="optimize_benefit_fps">Mai multe cadre pe secundă</string>
+    <string name="optimize_benefit_stutter">Mai puține sacadări</string>
+    <string name="optimize_benefit_stable_longer">Performanță stabilă mai mult timp</string>
+    <string name="optimize_benefit_undo">Anulezi oricând</string>
+    <string name="optimize_badge_free_to_try">Gratuit de încercat</string>
+    <string name="optimize_badge_suggested">Sugerat</string>
+    <string name="optimize_choose_goal">Ce contează cel mai mult?</string>
+    <string name="optimize_restore_original_body">Readuce setările acestui joc la cum erau înainte ca Optimizează să schimbe ceva.</string>
+    <string name="optimize_metric_fps">Cadre pe secundă</string>
+    <string name="optimize_metric_stutter">Sacadări</string>
+    <string name="optimize_metric_stable_for">Stabil timp de</string>
+    <string name="optimize_metric_fps_value">%1$d FPS</string>
+    <string name="optimize_metric_percent_value">%1$d %%</string>
+    <string name="optimize_metric_delta_up">+%1$d %%</string>
+    <string name="optimize_metric_delta_down">-%1$d %%</string>
+    <string name="optimize_metric_before">Înainte: %1$s</string>
+    <plurals name="optimize_metric_minutes">
+        <item quantity="one">%1$d min</item>
+        <item quantity="few">%1$d min</item>
+        <item quantity="other">%1$d min</item>
+    </plurals>
     <string name="settings_group_cloud_saves">Salvări în cloud</string>
     <string name="settings_save_backups_to_keep">Copii de rezervă ale salvărilor păstrate</string>
     <string name="settings_save_backups_off">Dezactivat</string>

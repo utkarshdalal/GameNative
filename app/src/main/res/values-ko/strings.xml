@@ -1906,6 +1906,25 @@
     <plurals name="optimize_trial_progress">
         <item quantity="other">무료 게임 %2$d개 중 %1$d개 사용</item>
     </plurals>
+    <string name="optimize_benefit_fps">더 높은 프레임 속도</string>
+    <string name="optimize_benefit_stutter">끊김 감소</string>
+    <string name="optimize_benefit_stable_longer">더 오래 안정적인 성능</string>
+    <string name="optimize_benefit_undo">언제든지 되돌리기</string>
+    <string name="optimize_badge_free_to_try">무료 체험</string>
+    <string name="optimize_badge_suggested">추천</string>
+    <string name="optimize_choose_goal">무엇이 가장 중요한가요?</string>
+    <string name="optimize_restore_original_body">최적화가 변경하기 전의 게임 설정으로 되돌립니다.</string>
+    <string name="optimize_metric_fps">프레임 속도</string>
+    <string name="optimize_metric_stutter">끊김</string>
+    <string name="optimize_metric_stable_for">안정 유지</string>
+    <string name="optimize_metric_fps_value">%1$d fps</string>
+    <string name="optimize_metric_percent_value">%1$d %%</string>
+    <string name="optimize_metric_delta_up">+%1$d %%</string>
+    <string name="optimize_metric_delta_down">-%1$d %%</string>
+    <string name="optimize_metric_before">이전: %1$s</string>
+    <plurals name="optimize_metric_minutes">
+        <item quantity="other">%1$d분</item>
+    </plurals>
     <string name="settings_group_cloud_saves">클라우드 세이브</string>
     <string name="settings_save_backups_to_keep">보관할 세이브 백업 수</string>
     <string name="settings_save_backups_off">끄기</string>

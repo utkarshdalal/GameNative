@@ -1931,6 +1931,26 @@
         <item quantity="one">%1$d di %2$d gioco gratuito usato</item>
         <item quantity="other">%1$d di %2$d giochi gratuiti usati</item>
     </plurals>
+    <string name="optimize_benefit_fps">Frame rate più alto</string>
+    <string name="optimize_benefit_stutter">Meno scatti</string>
+    <string name="optimize_benefit_stable_longer">Prestazioni stabili più a lungo</string>
+    <string name="optimize_benefit_undo">Annulla quando vuoi</string>
+    <string name="optimize_badge_free_to_try">Prova gratis</string>
+    <string name="optimize_badge_suggested">Consigliato</string>
+    <string name="optimize_choose_goal">Cosa conta di più?</string>
+    <string name="optimize_restore_original_body">Riporta le impostazioni di questo gioco a com\'erano prima che Ottimizza cambiasse qualcosa.</string>
+    <string name="optimize_metric_fps">Frame rate</string>
+    <string name="optimize_metric_stutter">Scatti</string>
+    <string name="optimize_metric_stable_for">Stabile per</string>
+    <string name="optimize_metric_fps_value">%1$d fps</string>
+    <string name="optimize_metric_percent_value">%1$d %%</string>
+    <string name="optimize_metric_delta_up">+%1$d %%</string>
+    <string name="optimize_metric_delta_down">-%1$d %%</string>
+    <string name="optimize_metric_before">Prima: %1$s</string>
+    <plurals name="optimize_metric_minutes">
+        <item quantity="one">%1$d min</item>
+        <item quantity="other">%1$d min</item>
+    </plurals>
     <string name="settings_group_cloud_saves">Salvataggi cloud</string>
     <string name="settings_save_backups_to_keep">Backup dei salvataggi da conservare</string>
     <string name="settings_save_backups_off">Disattivato</string>

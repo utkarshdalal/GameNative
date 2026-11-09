@@ -1874,6 +1874,28 @@ https://gamenative.app
         <item quantity="many">Использовано %1$d из %2$d бесплатных игр</item>
         <item quantity="other">Использовано %1$d из %2$d бесплатной игры</item>
     </plurals>
+    <string name="optimize_benefit_fps">Более высокий FPS</string>
+    <string name="optimize_benefit_stutter">Меньше подтормаживаний</string>
+    <string name="optimize_benefit_stable_longer">Стабильная производительность дольше</string>
+    <string name="optimize_benefit_undo">Можно отменить в любой момент</string>
+    <string name="optimize_badge_free_to_try">Попробуйте бесплатно</string>
+    <string name="optimize_badge_suggested">Рекомендуется</string>
+    <string name="optimize_choose_goal">Что важнее всего?</string>
+    <string name="optimize_restore_original_body">Возвращает настройки этой игры к тем, что были до изменений оптимизации.</string>
+    <string name="optimize_metric_fps">FPS</string>
+    <string name="optimize_metric_stutter">Подтормаживания</string>
+    <string name="optimize_metric_stable_for">Стабильно</string>
+    <string name="optimize_metric_fps_value">%1$d FPS</string>
+    <string name="optimize_metric_percent_value">%1$d %%</string>
+    <string name="optimize_metric_delta_up">+%1$d %%</string>
+    <string name="optimize_metric_delta_down">-%1$d %%</string>
+    <string name="optimize_metric_before">До: %1$s</string>
+    <plurals name="optimize_metric_minutes">
+        <item quantity="one">%1$d мин</item>
+        <item quantity="few">%1$d мин</item>
+        <item quantity="many">%1$d мин</item>
+        <item quantity="other">%1$d мин</item>
+    </plurals>
     <string name="settings_group_cloud_saves">Облачные сохранения</string>
     <string name="settings_save_backups_to_keep">Количество сохраняемых резервных копий</string>
     <string name="settings_save_backups_off">Выкл.</string>

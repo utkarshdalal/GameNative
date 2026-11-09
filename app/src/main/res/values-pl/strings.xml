@@ -1950,6 +1950,28 @@
         <item quantity="many">Wykorzystano %1$d z %2$d darmowych gier</item>
         <item quantity="other">Wykorzystano %1$d z %2$d darmowych gier</item>
     </plurals>
+    <string name="optimize_benefit_fps">Wyższa liczba klatek</string>
+    <string name="optimize_benefit_stutter">Mniej przycięć</string>
+    <string name="optimize_benefit_stable_longer">Stabilna wydajność przez dłuższy czas</string>
+    <string name="optimize_benefit_undo">Cofniesz w każdej chwili</string>
+    <string name="optimize_badge_free_to_try">Wypróbuj za darmo</string>
+    <string name="optimize_badge_suggested">Sugerowany</string>
+    <string name="optimize_choose_goal">Co jest najważniejsze?</string>
+    <string name="optimize_restore_original_body">Przywraca ustawienia tej gry sprzed jakichkolwiek zmian wprowadzonych przez optymalizację.</string>
+    <string name="optimize_metric_fps">Liczba klatek</string>
+    <string name="optimize_metric_stutter">Przycięcia</string>
+    <string name="optimize_metric_stable_for">Stabilnie przez</string>
+    <string name="optimize_metric_fps_value">%1$d kl./s</string>
+    <string name="optimize_metric_percent_value">%1$d %%</string>
+    <string name="optimize_metric_delta_up">+%1$d %%</string>
+    <string name="optimize_metric_delta_down">-%1$d %%</string>
+    <string name="optimize_metric_before">Przed: %1$s</string>
+    <plurals name="optimize_metric_minutes">
+        <item quantity="one">%1$d min</item>
+        <item quantity="few">%1$d min</item>
+        <item quantity="many">%1$d min</item>
+        <item quantity="other">%1$d min</item>
+    </plurals>
     <string name="settings_group_cloud_saves">Zapisy w chmurze</string>
     <string name="settings_save_backups_to_keep">Liczba przechowywanych kopii zapisów</string>
     <string name="settings_save_backups_off">Wyłączone</string>

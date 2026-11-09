@@ -1880,6 +1880,26 @@
         <item quantity="one">%1$d von %2$d kostenlosem Spiel genutzt</item>
         <item quantity="other">%1$d von %2$d kostenlosen Spielen genutzt</item>
     </plurals>
+    <string name="optimize_benefit_fps">Höhere Bildrate</string>
+    <string name="optimize_benefit_stutter">Weniger Ruckler</string>
+    <string name="optimize_benefit_stable_longer">Länger stabile Leistung</string>
+    <string name="optimize_benefit_undo">Jederzeit rückgängig machen</string>
+    <string name="optimize_badge_free_to_try">Kostenlos testen</string>
+    <string name="optimize_badge_suggested">Empfohlen</string>
+    <string name="optimize_choose_goal">Was ist dir am wichtigsten?</string>
+    <string name="optimize_restore_original_body">Setzt die Einstellungen dieses Spiels auf den Stand zurück, bevor Optimieren etwas geändert hat.</string>
+    <string name="optimize_metric_fps">Bildrate</string>
+    <string name="optimize_metric_stutter">Ruckler</string>
+    <string name="optimize_metric_stable_for">Stabil für</string>
+    <string name="optimize_metric_fps_value">%1$d fps</string>
+    <string name="optimize_metric_percent_value">%1$d %%</string>
+    <string name="optimize_metric_delta_up">+%1$d %%</string>
+    <string name="optimize_metric_delta_down">-%1$d %%</string>
+    <string name="optimize_metric_before">Vorher: %1$s</string>
+    <plurals name="optimize_metric_minutes">
+        <item quantity="one">%1$d Min.</item>
+        <item quantity="other">%1$d Min.</item>
+    </plurals>
     <string name="settings_group_cloud_saves">Cloud-Spielstände</string>
     <string name="settings_save_backups_to_keep">Aufzubewahrende Spielstand-Backups</string>
     <string name="settings_save_backups_off">Aus</string>
