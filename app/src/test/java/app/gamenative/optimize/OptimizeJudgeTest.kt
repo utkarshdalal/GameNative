@@ -294,4 +294,98 @@ class OptimizeJudgeTest {
         assertEquals(mapOf("class" to "cpu_single", "windows_excluded" to 2), tagged["perf_verdict"])
         assertEquals(props, OptimizeCards.withVerdictField(props, "windows_excluded", null))
     }
+
+    private fun gpuSession(fps: Double, work: Double?, cls: String = "gpu", stutter: Double = 0.01) =
+        Metrics(gameplaySec = 1200, steadyFps = fps, stutterShare = stutter, cls = cls, gpuWorkPerFrame = work)
+
+    @Test
+    fun lessGpuWorkAtHeldFpsHelpsAGpuBoundGame() {
+        val v = OptimizeJudge.verdict(gpuSession(57.0, 12.6), gpuSession(56.0, 11.5), isFpsCap = false, fpsCap = 60.0)
+        assertEquals(OptimizeJudge.HELPED, v.result)
+        assertEquals(OptimizeJudge.REASON_GPU_WORK, v.reason)
+        // Work down but fps fell past 0.98 x: not a gain on work alone.
+        assertEquals(OptimizeJudge.NO_CHANGE, OptimizeJudge.compare(gpuSession(57.0, 12.6), gpuSession(55.0, 11.5), isFpsCap = false, fpsCap = 60.0))
+    }
+
+    @Test
+    fun fpsUpAtEqualWorkHelps() {
+        val v = OptimizeJudge.verdict(gpuSession(40.0, 12.0, cls = "thermal_gpu"), gpuSession(42.0, 12.2, cls = "thermal_gpu"), isFpsCap = false)
+        assertEquals(OptimizeJudge.HELPED, v.result)
+        assertEquals(OptimizeJudge.REASON_FPS, v.reason)
+        assertEquals(OptimizeJudge.NO_CHANGE, OptimizeJudge.compare(gpuSession(40.0, 12.0), gpuSession(42.0, 13.0), isFpsCap = false))
+    }
+
+    @Test
+    fun fpsDownAtEqualWorkIsWorseButHeatAloneIsNoChange() {
+        assertEquals(OptimizeJudge.WORSE, OptimizeJudge.compare(gpuSession(50.0, 12.0), gpuSession(47.0, 12.0), isFpsCap = false))
+        // A hotter run: clock and fps fell together, work per frame fell with them.
+        assertEquals(OptimizeJudge.NO_CHANGE, OptimizeJudge.compare(gpuSession(50.0, 12.0), gpuSession(43.0, 11.0), isFpsCap = false))
+        assertEquals(OptimizeJudge.NO_CHANGE, OptimizeJudge.compare(gpuSession(50.0, 12.0), gpuSession(48.0, 12.0), isFpsCap = false))
+    }
+
+    @Test
+    fun stutterRulesStillApplyUnderTheWorkRule() {
+        assertEquals(OptimizeJudge.WORSE, OptimizeJudge.compare(gpuSession(57.0, 12.6), gpuSession(57.0, 11.0, stutter = 0.03), isFpsCap = false))
+        assertEquals(OptimizeJudge.HELPED, OptimizeJudge.compare(gpuSession(57.0, 12.6, stutter = 0.02), gpuSession(57.0, 12.6, stutter = 0.01), isFpsCap = false))
+    }
+
+    @Test
+    fun workRuleNeedsAGpuClassAndWorkOnBothSides() {
+        // cpu_single keeps the fps rules: 47 / 50 is no change there.
+        assertEquals(OptimizeJudge.NO_CHANGE, OptimizeJudge.compare(gpuSession(50.0, 12.0, cls = "cpu_single"), gpuSession(48.0, 10.0, cls = "cpu_single"), isFpsCap = false))
+        // No work after (Mali without a clock): the existing near-cap rules judge.
+        val noWork = OptimizeJudge.compare(gpuSession(57.0, 12.6), gpuSession(56.0, null), isFpsCap = false, fpsCap = 60.0)
+        assertEquals(OptimizeJudge.NO_CHANGE, noWork)
+    }
+
+    @Test
+    fun capStepsKeepTheCapRules() {
+        assertEquals(OptimizeJudge.NO_CHANGE, OptimizeJudge.compare(gpuSession(57.0, 12.6), gpuSession(45.0, 8.0), isFpsCap = true))
+    }
+
+    @Test
+    fun workWindowsComeFromTheRunAndOlderRunsDeriveThem() {
+        val run = JSONObject(
+            """{"session_length":1500,"avg_fps":57,"fps_by_5min":[30,57,57,57],
+            "perf_verdict":{"class":"gpu","gameplay_s":1500,"gpu_work_per_frame":11.67,"gpu_busy_p95":96,"hot_thread_p95":82,
+            "fps_ceiling_reason":"both","gpu_work_by_5min":[-1,11.6,11.7,11.7]}}""",
+        )
+        val m = Metrics.fromRun(run)
+        assertEquals(listOf(null, 11.6, 11.7, 11.7), m.gpuWorkBy5Min)
+        assertEquals(11.7, m.workPerFrame()!!, 1e-9)
+        assertEquals("both", m.fpsCeilingReason)
+        assertEquals(96, m.gpuBusyP95)
+        assertEquals(82, m.hotThreadP95)
+        val old = JSONObject(
+            """{"session_length":1500,"fps_by_5min":[50,50],"perf_by_5min":[{"gpu_avg":90,"gpu_clk_mhz_avg":700},{"gpu_avg":80}]}""",
+        )
+        val derived = Metrics.fromRun(old).gpuWorkBy5Min
+        assertEquals(0.9 * 700 / 50, derived[0]!!, 1e-9)
+        assertNull(derived[1])
+        val roundTrip = Metrics.fromJson(m.toJson())!!
+        assertEquals(m.gpuWorkBy5Min, roundTrip.gpuWorkBy5Min)
+        assertEquals("both", roundTrip.fpsCeilingReason)
+        val verdict = m.toVerdictJson()!!
+        assertEquals("both", verdict.getString("fps_ceiling_reason"))
+        assertEquals(11.7, verdict.getDouble("gpu_work_per_frame"), 1e-9)
+        assertEquals(4, verdict.getJSONArray("gpu_work_by_5min").length())
+        // Older stored metrics without the fields still parse.
+        val legacy = Metrics.fromJson(JSONObject("""{"gameplay_s":900,"steady_fps":40}"""))!!
+        assertNull(legacy.workPerFrame())
+        assertNull(legacy.fpsCeilingReason)
+    }
+
+    @Test
+    fun menuWindowsAreDroppedFromTheWorkSeriesToo() {
+        val baseline = Metrics(gameplaySec = 1200, steadyFps = 50.0, cls = "gpu", fpsBy5Min = listOf(40, 50, 50, 50), gpuBy5Min = listOf(90, 90, 90, 90))
+        val after = Metrics(
+            gameplaySec = 1500, steadyFps = 55.0, cls = "gpu",
+            fpsBy5Min = listOf(40, 50, 60, 50, 50), gpuBy5Min = listOf(90, 90, 20, 90, 90),
+            gpuWorkBy5Min = listOf(10.0, 12.0, 2.0, 12.0, 12.0),
+        )
+        val w = OptimizeJudge.comparableWindows(baseline, after, 60.0)!!
+        assertEquals(listOf(2), w.excluded)
+        assertEquals(listOf(10.0, 12.0, 12.0, 12.0), w.after.gpuWorkBy5Min)
+        assertEquals(12.0, w.after.workPerFrame()!!, 1e-9)
+    }
 }

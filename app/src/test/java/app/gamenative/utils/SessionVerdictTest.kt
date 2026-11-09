@@ -329,4 +329,80 @@ class SessionVerdictTest {
         assertEquals(3000, last.clusterMaxMhz!![1])
         assertNull(last.skinTempC)
     }
+
+    private fun computeLoad(samples: List<SessionSample>, fpsCap: Int = 0, refreshHz: Double = 0.0) =
+        SessionVerdict.compute(SessionVerdict.Input(samples = samples, fpsCap = fpsCap, refreshHz = refreshHz))
+
+    @Test
+    fun gpuWorkPerFrameIsBusyTimesClockOverFps() {
+        assertEquals(0.95 * 700 / 57.0, SessionVerdict.gpuWorkPerFrame(95.0, 700.0, 57.0)!!, 1e-9)
+        assertNull(SessionVerdict.gpuWorkPerFrame(95.0, null, 57.0))
+        assertNull(SessionVerdict.gpuWorkPerFrame(95.0, 0.0, 57.0))
+        assertNull(SessionVerdict.gpuWorkPerFrame(95.0, 700.0, 0.0))
+    }
+
+    @Test
+    fun workPerFrameStaysPutWhenHeatMovesClockAndFpsTogether() {
+        val cool = SessionVerdict.gpuWorkPerFrame(95.0, 940.0, 60.0)!!
+        val hot = SessionVerdict.gpuWorkPerFrame(95.0, 660.0, 42.0)!!
+        assertEquals(1.0, hot / cool, 0.03)
+    }
+
+    @Test
+    fun dualBoundSessionKeepsItsClassAndReportsBothAsTheCeiling() {
+        val r = computeLoad(
+            gameplay(900) { base(it, fps = 57f, gpu = 95, gpuMhz = 700, cpu = 50, hot = 82) },
+            fpsCap = 60,
+            refreshHz = 60.0,
+        )
+        assertEquals(SessionVerdict.GPU, r.cls)
+        val load = r.load!!
+        assertEquals(SessionVerdict.CEILING_BOTH, load.fpsCeilingReason)
+        assertEquals(95, load.gpuBusyP95)
+        assertEquals(82, load.hotThreadP95)
+        assertEquals(0.95 * 700 / 57.0, load.gpuWorkPerFrame!!, 1e-6)
+        val verdict = r.properties()["perf_verdict"] as Map<*, *>
+        assertEquals("both", verdict["fps_ceiling_reason"])
+        assertEquals(95, verdict["gpu_busy_p95"])
+        assertEquals(82, verdict["hot_thread_p95"])
+        assertEquals(load.windows.size, (verdict["gpu_work_by_5min"] as List<*>).size)
+        assertEquals(700, (verdict["gpu_clock_mhz_by_5min"] as List<*>).first())
+    }
+
+    @Test
+    fun ceilingReasons() {
+        fun reason(fps: Double, gpu: Int?, hot: Int?, cap: Int = 60, refresh: Double = 120.0, ceiling: Double? = fps) =
+            SessionVerdict.fpsCeilingReason(fps, ceiling, cap, refresh, gpu, hot)
+        assertEquals(SessionVerdict.CEILING_CAP, reason(59.0, gpu = 95, hot = 85))
+        assertEquals(SessionVerdict.CEILING_CAP, reason(119.0, gpu = 40, hot = 40, cap = 0))
+        assertEquals(SessionVerdict.CEILING_BOTH, reason(56.0, gpu = 92, hot = 80))
+        assertEquals(SessionVerdict.CEILING_MAIN_THREAD, reason(40.0, gpu = 60, hot = 90))
+        assertEquals(SessionVerdict.CEILING_GPU, reason(40.0, gpu = 97, hot = 50))
+        assertEquals(SessionVerdict.CEILING_NONE, reason(40.0, gpu = 70, hot = 50))
+        assertEquals(SessionVerdict.CEILING_NONE, reason(40.0, gpu = null, hot = null))
+        // Both saturated but fps far below the cap and its own ceiling: a stall, not a steady dual bound.
+        assertEquals(SessionVerdict.CEILING_GPU, reason(30.0, gpu = 92, hot = 80, ceiling = 50.0))
+    }
+
+    @Test
+    fun capLimitedSessionReportsTheCap() {
+        val r = computeLoad(gameplay(600) { base(it, fps = 60f, gpu = 60, gpuMhz = 500, hot = 50) }, fpsCap = 60, refreshHz = 120.0)
+        assertEquals(SessionVerdict.CEILING_CAP, r.load!!.fpsCeilingReason)
+    }
+
+    @Test
+    fun gpuOnlySessionReportsGpu() {
+        val r = computeLoad(gameplay(600) { base(it, fps = 40f, gpu = 97, gpuMhz = 800, cpu = 30, hot = 50) }, refreshHz = 60.0)
+        assertEquals(SessionVerdict.GPU, r.cls)
+        assertEquals(SessionVerdict.CEILING_GPU, r.load!!.fpsCeilingReason)
+    }
+
+    @Test
+    fun noGpuClockLeavesWorkOut() {
+        val r = computeLoad(gameplay(600) { base(it, fps = 40f, gpu = 97, gpuMhz = null) }, refreshHz = 60.0)
+        assertNull(r.load!!.gpuWorkPerFrame)
+        assertTrue(r.load!!.windows.isEmpty())
+        val verdict = r.properties()["perf_verdict"] as Map<*, *>
+        assertFalse(verdict.containsKey("gpu_work_by_5min"))
+    }
 }

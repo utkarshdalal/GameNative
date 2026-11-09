@@ -9,6 +9,7 @@ import android.os.Process
 import android.os.SystemClock
 import android.system.Os
 import android.system.OsConstants
+import app.gamenative.utils.HotThreadFilter
 import app.gamenative.utils.ProcStatParser
 import java.io.File
 import java.util.Locale
@@ -19,9 +20,11 @@ object SessionProcessTelemetry {
     private const val MB = 1024L * 1024L
 
     private const val FIRST_PICK_DELAY_MS = 60_000L
-    private val pickIgnoredPrefixes = listOf("audiotrack", "aaudio", "renderthread", "binder", "hwuitask")
 
     private class ThreadHot(val name: String, val pct: Int)
+
+    /** One thread's name and its utime and utime + stime ticks. */
+    private class ThreadTicks(val name: String, val user: Long, val total: Long)
 
     /** The game thread the per-second sampler follows. */
     class HotPick(val pid: Int, val tid: Int, val name: String)
@@ -43,7 +46,8 @@ object SessionProcessTelemetry {
     private val procNames = HashMap<Int, Pair<String, String>>()
 
     private var gamePid = -1
-    private var threadBaseline = HashMap<Int, Long>()
+    private var packageName: String? = null
+    private var threadBaseline = HashMap<Int, ThreadTicks>()
     private var threadBaselineMs = 0L
 
     private val wineserverPct = ArrayList<Int>()
@@ -126,6 +130,7 @@ object SessionProcessTelemetry {
             latestAvailMb = null
             latestLowMemory = false
             appContext = context.applicationContext
+            packageName = context.packageName
             activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
         }
         runCatching { context.applicationContext.registerComponentCallbacks(trimCallbacks) }
@@ -209,6 +214,7 @@ object SessionProcessTelemetry {
                 if (dtSec <= 0.0) continue
                 val pct = ProcStatParser.cpuPercent(total - prev, dtSec, clkTck)
                 val lower = name.lowercase(Locale.US)
+                if (packageName?.let { name.startsWith(it) } == true) continue
                 if (lower == "wineserver") {
                     wineserver = (wineserver ?: 0) + pct
                 } else if (lower !in ProcStatParser.excludedProcessNames && pct > gameCandidatePct) {
@@ -227,7 +233,7 @@ object SessionProcessTelemetry {
         latestGamePct = gameCandidatePct
         if (gameCandidate != gamePid) {
             gamePid = gameCandidate
-            threadBaseline = readThreadTicks(gamePid)?.mapValuesTo(HashMap()) { it.value.second } ?: HashMap()
+            threadBaseline = readThreadTicks(gamePid)?.let { HashMap(it) } ?: HashMap()
             threadBaselineMs = nowMs
             gamePidSeenMs = nowMs
             firstPickDone = false
@@ -251,42 +257,35 @@ object SessionProcessTelemetry {
         }
         pickHotThread(current, nowMs)
         if (dtSec > 1.0) {
-            current.entries
-                .mapNotNull { (tid, value) ->
-                    val prev = threadBaseline[tid] ?: return@mapNotNull null
-                    value.first to ProcStatParser.cpuPercent(value.second - prev, dtSec, clkTck)
-                }
-                .maxByOrNull { it.second }
-                ?.let { (name, pct) -> hotThreads += ThreadHot(name, pct) }
+            HotThreadFilter.pick(candidates(pid, current), pid)
+                ?.let { hotThreads += ThreadHot(it.name, ProcStatParser.cpuPercent(it.totalTicks, dtSec, clkTck)) }
         }
-        threadBaseline = current.mapValuesTo(HashMap()) { it.value.second }
+        threadBaseline = HashMap(current)
         threadBaselineMs = nowMs
     }
 
-    /** Picks the busiest non-system thread since the last full pass, leaving that pass's baseline as it is. */
-    private fun pickHotThread(current: Map<Int, Pair<String, Long>>?, nowMs: Long) {
+    /**
+     * Picks the game thread with the most user time since the last full pass ([HotThreadFilter]), leaving that
+     * pass's baseline as it is.
+     */
+    private fun pickHotThread(current: Map<Int, ThreadTicks>?, nowMs: Long) {
         val dtSec = (nowMs - threadBaselineMs) / 1000.0
         if (current == null || threadBaselineMs == 0L || dtSec <= 1.0) return
         pickRequested = false
         firstPickDone = true
-        current.entries
-            .filter { (_, value) -> !pickIgnored(value.first) }
-            .mapNotNull { (tid, value) ->
-                val prev = threadBaseline[tid] ?: return@mapNotNull null
-                Triple(tid, value.first, value.second - prev)
-            }
-            .maxByOrNull { it.third }
-            ?.let { (tid, name, _) -> hotPick = HotPick(gamePid, tid, name) }
+        HotThreadFilter.pick(candidates(gamePid, current), gamePid)?.let { hotPick = HotPick(gamePid, it.tid, it.name) }
     }
 
-    private fun pickIgnored(name: String): Boolean {
-        val lower = name.lowercase(Locale.US)
-        return lower == "main" || pickIgnoredPrefixes.any { lower.startsWith(it) }
-    }
+    /** Tick deltas since the baseline of the threads of [pid] that were in it. */
+    private fun candidates(pid: Int, current: Map<Int, ThreadTicks>): List<HotThreadFilter.Candidate> =
+        current.mapNotNull { (tid, value) ->
+            val prev = threadBaseline[tid] ?: return@mapNotNull null
+            HotThreadFilter.Candidate(pid, tid, value.name, value.user - prev.user, value.total - prev.total)
+        }
 
-    private fun readThreadTicks(pid: Int): Map<Int, Pair<String, Long>>? {
+    private fun readThreadTicks(pid: Int): Map<Int, ThreadTicks>? {
         val taskDirs = File("/proc/$pid/task").listFiles() ?: return null
-        val result = HashMap<Int, Pair<String, Long>>(taskDirs.size)
+        val result = HashMap<Int, ThreadTicks>(taskDirs.size)
         for (dir in taskDirs) {
             val tid = dir.name.toIntOrNull() ?: continue
             val fields = try {
@@ -294,7 +293,7 @@ object SessionProcessTelemetry {
             } catch (_: Exception) {
                 null
             } ?: continue
-            result[tid] = fields.comm to (fields.utime + fields.stime)
+            result[tid] = ThreadTicks(fields.comm, fields.utime, fields.utime + fields.stime)
         }
         return result
     }

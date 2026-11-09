@@ -68,6 +68,7 @@ object OptimizeEvents {
         rulesVersion: String?,
         nowMillis: Long,
         unverified: Boolean = false,
+        extra: JSONObject? = null,
     ): JSONObject = JSONObject().apply {
         put("event", name)
         put("game", game)
@@ -78,7 +79,19 @@ object OptimizeEvents {
         put("rules_version", rulesVersion ?: JSONObject.NULL)
         put("client_ts", Instant.ofEpochMilli(nowMillis).toString())
         if (unverified) put("unverified", true)
+        extra?.keys()?.forEach { key -> if (!has(key)) put(key, extra.get(key)) }
     }
+
+    /** The load signals a judged_ event carries: GPU work per frame before and after, and the session's ceiling. */
+    fun judgedExtra(before: Metrics?, after: Metrics): JSONObject = JSONObject().apply {
+        before?.workPerFrame()?.let { put("gpu_work_per_frame_before", Math.round(it * 100) / 100.0) }
+        after.workPerFrame()?.let { put("gpu_work_per_frame_after", Math.round(it * 100) / 100.0) }
+        after.gpuBusyP95?.let { put("gpu_busy_p95", it) }
+        after.hotThreadP95?.let { put("hot_thread_p95", it) }
+        after.fpsCeilingReason?.let { put("fps_ceiling_reason", it) }
+    }
+
+    private val MIRRORED_EXTRA = listOf("gpu_work_per_frame_before", "gpu_work_per_frame_after", "gpu_busy_p95", "hot_thread_p95", "fps_ceiling_reason")
 
     /** Queues [event] for the next batch; [device] is the device block every batch carries. */
     fun record(event: JSONObject, device: () -> JSONObject) {
@@ -128,6 +141,7 @@ object OptimizeEvents {
                     event.optStringOrNull("rung_id")?.let { put("rung_id", it) }
                     event.optStringOrNull("rules_version")?.let { put("rules_version", it) }
                     if (event.optBoolean("unverified", false)) put("unverified", true)
+                    MIRRORED_EXTRA.forEach { key -> event.opt(key)?.takeIf { it != JSONObject.NULL }?.let { put(key, it) } }
                 },
             )
         } catch (e: Exception) {

@@ -230,12 +230,13 @@ object OptimizeController {
         cardKind: String? = null,
         rungId: String? = null,
         unverified: Boolean = false,
+        extra: JSONObject? = null,
     ) {
         val rulesVersion = state?.lastRulesVersion
         val now = System.currentTimeMillis()
         scope.launch {
             try {
-                val ev = OptimizeEvents.event(name, gameJson(appId), profile, cls, cardKind, rungId, rulesVersion ?: appRulesVersion(), now, unverified)
+                val ev = OptimizeEvents.event(name, gameJson(appId), profile, cls, cardKind, rungId, rulesVersion ?: appRulesVersion(), now, unverified, extra)
                 OptimizeEvents.record(ev) { eventDevice() }
             } catch (e: CancellationException) {
                 throw e
@@ -1277,7 +1278,9 @@ object OptimizeController {
             else -> null
         }
         val s = state.queued(report).withLadder(profile, l)
-        OptimizeEvents.judged(result)?.let { event(appId, it, s, profile, judged.cls ?: before?.cls, card?.kind, rung.rungId) }
+        OptimizeEvents.judged(result)?.let {
+            event(appId, it, s, profile, judged.cls ?: before?.cls, card?.kind, rung.rungId, extra = OptimizeEvents.judgedExtra(before, judged))
+        }
         if (settled.done) event(appId, OptimizeEvents.DONE, s, profile, judged.cls ?: before?.cls, OptimizeCard.DONE, rung.rungId)
         return if (card != null) s.copy(card = card) else s
     }

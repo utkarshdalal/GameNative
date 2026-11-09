@@ -235,6 +235,8 @@ internal object SessionVerdict {
         val fpsBy5Min: List<Int> = emptyList(),
         /** The older per-tick classifier's bottleneck_share (cpu, gpu, thermal, ...), the fallback verdict. */
         val legacyShare: Map<String, Double>? = null,
+        /** The panel refresh rate in Hz; 0 when unknown. */
+        val refreshHz: Double = 0.0,
     )
 
     class Result(
@@ -254,6 +256,7 @@ internal object SessionVerdict {
         val stutterShare: Double?,
         /** [SOURCE_LEGACY] when the class came from the older classifier; null when the sampler decided. */
         val source: String? = null,
+        val load: Load? = null,
     ) {
         /** The four game_exited properties of spec section 10. */
         fun properties(): Map<String, Any> = buildMap {
@@ -275,6 +278,16 @@ internal object SessionVerdict {
                     fpsAfterOnset?.let { put("fps_after_onset", round1(it)) }
                     put("card", "none")
                     source?.let { put("source", it) }
+                    load?.let { l ->
+                        l.gpuBusyP95?.let { put("gpu_busy_p95", it) }
+                        l.hotThreadP95?.let { put("hot_thread_p95", it) }
+                        put("fps_ceiling_reason", l.fpsCeilingReason)
+                        l.gpuWorkPerFrame?.let { put("gpu_work_per_frame", round2(it)) }
+                        if (l.windows.isNotEmpty()) {
+                            put("gpu_work_by_5min", l.windows.map { w -> w.gpuWorkPerFrame?.let { v -> round2(v) } ?: -1.0 })
+                            put("gpu_clock_mhz_by_5min", l.windows.map { w -> w.gpuClockMhz ?: -1 })
+                        }
+                    }
                 },
             )
             stutterShare?.let { put("stutter_share", Math.round(it * 10_000) / 10_000.0) }
@@ -455,7 +468,109 @@ internal object SessionVerdict {
             hot = hotSummary(g, input),
             stutterShare = stutter,
             source = legacy?.let { SOURCE_LEGACY },
+            load = load(input.samples.filter { it.fps > 0f }, g, steadyFps, input),
         )
+    }
+
+    /** One five-minute window of the sampler: mean GPU clock and GPU work per frame; null where not sampled. */
+    class LoadWindow(val gpuClockMhz: Int?, val gpuWorkPerFrame: Double?)
+
+    /**
+     * The continuous load signals sent with the class: GPU busy p95 and the game-process hot thread's p95 over
+     * gameplay, why fps stops where it does ([fpsCeilingReason]), and GPU work per frame for the session (median
+     * of the gameplay windows) and per five-minute window.
+     */
+    class Load(
+        val gpuBusyP95: Int?,
+        val hotThreadP95: Int?,
+        val fpsCeilingReason: String,
+        val gpuWorkPerFrame: Double?,
+        val windows: List<LoadWindow>,
+    )
+
+    const val CEILING_CAP = "cap"
+    const val CEILING_MAIN_THREAD = "main_thread"
+    const val CEILING_GPU = "gpu"
+    const val CEILING_BOTH = "both"
+    const val CEILING_NONE = "none"
+
+    const val CEILING_CAP_SHARE = 0.97
+    const val BOTH_GPU_P95 = 85
+    const val BOTH_HOT_P95 = 75
+    const val BOTH_FPS_SHARE = 0.9
+    const val MAIN_THREAD_HOT_P95 = 75
+    const val MAIN_THREAD_GPU_P95_BELOW = 85
+    const val GPU_CEILING_P95 = 90
+    private const val CEILING_FPS_PERCENTILE = 0.9
+    private const val WINDOW_SEC = 300
+
+    /**
+     * GPU work per frame: GPU busy (0-1) x GPU clock in MHz / fps, from window means. Thermal clock swings move fps
+     * and clock together, so this stays put across runs of the same workload and drops when work is removed.
+     */
+    fun gpuWorkPerFrame(gpuBusyMeanPct: Double?, gpuClockMhzMean: Double?, fpsMean: Double?): Double? {
+        if (gpuBusyMeanPct == null || gpuClockMhzMean == null || fpsMean == null) return null
+        if (gpuBusyMeanPct < 0 || gpuClockMhzMean <= 0 || fpsMean <= 0) return null
+        return gpuBusyMeanPct / 100.0 * gpuClockMhzMean / fpsMean
+    }
+
+    /**
+     * Why fps stops where it does. cap: steady fps within 3 % of the limiter or refresh rate. both: GPU p95 >= 85 and
+     * hot thread p95 >= 75 with fps within 10 % of the cap or of the session's own ceiling (p90 of per-second fps).
+     * main_thread: hot thread p95 >= 75 and GPU p95 < 85. gpu: GPU p95 >= 90. Otherwise none.
+     */
+    fun fpsCeilingReason(
+        steadyFps: Double?,
+        sessionCeilingFps: Double?,
+        fpsCap: Int,
+        refreshHz: Double,
+        gpuBusyP95: Int?,
+        hotThreadP95: Int?,
+    ): String {
+        val limit = listOfNotNull(fpsCap.takeIf { it > 0 }?.toDouble(), refreshHz.takeIf { it > 0 }).minOrNull()
+        if (steadyFps != null && limit != null && steadyFps >= CEILING_CAP_SHARE * limit) return CEILING_CAP
+        val gpu = gpuBusyP95
+        val hot = hotThreadP95
+        val nearCeiling = steadyFps != null && listOfNotNull(limit, sessionCeilingFps).any { steadyFps >= BOTH_FPS_SHARE * it }
+        if (gpu != null && hot != null && gpu >= BOTH_GPU_P95 && hot >= BOTH_HOT_P95 && nearCeiling) return CEILING_BOTH
+        if (hot != null && hot >= MAIN_THREAD_HOT_P95 && (gpu == null || gpu < MAIN_THREAD_GPU_P95_BELOW)) return CEILING_MAIN_THREAD
+        if (gpu != null && gpu >= GPU_CEILING_P95) return CEILING_GPU
+        return CEILING_NONE
+    }
+
+    /** [all] is every sample with frames (window means), [g] the gameplay ones (percentiles and the ceiling). */
+    private fun load(all: List<SessionSample>, g: List<SessionSample>, steadyFps: Double?, input: Input): Load? {
+        if (all.isEmpty()) return null
+        val gpuP95 = p95(g.mapNotNull { it.gpuBusy })
+        val hotP95 = p95(g.mapNotNull { it.hotPct })
+        val ceiling = percentile(g.map { it.fps.toDouble() }, CEILING_FPS_PERCENTILE)
+        val windows = all.groupBy { it.t / WINDOW_SEC }.toSortedMap().values.map { w ->
+            val paired = w.filter { it.gpuBusy != null && it.gpuMhz != null && it.gpuMhz > 0 }
+            val clocks = w.mapNotNull { it.gpuMhz?.takeIf { m -> m > 0 } }
+            LoadWindow(
+                gpuClockMhz = clocks.takeIf { it.isNotEmpty() }?.average()?.roundToInt(),
+                gpuWorkPerFrame = paired.takeIf { it.isNotEmpty() }?.let { p ->
+                    gpuWorkPerFrame(p.map { it.gpuBusy!!.toDouble() }.average(), p.map { it.gpuMhz!!.toDouble() }.average(), p.map { it.fps.toDouble() }.average())
+                },
+            )
+        }
+        val gameplayWork = (if (windows.size >= 3) windows.drop(1) else windows).mapNotNull { it.gpuWorkPerFrame }
+        return Load(
+            gpuBusyP95 = gpuP95,
+            hotThreadP95 = hotP95,
+            fpsCeilingReason = fpsCeilingReason(steadyFps, ceiling, input.fpsCap, input.refreshHz, gpuP95, hotP95),
+            gpuWorkPerFrame = median(gameplayWork),
+            windows = windows.takeIf { ws -> ws.any { it.gpuWorkPerFrame != null || it.gpuClockMhz != null } }.orEmpty(),
+        )
+    }
+
+    private fun p95(values: List<Int>): Int? = percentile(values.map { it.toDouble() }, 0.95)?.roundToInt()
+
+    /** Nearest-rank percentile. */
+    private fun percentile(values: List<Double>, q: Double): Double? {
+        if (values.isEmpty()) return null
+        val sorted = values.sorted()
+        return sorted[(kotlin.math.ceil(sorted.size * q).toInt() - 1).coerceIn(0, sorted.size - 1)]
     }
 
     /** The older classifier's verdict as (class, share): GPU-bound, or GPU-bound under heat; null when it names neither. */

@@ -22,6 +22,9 @@ object OptimizeJudge {
     const val REASON_STUTTER = "stutter"
     const val REASON_GPU_LOAD = "gpu_load"
     const val REASON_CLOCK = "clock"
+
+    /** A GPU-bound step took GPU work off each frame at held fps (see [workVerdict]). */
+    const val REASON_GPU_WORK = "gpu_work"
     const val REASON_TARGET_MET = "target_met"
 
     /** A cap ran the device cooler: the hottest CPU or GPU reading down 3 °C or more with a lower peak thermal status. */
@@ -52,6 +55,16 @@ object OptimizeJudge {
     /** Near the cap, lower GPU load or a higher GPU clock counts while fps stays within this share of before. */
     private const val NEAR_CAP_FPS_HOLD = 0.98
     private const val GPU_CLOCK_UP_SHARE = 0.10
+
+    /**
+     * GPU work per frame rules for a gpu or thermal_gpu baseline (see [workVerdict]). Equal work is within
+     * [WORK_EQUAL_SHARE] of before, the run-to-run spread of the same workload.
+     */
+    const val WORK_DROP_SHARE = 0.08
+    const val WORK_FPS_HOLD = 0.98
+    const val WORK_FPS_UP_SHARE = 0.05
+    const val WORK_FPS_DOWN_SHARE = 0.05
+    const val WORK_EQUAL_SHARE = 0.03
 
     private val CRASH_REASONS = setOf("guest_terminated", "force_close")
 
@@ -108,6 +121,7 @@ object OptimizeJudge {
             fpsBy5Min = keep.map { fps[it] },
             gpuBy5Min = keep.map { gpu[it] },
             gpuClockBy5Min = if (clock.size == fps.size) keep.map { clock[it] } else clock,
+            gpuWorkBy5Min = if (after.gpuWorkBy5Min.size == fps.size) keep.map { after.gpuWorkBy5Min[it] } else after.gpuWorkBy5Min,
         )
         return Windows(judged, excluded, keptFps.size)
     }
@@ -153,6 +167,45 @@ object OptimizeJudge {
         return if (s.size % 2 == 1) s[s.size / 2].toDouble() else (s[s.size / 2 - 1] + s[s.size / 2]) / 2.0
     }
 
+    /**
+     * The judge for a GPU-bound baseline (class gpu or thermal_gpu) when both sessions carry GPU work per frame
+     * (GPU busy 0-1 x GPU clock MHz / fps, the median of the gameplay windows left after menu-window dropping).
+     * Thermal clock swings move fps by about 15 % between runs of the same workload, while work per frame stays
+     * within a few percent, so fps alone cannot tell a step's effect from the device's temperature.
+     *
+     *   worse      stutter up (30 % and 0.005, as everywhere)
+     *   helped     work per frame down 8 % or more while fps holds at 0.98 x before or better (gpu_work)
+     *   helped     fps up 5 % or more at equal or lower work per frame (fps)
+     *   worse      fps down more than 5 % at equal or higher work per frame (fps)
+     *   helped     stutter down, or the throttle onset 180 s or more later
+     *   no_change  anything else, including fps down at lower work (the device ran hotter, not the step)
+     *
+     * Equal work is within 3 % of before. Null when the rule does not apply; the fps-only rules judge then. Cap steps
+     * never come here: they are judged by the cap rules only.
+     */
+    private fun workVerdict(
+        before: Metrics,
+        after: Metrics,
+        fpsRatio: Double?,
+        stutterUp: Boolean,
+        stutterDown: Boolean,
+        throttleLater: Boolean,
+    ): Verdict? {
+        if (before.cls !in GPU_CLASSES || fpsRatio == null) return null
+        val wb = before.workPerFrame()?.takeIf { it > 0 } ?: return null
+        val wa = after.workPerFrame()?.takeIf { it > 0 } ?: return null
+        val workRatio = wa / wb
+        val equalOrLower = workRatio <= 1 + WORK_EQUAL_SHARE + EPS
+        val equalOrHigher = workRatio >= 1 - WORK_EQUAL_SHARE - EPS
+        if (stutterUp) return Verdict(WORSE, REASON_STUTTER)
+        if (workRatio <= 1 - WORK_DROP_SHARE + EPS && fpsRatio >= WORK_FPS_HOLD - EPS) return Verdict(HELPED, REASON_GPU_WORK)
+        if (fpsRatio >= 1 + WORK_FPS_UP_SHARE - EPS && equalOrLower) return Verdict(HELPED, REASON_FPS)
+        if (fpsRatio < 1 - WORK_FPS_DOWN_SHARE - EPS && equalOrHigher) return Verdict(WORSE, REASON_FPS)
+        if (stutterDown) return Verdict(HELPED, REASON_STUTTER)
+        if (throttleLater) return Verdict(HELPED, REASON_THROTTLE)
+        return Verdict(NO_CHANGE, REASON_NONE)
+    }
+
     /** The hottest CPU or GPU reading fell [CAP_TEMP_DROP_C] °C or more and the peak thermal status is lower. */
     fun cooler(before: Metrics, after: Metrics): Boolean {
         fun dropped(b: Int?, a: Int?) = b != null && a != null && b - a >= CAP_TEMP_DROP_C
@@ -195,6 +248,8 @@ object OptimizeJudge {
             if (cooler(before, after)) return Verdict(HELPED, REASON_TEMP)
             return Verdict(NO_CHANGE, REASON_NONE)
         }
+
+        workVerdict(before, after, fpsRatio, stutterUp, stutterDown, throttleLater)?.let { return it }
 
         val nearCap = !isFpsCap && fpsCap != null && fpsCap > 0 && fpsBefore != null && fpsBefore >= NEAR_CAP_SHARE * fpsCap - EPS
         if (!nearCap) {

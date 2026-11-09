@@ -1,5 +1,6 @@
 package app.gamenative.optimize
 
+import app.gamenative.utils.SessionVerdict
 import java.time.Instant
 import org.json.JSONArray
 import org.json.JSONObject
@@ -28,7 +29,34 @@ data class Metrics(
     val gpuTempMax: Int? = null,
     /** Highest Android thermal status of the session (thermal_peak, else perf_by_5min thermal_status_max). */
     val thermalPeak: Int? = null,
+    /** GPU busy percent p95 over gameplay (perf_verdict.gpu_busy_p95). */
+    val gpuBusyP95: Int? = null,
+    /** CPU percent p95 of the game process's hot thread over gameplay (perf_verdict.hot_thread_p95). */
+    val hotThreadP95: Int? = null,
+    /** Why fps stops where it does: cap, main_thread, gpu, both or none (perf_verdict.fps_ceiling_reason). */
+    val fpsCeilingReason: String? = null,
+    /** GPU busy (0-1) x GPU clock MHz / fps for the session: the median of its gameplay windows. */
+    val gpuWorkPerFrame: Double? = null,
+    /** GPU work per frame of each five-minute window, oldest first; null where the window has no GPU busy or clock. */
+    val gpuWorkBy5Min: List<Double?> = emptyList(),
 ) {
+    /** Session GPU work per frame: the median of the gameplay windows, else [gpuWorkPerFrame]. */
+    fun workPerFrame(): Double? {
+        val windows = (if (gpuWorkBy5Min.size >= 3) gpuWorkBy5Min.drop(1) else gpuWorkBy5Min).filterNotNull()
+        return medianOf(windows) ?: gpuWorkPerFrame
+    }
+
+    private fun JSONObject.putLoad(report: Boolean) {
+        gpuBusyP95?.let { put("gpu_busy_p95", it) }
+        hotThreadP95?.let { put("hot_thread_p95", it) }
+        fpsCeilingReason?.let { put("fps_ceiling_reason", it) }
+        workPerFrame()?.let { put("gpu_work_per_frame", round2(it)) }
+        if (gpuWorkBy5Min.isNotEmpty()) {
+            val windows = if (report) gpuWorkBy5Min.take(MAX_REPORT_WINDOWS) else gpuWorkBy5Min
+            put("gpu_work_by_5min", JSONArray().apply { windows.forEach { put(it?.let { v -> round2(v) } ?: JSONObject.NULL) } })
+        }
+    }
+
     fun toJson(): JSONObject = JSONObject().apply {
         put("gameplay_s", gameplaySec)
         steadyFps?.let { put("steady_fps", it) }
@@ -48,6 +76,7 @@ data class Metrics(
         cpuTempMax?.let { put("cpu_temp_max", it) }
         gpuTempMax?.let { put("gpu_temp_max", it) }
         thermalPeak?.let { put("thermal_peak", it) }
+        putLoad(report = false)
     }
 
     fun toReportJson(): JSONObject = JSONObject().apply {
@@ -60,6 +89,7 @@ data class Metrics(
         if (fpsBy5Min.isNotEmpty()) put("fps_by_5min", JSONArray(fpsBy5Min.take(MAX_REPORT_WINDOWS)))
         if (gpuBy5Min.isNotEmpty()) put("gpu_by_5min", JSONArray(gpuBy5Min.take(MAX_REPORT_WINDOWS)))
         if (gpuClockBy5Min.isNotEmpty()) put("gpu_clock_by_5min", JSONArray(gpuClockBy5Min.take(MAX_REPORT_WINDOWS)))
+        putLoad(report = true)
     }
 
     fun toVerdictJson(): JSONObject? {
@@ -72,6 +102,8 @@ data class Metrics(
             put("stutter_share", stutterShare ?: JSONObject.NULL)
             put("throttle_onset_s", throttleOnsetSec ?: JSONObject.NULL)
             put("gameplay_s", gameplaySec)
+            putLoad(report = true)
+            if (gpuClockBy5Min.isNotEmpty()) put("gpu_clock_by_5min", JSONArray(gpuClockBy5Min.take(MAX_REPORT_WINDOWS)))
         }
     }
 
@@ -100,6 +132,11 @@ data class Metrics(
                 cpuTempMax = o.optIntOrNull("cpu_temp_max"),
                 gpuTempMax = o.optIntOrNull("gpu_temp_max"),
                 thermalPeak = o.optIntOrNull("thermal_peak"),
+                gpuBusyP95 = o.optIntOrNull("gpu_busy_p95"),
+                hotThreadP95 = o.optIntOrNull("hot_thread_p95"),
+                fpsCeilingReason = o.optStringOrNull("fps_ceiling_reason"),
+                gpuWorkPerFrame = o.optDoubleOrNull("gpu_work_per_frame")?.takeIf { it > 0 },
+                gpuWorkBy5Min = o.optJSONArray("gpu_work_by_5min").works(),
             )
         }
 
@@ -108,6 +145,8 @@ data class Metrics(
             val verdict = run.optJSONObject("perf_verdict")
             val gameplay = verdict?.optIntOrNull("gameplay_s") ?: run.optInt("session_length", 0)
             val perf = run.optJSONArray("perf_by_5min").objects()
+            val fps = run.optJSONArray("fps_by_5min").ints()
+            val work = verdict?.optJSONArray("gpu_work_by_5min")?.works()?.takeIf { it.isNotEmpty() } ?: workFromPerf(perf, fps)
             return Metrics(
                 gameplaySec = gameplay,
                 steadyFps = run.optDoubleOrNull("avg_fps")?.takeIf { it > 0.0 },
@@ -127,7 +166,32 @@ data class Metrics(
                 cpuTempMax = perf.mapNotNull { it.optIntOrNull("cpu_temp_max")?.takeIf { t -> t > 0 } }.maxOrNull(),
                 gpuTempMax = perf.mapNotNull { it.optIntOrNull("gpu_temp_max")?.takeIf { t -> t > 0 } }.maxOrNull(),
                 thermalPeak = run.optIntOrNull("thermal_peak") ?: perf.mapNotNull { it.optIntOrNull("thermal_status_max") }.maxOrNull(),
+                gpuBusyP95 = verdict?.optIntOrNull("gpu_busy_p95"),
+                hotThreadP95 = verdict?.optIntOrNull("hot_thread_p95"),
+                fpsCeilingReason = verdict?.optStringOrNull("fps_ceiling_reason"),
+                gpuWorkPerFrame = verdict?.optDoubleOrNull("gpu_work_per_frame")?.takeIf { it > 0 },
+                gpuWorkBy5Min = work,
             )
+        }
+
+        /**
+         * GPU work per frame of each window for runs from before the sampler sent it: perf_by_5min gpu_avg x
+         * gpu_clk_mhz_avg / fps_by_5min, only when the two series line up.
+         */
+        fun workFromPerf(perf: List<JSONObject>, fps: List<Int>): List<Double?> {
+            if (perf.isEmpty() || perf.size != fps.size) return emptyList()
+            val work = perf.indices.map { i ->
+                SessionVerdict.gpuWorkPerFrame(perf[i].optDoubleOrNull("gpu_avg"), perf[i].optDoubleOrNull("gpu_clk_mhz_avg"), fps[i].toDouble())
+            }
+            return if (work.all { it == null }) emptyList() else work
+        }
+
+        private fun round2(v: Double): Double = Math.round(v * 100) / 100.0
+
+        private fun medianOf(values: List<Double>): Double? {
+            if (values.isEmpty()) return null
+            val s = values.sorted()
+            return if (s.size % 2 == 1) s[s.size / 2] else (s[s.size / 2 - 1] + s[s.size / 2]) / 2.0
         }
     }
 }
@@ -150,6 +214,14 @@ internal fun JSONArray?.objects(): List<JSONObject> =
 
 internal fun JSONArray?.ints(): List<Int> =
     if (this == null) emptyList() else (0 until length()).mapNotNull { i -> (opt(i) as? Number)?.toInt() }
+
+/** A per-window series where null or a negative entry is a window that was not measured. */
+internal fun JSONArray?.works(): List<Double?> =
+    if (this == null) {
+        emptyList()
+    } else {
+        (0 until length()).map { i -> (opt(i) as? Number)?.toDouble()?.takeIf { it >= 0 && !it.isNaN() && !it.isInfinite() } }
+    }
 
 internal fun JSONArray?.strings(): List<String> =
     if (this == null) emptyList() else (0 until length()).mapNotNull { i -> optString(i).takeIf { it.isNotEmpty() } }

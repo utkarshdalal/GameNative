@@ -46,6 +46,7 @@ object SessionPerfSampler {
     private var lowHotSinceMs = 0L
     private var lastLowMemoryEvents = 0
     private val hotNames = HashMap<String, Int>()
+    private var lastRefreshHz = 0f
 
     private class HotReading(val pct: Int, val user: Int, val sys: Int, val state: Char, val core: Int?, val vol: Int?, val invol: Int?)
 
@@ -63,6 +64,7 @@ object SessionPerfSampler {
             resetHot(null)
             lastLowMemoryEvents = 0
             hotNames.clear()
+            lastRefreshHz = 0f
         }
     }
 
@@ -80,6 +82,7 @@ object SessionPerfSampler {
         thermalStatus: Int?,
     ) = synchronized(lock) {
         val buf = buffer ?: return@synchronized
+        if (refreshHz.isFinite() && refreshHz > 0f) lastRefreshHz = refreshHz
         val nowMs = SystemClock.elapsedRealtime()
         val deltas = newFrameDeltas(frames, frameCount, frameStride)
         val hot = readHot(nowMs)
@@ -172,6 +175,7 @@ object SessionPerfSampler {
                 stutterShare = SessionVerdict.stutterShare(histogramMs),
                 fpsBy5Min = fpsBy5Min,
                 legacyShare = legacyShare,
+                refreshHz = lastRefreshHz.toDouble(),
             ),
         ).properties()
     }
