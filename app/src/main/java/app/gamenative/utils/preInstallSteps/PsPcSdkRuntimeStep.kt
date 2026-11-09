@@ -55,10 +55,14 @@ internal object PsPcSdkFiles {
  * Titles built against the PS PC SDK refuse to start until Sony's runtime is in the prefix —
  * Stellar Blade stops on "PSPC SDK runtime could not be found" before its first frame. The
  * runtime ships with the game, not with Steam: `install_pspc_sdk_runtime.bat` next to the
- * executable (Stellar Blade: `SB/Binaries/Win64/`), with two packages beside it. Steam runs it
- * from the game's `installscript.vdf`, and [SteamInstallScriptRegistry] marks every Run Process
- * step as already done so no redistributable is launched under Wine — which is why the runtime
- * is missing in the first place.
+ * executable (Stellar Blade: `SB/Binaries/Win64/`), with two packages beside it.
+ *
+ * On Windows the game's `installscript.vdf` runs that script when Steam installs the title.
+ * Nothing here does: the app never executes an install script's Run Process steps, and
+ * [SteamInstallScriptRegistry] only *marks* the ones it recognises as redistributables so
+ * Steam's own attempt is suppressed. This vendor step is not one of those — `REDIST_PROCESS`
+ * has no PlayStation entry, and the batch body names only `msiexec` — so it is left unmarked
+ * and simply never runs. Either way, nothing installs the runtime, and the game cannot start.
  *
  * The vendor script installs *two* packages, in this order:
  *
@@ -82,6 +86,8 @@ abstract class PsPcSdkPackageStep : PreInstallStep {
     protected abstract val tag: String
 
     override val viaShell: Boolean = false
+
+    private val warnedUnquotable = java.util.concurrent.atomic.AtomicBoolean(false)
 
     /**
      * Marker alone. A recreated prefix re-runs this anyway: `PreInstallSteps.markersStale` sees
@@ -131,7 +137,11 @@ abstract class PsPcSdkPackageStep : PreInstallStep {
 
         val guestPath = PsPcSdkFiles.guestPath(gameDir, msi)
         if (guestPath == null) {
-            Timber.tag(tag).w("%s has a space in its path and cannot be passed unquoted", msi)
+            // Once per process, not once per call: this also runs for the `hasPendingSteps`
+            // probe, which happens on every launch and installs nothing.
+            if (warnedUnquotable.compareAndSet(false, true)) {
+                Timber.tag(tag).w("%s has a space in its path and cannot be passed unquoted", msi)
+            }
             return null
         }
 

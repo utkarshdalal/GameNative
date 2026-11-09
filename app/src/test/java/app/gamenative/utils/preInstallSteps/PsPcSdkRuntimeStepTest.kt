@@ -9,6 +9,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -32,6 +33,12 @@ class PsPcSdkRuntimeStepTest {
         // and `markersStale` reads the variant.
         every { container.drives } returns "A:${gameDir.absolutePath}"
         every { container.containerVariant } returns Container.BIONIC
+    }
+
+    @After
+    fun tearDown() {
+        gameDir.deleteRecursively()
+        prefixDir.deleteRecursively()
     }
 
     /** The runtime as a title ships it: the script and both packages in one directory. */
