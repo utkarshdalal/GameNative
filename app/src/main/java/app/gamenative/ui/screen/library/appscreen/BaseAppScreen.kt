@@ -55,7 +55,6 @@ import app.gamenative.ui.component.dialog.ImportFilesDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.NexusModsDialog
 import app.gamenative.ui.component.dialog.OptimizeDialog
-import app.gamenative.ui.component.dialog.OptimizeOptionsRow
 import app.gamenative.ui.component.dialog.SaveBackupRestoreDialog
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.Achievement
@@ -662,7 +661,6 @@ abstract class BaseAppScreen {
     ): AppMenuOption? = AppMenuOption(
         optionType = AppOptionMenuType.Optimize,
         onClick = { requestOptimize(libraryItem.appId) },
-        content = { OptimizeOptionsRow(libraryItem.appId) },
     )
 
     @Composable

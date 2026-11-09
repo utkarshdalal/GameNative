@@ -315,31 +315,24 @@ private fun OptionItem(
                 isFocused -> MaterialTheme.colorScheme.primary
                 else -> MaterialTheme.colorScheme.onSurfaceVariant
             },
-            // With a second line under the title, the icon sits on the title line.
-            modifier = Modifier
-                .size(24.dp)
-                .then(if (option.content != null) Modifier.align(Alignment.Top) else Modifier),
+            modifier = Modifier.size(24.dp),
         )
 
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = stringResource(option.optionType.title),
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = if (isFocused) FontWeight.Medium else FontWeight.Normal,
-                color = when {
-                    isDestructive -> MaterialTheme.colorScheme.error
-                    isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
-                    else -> MaterialTheme.colorScheme.onSurface
-                },
-            )
-            option.content?.invoke()
-        }
+        Text(
+            text = stringResource(option.optionType.title),
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = if (isFocused) FontWeight.Medium else FontWeight.Normal,
+            color = when {
+                isDestructive -> MaterialTheme.colorScheme.error
+                isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
+                else -> MaterialTheme.colorScheme.onSurface
+            },
+            modifier = Modifier.weight(1f),
+        )
 
         if (isPremium) {
             Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .then(if (option.content != null) Modifier.align(Alignment.Top) else Modifier),
+                modifier = Modifier.size(24.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(

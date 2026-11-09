@@ -6,9 +6,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,7 +19,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -66,7 +62,6 @@ import app.gamenative.ui.component.GradientBorderSurface
 import app.gamenative.ui.component.HeroBadge
 import app.gamenative.ui.component.PremiumDialogButton
 import app.gamenative.ui.component.PremiumTextButton
-import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.screen.support.requestFocusAfterLayout
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.SnackbarManager
@@ -252,53 +247,6 @@ fun optimizeStatusColor(status: OptimizeStatus): Color = when (status) {
     OptimizeStatus.Exhausted -> PluviaTheme.colors.accentPurple
     OptimizeStatus.Waiting, OptimizeStatus.Never, OptimizeStatus.TrialUsed, OptimizeStatus.Off -> PluviaTheme.colors.textMuted
     else -> PluviaTheme.colors.accentCyan
-}
-
-/** The Optimize row of the game options panel: the same status line as the dialog, Continue when it is offered; the row opens the dialog. */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-fun OptimizeOptionsRow(appId: String) {
-    val state = rememberOptimizeState(appId)
-    val actions = rememberOptimizeActions(appId)
-    val status = state?.let { OptimizeStatus.of(it) }
-    val keptCount = state?.let { OptimizeStatus.keptCount(it) } ?: 0
-    Column(modifier = Modifier.fillMaxWidth()) {
-        FlowRow(
-            modifier = Modifier.padding(top = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            OptimizeStatusLine(status, modifier = Modifier.align(Alignment.CenterVertically))
-            if (OptimizeLadders.canContinue(status)) {
-                val interaction = remember { MutableInteractionSource() }
-                val shape = RoundedCornerShape(50)
-                FilledTonalButton(
-                    onClick = { actions.continueLadder() },
-                    enabled = !actions.busy,
-                    interactionSource = interaction,
-                    shape = shape,
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
-                    modifier = Modifier
-                        .height(32.dp)
-                        .focusRing(interaction, shape, width = 2.dp),
-                ) {
-                    Text(text = stringResource(R.string.optimize_continue), style = MaterialTheme.typography.labelLarge)
-                }
-            }
-        }
-        listOfNotNull(
-            state?.let { OptimizeStatus.heldCapFps(it) }?.let { stringResource(R.string.optimize_status_cap_held, it) },
-            if (keptCount > 0) pluralStringResource(R.plurals.optimize_status_kept, keptCount, keptCount) else null,
-            optimizeEntitlementLine(state?.entitlement, exhausted = status == OptimizeStatus.TrialUsed)?.let { planText(OptimizeStatus.entitlementPill(it)) },
-        ).forEach {
-            Text(
-                text = it,
-                style = MaterialTheme.typography.bodySmall,
-                color = PluviaTheme.colors.textMuted,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-        }
-    }
 }
 
 @Composable
