@@ -9,7 +9,7 @@ import org.junit.Test
 class HotThreadFilterTest {
     private val game = 4000
 
-    private fun t(tid: Int, name: String, user: Long, pid: Int = game) = HotThreadFilter.Candidate(pid, tid, name, user, user + 5)
+    private fun t(tid: Int, name: String, total: Long, pid: Int = game) = HotThreadFilter.Candidate(pid, tid, name, total)
 
     @Test
     fun androidUiThreadsCountOnlyInsideTheGameProcess() {
@@ -29,7 +29,14 @@ class HotThreadFilterTest {
     }
 
     @Test
-    fun picksTheGameThreadWithTheMostUserTime() {
+    fun kernelHeavySpinnerStaysTheHotThread() {
+        // 100 ticks, 74 of them in the kernel (a yield spinner), still outranks a 70-tick user-time thread.
+        val pick = HotThreadFilter.pick(listOf(t(4030, "DispatchThread", 100), t(4020, "UnityGfxDevice", 70)), game)
+        assertEquals(4030, pick!!.tid)
+    }
+
+    @Test
+    fun picksTheGameThreadWithTheMostCpuTime() {
         val pick = HotThreadFilter.pick(
             listOf(t(4013, "dxvk-cs", 100), t(4020, "UnityGfxDevice", 70), t(4021, "Job.Worker 0", 40), t(1210, "RenderThread", 95, pid = 1200)),
             game,
@@ -38,7 +45,7 @@ class HotThreadFilterTest {
     }
 
     @Test
-    fun prefersTheMainThreadWithinTenPercentOfTheTopHelper() {
+    fun prefersTheMainThreadWithinTenPercentOfTheTopThread() {
         assertEquals(game, HotThreadFilter.pick(listOf(t(game, "TheForest.exe", 72), t(4020, "UnityGfxDevice", 80)), game)!!.tid)
         assertEquals(4020, HotThreadFilter.pick(listOf(t(game, "TheForest.exe", 71), t(4020, "UnityGfxDevice", 80)), game)!!.tid)
     }

@@ -23,8 +23,8 @@ object SessionProcessTelemetry {
 
     private class ThreadHot(val name: String, val pct: Int)
 
-    /** One thread's name and its utime and utime + stime ticks. */
-    private class ThreadTicks(val name: String, val user: Long, val total: Long)
+    /** One thread's name and its utime + stime ticks. */
+    private class ThreadTicks(val name: String, val total: Long)
 
     /** The game thread the per-second sampler follows. */
     class HotPick(val pid: Int, val tid: Int, val name: String)
@@ -265,7 +265,7 @@ object SessionProcessTelemetry {
     }
 
     /**
-     * Picks the game thread with the most user time since the last full pass ([HotThreadFilter]), leaving that
+     * Picks the game thread with the most CPU time since the last full pass ([HotThreadFilter]), leaving that
      * pass's baseline as it is.
      */
     private fun pickHotThread(current: Map<Int, ThreadTicks>?, nowMs: Long) {
@@ -280,7 +280,7 @@ object SessionProcessTelemetry {
     private fun candidates(pid: Int, current: Map<Int, ThreadTicks>): List<HotThreadFilter.Candidate> =
         current.mapNotNull { (tid, value) ->
             val prev = threadBaseline[tid] ?: return@mapNotNull null
-            HotThreadFilter.Candidate(pid, tid, value.name, value.user - prev.user, value.total - prev.total)
+            HotThreadFilter.Candidate(pid, tid, value.name, value.total - prev.total)
         }
 
     private fun readThreadTicks(pid: Int): Map<Int, ThreadTicks>? {
@@ -293,7 +293,7 @@ object SessionProcessTelemetry {
             } catch (_: Exception) {
                 null
             } ?: continue
-            result[tid] = ThreadTicks(fields.comm, fields.utime, fields.utime + fields.stime)
+            result[tid] = ThreadTicks(fields.comm, fields.utime + fields.stime)
         }
         return result
     }
