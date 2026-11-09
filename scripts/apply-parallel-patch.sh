@@ -46,6 +46,12 @@ PY
 [[ -d "$source_root/app" ]] || fail "not a GameNative source tree: $source_root"
 
 replace_exact \
+    "$source_root/gradle/wrapper/gradle-wrapper.properties" \
+    'networkTimeout=10000' \
+    'networkTimeout=120000' \
+    1
+
+replace_exact \
     "$source_root/app/build.gradle.kts" \
     'applicationId = "app.gamenative"' \
     "applicationId = \"$application_id\"" \
