@@ -171,6 +171,11 @@ public class Window extends XResource {
         return property != null && property.data.get(0) == 1;
     }
 
+    /** False when the Wine build never sets _NET_WM_WOW64, as Proton 10 and later do not. */
+    public boolean hasWoW64Property() {
+        return getProperty(Atom.getId("_NET_WM_WOW64")) != null;
+    }
+
     public long getHandle() {
         Property property = getProperty(Atom.getId("_NET_WM_HWND"));
         return property != null ? property.getLong(0) : 0;
