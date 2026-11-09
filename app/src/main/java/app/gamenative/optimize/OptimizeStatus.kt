@@ -107,6 +107,20 @@ sealed class OptimizeStatus {
             return PlanText(R.plurals.optimize_upsell_plan_line, games, listOf(PlanName.BASIC, games, PlanName.PRO))
         }
 
+        /**
+         * Whether the dialog shows the status sentence under the header: not when its short form is the header's
+         * status words already (Measuring, Tuning on the next launch, Paused), so the same state is said once.
+         */
+        fun showsSentence(status: OptimizeStatus): Boolean {
+            val short = when (status) {
+                Measuring -> R.string.optimize_pill_measuring
+                TuningNext -> R.string.optimize_pill_tuning
+                Paused -> R.string.optimize_status_paused
+                else -> return true
+            }
+            return short != pillRes(status)
+        }
+
         /** The short status pill for [status], the words the cards use; null when there is nothing to show. */
         @StringRes
         fun pillRes(status: OptimizeStatus): Int? = when (status) {

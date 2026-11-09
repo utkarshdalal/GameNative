@@ -330,10 +330,9 @@ fun OptimizeDialog(
                 OptimizePlanLine(state?.entitlement, exhausted = exhausted)
             }
         }
-        // The status sentence sits under the header in both orientations, and only when it says more than the pill.
-        val pill = status?.let { OptimizeStatus.pillRes(it) }?.let { stringResource(it) }
+        // The status sentence sits under the header in both orientations, and only when it says more than the header status.
         listOfNotNull(
-            state?.let { optimizeStatusText(it) }?.takeIf { it != pill },
+            state?.takeIf { status != null && OptimizeStatus.showsSentence(status) }?.let { optimizeStatusText(it) },
             state?.let { OptimizeStatus.heldCapFps(it) }?.let { stringResource(R.string.optimize_status_cap_held, it) },
             if (keptCount > 0 && status !is OptimizeStatus.Trying) pluralStringResource(R.plurals.optimize_status_kept, keptCount, keptCount) else null,
         ).forEachIndexed { index, text ->
@@ -472,7 +471,12 @@ fun OptimizeDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-        LaunchedEffect(Unit) { firstFocus.requestFocusAfterLayout() }
+        // The cards take focus only once the state has loaded, so the first focus waits for it: the selected goal,
+        // or the first goal when none is chosen yet.
+        val loaded = state != null
+        LaunchedEffect(loaded) {
+            if (loaded) (state?.activeProfile?.let { goalFocus.getValue(it) } ?: firstFocus).requestFocusAfterLayout()
+        }
         LaunchedEffect(focusNext) {
             focusNext?.requestFocusAfterLayout()
             focusNext = null

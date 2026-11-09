@@ -175,4 +175,17 @@ class EntitlementLineTest {
         assertEquals(R.string.optimize_pill_trial_used, OptimizeStatus.pillRes(OptimizeStatus.TrialUsed))
         assertNull(OptimizeStatus.pillRes(OptimizeStatus.Off))
     }
+
+    @Test
+    fun statusSentenceIsShownOnlyWhenItSaysMoreThanTheHeader() {
+        assertFalse(OptimizeStatus.showsSentence(OptimizeStatus.TuningNext))
+        assertFalse(OptimizeStatus.showsSentence(OptimizeStatus.Paused))
+        assertFalse(OptimizeStatus.showsSentence(OptimizeStatus.Measuring))
+        assertTrue(OptimizeStatus.showsSentence(OptimizeStatus.Trying(null, null)))
+        assertTrue(OptimizeStatus.showsSentence(OptimizeStatus.RetryNext))
+        assertTrue(OptimizeStatus.showsSentence(OptimizeStatus.NotStarted))
+        assertTrue(OptimizeStatus.showsSentence(OptimizeStatus.Done))
+        assertTrue(OptimizeStatus.showsSentence(OptimizeStatus.Waiting))
+        assertTrue(OptimizeStatus.showsSentence(OptimizeStatus.Never))
+    }
 }
