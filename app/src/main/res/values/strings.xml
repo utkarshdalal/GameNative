@@ -2223,6 +2223,9 @@
     <string name="optimize_metric_fps">Frame rate</string>
     <string name="optimize_metric_stutter">Stutters</string>
     <string name="optimize_metric_stable_for">Stable for</string>
+    <string name="optimize_metric_frame_p99">Slowest frames</string>
+    <string name="optimize_metric_ms_value">%1$d ms</string>
+    <string name="optimize_metric_gpu_work">GPU work per frame</string>
     <string name="optimize_metric_fps_value">%1$d fps</string>
     <string name="optimize_metric_percent_value">%1$d %%</string>
     <string name="optimize_metric_delta_up">+%1$d %%</string>

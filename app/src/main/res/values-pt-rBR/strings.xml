@@ -1871,6 +1871,9 @@
     <string name="optimize_metric_fps">Taxa de quadros</string>
     <string name="optimize_metric_stutter">Travadas</string>
     <string name="optimize_metric_stable_for">Estável por</string>
+    <string name="optimize_metric_frame_p99">Quadros mais lentos</string>
+    <string name="optimize_metric_ms_value">%1$d ms</string>
+    <string name="optimize_metric_gpu_work">Trabalho da GPU por quadro</string>
     <string name="optimize_metric_fps_value">%1$d FPS</string>
     <string name="optimize_metric_percent_value">%1$d %%</string>
     <string name="optimize_metric_delta_up">+%1$d %%</string>

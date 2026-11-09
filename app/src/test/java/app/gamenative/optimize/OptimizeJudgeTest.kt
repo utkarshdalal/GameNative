@@ -71,7 +71,7 @@ class OptimizeJudgeTest {
 
     @Test
     fun shortSessionsBecomeNotComparableOnTheThird() {
-        val short = session(gameplay = 300)
+        val short = session(gameplay = 299)
         assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(short, session(), isFpsCap = false, shortSessions = 0))
         assertEquals(OptimizeJudge.Decision.Short(2), OptimizeJudge.judge(short, session(), isFpsCap = false, shortSessions = 1))
         assertEquals(
@@ -80,6 +80,20 @@ class OptimizeJudgeTest {
         )
         assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(session(), null, isFpsCap = false, shortSessions = 0))
         assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(session(), session(gameplay = 200), isFpsCap = false, shortSessions = 0))
+    }
+
+    @Test
+    fun sessionsFromFiveMinutesOfGameplayAreJudged() {
+        // The two sessions behind a card on device: 511 s and 415 s of gameplay, judged like any longer one.
+        assertEquals(
+            OptimizeJudge.Decision.Final(OptimizeJudge.HELPED, OptimizeJudge.REASON_FPS),
+            OptimizeJudge.judge(session(gameplay = 415, fps = 50.0), session(gameplay = 511, fps = 40.0), isFpsCap = false, shortSessions = 0),
+        )
+        assertEquals(
+            OptimizeJudge.Decision.Final(OptimizeJudge.NO_CHANGE, OptimizeJudge.REASON_NONE),
+            OptimizeJudge.judge(session(gameplay = 300), session(gameplay = 300), isFpsCap = false, shortSessions = 0),
+        )
+        assertEquals(OptimizeCards.MIN_GAMEPLAY_SEC, OptimizeJudge.COMPARABLE_GAMEPLAY_SEC)
     }
 
     @Test
@@ -96,12 +110,12 @@ class OptimizeJudgeTest {
             verdictGameplay?.let { put("perf_verdict", JSONObject().put("gameplay_s", it)) }
         }
         val aborted = record(length = 95, fps = 20.0)
-        val menuOnly = record(length = 900, fps = 60.0, verdictGameplay = 300)
-        val played = record(length = 1000, fps = 51.0, verdictGameplay = 874)
+        val menuOnly = record(length = 900, fps = 60.0, verdictGameplay = 240)
+        val played = record(length = 600, fps = 51.0, verdictGameplay = 415)
         val older = record(length = 1500, fps = 40.0)
 
         val baseline = OptimizeJudge.baselineOf(sequenceOf(aborted, menuOnly, played, older))!!
-        assertEquals(874, baseline.gameplaySec)
+        assertEquals(415, baseline.gameplaySec)
         assertEquals(51.0, baseline.steadyFps!!, 1e-9)
         assertEquals(1500, OptimizeJudge.baselineOf(sequenceOf(aborted, older))!!.gameplaySec)
         assertNull(OptimizeJudge.baselineOf(sequenceOf(aborted, menuOnly)))

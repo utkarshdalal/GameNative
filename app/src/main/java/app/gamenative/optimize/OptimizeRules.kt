@@ -36,6 +36,41 @@ object OptimizeLadders {
         if (ladder.state in RESUMABLE) ladder.copy(state = LadderState.TRYING, noChangeStreak = 0) else ladder
 
     /**
+     * A profile accepted from a card: the session that produced the card is the first step's baseline, when the
+     * ladder has nothing on yet and the session was long enough to judge against.
+     */
+    fun accepted(ladder: ProfileLadder, cardSession: Metrics?): ProfileLadder =
+        if (cardSession != null && cardSession.gameplaySec >= OptimizeJudge.COMPARABLE_GAMEPLAY_SEC && ladder.pending == null && ladder.kept.isEmpty()) {
+            ladder.copy(baselineOverride = cardSession)
+        } else {
+            ladder
+        }
+
+    /**
+     * The baseline once a step is judged and stays on: a step that helped makes its own session the baseline, as it
+     * is the newest judged session under the kept steps; one kept without a comparison leaves the step's baseline.
+     */
+    fun baselineAfterKeep(result: String, pending: PendingRung, judged: Metrics, current: Metrics?): Metrics? =
+        if (result == OptimizeJudge.HELPED) judged else pending.baseline ?: current
+
+    /** The baseline once every step is taken off: the session before the first of them. */
+    fun baselineAfterRestore(ladder: ProfileLadder): Metrics? =
+        ladder.kept.firstOrNull()?.before ?: ladder.pending?.baseline ?: ladder.baselineOverride
+
+    /** Keep tuning or Continue: the ladder tries again with a fresh no-change streak, recorded as card_action continue. */
+    fun resumed(state: OptimizeLocalState): OptimizeLocalState {
+        val profile = state.activeProfile ?: return state
+        return state.copy(cardAction = OptimizeCards.WIRE_CONTINUE)
+            .withLadder(profile, state.ladder(profile).copy(state = LadderState.TRYING, noChangeStreak = 0))
+    }
+
+    /** True when the next launch asks for a rung: trying, nothing on trial, and not held back by the plan. */
+    fun wouldAsk(state: OptimizeLocalState, ladder: ProfileLadder, isMember: Boolean, nowMillis: Long): Boolean =
+        ladder.state == LadderState.TRYING &&
+            ladder.pending.let { it == null || it.revert != null } &&
+            OptimizeCards.shouldAskAfterTrial(ladder, state.entitlement, state.entitlementCheckedAt, isMember, nowMillis)
+
+    /**
      * Holds [profile]'s ladder while the server has nothing for the game: a trying ladder with nothing on trial waits,
      * and a waiting ladder tries again once [OptimizeLocalState.noRule] lets go, which is then cleared.
      * [rulesVersion] is the newest rules build any answer carried.
@@ -163,8 +198,17 @@ object OptimizeTarget {
     }
 
     /** Before the first step of [ladder]: true when the game already meets the profile's target on its own settings. */
-    fun metAtBaseline(profile: OptimizeProfile, ladder: ProfileLadder, baseline: Metrics?, refreshHz: Double?, fpsCap: Int): Boolean =
-        ladder.state == LadderState.TRYING && ladder.kept.isEmpty() && ladder.pending == null && ladder.tried.isEmpty() &&
+    /** [cardAction] continue (Keep tuning) asks for a step even when the target is already met. */
+    fun metAtBaseline(
+        profile: OptimizeProfile,
+        ladder: ProfileLadder,
+        baseline: Metrics?,
+        refreshHz: Double?,
+        fpsCap: Int,
+        cardAction: String? = null,
+    ): Boolean =
+        cardAction != OptimizeCards.WIRE_CONTINUE &&
+            ladder.state == LadderState.TRYING && ladder.kept.isEmpty() && ladder.pending == null && ladder.tried.isEmpty() &&
             baseline != null && met(profile, baseline, refreshHz, fpsCap)
 }
 

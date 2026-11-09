@@ -2023,6 +2023,9 @@
     <string name="optimize_metric_fps">Liczba klatek</string>
     <string name="optimize_metric_stutter">Przycięcia</string>
     <string name="optimize_metric_stable_for">Stabilnie przez</string>
+    <string name="optimize_metric_frame_p99">Najwolniejsze klatki</string>
+    <string name="optimize_metric_ms_value">%1$d ms</string>
+    <string name="optimize_metric_gpu_work">Praca GPU na klatkę</string>
     <string name="optimize_metric_fps_value">%1$d kl./s</string>
     <string name="optimize_metric_percent_value">%1$d %%</string>
     <string name="optimize_metric_delta_up">+%1$d %%</string>

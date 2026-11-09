@@ -105,6 +105,27 @@ class EntitlementLineTest {
     }
 
     @Test
+    fun proAccountsReadUnlimitedFromTheTierOrTheOlderFields() {
+        val unlimitedPill = PlanText(R.string.optimize_plan_unlimited, args = listOf(PlanName.PRO))
+        val live = parse(
+            "{\"state\":\"member\",\"trial_games_used\":4,\"trial_games_limit\":0,\"tier\":\"optimize_unlimited\"," +
+                "\"games_used\":4,\"games_quota\":null,\"period_resets_at\":null}",
+        )
+        assertEquals(Entitlement.Plan.UNLIMITED, live.plan)
+        assertEquals(EntitlementLine.Unlimited, line(live))
+        assertEquals(unlimitedPill, OptimizeStatus.entitlementPill(line(live)!!))
+        // The tier alone is enough, whatever the quota field says.
+        assertEquals(EntitlementLine.Unlimited, line(parse("{\"tier\":\"optimize_unlimited\"}"), member = false))
+        // Before tiers: a member with no trial limit.
+        val older = parse("{\"state\":\"member\",\"trial_games_used\":0,\"trial_games_limit\":0}")
+        assertEquals(EntitlementLine.Unlimited, line(older))
+        assertEquals(unlimitedPill, OptimizeStatus.entitlementPill(line(older, signedIn = true)!!))
+        // A monthly plan with its games used stays a monthly line.
+        val basicUsed = parse("{\"state\":\"none\",\"tier\":\"optimize_basic\",\"games_used\":3,\"games_quota\":3}")
+        assertEquals(EntitlementLine.Monthly(3, 3, null), line(basicUsed))
+    }
+
+    @Test
     fun pillTextForEachPlan() {
         assertEquals(PlanText(R.string.optimize_plan_unlimited, args = listOf(PlanName.PRO)), OptimizeStatus.entitlementPill(EntitlementLine.Unlimited))
         assertEquals(PlanText(R.string.optimize_plan_signed_out), OptimizeStatus.entitlementPill(EntitlementLine.Offer(3)))

@@ -1961,6 +1961,9 @@
     <string name="optimize_metric_fps">프레임 속도</string>
     <string name="optimize_metric_stutter">끊김</string>
     <string name="optimize_metric_stable_for">안정 유지</string>
+    <string name="optimize_metric_frame_p99">가장 느린 프레임</string>
+    <string name="optimize_metric_ms_value">%1$d ms</string>
+    <string name="optimize_metric_gpu_work">프레임당 GPU 작업량</string>
     <string name="optimize_metric_fps_value">%1$d fps</string>
     <string name="optimize_metric_percent_value">%1$d %%</string>
     <string name="optimize_metric_delta_up">+%1$d %%</string>

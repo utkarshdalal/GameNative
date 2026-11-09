@@ -1992,6 +1992,9 @@
     <string name="optimize_metric_fps">Frame rate</string>
     <string name="optimize_metric_stutter">Scatti</string>
     <string name="optimize_metric_stable_for">Stabile per</string>
+    <string name="optimize_metric_frame_p99">Fotogrammi più lenti</string>
+    <string name="optimize_metric_ms_value">%1$d ms</string>
+    <string name="optimize_metric_gpu_work">Lavoro GPU per fotogramma</string>
     <string name="optimize_metric_fps_value">%1$d fps</string>
     <string name="optimize_metric_percent_value">%1$d %%</string>
     <string name="optimize_metric_delta_up">+%1$d %%</string>

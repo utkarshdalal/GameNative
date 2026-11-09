@@ -2019,6 +2019,9 @@
     <string name="optimize_metric_fps">FPS</string>
     <string name="optimize_metric_stutter">Підгальмовування</string>
     <string name="optimize_metric_stable_for">Стабільно</string>
+    <string name="optimize_metric_frame_p99">Найповільніші кадри</string>
+    <string name="optimize_metric_ms_value">%1$d мс</string>
+    <string name="optimize_metric_gpu_work">Навантаження GPU на кадр</string>
     <string name="optimize_metric_fps_value">%1$d FPS</string>
     <string name="optimize_metric_percent_value">%1$d %%</string>
     <string name="optimize_metric_delta_up">+%1$d %%</string>

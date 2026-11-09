@@ -2019,6 +2019,9 @@
     <string name="optimize_metric_fps">Kare hızı</string>
     <string name="optimize_metric_stutter">Takılmalar</string>
     <string name="optimize_metric_stable_for">Kararlı süre</string>
+    <string name="optimize_metric_frame_p99">En yavaş kareler</string>
+    <string name="optimize_metric_ms_value">%1$d ms</string>
+    <string name="optimize_metric_gpu_work">Kare başına GPU işi</string>
     <string name="optimize_metric_fps_value">%1$d FPS</string>
     <string name="optimize_metric_percent_value">%%%1$d</string>
     <string name="optimize_metric_delta_up">+%%%1$d</string>

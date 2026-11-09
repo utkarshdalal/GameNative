@@ -1941,6 +1941,9 @@
     <string name="optimize_metric_fps">Bildrate</string>
     <string name="optimize_metric_stutter">Ruckler</string>
     <string name="optimize_metric_stable_for">Stabil für</string>
+    <string name="optimize_metric_frame_p99">Langsamste Frames</string>
+    <string name="optimize_metric_ms_value">%1$d ms</string>
+    <string name="optimize_metric_gpu_work">GPU-Arbeit pro Frame</string>
     <string name="optimize_metric_fps_value">%1$d fps</string>
     <string name="optimize_metric_percent_value">%1$d %%</string>
     <string name="optimize_metric_delta_up">+%1$d %%</string>

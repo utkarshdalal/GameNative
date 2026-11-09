@@ -138,16 +138,27 @@ class OptimizeActions(
     var busy by mutableStateOf(false)
         private set
 
+    /** The confirmation of the last action that finished, shown in the dialog, which covers the snackbar. */
+    var confirmation by mutableStateOf<Int?>(null)
+        private set
+
     private fun perform(doneMessage: Int?, action: suspend () -> OptimizeController.ChangeResult) {
         busy = true
+        confirmation = null
         scope.launch {
-            when (withContext(NonCancellable) { action() }) {
-                OptimizeController.ChangeResult.GAME_RUNNING -> SnackbarManager.show(context.getString(R.string.optimize_game_running))
-                OptimizeController.ChangeResult.FAILED -> SnackbarManager.show(context.getString(R.string.optimize_undo_failed))
-                OptimizeController.ChangeResult.DONE -> doneMessage?.let { SnackbarManager.show(context.getString(it)) }
-                OptimizeController.ChangeResult.NO_CONTAINER -> Unit
+            // The message is sent even when the dialog closed meanwhile, so the snackbar shows once it is gone.
+            withContext(NonCancellable) {
+                when (action()) {
+                    OptimizeController.ChangeResult.GAME_RUNNING -> SnackbarManager.show(context.getString(R.string.optimize_game_running))
+                    OptimizeController.ChangeResult.FAILED -> SnackbarManager.show(context.getString(R.string.optimize_undo_failed))
+                    OptimizeController.ChangeResult.DONE -> doneMessage?.let {
+                        confirmation = it
+                        SnackbarManager.show(context.getString(it))
+                    }
+                    OptimizeController.ChangeResult.NO_CONTAINER -> Unit
+                }
+                busy = false
             }
-            busy = false
         }
     }
 
@@ -392,6 +403,15 @@ fun OptimizeDialog(
                 enabled = !actions.busy,
             )
             Spacer(modifier = Modifier.height(8.dp))
+        }
+        actions.confirmation?.let {
+            OutcomePill(
+                text = stringResource(it),
+                color = PluviaTheme.colors.accentSuccess,
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(bottom = 8.dp),
+            )
         }
         PremiumTextButton(
             text = stringResource(R.string.optimize_restore_original),

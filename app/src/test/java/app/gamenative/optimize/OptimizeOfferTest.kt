@@ -173,4 +173,84 @@ class OptimizeOfferTest {
         assertEquals("1.2", OptimizeIdentity.gogBuild(JSONObject("""{"versionName":"1.2"}""")))
         assertNull(OptimizeIdentity.gogBuild(JSONObject("""{"gameId":"1"}""")))
     }
+
+    private val cardSession = Metrics(
+        gameplaySec = 511, steadyFps = 41.0, stutterShare = 0.012, cls = "gpu", confidence = 0.82, confident = true,
+        fpsCeilingReason = "gpu", gpuBusyP95 = 97, hotThreadP95 = 64, hotThreadCoreShare = mapOf("prime" to 0.7, "big" to 0.3),
+        pipelineCompilesBy5Min = listOf(40, 3),
+    )
+    private val olderRun = Metrics(gameplaySec = 914, steadyFps = 52.0, cls = "none", confidence = 0.0)
+
+    private fun pendingWith(baseline: Metrics?) = PendingRung(
+        Rung.parse(JSONObject("""{"rung_id":"cfg.x.balanced.a.s1","version":"v1","levers":[]}"""))!!, 0L, baseline, 0, emptyList(),
+    )
+
+    @Test
+    fun theSessionBehindTheCardIsTheFirstBaseline() {
+        val accepted = OptimizeLadders.accepted(OptimizeLadders.picked(ProfileLadder()), cardSession)
+        assertEquals(cardSession, accepted.baselineOverride)
+        // It survives the state file, so the launch that asks for the first step still has it.
+        val stored = OptimizeLocalState(activeProfile = OptimizeProfile.BALANCED).withLadder(OptimizeProfile.BALANCED, accepted)
+        val back = OptimizeLocalState.fromJson(JSONObject(stored.toJson().toString())).ladder(OptimizeProfile.BALANCED)
+        assertEquals(cardSession, back.baselineOverride)
+
+        // The next-rung request carries its verdict and signals, not an older run's.
+        val verdict = back.baselineOverride!!.toVerdictJson()!!
+        assertEquals("gpu", verdict.getString("class"))
+        assertEquals(0.82, verdict.getDouble("confidence"), 1e-9)
+        assertEquals("gpu", verdict.getString("fps_ceiling_reason"))
+        assertEquals(511, verdict.getInt("gameplay_s"))
+        assertEquals(0.7, verdict.getJSONObject("hot_thread_core_share").getDouble("prime"), 1e-9)
+        assertEquals(40, verdict.getJSONArray("pipeline_compiles_by_5min").getInt(0))
+        assertEquals("gpu", back.baselineOverride!!.toReportJson().getString("fps_ceiling_reason"))
+
+        // A ladder that already has steps keeps its own baseline; a session too short to judge against is not used.
+        val withKept = ProfileLadder(kept = listOf(pendingWith(olderRun).toKept(olderRun)), baselineOverride = olderRun)
+        assertEquals(olderRun, OptimizeLadders.accepted(withKept, cardSession).baselineOverride)
+        assertNull(OptimizeLadders.accepted(ProfileLadder(), cardSession.copy(gameplaySec = 299)).baselineOverride)
+        assertNull(OptimizeLadders.accepted(ProfileLadder(), null).baselineOverride)
+    }
+
+    @Test
+    fun laterStepsAreJudgedAgainstTheNewestJudgedSessionUnderTheKeptSteps() {
+        val after = cardSession.copy(gameplaySec = 415, steadyFps = 47.0)
+        val pending = pendingWith(cardSession)
+        assertEquals(after, OptimizeLadders.baselineAfterKeep(OptimizeJudge.HELPED, pending, after, cardSession))
+        // Kept without a comparison: the step's own baseline stays.
+        assertEquals(cardSession, OptimizeLadders.baselineAfterKeep(OptimizeJudge.NOT_COMPARABLE, pending, after, olderRun))
+        assertEquals(olderRun, OptimizeLadders.baselineAfterKeep(OptimizeJudge.NOT_COMPARABLE, pendingWith(null), after, olderRun))
+
+        // Restoring goes back to the session before the first step.
+        val second = cardSession.copy(steadyFps = 50.0)
+        val kept = listOf(pendingWith(cardSession).toKept(after), pendingWith(after).toKept(second))
+        assertEquals(cardSession, OptimizeLadders.baselineAfterRestore(ProfileLadder(kept = kept, pending = pendingWith(second))))
+        assertEquals(cardSession, OptimizeLadders.baselineAfterRestore(ProfileLadder(pending = pendingWith(cardSession))))
+        assertEquals(olderRun, OptimizeLadders.baselineAfterRestore(ProfileLadder(baselineOverride = olderRun)))
+    }
+
+    @Test
+    fun keepTuningAsksForTheNextStepOnTheNextLaunch() {
+        val kept = pendingWith(cardSession).toKept(cardSession)
+        val done = OptimizeLocalState(activeProfile = OptimizeProfile.BALANCED).withLadder(
+            OptimizeProfile.BALANCED,
+            ProfileLadder(state = LadderState.DONE, kept = listOf(kept), tried = listOf(TriedRung(kept.rungId, kept.version, OptimizeJudge.HELPED))),
+        )
+        assertFalse(OptimizeLadders.wouldAsk(done, done.ladder(OptimizeProfile.BALANCED), isMember = true, nowMillis = 0L))
+        val resumed = OptimizeLadders.resumed(done)
+        val ladder = resumed.ladder(OptimizeProfile.BALANCED)
+        assertEquals(LadderState.TRYING, ladder.state)
+        assertEquals(OptimizeCards.WIRE_CONTINUE, resumed.cardAction)
+        assertTrue(OptimizeLadders.wouldAsk(resumed, ladder, isMember = true, nowMillis = 0L))
+        assertTrue(OptimizeLadders.wouldAsk(resumed, ladder, isMember = false, nowMillis = 0L))
+
+        // Done at the baseline (no step yet): Keep tuning still asks instead of finding the target met again.
+        val good = Metrics(gameplaySec = 1200, steadyFps = 60.0, stutterShare = 0.005)
+        val fresh = OptimizeLadders.resumed(
+            OptimizeLocalState(activeProfile = OptimizeProfile.BALANCED).withLadder(OptimizeProfile.BALANCED, ProfileLadder(state = LadderState.DONE)),
+        )
+        val freshLadder = fresh.ladder(OptimizeProfile.BALANCED)
+        assertTrue(OptimizeTarget.metAtBaseline(OptimizeProfile.BALANCED, freshLadder, good, 60.0, 60))
+        assertFalse(OptimizeTarget.metAtBaseline(OptimizeProfile.BALANCED, freshLadder, good, 60.0, 60, fresh.cardAction))
+        assertTrue(OptimizeLadders.wouldAsk(fresh, freshLadder, isMember = true, nowMillis = 0L))
+    }
 }

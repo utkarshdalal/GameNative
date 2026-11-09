@@ -1959,6 +1959,9 @@
     <string name="optimize_metric_fps">影格率</string>
     <string name="optimize_metric_stutter">卡頓</string>
     <string name="optimize_metric_stable_for">穩定時長</string>
+    <string name="optimize_metric_frame_p99">最慢的影格</string>
+    <string name="optimize_metric_ms_value">%1$d 毫秒</string>
+    <string name="optimize_metric_gpu_work">每影格 GPU 工作量</string>
     <string name="optimize_metric_fps_value">%1$d fps</string>
     <string name="optimize_metric_percent_value">%1$d%%</string>
     <string name="optimize_metric_delta_up">+%1$d%%</string>

@@ -1990,6 +1990,9 @@
     <string name="optimize_metric_fps">Cadre pe secundă</string>
     <string name="optimize_metric_stutter">Sacadări</string>
     <string name="optimize_metric_stable_for">Stabil timp de</string>
+    <string name="optimize_metric_frame_p99">Cele mai lente cadre</string>
+    <string name="optimize_metric_ms_value">%1$d ms</string>
+    <string name="optimize_metric_gpu_work">Lucru GPU pe cadru</string>
     <string name="optimize_metric_fps_value">%1$d FPS</string>
     <string name="optimize_metric_percent_value">%1$d %%</string>
     <string name="optimize_metric_delta_up">+%1$d %%</string>

@@ -166,12 +166,18 @@ private fun fpsValue(fps: Double): String = stringResource(R.string.optimize_met
 private fun shareValue(share: Double): String = stringResource(R.string.optimize_metric_percent_value, (share * 100).roundToInt())
 
 @Composable
+private fun msValue(ms: Double): String = stringResource(R.string.optimize_metric_ms_value, ms.roundToInt())
+
+@Composable
 private fun minutesValue(minutes: Int): String = pluralStringResource(R.plurals.optimize_metric_minutes, minutes, minutes)
 
 /** Minutes the session held its performance: until throttling set in, or all of it when it never did. */
 private fun stableMinutes(metrics: Metrics): Int = ((metrics.throttleOnsetSec ?: metrics.gameplaySec) / 60).coerceAtLeast(1)
 
-/** Before and after tiles from the two judged sessions; a measure the session after did not record is left out. */
+/**
+ * Before and after tiles from the two judged sessions: frame rate, stutters (else the slowest frames) and how long it
+ * stayed stable (else GPU work per frame). A measure the session after did not record is left out.
+ */
 @Composable
 private fun resultTiles(card: OptimizeCard): List<CardTile> {
     val after = card.metrics ?: return emptyList()
@@ -186,20 +192,39 @@ private fun resultTiles(card: OptimizeCard): List<CardTile> {
             delta = card.fpsGainPct?.let { stringResource(R.string.optimize_metric_delta_up, it) },
         )
     }
-    after.stutterShare?.let { a ->
+    val stutter = after.stutterShare
+    val p99 = after.frameTimeP99Ms
+    if (stutter != null) {
         tiles += CardTile(
             label = stringResource(R.string.optimize_metric_stutter),
             before = before?.stutterShare?.let { stringResource(R.string.optimize_metric_before, shareValue(it)) },
-            after = shareValue(a),
+            after = shareValue(stutter),
             accent = PluviaTheme.colors.accentPurple,
             delta = card.stutterDropPct?.let { stringResource(R.string.optimize_metric_delta_down, it) },
         )
+    } else if (p99 != null) {
+        tiles += CardTile(
+            label = stringResource(R.string.optimize_metric_frame_p99),
+            before = before?.frameTimeP99Ms?.let { stringResource(R.string.optimize_metric_before, msValue(it)) },
+            after = msValue(p99),
+            accent = PluviaTheme.colors.accentPurple,
+        )
     }
+    val workBefore = before?.workPerFrame()?.takeIf { it > 0 }
+    val workAfter = after.workPerFrame()?.takeIf { it > 0 }
     if (after.throttleOnsetSec != null || before?.throttleOnsetSec != null) {
         tiles += CardTile(
             label = stringResource(R.string.optimize_metric_stable_for),
             before = before?.let { stringResource(R.string.optimize_metric_before, minutesValue(stableMinutes(it))) },
             after = minutesValue(stableMinutes(after)),
+            accent = PluviaTheme.colors.accentSuccess,
+        )
+    } else if (workBefore != null && workAfter != null) {
+        // GPU work per frame has no unit of its own, so the tile shows the session after as a share of the one before.
+        tiles += CardTile(
+            label = stringResource(R.string.optimize_metric_gpu_work),
+            before = stringResource(R.string.optimize_metric_before, shareValue(1.0)),
+            after = shareValue(workAfter / workBefore),
             accent = PluviaTheme.colors.accentSuccess,
         )
     }
@@ -339,6 +364,8 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
                 accent = success,
                 statusPill = stringResource(R.string.optimize_status_done) to PluviaTheme.colors.accentSuccess,
                 showEntitlement = showEntitlement,
+                // A done card after a step compares the two sessions like a helped card; done at the baseline has one.
+                tiles = if (card.before != null) resultTiles(card) else emptyList(),
                 benefits = listOfNotNull(body),
                 primary = if (heatHint) {
                     CardAction(stringResource(R.string.option_optimize), subtitle = stringResource(chosen.title)) { optimizeChosen() }

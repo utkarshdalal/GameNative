@@ -2019,6 +2019,9 @@
     <string name="optimize_metric_fps">Images par seconde</string>
     <string name="optimize_metric_stutter">Saccades</string>
     <string name="optimize_metric_stable_for">Stable pendant</string>
+    <string name="optimize_metric_frame_p99">Images les plus lentes</string>
+    <string name="optimize_metric_ms_value">%1$d ms</string>
+    <string name="optimize_metric_gpu_work">Travail GPU par image</string>
     <string name="optimize_metric_fps_value">%1$d FPS</string>
     <string name="optimize_metric_percent_value">%1$d %%</string>
     <string name="optimize_metric_delta_up">+%1$d %%</string>

@@ -168,7 +168,7 @@ object OptimizeController {
         )
     }
 
-    /** The newest run of this game with enough gameplay to judge against; aborted short runs are skipped. */
+    /** Fallback baseline when the ladder holds none: the newest run long enough to judge against; short runs are skipped. */
     fun baselineRun(container: Container): Metrics? {
         val files = File(container.rootDir, ".gamenative/runs").listFiles { f -> f.name.endsWith(".json") } ?: return null
         val runs = files.sortedByDescending { it.name }.asSequence().mapNotNull { runCatching { JSONObject(it.readText()) }.getOrNull() }
@@ -530,11 +530,8 @@ object OptimizeController {
         return PrefetchKey(data.executablePath, data.dxwrapper, fpsLimit(container))
     }
 
-    /** True when the next launch would ask for a rung: trying, nothing on trial, and not held back by the trial. */
     private fun wouldAsk(state: OptimizeLocalState, ladder: ProfileLadder, nowMillis: Long): Boolean =
-        ladder.state == LadderState.TRYING &&
-            ladder.pending.let { it == null || it.revert != null } &&
-            OptimizeCards.shouldAskAfterTrial(ladder, state.entitlement, state.entitlementCheckedAt, Membership.isMember(), nowMillis)
+        OptimizeLadders.wouldAsk(state, ladder, Membership.isMember(), nowMillis)
 
     /** Before the first step: a done card when the game already meets [profile]'s target; null otherwise. */
     private fun doneAtBaseline(
@@ -546,7 +543,7 @@ object OptimizeController {
         fpsCap: Int,
     ): OptimizeLocalState? {
         val ladder = state.ladder(profile)
-        if (!OptimizeTarget.metAtBaseline(profile, ladder, baseline, refreshHz, fpsCap)) return null
+        if (!OptimizeTarget.metAtBaseline(profile, ladder, baseline, refreshHz, fpsCap, state.cardAction)) return null
         Timber.tag(TAG).i("Optimize: ${profile.wireId} target already met at the baseline (${baseline?.steadyFps} fps); not asking")
         val done = state.withLadder(profile, ladder.copy(state = LadderState.DONE))
             .copy(card = OptimizeCard(OptimizeCard.DONE, System.currentTimeMillis(), gameName(appId), profile, metrics = baseline))
@@ -1453,7 +1450,11 @@ object OptimizeController {
         val keep = result == OptimizeJudge.HELPED || result == OptimizeJudge.NOT_COMPARABLE
         var l = ladder.triedWith(rung.rungId, rung.version, result, settled.reason)
         l = if (keep) {
-            l.copy(kept = l.kept + pending.toKept(judged), pending = null, baselineOverride = null)
+            l.copy(
+                kept = l.kept + pending.toKept(judged),
+                pending = null,
+                baselineOverride = OptimizeLadders.baselineAfterKeep(result, pending, judged, ladder.baselineOverride),
+            )
         } else {
             l.copy(
                 pending = pending.copy(revert = result),
@@ -1468,7 +1469,15 @@ object OptimizeController {
         val card = when {
             settled.done -> {
                 l = l.copy(state = LadderState.DONE)
-                OptimizeCard(OptimizeCard.DONE, now, name, profile, rungId = rung.rungId, capFps = capFps, metrics = judged, before = before)
+                OptimizeCard(
+                    OptimizeCard.DONE, now, name, profile,
+                    rungId = rung.rungId,
+                    capFps = capFps,
+                    fpsGainPct = OptimizeCards.fpsGainPct(before, judged),
+                    stutterDropPct = OptimizeCards.stutterDropPct(before, judged),
+                    metrics = judged,
+                    before = before,
+                )
             }
             result == OptimizeJudge.HELPED -> OptimizeCard(
                 OptimizeCard.HELPED, now, name, profile,
@@ -1534,7 +1543,7 @@ object OptimizeController {
     ): Pair<OptimizeLocalState, Boolean> {
         val base = state.copy(capPreferred = true, prefetched = null, suppression = null, noRule = null)
         val (switched, ok) = if (base.activeProfile == null) {
-            switchTo(context, appId, container, store, base, card.profile ?: OptimizeProfile.BALANCED)
+            switchTo(context, appId, container, store, base, card.profile ?: OptimizeProfile.BALANCED, card.metrics)
         } else {
             base to true
         }
@@ -1621,6 +1630,7 @@ object OptimizeController {
         store: OptimizeStore,
         state: OptimizeLocalState,
         target: OptimizeProfile?,
+        cardSession: Metrics? = null,
     ): Pair<OptimizeLocalState, Boolean> {
         val (reconciled, ok) = reconcile(context, appId, container, store, state, target)
         if (!ok) return reconciled to false
@@ -1631,7 +1641,7 @@ object OptimizeController {
         )
         if (target != null) {
             val ladder = s.ladder(target)
-            s = s.withLadder(target, OptimizeLadders.picked(ladder))
+            s = s.withLadder(target, OptimizeLadders.accepted(OptimizeLadders.picked(ladder), cardSession))
             s = OptimizeLadders.held(s, target, System.currentTimeMillis(), appRulesVersion())
             val baseline = s.ladder(target).baselineOverride ?: baselineRun(container)
             s = doneAtBaseline(appId, s, target, baseline, refreshHz(context), userFpsLimit(container, s.ladder(target))) ?: s
@@ -1660,6 +1670,7 @@ object OptimizeController {
         val profile = state.activeProfile ?: return (state to true)
         var s = state
         var ladder = s.ladder(profile)
+        val original = OptimizeLadders.baselineAfterRestore(ladder)
         var ok = true
         val reverted = mutableListOf<String>()
         ladder.pending?.let { pending ->
@@ -1684,7 +1695,7 @@ object OptimizeController {
             ladder = ladder.copy(kept = ladder.kept - kept)
             s = s.queued(undoReport(appId, profile, kept.rungId, kept.version, kept.baseline, kept.levers.size))
         }
-        if (ok) ladder = ladder.copy(state = nextState, noChangeStreak = 0, baselineOverride = null)
+        if (ok) ladder = ladder.copy(state = nextState, noChangeStreak = 0, baselineOverride = original)
         if (reverted.isNotEmpty()) event(appId, OptimizeEvents.RESTORED, s, profile)
         Timber.tag(TAG).i(
             "Optimize: restore ${profile.wireId} reverted ${reverted.ifEmpty { listOf("nothing") }.joinToString()}" +
@@ -1699,16 +1710,9 @@ object OptimizeController {
             restore(context, appId, container, store, state, LadderState.PAUSED)
         }
 
-    /** The active ladder tries again with a fresh no-change streak, recorded as card_action continue. */
-    private fun resumed(state: OptimizeLocalState): OptimizeLocalState {
-        val profile = state.activeProfile ?: return state
-        return state.copy(cardAction = OptimizeCards.WIRE_CONTINUE)
-            .withLadder(profile, state.ladder(profile).copy(state = LadderState.TRYING, noChangeStreak = 0))
-    }
-
     /** Resumes a paused or done ladder: the next launch asks for the next step again. */
     suspend fun continueLadder(context: Context, appId: String): ChangeResult =
-        change(context, appId, touchesFiles = false, what = "continuing") { _, _, state -> resumed(state) to true }
+        change(context, appId, touchesFiles = false, what = "continuing") { _, _, state -> OptimizeLadders.resumed(state) to true }
 
     /** Takes off the step a helped card was about; the ladder keeps trying, so the next launch asks again. */
     private suspend fun undoStep(
@@ -1778,13 +1782,13 @@ object OptimizeController {
             }?.let { return@change it }
             when (action) {
                 OptimizeCards.ACTION_OPTIMIZE ->
-                    switchTo(context, appId, container, store, state.copy(suppression = null), profile ?: OptimizeProfile.BALANCED)
+                    switchTo(context, appId, container, store, state.copy(suppression = null), profile ?: OptimizeProfile.BALANCED, card.metrics)
                 OptimizeCards.ACTION_NOT_NOW -> state.copy(suppression = OptimizeCards.notNow(card, now)) to true
                 OptimizeCards.ACTION_NEVER -> state.copy(never = true) to true
                 OptimizeCards.ACTION_KEEP_GOING -> setLadder(LadderState.TRYING) to true
                 OptimizeCards.ACTION_HAPPY -> setLadder(LadderState.DONE) to true
                 OptimizeCards.ACTION_STOP -> setLadder(LadderState.PAUSED) to true
-                OptimizeCards.WIRE_CONTINUE -> resumed(state) to true
+                OptimizeCards.WIRE_CONTINUE -> OptimizeLadders.resumed(state) to true
                 OptimizeCards.ACTION_UNDO -> undoStep(context, appId, container, store, state, card.rungId)
                 OptimizeCards.ACTION_UNDO_ALL -> restore(context, appId, container, store, state, LadderState.EXHAUSTED)
                 OptimizeCards.ACTION_DISMISSED -> when (card.kind) {

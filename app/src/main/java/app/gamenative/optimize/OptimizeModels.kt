@@ -586,8 +586,8 @@ data class Entitlement(
         const val DEFAULT_TRIAL_GAMES_LIMIT = 3
         const val DEFAULT_MONTHLY_GAMES = 3
 
-        private val UNLIMITED_TIERS = setOf("unlimited", "pro", "patron")
-        private val MONTHLY_TIERS = setOf("monthly", "basic")
+        private val UNLIMITED_TIERS = setOf("unlimited", "optimize_unlimited", "pro", "patron")
+        private val MONTHLY_TIERS = setOf("monthly", "optimize_basic", "basic")
         private val FREE_TIERS = setOf("free", "trial", "none")
 
         fun fromJson(o: JSONObject?): Entitlement? {

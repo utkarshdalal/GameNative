@@ -35,7 +35,12 @@ object OptimizeJudge {
     const val REASON_MENU_WINDOWS = "menu_windows"
 
     const val CRASH_GAMEPLAY_SEC = 120
-    const val COMPARABLE_GAMEPLAY_SEC = 600
+
+    /** Gameplay a session needs to be judged or to serve as a baseline; the same minimum a card needs. */
+    const val COMPARABLE_GAMEPLAY_SEC = OptimizeCards.MIN_GAMEPLAY_SEC
+
+    /** A self-exit on a fatal fingerprint before this much gameplay counts as a crash. */
+    const val FATAL_END_GAMEPLAY_SEC = 600
     const val MAX_SHORT_SESSIONS = 3
 
     private const val FPS_HELPED_RATIO = 1.08
@@ -133,7 +138,10 @@ object OptimizeJudge {
 
     data class Verdict(val result: String, val reason: String)
 
-    /** The baseline to judge against: the newest run, of [runsNewestFirst], long enough to compare; short runs are skipped. */
+    /**
+     * The fallback baseline when the ladder holds none (ProfileLadder.baselineOverride): the newest run of
+     * [runsNewestFirst] long enough to compare; short runs are skipped.
+     */
     fun baselineOf(runsNewestFirst: Sequence<JSONObject>): Metrics? =
         runsNewestFirst.map { Metrics.fromRun(it) }.firstOrNull { it.gameplaySec >= COMPARABLE_GAMEPLAY_SEC }
 
@@ -143,7 +151,7 @@ object OptimizeJudge {
 
     /** The session ended by itself on a fatal fingerprint before it was long enough to judge. */
     fun fatalEnd(m: Metrics): Boolean =
-        m.gameplaySec < COMPARABLE_GAMEPLAY_SEC && m.exitReason in SELF_EXITS && fatalFingerprint(m.crashKind, m.crashCode)
+        m.gameplaySec < FATAL_END_GAMEPLAY_SEC && m.exitReason in SELF_EXITS && fatalFingerprint(m.crashKind, m.crashCode)
 
     /** A fingerprint that ends the process; an unimplemented instruction or function does, an unimplemented syscall does not. */
     fun fatalFingerprint(kind: String?, code: String?): Boolean =

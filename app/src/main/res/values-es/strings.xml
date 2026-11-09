@@ -1999,6 +1999,9 @@
     <string name="optimize_metric_fps">Fotogramas</string>
     <string name="optimize_metric_stutter">Tirones</string>
     <string name="optimize_metric_stable_for">Estable durante</string>
+    <string name="optimize_metric_frame_p99">Fotogramas más lentos</string>
+    <string name="optimize_metric_ms_value">%1$d ms</string>
+    <string name="optimize_metric_gpu_work">Trabajo de GPU por fotograma</string>
     <string name="optimize_metric_fps_value">%1$d FPS</string>
     <string name="optimize_metric_percent_value">%1$d %%</string>
     <string name="optimize_metric_delta_up">+%1$d %%</string>

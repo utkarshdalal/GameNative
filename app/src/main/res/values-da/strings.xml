@@ -1871,6 +1871,9 @@
     <string name="optimize_metric_fps">Billedhastighed</string>
     <string name="optimize_metric_stutter">Hak</string>
     <string name="optimize_metric_stable_for">Stabil i</string>
+    <string name="optimize_metric_frame_p99">Langsomste billeder</string>
+    <string name="optimize_metric_ms_value">%1$d ms</string>
+    <string name="optimize_metric_gpu_work">GPU-arbejde pr. billede</string>
     <string name="optimize_metric_fps_value">%1$d fps</string>
     <string name="optimize_metric_percent_value">%1$d %%</string>
     <string name="optimize_metric_delta_up">+%1$d %%</string>
