@@ -3,6 +3,8 @@ package app.gamenative.powercontrol
 import app.gamenative.PluviaApp
 import app.gamenative.display.GameNativeDrm
 import app.gamenative.events.AndroidEvent
+import com.winlator.container.Container
+import com.winlator.core.ProcessHelper
 import com.winlator.winhandler.OnGetProcessInfoListener
 import com.winlator.winhandler.ProcessInfo
 import com.winlator.winhandler.WinHandler
@@ -103,9 +105,15 @@ object ContainerAffinity {
     /**
      * X11 path for a Wine build that sets no _NET_WM_WOW64 on its windows (Proton 10 and later):
      * the window cannot say whether its process is WoW64, so the winhandler's process list
-     * decides. Without that answer the process gets [mask], as before.
+     * decides. The WoW64 list is only sent when it was set explicitly; with the untouched default,
+     * or without an answer from the winhandler, the process gets [mask], as before.
      */
     fun applyToWindowProcess(winHandler: WinHandler, pid: Int, name: String, mask: Int, maskWoW64: Int) {
+        val defaultMaskWoW64 = ProcessHelper.getAffinityMask(Container.getFallbackCPUListWoW64()).toShort().toInt()
+        if (!isExplicitWoW64Mask(maskWoW64, defaultMaskWoW64)) {
+            if (mask != 0) winHandler.setProcessAffinity(pid, mask)
+            return
+        }
         windowProcessExecutor.execute {
             var processes: List<ProcessInfo>? = null
             for (attempt in 1..REPLY_ATTEMPTS) {
@@ -114,7 +122,7 @@ object ContainerAffinity {
                 if (processes != null) break
             }
             val info = processes?.firstOrNull { it.pid == pid }
-            val target = windowProcessMask(info, mask, maskWoW64) ?: return@execute
+            val target = windowProcessMask(info, mask, maskWoW64, defaultMaskWoW64) ?: return@execute
             if (WinHandler.getActiveInstance() !== winHandler) return@execute
             winHandler.setProcessAffinity(pid, target)
             Timber.tag(TAG).i(
@@ -123,9 +131,17 @@ object ContainerAffinity {
         }
     }
 
-    /** The mask for a window's process: the WoW64 list when the winhandler reports it WoW64. */
-    internal fun windowProcessMask(info: ProcessInfo?, mask: Int, maskWoW64: Int): Int? =
-        (if (info?.wow64Process == true) maskWoW64 else mask).takeIf { it != 0 }
+    internal fun isExplicitWoW64Mask(maskWoW64: Int, defaultMaskWoW64: Int): Boolean =
+        maskWoW64 != 0 && maskWoW64 != defaultMaskWoW64
+
+    /**
+     * The mask for a window's process: the WoW64 list when the winhandler reports it WoW64 and
+     * the list differs from the default, else the main list.
+     */
+    internal fun windowProcessMask(info: ProcessInfo?, mask: Int, maskWoW64: Int, defaultMaskWoW64: Int): Int? {
+        val wow64 = info?.wow64Process == true && isExplicitWoW64Mask(maskWoW64, defaultMaskWoW64)
+        return (if (wow64) maskWoW64 else mask).takeIf { it != 0 }
+    }
 
     /**
      * The mask [info] should get, or null when the process is left alone.
