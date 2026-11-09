@@ -1904,6 +1904,7 @@
     <string name="optimize_vc_none_may_be_unstable">Aucun changement visuel. Peut être instable dans certains jeux.</string>
     <string name="optimize_vc_none">Aucun changement visuel.</string>
     <string name="optimize_vc_textures_stream_later">Les textures peuvent mettre un peu plus de temps à se charger.</string>
+    <string name="optimize_vc_image_softer_upscaled">L\'image est mise à l\'échelle et paraît plus douce.</string>
     <string name="optimize_after_crash_undone">Ce changement ne convenait pas à %1$s, il a donc été annulé.</string>
     <string name="optimize_card_title_gpu">Votre GPU n\'a pas pu suivre dans %1$s</string>
     <string name="optimize_card_title_thermal">%1$s a chauffé et a commencé à perdre des images</string>

@@ -1886,6 +1886,7 @@
     <string name="optimize_vc_none_may_be_unstable">Візуально нічого не змінюється. У деяких іграх можлива нестабільність.</string>
     <string name="optimize_vc_none">Візуально нічого не змінюється.</string>
     <string name="optimize_vc_textures_stream_later">Текстури можуть завантажуватися трохи довше.</string>
+    <string name="optimize_vc_image_softer_upscaled">Зображення масштабується і виглядає м’якшим.</string>
     <string name="optimize_after_crash_undone">Ця зміна не підійшла для %1$s, тому її скасовано.</string>
     <string name="optimize_card_title_gpu">Відеокарта не встигала в грі %1$s</string>
     <string name="optimize_card_title_thermal">Гра %1$s перегрілася й почала втрачати кадри</string>

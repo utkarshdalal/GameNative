@@ -128,4 +128,12 @@ class OptimizeContainerLeverTest {
         assertEquals("dxvk.numCompilerThreads=2;d3d11.samplerAnisotropy=4", EnvVars(applied.envVars).get("DXVK_CONFIG"))
         assertEquals("4", OptimizeApplier.configValue(applied, "dxwrapperConfig.d3d11.samplerAnisotropy"))
     }
+
+    @Test
+    fun theGamescopeUpscaleFilterIsAContainerKey() {
+        assertEquals("gamescopeScalingFilter", OptimizeApplier.SCALING_FILTER_KEY)
+        assertTrue(OptimizeApplier.isAllowedContainerKey(OptimizeApplier.SCALING_FILTER_KEY))
+        assertEquals(app.gamenative.display.GamescopeScalingFilter.FSR, app.gamenative.display.GamescopeScalingFilter.fromId("fsr"))
+        assertNull(app.gamenative.display.GamescopeScalingFilter.fromId("bicubic"))
+    }
 }

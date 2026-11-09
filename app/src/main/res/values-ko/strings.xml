@@ -1855,6 +1855,7 @@
     <string name="optimize_vc_none_may_be_unstable">시각적 변화는 없습니다. 일부 게임에서는 불안정할 수 있습니다.</string>
     <string name="optimize_vc_none">시각적 변화는 없습니다.</string>
     <string name="optimize_vc_textures_stream_later">텍스처를 불러오는 데 시간이 조금 더 걸릴 수 있습니다.</string>
+    <string name="optimize_vc_image_softer_upscaled">이미지가 업스케일되어 더 부드럽게 보입니다.</string>
     <string name="optimize_after_crash_undone">이 변경이 %1$s와(과) 맞지 않아 되돌렸습니다.</string>
     <string name="optimize_card_title_gpu">%1$s에서 GPU가 따라가지 못했습니다</string>
     <string name="optimize_card_title_thermal">%1$s이(가) 뜨거워지면서 프레임이 떨어지기 시작했습니다</string>

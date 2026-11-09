@@ -131,4 +131,12 @@ class OptimizeServerTest {
         assertEquals(other, OptimizeServer.applyJudgement(other, OptimizeProfile.BALANCED, "r9", judgement(OptimizeJudge.HELPED), null))
         assertEquals(other, OptimizeServer.applyJudgement(other, OptimizeProfile.BALANCED, "r1", judgement(OptimizeJudge.CRASH), null))
     }
+
+    @Test
+    fun `every visual cost id the rules send has a string`() {
+        listOf(
+            "vc_sharpness_lower", "vc_none_may_be_unstable", "vc_textures_softer_distance", "vc_none",
+            "vc_textures_stream_later", "vc_image_softer_upscaled",
+        ).forEach { assertTrue(it, OptimizeStatus.visualCostRes(it) != null) }
+    }
 }

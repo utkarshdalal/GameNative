@@ -2108,6 +2108,7 @@
     <string name="optimize_vc_none_may_be_unstable">No visual change. May be unstable in some games.</string>
     <string name="optimize_vc_none">No visual change.</string>
     <string name="optimize_vc_textures_stream_later">Textures may take a moment longer to load.</string>
+    <string name="optimize_vc_image_softer_upscaled">Image is upscaled and looks softer.</string>
     <string name="optimize_after_crash_undone">That change did not agree with %1$s, so it was undone.</string>
     <string name="optimize_card_title_gpu">Your GPU could not keep up in %1$s</string>
     <string name="optimize_card_title_thermal">%1$s got hot and started dropping frames</string>

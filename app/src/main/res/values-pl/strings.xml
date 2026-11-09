@@ -1890,6 +1890,7 @@
     <string name="optimize_vc_none_may_be_unstable">Bez zmian wizualnych. W niektórych grach może działać niestabilnie.</string>
     <string name="optimize_vc_none">Bez zmian wizualnych.</string>
     <string name="optimize_vc_textures_stream_later">Wczytywanie tekstur może potrwać nieco dłużej.</string>
+    <string name="optimize_vc_image_softer_upscaled">Obraz jest skalowany w górę i wygląda łagodniej.</string>
     <string name="optimize_after_crash_undone">Ta zmiana nie pasowała do %1$s, więc została cofnięta.</string>
     <string name="optimize_card_title_gpu">Twój GPU nie nadążał w %1$s</string>
     <string name="optimize_card_title_thermal">Gra %1$s nagrzała się i zaczęła gubić klatki</string>

@@ -1866,6 +1866,7 @@
     <string name="optimize_vc_none_may_be_unstable">Nicio schimbare vizuală. Poate fi instabil în unele jocuri.</string>
     <string name="optimize_vc_none">Nicio schimbare vizuală.</string>
     <string name="optimize_vc_textures_stream_later">Texturile se pot încărca puțin mai greu.</string>
+    <string name="optimize_vc_image_softer_upscaled">Imaginea este scalată și arată mai moale.</string>
     <string name="optimize_after_crash_undone">Această modificare nu s-a potrivit cu %1$s, așa că a fost anulată.</string>
     <string name="optimize_card_title_gpu">Placa ta grafică nu a ținut pasul în %1$s</string>
     <string name="optimize_card_title_thermal">%1$s s-a încălzit și a început să piardă cadre</string>

@@ -1904,6 +1904,7 @@
     <string name="optimize_vc_none_may_be_unstable">Görsel değişiklik yok. Bazı oyunlarda kararsız olabilir.</string>
     <string name="optimize_vc_none">Görsel değişiklik yok.</string>
     <string name="optimize_vc_textures_stream_later">Dokuların yüklenmesi biraz daha uzun sürebilir.</string>
+    <string name="optimize_vc_image_softer_upscaled">Görüntü büyütülür ve daha yumuşak görünür.</string>
     <string name="optimize_after_crash_undone">Bu değişiklik %1$s ile uyuşmadı, bu yüzden geri alındı.</string>
     <string name="optimize_card_title_gpu">GPU\'nuz %1$s oyununda yetişemedi</string>
     <string name="optimize_card_title_thermal">%1$s ısındı ve kare düşürmeye başladı</string>

@@ -1756,6 +1756,7 @@
     <string name="optimize_vc_none_may_be_unstable">Ingen visuel ændring. Kan være ustabil i nogle spil.</string>
     <string name="optimize_vc_none">Ingen visuel ændring.</string>
     <string name="optimize_vc_textures_stream_later">Teksturer kan være lidt længere om at indlæse.</string>
+    <string name="optimize_vc_image_softer_upscaled">Billedet opskaleres og ser blødere ud.</string>
     <string name="optimize_after_crash_undone">Den ændring passede ikke til %1$s, så den blev fortrudt.</string>
     <string name="optimize_card_title_gpu">Din GPU kunne ikke følge med i %1$s</string>
     <string name="optimize_card_title_thermal">%1$s blev varm og begyndte at tabe billeder</string>

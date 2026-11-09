@@ -2095,6 +2095,7 @@
     <string name="optimize_vc_none_may_be_unstable">見た目は変わりません。一部のゲームでは不安定になる場合があります。</string>
     <string name="optimize_vc_none">見た目は変わりません。</string>
     <string name="optimize_vc_textures_stream_later">テクスチャの読み込みに少し時間がかかる場合があります。</string>
+    <string name="optimize_vc_image_softer_upscaled">画像はアップスケールされ、少し柔らかく見えます。</string>
     <string name="optimize_after_crash_undone">この変更は%1$sと相性が悪かったため、元に戻しました。</string>
     <string name="optimize_card_title_gpu">%1$s でGPUの処理が追いつきませんでした</string>
     <string name="optimize_card_title_thermal">%1$s が熱くなり、フレームが落ち始めました</string>

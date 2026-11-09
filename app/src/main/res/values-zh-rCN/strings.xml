@@ -1851,6 +1851,7 @@
     <string name="optimize_vc_none_may_be_unstable">画面无变化。在部分游戏中可能不稳定。</string>
     <string name="optimize_vc_none">画面无变化。</string>
     <string name="optimize_vc_textures_stream_later">纹理加载可能会稍慢一些。</string>
+    <string name="optimize_vc_image_softer_upscaled">画面经过放大，看起来更柔和。</string>
     <string name="optimize_after_crash_undone">该更改与%1$s不兼容，已撤销。</string>
     <string name="optimize_card_title_gpu">你的 GPU 运行 %1$s 时跟不上</string>
     <string name="optimize_card_title_thermal">%1$s 运行时发热，开始掉帧</string>

@@ -4,6 +4,8 @@ import android.content.Context
 import app.gamenative.PluviaApp
 import app.gamenative.api.SuggestionConfigKeys
 import app.gamenative.api.SupportSuggestion
+import app.gamenative.display.GamescopeScalingFilter
+import app.gamenative.display.GamescopeSettings
 import app.gamenative.ui.component.parsePositiveFpsLimit
 import app.gamenative.ui.screen.support.SupportSuggestionApplier
 import app.gamenative.ui.screen.support.WineRegistryText
@@ -380,6 +382,9 @@ object OptimizeApplier {
         return parts.joinToString(";")
     }
 
+    /** Gamescope's upscale filter (linear, nearest, pixel, fsr, sgsr, nis), the container extra the QuickMenu writes. */
+    const val SCALING_FILTER_KEY = GamescopeSettings.EXTRA_FILTER
+
     /** The graphics driver's present mode; the launch derives MESA_VK_WSI_PRESENT_MODE from it. */
     const val PRESENT_MODE_KEY = "graphicsDriverConfig.presentMode"
     val PRESENT_MODES = setOf("fifo", "mailbox", "immediate")
@@ -413,7 +418,11 @@ object OptimizeApplier {
         options.fold(prior.orEmpty()) { config, (name, value) -> dxvkConfigPut(config, name, value) }
 
     internal fun liveValue(container: Container, live: ContainerData, key: String): String? =
-        if (key == "screenSize") container.screenSize else configValue(live, key)
+        when (key) {
+            "screenSize" -> container.screenSize
+            SCALING_FILTER_KEY -> container.getExtra(GamescopeSettings.EXTRA_FILTER, "").takeIf { it.isNotEmpty() }
+            else -> configValue(live, key)
+        }
 
     internal fun configValue(live: ContainerData, key: String): String? = when {
         isDxvkOption(key) -> configValue(live, DXVK_CONFIG_KEY)?.let { dxvkConfigGet(it, key.substringAfter('.')) }
@@ -435,7 +444,7 @@ object OptimizeApplier {
     }
 
     internal fun isAllowedContainerKey(key: String): Boolean = when {
-        key == "fpsLimit" || key == "screenSize" -> true
+        key == "fpsLimit" || key == "screenSize" || key == SCALING_FILTER_KEY -> true
         key.startsWith("envVars.") -> key.length > "envVars.".length
         key.contains('.') -> key.substringBefore('.') in SupportSuggestion.KV_PARENTS
         else -> key in SuggestionConfigKeys.APPLICABLE_CONFIG_KEYS && key != SupportSuggestion.ENV_KEY
@@ -462,6 +471,8 @@ object OptimizeApplier {
         val set = lever.set.map { (key, value) -> canonicalContainerKey(key) to value }
         set.firstOrNull { !isAllowedContainerKey(it.first) }?.let { throw LeverFailure("container key ${it.first} not allowed") }
         set.firstOrNull { it.first == "screenSize" && !SCREEN_SIZE.matches(it.second) }?.let { throw LeverFailure("bad screen size") }
+        set.firstOrNull { it.first == SCALING_FILTER_KEY && GamescopeScalingFilter.fromId(it.second) == null }
+            ?.let { throw LeverFailure("bad gamescope filter ${it.second}") }
         set.firstOrNull { it.first == PRESENT_MODE_KEY && it.second !in PRESENT_MODES }?.let { throw LeverFailure("bad present mode ${it.second}") }
         val dxvk = dxvkOptions(set)
         dxvk.firstOrNull { !DXVK_VALUE.matches(it.second) }?.let { throw LeverFailure("bad DXVK value for ${it.first}") }
@@ -486,7 +497,7 @@ object OptimizeApplier {
                     put("value", liveValue(container, live, key) ?: JSONObject.NULL)
                 },
             )
-            if (key != "screenSize") editFor(key, value)?.let { edits += it }
+            if (key != "screenSize" && key != SCALING_FILTER_KEY) editFor(key, value)?.let { edits += it }
         }
         if (dxvk.isNotEmpty()) {
             val prior = configValue(live, DXVK_CONFIG_KEY)
@@ -516,6 +527,7 @@ object OptimizeApplier {
                 when (key) {
                     "fpsLimit" -> { applyFps(container, value); direct = true }
                     "screenSize" -> { container.screenSize = value; direct = true }
+                    SCALING_FILTER_KEY -> { container.putExtra(GamescopeSettings.EXTRA_FILTER, value); direct = true }
                 }
             }
             if (direct) container.saveData()
