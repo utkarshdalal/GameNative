@@ -75,9 +75,10 @@ internal object PsPcSdkFiles {
  * package gets its own session, ended by the framework's `wineserver -k` between steps instead of
  * two installs racing the single kill that follows a chained `cmd`.
  *
- * Completion is tracked twice, like the GOG support commands: the game-dir marker is cleared by
- * verify, and a stamp inside the prefix re-runs the package in a recreated prefix, whose registry
- * no longer has the runtime's keys.
+ * Completion is the game-dir marker, which Verify Files clears and which
+ * `PreInstallSteps.markersStale` clears when the prefix is recreated — a recreated prefix has no
+ * runtime in it whatever the marker says. The runtime step additionally checks the disk, because
+ * a marker is written on termination rather than on success.
  */
 abstract class PsPcSdkPackageStep : PreInstallStep {
     /** The package this step installs, relative to the directory that holds the batch script. */
@@ -87,14 +88,12 @@ abstract class PsPcSdkPackageStep : PreInstallStep {
 
     override val viaShell: Boolean = false
 
-    private val warnedUnquotable = java.util.concurrent.atomic.AtomicBoolean(false)
-
     /**
-     * Marker alone. A recreated prefix re-runs this anyway: `PreInstallSteps.markersStale` sees
-     * the prefix stamp missing and clears every game-dir marker before either entry point runs.
-     * An extra per-step stamp would say the same thing twice — and, worse, [buildCommand] would
-     * have to write it, which makes a *probe* (`hasPendingSteps`) mutate the prefix.
+     * Packages already reported as unquotable, keyed by host path: a title installed under a
+     * name with a space can never be installed, and two such titles are two separate problems.
      */
+    private val warnedUnquotable = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
     /**
      * What the package leaves in the prefix, when that is something this can check, or `null`
      * where it cannot be judged (a prefix that is not visible from here).
@@ -104,7 +103,9 @@ abstract class PsPcSdkPackageStep : PreInstallStep {
     /**
      * The marker, and — where the package leaves something to look at — the disk.
      *
-     * A marker is written when the session ends, not when the install succeeds, so a failed
+     * The marker alone is not proof: `PreInstallSteps.markersStale` clears every game-dir marker
+     * when the prefix is recreated, which is why no per-step prefix stamp is kept, but a marker is
+     * written when the session ends rather than when the install succeeds, so a failed
      * `msiexec` would otherwise be skipped on every later launch and the game would keep
      * starting without the runtime. The exit status cannot settle that either: the guest
      * executable is `wine explorer /desktop=…`, whose status is not the installer's. What the
@@ -137,9 +138,9 @@ abstract class PsPcSdkPackageStep : PreInstallStep {
 
         val guestPath = PsPcSdkFiles.guestPath(gameDir, msi)
         if (guestPath == null) {
-            // Once per process, not once per call: this also runs for the `hasPendingSteps`
-            // probe, which happens on every launch and installs nothing.
-            if (warnedUnquotable.compareAndSet(false, true)) {
+            // Once per path, not once per call: this also runs for the `hasPendingSteps` probe,
+            // which happens on every launch and installs nothing.
+            if (warnedUnquotable.add(msi.path)) {
                 Timber.tag(tag).w("%s has a space in its path and cannot be passed unquoted", msi)
             }
             return null
