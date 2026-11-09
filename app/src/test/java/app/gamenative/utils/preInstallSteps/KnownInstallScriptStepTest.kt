@@ -7,6 +7,9 @@ import app.gamenative.utils.PreInstallSteps
 import app.gamenative.utils.KnownInstallScriptStep
 import app.gamenative.utils.SteamInstallScriptRegistry
 import com.winlator.container.Container
+import `in`.dragonbra.javasteam.enums.EDepotFileFlag
+import `in`.dragonbra.javasteam.types.DepotManifest
+import `in`.dragonbra.javasteam.types.FileData
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.After
@@ -19,6 +22,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.io.File
+import java.util.EnumSet
 import kotlin.io.path.createTempDirectory
 
 @RunWith(RobolectricTestRunner::class)
@@ -73,6 +77,32 @@ class KnownInstallScriptStepTest {
                 writeText("@echo off\r\n")
             }
         }
+    }
+
+    /**
+     * The installed depot manifest, as the engine leaves it under the game directory, flagging
+     * [relativePaths] as install scripts — which is how Steam knows which files to run.
+     */
+    private fun flagScripts(vararg relativePaths: String, depotId: Int = 3489701) {
+        val manifest = DepotManifest().apply {
+            depotID = depotId
+            manifestGID = 1L
+            files = ArrayList(
+                relativePaths.map { path ->
+                    FileData(
+                        path.replace('/', '\\'),
+                        ByteArray(20),
+                        emptyList(),
+                        EnumSet.of(EDepotFileFlag.InstallScript),
+                        0L,
+                        ByteArray(20),
+                        "",
+                    )
+                },
+            )
+        }
+        val completed = File(gameDir, ".DepotDownloader/completed").apply { mkdirs() }
+        manifest.saveToFile(File(completed, "${depotId}_1.manifest").absolutePath)
     }
 
     private fun build(): String? = KnownInstallScriptStep.buildCommand(
@@ -171,9 +201,11 @@ class KnownInstallScriptStepTest {
     @Test
     fun aScriptBesideTheShippingExeIsFound() {
         // Stellar Blade's actual layout: no `installscript.vdf` at the install root, one in
-        // `SB/Binaries/Win64/` next to the shipping exe and the installers.
+        // `SB/Binaries/Win64/` next to the shipping exe and the installers, and the depot manifest
+        // flagging it — the app's info names no script at all.
         File(gameDir, "SB/Binaries/Win64").mkdirs()
         File(gameDir, "SB/Binaries/Win64/installscript.vdf").writeText(vdf)
+        flagScripts("SB/Binaries/Win64/installscript.vdf")
         File(gameDir, "SB/Binaries/Win64/install_pspc_sdk_runtime.bat").writeText("@echo off\r\n")
         File(gameDir, "SB/Binaries/Win64/SB-Win64-Shipping.exe").writeText("x")
 
@@ -208,6 +240,7 @@ class KnownInstallScriptStepTest {
             "}\n"
         File(gameDir, "SB/Binaries/Win64").mkdirs()
         File(gameDir, "SB/Binaries/Win64/installscript.vdf").writeText(real)
+        flagScripts("SB/Binaries/Win64/installscript.vdf")
         File(gameDir, "SB/Binaries/Win64/install_pspc_sdk_runtime.bat").writeText("@echo off\r\n")
 
         assertEquals(
@@ -229,9 +262,9 @@ class KnownInstallScriptStepTest {
     }
 
     /**
-     * Stellar Blade's real layout: `_CommonRedist` is the first directory in listing order and
-     * carries a script of its own, so a search that stops at the first `installscript.vdf` finds a
-     * redistributable's and the PlayStation step is never seen.
+     * Stellar Blade's real layout: `_CommonRedist` carries scripts of its own, and the depot
+     * manifest flags them exactly like the game's. They are read, and none of their steps names a
+     * program on the whitelist, so the PlayStation step is still the one that runs.
      */
     @Test
     fun aRedistScriptIsNotMistakenForTheGamesOwn() {
@@ -258,6 +291,11 @@ class KnownInstallScriptStepTest {
         File(gameDir, "SB/Binaries/Win64").mkdirs()
         File(gameDir, "SB/Binaries/Win64/install_pspc_sdk_runtime.bat").writeText("@echo off\r\n")
         File(gameDir, "SB/Binaries/Win64/installscript.vdf").writeText(vdf)
+        flagScripts(
+            "_CommonRedist/DirectX/Jun2010/installscript.vdf",
+            "_CommonRedist/vcredist/2022/installscript.vdf",
+            "SB/Binaries/Win64/installscript.vdf",
+        )
 
         assertEquals(
             "\"A:\\SB\\Binaries\\Win64\\install_pspc_sdk_runtime.bat\" quiet",
@@ -265,19 +303,19 @@ class KnownInstallScriptStepTest {
         )
     }
 
-    /** Two candidates and no redistributables: the game's script is the shallower one. */
+    /** Every flagged script is read, whatever its depth: Steam runs them all, so the order of discovery decides nothing. */
     @Test
-    fun theShallowestScriptWins() {
-        // The shallow script names the batch; the deeper one names an unlisted program. Were the
-        // deeper script the one read, the result would be null.
+    fun everyFlaggedScriptIsRead() {
+        // The deep script names the batch; the shallow one names an unlisted program.
         File(gameDir, "Bin").mkdirs()
-        File(gameDir, "Bin/installscript.vdf").writeText(vdf)
+        File(gameDir, "Bin/installscript.vdf").writeText(
+            """"InstallScript" { "Run Process" { "Other" { "process 1" "%INSTALLDIR%\\other.exe" } } }""",
+        )
         File(gameDir, "SB/Binaries/Win64").mkdirs()
         File(gameDir, "SB/Binaries/Win64/install_pspc_sdk_runtime.bat").writeText("@echo off\r\n")
         File(gameDir, "Deep/Er/Still").mkdirs()
-        File(gameDir, "Deep/Er/Still/installscript.vdf").writeText(
-            """"InstallScript" { "Run Process" { "Other" { "process 1" "%INSTALLDIR%\\other.exe" } } }""",
-        )
+        File(gameDir, "Deep/Er/Still/installscript.vdf").writeText(vdf)
+        flagScripts("Bin/installscript.vdf", "Deep/Er/Still/installscript.vdf")
 
         assertEquals(
             "\"A:\\SB\\Binaries\\Win64\\install_pspc_sdk_runtime.bat\" quiet",
@@ -285,31 +323,42 @@ class KnownInstallScriptStepTest {
         )
     }
 
-    /** A title whose only script is a redistributable's has no script of its own. */
+    /**
+     * A script the manifests do not flag is not Steam's to run, and not ours: the game directory is
+     * never searched, so a stray copy beside the exe installs nothing without a manifest naming it.
+     */
     @Test
-    fun aRedistOnlyTreeHasNoScriptOfItsOwn() {
-        File(gameDir, "_CommonRedist/DirectX/Jun2010").mkdirs()
-        File(gameDir, "_CommonRedist/DirectX/Jun2010/install_pspc_sdk_runtime.bat")
-            .writeText("@echo off\r\n")
-        // The redist script names the batch where it actually is, so this test fails if a script
-        // under `_CommonRedist` is ever read as the game's: the step would then resolve and run.
-        File(gameDir, "_CommonRedist/DirectX/Jun2010/installscript.vdf").writeText(
-            """
-            "InstallScript"
-            {
-                "Run Process"
-                {
-                    "PSPC"
-                    {
-                        "process 1"\t\t"%INSTALLDIR%\\\\_CommonRedist\\\\DirectX\\\\Jun2010\\\\install_pspc_sdk_runtime.bat"
-                        "command 1"\t\t"quiet"
-                    }
-                }
-            }
-            """.trimIndent(),
-        )
+    fun anUnflaggedScriptIsNotRead() {
+        File(gameDir, "SB/Binaries/Win64").mkdirs()
+        File(gameDir, "SB/Binaries/Win64/installscript.vdf").writeText(vdf)
+        File(gameDir, "SB/Binaries/Win64/install_pspc_sdk_runtime.bat").writeText("@echo off\r\n")
+        // A manifest is present, so this is not the manifest-less fallback; it flags something else.
+        flagScripts("_CommonRedist/vcredist/2022/installscript.vdf")
 
         assertNull(build())
+    }
+
+    /** With no manifest record at all, the root `installscript.vdf` is still read, as Steam's default. */
+    @Test
+    fun withoutManifestsTheRootScriptIsStillRead() {
+        ship("SB/Binaries/Win64/install_pspc_sdk_runtime.bat")
+
+        assertEquals(
+            listOf(File(gameDir, "installscript.vdf")),
+            KnownInstallScriptStep.installScripts(gameDir, null),
+        )
+    }
+
+    /** The app-info name is resolved as a path under the install root, like a manifest entry. */
+    @Test
+    fun theAppInfoNameIsResolvedAsAPath() {
+        File(gameDir, "SB/Binaries/Win64").mkdirs()
+        val script = File(gameDir, "SB/Binaries/Win64/installscript.vdf").apply { writeText(vdf) }
+
+        assertEquals(
+            listOf(script),
+            KnownInstallScriptStep.installScripts(gameDir, "SB\\Binaries\\Win64\\installscript.vdf"),
+        )
     }
 
     /**
