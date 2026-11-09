@@ -8,6 +8,7 @@ import app.gamenative.utils.KnownInstallScriptStep
 import app.gamenative.utils.SteamInstallScriptRegistry
 import com.winlator.container.Container
 import `in`.dragonbra.javasteam.enums.EDepotFileFlag
+import `in`.dragonbra.javasteam.types.ChunkData
 import `in`.dragonbra.javasteam.types.DepotManifest
 import `in`.dragonbra.javasteam.types.FileData
 import io.mockk.every
@@ -92,7 +93,7 @@ class KnownInstallScriptStepTest {
                     FileData(
                         path.replace('/', '\\'),
                         ByteArray(20),
-                        emptyList(),
+                        mutableListOf<ChunkData>(),
                         EnumSet.of(EDepotFileFlag.InstallScript),
                         0L,
                         ByteArray(20),
