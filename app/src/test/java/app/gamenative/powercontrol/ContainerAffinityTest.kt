@@ -58,34 +58,48 @@ class ContainerAffinityTest {
 
     @Test
     fun windowProcessWoW64WithAnExplicitListGetsTheWoW64List() {
-        assertEquals(maskWoW64, ContainerAffinity.windowProcessMask(process("Borderlands2.exe", wow64 = true), mask, maskWoW64, defaultMaskWoW64 = 0x0F))
+        assertEquals(maskWoW64, ContainerAffinity.windowProcessMask(process("Borderlands2.exe", wow64 = true), mask, maskWoW64))
     }
 
     @Test
     fun windowProcessWoW64WithTheDefaultListGetsTheMainList() {
-        assertEquals(0xFF, ContainerAffinity.windowProcessMask(process("Borderlands2.exe", wow64 = true), 0xFF, defaultMaskWoW64, defaultMaskWoW64))
+        assertEquals(0xFF, ContainerAffinity.windowProcessMask(process("Borderlands2.exe", wow64 = true), 0xFF, defaultMaskWoW64))
     }
 
     @Test
     fun windowProcessReported64BitGetsTheMainList() {
-        assertEquals(mask, ContainerAffinity.windowProcessMask(process("Game.exe"), mask, maskWoW64, defaultMaskWoW64))
+        assertEquals(mask, ContainerAffinity.windowProcessMask(process("Game.exe"), mask, maskWoW64))
     }
 
     @Test
     fun windowProcessMissingFromTheListGetsTheMainList() {
-        assertEquals(mask, ContainerAffinity.windowProcessMask(null, mask, maskWoW64, defaultMaskWoW64))
+        assertEquals(mask, ContainerAffinity.windowProcessMask(null, mask, maskWoW64))
     }
 
     @Test
     fun windowProcessWithAnEmptyMaskGetsNoRequest() {
-        assertNull(ContainerAffinity.windowProcessMask(process("Game.exe"), 0, maskWoW64, defaultMaskWoW64))
+        assertNull(ContainerAffinity.windowProcessMask(process("Game.exe"), 0, maskWoW64))
     }
 
     @Test
     fun onlyANonDefaultNonEmptyWoW64ListIsExplicit() {
-        assertTrue(ContainerAffinity.isExplicitWoW64Mask(0xC0, 0xF0))
-        assertFalse(ContainerAffinity.isExplicitWoW64Mask(0xF0, 0xF0))
-        assertFalse(ContainerAffinity.isExplicitWoW64Mask(0, 0xF0))
+        assertTrue(ContainerAffinity.isExplicitWoW64Mask(0xC0))
+        assertFalse(ContainerAffinity.isExplicitWoW64Mask(0xF0))
+        assertFalse(ContainerAffinity.isExplicitWoW64Mask(0))
+    }
+
+    @Test
+    fun aDefaultListFromAnotherCoreCountIsNotExplicit() {
+        // Made on a 6-core device (3-5) or a 4-core one (2-3), run on 8 cores: still the default.
+        assertFalse(ContainerAffinity.isExplicitWoW64Mask(0x38))
+        assertFalse(ContainerAffinity.isExplicitWoW64Mask(0x0C))
+        assertFalse(ContainerAffinity.isExplicitWoW64Mask(0xFF00))
+        // The short-cast mask the screen hands over keeps its meaning.
+        assertFalse(ContainerAffinity.isExplicitWoW64Mask(0xFF00.toShort().toInt()))
+        assertTrue(ContainerAffinity.isExplicitWoW64Mask(0x0F))
+        assertTrue(ContainerAffinity.isExplicitWoW64Mask(0x30))
+        assertEquals(0xF0, ContainerAffinity.defaultWoW64Mask(8))
+        assertEquals(0x38, ContainerAffinity.defaultWoW64Mask(6))
     }
 
     @Test
