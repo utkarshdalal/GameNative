@@ -385,12 +385,34 @@ object OptimizeApplier {
     /** Gamescope's upscale filter (linear, nearest, pixel, fsr, sgsr, nis), the container extra the QuickMenu writes. */
     const val SCALING_FILTER_KEY = GamescopeSettings.EXTRA_FILTER
 
+    /** Gamescope's output size ("off", "device" or "WxH"), the container extra the Graphics tab writes. */
+    const val OUTPUT_RESOLUTION_KEY = GamescopeSettings.EXTRA_OUTPUT_RESOLUTION
+
+    /** Container keys stored as container extras, written and restored directly. */
+    val EXTRA_KEYS = setOf(SCALING_FILTER_KEY, OUTPUT_RESOLUTION_KEY)
+
+    /** [value] as an extra key stores it: a known filter id or output size, lower case; null when it is not one. */
+    internal fun extraValue(key: String, value: String): String? {
+        val v = value.trim().lowercase()
+        return when (key) {
+            SCALING_FILTER_KEY -> GamescopeScalingFilter.fromId(v)?.id
+            OUTPUT_RESOLUTION_KEY -> v.takeIf {
+                it == GamescopeSettings.OUTPUT_RESOLUTION_OFF || it == GamescopeSettings.OUTPUT_RESOLUTION_DEVICE || SCREEN_SIZE.matches(it)
+            }
+            else -> null
+        }
+    }
+
     /** The graphics driver's present mode; the launch derives MESA_VK_WSI_PRESENT_MODE from it. */
     const val PRESENT_MODE_KEY = "graphicsDriverConfig.presentMode"
     val PRESENT_MODES = setOf("fifo", "mailbox", "immediate")
 
     /** A container key as the server may send it, in the form the container stores: a bare presentMode is the driver's. */
-    internal fun canonicalContainerKey(key: String): String = if (key == "presentMode") PRESENT_MODE_KEY else key
+    internal fun canonicalContainerKey(key: String): String = when {
+        key == "presentMode" -> PRESENT_MODE_KEY
+        key.startsWith("extras.") && key.removePrefix("extras.") in EXTRA_KEYS -> key.removePrefix("extras.")
+        else -> key
+    }
 
     /** The global "name = value" entries of a DXVK_CONFIG value a lever sets, quotes taken off; sections are not merged. */
     internal fun dxvkConfigEntries(config: String): List<Pair<String, String>> {
@@ -420,7 +442,7 @@ object OptimizeApplier {
     internal fun liveValue(container: Container, live: ContainerData, key: String): String? =
         when (key) {
             "screenSize" -> container.screenSize
-            SCALING_FILTER_KEY -> container.getExtra(GamescopeSettings.EXTRA_FILTER, "").takeIf { it.isNotEmpty() }
+            in EXTRA_KEYS -> container.getExtra(key, "").takeIf { it.isNotEmpty() }
             else -> configValue(live, key)
         }
 
@@ -444,7 +466,7 @@ object OptimizeApplier {
     }
 
     internal fun isAllowedContainerKey(key: String): Boolean = when {
-        key == "fpsLimit" || key == "screenSize" || key == SCALING_FILTER_KEY -> true
+        key == "fpsLimit" || key == "screenSize" || key in EXTRA_KEYS -> true
         key.startsWith("envVars.") -> key.length > "envVars.".length
         key.contains('.') -> key.substringBefore('.') in SupportSuggestion.KV_PARENTS
         else -> key in SuggestionConfigKeys.APPLICABLE_CONFIG_KEYS && key != SupportSuggestion.ENV_KEY
@@ -468,11 +490,14 @@ object OptimizeApplier {
         container: Container,
         onProgress: (Float, String) -> Unit,
     ): JSONObject {
-        val set = lever.set.map { (key, value) -> canonicalContainerKey(key) to value }
+        val set = lever.set.map { (key, value) ->
+            val canonical = canonicalContainerKey(key)
+            canonical to if (canonical in EXTRA_KEYS) extraValue(canonical, value) ?: value else value
+        }
         set.firstOrNull { !isAllowedContainerKey(it.first) }?.let { throw LeverFailure("container key ${it.first} not allowed") }
         set.firstOrNull { it.first == "screenSize" && !SCREEN_SIZE.matches(it.second) }?.let { throw LeverFailure("bad screen size") }
-        set.firstOrNull { it.first == SCALING_FILTER_KEY && GamescopeScalingFilter.fromId(it.second) == null }
-            ?.let { throw LeverFailure("bad gamescope filter ${it.second}") }
+        set.firstOrNull { it.first in EXTRA_KEYS && extraValue(it.first, it.second) == null }
+            ?.let { throw LeverFailure("bad ${it.first} value ${it.second}") }
         set.firstOrNull { it.first == PRESENT_MODE_KEY && it.second !in PRESENT_MODES }?.let { throw LeverFailure("bad present mode ${it.second}") }
         val dxvk = dxvkOptions(set)
         dxvk.firstOrNull { !DXVK_VALUE.matches(it.second) }?.let { throw LeverFailure("bad DXVK value for ${it.first}") }
@@ -497,7 +522,7 @@ object OptimizeApplier {
                     put("value", liveValue(container, live, key) ?: JSONObject.NULL)
                 },
             )
-            if (key != "screenSize" && key != SCALING_FILTER_KEY) editFor(key, value)?.let { edits += it }
+            if (key != "screenSize" && key !in EXTRA_KEYS) editFor(key, value)?.let { edits += it }
         }
         if (dxvk.isNotEmpty()) {
             val prior = configValue(live, DXVK_CONFIG_KEY)
@@ -527,7 +552,7 @@ object OptimizeApplier {
                 when (key) {
                     "fpsLimit" -> { applyFps(container, value); direct = true }
                     "screenSize" -> { container.screenSize = value; direct = true }
-                    SCALING_FILTER_KEY -> { container.putExtra(GamescopeSettings.EXTRA_FILTER, value); direct = true }
+                    in EXTRA_KEYS -> { container.putExtra(key, value); direct = true }
                 }
             }
             if (direct) container.saveData()

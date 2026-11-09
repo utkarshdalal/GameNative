@@ -133,7 +133,7 @@ object OptimizeReverter {
         val entries = record.optJSONArray("before").objects()
         val edits = entries.mapNotNull { entry ->
             val key = entry.optString("key")
-            if (key == "fpsLimit" || key == "screenSize" || key == OptimizeApplier.SCALING_FILTER_KEY) return@mapNotNull null
+            if (key == "fpsLimit" || key == "screenSize" || key in OptimizeApplier.EXTRA_KEYS) return@mapNotNull null
             val before = if (entry.isNull("value")) null else entry.optString("value")
             OptimizeApplier.editFor(key, before)
         }
@@ -161,8 +161,8 @@ object OptimizeReverter {
                     entry.optStringOrNull("value")?.let { container.screenSize = it }
                     direct = true
                 }
-                OptimizeApplier.SCALING_FILTER_KEY -> {
-                    container.putExtra(OptimizeApplier.SCALING_FILTER_KEY, entry.optStringOrNull("value"))
+                in OptimizeApplier.EXTRA_KEYS -> {
+                    container.putExtra(entry.optString("key"), entry.optStringOrNull("value"))
                     direct = true
                 }
             }

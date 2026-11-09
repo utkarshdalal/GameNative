@@ -130,10 +130,20 @@ class OptimizeContainerLeverTest {
     }
 
     @Test
-    fun theGamescopeUpscaleFilterIsAContainerKey() {
+    fun theGamescopeUpscaleFilterAndOutputSizeAreContainerKeys() {
         assertEquals("gamescopeScalingFilter", OptimizeApplier.SCALING_FILTER_KEY)
+        assertEquals("gamescopeOutputResolution", OptimizeApplier.OUTPUT_RESOLUTION_KEY)
         assertTrue(OptimizeApplier.isAllowedContainerKey(OptimizeApplier.SCALING_FILTER_KEY))
-        assertEquals(app.gamenative.display.GamescopeScalingFilter.FSR, app.gamenative.display.GamescopeScalingFilter.fromId("fsr"))
-        assertNull(app.gamenative.display.GamescopeScalingFilter.fromId("bicubic"))
+        assertTrue(OptimizeApplier.isAllowedContainerKey(OptimizeApplier.OUTPUT_RESOLUTION_KEY))
+        assertEquals(OptimizeApplier.SCALING_FILTER_KEY, OptimizeApplier.canonicalContainerKey("extras.gamescopeScalingFilter"))
+        assertEquals(OptimizeApplier.OUTPUT_RESOLUTION_KEY, OptimizeApplier.canonicalContainerKey("extras.gamescopeOutputResolution"))
+        assertEquals("extras.other", OptimizeApplier.canonicalContainerKey("extras.other"))
+        assertEquals("fsr", OptimizeApplier.extraValue(OptimizeApplier.SCALING_FILTER_KEY, "FSR"))
+        assertEquals("linear", OptimizeApplier.extraValue(OptimizeApplier.SCALING_FILTER_KEY, "linear"))
+        assertNull(OptimizeApplier.extraValue(OptimizeApplier.SCALING_FILTER_KEY, "bicubic"))
+        assertEquals("1280x720", OptimizeApplier.extraValue(OptimizeApplier.OUTPUT_RESOLUTION_KEY, "1280x720"))
+        assertEquals("device", OptimizeApplier.extraValue(OptimizeApplier.OUTPUT_RESOLUTION_KEY, "Device"))
+        assertEquals("off", OptimizeApplier.extraValue(OptimizeApplier.OUTPUT_RESOLUTION_KEY, "off"))
+        assertNull(OptimizeApplier.extraValue(OptimizeApplier.OUTPUT_RESOLUTION_KEY, "4k"))
     }
 }
