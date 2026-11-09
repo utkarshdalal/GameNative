@@ -363,6 +363,8 @@ class SessionVerdictTest {
         assertEquals(0.95 * 700 / 57.0, load.gpuWorkPerFrame!!, 1e-6)
         val verdict = r.properties()["perf_verdict"] as Map<*, *>
         assertEquals("both", verdict["fps_ceiling_reason"])
+        assertEquals(57.0, verdict["fps_p10"])
+        assertEquals(60.0, verdict["refresh_hz"])
         assertEquals(95, verdict["gpu_busy_p95"])
         assertEquals(82, verdict["hot_thread_p95"])
         assertEquals(load.windows.size, (verdict["gpu_work_by_5min"] as List<*>).size)

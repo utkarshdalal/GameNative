@@ -323,6 +323,7 @@ object OptimizeController {
                     put("android_sdk", Build.VERSION.SDK_INT)
                     put("proc_stat_real", baseline?.procStatReal ?: false)
                     put("thermal_reporting", baseline?.thermalReporting ?: false)
+                    put("refresh_hz", baseline?.refreshHz ?: refreshHz(context) ?: JSONObject.NULL)
                     put("device_id_hash", deviceIdHash())
                 },
             )

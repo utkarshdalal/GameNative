@@ -282,6 +282,8 @@ internal object SessionVerdict {
                         l.gpuBusyP95?.let { put("gpu_busy_p95", it) }
                         l.hotThreadP95?.let { put("hot_thread_p95", it) }
                         put("fps_ceiling_reason", l.fpsCeilingReason)
+                        l.fpsP10?.let { put("fps_p10", round1(it)) }
+                        l.refreshHz?.let { put("refresh_hz", round1(it)) }
                         l.gpuWorkPerFrame?.let { put("gpu_work_per_frame", round2(it)) }
                         if (l.windows.isNotEmpty()) {
                             put("gpu_work_by_5min", l.windows.map { w -> w.gpuWorkPerFrame?.let { v -> round2(v) } ?: -1.0 })
@@ -486,6 +488,10 @@ internal object SessionVerdict {
         val fpsCeilingReason: String,
         val gpuWorkPerFrame: Double?,
         val windows: List<LoadWindow>,
+        /** 10th percentile of per-second gameplay fps. */
+        val fpsP10: Double? = null,
+        /** The panel refresh rate the sampler saw; null when unknown. */
+        val refreshHz: Double? = null,
     )
 
     const val CEILING_CAP = "cap"
@@ -561,6 +567,8 @@ internal object SessionVerdict {
             fpsCeilingReason = fpsCeilingReason(steadyFps, ceiling, input.fpsCap, input.refreshHz, gpuP95, hotP95),
             gpuWorkPerFrame = median(gameplayWork),
             windows = windows.takeIf { ws -> ws.any { it.gpuWorkPerFrame != null || it.gpuClockMhz != null } }.orEmpty(),
+            fpsP10 = percentile(g.map { it.fps.toDouble() }, 0.10),
+            refreshHz = input.refreshHz.takeIf { it > 0 },
         )
     }
 

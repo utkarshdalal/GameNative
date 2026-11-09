@@ -39,6 +39,13 @@ data class Metrics(
     val gpuWorkPerFrame: Double? = null,
     /** GPU work per frame of each five-minute window, oldest first; null where the window has no GPU busy or clock. */
     val gpuWorkBy5Min: List<Double?> = emptyList(),
+    /** 10th percentile of per-second gameplay fps (perf_verdict.fps_p10). */
+    val fpsP10: Double? = null,
+    /** Session frame time median and p99 in ms (game_exited frame_p50_ms, frame_p99_ms). */
+    val frameTimeP50Ms: Double? = null,
+    val frameTimeP99Ms: Double? = null,
+    /** Panel refresh rate in Hz (perf_verdict.refresh_hz, else display_refresh_hz). */
+    val refreshHz: Double? = null,
 ) {
     /** Session GPU work per frame: the median of the gameplay windows, else [gpuWorkPerFrame]. */
     fun workPerFrame(): Double? {
@@ -50,6 +57,10 @@ data class Metrics(
         gpuBusyP95?.let { put("gpu_busy_p95", it) }
         hotThreadP95?.let { put("hot_thread_p95", it) }
         fpsCeilingReason?.let { put("fps_ceiling_reason", it) }
+        fpsP10?.let { put("fps_p10", it) }
+        frameTimeP50Ms?.let { put("frame_time_p50_ms", it) }
+        frameTimeP99Ms?.let { put("frame_time_p99_ms", it) }
+        refreshHz?.let { put("refresh_hz", it) }
         workPerFrame()?.let { put("gpu_work_per_frame", round2(it)) }
         if (gpuWorkBy5Min.isNotEmpty()) {
             val windows = if (report) gpuWorkBy5Min.take(MAX_REPORT_WINDOWS) else gpuWorkBy5Min
@@ -104,6 +115,7 @@ data class Metrics(
             put("gameplay_s", gameplaySec)
             putLoad(report = true)
             if (gpuClockBy5Min.isNotEmpty()) put("gpu_clock_by_5min", JSONArray(gpuClockBy5Min.take(MAX_REPORT_WINDOWS)))
+            if (fpsBy5Min.isNotEmpty()) put("fps_by_5min", JSONArray(fpsBy5Min.take(MAX_REPORT_WINDOWS)))
         }
     }
 
@@ -137,6 +149,10 @@ data class Metrics(
                 fpsCeilingReason = o.optStringOrNull("fps_ceiling_reason"),
                 gpuWorkPerFrame = o.optDoubleOrNull("gpu_work_per_frame")?.takeIf { it > 0 },
                 gpuWorkBy5Min = o.optJSONArray("gpu_work_by_5min").works(),
+                fpsP10 = o.optDoubleOrNull("fps_p10"),
+                frameTimeP50Ms = o.optDoubleOrNull("frame_time_p50_ms"),
+                frameTimeP99Ms = o.optDoubleOrNull("frame_time_p99_ms"),
+                refreshHz = o.optDoubleOrNull("refresh_hz")?.takeIf { it > 0 },
             )
         }
 
@@ -171,6 +187,10 @@ data class Metrics(
                 fpsCeilingReason = verdict?.optStringOrNull("fps_ceiling_reason"),
                 gpuWorkPerFrame = verdict?.optDoubleOrNull("gpu_work_per_frame")?.takeIf { it > 0 },
                 gpuWorkBy5Min = work,
+                fpsP10 = verdict?.optDoubleOrNull("fps_p10"),
+                frameTimeP50Ms = run.optDoubleOrNull("frame_p50_ms")?.takeIf { it > 0 },
+                frameTimeP99Ms = run.optDoubleOrNull("frame_p99_ms")?.takeIf { it > 0 },
+                refreshHz = (verdict?.optDoubleOrNull("refresh_hz") ?: run.optDoubleOrNull("display_refresh_hz"))?.takeIf { it > 0 },
             )
         }
 

@@ -346,9 +346,9 @@ class OptimizeJudgeTest {
     @Test
     fun workWindowsComeFromTheRunAndOlderRunsDeriveThem() {
         val run = JSONObject(
-            """{"session_length":1500,"avg_fps":57,"fps_by_5min":[30,57,57,57],
+            """{"session_length":1500,"avg_fps":57,"fps_by_5min":[30,57,57,57],"frame_p50_ms":17,"frame_p99_ms":33,"display_refresh_hz":120,
             "perf_verdict":{"class":"gpu","gameplay_s":1500,"gpu_work_per_frame":11.67,"gpu_busy_p95":96,"hot_thread_p95":82,
-            "fps_ceiling_reason":"both","gpu_work_by_5min":[-1,11.6,11.7,11.7]}}""",
+            "fps_ceiling_reason":"both","gpu_work_by_5min":[-1,11.6,11.7,11.7],"fps_p10":52.5,"refresh_hz":60}}""",
         )
         val m = Metrics.fromRun(run)
         assertEquals(listOf(null, 11.6, 11.7, 11.7), m.gpuWorkBy5Min)
@@ -369,6 +369,14 @@ class OptimizeJudgeTest {
         assertEquals("both", verdict.getString("fps_ceiling_reason"))
         assertEquals(11.7, verdict.getDouble("gpu_work_per_frame"), 1e-9)
         assertEquals(4, verdict.getJSONArray("gpu_work_by_5min").length())
+        assertEquals(4, verdict.getJSONArray("fps_by_5min").length())
+        assertEquals(52.5, verdict.getDouble("fps_p10"), 1e-9)
+        assertEquals(17.0, verdict.getDouble("frame_time_p50_ms"), 1e-9)
+        assertEquals(33.0, verdict.getDouble("frame_time_p99_ms"), 1e-9)
+        assertEquals(60.0, verdict.getDouble("refresh_hz"), 1e-9)
+        assertEquals(60.0, m.toReportJson().getDouble("refresh_hz"), 1e-9)
+        assertEquals(52.5, roundTrip.fpsP10!!, 1e-9)
+        assertEquals(120.0, Metrics.fromRun(JSONObject("""{"session_length":900,"display_refresh_hz":120}""")).refreshHz!!, 1e-9)
         // Older stored metrics without the fields still parse.
         val legacy = Metrics.fromJson(JSONObject("""{"gameplay_s":900,"steady_fps":40}"""))!!
         assertNull(legacy.workPerFrame())
