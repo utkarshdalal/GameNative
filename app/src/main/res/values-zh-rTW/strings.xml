@@ -1928,7 +1928,7 @@
     <string name="optimize_pill_done">已完成</string>
     <string name="optimize_pill_waiting">等待中</string>
     <string name="optimize_pill_trial_used">試用已用完</string>
-    <string name="optimize_plan_unlimited">無限制</string>
+    <string name="optimize_plan_unlimited">%1$s 無限制</string>
     <string name="optimize_plan_signed_out">登入帳號即可免費試用</string>
     <string name="optimize_upsell_title">讓每款遊戲都以最佳狀態執行</string>
     <string name="optimize_upsell_benefit_perf">影格率更高，卡頓更少</string>
@@ -1940,7 +1940,7 @@
         <item quantity="other">本月已用 %1$d/%2$d 款遊戲，%3$s 重設</item>
     </plurals>
     <plurals name="optimize_upsell_plan_line">
-        <item quantity="other">每月 %1$d 款遊戲，或無限制</item>
+        <item quantity="other">%1$s：每月最佳化 %2$d 款遊戲。%3$s：無限制。</item>
     </plurals>
     <plurals name="optimize_upsell_free_used">
         <item quantity="other">你已用完 %1$d 款免費遊戲</item>

@@ -1974,7 +1974,7 @@
     <string name="optimize_pill_done">Gotowe</string>
     <string name="optimize_pill_waiting">Oczekiwanie</string>
     <string name="optimize_pill_trial_used">Wersja próbna wykorzystana</string>
-    <string name="optimize_plan_unlimited">Bez limitu</string>
+    <string name="optimize_plan_unlimited">Bez limitu z %1$s</string>
     <string name="optimize_plan_signed_out">Za darmo do wypróbowania z kontem</string>
     <string name="optimize_upsell_title">Każda gra w najlepszej formie</string>
     <string name="optimize_upsell_benefit_perf">Więcej klatek i mniej przycięć</string>
@@ -1992,10 +1992,10 @@
         <item quantity="other">%1$d z %2$d gier w tym miesiącu, odnowienie %3$s</item>
     </plurals>
     <plurals name="optimize_upsell_plan_line">
-        <item quantity="one">%1$d gra miesięcznie lub bez limitu</item>
-        <item quantity="few">%1$d gry miesięcznie lub bez limitu</item>
-        <item quantity="many">%1$d gier miesięcznie lub bez limitu</item>
-        <item quantity="other">%1$d gry miesięcznie lub bez limitu</item>
+        <item quantity="one">%1$s: optymalizacja %2$d gry miesięcznie. %3$s: bez limitu.</item>
+        <item quantity="few">%1$s: optymalizacja %2$d gier miesięcznie. %3$s: bez limitu.</item>
+        <item quantity="many">%1$s: optymalizacja %2$d gier miesięcznie. %3$s: bez limitu.</item>
+        <item quantity="other">%1$s: optymalizacja %2$d gry miesięcznie. %3$s: bez limitu.</item>
     </plurals>
     <plurals name="optimize_upsell_free_used">
         <item quantity="one">Wykorzystano %1$d darmową grę</item>

@@ -1834,7 +1834,7 @@
     <string name="optimize_pill_done">Færdig</string>
     <string name="optimize_pill_waiting">Venter</string>
     <string name="optimize_pill_trial_used">Prøveperiode brugt</string>
-    <string name="optimize_plan_unlimited">Ubegrænset</string>
+    <string name="optimize_plan_unlimited">Ubegrænset med %1$s</string>
     <string name="optimize_plan_signed_out">Gratis at prøve med en konto</string>
     <string name="optimize_upsell_title">Få alle dine spil til at køre bedst muligt</string>
     <string name="optimize_upsell_benefit_perf">Højere billedhastighed og færre hak</string>
@@ -1848,8 +1848,8 @@
         <item quantity="other">%1$d af %2$d spil denne måned, nulstilles %3$s</item>
     </plurals>
     <plurals name="optimize_upsell_plan_line">
-        <item quantity="one">%1$d spil om måneden eller ubegrænset</item>
-        <item quantity="other">%1$d spil om måneden eller ubegrænset</item>
+        <item quantity="one">%1$s: optimer %2$d spil om måneden. %3$s: ubegrænset.</item>
+        <item quantity="other">%1$s: optimer %2$d spil om måneden. %3$s: ubegrænset.</item>
     </plurals>
     <plurals name="optimize_upsell_free_used">
         <item quantity="one">Du har brugt dit %1$d gratis spil</item>

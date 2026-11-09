@@ -1930,7 +1930,7 @@
     <string name="optimize_pill_done">완료</string>
     <string name="optimize_pill_waiting">대기 중</string>
     <string name="optimize_pill_trial_used">체험 사용 완료</string>
-    <string name="optimize_plan_unlimited">무제한</string>
+    <string name="optimize_plan_unlimited">%1$s로 무제한</string>
     <string name="optimize_plan_signed_out">계정으로 무료 체험</string>
     <string name="optimize_upsell_title">모든 게임을 최상의 상태로</string>
     <string name="optimize_upsell_benefit_perf">더 높은 프레임과 더 적은 끊김</string>
@@ -1942,7 +1942,7 @@
         <item quantity="other">이번 달 %2$d개 중 %1$d개, %3$s에 초기화</item>
     </plurals>
     <plurals name="optimize_upsell_plan_line">
-        <item quantity="other">월 %1$d개 또는 무제한</item>
+        <item quantity="other">%1$s: 월 %2$d개 게임 최적화. %3$s: 무제한.</item>
     </plurals>
     <plurals name="optimize_upsell_free_used">
         <item quantity="other">무료 게임 %1$d개를 모두 사용했습니다</item>

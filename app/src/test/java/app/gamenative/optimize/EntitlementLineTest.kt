@@ -106,7 +106,7 @@ class EntitlementLineTest {
 
     @Test
     fun pillTextForEachPlan() {
-        assertEquals(PlanText(R.string.optimize_plan_unlimited), OptimizeStatus.entitlementPill(EntitlementLine.Unlimited))
+        assertEquals(PlanText(R.string.optimize_plan_unlimited, args = listOf(PlanName.PRO)), OptimizeStatus.entitlementPill(EntitlementLine.Unlimited))
         assertEquals(PlanText(R.string.optimize_plan_signed_out), OptimizeStatus.entitlementPill(EntitlementLine.Offer(3)))
         assertEquals(PlanText(R.plurals.optimize_trial_progress, 3, listOf(1, 3)), OptimizeStatus.entitlementPill(EntitlementLine.Trial(1, 3)))
         assertEquals(PlanText(R.plurals.optimize_trial_progress, 3, listOf(3, 3)), OptimizeStatus.entitlementPill(EntitlementLine.Exhausted(3)))
@@ -136,6 +136,11 @@ class EntitlementLineTest {
         assertNull(OptimizeStatus.upsellSubtitle(EntitlementLine.Monthly(1, 5, 42L)))
         assertEquals(5, OptimizeStatus.upsellMonthlyGames(EntitlementLine.Monthly(5, 5, null)))
         assertEquals(Entitlement.DEFAULT_MONTHLY_GAMES, OptimizeStatus.upsellMonthlyGames(EntitlementLine.Exhausted(3)))
+        assertEquals(
+            PlanText(R.plurals.optimize_upsell_plan_line, 3, listOf(PlanName.BASIC, 3, PlanName.PRO)),
+            OptimizeStatus.upsellPlanLine(EntitlementLine.Offer(3)),
+        )
+        assertEquals(EntitlementLine.Unlimited, OptimizeStatus.entitlementLine(Entitlement(Entitlement.MEMBER, 0, 0, tier = "patron", gamesQuota = 3), false, true, false))
     }
 
     @Test

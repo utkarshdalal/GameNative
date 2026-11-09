@@ -67,7 +67,7 @@ sealed class OptimizeStatus {
 
         /** What the plan pill says for [line]. */
         fun entitlementPill(line: EntitlementLine): PlanText = when (line) {
-            EntitlementLine.Unlimited -> PlanText(R.string.optimize_plan_unlimited)
+            EntitlementLine.Unlimited -> PlanText(R.string.optimize_plan_unlimited, args = listOf(PlanName.PRO))
             is EntitlementLine.Offer -> PlanText(R.string.optimize_plan_signed_out)
             is EntitlementLine.Trial -> PlanText(R.plurals.optimize_trial_progress, line.limit, listOf(line.used, line.limit))
             is EntitlementLine.Exhausted -> PlanText(R.plurals.optimize_trial_progress, line.limit, listOf(line.limit, line.limit))
@@ -100,6 +100,12 @@ sealed class OptimizeStatus {
         /** The monthly games the plan line offers: the account's own monthly quota when on one, otherwise the default. */
         fun upsellMonthlyGames(line: EntitlementLine?): Int =
             (line as? EntitlementLine.Monthly)?.limit ?: Entitlement.DEFAULT_MONTHLY_GAMES
+
+        /** The plan line of the upsell: Basic's monthly games and Pro's unlimited, by the plan names the paywall shows. */
+        fun upsellPlanLine(line: EntitlementLine?): PlanText {
+            val games = upsellMonthlyGames(line)
+            return PlanText(R.plurals.optimize_upsell_plan_line, games, listOf(PlanName.BASIC, games, PlanName.PRO))
+        }
 
         /** The short status pill for [status], the words the cards use; null when there is nothing to show. */
         @StringRes
@@ -155,5 +161,11 @@ sealed class EntitlementLine {
     }
 }
 
-/** A string or plural resource with its arguments; [date], when set, is formatted and passed last. */
-data class PlanText(val res: Int, val quantity: Int? = null, val args: List<Int> = emptyList(), val date: Long? = null)
+/**
+ * A string or plural resource with its arguments: numbers, or a [PlanName] the UI turns into the plan's shown name.
+ * [date], when set, is formatted and passed last.
+ */
+data class PlanText(val res: Int, val quantity: Int? = null, val args: List<Any> = emptyList(), val date: Long? = null)
+
+/** A membership plan named in Optimize copy, shown with the support paywall's own plan names. */
+enum class PlanName { BASIC, PRO }

@@ -1970,7 +1970,7 @@
     <string name="optimize_pill_done">Готово</string>
     <string name="optimize_pill_waiting">Очікування</string>
     <string name="optimize_pill_trial_used">Пробний період використано</string>
-    <string name="optimize_plan_unlimited">Без обмежень</string>
+    <string name="optimize_plan_unlimited">Без обмежень з %1$s</string>
     <string name="optimize_plan_signed_out">Безкоштовно з обліковим записом</string>
     <string name="optimize_upsell_title">Кожна гра в найкращій формі</string>
     <string name="optimize_upsell_benefit_perf">Вищий FPS і менше підгальмовувань</string>
@@ -1988,10 +1988,10 @@
         <item quantity="other">%1$d з %2$d гри цього місяця, скидання %3$s</item>
     </plurals>
     <plurals name="optimize_upsell_plan_line">
-        <item quantity="one">%1$d гра на місяць або без обмежень</item>
-        <item quantity="few">%1$d гри на місяць або без обмежень</item>
-        <item quantity="many">%1$d ігор на місяць або без обмежень</item>
-        <item quantity="other">%1$d гри на місяць або без обмежень</item>
+        <item quantity="one">%1$s: оптимізація %2$d гри на місяць. %3$s: без обмежень.</item>
+        <item quantity="few">%1$s: оптимізація %2$d ігор на місяць. %3$s: без обмежень.</item>
+        <item quantity="many">%1$s: оптимізація %2$d ігор на місяць. %3$s: без обмежень.</item>
+        <item quantity="other">%1$s: оптимізація %2$d гри на місяць. %3$s: без обмежень.</item>
     </plurals>
     <plurals name="optimize_upsell_free_used">
         <item quantity="one">Ви використали %1$d безкоштовну гру</item>

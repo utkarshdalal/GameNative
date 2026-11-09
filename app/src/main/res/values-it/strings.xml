@@ -1955,7 +1955,7 @@
     <string name="optimize_pill_done">Fatto</string>
     <string name="optimize_pill_waiting">In attesa</string>
     <string name="optimize_pill_trial_used">Prova usata</string>
-    <string name="optimize_plan_unlimited">Illimitato</string>
+    <string name="optimize_plan_unlimited">Illimitato con %1$s</string>
     <string name="optimize_plan_signed_out">Prova gratis con un account</string>
     <string name="optimize_upsell_title">Ogni gioco al massimo</string>
     <string name="optimize_upsell_benefit_perf">Più fotogrammi al secondo e meno scatti</string>
@@ -1969,8 +1969,8 @@
         <item quantity="other">%1$d di %2$d giochi questo mese, si rinnova il %3$s</item>
     </plurals>
     <plurals name="optimize_upsell_plan_line">
-        <item quantity="one">%1$d gioco al mese, o illimitato</item>
-        <item quantity="other">%1$d giochi al mese, o illimitato</item>
+        <item quantity="one">%1$s: ottimizza %2$d gioco al mese. %3$s: illimitato.</item>
+        <item quantity="other">%1$s: ottimizza %2$d giochi al mese. %3$s: illimitato.</item>
     </plurals>
     <plurals name="optimize_upsell_free_used">
         <item quantity="one">Hai usato il tuo %1$d gioco gratuito</item>

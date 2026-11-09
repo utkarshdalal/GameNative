@@ -46,6 +46,7 @@ import app.gamenative.optimize.EntitlementLine
 import app.gamenative.optimize.OptimizeController
 import app.gamenative.optimize.OptimizeProfile
 import app.gamenative.optimize.OptimizeStatus
+import app.gamenative.optimize.PlanName
 import app.gamenative.optimize.PlanText
 import app.gamenative.optimize.orAppWide
 import app.gamenative.ui.component.BenefitRow
@@ -200,7 +201,16 @@ private fun OptimizeGoalCard(
 @Composable
 fun planText(text: PlanText): String {
     val date = text.date?.let { DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(it)) }
-    val args: Array<Any> = (text.args + listOfNotNull(date)).toTypedArray()
+    val basic = stringResource(R.string.gamenative_account_plan_basic)
+    val pro = stringResource(R.string.gamenative_account_plan_pro)
+    val named = text.args.map {
+        when (it) {
+            PlanName.BASIC -> basic
+            PlanName.PRO -> pro
+            else -> it
+        }
+    }
+    val args: Array<Any> = (named + listOfNotNull(date)).toTypedArray()
     return if (text.quantity != null) pluralStringResource(text.res, text.quantity, *args) else stringResource(text.res, *args)
 }
 
@@ -263,9 +273,8 @@ fun OptimizeUpsell(line: EntitlementLine?, modifier: Modifier = Modifier, button
                 iconTint = PluviaTheme.colors.accentSuccess,
                 compact = true,
             )
-            val monthly = OptimizeStatus.upsellMonthlyGames(line)
             BenefitRow(
-                title = pluralStringResource(R.plurals.optimize_upsell_plan_line, monthly, monthly),
+                title = planText(OptimizeStatus.upsellPlanLine(line)),
                 icon = Icons.Filled.WorkspacePremium,
                 iconTint = accent,
                 compact = true,

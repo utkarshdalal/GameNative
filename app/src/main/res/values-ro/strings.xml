@@ -1947,7 +1947,7 @@
     <string name="optimize_pill_done">Gata</string>
     <string name="optimize_pill_waiting">În așteptare</string>
     <string name="optimize_pill_trial_used">Perioada de probă folosită</string>
-    <string name="optimize_plan_unlimited">Nelimitat</string>
+    <string name="optimize_plan_unlimited">Nelimitat cu %1$s</string>
     <string name="optimize_plan_signed_out">Gratuit de încercat cu un cont</string>
     <string name="optimize_upsell_title">Fiecare joc la cel mai bun nivel</string>
     <string name="optimize_upsell_benefit_perf">Mai multe cadre pe secundă și mai puține sacadări</string>
@@ -1963,9 +1963,9 @@
         <item quantity="other">%1$d din %2$d de jocuri luna aceasta, se resetează pe %3$s</item>
     </plurals>
     <plurals name="optimize_upsell_plan_line">
-        <item quantity="one">%1$d joc pe lună sau nelimitat</item>
-        <item quantity="few">%1$d jocuri pe lună sau nelimitat</item>
-        <item quantity="other">%1$d de jocuri pe lună sau nelimitat</item>
+        <item quantity="one">%1$s: optimizezi %2$d joc pe lună. %3$s: nelimitat.</item>
+        <item quantity="few">%1$s: optimizezi %2$d jocuri pe lună. %3$s: nelimitat.</item>
+        <item quantity="other">%1$s: optimizezi %2$d de jocuri pe lună. %3$s: nelimitat.</item>
     </plurals>
     <plurals name="optimize_upsell_free_used">
         <item quantity="one">Ai folosit %1$d joc gratuit</item>

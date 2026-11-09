@@ -2186,7 +2186,7 @@
     <string name="optimize_pill_done">Done</string>
     <string name="optimize_pill_waiting">Waiting</string>
     <string name="optimize_pill_trial_used">Trial used</string>
-    <string name="optimize_plan_unlimited">Unlimited</string>
+    <string name="optimize_plan_unlimited">Unlimited with %1$s</string>
     <string name="optimize_plan_signed_out">Free to try with an account</string>
     <string name="optimize_upsell_title">Keep every game running its best</string>
     <string name="optimize_upsell_benefit_perf">Higher frame rates and fewer stutters</string>
@@ -2200,8 +2200,8 @@
         <item quantity="other">%1$d of %2$d games this month, resets %3$s</item>
     </plurals>
     <plurals name="optimize_upsell_plan_line">
-        <item quantity="one">%1$d game a month, or unlimited</item>
-        <item quantity="other">%1$d games a month, or unlimited</item>
+        <item quantity="one">%1$s: optimize %2$d game a month. %3$s: unlimited.</item>
+        <item quantity="other">%1$s: optimize %2$d games a month. %3$s: unlimited.</item>
     </plurals>
     <plurals name="optimize_upsell_free_used">
         <item quantity="one">You\'ve used your %1$d free game</item>
