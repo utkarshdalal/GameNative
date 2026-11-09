@@ -19,6 +19,7 @@ import app.gamenative.events.SteamEvent
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamService.Companion.getAppDirName
 import app.gamenative.service.SteamService.Companion.getAppInfoOf
+import app.gamenative.ui.STEAM_EMULATOR_ARCHIVE
 import app.gamenative.ui.component.TIMEOUT_SHOW_OFFLINE_OPTION_SECONDS
 import app.gamenative.workshop.compatibility.SlayTheSpireModTheSpireCompatibility
 import com.winlator.container.Container
@@ -373,7 +374,10 @@ object SteamUtils {
         val container = ContainerUtils.getContainer(context, appId)
         val steamRootDir = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam")
 
-        if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED) && File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient_loader_x64.exe").exists()) {
+        val archiveMarker = File(steamRootDir, ".gamenative_coldclient")
+        if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED) && File(steamRootDir, "steamclient_loader_x64.exe").exists() &&
+            archiveMarker.exists() && archiveMarker.readText().trim() == STEAM_EMULATOR_ARCHIVE
+        ) {
             return
         }
         MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
@@ -390,12 +394,13 @@ object SteamUtils {
         }
 
         val imageFs = ImageFs.find(context)
-        val downloaded = File(imageFs.getFilesDir(), "experimental-drm-20260116.tzst")
+        val downloaded = File(imageFs.getFilesDir(), STEAM_EMULATOR_ARCHIVE)
         TarCompressorUtils.extract(
             TarCompressorUtils.Type.ZSTD,
             downloaded,
             imageFs.getRootDir(),
         )
+        archiveMarker.writeText(STEAM_EMULATOR_ARCHIVE)
         putBackSteamDlls(appDirPath)
         restoreUnpackedExecutable(context, steamAppId)
 
