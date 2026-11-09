@@ -28,6 +28,10 @@ class PsPcSdkRuntimeStepTest {
         prefixDir = createTempDirectory(prefix = "pspc-prefix-test").toFile()
         container = mockk(relaxed = true)
         every { container.rootDir } returns prefixDir
+        // `PreInstallSteps.getPreInstallCommands` resolves the game directory from the drives,
+        // and `markersStale` reads the variant.
+        every { container.drives } returns "A:${gameDir.absolutePath}"
+        every { container.containerVariant } returns Container.BIONIC
     }
 
     /** The runtime as a title ships it: the script and both packages in one directory. */
@@ -69,6 +73,35 @@ class PsPcSdkRuntimeStepTest {
 
         assertFalse(File(prefixDir, ".wine").exists())
         assertFalse(File(gameDir, Marker.PSPC_SDK_MANAGER_INSTALLED.fileName).exists())
+        assertFalse(File(gameDir, Marker.PSPC_SDK_RUNTIME_INSTALLED.fileName).exists())
+    }
+
+    @Test
+    fun theRuntimeRunsAgain_whenTheMarkerIsSetButThePrefixHasNoRuntime() {
+        runtime("SB/Binaries/Win64")
+        MarkerUtils.addMarker(gameDir.absolutePath, Marker.PSPC_SDK_RUNTIME_INSTALLED)
+        // The prefix is there, and the runtime is not: a failed msiexec still gets marked done.
+        File(prefixDir, ".wine/drive_c/ProgramData").mkdirs()
+
+        assertTrue(PsPcSdkRuntimeStep.appliesTo(container, GameSource.STEAM, gameDir.absolutePath))
+    }
+
+    @Test
+    fun theRuntimeIsSkipped_whenThePrefixHasIt() {
+        runtime("SB/Binaries/Win64")
+        MarkerUtils.addMarker(gameDir.absolutePath, Marker.PSPC_SDK_RUNTIME_INSTALLED)
+        File(prefixDir, ".wine/drive_c/ProgramData/${PsPcSdkFiles.PREFIX_SDK_DIR}").mkdirs()
+
+        assertFalse(PsPcSdkRuntimeStep.appliesTo(container, GameSource.STEAM, gameDir.absolutePath))
+    }
+
+    @Test
+    fun anInvisiblePrefixLeavesTheMarkerInCharge() {
+        runtime("SB/Binaries/Win64")
+        MarkerUtils.addMarker(gameDir.absolutePath, Marker.PSPC_SDK_RUNTIME_INSTALLED)
+
+        // No `.wine` to look into: the marker is the only evidence there is, so it is believed.
+        assertFalse(PsPcSdkRuntimeStep.appliesTo(container, GameSource.STEAM, gameDir.absolutePath))
     }
 
     @Test
@@ -103,7 +136,10 @@ class PsPcSdkRuntimeStepTest {
     }
 
     @Test
-    fun theRuntimeIsNotSearchedForFourDirectoriesDown() {
+    fun aScriptBeyondTheSearchBoundIsNotUsed() {
+        // `MAX_DEPTH` counts entries from the game directory, its own children being 1: a script
+        // four directories down is entry 5, one past the bound of 4. Three directories down — the
+        // shape every title in play ships — is entry 4 and is found above.
         runtime("a/b/c/d")
 
         assertNull(build(PsPcSdkRuntimeStep))
@@ -142,12 +178,26 @@ class PsPcSdkRuntimeStepTest {
     }
 
     @Test
-    fun theManagerInstallsBeforeTheRuntime() {
-        // The vendor script's order. `PreInstallSteps` runs the list in order, so this is the
-        // registration the order depends on.
+    fun theSchedulerRunsTheManagerBeforeTheRuntime() {
+        // The order the vendor script installs them in, asserted through the scheduler that
+        // actually produces the chain rather than through the two singletons' own fields.
+        runtime("SB/Binaries/Win64")
+
+        val commands = PreInstallSteps.getPreInstallCommands(
+            container = container,
+            appId = "STEAM_3489700",
+            gameSource = GameSource.STEAM,
+            screenInfo = "1280x720",
+            containerVariantChanged = false,
+        )
+
         assertEquals(
             listOf(Marker.PSPC_SDK_MANAGER_INSTALLED, Marker.PSPC_SDK_RUNTIME_INSTALLED),
-            listOf(PsPcSdkManagerStep.marker, PsPcSdkRuntimeStep.marker),
+            commands.map { it.marker },
         )
+        assertTrue(commands.first().executable.endsWith(PsPcSdkFiles.MANAGER_MSI + " /quiet"))
+        assertTrue(commands.last().executable.endsWith(PsPcSdkFiles.INSTALLER_MSI + " /quiet"))
+        // Both opt out of the shell, so neither leaves a console window on the virtual desktop.
+        assertTrue(commands.none { it.executable.contains("cmd /c") })
     }
 }

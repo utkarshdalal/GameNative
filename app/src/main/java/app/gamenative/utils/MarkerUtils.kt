@@ -15,6 +15,8 @@ object MarkerUtils {
         Marker.OPENAL_INSTALLED,
         Marker.XNA_INSTALLED,
         Marker.UBISOFT_CONNECT_INSTALLED,
+        Marker.PSPC_SDK_MANAGER_INSTALLED,
+        Marker.PSPC_SDK_RUNTIME_INSTALLED,
     )
 
     fun hasMarker(dirPath: String, type: Marker): Boolean {

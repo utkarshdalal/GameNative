@@ -25,6 +25,9 @@ internal object PsPcSdkFiles {
     const val INSTALLER_MSI = "PsPcSdkRuntimeInstaller.msi"
     const val MAX_DEPTH = 4
 
+    /** Where the runtime installs itself, relative to `ProgramData` in the prefix. */
+    const val PREFIX_SDK_DIR = "Sony Interactive Entertainment Inc/PSPC_SDK"
+
     /** The directory holding the runtime, `null` when this title ships none. */
     fun findDir(gameDir: File): File? = runCatching {
         gameDir.walkTopDown()
@@ -86,11 +89,30 @@ abstract class PsPcSdkPackageStep : PreInstallStep {
      * An extra per-step stamp would say the same thing twice — and, worse, [buildCommand] would
      * have to write it, which makes a *probe* (`hasPendingSteps`) mutate the prefix.
      */
+    /**
+     * What the package leaves in the prefix, when that is something this can check, or `null`
+     * where it cannot be judged (a prefix that is not visible from here).
+     */
+    protected open fun installedInPrefix(container: Container): Boolean? = null
+
+    /**
+     * The marker, and — where the package leaves something to look at — the disk.
+     *
+     * A marker is written when the session ends, not when the install succeeds, so a failed
+     * `msiexec` would otherwise be skipped on every later launch and the game would keep
+     * starting without the runtime. The exit status cannot settle that either: the guest
+     * executable is `wine explorer /desktop=…`, whose status is not the installer's. What the
+     * game itself checks is cheaper and truer — if the runtime is not under `ProgramData`, it
+     * is not installed, whatever the marker says.
+     */
     override fun appliesTo(
         container: Container,
         gameSource: GameSource,
         gameDirPath: String,
-    ): Boolean = !MarkerUtils.hasMarker(gameDirPath, marker)
+    ): Boolean {
+        if (!MarkerUtils.hasMarker(gameDirPath, marker)) return true
+        return installedInPrefix(container) == false
+    }
 
     override fun buildCommand(
         container: Container,
@@ -131,4 +153,14 @@ object PsPcSdkRuntimeStep : PsPcSdkPackageStep() {
     override val marker: Marker = Marker.PSPC_SDK_RUNTIME_INSTALLED
     override val msiName: String = PsPcSdkFiles.INSTALLER_MSI
     override val tag: String = "PsPcSdkRuntimeStep"
+
+    /**
+     * The runtime's install root, the one the game looks for before it starts — from the log of a
+     * working install: `C:\ProgramData\Sony Interactive Entertainment Inc\PSPC_SDK\S22\…`.
+     */
+    override fun installedInPrefix(container: Container): Boolean? {
+        val programData = File(container.rootDir, ".wine/drive_c/ProgramData")
+        if (!programData.isDirectory) return null
+        return File(programData, PsPcSdkFiles.PREFIX_SDK_DIR).isDirectory
+    }
 }

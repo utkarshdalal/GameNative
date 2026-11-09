@@ -4738,6 +4738,17 @@ private fun setupXEnvironment(
                 return@setTerminationCallback
             }
             val current = remaining.first()
+            // Marked on termination, not on success: the guest executable is
+            // `wine explorer /desktop=…`, whose status is not the installer's, so a non-zero
+            // status does not mean the install failed. Steps that can tell whether their work
+            // landed check the disk instead (see `PsPcSdkRuntimeStep.appliesTo`).
+            if (status != 0) {
+                Timber.w(
+                    "pre-install: %s ended with status %d; treating it as run",
+                    current.marker.name,
+                    status,
+                )
+            }
             PreInstallSteps.markStepDone(container, current.marker)
             guestProgramLauncherComponent.setPreUnpack(null)
             try {
