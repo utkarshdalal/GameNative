@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.13.5)
+project(gnaffinity C)
+add_library(gnaffinity SHARED gnaffinity.c)
+set_target_properties(gnaffinity PROPERTIES C_VISIBILITY_PRESET hidden)
+target_link_options(gnaffinity PRIVATE -Wl,-z,max-page-size=16384 -Wl,--build-id=none)

@@ -31,7 +31,6 @@ import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -66,7 +65,6 @@ fun DebugPaywallScreen(
     reason: String,
     hasDiscordToken: Boolean,
     onSubscribe: () -> Unit,
-    onSubscribeKofi: () -> Unit,
     onConnectDiscord: () -> Unit,
     onRetry: () -> Unit,
     onDismiss: () -> Unit,
@@ -199,14 +197,7 @@ fun DebugPaywallScreen(
                         .fillMaxWidth()
                         .focusRequester(subscribeFocusRequester),
                 ) {
-                    Text(stringResource(R.string.debug_paywall_subscribe))
-                }
-
-                OutlinedButton(
-                    onClick = onSubscribeKofi,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(stringResource(R.string.debug_paywall_kofi_alt))
+                    Text(stringResource(R.string.support_see_plans))
                 }
 
                 Text(

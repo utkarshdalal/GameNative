@@ -1195,4 +1195,82 @@ class KeyValueUtilsTest {
         )!!
         assertEquals(null, kv.vrClassification())
     }
+
+    @Test
+    fun installScriptIsReadFromConfigThenExtendedThenCommonExtended() {
+        fun app(body: String) = KeyValue.loadFromString(
+            """
+            "appinfo"
+            {
+                "appid" "49520"
+                $body
+            }
+            """.trimIndent(),
+        )!!.generateSteamApp()
+
+        assertEquals(
+            "installscript.vdf",
+            app(""" "config" { "installscript" "installscript.vdf" } "extended" { "installscript" "other.vdf" } """).installScript,
+        )
+        assertEquals("extended.vdf", app(""" "config" { "installscript" "" } "extended" { "installscript" "extended.vdf" } """).installScript)
+        assertEquals("common.vdf", app(""" "common" { "extended" { "installscript" "common.vdf" } } """).installScript)
+        assertEquals("", app(""" "common" { "name" "x" } """).installScript)
+    }
+
+    @Test
+    fun psychonautsPlatformsAllIsIncluded() {
+        val kvString = """
+            "appinfo"
+            {
+                "appid"     "3830"
+                "ufs"
+                {
+                    "savefiles"
+                    {
+                        "1"
+                        {
+                            "root"      "gameinstall"
+                            "path"      "profiles/profile 1"
+                            "pattern"   "*"
+                            "platforms"
+                            {
+                                "1"     "all"
+                            }
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        val patterns = KeyValue.loadFromString(kvString)!!.generateSteamApp().ufs.saveFilePatterns
+        assertEquals(1, patterns.size)
+        assertEquals(PathType.GameInstall, patterns[0].root)
+        assertEquals("profiles/profile 1", patterns[0].path)
+    }
+
+    @Test
+    fun trailingDotSegmentIsStrippedFromSavePath() {
+        val kvString = """
+            "appinfo"
+            {
+                "appid"     "282800"
+                "ufs"
+                {
+                    "savefiles"
+                    {
+                        "0"
+                        {
+                            "root"      "gameinstall"
+                            "path"      "save/{64BitSteamID}/."
+                            "pattern"   "*.ojs"
+                            "recursive" "1"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        val patterns = KeyValue.loadFromString(kvString)!!.generateSteamApp().ufs.saveFilePatterns
+        assertEquals(1, patterns.size)
+        assertEquals("save/{64BitSteamID}", patterns[0].path)
+        assertEquals("save/{64BitSteamID}", patterns[0].uploadPath)
+    }
 }

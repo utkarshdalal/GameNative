@@ -20,6 +20,7 @@ enum class AppOptionMenuType(@StringRes val title: Int) {
     ExportConfig(R.string.export_config),
     ImportSaves(R.string.option_import_saves),
     ExportSaves(R.string.option_export_saves),
+    RestoreSaveBackup(R.string.option_restore_save_backup),
     Uninstall(R.string.uninstall),
     VerifyFiles(R.string.option_verify_files),
     Update(R.string.option_update),

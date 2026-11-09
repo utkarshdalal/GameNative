@@ -55,6 +55,7 @@ class ContainerOverlayEnvTest {
                 "GN_OVERLAY_UPPER" to upper,
                 "GN_OVERLAY_LOWER" to lower,
                 "GN_OVERLAY_ALIASES" to expectedAliases.joinToString(":"),
+                "GN_OVERLAY_HIDE" to ".DepotDownloader:.DownloadInfo",
             ),
             env,
         )
@@ -64,7 +65,7 @@ class ContainerOverlayEnvTest {
     fun buildEnv_addsDebugOnlyWhenRequested() {
         val env = ContainerOverlay.buildEnv(upper, lower, expectedAliases, true)
         assertEquals("1", env["GN_OVERLAY_DEBUG"])
-        assertEquals(4, env.size)
+        assertEquals(5, env.size)
     }
 
     @Test

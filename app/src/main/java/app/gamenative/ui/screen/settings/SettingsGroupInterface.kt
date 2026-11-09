@@ -736,6 +736,29 @@ fun SettingsGroupInterface(
         )
     }
 
+    SettingsGroup(
+        modifier = Modifier.background(Color.Transparent),
+        title = { Text(text = stringResource(R.string.settings_group_cloud_saves)) },
+    ) {
+        val saveBackupValues = remember { listOf(0, 1, 3, 5, 10) }
+        val saveBackupLabels = saveBackupValues.map {
+            if (it == 0) stringResource(R.string.settings_save_backups_off) else it.toString()
+        }
+        var saveBackupIndex by rememberSaveable {
+            mutableStateOf(saveBackupValues.indexOf(PrefManager.saveBackupsToKeep).takeIf { it >= 0 } ?: 2)
+        }
+        SettingsListDropdown(
+            title = { Text(text = stringResource(R.string.settings_save_backups_to_keep)) },
+            items = saveBackupLabels,
+            value = saveBackupIndex,
+            onItemSelected = { idx ->
+                saveBackupIndex = idx
+                PrefManager.saveBackupsToKeep = saveBackupValues[idx]
+            },
+            colors = settingsTileColorsAlt(),
+        )
+    }
+
     // Steam Download Server choice dialog
     SingleChoiceDialog(
         openDialog = openRegionDialog,

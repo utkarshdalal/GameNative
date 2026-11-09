@@ -633,6 +633,28 @@ static void test_listing(void)
     if (d) gno_closedir(d);
 }
 
+static void test_hidden_names(void)
+{
+    mkdir(P(U, "drive_c/game"), 0755);
+    mkdir(P(L, "drive_c/game"), 0755);
+    CHECK(mkdir(P(U, "drive_c/game/.DepotDownloader"), 0755) == 0);
+    CHECK(mkdir(P(L, "drive_c/game/.DownloadInfo"), 0755) == 0);
+    CHECK(h_write(P(L, "drive_c/game/game.exe"), O_WRONLY | O_CREAT, "x") == 0);
+    char *l = h_list(P(U, "drive_c/game"));
+    CHECK(l && !strcmp(l, ".DepotDownloader,.DownloadInfo,game.exe"));
+    gno_set_hidden(".DepotDownloader:.DownloadInfo::.:..:bad/name");
+    CHECK(gno_hidden_name(".DepotDownloader") && gno_hidden_name(".DownloadInfo"));
+    CHECK(!gno_hidden_name("game.exe") && !gno_hidden_name(".") && !gno_hidden_name("bad/name"));
+    l = h_list(P(U, "drive_c/game"));
+    CHECK(l && !strcmp(l, "game.exe"));
+    struct stat st;
+    CHECK(stat(P(U, "drive_c/game/.DepotDownloader"), &st) == 0);
+    gno_set_hidden("");
+    CHECK(!gno_hidden_name(".DepotDownloader"));
+    l = h_list(P(U, "drive_c/game"));
+    CHECK(l && !strcmp(l, ".DepotDownloader,.DownloadInfo,game.exe"));
+}
+
 static void test_fontconfig_rename(gno_ops *ops)
 {
     char up[GNO_PATH_MAX], lo[GNO_PATH_MAX], fc[GNO_PATH_MAX], src[GNO_PATH_MAX], dst[GNO_PATH_MAX];
@@ -824,6 +846,7 @@ int main(void)
     test_rename();
     test_symlink();
     test_listing();
+    test_hidden_names();
     test_fuzz_normalize();
     test_dlsym_pick();
     test_copy_up_race();

@@ -922,22 +922,7 @@ object SteamUtils {
     }
 
     private fun calculateDirectorySize(directory: File): Long {
-        if (!directory.exists() || !directory.isDirectory()) {
-            return 0L
-        }
-
-        var size = 0L
-        try {
-            directory.walkTopDown().forEach { file ->
-                if (file.isFile()) {
-                    size += file.length()
-                }
-            }
-        } catch (e: Exception) {
-            Timber.w(e, "Error calculating directory size")
-        }
-
-        return size
+        return StorageUtils.directorySizeOnDisk(directory.toPath())
     }
 
     /**
@@ -1467,9 +1452,7 @@ object SteamUtils {
                 val uniqueDirs = LinkedHashSet<String>()
                 windowsPatterns.forEach { pattern ->
                     val root = if (pattern.root.name == "GameInstall") "gameinstall" else pattern.root.name
-                    val path = pattern.path
-                        .replace("{64BitSteamID}", "{::64BitSteamID::}")
-                        .replace("{Steam3AccountID}", "{::Steam3AccountID::}")
+                    val path = gseSteamIdPlaceholders(pattern.path)
                     uniqueDirs.add("{::$root::}/$path")
                 }
 
@@ -1754,6 +1737,21 @@ object SteamUtils {
         return SteamService.userSteamId?.convertToUInt64()?.toLong()
             ?: PrefManager.steamUserSteamId64.takeIf { it != 0L }
     }
+
+    private val steamId64Placeholder = Regex("\\{64BitSteamID\\}", RegexOption.IGNORE_CASE)
+    private val steam3AccountIdPlaceholder = Regex("\\{Steam3AccountID\\}", RegexOption.IGNORE_CASE)
+
+    fun substituteSteamIdPlaceholders(path: String): String =
+        steam3AccountIdPlaceholder.replace(
+            steamId64Placeholder.replace(path, getSteamId64().toString()),
+            getSteam3AccountId().toString(),
+        )
+
+    fun gseSteamIdPlaceholders(path: String): String =
+        steam3AccountIdPlaceholder.replace(
+            steamId64Placeholder.replace(path, "{::64BitSteamID::}"),
+            "{::Steam3AccountID::}",
+        )
 
     fun getSteam3AccountId(): Long? {
         return SteamService.userSteamId?.accountID?.toLong()

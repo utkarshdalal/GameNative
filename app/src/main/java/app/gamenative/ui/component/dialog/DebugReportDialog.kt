@@ -48,19 +48,18 @@ import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.component.dialog.state.DebugReportDialogState
 import app.gamenative.ui.theme.PluviaTheme
 
-const val AI_HELP_PATH_APP = "app"
-const val AI_HELP_PATH_DISCORD = "discord"
-
+/**
+ * In-app chat is where every signed-in report goes, whatever the plan's source: a
+ * Discord-granted plan reaches the app through the account merge, so a linked Discord
+ * account is never a reason to send the report to Discord. Discord is used only when
+ * "Use Discord instead" was tapped for this report ([useDiscord], reset each time the
+ * dialog opens) or when the app chat is unavailable.
+ */
 fun debugReportUsesApp(
     appChatEnabled: Boolean,
-    hasDiscordToken: Boolean,
     accountSignedIn: Boolean,
-    preferredPath: String,
-): Boolean = appChatEnabled && accountSignedIn && when (preferredPath) {
-    AI_HELP_PATH_APP -> true
-    AI_HELP_PATH_DISCORD -> false
-    else -> !hasDiscordToken
-}
+    useDiscord: Boolean,
+): Boolean = appChatEnabled && accountSignedIn && !useDiscord
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -69,14 +68,14 @@ fun DebugReportDialog(
     hasDiscordToken: Boolean,
     appChatEnabled: Boolean,
     accountSignedIn: Boolean,
-    preferredPath: String,
+    useDiscord: Boolean,
     sendProgress: Float?,
     onStateChange: (DebugReportDialogState) -> Unit,
     onSend: () -> Unit,
     onShare: () -> Unit,
     onConnectDiscord: () -> Unit,
     onSignInForApp: () -> Unit,
-    onPreferredPathChange: (String) -> Unit,
+    onUseDiscordChange: (Boolean) -> Unit,
     onOpenThread: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -215,7 +214,7 @@ fun DebugReportDialog(
                         }
 
                         else -> {
-                            val usesApp = debugReportUsesApp(appChatEnabled, hasDiscordToken, accountSignedIn, preferredPath)
+                            val usesApp = debugReportUsesApp(appChatEnabled, accountSignedIn, useDiscord)
                             val canSend = state.issueText.isNotBlank() && !state.preparing
                             Column(
                                 modifier = Modifier
@@ -346,8 +345,8 @@ fun DebugReportDialog(
                                     TextButton(
                                         onClick = {
                                             when {
-                                                usesApp -> onPreferredPathChange(AI_HELP_PATH_DISCORD)
-                                                accountSignedIn -> onPreferredPathChange(AI_HELP_PATH_APP)
+                                                usesApp -> onUseDiscordChange(true)
+                                                accountSignedIn -> onUseDiscordChange(false)
                                                 else -> onSignInForApp()
                                             }
                                         },

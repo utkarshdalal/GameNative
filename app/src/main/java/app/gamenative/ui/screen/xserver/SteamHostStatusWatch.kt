@@ -19,7 +19,7 @@ object SteamHostStatusWatch {
     private fun statusFile(imageFs: ImageFs) =
         File(imageFs.wineprefix, "drive_c/Program Files (x86)/Steam/steamhost_status")
 
-    fun start(context: Context, imageFs: ImageFs) {
+    fun start(context: Context, imageFs: ImageFs, onFailed: ((String) -> Unit)? = null) {
         val file = statusFile(imageFs)
         file.delete()
         if (!active.compareAndSet(false, true)) return
@@ -39,7 +39,12 @@ object SteamHostStatusWatch {
                             else -> null
                         }
                         if (text != null) PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(text))
-                        if (status.startsWith("launched") || status.startsWith("failed")) break
+                        if (status.startsWith("failed")) {
+                            onFailed?.invoke("Steam could not start the game (steamhost: $status)")
+                            PluviaApp.events.emit(AndroidEvent.GuestProgramTerminated)
+                            break
+                        }
+                        if (status.startsWith("launched")) break
                     }
                     Thread.sleep(500)
                 }

@@ -25,7 +25,7 @@ fun WineTabContent(state: ContainerConfigState) {
             onItemSelected = {
                 state.gpuNameIndex.value = it
                 val cfg = com.winlator.core.KeyValueSet(config.graphicsDriverConfig)
-                cfg.put("gpuName", gpuCardsValues[it].deviceId)
+                cfg.put("gpuName", gpuCardsValues[it].name)
                 state.config.value = config.copy(
                     videoPciDeviceID = gpuCardsValues[it].deviceId,
                     graphicsDriverConfig = cfg.toString()

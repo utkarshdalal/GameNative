@@ -147,9 +147,16 @@ internal fun winComponentsItemTitleRes(string: String): Int {
         "directplay" -> R.string.directplay
         "directshow" -> R.string.directshow
         "directx" -> R.string.directx
+        "vcrun2005" -> R.string.vcrun2005
+        "vcrun2008" -> R.string.vcrun2008
         "vcrun2010" -> R.string.vcrun2010
+        "vcrun2012" -> R.string.vcrun2012
+        "vcrun2013" -> R.string.vcrun2013
+        "vcrun2022" -> R.string.vcrun2022
+        "xaudio" -> R.string.xaudio
         "wmdecoder" -> R.string.wmdecoder
         "opengl" -> R.string.opengl
+        "physx" -> R.string.physx
         else -> throw IllegalArgumentException("No string res found for Win Components title: $string")
     }
 }
@@ -730,7 +737,7 @@ fun ContainerConfigDialog(
             val defaultBcnTypeIdx = bcnEmulationTypeEntries.indexOfFirst { it.equals(bcnType, true) }.takeIf { it >= 0 } ?: 0
             bcnEmulationTypeIndex = defaultBcnTypeIdx
 
-            bcnEmulationCacheEnabled = cfg.get("bcnEmulationCache", "0") == "1"
+            bcnEmulationCacheEnabled = cfg.get("bcnEmulationCache", "1") == "1"
             disablePresentWaitChecked = cfg.get("disablePresentWait", "0") == "1"
 
             val syncRaw = cfg.get("syncFrame").ifEmpty { cfg.get("frameSync", "0") }

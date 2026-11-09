@@ -40,7 +40,8 @@ data class SupportSuggestion(
 
         val WIN_COMPONENTS = setOf(
             "direct3d", "directsound", "directinput8", "directinput", "directmusic", "directplay",
-            "directshow", "directx", "vcrun2010", "wmdecoder", "opengl",
+            "directshow", "directx", "vcrun2005", "vcrun2008", "vcrun2010", "vcrun2012", "vcrun2013", "vcrun2022",
+            "wmdecoder", "opengl",
         )
 
         private val BLOCKED_ENV = setOf("WINEDEBUG")
@@ -57,6 +58,7 @@ data class SupportSuggestion(
                 Container.SUSPEND_POLICY_AUTO, Container.SUSPEND_POLICY_NEVER, Container.SUSPEND_POLICY_MANUAL,
             ),
             "startupSelection" to setOf("0", "1", "2"),
+            "displayServer" to setOf(Container.DISPLAY_SERVER_X11, Container.DISPLAY_SERVER_GAMESCOPE),
         )
 
         private val SUB_KEY = Regex("^[A-Za-z0-9_]{1,40}$")

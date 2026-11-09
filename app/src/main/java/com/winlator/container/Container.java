@@ -5,7 +5,6 @@ import android.util.Log;
 
 import com.winlator.box86_64.Box86_64Preset;
 import com.winlator.core.DefaultVersion;
-import com.winlator.core.envvars.EnvVars;
 import com.winlator.core.FileUtils;
 import com.winlator.core.KeyValueSet;
 import com.winlator.core.WineInfo;
@@ -13,14 +12,18 @@ import com.winlator.core.WineThemeManager;
 import com.winlator.fexcore.FEXCorePreset;
 import com.winlator.winhandler.WinHandler;
 import com.winlator.xenvironment.ImageFs;
-import com.winlator.xenvironment.components.PulseAudioComponent;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.Locale;
+import java.util.Set;
 
 public class Container {
     public enum XrControllerMapping {
@@ -44,10 +47,21 @@ public class Container {
     public static final String DEFAULT_EMULATOR = "FEXCore";
     public static final String DEFAULT_DXWRAPPER = "dxvk";
     public static final String DEFAULT_DISPLAY_RENDERER = "vulkan";
+    public static final String DISPLAY_SERVER_X11 = "x11";
+    public static final String DISPLAY_SERVER_GAMESCOPE = "gamescope";
+    /** Gamescope scans out through ASurfaceControl/ASurfaceTransaction, which libandroid only exports from API 29 (Android 10). */
+    public static final int GAMESCOPE_MIN_SDK = 29;
     public static final String DEFAULT_DDRAWRAPPER = "none";
     public static final String DEFAULT_DXWRAPPERCONFIG = "version=" + DefaultVersion.DXVK + ",framerate=0,maxDeviceMemory=0,async=" + DefaultVersion.ASYNC + ",asyncCache=" + DefaultVersion.ASYNC_CACHE + ",vkd3dVersion=" + DefaultVersion.VKD3D + ",vkd3dLevel=12_1" + ",ddrawrapper=" + Container.DEFAULT_DDRAWRAPPER + ",csmt=3" + ",gpuName=NVIDIA GeForce GTX 480" + ",videoMemorySize=2048" + ",strict_shader_math=1" + ",OffscreenRenderingMode=fbo" + ",renderer=gl";;
-    public static final String DEFAULT_GRAPHICSDRIVERCONFIG = "vulkanVersion=1.3" + ",version=" + DefaultVersion.WRAPPER + ",blacklistedExtensions=" + ",maxDeviceMemory=0" + ",presentMode=mailbox" + ",syncFrame=0" + ",disablePresentWait=0" + ",resourceType=auto" + ",bcnEmulation=auto" + ",bcnEmulationType=compute" + ",bcnEmulationCache=0" + ",gpuName=Device";
+    public static final String DEFAULT_GRAPHICSDRIVERCONFIG = "vulkanVersion=1.3" + ",version=" + DefaultVersion.WRAPPER + ",blacklistedExtensions=" + ",maxDeviceMemory=0" + ",presentMode=mailbox" + ",syncFrame=0" + ",disablePresentWait=0" + ",resourceType=auto" + ",bcnEmulation=auto" + ",bcnEmulationType=compute" + ",bcnEmulationCache=1" + ",gpuName=Device";
     public static final String DEFAULT_WINCOMPONENTS = "direct3d=1,directsound=1,directinput8=0,directinput=0,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=0";
+    /**
+     * Wincomponents outside DEFAULT_WINCOMPONENTS that redist detection adds to a container: the
+     * vcrun families of RedistInstallerExtractor.FAMILY_MAJOR_VERSIONS, PhysXLayout.COMPONENT and
+     * the DirectX xaudio of SteamRedistDepots. Loading keeps them with their stored value.
+     */
+    public static final Set<String> REDIST_WINCOMPONENTS = Collections.unmodifiableSet(new LinkedHashSet<>(Arrays.asList(
+            "vcrun2005", "vcrun2008", "vcrun2012", "vcrun2013", "vcrun2022", "xaudio", "physx")));
     public static final String FALLBACK_WINCOMPONENTS = "direct3d=1,directsound=1,directinput8=0,directinput=0,directmusic=1,directshow=1,directplay=1,vcrun2010=1,wmdecoder=1,opengl=0";
     public static final String[] MEDIACONV_ENV_VARS = {
             "MEDIACONV_AUDIO_DUMP_FILE=/data/data/app.gamenative/files/imagefs/home/xuser/audio.dmp",
@@ -86,6 +100,7 @@ public class Container {
     private String graphicsDriverConfig = DEFAULT_GRAPHICSDRIVERCONFIG;
     private String rendererPresentMode = "fifo";
     private String displayRenderer = Container.DEFAULT_DISPLAY_RENDERER;
+    private String displayServer = DefaultVersion.DISPLAY_SERVER;
     private int xrRefreshRate = 72;
     private int xrRenderScale = 100;
     private boolean sfCompatMode = true;
@@ -157,6 +172,8 @@ public class Container {
     private boolean externalDisplaySwap = false;
     // Prefer DRI3 WSI path
     private boolean useDRI3 = true;
+    // Enable HDR output when a Gamescope session renders the display
+    private boolean hdrEnabled = false;
     // Steam client flavour: headless (steamhost, no client UI) or the Valve GUI client under
     // one of the Box64 RC configs (normal, light, ultralight)
     private String steamType = DefaultVersion.STEAM_TYPE;
@@ -291,6 +308,8 @@ public class Container {
 
     public String getDisplayRenderer() { return displayRenderer; }
 
+    public String getDisplayServer() { return displayServer; }
+
     public int getXrRefreshRate() { return xrRefreshRate; }
 
     public void setXrRefreshRate(int v) { this.xrRefreshRate = v; }
@@ -300,6 +319,21 @@ public class Container {
     public void setXrRenderScale(int v) { this.xrRenderScale = v; }
 
     public void setDisplayRenderer(String v) { this.displayRenderer = v; }
+
+    public void setDisplayServer(String v) { this.displayServer = v; }
+
+    /** Whether the gamescope display path can run on a device at this API level. */
+    public static boolean isGamescopeSupported(int sdkInt) {
+        return sdkInt >= GAMESCOPE_MIN_SDK;
+    }
+
+    public static String defaultDisplayServer(boolean isAdreno, int sdkInt) {
+        return isAdreno && isGamescopeSupported(sdkInt) ? DISPLAY_SERVER_GAMESCOPE : DISPLAY_SERVER_X11;
+    }
+
+    public static boolean isX11Display(String containerVariant, String displayServer) {
+        return !BIONIC.equalsIgnoreCase(containerVariant) || !DISPLAY_SERVER_GAMESCOPE.equalsIgnoreCase(displayServer);
+    }
 
     public boolean getSfCompatMode() { return sfCompatMode; }
 
@@ -781,6 +815,7 @@ public class Container {
             if (!graphicsDriverConfig.isEmpty()) data.put("graphicsDriverConfig", graphicsDriverConfig);
             data.put("rendererPresentMode", rendererPresentMode);
             data.put("displayRendererMode", displayRenderer);
+            data.put("displayServer", displayServer);
             data.put("xrRefreshRate", xrRefreshRate);
             data.put("xrRenderScale", xrRenderScale);
             data.put("sfCompatMode", sfCompatMode);
@@ -838,6 +873,7 @@ public class Container {
             data.put("externalDisplayMode", externalDisplayMode);
             data.put("externalDisplaySwap", externalDisplaySwap);
             data.put("useDRI3", useDRI3);
+            data.put("hdrEnabled", hdrEnabled);
             data.put("installPath", installPath);
             data.put("steamType", steamType);
             data.put("language", language);
@@ -916,6 +952,9 @@ public class Container {
                     break;
                 case "displayRendererMode" :
                     setDisplayRenderer(data.getString(key));
+                    break;
+                case "displayServer" :
+                    setDisplayServer(data.getString(key));
                     break;
                 case "xrRefreshRate" :
                     setXrRefreshRate(data.getInt(key));
@@ -1085,6 +1124,9 @@ public class Container {
                 case "useDRI3" :
                     setUseDRI3(data.getBoolean(key));
                     break;
+                case "hdrEnabled" :
+                    setHdrEnabled(data.getBoolean(key));
+                    break;
                 case "fexcoreVersion" :
                     setFEXCoreVersion(data.getString(key));
                     break;
@@ -1137,6 +1179,12 @@ public class Container {
             }
             data.remove("useLegacyRenderer");
 
+            // displayServer: introduced with the Gamescope display path; older
+            // containers default to the winlator X11 server.
+            if (!data.has("displayServer")) {
+                data.put("displayServer", DISPLAY_SERVER_X11);
+            }
+
             if (data.has("dxcomponents")) {
                 data.put("wincomponents", data.getString("dxcomponents"));
                 data.remove("dxcomponents");
@@ -1181,6 +1229,14 @@ public class Container {
                 }
 
                 result += (!result.isEmpty() ? "," : "")+wincomponent1[0]+"="+value;
+            }
+
+            Set<String> kept = new HashSet<>();
+            for (String[] wincomponent2 : wincomponents2) {
+                String key = wincomponent2[0];
+                if (REDIST_WINCOMPONENTS.contains(key) && kept.add(key)) {
+                    result += (!result.isEmpty() ? "," : "")+key+"="+wincomponent2[1];
+                }
             }
 
             data.put("wincomponents", result);
@@ -1383,5 +1439,14 @@ public class Container {
 
     public void setUseDRI3(boolean useDRI3) {
         this.useDRI3 = useDRI3;
+    }
+
+    // Enable HDR output in a Gamescope session
+    public boolean isHdrEnabled() {
+        return hdrEnabled;
+    }
+
+    public void setHdrEnabled(boolean hdrEnabled) {
+        this.hdrEnabled = hdrEnabled;
     }
 }

@@ -1,5 +1,6 @@
 package app.gamenative.service
 
+import android.content.Context
 import androidx.room.withTransaction
 import app.gamenative.PrefManager
 import app.gamenative.R
@@ -17,6 +18,7 @@ import app.gamenative.enums.SyncResult
 import app.gamenative.service.SteamService.Companion.FileChanges
 import app.gamenative.service.SteamService.Companion.getAppDirPath
 import app.gamenative.utils.CURRENT_UFS_PARSE_VERSION
+import app.gamenative.utils.CloudSaveBackupManager
 import app.gamenative.utils.FileUtils
 import app.gamenative.utils.Net
 import app.gamenative.utils.SteamUtils
@@ -28,21 +30,25 @@ import `in`.dragonbra.javasteam.steam.handlers.steamcloud.AppFileInfo
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.SteamCloud
 import `in`.dragonbra.javasteam.types.KeyValue
 import java.io.BufferedInputStream
+import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.RandomAccessFile
 import java.security.MessageDigest
 import java.nio.file.Files
+import java.nio.file.LinkOption
 import java.nio.file.FileSystemException
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.Date
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.stream.Collectors
 import java.util.zip.ZipInputStream
 import kotlin.io.path.name
 import kotlin.io.path.pathString
 import kotlin.time.measureTime
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
@@ -107,6 +113,14 @@ object SteamAutoCloud {
         ?.let { (cloudKey, localPath) ->
             Paths.get(localPath, cloudPrefix.removePrefix(cloudKey).trimStart('/')).pathString
         }
+
+    internal fun resolveLocalRelativePath(rootDir: String, relativePath: String): String {
+        val exact = Paths.get(rootDir, relativePath)
+        if (Files.isDirectory(exact)) return relativePath
+        val rootFile = File(rootDir)
+        val resolved = FileUtils.resolveCaseInsensitive(rootFile, relativePath).toPath()
+        return if (resolved == exact) relativePath else rootFile.toPath().relativize(resolved).pathString
+    }
 
     internal data class HashLookupResult(
         val sha: ByteArray,
@@ -208,11 +222,7 @@ object SteamAutoCloud {
             .filter { it.uploadPath != it.path }
             .flatMap { p ->
                 val localPath = Paths.get(prefixToPath(p.root.name), p.substitutedPath).pathString
-                val cloudPath = p.uploadPath
-                    .replace("\\", "/")
-                    .replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
-                    .replace("{Steam3AccountID}", SteamUtils.getSteam3AccountId().toString())
-                    .trim('/')
+                val cloudPath = SteamUtils.substituteSteamIdPlaceholders(p.uploadPath.replace("\\", "/")).trim('/')
                 val cloudRoot = "%${p.uploadRoot.name}%"
                 val cloudPrefixes = if (cloudPath.isBlank()) {
                     listOf(cloudRoot)
@@ -250,6 +260,8 @@ object SteamAutoCloud {
                 }
         }
 
+        val resolvedDownloadDirs = ConcurrentHashMap<String, String>()
+
         val convertPrefixes: (AppFileChangeList) -> List<String> = { fileList ->
             val pathTypePairs = getPathTypePairs(fileList)
 
@@ -261,6 +273,15 @@ object SteamAutoCloud {
                 val cloudPrefix = prefix.trimEnd('/')
                 resolveCloudPrefixToLocal(cloudPrefix, cloudPrefixToLocalPath)
                     ?: run {
+                        val rootToken = EMBEDDED_ROOT_TOKEN.find(prefix)?.value
+                        val rootDir = pathTypePairs.firstOrNull { it.first == rootToken }?.second
+                        if (rootToken != null && rootDir != null) {
+                            val relativePath = cloudPrefix.removePrefix(rootToken).trimStart('/')
+                            return@run resolvedDownloadDirs.getOrPut(Paths.get(rootDir, relativePath).pathString) {
+                                Paths.get(rootDir, resolveLocalRelativePath(rootDir, relativePath)).pathString
+                            }
+                        }
+
                         var modified = prefix
 
                         val prefixContainsNoPlaceholder = findPlaceholderWithin(prefix).none()
@@ -375,7 +396,9 @@ object SteamAutoCloud {
                         return@forEach
                     }
 
-                    val basePath = Paths.get(prefixToPath(userFile.root.toString()), userFile.substitutedPath)
+                    val rootDir = prefixToPath(userFile.root.toString())
+                    val localPath = resolveLocalRelativePath(rootDir, userFile.substitutedPath)
+                    val basePath = Paths.get(rootDir, localPath)
 
                     Timber.i("Looking for saves in $basePath with pattern ${userFile.pattern} (prefix ${userFile.prefix})")
 
@@ -404,7 +427,7 @@ object SteamAutoCloud {
 
                             add(UserFileInfo(
                                 root = userFile.root,
-                                path = userFile.substitutedPath,
+                                path = localPath,
                                 filename = relativePath,
                                 timestamp = Files.getLastModifiedTime(path).toMillis(),
                                 sha = sha,
@@ -651,6 +674,14 @@ object SteamAutoCloud {
                         uploadBatchId = uploadBatchResponse.batchID,
                     ).await()
 
+                    // Steam dedupes by SHA: empty blockRequests = cloud already has this blob. it's still in the
+                    // batch manifest so it counts as uploaded; commitFileUpload would only log file_committed=false.
+                    if (uploadInfo.blockRequests.isEmpty()) {
+                        Timber.i("File ${file.prefixPath} already in cloud (SHA dedup) — skipping commit")
+                        filesUploaded++
+                        return@forEachIndexed
+                    }
+
                     var uploadFileSuccess = true
                     var bytesUploadedForFile = 0L
                     var lastReportedProgress = -1f
@@ -848,12 +879,45 @@ object SteamAutoCloud {
                 localAppChangeNumber
             }
 
+            val backupBeforeOverwrite: suspend (Boolean) -> Unit = { deleting ->
+                try {
+                    val context: Context? = steamInstance.applicationContext
+                    val scanned = allLocalUserFiles.map { it.getAbsPath(prefixToPath).normalize() }.toSet()
+                    val overwritten = appFileListChange.files
+                        .map { getFullFilePath(it, appFileListChange).normalize() }
+                        .filter { Files.isRegularFile(it, LinkOption.NOFOLLOW_LINKS) }
+                    if (context != null && (overwritten.isNotEmpty() || (deleting && scanned.isNotEmpty()))) {
+                        val rootDirs = PathType.entries.mapNotNull { type ->
+                            runCatching { type to Paths.get(prefixToPath(type.name)).normalize() }.getOrNull()
+                        }
+                        val extra = overwritten.filter { it !in scanned }.mapNotNull { path ->
+                            rootDirs.filter { path.startsWith(it.second) }.maxByOrNull { it.second.nameCount }?.let { it.first to path }
+                        }
+                        val byRoot = allLocalUserFiles.groupBy({ it.root }, { it.getAbsPath(prefixToPath).normalize() }).toMutableMap()
+                        extra.forEach { (root, path) -> byRoot[root] = byRoot[root].orEmpty() + path }
+                        val roots = byRoot.map { (root, files) ->
+                            CloudSaveBackupManager.BackupRoot(
+                                id = root.name,
+                                dir = File(prefixToPath(root.name)),
+                                files = files.distinct().map { it.toFile() },
+                            )
+                        }
+                        CloudSaveBackupManager.backup(context, CloudSaveBackupManager.PROVIDER_STEAM, appInfo.id.toString(), roots)
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Timber.w(e, "Local save backup before cloud download failed for ${appInfo.id}")
+                }
+            }
+
             val downloadUserFiles: (CoroutineScope) -> Deferred<PostSyncInfo?> = { parentScope ->
                 parentScope.asyncIsolated {
                     Timber.i("Downloading cloud user files")
 
                     val remoteUserFiles = fileChangeListToUserFiles(appFileListChange)
                     val filesDiff = getFilesDiff(remoteUserFiles, allLocalUserFiles).second
+                    backupBeforeOverwrite(filesDiff.filesDeleted.isNotEmpty())
                     microsecDeleteFiles = measureTime {
                         var totalFilesDeleted = 0
 
@@ -1427,8 +1491,7 @@ object SteamAutoCloud {
                     fileInfo.filename
                 } else {
                     "${fileInfo.cloudPath}/${fileInfo.filename}".replace("\\", "/")
-                }.replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
-                    .replace("{Steam3AccountID}", SteamUtils.getSteam3AccountId().toString())
+                }.let { SteamUtils.substituteSteamIdPlaceholders(it) }
             }.forEach { fileInfo ->
                 val fileSize = try {
                     Files.size(fileInfo.getAbsPath(prefixToPath))
@@ -1444,8 +1507,7 @@ object SteamAutoCloud {
                     fileInfo.filename
                 } else {
                     "${fileInfo.cloudPath}/${fileInfo.filename}".replace("\\", "/")
-                }.replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
-                    .replace("{Steam3AccountID}", SteamUtils.getSteam3AccountId().toString())
+                }.let { SteamUtils.substituteSteamIdPlaceholders(it) }
 
                 val fileEntry = KeyValue(cloudFilePath)
                 fileEntry.children.add(KeyValue("root", "0"))

@@ -15,6 +15,7 @@ import com.winlator.xserver.Cursor;
 import com.winlator.xserver.Drawable;
 import com.winlator.xserver.Pointer;
 import com.winlator.xserver.Window;
+import com.winlator.xserver.ScreenInfo;
 import com.winlator.xserver.WindowAttributes;
 import com.winlator.xserver.WindowManager;
 import com.winlator.xserver.XLock;
@@ -48,6 +49,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private final Object lock = new Object();
 
     public final ViewTransformation viewTransformation = new ViewTransformation();
+    private ScreenInfo effectiveScreen;
     private boolean fullscreen = false;
     private float magnifierZoom = 1.0f;
     private boolean screenOffsetYRelativeToCursor = false;
@@ -78,6 +80,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         if (!enabled) {
             scenePending.set(false);
         } else {
+            refreshDesktopTransform();
             onPointerMove(xServer.pointer.getX(), xServer.pointer.getY());
             queueSceneUpdate();
             xServerView.requestRender();
@@ -132,6 +135,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         this.xServer = xServer;
         rootCursorDrawable = createRootCursorDrawable();
         xServer.windowManager.addOnWindowModificationListener(this);
+        effectiveScreen = xServer.getEffectiveScreenInfo();
         xServer.pointer.addOnPointerMotionListener(this);
     }
 
@@ -365,48 +369,64 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     }
 
     private void updateTransform() {
-        if (nativeHandle == 0) return;
+        if (nativeHandle == 0 || surfaceWidth <= 0 || surfaceHeight <= 0) return;
+        ScreenInfo inner = effectiveScreen;
+        float fx = (float) xServer.screenInfo.width / inner.width;
+        float fy = (float) xServer.screenInfo.height / inner.height;
         if (fullscreen || outputScalingMode == SCALE_STRETCH) {
-            nativeSetTransform(nativeHandle, 0, 0, 1.0f, 1.0f);
+            nativeSetTransform(nativeHandle, 0, 0, fx, fy);
             nativeScanoutSetDst(nativeHandle,
                 0,
                 0,
                 surfaceWidth,
                 surfaceHeight);
-        } else if (outputScalingMode == SCALE_FILL && surfaceWidth > 0 && surfaceHeight > 0) {
+        } else if (outputScalingMode == SCALE_FILL) {
             float scale = Math.max(
-                (float) surfaceWidth / (float) xServer.screenInfo.width,
-                (float) surfaceHeight / (float) xServer.screenInfo.height
+                (float) surfaceWidth / (float) inner.width,
+                (float) surfaceHeight / (float) inner.height
             );
-            float sceneScaleX = (xServer.screenInfo.width * scale) / surfaceWidth;
-            float sceneScaleY = (xServer.screenInfo.height * scale) / surfaceHeight;
-            float sceneOffsetX = (xServer.screenInfo.width - xServer.screenInfo.width * sceneScaleX) * 0.5f;
-            float sceneOffsetY = (xServer.screenInfo.height - xServer.screenInfo.height * sceneScaleY) * 0.5f;
-            nativeSetTransform(nativeHandle, sceneOffsetX, sceneOffsetY, sceneScaleX, sceneScaleY);
+            float sceneScaleX = (inner.width * scale) / surfaceWidth;
+            float sceneScaleY = (inner.height * scale) / surfaceHeight;
+            float sceneOffsetX = (inner.width - inner.width * sceneScaleX) * 0.5f;
+            float sceneOffsetY = (inner.height - inner.height * sceneScaleY) * 0.5f;
+            nativeSetTransform(nativeHandle, sceneOffsetX * fx, sceneOffsetY * fy, sceneScaleX * fx, sceneScaleY * fy);
 
-            int dstW = Math.round(xServer.screenInfo.width * scale);
-            int dstH = Math.round(xServer.screenInfo.height * scale);
+            int dstW = Math.round(inner.width * scale);
+            int dstH = Math.round(inner.height * scale);
             nativeScanoutSetDst(nativeHandle,
                 Math.round((surfaceWidth - dstW) * 0.5f),
                 Math.round((surfaceHeight - dstH) * 0.5f),
                 dstW,
                 dstH);
         } else {
+            viewTransformation.update(surfaceWidth, surfaceHeight, inner.width, inner.height);
             float py = 0;
             if (screenOffsetYRelativeToCursor) {
-                short halfH = (short)(xServer.screenInfo.height / 2);
+                short halfH = (short)(inner.height / 2);
                 py = Math.max(0, Math.min(xServer.pointer.getY() - halfH / 2.0f, halfH));
             }
             nativeSetTransform(nativeHandle,
-                viewTransformation.sceneOffsetX,
-                viewTransformation.sceneOffsetY - py,
-                viewTransformation.sceneScaleX,
-                viewTransformation.sceneScaleY);
+                viewTransformation.sceneOffsetX * fx,
+                (viewTransformation.sceneOffsetY - py) * fy,
+                viewTransformation.sceneScaleX * fx,
+                viewTransformation.sceneScaleY * fy);
             nativeScanoutSetDst(nativeHandle,
                 viewTransformation.viewOffsetX,
                 viewTransformation.viewOffsetY,
                 viewTransformation.viewWidth,
                 viewTransformation.viewHeight);
+        }
+    }
+
+    private boolean isRootChild(Window window) {
+        return window != null && window.getParent() == xServer.windowManager.rootWindow;
+    }
+
+    private void refreshDesktopTransform() {
+        ScreenInfo inner = xServer.getEffectiveScreenInfo();
+        synchronized (lock) {
+            effectiveScreen = inner;
+            updateTransform();
         }
     }
 
@@ -637,7 +657,9 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
             if (nativeMode) {
                 short hotX = 0, hotY = 0;
                 if (cursor != null) { hotX = (short)cursor.hotSpotX; hotY = (short)cursor.hotSpotY; }
-                nativeScanoutSetCursorPos(nativeHandle, x, y, hotX, hotY);
+                short sx = (short)(x * xServer.screenInfo.width / effectiveScreen.width);
+                short sy = (short)(y * xServer.screenInfo.height / effectiveScreen.height);
+                nativeScanoutSetCursorPos(nativeHandle, sx, sy, hotX, hotY);
             }
             if (screenOffsetYRelativeToCursor) updateTransform();
         }
@@ -653,11 +675,13 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     }
 
     @Override public void onMapWindow(Window window) {
+        if (isRootChild(window)) refreshDesktopTransform();
         if (flatPresentationEnabled) queueSceneUpdate();
     }
 
     @Override
     public void onUnmapWindow(Window window) {
+        if (isRootChild(window)) refreshDesktopTransform();
         final long id = did(window.getContent());
         xServerView.queueEvent(() -> {
             synchronized (lock) { if (nativeHandle != 0) nativeRemoveWindow(nativeHandle, id); }
@@ -671,6 +695,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
 
     @Override
     public void onUpdateWindowGeometry(Window window, boolean resized) {
+        if (resized && isRootChild(window)) refreshDesktopTransform();
         if (flatPresentationEnabled) queueSceneUpdate();
     }
 

@@ -6,7 +6,7 @@ use crate::store_dl::steam::depot_writer::{
 };
 use crate::store_dl::steam::pb::ccontentserverdirectory::CContentServerDirectoryServerInfo;
 use std::fs;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
@@ -164,6 +164,35 @@ pub fn retry_backoff_millis(attempt: u32) -> u64 {
     }
 }
 
+/// What a manifest 401/403 should try next.
+///
+/// Order is the point: a manifest request carries the request code, so a bad code — missing,
+/// expired, or issued for the wrong app — reads as "this host rejected auth". So the code is
+/// refreshed ONCE per fetch before any host is written off, then a host token is requested once per
+/// host, and only after both does the host count as rejecting auth. Keeping this rule out of the
+/// fetch loop is what makes it testable: the loop cannot run without HTTP and a real CDN.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ManifestAuthStep {
+    RefreshCode,
+    RefreshToken,
+    RejectHost,
+}
+
+pub fn manifest_auth_step(code_refreshed: bool, host_token_requested: bool) -> ManifestAuthStep {
+    if !code_refreshed {
+        ManifestAuthStep::RefreshCode
+    } else if !host_token_requested {
+        ManifestAuthStep::RefreshToken
+    } else {
+        ManifestAuthStep::RejectHost
+    }
+}
+
+/// A refreshed request code is only worth a retry when it is present and actually different.
+pub fn refreshed_request_code(current: u64, fresh: Option<u64>) -> Option<u64> {
+    fresh.filter(|code| *code != 0 && *code != current)
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn fetch_manifest_with_retry(
     cdn: &CdnClient,
@@ -196,6 +225,8 @@ pub fn fetch_manifest_with_retry(
     let mut retry_server: Option<usize> = None;
     let mut rotation = 0usize;
     let mut faults = 0u32;
+    // One request-code refresh per call, before any host is written off for "auth".
+    let mut code_refreshed = false;
     loop {
         if cancel.is_some_and(|c| c.load(Ordering::Relaxed)) {
             last.error = "cancelled".to_string();
@@ -238,14 +269,41 @@ pub fn fetch_manifest_with_retry(
             return last; // permanent: the manifest is not on this CDN, rotating won't help
         }
         if auth_status(status) {
-            if let Some(refresher) = auth_refresher {
-                if !tokens.contains_key(&server_idx) {
-                    if let Some(fresh) = refresher(depot_id, &servers[server_idx].host) {
-                        tokens.insert(server_idx, fresh);
-                        retry_server = Some(server_idx);
-                        continue; // immediate same-host retry with the fresh token
+            let mut recovered = false;
+            // Code first, then a host token, then give up on this host — see `manifest_auth_step`.
+            // `code_refreshed` is set BEFORE the refresher runs, so one fetch spends at most one
+            // code attempt whatever the refresher returns; the token is still tried in the same
+            // pass when the code could not be improved.
+            loop {
+                match manifest_auth_step(code_refreshed, tokens.contains_key(&server_idx)) {
+                    ManifestAuthStep::RefreshCode => {
+                        code_refreshed = true;
+                        match code_refresher
+                            .and_then(|refresh| refresh(depot_id, manifest_id))
+                            .and_then(|fresh| refreshed_request_code(request_code, Some(fresh)))
+                        {
+                            Some(fresh) => {
+                                request_code = fresh;
+                                recovered = true;
+                                break;
+                            }
+                            None => continue,
+                        }
                     }
+                    ManifestAuthStep::RefreshToken => {
+                        if let Some(fresh) = auth_refresher
+                            .and_then(|refresh| refresh(depot_id, &servers[server_idx].host))
+                        {
+                            tokens.insert(server_idx, fresh);
+                            recovered = true;
+                        }
+                        break;
+                    }
+                    ManifestAuthStep::RejectHost => break,
                 }
+            }
+            if recovered {
+                continue; // immediate same-host retry with whatever was refreshed
             }
             auth_failed.insert(server_idx);
             if auth_failed.len() == servers.len() {
@@ -524,6 +582,14 @@ pub fn download_resolved_depots_with_cancel_progress(
         resolved.push((depot, manifest));
     }
 
+    // Depots of one install can disagree about a path's TYPE (see the function). Decide that here,
+    // before anything else consumes the manifests: the probe sample, the sweep's ownership set and
+    // every write plan below must all see the same file set. Depots the resume check skipped are
+    // part of the decision too — their files are already on disk, and a run must never unlink a
+    // file an installed depot owns (its manifest is the record of what that depot put there).
+    let installed: Vec<(u32, ContentManifest)> = installed_manifest_paths(&cfg, &log);
+    drop_paths_shadowed_by_files(&mut resolved, &installed, log);
+
     // ── CDN probe: rank the ASSIGNED servers and promote predicted foreign caches that
     // measurably beat the assigned-set median. The on-disk cache seeds the ranking (and any
     // cached winners) synchronously so even the first chunks follow the last known order, and
@@ -796,6 +862,232 @@ chunks_trusted={}",
     result
 }
 
+/// The file sets of the depots the resume check skipped because they are already installed, loaded
+/// from the store's `completed/` record. Their manifests need no network and no identity guesswork:
+/// the gid is the requested one by definition (`decide_depot_resume` only skips an exact match), and
+/// a depot whose manifest cannot be read is simply left out (the clash decision then cannot protect
+/// its files, which the log says).
+fn installed_manifest_paths(
+    cfg: &DepotConfigStore,
+    log: &Option<crate::store_dl::steam::depot_writer::DepotLogCallback<'_>>,
+) -> Vec<(u32, ContentManifest)> {
+    let mut installed = Vec::new();
+    // EVERY depot the store records as installed, including ones this press never selected (an
+    // INSTALL filters already-downloaded depots out in Kotlin, so they are not in the plan at all).
+    // The completed manifests are already filename-decrypted on disk, so no depot key is needed;
+    // one that cannot be read is reported rather than silently ignored.
+    for (depot_id, manifest_id) in cfg.installed_depots() {
+        match load_cached_manifest(cfg, depot_id, manifest_id, &[]) {
+            Some(manifest) => installed.push((depot_id, manifest)),
+            None => {
+                if let Some(log) = log {
+                    log(&format!(
+                        "depot-clash depot={depot_id} installed but its manifest is unreadable — its \
+paths cannot protect against a name clash"
+                    ));
+                }
+            }
+        }
+    }
+    installed
+}
+
+/// Folds away a depot set that cannot exist on one filesystem: the same case-folded path declared
+/// as a FILE by one depot and as a DIRECTORY by another.
+///
+/// Fallout 2 is the real case. "Fallout 2 Depot New Base" (38414) declares `master.dat` as a
+/// directory, while "Fallout 2 Depot New English" (38415) ships `master.dat` as a 317.74 MiB file —
+/// both depots are in every package, so both are installed. On a case-insensitive volume the two
+/// cannot coexist, and whichever is laid down second fails: `mkdir` returns EEXIST over the file,
+/// or the file's open returns EISDIR over the directory, and the whole depot fails with it.
+///
+/// The FILE wins. A directory is only a container, and the file is the form a game can read (the
+/// Fallout engine opens `master.dat` as an archive; Valve's own Windows client ends up with the
+/// file because the directory cannot be created over it). The losing directory is dropped together
+/// with everything under it — in every depot of the run, since a child of that path could not be
+/// written anyway — and the count is logged. A run with no clash is never modified.
+fn drop_paths_shadowed_by_files(
+    resolved: &mut Vec<(&ResolvedDepotSpec, ContentManifest)>,
+    installed: &[(u32, ContentManifest)],
+    log: Option<crate::store_dl::steam::depot_writer::DepotLogCallback<'_>>,
+) {
+    let fold = crate::store_dl::steam::depot_writer::folded_entry_key;
+    // Every path the run provides as a regular file, and the first depot that provides it.
+    let mut files: HashMap<String, u32> = HashMap::new();
+    for (depot, manifest) in resolved.iter() {
+        for file in &manifest.files {
+            if (file.flags & DEPOT_FILE_FLAG_DIRECTORY) == 0 {
+                files.entry(fold(&file.filename)).or_insert(depot.depot_id);
+            }
+        }
+    }
+    // Files an already-installed depot owns count as "provided by a file" too: the run would
+    // otherwise happily replace one with a directory (deleting content the store still records).
+    for (depot_id, manifest) in installed {
+        for file in &manifest.files {
+            if (file.flags & DEPOT_FILE_FLAG_DIRECTORY) == 0 {
+                files.entry(fold(&file.filename)).or_insert(*depot_id);
+            }
+        }
+    }
+    if files.is_empty() {
+        return;
+    }
+    // Directory entries those files shadow, and which depots declare them.
+    let mut shadowed: BTreeMap<String, Vec<u32>> = BTreeMap::new();
+    for (depot, manifest) in resolved.iter() {
+        for file in &manifest.files {
+            if (file.flags & DEPOT_FILE_FLAG_DIRECTORY) != 0 {
+                let key = fold(&file.filename);
+                if files.contains_key(&key) {
+                    shadowed.entry(key).or_default().push(depot.depot_id);
+                }
+            }
+        }
+    }
+    // No early return when `shadowed` is empty: a manifest need not declare the directory
+    // explicitly, so `master.dat/x.pak` can be the only entry below a file (`has_file_ancestor`).
+    for (depot, manifest) in resolved.iter_mut() {
+        let before = manifest.files.len();
+        manifest.files.retain(|file| {
+            let key = fold(&file.filename);
+            if (file.flags & DEPOT_FILE_FLAG_DIRECTORY) != 0 && files.contains_key(&key) {
+                return false;
+            }
+            // Anything BELOW a file cannot be written either — and the manifest need not declare
+            // the directory explicitly (`master.dat/x.pak` can appear on its own). Walk the entry's
+            // ancestors instead of comparing against a prefix list: O(depth), not O(files).
+            !has_file_ancestor(&key, &files)
+        });
+        let dropped = before - manifest.files.len();
+        if dropped > 0 {
+            if let Some(log) = log {
+                log(&format!(
+                    "depot-clash depot={} dropped {dropped} entr{} under a directory a file shadows",
+                    depot.depot_id,
+                    if dropped == 1 { "y" } else { "ies" }
+                ));
+            }
+        }
+    }
+    for (path, dir_depots) in &shadowed {
+        if let Some(log) = log {
+            let file_depot = files.get(path).copied().unwrap_or(0);
+            log(&format!(
+                "depot-clash path={path} kept=file depot={file_depot} dropped=directory depot={dir_depots:?}"
+            ));
+        }
+    }
+}
+
+/// Fallout 2's shape: one depot declares `master.dat` as a DIRECTORY (with a child), another
+/// ships it as a file. They cannot coexist, so the file wins and the losing directory goes —
+/// together with its subtree, in every depot — and nothing else is touched.
+#[test]
+fn a_file_shadows_a_directory_of_the_same_folded_path() {
+    let spec = |depot_id: u32| ResolvedDepotSpec {
+        depot_id,
+        manifest_id: 1,
+        depot_key: vec![1u8; 32],
+        manifest_request_code: 0,
+    };
+    let manifest = |files: &[(&str, u32)]| ContentManifest {
+        metadata: crate::store_dl::steam::content_manifest::Metadata {
+            filenames_encrypted: false,
+            ..Default::default()
+        },
+        files: files
+            .iter()
+            .map(|(name, flags)| crate::store_dl::steam::content_manifest::FileMapping {
+                filename: (*name).into(),
+                flags: *flags,
+                ..Default::default()
+            })
+            .collect(),
+        signature: Vec::new(),
+    };
+    let names = |manifest: &ContentManifest| -> Vec<String> {
+        manifest.files.iter().map(|f| f.filename.clone()).collect()
+    };
+    let dir_flag = DEPOT_FILE_FLAG_DIRECTORY;
+
+    // 38415 (the file) runs first: 38414's directory, its child, and the legacy depot's
+    // upper-case copy of the same folder all go; unrelated entries stay.
+    let file_depot = spec(38415);
+    let dir_depot = spec(38414);
+    let legacy_depot = spec(38411);
+    let only_child = spec(38416);
+    let mut resolved = vec![
+        (&file_depot, manifest(&[("master.dat", 0), ("critter.dat", 0)])),
+        (
+            &dir_depot,
+            manifest(&[
+                ("master.dat", dir_flag),
+                ("master.dat/x.pak", 0),
+                ("data/worldmap.dat", 0),
+            ]),
+        ),
+        (
+            &legacy_depot,
+            manifest(&[("MASTER.DAT", dir_flag), ("DATA/proto/critters", 0)]),
+        ),
+    ];
+    drop_paths_shadowed_by_files(&mut resolved, &[], None);
+    assert_eq!(names(&resolved[0].1), ["master.dat", "critter.dat"]);
+    assert_eq!(names(&resolved[1].1), ["data/worldmap.dat"]);
+    assert_eq!(names(&resolved[2].1), ["DATA/proto/critters"]);
+
+    // A child under the file needs no explicit directory entry to be recognised: `master.dat`
+    // is a file here, so `master.dat/x.pak` cannot be written and goes with it.
+    let mut resolved = vec![
+        (&file_depot, manifest(&[("master.dat", 0)])),
+        (&only_child, manifest(&[("master.dat/x.pak", 0), ("other.bin", 0)])),
+    ];
+    drop_paths_shadowed_by_files(&mut resolved, &[], None);
+    assert_eq!(names(&resolved[1].1), ["other.bin"]);
+
+    // A file an INSTALLED depot owns is a file for this decision too: the run must not replace
+    // it with a directory (that would delete content the store still records as installed).
+    let installed_manifest = manifest(&[("master.dat", 0)]);
+    let mut resolved = vec![(
+        &dir_depot,
+        manifest(&[("master.dat", dir_flag), ("master.dat/x.pak", 0), ("data/a.bin", 0)]),
+    )];
+    drop_paths_shadowed_by_files(
+        &mut resolved,
+        &[(38415, installed_manifest)],
+        None,
+    );
+    assert_eq!(names(&resolved[0].1), ["data/a.bin"]);
+
+    // No clash: the same folder in one depot and an unrelated file elsewhere is untouched.
+    let only_dir = spec(38414);
+    let mut resolved = vec![
+        (&file_depot, manifest(&[("master.dat", 0)])),
+        (&only_dir, manifest(&[("sound/music", dir_flag), ("master.dat.bak", 0)])),
+    ];
+    drop_paths_shadowed_by_files(&mut resolved, &[], None);
+    assert_eq!(
+        names(&resolved[1].1),
+        ["sound/music", "master.dat.bak"],
+        "only an exact folded-path clash drops anything"
+    );
+}
+
+/// True when any ancestor directory of `key` is itself a file in `files`
+/// (`master.dat/x.pak` under a file `master.dat`).
+fn has_file_ancestor(key: &str, files: &HashMap<String, u32>) -> bool {
+    let mut from = 0;
+    while let Some(offset) = key[from..].find('/') {
+        let cut = from + offset;
+        if files.contains_key(&key[..cut]) {
+            return true;
+        }
+        from = cut + 1;
+    }
+    false
+}
+
 /// The files this run must NOT touch: the previous build's manifest proves their bytes already match,
 /// so they get no chunk jobs, no re-hash and no finalize.
 ///
@@ -911,6 +1203,38 @@ mod tests {
     use crate::store_dl::steam::content_manifest::{END_OF_MANIFEST_MAGIC, METADATA_MAGIC, PAYLOAD_MAGIC};
     use crate::store_dl::steam::proto_wire::Writer;
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn a_401_refreshes_the_request_code_before_asking_for_a_host_token() {
+        // The first auth failure of a fetch always goes after the code, never after a token: a
+        // manifest request carries the code, so a stale one looks exactly like a host rejecting auth.
+        assert_eq!(
+            manifest_auth_step(false, false),
+            ManifestAuthStep::RefreshCode,
+            "no token requested yet — the code is the suspected cause"
+        );
+        // The refresher returned nothing usable, so the SAME pass still asks for a host token.
+        assert_eq!(manifest_auth_step(true, false), ManifestAuthStep::RefreshToken);
+        // Token requested and code already tried: this host really rejected the credentials.
+        assert_eq!(manifest_auth_step(true, true), ManifestAuthStep::RejectHost);
+    }
+
+    #[test]
+    fn the_request_code_is_refreshed_at_most_once_per_fetch() {
+        // `code_refreshed` is set before the refresher runs, so whatever it returns the next 401
+        // can only fall through to the token: the one-shot limit costs the code nothing.
+        assert_eq!(manifest_auth_step(true, false), ManifestAuthStep::RefreshToken);
+        assert_eq!(manifest_auth_step(true, true), ManifestAuthStep::RejectHost);
+    }
+
+    #[test]
+    fn a_refreshed_code_is_only_retried_when_it_is_new() {
+        assert_eq!(refreshed_request_code(42, None), None, "no refresher wired up");
+        assert_eq!(refreshed_request_code(42, Some(0)), None, "no code issued");
+        assert_eq!(refreshed_request_code(42, Some(42)), None, "unchanged, retrying changes nothing");
+        assert_eq!(refreshed_request_code(42, Some(43)), Some(43));
+        assert_eq!(refreshed_request_code(0, Some(7)), Some(7), "none → one is an improvement");
+    }
 
     #[test]
     fn filters_non_china_servers_with_hosts() {

@@ -630,6 +630,13 @@
 
 	Размер загрузки: %1$s
 	Доступное место: %2$s</string>
+    <string name="gog_dlc_sizes">Загрузка %1$s • Установка %2$s</string>
+    <string name="gog_dlc_not_installable">Недоступно через GOG Galaxy. Скачайте из бонусных материалов в вашей библиотеке GOG.</string>
+    <string name="gog_dlc_load_failed">Не удалось загрузить DLC: %1$s</string>
+    <string name="gog_dlc_deselect_all">Снять выделение</string>
+    <string name="gog_dlc_download_size">Загрузка %1$s</string>
+    <string name="gog_dlc_installs_on_launch">Установится при следующем запуске игры</string>
+    <string name="gog_dlc_unresolved">Не удалось загрузить это DLC. Повторите попытку, чтобы установить его.</string>
     <string name="gog_install_game_title">Загрузить игру</string>
     <string name="gog_login_cancel">Отмена</string>
     <string name="gog_login_success_title">Вход выполнен успешно</string>
@@ -672,6 +679,10 @@
     <string name="in_progress">В процессе</string>
     <string name="indeterminate">Частично отмечено</string>
     <string name="input_controls">Экранный контроллер</string>
+    <string name="on_screen_controller_settings">Настройки экранного контроллера</string>
+    <string name="mouse_speed">Скорость мыши</string>
+    <string name="mouse_speed_subtitle">Настройте скорость указателя для сенсорного перемещения и элементов управления, назначенных на движение мыши. Режим шутера использует отдельную чувствительность обзора.</string>
+    <string name="reset_mouse_speed">Сбросить скорость мыши</string>
     <string name="install">Установить</string>
     <string name="install_anyway">Установить в любом случае</string>
     <string name="install_app">Установить</string>
@@ -977,6 +988,7 @@ https://gamenative.app
     <string name="open_file">Открыть файл</string>
     <string name="open_navigation_menu">Открыть меню навигации</string>
     <string name="opengl">OpenGL</string>
+    <string name="physx">PhysX</string>
     <string name="options">Настройки</string>
     <string name="options_panel_close">Закрыть настройки</string>
     <string name="options_panel_title">Настройки</string>
@@ -1013,6 +1025,39 @@ https://gamenative.app
     <string name="quick_menu_back">Назад</string>
     <string name="quick_menu_title">Быстрое меню</string>
     <string name="display_brightness">Яркость дисплея</string>
+    <string name="display_server">Сервер отображения</string>
+    <string name="display_server_x11">X11</string>
+    <string name="display_server_gamescope">Gamescope</string>
+    <string name="gamescope_hdr">Вывод HDR (Beta)</string>
+    <string name="gamescope_hdr_description">Включить вывод HDR в сеансах Gamescope</string>
+    <string name="gamescope_tab_title">Gamescope</string>
+    <string name="gamescope_scaling_mode">Режим масштабирования</string>
+    <string name="gamescope_scaler_auto">Автоматический</string>
+    <string name="gamescope_scaler_integer">Целочисленное</string>
+    <string name="gamescope_scaler_fit">Вписать</string>
+    <string name="gamescope_scaler_stretch">Растянуть</string>
+    <string name="gamescope_scaler_fill">Заполнить</string>
+    <string name="gamescope_apply_next_launch">Применится при следующем запуске</string>
+    <string name="gamescope_scaling_filter">Фильтр масштабирования</string>
+    <string name="gamescope_filter_linear">Линейное</string>
+    <string name="gamescope_filter_nearest">Ближайший</string>
+    <string name="gamescope_filter_fsr">FSR</string>
+    <string name="gamescope_filter_nis">NIS</string>
+    <string name="gamescope_filter_integer">Целочисленное</string>
+    <string name="gamescope_filter_sgsr">SGSR</string>
+    <string name="gamescope_scaling_sharpness">Резкость</string>
+    <string name="gamescope_reset_default">Сбросить по умолчанию</string>
+    <string name="gamescope_look">Эффекты цвета</string>
+    <string name="gamescope_look_off">Выкл.</string>
+    <string name="gamescope_output_resolution">Разрешение апскейлинга</string>
+    <string name="gamescope_output_resolution_device">Разрешение устройства</string>
+    <string name="gamescope_reshade">Эффекты ReShade</string>
+    <string name="gamescope_look_grayscale">Оттенки серого</string>
+    <string name="gamescope_look_invertcolors">Инвертировать цвета</string>
+    <string name="gamescope_look_invertbrightness">Инвертировать яркость</string>
+    <string name="gamescope_look_cb_deut">Дейтеранопия</string>
+    <string name="gamescope_look_cb_prot">Протанопия</string>
+    <string name="gamescope_look_cb_trit">Тританопия</string>
     <string name="screen_effects">Эффекты экрана</string>
     <string name="screen_effects_live_preview">Изменения мгновенно применяются к текущей игре.</string>
     <string name="screen_effects_color_adjustments">Настройка цвета</string>
@@ -1075,6 +1120,7 @@ https://gamenative.app
     <string name="performance_hud_clock_time">Время</string>
     <string name="performance_hud_cpu_temperature">Температура CPU</string>
     <string name="performance_hud_gpu_temperature">Температура GPU</string>
+    <string name="performance_hud_bottleneck">Ограничивающий фактор</string>
     <string name="quick_presets">Быстрые предустановки</string>
     <string name="range_1_to_0">1 – 0</string>
     <string name="range_a_to_z">A – Z</string>
@@ -1156,6 +1202,8 @@ https://gamenative.app
     <string name="settings_download_speed">Скорость загрузки</string>
     <string name="settings_downloads_title">Загрузки</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">Автоматически применять рекомендуемые настройки для игр Steam при первом запуске</string>
+	<string name="settings_emulation_fex_code_cache_title">Кэши кода FEX</string>
+	<string name="settings_emulation_fex_code_cache_subtitle">Делитесь тем, какой код перевёл FEX, и загружайте готовые переводы для более быстрого запуска. Кэши занимают место в префиксе игры.</string>
     <string name="settings_emulation_auto_apply_known_config_title">Автоматически применять известную конфигурацию</string>
     <string name="settings_emulation_box64_presets_subtitle">Просмотр, изменение и создание предустановок Box64</string>
     <string name="settings_emulation_box64_presets_title">Предустановки Box64</string>
@@ -1169,6 +1217,10 @@ https://gamenative.app
     <string name="settings_performance_title">Производительность</string>
     <string name="settings_performance_power_control_title">Управление производительностью</string>
     <string name="settings_performance_power_control_subtitle">Включать управление производительностью в игре по умолчанию (включено на протестированных устройствах: AYN Odin 3, Retroid Pocket 6/Nova)</string>
+    <string name="settings_performance_shared_shader_cache_title">Загружать кэш шейдеров</string>
+    <string name="settings_performance_shared_shader_cache_subtitle">Делиться с другими игроками шейдерами, записанными во время игры. Если выключить, общий кэш, уменьшающий подтормаживания, тоже не будет скачиваться</string>
+    <string name="shader_cache_preparing">Подготовка шейдеров…</string>
+    <string name="shader_cache_preparing_progress">Подготовка шейдеров %1$d%%</string>
 
     <string name="settings_emulation_driver_manager_title">Менеджер драйверов</string>
     <string name="settings_emulation_orientations_subtitle">Выберите, какие ориентации можно повернуть во время игры</string>
@@ -1269,7 +1321,7 @@ https://gamenative.app
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Отчёты Pro проходят без очереди.</string>
     <string name="support_limit_title">Дневной лимит честного использования исчерпан</string>
-    <string name="support_upgrade_reason_required">Для ответов AI нужна подписка GameNative. Если вы уже оформили подписку в Discord или на Ko-fi, подключите Discord в настройках.</string>
+    <string name="support_upgrade_reason_required">Для ответов AI нужна подписка GameNative. Если вы уже оформили подписку в Discord или на Ko-fi: %1$s.</string>
     <string name="support_see_plans">Посмотреть планы</string>
     <string name="support_plan_basic_title">$5/месяц · Basic</string>
     <string name="support_plan_basic_body">Запустите свои игры или заставьте их работать лучше.</string>
@@ -1279,6 +1331,16 @@ https://gamenative.app
     <string name="support_checkout_no_browser">Не найден браузер для открытия страницы оплаты. Отсканируйте код другим устройством.</string>
     <string name="support_checkout_failed">Не удалось открыть страницу оплаты. Проверьте соединение и попробуйте снова.</string>
     <string name="support_checkout_done">Готово</string>
+    <string name="main_thank_you_message_play">Станьте участником сегодня. Участники получают:\n\n• Помощь ИИ с запуском игр\n• Ранний доступ к новым версиям\n• Премиум-роли и эксклюзивные каналы в Discord\n• …и не только\n\nОт %1$s/мес.</string>
+    <string name="support_plan_pro_title_priced">%1$s/месяц · Pro</string>
+    <string name="support_plan_basic_title_priced">%1$s/месяц · Basic</string>
+    <string name="membership_plans_pitch">Участники получают помощь ИИ с запуском игр, ранний доступ к новым версиям и премиум-роли в Discord.</string>
+    <string name="membership_plans_title">Стать участником</string>
+    <string name="support_already_member">Уже участник? Войти</string>
+    <string name="support_checkout_expired">Время оплаты истекло. Если вы уже заплатили, войдите с использованным адресом эл. почты, и план появится.</string>
+    <string name="support_play_unavailable">Оплата через Google Play сейчас недоступна. Попробуйте позже.</string>
+    <string name="support_checkout_waiting_guest">После оплаты войдите на той странице, чтобы создать аккаунт. План активируется здесь автоматически.</string>
+    <string name="gamenative_account_managed_play">Ваш тариф предоставлен через Google Play. Управляйте им в Play Маркете.</string>
     <string name="support_already_subscribed">У этого аккаунта уже есть подписка. Сменить план можно на странице оплаты.</string>
     <string name="support_plan_active">Ваш план активен.</string>
     <string name="support_plan_pending">Ваш план ещё настраивается. Попробуйте снова через минуту.</string>
@@ -1586,7 +1648,13 @@ https://gamenative.app
     <string name="v7_preference_off">ВЫКЛЮЧЕНО</string>
     <string name="v7_preference_on">ВКЛЮЧЕНО</string>
     <string name="value">Значение</string>
+    <string name="vcrun2005">Visual C++ 2005</string>
+    <string name="vcrun2008">Visual C++ 2008</string>
     <string name="vcrun2010">Visual C++ 2010</string>
+    <string name="vcrun2012">Visual C++ 2012</string>
+    <string name="vcrun2013">Visual C++ 2013</string>
+    <string name="vcrun2022">Visual C++ 2015-2022</string>
+    <string name="xaudio">XAudio</string>
     <string name="video_memory_size">Размер видеопамяти</string>
     <string name="vkd3d_feature_level">Уровень функций VKD3D</string>
     <string name="vulkan_version">Версия Vulkan</string>
@@ -1655,6 +1723,8 @@ https://gamenative.app
     <string name="download_failed_title">Ошибка загрузки</string>
     <string name="download_failed_message">Не удалось загрузить необходимый файл. Проверьте подключение к сети и попробуйте снова.</string>
     <string name="install_failed_title">Ошибка установки</string>
+    <string name="container_create_failed_title">Не удалось создать контейнер игры</string>
+    <string name="container_create_failed_message">GameNative не удалось создать папку, в которой запускается эта игра. Обычно это означает, что на устройстве закончилось свободное место.\n\n%1$s</string>
     <string name="install_failed_message">Не удалось установить системные файлы. Попробуйте снова. Если проблема сохраняется, попробуйте другую сеть или используйте VPN.</string>
     <string name="settings_interface_swap_face_buttons_title">Поменять кнопки действий</string>
     <string name="settings_interface_swap_face_buttons_subtitle">Поменять местами значки кнопок A↔B и X↔Y</string>
@@ -1713,6 +1783,26 @@ https://gamenative.app
      <string name="steam_save_import_failed">Не удалось импортировать сохранения: %s</string>
     <string name="option_import_saves">Импортировать сохранения</string>
     <string name="option_export_saves">Экспортировать сохранения</string>
+    <string name="option_restore_save_backup">Восстановить резервную копию сохранений</string>
+    <string name="settings_group_cloud_saves">Облачные сохранения</string>
+    <string name="settings_save_backups_to_keep">Количество сохраняемых резервных копий</string>
+    <string name="settings_save_backups_off">Выкл.</string>
+    <string name="save_backup_restore_dialog_title">Восстановление резервной копии сохранений</string>
+    <plurals name="save_backup_file_count">
+        <item quantity="one">%1$d файл</item>
+        <item quantity="few">%1$d файла</item>
+        <item quantity="many">%1$d файлов</item>
+        <item quantity="other">%1$d файла</item>
+    </plurals>
+    <string name="save_backup_before_sync">Локальные сохранения до облачной синхронизации</string>
+    <string name="save_backup_size_and_count">%1$s · %2$s</string>
+    <string name="save_backup_before_restore">До последнего восстановления</string>
+    <string name="save_backup_restore_confirm_title">Восстановить эту резервную копию?</string>
+    <string name="save_backup_restore_confirm_message">Текущие сохранения будут заменены резервной копией от %1$s. Сначала создаётся резервная копия текущих сохранений, так что это можно отменить.</string>
+    <string name="save_backup_restore_button">Восстановить</string>
+    <string name="save_backup_game_running">Закройте игру перед восстановлением резервной копии сохранений</string>
+    <string name="save_backup_restored">Резервная копия сохранений восстановлена</string>
+    <string name="save_backup_restore_failed">Не удалось восстановить резервную копию сохранений</string>
     <string name="option_verify_files">Проверить файлы</string>
     <string name="option_update">Обновить</string>
     <string name="option_move_to_external_storage">Переместить во внешнее хранилище</string>
@@ -2016,8 +2106,6 @@ https://gamenative.app
     <string name="debug_paywall_tier10_body">3 индивидуальных исправления в месяц, более быстрые ответы, первое место в очереди.</string>
     <string name="debug_paywall_cancel_anytime">Отмена в любой момент. Действуют лимиты добросовестного использования.</string>
     <string name="debug_paywall_costs_note">Подписки покрывают расходы на сервис AI, благодаря которому работает эта функция.</string>
-    <string name="debug_paywall_subscribe">Подпишитесь в Discord</string>
-    <string name="debug_paywall_kofi_alt">Подпишитесь в Ko-fi</string>
     <string name="debug_paywall_already">Уже саппортер?</string>
     <string name="debug_paywall_send_now">Я оформил подписку, отправить сейчас</string>
     <string name="debug_paywall_not_now">Не сейчас</string>
@@ -2741,6 +2829,11 @@ https://gamenative.app
     <string name="gyro_section_response">Отклик</string>
     <string name="gyro_output">Вывод</string>
     <string name="gyro_output_subtitle">Выберите, чем управляет движение устройства.</string>
+    <string name="gyro_input_priority">Приоритет ввода</string>
+    <string name="gyro_priority_combined">Совместно (по умолчанию)</string>
+    <string name="gyro_priority_stick_touch">Приоритет стика / сенсорного экрана</string>
+    <string name="gyro_priority_combined_help">Объединяет движения гироскопа с движениями стика, сенсорного экрана, стилуса и мыши, управляемой контроллером, на том же выходе.</string>
+    <string name="gyro_priority_stick_touch_help">Приостанавливает движения гироскопа на том же выходе во время управления движением с помощью стика, сенсорного экрана, стилуса или мыши, управляемой контроллером. Возобновляет их, когда ручное движение прекращается.</string>
     <string name="gyro_conversion_style">Режим преобразования</string>
     <string name="gyro_conversion_yaw">Локальные координаты (рыскание)</string>
     <string name="gyro_conversion_roll">Локальные координаты (крен)</string>

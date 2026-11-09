@@ -15,6 +15,7 @@ import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import app.gamenative.filedetect.GameFileDetection
 import app.gamenative.powercontrol.metrics.PowerTelemetry
+import app.gamenative.powercontrol.metrics.SessionProcessTelemetry
 import com.winlator.container.Container
 import java.io.File
 import org.json.JSONObject
@@ -116,29 +117,38 @@ object SessionReport {
     )
 
     private val CONFIG_DIFF_IGNORED_EXTRA = setOf(
+        "configMatchedDeviceId", "configMatchedGpu",
         "appliedWineVersion", "appliedContainerVariant", "lastInstalledMainWrapper", "box64Version", "fexcoreVersion",
         "appVersion", "imgVersion", "openal_dlls", "xaudioDllsExtracted", "config_changed", "wineprefixNeedsUpdate",
         "dxwrapper", "wincomponents", "audioDriver", "graphicsDriver", "graphicsDriverAdreno", "desktopTheme",
         "startupSelection", "language", "profileId", "selected_menu_item_id", "discord_support_prompt_shown",
         "ai_debug_offer_last_shown", "app_id", "game_source", "workshopModPath",
-        "sharpnessLevel", "sharpnessEffect", "sharpnessDenoise",
+        "sharpnessLevel", "sharpnessEffect", "sharpnessDenoise", "configAppliedTs", "configAppliedAppVersion",
     )
 
     private fun isIgnoredExtra(key: String) = key in CONFIG_DIFF_IGNORED_EXTRA || key.startsWith("screenEffects")
 
-    fun markConfigApplied(container: Container, source: String) {
+    fun markConfigApplied(container: Container, source: String, match: BestConfigService.BestConfigMatch? = null) {
         try {
+            container.putExtra("configMatchedDeviceId", match?.deviceId)
+            container.putExtra("configMatchedGpu", match?.gpu)
             val snapshot = JSONObject(container.containerJson)
             CONFIG_DIFF_IGNORED.forEach { snapshot.remove(it) }
             container.setConfigSource(source)
+            container.putExtra("configAppliedTs", System.currentTimeMillis())
+            container.putExtra("configAppliedAppVersion", BuildConfig.VERSION_CODE)
             container.saveData()
             appliedConfigFile(container).writeText(snapshot.toString())
+            val matchFile = appliedMatchFile(container)
+            if (match != null) matchFile.writeText(match.toJson()) else matchFile.delete()
         } catch (e: Exception) {
             Timber.w(e, "SessionReport: mark config failed")
         }
     }
 
     private fun appliedConfigFile(container: Container) = File(container.rootDir, "applied_config.json")
+
+    private fun appliedMatchFile(container: Container) = File(container.rootDir, "applied_match_type")
 
     fun recordRun(container: Container, properties: Map<String, Any>) {
         try {
@@ -155,9 +165,21 @@ object SessionReport {
 
     private const val MAX_RUN_FILES = 30
 
+    private fun configSourceValue(raw: String?): String =
+        raw.orEmpty().ifEmpty { if (PrefManager.autoApplyKnownConfig) "none" else "disabled" }
+
+    /** config_source for game_launched; reads only this container's config file, "new_container" if none exists yet. */
+    fun launchConfigSource(context: Context, appId: String): String = try {
+        val file = File(com.winlator.xenvironment.ImageFs.find(context).rootDir, "home/${com.winlator.xenvironment.ImageFs.USER}-$appId/.container")
+        if (!file.exists()) "new_container" else configSourceValue(JSONObject(file.readText()).optString("configSource"))
+    } catch (e: Exception) {
+        Timber.w(e, "SessionReport: launch config source failed")
+        "unknown"
+    }
+
     fun configProperties(container: Container): Map<String, Any> = buildMap {
         try {
-            put("config_source", container.configSource.ifEmpty { if (PrefManager.autoApplyKnownConfig) "none" else "disabled" })
+            put("config_source", configSourceValue(container.configSource))
             val applied = appliedConfigFile(container).takeIf { it.exists() }?.readText().orEmpty()
             if (applied.isEmpty()) {
                 markConfigApplied(container, container.configSource.ifEmpty { "existing" })
@@ -180,9 +202,27 @@ object SessionReport {
                 }
             }
             put("config_edited_fields", changed.take(20))
+            appliedMatchFile(container).takeIf { it.exists() }?.readText()?.let(BestConfigService.BestConfigMatch::parse)?.let { m ->
+                put("config_match_type", m.matchType)
+                m.deviceId?.let { put("config_matched_device_id", it) }
+                m.gpu?.let { put("config_matched_gpu", it) }
+            }
         } catch (e: Exception) {
             Timber.w(e, "SessionReport: config diff failed")
         }
+    }
+
+    private const val DESIGN_CAP_LOAD_PCT = 70
+
+    fun designCapDetected(fpsBuckets: List<Int>, loads: List<Pair<Int?, Int?>>): Boolean {
+        if (fpsBuckets.isEmpty()) return false
+        val capped = fpsBuckets.withIndex().count { (i, fps) ->
+            val (coreMax, gpu) = loads.getOrNull(i) ?: return@count false
+            (kotlin.math.abs(fps - 30) <= 1 || kotlin.math.abs(fps - 60) <= 1) &&
+                coreMax != null && coreMax < DESIGN_CAP_LOAD_PCT &&
+                (gpu == null || gpu < DESIGN_CAP_LOAD_PCT)
+        }
+        return capped * 2 > fpsBuckets.size
     }
 
     fun exitProperties(
@@ -193,27 +233,38 @@ object SessionReport {
         reason: String,
     ): Map<String, Any> = buildMap {
         put("exit_reason", reason)
+        GameSessionId.active()?.let { put("session_uuid", it) }
         try {
             putAll(configProperties(container))
             putAll(GameFileDetection.properties(container))
             putAll(windowActivity.snapshot(context, frameRating?.totalFrames ?: 0L, frameRating?.activeMs ?: 0L))
             runCatching { putAll(PowerTelemetry.sessionProperties()) }
                 .onFailure { Timber.w(it, "SessionReport: power properties failed") }
+            runCatching { putAll(SessionProcessTelemetry.properties()) }
+                .onFailure { Timber.w(it, "SessionReport: process properties failed") }
+            put("fps_cap_configured", app.gamenative.powercontrol.PowerManager.targetFps.coerceAtLeast(0))
+            put("optimize_state", OptimizeState.properties())
             if (frameRating != null) {
                 put("total_frames", frameRating.totalFrames)
-                frameRating.fpsBy5Min.takeIf { it.isNotEmpty() }?.let { put("fps_by_5min", it) }
+                frameRating.fpsBy5Min.takeIf { it.isNotEmpty() }?.let { fps ->
+                    put("fps_by_5min", fps)
+                    runCatching { put("design_cap_detected", designCapDetected(fps, PowerTelemetry.bucketLoads())) }
+                }
                 if (frameRating.totalFrames >= 60) {
+                    val p99 = frameRating.getFramePercentileMs(0.99)
                     put("frame_p50_ms", frameRating.getFramePercentileMs(0.50))
-                    put("frame_p99_ms", frameRating.getFramePercentileMs(0.99))
+                    put("frame_p99_ms", p99)
+                    put("frame_p99_clamped", p99 >= FrameRating.FRAME_HIST_CAP_MS)
                 }
             }
 
             if (context == null) return@buildMap
+            putAll(AppExitRecorder.takePendingExit(context))
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 (context.getSystemService(Context.POWER_SERVICE) as? PowerManager)?.let { pm ->
                     put("thermal_status", pm.currentThermalStatus)
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                        pm.getThermalHeadroom(10).takeIf { !it.isNaN() }?.let { put("thermal_headroom", (it * 100).roundToInt() / 100.0) }
+                        app.gamenative.powercontrol.metrics.ThermalHeadroom.read(context)?.let { put("thermal_headroom", (it * 100).roundToInt() / 100.0) }
                     }
                 }
             }
@@ -242,6 +293,8 @@ class WindowActivity {
     }
 
     private var trackedClass: String? = null
+    /** "x11_map" when entries came from X11 window maps, "gamescope_frames" when from the daemon's published frames. */
+    private var windowSource: String? = null
     private var trackedStartFrames = 0L
     private var trackedStartActiveMs = 0L
 
@@ -250,6 +303,7 @@ class WindowActivity {
     private val windows = LinkedHashMap<String, Entry>()
     private val classByWindowId = HashMap<Int, String>()
     private var batteryStartPct = -1
+    private var batteryStartUah: Long? = null
     private var batteryStartTempC = 0
     private var chargingStart: Boolean? = null
     private val thermalTransitions = ArrayList<Pair<Long, Int>>()
@@ -279,12 +333,14 @@ class WindowActivity {
         synchronized(lock) {
             startMs = SystemClock.elapsedRealtime()
             windows.clear()
+            windowSource = null
             classByWindowId.clear()
             thermalTransitions.clear()
             trackedClass = null
             trackedStartFrames = 0L
             trackedStartActiveMs = 0L
             batteryStartPct = readBatteryPct(context)
+            batteryStartUah = readChargeCounter(context)
             batteryStartTempC = 0
             chargingStart = null
             context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))?.let { intent ->
@@ -310,6 +366,11 @@ class WindowActivity {
         }
         powerManager = null
     }
+
+    private fun readChargeCounter(context: Context): Long? =
+        (context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager)
+            ?.getLongProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER)
+            ?.let(PowerTelemetry::validChargeCounter)
 
     private fun readBatteryPct(context: Context): Int =
         (context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager)
@@ -347,6 +408,31 @@ class WindowActivity {
         trackedStartActiveMs = activeMs
     }
 
+    /**
+     * Gamescope sessions have no X11 window maps for the game (it maps on Xwayland). Called once,
+     * when the daemon has published enough frames to count as game content, with the launched
+     * executable's name as the window class, so game_exited carries the same window fields on both
+     * display servers. Frames from this point on are attributed to that entry.
+     */
+    fun onGamescopeContent(className: String, totalFrames: Long, activeMs: Long) {
+        try {
+            synchronized(lock) {
+                val now = SystemClock.elapsedRealtime()
+                if (startMs == 0L) startMs = now
+                val cls = className.ifBlank { "gamescope" }
+                val entry = windows.getOrPut(cls) { Entry(cls, now) }
+                entry.mapped = true
+                windowSource = "gamescope_frames"
+                closeTrackedSegment(totalFrames, activeMs)
+                trackedClass = cls
+                trackedStartFrames = totalFrames
+                trackedStartActiveMs = activeMs
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "WindowActivity: gamescope content failed")
+        }
+    }
+
     fun onWindowMapped(window: Window) {
         try {
             entryFor(window).mapped = true
@@ -369,6 +455,7 @@ class WindowActivity {
         val now = SystemClock.elapsedRealtime()
         if (startMs == 0L) startMs = now
         val className = classByWindowId.getOrPut(window.id) { window.className.ifBlank { "unknown" } }
+        if (windowSource == null) windowSource = "x11_map"
         windows.getOrPut(className) { Entry(className, now) }
     }
 
@@ -387,6 +474,12 @@ class WindowActivity {
                 put("battery_start_pct", batteryStartPct)
                 put("battery_end_pct", batteryEnd)
             }
+            val battStartUah = batteryStartUah
+            val battEndUah = context?.let { readChargeCounter(it) }
+            if (battStartUah != null && battEndUah != null) {
+                put("batt_uah_start", battStartUah)
+                put("batt_uah_end", battEndUah)
+            }
             if (batteryStartTempC > 0) put("battery_temp_start_c", (batteryStartTempC / 10f).roundToInt())
             chargingStart?.let { put("charging_start", it) }
             if (thermalTransitions.isNotEmpty()) {
@@ -399,6 +492,7 @@ class WindowActivity {
                 val now = SystemClock.elapsedRealtime()
                 fun endMs(e: Entry) = if (e.mapped) now else e.lastMs
                 put("window_classes", windows.keys.joinToString(","))
+                windowSource?.let { put("window_source", it) }
                 windows.values.maxByOrNull { endMs(it) }?.let { put("last_window_class", it.className) }
                 windows.values.maxByOrNull { it.frames }?.takeIf { it.frames > 0 }?.let { main ->
                     put("main_window_class", main.className)

@@ -9,6 +9,10 @@ Thanks for your interest in contributing. We welcome pull requests, bug reports,
 3. See the **Building** section in [README](README.md) for setup instructions.
 4. Open a pull request with a clear description and attach a short recording/GIF of the change.
 
+## Picking Something to Fix
+
+The nightly list of games that don't work, with one issue per game, lives at [GameNative/gamenative-compat](https://github.com/GameNative/gamenative-compat). Open the game's issue, check the comments for anyone already working on it, and comment that you are taking it. Open your PR in the repo the fix belongs to (this one, [proton-wine](https://github.com/GameNative/proton-wine), [FEX](https://github.com/GameNative/FEX), or a wrapper) and comment on the issue with the link once it is up or merged. The issue closes on its own once players are running the game. To donate a key for a broken game so someone can fix it, email [support@gamenative.app](mailto:support@gamenative.app).
+
 ## Scope of Contributions
 
 GameNative is currently focused on:

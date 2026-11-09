@@ -69,7 +69,7 @@ const val DATABASE_NAME = "pluvia.db"
         ModPlacementRecipe::class,
         ModOverwriteManifest::class,
     ],
-    version = 29,
+    version = 30,
     // For db migration, visit https://developer.android.com/training/data-storage/room/migrating-db-versions for more information
     exportSchema = true, // It is better to handle db changes carefully, as GN is getting much more users.
     autoMigrations = [
@@ -85,7 +85,7 @@ const val DATABASE_NAME = "pluvia.db"
         // AutoMigration(from = 16, to = 17),
         // Disabled auto-migration due to duplicated column in previous version (upstream PR #1048)
         // duplicate column name: ufs_parse_version (code 1 SQLITE_ERROR)
-        // Version 16 cannot upgrade automatically; no destructive fallback is configured.
+        // Version 16 upgrades via the no-op ROOM_MIGRATION_V16_to_V17 instead.
         AutoMigration(from = 17, to = 18), // Added workshop_mods, enabled_workshop_item_ids, workshop_download_pending to steam_app
         AutoMigration(from = 18, to = 19), // Added recovered_install_size_bytes to app_info
         AutoMigration(from = 19, to = 20), // Added custom_install_path to app_info
@@ -94,6 +94,7 @@ const val DATABASE_NAME = "pluvia.db"
         AutoMigration(from = 22, to = 23), // Added local library play history table
         AutoMigration(from = 25, to = 26), // Added GOG hidden column
         AutoMigration(from = 27, to = 28), // Added is_vr_only, is_vr_supported to steam_app
+        AutoMigration(from = 29, to = 30), // Added GOG installed_dlc_ids column
     ]
 )
 @TypeConverters(

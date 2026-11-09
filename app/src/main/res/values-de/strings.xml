@@ -214,9 +214,16 @@
     <string name="directplay">DirectPlay</string>
     <string name="directshow">DirectShow</string>
     <string name="directx">DirectX</string>
+    <string name="vcrun2005">Visual C++ 2005</string>
+    <string name="vcrun2008">Visual C++ 2008</string>
     <string name="vcrun2010">Visual C++ 2010</string>
+    <string name="vcrun2012">Visual C++ 2012</string>
+    <string name="vcrun2013">Visual C++ 2013</string>
+    <string name="vcrun2022">Visual C++ 2015-2022</string>
+    <string name="xaudio">XAudio</string>
     <string name="wmdecoder">Windows Media Decoder</string>
     <string name="opengl">OpenGL</string>
+    <string name="physx">PhysX</string>
     <string name="dxvk_version">DXVK-Version</string>
     <string name="run">Starten</string>
     <string name="edit">Bearbeiten</string>
@@ -307,6 +314,10 @@
     <string name="dpad_right">D-Pad rechts</string>
     <string name="input_controls">On-Screen-Controller</string>
     <string name="edit_controls">On-Screen-Controller bearbeiten</string>
+    <string name="on_screen_controller_settings">Einstellungen für den On-Screen-Controller</string>
+    <string name="mouse_speed">Mausgeschwindigkeit</string>
+    <string name="mouse_speed_subtitle">Passe die Zeigergeschwindigkeit für Touch-Bewegungen und Steuerelemente an, die zum Bewegen der Maus zugewiesen sind. Der Shooter-Modus verwendet eine eigene Blickempfindlichkeit.</string>
+    <string name="reset_mouse_speed">Mausgeschwindigkeit zurücksetzen</string>
     <string name="edit_physical_controller">Physische Controller bearbeiten</string>
     <string name="controller_disconnected">Verbindung getrennt</string>
     <string name="reset_onscreen_controls">On-Screen-Steuerung zurücksetzen</string>
@@ -314,6 +325,39 @@
     <string name="quick_menu_title">Schnellmenü</string>
     <string name="quick_menu_back">Zurück</string>
     <string name="display_brightness">Displayhelligkeit</string>
+    <string name="display_server">Anzeigeserver</string>
+    <string name="display_server_x11">X11</string>
+    <string name="display_server_gamescope">Gamescope</string>
+    <string name="gamescope_hdr">HDR-Ausgabe (Beta)</string>
+    <string name="gamescope_hdr_description">HDR-Ausgabe in Gamescope-Sitzungen aktivieren</string>
+    <string name="gamescope_tab_title">Gamescope</string>
+    <string name="gamescope_scaling_mode">Skalierungsmodus</string>
+    <string name="gamescope_scaler_auto">Automatisch</string>
+    <string name="gamescope_scaler_integer">Ganzzahl</string>
+    <string name="gamescope_scaler_fit">Anpassen</string>
+    <string name="gamescope_scaler_stretch">Strecken</string>
+    <string name="gamescope_scaler_fill">Füllen</string>
+    <string name="gamescope_apply_next_launch">Wird beim nächsten Start angewendet</string>
+    <string name="gamescope_scaling_filter">Skalierungsfilter</string>
+    <string name="gamescope_filter_linear">Linear</string>
+    <string name="gamescope_filter_nearest">Nächster</string>
+    <string name="gamescope_filter_fsr">FSR</string>
+    <string name="gamescope_filter_nis">NIS</string>
+    <string name="gamescope_filter_integer">Ganzzahl</string>
+    <string name="gamescope_filter_sgsr">SGSR</string>
+    <string name="gamescope_scaling_sharpness">Schärfe</string>
+    <string name="gamescope_reset_default">Auf Standard zurücksetzen</string>
+    <string name="gamescope_look">Farbeffekte</string>
+    <string name="gamescope_look_off">Aus</string>
+    <string name="gamescope_output_resolution">Hochskalierungsauflösung</string>
+    <string name="gamescope_output_resolution_device">Geräteauflösung</string>
+    <string name="gamescope_reshade">ReShade-Effekte</string>
+    <string name="gamescope_look_grayscale">Graustufen</string>
+    <string name="gamescope_look_invertcolors">Farben invertieren</string>
+    <string name="gamescope_look_invertbrightness">Helligkeit invertieren</string>
+    <string name="gamescope_look_cb_deut">Deuteranopie</string>
+    <string name="gamescope_look_cb_prot">Protanopie</string>
+    <string name="gamescope_look_cb_trit">Tritanopie</string>
     <string name="screen_effects">Bildschirmeffekte</string>
     <string name="screen_effects_live_preview">Änderungen werden sofort auf das aktuelle Spiel angewendet.</string>
     <string name="screen_effects_color_adjustments">Farbkorrekturen</string>
@@ -376,6 +420,7 @@
     <string name="performance_hud_clock_time">Uhrzeit</string>
     <string name="performance_hud_cpu_temperature">CPU-Temperatur</string>
     <string name="performance_hud_gpu_temperature">GPU-Temperatur</string>
+    <string name="performance_hud_bottleneck">Limitierender Faktor</string>
     <string name="touchpad_help">Touchpad-Hilfe</string>
     <string name="hide_controls_with_controller">On-Screen-Controller bei Gamepad ausblenden</string>
     <string name="hide_controls_with_controller_description">On-Screen-Steuerung automatisch ausblenden, wenn ein physischer Controller verbunden ist</string>
@@ -954,6 +999,10 @@
     <string name="settings_performance_title">Leistung</string>
     <string name="settings_performance_power_control_title">Energieverwaltung</string>
     <string name="settings_performance_power_control_subtitle">Energieverwaltung im Spiel standardmäßig aktivieren (auf getesteten Geräten aktiviert: AYN Odin 3, Retroid Pocket 6/Nova)</string>
+    <string name="settings_performance_shared_shader_cache_title">Shader-Caches hochladen</string>
+    <string name="settings_performance_shared_shader_cache_subtitle">Beim Spielen aufgezeichnete Shader mit anderen Spielern teilen. Ist dies aus, werden auch die geteilten Caches, die Ruckler verringern, nicht heruntergeladen</string>
+    <string name="shader_cache_preparing">Shader werden vorbereitet…</string>
+    <string name="shader_cache_preparing_progress">Shader werden vorbereitet %1$d%%</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulation</string>
@@ -1050,7 +1099,7 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Pro-Berichte überspringen die Warteschlange.</string>
     <string name="support_limit_title">Tägliche Fair-Use-Grenze erreicht</string>
-    <string name="support_upgrade_reason_required">AI-Antworten erfordern ein GameNative-Abo. Wenn du bereits über Discord oder Ko-fi abonnierst, verbinde Discord in den Einstellungen.</string>
+    <string name="support_upgrade_reason_required">AI-Antworten erfordern ein GameNative-Abo. Wenn du bereits über Discord oder Ko-fi abonnierst: %1$s.</string>
     <string name="support_see_plans">Pläne ansehen</string>
     <string name="support_plan_basic_title">$5/Monat · Basic</string>
     <string name="support_plan_basic_body">Bring deine Spiele zum Laufen – oder lass sie besser laufen.</string>
@@ -1060,6 +1109,16 @@
     <string name="support_checkout_no_browser">Es wurde kein Browser zum Öffnen der Bezahlseite gefunden. Scanne den Code stattdessen mit einem anderen Gerät.</string>
     <string name="support_checkout_failed">Die Bezahlseite konnte nicht geöffnet werden. Prüfe deine Verbindung und versuche es erneut.</string>
     <string name="support_checkout_done">Fertig</string>
+    <string name="main_thank_you_message_play">Werde noch heute Mitglied. Mitglieder erhalten:\n\n• KI-Hilfe, um deine Spiele zum Laufen zu bringen\n• Frühzugang zu neuen Versionen\n• Premium-Rollen und exklusive Kanäle auf Discord\n• …und mehr\n\nAb %1$s/Monat</string>
+    <string name="support_plan_pro_title_priced">%1$s/Monat · Pro</string>
+    <string name="support_plan_basic_title_priced">%1$s/Monat · Basic</string>
+    <string name="membership_plans_pitch">Mitglieder erhalten KI-Hilfe, um Spiele zum Laufen zu bringen, Frühzugang zu neuen Versionen und Premium-Rollen auf Discord.</string>
+    <string name="membership_plans_title">Mitglied werden</string>
+    <string name="support_already_member">Schon Mitglied? Anmelden</string>
+    <string name="support_checkout_expired">Dieser Bezahlvorgang ist abgelaufen. Falls du schon bezahlt hast, melde dich mit der verwendeten E-Mail-Adresse an, dann erscheint dein Plan.</string>
+    <string name="support_play_unavailable">Google Play-Abrechnung ist gerade nicht verfügbar. Versuche es später noch einmal.</string>
+    <string name="support_checkout_waiting_guest">Melde dich nach dem Bezahlen auf dieser Seite an, um dein Konto zu erstellen. Dein Plan wird hier automatisch aktiviert.</string>
+    <string name="gamenative_account_managed_play">Dein Plan kommt von Google Play. Verwalte ihn im Play Store.</string>
     <string name="support_already_subscribed">Dieses Konto hat bereits ein Abo. Du kannst deinen Plan auf der Abrechnungsseite ändern.</string>
     <string name="support_plan_active">Dein Plan ist aktiv.</string>
     <string name="support_plan_pending">Dein Plan wird noch eingerichtet. Bitte versuche es in einer Minute erneut.</string>
@@ -1096,6 +1155,8 @@
     <string name="settings_emulation_default_config_dialog_title">Standard-Container-Konfiguration</string>
     <string name="settings_emulation_auto_apply_known_config_title">Bekannte Konfiguration automatisch anwenden</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">Beim ersten Start automatisch empfohlene Einstellungen für Steam-Spiele anwenden</string>
+    <string name="settings_emulation_fex_code_cache_title">FEX-Code-Caches</string>
+    <string name="settings_emulation_fex_code_cache_subtitle">Teile, welchen Code FEX übersetzt hat, und lade vorgefertigte Übersetzungen für schnellere Starts. Caches belegen Speicherplatz im Präfix des Spiels.</string>
     <string name="settings_emulation_box64_presets_title">Box64-Voreinstellungen</string>
     <string name="settings_emulation_box64_presets_subtitle">Voreinstellungen anzeigen, ändern oder neu erstellen</string>
     <string name="settings_emulation_driver_manager_title">Treiberverwaltung</string>
@@ -1612,6 +1673,13 @@
     <string name="gog_uninstall_confirmation_message">Möchtest du %1$s wirklich deinstallieren? Diese Aktion kann nicht rückgängig gemacht werden.</string>
     <string name="gog_install_game_title">Spiel herunterladen</string>
     <string name="gog_install_confirmation_message">Die App benötigt folgenden Speicherplatz. Möchtest du fortfahren?\n\n\tDownloadgröße: %1$s\n\tVerfügbarer Speicher: %2$s</string>
+    <string name="gog_dlc_sizes">%1$s Download • %2$s Installation</string>
+    <string name="gog_dlc_not_installable">Nicht über GOG Galaxy verfügbar. Lade es aus den Bonusinhalten in deiner GOG-Bibliothek herunter.</string>
+    <string name="gog_dlc_load_failed">DLC konnte nicht geladen werden: %1$s</string>
+    <string name="gog_dlc_deselect_all">Alle abwählen</string>
+    <string name="gog_dlc_download_size">%1$s Download</string>
+    <string name="gog_dlc_installs_on_launch">Wird beim nächsten Spielstart installiert</string>
+    <string name="gog_dlc_unresolved">Dieser DLC konnte nicht geladen werden. Erneut versuchen, um ihn zu installieren.</string>
 
     <!-- Epic Games Integration -->
     <string name="epic_integration_title">Epic Games Integration</string>
@@ -1669,6 +1737,8 @@
     <string name="download_failed_title">Download fehlgeschlagen</string>
     <string name="download_failed_message">Eine erforderliche Datei konnte nicht heruntergeladen werden. Bitte überprüfe deine Netzwerkverbindung und versuche es erneut.</string>
     <string name="install_failed_title">Installation fehlgeschlagen</string>
+    <string name="container_create_failed_title">Spiel-Container konnte nicht erstellt werden</string>
+    <string name="container_create_failed_message">GameNative konnte den Ordner, in dem dieses Spiel läuft, nicht erstellen. Das bedeutet meist, dass der Speicherplatz des Geräts voll ist.\n\n%1$s</string>
     <string name="install_failed_message">Systemdateien konnten nicht installiert werden. Bitte versuche es erneut. Falls das Problem weiterhin besteht, versuche ein anderes Netzwerk oder verwende ein VPN.</string>
     <string name="settings_interface_swap_face_buttons_title">Aktionstasten tauschen</string>
     <string name="settings_interface_swap_face_buttons_subtitle">A↔B- und X↔Y-Tastensymbole tauschen</string>
@@ -1727,6 +1797,24 @@
      <string name="steam_save_import_failed">Spielstände konnten nicht importiert werden: %s</string>
     <string name="option_import_saves">Spielstände importieren</string>
     <string name="option_export_saves">Spielstände exportieren</string>
+    <string name="option_restore_save_backup">Spielstand-Backup wiederherstellen</string>
+    <string name="settings_group_cloud_saves">Cloud-Spielstände</string>
+    <string name="settings_save_backups_to_keep">Aufzubewahrende Spielstand-Backups</string>
+    <string name="settings_save_backups_off">Aus</string>
+    <string name="save_backup_restore_dialog_title">Ein Spielstand-Backup wiederherstellen</string>
+    <plurals name="save_backup_file_count">
+        <item quantity="one">%1$d Datei</item>
+        <item quantity="other">%1$d Dateien</item>
+    </plurals>
+    <string name="save_backup_before_sync">Lokale Spielstände vor der Cloud-Synchronisierung</string>
+    <string name="save_backup_size_and_count">%1$s · %2$s</string>
+    <string name="save_backup_before_restore">Vor der letzten Wiederherstellung</string>
+    <string name="save_backup_restore_confirm_title">Dieses Backup wiederherstellen?</string>
+    <string name="save_backup_restore_confirm_message">Deine aktuellen Spielstände werden durch das Backup vom %1$s ersetzt. Die aktuellen Spielstände werden vorher gesichert, sodass du dies rückgängig machen kannst.</string>
+    <string name="save_backup_restore_button">Wiederherstellen</string>
+    <string name="save_backup_game_running">Schließe das Spiel, bevor du ein Spielstand-Backup wiederherstellst</string>
+    <string name="save_backup_restored">Spielstand-Backup wiederhergestellt</string>
+    <string name="save_backup_restore_failed">Spielstand-Backup konnte nicht wiederhergestellt werden</string>
     <string name="option_verify_files">Dateien überprüfen</string>
     <string name="option_update">Aktualisieren</string>
     <string name="option_move_to_external_storage">Auf externen Speicher verschieben</string>
@@ -2030,8 +2118,6 @@
     <string name="debug_paywall_tier10_body">3 individuelle Fixes pro Monat, schnellere Antworten, zuerst in der Warteschlange.</string>
     <string name="debug_paywall_cancel_anytime">Jederzeit kündbar. Es gelten Fair-Use-Grenzen.</string>
     <string name="debug_paywall_costs_note">Abos decken die AI-Servicekosten, die diese Funktion möglich machen.</string>
-    <string name="debug_paywall_subscribe">Auf Discord abonnieren</string>
-    <string name="debug_paywall_kofi_alt">Auf Ko-fi abonnieren</string>
     <string name="debug_paywall_already">Schon Supporter?</string>
     <string name="debug_paywall_send_now">Ich habe abonniert, jetzt senden</string>
     <string name="debug_paywall_not_now">Nicht jetzt</string>
@@ -2749,6 +2835,11 @@
     <string name="gyro_section_response">Reaktion</string>
     <string name="gyro_output">Ausgabe</string>
     <string name="gyro_output_subtitle">Wähle aus, was die Gerätebewegung steuert.</string>
+    <string name="gyro_input_priority">Eingabepriorität</string>
+    <string name="gyro_priority_combined">Kombiniert (Standard)</string>
+    <string name="gyro_priority_stick_touch">Stick-/Touchscreen-Priorität</string>
+    <string name="gyro_priority_combined_help">Kombiniert Gyrobewegungen mit Bewegungen von Stick, Touchscreen, Stift und controllergesteuerter Maus auf derselben Ausgabe.</string>
+    <string name="gyro_priority_stick_touch_help">Pausiert Gyrobewegungen auf derselben Ausgabe bei Bewegungen mit Stick, Touchscreen, Stift oder controllergesteuerter Maus. Setzt sie fort, sobald die manuelle Bewegung endet.</string>
     <string name="gyro_conversion_style">Umrechnungsmodus</string>
     <string name="gyro_conversion_yaw">Lokale Koordinaten (Gieren)</string>
     <string name="gyro_conversion_roll">Lokale Koordinaten (Rollen)</string>

@@ -113,6 +113,10 @@ class LibraryViewModel @Inject constructor(
         onFilterApps(paginationCurrentPage)
     }
 
+    private val onAllowedAppsLoaded: (AndroidEvent.AllowedAppsLoaded) -> Unit = {
+        onFilterApps(paginationCurrentPage)
+    }
+
     private val onPreferredCopyChanged: (AndroidEvent.PreferredCopyChanged) -> Unit = { event ->
         viewModelScope.launch(Dispatchers.IO) {
             val updated = steamAppDao.findApp(event.appId) ?: return@launch
@@ -378,6 +382,7 @@ class LibraryViewModel @Inject constructor(
         PluviaApp.events.on<AndroidEvent.RecommendationToggleChanged, Unit>(onRecommendationToggleChanged)
         PluviaApp.events.on<AndroidEvent.HiddenGamesSettingChanged, Unit>(onHiddenGamesSettingChanged)
         PluviaApp.events.on<AndroidEvent.LibraryTabsChanged, Unit>(onLibraryTabsChanged)
+        PluviaApp.events.on<AndroidEvent.AllowedAppsLoaded, Unit>(onAllowedAppsLoaded)
 
         refreshRecommendationHero()
     }
@@ -442,6 +447,7 @@ class LibraryViewModel @Inject constructor(
         PluviaApp.events.off<AndroidEvent.RecommendationToggleChanged, Unit>(onRecommendationToggleChanged)
         PluviaApp.events.off<AndroidEvent.HiddenGamesSettingChanged, Unit>(onHiddenGamesSettingChanged)
         PluviaApp.events.off<AndroidEvent.LibraryTabsChanged, Unit>(onLibraryTabsChanged)
+        PluviaApp.events.off<AndroidEvent.AllowedAppsLoaded, Unit>(onAllowedAppsLoaded)
         super.onCleared()
     }
 
@@ -792,6 +798,8 @@ class LibraryViewModel @Inject constructor(
                 return status == GameCompatibilityStatus.COMPATIBLE || status == GameCompatibilityStatus.GPU_COMPATIBLE
             }
 
+            val allowedApps = SteamService.parentalControlState.resolveAllowedAppIds { PrefManager.parentalAllowedAppIds }
+
             val steamOwnerTypeFiltered: List<SteamApp> = appList
                 .asSequence()
                 .filter { item ->
@@ -802,11 +810,14 @@ class LibraryViewModel @Inject constructor(
                         } ?: emptyList()
                     }.let { owners ->
                         if (owners.isEmpty()) {
-                            true // no owner info ⇒ don’t filter the item out
+                            true // no owner info ⇒ don't filter the item out
                         } else {
                             owners.any { item.ownerAccountId.contains(it) }
                         }
                     }
+                }
+                .filter { item ->
+                    allowedApps?.contains(item.id) ?: true
                 }
                 .filter { item ->
                     val inTypeBucket = !item.isVrOnly && currentFilter.any { item.type == it }

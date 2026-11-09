@@ -38,6 +38,9 @@ public final class ContainerOverlay {
     public static final String ENV_LOWER = "GN_OVERLAY_LOWER";
     public static final String ENV_ALIASES = "GN_OVERLAY_ALIASES";
     public static final String ENV_DEBUG = "GN_OVERLAY_DEBUG";
+    public static final String ENV_HIDE = "GN_OVERLAY_HIDE";
+    /** App-owned download metadata directories that guest programs must never see in a listing. */
+    public static final String HIDDEN_NAMES = ".DepotDownloader:.DownloadInfo";
 
     static final String[] REGISTRY_FILES = {"system.reg", "user.reg", "userdef.reg"};
 
@@ -101,6 +104,7 @@ public final class ContainerOverlay {
         env.put(ENV_UPPER, upper);
         env.put(ENV_LOWER, lower);
         env.put(ENV_ALIASES, String.join(":", aliases));
+        env.put(ENV_HIDE, HIDDEN_NAMES);
         if (debug) env.put(ENV_DEBUG, "1");
         return env;
     }

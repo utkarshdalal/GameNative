@@ -405,6 +405,9 @@ class EpicDownloadManager @Inject constructor(
                 EpicInstallState(
                     buildVersion = manifest.meta?.buildVersion ?: "",
                     language = containerLanguage,
+                    prereqIds = manifest.meta?.prereqIds.orEmpty(),
+                    prereqName = manifest.meta?.prereqName.orEmpty(),
+                    prereqPath = manifest.meta?.prereqPath.orEmpty(),
                 ),
             )
 
@@ -413,7 +416,9 @@ class EpicDownloadManager @Inject constructor(
                 val updatedGame = game.copy(
                     isInstalled = true,
                     installPath = installPath,
-                    installSize = totalInstalledSize,
+                    // Bytes the files occupy on disk; chunk windows overlap across files and
+                    // over-count by a wide margin.
+                    installSize = totalProgressSize,
                 )
                 epicManager.updateGame(updatedGame)
                 Timber.tag("Epic").i("Updated database: game marked as installed")

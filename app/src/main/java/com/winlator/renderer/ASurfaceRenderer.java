@@ -17,6 +17,7 @@ import com.winlator.xserver.Cursor;
 import com.winlator.xserver.Drawable;
 import com.winlator.xserver.Pointer;
 import com.winlator.xserver.Window;
+import com.winlator.xserver.ScreenInfo;
 import com.winlator.xserver.WindowAttributes;
 import com.winlator.xserver.WindowManager;
 import com.winlator.xserver.XLock;
@@ -43,6 +44,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     public final XServerView xServerView;
     private final XServer xServer;
     public final ViewTransformation viewTransformation = new ViewTransformation();
+    private volatile ScreenInfo effectiveScreen;
     public int surfaceWidth;
     public int surfaceHeight;
     private boolean sfCompatMode = true;
@@ -79,6 +81,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
         this.xServer = xServer;
         rootCursorDrawable = createRootCursorDrawable();
         xServer.windowManager.addOnWindowModificationListener(this);
+        effectiveScreen = xServer.getEffectiveScreenInfo();
         xServer.pointer.addOnPointerMotionListener(this);
     }
 
@@ -295,7 +298,15 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     public void onSurfaceChanged(int width, int height) {
         surfaceWidth = width;
         surfaceHeight = height;
-        viewTransformation.update(width, height, xServer.screenInfo.width, xServer.screenInfo.height);
+        effectiveScreen = xServer.getEffectiveScreenInfo();
+        viewTransformation.update(width, height, effectiveScreen.width, effectiveScreen.height);
+        updateTransform();
+    }
+
+    private void refreshDesktopTransform() {
+        effectiveScreen = xServer.getEffectiveScreenInfo();
+        if (surfaceWidth <= 0 || surfaceHeight <= 0) return;
+        viewTransformation.update(surfaceWidth, surfaceHeight, effectiveScreen.width, effectiveScreen.height);
         updateTransform();
     }
 
@@ -465,8 +476,11 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
                 long ahbPtr = g.getScanoutHardwareBufferPtr();
                 if (ahbPtr != 0) {
                     int acquireFence = g.consumeAcquireFence();
-                    // Disable swap R/B in cpu path as it is handled with drawable
-                    nativeSetWindowBuffer(windowId, ahbPtr, acquireFence, 0, 0, g, g.getLastUsedSlot(), sfCompatMode);
+                    // Disable swap R/B in cpu path as it is handled with drawable.
+                    // An RGBA_8888 slot already holds R,G,B,A bytes: SurfaceFlinger takes it as is, and the
+                    // BGRA-to-RGBA blit (which swaps an RGBA-declared source) must not touch it.
+                    boolean convert = sfCompatMode && !g.isScanoutRgba();
+                    nativeSetWindowBuffer(windowId, ahbPtr, acquireFence, 0, 0, g, g.getLastUsedSlot(), convert);
                     if (hudRef != null && skipFPSCount.get() >= 1) {
                         hudRef.update();
                         skipFPSCount.set(0);
@@ -558,13 +572,17 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
             short hotX = (short) cursor.hotSpotX;
             short hotY = (short) cursor.hotSpotY;
 
-            nativeScanoutSetCursorPos(x, y, hotX, hotY, containerCursorVisible && gameCursorVisible);
+            ScreenInfo inner = effectiveScreen;
+            short sx = (short)(x * xServer.screenInfo.width / inner.width);
+            short sy = (short)(y * xServer.screenInfo.height / inner.height);
+            nativeScanoutSetCursorPos(sx, sy, hotX, hotY, containerCursorVisible && gameCursorVisible);
         }
     }
 
     @Override
     public void onMapWindow(Window window) {
         Timber.d("onMapWindow id=%s", window.id);
+        if (xServer.isDesktopWindow(window)) refreshDesktopTransform();
         if (unviewableWMClasses != null) {
             String wc = window.getClassName();
             for (String cls : unviewableWMClasses) if (wc.contains(cls)) return;
@@ -592,6 +610,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     @Override
     public void onUnmapWindow(Window window) {
         Timber.d("onUnmapWindow id=%s", window.id);
+        if (xServer.isDesktopWindow(window)) refreshDesktopTransform();
         Drawable content = window.getContent();
         if (content != null) content.setOnDrawListener(null);
         windowSurfaces.remove(window.id);
@@ -618,6 +637,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     @Override
     public void onUpdateWindowGeometry(Window window, boolean resized) {
         Timber.d("onUpdateWindowGeometry id=%s resized=%b", window.id, resized);
+        if (resized && xServer.isDesktopWindow(window)) refreshDesktopTransform();
         if (unviewableWMClasses != null) {
             String wc = window.getClassName();
             for (String cls : unviewableWMClasses) if (wc.contains(cls)) return;
@@ -659,7 +679,16 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     private boolean isFullscreenWindow(Window window) {
         if (forceFullscreenWMClass != null) {
             String wc = window.getClassName();
-            return wc != null && wc.contains(forceFullscreenWMClass);
+            return containsIgnoreCase(wc, forceFullscreenWMClass);
+        }
+        return false;
+    }
+
+    private static boolean containsIgnoreCase(String value, String query) {
+        if (value == null || query == null) return false;
+        int queryLength = query.length();
+        for (int i = 0; i <= value.length() - queryLength; i++) {
+            if (value.regionMatches(true, i, query, 0, queryLength)) return true;
         }
         return false;
     }

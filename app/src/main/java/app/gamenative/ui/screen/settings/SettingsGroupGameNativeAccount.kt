@@ -159,6 +159,10 @@ fun SettingsGroupGameNativeAccount() {
                 icon = { Icon(Icons.Filled.CreditCard, contentDescription = null) },
                 enabled = !portalBusy,
                 onClick = {
+                    if (current?.tierSource == "play") {
+                        openAccountUrl(context, PLAY_SUBSCRIPTIONS_URL)
+                        return@SettingsMenuLink
+                    }
                     portalBusy = true
                     portalMessage = R.string.gamenative_account_manage_subscription_opening
                     scope.launch {
@@ -227,10 +231,13 @@ fun SettingsGroupGameNativeAccount() {
     }
 }
 
+private const val PLAY_SUBSCRIPTIONS_URL = "https://play.google.com/store/account/subscriptions?package=app.gamenative"
+
 private fun managedElsewhereMessage(tierSource: String?): Int? =
     when (tierSource) {
         "discord" -> R.string.gamenative_account_managed_discord
         "kofi" -> R.string.gamenative_account_managed_kofi
+        "play" -> R.string.gamenative_account_managed_play
         else -> null
     }
 

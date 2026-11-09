@@ -89,6 +89,35 @@ class GOGManagerPlayTaskTest {
     }
 
     @Test
+    fun findInstalledPlayTask_unmatchedGameIdSkipsDlcInfoFile() {
+        val installDir = tmp.newFolder("with-dlc")
+        writeDosBoxGame(installDir)
+        installDir.resolve("goggame-1000000001.info").writeText(
+            """{"gameId": "1000000001", "rootGameId": "1808582759"}""",
+        )
+
+        val task = manager().findInstalledPlayTask(installDir.absolutePath, "1207658930")
+
+        assertNotNull(task)
+        assertEquals("DOSBOX/DOSBox.exe", task!!.executablePath.replace('\\', '/'))
+    }
+
+    @Test
+    fun findGOGInfoFile_withoutGameIdPrefersBaseGame() {
+        val installDir = tmp.newFolder("unknown-id")
+        installDir.resolve("goggame-1000000001.info").writeText(
+            """{"gameId": "1000000001", "rootGameId": "1808582759"}""",
+        )
+        installDir.resolve("goggame-1808582759.info").writeText(
+            """{"gameId": "1808582759", "rootGameId": "1808582759"}""",
+        )
+
+        val infoFile = manager().findGOGInfoFile(installDir)
+
+        assertEquals("goggame-1808582759.info", infoFile?.name)
+    }
+
+    @Test
     fun resolveGogLaunchArguments_prefersUserArgsAndMatchesExecutable() {
         val task = GOGManager.GOGPlayTask("DOSBOX/DOSBox.exe", jazzArguments, "DOSBOX")
         val manager = manager()

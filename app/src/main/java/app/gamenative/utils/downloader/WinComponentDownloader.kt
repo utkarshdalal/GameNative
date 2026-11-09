@@ -53,8 +53,9 @@ object WinComponentDownloader {
         val component = manifest.components.find { it.id == componentId }
             ?: throw Exception("WinComponent $componentId not found in $WINCOMPONENTS_MANIFEST_FILE")
 
-        // Legacy variant: use bundled assets
-        if (!BuildConfig.MODERN_ANDROID) {
+        // Legacy variant: the components it ships are extracted from bundled
+        // assets, and only the ones it does not ship (physx) are downloaded.
+        if (!BuildConfig.MODERN_ANDROID && hasBundledAsset(context, componentId)) {
             Timber.d("Legacy variant: WinComponent $componentId will be extracted from bundled assets")
             // Return null to indicate using bundled assets
             return@withContext null
@@ -106,6 +107,14 @@ object WinComponentDownloader {
             throw Exception("Failed to load wincomponents manifest: ${e.message}", e)
         }
     }
+
+
+    /**
+     * Whether this APK ships [componentId]'s archive. Legacy builds extract a component from
+     * the bundled asset, so only an absent one has to be downloaded.
+     */
+    private fun hasBundledAsset(context: Context, componentId: String): Boolean =
+        runCatching { context.assets.open("wincomponents/$componentId.tzst").close() }.isSuccess
 
 
     /**

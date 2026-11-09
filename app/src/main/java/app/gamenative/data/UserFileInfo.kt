@@ -27,26 +27,22 @@ data class UserFileInfo(
         get() {
             val pathForPrefix = when {
                 cloudPath.isBlank() || cloudPath == "." -> ""
-                else -> cloudPath
+                else -> cloudPath.replace("\\", "/").removeSuffix("/.")
             }
-            return Paths.get("%${cloudRoot.name}%$pathForPrefix").pathString
-                .replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
-                .replace("{Steam3AccountID}", SteamUtils.getSteam3AccountId().toString())
+            return SteamUtils.substituteSteamIdPlaceholders(Paths.get("%${cloudRoot.name}%$pathForPrefix").pathString)
         }
 
     // Bare placeholder (%GameInstall%) expects no slash before filename; path with folder uses Paths.get.
     val prefixPath: String
-        get() = when {
-            cloudPath.isBlank() || cloudPath == "." -> "$prefix$filename"
-            else -> Paths.get(prefix, filename).pathString
-        }.replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
-            .replace("{Steam3AccountID}", SteamUtils.getSteam3AccountId().toString())
+        get() = SteamUtils.substituteSteamIdPlaceholders(
+            when {
+                cloudPath.isBlank() || cloudPath == "." -> "$prefix$filename"
+                else -> Paths.get(prefix, filename).pathString
+            },
+        )
 
     val substitutedPath: String
-        get() = path
-            .replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
-            .replace("{Steam3AccountID}", SteamUtils.getSteam3AccountId().toString())
-            .replace("\\", File.separator)
+        get() = SteamUtils.substituteSteamIdPlaceholders(path).replace("\\", File.separator)
 
     fun getAbsPath(prefixToPath: (String) -> String): Path {
         return Paths.get(prefixToPath(root.toString()), substitutedPath, filename)

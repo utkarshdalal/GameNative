@@ -23,6 +23,7 @@ class GyroControllerTest {
         val mouseEvents = mutableListOf<Pair<Int, Int>>()
         val stickEvents = mutableListOf<Triple<Float, Float, Boolean>>()
         val activeEvents = mutableListOf<Boolean>()
+        var allowMouseMovement = true
 
         override fun onGyroMouseDelta(x: Int, y: Int) {
             mouseEvents += x to y
@@ -35,6 +36,8 @@ class GyroControllerTest {
         override fun onGyroActiveChanged(active: Boolean) {
             activeEvents += active
         }
+
+        override fun shouldSendGyroMouseMovement() = allowMouseMovement
     }
 
     private fun controller(listener: RecordingListener = RecordingListener()): GyroController {
@@ -82,6 +85,26 @@ class GyroControllerTest {
         `when`(context.getSystemService(Context.SENSOR_SERVICE)).thenReturn(sensorManager)
         `when`(context.getSystemService(Context.WINDOW_SERVICE)).thenReturn(null)
         return Triple(GyroController(context, RecordingListener()), sensorManager, gyro to orientation)
+    }
+
+    @Test
+    fun mousePriorityDiscardsSuppressedMovementAndSmoothing() {
+        val listener = RecordingListener()
+        val controller = controller(listener)
+        controller.setSettings(GyroSettings(mode = GyroSettings.MODE_MOUSE, smoothingMilliseconds = 100f))
+        controller.processMouseRates(0.1f, 0f, 1_000_000_000L)
+        controller.processMouseRates(0.1f, 0f, 1_010_000_000L)
+        assertTrue(listener.mouseEvents.isEmpty())
+        listener.allowMouseMovement = false
+        controller.processMouseRates(100f, 0f, 1_020_000_000L)
+        controller.processMouseRates(100f, 0f, 1_030_000_000L)
+        assertTrue(listener.mouseEvents.isEmpty())
+        listener.allowMouseMovement = true
+        controller.processMouseRates(0f, 0f, 1_040_000_000L)
+        assertTrue(listener.mouseEvents.isEmpty())
+        controller.processMouseRates(1f, 0f, 1_140_000_000L)
+        assertEquals(0, listener.mouseEvents.single().second)
+        assertEquals(45f, listener.mouseEvents.single().first.toFloat(), 1f)
     }
 
     @Test

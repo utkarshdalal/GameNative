@@ -16,4 +16,5 @@ data class LaunchInfo(
     val configOS: EnumSet<OS>,
     val configArch: OSArch,
     val arguments: String = "",
+    val option: Int = -1,
 )

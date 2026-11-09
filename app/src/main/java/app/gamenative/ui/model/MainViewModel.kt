@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import app.gamenative.BuildConfig
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
+import app.gamenative.billing.Membership
 import app.gamenative.data.BootAdRepository
 import app.gamenative.data.GameProcessInfo
 import app.gamenative.data.GameSource
@@ -17,6 +18,7 @@ import app.gamenative.di.IAppTheme
 import app.gamenative.enums.AppTheme
 import app.gamenative.enums.LoginResult
 import app.gamenative.enums.PathType
+import app.gamenative.display.GameNativeDrm
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
 import app.gamenative.ui.enums.Orientation
@@ -54,6 +56,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import app.gamenative.service.cloud.CloseSyncTracker
+import app.gamenative.shadercache.FossilizeManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
@@ -100,7 +103,7 @@ class MainViewModel @Inject constructor(
     private var pendingWarmPitch: Pair<String, Boolean>? = null
 
     private fun warmPitchAllowed(): Boolean {
-        if (PrefManager.tipped || BuildConfig.GOLD) return false
+        if (!Membership.canPitch()) return false
         return System.currentTimeMillis() - PrefManager.lastWarmPitchTime >= WARM_PITCH_COOLDOWN_MS
     }
 
@@ -126,7 +129,7 @@ class MainViewModel @Inject constructor(
         data object OnBackPressed : MainUiEvent()
         data object OnLoggedOut : MainUiEvent()
         data object LaunchApp : MainUiEvent()
-        data class ExternalGameLaunch(val appId: String) : MainUiEvent()
+        data class ExternalGameLaunch(val appId: String, val execArgs: String?) : MainUiEvent()
         data class OnLogonEnded(val result: LoginResult) : MainUiEvent()
         data class SteamDisconnected(val isTerminal: Boolean) : MainUiEvent()
         data object ShowDiscordSupportDialog : MainUiEvent()
@@ -268,7 +271,7 @@ class MainViewModel @Inject constructor(
         Timber.tag("MainViewModel").i("Received external game launch event for app ${it.appId}")
         viewModelScope.launch {
             Timber.tag("MainViewModel").i("Sending ExternalGameLaunch UI event for app ${it.appId}")
-            _uiEvent.send(MainUiEvent.ExternalGameLaunch(it.appId))
+            _uiEvent.send(MainUiEvent.ExternalGameLaunch(it.appId, it.execArgs))
         }
     }
 
@@ -280,10 +283,23 @@ class MainViewModel @Inject constructor(
 
     private val onSetBootingSplashText: (AndroidEvent.SetBootingSplashText) -> Unit = {
         setBootingSplashText(it.text)
-        setShowBootingSplash(true)
+        if (!_state.value.alreadyClearedBootingSplash)
+            setShowBootingSplash(true)
+    }
+
+    /**
+     * The gamescope counterpart of [onWindowMapped]'s application-window check: the game maps its
+     * window on gamescope's Xwayland, which this X server never sees, so the daemon's published
+     * frames stand in for the map (see [GameNativeDrm.GAME_CONTENT_FRAMES]). Without this every
+     * gamescope quit looked like "no window" to [maybeOfferAiDebugRun] and to game_exited.
+     */
+    private val onGamescopeGameContent: (AndroidEvent.GamescopeGameContent) -> Unit = {
+        if (!gameWindowSeen) Timber.i("gamescope session published game content; counting the game window as seen")
+        gameWindowSeen = true
     }
 
     private val onClearBootingSplash: (AndroidEvent.ClearBootingSplash) -> Unit = {
+        bootAwaitingGameWindow = false
         bootingSplashTimeoutJob?.cancel()
         bootingSplashTimeoutJob = null
         bootAwaitingGameWindow = false
@@ -336,6 +352,7 @@ class MainViewModel @Inject constructor(
         PluviaApp.events.on<AndroidEvent.ExternalGameLaunch, Unit>(onExternalGameLaunch)
         PluviaApp.events.on<AndroidEvent.SetBootingSplashText, Unit>(onSetBootingSplashText)
         PluviaApp.events.on<AndroidEvent.ClearBootingSplash, Unit>(onClearBootingSplash)
+        PluviaApp.events.on<AndroidEvent.GamescopeGameContent, Unit>(onGamescopeGameContent)
         PluviaApp.events.on<SteamEvent.Connected, Unit>(onSteamConnected)
         PluviaApp.events.on<SteamEvent.Disconnected, Unit>(onSteamDisconnected)
         PluviaApp.events.on<SteamEvent.RemotelyDisconnected, Unit>(onRemotelyDisconnected)
@@ -363,6 +380,7 @@ class MainViewModel @Inject constructor(
         PluviaApp.events.off<AndroidEvent.ExternalGameLaunch, Unit>(onExternalGameLaunch)
         PluviaApp.events.off<AndroidEvent.SetBootingSplashText, Unit>(onSetBootingSplashText)
         PluviaApp.events.off<AndroidEvent.ClearBootingSplash, Unit>(onClearBootingSplash)
+        PluviaApp.events.off<AndroidEvent.GamescopeGameContent, Unit>(onGamescopeGameContent)
         PluviaApp.events.off<SteamEvent.Connected, Unit>(onSteamConnected)
         PluviaApp.events.off<SteamEvent.Disconnected, Unit>(onSteamDisconnected)
         PluviaApp.events.off<SteamEvent.RemotelyDisconnected, Unit>(onRemotelyDisconnected)
@@ -448,10 +466,14 @@ class MainViewModel @Inject constructor(
             }
             // bootAd stays in state so the exit fade keeps rendering it; the next show replaces it.
             PluviaApp.isBootingSplashShowing = false
-            _state.update { it.copy(showBootingSplash = false) }
+            _state.update { it.copy(showBootingSplash = false, alreadyClearedBootingSplash = true) }
         } else {
             PluviaApp.isBootingSplashShowing = value
-            _state.update { it.copy(showBootingSplash = value) }
+            if (!value) {
+                _state.update { it.copy(showBootingSplash = false, alreadyClearedBootingSplash = true) }
+            } else {
+                _state.update { it.copy(showBootingSplash = true) }
+            }
         }
     }
 
@@ -585,6 +607,10 @@ class MainViewModel @Inject constructor(
         _state.update { it.copy(launchedAppId = value) }
     }
 
+    fun setExecArgs(value: String?) {
+        _state.update { it.copy(execArgs = value) }
+    }
+
     fun setBootToContainer(value: Boolean) {
         _state.update { it.copy(bootToContainer = value) }
     }
@@ -602,6 +628,10 @@ class MainViewModel @Inject constructor(
     }
 
     fun launchApp(context: Context, appId: String) {
+        launchAppWithArgs(context, appId, null)
+    }
+
+    fun launchAppWithArgs(context: Context, appId: String, execArgs: String?) {
         gameSessionStartTime = System.currentTimeMillis()
         gameWindowSeen = false
         gamePlayedThisSession = true
@@ -626,6 +656,7 @@ class MainViewModel @Inject constructor(
             // A new launch is a new impression: never reuse the previous launch's ad.
             bootAdHiddenAtMs = 0L
             setShowBootingSplash(true)
+            setExecArgs(execArgs)
             bootAwaitingGameWindow = _state.value.bootAd != null
             if (bootAwaitingGameWindow) startBootGameExitWatch(context, appId)
             PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(PrefManager.allowedOrientation))
@@ -744,6 +775,9 @@ class MainViewModel @Inject constructor(
                     _uiEvent.send(MainUiEvent.ShowDebugReportDialog(appId))
                 }
 
+                runCatching {
+                    withContext(Dispatchers.IO) { ContainerUtils.getContainer(context, appId) }
+                }.getOrNull()?.let { FossilizeManager.uploadPendingAsync(context, it) }?.let { CloseSyncTracker.track(closeSyncKey, it) }
                 handleExitCloudSync(context, appId, gameId)
                 closeSync.complete()
 
@@ -1015,7 +1049,7 @@ class MainViewModel @Inject constructor(
                     val processes = mutableListOf<AppProcessInfo>()
                     var currentWindow: Window = window
                     do {
-                        var parentWindow: Window? = window.parent
+                        var parentWindow: Window? = currentWindow.parent
                         val process = if (parentWindow != null && parentWindow.className.lowercase() != "explorer.exe") {
                             val processId = currentWindow.processId
                             val parentProcessId = parentWindow.processId

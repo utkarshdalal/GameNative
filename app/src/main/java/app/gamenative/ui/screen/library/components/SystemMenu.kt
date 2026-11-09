@@ -47,11 +47,13 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -68,6 +70,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -81,6 +84,7 @@ import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.SteamFriend
+import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.dialog.SupportersDialog
@@ -90,6 +94,7 @@ import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.SteamIconImage
 import app.gamenative.ui.util.adaptivePanelWidth
 import app.gamenative.ui.util.shouldShowGamepadUI
+import app.gamenative.utils.LauncherOrientation
 import app.gamenative.utils.getAvatarURL
 import `in`.dragonbra.javasteam.enums.EPersonaState
 import kotlinx.coroutines.launch
@@ -272,6 +277,7 @@ fun SystemMenu(
     val scope = rememberCoroutineScope()
     val uriHandler = LocalUriHandler.current
     val firstItemFocusRequester = remember { FocusRequester() }
+    val rotateFocusRequester = remember { FocusRequester() }
     val profileFocusRequester = remember { FocusRequester() }
 
     var persona by remember { mutableStateOf<SteamFriend?>(null) }
@@ -395,12 +401,42 @@ fun SystemMenu(
                             ),
                             color = MaterialTheme.colorScheme.onSurface,
                         )
-                        IconButton(onClick = onDismiss) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = stringResource(R.string.options_panel_close),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        // Orientation button + close button
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            // Highlighted while the launcher rotates freely (auto state).
+                            val isAutoOrientation = !LauncherOrientation.isConcrete(
+                                LauncherOrientation.stored(),
                             )
+                            IconButton(
+                                onClick = {
+                                    PluviaApp.events.emit(AndroidEvent.RotateLauncherOrientation)
+                                },
+                                modifier = Modifier
+                                    .focusRequester(rotateFocusRequester)
+                                    .focusProperties { down = firstItemFocusRequester },
+                                colors = if (isAutoOrientation) {
+                                    IconButtonDefaults.iconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    )
+                                } else {
+                                    IconButtonDefaults.iconButtonColors(
+                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                },
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ScreenRotation,
+                                    contentDescription = stringResource(R.string.toggle_orientation),
+                                )
+                            }
+                            IconButton(onClick = onDismiss) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = stringResource(R.string.options_panel_close),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                     }
 
@@ -586,6 +622,7 @@ fun SystemMenu(
                                 onNavigateRoute(PluviaScreen.Settings.route)
                                 onDismiss()
                             },
+                            modifier = Modifier.focusProperties { up = rotateFocusRequester },
                             focusRequester = firstItemFocusRequester,
                         )
 

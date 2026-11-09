@@ -83,6 +83,11 @@ int gno_init(const gno_ops *ops, const char *upper, const char *lower, const cha
              int debug, const char *logpath);
 int gno_active(void);
 void gno_shutdown(void);
+
+/** Colon-separated entry names to drop from every directory listing (NULL or "" clears). */
+void gno_set_hidden(const char *names);
+/** 1 when name is on the hidden list. Works whether or not the overlay is active. */
+int gno_hidden_name(const char *name);
 void gno_log(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 
 /** Cheap test: 0 means the absolute path can never be inside the overlay. */
