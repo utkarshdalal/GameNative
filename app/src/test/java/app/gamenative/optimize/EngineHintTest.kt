@@ -58,6 +58,30 @@ class EngineHintTest {
     }
 
     @Test
+    fun gameMakerReEngineFrostbiteCryEngineAndIl2Cpp() {
+        assertEquals(EngineHint.GAMEMAKER, EngineHint.detect(tree("Game.exe", "data.win")))
+        assertEquals(EngineHint.RE_ENGINE, EngineHint.detect(tree("re2.exe", "re_chunk_000.pak")))
+        assertEquals(EngineHint.FROSTBITE, EngineHint.detect(tree("bf1.exe", "Data/initfs_Win32", "Data/cas.cat")))
+        assertEquals(EngineHint.FROSTBITE, EngineHint.detect(tree("Game.exe", "Data/layout.toc")))
+        assertEquals(EngineHint.CRYENGINE, EngineHint.detect(tree("Bin64/Game.exe", "Bin64/CrySystem.dll")))
+        assertEquals(EngineHint.CRYENGINE, EngineHint.detect(tree("system.cfg", "Bin64/Game.exe")))
+        assertEquals(EngineHint.UNITY, EngineHint.detect(tree("Game.exe", "GameAssembly.dll")))
+    }
+
+    @Test
+    fun unityMetaComesFromAppInfo() {
+        val root = tree("Game.exe", "Game_Data/globalgamemanagers")
+        File(root, "Game_Data/app.info").writeText("Red Hook Studios\nDarkest Dungeon II\n")
+        assertEquals(EngineHint.Meta("Red Hook Studios", "Darkest Dungeon II"), EngineHint.unityMeta(root))
+        val nested = tree("Build/Game_Data/x")
+        File(nested, "Build/Game_Data/app.info").writeText("Acme\n")
+        assertEquals(EngineHint.Meta("Acme", null), EngineHint.unityMeta(nested))
+        assertNull(EngineHint.unityMeta(tree("Game.exe", "Game_Data/x")))
+        assertNull(EngineHint.parseAppInfo("\n\n"))
+        assertNull(EngineHint.unityMeta(null))
+    }
+
+    @Test
     fun unrealWinsOverAUnityLookingDataFolder() {
         assertEquals(EngineHint.UNREAL, EngineHint.detect(tree("Game/Binaries/Win64/Game-Win64-Shipping.exe", "Extra_Data/x")))
     }
