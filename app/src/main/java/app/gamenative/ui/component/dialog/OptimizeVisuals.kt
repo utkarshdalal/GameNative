@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Grass
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Speed
@@ -79,6 +80,7 @@ fun optimizeProfileAccent(profile: OptimizeProfile): OptimizeAccent = when (prof
     OptimizeProfile.PERFORMANCE -> OptimizeAccent(Icons.Filled.Speed, PluviaTheme.colors.accentCyan)
     OptimizeProfile.STABILITY -> OptimizeAccent(Icons.Filled.GraphicEq, PluviaTheme.colors.accentPurple)
     OptimizeProfile.POWER -> OptimizeAccent(Icons.Filled.Thermostat, PluviaTheme.colors.accentWarning)
+    OptimizeProfile.POTATO -> OptimizeAccent(Icons.Filled.Grass, PluviaTheme.colors.accentPink)
     OptimizeProfile.OFF -> OptimizeAccent(Icons.Filled.PowerSettingsNew, PluviaTheme.colors.textMuted)
 }
 
@@ -88,6 +90,7 @@ val OPTIMIZE_GOAL_ORDER = listOf(
     OptimizeProfile.PERFORMANCE,
     OptimizeProfile.STABILITY,
     OptimizeProfile.POWER,
+    OptimizeProfile.POTATO,
 )
 
 /**

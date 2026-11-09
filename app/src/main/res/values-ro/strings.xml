@@ -1942,6 +1942,8 @@
     <string name="optimize_benefit_undo">Anulezi oricând</string>
     <string name="optimize_badge_free_to_try">Gratuit de încercat</string>
     <string name="optimize_badge_suggested">Sugerat</string>
+    <string name="optimize_profile_potato">Cartof</string>
+    <string name="optimize_profile_potato_description">Totul la minimum. Urât, dar merge.</string>
     <string name="optimize_pill_measuring">Se măsoară</string>
     <string name="optimize_pill_tuning">Se ajustează</string>
     <string name="optimize_pill_done">Gata</string>

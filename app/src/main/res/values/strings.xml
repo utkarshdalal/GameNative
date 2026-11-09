@@ -2181,6 +2181,8 @@
     <string name="optimize_benefit_undo">Undo anytime</string>
     <string name="optimize_badge_free_to_try">Free to try</string>
     <string name="optimize_badge_suggested">Suggested</string>
+    <string name="optimize_profile_potato">Potato</string>
+    <string name="optimize_profile_potato_description">Everything to the minimum. Ugly, but it runs.</string>
     <string name="optimize_pill_measuring">Measuring</string>
     <string name="optimize_pill_tuning">Tuning</string>
     <string name="optimize_pill_done">Done</string>

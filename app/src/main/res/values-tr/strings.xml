@@ -1977,6 +1977,8 @@
     <string name="optimize_benefit_undo">İstediğiniz zaman geri alın</string>
     <string name="optimize_badge_free_to_try">Ücretsiz deneyin</string>
     <string name="optimize_badge_suggested">Önerilen</string>
+    <string name="optimize_profile_potato">Patates</string>
+    <string name="optimize_profile_potato_description">Her şey en düşükte. Çirkin ama çalışıyor.</string>
     <string name="optimize_pill_measuring">Ölçülüyor</string>
     <string name="optimize_pill_tuning">Ayarlanıyor</string>
     <string name="optimize_pill_done">Tamamlandı</string>

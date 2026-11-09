@@ -1893,6 +1893,8 @@ https://gamenative.app
     <string name="optimize_benefit_undo">Можно отменить в любой момент</string>
     <string name="optimize_badge_free_to_try">Попробуйте бесплатно</string>
     <string name="optimize_badge_suggested">Рекомендуется</string>
+    <string name="optimize_profile_potato">Картошка</string>
+    <string name="optimize_profile_potato_description">Всё на минимум. Некрасиво, зато работает.</string>
     <string name="optimize_pill_measuring">Замер</string>
     <string name="optimize_pill_tuning">Настройка</string>
     <string name="optimize_pill_done">Готово</string>

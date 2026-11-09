@@ -1921,6 +1921,8 @@
     <string name="optimize_benefit_undo">随时可以撤销</string>
     <string name="optimize_badge_free_to_try">免费试用</string>
     <string name="optimize_badge_suggested">推荐</string>
+    <string name="optimize_profile_potato">土豆</string>
+    <string name="optimize_profile_potato_description">全部调到最低。很丑，但能跑。</string>
     <string name="optimize_pill_measuring">测量中</string>
     <string name="optimize_pill_tuning">调整中</string>
     <string name="optimize_pill_done">已完成</string>

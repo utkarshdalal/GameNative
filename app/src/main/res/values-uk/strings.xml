@@ -1965,6 +1965,8 @@
     <string name="optimize_benefit_undo">Можна скасувати будь-коли</string>
     <string name="optimize_badge_free_to_try">Спробуйте безкоштовно</string>
     <string name="optimize_badge_suggested">Рекомендовано</string>
+    <string name="optimize_profile_potato">Картопля</string>
+    <string name="optimize_profile_potato_description">Усе на мінімум. Негарно, зате працює.</string>
     <string name="optimize_pill_measuring">Вимірювання</string>
     <string name="optimize_pill_tuning">Налаштування</string>
     <string name="optimize_pill_done">Готово</string>

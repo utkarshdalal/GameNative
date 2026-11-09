@@ -1977,6 +1977,8 @@
     <string name="optimize_benefit_undo">Annulable à tout moment</string>
     <string name="optimize_badge_free_to_try">Essai gratuit</string>
     <string name="optimize_badge_suggested">Suggéré</string>
+    <string name="optimize_profile_potato">Patate</string>
+    <string name="optimize_profile_potato_description">Tout au minimum. Moche, mais ça tourne.</string>
     <string name="optimize_pill_measuring">Mesure en cours</string>
     <string name="optimize_pill_tuning">Réglage en cours</string>
     <string name="optimize_pill_done">Terminé</string>

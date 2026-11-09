@@ -143,7 +143,7 @@ object OptimizeTarget {
                 fps != null && stutter != null && fps >= BALANCED_MIN_FPS && stutter < BALANCED_MAX_STUTTER && !heat
             OptimizeProfile.STABILITY -> stutter != null && stutter < STABILITY_MAX_STUTTER
             OptimizeProfile.POWER -> after.gameplaySec >= POWER_MIN_GAMEPLAY_SEC && !heat
-            OptimizeProfile.OFF -> false
+            OptimizeProfile.POTATO, OptimizeProfile.OFF -> false
         }
     }
 
@@ -450,7 +450,7 @@ object OptimizeCards {
         OptimizeCard.OUTCOME_STUTTER -> OptimizeCard.OUTCOME_STUTTER
         OptimizeCard.OUTCOME_STABLE -> OptimizeCard.OUTCOME_STABLE
         else -> when (profile) {
-            OptimizeProfile.PERFORMANCE -> OptimizeCard.OUTCOME_FPS
+            OptimizeProfile.PERFORMANCE, OptimizeProfile.POTATO -> OptimizeCard.OUTCOME_FPS
             OptimizeProfile.BALANCED, OptimizeProfile.STABILITY -> OptimizeCard.OUTCOME_STUTTER
             OptimizeProfile.POWER, OptimizeProfile.OFF -> OptimizeCard.OUTCOME_STABLE
         }

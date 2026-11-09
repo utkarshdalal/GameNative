@@ -1950,6 +1950,8 @@
     <string name="optimize_benefit_undo">Annulla quando vuoi</string>
     <string name="optimize_badge_free_to_try">Prova gratis</string>
     <string name="optimize_badge_suggested">Consigliato</string>
+    <string name="optimize_profile_potato">Patata</string>
+    <string name="optimize_profile_potato_description">Tutto al minimo. Brutto, ma gira.</string>
     <string name="optimize_pill_measuring">Misurazione</string>
     <string name="optimize_pill_tuning">Ottimizzazione</string>
     <string name="optimize_pill_done">Fatto</string>

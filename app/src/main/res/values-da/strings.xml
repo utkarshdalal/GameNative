@@ -1829,6 +1829,8 @@
     <string name="optimize_benefit_undo">Fortryd når som helst</string>
     <string name="optimize_badge_free_to_try">Gratis at prøve</string>
     <string name="optimize_badge_suggested">Foreslået</string>
+    <string name="optimize_profile_potato">Kartoffel</string>
+    <string name="optimize_profile_potato_description">Alt på minimum. Grimt, men det kører.</string>
     <string name="optimize_pill_measuring">Måler</string>
     <string name="optimize_pill_tuning">Justerer</string>
     <string name="optimize_pill_done">Færdig</string>

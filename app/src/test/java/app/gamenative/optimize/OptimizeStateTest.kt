@@ -387,4 +387,26 @@ class OptimizeStateTest {
         assertNull(settingsStep("cap.balanced.30", null))
         assertFalse(ladder.copy(kept = listOf(kept)).repeats(rung("cap.performance.s6", "v5")))
     }
+
+    @Test
+    fun potatoProfileMapsToItsWireIdAndBack() {
+        assertEquals("potato", OptimizeProfile.POTATO.wireId)
+        assertEquals(OptimizeProfile.POTATO, OptimizeProfile.fromWire("potato"))
+        assertEquals(OptimizeProfile.OFF, OptimizeProfile.fromWire("spud"))
+        OptimizeProfile.entries.forEach { assertEquals(it, OptimizeProfile.fromWire(it.wireId)) }
+        assertEquals(app.gamenative.R.string.optimize_profile_potato, OptimizeProfile.POTATO.title)
+
+        val state = OptimizeLocalState(activeProfile = OptimizeProfile.POTATO, profiles = mapOf(OptimizeProfile.POTATO to ProfileLadder()))
+        val back = OptimizeLocalState.fromJson(JSONObject(state.toJson().toString()))
+        assertEquals(OptimizeProfile.POTATO, back.activeProfile)
+        assertTrue(back.profiles.containsKey(OptimizeProfile.POTATO))
+    }
+
+    @Test
+    fun goalsAreOfferedInOrderWithPotatoLast() {
+        assertEquals(
+            listOf(OptimizeProfile.BALANCED, OptimizeProfile.PERFORMANCE, OptimizeProfile.STABILITY, OptimizeProfile.POWER, OptimizeProfile.POTATO),
+            app.gamenative.ui.component.dialog.OPTIMIZE_GOAL_ORDER,
+        )
+    }
 }
