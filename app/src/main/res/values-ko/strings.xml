@@ -1927,6 +1927,7 @@
     <string name="optimize_badge_suggested">추천</string>
     <string name="optimize_profile_potato">감자</string>
     <string name="optimize_profile_potato_description">모든 설정을 최소로. 못생겼지만 돌아갑니다.</string>
+    <string name="optimize_vc_potato">모든 설정을 최소로. 못생겼지만 돌아갑니다.</string>
     <string name="optimize_pill_measuring">측정 중</string>
     <string name="optimize_pill_tuning">조정 중</string>
     <string name="optimize_pill_done">완료</string>

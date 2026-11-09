@@ -1979,6 +1979,7 @@
     <string name="optimize_badge_suggested">Suggéré</string>
     <string name="optimize_profile_potato">Patate</string>
     <string name="optimize_profile_potato_description">Tout au minimum. Moche, mais ça tourne.</string>
+    <string name="optimize_vc_potato">Tout au minimum. Moche, mais ça tourne.</string>
     <string name="optimize_pill_measuring">Mesure en cours</string>
     <string name="optimize_pill_tuning">Réglage en cours</string>
     <string name="optimize_pill_done">Terminé</string>

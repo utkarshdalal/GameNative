@@ -1959,6 +1959,7 @@
     <string name="optimize_badge_suggested">Sugerido</string>
     <string name="optimize_profile_potato">Patata</string>
     <string name="optimize_profile_potato_description">Todo al mínimo. Feo, pero funciona.</string>
+    <string name="optimize_vc_potato">Todo al mínimo. Feo, pero funciona.</string>
     <string name="optimize_pill_measuring">Midiendo</string>
     <string name="optimize_pill_tuning">Ajustando</string>
     <string name="optimize_pill_done">Listo</string>

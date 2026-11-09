@@ -1925,6 +1925,7 @@
     <string name="optimize_badge_suggested">推薦</string>
     <string name="optimize_profile_potato">馬鈴薯</string>
     <string name="optimize_profile_potato_description">全部調到最低。很醜，但跑得動。</string>
+    <string name="optimize_vc_potato">全部調到最低。很醜，但跑得動。</string>
     <string name="optimize_pill_measuring">測量中</string>
     <string name="optimize_pill_tuning">調整中</string>
     <string name="optimize_pill_done">已完成</string>

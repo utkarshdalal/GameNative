@@ -1831,6 +1831,7 @@
     <string name="optimize_badge_suggested">Sugerido</string>
     <string name="optimize_profile_potato">Batata</string>
     <string name="optimize_profile_potato_description">Tudo no mínimo. Feio, mas roda.</string>
+    <string name="optimize_vc_potato">Tudo no mínimo. Feio, mas roda.</string>
     <string name="optimize_pill_measuring">Medindo</string>
     <string name="optimize_pill_tuning">Ajustando</string>
     <string name="optimize_pill_done">Concluído</string>

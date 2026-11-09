@@ -1831,6 +1831,7 @@
     <string name="optimize_badge_suggested">Foreslået</string>
     <string name="optimize_profile_potato">Kartoffel</string>
     <string name="optimize_profile_potato_description">Alt på minimum. Grimt, men det kører.</string>
+    <string name="optimize_vc_potato">Alt på minimum. Grimt, men det kører.</string>
     <string name="optimize_pill_measuring">Måler</string>
     <string name="optimize_pill_tuning">Justerer</string>
     <string name="optimize_pill_done">Færdig</string>

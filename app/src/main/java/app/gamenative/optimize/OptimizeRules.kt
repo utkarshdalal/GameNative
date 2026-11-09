@@ -71,6 +71,7 @@ object OptimizeTarget {
     const val BALANCED_MAX_STUTTER = 0.02
     const val STABILITY_MAX_STUTTER = 0.01
     const val POWER_MIN_GAMEPLAY_SEC = 1200
+    const val POTATO_FPS_TARGET = 30.0
     const val PERFORMANCE_FPS_SHARE = 0.97
     const val PERFORMANCE_WINDOW_SHARE = 0.95
     const val PERFORMANCE_FPS_CEILING = 60.0
@@ -135,7 +136,8 @@ object OptimizeTarget {
                 fps != null && stutter != null && fps >= BALANCED_MIN_FPS && stutter < BALANCED_MAX_STUTTER && !heat
             OptimizeProfile.STABILITY -> stutter != null && stutter < STABILITY_MAX_STUTTER
             OptimizeProfile.POWER -> after.gameplaySec >= POWER_MIN_GAMEPLAY_SEC && !heat
-            OptimizeProfile.POTATO, OptimizeProfile.OFF -> false
+            OptimizeProfile.POTATO -> (fps ?: 0.0) >= PERFORMANCE_FPS_SHARE * POTATO_FPS_TARGET
+            OptimizeProfile.OFF -> false
         }
     }
 

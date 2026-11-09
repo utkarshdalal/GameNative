@@ -146,4 +146,18 @@ class OptimizeContainerLeverTest {
         assertEquals("off", OptimizeApplier.extraValue(OptimizeApplier.OUTPUT_RESOLUTION_KEY, "off"))
         assertNull(OptimizeApplier.extraValue(OptimizeApplier.OUTPUT_RESOLUTION_KEY, "4k"))
     }
+
+    @Test
+    fun aPotatoContainerLeverTakesResolutionUpscalingAndDxvkKeysTogether() {
+        val set = listOf(
+            "screenSize" to "854x480",
+            "gamescopeOutputResolution" to "device",
+            "gamescopeScalingFilter" to "FSR",
+            "dxwrapperConfig.dxvk.numCompilerThreads" to "2",
+        ).map { (k, v) -> OptimizeApplier.canonicalContainerKey(k) to v }
+        set.forEach { assertTrue(it.first, OptimizeApplier.isAllowedContainerKey(it.first)) }
+        assertEquals("fsr", OptimizeApplier.extraValue(OptimizeApplier.SCALING_FILTER_KEY, "FSR"))
+        assertEquals("device", OptimizeApplier.extraValue(OptimizeApplier.OUTPUT_RESOLUTION_KEY, "device"))
+        assertEquals(listOf("dxvk.numCompilerThreads" to "2"), OptimizeApplier.dxvkOptions(set))
+    }
 }

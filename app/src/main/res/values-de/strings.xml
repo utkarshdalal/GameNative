@@ -1901,6 +1901,7 @@
     <string name="optimize_badge_suggested">Empfohlen</string>
     <string name="optimize_profile_potato">Kartoffel</string>
     <string name="optimize_profile_potato_description">Alles auf Minimum. Hässlich, aber es läuft.</string>
+    <string name="optimize_vc_potato">Alles auf Minimum. Hässlich, aber es läuft.</string>
     <string name="optimize_pill_measuring">Wird gemessen</string>
     <string name="optimize_pill_tuning">Wird optimiert</string>
     <string name="optimize_pill_done">Fertig</string>

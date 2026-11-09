@@ -1971,6 +1971,7 @@
     <string name="optimize_badge_suggested">Sugerowany</string>
     <string name="optimize_profile_potato">Ziemniak</string>
     <string name="optimize_profile_potato_description">Wszystko na minimum. Brzydko, ale działa.</string>
+    <string name="optimize_vc_potato">Wszystko na minimum. Brzydko, ale działa.</string>
     <string name="optimize_pill_measuring">Pomiar</string>
     <string name="optimize_pill_tuning">Dostrajanie</string>
     <string name="optimize_pill_done">Gotowe</string>

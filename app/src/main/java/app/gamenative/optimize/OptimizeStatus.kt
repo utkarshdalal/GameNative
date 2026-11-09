@@ -138,6 +138,7 @@ sealed class OptimizeStatus {
             "vc_none" -> R.string.optimize_vc_none
             "vc_textures_stream_later" -> R.string.optimize_vc_textures_stream_later
             "vc_image_softer_upscaled" -> R.string.optimize_vc_image_softer_upscaled
+            "vc_potato" -> R.string.optimize_vc_potato
             else -> null
         }
     }

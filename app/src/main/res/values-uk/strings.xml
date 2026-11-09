@@ -1967,6 +1967,7 @@
     <string name="optimize_badge_suggested">Рекомендовано</string>
     <string name="optimize_profile_potato">Картопля</string>
     <string name="optimize_profile_potato_description">Усе на мінімум. Негарно, зате працює.</string>
+    <string name="optimize_vc_potato">Усе на мінімум. Негарно, зате працює.</string>
     <string name="optimize_pill_measuring">Вимірювання</string>
     <string name="optimize_pill_tuning">Налаштування</string>
     <string name="optimize_pill_done">Готово</string>
