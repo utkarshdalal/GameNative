@@ -281,6 +281,10 @@ object SteamUtils {
         val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
         val appDirPath = SteamService.getAppDirPath(steamAppId)
         if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_DLL_REPLACED)) {
+            val container = ContainerUtils.getContainer(context, appId)
+            Paths.get(appDirPath).toFile().walkTopDown().maxDepth(10)
+                .filter { it.isDirectory && it.name == "steam_settings" }
+                .forEach { syncSteamInputActionSets(container, steamAppId, it.toPath()) }
             return
         }
         MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_RESTORED)
@@ -374,6 +378,7 @@ object SteamUtils {
         val steamRootDir = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam")
 
         if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED) && File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam/steamclient_loader_x64.exe").exists()) {
+            syncSteamInputActionSets(container, steamAppId, File(steamRootDir, "steam_settings").toPath())
             return
         }
         MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
@@ -1282,8 +1287,6 @@ object SteamUtils {
                 ?: container.javaClass.getMethod("getLanguage").invoke(container) as? String)
                 ?: "english"
         }.getOrDefault("english").lowercase()
-        val useSteamInput = isSteamInputEnabled(container, steamAppId)
-
         // Get appInfo to check if saveFilePatterns exist (used for both user and app configs)
         val appInfo = getAppInfoOf(steamAppId)
 
@@ -1375,25 +1378,7 @@ object SteamUtils {
         if (Files.notExists(mainIni)) Files.createFile(mainIni)
         mainIni.toFile().writeText(mainIniContent)
 
-        val controllerDir = settingsDir.resolve("controller")
-        if (useSteamInput) {
-            val controllerVdfText = SteamService.resolveSteamControllerVdfText(steamAppId)
-            if (!controllerVdfText.isNullOrEmpty()) {
-                runCatching {
-                    SteamControllerVdfUtils.generateControllerConfig(controllerVdfText, controllerDir)
-                }.onFailure { error ->
-                    Timber.w(error, "Failed to generate controller config for $steamAppId")
-                }
-            }
-        } else {
-            runCatching {
-                if (Files.exists(controllerDir)) {
-                    controllerDir.toFile().deleteRecursively()
-                }
-            }.onFailure { error ->
-                Timber.w(error, "Failed to delete controller config for $steamAppId")
-            }
-        }
+        syncSteamInputActionSets(container, steamAppId, settingsDir)
 
         // Write supported languages list
         val supportedLanguagesFile = settingsDir.resolve("supported_languages.txt")
@@ -1598,6 +1583,34 @@ object SteamUtils {
                 }
             }
         })
+    }
+
+    /**
+     * Writes the emulator's Steam Input action sets when Steam Input is on for the game and removes them
+     * when it is off. The emulator takes the mere presence of `steam_settings/controller` as Steam Input
+     * being on, so this runs on every emulator launch, including the ones that keep the installed
+     * emulator files and skip the full settings rewrite.
+     */
+    private fun syncSteamInputActionSets(container: Container, steamAppId: Int, settingsDir: Path) {
+        val controllerDir = settingsDir.resolve("controller")
+        if (isSteamInputEnabled(container, steamAppId)) {
+            val controllerVdfText = SteamService.resolveSteamControllerVdfText(steamAppId)
+            if (!controllerVdfText.isNullOrEmpty()) {
+                runCatching {
+                    SteamControllerVdfUtils.generateControllerConfig(controllerVdfText, controllerDir)
+                }.onFailure { error ->
+                    Timber.w(error, "Failed to generate controller config for $steamAppId")
+                }
+            }
+        } else {
+            runCatching {
+                if (Files.exists(controllerDir)) {
+                    controllerDir.toFile().deleteRecursively()
+                }
+            }.onFailure { error ->
+                Timber.w(error, "Failed to delete controller config for $steamAppId")
+            }
+        }
     }
 
     /**
