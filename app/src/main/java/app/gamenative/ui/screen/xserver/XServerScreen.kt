@@ -178,6 +178,7 @@ import app.gamenative.utils.SteamTokenLogin
 import app.gamenative.enums.Marker
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.OpenALRedist
+import app.gamenative.utils.OptimizeState
 import app.gamenative.utils.PhysXLayout
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.WineMono
@@ -563,7 +564,10 @@ fun XServerScreen(
         runCatching { windowActivity.start(context) }
         withContext(Dispatchers.IO) {
             runCatching { AppExitRecorder.markSessionStart(context, ContainerUtils.resolveGameName(appId)) }
-            runCatching { ContainerUtils.getContainer(context, appId) }.getOrNull()?.let { OptimizeController.trialStarted(it) }
+            // Only a launch with a step on trial needs its container read here.
+            if (OptimizeState.templateId != null) {
+                runCatching { ContainerUtils.getContainer(context, appId) }.getOrNull()?.let { OptimizeController.trialStarted(it) }
+            }
         }
     }
 
