@@ -224,7 +224,7 @@ data class ProfileLadder(
 
 private val SETTINGS_STEP = Regex("""\.s(\d+)$""")
 
-/** The step number of a settings rung, from its id; null for other rungs. */
+/** The step number of a settings rung, from its raw step or else its id; null for other rungs. */
 internal fun settingsStep(rungId: String, raw: JSONObject?): Int? {
     if (!rungId.startsWith("cfg.")) return null
     raw?.optIntOrNull("step")?.let { return it }

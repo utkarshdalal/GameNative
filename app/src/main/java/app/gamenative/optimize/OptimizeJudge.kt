@@ -235,7 +235,7 @@ object OptimizeJudge {
         return statusLower && (dropped(before.cpuTempMax, after.cpuTempMax) || dropped(before.gpuTempMax, after.gpuTempMax))
     }
 
-    /** Offline fallback judge for a cap step. */
+    /** Offline fallback judge for a step; cap steps are judged on their own signals. */
     fun verdict(before: Metrics, after: Metrics, isFpsCap: Boolean, fpsCap: Double? = null): Verdict {
         val fpsBefore = before.steadyFps
         val fpsAfter = after.steadyFps
