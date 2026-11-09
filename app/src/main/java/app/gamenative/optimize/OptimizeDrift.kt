@@ -37,4 +37,32 @@ internal object OptimizeDrift {
             now[v.getString("name")]?.let { WineRegistryText.canonical(it) } != applied
         }.map { it.getString("name") }
     }
+
+    /** The file keys and registry values a lever [record] wrote, one id per key, comparable across rungs. */
+    fun keyIds(record: JSONObject, lever: Lever?): Set<String> = when (record.optString("type")) {
+        Lever.TYPE_ENGINE_FILE -> writtenOps(record, lever).orEmpty().map { fileKeyId(record.optString("path"), it) }.toSet()
+        Lever.TYPE_REGISTRY -> record.optJSONArray("values").objects().map { registryKeyId(record.optString("key"), it.getString("name")) }.toSet()
+        else -> emptySet()
+    }
+
+    fun fileKeyId(path: String, op: FileOp): String = "file|$path|${op.section.lowercase()}|${op.key.lowercase()}"
+
+    fun registryKeyId(key: String, name: String): String = "reg|${key.lowercase()}|${name.lowercase()}"
+
+    /**
+     * For each of [kept], the keys a newer step also writes: a later applied kept step, or the [pending] step on
+     * trial. Only the newest writer of a key is rechecked, so an older step never puts its value back over a newer one.
+     */
+    fun shadowedKeys(kept: List<KeptRung>, pending: PendingRung?): List<Set<String>> {
+        fun ids(levers: List<JSONObject>, rung: Rung?): Set<String> =
+            levers.flatMap { keyIds(it, rung?.levers?.getOrNull(it.optInt("index", -1))) }.toSet()
+        val newer = mutableSetOf<String>()
+        pending?.let { newer += ids(it.levers, it.rung) }
+        val out = ArrayList<Set<String>>(kept.size)
+        for (k in kept.asReversed()) {
+            out += newer.toSet()
+            if (k.applied) newer += ids(k.levers, k.rung?.let { Rung.parse(it) })
+        }
+        return out.asReversed()
+    }
 }

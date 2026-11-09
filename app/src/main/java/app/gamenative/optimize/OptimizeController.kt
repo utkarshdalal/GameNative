@@ -1092,11 +1092,13 @@ object OptimizeController {
     /**
      * Before a launch: puts back the file keys and registry values of applied kept rungs that the game reset since
      * the last one. A rung reset on [MAX_RESETS] launches in a row despite a read-only file stays kept, flagged
-     * unstable, and is reported once as did_not_take. Returns the ladder and the reports to queue.
+     * unstable, and is reported once as did_not_take. A key a newer kept step or the step on trial also writes is
+     * left to that step. Returns the ladder and the reports to queue.
      */
     private fun reverifyKept(appId: String, container: Container, profile: OptimizeProfile, ladder: ProfileLadder): Pair<ProfileLadder, List<JSONObject>> {
         val reports = mutableListOf<JSONObject>()
-        val kept = ladder.kept.map kept@{ k ->
+        val shadowed = OptimizeDrift.shadowedKeys(ladder.kept, ladder.pending?.takeIf { it.revert == null })
+        val kept = ladder.kept.mapIndexed kept@{ i, k ->
             if (!k.applied || k.levers.none { it.optString("type") == Lever.TYPE_ENGINE_FILE || it.optString("type") == Lever.TYPE_REGISTRY }) {
                 return@kept k
             }
@@ -1106,7 +1108,7 @@ object OptimizeController {
             val levers = k.levers.map { record ->
                 val lever = rung?.levers?.getOrNull(record.optInt("index", -1))
                 val checked = try {
-                    OptimizeApplier.reverify(container, record, lever)
+                    OptimizeApplier.reverify(container, record, lever, shadowed[i])
                 } catch (e: Exception) {
                     Timber.tag(TAG).w(e, "Optimize: re-checking ${k.rungId} lever ${record.optInt("index", -1)} failed")
                     null

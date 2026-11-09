@@ -201,6 +201,66 @@ class OptimizeKeepTest {
         assertEquals(0, OptimizeApplier.reverifyFile(kept, null)!!.reset)
     }
 
+    private fun shadowQuality(value: String, dir: String): JSONObject {
+        val lever = Lever.EngineFile(
+            "{userProfilePath}/Saved/Config/Windows/Engine.ini", "ini", "default", false,
+            listOf(set("SystemSettings", "r.ShadowQuality", value)),
+        )
+        return OptimizeApplier.applyFile(0, lever, roots, tmp.newFolder(dir), false, OptimizeApplier.OpCount())!!
+    }
+
+    private fun keptOf(id: String, record: JSONObject, applied: Boolean = true) =
+        KeptRung(id, "1", 1, emptyList(), 0L, listOf(record), null, applied = applied)
+
+    @Test
+    fun aNewerKeptStepOnTheSameKeyIsNotRevertedToTheOlderValue() {
+        val older = apply(readOnly = false)
+        val newer = shadowQuality("0", "newer")
+        val kept = listOf(keptOf("old", older), keptOf("new", newer))
+        val shadowed = OptimizeDrift.shadowedKeys(kept, null)
+        assertTrue(OptimizeDrift.fileKeyId(older.getString("path"), set("SystemSettings", "r.ShadowQuality", "")) in shadowed[0])
+        assertTrue(shadowed[1].isEmpty())
+
+        // Launch after launch nothing reads as reset, so the reset counter never climbs.
+        repeat(3) {
+            assertEquals(0, OptimizeApplier.reverifyFile(older, null, shadowed[0])!!.reset)
+            assertEquals(0, OptimizeApplier.reverifyFile(newer, null, shadowed[1])!!.reset)
+        }
+        assertTrue(ini.readText().contains("r.ShadowQuality=0"))
+
+        // A key only the older step writes is still put back when the game resets it.
+        ini.writeText(ini.readText().replace("r.Foo=2", "r.Foo=5"))
+        assertEquals(1, OptimizeApplier.reverifyFile(older, null, shadowed[0])!!.reset)
+        val text = ini.readText()
+        assertTrue(text.contains("r.Foo=2") && text.contains("r.ShadowQuality=0"))
+
+        // The newest writer still puts its own value back.
+        ini.writeText(text.replace("r.ShadowQuality=0", "r.ShadowQuality=3"))
+        assertEquals(1, OptimizeApplier.reverifyFile(newer, null, shadowed[1])!!.reset)
+        assertTrue(ini.readText().contains("r.ShadowQuality=0"))
+    }
+
+    @Test
+    fun theStepOnTrialShadowsKeptKeysItWrites() {
+        val older = apply(readOnly = false)
+        val trial = shadowQuality("0", "trial")
+        val trialRung = Rung.parse(JSONObject("{\"rung_id\":\"t\",\"version\":\"v2\",\"levers\":[]}"))!!
+        val pending = PendingRung(trialRung, 0L, null, 1, listOf(trial))
+        val shadowed = OptimizeDrift.shadowedKeys(listOf(keptOf("old", older)), pending)
+        assertEquals(0, OptimizeApplier.reverifyFile(older, null, shadowed[0])!!.reset)
+        assertTrue(ini.readText().contains("r.ShadowQuality=0"))
+        // Without the trial step in the picture the kept value would be written back over it.
+        assertEquals(1, OptimizeApplier.reverifyFile(JSONObject(older.toString()), null)!!.reset)
+    }
+
+    @Test
+    fun aNewerStepThatIsOffDoesNotShadow() {
+        val older = apply(readOnly = false)
+        val newer = shadowQuality("0", "newer")
+        val shadowed = OptimizeDrift.shadowedKeys(listOf(keptOf("old", older), keptOf("new", newer, applied = false)), null)
+        assertTrue(shadowed[0].isEmpty())
+    }
+
     private val regKey = "Software\\Epic\\Game"
 
     private fun hive(vararg changes: WineRegistryText.Change): String =
@@ -247,6 +307,24 @@ class OptimizeKeepTest {
         )
         assertEquals(2, OptimizeApplier.reverifyRegistry(file, regRecord(), null)!!.reset)
         assertEquals(emptyList<String>(), OptimizeDrift.registryDrift(OptimizeFiles.readHive(file), regRecord()))
+    }
+
+    @Test
+    fun reverifyRegistryLeavesValuesANewerStepWrites() {
+        val file = tmp.newFile("user.reg")
+        file.writeText(
+            hive(
+                WineRegistryText.Change("X", OptimizeFiles.encodeRegistryValue("dword", "4")),
+                WineRegistryText.Change("Y", OptimizeFiles.encodeRegistryValue("sz", "low")),
+                WineRegistryText.Change("Z", OptimizeFiles.encodeRegistryValue("dword", "1")),
+            ),
+            Charsets.ISO_8859_1,
+        )
+        val newer = JSONObject().put("type", Lever.TYPE_REGISTRY).put("key", regKey.uppercase())
+            .put("values", org.json.JSONArray().put(JSONObject().put("name", "x").put("applied", "x")))
+        val skip = OptimizeDrift.keyIds(newer, null)
+        assertEquals(1, OptimizeApplier.reverifyRegistry(file, regRecord(), null, skip)!!.reset)
+        assertEquals(listOf("X"), OptimizeDrift.registryDrift(OptimizeFiles.readHive(file), regRecord()))
     }
 
     @Test
