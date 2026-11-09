@@ -857,7 +857,7 @@ object BestConfigService {
 
     /**
      * [parseConfigToContainerData] plus the components the config needs that aren't available.
-     * Env vars lose backend frame-rate caps, and on non-Samsung devices the Samsung-only UBWC flag hint.
+     * Env vars lose backend frame-rate caps and, unless preserveConfigValues, the Samsung-only UBWC flag hint on other devices.
      */
     suspend fun parseConfigResult(
         context: Context,
@@ -1053,7 +1053,7 @@ object BestConfigService {
                     envVars = envVars.replace(Regex("""\s*VKD3D_FRAME_RATE=\d+"""), "")
                     // The UBWC flag hint is a Samsung-only flicker fix (ContainerUtils re-adds it there); configs shared by
                     // GPU carry it to other Adreno 740 devices, where it flashes tile garbage (Octopath Traveler 0, Odin 2).
-                    if (!Build.MANUFACTURER.equals("samsung", ignoreCase = true)) {
+                    if (!preserveConfigValues && !Build.MANUFACTURER.equals("samsung", ignoreCase = true)) {
                         val parsed = EnvVars(envVars)
                         if (parsed.get("FD_DEV_FEATURES") == "enable_tp_ubwc_flag_hint=1") {
                             parsed.remove("FD_DEV_FEATURES")
