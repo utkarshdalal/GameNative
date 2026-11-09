@@ -4,8 +4,8 @@ import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.PreInstallSteps
-import app.gamenative.utils.SteamInstallScriptRegistry
 import app.gamenative.utils.KnownInstallScriptStep
+import app.gamenative.utils.SteamInstallScriptRegistry
 import com.winlator.container.Container
 import io.mockk.every
 import io.mockk.mockk
@@ -103,7 +103,7 @@ class KnownInstallScriptStepTest {
             .single { it.file?.name == "install_pspc_sdk_runtime.bat" }
 
         // The script's own `command 1`, not ours: nothing in the app hardcodes it.
-        assertEquals(listOf("quiet"), step.commands)
+        assertEquals("quiet", step.command)
     }
 
     @Test
@@ -291,10 +291,128 @@ class KnownInstallScriptStepTest {
         File(gameDir, "_CommonRedist/DirectX/Jun2010").mkdirs()
         File(gameDir, "_CommonRedist/DirectX/Jun2010/install_pspc_sdk_runtime.bat")
             .writeText("@echo off\r\n")
-        File(gameDir, "_CommonRedist/DirectX/Jun2010/installscript.vdf").writeText(vdf)
+        // The redist script names the batch where it actually is, so this test fails if a script
+        // under `_CommonRedist` is ever read as the game's: the step would then resolve and run.
+        File(gameDir, "_CommonRedist/DirectX/Jun2010/installscript.vdf").writeText(
+            """
+            "InstallScript"
+            {
+                "Run Process"
+                {
+                    "PSPC"
+                    {
+                        "process 1"\t\t"%INSTALLDIR%\\\\_CommonRedist\\\\DirectX\\\\Jun2010\\\\install_pspc_sdk_runtime.bat"
+                        "command 1"\t\t"quiet"
+                    }
+                }
+            }
+            """.trimIndent(),
+        )
 
-        // The redist script is still read for marking, but it is not the game's script, so its
-        // steps are not this step's to run.
         assertNull(build())
+    }
+
+    /**
+     * `command N` pairs with `process N`. A block with two processes gives each its own arguments;
+     * handing both of them every command would run the installer with the other one's.
+     */
+    @Test
+    fun aStepsArgumentsAreItsOwnIndexNotTheWholeBlock() {
+        File(gameDir, "installscript.vdf").writeText(
+            """
+            "InstallScript"
+            {
+                "Run Process"
+                {
+                    "Twins"
+                    {
+                        "process 1"		"%INSTALLDIR%\\SB\\Binaries\\Win64\\install_pspc_sdk_runtime.bat"
+                        "command 1"		"quiet"
+                        "process 2"		"%INSTALLDIR%\\tools\\other.bat"
+                        "command 2"		"/S"
+                    }
+                }
+            }
+            """.trimIndent(),
+        )
+        File(gameDir, "SB/Binaries/Win64").mkdirs()
+        File(gameDir, "SB/Binaries/Win64/install_pspc_sdk_runtime.bat").writeText("@echo off\r\n")
+
+        assertEquals(
+            "\"A:\\SB\\Binaries\\Win64\\install_pspc_sdk_runtime.bat\" quiet",
+            build(),
+        )
+    }
+
+    /** A quoted path in the script's own arguments stays quoted, or it splits into two arguments. */
+    @Test
+    fun aQuotedArgumentKeepsItsQuotes() {
+        File(gameDir, "installscript.vdf").writeText(
+            """
+            "InstallScript"
+            {
+                "Run Process"
+                {
+                    "PSPC"
+                    {
+                        "process 1"		"%INSTALLDIR%\\SB\\Binaries\\Win64\\install_pspc_sdk_runtime.bat"
+                        "command 1"		"\"C:\\Program Files\\PSPC\\runtime.msi\" /quiet"
+                    }
+                }
+            }
+            """.trimIndent(),
+        )
+        File(gameDir, "SB/Binaries/Win64").mkdirs()
+        File(gameDir, "SB/Binaries/Win64/install_pspc_sdk_runtime.bat").writeText("@echo off\r\n")
+
+        assertEquals(
+            "\"A:\\SB\\Binaries\\Win64\\install_pspc_sdk_runtime.bat\" " +
+                "\"C:\\Program Files\\PSPC\\runtime.msi\" /quiet",
+            build(),
+        )
+    }
+
+    /** `Is64BitWindows 0` is a 32-bit-Windows step; Steam skips it here and so do we. */
+    @Test
+    fun aStepForA32BitWindowsIsNotRun() {
+        File(gameDir, "installscript.vdf").writeText(
+            """
+            "InstallScript"
+            {
+                "Run Process"
+                {
+                    "PSPC"
+                    {
+                        "process 1"		"%INSTALLDIR%\\SB\\Binaries\\Win64\\install_pspc_sdk_runtime.bat"
+                        "command 1"		"quiet"
+                        "Requirement_OS"
+                        {
+                            "Is64BitWindows"		"0"
+                        }
+                    }
+                }
+            }
+            """.trimIndent(),
+        )
+        File(gameDir, "SB/Binaries/Win64").mkdirs()
+        File(gameDir, "SB/Binaries/Win64/install_pspc_sdk_runtime.bat").writeText("@echo off\r\n")
+
+        assertNull(build())
+    }
+
+    /**
+     * Steam's `installScript` may be a path relative to the install root rather than a bare name,
+     * and a path compared against child names matches nothing. Resolved component by component,
+     * case-insensitively, like the registry resolves a step's own path.
+     */
+    @Test
+    fun aRelativeScriptPathIsResolved() {
+        File(gameDir, "SB/Binaries/Win64").mkdirs()
+        val script = File(gameDir, "SB/Binaries/Win64/installscript.vdf").apply { writeText(vdf) }
+
+        assertEquals(script, KnownInstallScriptStep.resolveBelow(gameDir, "sb\\\\binaries\\\\win64\\\\installscript.vdf"))
+        assertEquals(script, KnownInstallScriptStep.resolveBelow(gameDir, "SB/Binaries/Win64/installscript.vdf"))
+        assertNull(KnownInstallScriptStep.resolveBelow(gameDir, "SB/../SB/Binaries/Win64/installscript.vdf"))
+        assertNull(KnownInstallScriptStep.resolveBelow(gameDir, "SB/Binaries/Win64"))
     }
 }
