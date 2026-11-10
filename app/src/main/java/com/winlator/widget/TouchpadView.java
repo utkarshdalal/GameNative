@@ -1965,6 +1965,9 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         int curY = xServer.pointer.getY();
         if (xServer.isRelativeMouseMovement()) {
             xServer.getWinHandler().mouseEvent(MouseEventFlags.MOVE, curX + mx, curY + my, 0);
+        } else if (xServer.getInputEventSink() != null) {
+            // Gamescope's seat owns the cursor, so a step goes out as a step and not as a position built on this side's copy.
+            xServer.injectPointerMoveDelta(mx, my);
         } else {
             xServer.injectPointerMove(curX + mx, curY + my);
         }
