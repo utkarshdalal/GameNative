@@ -49,6 +49,9 @@ object SteamControllerVdfUtils {
         "button_back_right_upper" to "Y",
     )
 
+    /** Stick modes whose axes reach the game as a look or pointer vector rather than a movement one. */
+    private val CAMERA_STICK_MODES = setOf("joystick_camera", "joystick_mouse", "mouse_joystick", "absolute_mouse")
+
     fun generateControllerConfig(controllerVdfText: String, outputDir: Path) {
         val root = VdfParser(controllerVdfText).parse()
         val controllerMappings = root.getObject("controller_mappings") ?: return
@@ -211,6 +214,18 @@ object SteamControllerVdfUtils {
                     }
                     val forceBinding = if (bindingType == "joystick") "LSTICK" else "RSTICK"
                     addInputBindings(group, bindings, forceBinding = forceBinding)
+                } else if (groupMode in CAMERA_STICK_MODES && bindingType != "dpad") {
+                    // A stick that looks around or drives the pointer is still a stick to the emulator,
+                    // which only knows joystick_move, joystick_camera and trigger: hand it over as a
+                    // camera stick so the action gets its axes instead of being dropped. Only the click
+                    // becomes the stick button; an outer-ring binding has no emulator equivalent.
+                    val actionName = group.getObject("gameactions")?.getString(presetName)
+                    if (!actionName.isNullOrEmpty()) {
+                        val binding = if (bindingType == "joystick") "LJOY" else "RJOY"
+                        addActionBinding(bindings, actionName, binding, bindingSuffix = "joystick_camera")
+                    }
+                    val stickButton = if (bindingType == "joystick") "LSTICK" else "RSTICK"
+                    addInputBindings(group, bindings, keymap = mapOf("click" to stickButton))
                 } else if (groupMode == "dpad") {
                     if (bindingType == "joystick") {
                         val bindingMap = mapOf(
