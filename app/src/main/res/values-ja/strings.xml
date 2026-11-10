@@ -2072,12 +2072,12 @@
     <string name="optimize_profile_off">オフ</string>
     <string name="optimize_profile_balanced">バランス</string>
     <string name="optimize_profile_performance">パフォーマンス</string>
-    <string name="optimize_profile_stability">安定性</string>
+    <string name="optimize_profile_quality">画質</string>
     <string name="optimize_profile_power">電力と発熱</string>
     <string name="optimize_profile_off_description">このゲームの設定をそのままにします</string>
     <string name="optimize_profile_balanced_description">細部をほぼ保ったまま、より滑らかに</string>
     <string name="optimize_profile_performance_description">高く安定したフレームレートを優先</string>
-    <string name="optimize_profile_stability_description">カクつき・フリーズ・クラッシュを減らす</string>
+    <string name="optimize_profile_quality_description">ゲームの見た目はそのまま。必要に応じてフレームレートを下げ、安定させます。</string>
     <string name="optimize_profile_power_description">発熱による速度低下を減らし、バッテリーを長持ちさせる</string>
     <string name="optimize_status_not_started">まだ開始していません</string>
     <string name="optimize_status_measuring">次のセッションを計測中</string>
@@ -2143,10 +2143,6 @@
     <string name="optimize_after_cap_removed">%1$d fpsに固定しても効果がなかったため、制限を解除しました</string>
     <string name="optimize_status_cap_held">%1$d fpsに固定中</string>
     <string name="optimize_hint_heat">ここでは発熱が限界です。電力と発熱を試してください。</string>
-    <string name="optimize_suggested_power">おすすめ：電力と発熱（デバイスが熱くなっているため）。</string>
-    <string name="optimize_suggested_performance">おすすめ：パフォーマンス（フレームレートが目標を維持できていないため）。</string>
-    <string name="optimize_suggested_performance_heat">おすすめ：パフォーマンス（発熱を抑えながらフレームレートを維持するため）。</string>
-    <string name="optimize_suggested_stability">おすすめ：安定性（ゲームがカクつくため）。</string>
     <string name="optimize_status_exhausted">このデバイスではここまでです</string>
     <string name="optimize_status_waiting">安全な変更はまだありません。後でもう一度確認します。</string>
     <string name="optimize_continue">再開</string>

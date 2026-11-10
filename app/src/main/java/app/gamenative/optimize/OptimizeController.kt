@@ -1216,20 +1216,19 @@ object OptimizeController {
                         store.write(state)
                     }
                     if (asks) {
-                        val suggested = OptimizeCards.suggestedProfile(after.cls, after, cap, refresh)
+                        val suggested = OptimizeCards.SUGGESTED_PROFILE
                         val capFps = OptimizeCards.capQuestion(state, after, cap, now, refresh)
                         val card = OptimizeCard(
                             if (capFps != null) OptimizeCard.CAP else OptimizeCard.FIRST, now, gameName(appId),
-                            profile = suggested.profile,
+                            profile = suggested,
                             cls = after.cls,
                             metrics = after,
-                            reason = suggested.reason,
                             capFps = capFps,
                         )
                         if (context != null) {
                             // The card is only written once the server says it has a change for the game.
                             val body = nextRungBody(
-                                context.applicationContext, appId, container, state, suggested.profile, state.ladder(suggested.profile), after, dryRun = true,
+                                context.applicationContext, appId, container, state, suggested, state.ladder(suggested), after, dryRun = true,
                                 series = SessionPerfSampler.seriesFor(after.gameplaySec),
                             )
                             offer = FirstOffer(card, body, block)
@@ -1359,7 +1358,7 @@ object OptimizeController {
                 OptimizeCards.Offer.CAP -> when {
                     now < state.capSnoozedUntil -> null
                     base.kind == OptimizeCard.CAP -> base
-                    capFromRung != null -> base.copy(kind = OptimizeCard.CAP, capFps = capFromRung, reason = null)
+                    capFromRung != null -> base.copy(kind = OptimizeCard.CAP, capFps = capFromRung)
                     else -> base
                 }
                 OptimizeCards.Offer.HOLD -> null
@@ -1565,8 +1564,8 @@ object OptimizeController {
         }
     }
 
-    /** What the game's newest judged session suggests, and whether heat held it back. */
-    data class Suggestion(val suggested: OptimizeCards.Suggestion, val hot: Boolean)
+    /** The goal suggested for the game, and whether heat held its newest judged session back. */
+    data class Suggestion(val profile: OptimizeProfile, val hot: Boolean)
 
     suspend fun suggestion(context: Context, appId: String): Suggestion? = withContext(Dispatchers.IO) {
         try {
@@ -1575,7 +1574,7 @@ object OptimizeController {
             val baseline = baselineRun(container)?.takeIf { it.confident == true && it.cls in OptimizeCards.CLASSES } ?: return@withContext null
             val cap = userFpsLimit(container, OptimizeStore(container.rootDir).read().active)
             val refresh = refreshHz(context)
-            Suggestion(OptimizeCards.suggestedProfile(baseline.cls, baseline, cap, refresh), OptimizeTarget.hot(baseline, refresh, cap))
+            Suggestion(OptimizeCards.SUGGESTED_PROFILE, OptimizeTarget.hot(baseline, refresh, cap))
         } catch (e: Exception) {
             Timber.tag(TAG).w(e, "Reading the optimize suggestion failed")
             null

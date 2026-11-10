@@ -11,7 +11,7 @@ import org.junit.Test
 class OptimizeServerTest {
 
     private val card = OptimizeCard(
-        OptimizeCard.FIRST, 1L, "Game", profile = OptimizeProfile.PERFORMANCE, cls = "gpu", reason = OptimizeCards.REASON_LOW_FPS,
+        OptimizeCard.FIRST, 1L, "Game", profile = OptimizeProfile.BALANCED, cls = "gpu",
     )
 
     private fun verdict(show: Boolean?, kind: String? = null, profile: String? = null, cls: String? = "thermal_gpu", block: String? = null) =
@@ -41,7 +41,6 @@ class OptimizeServerTest {
         val shown = OptimizeServer.firstDecision(OptimizeCards.SUPPRESSED_NOT_CONFIDENT, card, verdict(true, profile = "power"), null).card!!
         assertEquals("thermal_gpu", shown.cls)
         assertEquals(OptimizeProfile.POWER, shown.profile)
-        assertNull(shown.reason)
         val hidden = OptimizeServer.firstDecision(null, card, verdict(false, block = "short"), null)
         assertNull(hidden.card)
         assertEquals("short", hidden.block)
@@ -53,8 +52,10 @@ class OptimizeServerTest {
         assertEquals(OptimizeCard.CAP, OptimizeServer.firstDecision(null, card, verdict(true, kind = "cap"), 40).card!!.kind)
         assertEquals(40, OptimizeServer.firstDecision(null, card, verdict(true, kind = "cap"), 40).card!!.capFps)
         assertEquals(OptimizeCard.FIRST, OptimizeServer.firstDecision(null, card, verdict(true, kind = "cap"), null).card!!.kind)
-        val same = OptimizeServer.firstDecision(null, card, verdict(true, profile = "performance"), null).card!!
-        assertEquals(OptimizeCards.REASON_LOW_FPS, same.reason)
+        // A slowdown tuning cannot change leaves no card, whatever the server says.
+        val spin = OptimizeServer.firstDecision(null, card, verdict(true, cls = OptimizeCards.SYNC_SPIN), null)
+        assertNull(spin.card)
+        assertEquals(OptimizeCards.SUPPRESSED_CLASS, spin.block)
     }
 
     @Test

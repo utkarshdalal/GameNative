@@ -1802,12 +1802,12 @@
     <string name="optimize_profile_off">Aus</string>
     <string name="optimize_profile_balanced">Ausgewogen</string>
     <string name="optimize_profile_performance">Leistung</string>
-    <string name="optimize_profile_stability">Stabilität</string>
+    <string name="optimize_profile_quality">Qualität</string>
     <string name="optimize_profile_power">Strom und Wärme</string>
     <string name="optimize_profile_off_description">Die Einstellungen dieses Spiels bleiben, wie sie sind</string>
     <string name="optimize_profile_balanced_description">Flüssigeres Spielen bei fast vollen Details</string>
     <string name="optimize_profile_performance_description">Zuerst höhere, stabilere Bildraten</string>
-    <string name="optimize_profile_stability_description">Weniger Ruckler, Hänger und Abstürze</string>
+    <string name="optimize_profile_quality_description">Behält das Aussehen des Spiels bei. Stabiler, notfalls mit niedrigerer Bildrate.</string>
     <string name="optimize_profile_power_description">Weniger Einbrüche durch Hitze und längere Akkulaufzeit</string>
     <string name="optimize_status_not_started">Noch nicht gestartet</string>
     <string name="optimize_status_measuring">Deine nächste Sitzung wird gemessen</string>
@@ -1874,10 +1874,6 @@
     <string name="optimize_after_cap_removed">Das Halten bei %1$d fps hat nicht geholfen; die Begrenzung wurde entfernt</string>
     <string name="optimize_status_cap_held">Bei %1$d fps gehalten</string>
     <string name="optimize_hint_heat">Hier begrenzt die Wärme. Versuche Strom und Wärme.</string>
-    <string name="optimize_suggested_power">Vorschlag: Strom und Wärme, weil das Gerät heiß läuft.</string>
-    <string name="optimize_suggested_performance">Vorschlag: Leistung, weil die Bildrate ihr Ziel nicht hält.</string>
-    <string name="optimize_suggested_performance_heat">Vorschlag: Leistung, um die Bildrate mit weniger Wärme zu halten.</string>
-    <string name="optimize_suggested_stability">Vorschlag: Stabilität, weil das Spiel ruckelt.</string>
     <string name="optimize_status_exhausted">Mehr geht auf diesem Gerät nicht</string>
     <string name="optimize_status_waiting">Noch keine sichere Änderung. Wir prüfen später erneut.</string>
     <string name="optimize_continue">Fortsetzen</string>

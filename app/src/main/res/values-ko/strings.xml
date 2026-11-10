@@ -1832,12 +1832,12 @@
     <string name="optimize_profile_off">끄기</string>
     <string name="optimize_profile_balanced">균형</string>
     <string name="optimize_profile_performance">성능</string>
-    <string name="optimize_profile_stability">안정성</string>
+    <string name="optimize_profile_quality">화질</string>
     <string name="optimize_profile_power">전력 및 발열</string>
     <string name="optimize_profile_off_description">이 게임의 설정을 그대로 둡니다</string>
     <string name="optimize_profile_balanced_description">디테일을 대부분 유지하면서 더 부드럽게</string>
     <string name="optimize_profile_performance_description">더 높고 안정적인 프레임 속도 우선</string>
-    <string name="optimize_profile_stability_description">끊김, 멈춤, 충돌 감소</string>
+    <string name="optimize_profile_quality_description">게임의 그래픽은 그대로 유지합니다. 필요하면 프레임 속도를 낮춰 더 안정적으로 실행합니다.</string>
     <string name="optimize_profile_power_description">발열로 인한 느려짐 감소 및 배터리 사용 시간 증가</string>
     <string name="optimize_status_not_started">아직 시작하지 않음</string>
     <string name="optimize_status_measuring">다음 세션을 측정하는 중</string>
@@ -1903,10 +1903,6 @@
     <string name="optimize_after_cap_removed">%1$d fps로 고정해도 효과가 없어 제한을 해제했습니다</string>
     <string name="optimize_status_cap_held">%1$d fps로 고정됨</string>
     <string name="optimize_hint_heat">여기서는 발열이 한계입니다. 전력 및 발열을 사용해 보세요.</string>
-    <string name="optimize_suggested_power">추천: 전력 및 발열 (기기가 뜨거워지고 있어서)</string>
-    <string name="optimize_suggested_performance">추천: 성능 (프레임 속도가 목표를 유지하지 못해서)</string>
-    <string name="optimize_suggested_performance_heat">추천: 성능 (발열을 줄이면서 프레임 속도를 유지하기 위해)</string>
-    <string name="optimize_suggested_stability">추천: 안정성 (게임이 끊겨서)</string>
     <string name="optimize_status_exhausted">이 기기에서는 여기까지입니다</string>
     <string name="optimize_status_waiting">적용할 안전한 변경이 아직 없습니다. 나중에 다시 확인합니다.</string>
     <string name="optimize_continue">계속</string>

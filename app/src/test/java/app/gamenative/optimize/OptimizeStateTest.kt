@@ -176,7 +176,7 @@ class OptimizeStateTest {
     fun v1StateMigratesToTheActiveProfile() {
         val v1 = JSONObject()
             .put("v", 1)
-            .put("profile", "stability")
+            .put("profile", "quality")
             .put("started", true)
             .put("kept", org.json.JSONArray().put(KeptRung("k1", "2", 1, emptyList(), 10L, listOf(JSONObject().put("type", "registry")), null).toJson().apply { remove("applied") }))
             .put("pending", PendingRung(Rung.parse(JSONObject(rungJson))!!, 20L, null, 2, emptyList()).toJson())
@@ -190,8 +190,8 @@ class OptimizeStateTest {
         store.dir.mkdirs()
         store.file.writeText(v1.toString())
         val state = store.read()
-        assertEquals(OptimizeProfile.STABILITY, state.activeProfile)
-        val ladder = state.profiles.getValue(OptimizeProfile.STABILITY)
+        assertEquals(OptimizeProfile.QUALITY, state.activeProfile)
+        val ladder = state.profiles.getValue(OptimizeProfile.QUALITY)
         assertEquals(LadderState.TRYING, ladder.state)
         assertEquals("k1", ladder.kept.single().rungId)
         assertTrue(ladder.kept.single().applied)
@@ -308,15 +308,15 @@ class OptimizeStateTest {
             OptimizeLocalState(activeProfile = OptimizeProfile.BALANCED, profiles = mapOf(OptimizeProfile.BALANCED to ProfileLadder(state = state)))
         val off = OptimizeLocalState()
         assertEquals(OptimizeProfile.PERFORMANCE, OptimizeStatus.suggestedProfile(off, OptimizeProfile.PERFORMANCE, hot = false))
-        assertEquals(OptimizeProfile.STABILITY, OptimizeStatus.suggestedProfile(with(LadderState.TRYING), OptimizeProfile.STABILITY, hot = false))
-        assertEquals(OptimizeProfile.STABILITY, OptimizeStatus.suggestedProfile(with(LadderState.PAUSED), OptimizeProfile.STABILITY, hot = true))
+        assertEquals(OptimizeProfile.QUALITY, OptimizeStatus.suggestedProfile(with(LadderState.TRYING), OptimizeProfile.QUALITY, hot = false))
+        assertEquals(OptimizeProfile.QUALITY, OptimizeStatus.suggestedProfile(with(LadderState.PAUSED), OptimizeProfile.QUALITY, hot = true))
         assertEquals(OptimizeProfile.POTATO, OptimizeStatus.suggestedProfile(with(LadderState.DONE), OptimizeProfile.POTATO, hot = false))
         assertEquals(OptimizeProfile.POWER, OptimizeStatus.suggestedProfile(with(LadderState.DONE), OptimizeProfile.POTATO, hot = true))
 
-        val firstCard = OptimizeCard(OptimizeCard.FIRST, 0L, profile = OptimizeProfile.STABILITY)
-        assertEquals(OptimizeProfile.STABILITY, OptimizeStatus.suggestedProfile(off.copy(card = firstCard), null, hot = false))
+        val firstCard = OptimizeCard(OptimizeCard.FIRST, 0L, profile = OptimizeProfile.QUALITY)
+        assertEquals(OptimizeProfile.QUALITY, OptimizeStatus.suggestedProfile(off.copy(card = firstCard), null, hot = false))
         assertEquals(OptimizeProfile.BALANCED, OptimizeStatus.suggestedProfile(off.copy(card = firstCard), OptimizeProfile.BALANCED, hot = false))
-        val doneCard = OptimizeCard(OptimizeCard.DONE, 0L, profile = OptimizeProfile.STABILITY)
+        val doneCard = OptimizeCard(OptimizeCard.DONE, 0L, profile = OptimizeProfile.QUALITY)
         assertNull(OptimizeStatus.suggestedProfile(off.copy(card = doneCard), null, hot = false))
         assertNull(OptimizeStatus.suggestedProfile(with(LadderState.DONE), null, hot = false))
         assertNull(OptimizeStatus.suggestedProfile(off, OptimizeProfile.OFF, hot = false))
@@ -449,7 +449,7 @@ class OptimizeStateTest {
     @Test
     fun goalsAreOfferedInOrderWithPotatoLast() {
         assertEquals(
-            listOf(OptimizeProfile.BALANCED, OptimizeProfile.PERFORMANCE, OptimizeProfile.STABILITY, OptimizeProfile.POWER, OptimizeProfile.POTATO),
+            listOf(OptimizeProfile.BALANCED, OptimizeProfile.QUALITY, OptimizeProfile.PERFORMANCE, OptimizeProfile.POWER, OptimizeProfile.POTATO),
             app.gamenative.ui.component.dialog.OPTIMIZE_GOAL_ORDER,
         )
     }

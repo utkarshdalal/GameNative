@@ -34,12 +34,12 @@ class OptimizeRulesTest {
     @Test
     fun offRevertsEverythingAndReappliesNothing() {
         val state = OptimizeLocalState(
-            activeProfile = OptimizeProfile.STABILITY,
-            profiles = mapOf(OptimizeProfile.STABILITY to ProfileLadder(kept = listOf(kept("s1")), pending = pending("s2"))),
+            activeProfile = OptimizeProfile.QUALITY,
+            profiles = mapOf(OptimizeProfile.QUALITY to ProfileLadder(kept = listOf(kept("s1")), pending = pending("s2"))),
         )
         val plan = SwitchPlan.of(state, null)
-        assertEquals(listOf(OptimizeProfile.STABILITY), plan.revertPending)
-        assertEquals(listOf(OptimizeProfile.STABILITY to "s1"), plan.revertKept)
+        assertEquals(listOf(OptimizeProfile.QUALITY), plan.revertPending)
+        assertEquals(listOf(OptimizeProfile.QUALITY to "s1"), plan.revertKept)
         assertTrue(plan.reapply.isEmpty())
     }
 
@@ -88,7 +88,7 @@ class OptimizeRulesTest {
         for (profile in listOf(OptimizeProfile.PERFORMANCE, OptimizeProfile.POWER, OptimizeProfile.BALANCED)) {
             assertFalse(profile.name, OptimizeTarget.metAtBaseline(profile, trying, forest, 60.0, 60))
         }
-        assertTrue(OptimizeTarget.metAtBaseline(OptimizeProfile.STABILITY, trying, forest, 60.0, 60))
+        assertTrue(OptimizeTarget.metAtBaseline(OptimizeProfile.QUALITY, trying, forest, 60.0, 60))
     }
 
     @Test
@@ -112,42 +112,8 @@ class OptimizeRulesTest {
     }
 
     @Test
-    fun suggestionHeatWithDipsIsPerformance() {
-        val s = OptimizeCards.suggestedProfile("thermal_gpu", forest, 60, 60.0)
-        assertEquals(OptimizeProfile.PERFORMANCE, s.profile)
-        assertEquals(OptimizeCards.REASON_HEAT_DIPS, s.reason)
-    }
-
-    @Test
-    fun suggestionHeatHoldingTheCapIsPower() {
-        val holding = forest.copy(steadyFps = 59.6, fpsBy5Min = listOf(50, 59, 60, 59))
-        val s = OptimizeCards.suggestedProfile("thermal_gpu", holding, 60, 60.0)
-        assertEquals(OptimizeProfile.POWER, s.profile)
-        assertEquals(OptimizeCards.REASON_HOT, s.reason)
-        assertEquals(OptimizeProfile.POWER, OptimizeCards.suggestedProfile("gpu", holding.copy(cls = "gpu"), 60, 60.0).profile)
-    }
-
-    @Test
-    fun suggestionLowFpsIsPerformance() {
-        val m = Metrics(gameplaySec = 900, steadyFps = 40.0, stutterShare = 0.03, cls = "gpu")
-        for (cls in listOf("gpu", "cpu_single", "cpu_multi")) {
-            assertEquals(OptimizeCards.Suggestion(OptimizeProfile.PERFORMANCE, OptimizeCards.REASON_LOW_FPS), OptimizeCards.suggestedProfile(cls, m, 60, 60.0))
-        }
-    }
-
-    @Test
-    fun suggestionStutterIsStability() {
-        val m = Metrics(gameplaySec = 900, steadyFps = 59.5, stutterShare = 0.02, cls = "gpu")
-        assertEquals(OptimizeCards.Suggestion(OptimizeProfile.STABILITY, OptimizeCards.REASON_STUTTER), OptimizeCards.suggestedProfile("gpu", m, 60, 60.0))
-        val bySymptom = m.copy(stutterShare = 0.001, symptom = "stutter", cls = "memory")
-        assertEquals(OptimizeProfile.STABILITY, OptimizeCards.suggestedProfile("memory", bySymptom, 60, 60.0).profile)
-    }
-
-    @Test
-    fun suggestionOtherwiseIsBalanced() {
-        val m = Metrics(gameplaySec = 900, steadyFps = 45.0, stutterShare = 0.005, cls = "memory")
-        assertEquals(OptimizeCards.Suggestion(OptimizeProfile.BALANCED, OptimizeCards.REASON_NONE), OptimizeCards.suggestedProfile("memory", m, 60, 60.0))
-        assertEquals(OptimizeProfile.BALANCED, OptimizeCards.suggestedProfile(null, null, 0, null).profile)
+    fun balancedIsTheSuggestedGoal() {
+        assertEquals(OptimizeProfile.BALANCED, OptimizeCards.SUGGESTED_PROFILE)
     }
 
     @Test
@@ -156,7 +122,7 @@ class OptimizeRulesTest {
         val m = Metrics.fromRun(run)
         assertEquals(listOf(54, 58, 57, 56), m.fpsBy5Min)
         assertEquals(m, Metrics.fromJson(m.toJson()))
-        val card = OptimizeCard(OptimizeCard.FIRST, 1L, profile = OptimizeProfile.PERFORMANCE, metrics = m, reason = OptimizeCards.REASON_HEAT_DIPS)
+        val card = OptimizeCard(OptimizeCard.FIRST, 1L, profile = OptimizeProfile.PERFORMANCE, metrics = m)
         assertEquals(card, OptimizeCard.fromJson(card.toJson()))
     }
 
@@ -171,9 +137,9 @@ class OptimizeRulesTest {
     }
 
     @Test
-    fun stabilityNeedsUnderOnePercentStutter() {
-        assertTrue(OptimizeTarget.met(OptimizeProfile.STABILITY, Metrics(gameplaySec = 900, stutterShare = 0.009), null, 0))
-        assertFalse(OptimizeTarget.met(OptimizeProfile.STABILITY, Metrics(gameplaySec = 900, stutterShare = 0.01), null, 0))
+    fun qualityNeedsUnderOnePercentStutter() {
+        assertTrue(OptimizeTarget.met(OptimizeProfile.QUALITY, Metrics(gameplaySec = 900, stutterShare = 0.009), null, 0))
+        assertFalse(OptimizeTarget.met(OptimizeProfile.QUALITY, Metrics(gameplaySec = 900, stutterShare = 0.01), null, 0))
     }
 
     @Test
@@ -219,7 +185,7 @@ class OptimizeRulesTest {
         assertNull(OptimizeCards.fpsGainPct(null, before))
         assertEquals(40, OptimizeCards.stutterDropPct(before, before.copy(stutterShare = 0.03)))
         assertNull(OptimizeCards.stutterDropPct(before, before.copy(stutterShare = 0.06)))
-        assertEquals(OptimizeCard.OUTCOME_FPS, OptimizeCards.helpedOutcome("fps", OptimizeProfile.STABILITY))
+        assertEquals(OptimizeCard.OUTCOME_FPS, OptimizeCards.helpedOutcome("fps", OptimizeProfile.QUALITY))
         assertEquals(OptimizeCard.OUTCOME_STUTTER, OptimizeCards.helpedOutcome(null, OptimizeProfile.BALANCED))
         assertEquals(OptimizeCard.OUTCOME_STABLE, OptimizeCards.helpedOutcome(null, OptimizeProfile.POWER))
         assertEquals(OptimizeCard.OUTCOME_STABLE, OptimizeCards.helpedOutcome("stable", OptimizeProfile.PERFORMANCE))

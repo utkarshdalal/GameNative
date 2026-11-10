@@ -1880,12 +1880,12 @@
     <string name="optimize_profile_off">Kapalı</string>
     <string name="optimize_profile_balanced">Dengeli</string>
     <string name="optimize_profile_performance">Performans</string>
-    <string name="optimize_profile_stability">Kararlılık</string>
+    <string name="optimize_profile_quality">Kalite</string>
     <string name="optimize_profile_power">Güç ve ısı</string>
     <string name="optimize_profile_off_description">Bu oyunun ayarları olduğu gibi kalır</string>
     <string name="optimize_profile_balanced_description">Ayrıntıların çoğunu koruyarak daha akıcı oyun</string>
     <string name="optimize_profile_performance_description">Önce daha yüksek ve daha istikrarlı kare hızı</string>
-    <string name="optimize_profile_stability_description">Daha az takılma, donma ve çökme</string>
+    <string name="optimize_profile_quality_description">Oyunun görünümünü korur. Daha dengeli, gerekirse daha düşük kare hızıyla.</string>
     <string name="optimize_profile_power_description">Isıdan kaynaklı daha az yavaşlama ve daha uzun pil ömrü</string>
     <string name="optimize_status_not_started">Henüz başlamadı</string>
     <string name="optimize_status_measuring">Sonraki oturumunuz ölçülüyor</string>
@@ -1952,10 +1952,6 @@
     <string name="optimize_after_cap_removed">%1$d fps\'de sabitlemek işe yaramadı; sınır kaldırıldı</string>
     <string name="optimize_status_cap_held">%1$d fps\'de sabit</string>
     <string name="optimize_hint_heat">Burada sınır ısı. Güç ve ısı\'yı deneyin.</string>
-    <string name="optimize_suggested_power">Önerilen: Güç ve ısı, çünkü cihaz ısınıyor.</string>
-    <string name="optimize_suggested_performance">Önerilen: Performans, çünkü kare hızı hedefini tutamıyor.</string>
-    <string name="optimize_suggested_performance_heat">Önerilen: Performans, kare hızını daha az ısıyla tutmak için.</string>
-    <string name="optimize_suggested_stability">Önerilen: Kararlılık, çünkü oyun takılıyor.</string>
     <string name="optimize_status_exhausted">Bu cihazda varılabilecek en son nokta</string>
     <string name="optimize_status_waiting">Henüz güvenli bir değişiklik yok. Daha sonra tekrar kontrol edeceğiz.</string>
     <string name="optimize_continue">Sürdür</string>

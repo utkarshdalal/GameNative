@@ -1860,12 +1860,12 @@
     <string name="optimize_profile_off">Вимк.</string>
     <string name="optimize_profile_balanced">Баланс</string>
     <string name="optimize_profile_performance">Продуктивність</string>
-    <string name="optimize_profile_stability">Стабільність</string>
+    <string name="optimize_profile_quality">Якість</string>
     <string name="optimize_profile_power">Живлення й нагрів</string>
     <string name="optimize_profile_off_description">Налаштування цієї гри залишаються без змін</string>
     <string name="optimize_profile_balanced_description">Плавніша гра майже без втрати деталізації</string>
     <string name="optimize_profile_performance_description">Насамперед вищий і рівніший FPS</string>
-    <string name="optimize_profile_stability_description">Менше підгальмовувань, зависань і вильотів</string>
+    <string name="optimize_profile_quality_description">Зберігає вигляд гри. Стабільніше, за потреби з нижчою частотою кадрів.</string>
     <string name="optimize_profile_power_description">Менше сповільнень через нагрів і довша робота від батареї</string>
     <string name="optimize_status_not_started">Ще не розпочато</string>
     <string name="optimize_status_measuring">Вимірюємо наступну сесію</string>
@@ -1934,10 +1934,6 @@
     <string name="optimize_after_cap_removed">Обмеження до %1$d fps не допомогло; його знято</string>
     <string name="optimize_status_cap_held">Тримається на %1$d fps</string>
     <string name="optimize_hint_heat">Тут обмежує нагрів. Спробуйте «Живлення й нагрів».</string>
-    <string name="optimize_suggested_power">Рекомендовано: «Живлення й нагрів», бо пристрій нагрівається.</string>
-    <string name="optimize_suggested_performance">Рекомендовано: «Продуктивність», бо частота кадрів не тримає ціль.</string>
-    <string name="optimize_suggested_performance_heat">Рекомендовано: «Продуктивність», щоб тримати частоту кадрів із меншим нагрівом.</string>
-    <string name="optimize_suggested_stability">Рекомендовано: «Стабільність», бо гра підгальмовує.</string>
     <string name="optimize_status_exhausted">Межа для цього пристрою</string>
     <string name="optimize_status_waiting">Безпечної зміни поки немає. Ми перевіримо пізніше.</string>
     <string name="optimize_continue">Відновити</string>

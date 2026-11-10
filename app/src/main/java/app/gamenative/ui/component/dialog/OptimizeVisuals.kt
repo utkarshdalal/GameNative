@@ -83,7 +83,7 @@ fun optimizeAccentFor(cls: String?): OptimizeAccent = when (cls) {
 fun optimizeProfileAccent(profile: OptimizeProfile): OptimizeAccent = when (profile) {
     OptimizeProfile.BALANCED -> OptimizeAccent(Icons.Filled.Tune, PluviaTheme.colors.accentCyan)
     OptimizeProfile.PERFORMANCE -> OptimizeAccent(Icons.Filled.Speed, PluviaTheme.colors.accentCyan)
-    OptimizeProfile.STABILITY -> OptimizeAccent(Icons.Filled.GraphicEq, PluviaTheme.colors.accentPurple)
+    OptimizeProfile.QUALITY -> OptimizeAccent(Icons.Filled.GraphicEq, PluviaTheme.colors.accentPurple)
     OptimizeProfile.POWER -> OptimizeAccent(Icons.Filled.Thermostat, PluviaTheme.colors.accentWarning)
     OptimizeProfile.POTATO -> OptimizeAccent(Icons.Filled.Grass, PluviaTheme.colors.accentPink)
     OptimizeProfile.OFF -> OptimizeAccent(Icons.Filled.PowerSettingsNew, PluviaTheme.colors.textMuted)
@@ -92,8 +92,8 @@ fun optimizeProfileAccent(profile: OptimizeProfile): OptimizeAccent = when (prof
 /** Goals in the order they are offered; Off is shown apart, below them. */
 val OPTIMIZE_GOAL_ORDER = listOf(
     OptimizeProfile.BALANCED,
+    OptimizeProfile.QUALITY,
     OptimizeProfile.PERFORMANCE,
-    OptimizeProfile.STABILITY,
     OptimizeProfile.POWER,
     OptimizeProfile.POTATO,
 )

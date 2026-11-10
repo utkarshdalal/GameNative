@@ -58,8 +58,6 @@ object OptimizeServer {
                 kind = kind,
                 cls = server.cls ?: card.cls,
                 profile = profile,
-                // The local reason explains the local suggestion only.
-                reason = if (profile == card.profile) card.reason else null,
                 capFps = if (kind == OptimizeCard.CAP) cap else card.capFps,
             ),
             null,

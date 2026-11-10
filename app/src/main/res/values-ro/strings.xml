@@ -1841,12 +1841,12 @@
     <string name="optimize_profile_off">Dezactivat</string>
     <string name="optimize_profile_balanced">Echilibrat</string>
     <string name="optimize_profile_performance">Performanță</string>
-    <string name="optimize_profile_stability">Stabilitate</string>
+    <string name="optimize_profile_quality">Calitate</string>
     <string name="optimize_profile_power">Energie și căldură</string>
     <string name="optimize_profile_off_description">Setările acestui joc rămân neschimbate</string>
     <string name="optimize_profile_balanced_description">Joc mai fluid, păstrând majoritatea detaliilor</string>
     <string name="optimize_profile_performance_description">Mai întâi cadre pe secundă mai multe și mai stabile</string>
-    <string name="optimize_profile_stability_description">Mai puține sacadări, blocări și închideri neașteptate</string>
+    <string name="optimize_profile_quality_description">Păstrează aspectul jocului. Mai stabil, cu o rată de cadre mai mică dacă e nevoie.</string>
     <string name="optimize_profile_power_description">Mai puține încetiniri din cauza căldurii și baterie mai durabilă</string>
     <string name="optimize_status_not_started">Încă nu a început</string>
     <string name="optimize_status_measuring">Se măsoară următoarea sesiune</string>
@@ -1914,10 +1914,6 @@
     <string name="optimize_after_cap_removed">Menținerea la %1$d fps nu a ajutat; limita a fost eliminată</string>
     <string name="optimize_status_cap_held">Menținut la %1$d fps</string>
     <string name="optimize_hint_heat">Aici limita este căldura. Încearcă Energie și căldură.</string>
-    <string name="optimize_suggested_power">Sugerat: Energie și căldură, pentru că dispozitivul se încălzește.</string>
-    <string name="optimize_suggested_performance">Sugerat: Performanță, pentru că rata de cadre nu își ține ținta.</string>
-    <string name="optimize_suggested_performance_heat">Sugerat: Performanță, pentru a ține rata de cadre cu mai puțină căldură.</string>
-    <string name="optimize_suggested_stability">Sugerat: Stabilitate, pentru că jocul sacadează.</string>
     <string name="optimize_status_exhausted">Maximul pe acest dispozitiv</string>
     <string name="optimize_status_waiting">Încă nu există o modificare sigură. Vom verifica din nou mai târziu.</string>
     <string name="optimize_continue">Reia</string>

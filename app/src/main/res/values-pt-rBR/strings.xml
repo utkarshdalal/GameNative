@@ -1732,12 +1732,12 @@
     <string name="optimize_profile_off">Desativado</string>
     <string name="optimize_profile_balanced">Equilibrado</string>
     <string name="optimize_profile_performance">Desempenho</string>
-    <string name="optimize_profile_stability">Estabilidade</string>
+    <string name="optimize_profile_quality">Qualidade</string>
     <string name="optimize_profile_power">Energia e calor</string>
     <string name="optimize_profile_off_description">Mantém as configurações deste jogo como estão</string>
     <string name="optimize_profile_balanced_description">Jogo mais fluido mantendo quase todos os detalhes</string>
     <string name="optimize_profile_performance_description">Primeiro, taxas de quadros mais altas e estáveis</string>
-    <string name="optimize_profile_stability_description">Menos travadas, congelamentos e falhas</string>
+    <string name="optimize_profile_quality_description">Mantém o visual do jogo. Mais estável, com menos quadros se for preciso.</string>
     <string name="optimize_profile_power_description">Menos lentidão por calor e bateria mais duradoura</string>
     <string name="optimize_status_not_started">Ainda não começou</string>
     <string name="optimize_status_measuring">Medindo sua próxima sessão</string>
@@ -1804,10 +1804,6 @@
     <string name="optimize_after_cap_removed">Manter a %1$d fps não ajudou; o limite foi removido</string>
     <string name="optimize_status_cap_held">Mantido a %1$d fps</string>
     <string name="optimize_hint_heat">Aqui o limite é o calor. Experimente Energia e calor.</string>
-    <string name="optimize_suggested_power">Sugerido: Energia e calor, porque o dispositivo está esquentando.</string>
-    <string name="optimize_suggested_performance">Sugerido: Desempenho, porque a taxa de quadros não se mantém no alvo.</string>
-    <string name="optimize_suggested_performance_heat">Sugerido: Desempenho, para manter a taxa de quadros com menos calor.</string>
-    <string name="optimize_suggested_stability">Sugerido: Estabilidade, porque o jogo engasga.</string>
     <string name="optimize_status_exhausted">O máximo neste dispositivo</string>
     <string name="optimize_status_waiting">Ainda não há uma mudança segura. Vamos verificar de novo mais tarde.</string>
     <string name="optimize_continue">Retomar</string>

@@ -111,16 +111,6 @@ private fun offerText(offer: OptimizeEvidence.Offer): String = when (offer) {
         stringResource(if (offer.lessHeat) R.string.optimize_offer_steady_heat else R.string.optimize_offer_steady, offer.fps)
 }
 
-/** Why a profile is suggested, in outcome words; [reason] is an [OptimizeCards] REASON_ id. Balanced needs no reason. */
-@Composable
-fun optimizeSuggestedText(reason: String?): String? = when (reason) {
-    OptimizeCards.REASON_HOT -> stringResource(R.string.optimize_suggested_power)
-    OptimizeCards.REASON_HEAT_DIPS -> stringResource(R.string.optimize_suggested_performance_heat)
-    OptimizeCards.REASON_LOW_FPS -> stringResource(R.string.optimize_suggested_performance)
-    OptimizeCards.REASON_STUTTER -> stringResource(R.string.optimize_suggested_stability)
-    else -> null
-}
-
 @Composable
 private fun measuredText(card: OptimizeCard): String? {
     val fps = card.fpsGainPct?.let { stringResource(R.string.optimize_measured_fps, it) }
@@ -388,7 +378,6 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
                 OptimizeChooser(
                     selected = chosen,
                     suggested = suggested,
-                    reason = card.reason?.takeIf { card.kind == OptimizeCard.FIRST }?.let { optimizeSuggestedText(it) },
                     onSelect = { chosen = it },
                 )
             }
@@ -402,7 +391,6 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
 private fun OptimizeChooser(
     selected: OptimizeProfile,
     suggested: OptimizeProfile?,
-    reason: String?,
     onSelect: (OptimizeProfile) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -410,16 +398,8 @@ private fun OptimizeChooser(
             text = stringResource(R.string.optimize_choose_goal),
             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(bottom = if (reason == null) 8.dp else 2.dp),
+            modifier = Modifier.padding(bottom = 8.dp),
         )
-        reason?.let {
-            Text(
-                text = it,
-                style = MaterialTheme.typography.bodySmall,
-                color = PluviaTheme.colors.textMuted,
-                modifier = Modifier.padding(bottom = 8.dp),
-            )
-        }
         OptimizeGoalCards(
             selected = selected,
             suggested = suggested,

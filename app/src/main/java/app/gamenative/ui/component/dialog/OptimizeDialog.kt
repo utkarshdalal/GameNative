@@ -274,11 +274,10 @@ fun OptimizeDialog(
     }
     val hint = when {
         state == null -> null
-        state.activeProfile == null -> suggestion?.let { optimizeSuggestedText(it.suggested.reason) }
         status == OptimizeStatus.Done && profile != OptimizeProfile.POWER && suggestion?.hot == true -> stringResource(R.string.optimize_hint_heat)
         else -> null
     }
-    val suggested = state?.let { OptimizeStatus.suggestedProfile(it, suggestion?.suggested?.profile, suggestion?.hot == true) }
+    val suggested = state?.let { OptimizeStatus.suggestedProfile(it, suggestion?.profile, suggestion?.hot == true) }
     val showRestore = OptimizeLadders.hasRestorable(activeLadder)
     val canContinue = OptimizeLadders.canContinue(status)
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE

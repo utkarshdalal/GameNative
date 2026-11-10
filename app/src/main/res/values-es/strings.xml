@@ -1860,12 +1860,12 @@
     <string name="optimize_profile_off">Desactivado</string>
     <string name="optimize_profile_balanced">Equilibrado</string>
     <string name="optimize_profile_performance">Rendimiento</string>
-    <string name="optimize_profile_stability">Estabilidad</string>
+    <string name="optimize_profile_quality">Calidad</string>
     <string name="optimize_profile_power">Energía y calor</string>
     <string name="optimize_profile_off_description">Deja los ajustes de este juego como están</string>
     <string name="optimize_profile_balanced_description">Juego más fluido conservando casi todo el detalle</string>
     <string name="optimize_profile_performance_description">Primero, más fotogramas y más estables</string>
-    <string name="optimize_profile_stability_description">Menos tirones, bloqueos y cierres</string>
+    <string name="optimize_profile_quality_description">Mantiene el aspecto del juego. Más estable, con menos fotogramas si hace falta.</string>
     <string name="optimize_profile_power_description">Menos bajones por calor y más batería</string>
     <string name="optimize_status_not_started">Aún no ha empezado</string>
     <string name="optimize_status_measuring">Midiendo tu próxima sesión</string>
@@ -1932,10 +1932,6 @@
     <string name="optimize_after_cap_removed">Mantener a %1$d fps no ayudó; se quitó el límite</string>
     <string name="optimize_status_cap_held">Mantenido a %1$d fps</string>
     <string name="optimize_hint_heat">Aquí el límite es el calor. Prueba Energía y calor.</string>
-    <string name="optimize_suggested_power">Sugerido: Energía y calor, porque el dispositivo se está calentando.</string>
-    <string name="optimize_suggested_performance">Sugerido: Rendimiento, porque la tasa de fotogramas no se mantiene en su objetivo.</string>
-    <string name="optimize_suggested_performance_heat">Sugerido: Rendimiento, para mantener la tasa de fotogramas con menos calor.</string>
-    <string name="optimize_suggested_stability">Sugerido: Estabilidad, porque el juego da tirones.</string>
     <string name="optimize_status_exhausted">Lo máximo posible en este dispositivo</string>
     <string name="optimize_status_waiting">Aún no hay un cambio seguro. Lo volveremos a comprobar más tarde.</string>
     <string name="optimize_continue">Continuar</string>

@@ -320,8 +320,6 @@ data class OptimizeCard(
     val stutterDropPct: Int? = null,
     /** The session that produced the card. */
     val metrics: Metrics? = null,
-    /** Why [profile] is suggested on a first card, an [OptimizeCards] REASON_ id. */
-    val reason: String? = null,
     /** The fps a cap question proposes, or a kept cap holds on an after-card. */
     val capFps: Int? = null,
     /** On an after-card, the session before the step; [metrics] is the session after it. */
@@ -344,7 +342,6 @@ data class OptimizeCard(
         fpsGainPct?.let { put("fps_gain_pct", it) }
         stutterDropPct?.let { put("stutter_drop_pct", it) }
         metrics?.let { put("metrics", it.toJson()) }
-        reason?.let { put("reason", it) }
         capFps?.let { put("cap_fps", it) }
         before?.let { put("before", it.toJson()) }
         if (unverified) put("unverified", true)
@@ -359,7 +356,7 @@ data class OptimizeCard(
 
     override fun hashCode(): Int = copy(serverDeltas = null).fields().hashCode()
 
-    private fun fields(): List<Any?> = listOf(kind, at, gameName, profile, cls, rungId, outcome, fpsGainPct, stutterDropPct, metrics, reason, capFps, before, unverified, expectedFps)
+    private fun fields(): List<Any?> = listOf(kind, at, gameName, profile, cls, rungId, outcome, fpsGainPct, stutterDropPct, metrics, capFps, before, unverified, expectedFps)
 
     companion object {
         const val FIRST = "first"
@@ -395,7 +392,6 @@ data class OptimizeCard(
                 fpsGainPct = o.optIntOrNull("fps_gain_pct"),
                 stutterDropPct = o.optIntOrNull("stutter_drop_pct"),
                 metrics = Metrics.fromJson(o.optJSONObject("metrics")),
-                reason = o.optStringOrNull("reason"),
                 capFps = o.optIntOrNull("cap_fps"),
                 before = Metrics.fromJson(o.optJSONObject("before")),
                 unverified = o.optBoolean("unverified", false),

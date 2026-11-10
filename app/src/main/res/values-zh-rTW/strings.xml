@@ -1830,12 +1830,12 @@
     <string name="optimize_profile_off">關閉</string>
     <string name="optimize_profile_balanced">平衡</string>
     <string name="optimize_profile_performance">效能</string>
-    <string name="optimize_profile_stability">穩定</string>
+    <string name="optimize_profile_quality">畫質</string>
     <string name="optimize_profile_power">電源與發熱</string>
     <string name="optimize_profile_off_description">保持此遊戲的設定不變</string>
     <string name="optimize_profile_balanced_description">在保留大部分細節的同時更流暢</string>
     <string name="optimize_profile_performance_description">優先提高並穩定影格率</string>
-    <string name="optimize_profile_stability_description">減少卡頓、凍結和當機</string>
+    <string name="optimize_profile_quality_description">維持遊戲畫面不變。更穩定，必要時降低影格率。</string>
     <string name="optimize_profile_power_description">減少因發熱造成的降速，延長電池續航力</string>
     <string name="optimize_status_not_started">尚未開始</string>
     <string name="optimize_status_measuring">正在測量你的下一次遊戲</string>
@@ -1901,10 +1901,6 @@
     <string name="optimize_after_cap_removed">維持在 %1$d fps 沒有幫助，已取消限制</string>
     <string name="optimize_status_cap_held">維持在 %1$d fps</string>
     <string name="optimize_hint_heat">這裡的瓶頸是發熱。試試「電源與發熱」。</string>
-    <string name="optimize_suggested_power">建議：電源與發熱，因為裝置正在發熱。</string>
-    <string name="optimize_suggested_performance">建議：效能，因為影格率達不到目標。</string>
-    <string name="optimize_suggested_performance_heat">建議：效能，在減少發熱的同時穩住影格率。</string>
-    <string name="optimize_suggested_stability">建議：穩定，因為遊戲有卡頓。</string>
     <string name="optimize_status_exhausted">此裝置上已到極限</string>
     <string name="optimize_status_waiting">暫時沒有安全的變更。我們稍後會再檢查。</string>
     <string name="optimize_continue">恢復</string>

@@ -1788,12 +1788,12 @@ https://gamenative.app
     <string name="optimize_profile_off">Выкл.</string>
     <string name="optimize_profile_balanced">Баланс</string>
     <string name="optimize_profile_performance">Производительность</string>
-    <string name="optimize_profile_stability">Стабильность</string>
+    <string name="optimize_profile_quality">Качество</string>
     <string name="optimize_profile_power">Питание и нагрев</string>
     <string name="optimize_profile_off_description">Настройки этой игры остаются как есть</string>
     <string name="optimize_profile_balanced_description">Более плавная игра почти без потери детализации</string>
     <string name="optimize_profile_performance_description">В первую очередь более высокий и ровный FPS</string>
-    <string name="optimize_profile_stability_description">Меньше подтормаживаний, зависаний и вылетов</string>
+    <string name="optimize_profile_quality_description">Сохраняет внешний вид игры. Стабильнее, при необходимости с более низкой частотой кадров.</string>
     <string name="optimize_profile_power_description">Меньше замедлений от нагрева и дольше работа от батареи</string>
     <string name="optimize_status_not_started">Ещё не начато</string>
     <string name="optimize_status_measuring">Измеряем следующую сессию</string>
@@ -1862,10 +1862,6 @@ https://gamenative.app
     <string name="optimize_after_cap_removed">Ограничение до %1$d fps не помогло; оно снято</string>
     <string name="optimize_status_cap_held">Держится на %1$d fps</string>
     <string name="optimize_hint_heat">Здесь ограничивает нагрев. Попробуйте «Питание и нагрев».</string>
-    <string name="optimize_suggested_power">Рекомендуется: «Питание и нагрев», потому что устройство нагревается.</string>
-    <string name="optimize_suggested_performance">Рекомендуется: «Производительность», потому что частота кадров не держит цель.</string>
-    <string name="optimize_suggested_performance_heat">Рекомендуется: «Производительность», чтобы держать частоту кадров при меньшем нагреве.</string>
-    <string name="optimize_suggested_stability">Рекомендуется: «Стабильность», потому что игра подтормаживает.</string>
     <string name="optimize_status_exhausted">Предел для этого устройства</string>
     <string name="optimize_status_waiting">Безопасного изменения пока нет. Мы проверим позже.</string>
     <string name="optimize_continue">Возобновить</string>

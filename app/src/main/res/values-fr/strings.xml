@@ -1880,12 +1880,12 @@
     <string name="optimize_profile_off">Désactivé</string>
     <string name="optimize_profile_balanced">Équilibré</string>
     <string name="optimize_profile_performance">Performances</string>
-    <string name="optimize_profile_stability">Stabilité</string>
+    <string name="optimize_profile_quality">Qualité</string>
     <string name="optimize_profile_power">Énergie et chaleur</string>
     <string name="optimize_profile_off_description">Laisse les réglages de ce jeu tels quels</string>
     <string name="optimize_profile_balanced_description">Un jeu plus fluide en gardant presque tous les détails</string>
     <string name="optimize_profile_performance_description">D\'abord des images par seconde plus élevées et stables</string>
-    <string name="optimize_profile_stability_description">Moins de saccades, de blocages et de plantages</string>
+    <string name="optimize_profile_quality_description">Conserve l\'apparence du jeu. Plus stable, avec moins d\'images par seconde si nécessaire.</string>
     <string name="optimize_profile_power_description">Moins de ralentissements dus à la chaleur et plus d\'autonomie</string>
     <string name="optimize_status_not_started">Pas encore commencé</string>
     <string name="optimize_status_measuring">Mesure de votre prochaine session</string>
@@ -1952,10 +1952,6 @@
     <string name="optimize_after_cap_removed">Maintenir à %1$d fps n\'a pas aidé ; la limite a été retirée</string>
     <string name="optimize_status_cap_held">Maintenu à %1$d fps</string>
     <string name="optimize_hint_heat">Ici, c\'est la chaleur qui limite. Essayez Énergie et chaleur.</string>
-    <string name="optimize_suggested_power">Suggéré : Énergie et chaleur, car l\'appareil chauffe.</string>
-    <string name="optimize_suggested_performance">Suggéré : Performances, car la fréquence d\'images ne tient pas son objectif.</string>
-    <string name="optimize_suggested_performance_heat">Suggéré : Performances, pour tenir la fréquence d\'images avec moins de chaleur.</string>
-    <string name="optimize_suggested_stability">Suggéré : Stabilité, car le jeu saccade.</string>
     <string name="optimize_status_exhausted">Le maximum possible sur cet appareil</string>
     <string name="optimize_status_waiting">Pas encore de modification sûre. Nous vérifierons de nouveau plus tard.</string>
     <string name="optimize_continue">Reprendre</string>

@@ -1864,12 +1864,12 @@
     <string name="optimize_profile_off">Wyłączone</string>
     <string name="optimize_profile_balanced">Zrównoważony</string>
     <string name="optimize_profile_performance">Wydajność</string>
-    <string name="optimize_profile_stability">Stabilność</string>
+    <string name="optimize_profile_quality">Jakość</string>
     <string name="optimize_profile_power">Zasilanie i temperatura</string>
     <string name="optimize_profile_off_description">Ustawienia tej gry pozostają bez zmian</string>
     <string name="optimize_profile_balanced_description">Płynniejsza gra przy zachowaniu większości detali</string>
     <string name="optimize_profile_performance_description">Najpierw wyższa i stabilniejsza liczba klatek</string>
-    <string name="optimize_profile_stability_description">Mniej przycięć, zawieszeń i awarii</string>
+    <string name="optimize_profile_quality_description">Zachowuje wygląd gry. Stabilniej, w razie potrzeby przy niższej liczbie klatek.</string>
     <string name="optimize_profile_power_description">Mniej spowolnień z powodu temperatury i dłuższa praca baterii</string>
     <string name="optimize_status_not_started">Jeszcze nie rozpoczęto</string>
     <string name="optimize_status_measuring">Mierzenie następnej sesji</string>
@@ -1938,10 +1938,6 @@
     <string name="optimize_after_cap_removed">Utrzymywanie %1$d fps nie pomogło; limit został usunięty</string>
     <string name="optimize_status_cap_held">Utrzymywane na %1$d fps</string>
     <string name="optimize_hint_heat">Tutaj ograniczeniem jest temperatura. Spróbuj Zasilanie i temperatura.</string>
-    <string name="optimize_suggested_power">Sugerowane: Zasilanie i temperatura, bo urządzenie się nagrzewa.</string>
-    <string name="optimize_suggested_performance">Sugerowane: Wydajność, bo liczba klatek nie utrzymuje celu.</string>
-    <string name="optimize_suggested_performance_heat">Sugerowane: Wydajność, aby utrzymać liczbę klatek przy mniejszym nagrzewaniu.</string>
-    <string name="optimize_suggested_stability">Sugerowane: Stabilność, bo gra się zacina.</string>
     <string name="optimize_status_exhausted">Maksimum na tym urządzeniu</string>
     <string name="optimize_status_waiting">Brak jeszcze bezpiecznej zmiany. Sprawdzimy ponownie później.</string>
     <string name="optimize_continue">Wznów</string>

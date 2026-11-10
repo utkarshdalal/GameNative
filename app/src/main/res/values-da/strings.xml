@@ -1732,12 +1732,12 @@
     <string name="optimize_profile_off">Fra</string>
     <string name="optimize_profile_balanced">Balanceret</string>
     <string name="optimize_profile_performance">Ydeevne</string>
-    <string name="optimize_profile_stability">Stabilitet</string>
+    <string name="optimize_profile_quality">Kvalitet</string>
     <string name="optimize_profile_power">Strøm og varme</string>
     <string name="optimize_profile_off_description">Lad spillets indstillinger være som de er</string>
     <string name="optimize_profile_balanced_description">Glattere spil, mens de fleste detaljer bevares</string>
     <string name="optimize_profile_performance_description">Højere og mere stabile billedhastigheder først</string>
-    <string name="optimize_profile_stability_description">Færre hak, frys og nedbrud</string>
+    <string name="optimize_profile_quality_description">Bevarer spillets udseende. Mere stabilt, om nødvendigt ved en lavere billedhastighed.</string>
     <string name="optimize_profile_power_description">Færre opbremsninger pga. varme og længere batteritid</string>
     <string name="optimize_status_not_started">Ikke startet endnu</string>
     <string name="optimize_status_measuring">Måler din næste session</string>
@@ -1804,10 +1804,6 @@
     <string name="optimize_after_cap_removed">At holde %1$d fps hjalp ikke; grænsen er fjernet</string>
     <string name="optimize_status_cap_held">Holdt på %1$d fps</string>
     <string name="optimize_hint_heat">Varme er grænsen her. Prøv Strøm og varme.</string>
-    <string name="optimize_suggested_power">Foreslået: Strøm og varme, fordi enheden kører varm.</string>
-    <string name="optimize_suggested_performance">Foreslået: Ydeevne, fordi billedhastigheden ikke holder sit mål.</string>
-    <string name="optimize_suggested_performance_heat">Foreslået: Ydeevne, for at holde billedhastigheden med mindre varme.</string>
-    <string name="optimize_suggested_stability">Foreslået: Stabilitet, fordi spillet hakker.</string>
     <string name="optimize_status_exhausted">Så langt det kan komme på denne enhed</string>
     <string name="optimize_status_waiting">Ingen sikker ændring endnu. Vi tjekker igen senere.</string>
     <string name="optimize_continue">Genoptag</string>

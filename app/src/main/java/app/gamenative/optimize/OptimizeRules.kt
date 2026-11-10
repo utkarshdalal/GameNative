@@ -107,7 +107,7 @@ object OptimizeLadders {
 object OptimizeTarget {
     const val BALANCED_MIN_FPS = 30.0
     const val BALANCED_MAX_STUTTER = 0.02
-    const val STABILITY_MAX_STUTTER = 0.01
+    const val QUALITY_MAX_STUTTER = 0.01
     const val POWER_MIN_GAMEPLAY_SEC = 1200
     const val POTATO_FPS_TARGET = 30.0
     const val PERFORMANCE_FPS_SHARE = 0.97
@@ -172,7 +172,7 @@ object OptimizeTarget {
             OptimizeProfile.PERFORMANCE -> holdsTarget(after, refreshHz, fpsCap) && !heat
             OptimizeProfile.BALANCED ->
                 fps != null && stutter != null && fps >= BALANCED_MIN_FPS && stutter < BALANCED_MAX_STUTTER && !heat
-            OptimizeProfile.STABILITY -> stutter != null && stutter < STABILITY_MAX_STUTTER
+            OptimizeProfile.QUALITY -> stutter != null && stutter < QUALITY_MAX_STUTTER
             OptimizeProfile.POWER -> after.gameplaySec >= POWER_MIN_GAMEPLAY_SEC && !heat
             OptimizeProfile.POTATO -> (fps ?: 0.0) >= PERFORMANCE_FPS_SHARE * POTATO_FPS_TARGET
             OptimizeProfile.OFF -> false
@@ -377,29 +377,8 @@ object OptimizeCards {
         return nowMillis - checkedAtMillis >= ENTITLEMENT_RECHECK_MS
     }
 
-    private val FPS_CLASSES = setOf("gpu", "cpu_single", "cpu_multi")
-    const val SUGGEST_STUTTER_SHARE = 0.02
-
-    const val REASON_HOT = "hot"
-    const val REASON_HEAT_DIPS = "heat_dips"
-    const val REASON_LOW_FPS = "low_fps"
-    const val REASON_STUTTER = "stutter"
-    const val REASON_NONE = "none"
-
-    data class Suggestion(val profile: OptimizeProfile, val reason: String)
-
-    /** The profile a game's verdict points at (offline fallback). */
-    fun suggestedProfile(verdict: String?, metrics: Metrics?, capFps: Int, refreshHz: Double?): Suggestion {
-        val holds = metrics != null && OptimizeTarget.holdsTarget(metrics, refreshHz, capFps)
-        if (verdict == "thermal_gpu" || metrics?.throttleOnsetSec != null) {
-            return if (holds) Suggestion(OptimizeProfile.POWER, REASON_HOT) else Suggestion(OptimizeProfile.PERFORMANCE, REASON_HEAT_DIPS)
-        }
-        if (verdict in FPS_CLASSES && metrics?.steadyFps != null && !holds) return Suggestion(OptimizeProfile.PERFORMANCE, REASON_LOW_FPS)
-        if ((metrics?.stutterShare ?: 0.0) >= SUGGEST_STUTTER_SHARE || metrics?.symptom == "stutter") {
-            return Suggestion(OptimizeProfile.STABILITY, REASON_STUTTER)
-        }
-        return Suggestion(OptimizeProfile.BALANCED, REASON_NONE)
-    }
+    /** The goal a first card suggests, whatever the diagnosis; the other goals are the player's own choice. */
+    val SUGGESTED_PROFILE = OptimizeProfile.BALANCED
 
     /** Offline fallback tuning. */
     const val CAP_HEAT_FPS = 45.0
@@ -476,7 +455,7 @@ object OptimizeCards {
         OptimizeCard.OUTCOME_STABLE -> OptimizeCard.OUTCOME_STABLE
         else -> when (profile) {
             OptimizeProfile.PERFORMANCE, OptimizeProfile.POTATO -> OptimizeCard.OUTCOME_FPS
-            OptimizeProfile.BALANCED, OptimizeProfile.STABILITY -> OptimizeCard.OUTCOME_STUTTER
+            OptimizeProfile.BALANCED, OptimizeProfile.QUALITY -> OptimizeCard.OUTCOME_STUTTER
             OptimizeProfile.POWER, OptimizeProfile.OFF -> OptimizeCard.OUTCOME_STABLE
         }
     }

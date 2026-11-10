@@ -1853,12 +1853,12 @@
     <string name="optimize_profile_off">Disattivato</string>
     <string name="optimize_profile_balanced">Bilanciato</string>
     <string name="optimize_profile_performance">Prestazioni</string>
-    <string name="optimize_profile_stability">Stabilità</string>
+    <string name="optimize_profile_quality">Qualità</string>
     <string name="optimize_profile_power">Energia e calore</string>
     <string name="optimize_profile_off_description">Lascia le impostazioni di questo gioco come sono</string>
     <string name="optimize_profile_balanced_description">Gioco più fluido mantenendo quasi tutti i dettagli</string>
     <string name="optimize_profile_performance_description">Prima di tutto frame rate più alti e stabili</string>
-    <string name="optimize_profile_stability_description">Meno scatti, blocchi e crash</string>
+    <string name="optimize_profile_quality_description">Mantiene l\'aspetto del gioco. Più stabile, con un frame rate più basso se serve.</string>
     <string name="optimize_profile_power_description">Meno rallentamenti dovuti al calore e batteria più duratura</string>
     <string name="optimize_status_not_started">Non ancora iniziato</string>
     <string name="optimize_status_measuring">Misurazione della prossima sessione</string>
@@ -1925,10 +1925,6 @@
     <string name="optimize_after_cap_removed">Tenere a %1$d fps non ha aiutato; il limite è stato rimosso</string>
     <string name="optimize_status_cap_held">Tenuto a %1$d fps</string>
     <string name="optimize_hint_heat">Qui il limite è il calore. Prova Energia e calore.</string>
-    <string name="optimize_suggested_power">Consigliato: Energia e calore, perché il dispositivo si sta scaldando.</string>
-    <string name="optimize_suggested_performance">Consigliato: Prestazioni, perché il frame rate non tiene il suo obiettivo.</string>
-    <string name="optimize_suggested_performance_heat">Consigliato: Prestazioni, per tenere il frame rate con meno calore.</string>
-    <string name="optimize_suggested_stability">Consigliato: Stabilità, perché il gioco scatta.</string>
     <string name="optimize_status_exhausted">Il massimo su questo dispositivo</string>
     <string name="optimize_status_waiting">Ancora nessuna modifica sicura. Ricontrolleremo più tardi.</string>
     <string name="optimize_continue">Riprendi</string>
