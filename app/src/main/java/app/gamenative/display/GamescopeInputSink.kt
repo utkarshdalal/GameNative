@@ -27,14 +27,15 @@ class GamescopeInputSink(private val screenInfo: ScreenInfo) : XServer.InputEven
         GameNativeDrm.nativePointerMotion(dx, dy)
     }
 
+    /** What the seat holds. Callers repeat presses (stick axes, key auto-repeat) and release once; the seat counts every press, so only state changes go through. */
+    private val pressedKeys = HashSet<Int>()
+    private val pressedButtons = HashSet<Int>()
+
     override fun pointerButton(button: Pointer.Button, pressed: Boolean) {
         when (button) {
-            Pointer.Button.BUTTON_LEFT ->
-                GameNativeDrm.nativePointerButton(BTN_LEFT, pressed)
-            Pointer.Button.BUTTON_MIDDLE ->
-                GameNativeDrm.nativePointerButton(BTN_MIDDLE, pressed)
-            Pointer.Button.BUTTON_RIGHT ->
-                GameNativeDrm.nativePointerButton(BTN_RIGHT, pressed)
+            Pointer.Button.BUTTON_LEFT -> sendButton(BTN_LEFT, pressed)
+            Pointer.Button.BUTTON_MIDDLE -> sendButton(BTN_MIDDLE, pressed)
+            Pointer.Button.BUTTON_RIGHT -> sendButton(BTN_RIGHT, pressed)
             Pointer.Button.BUTTON_SCROLL_UP ->
                 if (pressed) GameNativeDrm.nativePointerAxis(AXIS_VERTICAL, -1f)
             Pointer.Button.BUTTON_SCROLL_DOWN ->
@@ -47,11 +48,26 @@ class GamescopeInputSink(private val screenInfo: ScreenInfo) : XServer.InputEven
     }
 
     override fun keyPress(xKeycode: XKeycode, keysym: Int) {
-        GameNativeDrm.nativeKey(evdevCode(xKeycode), true)
+        sendKey(evdevCode(xKeycode), true)
     }
 
     override fun keyRelease(xKeycode: XKeycode) {
-        GameNativeDrm.nativeKey(evdevCode(xKeycode), false)
+        sendKey(evdevCode(xKeycode), false)
+    }
+
+    /** Synchronized so a press and a release from different threads reach the seat in the order the state changed. */
+    @Synchronized
+    private fun sendKey(code: Int, pressed: Boolean) {
+        if (if (pressed) pressedKeys.add(code) else pressedKeys.remove(code)) {
+            GameNativeDrm.nativeKey(code, pressed)
+        }
+    }
+
+    @Synchronized
+    private fun sendButton(code: Int, pressed: Boolean) {
+        if (if (pressed) pressedButtons.add(code) else pressedButtons.remove(code)) {
+            GameNativeDrm.nativePointerButton(code, pressed)
+        }
     }
 
     private companion object {
