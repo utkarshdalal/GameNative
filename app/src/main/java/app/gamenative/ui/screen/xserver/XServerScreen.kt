@@ -153,7 +153,6 @@ import app.gamenative.utils.DebugRunParams
 import app.gamenative.utils.DebugRunParamsHolder
 import app.gamenative.utils.ExecutableSelectionUtils
 import app.gamenative.utils.FexCodeMaps
-import app.gamenative.utils.launchdependencies.EpicSdkUpdateDependency
 import app.gamenative.utils.LsfgQuickMenuHelper
 import app.gamenative.utils.LsfgVkManager
 import app.gamenative.utils.ManifestComponentHelper
@@ -4457,7 +4456,6 @@ private fun setupXEnvironment(
         if (captureLogs) {
             logFile?.appendText(line + "\n")
         }
-        EpicSdkUpdateDependency.onGuestOutput(line)
     }
 
     val rootPath = imageFs.getRootDir().getPath()
@@ -5048,9 +5046,6 @@ private fun getWineStartCommand(
             }
             val params = result.getOrNull() ?: listOf()
             Timber.tag("XServerScreen").i("Got ${params.size} Epic launch parameters")
-            EpicSdkUpdateDependency.beginSession(
-                online = params.any { it.startsWith("-AUTH_PASSWORD=") && it.length > "-AUTH_PASSWORD=".length },
-            )
             params
         }
         // Set working directory to the folder containing the executable
@@ -5463,8 +5458,6 @@ private fun exit(
         return
     }
     launchCancelled.set(true)
-
-    EpicSdkUpdateDependency.endSession(container)
 
     // Before container_config is read so the id rides into game_sessions and the rating payload.
     GameSessionId.active()?.let { uuid ->

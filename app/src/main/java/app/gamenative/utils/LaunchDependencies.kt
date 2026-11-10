@@ -5,7 +5,7 @@ import app.gamenative.R
 import app.gamenative.data.GameSource
 import app.gamenative.utils.launchdependencies.BionicDefaultProtonDependency
 import app.gamenative.utils.launchdependencies.EpicOverlayDependency
-import app.gamenative.utils.launchdependencies.EpicSdkUpdateDependency
+import app.gamenative.utils.launchdependencies.EpicSdkRestoreDependency
 import app.gamenative.utils.launchdependencies.FexCodeCacheDependency
 import app.gamenative.utils.launchdependencies.GogScriptInterpreterDependency
 import app.gamenative.utils.launchdependencies.LaunchDependencyCallbacks
@@ -27,7 +27,7 @@ class LaunchDependencies {
             BionicDefaultProtonDependency,
             GogScriptInterpreterDependency,
             EpicOverlayDependency,
-            EpicSdkUpdateDependency,
+            EpicSdkRestoreDependency,
             BionicSteamAssetsDependency,
             RockstarHelperDependency,
             FexCodeCacheDependency,
