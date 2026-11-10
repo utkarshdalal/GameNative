@@ -906,6 +906,18 @@
         "name": "Proton 11.0-2 ARM64ec (9)",
         "url": "https://downloads.gamenative.app/proton-11.0-2-arm64ec-9.wcp",
         "variant": "bionic"
+      },
+      {
+        "id": "proton-11.0-2-x86_64-10",
+        "name": "Proton 11.0-2 x86-64 (10)",
+        "url": "https://downloads.gamenative.app/proton-11.0-2-x86_64-10.wcp",
+        "variant": "bionic"
+      },
+      {
+        "id": "proton-11.0-2-arm64ec-10",
+        "name": "Proton 11.0-2 ARM64ec (10)",
+        "url": "https://downloads.gamenative.app/proton-11.0-2-arm64ec-10.wcp",
+        "variant": "bionic"
       }
     ],
     "fexcore": [
