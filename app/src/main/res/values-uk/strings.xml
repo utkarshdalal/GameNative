@@ -775,6 +775,8 @@
     <string name="steam_offline_mode_description">Запускати ігри Steam в офлайн режимі</string>
     <string name="epic_offline_mode">Режим Офлайн Epic</string>
     <string name="epic_offline_mode_description">Запускати ігри Epic в офлайн режимі</string>
+    <string name="update_epic_sdk_title">Оновити Epic Online Services SDK</string>
+    <string name="update_epic_sdk_description">Замінює EOS SDK гри на новішу збірку, якщо версія старіша за 1.13. Вмикайте лише тоді, коли гра Epic падає під час входу—деякі ігри не запускаються з новим SDK</string>
     <string name="achievement_unlocked">Досягнення розблоковано</string>
     <string name="settings_achievement_notification_position">Позиція сповіщення про досягнення</string>
     <string name="achievement_position_top_left">Лівий верхній</string>

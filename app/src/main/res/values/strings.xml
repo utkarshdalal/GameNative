@@ -969,6 +969,8 @@
     <!-- Container Configuration: Epic -->
     <string name="epic_offline_mode">Epic Offline Mode</string>
     <string name="epic_offline_mode_description">Launch Epic games in offline mode</string>
+    <string name="update_epic_sdk_title">Update Epic Online Services SDK</string>
+    <string name="update_epic_sdk_description">Replaces the game\'s EOS SDK with a newer build when it is older than 1.13. Enable this only if an Epic game crashes on login—some games fail to start with the newer SDK</string>
 
     <!-- Container Configuration: Graphics -->
     <string name="graphics_driver">Graphics Driver</string>

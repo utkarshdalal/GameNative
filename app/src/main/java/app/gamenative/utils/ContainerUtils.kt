@@ -376,6 +376,7 @@ object ContainerUtils {
             loadMods = container.isLoadMods(),
             epicOfflineMode = container.isEpicOfflineMode(),
             disableEpicOverlay = container.isDisableEpicOverlay,
+            updateEpicSdk = container.isUpdateEpicSdk,
             useLegacyDRM = container.isUseLegacyDRM(),
             unpackFiles = container.isUnpackFiles(),
             suspendPolicy = container.suspendPolicy,
@@ -605,6 +606,7 @@ object ContainerUtils {
         container.setLoadMods(containerData.loadMods)
         container.setEpicOfflineMode(containerData.epicOfflineMode)
         container.setDisableEpicOverlay(containerData.disableEpicOverlay)
+        container.setUpdateEpicSdk(containerData.updateEpicSdk)
         container.setUseLegacyDRM(containerData.useLegacyDRM)
         container.setUnpackFiles(containerData.unpackFiles)
         container.setSuspendPolicy(containerData.suspendPolicy)

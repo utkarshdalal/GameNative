@@ -149,6 +149,8 @@ public class Container {
     private boolean fasterExternalLoading;
     private boolean disableLibredirect;
     private boolean disableEpicOverlay;
+    // Opt-in: replace outdated EOS SDK DLLs in the game with a newer build.
+    private boolean updateEpicSdk;
 
     // Preferred game language for Goldberg force_language.txt
     private String language = "english";
@@ -486,6 +488,14 @@ public class Container {
 
     public void setDisableEpicOverlay(boolean disableEpicOverlay) {
         this.disableEpicOverlay = disableEpicOverlay;
+    }
+
+    public boolean isUpdateEpicSdk() {
+        return updateEpicSdk;
+    }
+
+    public void setUpdateEpicSdk(boolean updateEpicSdk) {
+        this.updateEpicSdk = updateEpicSdk;
     }
 
     public String getLanguage() {
@@ -856,6 +866,7 @@ public class Container {
             data.put("fasterExternalLoading", fasterExternalLoading);
             data.put("disableLibredirect", disableLibredirect);
             data.put("disableEpicOverlay", disableEpicOverlay);
+            data.put("updateEpicSdk", updateEpicSdk);
             // Disable mouse input flag
             data.put("disableMouseInput", disableMouseInput);
             // Touchscreen mode flag
@@ -1099,6 +1110,9 @@ public class Container {
                     break;
                 case "disableEpicOverlay" :
                     setDisableEpicOverlay(data.getBoolean(key));
+                    break;
+                case "updateEpicSdk" :
+                    setUpdateEpicSdk(data.getBoolean(key));
                     break;
                 case "disableMouseInput" :
                     setDisableMouseInput(data.getBoolean(key));

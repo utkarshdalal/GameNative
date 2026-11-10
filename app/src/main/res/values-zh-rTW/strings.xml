@@ -769,6 +769,8 @@
     <string name="steam_offline_mode_description">以離線模式啟動 Steam 遊戲</string>
     <string name="epic_offline_mode">Epic 離線模式</string>
     <string name="epic_offline_mode_description">以離線模式啟動 Epic 遊戲</string>
+    <string name="update_epic_sdk_title">更新 Epic Online Services SDK</string>
+    <string name="update_epic_sdk_description">當遊戲的 EOS SDK 低於 1.13 時，將其取代為較新的版本。僅在 Epic 遊戲登入時崩潰的情況下開啟——部分遊戲使用新版 SDK 後無法啟動</string>
     <string name="achievement_unlocked">成就已解鎖</string>
     <string name="settings_achievement_notification_position">成就通知位置</string>
     <string name="achievement_position_top_left">左上</string>

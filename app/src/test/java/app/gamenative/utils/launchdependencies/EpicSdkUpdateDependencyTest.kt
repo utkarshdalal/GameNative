@@ -43,6 +43,31 @@ class EpicSdkUpdateDependencyTest {
     }
 
     @Test
+    fun loadingMessage_namesTheWorkTheOptInSettingSelects() {
+        val context = mockk<android.content.Context>(relaxed = true)
+        val optIn = mockk<Container>(relaxed = true)
+        io.mockk.every { optIn.isUpdateEpicSdk } returns true
+        val optOut = mockk<Container>(relaxed = true)
+        io.mockk.every { optOut.isUpdateEpicSdk } returns false
+
+        assertEquals(
+            "Updating Epic Online Services SDK",
+            EpicSdkUpdateDependency.getLoadingMessage(context, optIn, GameSource.EPIC, 1),
+        )
+        assertEquals(
+            "Restoring Epic Online Services SDK",
+            EpicSdkUpdateDependency.getLoadingMessage(context, optOut, GameSource.EPIC, 1),
+        )
+    }
+
+    @Test
+    fun containerDefault_isOptedOut() {
+        // The swap stays off unless the user turns it on for the container.
+        val container = Container("-1")
+        assertFalse(container.isUpdateEpicSdk)
+    }
+
+    @Test
     fun readProductVersion_parsesFixedFileInfo() {
         val dll = fakeDll("a.dll", 1, 12, 0, 0, padding = 100)
         assertEquals(EpicSdkUpdateDependency.SdkVersion(1, 12, 0, 0), EpicSdkUpdateDependency.readProductVersion(dll))

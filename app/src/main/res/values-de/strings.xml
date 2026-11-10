@@ -750,6 +750,8 @@
     <string name="steam_offline_mode_description">Steam-Spiele im Offlinemodus starten</string>
     <string name="epic_offline_mode">Epic Offline-Modus</string>
     <string name="epic_offline_mode_description">Epic-Spiele im Offlinemodus starten</string>
+    <string name="update_epic_sdk_title">Epic Online Services SDK aktualisieren</string>
+    <string name="update_epic_sdk_description">Ersetzt das EOS-SDK des Spiels durch eine neuere Version, wenn es älter als 1.13 ist. Nur aktivieren, wenn ein Epic-Spiel bei der Anmeldung abstürzt—manche Spiele starten mit dem neueren SDK nicht</string>
     <string name="achievement_unlocked">Erfolg freigeschaltet</string>
     <string name="settings_achievement_notification_position">Position der Erfolgsbenachrichtigung</string>
     <string name="achievement_position_top_left">Oben links</string>

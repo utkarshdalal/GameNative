@@ -789,6 +789,8 @@
     <string name="steam_offline_mode_description">Uruchamiaj gry Steam w trybie offline</string>
     <string name="epic_offline_mode">Tryb Offline Epic</string>
     <string name="epic_offline_mode_description">Uruchamiaj gry Epic w trybie offline</string>
+    <string name="update_epic_sdk_title">Aktualizuj Epic Online Services SDK</string>
+    <string name="update_epic_sdk_description">Zastępuje SDK EOS gry nowszą wersją, jeśli jest starsze niż 1.13. Włącz tylko wtedy, gdy gra Epic zawiesza się przy logowaniu—niektóre gry nie uruchamiają się z nowszym SDK</string>
     <string name="achievement_unlocked">Osiągnięcie odblokowane</string>
     <string name="settings_achievement_notification_position">Pozycja powiadomienia o osiągnięciu</string>
     <string name="achievement_position_top_left">Lewy górny</string>

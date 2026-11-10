@@ -798,6 +798,8 @@
     <string name="steam_offline_mode_description">Lancer les jeux Steam en mode hors ligne</string>
     <string name="epic_offline_mode">Mode Hors Ligne Epic</string>
     <string name="epic_offline_mode_description">Lancer les jeux Epic en mode hors ligne</string>
+    <string name="update_epic_sdk_title">Mettre à jour le SDK Epic Online Services</string>
+    <string name="update_epic_sdk_description">Remplace le SDK EOS du jeu par une version plus récente lorsqu\'il est antérieur à 1.13. À activer uniquement si un jeu Epic plante à la connexion—certains jeux ne démarrent pas avec le nouveau SDK</string>
     <string name="achievement_unlocked">Succès débloqué</string>
     <string name="settings_achievement_notification_position">Position de la notification de succès</string>
     <string name="achievement_position_top_left">En haut à gauche</string>

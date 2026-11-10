@@ -17,12 +17,18 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /**
- * Replaces EOS SDK DLLs older than 1.13 with a newer build before launch.
+ * Opt-in replacement of EOS SDK DLLs older than 1.13 with a newer build before launch.
  *
  * SDK 1.12 and older crash inside EOS_Auth_Login when the exchange-code login
  * returns EOS_Auth_ScopeConsentRequired (Epic fixed this in 1.13). The SDK is a
  * drop-in binary upgrade that keeps behaving like the version the game was built
  * against, so only the file is swapped. The original is kept next to it.
+ *
+ * The swap is NOT applied by default: a newer SDK is not a no-op for every title
+ * (a game built against 1.10 can fail its own Epic login under 1.19 even though
+ * Epic documents the SDK as a drop-in upgrade), so the user enables it per
+ * container. Turning the setting off restores the shipped DLL from its `.gn-orig`
+ * backup.
  */
 object EpicSdkUpdateDependency : LaunchDependency {
     private const val TAG = "EpicSdkUpdate"
@@ -45,10 +51,12 @@ object EpicSdkUpdateDependency : LaunchDependency {
         gameSource == GameSource.EPIC
 
     override fun isSatisfied(context: Context, container: Container, gameSource: GameSource, gameId: Int): Boolean =
-        outdatedSdkDlls(gameId).isEmpty()
+        if (container.isUpdateEpicSdk) outdatedSdkDlls(gameId).isEmpty()
+        else restorableDlls(gameId).isEmpty()
 
     override fun getLoadingMessage(context: Context, container: Container, gameSource: GameSource, gameId: Int): String =
-        "Updating Epic Online Services SDK"
+        if (container.isUpdateEpicSdk) "Updating Epic Online Services SDK"
+        else "Restoring Epic Online Services SDK"
 
     override suspend fun install(
         context: Context,
@@ -57,6 +65,10 @@ object EpicSdkUpdateDependency : LaunchDependency {
         gameSource: GameSource,
         gameId: Int,
     ) = coroutineScope {
+        if (!container.isUpdateEpicSdk) {
+            withContext(Dispatchers.IO) { restoreShippedDlls(gameId) }
+            return@coroutineScope
+        }
         val outdated = withContext(Dispatchers.IO) { outdatedSdkDlls(gameId) }
         if (outdated.isEmpty()) return@coroutineScope
         try {
@@ -96,7 +108,40 @@ object EpicSdkUpdateDependency : LaunchDependency {
         }
     }
 
-    private fun outdatedSdkDlls(gameId: Int): List<File> {
+    private fun outdatedSdkDlls(gameId: Int): List<File> =
+        installedSdkDlls(gameId).filter { dll -> readProductVersion(dll)?.let { !isAtLeastMinimum(it) } ?: false }
+
+    /** SDK DLLs that still have a `.gn-orig` backup next to them. */
+    private fun restorableDlls(gameId: Int): List<File> =
+        installedSdkDlls(gameId).filter { dll -> backupOf(dll).exists() }
+
+    private fun backupOf(dll: File): File = File(dll.parentFile, dll.name + BACKUP_SUFFIX)
+
+    /** Puts every `.gn-orig` copy back and drops the backup, so the shipped DLL wins again. */
+    private fun restoreShippedDlls(gameId: Int) {
+        for (dll in restorableDlls(gameId)) {
+            val backup = backupOf(dll)
+            try {
+                if (dll.length() == backup.length()) {
+                    // Content was already restored earlier; the stale backup is all that is left.
+                    backup.delete()
+                    Timber.tag(TAG).i("Dropped stale SDK backup ${backup.absolutePath}")
+                    continue
+                }
+                backup.copyTo(dll, overwrite = true)
+                if (dll.length() == backup.length()) {
+                    backup.delete()
+                    Timber.tag(TAG).i("Restored ${dll.absolutePath} from ${backup.name}")
+                } else {
+                    Timber.tag(TAG).w("Restore of ${dll.absolutePath} left a short file, keeping the backup")
+                }
+            } catch (e: Exception) {
+                Timber.tag(TAG).w(e, "Could not restore ${dll.absolutePath}")
+            }
+        }
+    }
+
+    private fun installedSdkDlls(gameId: Int): List<File> {
         val installPath = runBlocking {
             EpicService.getInstance()?.epicManager?.getGameById(gameId)?.installPath
         }
@@ -106,7 +151,6 @@ object EpicSdkUpdateDependency : LaunchDependency {
         return root.walkTopDown()
             .maxDepth(MAX_SEARCH_DEPTH)
             .filter { it.isFile && it.name.equals(SDK_DLL_NAME, ignoreCase = true) }
-            .filter { dll -> readProductVersion(dll)?.let { !isAtLeastMinimum(it) } ?: false }
             .toList()
     }
 

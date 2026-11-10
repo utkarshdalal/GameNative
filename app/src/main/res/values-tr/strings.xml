@@ -881,6 +881,8 @@
     <string name="steam_type">Steam türü</string>
     <string name="epic_offline_mode">Epic çevrimdışı modu</string>
     <string name="epic_offline_mode_description">Epic oyunlarını çevrimdışı modda başlatır</string>
+    <string name="update_epic_sdk_title">Epic Online Services SDK\'sını güncelle</string>
+    <string name="update_epic_sdk_description">Oyunun EOS SDK\'sı 1.13\'ten eskiyse daha yeni bir sürümle değiştirir. Yalnızca bir Epic oyunu girişte çöküyorsa açın; bazı oyunlar yeni SDK ile başlamaz</string>
     <string name="graphics_driver">Grafik sürücüsü</string>
     <string name="graphics_driver_version">Grafik sürücüsü sürümü</string>
     <string name="exposed_vulkan_extensions">Açık Vulkan uzantıları</string>

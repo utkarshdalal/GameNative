@@ -992,6 +992,8 @@
     <!-- Container Configuration: Epic -->
     <string name="epic_offline_mode">Epic オフラインモード</string>
     <string name="epic_offline_mode_description">Epic ゲームをオフラインモードで起動します</string>
+    <string name="update_epic_sdk_title">Epic Online Services SDK を更新</string>
+    <string name="update_epic_sdk_description">ゲームの EOS SDK が 1.13 より古い場合に、新しいビルドへ置き換えます。Epic ゲームのログイン時にクラッシュする場合のみ有効にしてください。新しい SDK では起動しないゲームもあります</string>
 
     <!-- Container Configuration: Graphics -->
     <string name="graphics_driver">グラフィックドライバー</string>

@@ -780,6 +780,8 @@
     <string name="steam_offline_mode_description">Avvia i giochi Steam in modalità offline</string>
     <string name="epic_offline_mode">Modalità Offline Epic</string>
     <string name="epic_offline_mode_description">Avvia i giochi Epic in modalità offline</string>
+    <string name="update_epic_sdk_title">Aggiorna l\'SDK di Epic Online Services</string>
+    <string name="update_epic_sdk_description">Sostituisce l\'SDK EOS del gioco con una versione più recente se è precedente alla 1.13. Attivalo solo se un gioco Epic va in crash al login—alcuni giochi non si avviano con il nuovo SDK</string>
     <string name="achievement_unlocked">Obiettivo sbloccato</string>
     <string name="settings_achievement_notification_position">Posizione notifica obiettivo</string>
     <string name="achievement_position_top_left">In alto a sinistra</string>

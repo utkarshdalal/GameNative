@@ -781,6 +781,8 @@
 	<string name="steam_offline_mode_description">Pornește jocurile Steam în mod offline</string>
 	<string name="epic_offline_mode">Mod Offline Epic</string>
 	<string name="epic_offline_mode_description">Pornește jocurile Epic în mod offline</string>
+    <string name="update_epic_sdk_title">Actualizează SDK-ul Epic Online Services</string>
+    <string name="update_epic_sdk_description">Înlocuiește SDK-ul EOS al jocului cu o versiune mai nouă dacă este mai vechi decât 1.13. Activează doar dacă un joc Epic se blochează la autentificare—unele jocuri nu pornesc cu SDK-ul nou</string>
 	<string name="achievement_unlocked">Realizare deblocată</string>
 	<string name="settings_achievement_notification_position">Poziția notificării realizării</string>
 	<string name="achievement_position_top_left">Stânga sus</string>
