@@ -92,25 +92,24 @@ private fun firstCardTitle(cls: String?, name: String, afterMin: Int? = null): S
     else -> stringResource(R.string.optimize_card_title_sync_spin, name)
 }
 
-/** What the session measured, under the diagnosis. */
+/** What the player saw in the session, under the diagnosis. */
 @Composable
 private fun evidenceText(line: OptimizeEvidence.Line?): String? = when (line) {
     null -> null
     is OptimizeEvidence.Line.Drop -> stringResource(R.string.optimize_evidence_drop, line.from, line.to)
-    is OptimizeEvidence.Line.Gpu -> stringResource(R.string.optimize_evidence_gpu, line.fps, line.gpuPct)
-    is OptimizeEvidence.Line.Core -> stringResource(R.string.optimize_evidence_core, line.fps)
     is OptimizeEvidence.Line.Stutter -> stringResource(R.string.optimize_evidence_stutter, line.pct)
-    is OptimizeEvidence.Line.Fps -> stringResource(R.string.optimize_evidence_fps, line.fps)
+    is OptimizeEvidence.Line.Fps -> line.dipsTo?.let { stringResource(R.string.optimize_evidence_fps_dips, line.fps, it) }
+        ?: stringResource(R.string.optimize_evidence_fps, line.fps)
 }
 
-/** The outcome tuning is offered for, with the expected gain when the server sent one. */
+/** The outcome tuning is offered for. */
 @Composable
 private fun offerText(offer: OptimizeEvidence.Offer): String = when (offer) {
     OptimizeEvidence.Offer.Heat -> stringResource(R.string.optimize_offer_heat)
-    OptimizeEvidence.Offer.Fps -> stringResource(R.string.optimize_offer_fps)
+    OptimizeEvidence.Offer.Smoother -> stringResource(R.string.optimize_offer_fps)
     OptimizeEvidence.Offer.Stutter -> stringResource(R.string.optimize_offer_stutter)
-    is OptimizeEvidence.Offer.FpsGain -> stringResource(R.string.optimize_offer_fps_gain, offer.pct)
-    is OptimizeEvidence.Offer.StutterDrop -> stringResource(R.string.optimize_offer_stutter_drop, offer.pct)
+    is OptimizeEvidence.Offer.Steady ->
+        stringResource(if (offer.lessHeat) R.string.optimize_offer_steady_heat else R.string.optimize_offer_steady, offer.fps)
 }
 
 /** Why a profile is suggested, in outcome words; [reason] is an [OptimizeCards] REASON_ id. */
@@ -283,7 +282,7 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
                 title = firstCardTitle(card.cls, name, OptimizeEvidence.droppedAfterMin(card.cls, card.metrics)),
                 accent = optimizeAccentFor(card.cls),
                 subtitle = evidenceText(OptimizeEvidence.line(card.cls, card.metrics)),
-                body = offerText(OptimizeEvidence.offer(card.cls, card.metrics, card.fpsGainPct, card.stutterDropPct)),
+                body = offerText(OptimizeEvidence.offer(card.cls, card.metrics, card.expectedFps)),
                 showEntitlement = showEntitlement,
                 benefits = listOf(undoBenefit()),
                 primary = CardAction(stringResource(R.string.option_optimize), subtitle = stringResource(chosen.title)) {

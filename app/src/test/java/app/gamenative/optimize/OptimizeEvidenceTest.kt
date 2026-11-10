@@ -10,9 +10,9 @@ import org.junit.Test
 class OptimizeEvidenceTest {
 
     private val throttled = Metrics(
-        gameplaySec = 1800, steadyFps = 51.0, throttleOnsetSec = 730, fpsBy5Min = listOf(40, 58, 55, 50, 46), gpuBusyP95 = 98,
+        gameplaySec = 1800, steadyFps = 51.0, throttleOnsetSec = 730, fpsBy5Min = listOf(40, 58, 55, 50, 46), refreshHz = 60.0,
     )
-    private val steadyGpu = Metrics(gameplaySec = 1800, steadyFps = 44.4, fpsBy5Min = listOf(41, 44, 45, 44), gpuBusyP95 = 97)
+    private val steady = Metrics(gameplaySec = 1800, steadyFps = 44.4, fpsBy5Min = listOf(41, 44, 45, 44), gpuBusyP95 = 97, hotThreadP95 = 99)
 
     @Test
     fun `a throttled session names the minutes and the fall in frame rate`() {
@@ -26,10 +26,9 @@ class OptimizeEvidenceTest {
 
     @Test
     fun `a GPU diagnosis only says frames dropped when the frame rate fell`() {
-        assertNull(OptimizeEvidence.droppedAfterMin("gpu", steadyGpu))
-        val flat = steadyGpu.copy(throttleOnsetSec = 600)
+        assertNull(OptimizeEvidence.droppedAfterMin("gpu", steady))
+        val flat = steady.copy(throttleOnsetSec = 600)
         assertNull(OptimizeEvidence.droppedAfterMin("gpu", flat))
-        assertEquals(Line.Gpu(44, 97), OptimizeEvidence.line("gpu", flat))
         // A heat diagnosis already says so; its title keeps the minutes.
         assertEquals(10, OptimizeEvidence.droppedAfterMin("thermal_gpu", flat))
         assertNull(OptimizeEvidence.droppedAfterMin("cpu_single", throttled))
@@ -37,14 +36,13 @@ class OptimizeEvidenceTest {
     }
 
     @Test
-    fun `each diagnosis shows the number that backs it`() {
-        assertEquals(Line.Gpu(44, 97), OptimizeEvidence.line("gpu", steadyGpu))
-        assertEquals(Line.Fps(44), OptimizeEvidence.line("gpu", steadyGpu.copy(gpuBusyP95 = 70)))
-        assertEquals(Line.Fps(44), OptimizeEvidence.line("gpu", steadyGpu.copy(gpuBusyP95 = null)))
-        val cpu = Metrics(gameplaySec = 900, steadyFps = 37.6, hotThreadP95 = 99)
-        assertEquals(Line.Core(38), OptimizeEvidence.line("cpu_single", cpu))
-        assertEquals(Line.Fps(38), OptimizeEvidence.line("cpu_single", cpu.copy(hotThreadP95 = 60)))
-        assertEquals(Line.Fps(38), OptimizeEvidence.line("cpu_multi", cpu))
+    fun `the line says what the player saw, never what caused it`() {
+        assertEquals(Line.Fps(44), OptimizeEvidence.line("gpu", steady))
+        assertEquals(Line.Fps(44), OptimizeEvidence.line("cpu_single", steady))
+        assertEquals(Line.Fps(44), OptimizeEvidence.line("cpu_multi", steady))
+        assertEquals(Line.Fps(44, dipsTo = 31), OptimizeEvidence.line("gpu", steady.copy(fpsP10 = 31.2)))
+        // Slow moments close to the average are not worth a mention.
+        assertEquals(Line.Fps(44), OptimizeEvidence.line("gpu", steady.copy(fpsP10 = 40.0)))
         val stutters = Metrics(gameplaySec = 900, steadyFps = 30.0, stutterShare = 0.043)
         assertEquals(Line.Stutter(4), OptimizeEvidence.line("memory", stutters))
         assertEquals(Line.Stutter(4), OptimizeEvidence.line("present_locked", stutters))
@@ -56,37 +54,46 @@ class OptimizeEvidenceTest {
         assertNull(OptimizeEvidence.line("gpu", null))
         assertNull(OptimizeEvidence.line("gpu", Metrics(gameplaySec = 900)))
         assertNull(OptimizeEvidence.line("memory", Metrics(gameplaySec = 900, steadyFps = 50.0)))
-        assertNull(OptimizeEvidence.line(OptimizeCards.SYNC_SPIN, steadyGpu))
+        assertNull(OptimizeEvidence.line(OptimizeCards.SYNC_SPIN, steady))
         // One window is no fall, and a rise is none either.
-        assertNull(OptimizeEvidence.drop(steadyGpu.copy(fpsBy5Min = listOf(44))))
-        assertNull(OptimizeEvidence.drop(steadyGpu.copy(fpsBy5Min = listOf(30, 40, 52))))
+        assertNull(OptimizeEvidence.drop(steady.copy(fpsBy5Min = listOf(44))))
+        assertNull(OptimizeEvidence.drop(steady.copy(fpsBy5Min = listOf(30, 40, 52))))
     }
 
     @Test
-    fun `the offer follows the diagnosis`() {
-        assertEquals(Offer.Heat, OptimizeEvidence.offer("thermal_gpu", steadyGpu, null, null))
-        assertEquals(Offer.Heat, OptimizeEvidence.offer("gpu", throttled, null, null))
-        assertEquals(Offer.Fps, OptimizeEvidence.offer("gpu", steadyGpu, null, null))
-        assertEquals(Offer.Fps, OptimizeEvidence.offer("cpu_single", null, null, null))
-        assertEquals(Offer.Stutter, OptimizeEvidence.offer("memory", null, null, null))
-        assertEquals(Offer.Stutter, OptimizeEvidence.offer("present_locked", null, null, null))
+    fun `the offer is an outcome that follows the diagnosis`() {
+        assertEquals(Offer.Heat, OptimizeEvidence.offer("thermal_gpu", steady, null))
+        assertEquals(Offer.Smoother, OptimizeEvidence.offer("gpu", steady, null))
+        assertEquals(Offer.Smoother, OptimizeEvidence.offer("cpu_single", null, null))
+        assertEquals(Offer.Stutter, OptimizeEvidence.offer("memory", null, null))
+        assertEquals(Offer.Stutter, OptimizeEvidence.offer("present_locked", throttled, 60))
     }
 
     @Test
-    fun `an expected gain is named with its number`() {
-        assertEquals(Offer.FpsGain(15), OptimizeEvidence.offer("thermal_gpu", throttled, 15, null))
-        assertEquals(Offer.FpsGain(15), OptimizeEvidence.offer("gpu", steadyGpu, 15, 30))
-        assertEquals(Offer.StutterDrop(30), OptimizeEvidence.offer("memory", null, 15, 30))
-        assertEquals(Offer.StutterDrop(30), OptimizeEvidence.offer("cpu_single", null, null, 30))
-        assertEquals(Offer.Fps, OptimizeEvidence.offer("gpu", steadyGpu, 0, null))
+    fun `a frame rate is offered only when the session held it or the server expects it`() {
+        // 58 fps before the fall on a 60 Hz screen: the game can hold 60.
+        assertEquals(60, OptimizeEvidence.reachedFps(throttled))
+        assertEquals(Offer.Steady(60, lessHeat = true), OptimizeEvidence.offer("thermal_gpu", throttled, null))
+        assertEquals(Offer.Steady(60, lessHeat = true), OptimizeEvidence.offer("gpu", throttled, null))
+        // A game that fell from 48 never held the screen's rate.
+        val slow = throttled.copy(fpsBy5Min = listOf(40, 48, 44, 40))
+        assertNull(OptimizeEvidence.reachedFps(slow))
+        assertEquals(Offer.Heat, OptimizeEvidence.offer("thermal_gpu", slow, null))
+        assertNull(OptimizeEvidence.reachedFps(steady))
+        assertNull(OptimizeEvidence.reachedFps(null))
+        // The server's number wins.
+        assertEquals(Offer.Steady(45, lessHeat = true), OptimizeEvidence.offer("thermal_gpu", throttled, 45))
+        assertEquals(Offer.Steady(60, lessHeat = false), OptimizeEvidence.offer("gpu", steady, 60))
     }
 
     @Test
-    fun `the expected gain is read from the answer and bounded`() {
-        val answer = JSONObject("""{"status":"rung","expected":{"fps_gain_pct":15,"stutter_drop_pct":40}}""")
-        assertEquals(OptimizeEvidence.Expected(15, 40), NextRungResponse.parse(answer).expected)
+    fun `the expected frame rate is read from the answer and bounded`() {
+        val answer = JSONObject("""{"status":"rung","expected":{"steady_fps":60}}""")
+        assertEquals(OptimizeEvidence.Expected(60), NextRungResponse.parse(answer).expected)
         assertNull(NextRungResponse.parse(JSONObject("""{"status":"rung"}""")).expected)
-        assertNull(OptimizeEvidence.Expected.parse(JSONObject("""{"fps_gain_pct":0,"stutter_drop_pct":140}""")))
-        assertEquals(OptimizeEvidence.Expected(null, 20), OptimizeEvidence.Expected.parse(JSONObject("""{"fps_gain_pct":900,"stutter_drop_pct":20}""")))
+        assertNull(OptimizeEvidence.Expected.parse(JSONObject("""{"steady_fps":5}""")))
+        assertNull(OptimizeEvidence.Expected.parse(JSONObject("""{"steady_fps":900}""")))
+        val card = OptimizeCard(OptimizeCard.FIRST, 1L, "Game", cls = "gpu", expectedFps = 60)
+        assertEquals(60, OptimizeCard.fromJson(card.toJson())!!.expectedFps)
     }
 }

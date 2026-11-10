@@ -708,7 +708,7 @@ data class NextRungResponse(
     val retryAfterSec: Int? = null,
     /** The server's verdict of the metrics block; null from older servers. */
     val verdictServer: ServerVerdict? = null,
-    /** The gain the server expects from tuning this game on this device; null when it has no measured one. */
+    /** The frame rate the server expects this game to hold on this device once tuned; null when it has none. */
     val expected: OptimizeEvidence.Expected? = null,
 ) {
     /** The rules build that answered: the top-level value, else the rung's. */

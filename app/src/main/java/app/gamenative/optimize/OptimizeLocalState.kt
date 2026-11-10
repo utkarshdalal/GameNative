@@ -330,6 +330,8 @@ data class OptimizeCard(
     val unverified: Boolean = false,
     /** On an after-card the server judged: its judgement_server deltas, shown in place of the local comparison. */
     val serverDeltas: JSONObject? = null,
+    /** On a first card: the frame rate the server expects the game to hold once tuned. */
+    val expectedFps: Int? = null,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("kind", kind)
@@ -347,6 +349,7 @@ data class OptimizeCard(
         before?.let { put("before", it.toJson()) }
         if (unverified) put("unverified", true)
         serverDeltas?.let { put("server_deltas", it) }
+        expectedFps?.let { put("expected_fps", it) }
     }
 
     /** Equality ignores [serverDeltas]' identity: two cards with the same deltas text are the same card. */
@@ -356,7 +359,7 @@ data class OptimizeCard(
 
     override fun hashCode(): Int = copy(serverDeltas = null).fields().hashCode()
 
-    private fun fields(): List<Any?> = listOf(kind, at, gameName, profile, cls, rungId, outcome, fpsGainPct, stutterDropPct, metrics, reason, capFps, before, unverified)
+    private fun fields(): List<Any?> = listOf(kind, at, gameName, profile, cls, rungId, outcome, fpsGainPct, stutterDropPct, metrics, reason, capFps, before, unverified, expectedFps)
 
     companion object {
         const val FIRST = "first"
@@ -397,6 +400,7 @@ data class OptimizeCard(
                 before = Metrics.fromJson(o.optJSONObject("before")),
                 unverified = o.optBoolean("unverified", false),
                 serverDeltas = o.optJSONObject("server_deltas"),
+                expectedFps = o.optIntOrNull("expected_fps"),
             )
         }
     }

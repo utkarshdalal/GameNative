@@ -15,7 +15,9 @@ sealed class OptimizeStatus {
 
     /** The last change could not be written and nothing is on; the next launch asks for another. */
     data object RetryNext : OptimizeStatus()
-    data class Trying(val visualCostId: String?, val visualCostEn: String?) : OptimizeStatus()
+
+    /** A change is on trial; [change] is the kind of change, null when the step has none the app knows. */
+    data class Trying(val change: OptimizeChange?) : OptimizeStatus()
     data object Paused : OptimizeStatus()
     data object Done : OptimizeStatus()
     data object Exhausted : OptimizeStatus()
@@ -30,7 +32,7 @@ sealed class OptimizeStatus {
             val trying = ladder.pending?.takeIf { it.revert == null }
             return when {
                 trying != null && trying.shortSessions > 0 -> Measuring
-                trying != null -> Trying(trying.rung.visualCostId, trying.rung.visualCostEn)
+                trying != null -> Trying(OptimizeChange.of(trying.rung))
                 ladder.state == LadderState.TRYING && ladder.lastStatus == NextRungResponse.STATUS_ENTITLEMENT_REQUIRED -> TrialUsed
                 ladder.state == LadderState.IDLE -> NotStarted
                 ladder.state == LadderState.TRYING && ladder.tried.lastOrNull()?.result == OptimizeJudge.APPLY_FAILED -> RetryNext
@@ -149,22 +151,29 @@ sealed class OptimizeStatus {
         /** The fps the active profile's kept cap holds the game at, or null when no cap is kept. */
         fun heldCapFps(state: OptimizeLocalState): Int? =
             state.active?.kept?.lastOrNull { it.applied && OptimizeCards.capFps(it.rung) != null }?.let { OptimizeCards.capFps(it.rung) }
+    }
+}
 
-        @StringRes
-        fun visualCostRes(id: String?): Int? = when (id) {
-            "vc_shadows_simpler" -> R.string.optimize_vc_shadows_simpler
-            "vc_less_grass_view_distance" -> R.string.optimize_vc_less_grass_view_distance
-            "vc_textures_softer", "vc_textures_softer_distance" -> R.string.optimize_vc_textures_softer
-            "vc_effects_simpler" -> R.string.optimize_vc_effects_simpler
-            "vc_fps_held" -> R.string.optimize_vc_fps_held
-            "vc_dx11_version" -> R.string.optimize_vc_dx11_version
-            "vc_sharpness_lower" -> R.string.optimize_vc_sharpness_lower
-            "vc_none_may_be_unstable" -> R.string.optimize_vc_none_may_be_unstable
-            "vc_none" -> R.string.optimize_vc_none
-            "vc_textures_stream_later" -> R.string.optimize_vc_textures_stream_later
-            "vc_image_softer_upscaled" -> R.string.optimize_vc_image_softer_upscaled
-            "vc_potato" -> R.string.optimize_vc_potato
-            else -> null
+/** The kind of change a step makes, as far as the status says. */
+enum class OptimizeChange {
+    SETTINGS,
+    CORES,
+    COMPONENTS,
+    FPS_HOLD,
+    ;
+
+    companion object {
+        private val SETTINGS_KEYS = OptimizeApplier.EXTRA_KEYS + "screenSize"
+
+        fun of(rung: Rung): OptimizeChange? {
+            if (rung.isFpsCap) return FPS_HOLD
+            val keys = rung.levers.filterIsInstance<Lever.ContainerSet>().flatMap { it.set }.map { it.first.removePrefix("extras.") }
+            return when {
+                rung.levers.any { it is Lever.EngineFile || it is Lever.Registry } || keys.any { it in SETTINGS_KEYS } -> SETTINGS
+                keys.any { it.startsWith("cpuList") } -> CORES
+                keys.isNotEmpty() || rung.levers.any { it is Lever.Drirc } -> COMPONENTS
+                else -> null
+            }
         }
     }
 }

@@ -355,11 +355,11 @@ class OptimizeRulesTest {
         val balanced = OptimizeProfile.BALANCED
         assertEquals(OptimizeLadders.Tap.CONTINUE, OptimizeLadders.tap(balanced, balanced, OptimizeStatus.Paused))
         assertEquals(OptimizeLadders.Tap.CONTINUE, OptimizeLadders.tap(balanced, balanced, OptimizeStatus.Done))
-        assertEquals(OptimizeLadders.Tap.NONE, OptimizeLadders.tap(balanced, balanced, OptimizeStatus.Trying(null, null)))
+        assertEquals(OptimizeLadders.Tap.NONE, OptimizeLadders.tap(balanced, balanced, OptimizeStatus.Trying(null)))
         assertEquals(OptimizeLadders.Tap.NONE, OptimizeLadders.tap(balanced, balanced, OptimizeStatus.TuningNext))
         assertEquals(OptimizeLadders.Tap.NONE, OptimizeLadders.tap(OptimizeProfile.OFF, OptimizeProfile.OFF, OptimizeStatus.Off))
         assertEquals(OptimizeLadders.Tap.SWITCH, OptimizeLadders.tap(balanced, OptimizeProfile.POWER, OptimizeStatus.Done))
-        assertEquals(OptimizeLadders.Tap.SWITCH, OptimizeLadders.tap(balanced, OptimizeProfile.OFF, OptimizeStatus.Trying(null, null)))
+        assertEquals(OptimizeLadders.Tap.SWITCH, OptimizeLadders.tap(balanced, OptimizeProfile.OFF, OptimizeStatus.Trying(null)))
     }
 
     @Test

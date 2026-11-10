@@ -167,7 +167,7 @@ class EntitlementLineTest {
     @Test
     fun statusPillsUseTheShortWords() {
         assertEquals(R.string.optimize_pill_measuring, OptimizeStatus.pillRes(OptimizeStatus.Measuring))
-        assertEquals(R.string.optimize_pill_tuning, OptimizeStatus.pillRes(OptimizeStatus.Trying(null, null)))
+        assertEquals(R.string.optimize_pill_tuning, OptimizeStatus.pillRes(OptimizeStatus.Trying(null)))
         assertEquals(R.string.optimize_pill_tuning, OptimizeStatus.pillRes(OptimizeStatus.TuningNext))
         assertEquals(R.string.optimize_status_paused, OptimizeStatus.pillRes(OptimizeStatus.Paused))
         assertEquals(R.string.optimize_pill_done, OptimizeStatus.pillRes(OptimizeStatus.Done))
@@ -181,7 +181,7 @@ class EntitlementLineTest {
         assertFalse(OptimizeStatus.showsSentence(OptimizeStatus.TuningNext))
         assertFalse(OptimizeStatus.showsSentence(OptimizeStatus.Paused))
         assertFalse(OptimizeStatus.showsSentence(OptimizeStatus.Measuring))
-        assertTrue(OptimizeStatus.showsSentence(OptimizeStatus.Trying(null, null)))
+        assertTrue(OptimizeStatus.showsSentence(OptimizeStatus.Trying(null)))
         assertTrue(OptimizeStatus.showsSentence(OptimizeStatus.RetryNext))
         assertTrue(OptimizeStatus.showsSentence(OptimizeStatus.NotStarted))
         assertTrue(OptimizeStatus.showsSentence(OptimizeStatus.Done))

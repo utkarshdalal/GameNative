@@ -29,6 +29,20 @@ class OptimizeStateTest {
     """.trimIndent()
 
     @Test
+    fun theStatusNamesOnlyTheKindOfChange() {
+        fun change(levers: String, cap: Boolean = false) =
+            OptimizeChange.of(Rung.parse(JSONObject("""{"rung_id":"r","is_fps_cap":$cap,"levers":[$levers]}"""))!!)
+        fun container(key: String) = """{"lever_type":"container","payload":{"set":[{"key":"$key","value":"1"}]}}"""
+        assertEquals(OptimizeChange.SETTINGS, OptimizeChange.of(Rung.parse(JSONObject(rungJson))!!))
+        assertEquals(OptimizeChange.SETTINGS, change(container("screenSize")))
+        assertEquals(OptimizeChange.CORES, change(container("cpuList")))
+        assertEquals(OptimizeChange.COMPONENTS, change(container("envVars.GN_X")))
+        assertEquals(OptimizeChange.COMPONENTS, change(container("dxwrapper")))
+        assertEquals(OptimizeChange.FPS_HOLD, change(container("fpsLimit"), cap = true))
+        assertNull(change("""{"lever_type":"teleport","payload":{}}"""))
+    }
+
+    @Test
     fun rungParsesEveryLeverType() {
         val rung = Rung.parse(JSONObject(rungJson))!!
         assertEquals("witcher3_grass", rung.rungId)
@@ -266,7 +280,7 @@ class OptimizeStateTest {
             OptimizeStatus.of(with(ProfileLadder(state = LadderState.TRYING, tried = listOf(failed, TriedRung("r2", "1", OptimizeJudge.NO_OP))))),
         )
         assertEquals(
-            OptimizeStatus.Trying("vc_less_grass_view_distance", "less grass"),
+            OptimizeStatus.Trying(OptimizeChange.SETTINGS),
             OptimizeStatus.of(with(ProfileLadder(state = LadderState.TRYING, tried = listOf(failed), pending = PendingRung(rung, 0L, null, 0, emptyList())))),
         )
         assertEquals(
@@ -274,7 +288,7 @@ class OptimizeStateTest {
             OptimizeStatus.of(with(ProfileLadder(state = LadderState.TRYING, pending = PendingRung(rung, 0L, null, 1, emptyList())))),
         )
         assertEquals(
-            OptimizeStatus.Trying("vc_less_grass_view_distance", "less grass"),
+            OptimizeStatus.Trying(OptimizeChange.SETTINGS),
             OptimizeStatus.of(with(ProfileLadder(state = LadderState.TRYING, pending = PendingRung(rung, 0L, null, 0, emptyList())))),
         )
         assertEquals(OptimizeStatus.Paused, OptimizeStatus.of(with(ProfileLadder(state = LadderState.PAUSED))))

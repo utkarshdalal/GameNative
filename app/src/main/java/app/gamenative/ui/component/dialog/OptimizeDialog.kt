@@ -53,6 +53,7 @@ import app.gamenative.R
 import app.gamenative.api.AccountApi
 import app.gamenative.optimize.Entitlement
 import app.gamenative.optimize.EntitlementLine
+import app.gamenative.optimize.OptimizeChange
 import app.gamenative.optimize.OptimizeController
 import app.gamenative.optimize.OptimizeLadders
 import app.gamenative.optimize.OptimizeLocalState
@@ -207,14 +208,15 @@ fun optimizeStatusText(state: OptimizeLocalState): String? = when (val status = 
     OptimizeStatus.Measuring -> stringResource(R.string.optimize_status_measuring)
     OptimizeStatus.TuningNext -> stringResource(R.string.optimize_status_tuning_next)
     OptimizeStatus.RetryNext -> stringResource(R.string.optimize_status_retry_next)
-    is OptimizeStatus.Trying -> {
-        val cost = OptimizeStatus.visualCostRes(status.visualCostId)?.let { stringResource(it) } ?: status.visualCostEn
-        if (cost.isNullOrBlank()) {
-            stringResource(R.string.optimize_status_trying_plain)
-        } else {
-            stringResource(R.string.optimize_status_trying, cost)
-        }
-    }
+    is OptimizeStatus.Trying -> stringResource(
+        when (status.change) {
+            OptimizeChange.SETTINGS -> R.string.optimize_status_trying_settings
+            OptimizeChange.CORES -> R.string.optimize_status_trying_cores
+            OptimizeChange.COMPONENTS -> R.string.optimize_status_trying_components
+            OptimizeChange.FPS_HOLD -> R.string.optimize_status_trying_cap
+            null -> R.string.optimize_status_trying_plain
+        },
+    )
     OptimizeStatus.Paused -> stringResource(R.string.optimize_status_paused)
     OptimizeStatus.Done -> stringResource(R.string.optimize_status_done)
     OptimizeStatus.Exhausted -> stringResource(R.string.optimize_status_exhausted)

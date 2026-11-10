@@ -115,11 +115,4 @@ class OptimizeCrashRevertTest {
         val card = OptimizeCard(OptimizeCard.WORSE, 1L, "Game", OptimizeProfile.BALANCED, rungId = "a", outcome = OptimizeCard.OUTCOME_CRASH)
         assertEquals(OptimizeCard.OUTCOME_CRASH, OptimizeCard.fromJson(card.toJson())!!.outcome)
     }
-
-    @Test
-    fun theNewVisualCostIdsHaveStrings() {
-        listOf("vc_sharpness_lower", "vc_none_may_be_unstable", "vc_none", "vc_textures_stream_later", "vc_textures_softer").forEach {
-            assertTrue(it, OptimizeStatus.visualCostRes(it) != null)
-        }
-    }
 }
