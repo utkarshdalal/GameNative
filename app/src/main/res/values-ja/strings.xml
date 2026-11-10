@@ -2099,10 +2099,9 @@
     <string name="optimize_after_crash_undone">この変更は%1$sと相性が悪かったため、元に戻しました。</string>
     <string name="optimize_card_title_gpu">%1$s でGPUの処理が追いつきませんでした</string>
     <string name="optimize_card_title_thermal">%1$s が熱くなり、フレームが落ち始めました</string>
-    <string name="optimize_card_title_cpu">%1$s はプロセッサーの性能で制限されています</string>
-    <string name="optimize_card_title_memory">%1$s のメモリが不足しています</string>
-    <string name="optimize_card_title_present">%1$s は画面同期で抑えられています</string>
-    <string name="optimize_card_title_sync_spin">%1$s の遅さは設定が原因ではありません。現在対応中です</string>
+    <string name="optimize_card_title_cpu">%1$s は滑らかなフレームレートを維持できませんでした</string>
+    <string name="optimize_card_title_memory">%1$s で引っかかりやカクつきが続きました</string>
+    <string name="optimize_card_title_present">%1$s は低いフレームレートのままでした</string>
     <string name="optimize_card_title_gpu_after">%1$s でGPUの処理が追いつかず、%2$d 分後にフレームが落ち始めました</string>
     <string name="optimize_card_title_thermal_after">%1$s が熱くなり、%2$d 分後にフレームが落ち始めました</string>
     <string name="optimize_evidence_drop">フレームレートが %1$d fps から %2$d fps に低下しました</string>
@@ -2138,7 +2137,7 @@
     <string name="optimize_status_paused">一時停止中</string>
     <string name="optimize_status_done">希望どおりに動作しています</string>
     <string name="optimize_cap_title">%1$sを%2$d fpsに固定しますか？</string>
-    <string name="optimize_cap_body">カクつきを減らし、遅くならずに長く快適に動作します。</string>
+    <string name="optimize_cap_body">低めでも安定したフレームレートは、落ち続けるフレームレートより滑らかに感じられ、発熱が減りバッテリーも長持ちします。</string>
     <string name="optimize_cap_yes">はい、固定する</string>
     <string name="optimize_after_cap_held">%1$d fpsに固定中：カクつきが減り、パフォーマンスが安定</string>
     <string name="optimize_after_cap_removed">%1$d fpsに固定しても効果がなかったため、制限を解除しました</string>
@@ -2148,7 +2147,6 @@
     <string name="optimize_suggested_performance">おすすめ：パフォーマンス（フレームレートが目標を維持できていないため）。</string>
     <string name="optimize_suggested_performance_heat">おすすめ：パフォーマンス（発熱を抑えながらフレームレートを維持するため）。</string>
     <string name="optimize_suggested_stability">おすすめ：安定性（ゲームがカクつくため）。</string>
-    <string name="optimize_suggested_balanced">おすすめ：バランス（目立った制約がないため）。</string>
     <string name="optimize_status_exhausted">このデバイスではここまでです</string>
     <string name="optimize_status_waiting">安全な変更はまだありません。後でもう一度確認します。</string>
     <string name="optimize_continue">再開</string>
@@ -2203,7 +2201,6 @@
     <string name="optimize_metric_stable_for">安定時間</string>
     <string name="optimize_metric_frame_p99">最も遅いフレーム</string>
     <string name="optimize_metric_ms_value">%1$d ms</string>
-    <string name="optimize_metric_gpu_work">フレームあたりのGPU負荷</string>
     <string name="optimize_metric_fps_value">%1$d fps</string>
     <string name="optimize_metric_percent_value">%1$d %%</string>
     <string name="optimize_metric_delta_up">+%1$d %%</string>

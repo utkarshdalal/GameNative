@@ -1888,10 +1888,9 @@
     <string name="optimize_after_crash_undone">Ese cambio no le sentó bien a %1$s, así que se deshizo.</string>
     <string name="optimize_card_title_gpu">Tu GPU no pudo seguir el ritmo en %1$s</string>
     <string name="optimize_card_title_thermal">%1$s se calentó y empezó a perder fotogramas</string>
-    <string name="optimize_card_title_cpu">%1$s está limitado por tu procesador</string>
-    <string name="optimize_card_title_memory">%1$s se está quedando sin memoria</string>
-    <string name="optimize_card_title_present">%1$s está frenado por la sincronización de pantalla</string>
-    <string name="optimize_card_title_sync_spin">La lentitud en %1$s no está en sus ajustes; estamos trabajando en ello</string>
+    <string name="optimize_card_title_cpu">%1$s no pudo mantener una tasa de fotogramas fluida</string>
+    <string name="optimize_card_title_memory">%1$s sufría parones y tirones continuos</string>
+    <string name="optimize_card_title_present">%1$s se quedó atascado en una tasa de fotogramas baja</string>
     <string name="optimize_card_title_gpu_after">Tu GPU no pudo seguir el ritmo en %1$s y empezó a perder fotogramas a los %2$d min</string>
     <string name="optimize_card_title_thermal_after">%1$s se calentó y empezó a perder fotogramas a los %2$d min</string>
     <string name="optimize_evidence_drop">La tasa de fotogramas cayó de %1$d a %2$d fps</string>
@@ -1927,7 +1926,7 @@
     <string name="optimize_status_paused">En pausa</string>
     <string name="optimize_status_done">Funciona como pediste</string>
     <string name="optimize_cap_title">¿Mantener %1$s a %2$d fps?</string>
-    <string name="optimize_cap_body">Así el juego funcionaría con menos tirones durante más tiempo sin ralentizarse.</string>
+    <string name="optimize_cap_body">Una tasa de fotogramas más baja y estable se siente más fluida que una que no deja de caer, con menos calor y más batería.</string>
     <string name="optimize_cap_yes">Sí, mantenerlo</string>
     <string name="optimize_after_cap_held">Mantenido a %1$d fps: menos tirones, rendimiento más estable</string>
     <string name="optimize_after_cap_removed">Mantener a %1$d fps no ayudó; se quitó el límite</string>
@@ -1937,7 +1936,6 @@
     <string name="optimize_suggested_performance">Sugerido: Rendimiento, porque la tasa de fotogramas no se mantiene en su objetivo.</string>
     <string name="optimize_suggested_performance_heat">Sugerido: Rendimiento, para mantener la tasa de fotogramas con menos calor.</string>
     <string name="optimize_suggested_stability">Sugerido: Estabilidad, porque el juego da tirones.</string>
-    <string name="optimize_suggested_balanced">Sugerido: Equilibrado, porque ningún límite destaca sobre los demás.</string>
     <string name="optimize_status_exhausted">Lo máximo posible en este dispositivo</string>
     <string name="optimize_status_waiting">Aún no hay un cambio seguro. Lo volveremos a comprobar más tarde.</string>
     <string name="optimize_continue">Continuar</string>
@@ -2001,7 +1999,6 @@
     <string name="optimize_metric_stable_for">Estable durante</string>
     <string name="optimize_metric_frame_p99">Fotogramas más lentos</string>
     <string name="optimize_metric_ms_value">%1$d ms</string>
-    <string name="optimize_metric_gpu_work">Trabajo de GPU por fotograma</string>
     <string name="optimize_metric_fps_value">%1$d FPS</string>
     <string name="optimize_metric_percent_value">%1$d %%</string>
     <string name="optimize_metric_delta_up">+%1$d %%</string>

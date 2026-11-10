@@ -1908,10 +1908,9 @@
     <string name="optimize_after_crash_undone">Ce changement ne convenait pas à %1$s, il a donc été annulé.</string>
     <string name="optimize_card_title_gpu">Votre GPU n\'a pas pu suivre dans %1$s</string>
     <string name="optimize_card_title_thermal">%1$s a chauffé et a commencé à perdre des images</string>
-    <string name="optimize_card_title_cpu">%1$s est limité par votre processeur</string>
-    <string name="optimize_card_title_memory">%1$s manque de mémoire</string>
-    <string name="optimize_card_title_present">%1$s est freiné par la synchronisation de l\'affichage</string>
-    <string name="optimize_card_title_sync_spin">Le ralentissement dans %1$s ne vient pas de ses réglages ; nous y travaillons</string>
+    <string name="optimize_card_title_cpu">%1$s n\'a pas pu tenir une fréquence d\'images fluide</string>
+    <string name="optimize_card_title_memory">%1$s n\'arrêtait pas de se figer et de saccader</string>
+    <string name="optimize_card_title_present">%1$s est resté bloqué à une fréquence d\'images basse</string>
     <string name="optimize_card_title_gpu_after">Votre GPU n\'a pas pu suivre dans %1$s et a commencé à perdre des images après %2$d min</string>
     <string name="optimize_card_title_thermal_after">%1$s a chauffé et a commencé à perdre des images après %2$d min</string>
     <string name="optimize_evidence_drop">La fréquence d\'images est passée de %1$d à %2$d fps</string>
@@ -1947,7 +1946,7 @@
     <string name="optimize_status_paused">En pause</string>
     <string name="optimize_status_done">Tourne comme vous l\'avez demandé</string>
     <string name="optimize_cap_title">Maintenir %1$s à %2$d fps ?</string>
-    <string name="optimize_cap_body">Le jeu tournerait avec moins de saccades plus longtemps, sans ralentir.</string>
+    <string name="optimize_cap_body">Une fréquence d\'images plus basse mais stable paraît plus fluide qu\'une fréquence qui chute sans cesse, avec moins de chaleur et plus d\'autonomie.</string>
     <string name="optimize_cap_yes">Oui, le maintenir</string>
     <string name="optimize_after_cap_held">Maintenu à %1$d fps : moins de saccades, performances plus stables</string>
     <string name="optimize_after_cap_removed">Maintenir à %1$d fps n\'a pas aidé ; la limite a été retirée</string>
@@ -1957,7 +1956,6 @@
     <string name="optimize_suggested_performance">Suggéré : Performances, car la fréquence d\'images ne tient pas son objectif.</string>
     <string name="optimize_suggested_performance_heat">Suggéré : Performances, pour tenir la fréquence d\'images avec moins de chaleur.</string>
     <string name="optimize_suggested_stability">Suggéré : Stabilité, car le jeu saccade.</string>
-    <string name="optimize_suggested_balanced">Suggéré : Équilibré, car aucune limite ne ressort plus qu\'une autre.</string>
     <string name="optimize_status_exhausted">Le maximum possible sur cet appareil</string>
     <string name="optimize_status_waiting">Pas encore de modification sûre. Nous vérifierons de nouveau plus tard.</string>
     <string name="optimize_continue">Reprendre</string>
@@ -2021,7 +2019,6 @@
     <string name="optimize_metric_stable_for">Stable pendant</string>
     <string name="optimize_metric_frame_p99">Images les plus lentes</string>
     <string name="optimize_metric_ms_value">%1$d ms</string>
-    <string name="optimize_metric_gpu_work">Travail GPU par image</string>
     <string name="optimize_metric_fps_value">%1$d FPS</string>
     <string name="optimize_metric_percent_value">%1$d %%</string>
     <string name="optimize_metric_delta_up">+%1$d %%</string>

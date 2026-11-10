@@ -222,6 +222,9 @@ object OptimizeCards {
     const val SYNC_SPIN = "sync_spin"
     val CLASSES = setOf("gpu", "thermal_gpu", "cpu_single", "cpu_multi", "memory", "present_locked", SYNC_SPIN)
 
+    /** The diagnoses a card is shown for: the ones tuning can do something about. */
+    val CARD_CLASSES = CLASSES - SYNC_SPIN
+
     const val ACTION_OPTIMIZE = "optimize"
     const val ACTION_NOT_NOW = "not_now"
     const val ACTION_NEVER = "never"
@@ -272,7 +275,7 @@ object OptimizeCards {
         userHold(state, session, nowMillis, rulesVersion)?.let { return it }
         if (session.confident != true) return SUPPRESSED_NOT_CONFIDENT
         if (session.gameplaySec < MIN_GAMEPLAY_SEC) return SUPPRESSED_SHORT
-        if (session.cls !in CLASSES) return SUPPRESSED_CLASS
+        if (session.cls !in CARD_CLASSES) return SUPPRESSED_CLASS
         return null
     }
 

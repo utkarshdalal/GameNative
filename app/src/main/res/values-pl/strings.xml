@@ -1894,10 +1894,9 @@
     <string name="optimize_after_crash_undone">Ta zmiana nie pasowała do %1$s, więc została cofnięta.</string>
     <string name="optimize_card_title_gpu">Twój GPU nie nadążał w %1$s</string>
     <string name="optimize_card_title_thermal">Gra %1$s nagrzała się i zaczęła gubić klatki</string>
-    <string name="optimize_card_title_cpu">Gra %1$s jest ograniczana przez twój procesor</string>
-    <string name="optimize_card_title_memory">Grze %1$s kończy się pamięć</string>
-    <string name="optimize_card_title_present">Grę %1$s hamuje synchronizacja ekranu</string>
-    <string name="optimize_card_title_sync_spin">Spowolnienie w %1$s nie wynika z ustawień gry; pracujemy nad tym</string>
+    <string name="optimize_card_title_cpu">Gra %1$s nie utrzymywała płynnej liczby klatek</string>
+    <string name="optimize_card_title_memory">Gra %1$s ciągle się zacinała i przycinała</string>
+    <string name="optimize_card_title_present">Gra %1$s utknęła na niskiej liczbie klatek</string>
     <string name="optimize_card_title_gpu_after">Twój GPU nie nadążał w %1$s i po %2$d min zaczął gubić klatki</string>
     <string name="optimize_card_title_thermal_after">Gra %1$s nagrzała się i po %2$d min zaczęła gubić klatki</string>
     <string name="optimize_evidence_drop">Liczba klatek spadła z %1$d do %2$d fps</string>
@@ -1933,7 +1932,7 @@
     <string name="optimize_status_paused">Wstrzymano</string>
     <string name="optimize_status_done">Działa tak, jak chciałeś</string>
     <string name="optimize_cap_title">Utrzymać %1$s na %2$d fps?</string>
-    <string name="optimize_cap_body">Gra działałaby dłużej z mniejszą liczbą przycięć, bez zwalniania.</string>
+    <string name="optimize_cap_body">Niższa, ale stabilna liczba klatek daje płynniejszą grę niż taka, która ciągle spada, a do tego mniejsze nagrzewanie i dłuższą pracę na baterii.</string>
     <string name="optimize_cap_yes">Tak, utrzymaj</string>
     <string name="optimize_after_cap_held">Utrzymywane na %1$d fps: mniej przycięć, stabilniejsza wydajność</string>
     <string name="optimize_after_cap_removed">Utrzymywanie %1$d fps nie pomogło; limit został usunięty</string>
@@ -1943,7 +1942,6 @@
     <string name="optimize_suggested_performance">Sugerowane: Wydajność, bo liczba klatek nie utrzymuje celu.</string>
     <string name="optimize_suggested_performance_heat">Sugerowane: Wydajność, aby utrzymać liczbę klatek przy mniejszym nagrzewaniu.</string>
     <string name="optimize_suggested_stability">Sugerowane: Stabilność, bo gra się zacina.</string>
-    <string name="optimize_suggested_balanced">Sugerowane: Zrównoważony, bo żadne ograniczenie się nie wyróżnia.</string>
     <string name="optimize_status_exhausted">Maksimum na tym urządzeniu</string>
     <string name="optimize_status_waiting">Brak jeszcze bezpiecznej zmiany. Sprawdzimy ponownie później.</string>
     <string name="optimize_continue">Wznów</string>
@@ -2025,7 +2023,6 @@
     <string name="optimize_metric_stable_for">Stabilnie przez</string>
     <string name="optimize_metric_frame_p99">Najwolniejsze klatki</string>
     <string name="optimize_metric_ms_value">%1$d ms</string>
-    <string name="optimize_metric_gpu_work">Praca GPU na klatkę</string>
     <string name="optimize_metric_fps_value">%1$d kl./s</string>
     <string name="optimize_metric_percent_value">%1$d %%</string>
     <string name="optimize_metric_delta_up">+%1$d %%</string>

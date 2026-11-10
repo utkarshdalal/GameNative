@@ -1890,10 +1890,9 @@
     <string name="optimize_after_crash_undone">Ця зміна не підійшла для %1$s, тому її скасовано.</string>
     <string name="optimize_card_title_gpu">Відеокарта не встигала в грі %1$s</string>
     <string name="optimize_card_title_thermal">Гра %1$s перегрілася й почала втрачати кадри</string>
-    <string name="optimize_card_title_cpu">Гра %1$s упирається у ваш процесор</string>
-    <string name="optimize_card_title_memory">Грі %1$s бракує пам\'яті</string>
-    <string name="optimize_card_title_present">Гру %1$s стримує синхронізація з екраном</string>
-    <string name="optimize_card_title_sync_spin">Уповільнення в грі %1$s пов\'язане не з її налаштуваннями; ми над цим працюємо</string>
+    <string name="optimize_card_title_cpu">Гра %1$s не тримала плавну частоту кадрів</string>
+    <string name="optimize_card_title_memory">Гра %1$s постійно підвисала й підгальмовувала</string>
+    <string name="optimize_card_title_present">Гра %1$s застрягла на низькій частоті кадрів</string>
     <string name="optimize_card_title_gpu_after">Відеокарта не встигала в грі %1$s і через %2$d хв почала втрачати кадри</string>
     <string name="optimize_card_title_thermal_after">Гра %1$s перегрілася й через %2$d хв почала втрачати кадри</string>
     <string name="optimize_evidence_drop">Частота кадрів впала з %1$d до %2$d fps</string>
@@ -1929,7 +1928,7 @@
     <string name="optimize_status_paused">Призупинено</string>
     <string name="optimize_status_done">Працює так, як ви хотіли</string>
     <string name="optimize_cap_title">Тримати %1$s на %2$d fps?</string>
-    <string name="optimize_cap_body">Гра довше працюватиме з меншими підвисаннями й без сповільнення.</string>
+    <string name="optimize_cap_body">Нижча, але стабільна частота кадрів відчувається плавнішою, ніж та, що постійно падає; до того ж менший нагрів і довше тримається батарея.</string>
     <string name="optimize_cap_yes">Так, тримати</string>
     <string name="optimize_after_cap_held">Тримається на %1$d fps: менше підвисань, стабільніша продуктивність</string>
     <string name="optimize_after_cap_removed">Обмеження до %1$d fps не допомогло; його знято</string>
@@ -1939,7 +1938,6 @@
     <string name="optimize_suggested_performance">Рекомендовано: «Продуктивність», бо частота кадрів не тримає ціль.</string>
     <string name="optimize_suggested_performance_heat">Рекомендовано: «Продуктивність», щоб тримати частоту кадрів із меншим нагрівом.</string>
     <string name="optimize_suggested_stability">Рекомендовано: «Стабільність», бо гра підгальмовує.</string>
-    <string name="optimize_suggested_balanced">Рекомендовано: «Баланс», бо жодне обмеження не виділяється.</string>
     <string name="optimize_status_exhausted">Межа для цього пристрою</string>
     <string name="optimize_status_waiting">Безпечної зміни поки немає. Ми перевіримо пізніше.</string>
     <string name="optimize_continue">Відновити</string>
@@ -2021,7 +2019,6 @@
     <string name="optimize_metric_stable_for">Стабільно</string>
     <string name="optimize_metric_frame_p99">Найповільніші кадри</string>
     <string name="optimize_metric_ms_value">%1$d мс</string>
-    <string name="optimize_metric_gpu_work">Навантаження GPU на кадр</string>
     <string name="optimize_metric_fps_value">%1$d FPS</string>
     <string name="optimize_metric_percent_value">%1$d %%</string>
     <string name="optimize_metric_delta_up">+%1$d %%</string>

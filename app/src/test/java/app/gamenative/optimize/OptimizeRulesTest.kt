@@ -189,7 +189,8 @@ class OptimizeRulesTest {
         assertFalse(OptimizeCards.offerFirst(OptimizeLocalState(), session.copy(gameplaySec = 299), 0L))
         assertFalse(OptimizeCards.offerFirst(OptimizeLocalState(), session.copy(confident = false), 0L))
         assertFalse(OptimizeCards.offerFirst(OptimizeLocalState(), session.copy(cls = "not_saturated"), 0L))
-        assertTrue(OptimizeCards.offerFirst(OptimizeLocalState(), session.copy(cls = OptimizeCards.SYNC_SPIN), 0L))
+        // A slowdown tuning cannot change leaves no card.
+        assertFalse(OptimizeCards.offerFirst(OptimizeLocalState(), session.copy(cls = OptimizeCards.SYNC_SPIN), 0L))
         assertFalse(OptimizeCards.offerFirst(OptimizeLocalState(never = true), session, 0L))
         assertFalse(OptimizeCards.offerFirst(OptimizeLocalState(activeProfile = OptimizeProfile.BALANCED), session, 0L))
         assertTrue(OptimizeCards.offerFirst(OptimizeLocalState(profiles = mapOf(OptimizeProfile.POWER to ProfileLadder())), session, 0L))

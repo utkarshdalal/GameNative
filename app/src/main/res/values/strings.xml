@@ -2112,10 +2112,9 @@
     <string name="optimize_after_crash_undone">That change did not agree with %1$s, so it was undone.</string>
     <string name="optimize_card_title_gpu">Your GPU could not keep up in %1$s</string>
     <string name="optimize_card_title_thermal">%1$s got hot and started dropping frames</string>
-    <string name="optimize_card_title_cpu">%1$s is limited by your processor</string>
-    <string name="optimize_card_title_memory">%1$s is running out of memory</string>
-    <string name="optimize_card_title_present">%1$s is held back by display sync</string>
-    <string name="optimize_card_title_sync_spin">The slowdown in %1$s is not in its settings; we are working on it</string>
+    <string name="optimize_card_title_cpu">%1$s could not hold a smooth frame rate</string>
+    <string name="optimize_card_title_memory">%1$s kept hitching and stuttering</string>
+    <string name="optimize_card_title_present">%1$s was stuck at a low frame rate</string>
     <string name="optimize_card_title_gpu_after">Your GPU could not keep up in %1$s and started dropping frames after %2$d min</string>
     <string name="optimize_card_title_thermal_after">%1$s got hot and started dropping frames after %2$d min</string>
     <string name="optimize_evidence_drop">Frame rate fell from %1$d to %2$d fps</string>
@@ -2151,7 +2150,7 @@
     <string name="optimize_status_paused">Paused</string>
     <string name="optimize_status_done">Running the way you asked</string>
     <string name="optimize_cap_title">Hold %1$s at %2$d fps?</string>
-    <string name="optimize_cap_body">It would let the game run with fewer stutters for longer without slowing down.</string>
+    <string name="optimize_cap_body">A lower, steady frame rate feels smoother than one that keeps dropping, with less heat and longer battery life.</string>
     <string name="optimize_cap_yes">Yes, hold it</string>
     <string name="optimize_after_cap_held">Holding at %1$d fps: fewer stutters, more stable performance</string>
     <string name="optimize_after_cap_removed">Holding at %1$d fps did not help; the cap was removed</string>
@@ -2161,7 +2160,6 @@
     <string name="optimize_suggested_performance">Suggested: Performance, because the frame rate does not hold its target.</string>
     <string name="optimize_suggested_performance_heat">Suggested: Performance, to hold the frame rate with less heat.</string>
     <string name="optimize_suggested_stability">Suggested: Stability, because the game stutters.</string>
-    <string name="optimize_suggested_balanced">Suggested: Balanced, because nothing stands out as the main limit.</string>
     <string name="optimize_status_exhausted">As far as it goes on this device</string>
     <string name="optimize_status_waiting">No safe change yet. We will check again later.</string>
     <string name="optimize_continue">Continue</string>
@@ -2225,7 +2223,6 @@
     <string name="optimize_metric_stable_for">Stable for</string>
     <string name="optimize_metric_frame_p99">Slowest frames</string>
     <string name="optimize_metric_ms_value">%1$d ms</string>
-    <string name="optimize_metric_gpu_work">GPU work per frame</string>
     <string name="optimize_metric_fps_value">%1$d fps</string>
     <string name="optimize_metric_percent_value">%1$d %%</string>
     <string name="optimize_metric_delta_up">+%1$d %%</string>

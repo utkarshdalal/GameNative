@@ -45,6 +45,7 @@ object OptimizeServer {
         if (server?.blockReason == ServerVerdict.BLOCK_NO_SAMPLES) return local
         val show = server?.showCard ?: return local
         if (!show) return FirstDecision(null, server.blockReason ?: BLOCK_SERVER)
+        if ((server.cls ?: card.cls) !in OptimizeCards.CARD_CLASSES) return FirstDecision(null, OptimizeCards.SUPPRESSED_CLASS)
         val profile = server.suggestedProfile ?: card.profile
         val cap = capFps ?: card.capFps
         val kind = when (server.cardKind) {

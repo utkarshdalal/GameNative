@@ -1855,10 +1855,9 @@
     <string name="optimize_after_crash_undone">该更改与%1$s不兼容，已撤销。</string>
     <string name="optimize_card_title_gpu">你的 GPU 运行 %1$s 时跟不上</string>
     <string name="optimize_card_title_thermal">%1$s 运行时发热，开始掉帧</string>
-    <string name="optimize_card_title_cpu">%1$s 受限于你的处理器</string>
-    <string name="optimize_card_title_memory">%1$s 内存不足</string>
-    <string name="optimize_card_title_present">%1$s 受到显示同步的拖累</string>
-    <string name="optimize_card_title_sync_spin">%1$s 的卡顿与其设置无关，我们正在处理</string>
+    <string name="optimize_card_title_cpu">%1$s 无法保持流畅的帧率</string>
+    <string name="optimize_card_title_memory">%1$s 不断出现停顿和卡顿</string>
+    <string name="optimize_card_title_present">%1$s 一直卡在较低的帧率</string>
     <string name="optimize_card_title_gpu_after">你的 GPU 运行 %1$s 时跟不上，%2$d 分钟后开始掉帧</string>
     <string name="optimize_card_title_thermal_after">%1$s 运行时发热，%2$d 分钟后开始掉帧</string>
     <string name="optimize_evidence_drop">帧率从 %1$d fps 降到 %2$d fps</string>
@@ -1894,7 +1893,7 @@
     <string name="optimize_status_paused">已暂停</string>
     <string name="optimize_status_done">正按你的要求运行</string>
     <string name="optimize_cap_title">将%1$s保持在 %2$d fps？</string>
-    <string name="optimize_cap_body">这样游戏能更长时间少卡顿地运行，且不会变慢。</string>
+    <string name="optimize_cap_body">较低但稳定的帧率，比不断下降的帧率感觉更流畅，而且发热更少、续航更长。</string>
     <string name="optimize_cap_yes">是，保持</string>
     <string name="optimize_after_cap_held">保持在 %1$d fps：卡顿更少，性能更稳定</string>
     <string name="optimize_after_cap_removed">保持在 %1$d fps 没有帮助，已取消限制</string>
@@ -1904,7 +1903,6 @@
     <string name="optimize_suggested_performance">建议：性能，因为帧率达不到目标。</string>
     <string name="optimize_suggested_performance_heat">建议：性能，在减少发热的同时稳住帧率。</string>
     <string name="optimize_suggested_stability">建议：稳定，因为游戏有卡顿。</string>
-    <string name="optimize_suggested_balanced">建议：均衡，因为没有明显的主要瓶颈。</string>
     <string name="optimize_status_exhausted">此设备上已到极限</string>
     <string name="optimize_status_waiting">暂时没有安全的更改。我们稍后会再检查。</string>
     <string name="optimize_continue">恢复</string>
@@ -1959,7 +1957,6 @@
     <string name="optimize_metric_stable_for">稳定时长</string>
     <string name="optimize_metric_frame_p99">最慢的帧</string>
     <string name="optimize_metric_ms_value">%1$d 毫秒</string>
-    <string name="optimize_metric_gpu_work">每帧 GPU 工作量</string>
     <string name="optimize_metric_fps_value">%1$d fps</string>
     <string name="optimize_metric_percent_value">%1$d%%</string>
     <string name="optimize_metric_delta_up">+%1$d%%</string>

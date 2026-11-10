@@ -86,10 +86,9 @@ private fun firstCardTitle(cls: String?, name: String, afterMin: Int? = null): S
         ?: stringResource(R.string.optimize_card_title_gpu, name)
     "thermal_gpu" -> afterMin?.let { stringResource(R.string.optimize_card_title_thermal_after, name, it) }
         ?: stringResource(R.string.optimize_card_title_thermal, name)
-    "cpu_single", "cpu_multi" -> stringResource(R.string.optimize_card_title_cpu, name)
     "memory" -> stringResource(R.string.optimize_card_title_memory, name)
     "present_locked" -> stringResource(R.string.optimize_card_title_present, name)
-    else -> stringResource(R.string.optimize_card_title_sync_spin, name)
+    else -> stringResource(R.string.optimize_card_title_cpu, name)
 }
 
 /** What the player saw in the session, under the diagnosis. */
@@ -112,14 +111,14 @@ private fun offerText(offer: OptimizeEvidence.Offer): String = when (offer) {
         stringResource(if (offer.lessHeat) R.string.optimize_offer_steady_heat else R.string.optimize_offer_steady, offer.fps)
 }
 
-/** Why a profile is suggested, in outcome words; [reason] is an [OptimizeCards] REASON_ id. */
+/** Why a profile is suggested, in outcome words; [reason] is an [OptimizeCards] REASON_ id. Balanced needs no reason. */
 @Composable
-fun optimizeSuggestedText(reason: String?): String = when (reason) {
+fun optimizeSuggestedText(reason: String?): String? = when (reason) {
     OptimizeCards.REASON_HOT -> stringResource(R.string.optimize_suggested_power)
     OptimizeCards.REASON_HEAT_DIPS -> stringResource(R.string.optimize_suggested_performance_heat)
     OptimizeCards.REASON_LOW_FPS -> stringResource(R.string.optimize_suggested_performance)
     OptimizeCards.REASON_STUTTER -> stringResource(R.string.optimize_suggested_stability)
-    else -> stringResource(R.string.optimize_suggested_balanced)
+    else -> null
 }
 
 @Composable
@@ -183,7 +182,7 @@ private fun stableMinutes(metrics: Metrics): Int = ((metrics.throttleOnsetSec ?:
 
 /**
  * Before and after tiles from the two judged sessions: frame rate, stutters (else the slowest frames) and how long it
- * stayed stable (else GPU work per frame). A measure the session after did not record is left out.
+ * stayed stable. A measure the session after did not record is left out.
  */
 @Composable
 private fun resultTiles(card: OptimizeCard): List<CardTile> {
@@ -217,21 +216,11 @@ private fun resultTiles(card: OptimizeCard): List<CardTile> {
             accent = PluviaTheme.colors.accentPurple,
         )
     }
-    val workBefore = before?.workPerFrame()?.takeIf { it > 0 }
-    val workAfter = after.workPerFrame()?.takeIf { it > 0 }
     if (after.throttleOnsetSec != null || before?.throttleOnsetSec != null) {
         tiles += CardTile(
             label = stringResource(R.string.optimize_metric_stable_for),
             before = before?.let { stringResource(R.string.optimize_metric_before, minutesValue(stableMinutes(it))) },
             after = minutesValue(stableMinutes(after)),
-            accent = PluviaTheme.colors.accentSuccess,
-        )
-    } else if (workBefore != null && workAfter != null) {
-        // GPU work per frame has no unit of its own, so the tile shows the session after as a share of the one before.
-        tiles += CardTile(
-            label = stringResource(R.string.optimize_metric_gpu_work),
-            before = stringResource(R.string.optimize_metric_before, shareValue(1.0)),
-            after = shareValue(workAfter / workBefore),
             accent = PluviaTheme.colors.accentSuccess,
         )
     }
@@ -266,36 +255,27 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
     val ok = stringResource(R.string.ok)
     val notNow = CardAction(stringResource(R.string.optimize_card_not_now)) { answer(OptimizeCards.ACTION_NOT_NOW) }
     val never = CardAction(stringResource(R.string.optimize_card_never)) { answer(OptimizeCards.ACTION_NEVER) }
-    val showEntitlement = card.kind != OptimizeCard.ENTITLEMENT && card.kind != OptimizeCard.NO_RULE && card.cls != OptimizeCards.SYNC_SPIN
+    val showEntitlement = card.kind != OptimizeCard.ENTITLEMENT && card.kind != OptimizeCard.NO_RULE
     val success = OptimizeAccent(Icons.Filled.CheckCircle, PluviaTheme.colors.accentSuccess)
 
     val spec = when (card.kind) {
-        OptimizeCard.FIRST -> if (card.cls == OptimizeCards.SYNC_SPIN) {
-            CardSpec(
-                title = firstCardTitle(card.cls, name),
-                accent = optimizeAccentFor(card.cls),
-                primary = notNow,
-                tertiary = never,
-            )
-        } else {
-            CardSpec(
-                title = firstCardTitle(card.cls, name, OptimizeEvidence.droppedAfterMin(card.cls, card.metrics)),
-                accent = optimizeAccentFor(card.cls),
-                subtitle = evidenceText(OptimizeEvidence.line(card.cls, card.metrics)),
-                body = offerText(OptimizeEvidence.offer(card.cls, card.metrics, card.expectedFps)),
-                showEntitlement = showEntitlement,
-                benefits = listOf(undoBenefit()),
-                primary = CardAction(stringResource(R.string.option_optimize), subtitle = stringResource(chosen.title)) {
-                    if (!choosing) {
-                        choosing = true
-                    } else {
-                        optimizeChosen()
-                    }
-                },
-                secondary = notNow,
-                tertiary = never,
-            )
-        }
+        OptimizeCard.FIRST -> CardSpec(
+            title = firstCardTitle(card.cls, name, OptimizeEvidence.droppedAfterMin(card.cls, card.metrics)),
+            accent = optimizeAccentFor(card.cls),
+            subtitle = evidenceText(OptimizeEvidence.line(card.cls, card.metrics)),
+            body = offerText(OptimizeEvidence.offer(card.cls, card.metrics, card.expectedFps)),
+            showEntitlement = showEntitlement,
+            benefits = listOf(undoBenefit()),
+            primary = CardAction(stringResource(R.string.option_optimize), subtitle = stringResource(chosen.title)) {
+                if (!choosing) {
+                    choosing = true
+                } else {
+                    optimizeChosen()
+                }
+            },
+            secondary = notNow,
+            tertiary = never,
+        )
         OptimizeCard.CAP -> CardSpec(
             title = stringResource(R.string.optimize_cap_title, name, card.capFps ?: OptimizeCards.CAP_HEAT_FPS.toInt()),
             accent = optimizeAccentFor("thermal_gpu"),

@@ -1760,10 +1760,9 @@
     <string name="optimize_after_crash_undone">Essa mudança não se deu bem com %1$s, então foi desfeita.</string>
     <string name="optimize_card_title_gpu">Sua GPU não conseguiu acompanhar em %1$s</string>
     <string name="optimize_card_title_thermal">%1$s esquentou e começou a perder quadros</string>
-    <string name="optimize_card_title_cpu">%1$s está limitado pelo seu processador</string>
-    <string name="optimize_card_title_memory">%1$s está ficando sem memória</string>
-    <string name="optimize_card_title_present">%1$s está sendo segurado pela sincronização da tela</string>
-    <string name="optimize_card_title_sync_spin">A lentidão em %1$s não está nas configurações; estamos trabalhando nisso</string>
+    <string name="optimize_card_title_cpu">%1$s não conseguiu manter uma taxa de quadros fluida</string>
+    <string name="optimize_card_title_memory">%1$s ficou engasgando e travando</string>
+    <string name="optimize_card_title_present">%1$s ficou preso em uma taxa de quadros baixa</string>
     <string name="optimize_card_title_gpu_after">Sua GPU não conseguiu acompanhar em %1$s e começou a perder quadros após %2$d min</string>
     <string name="optimize_card_title_thermal_after">%1$s esquentou e começou a perder quadros após %2$d min</string>
     <string name="optimize_evidence_drop">A taxa de quadros caiu de %1$d para %2$d fps</string>
@@ -1799,7 +1798,7 @@
     <string name="optimize_status_paused">Pausado</string>
     <string name="optimize_status_done">Rodando do jeito que você pediu</string>
     <string name="optimize_cap_title">Manter %1$s a %2$d fps?</string>
-    <string name="optimize_cap_body">O jogo rodaria com menos travadas por mais tempo, sem ficar lento.</string>
+    <string name="optimize_cap_body">Uma taxa de quadros mais baixa e estável parece mais fluida do que uma que não para de cair, com menos calor e mais bateria.</string>
     <string name="optimize_cap_yes">Sim, manter</string>
     <string name="optimize_after_cap_held">Mantido a %1$d fps: menos travadas, desempenho mais estável</string>
     <string name="optimize_after_cap_removed">Manter a %1$d fps não ajudou; o limite foi removido</string>
@@ -1809,7 +1808,6 @@
     <string name="optimize_suggested_performance">Sugerido: Desempenho, porque a taxa de quadros não se mantém no alvo.</string>
     <string name="optimize_suggested_performance_heat">Sugerido: Desempenho, para manter a taxa de quadros com menos calor.</string>
     <string name="optimize_suggested_stability">Sugerido: Estabilidade, porque o jogo engasga.</string>
-    <string name="optimize_suggested_balanced">Sugerido: Equilibrado, porque nenhum limite se destaca.</string>
     <string name="optimize_status_exhausted">O máximo neste dispositivo</string>
     <string name="optimize_status_waiting">Ainda não há uma mudança segura. Vamos verificar de novo mais tarde.</string>
     <string name="optimize_continue">Retomar</string>
@@ -1873,7 +1871,6 @@
     <string name="optimize_metric_stable_for">Estável por</string>
     <string name="optimize_metric_frame_p99">Quadros mais lentos</string>
     <string name="optimize_metric_ms_value">%1$d ms</string>
-    <string name="optimize_metric_gpu_work">Trabalho da GPU por quadro</string>
     <string name="optimize_metric_fps_value">%1$d FPS</string>
     <string name="optimize_metric_percent_value">%1$d %%</string>
     <string name="optimize_metric_delta_up">+%1$d %%</string>

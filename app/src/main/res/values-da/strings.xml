@@ -1760,10 +1760,9 @@
     <string name="optimize_after_crash_undone">Den ændring passede ikke til %1$s, så den blev fortrudt.</string>
     <string name="optimize_card_title_gpu">Din GPU kunne ikke følge med i %1$s</string>
     <string name="optimize_card_title_thermal">%1$s blev varm og begyndte at tabe billeder</string>
-    <string name="optimize_card_title_cpu">%1$s er begrænset af din processor</string>
-    <string name="optimize_card_title_memory">%1$s er ved at løbe tør for hukommelse</string>
-    <string name="optimize_card_title_present">%1$s holdes tilbage af skærmsynkronisering</string>
-    <string name="optimize_card_title_sync_spin">Opbremsningen i %1$s skyldes ikke dens indstillinger; vi arbejder på det</string>
+    <string name="optimize_card_title_cpu">%1$s kunne ikke holde en jævn billedhastighed</string>
+    <string name="optimize_card_title_memory">%1$s blev ved med at hakke og gå i stå</string>
+    <string name="optimize_card_title_present">%1$s sad fast på en lav billedhastighed</string>
     <string name="optimize_card_title_gpu_after">Din GPU kunne ikke følge med i %1$s og begyndte at tabe billeder efter %2$d min</string>
     <string name="optimize_card_title_thermal_after">%1$s blev varm og begyndte at tabe billeder efter %2$d min</string>
     <string name="optimize_evidence_drop">Billedhastigheden faldt fra %1$d til %2$d fps</string>
@@ -1799,7 +1798,7 @@
     <string name="optimize_status_paused">Sat på pause</string>
     <string name="optimize_status_done">Kører, som du bad om</string>
     <string name="optimize_cap_title">Hold %1$s på %2$d fps?</string>
-    <string name="optimize_cap_body">Så kan spillet køre med færre hak i længere tid uden at blive langsommere.</string>
+    <string name="optimize_cap_body">En lavere, stabil billedhastighed føles mere flydende end en, der bliver ved med at falde, og giver mindre varme og længere batteritid.</string>
     <string name="optimize_cap_yes">Ja, hold det</string>
     <string name="optimize_after_cap_held">Holder %1$d fps: færre hak, mere stabil ydeevne</string>
     <string name="optimize_after_cap_removed">At holde %1$d fps hjalp ikke; grænsen er fjernet</string>
@@ -1809,7 +1808,6 @@
     <string name="optimize_suggested_performance">Foreslået: Ydeevne, fordi billedhastigheden ikke holder sit mål.</string>
     <string name="optimize_suggested_performance_heat">Foreslået: Ydeevne, for at holde billedhastigheden med mindre varme.</string>
     <string name="optimize_suggested_stability">Foreslået: Stabilitet, fordi spillet hakker.</string>
-    <string name="optimize_suggested_balanced">Foreslået: Balanceret, fordi intet skiller sig ud som den største begrænsning.</string>
     <string name="optimize_status_exhausted">Så langt det kan komme på denne enhed</string>
     <string name="optimize_status_waiting">Ingen sikker ændring endnu. Vi tjekker igen senere.</string>
     <string name="optimize_continue">Genoptag</string>
@@ -1873,7 +1871,6 @@
     <string name="optimize_metric_stable_for">Stabil i</string>
     <string name="optimize_metric_frame_p99">Langsomste billeder</string>
     <string name="optimize_metric_ms_value">%1$d ms</string>
-    <string name="optimize_metric_gpu_work">GPU-arbejde pr. billede</string>
     <string name="optimize_metric_fps_value">%1$d fps</string>
     <string name="optimize_metric_percent_value">%1$d %%</string>
     <string name="optimize_metric_delta_up">+%1$d %%</string>

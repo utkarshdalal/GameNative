@@ -1818,10 +1818,9 @@ https://gamenative.app
     <string name="optimize_after_crash_undone">Это изменение не подошло для %1$s, поэтому оно отменено.</string>
     <string name="optimize_card_title_gpu">Видеокарта не справлялась в игре %1$s</string>
     <string name="optimize_card_title_thermal">Игра %1$s перегрелась и начала терять кадры</string>
-    <string name="optimize_card_title_cpu">Игра %1$s упирается в ваш процессор</string>
-    <string name="optimize_card_title_memory">Игре %1$s не хватает памяти</string>
-    <string name="optimize_card_title_present">Игру %1$s сдерживает синхронизация с экраном</string>
-    <string name="optimize_card_title_sync_spin">Замедление в игре %1$s связано не с её настройками; мы над этим работаем</string>
+    <string name="optimize_card_title_cpu">Игра %1$s не держала плавную частоту кадров</string>
+    <string name="optimize_card_title_memory">Игра %1$s постоянно подвисала и подтормаживала</string>
+    <string name="optimize_card_title_present">Игра %1$s застряла на низкой частоте кадров</string>
     <string name="optimize_card_title_gpu_after">Видеокарта не справлялась в игре %1$s и через %2$d мин начала терять кадры</string>
     <string name="optimize_card_title_thermal_after">Игра %1$s перегрелась и через %2$d мин начала терять кадры</string>
     <string name="optimize_evidence_drop">Частота кадров упала с %1$d до %2$d fps</string>
@@ -1857,7 +1856,7 @@ https://gamenative.app
     <string name="optimize_status_paused">Приостановлено</string>
     <string name="optimize_status_done">Работает так, как вы хотели</string>
     <string name="optimize_cap_title">Держать %1$s на %2$d fps?</string>
-    <string name="optimize_cap_body">Игра будет дольше работать с меньшими подтормаживаниями и без замедления.</string>
+    <string name="optimize_cap_body">Более низкая, но стабильная частота кадров ощущается плавнее, чем та, что постоянно падает; к тому же меньше нагрев и дольше держится батарея.</string>
     <string name="optimize_cap_yes">Да, держать</string>
     <string name="optimize_after_cap_held">Держится на %1$d fps: меньше подтормаживаний, стабильнее производительность</string>
     <string name="optimize_after_cap_removed">Ограничение до %1$d fps не помогло; оно снято</string>
@@ -1867,7 +1866,6 @@ https://gamenative.app
     <string name="optimize_suggested_performance">Рекомендуется: «Производительность», потому что частота кадров не держит цель.</string>
     <string name="optimize_suggested_performance_heat">Рекомендуется: «Производительность», чтобы держать частоту кадров при меньшем нагреве.</string>
     <string name="optimize_suggested_stability">Рекомендуется: «Стабильность», потому что игра подтормаживает.</string>
-    <string name="optimize_suggested_balanced">Рекомендуется: «Баланс», потому что ни одно ограничение не выделяется.</string>
     <string name="optimize_status_exhausted">Предел для этого устройства</string>
     <string name="optimize_status_waiting">Безопасного изменения пока нет. Мы проверим позже.</string>
     <string name="optimize_continue">Возобновить</string>
@@ -1949,7 +1947,6 @@ https://gamenative.app
     <string name="optimize_metric_stable_for">Стабильно</string>
     <string name="optimize_metric_frame_p99">Самые медленные кадры</string>
     <string name="optimize_metric_ms_value">%1$d мс</string>
-    <string name="optimize_metric_gpu_work">Нагрузка GPU на кадр</string>
     <string name="optimize_metric_fps_value">%1$d FPS</string>
     <string name="optimize_metric_percent_value">%1$d %%</string>
     <string name="optimize_metric_delta_up">+%1$d %%</string>

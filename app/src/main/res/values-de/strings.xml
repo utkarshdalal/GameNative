@@ -1830,10 +1830,9 @@
     <string name="optimize_after_crash_undone">Diese Änderung hat sich mit %1$s nicht vertragen und wurde rückgängig gemacht.</string>
     <string name="optimize_card_title_gpu">Deine GPU kam in %1$s nicht hinterher</string>
     <string name="optimize_card_title_thermal">%1$s wurde heiß und begann, Bilder zu verlieren</string>
-    <string name="optimize_card_title_cpu">%1$s wird von deinem Prozessor ausgebremst</string>
-    <string name="optimize_card_title_memory">%1$s geht der Arbeitsspeicher aus</string>
-    <string name="optimize_card_title_present">%1$s wird von der Bildsynchronisierung ausgebremst</string>
-    <string name="optimize_card_title_sync_spin">Die Verlangsamung in %1$s liegt nicht an den Einstellungen; wir arbeiten daran</string>
+    <string name="optimize_card_title_cpu">%1$s konnte keine flüssige Bildrate halten</string>
+    <string name="optimize_card_title_memory">%1$s stockte und ruckelte immer wieder</string>
+    <string name="optimize_card_title_present">%1$s hing bei einer niedrigen Bildrate fest</string>
     <string name="optimize_card_title_gpu_after">Deine GPU kam in %1$s nicht hinterher und begann nach %2$d Min., Bilder zu verlieren</string>
     <string name="optimize_card_title_thermal_after">%1$s wurde heiß und begann nach %2$d Min., Bilder zu verlieren</string>
     <string name="optimize_evidence_drop">Die Bildrate fiel von %1$d auf %2$d fps</string>
@@ -1869,7 +1868,7 @@
     <string name="optimize_status_paused">Pausiert</string>
     <string name="optimize_status_done">Läuft so, wie du es wolltest</string>
     <string name="optimize_cap_title">%1$s bei %2$d fps halten?</string>
-    <string name="optimize_cap_body">So läuft das Spiel länger mit weniger Rucklern, ohne langsamer zu werden.</string>
+    <string name="optimize_cap_body">Eine niedrigere, stabile Bildrate fühlt sich flüssiger an als eine, die immer wieder einbricht, bei weniger Wärme und längerer Akkulaufzeit.</string>
     <string name="optimize_cap_yes">Ja, halten</string>
     <string name="optimize_after_cap_held">Bei %1$d fps gehalten: weniger Ruckler, stabilere Leistung</string>
     <string name="optimize_after_cap_removed">Das Halten bei %1$d fps hat nicht geholfen; die Begrenzung wurde entfernt</string>
@@ -1879,7 +1878,6 @@
     <string name="optimize_suggested_performance">Vorschlag: Leistung, weil die Bildrate ihr Ziel nicht hält.</string>
     <string name="optimize_suggested_performance_heat">Vorschlag: Leistung, um die Bildrate mit weniger Wärme zu halten.</string>
     <string name="optimize_suggested_stability">Vorschlag: Stabilität, weil das Spiel ruckelt.</string>
-    <string name="optimize_suggested_balanced">Vorschlag: Ausgewogen, weil keine Grenze besonders hervorsticht.</string>
     <string name="optimize_status_exhausted">Mehr geht auf diesem Gerät nicht</string>
     <string name="optimize_status_waiting">Noch keine sichere Änderung. Wir prüfen später erneut.</string>
     <string name="optimize_continue">Fortsetzen</string>
@@ -1943,7 +1941,6 @@
     <string name="optimize_metric_stable_for">Stabil für</string>
     <string name="optimize_metric_frame_p99">Langsamste Frames</string>
     <string name="optimize_metric_ms_value">%1$d ms</string>
-    <string name="optimize_metric_gpu_work">GPU-Arbeit pro Frame</string>
     <string name="optimize_metric_fps_value">%1$d fps</string>
     <string name="optimize_metric_percent_value">%1$d %%</string>
     <string name="optimize_metric_delta_up">+%1$d %%</string>

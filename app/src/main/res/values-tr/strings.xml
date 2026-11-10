@@ -1908,10 +1908,9 @@
     <string name="optimize_after_crash_undone">Bu değişiklik %1$s ile uyuşmadı, bu yüzden geri alındı.</string>
     <string name="optimize_card_title_gpu">GPU\'nuz %1$s oyununda yetişemedi</string>
     <string name="optimize_card_title_thermal">%1$s ısındı ve kare düşürmeye başladı</string>
-    <string name="optimize_card_title_cpu">%1$s işlemciniz tarafından sınırlanıyor</string>
-    <string name="optimize_card_title_memory">%1$s için bellek tükeniyor</string>
-    <string name="optimize_card_title_present">%1$s ekran senkronizasyonu yüzünden geride kalıyor</string>
-    <string name="optimize_card_title_sync_spin">%1$s içindeki yavaşlama ayarlarından kaynaklanmıyor; üzerinde çalışıyoruz</string>
+    <string name="optimize_card_title_cpu">%1$s akıcı bir kare hızını koruyamadı</string>
+    <string name="optimize_card_title_memory">%1$s sürekli takılıp durakladı</string>
+    <string name="optimize_card_title_present">%1$s düşük bir kare hızında takılı kaldı</string>
     <string name="optimize_card_title_gpu_after">GPU\'nuz %1$s oyununda yetişemedi ve %2$d dk sonra kare düşürmeye başladı</string>
     <string name="optimize_card_title_thermal_after">%1$s ısındı ve %2$d dk sonra kare düşürmeye başladı</string>
     <string name="optimize_evidence_drop">Kare hızı %1$d fps\'ten %2$d fps\'e düştü</string>
@@ -1947,7 +1946,7 @@
     <string name="optimize_status_paused">Duraklatıldı</string>
     <string name="optimize_status_done">İstediğiniz gibi çalışıyor</string>
     <string name="optimize_cap_title">%1$s %2$d fps\'de sabitlensin mi?</string>
-    <string name="optimize_cap_body">Oyun yavaşlamadan daha uzun süre daha az takılmayla çalışır.</string>
+    <string name="optimize_cap_body">Daha düşük ama sabit bir kare hızı, sürekli düşen bir kare hızından daha akıcı hissettirir; ayrıca daha az ısı ve daha uzun pil ömrü sağlar.</string>
     <string name="optimize_cap_yes">Evet, sabitle</string>
     <string name="optimize_after_cap_held">%1$d fps\'de sabit: daha az takılma, daha kararlı performans</string>
     <string name="optimize_after_cap_removed">%1$d fps\'de sabitlemek işe yaramadı; sınır kaldırıldı</string>
@@ -1957,7 +1956,6 @@
     <string name="optimize_suggested_performance">Önerilen: Performans, çünkü kare hızı hedefini tutamıyor.</string>
     <string name="optimize_suggested_performance_heat">Önerilen: Performans, kare hızını daha az ısıyla tutmak için.</string>
     <string name="optimize_suggested_stability">Önerilen: Kararlılık, çünkü oyun takılıyor.</string>
-    <string name="optimize_suggested_balanced">Önerilen: Dengeli, çünkü öne çıkan bir sınır yok.</string>
     <string name="optimize_status_exhausted">Bu cihazda varılabilecek en son nokta</string>
     <string name="optimize_status_waiting">Henüz güvenli bir değişiklik yok. Daha sonra tekrar kontrol edeceğiz.</string>
     <string name="optimize_continue">Sürdür</string>
@@ -2021,7 +2019,6 @@
     <string name="optimize_metric_stable_for">Kararlı süre</string>
     <string name="optimize_metric_frame_p99">En yavaş kareler</string>
     <string name="optimize_metric_ms_value">%1$d ms</string>
-    <string name="optimize_metric_gpu_work">Kare başına GPU işi</string>
     <string name="optimize_metric_fps_value">%1$d FPS</string>
     <string name="optimize_metric_percent_value">%%%1$d</string>
     <string name="optimize_metric_delta_up">+%%%1$d</string>
