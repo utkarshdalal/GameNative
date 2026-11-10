@@ -2160,7 +2160,7 @@ fun XServerScreen(
                     xServerViewInstance.setScanoutLayoutOverride(
                         EnvVars(container.envVars).get("GNDRM_SCANOUT_LAYOUT"),
                     )
-                    xServerToUse.setInputEventSink(GamescopeInputSink())
+                    xServerToUse.setInputEventSink(GamescopeInputSink(xServerToUse.screenInfo))
                     // Ahead of nativeStart: the daemon's mode is the Upscaling Resolution.
                     GamescopeSettings.scanoutSize(container)?.let {
                         GameNativeDrm.nativeSetScanoutGeometry(it[0], it[1])

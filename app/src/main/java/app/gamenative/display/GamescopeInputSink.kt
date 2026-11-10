@@ -1,26 +1,29 @@
 package app.gamenative.display
 
 import com.winlator.xserver.Pointer
+import com.winlator.xserver.ScreenInfo
 import com.winlator.xserver.XKeycode
 import com.winlator.xserver.XServer
 
 /** Gamescope-mode input retarget: Android-injected input is forwarded to gamescope's wayland seat via the gndrm injector (installed with XServer.setInputEventSink); X11 mode installs none. */
-class GamescopeInputSink : XServer.InputEventSink {
-    /** The guest cursor, as this sink has moved it: it starts where the seat's does. */
+class GamescopeInputSink(private val screenInfo: ScreenInfo) : XServer.InputEventSink {
+    /** The guest cursor, as this sink has moved it: it starts where the seat's does, and stops at the screen edges as the seat's does. */
     private var cursorX = 0
     private var cursorY = 0
 
     override fun pointerMove(x: Int, y: Int) {
-        val dx = x - cursorX
-        val dy = y - cursorY
-        cursorX = x
-        cursorY = y
+        val targetX = x.coerceIn(0, screenInfo.width - 1)
+        val targetY = y.coerceIn(0, screenInfo.height - 1)
+        val dx = targetX - cursorX
+        val dy = targetY - cursorY
+        cursorX = targetX
+        cursorY = targetY
         if (dx != 0 || dy != 0) GameNativeDrm.nativePointerMotion(dx, dy)
     }
 
     override fun pointerMoveDelta(dx: Int, dy: Int) {
-        cursorX += dx
-        cursorY += dy
+        cursorX = (cursorX + dx).coerceIn(0, screenInfo.width - 1)
+        cursorY = (cursorY + dy).coerceIn(0, screenInfo.height - 1)
         GameNativeDrm.nativePointerMotion(dx, dy)
     }
 
