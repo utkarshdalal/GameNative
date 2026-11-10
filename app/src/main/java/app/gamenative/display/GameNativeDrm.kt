@@ -168,9 +168,9 @@ object GameNativeDrm {
 
     // -- input injector (no-ops until the injector connects to gamescope) ---
 
-    /** Absolute pointer position in output coordinates. */
+    /** Absolute pointer position: (x, y) on a width x height extent that covers the output. */
     @JvmStatic
-    external fun nativePointerAbsolute(x: Int, y: Int)
+    external fun nativePointerAbsolute(x: Int, y: Int, width: Int, height: Int)
 
     @JvmStatic
     external fun nativePointerMotion(dx: Int, dy: Int)
