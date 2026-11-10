@@ -202,6 +202,8 @@ public class XServer {
 
     /** Optional input retarget (Gamescope mode): every Android-side capture point funnels through these five inject* methods, so this one seam retargets them all. */
     public interface InputEventSink {
+        default void onAttached(XServer xServer) {}
+        default void onDetached(XServer xServer) {}
         void pointerMove(int x, int y);
         void pointerMoveDelta(int dx, int dy);
         void pointerButton(Pointer.Button button, boolean pressed);
@@ -212,7 +214,11 @@ public class XServer {
     private InputEventSink inputEventSink;
 
     public void setInputEventSink(InputEventSink sink) {
+        InputEventSink previous = inputEventSink;
+        if (previous == sink) return;
+        if (previous != null) previous.onDetached(this);
         inputEventSink = sink;
+        if (sink != null) sink.onAttached(this);
     }
 
     public InputEventSink getInputEventSink() {
