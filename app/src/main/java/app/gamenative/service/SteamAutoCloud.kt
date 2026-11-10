@@ -972,12 +972,20 @@ object SteamAutoCloud {
                 }
             }
 
-            val uploadUserFiles: (CoroutineScope) -> Deferred<Unit> = { parentScope ->
+            val uploadUserFiles: (CoroutineScope, Boolean) -> Deferred<Unit> = { parentScope, forceAll ->
                 parentScope.asyncIsolated {
                     Timber.i("Uploading local user files")
 
                     val fileChanges = steamInstance.fileChangeListsDao.getByAppId(appInfo.id).let {
-                        val result = getFilesDiff(allLocalUserFiles, it?.userFileInfo ?: emptyList())
+                        // A rolled-back cloud counter can point at an older remote manifest even
+                        // though our cached snapshot still matches disk. In that case Keep Local
+                        // must re-submit every local file instead of producing an empty diff.
+                        val baseline = if (forceAll) {
+                            emptyList<UserFileInfo>()
+                        } else {
+                            it?.userFileInfo ?: emptyList()
+                        }
+                        val result = getFilesDiff(allLocalUserFiles, baseline)
 
                         result.second
                     }
@@ -1117,7 +1125,7 @@ object SteamAutoCloud {
                         when (preferredSave) {
                             SaveLocation.Local -> {
                                 // overwrite remote save with the local one
-                                uploadUserFiles(parentScope).await()
+                                uploadUserFiles(parentScope, false).await()
                                 // Keep-Local is upload-only; without this, cloud-only files this
                                 // device never had would be orphaned. Pull them down instead.
                                 reconcileNeverSyncedCloudFiles(parentScope).await()
@@ -1155,7 +1163,7 @@ object SteamAutoCloud {
                     if (hasLocalChanges) {
                         Timber.i("Found local changes and no new cloud user files")
 
-                        uploadUserFiles(parentScope).await()
+                        uploadUserFiles(parentScope, false).await()
                     }
 
                     // Equal change numbers normally mean "cloud has nothing new", but an earlier
@@ -1175,14 +1183,51 @@ object SteamAutoCloud {
                     }
                 }.inWholeMicroseconds
             } else {
-                // our last scenario is if the change number we have is greater than
-                // the change number from the cloud. This scenario should not happen, I
-                // believe, since we get the new app change number after having downloaded
-                // or uploaded from/to the cloud, so we should always be either behind or
-                // on par with the cloud change number, never ahead
-                Timber.e("Local change number greater than cloud $localAppChangeNumber > $cloudAppChangeNumber")
+                // Steam can report an older counter after a server-side rollback or stale
+                // manifest response. Do not dead-end launch with UnknownFail: identical files
+                // only need the local counter repaired, while different files need the same
+                // explicit Keep Local / Keep Remote choice as any other two-sided conflict.
+                Timber.w("Local change number greater than cloud $localAppChangeNumber > $cloudAppChangeNumber")
 
-                syncResult = SyncResult.UnknownFail
+                val localByPath = allLocalUserFiles.associate {
+                    it.getAbsPath(prefixToPath).toString().lowercase() to it.sha
+                }
+                val remoteByPath = appFileListChange.files.associate {
+                    getFullFilePath(it, appFileListChange).toString().lowercase() to it.shaFile
+                }
+                val localMatchesRemote = localByPath.keys == remoteByPath.keys &&
+                    localByPath.all { (path, sha) -> sha.contentEquals(remoteByPath[path]) }
+
+                if (localMatchesRemote) {
+                    Timber.i("Cloud counter moved backwards but files match — repairing local sync state")
+                    with(steamInstance) {
+                        db.withTransaction {
+                            fileChangeListsDao.insert(appInfo.id, allLocalUserFiles)
+                            changeNumbersDao.insert(appInfo.id, cloudAppChangeNumber)
+                        }
+                    }
+                    syncResult = SyncResult.UpToDate
+                    filesManaged = allLocalUserFiles.size
+                } else {
+                    when (preferredSave) {
+                        SaveLocation.Local -> {
+                            uploadUserFiles(parentScope, true).await()
+                            reconcileNeverSyncedCloudFiles(parentScope).await()
+                        }
+
+                        SaveLocation.Remote -> {
+                            downloadUserFiles(parentScope).await()?.let {
+                                return@asyncIsolated it
+                            }
+                        }
+
+                        SaveLocation.None -> {
+                            syncResult = SyncResult.Conflict
+                            remoteTimestamp = appFileListChange.files.map { it.timestamp.time }.maxOrNull() ?: 0L
+                            localTimestamp = allLocalUserFiles.map { it.timestamp }.maxOrNull() ?: 0L
+                        }
+                    }
+                }
             }
         }.inWholeMicroseconds
 
