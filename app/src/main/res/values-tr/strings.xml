@@ -1920,7 +1920,18 @@
     <string name="optimize_card_title_memory">%1$s için bellek tükeniyor</string>
     <string name="optimize_card_title_present">%1$s ekran senkronizasyonu yüzünden geride kalıyor</string>
     <string name="optimize_card_title_sync_spin">%1$s içindeki yavaşlama ayarlarından kaynaklanmıyor; üzerinde çalışıyoruz</string>
-    <string name="optimize_card_body">Sizin için ayarlayabiliriz. Değişiklikler geri alınabilir.</string>
+    <string name="optimize_card_title_gpu_after">GPU\'nuz %1$s oyununda yetişemedi ve %2$d dk sonra kare düşürmeye başladı</string>
+    <string name="optimize_card_title_thermal_after">%1$s ısındı ve %2$d dk sonra kare düşürmeye başladı</string>
+    <string name="optimize_evidence_drop">Kare hızı %1$d fps\'ten %2$d fps\'e düştü</string>
+    <string name="optimize_evidence_gpu">Ortalama %1$d fps, GPU kullanımı %%%2$d</string>
+    <string name="optimize_evidence_core">Ortalama %1$d fps, bir işlemci çekirdeği sınırında</string>
+    <string name="optimize_evidence_stutter">Karelerin %%%1$d kadarında takılma oldu</string>
+    <string name="optimize_evidence_fps">Ortalama %1$d fps</string>
+    <string name="optimize_offer_heat">Daha dengeli bir kare hızı ve daha az ısı için ayarlayabiliriz.</string>
+    <string name="optimize_offer_fps">Daha yüksek ve daha dengeli bir kare hızı için ayarlayabiliriz.</string>
+    <string name="optimize_offer_stutter">Daha az takılma ve daha dengeli bir kare hızı için ayarlayabiliriz.</string>
+    <string name="optimize_offer_fps_gain">Yaklaşık %%%1$d daha yüksek kare hızı için ayarlayabiliriz.</string>
+    <string name="optimize_offer_stutter_drop">Yaklaşık %%%1$d daha az takılma için ayarlayabiliriz.</string>
     <string name="optimize_card_not_now">Şimdi değil</string>
     <string name="optimize_card_never">Bu oyun için asla</string>
     <string name="optimize_trial_used_short">Ücretsiz oyunlar kullanıldı</string>
@@ -1973,8 +1984,6 @@
         <item quantity="other">%2$d ücretsiz oyundan %1$d tanesi kullanıldı</item>
     </plurals>
     <string name="optimize_benefit_fps">Daha yüksek kare hızı</string>
-    <string name="optimize_benefit_stutter">Daha az takılma</string>
-    <string name="optimize_benefit_stable_longer">Daha uzun süre istikrarlı performans</string>
     <string name="optimize_benefit_undo">İstediğiniz zaman geri alın</string>
     <string name="optimize_badge_free_to_try">Ücretsiz deneyin</string>
     <string name="optimize_badge_suggested">Önerilen</string>

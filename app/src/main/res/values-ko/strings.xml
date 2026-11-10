@@ -1871,7 +1871,18 @@
     <string name="optimize_card_title_memory">%1$s의 메모리가 부족합니다</string>
     <string name="optimize_card_title_present">%1$s이(가) 화면 동기화에 발목이 잡혀 있습니다</string>
     <string name="optimize_card_title_sync_spin">%1$s의 느려짐은 설정 문제가 아닙니다. 해결 중입니다</string>
-    <string name="optimize_card_body">대신 조정해 드릴 수 있습니다. 변경 사항은 되돌릴 수 있습니다.</string>
+    <string name="optimize_card_title_gpu_after">%1$s에서 GPU가 따라가지 못해 %2$d분 후 프레임이 떨어지기 시작했습니다</string>
+    <string name="optimize_card_title_thermal_after">%1$s이(가) 뜨거워지면서 %2$d분 후 프레임이 떨어지기 시작했습니다</string>
+    <string name="optimize_evidence_drop">프레임 속도가 %1$d fps에서 %2$d fps로 떨어졌습니다</string>
+    <string name="optimize_evidence_gpu">평균 %1$d fps, GPU 사용률 %2$d %%</string>
+    <string name="optimize_evidence_core">평균 %1$d fps, 프로세서 코어 하나가 한계에 도달</string>
+    <string name="optimize_evidence_stutter">프레임의 %1$d %%에서 끊김 발생</string>
+    <string name="optimize_evidence_fps">평균 %1$d fps</string>
+    <string name="optimize_offer_heat">더 안정적인 프레임 속도와 더 적은 발열을 위해 조정해 드릴 수 있습니다.</string>
+    <string name="optimize_offer_fps">더 높고 안정적인 프레임 속도를 위해 조정해 드릴 수 있습니다.</string>
+    <string name="optimize_offer_stutter">끊김을 줄이고 프레임 속도를 더 안정적으로 유지하도록 조정해 드릴 수 있습니다.</string>
+    <string name="optimize_offer_fps_gain">프레임 속도가 약 %1$d %% 높아지도록 조정해 드릴 수 있습니다.</string>
+    <string name="optimize_offer_stutter_drop">끊김이 약 %1$d %% 줄어들도록 조정해 드릴 수 있습니다.</string>
     <string name="optimize_card_not_now">나중에</string>
     <string name="optimize_card_never">이 게임에서는 안 함</string>
     <string name="optimize_trial_used_short">무료 게임 모두 사용</string>
@@ -1921,8 +1932,6 @@
         <item quantity="other">무료 게임 %2$d개 중 %1$d개 사용</item>
     </plurals>
     <string name="optimize_benefit_fps">더 높은 프레임 속도</string>
-    <string name="optimize_benefit_stutter">끊김 감소</string>
-    <string name="optimize_benefit_stable_longer">더 오래 안정적인 성능</string>
     <string name="optimize_benefit_undo">언제든지 되돌리기</string>
     <string name="optimize_badge_free_to_try">무료 체험</string>
     <string name="optimize_badge_suggested">추천</string>

@@ -1882,7 +1882,18 @@
     <string name="optimize_card_title_memory">%1$s rămâne fără memorie</string>
     <string name="optimize_card_title_present">%1$s este frânat de sincronizarea ecranului</string>
     <string name="optimize_card_title_sync_spin">Încetinirea din %1$s nu ține de setările lui; lucrăm la asta</string>
-    <string name="optimize_card_body">Îl putem regla pentru tine. Modificările sunt reversibile.</string>
+    <string name="optimize_card_title_gpu_after">Placa ta grafică nu a ținut pasul în %1$s și a început să piardă cadre după %2$d min</string>
+    <string name="optimize_card_title_thermal_after">%1$s s-a încălzit și a început să piardă cadre după %2$d min</string>
+    <string name="optimize_evidence_drop">Rata de cadre a scăzut de la %1$d la %2$d fps</string>
+    <string name="optimize_evidence_gpu">În medie %1$d fps, cu placa grafică la %2$d %%</string>
+    <string name="optimize_evidence_core">În medie %1$d fps, cu un nucleu al procesorului la limită</string>
+    <string name="optimize_evidence_stutter">%1$d %% dintre cadre au avut sacadări</string>
+    <string name="optimize_evidence_fps">În medie %1$d fps</string>
+    <string name="optimize_offer_heat">Îl putem regla pentru o rată de cadre mai stabilă și mai puțină căldură.</string>
+    <string name="optimize_offer_fps">Îl putem regla pentru o rată de cadre mai mare și mai stabilă.</string>
+    <string name="optimize_offer_stutter">Îl putem regla pentru mai puține sacadări și o rată de cadre mai stabilă.</string>
+    <string name="optimize_offer_fps_gain">Îl putem regla pentru o rată de cadre cu aproximativ %1$d %% mai mare.</string>
+    <string name="optimize_offer_stutter_drop">Îl putem regla pentru cu aproximativ %1$d %% mai puține sacadări.</string>
     <string name="optimize_card_not_now">Nu acum</string>
     <string name="optimize_card_never">Niciodată pentru acest joc</string>
     <string name="optimize_trial_used_short">Jocuri gratuite folosite</string>
@@ -1938,8 +1949,6 @@
         <item quantity="other">%1$d din %2$d de jocuri gratuite folosite</item>
     </plurals>
     <string name="optimize_benefit_fps">Mai multe cadre pe secundă</string>
-    <string name="optimize_benefit_stutter">Mai puține sacadări</string>
-    <string name="optimize_benefit_stable_longer">Performanță stabilă mai mult timp</string>
     <string name="optimize_benefit_undo">Anulezi oricând</string>
     <string name="optimize_badge_free_to_try">Gratuit de încercat</string>
     <string name="optimize_badge_suggested">Sugerat</string>

@@ -708,6 +708,8 @@ data class NextRungResponse(
     val retryAfterSec: Int? = null,
     /** The server's verdict of the metrics block; null from older servers. */
     val verdictServer: ServerVerdict? = null,
+    /** The gain the server expects from tuning this game on this device; null when it has no measured one. */
+    val expected: OptimizeEvidence.Expected? = null,
 ) {
     /** The rules build that answered: the top-level value, else the rung's. */
     val effectiveRulesVersion: String? get() = rulesVersion ?: rung?.rulesVersion
@@ -733,6 +735,7 @@ data class NextRungResponse(
             o.optStringOrNull("rules_version"),
             o.optIntOrNull("retry_after_s")?.takeIf { it >= 0 },
             runCatching { ServerVerdict.parse(o.optJSONObject("verdict_server")) }.getOrNull(),
+            OptimizeEvidence.Expected.parse(o.optJSONObject("expected")),
         )
     }
 }

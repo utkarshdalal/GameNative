@@ -2124,7 +2124,18 @@
     <string name="optimize_card_title_memory">%1$s is running out of memory</string>
     <string name="optimize_card_title_present">%1$s is held back by display sync</string>
     <string name="optimize_card_title_sync_spin">The slowdown in %1$s is not in its settings; we are working on it</string>
-    <string name="optimize_card_body">We can tune it for you. Changes are reversible.</string>
+    <string name="optimize_card_title_gpu_after">Your GPU could not keep up in %1$s and started dropping frames after %2$d min</string>
+    <string name="optimize_card_title_thermal_after">%1$s got hot and started dropping frames after %2$d min</string>
+    <string name="optimize_evidence_drop">Frame rate fell from %1$d to %2$d fps</string>
+    <string name="optimize_evidence_gpu">Averaged %1$d fps with the GPU at %2$d %%</string>
+    <string name="optimize_evidence_core">Averaged %1$d fps with one processor core at its limit</string>
+    <string name="optimize_evidence_stutter">%1$d %% of frames stuttered</string>
+    <string name="optimize_evidence_fps">Averaged %1$d fps</string>
+    <string name="optimize_offer_heat">We can tune it for a steadier frame rate and less heat.</string>
+    <string name="optimize_offer_fps">We can tune it for a higher, steadier frame rate.</string>
+    <string name="optimize_offer_stutter">We can tune it for fewer stutters and a steadier frame rate.</string>
+    <string name="optimize_offer_fps_gain">We can tune it for about %1$d %% higher frame rate.</string>
+    <string name="optimize_offer_stutter_drop">We can tune it for about %1$d %% fewer stutters.</string>
     <string name="optimize_card_not_now">Not now</string>
     <string name="optimize_card_never">Never for this game</string>
     <string name="optimize_trial_used_short">Free games used</string>
@@ -2177,8 +2188,6 @@
         <item quantity="other">%1$d of %2$d free games used</item>
     </plurals>
     <string name="optimize_benefit_fps">Higher frame rate</string>
-    <string name="optimize_benefit_stutter">Fewer stutters</string>
-    <string name="optimize_benefit_stable_longer">More stable performance for longer</string>
     <string name="optimize_benefit_undo">Undo anytime</string>
     <string name="optimize_badge_free_to_try">Free to try</string>
     <string name="optimize_badge_suggested">Suggested</string>

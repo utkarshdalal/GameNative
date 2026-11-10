@@ -1347,7 +1347,10 @@ object OptimizeController {
             val capFromRung = OptimizeCards.capFps(response?.rung?.raw)
             // The server's verdict decides the card when it gives one; otherwise the local block stands.
             val decision = OptimizeServer.firstDecision(offer.localBlock, offer.card, server, capFromRung)
-            val base = decision.card
+            // A first card names the gain the server expects, when it sent one.
+            val base = decision.card?.let { c ->
+                if (c.kind == OptimizeCard.FIRST) c.copy(fpsGainPct = response?.expected?.fpsGainPct, stutterDropPct = response?.expected?.stutterDropPct) else c
+            }
             if (base == null) {
                 if (state != read) store.write(state)
                 return@withLock null to OptimizeCards.cardField(false, decision.block)

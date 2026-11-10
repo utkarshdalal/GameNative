@@ -1830,7 +1830,18 @@ https://gamenative.app
     <string name="optimize_card_title_memory">Игре %1$s не хватает памяти</string>
     <string name="optimize_card_title_present">Игру %1$s сдерживает синхронизация с экраном</string>
     <string name="optimize_card_title_sync_spin">Замедление в игре %1$s связано не с её настройками; мы над этим работаем</string>
-    <string name="optimize_card_body">Мы можем настроить её за вас. Изменения можно отменить.</string>
+    <string name="optimize_card_title_gpu_after">Видеокарта не справлялась в игре %1$s и через %2$d мин начала терять кадры</string>
+    <string name="optimize_card_title_thermal_after">Игра %1$s перегрелась и через %2$d мин начала терять кадры</string>
+    <string name="optimize_evidence_drop">Частота кадров упала с %1$d до %2$d fps</string>
+    <string name="optimize_evidence_gpu">В среднем %1$d fps при загрузке видеокарты %2$d %%</string>
+    <string name="optimize_evidence_core">В среднем %1$d fps, одно ядро процессора на пределе</string>
+    <string name="optimize_evidence_stutter">%1$d %% кадров с подтормаживаниями</string>
+    <string name="optimize_evidence_fps">В среднем %1$d fps</string>
+    <string name="optimize_offer_heat">Мы можем настроить её для более стабильной частоты кадров и меньшего нагрева.</string>
+    <string name="optimize_offer_fps">Мы можем настроить её для более высокой и стабильной частоты кадров.</string>
+    <string name="optimize_offer_stutter">Мы можем настроить её, чтобы было меньше подтормаживаний и стабильнее частота кадров.</string>
+    <string name="optimize_offer_fps_gain">Мы можем настроить её, чтобы частота кадров стала примерно на %1$d %% выше.</string>
+    <string name="optimize_offer_stutter_drop">Мы можем настроить её, чтобы подтормаживаний стало примерно на %1$d %% меньше.</string>
     <string name="optimize_card_not_now">Не сейчас</string>
     <string name="optimize_card_never">Никогда для этой игры</string>
     <string name="optimize_trial_used_short">Бесплатные игры использованы</string>
@@ -1889,8 +1900,6 @@ https://gamenative.app
         <item quantity="other">Использовано %1$d из %2$d бесплатной игры</item>
     </plurals>
     <string name="optimize_benefit_fps">Более высокий FPS</string>
-    <string name="optimize_benefit_stutter">Меньше подтормаживаний</string>
-    <string name="optimize_benefit_stable_longer">Стабильная производительность дольше</string>
     <string name="optimize_benefit_undo">Можно отменить в любой момент</string>
     <string name="optimize_badge_free_to_try">Попробуйте бесплатно</string>
     <string name="optimize_badge_suggested">Рекомендуется</string>

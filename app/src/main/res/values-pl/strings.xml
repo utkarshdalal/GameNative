@@ -1906,7 +1906,18 @@
     <string name="optimize_card_title_memory">Grze %1$s kończy się pamięć</string>
     <string name="optimize_card_title_present">Grę %1$s hamuje synchronizacja ekranu</string>
     <string name="optimize_card_title_sync_spin">Spowolnienie w %1$s nie wynika z ustawień gry; pracujemy nad tym</string>
-    <string name="optimize_card_body">Możemy ją dostroić za ciebie. Zmiany można cofnąć.</string>
+    <string name="optimize_card_title_gpu_after">Twój GPU nie nadążał w %1$s i po %2$d min zaczął gubić klatki</string>
+    <string name="optimize_card_title_thermal_after">Gra %1$s nagrzała się i po %2$d min zaczęła gubić klatki</string>
+    <string name="optimize_evidence_drop">Liczba klatek spadła z %1$d do %2$d fps</string>
+    <string name="optimize_evidence_gpu">Średnio %1$d fps przy obciążeniu GPU %2$d %%</string>
+    <string name="optimize_evidence_core">Średnio %1$d fps, jeden rdzeń procesora na granicy możliwości</string>
+    <string name="optimize_evidence_stutter">%1$d %% klatek z przycięciami</string>
+    <string name="optimize_evidence_fps">Średnio %1$d fps</string>
+    <string name="optimize_offer_heat">Możemy ją dostroić, aby uzyskać stabilniejszą liczbę klatek i mniejsze nagrzewanie.</string>
+    <string name="optimize_offer_fps">Możemy ją dostroić, aby uzyskać wyższą i stabilniejszą liczbę klatek.</string>
+    <string name="optimize_offer_stutter">Możemy ją dostroić, aby uzyskać mniej przycięć i stabilniejszą liczbę klatek.</string>
+    <string name="optimize_offer_fps_gain">Możemy ją dostroić, aby uzyskać liczbę klatek wyższą o około %1$d %%.</string>
+    <string name="optimize_offer_stutter_drop">Możemy ją dostroić, aby uzyskać około %1$d %% mniej przycięć.</string>
     <string name="optimize_card_not_now">Nie teraz</string>
     <string name="optimize_card_never">Nigdy dla tej gry</string>
     <string name="optimize_trial_used_short">Darmowe gry wykorzystane</string>
@@ -1965,8 +1976,6 @@
         <item quantity="other">Wykorzystano %1$d z %2$d darmowych gier</item>
     </plurals>
     <string name="optimize_benefit_fps">Wyższa liczba klatek</string>
-    <string name="optimize_benefit_stutter">Mniej przycięć</string>
-    <string name="optimize_benefit_stable_longer">Stabilna wydajność przez dłuższy czas</string>
     <string name="optimize_benefit_undo">Cofniesz w każdej chwili</string>
     <string name="optimize_badge_free_to_try">Wypróbuj za darmo</string>
     <string name="optimize_badge_suggested">Sugerowany</string>

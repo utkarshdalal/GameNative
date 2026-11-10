@@ -2111,7 +2111,18 @@
     <string name="optimize_card_title_memory">%1$s のメモリが不足しています</string>
     <string name="optimize_card_title_present">%1$s は画面同期で抑えられています</string>
     <string name="optimize_card_title_sync_spin">%1$s の遅さは設定が原因ではありません。現在対応中です</string>
-    <string name="optimize_card_body">こちらで調整できます。変更は元に戻せます。</string>
+    <string name="optimize_card_title_gpu_after">%1$s でGPUの処理が追いつかず、%2$d 分後にフレームが落ち始めました</string>
+    <string name="optimize_card_title_thermal_after">%1$s が熱くなり、%2$d 分後にフレームが落ち始めました</string>
+    <string name="optimize_evidence_drop">フレームレートが %1$d fps から %2$d fps に低下しました</string>
+    <string name="optimize_evidence_gpu">平均 %1$d fps、GPU使用率 %2$d %%</string>
+    <string name="optimize_evidence_core">平均 %1$d fps、プロセッサーのコア1つが限界に達していました</string>
+    <string name="optimize_evidence_stutter">フレームの %1$d %% でカクつきが発生しました</string>
+    <string name="optimize_evidence_fps">平均 %1$d fps</string>
+    <string name="optimize_offer_heat">フレームレートをより安定させ、発熱を抑えるよう調整できます。</string>
+    <string name="optimize_offer_fps">フレームレートをより高く、より安定させるよう調整できます。</string>
+    <string name="optimize_offer_stutter">カクつきを減らし、フレームレートをより安定させるよう調整できます。</string>
+    <string name="optimize_offer_fps_gain">フレームレートを約 %1$d %% 向上させるよう調整できます。</string>
+    <string name="optimize_offer_stutter_drop">カクつきを約 %1$d %% 減らすよう調整できます。</string>
     <string name="optimize_card_not_now">今はしない</string>
     <string name="optimize_card_never">このゲームでは表示しない</string>
     <string name="optimize_trial_used_short">無料ゲームを使用済み</string>
@@ -2161,8 +2172,6 @@
         <item quantity="other">無料ゲーム %2$d 本中 %1$d 本を使用済み</item>
     </plurals>
     <string name="optimize_benefit_fps">フレームレートが向上</string>
-    <string name="optimize_benefit_stutter">カクつきが減少</string>
-    <string name="optimize_benefit_stable_longer">安定したパフォーマンスがより長く続く</string>
     <string name="optimize_benefit_undo">いつでも元に戻せます</string>
     <string name="optimize_badge_free_to_try">無料でお試し</string>
     <string name="optimize_badge_suggested">おすすめ</string>

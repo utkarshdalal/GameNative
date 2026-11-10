@@ -56,6 +56,7 @@ import app.gamenative.optimize.Metrics
 import app.gamenative.optimize.OptimizeCard
 import app.gamenative.optimize.OptimizeCards
 import app.gamenative.optimize.OptimizeController
+import app.gamenative.optimize.OptimizeEvidence
 import app.gamenative.optimize.OptimizeProfile
 import app.gamenative.optimize.OptimizeTarget
 import app.gamenative.ui.component.BenefitRow
@@ -78,14 +79,38 @@ fun OptimizeCardHost(gameRunning: Boolean, blocked: Boolean) {
     OptimizeCardDialog(current)
 }
 
+/** The diagnosis; [afterMin] is how long the session ran before frames started dropping, when it did. */
 @Composable
-private fun firstCardTitle(cls: String?, name: String): String = when (cls) {
-    "gpu" -> stringResource(R.string.optimize_card_title_gpu, name)
-    "thermal_gpu" -> stringResource(R.string.optimize_card_title_thermal, name)
+private fun firstCardTitle(cls: String?, name: String, afterMin: Int? = null): String = when (cls) {
+    "gpu" -> afterMin?.let { stringResource(R.string.optimize_card_title_gpu_after, name, it) }
+        ?: stringResource(R.string.optimize_card_title_gpu, name)
+    "thermal_gpu" -> afterMin?.let { stringResource(R.string.optimize_card_title_thermal_after, name, it) }
+        ?: stringResource(R.string.optimize_card_title_thermal, name)
     "cpu_single", "cpu_multi" -> stringResource(R.string.optimize_card_title_cpu, name)
     "memory" -> stringResource(R.string.optimize_card_title_memory, name)
     "present_locked" -> stringResource(R.string.optimize_card_title_present, name)
     else -> stringResource(R.string.optimize_card_title_sync_spin, name)
+}
+
+/** What the session measured, under the diagnosis. */
+@Composable
+private fun evidenceText(line: OptimizeEvidence.Line?): String? = when (line) {
+    null -> null
+    is OptimizeEvidence.Line.Drop -> stringResource(R.string.optimize_evidence_drop, line.from, line.to)
+    is OptimizeEvidence.Line.Gpu -> stringResource(R.string.optimize_evidence_gpu, line.fps, line.gpuPct)
+    is OptimizeEvidence.Line.Core -> stringResource(R.string.optimize_evidence_core, line.fps)
+    is OptimizeEvidence.Line.Stutter -> stringResource(R.string.optimize_evidence_stutter, line.pct)
+    is OptimizeEvidence.Line.Fps -> stringResource(R.string.optimize_evidence_fps, line.fps)
+}
+
+/** The outcome tuning is offered for, with the expected gain when the server sent one. */
+@Composable
+private fun offerText(offer: OptimizeEvidence.Offer): String = when (offer) {
+    OptimizeEvidence.Offer.Heat -> stringResource(R.string.optimize_offer_heat)
+    OptimizeEvidence.Offer.Fps -> stringResource(R.string.optimize_offer_fps)
+    OptimizeEvidence.Offer.Stutter -> stringResource(R.string.optimize_offer_stutter)
+    is OptimizeEvidence.Offer.FpsGain -> stringResource(R.string.optimize_offer_fps_gain, offer.pct)
+    is OptimizeEvidence.Offer.StutterDrop -> stringResource(R.string.optimize_offer_stutter_drop, offer.pct)
 }
 
 /** Why a profile is suggested, in outcome words; [reason] is an [OptimizeCards] REASON_ id. */
@@ -126,6 +151,8 @@ private data class CardSpec(
     val title: String,
     val accent: OptimizeAccent,
     val subtitle: String? = null,
+    /** The offer in one sentence, under the title and its evidence. */
+    val body: String? = null,
     val statusPill: Pair<String, Color>? = null,
     val showEntitlement: Boolean = false,
     val benefits: List<CardBenefit> = emptyList(),
@@ -139,22 +166,6 @@ private data class CardSpec(
 @Composable
 private fun undoBenefit(): CardBenefit =
     CardBenefit(stringResource(R.string.optimize_benefit_undo), Icons.AutoMirrored.Filled.Undo, PluviaTheme.colors.accentSuccess)
-
-/** What tuning brings for the diagnosis on a first card, in outcome words, always ending with undo. */
-@Composable
-private fun benefitsFor(cls: String?): List<CardBenefit> {
-    val fps = CardBenefit(stringResource(R.string.optimize_benefit_fps), Icons.Filled.Speed, PluviaTheme.colors.accentCyan)
-    val stutter = CardBenefit(stringResource(R.string.optimize_benefit_stutter), Icons.Filled.GraphicEq, PluviaTheme.colors.accentPurple)
-    val stable = CardBenefit(stringResource(R.string.optimize_benefit_stable_longer), Icons.Filled.Thermostat, PluviaTheme.colors.accentWarning)
-    val undo = undoBenefit()
-    return when (cls) {
-        "thermal_gpu" -> listOf(stable, fps, undo)
-        "memory" -> listOf(stutter, stable.copy(tint = PluviaTheme.colors.accentPink), undo)
-        "present_locked" -> listOf(stutter, fps, undo)
-        OptimizeCards.SYNC_SPIN -> emptyList()
-        else -> listOf(fps, stutter, undo)
-    }
-}
 
 @Composable
 private fun fpsValue(fps: Double): String = stringResource(R.string.optimize_metric_fps_value, fps.roundToInt())
@@ -269,11 +280,12 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
             )
         } else {
             CardSpec(
-                title = firstCardTitle(card.cls, name),
+                title = firstCardTitle(card.cls, name, OptimizeEvidence.droppedAfterMin(card.cls, card.metrics)),
                 accent = optimizeAccentFor(card.cls),
-                subtitle = card.reason?.let { optimizeSuggestedText(it) },
+                subtitle = evidenceText(OptimizeEvidence.line(card.cls, card.metrics)),
+                body = offerText(OptimizeEvidence.offer(card.cls, card.metrics, card.fpsGainPct, card.stutterDropPct)),
                 showEntitlement = showEntitlement,
-                benefits = benefitsFor(card.cls),
+                benefits = listOf(undoBenefit()),
                 primary = CardAction(stringResource(R.string.option_optimize), subtitle = stringResource(chosen.title)) {
                     if (!choosing) {
                         choosing = true
@@ -397,6 +409,7 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
                 OptimizeChooser(
                     selected = chosen,
                     suggested = suggested,
+                    reason = card.reason?.takeIf { card.kind == OptimizeCard.FIRST }?.let { optimizeSuggestedText(it) },
                     onSelect = { chosen = it },
                 )
             }
@@ -410,6 +423,7 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
 private fun OptimizeChooser(
     selected: OptimizeProfile,
     suggested: OptimizeProfile?,
+    reason: String?,
     onSelect: (OptimizeProfile) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -417,8 +431,16 @@ private fun OptimizeChooser(
             text = stringResource(R.string.optimize_choose_goal),
             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(bottom = 8.dp),
+            modifier = Modifier.padding(bottom = if (reason == null) 8.dp else 2.dp),
         )
+        reason?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodySmall,
+                color = PluviaTheme.colors.textMuted,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+        }
         OptimizeGoalCards(
             selected = selected,
             suggested = suggested,
@@ -457,6 +479,14 @@ private fun OptimizeCardLayout(
                 style = MaterialTheme.typography.bodySmall,
                 color = PluviaTheme.colors.textMuted,
                 modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+        spec.body?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(top = 10.dp),
             )
         }
         spec.statusPill?.let { (text, color) -> OptimizeLabel(text = text, color = color, modifier = Modifier.padding(top = 6.dp)) }

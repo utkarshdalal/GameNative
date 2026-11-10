@@ -1772,7 +1772,18 @@
     <string name="optimize_card_title_memory">%1$s er ved at løbe tør for hukommelse</string>
     <string name="optimize_card_title_present">%1$s holdes tilbage af skærmsynkronisering</string>
     <string name="optimize_card_title_sync_spin">Opbremsningen i %1$s skyldes ikke dens indstillinger; vi arbejder på det</string>
-    <string name="optimize_card_body">Vi kan finjustere det for dig. Ændringerne kan fortrydes.</string>
+    <string name="optimize_card_title_gpu_after">Din GPU kunne ikke følge med i %1$s og begyndte at tabe billeder efter %2$d min</string>
+    <string name="optimize_card_title_thermal_after">%1$s blev varm og begyndte at tabe billeder efter %2$d min</string>
+    <string name="optimize_evidence_drop">Billedhastigheden faldt fra %1$d til %2$d fps</string>
+    <string name="optimize_evidence_gpu">%1$d fps i gennemsnit med GPU\'en på %2$d %%</string>
+    <string name="optimize_evidence_core">%1$d fps i gennemsnit med én processorkerne på sin grænse</string>
+    <string name="optimize_evidence_stutter">%1$d %% af billederne hakkede</string>
+    <string name="optimize_evidence_fps">%1$d fps i gennemsnit</string>
+    <string name="optimize_offer_heat">Vi kan finjustere det til en mere stabil billedhastighed og mindre varme.</string>
+    <string name="optimize_offer_fps">Vi kan finjustere det til en højere og mere stabil billedhastighed.</string>
+    <string name="optimize_offer_stutter">Vi kan finjustere det til færre hak og en mere stabil billedhastighed.</string>
+    <string name="optimize_offer_fps_gain">Vi kan finjustere det til omkring %1$d %% højere billedhastighed.</string>
+    <string name="optimize_offer_stutter_drop">Vi kan finjustere det til omkring %1$d %% færre hak.</string>
     <string name="optimize_card_not_now">Ikke nu</string>
     <string name="optimize_card_never">Aldrig for dette spil</string>
     <string name="optimize_trial_used_short">Gratis spil brugt</string>
@@ -1825,8 +1836,6 @@
         <item quantity="other">%1$d af %2$d gratis spil brugt</item>
     </plurals>
     <string name="optimize_benefit_fps">Højere billedhastighed</string>
-    <string name="optimize_benefit_stutter">Færre hak</string>
-    <string name="optimize_benefit_stable_longer">Mere stabil ydeevne i længere tid</string>
     <string name="optimize_benefit_undo">Fortryd når som helst</string>
     <string name="optimize_badge_free_to_try">Gratis at prøve</string>
     <string name="optimize_badge_suggested">Foreslået</string>

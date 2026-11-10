@@ -1842,7 +1842,18 @@
     <string name="optimize_card_title_memory">%1$s geht der Arbeitsspeicher aus</string>
     <string name="optimize_card_title_present">%1$s wird von der Bildsynchronisierung ausgebremst</string>
     <string name="optimize_card_title_sync_spin">Die Verlangsamung in %1$s liegt nicht an den Einstellungen; wir arbeiten daran</string>
-    <string name="optimize_card_body">Wir können es für dich abstimmen. Änderungen lassen sich rückgängig machen.</string>
+    <string name="optimize_card_title_gpu_after">Deine GPU kam in %1$s nicht hinterher und begann nach %2$d Min., Bilder zu verlieren</string>
+    <string name="optimize_card_title_thermal_after">%1$s wurde heiß und begann nach %2$d Min., Bilder zu verlieren</string>
+    <string name="optimize_evidence_drop">Die Bildrate fiel von %1$d auf %2$d fps</string>
+    <string name="optimize_evidence_gpu">Im Schnitt %1$d fps bei %2$d %% GPU-Auslastung</string>
+    <string name="optimize_evidence_core">Im Schnitt %1$d fps, ein Prozessorkern am Limit</string>
+    <string name="optimize_evidence_stutter">%1$d %% der Frames ruckelten</string>
+    <string name="optimize_evidence_fps">Im Schnitt %1$d fps</string>
+    <string name="optimize_offer_heat">Wir können es auf eine stabilere Bildrate und weniger Wärme abstimmen.</string>
+    <string name="optimize_offer_fps">Wir können es auf eine höhere, stabilere Bildrate abstimmen.</string>
+    <string name="optimize_offer_stutter">Wir können es auf weniger Ruckler und eine stabilere Bildrate abstimmen.</string>
+    <string name="optimize_offer_fps_gain">Wir können es auf etwa %1$d %% mehr Bildrate abstimmen.</string>
+    <string name="optimize_offer_stutter_drop">Wir können es auf etwa %1$d %% weniger Ruckler abstimmen.</string>
     <string name="optimize_card_not_now">Nicht jetzt</string>
     <string name="optimize_card_never">Nie für dieses Spiel</string>
     <string name="optimize_trial_used_short">Kostenlose Spiele genutzt</string>
@@ -1895,8 +1906,6 @@
         <item quantity="other">%1$d von %2$d kostenlosen Spielen genutzt</item>
     </plurals>
     <string name="optimize_benefit_fps">Höhere Bildrate</string>
-    <string name="optimize_benefit_stutter">Weniger Ruckler</string>
-    <string name="optimize_benefit_stable_longer">Länger stabile Leistung</string>
     <string name="optimize_benefit_undo">Jederzeit rückgängig machen</string>
     <string name="optimize_badge_free_to_try">Kostenlos testen</string>
     <string name="optimize_badge_suggested">Empfohlen</string>

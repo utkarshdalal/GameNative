@@ -1893,7 +1893,18 @@
     <string name="optimize_card_title_memory">%1$s sta esaurendo la memoria</string>
     <string name="optimize_card_title_present">%1$s è frenato dalla sincronizzazione dello schermo</string>
     <string name="optimize_card_title_sync_spin">Il rallentamento in %1$s non dipende dalle sue impostazioni; ci stiamo lavorando</string>
-    <string name="optimize_card_body">Possiamo regolarlo per te. Le modifiche sono reversibili.</string>
+    <string name="optimize_card_title_gpu_after">La tua GPU non riusciva a tenere il passo in %1$s e ha iniziato a perdere fotogrammi dopo %2$d min</string>
+    <string name="optimize_card_title_thermal_after">%1$s si è scaldato e ha iniziato a perdere fotogrammi dopo %2$d min</string>
+    <string name="optimize_evidence_drop">Il frame rate è sceso da %1$d a %2$d fps</string>
+    <string name="optimize_evidence_gpu">Media di %1$d fps con la GPU al %2$d %%</string>
+    <string name="optimize_evidence_core">Media di %1$d fps con un core del processore al limite</string>
+    <string name="optimize_evidence_stutter">Il %1$d %% dei fotogrammi ha avuto scatti</string>
+    <string name="optimize_evidence_fps">Media di %1$d fps</string>
+    <string name="optimize_offer_heat">Possiamo regolarlo per un frame rate più stabile e meno calore.</string>
+    <string name="optimize_offer_fps">Possiamo regolarlo per un frame rate più alto e più stabile.</string>
+    <string name="optimize_offer_stutter">Possiamo regolarlo per meno scatti e un frame rate più stabile.</string>
+    <string name="optimize_offer_fps_gain">Possiamo regolarlo per un frame rate più alto di circa il %1$d %%.</string>
+    <string name="optimize_offer_stutter_drop">Possiamo regolarlo per circa il %1$d %% di scatti in meno.</string>
     <string name="optimize_card_not_now">Non ora</string>
     <string name="optimize_card_never">Mai per questo gioco</string>
     <string name="optimize_trial_used_short">Giochi gratuiti usati</string>
@@ -1946,8 +1957,6 @@
         <item quantity="other">%1$d di %2$d giochi gratuiti usati</item>
     </plurals>
     <string name="optimize_benefit_fps">Frame rate più alto</string>
-    <string name="optimize_benefit_stutter">Meno scatti</string>
-    <string name="optimize_benefit_stable_longer">Prestazioni stabili più a lungo</string>
     <string name="optimize_benefit_undo">Annulla quando vuoi</string>
     <string name="optimize_badge_free_to_try">Prova gratis</string>
     <string name="optimize_badge_suggested">Consigliato</string>

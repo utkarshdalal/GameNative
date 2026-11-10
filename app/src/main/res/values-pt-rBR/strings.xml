@@ -1772,7 +1772,18 @@
     <string name="optimize_card_title_memory">%1$s está ficando sem memória</string>
     <string name="optimize_card_title_present">%1$s está sendo segurado pela sincronização da tela</string>
     <string name="optimize_card_title_sync_spin">A lentidão em %1$s não está nas configurações; estamos trabalhando nisso</string>
-    <string name="optimize_card_body">Podemos ajustar para você. As mudanças são reversíveis.</string>
+    <string name="optimize_card_title_gpu_after">Sua GPU não conseguiu acompanhar em %1$s e começou a perder quadros após %2$d min</string>
+    <string name="optimize_card_title_thermal_after">%1$s esquentou e começou a perder quadros após %2$d min</string>
+    <string name="optimize_evidence_drop">A taxa de quadros caiu de %1$d para %2$d fps</string>
+    <string name="optimize_evidence_gpu">Média de %1$d fps com a GPU em %2$d %%</string>
+    <string name="optimize_evidence_core">Média de %1$d fps com um núcleo do processador no limite</string>
+    <string name="optimize_evidence_stutter">%1$d %% dos quadros tiveram travadas</string>
+    <string name="optimize_evidence_fps">Média de %1$d fps</string>
+    <string name="optimize_offer_heat">Podemos ajustar para uma taxa de quadros mais estável e menos calor.</string>
+    <string name="optimize_offer_fps">Podemos ajustar para uma taxa de quadros mais alta e mais estável.</string>
+    <string name="optimize_offer_stutter">Podemos ajustar para menos travadas e uma taxa de quadros mais estável.</string>
+    <string name="optimize_offer_fps_gain">Podemos ajustar para uma taxa de quadros cerca de %1$d %% mais alta.</string>
+    <string name="optimize_offer_stutter_drop">Podemos ajustar para cerca de %1$d %% menos travadas.</string>
     <string name="optimize_card_not_now">Agora não</string>
     <string name="optimize_card_never">Nunca para este jogo</string>
     <string name="optimize_trial_used_short">Jogos grátis usados</string>
@@ -1825,8 +1836,6 @@
         <item quantity="other">%1$d de %2$d jogos grátis usados</item>
     </plurals>
     <string name="optimize_benefit_fps">Taxa de quadros mais alta</string>
-    <string name="optimize_benefit_stutter">Menos travadas</string>
-    <string name="optimize_benefit_stable_longer">Desempenho estável por mais tempo</string>
     <string name="optimize_benefit_undo">Desfaça quando quiser</string>
     <string name="optimize_badge_free_to_try">Grátis para testar</string>
     <string name="optimize_badge_suggested">Sugerido</string>

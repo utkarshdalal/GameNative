@@ -1867,7 +1867,18 @@
     <string name="optimize_card_title_memory">%1$s 内存不足</string>
     <string name="optimize_card_title_present">%1$s 受到显示同步的拖累</string>
     <string name="optimize_card_title_sync_spin">%1$s 的卡顿与其设置无关，我们正在处理</string>
-    <string name="optimize_card_body">我们可以帮你调整。所有更改都可以撤销。</string>
+    <string name="optimize_card_title_gpu_after">你的 GPU 运行 %1$s 时跟不上，%2$d 分钟后开始掉帧</string>
+    <string name="optimize_card_title_thermal_after">%1$s 运行时发热，%2$d 分钟后开始掉帧</string>
+    <string name="optimize_evidence_drop">帧率从 %1$d fps 降到 %2$d fps</string>
+    <string name="optimize_evidence_gpu">平均 %1$d fps，GPU 占用 %2$d%%</string>
+    <string name="optimize_evidence_core">平均 %1$d fps，一个处理器核心已到极限</string>
+    <string name="optimize_evidence_stutter">%1$d%% 的帧出现卡顿</string>
+    <string name="optimize_evidence_fps">平均 %1$d fps</string>
+    <string name="optimize_offer_heat">我们可以帮你调整，让帧率更稳、发热更少。</string>
+    <string name="optimize_offer_fps">我们可以帮你调整，让帧率更高、更稳。</string>
+    <string name="optimize_offer_stutter">我们可以帮你调整，让卡顿更少、帧率更稳。</string>
+    <string name="optimize_offer_fps_gain">我们可以帮你调整，让帧率提高约 %1$d%%。</string>
+    <string name="optimize_offer_stutter_drop">我们可以帮你调整，让卡顿减少约 %1$d%%。</string>
     <string name="optimize_card_not_now">以后再说</string>
     <string name="optimize_card_never">此游戏不再提示</string>
     <string name="optimize_trial_used_short">免费游戏已用完</string>
@@ -1917,8 +1928,6 @@
         <item quantity="other">已使用 %1$d/%2$d 款免费游戏</item>
     </plurals>
     <string name="optimize_benefit_fps">更高的帧率</string>
-    <string name="optimize_benefit_stutter">卡顿更少</string>
-    <string name="optimize_benefit_stable_longer">更持久的稳定性能</string>
     <string name="optimize_benefit_undo">随时可以撤销</string>
     <string name="optimize_badge_free_to_try">免费试用</string>
     <string name="optimize_badge_suggested">推荐</string>

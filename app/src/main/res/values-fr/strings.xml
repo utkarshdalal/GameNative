@@ -1920,7 +1920,18 @@
     <string name="optimize_card_title_memory">%1$s manque de mémoire</string>
     <string name="optimize_card_title_present">%1$s est freiné par la synchronisation de l\'affichage</string>
     <string name="optimize_card_title_sync_spin">Le ralentissement dans %1$s ne vient pas de ses réglages ; nous y travaillons</string>
-    <string name="optimize_card_body">Nous pouvons l\'ajuster pour vous. Les modifications sont réversibles.</string>
+    <string name="optimize_card_title_gpu_after">Votre GPU n\'a pas pu suivre dans %1$s et a commencé à perdre des images après %2$d min</string>
+    <string name="optimize_card_title_thermal_after">%1$s a chauffé et a commencé à perdre des images après %2$d min</string>
+    <string name="optimize_evidence_drop">La fréquence d\'images est passée de %1$d à %2$d fps</string>
+    <string name="optimize_evidence_gpu">%1$d fps en moyenne avec le GPU à %2$d %%</string>
+    <string name="optimize_evidence_core">%1$d fps en moyenne avec un cœur du processeur à sa limite</string>
+    <string name="optimize_evidence_stutter">%1$d %% des images ont saccadé</string>
+    <string name="optimize_evidence_fps">%1$d fps en moyenne</string>
+    <string name="optimize_offer_heat">Nous pouvons l\'ajuster pour une fréquence d\'images plus stable et moins de chaleur.</string>
+    <string name="optimize_offer_fps">Nous pouvons l\'ajuster pour une fréquence d\'images plus élevée et plus stable.</string>
+    <string name="optimize_offer_stutter">Nous pouvons l\'ajuster pour moins de saccades et une fréquence d\'images plus stable.</string>
+    <string name="optimize_offer_fps_gain">Nous pouvons l\'ajuster pour environ %1$d %% d\'images par seconde en plus.</string>
+    <string name="optimize_offer_stutter_drop">Nous pouvons l\'ajuster pour environ %1$d %% de saccades en moins.</string>
     <string name="optimize_card_not_now">Pas maintenant</string>
     <string name="optimize_card_never">Jamais pour ce jeu</string>
     <string name="optimize_trial_used_short">Jeux gratuits utilisés</string>
@@ -1973,8 +1984,6 @@
         <item quantity="other">%1$d sur %2$d jeux gratuits utilisés</item>
     </plurals>
     <string name="optimize_benefit_fps">Plus d\'images par seconde</string>
-    <string name="optimize_benefit_stutter">Moins de saccades</string>
-    <string name="optimize_benefit_stable_longer">Des performances stables plus longtemps</string>
     <string name="optimize_benefit_undo">Annulable à tout moment</string>
     <string name="optimize_badge_free_to_try">Essai gratuit</string>
     <string name="optimize_badge_suggested">Suggéré</string>
