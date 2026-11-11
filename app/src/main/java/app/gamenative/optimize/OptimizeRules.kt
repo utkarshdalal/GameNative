@@ -82,6 +82,24 @@ object OptimizeLadders {
     fun baselineAfterRestore(ladder: ProfileLadder): Metrics? =
         ladder.kept.firstOrNull()?.before ?: ladder.pending?.baseline ?: ladder.baselineOverride
 
+    /**
+     * The game once Restore took every change off: every goal starts over, with no tried history, no-change streak,
+     * kept baseline or no-rule hold, and goals other than [profile] go idle. Steps that crashed or froze the game stay
+     * tried and bad, so they are never offered again. [profile] goes to [nextState] with [baseline], the session on the
+     * original settings.
+     */
+    fun restarted(state: OptimizeLocalState, profile: OptimizeProfile, nextState: LadderState, baseline: Metrics?): OptimizeLocalState {
+        val profiles = (state.profiles + (profile to state.ladder(profile))).mapValues { (p, ladder) ->
+            ladder.copy(
+                state = if (p == profile) nextState else LadderState.IDLE,
+                tried = ladder.tried.filter { it.result == OptimizeJudge.CRASH },
+                noChangeStreak = 0,
+                baselineOverride = baseline.takeIf { p == profile },
+            )
+        }
+        return state.copy(profiles = profiles, noRule = null, prefetched = null)
+    }
+
     /** Keep tuning or Continue: the ladder tries again with a fresh no-change streak, recorded as card_action continue. */
     fun resumed(state: OptimizeLocalState): OptimizeLocalState {
         val profile = state.activeProfile ?: return state

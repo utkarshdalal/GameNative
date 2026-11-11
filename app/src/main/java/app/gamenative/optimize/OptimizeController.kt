@@ -1715,7 +1715,10 @@ object OptimizeController {
             switchTo(context, appId, container, store, state, profile.takeIf { it != OptimizeProfile.OFF }, doneCard = false, doneAtPick = false)
         }
 
-    /** Takes the active profile's changes off and forgets what it kept; what it tried stays, and the profile stays active. */
+    /**
+     * Takes the active profile's changes off and forgets what it kept, and the profile stays active. What it tried stays,
+     * unless [fresh]: then, once everything came off, every goal starts over ([OptimizeLadders.restarted]).
+     */
     private suspend fun restore(
         context: Context,
         appId: String,
@@ -1723,6 +1726,7 @@ object OptimizeController {
         store: OptimizeStore,
         state: OptimizeLocalState,
         nextState: LadderState,
+        fresh: Boolean = false,
     ): Pair<OptimizeLocalState, Boolean> {
         val profile = state.activeProfile ?: return (state to true)
         var s = state
@@ -1756,21 +1760,22 @@ object OptimizeController {
         if (reverted.isNotEmpty()) event(appId, OptimizeEvents.RESTORED, s, profile)
         Timber.tag(TAG).i(
             "Optimize: restore ${profile.wireId} reverted ${reverted.ifEmpty { listOf("nothing") }.joinToString()}" +
-                if (ok) "; ladder ${nextState.wireId}" else "; some changes failed to come off",
+                if (ok) "; ladder ${nextState.wireId}${if (fresh) ", starting over" else ""}" else "; some changes failed to come off",
         )
+        if (ok && fresh) return OptimizeLadders.restarted(s.withLadder(profile, ladder), profile, nextState, original) to true
         return s.withLadder(profile, ladder) to ok
     }
 
     /**
-     * "Restore original settings": the profile stays active and paused, so Continue picks it up again.
-     * With nothing on to take off, the ladder is left as it is.
+     * "Restore original settings": the profile stays active and paused, so Continue picks it up again, and every goal
+     * starts over. With nothing on to take off, the ladder is left as it is.
      */
     suspend fun restoreOriginal(context: Context, appId: String): ChangeResult =
         change(context, appId, touchesFiles = true, what = "restoring original settings") { container, store, state ->
             if (!OptimizeLadders.hasRestorable(state.active)) {
                 state to true
             } else {
-                restore(context, appId, container, store, state, LadderState.PAUSED)
+                restore(context, appId, container, store, state, LadderState.PAUSED, fresh = true)
             }
         }
 

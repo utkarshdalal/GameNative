@@ -629,4 +629,44 @@ class OptimizeRulesTest {
         assertEquals(5, Metrics.fromRun(noPeak).thermalPeak)
         assertNull(Metrics.fromRun(JSONObject().put("session_length", 600)).cpuTempMax)
     }
+
+    @Test
+    fun restoreStartsEveryGoalOverButKeepsCrashedSteps() {
+        val crashed = TriedRung("c1", "7", OptimizeJudge.CRASH)
+        val state = OptimizeLocalState(
+            activeProfile = OptimizeProfile.BALANCED,
+            profiles = mapOf(
+                OptimizeProfile.BALANCED to ProfileLadder(
+                    state = LadderState.TRYING,
+                    tried = listOf(TriedRung("b1", "1", OptimizeJudge.NO_CHANGE), crashed, TriedRung("b2", "2", OptimizeJudge.UNDO)),
+                    bad = listOf("c1"),
+                    noChangeStreak = 2,
+                    baselineOverride = session.copy(steadyFps = 50.0),
+                ),
+                OptimizeProfile.PERFORMANCE to ProfileLadder(
+                    state = LadderState.WAITING,
+                    tried = listOf(TriedRung("p1", "3", OptimizeJudge.WORSE)),
+                    noChangeStreak = 1,
+                    baselineOverride = session,
+                ),
+            ),
+            noRule = NoRuleHold(Long.MAX_VALUE, "r1", NextRungResponse.STATUS_NO_RULE),
+        )
+        val next = OptimizeLadders.restarted(state, OptimizeProfile.BALANCED, LadderState.PAUSED, session)
+        val balanced = next.ladder(OptimizeProfile.BALANCED)
+        assertEquals(LadderState.PAUSED, balanced.state)
+        assertEquals(listOf(crashed), balanced.tried)
+        assertEquals(listOf("c1"), balanced.bad)
+        assertEquals(0, balanced.noChangeStreak)
+        assertEquals(session, balanced.baselineOverride)
+        assertTrue(balanced.kept.isEmpty())
+        val performance = next.ladder(OptimizeProfile.PERFORMANCE)
+        assertEquals(LadderState.IDLE, performance.state)
+        assertTrue(performance.tried.isEmpty())
+        assertEquals(0, performance.noChangeStreak)
+        assertNull(performance.baselineOverride)
+        assertNull(next.noRule)
+        assertTrue(balanced.repeats(Rung.parse(JSONObject().put("rung_id", "c1").put("version", "7"))!!))
+        assertFalse(balanced.repeats(Rung.parse(JSONObject().put("rung_id", "b1").put("version", "1"))!!))
+    }
 }
