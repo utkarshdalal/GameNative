@@ -206,11 +206,28 @@ class OptimizeRulesTest {
         assertNull(OptimizeCards.fpsGainPct(null, before))
         assertEquals(40, OptimizeCards.stutterDropPct(before, before.copy(stutterShare = 0.03)))
         assertNull(OptimizeCards.stutterDropPct(before, before.copy(stutterShare = 0.06)))
-        assertEquals(OptimizeCard.OUTCOME_FPS, OptimizeCards.helpedOutcome("fps", OptimizeProfile.QUALITY))
-        assertEquals(OptimizeCard.OUTCOME_STUTTER, OptimizeCards.helpedOutcome(null, OptimizeProfile.BALANCED))
-        assertEquals(OptimizeCard.OUTCOME_STABLE, OptimizeCards.helpedOutcome(null, OptimizeProfile.POWER))
-        assertEquals(OptimizeCard.OUTCOME_STABLE, OptimizeCards.helpedOutcome("stable", OptimizeProfile.PERFORMANCE))
-        assertEquals(OptimizeCard.OUTCOME_FPS, OptimizeCards.helpedOutcome("thermal", OptimizeProfile.PERFORMANCE))
+        assertEquals(OptimizeCard.OUTCOME_FPS, OptimizeCards.helpedOutcome("fps", OptimizeProfile.QUALITY, 12, null))
+        assertEquals(OptimizeCard.OUTCOME_STUTTER, OptimizeCards.helpedOutcome(null, OptimizeProfile.BALANCED, null, 40))
+        assertEquals(OptimizeCard.OUTCOME_STABLE, OptimizeCards.helpedOutcome(null, OptimizeProfile.POWER, 12, 40))
+        assertEquals(OptimizeCard.OUTCOME_STABLE, OptimizeCards.helpedOutcome("stable", OptimizeProfile.PERFORMANCE, 12, null))
+        assertEquals(OptimizeCard.OUTCOME_FPS, OptimizeCards.helpedOutcome("thermal", OptimizeProfile.PERFORMANCE, 12, null))
+    }
+
+    @Test
+    fun aGainUnderFivePercentIsNotNamed() {
+        val before = Metrics(gameplaySec = 900, steadyFps = 44.1, stutterShare = 0.05)
+        val small = OptimizeCards.fpsGainPct(before, before.copy(steadyFps = 44.7))
+        assertNull(small)
+        assertEquals(OptimizeCard.OUTCOME_STABLE, OptimizeCards.helpedOutcome("fps", OptimizeProfile.PERFORMANCE, small, null))
+        val five = Metrics(gameplaySec = 900, steadyFps = 40.0)
+        val gain = OptimizeCards.fpsGainPct(five, five.copy(steadyFps = 42.0))
+        assertEquals(5, gain)
+        assertEquals(OptimizeCard.OUTCOME_FPS, OptimizeCards.helpedOutcome("fps", OptimizeProfile.PERFORMANCE, gain, null))
+        assertNull(OptimizeCards.stutterDropPct(before, before.copy(stutterShare = 0.048)))
+        assertEquals(OptimizeCard.OUTCOME_STABLE, OptimizeCards.helpedOutcome(null, OptimizeProfile.BALANCED, null, null))
+        val drop = OptimizeCards.stutterDropPct(before, before.copy(stutterShare = 0.0475))
+        assertEquals(5, drop)
+        assertEquals(OptimizeCard.OUTCOME_STUTTER, OptimizeCards.helpedOutcome(null, OptimizeProfile.BALANCED, null, drop))
     }
 
     @Test

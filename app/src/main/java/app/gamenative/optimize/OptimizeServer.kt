@@ -115,7 +115,7 @@ object OptimizeServer {
             next = next.copy(
                 card = card.copy(
                     kind = kind,
-                    outcome = if (kind == OptimizeCard.HELPED) card.outcome ?: OptimizeCards.helpedOutcome(null, profile) else card.outcome,
+                    outcome = if (kind == OptimizeCard.HELPED) OptimizeCards.helpedOutcome(card.outcome, profile, card.fpsGainPct, card.stutterDropPct) else card.outcome,
                     fpsGainPct = if (kind == OptimizeCard.HELPED) card.fpsGainPct else null,
                     stutterDropPct = if (kind == OptimizeCard.HELPED) card.stutterDropPct else null,
                     serverDeltas = judgement.deltas ?: card.serverDeltas,

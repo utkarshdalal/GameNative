@@ -262,6 +262,9 @@ object OptimizeTarget {
 
 object OptimizeCards {
     const val MIN_GAMEPLAY_SEC = 300
+
+    /** The smallest frame-rate gain or stutter drop, in percent, a card names; a smaller one reads as more stable. */
+    const val MIN_NAMED_GAIN_PCT = 5
     const val SUPPRESS_MS = 7L * 24 * 60 * 60 * 1000
 
     const val SYNC_SPIN = "sync_spin"
@@ -508,25 +511,36 @@ object OptimizeCards {
         val b = before?.steadyFps ?: return null
         val a = after.steadyFps ?: return null
         if (b <= 0 || a <= b) return null
-        return ((a / b - 1) * 100).roundToInt().takeIf { it >= 1 }
+        return ((a / b - 1) * 100).roundToInt().takeIf { it >= MIN_NAMED_GAIN_PCT }
     }
 
     fun stutterDropPct(before: Metrics?, after: Metrics): Int? {
         val b = before?.stutterShare ?: return null
         val a = after.stutterShare ?: return null
         if (b <= 0 || a >= b) return null
-        return ((b - a) / b * 100).roundToInt().takeIf { it >= 1 }
+        return ((b - a) / b * 100).roundToInt().takeIf { it >= MIN_NAMED_GAIN_PCT }
     }
 
-    /** Which outcome a helped card names: the rung's own outcome when it says, otherwise what the profile is for. */
-    fun helpedOutcome(rungOutcome: String?, profile: OptimizeProfile): String = when (rungOutcome) {
-        OptimizeCard.OUTCOME_FPS -> OptimizeCard.OUTCOME_FPS
-        OptimizeCard.OUTCOME_STUTTER -> OptimizeCard.OUTCOME_STUTTER
-        OptimizeCard.OUTCOME_STABLE -> OptimizeCard.OUTCOME_STABLE
-        else -> when (profile) {
-            OptimizeProfile.PERFORMANCE, OptimizeProfile.POTATO -> OptimizeCard.OUTCOME_FPS
-            OptimizeProfile.BALANCED, OptimizeProfile.QUALITY -> OptimizeCard.OUTCOME_STUTTER
-            OptimizeProfile.POWER, OptimizeProfile.OFF -> OptimizeCard.OUTCOME_STABLE
+    /**
+     * Which outcome a helped card names: the rung's own outcome when it says, otherwise what the profile is for. A higher
+     * frame rate or fewer stutters is only named with its measured [fpsGainPct] or [stutterDropPct]; otherwise the card
+     * reads as more stable.
+     */
+    fun helpedOutcome(rungOutcome: String?, profile: OptimizeProfile, fpsGainPct: Int?, stutterDropPct: Int?): String {
+        val outcome = when (rungOutcome) {
+            OptimizeCard.OUTCOME_FPS -> OptimizeCard.OUTCOME_FPS
+            OptimizeCard.OUTCOME_STUTTER -> OptimizeCard.OUTCOME_STUTTER
+            OptimizeCard.OUTCOME_STABLE -> OptimizeCard.OUTCOME_STABLE
+            else -> when (profile) {
+                OptimizeProfile.PERFORMANCE, OptimizeProfile.POTATO -> OptimizeCard.OUTCOME_FPS
+                OptimizeProfile.BALANCED, OptimizeProfile.QUALITY -> OptimizeCard.OUTCOME_STUTTER
+                OptimizeProfile.POWER, OptimizeProfile.OFF -> OptimizeCard.OUTCOME_STABLE
+            }
+        }
+        return when {
+            outcome == OptimizeCard.OUTCOME_FPS && fpsGainPct == null -> OptimizeCard.OUTCOME_STABLE
+            outcome == OptimizeCard.OUTCOME_STUTTER && stutterDropPct == null -> OptimizeCard.OUTCOME_STABLE
+            else -> outcome
         }
     }
 }

@@ -1518,6 +1518,8 @@ object OptimizeController {
         val capFps = OptimizeCards.capFps(rung.raw)
         // After-cards carry both sessions the judge compared: before is the step's baseline, metrics the session after it.
         val before = pending.baseline
+        val fpsGain = OptimizeCards.fpsGainPct(before, judged)
+        val stutterDrop = OptimizeCards.stutterDropPct(before, judged)
         val card = when {
             settled.done -> {
                 l = l.copy(state = LadderState.DONE)
@@ -1525,8 +1527,8 @@ object OptimizeController {
                     OptimizeCard.DONE, now, name, profile,
                     rungId = rung.rungId,
                     capFps = capFps,
-                    fpsGainPct = OptimizeCards.fpsGainPct(before, judged),
-                    stutterDropPct = OptimizeCards.stutterDropPct(before, judged),
+                    fpsGainPct = fpsGain,
+                    stutterDropPct = stutterDrop,
                     metrics = judged,
                     before = before,
                 )
@@ -1535,9 +1537,9 @@ object OptimizeController {
                 OptimizeCard.HELPED, now, name, profile,
                 rungId = rung.rungId,
                 capFps = capFps,
-                outcome = OptimizeCards.helpedOutcome(rung.outcome, profile),
-                fpsGainPct = OptimizeCards.fpsGainPct(before, judged),
-                stutterDropPct = OptimizeCards.stutterDropPct(before, judged),
+                outcome = OptimizeCards.helpedOutcome(rung.outcome, profile, fpsGain, stutterDrop),
+                fpsGainPct = fpsGain,
+                stutterDropPct = stutterDrop,
                 metrics = judged,
                 before = before,
             )
