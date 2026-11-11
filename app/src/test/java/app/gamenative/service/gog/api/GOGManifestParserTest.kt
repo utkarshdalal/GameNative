@@ -843,4 +843,97 @@ class GOGManifestParserTest {
         assertEquals("", result[0].hash)
         assertEquals(5L, result[0].size)
     }
+
+    private data class Entry(val path: String, val productId: String, val hasChunks: Boolean = true)
+
+    private fun effective(entries: List<Entry>, baseIds: Set<String> = setOf("base")) =
+        GOGManifestParser.effectiveEntries(
+            entries,
+            path = { it.path },
+            isBase = { it.productId in baseIds },
+            hasContent = { it.hasChunks },
+        )
+
+    @Test
+    fun testEffectiveEntries_dlcReplacesBaseFile() {
+        val base = Entry("Data/BasicData.wolf", "base")
+        val dlc = Entry("Data/BasicData.wolf", "dlc")
+        assertEquals(listOf(dlc), effective(listOf(base, dlc)))
+    }
+
+    @Test
+    fun testEffectiveEntries_dlcWinsEvenWhenListedFirst() {
+        val dlc = Entry("subako.exe", "dlc")
+        val base = Entry("subako.exe", "base")
+        assertEquals(listOf(dlc), effective(listOf(dlc, base)))
+    }
+
+    @Test
+    fun testEffectiveEntries_pathsCompareCaseAndSeparatorInsensitive() {
+        val base = Entry("Data/Map.wolf", "base")
+        val dlc = Entry("\\data\\MAP.WOLF", "dlc")
+        assertEquals(listOf(dlc), effective(listOf(base, dlc)))
+    }
+
+    @Test
+    fun testEffectiveEntries_withoutDlcBaseFilesStay() {
+        val exe = Entry("Game.exe", "base")
+        val data = Entry("Data/Map.wolf", "base")
+        val entries = listOf(exe, data)
+        assertEquals(entries, effective(entries))
+    }
+
+    @Test
+    fun testEffectiveEntries_sameClassDuplicatesKeepLastInListOrder() {
+        val languageDepot = Entry("Data/Text.wolf", "base")
+        val neutralDepot = Entry("data/text.wolf", "base")
+        assertEquals(listOf(neutralDepot), effective(listOf(languageDepot, neutralDepot)))
+    }
+
+    @Test
+    fun testEffectiveEntries_laterDlcWins() {
+        val base = Entry("Data/Map.wolf", "base")
+        val earlier = Entry("Data/Map.wolf", "dlc1")
+        val later = Entry("Data/Map.wolf", "dlc2")
+        assertEquals(listOf(later), effective(listOf(base, earlier, later)))
+    }
+
+    @Test
+    fun testEffectiveEntries_chunklessEntryNeverReplacesContent() {
+        val base = Entry("subako.exe", "base")
+        val dlc = Entry("subako.exe", "dlc", hasChunks = false)
+        assertEquals(listOf(base), effective(listOf(base, dlc)))
+    }
+
+    @Test
+    fun testEffectiveEntries_chunklessEntriesFollowDlcRule() {
+        val base = Entry("empty.txt", "base", hasChunks = false)
+        val dlc = Entry("empty.txt", "dlc", hasChunks = false)
+        assertEquals(listOf(dlc), effective(listOf(dlc, base)))
+    }
+
+    @Test
+    fun testEffectiveEntries_nonCollidingFilesUntouched() {
+        val baseExe = Entry("Game.exe", "base")
+        val baseData = Entry("Data/Map.wolf", "base")
+        val dlcData = Entry("Data/Map.wolf", "dlc")
+        val dlcExtra = Entry("Data/Extra.wolf", "dlc")
+        assertEquals(listOf(baseExe, dlcData, dlcExtra), effective(listOf(baseExe, baseData, dlcData, dlcExtra)))
+    }
+
+    @Test
+    fun testWithoutDepotFiles_dropsOnlyListedFileOrdinals() {
+        val json = """
+            {"depot":{"items":[
+                {"type":"DepotFile","path":"a.bin","chunks":[{"compressedMd5":"aa","md5":"aa","size":1}]},
+                {"type":"DepotDirectory","path":"dir"},
+                {"type":"DepotFile","path":"b.bin","chunks":[{"compressedMd5":"bb","md5":"bb","size":1}]},
+                {"type":"DepotFile","path":"c.bin","chunks":[{"compressedMd5":"cc","md5":"cc","size":1}]}
+            ]}}
+        """.trimIndent()
+        val filtered = parser.parseDepotManifest(GOGManifestParser.withoutDepotFiles(json, setOf(1)))
+        assertEquals(listOf("a.bin", "c.bin"), filtered.files.map { it.path })
+        assertEquals(1, filtered.directories.size)
+        assertSame(json, GOGManifestParser.withoutDepotFiles(json, emptySet()))
+    }
 }
