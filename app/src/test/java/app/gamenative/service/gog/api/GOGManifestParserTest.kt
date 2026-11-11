@@ -936,4 +936,31 @@ class GOGManifestParserTest {
         assertEquals(1, filtered.directories.size)
         assertSame(json, GOGManifestParser.withoutDepotFiles(json, emptySet()))
     }
+
+    @Test
+    fun testIsSafeRelativePath_rejectsPathsLeavingInstallDir() {
+        assertTrue(GOGManifestParser.isSafeRelativePath("Data/Map.wolf"))
+        assertTrue(GOGManifestParser.isSafeRelativePath("./Data/Map.wolf"))
+        assertTrue(GOGManifestParser.isSafeRelativePath("Data\\Map.wolf"))
+        assertFalse(GOGManifestParser.isSafeRelativePath(""))
+        assertFalse(GOGManifestParser.isSafeRelativePath("/abs/file"))
+        assertFalse(GOGManifestParser.isSafeRelativePath("../file"))
+        assertFalse(GOGManifestParser.isSafeRelativePath("a/../../file"))
+        assertFalse(GOGManifestParser.isSafeRelativePath("a\\..\\file"))
+        assertFalse(GOGManifestParser.isSafeRelativePath("a/b\u0000c"))
+    }
+
+    @Test
+    fun testIsPlannable_needsSafePathAndHashedChunk() {
+        fun file(path: String, vararg chunks: FileChunk) =
+            DepotFile(path = path, chunks = chunks.toList(), md5 = null, sha256 = null, flags = emptyList(), productId = null)
+        val hashed = FileChunk(compressedMd5 = "aa", md5 = "", size = 1, compressedSize = 1)
+        val decompressedOnly = FileChunk(compressedMd5 = "", md5 = "bb", size = 1, compressedSize = null)
+        val noHash = FileChunk(compressedMd5 = "", md5 = "", size = 1, compressedSize = null)
+        assertTrue(GOGManifestParser.isPlannable(file("a.bin", hashed)))
+        assertTrue(GOGManifestParser.isPlannable(file("a.bin", noHash, decompressedOnly)))
+        assertFalse(GOGManifestParser.isPlannable(file("a.bin")))
+        assertFalse(GOGManifestParser.isPlannable(file("a.bin", noHash)))
+        assertFalse(GOGManifestParser.isPlannable(file("../a.bin", hashed)))
+    }
 }

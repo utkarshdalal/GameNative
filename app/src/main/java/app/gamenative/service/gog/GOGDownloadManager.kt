@@ -286,27 +286,34 @@ class GOGDownloadManager @Inject constructor(
                 allDirectories.addAll(depotManifest.directories)
             }
 
-            // One entry per on-disk path: a selected DLC's file replaces the base game's. Chunkless
-            // entries are never written by the gen-2 paths, so they cannot replace a real file.
+            // One entry per on-disk path (game and support files land in different roots): a
+            // selected DLC's file replaces the base game's. Entries the engine does not plan are
+            // never written by the gen-2 paths, so they cannot replace a real file. Paths that
+            // would leave the install directory are dropped, as the engine drops them.
             val baseProductIds = setOf(baseProductId, gameId)
-            val allFilesWithDepots = GOGManifestParser.effectiveEntries(
-                fetchedFilesWithDepots,
-                path = { it.file.path },
-                isBase = { it.depotProductId in baseProductIds },
-                hasContent = { it.file.chunks.isNotEmpty() },
-            )
+            val safeFilesWithDepots = fetchedFilesWithDepots.filter { GOGManifestParser.isSafeRelativePath(it.file.path) }
+            if (safeFilesWithDepots.size != fetchedFilesWithDepots.size) {
+                Timber.tag("GOG").w("Ignoring ${fetchedFilesWithDepots.size - safeFilesWithDepots.size} depot file(s) with unsafe paths")
+            }
+            val allFilesWithDepots = listOf(false, true).flatMap { support ->
+                GOGManifestParser.effectiveEntries(
+                    safeFilesWithDepots.filter { it.file.isSupportFile() == support },
+                    path = { it.file.path },
+                    isBase = { it.depotProductId in baseProductIds },
+                    hasContent = { GOGManifestParser.isPlannable(it.file) },
+                )
+            }
+            fun selectionKey(entry: FileWithDepot) = entry.file.isSupportFile() to GOGManifestParser.pathKey(entry.file.path)
             // Raw inflated depot-manifest JSON per depot productId feeds the native GOG engine,
             // which installs every file of the manifests it gets and resolves duplicates within
             // one run the same way; entries replaced by another product's file are removed.
             val rawDepotJsonByProduct = mutableMapOf<String, MutableList<String>>()
             run {
                 val kept = allFilesWithDepots.mapTo(HashSet()) { it.depotIndex to it.fileOrdinal }
-                val winnerProductByKey = allFilesWithDepots.associate {
-                    GOGManifestParser.pathKey(it.file.path) to it.depotProductId
-                }
+                val winnerProductByKey = allFilesWithDepots.associate { selectionKey(it) to it.depotProductId }
                 val replaced = fetchedFilesWithDepots
                     .filter { (it.depotIndex to it.fileOrdinal) !in kept }
-                    .filter { winnerProductByKey[GOGManifestParser.pathKey(it.file.path)] != it.depotProductId }
+                    .filter { winnerProductByKey[selectionKey(it)] != it.depotProductId }
                     .groupBy({ it.depotIndex }, { it.fileOrdinal })
                 for ((index, depot) in depots.withIndex()) {
                     val dropOrdinals = replaced[index]?.toSet().orEmpty()
@@ -533,17 +540,21 @@ class GOGDownloadManager @Inject constructor(
                 }
             }
 
-            val nativeResult = downloadGameGen2Native(
+            // A native run fetches with one secure link; a depot whose files need several goes
+            // through the per-chunk downloader instead.
+            val mixedLinkProducts = linkProductsByProduct.filterValues { it.size > 1 }.keys
+            if (mixedLinkProducts.isNotEmpty()) {
+                Timber.tag("GOG").i("Depot product(s) $mixedLinkProducts need several secure links; using the chunk downloader")
+            }
+            val nativeResult = if (mixedLinkProducts.isNotEmpty()) null else downloadGameGen2Native(
                 rawDepotJsonByProduct = rawDepotJsonByProduct,
                 productUrlMap = productUrlMap,
                 pendingPathsToProduct = pendingPathsToProduct,
-                linkProductByProduct = linkProductsByProduct.mapValues { (product, linkProducts) ->
-                    linkProducts.singleOrNull() ?: product
-                },
+                linkProductByProduct = linkProductsByProduct.mapValues { it.value.single() },
                 pendingPathsInOrder = pendingDepotFiles.map { it.path },
-                // The engine plans only files with chunks; those it must report written.
+                // The files the engine plans; each must be reported written.
                 requiredPaths = pendingDepotFiles
-                    .filter { it.chunks.isNotEmpty() && it.path in pendingPathsToProduct }
+                    .filter { GOGManifestParser.isPlannable(it) && it.path in pendingPathsToProduct }
                     .map { it.path },
                 // Original depot paths (BEFORE getSupportInstallPath strips "app/"):
                 // the relocation pass matches its app/ roots against these.
@@ -928,8 +939,12 @@ class GOGDownloadManager @Inject constructor(
                 path = { it.file.path },
                 isBase = { it.productId in baseProductIds },
             )
-            val allV1Files = effective(fetchedV1Files.filter { !it.file.isSupport }) +
-                effective(fetchedV1Files.filter { it.file.isSupport })
+            val safeV1Files = fetchedV1Files.filter { GOGManifestParser.isSafeRelativePath(it.file.path) }
+            if (safeV1Files.size != fetchedV1Files.size) {
+                Timber.tag("GOG").w("Ignoring ${fetchedV1Files.size - safeV1Files.size} depot file(s) with unsafe paths")
+            }
+            val allV1Files = effective(safeV1Files.filter { !it.file.isSupport }) +
+                effective(safeV1Files.filter { it.file.isSupport })
 
             var gameFiles = allV1Files.filter { !it.file.isSupport }
             var supportFiles = allV1Files.filter { it.file.isSupport }
@@ -967,7 +982,7 @@ class GOGDownloadManager @Inject constructor(
                 outFile.parentFile?.mkdirs()
 
                 if (file.size == 0L) {
-                    outFile.createNewFile()
+                    FileOutputStream(outFile).close()
                     return Result.success(Unit)
                 }
 
@@ -1285,7 +1300,8 @@ class GOGDownloadManager @Inject constructor(
         val written = donePaths.mapTo(HashSet()) { GOGManifestParser.pathKey(it) }
         val unwritten = requiredPaths.count { GOGManifestParser.pathKey(it) !in written }
         if (unwritten > 0) {
-            Timber.tag("GOG").w("Native run reported $unwritten pending file(s) as not written")
+            Timber.tag("GOG").e("Native run reported $unwritten pending file(s) as not written")
+            return@withContext Result.failure(Exception("Download incomplete: $unwritten file(s) not written"))
         }
 
         // The engine writes depot paths verbatim; GameNative strips the leading "app/" from
