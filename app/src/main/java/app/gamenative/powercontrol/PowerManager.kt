@@ -1160,6 +1160,9 @@ object PowerManager {
         return coreClusters(pserver).takeIf { clusters -> clusters.any { it.cores.isNotEmpty() } }
     }
 
+    /** Power control's cluster grouping as (efficiency, performance or prime; cores), lowest first; null without one. */
+    internal fun cpuClusterGroups(): List<Pair<String, List<Int>>>? = placementClusters()?.map { it.name to it.cores }
+
     private const val CAPACITY_UNKNOWN = "cluster capacity unknown (max_freq only); placement skipped"
 
     /** One CPU cluster from PServer's grouping, with its capacity in the driver's units. */

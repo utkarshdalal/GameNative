@@ -67,6 +67,7 @@ import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
 import app.gamenative.gamefixes.GameFixesRegistry
+import app.gamenative.optimize.OptimizeController
 import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.SteamService
 import app.gamenative.service.download.SteamDownloadMode
@@ -96,6 +97,7 @@ import app.gamenative.billing.Membership
 import app.gamenative.api.DebugReportApi
 import app.gamenative.api.SupportApi
 import app.gamenative.ui.component.dialog.AccountSignInDialog
+import app.gamenative.ui.component.dialog.OptimizeCardHost
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.component.dialog.DebugPreRunDialog
 import app.gamenative.ui.component.dialog.DebugReportDialog
@@ -1931,6 +1933,12 @@ fun PluviaMain(
                 },
             )
 
+            OptimizeCardHost(
+                gameRunning = state.currentScreen == PluviaScreen.XServer,
+                blocked = msgDialogState.visible || gameFeedbackState.visible || debugReportState.visible ||
+                    membershipPlansVisible || membershipSignInVisible || debugAccountPrompt != null,
+            )
+
             debugPaywallReason?.let { reason ->
                 Box(modifier = Modifier.zIndex(5f)) {
                     DebugPaywallScreen(
@@ -2404,6 +2412,15 @@ fun preLaunchApp(
             GameFixesRegistry.applyFor(context, appId, container)
         } catch (e: Exception) {
             Timber.tag("GameFixes").w(e, "Game fixes failed in preLaunchApp")
+        }
+
+        if (!bootToContainer && !useTemporaryOverride) {
+            OptimizeController.beforeLaunch(context, appId, container) { progress, label ->
+                setLoadingMessage(context.getString(R.string.main_downloading_entry, label))
+                setLoadingProgress(if (progress < 0) -1f else progress)
+            }
+        } else {
+            OptimizeController.resetTelemetry()
         }
 
         val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)

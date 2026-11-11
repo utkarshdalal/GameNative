@@ -15,13 +15,16 @@ import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import app.gamenative.filedetect.GameFileDetection
 import app.gamenative.powercontrol.metrics.PowerTelemetry
+import app.gamenative.powercontrol.metrics.SessionPerfSampler
 import app.gamenative.powercontrol.metrics.SessionProcessTelemetry
 import com.winlator.container.Container
 import java.io.File
 import org.json.JSONObject
 import com.posthog.PostHog
+import com.winlator.core.DXVKHelper
 import com.winlator.core.GPUHelper
 import com.winlator.core.GPUInformation
+import com.winlator.core.KeyValueSet
 import com.winlator.widget.FrameRating
 import com.winlator.xserver.Window
 import kotlin.math.roundToInt
@@ -150,20 +153,54 @@ object SessionReport {
 
     private fun appliedMatchFile(container: Container) = File(container.rootDir, "applied_match_type")
 
-    fun recordRun(container: Container, properties: Map<String, Any>) {
+    /** Writes the run file and returns it, or null when it could not be written. */
+    fun recordRun(container: Container, properties: Map<String, Any>): File? = try {
+        val dir = File(container.rootDir, ".gamenative/runs").also { it.mkdirs() }
+        val file = File(dir, "${System.currentTimeMillis()}.json")
+        writeRun(file, properties)
+        dir.listFiles { f -> f.name.endsWith(".json") }?.sortedBy { it.name }?.dropLast(MAX_RUN_FILES)?.forEach { it.delete() }
+        file.takeIf { it.isFile }
+    } catch (e: Exception) {
+        Timber.w(e, "SessionReport: record run failed")
+        null
+    }
+
+    /** Replaces a run file written by [recordRun], for properties settled after it was written. */
+    fun rewriteRun(file: File, properties: Map<String, Any>) {
         try {
-            val dir = File(container.rootDir, ".gamenative/runs").also { it.mkdirs() }
-            val file = File(dir, "${System.currentTimeMillis()}.json")
-            val tmp = File(dir, "${file.name}.tmp")
-            tmp.writeText(JSONObject(properties).toString())
-            if (!tmp.renameTo(file)) tmp.delete()
-            dir.listFiles { f -> f.name.endsWith(".json") }?.sortedBy { it.name }?.dropLast(MAX_RUN_FILES)?.forEach { it.delete() }
+            writeRun(file, properties)
         } catch (e: Exception) {
-            Timber.w(e, "SessionReport: record run failed")
+            Timber.w(e, "SessionReport: rewrite run failed")
         }
     }
 
+    private fun writeRun(file: File, properties: Map<String, Any>) {
+        val tmp = File(file.parentFile, "${file.name}.tmp")
+        tmp.writeText(JSONObject(properties).toString())
+        if (!tmp.renameTo(file)) tmp.delete()
+    }
+
     private const val MAX_RUN_FILES = 30
+
+    fun crashFingerprintProperties(container: Container, reason: String): Map<String, Any> = try {
+        val versions = linkedMapOf(
+            "wine" to container.getWineVersion().orEmpty(),
+            "emulator" to container.getEmulator().orEmpty(),
+            "fexcore" to container.getFEXCoreVersion().orEmpty(),
+            "box64" to container.getBox64Version().orEmpty(),
+            "graphics_driver" to container.getGraphicsDriver().orEmpty(),
+            "graphics_driver_version" to KeyValueSet(container.getGraphicsDriverConfig()).get("version")
+                .ifEmpty { container.getGraphicsDriverVersion().orEmpty() },
+            "dxwrapper" to container.getDXWrapper().orEmpty(),
+            "dxwrapper_version" to DXVKHelper.parseConfig(container.getDXWrapperConfig()).get("version"),
+        ).filterValues { it.isNotEmpty() }
+        CrashFingerprint.extract(GuestOutputTail.snapshot(), reason, versions)
+            ?.let { mapOf("crash_fingerprint" to it.toMap(), "crash_fingerprint_hash" to it.hash) }
+            .orEmpty()
+    } catch (t: Throwable) {
+        Timber.w(t, "SessionReport: crash fingerprint failed")
+        emptyMap()
+    }
 
     private fun configSourceValue(raw: String?): String =
         raw.orEmpty().ifEmpty { if (PrefManager.autoApplyKnownConfig) "none" else "disabled" }
@@ -244,6 +281,14 @@ object SessionReport {
                 .onFailure { Timber.w(it, "SessionReport: process properties failed") }
             put("fps_cap_configured", app.gamenative.powercontrol.PowerManager.targetFps.coerceAtLeast(0))
             put("optimize_state", OptimizeState.properties())
+            runCatching {
+                val designCap = frameRating?.fpsBy5Min?.takeIf { it.isNotEmpty() }
+                    ?.let { designCapDetected(it, PowerTelemetry.bucketLoads()) } ?: false
+                val legacyShare = (get("bottleneck_share") as? Map<*, *>)?.entries
+                    ?.mapNotNull { (k, v) -> (k as? String)?.let { key -> (v as? Number)?.let { key to it.toDouble() } } }
+                    ?.toMap()
+                putAll(SessionPerfSampler.properties(designCap, frameRating?.fpsBy5Min.orEmpty(), legacyShare))
+            }.onFailure { Timber.w(it, "SessionReport: perf verdict failed") }
             if (frameRating != null) {
                 put("total_frames", frameRating.totalFrames)
                 frameRating.fpsBy5Min.takeIf { it.isNotEmpty() }?.let { fps ->
@@ -499,6 +544,7 @@ class WindowActivity {
                     put("main_window_seconds", (endMs(main) - main.firstMs) / 1000)
                     put("main_window_active_seconds", main.activeMs / 1000)
                     put("main_window_frames", main.frames)
+                    put("main_window_mapped", main.mapped)
                 }
                 put(
                     "window_timeline",

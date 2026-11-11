@@ -178,6 +178,64 @@ object PrefManager {
             setPref(COMPONENT_MANIFEST_FETCHED_AT, value)
         }
 
+    private val OPTIMIZE_DEVICE_ID = stringPreferencesKey("optimize_device_id")
+
+    @Volatile
+    private var optimizeDeviceIdCache: String? = null
+
+    /** Random id created once; Optimize outcome reports carry only its sha256. */
+    val optimizeDeviceId: String
+        get() = optimizeDeviceIdCache ?: synchronized(OPTIMIZE_DEVICE_ID) {
+            optimizeDeviceIdCache ?: getPref(OPTIMIZE_DEVICE_ID, "").ifEmpty {
+                java.util.UUID.randomUUID().toString().also { setPref(OPTIMIZE_DEVICE_ID, it) }
+            }.also { optimizeDeviceIdCache = it }
+        }
+
+    private val OPTIMIZE_LAST_ENTITLEMENT = stringPreferencesKey("optimize_last_entitlement")
+
+    /** The newest Optimize entitlement any game's request or outcome returned, as JSON; empty when none yet. */
+    var optimizeLastEntitlementJson: String
+        get() = getPref(OPTIMIZE_LAST_ENTITLEMENT, "")
+        set(value) {
+            setPref(OPTIMIZE_LAST_ENTITLEMENT, value)
+        }
+
+    private val OPTIMIZE_LAST_ENTITLEMENT_AT = longPreferencesKey("optimize_last_entitlement_at")
+
+    /** When [optimizeLastEntitlementJson] was received, epoch milliseconds; 0 when unknown. */
+    var optimizeLastEntitlementAt: Long
+        get() = getPref(OPTIMIZE_LAST_ENTITLEMENT_AT, 0L)
+        set(value) {
+            setPref(OPTIMIZE_LAST_ENTITLEMENT_AT, value)
+        }
+
+    private val OPTIMIZE_ACCOUNT_CHANGED_AT = longPreferencesKey("optimize_account_changed_at")
+
+    /** When the account last signed in, signed out or changed plan, epoch milliseconds; 0 when never seen. */
+    var optimizeAccountChangedAt: Long
+        get() = getPref(OPTIMIZE_ACCOUNT_CHANGED_AT, 0L)
+        set(value) {
+            setPref(OPTIMIZE_ACCOUNT_CHANGED_AT, value)
+        }
+
+    private val OPTIMIZE_LAST_PLAN = stringPreferencesKey("optimize_last_plan")
+
+    /** The account's plan as last refreshed, as an opaque key; empty when not seen yet. */
+    var optimizeLastPlan: String
+        get() = getPref(OPTIMIZE_LAST_PLAN, "")
+        set(value) {
+            setPref(OPTIMIZE_LAST_PLAN, value)
+        }
+
+    private val OPTIMIZE_LAST_RULES_VERSION = stringPreferencesKey("optimize_last_rules_version")
+
+    /** The newest Optimize rules build any game's answer carried; empty when none yet. */
+    var optimizeLastRulesVersion: String
+        get() = getPref(OPTIMIZE_LAST_RULES_VERSION, "")
+        set(value) {
+            setPref(OPTIMIZE_LAST_RULES_VERSION, value)
+        }
+
     /* PICS */
     private val LAST_PICS_CHANGE_NUMBER = intPreferencesKey("last_pics_change_number")
     var lastPICSChangeNumber: Int

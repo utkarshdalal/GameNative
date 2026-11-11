@@ -40,6 +40,7 @@ class WineRegistryTextTest {
         assertEquals("hex(b):ff,ff,ff,ff,01,00,00,00", WineRegistryText.encodeValue("qword", "1ffffffff"))
         assertEquals("hex:0a,ff,10", WineRegistryText.encodeValue("binary", "0aFF10"))
         assertEquals("hex:", WineRegistryText.encodeValue("binary", ""))
+        assertEquals("hex(4):00,00,00,00,00,00,4e,40", WineRegistryText.encodeValue("binary_dword", "0000000000004E40"))
         assertEquals("\"C:\\\\users\\\\xuser \\\"x\\\"\"", WineRegistryText.encodeValue("string", "C:\\users\\xuser \"x\""))
         assertEquals("\"\\x20b9\"", WineRegistryText.encodeValue("string", "\u20b9"))
         assertEquals("\"a\\xe4z\"", WineRegistryText.encodeValue("string", "a\u00e4z"))

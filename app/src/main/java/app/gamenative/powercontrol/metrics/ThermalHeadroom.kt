@@ -38,23 +38,28 @@ object ThermalHeadroom {
         }
     }
 
-    /** Headroom from a fresh call, or the previous call's result when that was under a second ago; null for NaN. */
-    fun read(context: Context): Float? {
+    /**
+     * Headroom from a fresh call, or the previous call's result when that was under a second ago; null for NaN.
+     * With [publish] false the result does not update [latest].
+     */
+    fun read(context: Context, publish: Boolean = true): Float? {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
         synchronized(lock) {
             val now = SystemClock.elapsedRealtime()
-            if (lastCallMs != 0L && now - lastCallMs < MIN_INTERVAL_MS) return lastResult
-            lastCallMs = now
-            val pm = context.getSystemService(Context.POWER_SERVICE) as? AndroidPowerManager ?: return null
-            lastResult = runCatching { pm.getThermalHeadroom(FORECAST_SECONDS) }.getOrNull()?.takeIf { it.isFinite() }
-            lastResult?.let { latest = it }
+            if (lastCallMs == 0L || now - lastCallMs >= MIN_INTERVAL_MS) {
+                lastCallMs = now
+                val pm = context.getSystemService(Context.POWER_SERVICE) as? AndroidPowerManager ?: return null
+                lastResult = runCatching { pm.getThermalHeadroom(FORECAST_SECONDS) }.getOrNull()?.takeIf { it.isFinite() }
+            }
+            if (publish) lastResult?.let { latest = it }
             return lastResult
         }
     }
 
-    fun status(context: Context): Int? {
+    /** Current thermal status; with [publish] false it does not update [latestStatus]. */
+    fun status(context: Context, publish: Boolean = true): Int? {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
         val pm = context.getSystemService(Context.POWER_SERVICE) as? AndroidPowerManager ?: return null
-        return runCatching { pm.currentThermalStatus }.getOrNull()?.also { latestStatus = it }
+        return runCatching { pm.currentThermalStatus }.getOrNull()?.also { if (publish) latestStatus = it }
     }
 }

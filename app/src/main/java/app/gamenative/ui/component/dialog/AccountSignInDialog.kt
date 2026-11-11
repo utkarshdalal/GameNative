@@ -11,6 +11,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -129,6 +130,9 @@ fun AccountSignInDialog(
     visible: Boolean,
     onSignedIn: () -> Unit,
     onDismiss: () -> Unit,
+    reason: String? = null,
+    hero: (@Composable () -> Unit)? = null,
+    benefits: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     if (!visible) return
 
@@ -241,8 +245,10 @@ fun AccountSignInDialog(
                             .weight(1f)
                             .verticalScroll(rememberScrollState()),
                     ) {
+                        SignInHeader(hero = hero, benefits = benefits)
                         SignInBody(
                             state = state,
+                            reason = reason,
                             noBrowser = noBrowser,
                             hasPrimary = hasPrimary,
                             primaryFocus = primaryFocus,
@@ -260,10 +266,12 @@ fun AccountSignInDialog(
                         .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
+                    SignInHeader(hero = hero, benefits = benefits)
                     SignInQrPanel(state = state, size = 200.dp)
                     Spacer(modifier = Modifier.height(16.dp))
                     SignInBody(
                         state = state,
+                        reason = reason,
                         noBrowser = noBrowser,
                         hasPrimary = hasPrimary,
                         primaryFocus = primaryFocus,
@@ -274,6 +282,21 @@ fun AccountSignInDialog(
                 }
             }
         }
+    }
+}
+
+/** What the caller is selling, above the sign-in steps: a hero row and benefit rows, each optional. */
+@Composable
+private fun SignInHeader(hero: (@Composable () -> Unit)?, benefits: (@Composable ColumnScope.() -> Unit)?) {
+    if (hero == null && benefits == null) return
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        hero?.invoke()
+        benefits?.invoke(this)
     }
 }
 
@@ -312,6 +335,7 @@ private fun SignInQrPanel(state: SignInState, size: Dp) {
 @Composable
 private fun SignInBody(
     state: SignInState,
+    reason: String?,
     noBrowser: Boolean,
     hasPrimary: Boolean,
     primaryFocus: FocusRequester,
@@ -325,6 +349,15 @@ private fun SignInBody(
             style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.padding(bottom = 12.dp),
         )
+
+        reason?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+        }
 
         val message = when (state) {
             SignInState.Starting -> stringResource(R.string.gamenative_sign_in_starting)

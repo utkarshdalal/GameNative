@@ -78,6 +78,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import app.gamenative.R
+import app.gamenative.optimize.OptimizeCards
+import app.gamenative.optimize.OptimizeController
 import app.gamenative.shadercache.FossilizeManager
 import app.gamenative.ui.util.applyScreenEffectsConfig
 import app.gamenative.ui.util.loadScreenEffectsConfig
@@ -116,6 +118,7 @@ import app.gamenative.externaldisplay.ExternalDisplaySwapController
 import app.gamenative.externaldisplay.SwapInputOverlayView
 import app.gamenative.powercontrol.ContainerAffinity
 import app.gamenative.powercontrol.PowerManager
+import app.gamenative.powercontrol.metrics.SessionPerfSampler
 import app.gamenative.service.AchievementWatcher
 import app.gamenative.service.SteamHostAchievementPoller
 import app.gamenative.service.SteamService
@@ -149,6 +152,7 @@ import app.gamenative.utils.protonFixes.CommonControlsV6
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.DebugReportUtils
 import app.gamenative.utils.GameSessionId
+import app.gamenative.utils.GuestOutputTail
 import app.gamenative.utils.DebugRunParams
 import app.gamenative.utils.DebugRunParamsHolder
 import app.gamenative.utils.ExecutableSelectionUtils
@@ -175,6 +179,7 @@ import app.gamenative.utils.SteamTokenLogin
 import app.gamenative.enums.Marker
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.OpenALRedist
+import app.gamenative.utils.OptimizeState
 import app.gamenative.utils.PhysXLayout
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.WineMono
@@ -257,6 +262,7 @@ import com.winlator.xserver.WindowManager
 import com.winlator.xserver.XServer
 import com.winlator.xserver.extensions.PresentExtension
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -559,6 +565,10 @@ fun XServerScreen(
         runCatching { windowActivity.start(context) }
         withContext(Dispatchers.IO) {
             runCatching { AppExitRecorder.markSessionStart(context, ContainerUtils.resolveGameName(appId)) }
+            // Only a launch with a step on trial needs its container read here.
+            if (OptimizeState.templateId != null) {
+                runCatching { ContainerUtils.getContainer(context, appId) }.getOrNull()?.let { OptimizeController.trialStarted(it) }
+            }
         }
     }
 
@@ -2574,6 +2584,14 @@ fun XServerScreen(
                             )
                             if (launchCancel.get()) throw IllegalStateException("Launch exited during setup")
 
+                            // Where DXVK keeps this game's pipeline cache, for the session's compile count.
+                            SessionPerfSampler.armStateCache(
+                                envVars.get("DXVK_STATE_CACHE_PATH").takeIf {
+                                    container.dxWrapper?.contains("dxvk") == true && envVars.get("DXVK_STATE_CACHE") != "0"
+                                },
+                                container.executablePath,
+                            )
+
                             // The game core set and the tuner's repeated-frame input differ by session type.
                             PowerManager.gamescopeSession = sessionDisplay == SessionDisplay.GAMESCOPE
                             // Autostart performance driver after environment is set up
@@ -4452,7 +4470,9 @@ private fun setupXEnvironment(
         if (debugRun) DebugReportUtils.startLogcatCapture(context, appId)
     }
 
+    GuestOutputTail.reset()
     ProcessHelper.addDebugCallback { line ->
+        GuestOutputTail.append(line)
         if (captureLogs) {
             logFile?.appendText(line + "\n")
         }
@@ -5467,7 +5487,7 @@ private fun exit(
 
     PerfSampler.halt()
 
-    val exitProperties = mapOf(
+    val sessionProperties = mapOf(
         "game_name" to ContainerUtils.resolveGameName(appId),
         "game_store" to ContainerUtils.extractGameSourceFromContainerId(appId).name,
         "session_length" to (frameRating?.sessionLengthSec ?: 0),
@@ -5480,12 +5500,23 @@ private fun exit(
         SessionReport.exitProperties(frameRating?.context ?: PluviaApp.xServerView?.context, frameRating, windowActivity, container, reason)
     }.getOrElse { emptyMap() } + runCatching {
         GameCompatibilityService.badgeProperties(ContainerUtils.resolveGameName(appId))
-    }.getOrElse { emptyMap() }
+    }.getOrElse { emptyMap() } + runCatching {
+        val fingerprint = CoroutineScope(Dispatchers.IO).async { SessionReport.crashFingerprintProperties(container, reason) }
+        runBlocking { withTimeoutOrNull(200) { fingerprint.await() } }
+    }.getOrNull().orEmpty()
+    val exitProperties = OptimizeController.exitProperties(
+        (frameRating?.context ?: PluviaApp.xServerView?.context)?.applicationContext, container, sessionProperties,
+    )
     PostHog.capture(
         event = "game_exited",
         properties = exitProperties,
     )
-    CoroutineScope(Dispatchers.IO).launch { SessionReport.recordRun(container, exitProperties) }
+    val optimizeContext = (frameRating?.context ?: PluviaApp.xServerView?.context)?.applicationContext
+    val judging = CoroutineScope(Dispatchers.IO).launch {
+        val run = SessionReport.recordRun(container, exitProperties)
+        val judged = OptimizeCards.withCard(exitProperties, OptimizeController.afterExit(optimizeContext, appId, container, exitProperties))
+        if (run != null && judged !== exitProperties) SessionReport.rewriteRun(run, judged)
+    }
     (frameRating?.context ?: PluviaApp.xServerView?.context)?.let { ctx -> runCatching { AppExitRecorder.markSessionEnd(ctx) } }
     runCatching { windowActivity.stop() }
 
@@ -5520,6 +5551,13 @@ private fun exit(
         CoroutineScope(Dispatchers.IO).launch {
             runCatching { FexCodeMaps.uploadAfterSession(appContext, container, appId, sessionLengthSec) }
                 .onFailure { Timber.w(it, "Code map upload failed") }
+        }
+    }
+    // A step judged a crash comes off now that Wine is down, not at the next launch.
+    optimizeContext?.let { appContext ->
+        CoroutineScope(Dispatchers.IO).launch {
+            judging.join()
+            OptimizeController.revertCrashed(appContext, container)
         }
     }
     GogGalaxyService.stop(blocking = false)

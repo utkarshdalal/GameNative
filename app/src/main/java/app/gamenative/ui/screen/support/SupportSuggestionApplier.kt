@@ -82,7 +82,7 @@ object SupportSuggestionApplier {
     fun editFor(change: SupportSuggestion.Change): Edit =
         Edit(change.key, change.name, if (change.isUnset) null else change.to)
 
-    private fun updatesFor(live: ContainerData, edits: List<Edit>): Map<String, Any?> {
+    internal fun updatesFor(live: ContainerData, edits: List<Edit>): Map<String, Any?> {
         val updates = linkedMapOf<String, Any?>()
         var env: EnvVars? = null
         val kv = linkedMapOf<String, String>()

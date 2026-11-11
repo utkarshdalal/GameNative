@@ -15,6 +15,7 @@ enum class AppOptionMenuType(@StringRes val title: Int) {
     SubmitFeedback(R.string.option_submit_feedback),
     ResetDrm(R.string.option_reset_drm),
     UseKnownConfig(R.string.option_use_known_config),
+    Optimize(R.string.option_optimize),
     BrowseCommunityConfigs(R.string.option_browse_community_configs),
     ImportConfig(R.string.import_config),
     ExportConfig(R.string.export_config),

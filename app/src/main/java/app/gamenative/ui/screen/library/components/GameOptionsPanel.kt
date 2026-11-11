@@ -57,6 +57,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SdStorage
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Sync
@@ -65,6 +66,7 @@ import androidx.compose.material.icons.filled.StarOutline
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material.icons.filled.VerifiedUser
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -88,6 +90,7 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.enums.AppOptionMenuType
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.adaptivePanelWidth
 
 @Composable
@@ -258,6 +261,7 @@ private fun OptionItem(
     )
 
     val icon = getIconForOption(option.optionType)
+    val isPremium = option.optionType == AppOptionMenuType.Optimize || option.optionType == AppOptionMenuType.AiDebugRun
     val isDestructive = option.optionType == AppOptionMenuType.Uninstall ||
         option.optionType == AppOptionMenuType.ResetToDefaults ||
         option.optionType == AppOptionMenuType.ResetDrm
@@ -323,7 +327,22 @@ private fun OptionItem(
                 isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
                 else -> MaterialTheme.colorScheme.onSurface
             },
+            modifier = Modifier.weight(1f),
         )
+
+        if (isPremium) {
+            Box(
+                modifier = Modifier.size(24.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.WorkspacePremium,
+                    contentDescription = null,
+                    tint = PluviaTheme.colors.accentPurple,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
     }
 }
 
@@ -340,6 +359,7 @@ private fun getIconForOption(type: AppOptionMenuType): ImageVector {
         AppOptionMenuType.SubmitFeedback -> Icons.Default.Feedback
         AppOptionMenuType.ResetDrm -> Icons.Default.Key
         AppOptionMenuType.UseKnownConfig -> Icons.Default.Build
+        AppOptionMenuType.Optimize -> Icons.Default.Speed
         AppOptionMenuType.BrowseCommunityConfigs -> Icons.Default.Search
         AppOptionMenuType.Uninstall -> Icons.Default.Delete
         AppOptionMenuType.VerifyFiles -> Icons.Default.VerifiedUser
@@ -382,6 +402,7 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
     options.forEach { option ->
         when (option.optionType) {
             // Quick Actions
+            AppOptionMenuType.Optimize,
             AppOptionMenuType.EditContainer,
             AppOptionMenuType.RunContainer,
             AppOptionMenuType.AiDebugRun,
@@ -436,6 +457,13 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
             AppOptionMenuType.ManageMods,
             -> helpInfo.add(option)
         }
+    }
+
+    // Optimize sits directly above Get AI help, or first when that is not offered.
+    quickActions.firstOrNull { it.optionType == AppOptionMenuType.Optimize }?.let { optimize ->
+        quickActions.remove(optimize)
+        val aiHelp = quickActions.indexOfFirst { it.optionType == AppOptionMenuType.AiDebugRun }
+        quickActions.add(aiHelp.coerceAtLeast(0), optimize)
     }
 
     return linkedMapOf(
