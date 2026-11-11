@@ -1782,6 +1782,8 @@
     <string name="optimize_after_helped_stutter">Den ændring hjalp: færre hak</string>
     <string name="optimize_after_helped_fps">Den ændring hjalp: højere billedhastighed</string>
     <string name="optimize_after_helped_stable">Den ændring hjalp: mere stabil ydeevne</string>
+    <string name="optimize_after_kept_no_visible">Ingen synlig ændring endnu</string>
+    <string name="optimize_after_kept_no_visible_body">Vi har beholdt dette trin og prøver det næste, næste gang du starter spillet.</string>
     <string name="optimize_measured_fps">+%1$d %% billedhastighed</string>
     <string name="optimize_measured_stutter">Hak ned med %1$d %%</string>
     <string name="optimize_keep_going">Fortsæt</string>

@@ -130,6 +130,21 @@ class OptimizeRulesTest {
     }
 
     @Test
+    fun aKeptStepWithNothingToSeeIsNotCalledAHelp() {
+        val before = Metrics(gameplaySec = 900, steadyFps = 47.6, stutterShare = 0.0)
+        val after = Metrics(gameplaySec = 900, steadyFps = 47.9, stutterShare = 0.0)
+        val card = OptimizeCard(OptimizeCard.HELPED, 1L, "Game", OptimizeProfile.BALANCED, rungId = "a", metrics = after, before = before)
+        assertFalse(OptimizeCards.showsGain(card))
+        assertTrue(OptimizeCards.showsGain(card.copy(fpsGainPct = 8)))
+        assertTrue(OptimizeCards.showsGain(card.copy(stutterDropPct = 40)))
+        // Holding longer before slowing down is something the player sees.
+        val hot = card.copy(before = before.copy(throttleOnsetSec = 300))
+        assertTrue(OptimizeCards.showsGain(hot))
+        assertTrue(OptimizeCards.showsGain(hot.copy(metrics = after.copy(throttleOnsetSec = 420))))
+        assertFalse(OptimizeCards.showsGain(hot.copy(metrics = after.copy(throttleOnsetSec = 320))))
+    }
+
+    @Test
     fun balancedIsTheSuggestedGoal() {
         assertEquals(OptimizeProfile.BALANCED, OptimizeCards.SUGGESTED_PROFILE)
     }

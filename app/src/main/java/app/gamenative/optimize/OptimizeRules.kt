@@ -265,6 +265,21 @@ object OptimizeCards {
 
     /** The smallest frame-rate gain or stutter drop, in percent, a card names; a smaller one reads as more stable. */
     const val MIN_NAMED_GAIN_PCT = 5
+
+    /** How much longer, in seconds, a session has to hold before slowing down for a card to call it more stable. */
+    const val MIN_STABLE_GAIN_SEC = 60
+
+    /**
+     * Whether a kept step changed something the player can see: a named frame-rate gain or stutter drop, or a session
+     * that held its performance longer before it slowed down. A step kept for what it saves under the surface shows
+     * none, and its card says so.
+     */
+    fun showsGain(card: OptimizeCard): Boolean {
+        if (card.fpsGainPct != null || card.stutterDropPct != null) return true
+        val before = card.before?.throttleOnsetSec ?: return false
+        val after = card.metrics?.throttleOnsetSec ?: return card.metrics != null
+        return after >= before + MIN_STABLE_GAIN_SEC
+    }
     const val SUPPRESS_MS = 7L * 24 * 60 * 60 * 1000
 
     const val SYNC_SPIN = "sync_spin"

@@ -1877,6 +1877,8 @@
     <string name="optimize_after_helped_stutter">这项更改有效：卡顿更少</string>
     <string name="optimize_after_helped_fps">这项更改有效：帧率更高</string>
     <string name="optimize_after_helped_stable">这项更改有效：性能更稳定</string>
+    <string name="optimize_after_kept_no_visible">暂时还看不出变化</string>
+    <string name="optimize_after_kept_no_visible_body">我们保留了这一步，下次启动时会尝试下一步。</string>
     <string name="optimize_measured_fps">帧率 +%1$d %%</string>
     <string name="optimize_measured_stutter">卡顿减少 %1$d %%</string>
     <string name="optimize_keep_going">继续</string>

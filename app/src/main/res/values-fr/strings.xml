@@ -1930,6 +1930,8 @@
     <string name="optimize_after_helped_stutter">Cette modification a aidé : moins de saccades</string>
     <string name="optimize_after_helped_fps">Cette modification a aidé : fréquence d\'images plus élevée</string>
     <string name="optimize_after_helped_stable">Cette modification a aidé : performances plus stables</string>
+    <string name="optimize_after_kept_no_visible">Pas encore de changement visible</string>
+    <string name="optimize_after_kept_no_visible_body">Nous avons conservé cette étape et essaierons la suivante au prochain lancement.</string>
     <string name="optimize_measured_fps">+%1$d %% de fréquence d\'images</string>
     <string name="optimize_measured_stutter">Saccades réduites de %1$d %%</string>
     <string name="optimize_keep_going">Continuer</string>

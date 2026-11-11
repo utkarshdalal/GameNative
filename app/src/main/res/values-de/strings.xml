@@ -1852,6 +1852,8 @@
     <string name="optimize_after_helped_stutter">Diese Änderung hat geholfen: weniger Ruckler</string>
     <string name="optimize_after_helped_fps">Diese Änderung hat geholfen: höhere Bildrate</string>
     <string name="optimize_after_helped_stable">Diese Änderung hat geholfen: stabilere Leistung</string>
+    <string name="optimize_after_kept_no_visible">Noch keine sichtbare Änderung</string>
+    <string name="optimize_after_kept_no_visible_body">Wir haben diesen Schritt behalten und probieren beim nächsten Start den nächsten.</string>
     <string name="optimize_measured_fps">+%1$d %% Bildrate</string>
     <string name="optimize_measured_stutter">Ruckler um %1$d %% weniger</string>
     <string name="optimize_keep_going">Weitermachen</string>

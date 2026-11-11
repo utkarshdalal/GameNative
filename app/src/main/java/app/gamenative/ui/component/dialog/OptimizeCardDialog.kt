@@ -283,16 +283,23 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
         OptimizeCard.HELPED -> {
             val tiles = resultTiles(card)
             val measured = if (tiles.isEmpty()) measuredText(card) else null
+            // A step kept without a gain the player can see is not called a help.
+            val visible = card.capFps != null || OptimizeCards.showsGain(card)
             CardSpec(
-                title = card.capFps?.let { stringResource(R.string.optimize_after_cap_held, it) } ?: when (card.outcome) {
-                    OptimizeCard.OUTCOME_FPS -> stringResource(R.string.optimize_after_helped_fps)
-                    OptimizeCard.OUTCOME_STUTTER -> stringResource(R.string.optimize_after_helped_stutter)
+                title = card.capFps?.let { stringResource(R.string.optimize_after_cap_held, it) } ?: when {
+                    !visible -> stringResource(R.string.optimize_after_kept_no_visible)
+                    card.outcome == OptimizeCard.OUTCOME_FPS -> stringResource(R.string.optimize_after_helped_fps)
+                    card.outcome == OptimizeCard.OUTCOME_STUTTER -> stringResource(R.string.optimize_after_helped_stutter)
                     else -> stringResource(R.string.optimize_after_helped_stable)
                 },
-                accent = success,
+                accent = if (visible) success else OptimizeAccent(Icons.Filled.Tune, PluviaTheme.colors.textMuted),
                 showEntitlement = showEntitlement,
                 tiles = tiles,
-                benefits = listOfNotNull(measured?.let { CardBenefit(it, Icons.Filled.Speed, PluviaTheme.colors.accentCyan) }),
+                benefits = if (visible) {
+                    listOfNotNull(measured?.let { CardBenefit(it, Icons.Filled.Speed, PluviaTheme.colors.accentCyan) })
+                } else {
+                    listOf(CardBenefit(stringResource(R.string.optimize_after_kept_no_visible_body), Icons.Filled.Tune, PluviaTheme.colors.textMuted))
+                },
                 primary = CardAction(stringResource(R.string.optimize_keep_going)) { answer(OptimizeCards.ACTION_KEEP_GOING) },
                 secondary = CardAction(stringResource(R.string.optimize_happy)) { answer(OptimizeCards.ACTION_HAPPY) },
                 tertiary = CardAction(stringResource(R.string.optimize_undo)) { answer(OptimizeCards.ACTION_UNDO) },

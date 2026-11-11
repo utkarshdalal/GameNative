@@ -2121,6 +2121,8 @@
     <string name="optimize_after_helped_stutter">その変更が効果あり：カクつきが減りました</string>
     <string name="optimize_after_helped_fps">その変更が効果あり：フレームレートが上がりました</string>
     <string name="optimize_after_helped_stable">その変更が効果あり：パフォーマンスが安定しました</string>
+    <string name="optimize_after_kept_no_visible">まだ目に見える変化はありません</string>
+    <string name="optimize_after_kept_no_visible_body">このステップは維持し、次回の起動時に次のステップを試します。</string>
     <string name="optimize_measured_fps">フレームレート +%1$d %%</string>
     <string name="optimize_measured_stutter">カクつき %1$d %% 減少</string>
     <string name="optimize_keep_going">続ける</string>

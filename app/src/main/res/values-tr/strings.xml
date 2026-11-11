@@ -1930,6 +1930,8 @@
     <string name="optimize_after_helped_stutter">Bu değişiklik işe yaradı: daha az takılma</string>
     <string name="optimize_after_helped_fps">Bu değişiklik işe yaradı: daha yüksek kare hızı</string>
     <string name="optimize_after_helped_stable">Bu değişiklik işe yaradı: daha kararlı performans</string>
+    <string name="optimize_after_kept_no_visible">Henüz gözle görülür bir değişiklik yok</string>
+    <string name="optimize_after_kept_no_visible_body">Bu adımı koruduk ve bir sonraki başlatmada sıradakini deneyeceğiz.</string>
     <string name="optimize_measured_fps">+%1$d %% kare hızı</string>
     <string name="optimize_measured_stutter">Takılmalar %1$d %% azaldı</string>
     <string name="optimize_keep_going">Devam et</string>

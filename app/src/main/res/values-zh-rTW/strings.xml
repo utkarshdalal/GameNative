@@ -1879,6 +1879,8 @@
     <string name="optimize_after_helped_stutter">這項變更有效：卡頓更少</string>
     <string name="optimize_after_helped_fps">這項變更有效：幀率更高</string>
     <string name="optimize_after_helped_stable">這項變更有效：效能更穩定</string>
+    <string name="optimize_after_kept_no_visible">暫時還看不出變化</string>
+    <string name="optimize_after_kept_no_visible_body">我們保留了這一步，下次啟動時會嘗試下一步。</string>
     <string name="optimize_measured_fps">幀率 +%1$d %%</string>
     <string name="optimize_measured_stutter">卡頓減少 %1$d %%</string>
     <string name="optimize_keep_going">繼續</string>

@@ -1881,6 +1881,8 @@
     <string name="optimize_after_helped_stutter">그 변경이 도움이 됐습니다: 끊김 감소</string>
     <string name="optimize_after_helped_fps">그 변경이 도움이 됐습니다: 프레임 속도 향상</string>
     <string name="optimize_after_helped_stable">그 변경이 도움이 됐습니다: 더 안정적인 성능</string>
+    <string name="optimize_after_kept_no_visible">아직 눈에 보이는 변화가 없습니다</string>
+    <string name="optimize_after_kept_no_visible_body">이 단계는 유지하고 다음 실행 때 다음 단계를 시도합니다.</string>
     <string name="optimize_measured_fps">프레임 속도 +%1$d %%</string>
     <string name="optimize_measured_stutter">끊김 %1$d %% 감소</string>
     <string name="optimize_keep_going">계속하기</string>

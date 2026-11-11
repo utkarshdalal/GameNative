@@ -1910,6 +1910,8 @@
     <string name="optimize_after_helped_stutter">Ese cambio ayudó: menos tirones</string>
     <string name="optimize_after_helped_fps">Ese cambio ayudó: más fotogramas por segundo</string>
     <string name="optimize_after_helped_stable">Ese cambio ayudó: rendimiento más estable</string>
+    <string name="optimize_after_kept_no_visible">Todavía no hay un cambio visible</string>
+    <string name="optimize_after_kept_no_visible_body">Hemos mantenido este paso y probaremos el siguiente en el próximo inicio.</string>
     <string name="optimize_measured_fps">+%1$d %% de fotogramas por segundo</string>
     <string name="optimize_measured_stutter">Tirones reducidos un %1$d %%</string>
     <string name="optimize_keep_going">Seguir</string>

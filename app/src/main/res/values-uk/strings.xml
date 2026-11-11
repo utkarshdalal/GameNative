@@ -1912,6 +1912,8 @@
     <string name="optimize_after_helped_stutter">Ця зміна допомогла: менше підгальмовувань</string>
     <string name="optimize_after_helped_fps">Ця зміна допомогла: вища частота кадрів</string>
     <string name="optimize_after_helped_stable">Ця зміна допомогла: стабільніша продуктивність</string>
+    <string name="optimize_after_kept_no_visible">Поки що без помітних змін</string>
+    <string name="optimize_after_kept_no_visible_body">Ми зберегли цей крок і під час наступного запуску спробуємо наступний.</string>
     <string name="optimize_measured_fps">+%1$d %% до частоти кадрів</string>
     <string name="optimize_measured_stutter">Підгальмовувань менше на %1$d %%</string>
     <string name="optimize_keep_going">Продовжити</string>

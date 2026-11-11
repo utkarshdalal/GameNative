@@ -1840,6 +1840,8 @@ https://gamenative.app
     <string name="optimize_after_helped_stutter">Это изменение помогло: меньше подтормаживаний</string>
     <string name="optimize_after_helped_fps">Это изменение помогло: выше частота кадров</string>
     <string name="optimize_after_helped_stable">Это изменение помогло: стабильнее производительность</string>
+    <string name="optimize_after_kept_no_visible">Пока без заметных изменений</string>
+    <string name="optimize_after_kept_no_visible_body">Мы сохранили этот шаг и при следующем запуске попробуем следующий.</string>
     <string name="optimize_measured_fps">+%1$d %% к частоте кадров</string>
     <string name="optimize_measured_stutter">Подтормаживаний меньше на %1$d %%</string>
     <string name="optimize_keep_going">Продолжить</string>

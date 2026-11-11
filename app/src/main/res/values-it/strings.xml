@@ -1903,6 +1903,8 @@
     <string name="optimize_after_helped_stutter">Quella modifica ha aiutato: meno scatti</string>
     <string name="optimize_after_helped_fps">Quella modifica ha aiutato: frame rate più alto</string>
     <string name="optimize_after_helped_stable">Quella modifica ha aiutato: prestazioni più stabili</string>
+    <string name="optimize_after_kept_no_visible">Ancora nessun cambiamento visibile</string>
+    <string name="optimize_after_kept_no_visible_body">Abbiamo mantenuto questo passaggio e proveremo il successivo al prossimo avvio.</string>
     <string name="optimize_measured_fps">+%1$d %% di frame rate</string>
     <string name="optimize_measured_stutter">Scatti ridotti del %1$d %%</string>
     <string name="optimize_keep_going">Continua</string>

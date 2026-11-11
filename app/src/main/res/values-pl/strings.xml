@@ -1916,6 +1916,8 @@
     <string name="optimize_after_helped_stutter">Ta zmiana pomogła: mniej przycięć</string>
     <string name="optimize_after_helped_fps">Ta zmiana pomogła: wyższa liczba klatek</string>
     <string name="optimize_after_helped_stable">Ta zmiana pomogła: stabilniejsza wydajność</string>
+    <string name="optimize_after_kept_no_visible">Na razie bez widocznej zmiany</string>
+    <string name="optimize_after_kept_no_visible_body">Zachowaliśmy ten krok i przy następnym uruchomieniu wypróbujemy kolejny.</string>
     <string name="optimize_measured_fps">+%1$d %% klatek na sekundę</string>
     <string name="optimize_measured_stutter">Przycięcia mniejsze o %1$d %%</string>
     <string name="optimize_keep_going">Kontynuuj</string>
