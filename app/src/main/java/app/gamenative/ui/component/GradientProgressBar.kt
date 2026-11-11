@@ -13,7 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import app.gamenative.ui.theme.BrandGradient
+import app.gamenative.ui.theme.PluviaTheme
 
 /**
  * Rounded progress bar drawn as one continuous track with the fill over it, so the unfilled part
@@ -25,7 +25,7 @@ fun GradientProgressBar(
     progress: Float,
     modifier: Modifier = Modifier,
     height: Dp = 6.dp,
-    colors: List<Color> = BrandGradient,
+    colors: List<Color> = PluviaTheme.colors.brandGradient,
     trackColor: Color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
 ) {
     val fraction = progress.coerceIn(0f, 1f)

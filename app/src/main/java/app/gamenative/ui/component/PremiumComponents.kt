@@ -47,7 +47,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gamenative.R
 import app.gamenative.ui.screen.support.supportButtonColors
-import app.gamenative.ui.theme.BrandGradient
 import app.gamenative.ui.theme.PluviaTheme
 
 /** A round badge with a soft radial glow in [accent] behind [icon]; heads paywalls and upsell cards. */
@@ -90,7 +89,7 @@ fun IconTile(icon: ImageVector, tint: Color, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .size(36.dp)
-            .clip(RoundedCornerShape(10.dp))
+            .clip(PluviaTheme.shape(10.dp))
             .background(tint.copy(alpha = 0.15f)),
         contentAlignment = Alignment.Center,
     ) {
@@ -154,7 +153,7 @@ fun BenefitCard(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = PluviaTheme.shape(20.dp),
         color = PluviaTheme.colors.surfaceElevated,
         tonalElevation = 0.dp,
     ) {
@@ -180,7 +179,7 @@ fun PremiumDialogButton(
     colors: ButtonColors? = null,
 ) {
     val interaction = remember { MutableInteractionSource() }
-    val shape = RoundedCornerShape(12.dp)
+    val shape = PluviaTheme.shape(12.dp)
     val content: @Composable () -> Unit = {
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -228,7 +227,7 @@ fun PremiumTextButton(
     enabled: Boolean = true,
 ) {
     val interaction = remember { MutableInteractionSource() }
-    val shape = RoundedCornerShape(12.dp)
+    val shape = PluviaTheme.shape(12.dp)
     TextButton(
         onClick = onClick,
         enabled = enabled,
@@ -288,14 +287,14 @@ fun GradientBorderSurface(
     border: Brush? = null,
     content: @Composable () -> Unit,
 ) {
-    val shape = RoundedCornerShape(20.dp)
+    val shape = PluviaTheme.shape(20.dp)
     val washEnd = with(LocalDensity.current) { 120.dp.toPx() }
     Surface(
         modifier = modifier,
         shape = shape,
         color = PluviaTheme.colors.surfaceElevated,
         contentColor = MaterialTheme.colorScheme.onSurface,
-        border = BorderStroke(1.dp, border ?: Brush.linearGradient(BrandGradient.map { it.copy(alpha = 0.6f) })),
+        border = BorderStroke(1.dp, border ?: Brush.linearGradient(PluviaTheme.colors.brandGradient.map { it.copy(alpha = 0.6f) })),
     ) {
         Box {
             Box(
@@ -327,9 +326,9 @@ fun MetricDeltaTile(
 ) {
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(PluviaTheme.shape(14.dp))
             .background(PluviaTheme.colors.surfacePanel)
-            .border(1.dp, PluviaTheme.colors.borderDefault.copy(alpha = 0.3f), RoundedCornerShape(14.dp))
+            .border(1.dp, PluviaTheme.colors.borderDefault.copy(alpha = 0.3f), PluviaTheme.shape(14.dp))
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
         Text(

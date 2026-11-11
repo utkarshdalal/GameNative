@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Download
@@ -133,11 +132,11 @@ fun OptionListItem(
     Box(
         modifier = modifier
             .scale(style.scale)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(PluviaTheme.shape(12.dp))
             .background(style.backgroundColor)
             .then(
                 if (isFocused) {
-                    Modifier.border(style.borderWidth, style.borderColor, RoundedCornerShape(12.dp))
+                    Modifier.border(style.borderWidth, style.borderColor, PluviaTheme.shape(12.dp))
                 } else Modifier
             )
             .focusRequester(focusRequester)
@@ -217,11 +216,11 @@ fun OptionRadioItem(
     Box(
         modifier = modifier
             .scale(style.scale)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(PluviaTheme.shape(12.dp))
             .background(style.backgroundColor)
             .then(
                 if (isFocused) {
-                    Modifier.border(style.borderWidth, style.borderColor, RoundedCornerShape(12.dp))
+                    Modifier.border(style.borderWidth, style.borderColor, PluviaTheme.shape(12.dp))
                 } else Modifier
             )
             .focusRequester(focusRequester)

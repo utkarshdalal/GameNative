@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -60,6 +59,7 @@ import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.data.statsFor
 import app.gamenative.ui.data.communityCompatibilityFor
 import app.gamenative.ui.enums.PaneType
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.AdaptivePadding
 import app.gamenative.ui.util.shouldShowGamepadUI
 import kotlin.math.abs
@@ -207,7 +207,7 @@ private fun CarouselEmptyState(modifier: Modifier = Modifier) {
     ) {
         Surface(
             modifier = Modifier.padding(horizontal = 24.dp),
-            shape = RoundedCornerShape(16.dp),
+            shape = PluviaTheme.shape(16.dp),
             color = MaterialTheme.colorScheme.surfaceVariant,
             shadowElevation = 8.dp,
         ) {

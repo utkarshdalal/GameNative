@@ -160,8 +160,8 @@ fun LibraryOptionsPanel(
                 modifier = Modifier
                     .width(adaptivePanelWidth(300.dp))
                     .fillMaxHeight(),
-                shape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp),
-                color = MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(topEnd = PluviaTheme.radius(24.dp), bottomEnd = PluviaTheme.radius(24.dp)),
+                color = PluviaTheme.panel(MaterialTheme.colorScheme.surface),
                 tonalElevation = 2.dp,
                 shadowElevation = 24.dp,
             ) {

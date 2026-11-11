@@ -112,7 +112,7 @@ internal fun GridViewCard(
     val cardContentBottomPadding = if (isCapsule) 12.dp else 8.dp
     val topIconPadding = if (isCapsule) 10.dp else 8.dp
     val bottomGradientHeight = if (isCapsule) 80.dp else 56.dp
-    val glowColor = MaterialTheme.colorScheme.primary
+    val glowColor = PluviaTheme.colors.focus
     val focusHaloModifier = if (isFocused && showFocusGlow) {
         Modifier.drawWithCache {
             val glowBrush = Brush.radialGradient(
@@ -134,7 +134,7 @@ internal fun GridViewCard(
     } else {
         Modifier
     }
-    val cardShape = RoundedCornerShape(12.dp)
+    val cardShape = PluviaTheme.shape(12.dp)
     // 1f = frosted teaser, 0f = normal card; animates the reveal when consent is granted
     val frost by animateFloatAsState(
         targetValue = if (appInfo.isRecTeaser) 1f else 0f,

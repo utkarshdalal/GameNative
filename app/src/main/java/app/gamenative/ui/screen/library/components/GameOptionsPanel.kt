@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.AddToHomeScreen
@@ -271,7 +270,7 @@ private fun OptionItem(
             .fillMaxWidth()
             .scale(scale)
             .padding(horizontal = 16.dp, vertical = 2.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(PluviaTheme.shape(12.dp))
             .background(
                 if (isFocused) {
                     MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
@@ -284,7 +283,7 @@ private fun OptionItem(
                     Modifier.border(
                         1.dp,
                         MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                        RoundedCornerShape(12.dp),
+                        PluviaTheme.shape(12.dp),
                     )
                 } else {
                     Modifier

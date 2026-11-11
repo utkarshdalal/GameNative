@@ -86,7 +86,6 @@ import app.gamenative.inputcontrols.ControlProfilePreview
 import app.gamenative.inputcontrols.ControlProfileSection
 import app.gamenative.inputcontrols.ControlProfileService
 import app.gamenative.ui.component.NoExtractOutlinedTextField
-import app.gamenative.ui.theme.PluviaBackground
 import com.winlator.container.Container
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.InputControlsManager
@@ -269,7 +268,7 @@ fun ControlProfileLibraryDialog(
     ) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
-            containerColor = PluviaBackground,
+            containerColor = MaterialTheme.colorScheme.background,
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             snackbarHost = {
                 SnackbarHost(snackbarHostState) { data ->

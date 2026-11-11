@@ -12,6 +12,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,12 +48,9 @@ import app.gamenative.data.TouchGestureConfig.Companion.ZOOM_PAGE_UP_DOWN
 import app.gamenative.data.TouchGestureConfig.Companion.ZOOM_PLUS_MINUS
 import app.gamenative.data.TouchGestureConfig.Companion.ZOOM_SCROLL_WHEEL
 import app.gamenative.ui.component.settings.SettingsListDropdown
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
-import app.gamenative.ui.theme.PluviaBackground
-import app.gamenative.ui.theme.PluviaBorder
-import app.gamenative.ui.theme.PluviaSurface
-import app.gamenative.ui.theme.PluviaSurfaceElevated
 import com.alorma.compose.settings.ui.SettingsSwitch
 import com.winlator.inputcontrols.Binding
 
@@ -82,7 +80,7 @@ fun TouchGestureSettingsDialog(
     ) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
-            containerColor = PluviaBackground,
+            containerColor = MaterialTheme.colorScheme.background,
             topBar = {
                 CenterAlignedTopAppBar(
                     title = {
@@ -428,8 +426,8 @@ private fun MouseHoldBehaviorPicker(
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 1.dp),
         shape = RoundedCornerShape(10.dp),
-        color = PluviaSurfaceElevated,
-        border = androidx.compose.foundation.BorderStroke(1.dp, PluviaBorder.copy(alpha = 0.5f)),
+        color = PluviaTheme.colors.surfaceElevated,
+        border = androidx.compose.foundation.BorderStroke(1.dp, PluviaTheme.colors.borderDefault.copy(alpha = 0.5f)),
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
@@ -824,8 +822,8 @@ private fun TouchActionComboPicker(
             .padding(horizontal = 12.dp, vertical = 1.dp)
             .clickable { showDialog = true },
         shape = RoundedCornerShape(10.dp),
-        color = PluviaSurfaceElevated,
-        border = androidx.compose.foundation.BorderStroke(1.dp, PluviaBorder.copy(alpha = 0.5f)),
+        color = PluviaTheme.colors.surfaceElevated,
+        border = androidx.compose.foundation.BorderStroke(1.dp, PluviaTheme.colors.borderDefault.copy(alpha = 0.5f)),
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
@@ -866,7 +864,7 @@ private fun TouchActionComboPicker(
 
         AlertDialog(
             onDismissRequest = { showDialog = false },
-            containerColor = PluviaBackground,
+            containerColor = MaterialTheme.colorScheme.background,
             title = { Text(dialogTitle) },
             text = {
                 LazyColumn(modifier = Modifier.fillMaxWidth()) {
@@ -947,7 +945,7 @@ private fun TouchActionComboPicker(
                                             selectedActions.add(actionKey)
                                         }
                                     },
-                                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else PluviaSurface,
+                                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else PluviaTheme.colors.surfacePanel,
                             ) {
                                 Row(
                                     modifier = Modifier

@@ -140,7 +140,7 @@ private fun SystemMenuItem(
     Box(
         modifier = modifier
             .scale(scale)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(PluviaTheme.shape(16.dp))
             .background(backgroundColor)
             .focusRequester(focusRequester)
             .selectable(
@@ -211,7 +211,7 @@ private fun StatusOption(
         modifier = modifier
             .fillMaxWidth()
             .scale(scale)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(PluviaTheme.shape(12.dp))
             .background(backgroundColor)
             .selectable(
                 selected = isFocused,
@@ -377,8 +377,8 @@ fun SystemMenu(
                 modifier = Modifier
                     .width(adaptivePanelWidth(380.dp))
                     .fillMaxHeight(),
-                shape = RoundedCornerShape(topStart = 32.dp, bottomStart = 32.dp),
-                color = MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(topStart = PluviaTheme.radius(32.dp), bottomStart = PluviaTheme.radius(32.dp)),
+                color = PluviaTheme.panel(MaterialTheme.colorScheme.surface),
                 tonalElevation = 8.dp,
                 shadowElevation = 24.dp,
             ) {
@@ -459,7 +459,7 @@ fun SystemMenu(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .scale(profileScale)
-                                .clip(RoundedCornerShape(16.dp))
+                                .clip(PluviaTheme.shape(16.dp))
                                 .background(
                                     if (isProfileFocused) {
                                         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
@@ -472,7 +472,7 @@ fun SystemMenu(
                                         Modifier.border(
                                             2.dp,
                                             MaterialTheme.colorScheme.primary,
-                                            RoundedCornerShape(16.dp),
+                                            PluviaTheme.shape(16.dp),
                                         )
                                     } else {
                                         Modifier

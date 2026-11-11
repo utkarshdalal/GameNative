@@ -5,7 +5,6 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.tween
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -27,6 +26,7 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.gamenative.ui.theme.PluviaTheme
 
 /**
  * The QuickMenu's rotating gradient focus ring (primary↔tertiary sweep), but driven **synchronously** by a [selected]
@@ -64,11 +64,7 @@ fun Modifier.scSelectionRing(
     if (!selected) return this
 
     // first == last so the sweep loops seamlessly; only primary + tertiary (secondary is near-black).
-    val colors = listOf(
-        MaterialTheme.colorScheme.primary,
-        MaterialTheme.colorScheme.tertiary,
-        MaterialTheme.colorScheme.primary,
-    )
+    val colors = listOf(PluviaTheme.colors.focus, PluviaTheme.colors.focusAlt, PluviaTheme.colors.focus)
     val strokePx = with(LocalDensity.current) { width.toPx() }
 
     return drawWithCache {

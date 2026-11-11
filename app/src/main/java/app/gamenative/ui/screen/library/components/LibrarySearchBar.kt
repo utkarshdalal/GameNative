@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Clear
@@ -60,6 +59,7 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.scaleAlpha
 import kotlinx.coroutines.launch
 
 @Composable
@@ -97,8 +97,8 @@ fun LibrarySearchBar(
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                            PluviaTheme.colors.bar.scaleAlpha(0.98f),
+                            PluviaTheme.colors.bar.scaleAlpha(0.85f),
                             Color.Transparent,
                         ),
                     ),
@@ -163,7 +163,7 @@ private fun SearchBarInput(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
+            .clip(PluviaTheme.shape(24.dp))
             .background(
                 brush = Brush.horizontalGradient(
                     colors = listOf(
@@ -178,7 +178,7 @@ private fun SearchBarInput(
                     Modifier.border(
                         2.dp,
                         MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                        RoundedCornerShape(24.dp),
+                        PluviaTheme.shape(24.dp),
                     )
                 } else {
                     Modifier

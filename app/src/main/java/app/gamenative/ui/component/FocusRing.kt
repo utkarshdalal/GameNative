@@ -7,7 +7,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,6 +28,7 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.gamenative.ui.theme.PluviaTheme
 
 /**
  * Colored focus ring: a sweep gradient border whose colors rotate around the element while
@@ -71,13 +71,9 @@ fun Modifier.focusRing(
 
     if (!focused) return this
 
-    // First == last so the sweep loops seamlessly. Only blue (tertiary) and purple (primary);
-    // secondary is a near-black gray and would show as a dark band in the ring.
-    val colors = listOf(
-        MaterialTheme.colorScheme.primary,
-        MaterialTheme.colorScheme.tertiary,
-        MaterialTheme.colorScheme.primary,
-    )
+    // First == last so the sweep loops seamlessly. By default purple (primary) and blue (tertiary).
+    val focusColors = PluviaTheme.colors
+    val colors = listOf(focusColors.focus, focusColors.focusAlt, focusColors.focus)
     val strokePx = with(LocalDensity.current) { width.toPx() }
 
     return drawWithCache {

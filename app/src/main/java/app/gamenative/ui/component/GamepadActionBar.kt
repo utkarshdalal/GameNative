@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -40,6 +39,7 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.ui.icons.InputIcons
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.scaleAlpha
 import app.gamenative.ui.util.shouldShowGamepadUI
 
 // Icons from https://kenney.nl/assets/input-prompts (CC0 License)
@@ -146,7 +146,7 @@ fun GamepadActionBar(
                     brush = Brush.verticalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                            PluviaTheme.colors.bar.scaleAlpha(0.95f),
                         ),
                     ),
                 ),
@@ -156,7 +156,7 @@ fun GamepadActionBar(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
                     .navigationBarsPadding(),
-                shape = RoundedCornerShape(16.dp),
+                shape = PluviaTheme.shape(16.dp),
                 color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.3f),
                 tonalElevation = 4.dp,
             ) {

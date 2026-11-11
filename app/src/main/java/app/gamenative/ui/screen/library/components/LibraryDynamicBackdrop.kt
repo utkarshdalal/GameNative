@@ -46,18 +46,24 @@ internal fun LibraryDynamicBackdrop(
         ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0.25f) })
     }
 
+    // A theme backdrop is drawn behind the home screen; the base gradient would hide it.
+    val baseModifier = if (PluviaTheme.hasBackdrop) {
+        Modifier
+    } else {
+        Modifier.background(
+            Brush.verticalGradient(
+                colors = listOf(
+                    MaterialTheme.colorScheme.background,
+                    PluviaTheme.colors.surfacePanel,
+                    MaterialTheme.colorScheme.background,
+                ),
+            ),
+        )
+    }
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.background,
-                        PluviaTheme.colors.surfacePanel,
-                        MaterialTheme.colorScheme.background,
-                    ),
-                ),
-            ),
+            .then(baseModifier),
     ) {
         Crossfade(
             targetState = appInfo,

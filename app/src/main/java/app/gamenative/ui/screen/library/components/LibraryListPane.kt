@@ -193,6 +193,7 @@ internal fun LibraryListPane(
 
     Scaffold(
         modifier = modifier,
+        containerColor = PluviaTheme.screenBackground,
         snackbarHost = { SnackbarHost(snackBarHost) },
     ) { paddingValues ->
         Box(

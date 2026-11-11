@@ -5,7 +5,6 @@ import android.content.Intent
 import androidx.annotation.StringRes
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +32,7 @@ import app.gamenative.data.gog.GogRecommendationsRepository
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamWishlistService
 import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.ConversionTracker
 import com.posthog.PostHog
@@ -126,7 +126,7 @@ internal fun FeaturedCtaButton(
     }
 
     val label = if (cta != null && done == true) stringResource(cta.doneLabelRes) else action.label
-    val shape = RoundedCornerShape(12.dp)
+    val shape = PluviaTheme.shape(12.dp)
     val buttonModifier = Modifier
         .fillMaxWidth()
         .focusRing(interactionSource, shape, width = 2.dp)
