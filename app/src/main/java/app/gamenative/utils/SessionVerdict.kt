@@ -205,6 +205,7 @@ internal object SessionVerdict {
     private const val ONSET_WINDOW_SEC = 300
     private const val GPU_BEFORE_ONSET_SEC = 120
     private const val HARD_MEMORY_TRIM_EVENTS = 3
+    const val HARD_MEMORY_AVAIL_MB = 1024
     private const val LOW_AVAIL_MB = 300
     private const val GPU_BUSY_SATURATED = 85
     private const val GPU_CPU_MAX = 60
@@ -298,6 +299,10 @@ internal object SessionVerdict {
         val source: String? = null,
         val load: Load? = null,
         val signals: LeverSignals? = null,
+        val trimEvents: Int = 0,
+        /** The lowest available RAM over the gameplay samples; null when none was sampled. */
+        val availMinMb: Int? = null,
+        val memoryHard: Boolean = false,
     ) {
         /** The game_exited properties of the verdict. */
         fun properties(): Map<String, Any> = buildMap {
@@ -422,7 +427,9 @@ internal object SessionVerdict {
             onsetIndex != null && gpuBeforeOnset != null && gpuBeforeOnset >= THERMAL_GPU_BUSY && framesDropped
         }
 
-        val memoryHard = input.trimEvents >= HARD_MEMORY_TRIM_EVENTS
+        // Trim callbacks alone do not show a memory limit: available memory must also have run low.
+        val availMinMb = g.mapNotNull { it.availMb }.minOrNull()
+        val memoryHard = input.trimEvents >= HARD_MEMORY_TRIM_EVENTS && availMinMb != null && availMinMb < HARD_MEMORY_AVAIL_MB
         val steadyFps = minuteMedianFps(g)
         val held = listOf(
             SYNC_SPIN to (shares.getValue("sync") >= HOLD_SHARE),
@@ -514,6 +521,9 @@ internal object SessionVerdict {
             source = legacy?.let { SOURCE_LEGACY },
             load = load(input.samples.filter { it.fps > 0f }, g, steadyFps, input),
             signals = LeverSignals.of(input, g),
+            trimEvents = input.trimEvents,
+            availMinMb = availMinMb,
+            memoryHard = memoryHard,
         )
     }
 

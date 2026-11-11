@@ -145,9 +145,34 @@ class SessionVerdictTest {
     }
 
     @Test
-    fun repeatedTrimEventsOutrankGpu() {
-        val r = compute(gameplay { base(it, gpu = 92, cpu = 40, hot = 60) }, trimEvents = 3)
+    fun repeatedTrimEventsWithLowAvailableMemoryOutrankGpu() {
+        val r = compute(gameplay { base(it, gpu = 92, cpu = 40, hot = 60, availMb = 800) }, trimEvents = 3)
         assertEquals(SessionVerdict.MEMORY, r.cls)
+        assertTrue(r.memoryHard)
+        assertEquals(1.0, r.confidence, 1e-9)
+        assertEquals(800, r.availMinMb)
+    }
+
+    @Test
+    fun trimEventsWithPlentyOfFreeMemoryLeaveTheGpuShareInCharge() {
+        val r = compute(
+            gameplay { base(it, gpu = if (it % 10 < 7) 92 else 50, cpu = 40, hot = 60, gpuMhz = 900, availMb = 3274) },
+            trimEvents = 4,
+            gpuTopMhz = 900,
+        )
+        assertFalse(r.memoryHard)
+        assertEquals(0.7, r.shares.getValue("gpu"), 1e-9)
+        assertEquals(SessionVerdict.GPU, r.cls)
+        assertTrue(r.confident)
+        assertEquals(3274, r.availMinMb)
+    }
+
+    @Test
+    fun trimEventsWithUnknownAvailableMemoryAreNotAHardMemoryVerdict() {
+        val r = compute(gameplay { base(it, gpu = 50, cpu = 40, hot = 40, availMb = null) }, trimEvents = 5)
+        assertFalse(r.memoryHard)
+        assertNull(r.availMinMb)
+        assertTrue(r.cls != SessionVerdict.MEMORY)
     }
 
     @Test

@@ -101,7 +101,8 @@ object SessionProcessTelemetry {
 
     private val trimCallbacks = object : ComponentCallbacks2 {
         override fun onTrimMemory(level: Int) {
-            if (level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW && level != ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
+            // Only the levels sent to a running app; the background levels say the process may be reclaimed, not that it is short of memory.
+            if (level == ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW || level == ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL) {
                 synchronized(lock) { lowMemoryEvents++ }
             }
         }
