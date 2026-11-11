@@ -112,6 +112,24 @@ class OptimizeRulesTest {
     }
 
     @Test
+    fun aGameThatRunsFineGetsNoCard() {
+        val busy = session.copy(steadyFps = 59.6, stutterShare = 0.002, fpsBy5Min = listOf(52, 60, 60, 59), refreshHz = 60.0, gpuBusyP95 = 96)
+        assertTrue(OptimizeCards.ranFine(busy, 0))
+        assertEquals(OptimizeCards.SUPPRESSED_RAN_FINE, OptimizeCards.firstCardBlock(OptimizeLocalState(), busy, 0L))
+        // Holding the user's own 30 fps limiter is fine too; missing it is not.
+        val capped = busy.copy(steadyFps = 30.0, fpsBy5Min = listOf(30, 30, 30))
+        assertTrue(OptimizeCards.ranFine(capped, 30))
+        assertFalse(OptimizeCards.ranFine(capped, 0))
+        // Short of the frame rate, dipping, stuttering or hot: there is something to offer.
+        assertFalse(OptimizeCards.ranFine(busy.copy(steadyFps = 50.0), 0))
+        assertFalse(OptimizeCards.ranFine(busy.copy(fpsBy5Min = listOf(52, 60, 60, 51)), 0))
+        assertFalse(OptimizeCards.ranFine(busy.copy(stutterShare = 0.03), 0))
+        assertFalse(OptimizeCards.ranFine(busy.copy(cls = "thermal_gpu"), 0))
+        assertFalse(OptimizeCards.ranFine(busy.copy(throttleOnsetSec = 400, fpsBy5Min = listOf(52, 60, 60, 57)), 0))
+        assertNull(OptimizeCards.firstCardBlock(OptimizeLocalState(), busy.copy(steadyFps = 50.0), 0L))
+    }
+
+    @Test
     fun balancedIsTheSuggestedGoal() {
         assertEquals(OptimizeProfile.BALANCED, OptimizeCards.SUGGESTED_PROFILE)
     }

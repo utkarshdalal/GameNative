@@ -1204,7 +1204,7 @@ object OptimizeController {
                 val userCap = userFpsLimit(container, profile?.let { state.ladder(it) })
                 if (profile == null) {
                     val rulesVersion = appRulesVersion()
-                    val block = OptimizeCards.firstCardBlock(state, after, now, rulesVersion)
+                    val block = OptimizeCards.firstCardBlock(state, after, now, rulesVersion, cap)
                     cardField = OptimizeCards.cardField(block == null, block)
                     // An unsure or unlisted verdict on a real session still asks the server once per rules build;
                     // its own verdict may leave the card. The user's holds and short sessions never ask.

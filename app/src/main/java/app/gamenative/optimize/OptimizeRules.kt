@@ -245,6 +245,7 @@ object OptimizeCards {
     const val SUPPRESSED_NOT_CONFIDENT = "not_confident"
     const val SUPPRESSED_SHORT = "short"
     const val SUPPRESSED_CLASS = "class"
+    const val SUPPRESSED_RAN_FINE = "ran_fine"
     const val SUPPRESSED_NOT_NOW = "not_now"
     const val SUPPRESSED_NO_RULE = "no_rule"
     const val SUPPRESSED_CAP_SNOOZED = "cap_snoozed"
@@ -271,13 +272,29 @@ object OptimizeCards {
      * Why the session that just ended leaves no first card, or null when it should: the user's own holds first,
      * then the session's verdict. A game with no active profile gets it again after Off or Restore, ladders and all.
      */
-    fun firstCardBlock(state: OptimizeLocalState, session: Metrics, nowMillis: Long, rulesVersion: String? = null): String? {
+    fun firstCardBlock(
+        state: OptimizeLocalState,
+        session: Metrics,
+        nowMillis: Long,
+        rulesVersion: String? = null,
+        fpsCap: Int = 0,
+    ): String? {
         userHold(state, session, nowMillis, rulesVersion)?.let { return it }
         if (session.confident != true) return SUPPRESSED_NOT_CONFIDENT
         if (session.gameplaySec < MIN_GAMEPLAY_SEC) return SUPPRESSED_SHORT
         if (session.cls !in CARD_CLASSES) return SUPPRESSED_CLASS
+        if (ranFine(session, fpsCap)) return SUPPRESSED_RAN_FINE
         return null
     }
+
+    /**
+     * A session with nothing to fix: it held its frame rate ([fpsCap] is the user's own limiter, 0 for none), heat did
+     * not hold it back and it barely stuttered. A busy GPU or processor alone is no reason to offer anything.
+     */
+    fun ranFine(session: Metrics, fpsCap: Int): Boolean =
+        OptimizeTarget.holdsTarget(session, session.refreshHz, fpsCap) &&
+            !OptimizeTarget.hot(session, session.refreshHz, fpsCap) &&
+            (session.stutterShare ?: 0.0) < OptimizeTarget.BALANCED_MAX_STUTTER
 
     fun offerFirst(state: OptimizeLocalState, session: Metrics, nowMillis: Long): Boolean = firstCardBlock(state, session, nowMillis) == null
 
