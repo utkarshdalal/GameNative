@@ -386,8 +386,8 @@ private fun InstalledThemesTab(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item {
             FlowRow(
@@ -486,7 +486,7 @@ private fun InstalledThemeCard(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -494,7 +494,7 @@ private fun InstalledThemeCard(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 2,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                     val meta = listOfNotNull(
@@ -506,45 +506,36 @@ private fun InstalledThemeCard(
                             text = meta,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    if (theme.appliedFields.isEmpty()) {
+                        Text(
+                            text = stringResource(R.string.themes_layout_only),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    } else {
+                        Text(
+                            text = changesText(theme.appliedFields),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    if (theme.missingDependencies.isNotEmpty()) {
+                        Text(
+                            text = stringResource(
+                                R.string.themes_missing_dependencies,
+                                theme.missingDependencies.joinToString(", "),
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
                         )
                     }
                 }
-                Switch(
-                    checked = theme.enabled,
-                    onCheckedChange = { checked -> onAction { ThemeManager.setEnabled(theme.id, checked) } },
-                    modifier = Modifier.focusOutline(CircleShape),
-                )
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-            if (theme.appliedFields.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.themes_layout_only),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
-            } else {
-                Text(
-                    text = changesText(theme.appliedFields),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            if (theme.missingDependencies.isNotEmpty()) {
-                Text(
-                    text = stringResource(
-                        R.string.themes_missing_dependencies,
-                        theme.missingDependencies.joinToString(", "),
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
                 if (visibleOptions.isNotEmpty()) {
                     TextButton(
                         onClick = onToggleExpanded,
@@ -557,7 +548,6 @@ private fun InstalledThemeCard(
                         Text(text = stringResource(R.string.themes_options))
                     }
                 }
-                Spacer(modifier = Modifier.weight(1f))
                 IconButton(
                     onClick = { onAction { ThemeManager.move(theme.id, up = true) } },
                     enabled = !isFirst,
@@ -582,6 +572,12 @@ private fun InstalledThemeCard(
                         tint = MaterialTheme.colorScheme.error,
                     )
                 }
+                Spacer(modifier = Modifier.width(4.dp))
+                Switch(
+                    checked = theme.enabled,
+                    onCheckedChange = { checked -> onAction { ThemeManager.setEnabled(theme.id, checked) } },
+                    modifier = Modifier.focusOutline(CircleShape),
+                )
             }
 
             if (isExpanded && visibleOptions.isNotEmpty()) {

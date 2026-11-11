@@ -216,6 +216,7 @@ private fun CompactLibraryTabBar(
                 modifier = Modifier
                     .weight(1f)
                     .clip(PluviaTheme.shape(20.dp))
+                    .background(PluviaTheme.barBacking)
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
                     .horizontalScroll(scrollState)
                     .padding(4.dp),
@@ -478,6 +479,7 @@ private fun ExpandedLibraryTabBar(
                 modifier = Modifier
                     .weight(1f)
                     .clip(PluviaTheme.shape(24.dp))
+                    .background(PluviaTheme.barBacking)
                     .background(
                         brush = Brush.horizontalGradient(
                             colors = listOf(

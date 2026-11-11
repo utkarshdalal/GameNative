@@ -191,6 +191,14 @@ private fun Int?.toColor(): Color? = this?.let { Color(it) }
 private const val MIN_TEXT_CONTRAST = 4.5f
 private const val MIN_ACCENT_CONTRAST = 3f
 
+/** Smallest contrast that still shows a panel's edge against the page behind it. */
+private const val MIN_SURFACE_EDGE = 1.1f
+private const val MIN_CARD_EDGE = 1.25f
+
+/** Themed bars stay at least this opaque, so bar text never sits on bare artwork. */
+private const val MIN_BAR_ALPHA = 0.6f
+private const val MIN_BAR_BACKING_ALPHA = 0.75f
+
 private fun contrast(a: Color, b: Color): Float {
     val la = a.copy(alpha = 1f).luminance()
     val lb = b.copy(alpha = 1f).luminance()
@@ -219,10 +227,15 @@ private fun buildColorScheme(spec: ThemeSpec): ColorScheme {
     val d = DarkColorScheme
     val panel = spec.panelOpacity?.coerceIn(0f, 1f) ?: 1f
     val background = spec.background.toColor() ?: d.background
-    val surface = spec.surface.toColor() ?: d.surface
-    val variant = spec.surfaceVariant.toColor() ?: d.surfaceVariant
     // A theme may set only one colour of a pair; keep every pair it touched readable.
     val themedSurfaces = spec.background != null || spec.surface != null || spec.surfaceVariant != null
+    // Panels, menus, dialogs and cards the same colour as the page lose their edges; lift them slightly.
+    val surface = (spec.surface.toColor() ?: d.surface).let {
+        if (themedSurfaces) readable(it, MIN_SURFACE_EDGE, listOf(background)) else it
+    }
+    val variant = (spec.surfaceVariant.toColor() ?: d.surfaceVariant).let {
+        if (themedSurfaces) readable(it, MIN_CARD_EDGE, listOf(background)) else it
+    }
     val primary = (spec.primary.toColor() ?: d.primary).let {
         if (spec.primary != null || themedSurfaces) readable(it, MIN_ACCENT_CONTRAST, listOf(background, surface)) else it
     }
@@ -283,13 +296,13 @@ private fun buildPluviaColors(spec: ThemeSpec, scheme: ColorScheme): PluviaColor
     return d.copy(
         accentCyan = if (themedAccent) accent else d.accentCyan,
         accentPurple = if (themedAccent) accent else d.accentPurple,
-        surfacePanel = (spec.surface.toColor() ?: d.surfacePanel).scaleAlpha(panel),
-        surfaceElevated = (spec.surfaceVariant.toColor() ?: d.surfaceElevated).scaleAlpha(panel),
+        surfacePanel = (if (spec.surface != null) scheme.surface else d.surfacePanel).scaleAlpha(panel),
+        surfaceElevated = (if (spec.surfaceVariant != null) scheme.surfaceVariant else d.surfaceElevated).scaleAlpha(panel),
         borderDefault = spec.outline.toColor() ?: d.borderDefault,
         textMuted = if (spec.textMuted != null) scheme.onSurfaceVariant else d.textMuted,
         focus = focus ?: scheme.primary,
         focusAlt = focus ?: scheme.tertiary,
-        bar = spec.bar.toColor() ?: scheme.surface,
+        bar = spec.bar.toColor()?.let { it.copy(alpha = it.alpha.coerceAtLeast(MIN_BAR_ALPHA)) } ?: scheme.surface,
         brandGradient = if (themedAccent) {
             listOf(accent, lerp(accent, scheme.onSurface, 0.35f), accent)
         } else {
@@ -378,6 +391,19 @@ object PluviaTheme {
         @Composable
         @ReadOnlyComposable
         get() = if (hasBackdrop) Color.Transparent else MaterialTheme.colorScheme.background
+
+    /**
+     * Backing drawn under bar content (tabs, chips) that can float over artwork: transparent without a theme,
+     * otherwise the theme bar colour at a legible opacity.
+     */
+    val barBacking: Color
+        @Composable
+        @ReadOnlyComposable
+        get() = if (LocalThemeSpec.current.isEmpty) {
+            Color.Transparent
+        } else {
+            LocalPluviaColors.current.bar.let { it.copy(alpha = it.alpha.coerceAtLeast(MIN_BAR_BACKING_ALPHA)) }
+        }
 
     /** [color] with the theme panel opacity applied, for side menus and sheets. */
     @Composable
