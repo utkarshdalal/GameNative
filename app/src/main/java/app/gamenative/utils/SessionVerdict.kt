@@ -383,7 +383,8 @@ internal object SessionVerdict {
             } else {
                 (mhzRatio == null || mhzRatio >= GPU_FULL_CLOCK_RATIO) && (s.cpuTotal == null || s.cpuTotal < GPU_CPU_MAX)
             }
-            if (gpuBusy != null && gpuBusy >= GPU_BUSY_SATURATED && (hot == null || hot < HOT_SATURATED) && gpuFed) gpu++
+            // A busy, fed GPU limits the second whatever the hot thread shows: a thread that waits on the GPU reads as busy too.
+            if (gpuBusy != null && gpuBusy >= GPU_BUSY_SATURATED && gpuFed) gpu++
             if (hot != null && hot >= HOT_SATURATED && ks != null && ks < 0.4 && (gpuBusy == null || gpuBusy < 75)) cpu1++
             if (s.cpuTotal != null && s.cpuTotal >= 80 && (s.coreMax ?: 0) < 90 && (gpuBusy == null || gpuBusy < 75)) cpuN++
             if (s.frames > 0 && s.refreshMultipleFrames * 10 > s.frames * 7 &&
