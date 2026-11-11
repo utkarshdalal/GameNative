@@ -46,4 +46,16 @@ class SupportSuggestionTest {
         assertEquals(Container.DISPLAY_SERVER_X11, after.displayServer)
         assertEquals(Container.DISPLAY_SERVER_X11, SuggestionConfigKeys.configValueOf(after, "displayServer"))
     }
+
+    @Test
+    fun `xaudio wincomponent card is applicable`() {
+        val card = SupportSuggestion.parse(
+            JSONObject().put("v", 1).put(
+                "changes",
+                JSONArray().put(JSONObject().put("key", "wincomponents.xaudio").put("to", "1")),
+            ),
+        )
+
+        assertTrue(card!!.applicable)
+    }
 }
