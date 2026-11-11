@@ -25,16 +25,22 @@ class OptimizeStepDistanceTest {
     }
 
     @Test
-    fun `a level the key already holds is counted from its lowest step, so every step changes the value`() {
+    fun `a value that spans several levels is counted from its highest one, so a step never goes further than asked`() {
         assertEquals("Medium", step("High", quality, "enum", 3))
-        assertEquals("Low", step("Ultra", quality, "enum", 8))
+        assertEquals("Medium", step("Ultra", quality, "enum", 8))
         assertEquals("Low", step("Medium", quality, "enum", 3))
-        assertEquals("Medium", step(" high ", quality, "enum", 1))
+        // A distance that stays inside the value's own levels changes nothing.
+        assertNull(step(" high ", quality, "enum", 1))
+        assertNull(step("Ultra", quality, "enum", 2))
+        // A key that holds one value from level 1 up is not thrown to the bottom by a big step from the top.
+        val flat = listOf("0.2", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1")
+        assertNull(step("1", flat, OptimizeRelative.LESS, 8))
+        assertEquals("0.2", step("1", flat, OptimizeRelative.LESS, 11))
     }
 
     @Test
     fun `lower quality may be the bigger number`() {
-        assertEquals("2", step("0", cascade, OptimizeRelative.MORE, 3))
+        assertEquals("1", step("0", cascade, OptimizeRelative.MORE, 3))
         assertEquals("5", step("3", cascade, OptimizeRelative.MORE, 5))
     }
 
@@ -54,9 +60,10 @@ class OptimizeStepDistanceTest {
     }
 
     @Test
-    fun `a level without a value gives way to the nearest one that still lowers the key`() {
+    fun `a level without a value gives way to the nearest one toward the current value`() {
         val gaps = listOf(null, "1", null, null, "2", "3", "3", "3", "4", "4", "4", "4")
-        assertEquals("1", step("4", gaps, OptimizeRelative.LESS, 5))
+        assertEquals("3", step("4", gaps, OptimizeRelative.LESS, 5))
+        assertEquals("2", step("4", gaps, OptimizeRelative.LESS, 9))
         assertEquals("1", step("2", gaps, OptimizeRelative.LESS, 4))
         assertEquals("2", step("3", listOf(null, null, null, null, "2", "3", "3", "3", "4", "4", "4", "4"), OptimizeRelative.LESS, 5))
     }

@@ -539,9 +539,11 @@ object OptimizeRelative {
 
     /**
      * The value a step writes for a key that holds [current]: [down] levels of [ladder] below it, or above it when
-     * [down] is negative; null when there is nothing to write (no move asked, or the key is already at that end). A
-     * level without a value gives way to the nearest one that still moves the key the right way. A key the game does
-     * not have yet, or whose value the ladder cannot place, falls back to [target], under the lower-only rule.
+     * [down] is negative. The count starts at the highest level that holds the current value, so a key whose value
+     * spans many levels moves less, never more, than asked. Null when there is nothing to write: no move asked, or
+     * the level reached holds the value the key already has. A level without a value gives way to the nearest one
+     * toward the current value. A key the game does not have yet, or whose value the ladder cannot place, falls back
+     * to [target], under the lower-only rule.
      */
     fun retarget(current: String?, target: String, ladder: List<String?>, lowerIs: String?, down: Int): String? {
         if (down == 0) return null
@@ -549,11 +551,9 @@ object OptimizeRelative {
         val at = levelOf(current, ladder, lowerIs)
             ?: return target.takeIf { down > 0 && shouldApply(current, target, ladder, lowerIs) }
         val candidates = if (down > 0) {
-            val start = (at.first - down).coerceAtLeast(0)
-            (start downTo 0) + (start + 1 until at.first)
+            (at.last - down).coerceAtLeast(0) until at.first
         } else {
-            val start = (at.last - down).coerceAtMost(ladder.lastIndex)
-            (start downTo at.last + 1) + (start + 1..ladder.lastIndex)
+            (at.last - down).coerceAtMost(ladder.lastIndex) downTo at.last + 1
         }
         return candidates.firstNotNullOfOrNull { i ->
             ladder[i]?.takeIf { !same(it, current) && moves(current, it, lowerIs, lower = down > 0) }
