@@ -278,6 +278,7 @@ private fun BackButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
+    val focusColor = if (PluviaTheme.spec.focus != null) PluviaTheme.colors.focus else PluviaTheme.colors.accentCyan
 
     val scale by animateFloatAsState(
         targetValue = if (isFocused) 1.1f else 1f,
@@ -295,7 +296,7 @@ private fun BackButton(
             .clip(CircleShape)
             .background(
                 if (isFocused) {
-                    PluviaTheme.colors.accentCyan.copy(alpha = 0.2f)
+                    focusColor.copy(alpha = 0.2f)
                 } else {
                     PluviaTheme.colors.surfaceElevated
                 },
@@ -304,7 +305,7 @@ private fun BackButton(
                 if (isFocused) {
                     Modifier.border(
                         2.dp,
-                        PluviaTheme.colors.accentCyan.copy(alpha = 0.6f),
+                        focusColor.copy(alpha = 0.6f),
                         CircleShape,
                     )
                 } else {
@@ -326,7 +327,7 @@ private fun BackButton(
         Icon(
             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
             contentDescription = stringResource(R.string.back),
-            tint = if (isFocused) PluviaTheme.colors.accentCyan else Color.White.copy(alpha = 0.8f),
+            tint = if (isFocused) focusColor else Color.White.copy(alpha = 0.8f),
             modifier = Modifier.size(24.dp),
         )
     }

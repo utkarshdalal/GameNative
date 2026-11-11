@@ -15,6 +15,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -187,6 +188,29 @@ private val REFERENCE_CORNER = 12.dp
 
 private fun Int?.toColor(): Color? = this?.let { Color(it) }
 
+private const val MIN_TEXT_CONTRAST = 4.5f
+private const val MIN_ACCENT_CONTRAST = 3f
+
+private fun contrast(a: Color, b: Color): Float {
+    val la = a.copy(alpha = 1f).luminance()
+    val lb = b.copy(alpha = 1f).luminance()
+    return (maxOf(la, lb) + 0.05f) / (minOf(la, lb) + 0.05f)
+}
+
+/** [fg], moved toward white or black just far enough to reach [min] contrast against every one of [backgrounds]. */
+private fun readable(fg: Color, min: Float, vararg backgrounds: Color): Color {
+    fun worst(c: Color) = backgrounds.minOf { contrast(c, it) }
+    if (worst(fg) >= min) return fg
+    val target = if (worst(Color.White) >= worst(Color.Black)) Color.White else Color.Black
+    var f = 0.1f
+    while (f < 1f) {
+        val c = lerp(fg, target, f)
+        if (worst(c) >= min) return c.copy(alpha = fg.alpha)
+        f += 0.1f
+    }
+    return target.copy(alpha = fg.alpha)
+}
+
 /** Multiplies the alpha, so a theme colour that is already translucent stays proportionally so. */
 fun Color.scaleAlpha(factor: Float): Color = copy(alpha = (alpha * factor).coerceIn(0f, 1f))
 
@@ -194,13 +218,23 @@ private fun buildColorScheme(spec: ThemeSpec): ColorScheme {
     if (spec.isEmpty) return DarkColorScheme
     val d = DarkColorScheme
     val panel = spec.panelOpacity?.coerceIn(0f, 1f) ?: 1f
-    val primary = spec.primary.toColor() ?: d.primary
-    val onPrimary = spec.onPrimary.toColor() ?: d.onPrimary
-    val text = spec.text.toColor() ?: d.onSurface
-    val muted = spec.textMuted.toColor() ?: d.onSurfaceVariant
     val background = spec.background.toColor() ?: d.background
     val surface = spec.surface.toColor() ?: d.surface
     val variant = spec.surfaceVariant.toColor() ?: d.surfaceVariant
+    // A theme may set only one colour of a pair; keep every pair it touched readable.
+    val themedSurfaces = spec.background != null || spec.surface != null || spec.surfaceVariant != null
+    val primary = (spec.primary.toColor() ?: d.primary).let {
+        if (spec.primary != null || themedSurfaces) readable(it, MIN_ACCENT_CONTRAST, background, surface) else it
+    }
+    val onPrimary = (spec.onPrimary.toColor() ?: d.onPrimary).let {
+        if (spec.primary != null || spec.onPrimary != null) readable(it, MIN_TEXT_CONTRAST, primary) else it
+    }
+    val text = (spec.text.toColor() ?: d.onSurface).let {
+        if (spec.text != null || themedSurfaces) readable(it, MIN_TEXT_CONTRAST, background, surface, variant) else it
+    }
+    val muted = (spec.textMuted.toColor() ?: d.onSurfaceVariant).let {
+        if (spec.textMuted != null || themedSurfaces) readable(it, MIN_ACCENT_CONTRAST, background, surface, variant) else it
+    }
     val tertiary = if (spec.primary != null) primary else d.tertiary
     return d.copy(
         primary = primary,
@@ -252,7 +286,7 @@ private fun buildPluviaColors(spec: ThemeSpec, scheme: ColorScheme): PluviaColor
         surfacePanel = (spec.surface.toColor() ?: d.surfacePanel).scaleAlpha(panel),
         surfaceElevated = (spec.surfaceVariant.toColor() ?: d.surfaceElevated).scaleAlpha(panel),
         borderDefault = spec.outline.toColor() ?: d.borderDefault,
-        textMuted = spec.textMuted.toColor() ?: d.textMuted,
+        textMuted = if (spec.textMuted != null) scheme.onSurfaceVariant else d.textMuted,
         focus = focus ?: scheme.primary,
         focusAlt = focus ?: scheme.tertiary,
         bar = spec.bar.toColor() ?: scheme.surface,

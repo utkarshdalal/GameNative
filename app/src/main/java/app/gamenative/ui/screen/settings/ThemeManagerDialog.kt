@@ -293,7 +293,7 @@ fun ThemeManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         expanded = expanded,
                         onImportZip = {
                             SteamService.isImporting = true
-                            zipLauncher.launch(arrayOf("application/zip", "application/octet-stream"))
+                            zipLauncher.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/x-zip", "application/octet-stream"))
                         },
                         onImportFolder = {
                             SteamService.isImporting = true
