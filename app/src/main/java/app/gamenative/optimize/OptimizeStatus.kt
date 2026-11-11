@@ -27,6 +27,9 @@ sealed class OptimizeStatus {
     data object TrialUsed : OptimizeStatus()
 
     companion object {
+        /** The account tiers whose plan optimizes every game. */
+        private val UNLIMITED_ACCOUNT_PLANS = setOf("pro", "patron")
+
         /** [accountChangedAt] is when the account last changed: a plan answer from before it no longer holds the game. */
         fun of(state: OptimizeLocalState, accountChangedAt: Long = 0L): OptimizeStatus {
             val ladder = state.active ?: return if (state.never) Never else Off
@@ -47,11 +50,14 @@ sealed class OptimizeStatus {
         }
 
         /**
-         * The one plan line a surface shows. Unlimited plans never see counts; [exhausted] is the game's own
-         * entitlement_required answer, which outranks a stale stored count. [member] is the app's own flag, used
-         * when the server has not said which plan the account is on.
+         * The one plan line a surface shows. Signed out, it is always the offer, whatever is stored for the game.
+         * Unlimited plans never see counts; [exhausted] is the game's own entitlement_required answer, which outranks a
+         * stale stored count. [member] is the app's own flag and [accountPlan] the account's own tier
+         * ([app.gamenative.billing.Membership.planKey], null while not loaded), used when the server has not said which
+         * plan the account is on: only an unlimited tier reads as unlimited, any other shows no line until it does.
          */
-        fun entitlementLine(entitlement: Entitlement?, exhausted: Boolean, signedIn: Boolean, member: Boolean): EntitlementLine? {
+        fun entitlementLine(entitlement: Entitlement?, exhausted: Boolean, signedIn: Boolean, member: Boolean, accountPlan: String?): EntitlementLine? {
+            if (!signedIn) return EntitlementLine.Offer(entitlement.limitOrDefault())
             val plan = entitlement?.plan
             return when {
                 plan == Entitlement.Plan.UNLIMITED -> EntitlementLine.Unlimited
@@ -59,9 +65,8 @@ sealed class OptimizeStatus {
                     val quota = entitlement.quota
                     EntitlementLine.Monthly(if (exhausted) quota else entitlement.used.coerceAtMost(quota), quota, entitlement.periodResetsAt)
                 }
-                member && entitlement?.tier == null -> EntitlementLine.Unlimited
+                member && entitlement?.tier == null -> EntitlementLine.Unlimited.takeIf { accountPlan in UNLIMITED_ACCOUNT_PLANS }
                 exhausted -> EntitlementLine.Exhausted(entitlement.limitOrDefault())
-                !signedIn -> EntitlementLine.Offer(entitlement.limitOrDefault())
                 entitlement == null -> null
                 entitlement.state == Entitlement.NONE && entitlement.tier == null -> EntitlementLine.Exhausted(entitlement.quota)
                 entitlement.used < entitlement.quota -> EntitlementLine.Trial(entitlement.used, entitlement.quota)

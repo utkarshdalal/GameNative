@@ -240,7 +240,7 @@ fun planText(text: PlanText): String {
 /** The plan line for an entitlement already chosen for the surface ([OptimizeController.shownEntitlement]). */
 @Composable
 fun optimizeEntitlementLine(entitlement: Entitlement?, exhausted: Boolean = false): EntitlementLine? =
-    OptimizeStatus.entitlementLine(entitlement, exhausted, PrefManager.gameNativeSignedIn.value, Membership.isMember())
+    OptimizeStatus.entitlementLine(entitlement, exhausted, PrefManager.gameNativeSignedIn.value, Membership.isMember(), Membership.planKey())
 
 /** A short status or plan line: plain label text in [color], no background. */
 @Composable

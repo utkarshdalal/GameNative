@@ -10,13 +10,33 @@ import org.junit.Test
 
 class EntitlementLineTest {
 
-    private fun line(entitlement: Entitlement?, exhausted: Boolean = false, signedIn: Boolean = true, member: Boolean = false) =
-        OptimizeStatus.entitlementLine(entitlement, exhausted, signedIn, member)
+    private fun line(entitlement: Entitlement?, exhausted: Boolean = false, signedIn: Boolean = true, member: Boolean = false, plan: String? = null) =
+        OptimizeStatus.entitlementLine(entitlement, exhausted, signedIn, member, plan)
 
     @Test
     fun membersNeverSeeTrialText() {
-        assertEquals(EntitlementLine.Unlimited, line(Entitlement(Entitlement.MEMBER, 0, 3), exhausted = true, signedIn = false))
-        assertEquals(EntitlementLine.Unlimited, line(Entitlement(Entitlement.NONE, 3, 3), exhausted = true, member = true))
+        assertEquals(EntitlementLine.Unlimited, line(Entitlement(Entitlement.MEMBER, 0, 3), exhausted = true))
+        assertEquals(EntitlementLine.Unlimited, line(Entitlement(Entitlement.NONE, 3, 3), exhausted = true, member = true, plan = "pro"))
+    }
+
+    @Test
+    fun signedOutNeverShowsAStoredEntitlement() {
+        val pro = parse("{\"state\":\"member\",\"tier\":\"pro\",\"games_used\":9,\"games_quota\":null}")
+        val monthly = parse("{\"tier\":\"monthly\",\"games_used\":1,\"games_quota\":3}")
+        assertEquals(EntitlementLine.Offer(3), line(pro, signedIn = false, member = true, plan = "none"))
+        assertEquals(EntitlementLine.Offer(3), line(monthly, signedIn = false))
+        assertEquals(EntitlementLine.Offer(3), line(Entitlement(Entitlement.NONE, 3, 3), exhausted = true, signedIn = false))
+    }
+
+    @Test
+    fun aMemberWithNoEntitlementYetReadsTheAccountsOwnPlan() {
+        assertEquals(EntitlementLine.Unlimited, line(null, member = true, plan = "pro"))
+        assertEquals(EntitlementLine.Unlimited, line(null, member = true, plan = "patron"))
+        assertNull(line(null, member = true, plan = "basic"))
+        assertNull(line(null, member = true, plan = null))
+        assertNull(line(null, member = true, plan = "none"))
+        // An answer from before the account changed is dropped, so a basic member waits for the first server answer.
+        assertNull(line(Entitlement(Entitlement.TRIAL, 1, 3).orAppWide(1_000L, null, 0L, 2_000L), member = true, plan = "basic"))
     }
 
     @Test
@@ -129,7 +149,7 @@ class EntitlementLineTest {
         assertEquals(EntitlementLine.Unlimited, line(parse("{\"tier\":\"unlimited\",\"games_quota\":null}"), exhausted = true))
         // The app's member flag only stands in when the server has not named a tier.
         assertEquals(EntitlementLine.Monthly(2, 3, null), line(parse("{\"tier\":\"monthly\",\"games_used\":2,\"games_quota\":3}"), member = true))
-        assertEquals(EntitlementLine.Unlimited, line(null, member = true))
+        assertEquals(EntitlementLine.Unlimited, line(null, member = true, plan = "pro"))
     }
 
     @Test
@@ -189,7 +209,7 @@ class EntitlementLineTest {
             PlanText(R.plurals.optimize_upsell_plan_line, 3, listOf(PlanName.BASIC, 3, PlanName.PRO)),
             OptimizeStatus.upsellPlanLine(EntitlementLine.Offer(3)),
         )
-        assertEquals(EntitlementLine.Unlimited, OptimizeStatus.entitlementLine(Entitlement(Entitlement.MEMBER, 0, 0, tier = "patron", gamesQuota = 3), false, true, false))
+        assertEquals(EntitlementLine.Unlimited, OptimizeStatus.entitlementLine(Entitlement(Entitlement.MEMBER, 0, 0, tier = "patron", gamesQuota = 3), false, true, false, null))
     }
 
     @Test
