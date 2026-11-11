@@ -1244,6 +1244,50 @@
 	<string name="settings_info_usage_analytics_title">Analiză utilizare</string>
 	<string name="settings_info_usage_analytics_subtitle">Nu urmărim niciodată informații personale. Dezactivarea oprește analizele neesențiale, însă datele de bază privind performanța jocurilor sunt în continuare colectate ca interes legitim pentru a îmbunătăți compatibilitatea.</string>
 
+    <!-- Settings: Themes -->
+    <string name="themes_title">Teme</string>
+    <string name="themes_manage">Gestionează temele</string>
+    <string name="themes_settings_subtitle">Instalează și combină teme Steam Deck CSS Loader. Activate: %1$d</string>
+    <string name="themes_tab_installed">Instalate</string>
+    <string name="themes_tab_browse">Răsfoiește</string>
+    <string name="themes_import_zip">Importă zip</string>
+    <string name="themes_import_folder">Importă dosar</string>
+    <string name="themes_create_starter">Creează temă de pornire</string>
+    <string name="themes_empty">Nicio temă instalată încă. Importă una sau răsfoiește magazinul.</string>
+    <string name="themes_by_author">de %1$s</string>
+    <string name="themes_changes">Modifică: %1$s</string>
+    <string name="themes_field_colours">culori</string>
+    <string name="themes_field_corners">colțuri</string>
+    <string name="themes_field_font">font</string>
+    <string name="themes_field_background">fundal</string>
+    <string name="themes_field_transparency">transparență</string>
+    <string name="themes_field_blur">estompare</string>
+    <string name="themes_layout_only">Această temă schimbă doar aspectul Steam și nu are efect aici.</string>
+    <string name="themes_missing_dependencies">Necesită aceste teme: %1$s</string>
+    <string name="themes_options">Opțiuni</string>
+    <string name="themes_reset_options">Resetează opțiunile</string>
+    <string name="themes_move_up">Mută în sus</string>
+    <string name="themes_move_down">Mută în jos</string>
+    <string name="themes_delete_title">Ștergi tema?</string>
+    <string name="themes_delete_message">Ștergi %1$s de pe acest dispozitiv?</string>
+    <string name="themes_choose_image">Alege imaginea</string>
+    <string name="themes_clear_image">Golește</string>
+    <string name="themes_no_image">Nicio imagine</string>
+    <string name="themes_hue">Nuanță</string>
+    <string name="themes_saturation">Saturație</string>
+    <string name="themes_brightness">Luminozitate</string>
+    <string name="themes_opacity">Opacitate</string>
+    <string name="themes_hex">Hex</string>
+    <string name="themes_installed_message">%1$s instalată</string>
+    <string name="themes_failed_message">Eșuat: %1$s</string>
+    <string name="themes_starter_saved">Tema de pornire a fost salvată</string>
+    <string name="themes_search_hint">Caută teme</string>
+    <string name="themes_load_more">Încarcă mai multe</string>
+    <string name="themes_downloads">%1$d descărcări</string>
+    <string name="themes_store_error">Magazinul de teme nu a putut fi încărcat: %1$s</string>
+    <string name="themes_store_empty">Nu s-au găsit teme</string>
+    <string name="themes_retry">Reîncearcă</string>
+
 	<!-- Settings: Interface Group -->
 	<string name="settings_interface_title">Interfață</string>
 	<string name="settings_interface_external_links_title">Deschide linkurile web extern</string>

@@ -28,6 +28,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Brush
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Info
@@ -61,6 +62,7 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.enums.AppTheme
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemeBackdrop
 import com.materialkolor.PaletteStyle
 
 @Composable
@@ -89,20 +91,28 @@ private fun SettingsScreenContent(
     onBack: () -> Unit,
 ) {
     val scrollState = rememberScrollState()
+    val hasBackdrop = PluviaTheme.hasBackdrop
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        PluviaTheme.colors.surfacePanel,
-                        MaterialTheme.colorScheme.background,
-                        MaterialTheme.colorScheme.background,
-                    ),
-                ),
+            .then(
+                if (hasBackdrop) {
+                    Modifier
+                } else {
+                    Modifier.background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                PluviaTheme.colors.surfacePanel,
+                                MaterialTheme.colorScheme.background,
+                                MaterialTheme.colorScheme.background,
+                            ),
+                        ),
+                    )
+                },
             ),
     ) {
+        ThemeBackdrop()
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -123,6 +133,14 @@ private fun SettingsScreenContent(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Spacer(modifier = Modifier.height(8.dp))
+
+                SettingsSection(
+                    title = stringResource(R.string.themes_title),
+                    icon = Icons.Default.Brush,
+                    iconTint = PluviaTheme.colors.accentPink,
+                ) {
+                    SettingsGroupThemes()
+                }
 
                 // Emulation section
                 SettingsSection(

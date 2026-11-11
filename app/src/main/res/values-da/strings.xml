@@ -1056,6 +1056,50 @@
     <string name="settings_info_usage_analytics_title">Brugsanalyse</string>
     <string name="settings_info_usage_analytics_subtitle">Vi sporer aldrig personlige oplysninger. Deaktivering stopper ikke-essentiel analyse, men grundlæggende spilydelsesdata indsamles stadig som en berettiget interesse for at forbedre kompatibilitet.</string>
 
+    <!-- Settings: Themes -->
+    <string name="themes_title">Temaer</string>
+    <string name="themes_manage">Administrer temaer</string>
+    <string name="themes_settings_subtitle">Installer og kombiner Steam Deck CSS Loader-temaer. Aktiveret: %1$d</string>
+    <string name="themes_tab_installed">Installeret</string>
+    <string name="themes_tab_browse">Gennemse</string>
+    <string name="themes_import_zip">Importer zip</string>
+    <string name="themes_import_folder">Importer mappe</string>
+    <string name="themes_create_starter">Opret starttema</string>
+    <string name="themes_empty">Ingen temaer installeret endnu. Importer et, eller gennemse butikken.</string>
+    <string name="themes_by_author">af %1$s</string>
+    <string name="themes_changes">Ændrer: %1$s</string>
+    <string name="themes_field_colours">farver</string>
+    <string name="themes_field_corners">hjørner</string>
+    <string name="themes_field_font">skrifttype</string>
+    <string name="themes_field_background">baggrund</string>
+    <string name="themes_field_transparency">gennemsigtighed</string>
+    <string name="themes_field_blur">sløring</string>
+    <string name="themes_layout_only">Dette tema ændrer kun Steams layout og har ingen effekt her.</string>
+    <string name="themes_missing_dependencies">Kræver disse temaer: %1$s</string>
+    <string name="themes_options">Indstillinger</string>
+    <string name="themes_reset_options">Nulstil indstillinger</string>
+    <string name="themes_move_up">Flyt op</string>
+    <string name="themes_move_down">Flyt ned</string>
+    <string name="themes_delete_title">Slet tema?</string>
+    <string name="themes_delete_message">Slet %1$s fra denne enhed?</string>
+    <string name="themes_choose_image">Vælg billede</string>
+    <string name="themes_clear_image">Ryd</string>
+    <string name="themes_no_image">Intet billede</string>
+    <string name="themes_hue">Farvetone</string>
+    <string name="themes_saturation">Mætning</string>
+    <string name="themes_brightness">Lysstyrke</string>
+    <string name="themes_opacity">Uigennemsigtighed</string>
+    <string name="themes_hex">Hex</string>
+    <string name="themes_installed_message">Installerede %1$s</string>
+    <string name="themes_failed_message">Mislykkedes: %1$s</string>
+    <string name="themes_starter_saved">Starttema gemt</string>
+    <string name="themes_search_hint">Søg efter temaer</string>
+    <string name="themes_load_more">Indlæs flere</string>
+    <string name="themes_downloads">%1$d downloads</string>
+    <string name="themes_store_error">Kunne ikke indlæse temabutikken: %1$s</string>
+    <string name="themes_store_empty">Ingen temaer fundet</string>
+    <string name="themes_retry">Prøv igen</string>
+
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Grænseflade</string>
     <string name="settings_interface_external_links_title">Åbn weblinks eksternt</string>

@@ -1238,6 +1238,50 @@
     <string name="settings_info_usage_analytics_title">사용 분석</string>
     <string name="settings_info_usage_analytics_subtitle">개인 정보는 절대 추적하지 않습니다. 이 기능을 비활성화하면 비필수 분석이 중지되지만, 호환성 향상을 위한 정당한 이익으로서 핵심 게임 성능 데이터는 계속 수집됩니다.</string>
 
+    <!-- Settings: Themes -->
+    <string name="themes_title">테마</string>
+    <string name="themes_manage">테마 관리</string>
+    <string name="themes_settings_subtitle">Steam Deck CSS Loader 테마를 설치하고 겹쳐 적용합니다. 사용 중: %1$d</string>
+    <string name="themes_tab_installed">설치됨</string>
+    <string name="themes_tab_browse">둘러보기</string>
+    <string name="themes_import_zip">zip 가져오기</string>
+    <string name="themes_import_folder">폴더 가져오기</string>
+    <string name="themes_create_starter">기본 테마 만들기</string>
+    <string name="themes_empty">설치된 테마가 없습니다. 가져오거나 스토어를 둘러보세요.</string>
+    <string name="themes_by_author">제작: %1$s</string>
+    <string name="themes_changes">변경 항목: %1$s</string>
+    <string name="themes_field_colours">색상</string>
+    <string name="themes_field_corners">모서리</string>
+    <string name="themes_field_font">글꼴</string>
+    <string name="themes_field_background">배경</string>
+    <string name="themes_field_transparency">투명도</string>
+    <string name="themes_field_blur">흐림</string>
+    <string name="themes_layout_only">이 테마는 Steam 레이아웃만 바꾸므로 여기서는 효과가 없습니다.</string>
+    <string name="themes_missing_dependencies">필요한 테마: %1$s</string>
+    <string name="themes_options">옵션</string>
+    <string name="themes_reset_options">옵션 초기화</string>
+    <string name="themes_move_up">위로 이동</string>
+    <string name="themes_move_down">아래로 이동</string>
+    <string name="themes_delete_title">테마를 삭제할까요?</string>
+    <string name="themes_delete_message">이 기기에서 %1$s을(를) 삭제할까요?</string>
+    <string name="themes_choose_image">이미지 선택</string>
+    <string name="themes_clear_image">지우기</string>
+    <string name="themes_no_image">이미지 없음</string>
+    <string name="themes_hue">색조</string>
+    <string name="themes_saturation">채도</string>
+    <string name="themes_brightness">밝기</string>
+    <string name="themes_opacity">불투명도</string>
+    <string name="themes_hex">16진수</string>
+    <string name="themes_installed_message">%1$s 설치됨</string>
+    <string name="themes_failed_message">실패: %1$s</string>
+    <string name="themes_starter_saved">기본 테마를 저장했습니다</string>
+    <string name="themes_search_hint">테마 검색</string>
+    <string name="themes_load_more">더 불러오기</string>
+    <string name="themes_downloads">다운로드 %1$d회</string>
+    <string name="themes_store_error">테마 스토어를 불러오지 못했습니다: %1$s</string>
+    <string name="themes_store_empty">테마를 찾을 수 없습니다</string>
+    <string name="themes_retry">다시 시도</string>
+
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">인터페이스</string>
     <string name="settings_interface_external_links_title">웹 링크를 외부에서 열기</string>

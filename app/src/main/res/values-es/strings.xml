@@ -1250,6 +1250,50 @@
     <string name="settings_info_usage_analytics_title">Análisis de uso</string>
     <string name="settings_info_usage_analytics_subtitle">Nunca rastreamos información personal. Al desactivar esto se detienen los análisis no esenciales, sin embargo los datos de rendimiento de juegos se siguen recopilando como interés legítimo para mejorar la compatibilidad.</string>
 
+    <!-- Settings: Themes -->
+    <string name="themes_title">Temas</string>
+    <string name="themes_manage">Administrar temas</string>
+    <string name="themes_settings_subtitle">Instala y combina temas de Steam Deck CSS Loader. Activados: %1$d</string>
+    <string name="themes_tab_installed">Instalados</string>
+    <string name="themes_tab_browse">Explorar</string>
+    <string name="themes_import_zip">Importar zip</string>
+    <string name="themes_import_folder">Importar carpeta</string>
+    <string name="themes_create_starter">Crear tema base</string>
+    <string name="themes_empty">Aún no hay temas instalados. Importa uno o explora la tienda.</string>
+    <string name="themes_by_author">por %1$s</string>
+    <string name="themes_changes">Cambia: %1$s</string>
+    <string name="themes_field_colours">colores</string>
+    <string name="themes_field_corners">esquinas</string>
+    <string name="themes_field_font">fuente</string>
+    <string name="themes_field_background">fondo</string>
+    <string name="themes_field_transparency">transparencia</string>
+    <string name="themes_field_blur">desenfoque</string>
+    <string name="themes_layout_only">Este tema solo cambia el diseño de Steam y no tiene efecto aquí.</string>
+    <string name="themes_missing_dependencies">Necesita estos temas: %1$s</string>
+    <string name="themes_options">Opciones</string>
+    <string name="themes_reset_options">Restablecer opciones</string>
+    <string name="themes_move_up">Subir</string>
+    <string name="themes_move_down">Bajar</string>
+    <string name="themes_delete_title">¿Eliminar tema?</string>
+    <string name="themes_delete_message">¿Eliminar %1$s de este dispositivo?</string>
+    <string name="themes_choose_image">Elegir imagen</string>
+    <string name="themes_clear_image">Quitar</string>
+    <string name="themes_no_image">Sin imagen</string>
+    <string name="themes_hue">Tono</string>
+    <string name="themes_saturation">Saturación</string>
+    <string name="themes_brightness">Brillo</string>
+    <string name="themes_opacity">Opacidad</string>
+    <string name="themes_hex">Hex</string>
+    <string name="themes_installed_message">%1$s instalado</string>
+    <string name="themes_failed_message">Error: %1$s</string>
+    <string name="themes_starter_saved">Tema base guardado</string>
+    <string name="themes_search_hint">Buscar temas</string>
+    <string name="themes_load_more">Cargar más</string>
+    <string name="themes_downloads">%1$d descargas</string>
+    <string name="themes_store_error">No se pudo cargar la tienda de temas: %1$s</string>
+    <string name="themes_store_empty">No se encontraron temas</string>
+    <string name="themes_retry">Reintentar</string>
+
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interfaz</string>
     <string name="settings_interface_external_links_title">Abrir enlaces web externamente</string>

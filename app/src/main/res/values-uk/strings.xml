@@ -1239,6 +1239,50 @@
     <string name="settings_info_usage_analytics_title">Аналітика використання</string>
     <string name="settings_info_usage_analytics_subtitle">Ми ніколи не відстежуємо особисту інформацію. Вимкнення зупиняє несуттєву аналітику, однак основні дані про продуктивність ігор все одно збираються як законний інтерес для покращення сумісності.</string>
 
+    <!-- Settings: Themes -->
+    <string name="themes_title">Теми</string>
+    <string name="themes_manage">Керування темами</string>
+    <string name="themes_settings_subtitle">Встановлюйте та поєднуйте теми Steam Deck CSS Loader. Увімкнено: %1$d</string>
+    <string name="themes_tab_installed">Встановлені</string>
+    <string name="themes_tab_browse">Огляд</string>
+    <string name="themes_import_zip">Імпорт zip</string>
+    <string name="themes_import_folder">Імпорт папки</string>
+    <string name="themes_create_starter">Створити стартову тему</string>
+    <string name="themes_empty">Тем ще не встановлено. Імпортуйте тему або відкрийте магазин.</string>
+    <string name="themes_by_author">автор: %1$s</string>
+    <string name="themes_changes">Змінює: %1$s</string>
+    <string name="themes_field_colours">кольори</string>
+    <string name="themes_field_corners">кути</string>
+    <string name="themes_field_font">шрифт</string>
+    <string name="themes_field_background">тло</string>
+    <string name="themes_field_transparency">прозорість</string>
+    <string name="themes_field_blur">розмиття</string>
+    <string name="themes_layout_only">Ця тема змінює лише інтерфейс Steam і тут не діє.</string>
+    <string name="themes_missing_dependencies">Потрібні теми: %1$s</string>
+    <string name="themes_options">Параметри</string>
+    <string name="themes_reset_options">Скинути параметри</string>
+    <string name="themes_move_up">Вище</string>
+    <string name="themes_move_down">Нижче</string>
+    <string name="themes_delete_title">Видалити тему?</string>
+    <string name="themes_delete_message">Видалити %1$s з цього пристрою?</string>
+    <string name="themes_choose_image">Вибрати зображення</string>
+    <string name="themes_clear_image">Очистити</string>
+    <string name="themes_no_image">Немає зображення</string>
+    <string name="themes_hue">Відтінок</string>
+    <string name="themes_saturation">Насиченість</string>
+    <string name="themes_brightness">Яскравість</string>
+    <string name="themes_opacity">Непрозорість</string>
+    <string name="themes_hex">Hex</string>
+    <string name="themes_installed_message">Встановлено: %1$s</string>
+    <string name="themes_failed_message">Помилка: %1$s</string>
+    <string name="themes_starter_saved">Стартову тему збережено</string>
+    <string name="themes_search_hint">Пошук тем</string>
+    <string name="themes_load_more">Завантажити ще</string>
+    <string name="themes_downloads">Завантажень: %1$d</string>
+    <string name="themes_store_error">Не вдалося завантажити магазин тем: %1$s</string>
+    <string name="themes_store_empty">Теми не знайдено</string>
+    <string name="themes_retry">Повторити</string>
+
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Інтерфейс</string>
     <string name="settings_interface_external_links_title">Відкривати вебпосилання у зовнішньому браузері</string>

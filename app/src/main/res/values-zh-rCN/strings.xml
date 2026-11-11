@@ -1227,6 +1227,50 @@
     <string name="settings_info_usage_analytics_title">使用分析</string>
     <string name="settings_info_usage_analytics_subtitle">我们绝不追踪个人信息。关闭此选项将停止非必要的分析，但核心游戏性能数据仍会作为合法权益继续收集，以改善兼容性。</string>
 
+    <!-- Settings: Themes -->
+    <string name="themes_title">主题</string>
+    <string name="themes_manage">管理主题</string>
+    <string name="themes_settings_subtitle">安装并叠加 Steam Deck CSS Loader 主题。已启用：%1$d</string>
+    <string name="themes_tab_installed">已安装</string>
+    <string name="themes_tab_browse">浏览</string>
+    <string name="themes_import_zip">导入 zip</string>
+    <string name="themes_import_folder">导入文件夹</string>
+    <string name="themes_create_starter">创建入门主题</string>
+    <string name="themes_empty">尚未安装主题。导入一个或浏览商店。</string>
+    <string name="themes_by_author">作者：%1$s</string>
+    <string name="themes_changes">更改：%1$s</string>
+    <string name="themes_field_colours">颜色</string>
+    <string name="themes_field_corners">圆角</string>
+    <string name="themes_field_font">字体</string>
+    <string name="themes_field_background">背景</string>
+    <string name="themes_field_transparency">透明度</string>
+    <string name="themes_field_blur">模糊</string>
+    <string name="themes_layout_only">此主题只更改 Steam 的布局，在这里没有效果。</string>
+    <string name="themes_missing_dependencies">需要这些主题：%1$s</string>
+    <string name="themes_options">选项</string>
+    <string name="themes_reset_options">重置选项</string>
+    <string name="themes_move_up">上移</string>
+    <string name="themes_move_down">下移</string>
+    <string name="themes_delete_title">删除主题？</string>
+    <string name="themes_delete_message">要从此设备删除 %1$s 吗？</string>
+    <string name="themes_choose_image">选择图片</string>
+    <string name="themes_clear_image">清除</string>
+    <string name="themes_no_image">无图片</string>
+    <string name="themes_hue">色相</string>
+    <string name="themes_saturation">饱和度</string>
+    <string name="themes_brightness">亮度</string>
+    <string name="themes_opacity">不透明度</string>
+    <string name="themes_hex">十六进制</string>
+    <string name="themes_installed_message">已安装 %1$s</string>
+    <string name="themes_failed_message">失败：%1$s</string>
+    <string name="themes_starter_saved">入门主题已保存</string>
+    <string name="themes_search_hint">搜索主题</string>
+    <string name="themes_load_more">加载更多</string>
+    <string name="themes_downloads">%1$d 次下载</string>
+    <string name="themes_store_error">无法加载主题商店：%1$s</string>
+    <string name="themes_store_empty">未找到主题</string>
+    <string name="themes_retry">重试</string>
+
     <!-- 设置：界面组 -->
     <string name="settings_interface_title">界面</string>
     <string name="settings_interface_external_links_title">在外部打开网页链接</string>

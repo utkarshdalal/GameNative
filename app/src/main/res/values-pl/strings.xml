@@ -1253,6 +1253,50 @@
     <string name="settings_info_usage_analytics_title">Analityka użytkowania</string>
     <string name="settings_info_usage_analytics_subtitle">Nigdy nie śledzimy danych osobowych. Wyłączenie tego zatrzymuje nieistotne analizy, jednak podstawowe dane o wydajności gier są nadal zbierane jako uzasadniony interes w celu poprawy kompatybilności.</string>
 
+    <!-- Settings: Themes -->
+    <string name="themes_title">Motywy</string>
+    <string name="themes_manage">Zarządzaj motywami</string>
+    <string name="themes_settings_subtitle">Instaluj i łącz motywy Steam Deck CSS Loader. Włączone: %1$d</string>
+    <string name="themes_tab_installed">Zainstalowane</string>
+    <string name="themes_tab_browse">Przeglądaj</string>
+    <string name="themes_import_zip">Importuj zip</string>
+    <string name="themes_import_folder">Importuj folder</string>
+    <string name="themes_create_starter">Utwórz motyw startowy</string>
+    <string name="themes_empty">Brak zainstalowanych motywów. Zaimportuj jeden lub przeglądaj sklep.</string>
+    <string name="themes_by_author">autor: %1$s</string>
+    <string name="themes_changes">Zmienia: %1$s</string>
+    <string name="themes_field_colours">kolory</string>
+    <string name="themes_field_corners">narożniki</string>
+    <string name="themes_field_font">czcionkę</string>
+    <string name="themes_field_background">tło</string>
+    <string name="themes_field_transparency">przezroczystość</string>
+    <string name="themes_field_blur">rozmycie</string>
+    <string name="themes_layout_only">Ten motyw zmienia tylko układ Steam i nie działa tutaj.</string>
+    <string name="themes_missing_dependencies">Wymaga motywów: %1$s</string>
+    <string name="themes_options">Opcje</string>
+    <string name="themes_reset_options">Resetuj opcje</string>
+    <string name="themes_move_up">Przenieś w górę</string>
+    <string name="themes_move_down">Przenieś w dół</string>
+    <string name="themes_delete_title">Usunąć motyw?</string>
+    <string name="themes_delete_message">Usunąć %1$s z tego urządzenia?</string>
+    <string name="themes_choose_image">Wybierz obraz</string>
+    <string name="themes_clear_image">Wyczyść</string>
+    <string name="themes_no_image">Brak obrazu</string>
+    <string name="themes_hue">Odcień</string>
+    <string name="themes_saturation">Nasycenie</string>
+    <string name="themes_brightness">Jasność</string>
+    <string name="themes_opacity">Krycie</string>
+    <string name="themes_hex">Hex</string>
+    <string name="themes_installed_message">Zainstalowano %1$s</string>
+    <string name="themes_failed_message">Niepowodzenie: %1$s</string>
+    <string name="themes_starter_saved">Zapisano motyw startowy</string>
+    <string name="themes_search_hint">Szukaj motywów</string>
+    <string name="themes_load_more">Wczytaj więcej</string>
+    <string name="themes_downloads">Pobrania: %1$d</string>
+    <string name="themes_store_error">Nie udało się wczytać sklepu z motywami: %1$s</string>
+    <string name="themes_store_empty">Nie znaleziono motywów</string>
+    <string name="themes_retry">Ponów</string>
+
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interfejs</string>
     <string name="settings_interface_external_links_title">Otwieraj linki zewnętrznie</string>

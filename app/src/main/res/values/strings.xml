@@ -1422,6 +1422,50 @@
     <string name="settings_info_usage_analytics_title">Usage analytics</string>
     <string name="settings_info_usage_analytics_subtitle">We never track personal information. Disabling this stops non-essential analytics, however core game performance data is still collected as a legitimate interest to improve compatibility.</string>
 
+    <!-- Settings: Themes -->
+    <string name="themes_title">Themes</string>
+    <string name="themes_manage">Manage themes</string>
+    <string name="themes_settings_subtitle">Install and stack Steam Deck CSS Loader themes. Enabled: %1$d</string>
+    <string name="themes_tab_installed">Installed</string>
+    <string name="themes_tab_browse">Browse</string>
+    <string name="themes_import_zip">Import zip</string>
+    <string name="themes_import_folder">Import folder</string>
+    <string name="themes_create_starter">Create starter theme</string>
+    <string name="themes_empty">No themes installed yet. Import one or browse the store.</string>
+    <string name="themes_by_author">by %1$s</string>
+    <string name="themes_changes">Changes: %1$s</string>
+    <string name="themes_field_colours">colours</string>
+    <string name="themes_field_corners">corners</string>
+    <string name="themes_field_font">font</string>
+    <string name="themes_field_background">background</string>
+    <string name="themes_field_transparency">transparency</string>
+    <string name="themes_field_blur">blur</string>
+    <string name="themes_layout_only">This theme only changes Steam\'s layout and has no effect here.</string>
+    <string name="themes_missing_dependencies">Needs these themes: %1$s</string>
+    <string name="themes_options">Options</string>
+    <string name="themes_reset_options">Reset options</string>
+    <string name="themes_move_up">Move up</string>
+    <string name="themes_move_down">Move down</string>
+    <string name="themes_delete_title">Delete theme?</string>
+    <string name="themes_delete_message">Delete %1$s from this device?</string>
+    <string name="themes_choose_image">Choose image</string>
+    <string name="themes_clear_image">Clear</string>
+    <string name="themes_no_image">No image</string>
+    <string name="themes_hue">Hue</string>
+    <string name="themes_saturation">Saturation</string>
+    <string name="themes_brightness">Brightness</string>
+    <string name="themes_opacity">Opacity</string>
+    <string name="themes_hex">Hex</string>
+    <string name="themes_installed_message">Installed %1$s</string>
+    <string name="themes_failed_message">Failed: %1$s</string>
+    <string name="themes_starter_saved">Starter theme saved</string>
+    <string name="themes_search_hint">Search themes</string>
+    <string name="themes_load_more">Load more</string>
+    <string name="themes_downloads">%1$d downloads</string>
+    <string name="themes_store_error">Could not load the theme store: %1$s</string>
+    <string name="themes_store_empty">No themes found</string>
+    <string name="themes_retry">Retry</string>
+
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interface</string>
     <string name="settings_interface_external_links_title">Open web links externally</string>
