@@ -201,7 +201,7 @@ fun rememberOptimizeState(appId: String): OptimizeLocalState? {
 }
 
 @Composable
-fun optimizeStatusText(state: OptimizeLocalState): String? = when (val status = OptimizeStatus.of(state)) {
+fun optimizeStatusText(state: OptimizeLocalState): String? = when (val status = OptimizeStatus.of(state, OptimizeController.accountChangedAt)) {
     OptimizeStatus.Off -> null
     OptimizeStatus.Never -> stringResource(R.string.optimize_card_never)
     OptimizeStatus.NotStarted -> stringResource(R.string.optimize_status_not_started)
@@ -262,11 +262,12 @@ fun OptimizeDialog(
     val state = rememberOptimizeState(appId)
     val actions = rememberOptimizeActions(appId)
     val profile = state?.activeProfile ?: OptimizeProfile.OFF
-    val status = state?.let { OptimizeStatus.of(it) }
+    val status = state?.let { OptimizeStatus.of(it, OptimizeController.accountChangedAt) }
     val keptCount = state?.let { OptimizeStatus.keptCount(it) } ?: 0
     val activeLadder = state?.active
     val exhausted = status == OptimizeStatus.TrialUsed
-    val line = optimizeEntitlementLine(state?.entitlement, exhausted)
+    val entitlement = OptimizeController.shownEntitlement(state)
+    val line = optimizeEntitlementLine(entitlement, exhausted)
     val context = LocalContext.current
     val revision by OptimizeController.revision.collectAsState()
     val suggestion by produceState<OptimizeController.Suggestion?>(null, appId, revision) {
@@ -328,7 +329,7 @@ fun OptimizeDialog(
                     )
                 }
                 OptimizeStatusLine(status)
-                OptimizePlanLine(state?.entitlement, exhausted = exhausted)
+                OptimizePlanLine(entitlement, exhausted = exhausted)
             }
         }
         // The status sentence sits under the header in both orientations, and only when it says more than the header status.

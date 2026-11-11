@@ -224,6 +224,17 @@ class OptimizeRulesTest {
         assertTrue(OptimizeCards.shouldAskAfterTrial(used, Entitlement(Entitlement.MEMBER, 0, 0), 1_000L, isMember = false, nowMillis = 2_000L))
         assertTrue(OptimizeCards.shouldAskAfterTrial(ProfileLadder(state = LadderState.TRYING), none, 1_000L, isMember = false, nowMillis = 2_000L))
     }
+
+    @Test
+    fun anAccountChangeLiftsTheDayHoldOnAUsedUpTrial() {
+        val used = ProfileLadder(state = LadderState.TRYING, lastStatus = NextRungResponse.STATUS_ENTITLEMENT_REQUIRED)
+        val none = Entitlement(Entitlement.NONE, 3, 3)
+        assertFalse(OptimizeCards.shouldAskAfterTrial(used, none, 1_000L, isMember = false, nowMillis = 3_000L, accountChangedAt = 500L))
+        assertTrue(OptimizeCards.shouldAskAfterTrial(used, none, 1_000L, isMember = false, nowMillis = 3_000L, accountChangedAt = 2_000L))
+        val state = OptimizeLocalState(entitlement = none, entitlementCheckedAt = 1_000L).withLadder(OptimizeProfile.BALANCED, used)
+        assertFalse(OptimizeLadders.wouldAsk(state, used, isMember = false, nowMillis = 3_000L))
+        assertTrue(OptimizeLadders.wouldAsk(state, used, isMember = false, nowMillis = 3_000L, accountChangedAt = 2_000L))
+    }
     private val cascade = listOf("5", "5", "4", "4", "3", "3", "2", "2", "1", "1", "0", "0")
 
     @Test

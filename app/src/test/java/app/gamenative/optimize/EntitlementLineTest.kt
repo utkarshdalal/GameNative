@@ -39,15 +39,43 @@ class EntitlementLineTest {
     }
 
     @Test
-    fun theGamesOwnEntitlementWinsOverTheAppWideOne() {
+    fun theNewerOfTheGamesOwnAndTheAppWideEntitlementWins() {
         val own = Entitlement(Entitlement.TRIAL, 1, 3)
         val appWide = Entitlement(Entitlement.TRIAL, 2, 3)
         val notAsked: Entitlement? = null
-        assertEquals(own, own.orAppWide(appWide))
-        assertEquals(appWide, notAsked.orAppWide(appWide))
-        assertNull(notAsked.orAppWide(null))
+        assertEquals(own, own.orAppWide(2_000L, appWide, 1_000L, 0L))
+        assertEquals(appWide, own.orAppWide(1_000L, appWide, 2_000L, 0L))
+        assertEquals(own, own.orAppWide(1_000L, appWide, 1_000L, 0L))
+        // A missing time counts as the oldest.
+        assertEquals(own, own.orAppWide(1_000L, appWide, 0L, 0L))
+        assertEquals(appWide, own.orAppWide(0L, appWide, 1_000L, 0L))
+        assertEquals(appWide, notAsked.orAppWide(0L, appWide, 1_000L, 0L))
+        assertNull(notAsked.orAppWide(0L, null, 0L, 0L))
         // A game that has not asked yet still shows the trial line from another game's answer.
-        assertEquals(EntitlementLine.Trial(2, 3), line(notAsked.orAppWide(appWide)))
+        assertEquals(EntitlementLine.Trial(2, 3), line(notAsked.orAppWide(0L, appWide, 1_000L, 0L)))
+    }
+
+    @Test
+    fun anEntitlementFromBeforeTheAccountChangedIsIgnored() {
+        val own = Entitlement(Entitlement.NONE, 3, 3)
+        val appWide = Entitlement(Entitlement.TRIAL, 0, 3)
+        assertEquals(appWide, own.orAppWide(1_000L, appWide, 3_000L, 2_000L))
+        assertNull(own.orAppWide(1_000L, null, 0L, 2_000L))
+        assertNull(own.orAppWide(1_000L, appWide, 1_500L, 2_000L))
+        assertNull(own.orAppWide(0L, null, 0L, 2_000L))
+        assertEquals(own, own.orAppWide(2_000L, appWide, 1_500L, 2_000L))
+        // With nothing from this account, a signed-in user sees no count and a signed-out one the offer.
+        assertNull(line(own.orAppWide(1_000L, null, 0L, 2_000L)))
+        assertEquals(EntitlementLine.Offer(3), line(own.orAppWide(1_000L, null, 0L, 2_000L), signedIn = false))
+    }
+
+    @Test
+    fun aTrialUsedAnswerFromBeforeTheAccountChangedNoLongerHoldsTheStatus() {
+        val ladder = ProfileLadder(state = LadderState.TRYING, lastStatus = NextRungResponse.STATUS_ENTITLEMENT_REQUIRED)
+        val state = OptimizeLocalState(activeProfile = OptimizeProfile.BALANCED, profiles = mapOf(OptimizeProfile.BALANCED to ladder), entitlementCheckedAt = 1_000L)
+        assertEquals(OptimizeStatus.TrialUsed, OptimizeStatus.of(state))
+        assertEquals(OptimizeStatus.TrialUsed, OptimizeStatus.of(state, accountChangedAt = 500L))
+        assertEquals(OptimizeStatus.TuningNext, OptimizeStatus.of(state, accountChangedAt = 2_000L))
     }
 
     @Test

@@ -27,13 +27,15 @@ sealed class OptimizeStatus {
     data object TrialUsed : OptimizeStatus()
 
     companion object {
-        fun of(state: OptimizeLocalState): OptimizeStatus {
+        /** [accountChangedAt] is when the account last changed: a plan answer from before it no longer holds the game. */
+        fun of(state: OptimizeLocalState, accountChangedAt: Long = 0L): OptimizeStatus {
             val ladder = state.active ?: return if (state.never) Never else Off
             val trying = ladder.pending?.takeIf { it.revert == null }
             return when {
                 trying != null && trying.shortSessions > 0 -> Measuring
                 trying != null -> Trying(OptimizeChange.of(trying.rung))
-                ladder.state == LadderState.TRYING && ladder.lastStatus == NextRungResponse.STATUS_ENTITLEMENT_REQUIRED -> TrialUsed
+                ladder.state == LadderState.TRYING && ladder.lastStatus == NextRungResponse.STATUS_ENTITLEMENT_REQUIRED &&
+                    !predatesAccountChange(state.entitlementCheckedAt, accountChangedAt) -> TrialUsed
                 ladder.state == LadderState.IDLE -> NotStarted
                 ladder.state == LadderState.TRYING && ladder.tried.lastOrNull()?.result == OptimizeJudge.APPLY_FAILED -> RetryNext
                 ladder.state == LadderState.TRYING -> TuningNext

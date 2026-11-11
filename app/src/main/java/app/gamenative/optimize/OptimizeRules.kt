@@ -66,11 +66,14 @@ object OptimizeLadders {
             .withLadder(profile, state.ladder(profile).copy(state = LadderState.TRYING, noChangeStreak = 0))
     }
 
-    /** True when the next launch asks for a rung: trying, nothing on trial, and not held back by the plan. */
-    fun wouldAsk(state: OptimizeLocalState, ladder: ProfileLadder, isMember: Boolean, nowMillis: Long): Boolean =
+    /**
+     * True when the next launch asks for a rung: trying, nothing on trial, and not held back by the plan.
+     * [accountChangedAt] is when the account last changed, which lifts a plan hold from before it.
+     */
+    fun wouldAsk(state: OptimizeLocalState, ladder: ProfileLadder, isMember: Boolean, nowMillis: Long, accountChangedAt: Long = 0L): Boolean =
         ladder.state == LadderState.TRYING &&
             ladder.pending.let { it == null || it.revert != null } &&
-            OptimizeCards.shouldAskAfterTrial(ladder, state.entitlement, state.entitlementCheckedAt, isMember, nowMillis)
+            OptimizeCards.shouldAskAfterTrial(ladder, state.entitlement, state.entitlementCheckedAt, isMember, nowMillis, accountChangedAt)
 
     /**
      * Holds [profile]'s ladder while the server has nothing for the game: a trying ladder with nothing on trial waits,
@@ -388,9 +391,17 @@ object OptimizeCards {
 
     const val ENTITLEMENT_RECHECK_MS = 24L * 60 * 60 * 1000
 
-    /** When to ask again after the trial ran out. */
-    fun shouldAskAfterTrial(ladder: ProfileLadder, entitlement: Entitlement?, checkedAtMillis: Long, isMember: Boolean, nowMillis: Long): Boolean {
+    /** When to ask again after the trial ran out: at once when the account changed since, otherwise after a day. */
+    fun shouldAskAfterTrial(
+        ladder: ProfileLadder,
+        entitlement: Entitlement?,
+        checkedAtMillis: Long,
+        isMember: Boolean,
+        nowMillis: Long,
+        accountChangedAt: Long = 0L,
+    ): Boolean {
         if (ladder.lastStatus != NextRungResponse.STATUS_ENTITLEMENT_REQUIRED) return true
+        if (predatesAccountChange(checkedAtMillis, accountChangedAt)) return true
         if (entitlement?.state != Entitlement.NONE || isMember) return true
         return nowMillis - checkedAtMillis >= ENTITLEMENT_RECHECK_MS
     }

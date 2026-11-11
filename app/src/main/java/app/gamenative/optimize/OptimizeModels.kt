@@ -638,8 +638,23 @@ data class Entitlement(
     }
 }
 
-/** The entitlement a surface shows for a game: its own when it has asked, otherwise the newest one seen app-wide. */
-fun Entitlement?.orAppWide(appWide: Entitlement?): Entitlement? = this ?: appWide
+/**
+ * The entitlement a surface shows for a game: the newer of its own, received at [ownAt], and the app-wide one, received
+ * at [appWideAt]; its own on a tie. Either is ignored when received before [accountChangedAt]. A time of 0 is oldest.
+ */
+fun Entitlement?.orAppWide(ownAt: Long, appWide: Entitlement?, appWideAt: Long, accountChangedAt: Long): Entitlement? {
+    val own = this?.takeIf { !predatesAccountChange(ownAt, accountChangedAt) }
+    val wide = appWide?.takeIf { !predatesAccountChange(appWideAt, accountChangedAt) }
+    return when {
+        own == null -> wide
+        wide == null -> own
+        appWideAt > ownAt -> wide
+        else -> own
+    }
+}
+
+/** Whether something learned at [atMillis] belongs to the account as it was before the change at [accountChangedAt]. */
+fun predatesAccountChange(atMillis: Long, accountChangedAt: Long): Boolean = accountChangedAt > 0L && atMillis < accountChangedAt
 
 fun Entitlement?.limitOrDefault(): Int = this?.trialGamesLimit?.takeIf { it > 0 } ?: Entitlement.DEFAULT_TRIAL_GAMES_LIMIT
 

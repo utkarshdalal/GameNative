@@ -55,7 +55,6 @@ import app.gamenative.optimize.OptimizeProfile
 import app.gamenative.optimize.OptimizeStatus
 import app.gamenative.optimize.PlanName
 import app.gamenative.optimize.PlanText
-import app.gamenative.optimize.orAppWide
 import app.gamenative.ui.component.BenefitRow
 import app.gamenative.ui.component.GradientBorderSurface
 import app.gamenative.ui.component.HeroBadge
@@ -238,12 +237,10 @@ fun planText(text: PlanText): String {
     return if (text.quantity != null) pluralStringResource(text.res, text.quantity, *args) else stringResource(text.res, *args)
 }
 
-/** The plan line for a game: the server's entitlement when known, otherwise the app-wide one. */
+/** The plan line for an entitlement already chosen for the surface ([OptimizeController.shownEntitlement]). */
 @Composable
-fun optimizeEntitlementLine(entitlement: Entitlement?, exhausted: Boolean = false): EntitlementLine? {
-    val known = entitlement.orAppWide(OptimizeController.lastEntitlement)
-    return OptimizeStatus.entitlementLine(known, exhausted, PrefManager.gameNativeSignedIn.value, Membership.isMember())
-}
+fun optimizeEntitlementLine(entitlement: Entitlement?, exhausted: Boolean = false): EntitlementLine? =
+    OptimizeStatus.entitlementLine(entitlement, exhausted, PrefManager.gameNativeSignedIn.value, Membership.isMember())
 
 /** A short status or plan line: plain label text in [color], no background. */
 @Composable

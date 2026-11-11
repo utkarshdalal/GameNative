@@ -84,28 +84,89 @@ object OptimizeController {
 
     private val entitlementLock = Any()
     private var lastEntitlementCache: Entitlement? = null
+    private var lastEntitlementAtCache = 0L
+    private var accountChangedAtCache = 0L
     private var lastEntitlementLoaded = false
+
+    private fun loadEntitlementLocked() {
+        if (lastEntitlementLoaded) return
+        lastEntitlementCache = runCatching {
+            PrefManager.optimizeLastEntitlementJson.takeIf { it.isNotEmpty() }?.let { Entitlement.fromJson(JSONObject(it)) }
+        }.getOrNull()
+        lastEntitlementAtCache = runCatching { PrefManager.optimizeLastEntitlementAt }.getOrDefault(0L)
+        accountChangedAtCache = runCatching { PrefManager.optimizeAccountChangedAt }.getOrDefault(0L)
+        lastEntitlementLoaded = true
+    }
 
     /** The latest entitlement any game's next-rung or outcome answer carried, kept across restarts, for games that have not asked yet. */
     val lastEntitlement: Entitlement?
         get() = synchronized(entitlementLock) {
-            if (!lastEntitlementLoaded) {
-                lastEntitlementCache = runCatching {
-                    PrefManager.optimizeLastEntitlementJson.takeIf { it.isNotEmpty() }?.let { Entitlement.fromJson(JSONObject(it)) }
-                }.getOrNull()
-                lastEntitlementLoaded = true
-            }
+            loadEntitlementLocked()
             lastEntitlementCache
         }
 
+    /** When the account last signed in, signed out or changed plan; 0 when never. */
+    val accountChangedAt: Long
+        get() = synchronized(entitlementLock) {
+            loadEntitlementLocked()
+            accountChangedAtCache
+        }
+
+    /** The entitlement a surface shows for [state]: the newer of the game's own and the app-wide one, from this account. */
+    fun shownEntitlement(state: OptimizeLocalState?): Entitlement? = synchronized(entitlementLock) {
+        loadEntitlementLocked()
+        state?.entitlement.orAppWide(state?.entitlementCheckedAt ?: 0L, lastEntitlementCache, lastEntitlementAtCache, accountChangedAtCache)
+    }
+
     private fun rememberEntitlement(entitlement: Entitlement?) {
         if (entitlement == null) return
+        val now = System.currentTimeMillis()
         synchronized(entitlementLock) {
+            loadEntitlementLocked()
             lastEntitlementCache = entitlement
-            lastEntitlementLoaded = true
+            lastEntitlementAtCache = now
         }
-        runCatching { PrefManager.optimizeLastEntitlementJson = entitlement.toJson().toString() }
-            .onFailure { Timber.tag(TAG).w(it, "Saving the last entitlement failed") }
+        runCatching {
+            PrefManager.optimizeLastEntitlementJson = entitlement.toJson().toString()
+            PrefManager.optimizeLastEntitlementAt = now
+        }.onFailure { Timber.tag(TAG).w(it, "Saving the last entitlement failed") }
+    }
+
+    /**
+     * The account signed in or out: the app-wide entitlement is forgotten, and what any game learned of the plan before
+     * now no longer applies until the server answers for the new account.
+     */
+    fun onAccountChanged() {
+        markAccountChanged(forgetAppWide = true)
+        runCatching { PrefManager.optimizeLastPlan = Membership.planKey().orEmpty() }
+    }
+
+    /** The account's plan was refreshed as [plan]; a change from the last plan seen counts as an account change. */
+    fun onPlanRefreshed(plan: String) {
+        val previous = runCatching { PrefManager.optimizeLastPlan }.getOrDefault("")
+        if (previous == plan) return
+        runCatching { PrefManager.optimizeLastPlan = plan }
+        if (previous.isNotEmpty()) markAccountChanged(forgetAppWide = false)
+    }
+
+    private fun markAccountChanged(forgetAppWide: Boolean) {
+        val now = System.currentTimeMillis()
+        synchronized(entitlementLock) {
+            loadEntitlementLocked()
+            accountChangedAtCache = now
+            if (forgetAppWide) {
+                lastEntitlementCache = null
+                lastEntitlementAtCache = 0L
+            }
+        }
+        runCatching {
+            PrefManager.optimizeAccountChangedAt = now
+            if (forgetAppWide) {
+                PrefManager.optimizeLastEntitlementJson = ""
+                PrefManager.optimizeLastEntitlementAt = 0L
+            }
+        }.onFailure { Timber.tag(TAG).w(it, "Saving the account change failed") }
+        revision.value++
     }
 
     private val rulesVersionLock = Any()
@@ -507,7 +568,7 @@ object OptimizeController {
                     ),
                 )
                 if (state.card != null && state.card != cardBefore) {
-                    request = CardRequest(appId, state.card!!, (entitlement ?: state.entitlement).orAppWide(lastEntitlement))
+                    request = CardRequest(appId, state.card!!, entitlement ?: shownEntitlement(state))
                 }
             }
             request?.let {
@@ -531,7 +592,7 @@ object OptimizeController {
     }
 
     private fun wouldAsk(state: OptimizeLocalState, ladder: ProfileLadder, nowMillis: Long): Boolean =
-        OptimizeLadders.wouldAsk(state, ladder, Membership.isMember(), nowMillis)
+        OptimizeLadders.wouldAsk(state, ladder, Membership.isMember(), nowMillis, accountChangedAt)
 
     /** Before the first step: a done card when the game already meets [profile]'s target; null otherwise. */
     private fun doneAtBaseline(
@@ -1285,7 +1346,7 @@ object OptimizeController {
                     if (context != null) prefetch = exitPrefetch(context.applicationContext, appId, container, store, state, profile, now)
                     cardField = OptimizeCards.cardField(state.card != null && state.card != cardBefore, OptimizeCards.SUPPRESSED_PROFILE)
                 }
-                state.card?.let { CardRequest(appId, it, state.entitlement.orAppWide(lastEntitlement)) }
+                state.card?.let { CardRequest(appId, it, shownEntitlement(state)) }
             }
             offer?.let { o ->
                 val (offered, field) = offerFirst(appId, store, o)
@@ -1377,7 +1438,7 @@ object OptimizeController {
             }
             if (state != read) store.write(state)
             if (card?.kind == OptimizeCard.CAP) cardEvent(appId, OptimizeEvents.CAP_ASKED, state, card)
-            card?.let { CardRequest(appId, it, state.entitlement.orAppWide(lastEntitlement)) } to field
+            card?.let { CardRequest(appId, it, shownEntitlement(state)) } to field
         }
     }
 
@@ -1586,7 +1647,7 @@ object OptimizeController {
         if (cardRequest.value?.appId == appId) return
         val state = readState(context, appId) ?: return
         val card = state.card ?: return
-        cardRequest.value = CardRequest(appId, card, state.entitlement.orAppWide(lastEntitlement))
+        cardRequest.value = CardRequest(appId, card, shownEntitlement(state))
     }
 
     enum class ChangeResult { DONE, GAME_RUNNING, NO_CONTAINER, FAILED }
@@ -1609,7 +1670,7 @@ object OptimizeController {
                 val current = store.read()
                 val (next, worked) = block(container, store, current)
                 store.write(next)
-                request = next.card?.takeIf { it != current.card }?.let { CardRequest(appId, it, next.entitlement.orAppWide(lastEntitlement)) }
+                request = next.card?.takeIf { it != current.card }?.let { CardRequest(appId, it, shownEntitlement(next)) }
                 worked
             }
             request?.let { cardRequest.value = it }
