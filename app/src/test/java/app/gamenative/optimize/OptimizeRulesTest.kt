@@ -105,7 +105,7 @@ class OptimizeRulesTest {
 
     @Test
     fun balancedWithFewStuttersIsMetOnlyWithoutHeat() {
-        val calm = Metrics(gameplaySec = 1056, steadyFps = 56.7, stutterShare = 0.0008)
+        val calm = Metrics(gameplaySec = 1056, steadyFps = 59.0, stutterShare = 0.0008)
         assertTrue(OptimizeTarget.met(OptimizeProfile.BALANCED, calm, 60.0, 60))
         assertFalse(OptimizeTarget.met(OptimizeProfile.BALANCED, calm.copy(throttleOnsetSec = 0), 60.0, 60))
         assertFalse(OptimizeTarget.met(OptimizeProfile.BALANCED, calm.copy(cls = "thermal_gpu", confident = true), 60.0, 60))
@@ -145,13 +145,16 @@ class OptimizeRulesTest {
     }
 
     @Test
-    fun balancedNeedsThirtyFpsFewStuttersAndNoThrottle() {
-        val m = Metrics(gameplaySec = 900, steadyFps = 31.0, stutterShare = 0.01)
+    fun balancedIsMetWhenTheGameRunsFine() {
+        val m = Metrics(gameplaySec = 900, steadyFps = 59.6, stutterShare = 0.002, fpsBy5Min = listOf(52, 60, 60, 59))
         assertTrue(OptimizeTarget.met(OptimizeProfile.BALANCED, m, 60.0, 0))
-        assertFalse(OptimizeTarget.met(OptimizeProfile.BALANCED, m.copy(steadyFps = 29.0), 60.0, 0))
+        // The session a first card is about is never one Balanced already calls done.
+        assertFalse(OptimizeTarget.met(OptimizeProfile.BALANCED, m.copy(steadyFps = 44.0), 60.0, 0))
         assertFalse(OptimizeTarget.met(OptimizeProfile.BALANCED, m.copy(stutterShare = 0.02), 60.0, 0))
-        assertFalse(OptimizeTarget.met(OptimizeProfile.BALANCED, m.copy(throttleOnsetSec = 400), 60.0, 0))
-        assertFalse(OptimizeTarget.met(OptimizeProfile.BALANCED, m.copy(stutterShare = null), 60.0, 0))
+        assertFalse(OptimizeTarget.met(OptimizeProfile.BALANCED, m.copy(throttleOnsetSec = 400, fpsBy5Min = listOf(52, 60, 60, 57)), 60.0, 0))
+        assertTrue(OptimizeTarget.met(OptimizeProfile.BALANCED, m.copy(stutterShare = null), 60.0, 0))
+        assertTrue(OptimizeTarget.met(OptimizeProfile.BALANCED, m.copy(steadyFps = 30.0, fpsBy5Min = listOf(30, 30, 30)), 60.0, 30))
+        assertEquals(OptimizeCards.ranFine(m, 0), OptimizeTarget.met(OptimizeProfile.BALANCED, m, m.refreshHz, 0))
     }
 
     @Test

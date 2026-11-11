@@ -2,6 +2,8 @@ package app.gamenative.optimize
 
 import app.gamenative.ui.component.parseBooleanExtra
 import app.gamenative.ui.component.parsePositiveFpsLimit
+import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.roundToInt
 import org.json.JSONObject
 
@@ -105,7 +107,6 @@ object OptimizeLadders {
 }
 
 object OptimizeTarget {
-    const val BALANCED_MIN_FPS = 30.0
     const val BALANCED_MAX_STUTTER = 0.02
     const val QUALITY_MAX_STUTTER = 0.01
     const val POWER_MIN_GAMEPLAY_SEC = 1200
@@ -170,8 +171,8 @@ object OptimizeTarget {
         val heat = hot(after, refreshHz, fpsCap)
         return when (profile) {
             OptimizeProfile.PERFORMANCE -> holdsTarget(after, refreshHz, fpsCap) && !heat
-            OptimizeProfile.BALANCED ->
-                fps != null && stutter != null && fps >= BALANCED_MIN_FPS && stutter < BALANCED_MAX_STUTTER && !heat
+            // Balanced is done when the game would no longer be offered tuning: it holds its frame rate, cool and smooth.
+            OptimizeProfile.BALANCED -> holdsTarget(after, refreshHz, fpsCap) && !heat && (stutter ?: 0.0) < BALANCED_MAX_STUTTER
             OptimizeProfile.QUALITY -> stutter != null && stutter < QUALITY_MAX_STUTTER
             OptimizeProfile.POWER -> after.gameplaySec >= POWER_MIN_GAMEPLAY_SEC && !heat
             OptimizeProfile.POTATO -> (fps ?: 0.0) >= PERFORMANCE_FPS_SHARE * POTATO_FPS_TARGET
@@ -539,8 +540,10 @@ object OptimizeRelative {
 
     /**
      * The value a step writes for a key that holds [current]: [down] levels of [ladder] below it, or above it when
-     * [down] is negative. The count starts at the highest level that holds the current value, so a key whose value
-     * spans many levels moves less, never more, than asked. Null when there is nothing to write: no move asked, or
+     * [down] is negative. [down] is the distance for a key at the top of its ladder: a key that sits lower moves
+     * in proportion to its level, rounded up, so a game on medium settings is not sent to the bottom by one large step.
+     * The count starts at the highest level that holds the current value, so a key whose value spans many levels
+     * moves less, never more, than asked. Null when there is nothing to write: no move asked, or
      * the level reached holds the value the key already has. A level without a value gives way to the nearest one
      * toward the current value. A key the game does not have yet, or whose value the ladder cannot place, falls back
      * to [target], under the lower-only rule.
@@ -550,10 +553,12 @@ object OptimizeRelative {
         if (current == null) return target.takeIf { down > 0 }
         val at = levelOf(current, ladder, lowerIs)
             ?: return target.takeIf { down > 0 && shouldApply(current, target, ladder, lowerIs) }
+        val top = ladder.lastIndex.coerceAtLeast(1)
+        val levels = ceil(abs(down) * at.last / top.toDouble()).toInt().coerceAtLeast(1)
         val candidates = if (down > 0) {
-            (at.last - down).coerceAtLeast(0) until at.first
+            (at.last - levels).coerceAtLeast(0) until at.first
         } else {
-            (at.last - down).coerceAtMost(ladder.lastIndex) downTo at.last + 1
+            (at.last + levels).coerceAtMost(ladder.lastIndex) downTo at.last + 1
         }
         return candidates.firstNotNullOfOrNull { i ->
             ladder[i]?.takeIf { !same(it, current) && moves(current, it, lowerIs, lower = down > 0) }

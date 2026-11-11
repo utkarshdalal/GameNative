@@ -15,23 +15,34 @@ class OptimizeStepDistanceTest {
         OptimizeRelative.retarget(current, target, ladder, lowerIs, down)
 
     @Test
-    fun `a step goes the same distance from wherever the game starts`() {
-        // From the top, three levels down is the old absolute step.
+    fun `a key at the top moves the distance asked, a key lower down in proportion to its level`() {
         assertEquals("0.5", step("1", grass, OptimizeRelative.LESS, 3))
-        // From the middle the same step still moves the key, instead of writing nothing.
-        assertEquals("0.2", step("0.35", grass, OptimizeRelative.LESS, 3))
-        assertEquals("0.1", step("0.35", grass, OptimizeRelative.LESS, 8))
+        assertEquals("0.25", step("1", grass, OptimizeRelative.LESS, 8))
+        // From level 5 of 11: three levels become two, eight become four.
+        assertEquals("0.25", step("0.35", grass, OptimizeRelative.LESS, 3))
+        assertEquals("0.15", step("0.35", grass, OptimizeRelative.LESS, 8))
+        // Near the bottom a step is still one level.
         assertEquals("0.1", step("0.15", grass, OptimizeRelative.LESS, 3))
+    }
+
+    @Test
+    fun `a big step from the middle of The Witcher 3's list stops short of the bottom`() {
+        val decals = listOf("4", "8", "8", "9", "9", "13", "15", "15", "30", "40", "80", "80")
+        assertEquals("8", step("15", decals, OptimizeRelative.LESS, 8))
+        val density = listOf("200", "600", "1200", "1400", "1400", "1800", "1800", "1800", "1800", "2000", "2200", "2400")
+        assertEquals("600", step("1400", density, OptimizeRelative.LESS, 8))
+        assertEquals("1200", step("1400", density, OptimizeRelative.LESS, 3))
     }
 
     @Test
     fun `a value that spans several levels is counted from its highest one, so a step never goes further than asked`() {
         assertEquals("Medium", step("High", quality, "enum", 3))
         assertEquals("Medium", step("Ultra", quality, "enum", 8))
-        assertEquals("Low", step("Medium", quality, "enum", 3))
+        assertEquals("Low", step("Medium", quality, "enum", 8))
         // A distance that stays inside the value's own levels changes nothing.
         assertNull(step(" high ", quality, "enum", 1))
         assertNull(step("Ultra", quality, "enum", 2))
+        assertNull(step("Medium", quality, "enum", 3))
         // A key that holds one value from level 1 up is not thrown to the bottom by a big step from the top.
         val flat = listOf("0.2", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1")
         assertNull(step("1", flat, OptimizeRelative.LESS, 8))
@@ -41,12 +52,13 @@ class OptimizeStepDistanceTest {
     @Test
     fun `lower quality may be the bigger number`() {
         assertEquals("1", step("0", cascade, OptimizeRelative.MORE, 3))
-        assertEquals("5", step("3", cascade, OptimizeRelative.MORE, 5))
+        assertEquals("4", step("3", cascade, OptimizeRelative.MORE, 5))
+        assertEquals("5", step("3", cascade, OptimizeRelative.MORE, 11))
     }
 
     @Test
     fun `a value between two steps counts from the step under it`() {
-        assertEquals("0.25", step("0.42", grass, OptimizeRelative.LESS, 3))
+        assertEquals("0.3", step("0.42", grass, OptimizeRelative.LESS, 3))
         // Above the whole ladder is the top.
         assertEquals("0.5", step("2", grass, OptimizeRelative.LESS, 3))
     }
@@ -64,14 +76,15 @@ class OptimizeStepDistanceTest {
         val gaps = listOf(null, "1", null, null, "2", "3", "3", "3", "4", "4", "4", "4")
         assertEquals("3", step("4", gaps, OptimizeRelative.LESS, 5))
         assertEquals("2", step("4", gaps, OptimizeRelative.LESS, 9))
-        assertEquals("1", step("2", gaps, OptimizeRelative.LESS, 4))
-        assertEquals("2", step("3", listOf(null, null, null, null, "2", "3", "3", "3", "4", "4", "4", "4"), OptimizeRelative.LESS, 5))
+        assertEquals("1", step("2", gaps, OptimizeRelative.LESS, 11))
+        // Nothing between the level reached and the current one: no move.
+        assertNull(step("2", gaps, OptimizeRelative.LESS, 4))
     }
 
     @Test
-    fun `a negative distance goes back up, never past the top`() {
+    fun `a negative distance goes back up in the same proportion, never past the top`() {
         assertEquals("High", step("Medium", quality, "enum", -1))
-        assertEquals("0.5", step("0.3", grass, OptimizeRelative.LESS, -4))
+        assertEquals("0.4", step("0.3", grass, OptimizeRelative.LESS, -4))
         assertEquals("1", step("0.8", grass, OptimizeRelative.LESS, -6))
         assertNull(step("Ultra", quality, "enum", -2))
     }
