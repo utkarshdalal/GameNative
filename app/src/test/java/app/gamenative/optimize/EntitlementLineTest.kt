@@ -205,6 +205,18 @@ class EntitlementLineTest {
     }
 
     @Test
+    fun usedUpGamesSayTrialOnlyOnTheFreePlan() {
+        val free = line(Entitlement(Entitlement.NONE, 3, 3, tier = "free"), exhausted = true)
+        val basic = line(Entitlement(Entitlement.MEMBER, 0, 0, tier = "basic", gamesUsed = 5, gamesQuota = 5), exhausted = true)
+        val untiered = line(Entitlement(Entitlement.MEMBER, 0, 0, gamesUsed = 5, gamesQuota = 5), exhausted = true)
+        assertEquals(R.string.optimize_pill_trial_used, OptimizeStatus.pillRes(OptimizeStatus.TrialUsed, free))
+        assertEquals(R.string.optimize_pill_month_used, OptimizeStatus.pillRes(OptimizeStatus.TrialUsed, basic))
+        assertEquals(R.string.optimize_pill_month_used, OptimizeStatus.pillRes(OptimizeStatus.TrialUsed, untiered))
+        assertEquals(R.string.optimize_pill_trial_used, OptimizeStatus.pillRes(OptimizeStatus.TrialUsed, null))
+        assertEquals(R.string.optimize_pill_tuning, OptimizeStatus.pillRes(OptimizeStatus.TuningNext, basic))
+    }
+
+    @Test
     fun statusSentenceIsShownOnlyWhenItSaysMoreThanTheHeader() {
         assertFalse(OptimizeStatus.showsSentence(OptimizeStatus.TuningNext))
         assertFalse(OptimizeStatus.showsSentence(OptimizeStatus.Paused))

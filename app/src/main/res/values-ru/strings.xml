@@ -1895,6 +1895,7 @@ https://gamenative.app
     <string name="optimize_pill_done">Готово</string>
     <string name="optimize_pill_waiting">Ожидание</string>
     <string name="optimize_pill_trial_used">Пробный период использован</string>
+    <string name="optimize_pill_month_used">Игры этого месяца использованы</string>
     <string name="optimize_plan_unlimited">Без ограничений с %1$s</string>
     <string name="optimize_plan_signed_out">Бесплатно с аккаунтом</string>
     <string name="optimize_upsell_title">Каждая игра в лучшей форме</string>

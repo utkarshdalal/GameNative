@@ -2183,6 +2183,7 @@
     <string name="optimize_pill_done">Done</string>
     <string name="optimize_pill_waiting">Waiting</string>
     <string name="optimize_pill_trial_used">Trial used</string>
+    <string name="optimize_pill_month_used">This month\'s games used</string>
     <string name="optimize_plan_unlimited">Unlimited with %1$s</string>
     <string name="optimize_plan_signed_out">Free to try with an account</string>
     <string name="optimize_upsell_title">Keep every game running its best</string>

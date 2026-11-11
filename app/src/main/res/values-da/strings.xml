@@ -1831,6 +1831,7 @@
     <string name="optimize_pill_done">Færdig</string>
     <string name="optimize_pill_waiting">Venter</string>
     <string name="optimize_pill_trial_used">Prøveperiode brugt</string>
+    <string name="optimize_pill_month_used">Månedens spil brugt</string>
     <string name="optimize_plan_unlimited">Ubegrænset med %1$s</string>
     <string name="optimize_plan_signed_out">Gratis at prøve med en konto</string>
     <string name="optimize_upsell_title">Få alle dine spil til at køre bedst muligt</string>

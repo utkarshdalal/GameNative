@@ -1831,6 +1831,7 @@
     <string name="optimize_pill_done">Concluído</string>
     <string name="optimize_pill_waiting">Aguardando</string>
     <string name="optimize_pill_trial_used">Teste usado</string>
+    <string name="optimize_pill_month_used">Jogos deste mês usados</string>
     <string name="optimize_plan_unlimited">Ilimitado com %1$s</string>
     <string name="optimize_plan_signed_out">Teste grátis com uma conta</string>
     <string name="optimize_upsell_title">Todos os jogos rodando da melhor forma</string>

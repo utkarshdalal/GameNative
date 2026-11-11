@@ -1971,6 +1971,7 @@
     <string name="optimize_pill_done">Gotowe</string>
     <string name="optimize_pill_waiting">Oczekiwanie</string>
     <string name="optimize_pill_trial_used">Wersja próbna wykorzystana</string>
+    <string name="optimize_pill_month_used">Gry na ten miesiąc wykorzystane</string>
     <string name="optimize_plan_unlimited">Bez limitu z %1$s</string>
     <string name="optimize_plan_signed_out">Za darmo do wypróbowania z kontem</string>
     <string name="optimize_upsell_title">Każda gra w najlepszej formie</string>

@@ -1959,6 +1959,7 @@
     <string name="optimize_pill_done">Listo</string>
     <string name="optimize_pill_waiting">En espera</string>
     <string name="optimize_pill_trial_used">Prueba usada</string>
+    <string name="optimize_pill_month_used">Juegos de este mes usados</string>
     <string name="optimize_plan_unlimited">Ilimitado con %1$s</string>
     <string name="optimize_plan_signed_out">Prueba gratis con una cuenta</string>
     <string name="optimize_upsell_title">Que cada juego funcione al máximo</string>

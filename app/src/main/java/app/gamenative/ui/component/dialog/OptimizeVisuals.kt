@@ -275,10 +275,13 @@ fun OptimizePlanLine(entitlement: Entitlement?, exhausted: Boolean = false, modi
     OptimizeLabel(text = planText(OptimizeStatus.entitlementPill(line)), color = PluviaTheme.colors.textMuted, modifier = modifier)
 }
 
-/** The short status line the cards and the game options row show, in the state's colour; nothing while Optimize is off. */
+/**
+ * The short status line the cards and the game options row show, in the state's colour; nothing while Optimize is off.
+ * [line] is the game's plan line, which words a used-up plan.
+ */
 @Composable
-fun OptimizeStatusLine(status: OptimizeStatus?, modifier: Modifier = Modifier) {
-    val res = status?.let { OptimizeStatus.pillRes(it) } ?: return
+fun OptimizeStatusLine(status: OptimizeStatus?, line: EntitlementLine? = null, modifier: Modifier = Modifier) {
+    val res = status?.let { OptimizeStatus.pillRes(it, line) } ?: return
     OptimizeLabel(text = stringResource(res), color = optimizeStatusColor(status), modifier = modifier)
 }
 

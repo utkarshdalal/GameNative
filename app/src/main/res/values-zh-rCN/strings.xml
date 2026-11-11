@@ -1923,6 +1923,7 @@
     <string name="optimize_pill_done">已完成</string>
     <string name="optimize_pill_waiting">等待中</string>
     <string name="optimize_pill_trial_used">试用已用完</string>
+    <string name="optimize_pill_month_used">本月游戏已用完</string>
     <string name="optimize_plan_unlimited">%1$s 无限制</string>
     <string name="optimize_plan_signed_out">登录账号即可免费试用</string>
     <string name="optimize_upsell_title">让每款游戏都以最佳状态运行</string>

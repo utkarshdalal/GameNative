@@ -1952,6 +1952,7 @@
     <string name="optimize_pill_done">Fatto</string>
     <string name="optimize_pill_waiting">In attesa</string>
     <string name="optimize_pill_trial_used">Prova usata</string>
+    <string name="optimize_pill_month_used">Giochi del mese usati</string>
     <string name="optimize_plan_unlimited">Illimitato con %1$s</string>
     <string name="optimize_plan_signed_out">Prova gratis con un account</string>
     <string name="optimize_upsell_title">Ogni gioco al massimo</string>

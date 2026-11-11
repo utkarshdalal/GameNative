@@ -1944,6 +1944,7 @@
     <string name="optimize_pill_done">Gata</string>
     <string name="optimize_pill_waiting">În așteptare</string>
     <string name="optimize_pill_trial_used">Perioada de probă folosită</string>
+    <string name="optimize_pill_month_used">Jocurile lunii folosite</string>
     <string name="optimize_plan_unlimited">Nelimitat cu %1$s</string>
     <string name="optimize_plan_signed_out">Gratuit de încercat cu un cont</string>
     <string name="optimize_upsell_title">Fiecare joc la cel mai bun nivel</string>

@@ -1979,6 +1979,7 @@
     <string name="optimize_pill_done">Terminé</string>
     <string name="optimize_pill_waiting">En attente</string>
     <string name="optimize_pill_trial_used">Essai utilisé</string>
+    <string name="optimize_pill_month_used">Jeux du mois utilisés</string>
     <string name="optimize_plan_unlimited">Illimité avec %1$s</string>
     <string name="optimize_plan_signed_out">Essai gratuit avec un compte</string>
     <string name="optimize_upsell_title">Chaque jeu à son meilleur niveau</string>

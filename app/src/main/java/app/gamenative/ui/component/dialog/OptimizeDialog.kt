@@ -328,7 +328,7 @@ fun OptimizeDialog(
                         color = PluviaTheme.colors.textMuted,
                     )
                 }
-                OptimizeStatusLine(status)
+                OptimizeStatusLine(status, line)
                 OptimizePlanLine(entitlement, exhausted = exhausted)
             }
         }

@@ -125,15 +125,18 @@ sealed class OptimizeStatus {
             return short != pillRes(status)
         }
 
-        /** The short status pill for [status], the words the cards use; null when there is nothing to show. */
+        /**
+         * The short status pill for [status], the words the cards use; null when there is nothing to show. [line] is the
+         * game's plan line: games used up on a monthly plan say so, not that the trial is used.
+         */
         @StringRes
-        fun pillRes(status: OptimizeStatus): Int? = when (status) {
+        fun pillRes(status: OptimizeStatus, line: EntitlementLine? = null): Int? = when (status) {
             Measuring -> R.string.optimize_pill_measuring
             NotStarted, TuningNext, RetryNext, is Trying -> R.string.optimize_pill_tuning
             Paused -> R.string.optimize_status_paused
             Done, Exhausted -> R.string.optimize_pill_done
             Waiting -> R.string.optimize_pill_waiting
-            TrialUsed -> R.string.optimize_pill_trial_used
+            TrialUsed -> if (line is EntitlementLine.Monthly) R.string.optimize_pill_month_used else R.string.optimize_pill_trial_used
             Off, Never -> null
         }
 
