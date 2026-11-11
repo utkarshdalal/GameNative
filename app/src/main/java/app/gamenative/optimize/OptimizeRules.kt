@@ -494,4 +494,52 @@ object OptimizeRelative {
         val targetStep = stepOf(ladder, target) ?: return true
         return targetStep < currentStep
     }
+
+    /** Whether [candidate] is lower quality than [current] ([lower] true) or higher (false), where both are numbers. */
+    private fun moves(current: String, candidate: String, lowerIs: String?, lower: Boolean): Boolean {
+        val c = number(current) ?: return true
+        val v = number(candidate) ?: return true
+        if (lowerIs != LESS && lowerIs != MORE) return true
+        return if ((lowerIs == LESS) == lower) v < c else v > c
+    }
+
+    /**
+     * The steps of [ladder] that hold the level [current] sits at: the ones with its value, else for a number between
+     * two steps the ones of the nearest value at or below its quality. Null when the ladder does not place it.
+     */
+    fun levelOf(current: String, ladder: List<String?>, lowerIs: String?): IntRange? {
+        val exact = ladder.indices.filter { i -> ladder[i]?.let { same(it, current) } == true }
+        if (exact.isNotEmpty()) return exact.first()..exact.last()
+        val c = number(current) ?: return null
+        if (lowerIs != LESS && lowerIs != MORE) return null
+        val under = ladder.indices.lastOrNull { i ->
+            val v = ladder[i]?.let { number(it) } ?: return@lastOrNull false
+            if (lowerIs == LESS) v <= c else v >= c
+        } ?: return null
+        val value = ladder[under]!!
+        return ladder.indices.first { i -> ladder[i]?.let { same(it, value) } == true }..under
+    }
+
+    /**
+     * The value a step writes for a key that holds [current]: [down] levels of [ladder] below it, or above it when
+     * [down] is negative; null when there is nothing to write (no move asked, or the key is already at that end). A
+     * level without a value gives way to the nearest one that still moves the key the right way. A key the game does
+     * not have yet, or whose value the ladder cannot place, falls back to [target], under the lower-only rule.
+     */
+    fun retarget(current: String?, target: String, ladder: List<String?>, lowerIs: String?, down: Int): String? {
+        if (down == 0) return null
+        if (current == null) return target.takeIf { down > 0 }
+        val at = levelOf(current, ladder, lowerIs)
+            ?: return target.takeIf { down > 0 && shouldApply(current, target, ladder, lowerIs) }
+        val candidates = if (down > 0) {
+            val start = (at.first - down).coerceAtLeast(0)
+            (start downTo 0) + (start + 1 until at.first)
+        } else {
+            val start = (at.last - down).coerceAtMost(ladder.lastIndex)
+            (start downTo at.last + 1) + (start + 1..ladder.lastIndex)
+        }
+        return candidates.firstNotNullOfOrNull { i ->
+            ladder[i]?.takeIf { !same(it, current) && moves(current, it, lowerIs, lower = down > 0) }
+        }
+    }
 }

@@ -322,7 +322,11 @@ internal fun JSONArray?.works(): List<Double?> =
 internal fun JSONArray?.strings(): List<String> =
     if (this == null) emptyList() else (0 until length()).mapNotNull { i -> optString(i).takeIf { it.isNotEmpty() } }
 
-/** [ladder] is the key's values from lowest to highest quality and [lowerIs] which way lower quality goes; [onlyExisting] ops are skipped when the file does not have the key. */
+/**
+ * [ladder] is the key's values from lowest to highest quality and [lowerIs] which way lower quality goes; [onlyExisting]
+ * ops are skipped when the file does not have the key. [down] is how many levels of [ladder] below the key's current
+ * value the op goes (negative: back up; 0: nowhere); null from servers that send only [value].
+ */
 data class FileOp(
     val op: String,
     val section: String,
@@ -331,6 +335,7 @@ data class FileOp(
     val ladder: List<String?>? = null,
     val lowerIs: String? = null,
     val onlyExisting: Boolean = false,
+    val down: Int? = null,
 ) {
     val isDelete: Boolean get() = op == "delete"
 
@@ -350,7 +355,7 @@ data class FileOp(
             if (op == "set" && value == null) return null
             return FileOp(
                 op, o.optStringOrNull("section").orEmpty(), key, if (op == "set") value else null,
-                ladderOf(o), o.optStringOrNull("lower_is"), o.optBoolean("only_existing", false),
+                ladderOf(o), o.optStringOrNull("lower_is"), o.optBoolean("only_existing", false), o.optIntOrNull("down"),
             )
         }
     }
@@ -369,6 +374,8 @@ data class RegistryValue(
     val delete: Boolean,
     val ladder: List<String?>? = null,
     val lowerIs: String? = null,
+    /** As [FileOp.down]. */
+    val down: Int? = null,
 )
 
 sealed class Lever {
@@ -439,7 +446,7 @@ sealed class Lever {
                         val valueType = v.optStringOrNull("type")
                         val data = if (v.has("data") && !v.isNull("data")) v.optString("data") else null
                         if (!delete && (valueType == null || data == null)) return@mapNotNull null
-                        RegistryValue(name, valueType, data, delete, ladderOf(v), v.optStringOrNull("lower_is"))
+                        RegistryValue(name, valueType, data, delete, ladderOf(v), v.optStringOrNull("lower_is"), v.optIntOrNull("down"))
                     }
                     if (values.isEmpty() || values.size != raw.size) return Unknown(type)
                     Registry(payload.optString("hive", "HKCU"), key, values)

@@ -25,7 +25,7 @@ import timber.log.Timber
 
 sealed class ApplyOutcome {
     /**
-     * [appliedOps] and [skippedOps] count file keys and registry values; a relative rung skips those already lower,
+     * [appliedOps] and [skippedOps] count file keys and registry values; a relative rung skips those already lower (a step with a distance: those with nowhere to go),
      * any rung the only_existing keys its file lacks.
      */
     data class Applied(val levers: List<JSONObject>, val appliedOps: Int = 0, val skippedOps: Int = 0) : ApplyOutcome()
@@ -124,13 +124,17 @@ object OptimizeApplier {
         val bytes = if (existed) file.readBytes() else ByteArray(0)
         val codec = if (existed) TextCodecs.codecFor(bytes, lever.encoding) else TextCodecs.forNewFile(lever.encoding)
         val text = TextCodecs.decode(bytes, codec)
-        val ops = lever.ops.filter { op ->
-            if (!op.onlyExisting && (!relative || op.isDelete)) return@filter true
+        // An op that carries a distance is written as the value that far from the key's current one.
+        val ops = lever.ops.mapNotNull { op ->
+            val distance = op.down?.takeIf { !op.isDelete && op.ladder != null }
+            if (!op.onlyExisting && distance == null && (!relative || op.isDelete)) return@mapNotNull op
             val current = if (text.isBlank()) null else format.read(text, op)
             when {
-                op.onlyExisting && current == null -> false
-                !relative || op.isDelete -> true
-                else -> OptimizeRelative.shouldApply(current, op.value!!, op.ladder, op.lowerIs)
+                op.onlyExisting && current == null -> null
+                op.isDelete -> op
+                distance != null -> OptimizeRelative.retarget(current, op.value!!, op.ladder!!, op.lowerIs, distance)?.let { op.copy(value = it) }
+                !relative -> op
+                else -> op.takeIf { OptimizeRelative.shouldApply(current, op.value!!, op.ladder, op.lowerIs) }
             }
         }
         count.applied += ops.size
@@ -288,14 +292,19 @@ object OptimizeApplier {
         if (!lever.key.startsWith("Software\\", ignoreCase = true)) throw LeverFailure("key outside Software")
         val hive = OptimizeFiles.userHive(container)
         if (!hive.isFile) throw LeverFailure("user.reg missing")
-        val values = if (!relative) {
+        val values = if (!relative && lever.values.none { it.down != null }) {
             lever.values
         } else {
             val now = WineRegistryText.read(OptimizeFiles.readHive(hive), lever.key, lever.values.map { it.name })
-            lever.values.filter { v ->
-                v.delete || OptimizeRelative.shouldApply(
-                    now[v.name]?.let { OptimizeFiles.decodeRegistryValue(v.type!!, it) }, v.data!!, v.ladder, v.lowerIs,
-                )
+            lever.values.mapNotNull { v ->
+                if (v.delete) return@mapNotNull v
+                val current = now[v.name]?.let { OptimizeFiles.decodeRegistryValue(v.type!!, it) }
+                val distance = v.down?.takeIf { v.ladder != null }
+                when {
+                    distance != null -> OptimizeRelative.retarget(current, v.data!!, v.ladder!!, v.lowerIs, distance)?.let { v.copy(data = it) }
+                    !relative -> v
+                    else -> v.takeIf { OptimizeRelative.shouldApply(current, v.data!!, v.ladder, v.lowerIs) }
+                }
             }
         }
         count.applied += values.size
