@@ -168,6 +168,19 @@ class SessionVerdictTest {
     }
 
     @Test
+    fun menusAndLoadingAreLeftOutOfTheFrameRate() {
+        // Three minutes of a 60 fps menu that draws almost nothing, then seven minutes of play at 40 fps.
+        val r = compute(gameplay { if (it < SessionVerdict.WARMUP_SEC + 180) base(it, fps = 60f, gpu = 7) else base(it, fps = 40f, gpu = 90) })
+        assertEquals(40.0, r.steadyFps!!, 1e-9)
+        val verdict = r.properties().getValue("perf_verdict") as Map<*, *>
+        assertEquals(40.0, verdict["steady_fps"])
+        // A session with an even GPU load keeps every second.
+        assertEquals(50.0, compute(gameplay { base(it, fps = 50f, gpu = 60) }).steadyFps!!, 1e-9)
+        // Without a GPU reading nothing is left out.
+        assertEquals(50.0, compute(gameplay { base(it, fps = 50f, gpu = null) }).steadyFps!!, 1e-9)
+    }
+
+    @Test
     fun trimEventsWithUnknownAvailableMemoryAreNotAHardMemoryVerdict() {
         val r = compute(gameplay { base(it, gpu = 50, cpu = 40, hot = 40, availMb = null) }, trimEvents = 5)
         assertFalse(r.memoryHard)
