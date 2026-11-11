@@ -149,4 +149,75 @@ class OptimizeLeverSignalsTest {
         assertFalse(v.containsKey("pipeline_compiles_by_5min"))
         assertFalse(v.containsKey("tessellation_pipelines"))
     }
+
+    @Test
+    fun `the verdict basis survives the run record, the stored metrics and the requests`() {
+        val run = JSONObject()
+            .put("session_length", 1800)
+            .put("low_memory_events", 9)
+            .put(
+                "perf_verdict",
+                JSONObject()
+                    .put("class", "gpu")
+                    .put("confidence", 0.7)
+                    .put("gameplay_s", 1680)
+                    .put("shares", JSONObject().put("sync", 0.0).put("gpu", 0.7).put("cpu1", 0.2).put("memory", 0.0))
+                    .put("trim_events", 4)
+                    .put("avail_min_mb", 3274)
+                    .put("memory_hard", false)
+                    .put("thermal_signal", "none")
+                    .put("proc_stat", "real")
+                    .put("gpu_busy_p95", 91)
+                    .put("hot_thread_p95", 98)
+                    .put("hot", JSONObject().put("name", "MainThrd").put("cluster", "big").put("pct_p50", 96)),
+            )
+        val m = Metrics.fromRun(run)
+        val expected = VerdictBasis(
+            shares = mapOf("sync" to 0.0, "gpu" to 0.7, "cpu1" to 0.2, "memory" to 0.0),
+            trimEvents = 4,
+            availMinMb = 3274,
+            memoryHard = false,
+            thermalSignal = "none",
+            procStat = "real",
+            gpuBusyP95 = 91,
+            hotThreadP95 = 98,
+            hotThreadName = "MainThrd",
+            hotThreadCluster = "big",
+        )
+        assertEquals(expected, m.basis)
+        assertEquals(m, Metrics.fromJson(JSONObject(m.toJson().toString())))
+        assertEquals(expected, Metrics.fromJson(JSONObject(m.toReportJson().toString()))!!.basis)
+
+        val basis = m.toVerdictJson()!!.getJSONObject("basis")
+        assertEquals(0.7, basis.getJSONObject("shares").getDouble("gpu"), 1e-9)
+        assertEquals(4, basis.getInt("trim_events"))
+        assertEquals(3274, basis.getInt("avail_min_mb"))
+        assertFalse(basis.getBoolean("memory_hard"))
+        assertEquals("none", basis.getString("thermal_signal"))
+        assertEquals("real", basis.getString("proc_stat"))
+        assertEquals(91, basis.getInt("gpu_busy_p95"))
+        assertEquals(98, basis.getInt("hot_thread_p95"))
+        assertEquals("MainThrd", basis.getString("hot_thread_name"))
+        assertEquals("big", basis.getString("hot_thread_cluster"))
+
+        // An older record without trim_events reads the run's low-memory count; a record with nothing has no basis.
+        assertEquals(9, Metrics.fromRun(JSONObject(run.toString()).apply { getJSONObject("perf_verdict").remove("trim_events") }).basis!!.trimEvents)
+        val bare = Metrics.fromRun(JSONObject().put("session_length", 600))
+        assertNull(bare.basis)
+        assertFalse(Metrics(gameplaySec = 900, cls = "gpu").toVerdictJson()!!.has("basis"))
+    }
+
+    @Test
+    fun `game_exited perf_verdict carries what the memory decision used`() {
+        val samples = (SessionVerdict.WARMUP_SEC until SessionVerdict.WARMUP_SEC + 600).map { t ->
+            SessionSample(t = t, fps = 50f, frames = 50, gpuBusy = 92, cpuTotal = 40, hotPct = 60, hotUserTicks = 54, hotSysTicks = 6, availMb = 3000 + t)
+        }
+        val props = SessionVerdict.compute(SessionVerdict.Input(samples = samples, trimEvents = 4)).properties()
+        val basis = Metrics.fromRun(JSONObject(props)).basis!!
+        assertEquals(4, basis.trimEvents)
+        assertEquals(3000 + SessionVerdict.WARMUP_SEC, basis.availMinMb)
+        assertEquals(false, basis.memoryHard)
+        assertEquals("gpu", Metrics.fromRun(JSONObject(props)).cls)
+        assertEquals(1.0, basis.shares!!.getValue("gpu"), 1e-9)
+    }
 }

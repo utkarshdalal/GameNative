@@ -63,6 +63,8 @@ data class Metrics(
     val framesStoppedSec: Int? = null,
     /** Whether the game's main window was still mapped at exit (main_window_mapped); null when not recorded. */
     val mainWindowMapped: Boolean? = null,
+    /** The facts the session's class was decided from; null when the run recorded none. */
+    val basis: VerdictBasis? = null,
 ) {
     /** Session GPU work per frame: the median of the gameplay windows, else [gpuWorkPerFrame]. */
     fun workPerFrame(): Double? {
@@ -121,6 +123,7 @@ data class Metrics(
         crashHash?.let { put("crash_hash", it) }
         framesStoppedSec?.let { put("frames_stopped_s", it) }
         mainWindowMapped?.let { put("main_window_mapped", it) }
+        basis?.let { put("basis", it.toJson()) }
         putLoad(report = false)
     }
 
@@ -145,6 +148,7 @@ data class Metrics(
         if (fpsBy5Min.isNotEmpty()) put("fps_by_5min", JSONArray(fpsBy5Min.take(MAX_REPORT_WINDOWS)))
         if (gpuBy5Min.isNotEmpty()) put("gpu_by_5min", JSONArray(gpuBy5Min.take(MAX_REPORT_WINDOWS)))
         if (gpuClockBy5Min.isNotEmpty()) put("gpu_clock_by_5min", JSONArray(gpuClockBy5Min.take(MAX_REPORT_WINDOWS)))
+        basis?.let { put("basis", it.toJson()) }
         putLoad(report = true)
     }
 
@@ -161,6 +165,7 @@ data class Metrics(
             putLoad(report = true)
             if (gpuClockBy5Min.isNotEmpty()) put("gpu_clock_by_5min", JSONArray(gpuClockBy5Min.take(MAX_REPORT_WINDOWS)))
             if (fpsBy5Min.isNotEmpty()) put("fps_by_5min", JSONArray(fpsBy5Min.take(MAX_REPORT_WINDOWS)))
+            basis?.let { put("basis", it.toJson()) }
         }
     }
 
@@ -208,6 +213,7 @@ data class Metrics(
                 memReclaimBy5Min = o.optJSONArray("mem_reclaim_by_5min").counts(),
                 framesStoppedSec = o.optIntOrNull("frames_stopped_s"),
                 mainWindowMapped = o.optBooleanOrNull("main_window_mapped"),
+                basis = VerdictBasis.fromJson(o.optJSONObject("basis")),
             )
         }
 
@@ -257,6 +263,7 @@ data class Metrics(
                 memReclaimBy5Min = verdict?.optJSONArray("mem_reclaim_by_5min").counts(),
                 framesStoppedSec = run.optIntOrNull("frames_stopped_s"),
                 mainWindowMapped = run.optBooleanOrNull("main_window_mapped"),
+                basis = VerdictBasis.fromRun(run),
             )
         }
 
@@ -285,6 +292,82 @@ data class Metrics(
             if (values.isEmpty()) return null
             val s = values.sorted()
             return if (s.size % 2 == 1) s[s.size / 2] else (s[s.size / 2 - 1] + s[s.size / 2]) / 2.0
+        }
+    }
+}
+
+/**
+ * What the session's class was decided from: the per-class shares of gameplay seconds, the low-memory trim events,
+ * the lowest available RAM over gameplay, whether those two made it a memory verdict on their own, the thermal signal,
+ * whether CPU load came from /proc/stat, the GPU busy and hot-thread p95s, and the hot thread's name and cluster.
+ */
+data class VerdictBasis(
+    val shares: Map<String, Double>? = null,
+    val trimEvents: Int? = null,
+    val availMinMb: Int? = null,
+    val memoryHard: Boolean? = null,
+    val thermalSignal: String? = null,
+    val procStat: String? = null,
+    val gpuBusyP95: Int? = null,
+    val hotThreadP95: Int? = null,
+    val hotThreadName: String? = null,
+    val hotThreadCluster: String? = null,
+) {
+    fun isEmpty(): Boolean = this == VerdictBasis()
+
+    fun toJson(): JSONObject = JSONObject().apply {
+        shares?.let { m -> put("shares", JSONObject().apply { m.forEach { (k, v) -> put(k, Math.round(v * 100) / 100.0) } }) }
+        trimEvents?.let { put("trim_events", it) }
+        availMinMb?.let { put("avail_min_mb", it) }
+        memoryHard?.let { put("memory_hard", it) }
+        thermalSignal?.let { put("thermal_signal", it) }
+        procStat?.let { put("proc_stat", it) }
+        gpuBusyP95?.let { put("gpu_busy_p95", it) }
+        hotThreadP95?.let { put("hot_thread_p95", it) }
+        hotThreadName?.let { put("hot_thread_name", it) }
+        hotThreadCluster?.let { put("hot_thread_cluster", it) }
+    }
+
+    companion object {
+        fun fromJson(o: JSONObject?): VerdictBasis? {
+            if (o == null) return null
+            return VerdictBasis(
+                shares = sharesOf(o.optJSONObject("shares")),
+                trimEvents = o.optIntOrNull("trim_events"),
+                availMinMb = o.optIntOrNull("avail_min_mb"),
+                memoryHard = o.optBooleanOrNull("memory_hard"),
+                thermalSignal = o.optStringOrNull("thermal_signal"),
+                procStat = o.optStringOrNull("proc_stat"),
+                gpuBusyP95 = o.optIntOrNull("gpu_busy_p95"),
+                hotThreadP95 = o.optIntOrNull("hot_thread_p95"),
+                hotThreadName = o.optStringOrNull("hot_thread_name"),
+                hotThreadCluster = o.optStringOrNull("hot_thread_cluster"),
+            ).takeIf { !it.isEmpty() }
+        }
+
+        /** From a game_exited run record: perf_verdict, with the run's low_memory_events for records without trim_events. */
+        fun fromRun(run: JSONObject): VerdictBasis? {
+            val verdict = run.optJSONObject("perf_verdict")
+            val hot = verdict?.optJSONObject("hot")
+            return VerdictBasis(
+                shares = sharesOf(verdict?.optJSONObject("shares")),
+                trimEvents = verdict?.optIntOrNull("trim_events") ?: run.optIntOrNull("low_memory_events"),
+                availMinMb = verdict?.optIntOrNull("avail_min_mb"),
+                memoryHard = verdict?.optBooleanOrNull("memory_hard"),
+                thermalSignal = verdict?.optStringOrNull("thermal_signal"),
+                procStat = verdict?.optStringOrNull("proc_stat"),
+                gpuBusyP95 = verdict?.optIntOrNull("gpu_busy_p95"),
+                hotThreadP95 = verdict?.optIntOrNull("hot_thread_p95"),
+                hotThreadName = hot?.optStringOrNull("name"),
+                hotThreadCluster = hot?.optStringOrNull("cluster"),
+            ).takeIf { !it.isEmpty() }
+        }
+
+        private fun sharesOf(o: JSONObject?): Map<String, Double>? {
+            if (o == null) return null
+            val shares = linkedMapOf<String, Double>()
+            o.keys().forEach { k -> o.optDoubleOrNull(k)?.let { shares[k] = it } }
+            return shares.takeIf { it.isNotEmpty() }
         }
     }
 }

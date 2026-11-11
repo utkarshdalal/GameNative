@@ -319,6 +319,9 @@ internal object SessionVerdict {
                     put("thermal_gpu", thermalGpu)
                     put("proc_stat", if (procStatReal) "real" else "proxy")
                     put("thermal_signal", thermalSignal)
+                    put("trim_events", trimEvents)
+                    availMinMb?.let { put("avail_min_mb", it) }
+                    put("memory_hard", memoryHard)
                     hot?.let { put("hot", it) }
                     fpsBeforeOnset?.let { put("fps_before_onset", round1(it)) }
                     fpsAfterOnset?.let { put("fps_after_onset", round1(it)) }
