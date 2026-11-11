@@ -177,8 +177,6 @@ internal class SessionSampleBuffer(private val clusterCount: Int, private val ca
 internal object SessionVerdict {
 
     const val WARMUP_SEC = 120
-    private const val ACTIVE_GPU_SHARE = 0.5
-    private const val MIN_ACTIVE_SAMPLES = 60
     const val MIN_GAMEPLAY_SEC = 300
     const val MIN_THERMAL_GAMEPLAY_SEC = 600
 
@@ -305,8 +303,6 @@ internal object SessionVerdict {
         /** The lowest available RAM over the gameplay samples; null when none was sampled. */
         val availMinMb: Int? = null,
         val memoryHard: Boolean = false,
-        /** The median of the per-minute frame rates over the gameplay seconds that drew a real scene. */
-        val steadyFps: Double? = null,
     ) {
         /** The game_exited properties of the verdict. */
         fun properties(): Map<String, Any> = buildMap {
@@ -319,7 +315,6 @@ internal object SessionVerdict {
                     put("confidence", round2(confidence))
                     put("symptom", symptom)
                     put("gameplay_s", gameplaySec)
-                    steadyFps?.let { put("steady_fps", round1(it)) }
                     put("shares", shares.mapValues { round2(it.value) })
                     put("thermal_gpu", thermalGpu)
                     put("proc_stat", if (procStatReal) "real" else "proxy")
@@ -439,7 +434,7 @@ internal object SessionVerdict {
         // Trim callbacks alone do not show a memory limit: available memory must also have run low.
         val availMinMb = g.mapNotNull { it.availMb }.minOrNull()
         val memoryHard = input.trimEvents >= HARD_MEMORY_TRIM_EVENTS && availMinMb != null && availMinMb < HARD_MEMORY_AVAIL_MB
-        val steadyFps = minuteMedianFps(activeSamples(g))
+        val steadyFps = minuteMedianFps(g)
         val held = listOf(
             SYNC_SPIN to (shares.getValue("sync") >= HOLD_SHARE),
             MEMORY to memoryHard,
@@ -533,7 +528,6 @@ internal object SessionVerdict {
             trimEvents = input.trimEvents,
             availMinMb = availMinMb,
             memoryHard = memoryHard,
-            steadyFps = steadyFps,
         )
     }
 
@@ -626,7 +620,7 @@ internal object SessionVerdict {
             fpsCeilingReason = fpsCeilingReason(steadyFps, ceiling, input.fpsCap, input.refreshHz, gpuP95, hotP95),
             gpuWorkPerFrame = median(gameplayWork),
             windows = windows.takeIf { ws -> ws.any { it.gpuWorkPerFrame != null || it.gpuClockMhz != null } }.orEmpty(),
-            fpsP10 = percentile(activeSamples(g).map { it.fps.toDouble() }, 0.10),
+            fpsP10 = percentile(g.map { it.fps.toDouble() }, 0.10),
             refreshHz = input.refreshHz.takeIf { it > 0 },
         )
     }
@@ -712,17 +706,6 @@ internal object SessionVerdict {
     }
 
     /** Median of 1-minute mean fps windows. */
-    /**
-     * The gameplay samples without menus, intros and loading screens, which draw almost nothing: the seconds whose
-     * GPU load is under half of the session's busy level are left out. All of [g] when the GPU was not sampled or
-     * too little would be left.
-     */
-    private fun activeSamples(g: List<SessionSample>): List<SessionSample> {
-        val busy = percentile(g.mapNotNull { it.gpuBusy?.toDouble() }, 0.90) ?: return g
-        val active = g.filter { it.gpuBusy == null || it.gpuBusy >= ACTIVE_GPU_SHARE * busy }
-        return if (active.size >= MIN_ACTIVE_SAMPLES) active else g
-    }
-
     private fun minuteMedianFps(samples: List<SessionSample>): Double? {
         if (samples.isEmpty()) return null
         val windows = samples.groupBy { it.t / 60 }.values.map { w -> w.sumOf { it.fps.toDouble() } / w.size }

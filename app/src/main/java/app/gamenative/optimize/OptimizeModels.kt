@@ -227,8 +227,7 @@ data class Metrics(
             val fingerprint = run.optJSONObject("crash_fingerprint")
             return Metrics(
                 gameplaySec = gameplay,
-                // The verdict's figure leaves menus and loading out; older records only have the session average.
-                steadyFps = verdict?.optDoubleOrNull("steady_fps")?.takeIf { it > 0.0 } ?: run.optDoubleOrNull("avg_fps")?.takeIf { it > 0.0 },
+                steadyFps = run.optDoubleOrNull("avg_fps")?.takeIf { it > 0.0 },
                 stutterShare = run.optDoubleOrNull("stutter_share"),
                 throttleOnsetSec = run.optIntOrNull("throttle_onset_s"),
                 cls = verdict?.optStringOrNull("class"),
