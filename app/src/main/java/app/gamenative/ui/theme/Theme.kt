@@ -279,7 +279,7 @@ private fun buildPluviaColors(spec: ThemeSpec, scheme: ColorScheme): PluviaColor
     val panel = spec.panelOpacity?.coerceIn(0f, 1f) ?: 1f
     val themedAccent = spec.primary != null
     val accent = scheme.primary
-    val focus = spec.focus.toColor()
+    val focus = spec.focus.toColor()?.let { readable(it, MIN_ACCENT_CONTRAST, listOf(scheme.background, scheme.surface)) }
     return d.copy(
         accentCyan = if (themedAccent) accent else d.accentCyan,
         accentPurple = if (themedAccent) accent else d.accentPurple,
