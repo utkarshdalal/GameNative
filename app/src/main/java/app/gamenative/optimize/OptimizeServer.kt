@@ -70,7 +70,8 @@ object OptimizeServer {
 
     /** The after-card kind for a judgement: the server's own when it is one, else from its result. */
     fun afterCardKind(judgement: ServerJudgement): String = judgement.afterCardKind?.takeIf { it in AFTER_CARDS } ?: when (judgement.result) {
-        OptimizeJudge.HELPED -> OptimizeCard.HELPED
+        // A step that stays on shows the kept card; with no gain to name it says there is nothing to see yet.
+        OptimizeJudge.HELPED, OptimizeJudge.NOT_COMPARABLE -> OptimizeCard.HELPED
         OptimizeJudge.NO_CHANGE -> OptimizeCard.NO_CHANGE
         else -> OptimizeCard.WORSE
     }

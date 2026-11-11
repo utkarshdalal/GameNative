@@ -166,4 +166,11 @@ class OptimizeServerTest {
         assertEquals(other, OptimizeServer.applyJudgement(other, OptimizeProfile.BALANCED, "r9", judgement(OptimizeJudge.HELPED), null))
         assertEquals(other, OptimizeServer.applyJudgement(other, OptimizeProfile.BALANCED, "r1", judgement(OptimizeJudge.CRASH), null))
     }
+
+    @Test
+    fun `a step the server keeps without comparing is never shown as made worse`() {
+        assertEquals(OptimizeCard.HELPED, OptimizeServer.afterCardKind(judgement(OptimizeJudge.NOT_COMPARABLE)))
+        assertEquals(OptimizeCard.WORSE, OptimizeServer.afterCardKind(judgement(OptimizeJudge.WORSE)))
+        assertEquals(OptimizeCard.NO_CHANGE, OptimizeServer.afterCardKind(judgement(OptimizeJudge.NO_CHANGE)))
+    }
 }
