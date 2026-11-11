@@ -32,6 +32,8 @@ object SessionPerfSampler {
     private const val CACHE_LIST_EVERY_MS = 30_000L
     private const val CACHE_LIST_FOR_MS = 600_000L
     private const val CACHE_SCAN_BUDGET_MS = 50L
+    /** GPU busy percent above which a second with no frame is not counted as the game standing still. */
+    private const val STILL_GPU_MAX_PCT = 10
 
     private val lock = Any()
     private val clkTck = runCatching { Os.sysconf(OsConstants._SC_CLK_TCK) }.getOrDefault(100L).coerceAtLeast(1L)
@@ -60,6 +62,8 @@ object SessionPerfSampler {
     private var lastLowMemoryEvents = 0
     private val hotNames = HashMap<String, Int>()
     private var lastRefreshHz = 0f
+    /** Seconds since the game last presented a frame, counted only while it was not suspended and the GPU was idle. */
+    private var stillSec = 0
 
     /** The state cache folder and the game's exe for the next session; null when it does not run on DXVK. */
     private class CacheTarget(val dir: File, val exeBase: String?)
@@ -111,6 +115,7 @@ object SessionPerfSampler {
             lastLowMemoryEvents = 0
             hotNames.clear()
             lastRefreshHz = 0f
+            stillSec = 0
             cacheTarget = nextCache
             nextCache = null
             cacheFile = null
@@ -140,6 +145,7 @@ object SessionPerfSampler {
         cpuTempC: Int?,
         thermalHeadroom: Float?,
         thermalStatus: Int?,
+        gameSuspended: Boolean = false,
     ) = synchronized(lock) {
         val buf = buffer ?: return@synchronized
         if (refreshHz.isFinite() && refreshHz > 0f) lastRefreshHz = refreshHz
@@ -148,6 +154,9 @@ object SessionPerfSampler {
         val hot = readHot(nowMs)
         val playing = fps.isFinite() && fps > 0f
         if (playing && firstFrameMs == 0L) firstFrameMs = nowMs
+        if (firstFrameMs != 0L && !gameSuspended) {
+            stillSec = if (playing || (gpuBusy != null && gpuBusy > STILL_GPU_MAX_PCT)) 0 else stillSec + 1
+        }
         if (firstFrameMs != 0L) {
             val window = ((nowMs - firstFrameMs) / 1000L / WINDOW_SEC).toInt()
             readVmStat(window)
@@ -215,9 +224,10 @@ object SessionPerfSampler {
     }
 
     /**
-     * The session's perf_verdict, stutter_share, throttle_onset_s and throttle_signal; empty when no frame was
-     * sampled. The session's records move to [seriesFor] until the next session starts, so a later verdict never
-     * reads them. [legacyShare] is the older classifier's bottleneck_share, used when the sampler cannot name a cause.
+     * The session's perf_verdict, stutter_share, throttle_onset_s, throttle_signal and frames_stopped_s (the seconds
+     * before exit the game presented no frame while it was not suspended); empty when no frame was sampled. The
+     * session's records move to [seriesFor] until the next session starts, so a later verdict never reads them.
+     * [legacyShare] is the older classifier's bottleneck_share, used when the sampler cannot name a cause.
      */
     fun properties(
         designCapDetected: Boolean,
@@ -254,7 +264,7 @@ object SessionPerfSampler {
             ),
         )
         lastSeries = SessionSeries(buf, result.gameplaySec, clusterMaxMhz, gpuTopMhz, trimEvents, designCapDetected, legacyShare)
-        result.properties()
+        result.properties() + ("frames_stopped_s" to stillSec)
     }
 
     /**

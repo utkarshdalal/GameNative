@@ -1312,8 +1312,12 @@ object OptimizeController {
                         state = when (val decision = OptimizeJudge.judge(after, pending.baseline, pending.rung.isFpsCap, pending.shortSessions, fpsTarget)) {
                             is OptimizeJudge.Decision.Short ->
                                 state.withLadder(profile, ladder.copy(pending = pending.copy(shortSessions = decision.shortSessions)))
-                            is OptimizeJudge.Decision.Crash ->
+                            is OptimizeJudge.Decision.Crash -> {
+                                if (OptimizeJudge.frozen(after)) {
+                                    Timber.tag(TAG).w("Optimize: the game froze on ${pending.rung.rungId} (${after.framesStoppedSec} s without a frame); treating it as a crash")
+                                }
                                 finish(appId, state, profile, ladder, pending, OptimizeJudge.CRASH, null, after, refresh, userCap, cap)
+                            }
                             is OptimizeJudge.Decision.Final -> {
                                 if (decision.excludedWindows.isNotEmpty()) {
                                     Timber.tag(TAG).i(
@@ -1509,21 +1513,7 @@ object OptimizeController {
             fpsLimit = sessionFpsLimit,
             userFpsCap = fpsCap,
         )
-        val keep = result == OptimizeJudge.HELPED || result == OptimizeJudge.NOT_COMPARABLE
-        var l = ladder.triedWith(rung.rungId, rung.version, result, settled.reason)
-        l = if (keep) {
-            l.copy(
-                kept = l.kept + pending.toKept(judged),
-                pending = null,
-                baselineOverride = OptimizeLadders.baselineAfterKeep(result, pending, judged, ladder.baselineOverride),
-            )
-        } else {
-            l.copy(
-                pending = pending.copy(revert = result),
-                bad = if (result == OptimizeJudge.CRASH) (l.bad + rung.rungId).distinct() else l.bad,
-            )
-        }
-        l = l.copy(noChangeStreak = if (result == OptimizeJudge.NO_CHANGE) l.noChangeStreak + 1 else 0)
+        var l = OptimizeLadders.afterJudged(ladder, pending, result, settled.reason, judged)
         val name = gameName(appId)
         val capFps = OptimizeCards.capFps(rung.raw)
         // After-cards carry both sessions the judge compared: before is the step's baseline, metrics the session after it.

@@ -110,6 +110,86 @@ class OptimizeCrashRevertTest {
         assertEquals(0, plain.unjudged)
     }
 
+    private fun frozenSession(
+        gameplay: Int = 90,
+        stopped: Int? = 45,
+        reason: String = "quick_menu",
+        mapped: Boolean? = true,
+        window: Boolean = true,
+    ) = Metrics(gameplaySec = gameplay, steadyFps = 40.0, exitReason = reason, windowSeen = window, framesStoppedSec = stopped, mainWindowMapped = mapped)
+
+    @Test
+    fun framesStoppingUntilTheUserLeavesIsAFreeze() {
+        assertTrue(OptimizeJudge.frozen(frozenSession()))
+        assertTrue(OptimizeJudge.frozen(frozenSession(stopped = OptimizeJudge.FROZEN_TAIL_SEC)))
+        assertTrue(OptimizeJudge.frozen(frozenSession(mapped = null)))
+        assertTrue(OptimizeJudge.frozen(frozenSession(gameplay = 1200, reason = "activity_destroyed")))
+        assertTrue(OptimizeJudge.isCrash(frozenSession()))
+    }
+
+    @Test
+    fun aShortStopAnUnmeasuredTailOrNoGameplayIsNotAFreeze() {
+        assertFalse(OptimizeJudge.frozen(frozenSession(stopped = OptimizeJudge.FROZEN_TAIL_SEC - 1)))
+        assertFalse(OptimizeJudge.frozen(frozenSession(stopped = 0)))
+        assertFalse(OptimizeJudge.frozen(frozenSession(stopped = null)))
+        assertFalse(OptimizeJudge.frozen(frozenSession(gameplay = 0)))
+        assertFalse(OptimizeJudge.isCrash(frozenSession(stopped = 10)))
+    }
+
+    @Test
+    fun aClosedWindowOrTheGameExitingOnItsOwnIsNotAFreeze() {
+        assertFalse(OptimizeJudge.frozen(frozenSession(mapped = false)))
+        assertFalse(OptimizeJudge.frozen(frozenSession(window = false)))
+        assertFalse(OptimizeJudge.frozen(frozenSession(reason = "processes_exited")))
+        assertFalse(OptimizeJudge.frozen(frozenSession(reason = "guest_terminated")))
+    }
+
+    @Test
+    fun theRunRecordCarriesTheStoppedFrames() {
+        val run = JSONObject()
+            .put("session_length", 300)
+            .put("exit_reason", "quick_menu")
+            .put("main_window_class", "UnityWndClass")
+            .put("main_window_mapped", true)
+            .put("frames_stopped_s", 210)
+            .put("perf_verdict", JSONObject().put("gameplay_s", 90))
+        val m = Metrics.fromRun(run)
+        assertEquals(210, m.framesStoppedSec)
+        assertEquals(true, m.mainWindowMapped)
+        assertTrue(OptimizeJudge.frozen(m))
+        val back = Metrics.fromJson(m.toJson())!!
+        assertEquals(210, back.framesStoppedSec)
+        assertEquals(true, back.mainWindowMapped)
+        assertNull(Metrics.fromRun(JSONObject().put("exit_reason", "quick_menu")).framesStoppedSec)
+    }
+
+    @Test
+    fun aFrozenTrialSessionIsJudgedACrashUnlessTheBaselineFrozeTheSameWay() {
+        val frozen = frozenSession()
+        assertEquals(OptimizeJudge.Decision.Crash, OptimizeJudge.judge(frozen, baseline, isFpsCap = false, shortSessions = 0))
+        assertEquals(OptimizeJudge.Decision.Crash, OptimizeJudge.judge(frozen, null, isFpsCap = false, shortSessions = 2))
+        assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(frozen, frozenSession(gameplay = 1200), isFpsCap = false, shortSessions = 0))
+        assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(frozenSession(stopped = 5), baseline, isFpsCap = false, shortSessions = 0))
+        val lost = OptimizeJudge.lostSession(0, frozen, null)
+        assertTrue(lost is OptimizeJudge.Lost.Crash)
+    }
+
+    @Test
+    fun aFrozenTrialStepComesOffAndIsMarkedBad() {
+        val rung = Rung.parse(JSONObject().put("rung_id", "a"))!!
+        val pending = PendingRung(rung, 1L, baseline, 1, emptyList())
+        val ladder = ProfileLadder(state = LadderState.TRYING, pending = pending)
+        val frozen = frozenSession()
+        val settled = OptimizeTarget.settle(OptimizeProfile.BALANCED, OptimizeJudge.CRASH, null, frozen, 60.0, 60)
+        assertEquals(OptimizeJudge.CRASH, settled.result)
+        assertFalse(settled.done)
+        val next = OptimizeLadders.afterJudged(ladder, pending, settled.result, settled.reason, frozen)
+        assertEquals(OptimizeJudge.CRASH, next.pending?.revert)
+        assertEquals(listOf("a"), next.bad)
+        assertTrue(next.kept.isEmpty())
+        assertEquals(OptimizeJudge.CRASH, next.tried.last().result)
+    }
+
     @Test
     fun aCrashCardSaysTheChangeWasUndone() {
         val card = OptimizeCard(OptimizeCard.WORSE, 1L, "Game", OptimizeProfile.BALANCED, rungId = "a", outcome = OptimizeCard.OUTCOME_CRASH)

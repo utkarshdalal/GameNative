@@ -43,6 +43,9 @@ object OptimizeJudge {
     const val FATAL_END_GAMEPLAY_SEC = 600
     const val MAX_SHORT_SESSIONS = 3
 
+    /** Seconds without a frame before the user's exit, with the game on screen and not suspended, that mean it froze. */
+    const val FROZEN_TAIL_SEC = 30
+
     private const val FPS_HELPED_RATIO = 1.08
     private const val FPS_REGRESSION_RATIO = 0.95
     private const val STUTTER_RELATIVE = 0.30
@@ -147,7 +150,18 @@ object OptimizeJudge {
 
     /** Whether the session counts as a crash. */
     fun isCrash(m: Metrics): Boolean =
-        (m.gameplaySec < CRASH_GAMEPLAY_SEC && (m.exitReason in CRASH_REASONS || !m.windowSeen)) || fatalEnd(m)
+        (m.gameplaySec < CRASH_GAMEPLAY_SEC && (m.exitReason in CRASH_REASONS || !m.windowSeen)) || fatalEnd(m) || frozen(m)
+
+    /**
+     * The game reached gameplay and then stopped presenting frames until the session ended: its last
+     * [FROZEN_TAIL_SEC] seconds had no frame and an idle GPU while the game was not suspended, its main window was
+     * still mapped, and the session did not end by the game exiting on its own.
+     */
+    fun frozen(m: Metrics): Boolean {
+        val stopped = m.framesStoppedSec ?: return false
+        return stopped >= FROZEN_TAIL_SEC && m.gameplaySec > 0 && m.windowSeen && m.mainWindowMapped != false &&
+            m.exitReason != null && m.exitReason !in SELF_EXITS
+    }
 
     /** The session ended by itself on a fatal fingerprint before it was long enough to judge. */
     fun fatalEnd(m: Metrics): Boolean =

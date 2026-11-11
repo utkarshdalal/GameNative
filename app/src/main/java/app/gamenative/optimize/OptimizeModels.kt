@@ -59,6 +59,10 @@ data class Metrics(
     /** System-wide major page faults and pages scanned for reclaim per five-minute window (/proc/vmstat deltas). */
     val majorFaultsBy5Min: List<Int> = emptyList(),
     val memReclaimBy5Min: List<Int> = emptyList(),
+    /** Seconds before exit the game presented no frame while it was not suspended (frames_stopped_s); null when not measured. */
+    val framesStoppedSec: Int? = null,
+    /** Whether the game's main window was still mapped at exit (main_window_mapped); null when not recorded. */
+    val mainWindowMapped: Boolean? = null,
 ) {
     /** Session GPU work per frame: the median of the gameplay windows, else [gpuWorkPerFrame]. */
     fun workPerFrame(): Double? {
@@ -115,6 +119,8 @@ data class Metrics(
         crashKind?.let { put("crash_kind", it) }
         crashCode?.let { put("crash_code", it) }
         crashHash?.let { put("crash_hash", it) }
+        framesStoppedSec?.let { put("frames_stopped_s", it) }
+        mainWindowMapped?.let { put("main_window_mapped", it) }
         putLoad(report = false)
     }
 
@@ -200,6 +206,8 @@ data class Metrics(
                 tessellationPipelines = o.optBooleanOrNull("tessellation_pipelines"),
                 majorFaultsBy5Min = o.optJSONArray("major_faults_by_5min").counts(),
                 memReclaimBy5Min = o.optJSONArray("mem_reclaim_by_5min").counts(),
+                framesStoppedSec = o.optIntOrNull("frames_stopped_s"),
+                mainWindowMapped = o.optBooleanOrNull("main_window_mapped"),
             )
         }
 
@@ -247,6 +255,8 @@ data class Metrics(
                 tessellationPipelines = verdict?.optBooleanOrNull("tessellation_pipelines"),
                 majorFaultsBy5Min = verdict?.optJSONArray("major_faults_by_5min").counts(),
                 memReclaimBy5Min = verdict?.optJSONArray("mem_reclaim_by_5min").counts(),
+                framesStoppedSec = run.optIntOrNull("frames_stopped_s"),
+                mainWindowMapped = run.optBooleanOrNull("main_window_mapped"),
             )
         }
 

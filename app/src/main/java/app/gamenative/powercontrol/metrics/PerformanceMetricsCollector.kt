@@ -3,6 +3,7 @@ package app.gamenative.powercontrol.metrics
 import android.content.Context
 import android.hardware.display.DisplayManager
 import android.view.Display
+import app.gamenative.PluviaApp
 import app.gamenative.powercontrol.PowerBaselineScripts
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.powercontrol.autotuning.TunerThresholds
@@ -241,6 +242,7 @@ object PerformanceMetricsCollector {
                     cpuTempC = cpuTemp?.celsius,
                     thermalHeadroom = headroom,
                     thermalStatus = thermalStatus,
+                    gameSuspended = PluviaApp.isOverlayPaused,
                 )
             }.onFailure { Timber.tag(TAG).w(it, "Session sample failed") }
         }

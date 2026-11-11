@@ -55,6 +55,29 @@ object OptimizeLadders {
     fun baselineAfterKeep(result: String, pending: PendingRung, judged: Metrics, current: Metrics?): Metrics? =
         if (result == OptimizeJudge.HELPED) judged else pending.baseline ?: current
 
+    /**
+     * [ladder] once [pending] was judged [result] for [reason]: the step is recorded as tried, kept at [judged] when it
+     * helped or could not be compared, otherwise flagged to come off; a crash also marks it bad.
+     */
+    fun afterJudged(ladder: ProfileLadder, pending: PendingRung, result: String, reason: String?, judged: Metrics): ProfileLadder {
+        val rung = pending.rung
+        val keep = result == OptimizeJudge.HELPED || result == OptimizeJudge.NOT_COMPARABLE
+        val tried = ladder.copy(tried = (ladder.tried + TriedRung(rung.rungId, rung.version, result, reason)).takeLast(OptimizeLocalState.MAX_TRIED))
+        val next = if (keep) {
+            tried.copy(
+                kept = tried.kept + pending.toKept(judged),
+                pending = null,
+                baselineOverride = baselineAfterKeep(result, pending, judged, ladder.baselineOverride),
+            )
+        } else {
+            tried.copy(
+                pending = pending.copy(revert = result),
+                bad = if (result == OptimizeJudge.CRASH) (tried.bad + rung.rungId).distinct() else tried.bad,
+            )
+        }
+        return next.copy(noChangeStreak = if (result == OptimizeJudge.NO_CHANGE) next.noChangeStreak + 1 else 0)
+    }
+
     /** The baseline once every step is taken off: the session before the first of them. */
     fun baselineAfterRestore(ladder: ProfileLadder): Metrics? =
         ladder.kept.firstOrNull()?.before ?: ladder.pending?.baseline ?: ladder.baselineOverride

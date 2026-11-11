@@ -544,6 +544,7 @@ class WindowActivity {
                     put("main_window_seconds", (endMs(main) - main.firstMs) / 1000)
                     put("main_window_active_seconds", main.activeMs / 1000)
                     put("main_window_frames", main.frames)
+                    put("main_window_mapped", main.mapped)
                 }
                 put(
                     "window_timeline",
