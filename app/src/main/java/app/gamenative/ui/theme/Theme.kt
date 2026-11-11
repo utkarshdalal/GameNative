@@ -198,7 +198,7 @@ private fun contrast(a: Color, b: Color): Float {
 }
 
 /** [fg], moved toward white or black just far enough to reach [min] contrast against every one of [backgrounds]. */
-private fun readable(fg: Color, min: Float, vararg backgrounds: Color): Color {
+private fun readable(fg: Color, min: Float, backgrounds: List<Color>): Color {
     fun worst(c: Color) = backgrounds.minOf { contrast(c, it) }
     if (worst(fg) >= min) return fg
     val target = if (worst(Color.White) >= worst(Color.Black)) Color.White else Color.Black
@@ -224,16 +224,16 @@ private fun buildColorScheme(spec: ThemeSpec): ColorScheme {
     // A theme may set only one colour of a pair; keep every pair it touched readable.
     val themedSurfaces = spec.background != null || spec.surface != null || spec.surfaceVariant != null
     val primary = (spec.primary.toColor() ?: d.primary).let {
-        if (spec.primary != null || themedSurfaces) readable(it, MIN_ACCENT_CONTRAST, background, surface) else it
+        if (spec.primary != null || themedSurfaces) readable(it, MIN_ACCENT_CONTRAST, listOf(background, surface)) else it
     }
     val onPrimary = (spec.onPrimary.toColor() ?: d.onPrimary).let {
-        if (spec.primary != null || spec.onPrimary != null) readable(it, MIN_TEXT_CONTRAST, primary) else it
+        if (spec.primary != null || spec.onPrimary != null) readable(it, MIN_TEXT_CONTRAST, listOf(primary)) else it
     }
     val text = (spec.text.toColor() ?: d.onSurface).let {
-        if (spec.text != null || themedSurfaces) readable(it, MIN_TEXT_CONTRAST, background, surface, variant) else it
+        if (spec.text != null || themedSurfaces) readable(it, MIN_TEXT_CONTRAST, listOf(background, surface, variant)) else it
     }
     val muted = (spec.textMuted.toColor() ?: d.onSurfaceVariant).let {
-        if (spec.textMuted != null || themedSurfaces) readable(it, MIN_ACCENT_CONTRAST, background, surface, variant) else it
+        if (spec.textMuted != null || themedSurfaces) readable(it, MIN_ACCENT_CONTRAST, listOf(background, surface, variant)) else it
     }
     val tertiary = if (spec.primary != null) primary else d.tertiary
     return d.copy(
