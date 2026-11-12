@@ -367,11 +367,11 @@ internal fun ThemeSoundsTab(onMessage: (String) -> Unit) {
                 NoExtractOutlinedTextField(
                     value = store.query,
                     onValueChange = { store.query = it },
-                    modifier = Modifier.weight(1f).showKeyboardOnConfirm(),
+                    modifier = Modifier.weight(1f),
                     placeholder = { Text(stringResource(R.string.themes_sounds_search_hint)) },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search, showKeyboardOnFocus = false),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(onSearch = { loadStore(reset = true) }),
                 )
                 Button(

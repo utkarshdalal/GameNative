@@ -125,11 +125,11 @@ internal fun CommunityThemesTab(
             NoExtractOutlinedTextField(
                 value = state.query,
                 onValueChange = { state.query = it },
-                modifier = Modifier.weight(1f).showKeyboardOnConfirm(),
+                modifier = Modifier.weight(1f),
                 placeholder = { Text(stringResource(R.string.themes_search_hint)) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search, showKeyboardOnFocus = false),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { search() }),
             )
             Button(
