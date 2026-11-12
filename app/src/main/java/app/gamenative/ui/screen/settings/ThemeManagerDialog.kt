@@ -1,7 +1,6 @@
 package app.gamenative.ui.screen.settings
 
 import android.net.Uri
-import android.provider.DocumentsContract
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -345,10 +344,7 @@ fun ThemeManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         },
                         onImportFolder = {
                             SteamService.isImporting = true
-                            // start inside Documents: some system pickers cannot list the storage root itself
-                            folderLauncher.launch(
-                                DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", "primary:Documents"),
-                            )
+                            folderLauncher.launch(null)
                         },
                         onCreateStarter = {
                             SteamService.isImporting = true
