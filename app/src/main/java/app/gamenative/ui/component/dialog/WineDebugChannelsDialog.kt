@@ -17,6 +17,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 
+import app.gamenative.ui.theme.PluviaTheme
 @Composable
 fun WineDebugChannelsDialog(
     openDialog: Boolean,
@@ -73,6 +74,9 @@ fun WineDebugChannelsDialog(
             TextButton(onClick = onDismiss) {
                 Text(text = stringResource(R.string.cancel))
             }
-        }
+        },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor
     )
 }

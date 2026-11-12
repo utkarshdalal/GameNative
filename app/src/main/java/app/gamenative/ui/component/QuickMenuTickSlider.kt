@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -44,6 +43,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import app.gamenative.ui.theme.PluviaTheme
 
 /**
  * A discrete, SteamOS-style slider row: a [title] and one continuous track with a stop per
@@ -63,7 +63,7 @@ internal fun QuickMenuTickSlider(
     if (labels.isEmpty()) return
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val shape = RoundedCornerShape(14.dp)
+    val shape = PluviaTheme.shape(14.dp)
     val inputBypass = LocalImmersiveInputBypass.current
     var isAdjustmentLocked by remember { mutableStateOf(false) }
     val lastIndex = labels.lastIndex
@@ -71,6 +71,7 @@ internal fun QuickMenuTickSlider(
     val trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
     val stopColor = MaterialTheme.colorScheme.outline
     val holeColor = MaterialTheme.colorScheme.surface
+    val fillColor = PluviaTheme.toggleColor(accentColor)
 
     // Mirrors QuickMenuAdjustmentRow: the row only reports (and only consumes LEFT/RIGHT) while A has
     // engaged it, in every mode — a focused row alone must not be steppable by the dpad.
@@ -219,7 +220,7 @@ internal fun QuickMenuTickSlider(
                         )
                         if (selectedX > firstX) {
                             drawRoundRect(
-                                color = accentColor,
+                                color = fillColor,
                                 topLeft = Offset(firstX, centerY - thickness / 2f),
                                 size = Size(selectedX - firstX, thickness),
                                 cornerRadius = CornerRadius(thickness / 2f),
@@ -229,7 +230,7 @@ internal fun QuickMenuTickSlider(
                             val stopX = cell * index + cell / 2f
                             if (index == selected) {
                                 drawCircle(
-                                    color = accentColor,
+                                    color = fillColor,
                                     radius = stopRadius * 2f,
                                     center = Offset(stopX, centerY),
                                 )

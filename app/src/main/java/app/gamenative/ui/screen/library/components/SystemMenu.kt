@@ -90,6 +90,7 @@ import app.gamenative.service.SteamService
 import app.gamenative.ui.component.dialog.SupportersDialog
 import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.ui.screen.support.SupportReplyWatcher
+import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.SteamIconImage
 import app.gamenative.ui.util.adaptivePanelWidth
@@ -140,7 +141,7 @@ private fun SystemMenuItem(
     Box(
         modifier = modifier
             .scale(scale)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(PluviaTheme.shape(16.dp))
             .background(backgroundColor)
             .focusRequester(focusRequester)
             .selectable(
@@ -211,7 +212,7 @@ private fun StatusOption(
         modifier = modifier
             .fillMaxWidth()
             .scale(scale)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(PluviaTheme.shape(12.dp))
             .background(backgroundColor)
             .selectable(
                 selected = isFocused,
@@ -377,8 +378,8 @@ fun SystemMenu(
                 modifier = Modifier
                     .width(adaptivePanelWidth(380.dp))
                     .fillMaxHeight(),
-                shape = RoundedCornerShape(topStart = 32.dp, bottomStart = 32.dp),
-                color = MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(topStart = PluviaTheme.radius(32.dp), bottomStart = PluviaTheme.radius(32.dp)),
+                color = PluviaTheme.panel(MaterialTheme.colorScheme.surface),
                 tonalElevation = 8.dp,
                 shadowElevation = 24.dp,
             ) {
@@ -459,7 +460,7 @@ fun SystemMenu(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .scale(profileScale)
-                                .clip(RoundedCornerShape(16.dp))
+                                .clip(PluviaTheme.shape(16.dp))
                                 .background(
                                     if (isProfileFocused) {
                                         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
@@ -472,7 +473,7 @@ fun SystemMenu(
                                         Modifier.border(
                                             2.dp,
                                             MaterialTheme.colorScheme.primary,
-                                            RoundedCornerShape(16.dp),
+                                            PluviaTheme.shape(16.dp),
                                         )
                                     } else {
                                         Modifier
@@ -559,12 +560,13 @@ fun SystemMenu(
                         }
 
                         // Status picker dropdown
+                        MenuColorScope {
                         androidx.compose.material3.DropdownMenu(
                             expanded = showStatusPicker,
                             onDismissRequest = { showStatusPicker = false },
                             modifier = Modifier
                                 .width(280.dp)
-                                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                                .background(PluviaTheme.menuColor(MaterialTheme.colorScheme.surfaceContainerHigh)),
                         ) {
                             Column(
                                 modifier = Modifier
@@ -596,6 +598,7 @@ fun SystemMenu(
                                     )
                                 }
                             }
+                        }
                         }
                     }
 

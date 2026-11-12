@@ -287,6 +287,7 @@ private fun ScreenEffectSlider(
             value = value,
             valueRange = valueRange,
             onValueChange = onValueChange,
+            colors = PluviaTheme.sliderColors(),
         )
     }
 }

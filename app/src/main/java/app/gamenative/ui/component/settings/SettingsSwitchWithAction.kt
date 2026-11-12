@@ -6,6 +6,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
+import app.gamenative.ui.theme.PluviaTheme
 import com.alorma.compose.settings.ui.SettingsMenuLink
 import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
@@ -37,6 +38,7 @@ fun SettingsSwitchWithAction(
                     enabled = enabled,
                     checked = state,
                     onCheckedChange = onCheckedChange,
+                    colors = PluviaTheme.switchColors(),
                 )
                 action?.invoke()
             }

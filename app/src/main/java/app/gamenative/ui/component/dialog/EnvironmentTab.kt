@@ -28,6 +28,8 @@ import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.settings.SettingsCenteredLabel
 import app.gamenative.ui.component.settings.SettingsEnvVars
 import app.gamenative.ui.component.settings.SettingsMultiListDropdown
+import app.gamenative.ui.theme.MenuColorScope
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.settingsTileColors
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
@@ -110,6 +112,7 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                                 )
                             },
                         )
+                        MenuColorScope {
                         androidx.compose.material3.DropdownMenu(
                             expanded = knownVarsMenuOpen,
                             onDismissRequest = { knownVarsMenuOpen = false },
@@ -133,6 +136,7 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                                     onClick = {},
                                 )
                             }
+                        }
                         }
                     }
                     val selectedEnvVarInfo = EnvVarInfo.KNOWN_ENV_VARS[envVarName]
@@ -174,6 +178,7 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                                     DropdownMenu(
                                         expanded = suggestionsExpanded,
                                         onDismissRequest = { suggestionsExpanded = false },
+                                        containerColor = PluviaTheme.menuContainerColor,
                                     ) {
                                         selectedEnvVarInfo!!.possibleValues.forEach { suggestion ->
                                             // suggestion box headers
@@ -183,11 +188,12 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                                                         Text(
                                                             text = suggestion.removePrefix("---"),
                                                             style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
-                                                            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                            color = app.gamenative.ui.theme.PluviaTheme.onMenuColor(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.6f),
                                                         )
                                                     },
                                                     onClick = {},
                                                     enabled = false,
+                                                    colors = PluviaTheme.menuItemColors(),
                                                 )
                                             } else {
                                                 DropdownMenuItem(
@@ -196,6 +202,7 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                                                         envVarValue = suggestion
                                                         suggestionsExpanded = false
                                                     },
+                                                    colors = PluviaTheme.menuItemColors(),
                                                 )
                                             }
                                         }
@@ -224,6 +231,9 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                     content = { Text(text = stringResource(R.string.ok)) },
                 )
             },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 }

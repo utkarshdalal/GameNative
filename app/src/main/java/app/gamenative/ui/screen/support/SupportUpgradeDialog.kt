@@ -552,7 +552,7 @@ private fun UpgradeBody(
                 val proPrice = playPlans?.firstOrNull { it.tier == "pro" }?.price
                 if (phase == PHASE_LOADING || (playPlans != null && playPlans.isEmpty())) {
                     Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                        CircularProgressIndicator(modifier = Modifier.size(32.dp), color = PluviaTheme.progressColor)
                     }
                 } else {
                     if (showBasic) {

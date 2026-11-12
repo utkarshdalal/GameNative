@@ -182,6 +182,7 @@ import app.gamenative.ui.screen.library.components.VideoHero
 import app.gamenative.utils.FormatUtils
 import app.gamenative.utils.HltbService
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedTitleText
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import java.text.SimpleDateFormat
@@ -269,16 +270,22 @@ private fun PrimaryActionButton(
         isInstalled -> PluviaTheme.colors.statusInstalled
         else -> PluviaTheme.colors.statusAvailable
     }
+    val gradient = PluviaTheme.accentGradientBrush.takeIf { !isDownloading }
+    val labelColor = if (gradient != null) MaterialTheme.colorScheme.onPrimary else Color.White
 
     Box(
         modifier = modifier
             .heightIn(min = 52.dp)
             .scale(scale)
-            .clip(RoundedCornerShape(8.dp))
-            .background(
-                if (enabled) buttonColor else buttonColor.copy(alpha = 0.5f),
+            .clip(PluviaTheme.shape(8.dp))
+            .then(
+                if (gradient != null) {
+                    Modifier.background(gradient, alpha = if (enabled) 1f else 0.5f)
+                } else {
+                    Modifier.background(if (enabled) buttonColor else buttonColor.copy(alpha = 0.5f))
+                },
             )
-            .focusRing(interactionSource, RoundedCornerShape(8.dp), width = 2.dp)
+            .focusRing(interactionSource, PluviaTheme.shape(8.dp), width = 2.dp)
             .focusRequester(focusRequester)
             .selectable(
                 selected = isFocused,
@@ -340,13 +347,13 @@ private fun PrimaryActionButton(
                 Icon(
                     imageVector = if (isInstalled) Icons.Default.PlayArrow else Icons.Default.CloudDownload,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = labelColor,
                     modifier = Modifier.size(24.dp),
                 )
                 Text(
                     text = text,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White,
+                    color = labelColor,
                 )
             }
         }
@@ -379,15 +386,17 @@ private fun ActionIconButton(
         modifier = modifier
             .scale(scale)
             .size(48.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(PluviaTheme.shape(8.dp))
             .background(
-                if (isFocused) {
-                    Color.White.copy(alpha = 0.2f)
-                } else {
-                    Color.White.copy(alpha = 0.1f)
-                },
+                PluviaTheme.buttonColor(
+                    if (isFocused) {
+                        Color.White.copy(alpha = 0.2f)
+                    } else {
+                        Color.White.copy(alpha = 0.1f)
+                    },
+                ),
             )
-            .focusRing(interactionSource, RoundedCornerShape(8.dp), width = 2.dp)
+            .focusRing(interactionSource, PluviaTheme.shape(8.dp), width = 2.dp)
             .selectable(
                 selected = isFocused,
                 interactionSource = interactionSource,
@@ -399,7 +408,7 @@ private fun ActionIconButton(
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = Color.White,
+            tint = PluviaTheme.onButtonColor(Color.White),
             modifier = Modifier.size(24.dp),
         )
     }
@@ -423,13 +432,13 @@ private fun HltbInfoBar(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(PluviaTheme.shape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .padding(14.dp),
     ) {
         Row(
             modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
+                .clip(PluviaTheme.shape(8.dp))
                 .clickable(enabled = canOpenHltb) {
                     try {
                         context.startActivity(
@@ -508,7 +517,7 @@ private fun HltbInfoBar(
                 Button(
                     onClick = { revealed = true },
                     modifier = Modifier.matchParentSize(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = PluviaTheme.shape(12.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                         contentColor = MaterialTheme.colorScheme.onSurface,
@@ -655,7 +664,7 @@ private fun FullscreenStoreMediaDialog(
                         }
                     }
                     Surface(
-                        shape = RoundedCornerShape(10.dp),
+                        shape = PluviaTheme.shape(10.dp),
                         color = Color.Black.copy(alpha = 0.62f),
                     ) {
                         Text(
@@ -734,7 +743,7 @@ private fun StoreDetailsSection(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(10.dp))
+                .clip(PluviaTheme.shape(10.dp))
                 .clickable { aboutExpanded = !aboutExpanded }
                 .padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -823,7 +832,7 @@ private fun StoreReviewCard(
 
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = PluviaTheme.shape(14.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
         Row(
@@ -832,7 +841,7 @@ private fun StoreReviewCard(
         ) {
             Box(
                 modifier = Modifier
-                    .background(scoreColor.copy(alpha = 0.15f), RoundedCornerShape(9.dp))
+                    .background(scoreColor.copy(alpha = 0.15f), PluviaTheme.shape(9.dp))
                     .padding(horizontal = 12.dp, vertical = 8.dp),
             ) {
                 Text(
@@ -1284,7 +1293,7 @@ internal fun AppScreenContent(
                     ) {
                         if (heroMedia.size > 1) {
                             Surface(
-                                shape = RoundedCornerShape(10.dp),
+                                shape = PluviaTheme.shape(10.dp),
                                 color = Color.Black.copy(alpha = 0.62f),
                             ) {
                                 Text(
@@ -1337,10 +1346,10 @@ internal fun AppScreenContent(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 128.dp, start = 20.dp, end = 20.dp, bottom = 16.dp),
+                        .padding(top = 128.dp * PluviaTheme.heroScale, start = 20.dp, end = 20.dp, bottom = 16.dp),
                 ) {
                     // Game title
-                    Text(
+                    ThemedTitleText(
                         text = displayInfo.name,
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.Bold,
@@ -1353,6 +1362,7 @@ internal fun AppScreenContent(
                         color = Color.White,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
+                        modifier = if (PluviaTheme.centerTitles) Modifier.fillMaxWidth() else Modifier,
                     )
 
                     // Developer and year
@@ -1376,7 +1386,7 @@ internal fun AppScreenContent(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(PluviaTheme.shape(12.dp))
                             .background(Color.Black.copy(alpha = 0.5f))
                             .padding(12.dp),
                     ) {
@@ -1612,7 +1622,7 @@ internal fun AppScreenContent(
                 if (isUpdatePending) {
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = PluviaTheme.shape(12.dp),
                         color = MaterialTheme.colorScheme.primaryContainer,
                     ) {
                         Row(
@@ -1634,7 +1644,7 @@ internal fun AppScreenContent(
                             }
                             Button(
                                 onClick = onUpdateClick,
-                                shape = RoundedCornerShape(8.dp),
+                                shape = PluviaTheme.shape(8.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.primary,
                                 ),
@@ -1889,6 +1899,7 @@ fun GameMigrationDialog(
                 LinearProgressIndicator(
                     modifier = Modifier.fillMaxWidth(),
                     progress = { progress },
+                    color = PluviaTheme.progressColor,
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -1900,6 +1911,9 @@ fun GameMigrationDialog(
             }
         },
         confirmButton = {},
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 
@@ -1974,7 +1988,7 @@ private fun AchievementProgressBar(current: Float, max: Float, textStyle: TextSt
 // Focusable, clickable achievement row.
 @Composable
 private fun AchievementRow(ach: Achievement, focusRequester: FocusRequester? = null, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(12.dp)
+    val shape = PluviaTheme.shape(12.dp)
     val interactionSource = remember { MutableInteractionSource() }
     Surface(
         shape = shape,
@@ -2032,7 +2046,7 @@ private fun AchievementRow(ach: Achievement, focusRequester: FocusRequester? = n
 // Collapsed row standing in for still-locked secret achievements.
 @Composable
 private fun HiddenAchievementsSummary(count: Int, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(12.dp)
+    val shape = PluviaTheme.shape(12.dp)
     val interactionSource = remember { MutableInteractionSource() }
     Surface(
         shape = shape,
@@ -2052,7 +2066,7 @@ private fun HiddenAchievementsSummary(count: Int, onClick: () -> Unit) {
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .clip(RoundedCornerShape(6.dp))
+                    .clip(PluviaTheme.shape(6.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainer),
                 contentAlignment = Alignment.Center,
             ) {
@@ -2143,6 +2157,9 @@ private fun AchievementDetailDialog(ach: Achievement, onDismiss: () -> Unit) {
                 }
             }
         },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 
@@ -2204,7 +2221,7 @@ private fun AchievementsRow(
                         Box(
                             modifier = Modifier
                                 .size(iconSize)
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(PluviaTheme.shape(8.dp))
                                 .background(MaterialTheme.colorScheme.surfaceContainer),
                             contentAlignment = Alignment.Center,
                         ) {
@@ -2408,6 +2425,9 @@ private fun AchievementsDialog(
                     Text(stringResource(R.string.cancel))
                 }
             },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
     detailAchievement?.let { ach ->

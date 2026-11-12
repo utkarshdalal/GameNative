@@ -1,12 +1,21 @@
 package app.gamenative.ui.theme
 
+import android.graphics.Typeface
 import androidx.compose.material3.Typography
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import app.gamenative.R
+import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import timber.log.Timber
 
 // Define Bricolage Grotesque font family
 val BricolageGrotesque = FontFamily(
@@ -126,3 +135,70 @@ val PluviaTypography = Typography(
         letterSpacing = 0.5.sp,
     ),
 )
+
+fun Typography.withFontFamily(family: FontFamily): Typography = copy(
+    displayLarge = displayLarge.copy(fontFamily = family),
+    displayMedium = displayMedium.copy(fontFamily = family),
+    displaySmall = displaySmall.copy(fontFamily = family),
+    headlineLarge = headlineLarge.copy(fontFamily = family),
+    headlineMedium = headlineMedium.copy(fontFamily = family),
+    headlineSmall = headlineSmall.copy(fontFamily = family),
+    titleLarge = titleLarge.copy(fontFamily = family),
+    titleMedium = titleMedium.copy(fontFamily = family),
+    titleSmall = titleSmall.copy(fontFamily = family),
+    bodyLarge = bodyLarge.copy(fontFamily = family),
+    bodyMedium = bodyMedium.copy(fontFamily = family),
+    bodySmall = bodySmall.copy(fontFamily = family),
+    labelLarge = labelLarge.copy(fontFamily = family),
+    labelMedium = labelMedium.copy(fontFamily = family),
+    labelSmall = labelSmall.copy(fontFamily = family),
+)
+
+private object ThemeFontCache {
+    private var key: String? = null
+    private var family: FontFamily? = null
+
+    @Synchronized
+    fun get(key: String): FontFamily? = if (this.key == key) family else null
+
+    /** Last family loaded for [path], without touching the disk. */
+    @Synchronized
+    fun peek(path: String): FontFamily? = if (key?.startsWith("$path:") == true) family else null
+
+    @Synchronized
+    fun put(key: String, family: FontFamily?) {
+        this.key = key
+        this.family = family
+    }
+
+    fun cacheKey(file: File): String = "${file.absolutePath}:${file.lastModified()}:${file.length()}"
+}
+
+/**
+ * Compose loads file fonts lazily at text layout and throws on a bad file, so the file is parsed
+ * here first and only a font Android can read is handed to Compose.
+ */
+private fun loadThemeFont(path: String): FontFamily? {
+    val file = File(path)
+    if (!file.isFile) return null
+    val key = ThemeFontCache.cacheKey(file)
+    ThemeFontCache.get(key)?.let { return it }
+    val family = try {
+        val typeface = Typeface.createFromFile(file)
+        if (typeface == null || typeface == Typeface.DEFAULT) null else FontFamily(Font(file))
+    } catch (e: Exception) {
+        Timber.w(e, "Theme font unreadable: %s", path)
+        null
+    }
+    ThemeFontCache.put(key, family)
+    return family
+}
+
+/** [PluviaTypography] in the theme font when [fontFile] is a readable font, else the bundled family. */
+@Composable
+fun rememberThemeTypography(fontFile: String?): Typography {
+    val family by produceState(fontFile?.let { ThemeFontCache.peek(it) }, fontFile) {
+        value = fontFile?.let { withContext(Dispatchers.IO) { loadThemeFont(it) } }
+    }
+    return remember(family) { family?.let { PluviaTypography.withFontFamily(it) } ?: PluviaTypography }
+}

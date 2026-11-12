@@ -85,6 +85,7 @@ import app.gamenative.service.rockstar.RockstarLoginGate
 import app.gamenative.service.rockstar.RockstarTitleMetadata
 import app.gamenative.service.rockstar.RockstarRuntime
 import app.gamenative.service.amazon.AmazonService
+import app.gamenative.theme.ThemeManager
 import app.gamenative.utils.ConversionTracker
 import com.posthog.PostHog
 import app.gamenative.ui.component.AchievementOverlay
@@ -1502,6 +1503,7 @@ fun PluviaMain(
         },
         isAmoled = (state.appTheme == AppTheme.AMOLED),
         style = state.paletteStyle,
+        spec = ThemeManager.activeSpec.collectAsStateWithLifecycle().value,
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             LoadingDialog(

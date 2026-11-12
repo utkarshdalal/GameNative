@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 
+import app.gamenative.ui.theme.PluviaTheme
 @Composable
 internal fun NexusOAuthAccountSection(
     connected: Boolean,
@@ -108,9 +109,10 @@ internal fun NexusOAuthAccountSection(
                     onClick = { confirmDisconnect = true },
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth(),
+                    colors = PluviaTheme.outlinedButtonColors(),
                 ) {
                     if (busy) {
-                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = PluviaTheme.progressColor)
                         Spacer(Modifier.size(8.dp))
                     }
                     Text(stringResource(R.string.nexus_oauth_disconnect))
@@ -120,8 +122,9 @@ internal fun NexusOAuthAccountSection(
                     onClick = onCancelConnect,
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth(),
+                    colors = PluviaTheme.outlinedButtonColors(),
                 ) {
-                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = PluviaTheme.progressColor)
                     Spacer(Modifier.size(8.dp))
                     Text(stringResource(R.string.nexus_oauth_cancel_sign_in))
                 }
@@ -132,7 +135,7 @@ internal fun NexusOAuthAccountSection(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     if (busy) {
-                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = PluviaTheme.progressColor)
                         Spacer(Modifier.size(8.dp))
                     }
                     Text(stringResource(R.string.nexus_oauth_connect))
@@ -161,6 +164,9 @@ internal fun NexusOAuthAccountSection(
                     Text(stringResource(R.string.cancel))
                 }
             },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 }

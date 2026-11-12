@@ -77,7 +77,7 @@ fun TwoFactorAuthScreenContent(
         )
 
         if (userLoginState.loginResult == LoginResult.DeviceConfirm) {
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = PluviaTheme.progressColor)
             Spacer(modifier = Modifier.height(16.dp))
             TextButton(
                 onClick = onUseGuardTotp

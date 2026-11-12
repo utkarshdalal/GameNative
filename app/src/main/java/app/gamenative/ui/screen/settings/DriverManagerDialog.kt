@@ -38,6 +38,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.LaunchedEffect
 import app.gamenative.R
+import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.settingsTileColors
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
@@ -288,7 +289,8 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         )
                         CircularProgressIndicator(
                             modifier = Modifier.height(20.dp),
-                            strokeWidth = 2.dp
+                            strokeWidth = 2.dp,
+                            color = PluviaTheme.progressColor
                         )
                     }
                 } else if (manifestError != null) {
@@ -321,6 +323,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             placeholder = { Text(stringResource(R.string.select_a_driver)) }
                         )
 
+                        MenuColorScope {
                         ExposedDropdownMenu(
                             expanded = isExpanded,
                             onDismissRequest = { isExpanded = false }
@@ -331,9 +334,11 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                     onClick = {
                                         selectedDriverKey = driverKey
                                         isExpanded = false
-                                    }
+                                    },
+                                    colors = PluviaTheme.menuItemColors()
                                 )
                             }
+                        }
                         }
                     }
 
@@ -353,7 +358,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             if (isDownloading) {
                                 if (totalBytes > 0) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        LinearProgressIndicator(progress = downloadProgress)
+                                        LinearProgressIndicator(progress = downloadProgress, color = PluviaTheme.progressColor)
                                         Row(
                                             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
                                             modifier = Modifier
@@ -367,7 +372,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                     }
                                 } else {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        LinearProgressIndicator() // indeterminate when total unknown
+                                        LinearProgressIndicator(color = PluviaTheme.progressColor) // indeterminate when total unknown
                                         Row(
                                             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
                                             modifier = Modifier
@@ -386,7 +391,8 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                 ) {
                                     CircularProgressIndicator(
                                         modifier = Modifier.height(24.dp),
-                                        strokeWidth = 2.dp
+                                        strokeWidth = 2.dp,
+                                        color = PluviaTheme.progressColor
                                     )
                                     Text(text = stringResource(R.string.installing))
                                 }
@@ -427,7 +433,8 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         )
                         CircularProgressIndicator(
                             modifier = Modifier.height(20.dp),
-                            strokeWidth = 2.dp
+                            strokeWidth = 2.dp,
+                            color = PluviaTheme.progressColor
                         )
                     }
                 }
@@ -503,6 +510,9 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                     Text(stringResource(R.string.cancel))
                                 }
                             },
+                            containerColor = PluviaTheme.dialogContainerColor,
+                            titleContentColor = PluviaTheme.dialogTitleColor,
+                            textContentColor = PluviaTheme.dialogTextColor,
                         )
                     }
                 }
@@ -517,6 +527,9 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 )
             }
         },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 

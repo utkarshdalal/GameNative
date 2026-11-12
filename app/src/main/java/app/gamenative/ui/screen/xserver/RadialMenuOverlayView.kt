@@ -9,6 +9,7 @@ import android.graphics.RectF
 import android.view.MotionEvent
 import android.view.View
 import app.gamenative.R
+import app.gamenative.ui.theme.ThemeViewColors
 import com.winlator.inputcontrols.RadialMenu
 import kotlin.math.cos
 import kotlin.math.min
@@ -43,6 +44,10 @@ internal class RadialMenuOverlayView(context: Context) : View(context) {
     private var selectedIndex = -1
     private var primaryColor = Color.argb(102, 255, 255, 255)
     private var secondaryColor = Color.argb(102, 2, 119, 189)
+    private var selectionColor = secondaryColor
+    private var sliceFillColor = scaledAlphaColor(primaryColor, 0.22f)
+    private var hubFillColor = scaledAlphaColor(primaryColor, 0.18f)
+    private var labelColor = readableTextColor(primaryColor)
     private val centerLabel = context.getString(R.string.radial_menu_cancel)
 
     init {
@@ -57,6 +62,7 @@ internal class RadialMenuOverlayView(context: Context) : View(context) {
         centerX = x
         centerY = y
         selectedIndex = -1
+        resolveColors()
         visibility = VISIBLE
         bringToFront()
         invalidate()
@@ -75,7 +81,15 @@ internal class RadialMenuOverlayView(context: Context) : View(context) {
         if (this.primaryColor == primaryColor && this.secondaryColor == secondaryColor) return
         this.primaryColor = primaryColor
         this.secondaryColor = secondaryColor
+        resolveColors()
         invalidate()
+    }
+
+    private fun resolveColors() {
+        selectionColor = ThemeViewColors.accent(secondaryColor)
+        sliceFillColor = ThemeViewColors.panel(scaledAlphaColor(primaryColor, 0.22f))
+        hubFillColor = ThemeViewColors.panel(scaledAlphaColor(primaryColor, 0.18f))
+        labelColor = ThemeViewColors.text(readableTextColor(primaryColor))
     }
 
     fun setSelectedIndex(index: Int) {
@@ -128,13 +142,13 @@ internal class RadialMenuOverlayView(context: Context) : View(context) {
             drawSlotLabel(canvas, slots[index], index, sweep, clampedCenterX, clampedCenterY, active)
         }
 
-        fillPaint.color = scaledAlphaColor(primaryColor, 0.18f)
+        fillPaint.color = hubFillColor
         canvas.drawCircle(clampedCenterX, clampedCenterY, innerRadiusPx, fillPaint)
         strokePaint.color = scaledAlphaColor(primaryColor, 1.15f)
         strokePaint.strokeWidth = 1.4f * density
         canvas.drawCircle(clampedCenterX, clampedCenterY, innerRadiusPx, strokePaint)
 
-        textPaint.color = readableTextColor(primaryColor)
+        textPaint.color = labelColor
         textPaint.textSize = min(textSizePx * 1.05f, innerRadiusPx * 0.42f)
         textPaint.isFakeBoldText = true
         canvas.drawText(centerLabel, clampedCenterX, centeredTextBaseline(clampedCenterY, textPaint), textPaint)
@@ -165,14 +179,14 @@ internal class RadialMenuOverlayView(context: Context) : View(context) {
 
     private fun drawSlicePath(canvas: Canvas, active: Boolean) {
         fillPaint.color = if (active) {
-            scaledAlphaColor(secondaryColor, 1.15f)
+            scaledAlphaColor(selectionColor, 1.15f)
         } else {
-            scaledAlphaColor(primaryColor, 0.22f)
+            sliceFillColor
         }
         canvas.drawPath(slicePath, fillPaint)
 
         strokePaint.color = if (active) {
-            scaledAlphaColor(secondaryColor, 1.65f)
+            scaledAlphaColor(selectionColor, 1.65f)
         } else {
             scaledAlphaColor(primaryColor, 1f)
         }
@@ -192,7 +206,7 @@ internal class RadialMenuOverlayView(context: Context) : View(context) {
         val angleRad = Math.toRadians((-90.0 + index * sweep).toDouble())
         val textX = centerX + cos(angleRad).toFloat() * textRadiusPx
         val textY = centerY + sin(angleRad).toFloat() * textRadiusPx
-        textPaint.color = readableTextColor(primaryColor)
+        textPaint.color = labelColor
         textPaint.textSize = textSizePx
         textPaint.isFakeBoldText = active
         val sliceWidth = 2f * textRadiusPx * sin(Math.toRadians((sweep * 0.5f).toDouble())).toFloat()

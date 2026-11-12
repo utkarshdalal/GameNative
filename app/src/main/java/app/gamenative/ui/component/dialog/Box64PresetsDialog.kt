@@ -40,6 +40,7 @@ import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.settings.SettingsEnvVars
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.settingsTileColors
 import com.winlator.box86_64.Box86_64Preset
 import com.winlator.box86_64.Box86_64PresetManager
@@ -137,9 +138,11 @@ fun Box64PresetsDialog(
                                                     ).toString()
                                                     showPresets = false
                                                 },
+                                                colors = PluviaTheme.menuItemColors(),
                                             )
                                         }
                                     },
+                                    containerColor = PluviaTheme.menuContainerColor,
                                 )
                             },
                         )

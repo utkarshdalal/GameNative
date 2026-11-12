@@ -48,9 +48,10 @@ fun LoadingDialog(
                             Text(min(100, (progress * 100.0).roundToInt()).toString() + "%")
                             LinearProgressIndicator(
                                 progress = { progress },
+                                color = PluviaTheme.progressColor,
                             )
                         } else {
-                            LinearProgressIndicator()
+                            LinearProgressIndicator(color = PluviaTheme.progressColor)
                         }
                     }
                 }

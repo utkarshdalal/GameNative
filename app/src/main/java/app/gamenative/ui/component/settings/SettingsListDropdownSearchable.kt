@@ -39,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.gamenative.ui.theme.PluviaTheme
 import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
 import com.alorma.compose.settings.ui.base.internal.SettingsTileDefaults
@@ -137,6 +138,7 @@ fun SettingsListDropdownSearchable(
                 isDropdownExpanded = false
                 focusRequester.requestFocus()
             },
+            containerColor = PluviaTheme.menuContainerColor,
         ) {
 
             // When the menu opens, land focus on the first item rather than the
@@ -184,9 +186,9 @@ fun SettingsListDropdownSearchable(
             filteredItems.forEachIndexed { position, (index, text) ->
                 val isMuted = itemMuted?.getOrNull(index) == true
                 val textColor = if (isMuted) {
-                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    PluviaTheme.onMenuColor(MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.6f)
                 } else {
-                    MaterialTheme.colorScheme.onSurface
+                    PluviaTheme.onMenuColor(MaterialTheme.colorScheme.onSurface)
                 }
                 DropdownMenuItem(
                     modifier = if (position == 0) {
@@ -201,6 +203,7 @@ fun SettingsListDropdownSearchable(
                         isDropdownExpanded = false
                         focusRequester.requestFocus()
                     },
+                    colors = PluviaTheme.menuItemColors(),
                 )
             }
         }

@@ -531,6 +531,7 @@ internal fun ColumnScope.SupportChat(
             LinearProgressIndicator(
                 progress = { uploadProgress },
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                color = PluviaTheme.progressColor,
             )
         }
     }
@@ -753,7 +754,7 @@ private fun ChipButton(
         label = { Text(text = text, maxLines = 1) },
         leadingIcon = {
             if (busy) {
-                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = PluviaTheme.progressColor)
             } else {
                 Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(16.dp))
             }
@@ -909,7 +910,7 @@ private fun AnalysingCard(
     val detail = progress?.takeIf { it.stage == SupportApi.STAGE_ANALYSING || it.stage == SupportApi.STAGE_BUILDING }?.detail
     FocusableCard(modifier = Modifier.fillMaxWidth(), isFocusable = onNotify == null) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = PluviaTheme.progressColor)
             Spacer(modifier = Modifier.size(12.dp))
             Column {
                 Text(
@@ -1044,7 +1045,7 @@ private fun RunCheckCard(
                             style = MaterialTheme.typography.bodySmall,
                             color = PluviaTheme.colors.textMuted,
                         )
-                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = PluviaTheme.progressColor)
                     }
                     SupportRunFollowUp.Phase.UPLOADING -> {
                         Text(
@@ -1055,6 +1056,7 @@ private fun RunCheckCard(
                         LinearProgressIndicator(
                             progress = { state.progress ?: 0f },
                             modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                            color = PluviaTheme.progressColor,
                         )
                     }
                     SupportRunFollowUp.Phase.SENT -> Text(
@@ -1112,6 +1114,7 @@ private fun RunCheckCard(
                     SupportRunFollowUp.Answer.SENDING -> CircularProgressIndicator(
                         modifier = Modifier.padding(top = 8.dp).size(16.dp),
                         strokeWidth = 2.dp,
+                        color = PluviaTheme.progressColor,
                     )
                     SupportRunFollowUp.Answer.DELIVERED -> Unit
                     SupportRunFollowUp.Answer.FAILED -> Column(modifier = Modifier.padding(top = 8.dp)) {

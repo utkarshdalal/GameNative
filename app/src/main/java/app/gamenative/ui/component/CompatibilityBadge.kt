@@ -175,7 +175,8 @@ private fun getBadgeStyle(status: GameCompatibilityStatus): BadgeStyle {
         GameCompatibilityStatus.RECOMMENDED -> BadgeStyle(
             icon = Icons.Rounded.Star,
             backgroundColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
-            iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
+            // a theme's primary container is its accent, so the label takes the accent's text colour
+            iconTint = if (PluviaTheme.isThemed) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer,
             labelResId = R.string.recommended_badge,
         )
     }

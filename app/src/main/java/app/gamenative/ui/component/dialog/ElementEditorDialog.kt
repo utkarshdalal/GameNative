@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.component.settings.SettingsTextField
@@ -686,7 +687,8 @@ fun ElementEditorDialog(
                                 },
                                 valueRange = 1f..maxSegments.toFloat(),
                                 steps = (maxSegments - 2).coerceAtLeast(0),
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                colors = PluviaTheme.sliderColors()
                             )
                             Text(
                                 text = "$currentVisibleSegments",
@@ -760,7 +762,8 @@ fun ElementEditorDialog(
                                     hasUnsavedChanges = true
                                 },
                                 valueRange = 0.1f..10.0f,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                colors = PluviaTheme.sliderColors()
                             )
                             Text(
                                 text = String.format(Locale.US, "%.1fx", currentLookSensitivity),
@@ -791,7 +794,8 @@ fun ElementEditorDialog(
                                     hasUnsavedChanges = true
                                 },
                                 valueRange = 0.5f..3.0f,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                colors = PluviaTheme.sliderColors()
                             )
                             Text(
                                 text = String.format(Locale.US, "%.1fx", currentJoystickSize),
@@ -885,7 +889,8 @@ fun ElementEditorDialog(
                                 hasUnsavedChanges = true
                             },
                             valueRange = 0.0f..1.0f,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            colors = PluviaTheme.sliderColors()
                         )
                         Text(
                             text = "${(currentButtonOpacity * 100).roundToInt()}%",
@@ -971,7 +976,8 @@ fun ElementEditorDialog(
                                 }
                             },
                             modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
+                            colors = PluviaTheme.outlinedButtonColors()
                         ) {
                             Text(stringResource(R.string.copy), style = MaterialTheme.typography.labelSmall)
                         }
@@ -986,7 +992,8 @@ fun ElementEditorDialog(
                                 SnackbarManager.show(context.getString(R.string.toast_applied_button_appearance))
                             },
                             modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
+                            colors = PluviaTheme.outlinedButtonColors()
                         ) {
                             Text(stringResource(R.string.apply_all), style = MaterialTheme.typography.labelSmall)
                         }
@@ -1009,7 +1016,8 @@ fun ElementEditorDialog(
                                 hasUnsavedChanges = true
                             },
                             modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
+                            colors = PluviaTheme.outlinedButtonColors()
                         ) {
                             Text(stringResource(R.string.reset), style = MaterialTheme.typography.labelSmall)
                         }
@@ -1217,7 +1225,8 @@ private fun SizeAdjusterOverlay(
                     valueRange = 0.1f..5.0f,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(32.dp)
+                        .height(32.dp),
+                        colors = PluviaTheme.sliderColors()
                 )
 
                 // All 4 buttons in one row
@@ -1234,7 +1243,8 @@ private fun SizeAdjusterOverlay(
                             }
                         },
                         modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                        colors = PluviaTheme.outlinedButtonColors()
                     ) {
                         Icon(
                             imageVector = Icons.Default.FileCopy,
@@ -1249,7 +1259,8 @@ private fun SizeAdjusterOverlay(
                     OutlinedButton(
                         onClick = onReset,
                         modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                        colors = PluviaTheme.outlinedButtonColors()
                     ) {
                         Text(stringResource(R.string.reset), style = MaterialTheme.typography.labelSmall)
                     }
@@ -1258,7 +1269,8 @@ private fun SizeAdjusterOverlay(
                     OutlinedButton(
                         onClick = onCancel,
                         modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                        colors = PluviaTheme.outlinedButtonColors()
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
@@ -1381,7 +1393,8 @@ private fun VirtualControlPresets(
                         onPresetsApplied()
                     },
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                    colors = PluviaTheme.outlinedButtonColors()
                 ) {
                     Text(stringResource(R.string.preset_wasd), style = MaterialTheme.typography.labelSmall)
                 }
@@ -1391,7 +1404,8 @@ private fun VirtualControlPresets(
                         onPresetsApplied()
                     },
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                    colors = PluviaTheme.outlinedButtonColors()
                 ) {
                     Text(stringResource(R.string.preset_arrows), style = MaterialTheme.typography.labelSmall)
                 }
@@ -1401,7 +1415,8 @@ private fun VirtualControlPresets(
                         onPresetsApplied()
                     },
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                    colors = PluviaTheme.outlinedButtonColors()
                 ) {
                     Text(stringResource(R.string.preset_mouse), style = MaterialTheme.typography.labelSmall)
                 }
@@ -1418,7 +1433,8 @@ private fun VirtualControlPresets(
                         onPresetsApplied()
                     },
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                    colors = PluviaTheme.outlinedButtonColors()
                 ) {
                     Text(stringResource(R.string.preset_dpad), style = MaterialTheme.typography.labelSmall)
                 }
@@ -1428,7 +1444,8 @@ private fun VirtualControlPresets(
                         onPresetsApplied()
                     },
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                    colors = PluviaTheme.outlinedButtonColors()
                 ) {
                     Text(stringResource(R.string.preset_left_stick), style = MaterialTheme.typography.labelSmall)
                 }
@@ -1438,7 +1455,8 @@ private fun VirtualControlPresets(
                         onPresetsApplied()
                     },
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                    colors = PluviaTheme.outlinedButtonColors()
                 ) {
                     Text(stringResource(R.string.preset_right_stick), style = MaterialTheme.typography.labelSmall)
                 }

@@ -44,6 +44,7 @@ import app.gamenative.data.ModInstallStatus
 import app.gamenative.data.ModProfile
 import app.gamenative.mods.ModFileConflictReport
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.theme.PluviaTheme
 import java.io.File
 @Composable
 internal fun ProfilesSection(
@@ -58,7 +59,7 @@ internal fun ProfilesSection(
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(stringResource(R.string.nexus_profile_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                OutlinedButton(onClick = onCreate) {
+                OutlinedButton(onClick = onCreate, colors = PluviaTheme.outlinedButtonColors()) {
                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.size(8.dp))
                     Text(stringResource(R.string.nexus_profile_new))
@@ -143,6 +144,9 @@ internal fun ProfileNameDialog(
                 Text(stringResource(R.string.cancel))
             }
         },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 
@@ -178,6 +182,7 @@ internal fun InstalledModsSection(
                             onClick = onApplyOrder,
                             enabled = hasEnabledPlaceableMods,
                             modifier = Modifier.fillMaxWidth(),
+                            colors = PluviaTheme.outlinedButtonColors(),
                         ) {
                             Text(stringResource(R.string.nexus_apply_order), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
@@ -188,6 +193,7 @@ internal fun InstalledModsSection(
                         OutlinedButton(
                             onClick = onApplyOrder,
                             enabled = hasEnabledPlaceableMods,
+                            colors = PluviaTheme.outlinedButtonColors(),
                         ) {
                             Text(stringResource(R.string.nexus_apply_order))
                         }

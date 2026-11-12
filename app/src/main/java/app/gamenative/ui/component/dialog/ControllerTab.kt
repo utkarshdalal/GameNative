@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.ui.component.settings.SettingsListDropdown
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.alorma.compose.settings.ui.SettingsGroup
@@ -88,6 +89,7 @@ fun ControllerTabContent(state: ContainerConfigState, default: Boolean) {
                     state.config.value = config.copy(vibrationIntensity = clamped)
                 },
                 valueRange = 0f..100f,
+                colors = PluviaTheme.sliderColors(),
             )
             Text(text = "${state.vibrationIntensity.value}%")
         }

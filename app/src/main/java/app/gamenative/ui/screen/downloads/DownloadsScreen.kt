@@ -191,7 +191,7 @@ fun HomeDownloadsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
+                .background(PluviaTheme.screenBackground)
                 .statusBarsPadding()
                 .displayCutoutPadding(),
         ) {
