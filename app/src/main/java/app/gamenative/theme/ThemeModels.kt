@@ -20,6 +20,8 @@ data class InstalledTheme(
     val builtIn: Boolean = false,
     /** Newer version offered by the theme store, or null. */
     val updateAvailable: String? = null,
+    /** Id of this theme in the GameNative community list, when it was installed from or shared to it. */
+    val communityId: String? = null,
 )
 
 sealed interface ThemeOption {
@@ -66,3 +68,38 @@ data class StoreTheme(
     val previewImageUrl: String? = null,
     val downloadBlobId: String? = null,
 )
+
+/** A theme shared by a GameNative user. */
+data class CommunityTheme(
+    val id: String,
+    val name: String,
+    val description: String? = null,
+    val authorName: String? = null,
+    val version: Int = 1,
+    val downloads: Int = 0,
+    val sizeBytes: Long = 0,
+    /** Appearance values of the theme at its defaults, for drawing a preview without downloading it. */
+    val preview: ThemeSpec? = null,
+    /** Uploaded by the signed-in account. */
+    val mine: Boolean = false,
+    val updatedAt: String? = null,
+)
+
+data class CommunityPage(
+    val themes: List<CommunityTheme>,
+    val hasMore: Boolean,
+)
+
+enum class CommunitySort { POPULAR, NEW }
+
+/** Why an installed theme cannot be shared. */
+enum class ShareBlocker {
+    /** The theme styles another app's interface; only themes written with this app's own variables can be shared. */
+    NOT_NATIVE,
+    TOO_LARGE,
+    /** The theme sets nothing. */
+    EMPTY,
+}
+
+/** Failure of a community request. [code] is one of: unauthorized, invalid_theme, text_rejected, too_large, rate_limited, not_found, network, server. */
+class CommunityException(val code: String, message: String? = null) : Exception(message ?: code)
