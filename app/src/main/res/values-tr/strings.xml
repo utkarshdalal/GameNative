@@ -1398,6 +1398,27 @@
     <string name="themes_share_blocked_too_large">Bu tema paylaşmak için çok büyük.</string>
     <string name="themes_sign_in_title">GameNative hesabı gerekli</string>
     <string name="themes_sign_in_message">Tema paylaşmak, tema bildirmek ve yüklemelerini görmek için GameNative hesabına giriş yap.</string>
+    <string name="themes_tab_sounds">Sesler</string>
+    <string name="themes_sounds_interface">Arayüz sesleri</string>
+    <string name="themes_sounds_interface_subtitle">Menülerde gezinirken ve düğmelere basarken ses çalar</string>
+    <string name="themes_sounds_volume">Ses düzeyi</string>
+    <string name="themes_sounds_volume_subtitle">Arayüz seslerinin ne kadar yüksek çalınacağı</string>
+    <string name="themes_sounds_pack">Ses paketi</string>
+    <string name="themes_sounds_none">Yok</string>
+    <string name="themes_sounds_preview">Dinle</string>
+    <string name="themes_sounds_no_packs">Henüz yüklü ses paketi yok. Bir tane içe aktarın veya mağazadan yükleyin.</string>
+    <string name="themes_sounds_music">Menü müziği</string>
+    <string name="themes_sounds_music_subtitle">Uygulamada gezinirken müzik çalar</string>
+    <string name="themes_sounds_music_volume">Müzik ses düzeyi</string>
+    <string name="themes_sounds_music_volume_subtitle">Menü müziğinin ne kadar yüksek çalınacağı</string>
+    <string name="themes_sounds_music_pack">Müzik paketi</string>
+    <string name="themes_sounds_no_music">Henüz yüklü müzik paketi yok.</string>
+    <string name="themes_sounds_import">Paket zip dosyasını içe aktar</string>
+    <string name="themes_sounds_store">Ses paketi mağazası</string>
+    <string name="themes_sounds_search_hint">Ses paketlerinde ara</string>
+    <string name="themes_sounds_store_error">Ses paketleri yüklenemedi: %1$s</string>
+    <string name="themes_sounds_store_empty">Ses paketi bulunamadı</string>
+    <string name="themes_sounds_delete_title">Ses paketi silinsin mi?</string>
 
     <string name="settings_interface_title">Arayüz</string>
     <string name="settings_interface_external_links_title">Web bağlantılarını dışarıda aç</string>

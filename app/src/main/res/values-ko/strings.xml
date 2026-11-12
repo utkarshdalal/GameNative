@@ -1331,6 +1331,27 @@
     <string name="themes_share_blocked_too_large">이 테마는 너무 커서 공유할 수 없습니다.</string>
     <string name="themes_sign_in_title">GameNative 계정이 필요합니다</string>
     <string name="themes_sign_in_message">테마를 공유하거나 신고하고 내 업로드를 보려면 GameNative 계정에 로그인하세요.</string>
+    <string name="themes_tab_sounds">사운드</string>
+    <string name="themes_sounds_interface">인터페이스 사운드</string>
+    <string name="themes_sounds_interface_subtitle">메뉴에서 이동하거나 버튼을 누를 때 사운드를 재생합니다</string>
+    <string name="themes_sounds_volume">볼륨</string>
+    <string name="themes_sounds_volume_subtitle">인터페이스 사운드의 크기</string>
+    <string name="themes_sounds_pack">사운드 팩</string>
+    <string name="themes_sounds_none">없음</string>
+    <string name="themes_sounds_preview">미리 듣기</string>
+    <string name="themes_sounds_no_packs">아직 설치된 사운드 팩이 없습니다. 가져오거나 스토어에서 설치하세요.</string>
+    <string name="themes_sounds_music">메뉴 음악</string>
+    <string name="themes_sounds_music_subtitle">앱을 둘러보는 동안 음악을 재생합니다</string>
+    <string name="themes_sounds_music_volume">음악 볼륨</string>
+    <string name="themes_sounds_music_volume_subtitle">메뉴 음악의 크기</string>
+    <string name="themes_sounds_music_pack">음악 팩</string>
+    <string name="themes_sounds_no_music">아직 설치된 음악 팩이 없습니다.</string>
+    <string name="themes_sounds_import">팩 zip 가져오기</string>
+    <string name="themes_sounds_store">사운드 팩 스토어</string>
+    <string name="themes_sounds_search_hint">사운드 팩 검색</string>
+    <string name="themes_sounds_store_error">사운드 팩을 불러올 수 없습니다: %1$s</string>
+    <string name="themes_sounds_store_empty">사운드 팩을 찾을 수 없습니다</string>
+    <string name="themes_sounds_delete_title">사운드 팩을 삭제할까요?</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">인터페이스</string>

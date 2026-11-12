@@ -1504,6 +1504,27 @@
     <string name="themes_share_blocked_too_large">このテーマはサイズが大きすぎるため共有できません。</string>
     <string name="themes_sign_in_title">GameNative アカウントが必要です</string>
     <string name="themes_sign_in_message">テーマの共有や報告、自分のアップロードの確認には GameNative アカウントへのサインインが必要です。</string>
+    <string name="themes_tab_sounds">サウンド</string>
+    <string name="themes_sounds_interface">インターフェースのサウンド</string>
+    <string name="themes_sounds_interface_subtitle">メニューでの移動やボタン操作時にサウンドを再生します</string>
+    <string name="themes_sounds_volume">音量</string>
+    <string name="themes_sounds_volume_subtitle">インターフェースのサウンドの音量</string>
+    <string name="themes_sounds_pack">サウンドパック</string>
+    <string name="themes_sounds_none">なし</string>
+    <string name="themes_sounds_preview">試聴</string>
+    <string name="themes_sounds_no_packs">サウンドパックはまだインストールされていません。インポートするか、ストアからインストールしてください。</string>
+    <string name="themes_sounds_music">メニュー音楽</string>
+    <string name="themes_sounds_music_subtitle">アプリの閲覧中に音楽を再生します</string>
+    <string name="themes_sounds_music_volume">音楽の音量</string>
+    <string name="themes_sounds_music_volume_subtitle">メニュー音楽の音量</string>
+    <string name="themes_sounds_music_pack">音楽パック</string>
+    <string name="themes_sounds_no_music">音楽パックはまだインストールされていません。</string>
+    <string name="themes_sounds_import">パックの zip をインポート</string>
+    <string name="themes_sounds_store">サウンドパックストア</string>
+    <string name="themes_sounds_search_hint">サウンドパックを検索</string>
+    <string name="themes_sounds_store_error">サウンドパックを読み込めませんでした: %1$s</string>
+    <string name="themes_sounds_store_empty">サウンドパックが見つかりません</string>
+    <string name="themes_sounds_delete_title">サウンドパックを削除しますか？</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">インターフェース</string>

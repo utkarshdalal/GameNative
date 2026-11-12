@@ -133,7 +133,10 @@ import app.gamenative.ui.screen.support.SupportUpgradeDialog
 import app.gamenative.ui.screen.xserver.XServerScreen
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.LocalSnackbarHostController
+import app.gamenative.ui.util.ErrorSoundOnDialog
 import app.gamenative.ui.util.SnackbarManager
+import app.gamenative.ui.util.UiSoundCues
+import app.gamenative.ui.util.UiSoundLifecycle
 import app.gamenative.utils.BestConfigService
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.DebugReportUtils
@@ -1008,6 +1011,7 @@ fun PluviaMain(
         }
     }
 
+    ErrorSoundOnDialog(msgDialogState.visible, msgDialogState.type)
     val onDismissRequest: (() -> Unit)?
     val onDismissClick: (() -> Unit)?
     val onConfirmClick: (() -> Unit)?
@@ -1478,6 +1482,7 @@ fun PluviaMain(
         }
     }
 
+    UiSoundLifecycle(gameRunning = state.currentScreen == PluviaScreen.XServer)
     SupportReplyEffects(
         gameRunning = state.currentScreen == PluviaScreen.XServer,
         canOpenSupport = state.currentScreen == PluviaScreen.Home ||
@@ -2354,6 +2359,7 @@ fun preLaunchApp(
     isOffline: Boolean = false,
     bootToContainer: Boolean = false,
 ) {
+    if (retryCount == 0) UiSoundCues.launch()
     setLoadingDialogVisible(true)
     // TODO: add a way to cancel
     // TODO: add fail conditions

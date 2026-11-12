@@ -1515,6 +1515,27 @@
     <string name="themes_share_blocked_too_large">This theme is too large to share.</string>
     <string name="themes_sign_in_title">GameNative account needed</string>
     <string name="themes_sign_in_message">Sign in to your GameNative account to share themes, report themes and see your uploads.</string>
+    <string name="themes_tab_sounds">Sounds</string>
+    <string name="themes_sounds_interface">Interface sounds</string>
+    <string name="themes_sounds_interface_subtitle">Play sounds when you move around and press buttons in menus</string>
+    <string name="themes_sounds_volume">Volume</string>
+    <string name="themes_sounds_volume_subtitle">How loud interface sounds play</string>
+    <string name="themes_sounds_pack">Sound pack</string>
+    <string name="themes_sounds_none">None</string>
+    <string name="themes_sounds_preview">Preview</string>
+    <string name="themes_sounds_no_packs">No sound packs installed yet. Import one or install one from the store.</string>
+    <string name="themes_sounds_music">Menu music</string>
+    <string name="themes_sounds_music_subtitle">Play music while you browse the app</string>
+    <string name="themes_sounds_music_volume">Music volume</string>
+    <string name="themes_sounds_music_volume_subtitle">How loud menu music plays</string>
+    <string name="themes_sounds_music_pack">Music pack</string>
+    <string name="themes_sounds_no_music">No music packs installed yet.</string>
+    <string name="themes_sounds_import">Import pack zip</string>
+    <string name="themes_sounds_store">Sound pack store</string>
+    <string name="themes_sounds_search_hint">Search sound packs</string>
+    <string name="themes_sounds_store_error">Could not load sound packs: %1$s</string>
+    <string name="themes_sounds_store_empty">No sound packs found</string>
+    <string name="themes_sounds_delete_title">Delete sound pack?</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interface</string>
