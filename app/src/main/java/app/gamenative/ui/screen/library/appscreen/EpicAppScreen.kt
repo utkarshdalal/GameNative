@@ -304,7 +304,7 @@ class EpicAppScreen : BaseAppScreen() {
                     game?.artCover?.takeIf { it.isNotBlank() },
                 ).distinct(),
             ).withoutTitleOnlyDescription(game?.title ?: libraryItem.name),
-            runtime = app.gamenative.utils.ContainerUtils.resolveRuntime(context, libraryItem.appId),
+            runtime = app.gamenative.html5.host.Html5Routing.rememberRuntime(context, libraryItem.appId, libraryItem.gameId),
         )
         Timber.tag(TAG).d("Returning GameDisplayInfo: name=${displayInfo.name}, iconUrl=${displayInfo.iconUrl}, heroImageUrl=${displayInfo.heroImageUrl}, developer=${displayInfo.developer}, installLocation=${displayInfo.installLocation}")
         return displayInfo
