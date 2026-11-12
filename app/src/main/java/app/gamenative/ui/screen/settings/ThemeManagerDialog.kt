@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -95,9 +96,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.service.SteamService
+import app.gamenative.theme.CommunityTheme
 import app.gamenative.theme.InstalledTheme
+import app.gamenative.theme.ShareBlocker
 import app.gamenative.theme.StoreTheme
 import app.gamenative.theme.ThemeManager
 import app.gamenative.theme.ThemeOption
@@ -105,6 +109,7 @@ import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.QuickMenuTickSlider
+import app.gamenative.ui.component.dialog.AccountSignInDialog
 import app.gamenative.ui.component.topbar.BackButton
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
@@ -116,7 +121,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private enum class ThemeTab { INSTALLED, BROWSE }
+private enum class ThemeTab { INSTALLED, COMMUNITY, STEAM_DECK }
 
 private const val STARTER_THEME_FILE_NAME = "gamenative-starter-theme.zip"
 
@@ -163,7 +168,12 @@ private class StoreState {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ThemeManagerDialog(open: Boolean, onDismiss: () -> Unit) {
+fun ThemeManagerDialog(
+    open: Boolean,
+    onDismiss: () -> Unit,
+    shareAuthor: String = "",
+    onShareAuthorChange: (String) -> Unit = {},
+) {
     if (!open) return
 
     val ctx = LocalContext.current
@@ -179,6 +189,16 @@ fun ThemeManagerDialog(open: Boolean, onDismiss: () -> Unit) {
     var pendingImage by remember { mutableStateOf<Pair<String, String>?>(null) }
     val store = remember { StoreState() }
     val updating = remember { mutableStateListOf<String>() }
+    val community = remember { CommunityState() }
+    val signedInPref by PrefManager.gameNativeSignedIn
+    val signedIn = signedInPref && ThemeManager.isSignedIn
+    var shareTarget by remember { mutableStateOf<InstalledTheme?>(null) }
+    var shareBlocked by remember { mutableStateOf<ShareBlocker?>(null) }
+    var reportTarget by remember { mutableStateOf<CommunityTheme?>(null) }
+    var communityDeleteTarget by remember { mutableStateOf<CommunityTheme?>(null) }
+    var signInNeeded by remember { mutableStateOf(false) }
+    var showSignIn by remember { mutableStateOf(false) }
+    var afterSignIn by remember { mutableStateOf<(() -> Unit)?>(null) }
 
     fun failureText(e: Throwable): String =
         ctx.getString(R.string.themes_failed_message, e.message ?: e.javaClass.simpleName)
@@ -241,6 +261,78 @@ fun ThemeManagerDialog(open: Boolean, onDismiss: () -> Unit) {
         }
     }
 
+    fun requireSignIn(action: () -> Unit) {
+        if (signedIn) {
+            action()
+        } else {
+            afterSignIn = action
+            signInNeeded = true
+        }
+    }
+
+    fun loadCommunity(reset: Boolean) {
+        if (!reset && community.loading) return
+        community.job?.cancel()
+        community.job = scope.launch {
+            community.loading = true
+            community.error = null
+            val nextPage = if (reset) 1 else community.page + 1
+            val result = withContext(Dispatchers.IO) {
+                ThemeManager.communityList(community.query.trim(), nextPage, community.sort, community.mineOnly)
+            }
+            result.onSuccess { page ->
+                if (reset) community.items.clear()
+                val fresh = page.themes.filter { item -> community.items.none { it.id == item.id } }
+                community.items.addAll(fresh)
+                community.page = nextPage
+                community.hasMore = page.hasMore
+                community.loaded = true
+            }.onFailure {
+                if (reset) community.items.clear()
+                community.error = communityErrorText(ctx, it)
+            }
+            community.loading = false
+        }
+    }
+
+    fun installFromCommunity(theme: CommunityTheme) {
+        if (theme.id in community.installing) return
+        scope.launch {
+            community.installing.add(theme.id)
+            val result = withContext(Dispatchers.IO) { ThemeManager.installFromCommunity(theme) }
+            community.installing.remove(theme.id)
+            snackbarHostState.showSnackbar(
+                result.fold({ ctx.getString(R.string.themes_installed_message, it.name) }, { communityErrorText(ctx, it) }),
+            )
+        }
+    }
+
+    fun deleteFromCommunity(theme: CommunityTheme) {
+        scope.launch {
+            val result = withContext(Dispatchers.IO) { ThemeManager.deleteCommunityTheme(theme.id) }
+            result.onSuccess { community.items.removeAll { it.id == theme.id } }
+            snackbarHostState.showSnackbar(
+                result.fold({ ctx.getString(R.string.themes_community_deleted) }, { communityErrorText(ctx, it) }),
+            )
+        }
+    }
+
+    fun startShare(theme: InstalledTheme) {
+        val blocker = ThemeManager.shareBlocker(theme.id)
+        if (blocker != null) {
+            shareBlocked = blocker
+        } else {
+            requireSignIn { shareTarget = theme }
+        }
+    }
+
+    LaunchedEffect(signedIn) {
+        if (!signedIn && community.mineOnly) {
+            community.mineOnly = false
+            if (community.loaded) loadCommunity(reset = true)
+        }
+    }
+
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) { ThemeManager.checkForUpdates() }
     }
@@ -277,7 +369,8 @@ fun ThemeManagerDialog(open: Boolean, onDismiss: () -> Unit) {
     }
 
     LaunchedEffect(tab) {
-        if (tab == ThemeTab.BROWSE && !store.loaded) loadStore(reset = true)
+        if (tab == ThemeTab.STEAM_DECK && !store.loaded) loadStore(reset = true)
+        if (tab == ThemeTab.COMMUNITY && !community.loaded && !community.loading) loadCommunity(reset = true)
     }
 
     Dialog(
@@ -321,7 +414,8 @@ fun ThemeManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                     text = stringResource(
                                         when (entry) {
                                             ThemeTab.INSTALLED -> R.string.themes_tab_installed
-                                            ThemeTab.BROWSE -> R.string.themes_tab_browse
+                                            ThemeTab.COMMUNITY -> R.string.themes_tab_community
+                                            ThemeTab.STEAM_DECK -> R.string.themes_tab_steam_deck
                                         },
                                     ),
                                     maxLines = 1,
@@ -355,6 +449,7 @@ fun ThemeManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         },
                         onAction = { runAction(it) },
                         onDelete = { deleteTarget = it },
+                        onShare = { startShare(it) },
                         onEditColor = { id, option -> colorTarget = id to option },
                         onPickImage = { id, key ->
                             pendingImage = id to key
@@ -363,7 +458,31 @@ fun ThemeManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         },
                     )
 
-                    ThemeTab.BROWSE -> BrowseThemesTab(
+                    ThemeTab.COMMUNITY -> CommunityThemesTab(
+                        state = community,
+                        installedByCommunityId = themes.mapNotNull { t -> t.communityId?.let { it to t } }.toMap(),
+                        signedIn = signedIn,
+                        onSearch = { loadCommunity(reset = true) },
+                        onSortChange = { sort ->
+                            if (sort != community.sort) {
+                                community.sort = sort
+                                loadCommunity(reset = true)
+                            }
+                        },
+                        onMineToggle = {
+                            requireSignIn {
+                                community.mineOnly = !community.mineOnly
+                                loadCommunity(reset = true)
+                            }
+                        },
+                        onLoadMore = { loadCommunity(reset = false) },
+                        onRetry = { loadCommunity(reset = community.items.isEmpty()) },
+                        onInstall = { installFromCommunity(it) },
+                        onReport = { theme -> requireSignIn { reportTarget = theme } },
+                        onDelete = { communityDeleteTarget = it },
+                    )
+
+                    ThemeTab.STEAM_DECK -> BrowseThemesTab(
                         store = store,
                         installedByName = themes.associateBy { it.name.lowercase(Locale.ROOT) },
                         updating = updating,
@@ -398,6 +517,78 @@ fun ThemeManagerDialog(open: Boolean, onDismiss: () -> Unit) {
             }
         }
 
+        shareTarget?.let { target ->
+            ShareThemeDialog(
+                theme = target,
+                lastAuthor = shareAuthor,
+                onDismiss = { shareTarget = null },
+                onShared = { shared, author ->
+                    shareTarget = null
+                    onShareAuthorChange(author)
+                    val message = ctx.getString(
+                        if (target.communityId != null) R.string.themes_share_updated else R.string.themes_share_done,
+                        shared.name,
+                    )
+                    scope.launch { snackbarHostState.showSnackbar(message) }
+                },
+            )
+        }
+
+        shareBlocked?.let { blocker ->
+            ShareBlockedDialog(blocker = blocker, onDismiss = { shareBlocked = null })
+        }
+
+        reportTarget?.let { target ->
+            ReportThemeDialog(
+                theme = target,
+                onDismiss = { reportTarget = null },
+                onSent = {
+                    reportTarget = null
+                    val message = ctx.getString(R.string.themes_community_report_sent)
+                    scope.launch { snackbarHostState.showSnackbar(message) }
+                },
+            )
+        }
+
+        communityDeleteTarget?.let { target ->
+            DeleteCommunityThemeDialog(
+                theme = target,
+                onDismiss = { communityDeleteTarget = null },
+                onConfirm = {
+                    communityDeleteTarget = null
+                    deleteFromCommunity(target)
+                },
+            )
+        }
+
+        if (signInNeeded) {
+            ThemeSignInNeededDialog(
+                onDismiss = {
+                    signInNeeded = false
+                    afterSignIn = null
+                },
+                onSignIn = {
+                    signInNeeded = false
+                    showSignIn = true
+                },
+            )
+        }
+
+        AccountSignInDialog(
+            visible = showSignIn,
+            reason = stringResource(R.string.themes_sign_in_message),
+            onSignedIn = {
+                showSignIn = false
+                val action = afterSignIn
+                afterSignIn = null
+                action?.invoke()
+            },
+            onDismiss = {
+                showSignIn = false
+                afterSignIn = null
+            },
+        )
+
         colorTarget?.let { (themeId, option) ->
             ColorPickerDialog(
                 title = option.label,
@@ -413,7 +604,7 @@ fun ThemeManagerDialog(open: Boolean, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun Modifier.focusOutline(shape: Shape = RoundedCornerShape(12.dp)): Modifier {
+internal fun Modifier.focusOutline(shape: Shape = RoundedCornerShape(12.dp)): Modifier {
     var focused by remember { mutableStateOf(false) }
     val color = MaterialTheme.colorScheme.primary
     return this
@@ -435,6 +626,7 @@ private fun InstalledThemesTab(
     onToggleExpanded: (String) -> Unit,
     onAction: (suspend () -> Unit) -> Unit,
     onDelete: (InstalledTheme) -> Unit,
+    onShare: (InstalledTheme) -> Unit,
     onEditColor: (String, ThemeOption.Color) -> Unit,
     onPickImage: (String, String) -> Unit,
 ) {
@@ -498,6 +690,7 @@ private fun InstalledThemesTab(
                 onToggleExpanded = { onToggleExpanded(theme.id) },
                 onAction = onAction,
                 onDelete = { onDelete(theme) },
+                onShare = { onShare(theme) },
                 onEditColor = { onEditColor(theme.id, it) },
                 onPickImage = { key -> onPickImage(theme.id, key) },
             )
@@ -531,6 +724,7 @@ private fun InstalledThemeCard(
     onToggleExpanded: () -> Unit,
     onAction: (suspend () -> Unit) -> Unit,
     onDelete: () -> Unit,
+    onShare: () -> Unit,
     onEditColor: (ThemeOption.Color) -> Unit,
     onPickImage: (String) -> Unit,
 ) {
@@ -586,6 +780,15 @@ private fun InstalledThemeCard(
                     } else {
                         Text(
                             text = changesText(theme.appliedFields),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    if (theme.communityId != null) {
+                        Text(
+                            text = stringResource(R.string.themes_shared_note),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary,
                             maxLines = 1,
@@ -651,6 +854,17 @@ private fun InstalledThemeCard(
                     modifier = Modifier.focusOutline(CircleShape),
                 ) {
                     Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.themes_move_down))
+                }
+                IconButton(
+                    onClick = onShare,
+                    modifier = Modifier.focusOutline(CircleShape),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Share,
+                        contentDescription = stringResource(
+                            if (theme.communityId != null) R.string.themes_share_update else R.string.themes_share,
+                        ),
+                    )
                 }
                 if (!theme.builtIn) {
                     IconButton(
@@ -1156,7 +1370,7 @@ private fun BrowseThemesTab(
 }
 
 @Composable
-private fun CenteredBox(content: @Composable () -> Unit) {
+internal fun CenteredBox(content: @Composable () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()

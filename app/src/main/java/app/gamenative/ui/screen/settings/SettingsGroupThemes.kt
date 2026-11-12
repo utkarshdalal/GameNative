@@ -18,8 +18,14 @@ import com.alorma.compose.settings.ui.SettingsMenuLink
 fun SettingsGroupThemes() {
     SettingsGroup {
         var showThemeManager by rememberSaveable { mutableStateOf(false) }
+        var shareAuthor by rememberSaveable { mutableStateOf("") }
         if (showThemeManager) {
-            ThemeManagerDialog(open = showThemeManager, onDismiss = { showThemeManager = false })
+            ThemeManagerDialog(
+                open = showThemeManager,
+                onDismiss = { showThemeManager = false },
+                shareAuthor = shareAuthor,
+                onShareAuthorChange = { shareAuthor = it },
+            )
         }
 
         val themes by ThemeManager.themes.collectAsState()
