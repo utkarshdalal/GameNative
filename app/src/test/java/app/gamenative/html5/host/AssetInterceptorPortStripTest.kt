@@ -7,7 +7,9 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -78,5 +80,17 @@ class AssetInterceptorPortStripTest {
             "/_shims/* must be served directly, not delegated to AssetLoader",
             captured.isCaptured,
         )
+    }
+
+    @Test fun only_the_loopback_game_origin_counts_as_a_game_document() {
+        val origin = WebViewOrigin.originUrl("STEAM_1150690")
+        assertTrue(Html5InterceptorBase.isGameDocumentUrl(Uri.parse("$origin/index.html")))
+        assertTrue(Html5InterceptorBase.isGameDocumentUrl(Uri.parse("about:blank")))
+        assertTrue(Html5InterceptorBase.isGameDocumentUrl(Uri.parse("blob:$origin/0b1c")))
+        assertFalse(Html5InterceptorBase.isGameDocumentUrl(Uri.parse("https://example.com/")))
+        assertFalse(Html5InterceptorBase.isGameDocumentUrl(Uri.parse("http://example.com/index.html")))
+        assertFalse(Html5InterceptorBase.isGameDocumentUrl(Uri.parse("http://steam-1150690.localhost:1/index.html")))
+        assertFalse(Html5InterceptorBase.isGameDocumentUrl(Uri.parse("intent://x#Intent;end")))
+        assertFalse(Html5InterceptorBase.isGameDocumentUrl(Uri.parse("file:///sdcard/x.html")))
     }
 }
