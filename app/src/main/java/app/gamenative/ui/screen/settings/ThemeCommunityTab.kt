@@ -37,12 +37,16 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
@@ -60,6 +64,7 @@ import app.gamenative.theme.InstalledTheme
 import app.gamenative.theme.ThemeSpec
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 
 internal class CommunityState {
     var query by mutableStateOf("")
@@ -74,6 +79,9 @@ internal class CommunityState {
     val installing = mutableStateListOf<String>()
     val deleting = mutableStateListOf<String>()
     var job: Job? = null
+
+    /** Row whose Delete or Report button should take focus back after a dialog; a row that is gone gives it to a neighbour. */
+    var focusRow by mutableStateOf<String?>(null)
 }
 
 internal fun communityErrorText(ctx: Context, e: Throwable): String {
@@ -109,6 +117,28 @@ internal fun CommunityThemesTab(
     onDelete: (CommunityTheme) -> Unit,
 ) {
     val focusManager = LocalFocusManager.current
+    val secondaryFocus = remember { HashMap<String, FocusRequester>() }
+    val actionFocus = remember { HashMap<String, FocusRequester>() }
+    val searchFocus = remember { FocusRequester() }
+    var lastIndex by remember { mutableStateOf(0) }
+
+    // After a delete or report dialog the window gives focus back late, so ask a few times.
+    LaunchedEffect(state.focusRow, state.items.size, state.deleting.size) {
+        val id = state.focusRow ?: return@LaunchedEffect
+        val index = state.items.indexOfFirst { it.id == id }
+        if (index >= 0) lastIndex = index
+        val target = when {
+            index >= 0 -> secondaryFocus[id]
+            state.items.isNotEmpty() -> actionFocus[state.items[lastIndex.coerceAtMost(state.items.size - 1)].id]
+            else -> searchFocus
+        }
+        repeat(COMMUNITY_FOCUS_ATTEMPTS) {
+            delay(COMMUNITY_FOCUS_SETTLE_MS)
+            runCatching { target?.requestFocus() }
+        }
+        if (state.focusRow == id && (index < 0 || id !in state.deleting)) state.focusRow = null
+    }
+
     // the results sit under the on-screen keyboard, so searching closes it
     val search = {
         focusManager.clearFocus()
@@ -134,7 +164,9 @@ internal fun CommunityThemesTab(
             )
             Button(
                 onClick = search,
-                modifier = Modifier.focusOutline(CircleShape),
+                modifier = Modifier
+                    .focusRequester(searchFocus)
+                    .focusOutline(CircleShape),
             ) { Text(stringResource(R.string.search)) }
         }
 
@@ -206,6 +238,8 @@ internal fun CommunityThemesTab(
                         onInstall = { onInstall(theme) },
                         onReport = { onReport(theme) },
                         onDelete = { onDelete(theme) },
+                        actionFocus = actionFocus.getOrPut(theme.id) { FocusRequester() },
+                        secondaryFocus = secondaryFocus.getOrPut(theme.id) { FocusRequester() },
                     )
                 }
                 item {
@@ -216,12 +250,8 @@ internal fun CommunityThemesTab(
                         contentAlignment = Alignment.Center,
                     ) {
                         when {
-                            state.loading -> CircularProgressIndicator(modifier = Modifier.size(28.dp))
-                            state.error != null -> CommunityErrorBlock(message = state.error.orEmpty(), onRetry = onRetry)
-                            state.hasMore -> OutlinedButton(
-                                onClick = onLoadMore,
-                                modifier = Modifier.focusOutline(CircleShape),
-                            ) { Text(stringResource(R.string.themes_load_more)) }
+                            state.error != null && !state.loading -> CommunityErrorBlock(message = state.error.orEmpty(), onRetry = onRetry)
+                            state.loading || state.hasMore -> LoadMoreButton(loading = state.loading, onClick = onLoadMore)
                         }
                     }
                 }
@@ -255,6 +285,8 @@ private fun CommunityThemeRow(
     onInstall: () -> Unit,
     onReport: () -> Unit,
     onDelete: () -> Unit,
+    actionFocus: FocusRequester,
+    secondaryFocus: FocusRequester,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -324,61 +356,38 @@ private fun CommunityThemeRow(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                when {
-                    deleting -> {}
-                    installing -> CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp)
-                    installedTheme?.updateAvailable != null -> Button(
+                if (!deleting) {
+                    val hasUpdate = installedTheme?.updateAvailable != null
+                    RowActionButton(
+                        label = stringResource(if (hasUpdate) R.string.themes_update else R.string.install),
                         onClick = onInstall,
-                        modifier = Modifier.focusOutline(CircleShape),
-                    ) { Text(stringResource(R.string.themes_update)) }
-
-                    installedTheme != null -> Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Done,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = stringResource(R.string.installed),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-
-                    else -> Button(
-                        onClick = onInstall,
-                        modifier = Modifier.focusOutline(CircleShape),
-                    ) { Text(stringResource(R.string.install)) }
+                        modifier = Modifier.focusRequester(actionFocus),
+                        busy = installing,
+                        doneLabel = if (installedTheme != null && !hasUpdate) stringResource(R.string.installed) else null,
+                    )
                 }
-                if (theme.mine && deleting) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                        Text(
-                            text = stringResource(R.string.deleting),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                } else if (theme.mine) {
-                    TextButton(
-                        onClick = onDelete,
-                        modifier = Modifier.focusOutline(CircleShape),
-                    ) {
-                        Text(
+                // One button in every state, so focus stays on it while the listing is deleted.
+                TextButton(
+                    onClick = { if (!deleting) (if (theme.mine) onDelete else onReport)() },
+                    modifier = Modifier
+                        .focusRequester(secondaryFocus)
+                        .focusOutline(CircleShape),
+                ) {
+                    when {
+                        theme.mine && deleting -> {
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = stringResource(R.string.deleting),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        theme.mine -> Text(
                             text = stringResource(R.string.delete),
                             color = MaterialTheme.colorScheme.error,
                         )
+                        else -> Text(stringResource(R.string.themes_community_report))
                     }
-                } else {
-                    TextButton(
-                        onClick = onReport,
-                        modifier = Modifier.focusOutline(CircleShape),
-                    ) { Text(stringResource(R.string.themes_community_report)) }
                 }
             }
         }
@@ -443,3 +452,6 @@ private fun ThemePreviewSwatch(spec: ThemeSpec?) {
         }
     }
 }
+
+private const val COMMUNITY_FOCUS_SETTLE_MS = 150L
+private const val COMMUNITY_FOCUS_ATTEMPTS = 4

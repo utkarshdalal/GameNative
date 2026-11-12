@@ -321,6 +321,7 @@ fun ThemeManagerDialog(
             val result = withContext(Dispatchers.IO) { ThemeManager.deleteCommunityTheme(theme.id) }
             community.deleting.remove(theme.id)
             result.onSuccess { community.items.removeAll { it.id == theme.id } }
+            community.focusRow = theme.id
             snackbarHostState.showSnackbar(
                 result.fold({ ctx.getString(R.string.themes_community_deleted) }, { communityErrorText(ctx, it) }),
             )
@@ -552,9 +553,13 @@ fun ThemeManagerDialog(
         reportTarget?.let { target ->
             ReportThemeDialog(
                 theme = target,
-                onDismiss = { reportTarget = null },
+                onDismiss = {
+                    reportTarget = null
+                    community.focusRow = target.id
+                },
                 onSent = {
                     reportTarget = null
+                    community.focusRow = target.id
                     val message = ctx.getString(R.string.themes_community_report_sent)
                     scope.launch { snackbarHostState.showSnackbar(message) }
                 },
@@ -564,9 +569,13 @@ fun ThemeManagerDialog(
         communityDeleteTarget?.let { target ->
             DeleteCommunityThemeDialog(
                 theme = target,
-                onDismiss = { communityDeleteTarget = null },
+                onDismiss = {
+                    communityDeleteTarget = null
+                    community.focusRow = target.id
+                },
                 onConfirm = {
                     communityDeleteTarget = null
+                    community.focusRow = target.id
                     deleteFromCommunity(target)
                 },
             )
@@ -622,6 +631,62 @@ internal fun Modifier.focusOutline(shape: Shape = RoundedCornerShape(12.dp)): Mo
     return this
         .onFocusChanged { focused = it.hasFocus }
         .then(if (focused) Modifier.border(2.dp, color, shape) else Modifier)
+}
+
+/**
+ * The action button of a store or community row. It stays one button while it works and once it is done,
+ * so D-pad focus stays on the row instead of falling back to the top bar.
+ */
+@Composable
+internal fun RowActionButton(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    busy: Boolean = false,
+    doneLabel: String? = null,
+) {
+    val idle = !busy && doneLabel == null
+    Button(
+        onClick = { if (idle) onClick() },
+        modifier = modifier.focusOutline(CircleShape),
+        colors = if (idle) {
+            ButtonDefaults.buttonColors()
+        } else {
+            ButtonDefaults.buttonColors(
+                containerColor = Color.Transparent,
+                contentColor = MaterialTheme.colorScheme.primary,
+            )
+        },
+    ) {
+        when {
+            busy -> CircularProgressIndicator(
+                modifier = Modifier.size(18.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            doneLabel != null -> {
+                Icon(imageVector = Icons.Default.Done, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(doneLabel)
+            }
+            else -> Text(label)
+        }
+    }
+}
+
+/** Load more, kept as the same button while the next page loads so it keeps focus. */
+@Composable
+internal fun LoadMoreButton(loading: Boolean, onClick: () -> Unit) {
+    OutlinedButton(
+        onClick = { if (!loading) onClick() },
+        modifier = Modifier.focusOutline(CircleShape),
+    ) {
+        if (loading) {
+            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+        } else {
+            Text(stringResource(R.string.themes_load_more))
+        }
+    }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -1378,12 +1443,8 @@ private fun BrowseThemesTab(
                         contentAlignment = Alignment.Center,
                     ) {
                         when {
-                            store.loading -> CircularProgressIndicator(modifier = Modifier.size(28.dp))
-                            store.error != null -> StoreErrorBlock(message = store.error.orEmpty(), onRetry = onRetry)
-                            !store.endReached -> OutlinedButton(
-                                onClick = onLoadMore,
-                                modifier = Modifier.focusOutline(CircleShape),
-                            ) { Text(stringResource(R.string.themes_load_more)) }
+                            store.error != null && !store.loading -> StoreErrorBlock(message = store.error.orEmpty(), onRetry = onRetry)
+                            store.loading || !store.endReached -> LoadMoreButton(loading = store.loading, onClick = onLoadMore)
                         }
                     }
                 }
@@ -1504,33 +1565,13 @@ private fun StoreThemeRow(
                 )
             }
 
-            when {
-                installing || updating -> CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp)
-                installedTheme?.updateAvailable != null -> Button(
-                    onClick = onUpdate,
-                    modifier = Modifier.focusOutline(CircleShape),
-                ) { Text(stringResource(R.string.themes_update)) }
-
-                installedTheme != null -> Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Done,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = stringResource(R.string.installed),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
-
-                else -> Button(
-                    onClick = onInstall,
-                    modifier = Modifier.focusOutline(CircleShape),
-                ) { Text(stringResource(R.string.install)) }
-            }
+            val hasUpdate = installedTheme?.updateAvailable != null
+            RowActionButton(
+                label = stringResource(if (hasUpdate) R.string.themes_update else R.string.install),
+                onClick = if (hasUpdate) onUpdate else onInstall,
+                busy = installing || updating,
+                doneLabel = if (installedTheme != null && !hasUpdate) stringResource(R.string.installed) else null,
+            )
         }
     }
 }
