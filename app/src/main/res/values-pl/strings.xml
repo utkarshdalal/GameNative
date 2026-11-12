@@ -1296,6 +1296,12 @@
     <string name="themes_store_error">Nie udało się wczytać sklepu z motywami: %1$s</string>
     <string name="themes_store_empty">Nie znaleziono motywów</string>
     <string name="themes_retry">Ponów</string>
+    <string name="themes_custom_subtitle">Wybierz własne kolory i układ</string>
+    <string name="themes_field_effects">efekty</string>
+    <string name="themes_field_layout">układ</string>
+    <string name="themes_update_to">Zaktualizuj do %1$s</string>
+    <string name="themes_update">Aktualizuj</string>
+    <string name="themes_filter_all">Wszystkie</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interfejs</string>

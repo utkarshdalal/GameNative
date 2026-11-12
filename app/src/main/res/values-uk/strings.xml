@@ -1282,6 +1282,12 @@
     <string name="themes_store_error">Не вдалося завантажити магазин тем: %1$s</string>
     <string name="themes_store_empty">Теми не знайдено</string>
     <string name="themes_retry">Повторити</string>
+    <string name="themes_custom_subtitle">Виберіть власні кольори та макет</string>
+    <string name="themes_field_effects">ефекти</string>
+    <string name="themes_field_layout">макет</string>
+    <string name="themes_update_to">Оновити до %1$s</string>
+    <string name="themes_update">Оновити</string>
+    <string name="themes_filter_all">Усі</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Інтерфейс</string>

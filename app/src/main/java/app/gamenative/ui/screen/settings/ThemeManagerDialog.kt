@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
@@ -42,6 +43,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -49,6 +51,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -118,7 +121,31 @@ private const val STARTER_THEME_FILE_NAME = "gamenative-starter-theme.zip"
 private val COLOUR_FIELDS = setOf(
     "background", "surface", "surfaceVariant", "primary", "onPrimary",
     "text", "textMuted", "outline", "focus", "bar",
+    "card", "button", "onButton", "toggle", "menu", "onMenu",
 )
+
+private val EFFECT_FIELDS = setOf("accentGradient", "focusGlow")
+
+private data class OptionGroup(val head: ThemeOption, val attached: List<ThemeOption>)
+
+private fun groupOptions(options: List<ThemeOption>): List<OptionGroup> {
+    val groups = mutableListOf<OptionGroup>()
+    for (option in options) {
+        val last = groups.lastOrNull()
+        val head = last?.head
+        if (last != null &&
+            head is ThemeOption.Choice &&
+            head.kind != ThemeOption.Choice.Kind.SLIDER &&
+            option !is ThemeOption.Choice &&
+            option.key.startsWith(head.key + "/")
+        ) {
+            groups[groups.lastIndex] = last.copy(attached = last.attached + option)
+        } else {
+            groups += OptionGroup(option, emptyList())
+        }
+    }
+    return groups
+}
 
 private class StoreState {
     var query by mutableStateOf("")
@@ -129,6 +156,7 @@ private class StoreState {
     var endReached by mutableStateOf(false)
     var loaded by mutableStateOf(false)
     val installing = mutableStateListOf<String>()
+    var targetFilter by mutableStateOf<String?>(null)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -148,6 +176,7 @@ fun ThemeManagerDialog(open: Boolean, onDismiss: () -> Unit) {
     var colorTarget by remember { mutableStateOf<Pair<String, ThemeOption.Color>?>(null) }
     var pendingImage by remember { mutableStateOf<Pair<String, String>?>(null) }
     val store = remember { StoreState() }
+    val updating = remember { mutableStateListOf<String>() }
 
     fun failureText(e: Throwable): String =
         ctx.getString(R.string.themes_failed_message, e.message ?: e.javaClass.simpleName)
@@ -198,6 +227,20 @@ fun ThemeManagerDialog(open: Boolean, onDismiss: () -> Unit) {
             store.installing.remove(theme.id)
             snackbarHostState.showSnackbar(installedText(result))
         }
+    }
+
+    fun updateTheme(id: String) {
+        if (id in updating) return
+        scope.launch {
+            updating.add(id)
+            val result = withContext(Dispatchers.IO) { ThemeManager.updateFromStore(id) }
+            updating.remove(id)
+            result.onFailure { snackbarHostState.showSnackbar(failureText(it)) }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) { ThemeManager.checkForUpdates() }
     }
 
     val zipLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
@@ -291,6 +334,8 @@ fun ThemeManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         themes = themes,
                         busy = busy,
                         expanded = expanded,
+                        updating = updating,
+                        onUpdate = { updateTheme(it) },
                         onImportZip = {
                             SteamService.isImporting = true
                             zipLauncher.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/x-zip", "application/octet-stream"))
@@ -318,11 +363,13 @@ fun ThemeManagerDialog(open: Boolean, onDismiss: () -> Unit) {
 
                     ThemeTab.BROWSE -> BrowseThemesTab(
                         store = store,
-                        installedNames = themes.map { it.name.lowercase(Locale.ROOT) }.toSet(),
+                        installedByName = themes.associateBy { it.name.lowercase(Locale.ROOT) },
+                        updating = updating,
                         onSearch = { loadStore(reset = true) },
                         onLoadMore = { loadStore(reset = false) },
                         onRetry = { loadStore(reset = store.items.isEmpty()) },
                         onInstall = { installFromStore(it) },
+                        onUpdate = { updateTheme(it) },
                     )
                 }
             }
@@ -375,6 +422,8 @@ private fun InstalledThemesTab(
     themes: List<InstalledTheme>,
     busy: Boolean,
     expanded: List<String>,
+    updating: List<String>,
+    onUpdate: (String) -> Unit,
     onImportZip: () -> Unit,
     onImportFolder: () -> Unit,
     onCreateStarter: () -> Unit,
@@ -439,6 +488,8 @@ private fun InstalledThemesTab(
                 isFirst = index == 0,
                 isLast = index == themes.lastIndex,
                 isExpanded = theme.id in expanded,
+                isUpdating = theme.id in updating,
+                onUpdate = { onUpdate(theme.id) },
                 onToggleExpanded = { onToggleExpanded(theme.id) },
                 onAction = onAction,
                 onDelete = { onDelete(theme) },
@@ -458,6 +509,8 @@ private fun changesText(fields: List<String>): String {
         if ("backgroundImage" in fields || "backgroundGradient" in fields) add(R.string.themes_field_background)
         if ("panelOpacity" in fields) add(R.string.themes_field_transparency)
         if ("blur" in fields) add(R.string.themes_field_blur)
+        if (fields.any { it in EFFECT_FIELDS }) add(R.string.themes_field_effects)
+        if ("layout" in fields) add(R.string.themes_field_layout)
     }.map { stringResource(it) }
     return stringResource(R.string.themes_changes, (words.ifEmpty { fields }).joinToString(", "))
 }
@@ -468,6 +521,8 @@ private fun InstalledThemeCard(
     isFirst: Boolean,
     isLast: Boolean,
     isExpanded: Boolean,
+    isUpdating: Boolean,
+    onUpdate: () -> Unit,
     onToggleExpanded: () -> Unit,
     onAction: (suspend () -> Unit) -> Unit,
     onDelete: () -> Unit,
@@ -481,6 +536,7 @@ private fun InstalledThemeCard(
             is ThemeOption.Image -> it.visible
         }
     }
+    val optionGroups = remember(visibleOptions) { groupOptions(visibleOptions) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -497,10 +553,14 @@ private fun InstalledThemeCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    val meta = listOfNotNull(
-                        theme.author?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.themes_by_author, it) },
-                        theme.version?.takeIf { it.isNotBlank() },
-                    ).joinToString(" · ")
+                    val meta = if (theme.builtIn) {
+                        stringResource(R.string.themes_custom_subtitle)
+                    } else {
+                        listOfNotNull(
+                            theme.author?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.themes_by_author, it) },
+                            theme.version?.takeIf { it.isNotBlank() },
+                        ).joinToString(" · ")
+                    }
                     if (meta.isNotEmpty()) {
                         Text(
                             text = meta,
@@ -511,11 +571,13 @@ private fun InstalledThemeCard(
                         )
                     }
                     if (theme.appliedFields.isEmpty()) {
-                        Text(
-                            text = stringResource(R.string.themes_layout_only),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
-                        )
+                        if (!theme.builtIn) {
+                            Text(
+                                text = stringResource(R.string.themes_layout_only),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
                     } else {
                         Text(
                             text = changesText(theme.appliedFields),
@@ -534,6 +596,29 @@ private fun InstalledThemeCard(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
                         )
+                    }
+                }
+                val newVersion = theme.updateAvailable
+                if (newVersion != null && !theme.builtIn) {
+                    if (isUpdating) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .padding(horizontal = 12.dp)
+                                .size(20.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        TextButton(
+                            onClick = onUpdate,
+                            modifier = Modifier.focusOutline(CircleShape),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.themes_update_to, newVersion),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.widthIn(max = 160.dp),
+                            )
+                        }
                     }
                 }
                 if (visibleOptions.isNotEmpty()) {
@@ -562,15 +647,17 @@ private fun InstalledThemeCard(
                 ) {
                     Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.themes_move_down))
                 }
-                IconButton(
-                    onClick = onDelete,
-                    modifier = Modifier.focusOutline(CircleShape),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = stringResource(R.string.delete),
-                        tint = MaterialTheme.colorScheme.error,
-                    )
+                if (!theme.builtIn) {
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier.focusOutline(CircleShape),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = stringResource(R.string.delete),
+                            tint = MaterialTheme.colorScheme.error,
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.width(4.dp))
                 Switch(
@@ -583,12 +670,13 @@ private fun InstalledThemeCard(
             if (isExpanded && visibleOptions.isNotEmpty()) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    visibleOptions.forEach { option ->
+                    optionGroups.forEach { group ->
                         ThemeOptionRow(
                             themeId = theme.id,
-                            option = option,
+                            option = group.head,
+                            attached = group.attached,
                             onAction = onAction,
                             onEditColor = onEditColor,
                             onPickImage = onPickImage,
@@ -608,17 +696,35 @@ private fun InstalledThemeCard(
 private fun ThemeOptionRow(
     themeId: String,
     option: ThemeOption,
+    attached: List<ThemeOption> = emptyList(),
     onAction: (suspend () -> Unit) -> Unit,
     onEditColor: (ThemeOption.Color) -> Unit,
     onPickImage: (String) -> Unit,
 ) {
+    val attachedDetail = attached.filterIsInstance<ThemeOption.Image>().firstOrNull()?.let { image ->
+        image.path?.let { File(it).name } ?: stringResource(R.string.themes_no_image)
+    }
+    val attachedControls: @Composable () -> Unit = {
+        attached.forEach { extra ->
+            when (extra) {
+                is ThemeOption.Color -> ColorOptionButton(option = extra, compact = true, onEditColor = onEditColor)
+                is ThemeOption.Image -> ImageOptionButtons(themeId, extra, onAction, onPickImage)
+                is ThemeOption.Choice -> Unit
+            }
+        }
+    }
     when (option) {
         is ThemeOption.Choice -> when (option.kind) {
-            ThemeOption.Choice.Kind.DROPDOWN -> ChoiceDropdown(option) { value ->
+            ThemeOption.Choice.Kind.DROPDOWN -> ChoiceDropdown(
+                option = option,
+                detail = attachedDetail,
+                extra = attachedControls,
+            ) { value ->
                 onAction { ThemeManager.setChoice(themeId, option.key, value) }
             }
 
-            ThemeOption.Choice.Kind.CHECKBOX -> OptionLabelRow(label = option.label) {
+            ThemeOption.Choice.Kind.CHECKBOX -> OptionLabelRow(label = option.label, detail = attachedDetail) {
+                attachedControls()
                 Switch(
                     checked = option.selected.equals("Yes", ignoreCase = true),
                     onCheckedChange = { checked ->
@@ -647,45 +753,69 @@ private fun ThemeOptionRow(
         }
 
         is ThemeOption.Color -> OptionLabelRow(label = option.label) {
-            Box(
-                modifier = Modifier
-                    .focusOutline(RoundedCornerShape(10.dp))
-                    .padding(2.dp),
-            ) {
-                OutlinedButton(onClick = { onEditColor(option) }) {
-                    Box(
-                        modifier = Modifier
-                            .size(20.dp)
-                            .clip(CircleShape)
-                            .background(Color(option.argb))
-                            .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape),
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = colorToHex(option.argb), maxLines = 1)
-                }
-            }
+            ColorOptionButton(option = option, compact = false, onEditColor = onEditColor)
         }
 
         is ThemeOption.Image -> OptionLabelRow(
             label = option.label,
             detail = option.path?.let { File(it).name } ?: stringResource(R.string.themes_no_image),
         ) {
-            OutlinedButton(
-                onClick = { onPickImage(option.key) },
-                modifier = Modifier.focusOutline(CircleShape),
-            ) {
-                Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(text = stringResource(R.string.themes_choose_image), maxLines = 1)
+            ImageOptionButtons(themeId, option, onAction, onPickImage)
+        }
+    }
+}
+
+@Composable
+private fun ColorOptionButton(
+    option: ThemeOption.Color,
+    compact: Boolean,
+    onEditColor: (ThemeOption.Color) -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .focusOutline(RoundedCornerShape(10.dp))
+            .padding(2.dp),
+    ) {
+        OutlinedButton(
+            onClick = { onEditColor(option) },
+            contentPadding = if (compact) PaddingValues(horizontal = 12.dp) else ButtonDefaults.ContentPadding,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .clip(CircleShape)
+                    .background(Color(option.argb))
+                    .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape),
+            )
+            if (!compact) {
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = colorToHex(option.argb), maxLines = 1)
             }
-            if (option.path != null) {
-                IconButton(
-                    onClick = { onAction { ThemeManager.setImage(themeId, option.key, null) } },
-                    modifier = Modifier.focusOutline(CircleShape),
-                ) {
-                    Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.themes_clear_image))
-                }
-            }
+        }
+    }
+}
+
+@Composable
+private fun ImageOptionButtons(
+    themeId: String,
+    option: ThemeOption.Image,
+    onAction: (suspend () -> Unit) -> Unit,
+    onPickImage: (String) -> Unit,
+) {
+    OutlinedButton(
+        onClick = { onPickImage(option.key) },
+        modifier = Modifier.focusOutline(CircleShape),
+    ) {
+        Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(18.dp))
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(text = stringResource(R.string.themes_choose_image), maxLines = 1)
+    }
+    if (option.path != null) {
+        IconButton(
+            onClick = { onAction { ThemeManager.setImage(themeId, option.key, null) } },
+            modifier = Modifier.focusOutline(CircleShape),
+        ) {
+            Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.themes_clear_image))
         }
     }
 }
@@ -722,9 +852,15 @@ private fun OptionLabelRow(
 }
 
 @Composable
-private fun ChoiceDropdown(option: ThemeOption.Choice, onSelect: (String) -> Unit) {
+private fun ChoiceDropdown(
+    option: ThemeOption.Choice,
+    detail: String? = null,
+    extra: @Composable () -> Unit = {},
+    onSelect: (String) -> Unit,
+) {
     var menuOpen by remember { mutableStateOf(false) }
-    OptionLabelRow(label = option.label) {
+    OptionLabelRow(label = option.label, detail = detail) {
+        extra()
         Box {
             OutlinedButton(
                 onClick = { menuOpen = true },
@@ -888,15 +1024,22 @@ private fun ColorSliderRow(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun BrowseThemesTab(
     store: StoreState,
-    installedNames: Set<String>,
+    installedByName: Map<String, InstalledTheme>,
+    updating: List<String>,
     onSearch: () -> Unit,
     onLoadMore: () -> Unit,
     onRetry: () -> Unit,
     onInstall: (StoreTheme) -> Unit,
+    onUpdate: (String) -> Unit,
 ) {
+    val targets = store.items.mapNotNull { item -> item.target?.takeIf { it.isNotBlank() } }.distinct()
+    val activeFilter = store.targetFilter?.takeIf { it in targets }
+    val visibleItems = if (activeFilter == null) store.items.toList() else store.items.filter { it.target == activeFilter }
+
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
@@ -922,6 +1065,33 @@ private fun BrowseThemesTab(
             ) { Text(stringResource(R.string.search)) }
         }
 
+        if (targets.isNotEmpty()) {
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 4.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                item(key = "") {
+                    FilterChip(
+                        selected = activeFilter == null,
+                        onClick = { store.targetFilter = null },
+                        label = { Text(stringResource(R.string.themes_filter_all), maxLines = 1) },
+                        modifier = Modifier.focusOutline(RoundedCornerShape(8.dp)),
+                    )
+                }
+                items(targets, key = { "target:$it" }) { target ->
+                    FilterChip(
+                        selected = activeFilter == target,
+                        onClick = { store.targetFilter = target },
+                        label = { Text(target, maxLines = 1) },
+                        modifier = Modifier.focusOutline(RoundedCornerShape(8.dp)),
+                    )
+                }
+            }
+        }
+
         when {
             store.items.isEmpty() && store.loading -> CenteredBox {
                 CircularProgressIndicator()
@@ -944,12 +1114,15 @@ private fun BrowseThemesTab(
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                items(store.items, key = { it.id }) { theme ->
+                items(visibleItems, key = { it.id }) { theme ->
+                    val installedTheme = installedByName[theme.name.lowercase(Locale.ROOT)]
                     StoreThemeRow(
                         theme = theme,
-                        installed = theme.name.lowercase(Locale.ROOT) in installedNames,
+                        installedTheme = installedTheme,
                         installing = theme.id in store.installing,
+                        updating = installedTheme != null && installedTheme.id in updating,
                         onInstall = { onInstall(theme) },
+                        onUpdate = { installedTheme?.let { onUpdate(it.id) } },
                     )
                 }
                 item {
@@ -1003,9 +1176,11 @@ private fun StoreErrorBlock(message: String, onRetry: () -> Unit) {
 @Composable
 private fun StoreThemeRow(
     theme: StoreTheme,
-    installed: Boolean,
+    installedTheme: InstalledTheme?,
     installing: Boolean,
+    updating: Boolean,
     onInstall: () -> Unit,
+    onUpdate: () -> Unit,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1085,8 +1260,13 @@ private fun StoreThemeRow(
             }
 
             when {
-                installing -> CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp)
-                installed -> Row(verticalAlignment = Alignment.CenterVertically) {
+                installing || updating -> CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp)
+                installedTheme?.updateAvailable != null -> Button(
+                    onClick = onUpdate,
+                    modifier = Modifier.focusOutline(CircleShape),
+                ) { Text(stringResource(R.string.themes_update)) }
+
+                installedTheme != null -> Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Default.Done,
                         contentDescription = null,

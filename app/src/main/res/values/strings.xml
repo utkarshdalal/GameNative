@@ -1465,6 +1465,12 @@
     <string name="themes_store_error">Could not load the theme store: %1$s</string>
     <string name="themes_store_empty">No themes found</string>
     <string name="themes_retry">Retry</string>
+    <string name="themes_custom_subtitle">Pick your own colours and layout</string>
+    <string name="themes_field_effects">effects</string>
+    <string name="themes_field_layout">layout</string>
+    <string name="themes_update_to">Update to %1$s</string>
+    <string name="themes_update">Update</string>
+    <string name="themes_filter_all">All</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interface</string>

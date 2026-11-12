@@ -1287,6 +1287,12 @@
     <string name="themes_store_error">Magazinul de teme nu a putut fi încărcat: %1$s</string>
     <string name="themes_store_empty">Nu s-au găsit teme</string>
     <string name="themes_retry">Reîncearcă</string>
+    <string name="themes_custom_subtitle">Alege-ți propriile culori și aspectul</string>
+    <string name="themes_field_effects">efecte</string>
+    <string name="themes_field_layout">aspect</string>
+    <string name="themes_update_to">Actualizează la %1$s</string>
+    <string name="themes_update">Actualizează</string>
+    <string name="themes_filter_all">Toate</string>
 
 	<!-- Settings: Interface Group -->
 	<string name="settings_interface_title">Interfață</string>

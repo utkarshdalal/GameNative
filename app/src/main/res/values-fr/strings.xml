@@ -1303,6 +1303,12 @@
     <string name="themes_store_error">Impossible de charger la boutique de thèmes : %1$s</string>
     <string name="themes_store_empty">Aucun thème trouvé</string>
     <string name="themes_retry">Réessayer</string>
+    <string name="themes_custom_subtitle">Choisissez vos propres couleurs et votre mise en page</string>
+    <string name="themes_field_effects">effets</string>
+    <string name="themes_field_layout">mise en page</string>
+    <string name="themes_update_to">Mettre à jour vers %1$s</string>
+    <string name="themes_update">Mettre à jour</string>
+    <string name="themes_filter_all">Tous</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interface</string>

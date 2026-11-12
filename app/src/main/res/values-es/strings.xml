@@ -1293,6 +1293,12 @@
     <string name="themes_store_error">No se pudo cargar la tienda de temas: %1$s</string>
     <string name="themes_store_empty">No se encontraron temas</string>
     <string name="themes_retry">Reintentar</string>
+    <string name="themes_custom_subtitle">Elige tus propios colores y diseño</string>
+    <string name="themes_field_effects">efectos</string>
+    <string name="themes_field_layout">diseño</string>
+    <string name="themes_update_to">Actualizar a %1$s</string>
+    <string name="themes_update">Actualizar</string>
+    <string name="themes_filter_all">Todos</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interfaz</string>

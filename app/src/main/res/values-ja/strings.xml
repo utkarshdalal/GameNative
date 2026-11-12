@@ -1454,6 +1454,12 @@
     <string name="themes_store_error">テーマストアを読み込めませんでした: %1$s</string>
     <string name="themes_store_empty">テーマが見つかりません</string>
     <string name="themes_retry">再試行</string>
+    <string name="themes_custom_subtitle">色とレイアウトを自分で選べます</string>
+    <string name="themes_field_effects">エフェクト</string>
+    <string name="themes_field_layout">レイアウト</string>
+    <string name="themes_update_to">%1$s に更新</string>
+    <string name="themes_update">更新</string>
+    <string name="themes_filter_all">すべて</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">インターフェース</string>

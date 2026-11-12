@@ -1277,6 +1277,12 @@
     <string name="themes_store_error">Impossibile caricare lo store dei temi: %1$s</string>
     <string name="themes_store_empty">Nessun tema trovato</string>
     <string name="themes_retry">Riprova</string>
+    <string name="themes_custom_subtitle">Scegli i tuoi colori e il tuo layout</string>
+    <string name="themes_field_effects">effetti</string>
+    <string name="themes_field_layout">layout</string>
+    <string name="themes_update_to">Aggiorna a %1$s</string>
+    <string name="themes_update">Aggiorna</string>
+    <string name="themes_filter_all">Tutti</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interfaccia</string>

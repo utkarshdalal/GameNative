@@ -1270,6 +1270,12 @@
     <string name="themes_store_error">无法加载主题商店：%1$s</string>
     <string name="themes_store_empty">未找到主题</string>
     <string name="themes_retry">重试</string>
+    <string name="themes_custom_subtitle">自选颜色和布局</string>
+    <string name="themes_field_effects">效果</string>
+    <string name="themes_field_layout">布局</string>
+    <string name="themes_update_to">更新到 %1$s</string>
+    <string name="themes_update">更新</string>
+    <string name="themes_filter_all">全部</string>
 
     <!-- 设置：界面组 -->
     <string name="settings_interface_title">界面</string>

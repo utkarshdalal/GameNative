@@ -1242,6 +1242,12 @@
     <string name="themes_store_error">Design-Store konnte nicht geladen werden: %1$s</string>
     <string name="themes_store_empty">Keine Designs gefunden</string>
     <string name="themes_retry">Erneut versuchen</string>
+    <string name="themes_custom_subtitle">Wähle eigene Farben und ein eigenes Layout</string>
+    <string name="themes_field_effects">Effekte</string>
+    <string name="themes_field_layout">Layout</string>
+    <string name="themes_update_to">Auf %1$s aktualisieren</string>
+    <string name="themes_update">Aktualisieren</string>
+    <string name="themes_filter_all">Alle</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Oberfläche</string>

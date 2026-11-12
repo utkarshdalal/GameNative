@@ -1281,6 +1281,12 @@
     <string name="themes_store_error">테마 스토어를 불러오지 못했습니다: %1$s</string>
     <string name="themes_store_empty">테마를 찾을 수 없습니다</string>
     <string name="themes_retry">다시 시도</string>
+    <string name="themes_custom_subtitle">색상과 레이아웃을 직접 고르세요</string>
+    <string name="themes_field_effects">효과</string>
+    <string name="themes_field_layout">레이아웃</string>
+    <string name="themes_update_to">%1$s(으)로 업데이트</string>
+    <string name="themes_update">업데이트</string>
+    <string name="themes_filter_all">전체</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">인터페이스</string>

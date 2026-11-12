@@ -1272,6 +1272,12 @@
     <string name="themes_store_error">無法載入主題商店：%1$s</string>
     <string name="themes_store_empty">找不到主題</string>
     <string name="themes_retry">重試</string>
+    <string name="themes_custom_subtitle">自選顏色與版面配置</string>
+    <string name="themes_field_effects">效果</string>
+    <string name="themes_field_layout">版面配置</string>
+    <string name="themes_update_to">更新至 %1$s</string>
+    <string name="themes_update">更新</string>
+    <string name="themes_filter_all">全部</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">介面</string>

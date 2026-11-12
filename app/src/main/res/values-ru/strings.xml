@@ -1445,6 +1445,12 @@ https://gamenative.app
     <string name="themes_store_error">Не удалось загрузить магазин тем: %1$s</string>
     <string name="themes_store_empty">Темы не найдены</string>
     <string name="themes_retry">Повторить</string>
+    <string name="themes_custom_subtitle">Выберите свои цвета и макет</string>
+    <string name="themes_field_effects">эффекты</string>
+    <string name="themes_field_layout">макет</string>
+    <string name="themes_update_to">Обновить до %1$s</string>
+    <string name="themes_update">Обновить</string>
+    <string name="themes_filter_all">Все</string>
 
     <string name="settings_interface_title">Интерфейс</string>
     <string name="settings_interface_wifi_only_subtitle">Предотвратить загрузки по сотовым данным</string>

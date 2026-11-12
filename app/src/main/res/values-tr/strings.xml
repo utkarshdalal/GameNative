@@ -1348,6 +1348,12 @@
     <string name="themes_store_error">Tema mağazası yüklenemedi: %1$s</string>
     <string name="themes_store_empty">Tema bulunamadı</string>
     <string name="themes_retry">Yeniden dene</string>
+    <string name="themes_custom_subtitle">Kendi renklerini ve düzenini seç</string>
+    <string name="themes_field_effects">efektler</string>
+    <string name="themes_field_layout">düzen</string>
+    <string name="themes_update_to">%1$s sürümüne güncelle</string>
+    <string name="themes_update">Güncelle</string>
+    <string name="themes_filter_all">Tümü</string>
 
     <string name="settings_interface_title">Arayüz</string>
     <string name="settings_interface_external_links_title">Web bağlantılarını dışarıda aç</string>
