@@ -9,6 +9,7 @@ import java.io.StringWriter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import timber.log.Timber
 
 /**
  * A local running crash handler.
@@ -131,7 +132,8 @@ class CrashHandler(
 
             cleanupOldCrashFiles()
         } catch (e: Exception) {
-            // uncaughtException hands the crash to defaultHandler right after this; doing it here too dispatches it twice.
+            // no dispatch here: uncaughtException hands the crash to defaultHandler right after this.
+            Timber.e(e, "Failed to save crash report")
         }
     }
 }
