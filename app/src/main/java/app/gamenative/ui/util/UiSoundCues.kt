@@ -32,7 +32,6 @@ object UiSoundCues {
     private const val SOFT_YIELD_MS = 250L
     private const val NAVIGATE_QUIET_MS = 400L
     private const val REPEAT_MIN_MS = 45L
-    private const val INPUT_WINDOW_MS = 600L
 
     private val handler by lazy { Handler(Looper.getMainLooper()) }
 
@@ -45,6 +44,8 @@ object UiSoundCues {
     @Volatile private var lastRepeatAt = 0L
 
     @Volatile private var lastInputAt = 0L
+
+    @Volatile private var foregroundAt = 0L
 
     @Volatile private var pendingSoft: Runnable? = null
 
@@ -91,17 +92,27 @@ object UiSoundCues {
         repeatable(if (up) UiSound.SLIDER else UiSound.SLIDER_DOWN)
     }
 
-    /** Focus moves sound only right after controller or keyboard input, so focus set by a screen loading stays quiet. */
+    /**
+     * Focus moves sound only once the controller or keyboard was used since the app started, so the focus the library
+     * sets while it loads stays quiet. Key events in dialog windows do not reach the activity, so this checks for any
+     * input since start rather than input just before the move.
+     */
     fun navigate() {
         if (!active) return
         val now = now()
-        if (now - lastInputAt > INPUT_WINDOW_MS) return
+        if (lastInputAt < foregroundAt) return
         if (now - lastCueAt < NAVIGATE_QUIET_MS) return
         repeatable(UiSound.NAVIGATE)
     }
 
     fun quiet() {
         lastCueAt = now()
+    }
+
+    internal fun foreground() {
+        val now = now()
+        if (foregroundAt == 0L) foregroundAt = now
+        lastCueAt = now
     }
 
     internal fun input() {
@@ -199,7 +210,7 @@ fun UiSoundLifecycle(gameRunning: Boolean) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_START -> {
-                    UiSoundCues.quiet()
+                    UiSoundCues.foreground()
                     SoundPackManager.setUiForeground(true)
                 }
                 Lifecycle.Event.ON_STOP -> SoundPackManager.setUiForeground(false)
