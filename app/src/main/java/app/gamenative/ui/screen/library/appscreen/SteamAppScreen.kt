@@ -342,16 +342,12 @@ class SteamAppScreen : BaseAppScreen() {
             mutableStateOf(SteamService.isAppInstalled(gameId))
         }
 
-        // re-resolves when a runtime flip re-emits LibraryInstallStatusChanged
-        var runtime by remember(libraryItem.appId) {
-            mutableStateOf(ContainerUtils.resolveRuntime(context, libraryItem.appId))
-        }
+        val runtime = app.gamenative.html5.host.Html5Routing.rememberRuntime(context, libraryItem.appId, gameId)
 
         DisposableEffect(gameId) {
             val listener: (AndroidEvent.LibraryInstallStatusChanged) -> Unit = { event ->
                 if (event.appId == gameId) {
                     isInstalled = SteamService.isAppInstalled(gameId)
-                    runtime = ContainerUtils.resolveRuntime(context, libraryItem.appId)
                 }
             }
             PluviaApp.events.on<AndroidEvent.LibraryInstallStatusChanged, Unit>(listener)
@@ -794,14 +790,17 @@ class SteamAppScreen : BaseAppScreen() {
         val gameId = libraryItem.gameId
         val appId = libraryItem.appId
 
+        val scope = rememberCoroutineScope()
         return AppMenuOption(
             AppOptionMenuType.RunContainer,
-            onClick = {
+            onClick = { scope.launch {
                 // wine goes straight to the base handler; an html5 container always exists already.
-                val container = if (app.gamenative.html5.host.Html5Routing.isHtml5App(context, appId)) {
-                    ContainerUtils.getContainer(context, appId)
-                } else {
-                    null
+                val container = withContext(Dispatchers.IO) {
+                    if (app.gamenative.html5.host.Html5Routing.isHtml5App(context, appId)) {
+                        ContainerUtils.getContainer(context, appId)
+                    } else {
+                        null
+                    }
                 }
                 val needsImageFs = container != null && !SteamService.isImageFsInstalled(context)
                 // XServerScreen sets appVersion after the first wine boot; empty = prefix never extracted.
@@ -827,7 +826,7 @@ class SteamAppScreen : BaseAppScreen() {
                 } else {
                     onRunContainerClick(context, libraryItem, onClickPlay)
                 }
-            },
+            } },
         )
     }
 

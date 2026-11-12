@@ -448,7 +448,9 @@ object ContainerUtils {
         containerData: ContainerData,
     ): Boolean {
         // BEFORE any mutation, to capture the TRUE prior runtime: applyToContainer overwrites containerVariant.
-        val flipDirection: Html5SaveSyncService.FlipDirection? = computeHtml5FlipDirection(context, appId, containerData)
+        val flipDirection: Html5SaveSyncService.FlipDirection? =
+            withContext(Dispatchers.IO) { computeHtml5FlipDirection(context, appId, containerData) }
+        val fromRuntime = withContext(Dispatchers.IO) { resolveRuntime(context, appId) }
         val toHtml5 = containerData.containerVariant.equals(Container.CONTAINER_VARIANT_HTML5, ignoreCase = true)
         // the flip mirror and the opt-in need the html5 runtime (origin port, save sync). a switch to html5 on a
         // device that can't run it is refused; a switch away still goes through, just without the mirror.
@@ -465,9 +467,10 @@ object ContainerUtils {
             svc?.mirrorOnFlip(appId, flipDirection)
         }
         val applied = applyGatedVariant(context, appId, containerData)
-        // invalidates LibraryViewModel's runtime cache. emit AFTER the Container is written, or it re-caches
-        // the pre-flip runtime.
-        if (applied && flipDirection != null) {
+        // invalidates LibraryViewModel's and the game page's runtime caches. emit AFTER the Container is written,
+        // or they re-cache the pre-flip runtime. a first opt-in has no flipDirection but still changes the runtime.
+        val runtimeChanged = applied && withContext(Dispatchers.IO) { resolveRuntime(context, appId) } != fromRuntime
+        if (applied && (flipDirection != null || runtimeChanged)) {
             runtimeFlipEvent(appId)?.let { app.gamenative.PluviaApp.events.emit(it) }
         }
         return applied
@@ -978,9 +981,13 @@ object ContainerUtils {
             .getOrDefault(emptySet())
     }
 
-    fun resolveRuntime(context: Context, appId: String): String =
-        runCatching { getContainer(context, appId).runtime }
+    // same sidecar rule as webViewContainerIds: with no html5 container on disk the answer is wine, no config scan.
+    fun resolveRuntime(context: Context, appId: String): String {
+        val html5Root = File(DownloadService.baseExternalAppDirPath, "html5-containers")
+        if (html5Root.list().isNullOrEmpty()) return Container.RUNTIME_WINE
+        return runCatching { getContainer(context, appId).runtime }
             .getOrDefault(Container.RUNTIME_WINE)
+    }
 
     private fun createNewContainer(
         context: Context,
