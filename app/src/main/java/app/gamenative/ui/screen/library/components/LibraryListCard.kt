@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Face4
 import androidx.compose.material.icons.rounded.AutoAwesome
@@ -55,6 +54,7 @@ import app.gamenative.ui.component.CommunityCompatibilityBadge
 import app.gamenative.ui.component.GameStatsRow
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.data.GameCardStats
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.ListItemImage
 import app.gamenative.utils.CustomGameScanner
 import kotlinx.coroutines.Dispatchers
@@ -118,7 +118,7 @@ internal fun ListViewCard(
         Modifier
     }
 
-    val shape = RoundedCornerShape(14.dp)
+    val shape = PluviaTheme.shape(14.dp)
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -141,11 +141,13 @@ internal fun ListViewCard(
                 ),
             shape = shape,
         colors = CardDefaults.cardColors(
-            containerColor = if (isFocused) {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
-            },
+            containerColor = PluviaTheme.cardColor(
+                if (isFocused) {
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
+                },
+            ),
         ),
         border = when {
             appInfo.isRecommended -> BorderStroke(
@@ -176,7 +178,7 @@ internal fun ListViewCard(
             Box(
                 modifier = Modifier
                     .size(52.dp)
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(PluviaTheme.shape(10.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center,
             ) {
@@ -190,7 +192,7 @@ internal fun ListViewCard(
                 } else {
                     ListItemImage(
                         modifier = Modifier.fillMaxSize(),
-                        imageModifier = Modifier.clip(RoundedCornerShape(10.dp)),
+                        imageModifier = Modifier.clip(PluviaTheme.shape(10.dp)),
                         image = { iconUrl },
                     )
                 }
@@ -209,7 +211,7 @@ internal fun ListViewCard(
                     },
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = PluviaTheme.onCardColor(MaterialTheme.colorScheme.onSurface),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -248,7 +250,8 @@ internal fun ListViewCard(
                 )
             }
 
-            if (!appInfo.isRecommended && communityCompatibility != null) {
+            val hideBadges = PluviaTheme.hideBadges
+            if (!hideBadges && !appInfo.isRecommended && communityCompatibility != null) {
                 CommunityCompatibilityBadge(
                     verdict = communityCompatibility.verdict,
                     verdictLoaded = communityCompatibility.verdictLoaded,
@@ -256,7 +259,7 @@ internal fun ListViewCard(
                     checking = communityCompatibility.isChecking,
                     showLabel = true,
                 )
-            } else {
+            } else if (!hideBadges) {
                 val badgeStatus = if (appInfo.isRecommended) {
                     GameCompatibilityStatus.RECOMMENDED
                 } else {

@@ -6,6 +6,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.util.UiSoundCues
 import com.alorma.compose.settings.ui.SettingsMenuLink
 import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
@@ -36,7 +38,15 @@ fun SettingsSwitchWithAction(
                 Switch(
                     enabled = enabled,
                     checked = state,
-                    onCheckedChange = onCheckedChange,
+                    onCheckedChange = if (UiSoundCues.hooksEnabled) {
+                        { checked: Boolean ->
+                            UiSoundCues.toggle(checked)
+                            onCheckedChange(checked)
+                        }
+                    } else {
+                        onCheckedChange
+                    },
+                    colors = PluviaTheme.switchColors(),
                 )
                 action?.invoke()
             }
@@ -44,6 +54,9 @@ fun SettingsSwitchWithAction(
         colors = colors,
         tonalElevation = tonalElevation,
         shadowElevation = shadowElevation,
-        onClick = { onCheckedChange(!state) },
+        onClick = {
+            UiSoundCues.toggle(!state)
+            onCheckedChange(!state)
+        },
     )
 }

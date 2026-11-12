@@ -307,7 +307,7 @@ internal fun FilesRequestCard(
                             color = PluviaTheme.colors.textMuted,
                             modifier = Modifier.padding(top = 4.dp),
                         )
-                        LinearProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+                        LinearProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = PluviaTheme.progressColor)
                     }
                     is UploadState.Uploading -> {
                         Text(
@@ -316,7 +316,7 @@ internal fun FilesRequestCard(
                             color = PluviaTheme.colors.textMuted,
                             modifier = Modifier.padding(top = 4.dp),
                         )
-                        LinearProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+                        LinearProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = PluviaTheme.progressColor)
                     }
                     UploadState.Uploaded -> Text(
                         text = stringResource(R.string.support_files_uploaded, item.path),
@@ -331,7 +331,7 @@ internal fun FilesRequestCard(
                             color = PluviaTheme.colors.textMuted,
                             modifier = Modifier.padding(top = 4.dp),
                         )
-                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = PluviaTheme.progressColor)
                     }
                     is UploadState.Listed -> Text(
                         text = stringResource(R.string.support_files_listing_sent, state.entries),

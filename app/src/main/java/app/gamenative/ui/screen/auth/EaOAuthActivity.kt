@@ -8,8 +8,10 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.collectAsState
 import app.gamenative.service.ea.EaAuthManager
 import app.gamenative.service.ea.EaLoginGate
+import app.gamenative.theme.ThemeManager
 import app.gamenative.ui.component.dialog.AuthWebViewDialog
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.redactUrlForLogging
@@ -62,7 +64,7 @@ class EaOAuthActivity : ComponentActivity() {
         }
 
         setContent {
-            PluviaTheme {
+            PluviaTheme(spec = ThemeManager.activeSpec.collectAsState().value) {
                 AuthWebViewDialog(
                     isVisible = true,
                     url = authUrl,

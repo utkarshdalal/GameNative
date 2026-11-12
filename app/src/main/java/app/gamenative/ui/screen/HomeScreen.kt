@@ -2,11 +2,14 @@ package app.gamenative.ui.screen
 
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -15,6 +18,7 @@ import app.gamenative.ui.model.HomeViewModel
 import app.gamenative.ui.screen.downloads.HomeDownloadsScreen
 import app.gamenative.ui.screen.library.HomeLibraryScreen
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemeBackdrop
 
 @Composable
 fun HomeScreen(
@@ -42,26 +46,36 @@ fun HomeScreen(
         }
     }
 
-    when (homeState.currentDestination) {
-        HomeDestination.Library -> HomeLibraryScreen(
-            onClickPlay = onClickPlay,
-            onTestGraphics = onTestGraphics,
-            onPlayWithDiagnostics = onPlayWithDiagnostics,
-            onAiDebugRun = onAiDebugRun,
-            onNavigateRoute = onNavigateRoute,
-            onLogout = onLogout,
-            onGoOnline = onGoOnline,
-            onDownloadsClick = { viewModel.onDestination(HomeDestination.Downloads) },
-            isOffline = isOffline,
-            isSteamConnected = isSteamConnected,
-        )
-        HomeDestination.Downloads -> HomeDownloadsScreen(
-            onBack = { viewModel.onDestination(HomeDestination.Library) },
-            onClickPlay = onClickPlay,
-            onTestGraphics = onTestGraphics,
-            onPlayWithDiagnostics = onPlayWithDiagnostics,
-            onAiDebugRun = onAiDebugRun,
-        )
+    val content: @Composable () -> Unit = {
+        when (homeState.currentDestination) {
+            HomeDestination.Library -> HomeLibraryScreen(
+                onClickPlay = onClickPlay,
+                onTestGraphics = onTestGraphics,
+                onPlayWithDiagnostics = onPlayWithDiagnostics,
+                onAiDebugRun = onAiDebugRun,
+                onNavigateRoute = onNavigateRoute,
+                onLogout = onLogout,
+                onGoOnline = onGoOnline,
+                onDownloadsClick = { viewModel.onDestination(HomeDestination.Downloads) },
+                isOffline = isOffline,
+                isSteamConnected = isSteamConnected,
+            )
+            HomeDestination.Downloads -> HomeDownloadsScreen(
+                onBack = { viewModel.onDestination(HomeDestination.Library) },
+                onClickPlay = onClickPlay,
+                onTestGraphics = onTestGraphics,
+                onPlayWithDiagnostics = onPlayWithDiagnostics,
+                onAiDebugRun = onAiDebugRun,
+            )
+        }
+    }
+    if (PluviaTheme.hasBackdrop) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            ThemeBackdrop()
+            content()
+        }
+    } else {
+        content()
     }
 }
 

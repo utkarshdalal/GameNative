@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -60,6 +59,7 @@ import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.data.statsFor
 import app.gamenative.ui.data.communityCompatibilityFor
 import app.gamenative.ui.enums.PaneType
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.AdaptivePadding
 import app.gamenative.ui.util.shouldShowGamepadUI
 import kotlin.math.abs
@@ -207,7 +207,7 @@ private fun CarouselEmptyState(modifier: Modifier = Modifier) {
     ) {
         Surface(
             modifier = Modifier.padding(horizontal = 24.dp),
-            shape = RoundedCornerShape(16.dp),
+            shape = PluviaTheme.shape(16.dp),
             color = MaterialTheme.colorScheme.surfaceVariant,
             shadowElevation = 8.dp,
         ) {
@@ -240,7 +240,7 @@ internal fun LibraryCarouselPane(
 
     val configuration = LocalConfiguration.current
     val horizontalPadding = AdaptivePadding.horizontal()
-    val showGamepadHints = shouldShowGamepadUI()
+    val showGamepadHints = shouldShowGamepadUI() && !PluviaTheme.hideFooterHints
     val hideStatusBar = PrefManager.hideStatusBarWhenNotInGame
 
     // Fine-Tuned Values by JT, working on both landscape and portrait screens
@@ -255,7 +255,8 @@ internal fun LibraryCarouselPane(
     // Correct calculation, no more messy calculations
     val landscapeScale = if (configuration.screenWidthDp > configuration.screenHeightDp) 1.0f else 0.5f
     val availableCarouselHeight = (configuration.screenHeightDp.dp - carouselTopMargin - carouselBottomMargin) * landscapeScale
-    val cardHeight = (availableCarouselHeight - cardTopPadding - cardBottomPadding)
+    // The carousel is bound by the screen height, so the theme tile scale can only shrink it.
+    val cardHeight = (availableCarouselHeight - cardTopPadding - cardBottomPadding) * PluviaTheme.cardScale.coerceAtMost(1f)
     val cardWidth = cardHeight * CAROUSEL_CARD_ASPECT_RATIO
     val itemContainerHeight = cardHeight + cardTopPadding + cardBottomPadding
 
@@ -552,7 +553,7 @@ internal fun LibraryCarouselPane(
                                         .padding(16.dp),
                                     contentAlignment = Alignment.Center,
                                 ) {
-                                    CircularProgressIndicator()
+                                    CircularProgressIndicator(color = PluviaTheme.progressColor)
                                 }
                             }
                         }

@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gamenative.R
 import app.gamenative.ui.data.GameCardStats
+import app.gamenative.ui.theme.PluviaTheme
 
 /**
  * The card stats, in display order, paired with the icon that represents each. The reviews entry
@@ -118,6 +119,8 @@ private fun KeyRow(
     icon: ImageVector,
     label: String,
 ) {
+    // the key sits on the options panel, which a theme may colour light
+    val tint = if (PluviaTheme.isThemed) MaterialTheme.colorScheme.onSurface else Color.White
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -127,14 +130,14 @@ private fun KeyRow(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = Color.White,
+            tint = tint,
             modifier = Modifier.size(14.dp),
         )
         Spacer(modifier = Modifier.width(10.dp))
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = Color.White,
+            color = tint,
         )
     }
 }

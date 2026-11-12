@@ -48,6 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.alorma.compose.settings.ui.SettingsMenuLink
@@ -301,9 +302,9 @@ private fun SlotCountSetting(
             valueRange = 1f..RadialMenu.MAX_SLOTS.toFloat(),
             steps = RadialMenu.MAX_SLOTS - 2,
             colors = SliderDefaults.colors(
-                thumbColor = MaterialTheme.colorScheme.primary,
-                activeTrackColor = MaterialTheme.colorScheme.primary,
-                activeTickColor = MaterialTheme.colorScheme.primary,
+                thumbColor = PluviaTheme.toggleColor(MaterialTheme.colorScheme.primary),
+                activeTrackColor = PluviaTheme.toggleColor(MaterialTheme.colorScheme.primary),
+                activeTickColor = PluviaTheme.toggleColor(MaterialTheme.colorScheme.primary),
                 inactiveTickColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                 inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.22f),
             ),

@@ -30,6 +30,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.sync.FrontendSyncManager
 import app.gamenative.ui.components.rememberCustomGameFolderPicker
 
+import app.gamenative.ui.theme.PluviaTheme
 /**
  * Dialog for configuring per-source export directories used by frontend launchers such as ES-DE.
  * Changes are buffered until the user confirms with OK.
@@ -80,6 +81,9 @@ fun FrontendSyncDialog(onDismiss: () -> Unit) {
                 Text(stringResource(android.R.string.cancel))
             }
         },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 
@@ -181,6 +185,9 @@ private fun FrontendSyncSourceRow(
                     Text(stringResource(R.string.frontend_sync_confirm_keep))
                 }
             },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 }

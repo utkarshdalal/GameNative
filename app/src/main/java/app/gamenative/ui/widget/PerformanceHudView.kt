@@ -34,6 +34,7 @@ import app.gamenative.powercontrol.metrics.SystemMetricsSources
 import app.gamenative.powercontrol.metrics.ThermalHeadroom
 import app.gamenative.ui.data.PerformanceHudConfig
 import app.gamenative.ui.data.PerformanceHudSize
+import app.gamenative.ui.theme.ThemeViewColors
 import app.gamenative.utils.DateTimeUtils.formatRuntimeHours
 import java.util.ArrayDeque
 import java.util.Date
@@ -250,12 +251,13 @@ class PerformanceHudView(
         )
 
         backgroundDrawable.cornerRadius = appearance.cornerRadiusDp.dp.toFloat()
+        val panel = ThemeViewColors.darkPanel(Color.BLACK)
         backgroundDrawable.setColor(
             Color.argb(
                 (opacity * 255f).roundToInt(),
-                0,
-                0,
-                0,
+                Color.red(panel),
+                Color.green(panel),
+                Color.blue(panel),
             ),
         )
         backgroundDrawable.setStroke(

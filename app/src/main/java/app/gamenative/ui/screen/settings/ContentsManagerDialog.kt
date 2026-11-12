@@ -2,6 +2,8 @@ package app.gamenative.ui.screen.settings
 
 import android.content.Context
 import android.net.Uri
+import app.gamenative.ui.theme.MenuColorScope
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.SnackbarManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -194,7 +196,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.padding(bottom = 8.dp)
                     ) {
-                        CircularProgressIndicator(modifier = Modifier.height(20.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(modifier = Modifier.height(20.dp), strokeWidth = 2.dp, color = PluviaTheme.progressColor)
                         Text(text = statusMessage ?: stringResource(R.string.working))
                     }
                 } else if (!statusMessage.isNullOrEmpty()) {
@@ -258,6 +260,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         placeholder = { Text(stringResource(R.string.select_type)) }
                     )
 
+                    MenuColorScope {
                     ExposedDropdownMenu(
                         expanded = typeExpanded,
                         onDismissRequest = { typeExpanded = false }
@@ -276,9 +279,11 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                 onClick = {
                                     currentType = t
                                     typeExpanded = false
-                                }
+                                },
+                                colors = PluviaTheme.menuItemColors()
                             )
                         }
+                    }
                     }
                 }
 
@@ -327,7 +332,10 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
-        }
+        },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor
     )
 
     if (showUntrustedConfirm && pendingProfile != null) {
@@ -364,7 +372,10 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
             },
             dismissButton = {
                 TextButton(onClick = { showUntrustedConfirm = false }) { Text(stringResource(R.string.cancel)) }
-            }
+            },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor
         )
     }
 
@@ -384,7 +395,10 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     }
                 }) { Text(stringResource(R.string.remove)) }
             },
-            dismissButton = { TextButton(onClick = { deleteTarget = null }) { Text(stringResource(R.string.cancel)) } }
+            dismissButton = { TextButton(onClick = { deleteTarget = null }) { Text(stringResource(R.string.cancel)) } },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor
         )
     }
 }

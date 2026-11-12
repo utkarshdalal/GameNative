@@ -8,6 +8,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.res.stringResource
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.ui.theme.PluviaTheme
 import com.posthog.PostHog
 
 @Composable
@@ -49,5 +50,8 @@ fun RecommendationDisclosureDialog(
                 Text(text = stringResource(R.string.rec_disclosure_not_now))
             }
         },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }

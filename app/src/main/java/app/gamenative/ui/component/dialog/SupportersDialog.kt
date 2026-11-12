@@ -31,6 +31,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.KofiSupporter
 import app.gamenative.utils.fetchKofiSupporters
 import kotlinx.coroutines.Dispatchers
@@ -241,6 +242,9 @@ fun SupportersDialog(
                 }
             }
         },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 
@@ -383,6 +387,9 @@ fun SupportersDialogPreview() {
                     }
                 }
             },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 }

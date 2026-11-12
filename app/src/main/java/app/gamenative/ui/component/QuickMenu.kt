@@ -810,8 +810,8 @@ fun QuickMenu(
                 modifier = Modifier
                     .width(panelWidth)
                     .fillMaxHeight(),
-                shape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp),
-                color = MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(topEnd = PluviaTheme.radius(24.dp), bottomEnd = PluviaTheme.radius(24.dp)),
+                color = PluviaTheme.panel(MaterialTheme.colorScheme.surface),
                 tonalElevation = 2.dp,
                 shadowElevation = 24.dp,
             ) {
@@ -2073,7 +2073,7 @@ private fun ImmersiveQuickMenuTab(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp, vertical = 2.dp)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(PluviaTheme.shape(14.dp))
                     .background(
                         if (resetIsFocused) {
                             accentColor.copy(alpha = 0.16f)
@@ -2083,7 +2083,7 @@ private fun ImmersiveQuickMenuTab(
                     )
                     .then(
                         if (resetIsFocused) {
-                            Modifier.border(width = 2.dp, color = accentColor.copy(alpha = 0.7f), shape = RoundedCornerShape(14.dp))
+                            Modifier.border(width = 2.dp, color = accentColor.copy(alpha = 0.7f), shape = PluviaTheme.shape(14.dp))
                         } else {
                             Modifier
                         }
@@ -2151,7 +2151,7 @@ private fun QuickMenuCloseButton(
     // avoid a second focus target on the same element (see LocalImmersiveInputBypass).
     val inputBypass = LocalImmersiveInputBypass.current
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val shape = RoundedCornerShape(14.dp)
+    val shape = PluviaTheme.shape(14.dp)
 
     Box(
         modifier = modifier
@@ -2201,7 +2201,7 @@ private fun QuickMenuTabButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val shape = RoundedCornerShape(14.dp)
+    val shape = PluviaTheme.shape(14.dp)
     val inputBypass = LocalImmersiveInputBypass.current
     LaunchedEffect(isFocused) {
         inputBypass.reportActivate(interactionSource, if (isFocused) onSelected else null)
@@ -2275,7 +2275,7 @@ private fun QuickMenuRailActionButton(
     } else {
         MaterialTheme.colorScheme.error
     }
-    val shape = RoundedCornerShape(14.dp)
+    val shape = PluviaTheme.shape(14.dp)
 
     Box(
         modifier = modifier
@@ -2341,7 +2341,7 @@ internal fun QuickMenuChoiceChip(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val shape = RoundedCornerShape(12.dp)
+    val shape = PluviaTheme.shape(12.dp)
     val inputBypass = LocalImmersiveInputBypass.current
     LaunchedEffect(isFocused) {
         inputBypass.reportActivate(interactionSource, if (isFocused) onClick else null)
@@ -2416,7 +2416,7 @@ internal fun QuickMenuAdjustmentRow(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val shape = RoundedCornerShape(14.dp)
+    val shape = PluviaTheme.shape(14.dp)
     var isAdjustmentLocked by remember { mutableStateOf(false) }
     val inputBypass = LocalImmersiveInputBypass.current
     LaunchedEffect(isFocused, isAdjustmentLocked) {
@@ -2631,7 +2631,7 @@ private fun QuickMenuAdjustmentButton(
         modifier = Modifier
             .width(44.dp)
             .fillMaxHeight()
-            .clip(RoundedCornerShape(10.dp))
+            .clip(PluviaTheme.shape(10.dp))
             .background(
                 if (isAdjustmentLocked) {
                     accentColor.copy(alpha = 0.25f)
@@ -2646,7 +2646,7 @@ private fun QuickMenuAdjustmentButton(
                 } else {
                     MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
                 },
-                shape = RoundedCornerShape(10.dp),
+                shape = PluviaTheme.shape(10.dp),
             )
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -2688,7 +2688,7 @@ internal fun QuickMenuToggleRow(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 2.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(PluviaTheme.shape(14.dp))
             .background(
                 if (isFocused) {
                     Brush.horizontalGradient(
@@ -2711,7 +2711,7 @@ internal fun QuickMenuToggleRow(
                     Modifier.border(
                         width = 2.dp,
                         color = accentColor.copy(alpha = 0.7f),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = PluviaTheme.shape(14.dp),
                     )
                 } else {
                     Modifier
@@ -2780,12 +2780,17 @@ private fun QuickMenuSwitch(
             .width(56.dp)
             .height(32.dp)
             .clip(RoundedCornerShape(999.dp))
-            .background(
-                if (enabled) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+            .then(
+                PluviaTheme.toggleFill?.takeIf { enabled }?.let { Modifier.background(it) }
+                    ?: Modifier.background(if (enabled) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)),
             )
             .border(
                 width = 1.dp,
-                color = if (enabled) accentColor.copy(alpha = 0.8f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.35f),
+                color = if (enabled) {
+                    PluviaTheme.toggleColor(accentColor).copy(alpha = 0.8f)
+                } else {
+                    MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
+                },
                 shape = RoundedCornerShape(999.dp),
             )
             .padding(4.dp),
@@ -2811,7 +2816,7 @@ private fun QuickMenuDetailRow(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val shape = RoundedCornerShape(14.dp)
+    val shape = PluviaTheme.shape(14.dp)
 
     Row(
         modifier = modifier
@@ -2945,7 +2950,7 @@ private fun QuickMenuItemRow(
     }
 
     val disabledAlpha = 0.4f
-    val shape = RoundedCornerShape(12.dp)
+    val shape = PluviaTheme.shape(12.dp)
 
     Row(
         modifier = modifier.fillMaxWidth(),

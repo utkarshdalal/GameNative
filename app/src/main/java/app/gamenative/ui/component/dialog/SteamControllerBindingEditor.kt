@@ -69,6 +69,7 @@ import app.gamenative.steamcontroller.ScEditableProfile
 import app.gamenative.steamcontroller.ScEditableSet
 import app.gamenative.steamcontroller.ScProfile
 import app.gamenative.steamcontroller.ScSource
+import app.gamenative.ui.theme.PluviaTheme
 import com.winlator.xserver.Pointer
 import com.winlator.xserver.XKeycode
 
@@ -380,7 +381,7 @@ fun SteamControllerBindingEditorDialog(containerId: String, onDismiss: () -> Uni
     if (showHelp) {
         AlertDialog(
             onDismissRequest = { showHelp = false },
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = PluviaTheme.menuColor(MaterialTheme.colorScheme.surface),
             tonalElevation = 0.dp,
             shape = MaterialTheme.shapes.large,
             title = { Text("Steam Controller bindings — help") },
@@ -402,6 +403,8 @@ fun SteamControllerBindingEditorDialog(containerId: String, onDismiss: () -> Uni
                 }
             },
             confirmButton = { TextButton(onClick = { showHelp = false }) { Text("Close") } },
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 }
@@ -510,7 +513,7 @@ private fun TriggerPickerDialog(
 
     AlertDialog(
         onDismissRequest = doApply,
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = PluviaTheme.menuColor(MaterialTheme.colorScheme.surface),
         tonalElevation = 0.dp,
         shape = MaterialTheme.shapes.large,
         title = { ScBackTitle("${side.label} behavior", onBack = doApply, style = MaterialTheme.typography.headlineSmall) },
@@ -548,6 +551,8 @@ private fun TriggerPickerDialog(
             }
         },
         confirmButton = {},
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 
     // Nested command picker for whichever stage is being bound (reuses the Phase-3 picker; no activator on a stage).
@@ -606,7 +611,7 @@ private fun GyroPickerDialog(current: EditGyro, onDismiss: () -> Unit, onApply: 
 
     AlertDialog(
         onDismissRequest = doApply,
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = PluviaTheme.menuColor(MaterialTheme.colorScheme.surface),
         tonalElevation = 0.dp,
         shape = MaterialTheme.shapes.large,
         title = { ScBackTitle("Gyro behavior", onBack = doApply, style = MaterialTheme.typography.headlineSmall) },
@@ -677,6 +682,8 @@ private fun GyroPickerDialog(current: EditGyro, onDismiss: () -> Unit, onApply: 
             }
         },
         confirmButton = {},
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 
@@ -692,7 +699,7 @@ private fun HapticsDialog(current: EditHaptics, onDismiss: () -> Unit, onApply: 
 
     AlertDialog(
         onDismissRequest = doApply,
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = PluviaTheme.menuColor(MaterialTheme.colorScheme.surface),
         tonalElevation = 0.dp,
         shape = MaterialTheme.shapes.large,
         title = { ScBackTitle("Haptics", onBack = doApply, style = MaterialTheme.typography.headlineSmall) },
@@ -713,6 +720,8 @@ private fun HapticsDialog(current: EditHaptics, onDismiss: () -> Unit, onApply: 
             }
         },
         confirmButton = {},
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 
@@ -800,7 +809,7 @@ private fun BindingPickerDialog(
         modifier = Modifier.fillMaxWidth(0.95f),
         properties = DialogProperties(usePlatformDefaultWidth = false),
         onDismissRequest = doApply,  // scrim tap / system back also commits (auto-save)
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = PluviaTheme.menuColor(MaterialTheme.colorScheme.surface),
         tonalElevation = 0.dp,
         shape = MaterialTheme.shapes.large,
         title = { ScBackTitle(title, onBack = doApply, style = MaterialTheme.typography.headlineSmall) },
@@ -950,6 +959,8 @@ private fun BindingPickerDialog(
             }
         },
         confirmButton = {},
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 
@@ -1156,12 +1167,14 @@ private fun <T> LabeledDropdown(
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            modifier = Modifier.heightIn(max = 360.dp).background(MaterialTheme.colorScheme.surface),
+            modifier = Modifier.heightIn(max = 360.dp).background(PluviaTheme.menuColor(MaterialTheme.colorScheme.surface)),
+            containerColor = PluviaTheme.menuContainerColor,
         ) {
             options.forEach { (value, lbl) ->
                 DropdownMenuItem(
                     text = { Text(lbl, fontWeight = if (value == selected) FontWeight.Bold else FontWeight.Normal) },
                     onClick = { onSelected(value); expanded = false },
+                    colors = PluviaTheme.menuItemColors(),
                 )
             }
         }
@@ -1368,7 +1381,7 @@ private fun AnalogPickerDialog(
         modifier = Modifier.fillMaxWidth(0.95f),
         properties = DialogProperties(usePlatformDefaultWidth = false),
         onDismissRequest = doApply,
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = PluviaTheme.menuColor(MaterialTheme.colorScheme.surface),
         tonalElevation = 0.dp,
         shape = MaterialTheme.shapes.large,
         title = { ScBackTitle("${surface.label} behavior", onBack = doApply, style = MaterialTheme.typography.headlineSmall) },
@@ -1457,6 +1470,8 @@ private fun AnalogPickerDialog(
             }
         },
         confirmButton = {},
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 
     // Nested command picker for a slot / the radial center / a d-pad direction.
@@ -1542,7 +1557,7 @@ private fun AnalogSlider(
         // Inset the content so the nav-selection ring hugs the row edge without overlapping the label/slider.
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
             Text("$label: $value$suffix" + if (nav != null) "   ◀ ▶" else "", style = MaterialTheme.typography.labelMedium)
-            Slider(value = value.toFloat(), onValueChange = { onChange(it.toInt()) }, valueRange = min.toFloat()..max.toFloat())
+            Slider(value = value.toFloat(), onValueChange = { onChange(it.toInt()) }, valueRange = min.toFloat()..max.toFloat(), colors = PluviaTheme.sliderColors())
         }
     }
     if (nav != null) {

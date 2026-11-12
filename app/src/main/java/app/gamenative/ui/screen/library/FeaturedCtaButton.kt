@@ -5,7 +5,6 @@ import android.content.Intent
 import androidx.annotation.StringRes
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -19,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
@@ -33,6 +33,7 @@ import app.gamenative.data.gog.GogRecommendationsRepository
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamWishlistService
 import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.ConversionTracker
 import com.posthog.PostHog
@@ -126,7 +127,7 @@ internal fun FeaturedCtaButton(
     }
 
     val label = if (cta != null && done == true) stringResource(cta.doneLabelRes) else action.label
-    val shape = RoundedCornerShape(12.dp)
+    val shape = PluviaTheme.shape(12.dp)
     val buttonModifier = Modifier
         .fillMaxWidth()
         .focusRing(interactionSource, shape, width = 2.dp)
@@ -153,7 +154,8 @@ internal fun FeaturedCtaButton(
             shape = shape,
             interactionSource = interactionSource,
             colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = MaterialTheme.colorScheme.primary.copy(alpha = contentAlpha),
+                containerColor = PluviaTheme.buttonColor(Color.Transparent),
+                contentColor = PluviaTheme.onButtonColor(MaterialTheme.colorScheme.primary).copy(alpha = contentAlpha),
             ),
         ) {
             Text(text = label, fontWeight = FontWeight.SemiBold)

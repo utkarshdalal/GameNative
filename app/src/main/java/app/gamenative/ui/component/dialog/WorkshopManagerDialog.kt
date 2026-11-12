@@ -76,6 +76,7 @@ import app.gamenative.service.SteamService
 import app.gamenative.ui.component.LoadingScreen
 import app.gamenative.ui.component.topbar.BackButton
 import app.gamenative.ui.data.GameDisplayInfo
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.StorageUtils
 import app.gamenative.workshop.WorkshopItem
 import app.gamenative.workshop.WorkshopManager
@@ -278,7 +279,7 @@ fun WorkshopManagerDialog(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    CircularProgressIndicator()
+                                    CircularProgressIndicator(color = PluviaTheme.progressColor)
                                     Text(
                                         text = "Loading subscribed mods...",
                                         modifier = Modifier.padding(top = 16.dp),
@@ -338,6 +339,7 @@ fun WorkshopManagerDialog(
                                 ) {
                                     OutlinedButton(
                                         onClick = { showFolderPicker = true },
+                                        colors = PluviaTheme.outlinedButtonColors(),
                                     ) {
                                         Icon(
                                             imageVector = if (workshopModPath.isNotEmpty()) Icons.Default.FolderOpen else Icons.Default.Folder,

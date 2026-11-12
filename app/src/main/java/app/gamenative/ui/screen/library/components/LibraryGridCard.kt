@@ -73,6 +73,7 @@ import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.data.GameCardStats
 import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedTitleText
 import app.gamenative.ui.util.ListItemImage
 import app.gamenative.utils.CustomGameScanner
 import com.skydoves.landscapist.ImageOptions
@@ -112,8 +113,9 @@ internal fun GridViewCard(
     val cardContentBottomPadding = if (isCapsule) 12.dp else 8.dp
     val topIconPadding = if (isCapsule) 10.dp else 8.dp
     val bottomGradientHeight = if (isCapsule) 80.dp else 56.dp
-    val glowColor = MaterialTheme.colorScheme.primary
-    val focusHaloModifier = if (isFocused && showFocusGlow) {
+    val glowColor = PluviaTheme.colors.focus
+    val themeGlow = PluviaTheme.focusGlow
+    val focusHaloModifier = if (isFocused && showFocusGlow && themeGlow == null) {
         Modifier.drawWithCache {
             val glowBrush = Brush.radialGradient(
                 colors = listOf(
@@ -134,7 +136,19 @@ internal fun GridViewCard(
     } else {
         Modifier
     }
-    val cardShape = RoundedCornerShape(12.dp)
+    val cardShape = PluviaTheme.cardShape(12.dp)
+    val cardColor = PluviaTheme.colors.card
+    val titleColor = PluviaTheme.onCardColor(Color.White)
+    val hideBadges = PluviaTheme.hideBadges
+    val tilt = PluviaTheme.cardTilt
+    val tiltModifier = if (tilt != 0f) {
+        Modifier.graphicsLayer {
+            rotationY = tilt
+            cameraDistance = 12f * density
+        }
+    } else {
+        Modifier
+    }
     // 1f = frosted teaser, 0f = normal card; animates the reveal when consent is granted
     val frost by animateFloatAsState(
         targetValue = if (appInfo.isRecTeaser) 1f else 0f,
@@ -186,6 +200,7 @@ internal fun GridViewCard(
         modifier = modifier
             .padding(vertical = 4.dp)
             .scale(scale)
+            .then(tiltModifier)
             .then(focusHaloModifier),
     ) {
         Card(
@@ -206,7 +221,7 @@ internal fun GridViewCard(
                 ),
             shape = cardShape,
             colors = CardDefaults.cardColors(
-                containerColor = Color.Transparent,
+                containerColor = cardColor ?: Color.Transparent,
             ),
             border = when {
                 appInfo.isRecommended -> BorderStroke(
@@ -335,14 +350,14 @@ internal fun GridViewCard(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)),
+                            .background(PluviaTheme.cardColor(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f))),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = displayName,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = PluviaTheme.onCardColor(MaterialTheme.colorScheme.onSurfaceVariant),
                             textAlign = TextAlign.Center,
                             modifier = Modifier.padding(16.dp),
                         )
@@ -361,7 +376,7 @@ internal fun GridViewCard(
                             Brush.verticalGradient(
                                 colors = listOf(
                                     Color.Transparent,
-                                    Color.Black.copy(alpha = 0.85f),
+                                    (cardColor ?: Color.Black).copy(alpha = 0.85f),
                                 ),
                             ),
                         ),
@@ -377,18 +392,25 @@ internal fun GridViewCard(
                     verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
+                        ThemedTitleText(
                             text = appInfo.name,
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                fontWeight = FontWeight.SemiBold,
-                            ),
-                            color = Color.White,
+                            // smaller theme tiles shrink the title with them, so words still fit a line
+                            style = PluviaTheme.cardScale.coerceAtMost(1f).let { titleScale ->
+                                MaterialTheme.typography.labelMedium.let {
+                                    if (titleScale < 1f) {
+                                        it.copy(fontWeight = FontWeight.SemiBold, fontSize = it.fontSize * titleScale)
+                                    } else {
+                                        it.copy(fontWeight = FontWeight.SemiBold)
+                                    }
+                                }
+                            },
+                            color = titleColor,
                             maxLines = if (paneType == PaneType.GRID_CAPSULE) 2 else 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
                         )
 
-                        GridStatusIcons(appInfo = appInfo)
+                        if (!hideBadges) GridStatusIcons(appInfo = appInfo)
                     }
 
                     if (appInfo.isRecommended && appInfo.recStoreCard && appInfo.recPrice != null) {
@@ -443,7 +465,7 @@ internal fun GridViewCard(
                                 .padding(top = topOverlayPadding, start = topOverlayPadding),
                         )
                     }
-                } else {
+                } else if (!hideBadges) {
                     if (!appInfo.isRecommended && communityCompatibility != null) {
                         CommunityCompatibilityBadge(
                             verdict = communityCompatibility.verdict,

@@ -1,5 +1,6 @@
 package app.gamenative.ui.component
 
+import android.graphics.BlurMaskFilter
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -7,7 +8,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -25,10 +25,13 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.util.NavigateSoundOnFocusGain
 
 /**
  * Colored focus ring: a sweep gradient border whose colors rotate around the element while
@@ -48,6 +51,7 @@ fun Modifier.focusRing(
     durationMillis: Int = 5000,
 ): Modifier {
     val focused by interactionSource.collectIsFocusedAsState()
+    NavigateSoundOnFocusGain(focused)
 
     // The Animatable and its driver are created unconditionally (stable remember slots), so the slot
     // count doesn't change between focused/unfocused and the ring can't flicker on recompose (the
@@ -71,14 +75,12 @@ fun Modifier.focusRing(
 
     if (!focused) return this
 
-    // First == last so the sweep loops seamlessly. Only blue (tertiary) and purple (primary);
-    // secondary is a near-black gray and would show as a dark band in the ring.
-    val colors = listOf(
-        MaterialTheme.colorScheme.primary,
-        MaterialTheme.colorScheme.tertiary,
-        MaterialTheme.colorScheme.primary,
-    )
+    // First == last so the sweep loops seamlessly. By default purple (primary) and blue (tertiary).
+    val focusColors = PluviaTheme.colors
+    val colors = listOf(focusColors.focus, focusColors.focusAlt, focusColors.focus)
     val strokePx = with(LocalDensity.current) { width.toPx() }
+    val glowPx = PluviaTheme.focusGlow?.let { with(LocalDensity.current) { it.toPx() } }
+    val glowColor = focusColors.focus
 
     return drawWithCache {
         // Rebuilt only when the size changes.
@@ -96,7 +98,10 @@ fun Modifier.focusRing(
             }
         }
 
+        val glowPaint = glowPx?.let { focusGlowPaint(glowColor, it) }
+
         onDrawWithContent {
+            glowPaint?.let { paint -> drawIntoCanvas { it.drawOutline(outline, paint) } }
             drawContent()
             // Reading angle here keeps the animation in the draw phase, off recomposition.
             val canvas = drawContext.canvas
@@ -120,4 +125,10 @@ fun Modifier.focusRing(
             canvas.restore()
         }
     }
+}
+
+/** Paint for an outer glow of [radiusPx] around a shape, drawn outside its edge only. */
+internal fun focusGlowPaint(color: Color, radiusPx: Float): Paint = Paint().apply {
+    this.color = color
+    asFrameworkPaint().maskFilter = BlurMaskFilter(radiusPx, BlurMaskFilter.Blur.OUTER)
 }

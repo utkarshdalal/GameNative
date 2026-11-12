@@ -50,6 +50,7 @@ import app.gamenative.mods.NexusFileSelector
 import app.gamenative.mods.NexusModFile
 import app.gamenative.mods.truncateAtCodePointBoundary
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.StorageUtils
 
 private enum class CollectionDisplayFilter(@StringRes val labelRes: Int) {
@@ -91,12 +92,12 @@ internal fun LocalModImportSection(
                 Spacer(Modifier.size(8.dp))
                 Text(stringResource(R.string.local_mod_choose_archive))
             }
-            OutlinedButton(onClick = onChooseFiles, modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(onClick = onChooseFiles, modifier = Modifier.fillMaxWidth(), colors = PluviaTheme.outlinedButtonColors()) {
                 Icon(Icons.Default.Description, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.size(8.dp))
                 Text(stringResource(R.string.local_mod_choose_files))
             }
-            OutlinedButton(onClick = onChooseFolder, modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(onClick = onChooseFolder, modifier = Modifier.fillMaxWidth(), colors = PluviaTheme.outlinedButtonColors()) {
                 Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.size(8.dp))
                 Text(stringResource(R.string.local_mod_choose_folder))
@@ -228,6 +229,9 @@ internal fun LocalModReviewDialog(
                 Text(stringResource(R.string.cancel))
             }
         },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 
@@ -542,9 +546,9 @@ internal fun CollectionSelectionSection(
                             )
                             if (item.status == CollectionQueueStatus.IMPORTING) {
                                 if (item.progress > 0f && item.progress < 1f) {
-                                    LinearProgressIndicator(progress = { item.progress }, modifier = Modifier.fillMaxWidth())
+                                    LinearProgressIndicator(progress = { item.progress }, modifier = Modifier.fillMaxWidth(), color = PluviaTheme.progressColor)
                                 } else {
-                                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = PluviaTheme.progressColor)
                                 }
                             }
                             if (item.status == CollectionQueueStatus.IMPORTED && item.error.isNotBlank()) {
@@ -701,7 +705,7 @@ private fun CollectionFilterButton(
             Text(stringResource(filter.labelRes), maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     } else {
-        OutlinedButton(onClick = onClick, modifier = modifier) {
+        OutlinedButton(onClick = onClick, modifier = modifier, colors = PluviaTheme.outlinedButtonColors()) {
             Text(stringResource(filter.labelRes), maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
@@ -763,15 +767,15 @@ private fun CollectionQueueControlButtons(
 ) {
     val modifier = if (compact) Modifier.fillMaxWidth() else Modifier
     if (paused) {
-        OutlinedButton(onClick = onResumeAll, modifier = modifier) {
+        OutlinedButton(onClick = onResumeAll, modifier = modifier, colors = PluviaTheme.outlinedButtonColors()) {
             Text(stringResource(R.string.nexus_resume_queue))
         }
     } else {
-        OutlinedButton(onClick = onPauseAll, enabled = cancelEnabled, modifier = modifier) {
+        OutlinedButton(onClick = onPauseAll, enabled = cancelEnabled, modifier = modifier, colors = PluviaTheme.outlinedButtonColors()) {
             Text(stringResource(R.string.nexus_pause_after_current))
         }
     }
-    OutlinedButton(onClick = onCancelAll, enabled = cancelEnabled, modifier = modifier) {
+    OutlinedButton(onClick = onCancelAll, enabled = cancelEnabled, modifier = modifier, colors = PluviaTheme.outlinedButtonColors()) {
         Text(stringResource(R.string.nexus_cancel_queue))
     }
 }

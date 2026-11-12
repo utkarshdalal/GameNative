@@ -557,7 +557,8 @@ private fun FlowRowScope.SuccessView(
                                     enabled = false,
                                     valueRange = 0f..(gpuInfo.availableFrequencies.size - 1).toFloat(),
                                     steps = gpuInfo.availableFrequencies.size - 2,
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f),
+                                    colors = PluviaTheme.sliderColors()
                                 )
                                 Text(
                                     text = formatFrequency(gpuInfo.availableFrequencies[gpuInfo.currentFreqIndex]),

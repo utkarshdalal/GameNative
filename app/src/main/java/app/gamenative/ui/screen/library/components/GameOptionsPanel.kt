@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.AddToHomeScreen
@@ -90,7 +89,9 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.enums.AppOptionMenuType
+import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.util.MenuSoundOnOpenChange
 import app.gamenative.ui.util.adaptivePanelWidth
 
 @Composable
@@ -100,6 +101,7 @@ fun GameOptionsPanel(
     options: List<AppMenuOption>,
     modifier: Modifier = Modifier,
 ) {
+    MenuSoundOnOpenChange(isOpen)
     val firstItemFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(isOpen) {
@@ -147,56 +149,58 @@ fun GameOptionsPanel(
             .fillMaxHeight()
             .width(adaptivePanelWidth(360.dp)),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = Brush.horizontalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                            MaterialTheme.colorScheme.surface,
+        MenuColorScope {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                                MaterialTheme.colorScheme.surface,
+                            ),
                         ),
-                    ),
-                )
-                .padding(vertical = 24.dp)
-                .verticalScroll(rememberScrollState())
-                .focusGroup(),
-        ) {
-            Text(
-                text = stringResource(R.string.game_options_title),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            val groupedOptionsByCategory = groupOptions(options)
-
-            // Map category keys to localized strings
-            val categoryLabels = mapOf(
-                OptionCategory.QUICK_ACTIONS to stringResource(R.string.game_options_quick_actions),
-                OptionCategory.GAME_MANAGEMENT to stringResource(R.string.game_options_game_management),
-                OptionCategory.CONTAINER to stringResource(R.string.game_options_container),
-                OptionCategory.CLOUD_SAVES to stringResource(R.string.game_options_cloud_saves),
-                OptionCategory.HELP_INFO to stringResource(R.string.game_options_help_info),
-            )
-
-            var isFirstItem = true
-            groupedOptionsByCategory.forEach { (category, categoryOptions) ->
-                if (categoryOptions.isNotEmpty()) {
-                    OptionSection(
-                        title = categoryLabels[category] ?: category.name,
-                        options = categoryOptions,
-                        onOptionClick = { option ->
-                            option.onClick()
-                            onDismiss()
-                        },
-                        firstItemFocusRequester = if (isFirstItem) firstItemFocusRequester else null,
                     )
-                    isFirstItem = false
-                    Spacer(modifier = Modifier.height(8.dp))
+                    .padding(vertical = 24.dp)
+                    .verticalScroll(rememberScrollState())
+                    .focusGroup(),
+            ) {
+                Text(
+                    text = stringResource(R.string.game_options_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                val groupedOptionsByCategory = groupOptions(options)
+
+                // Map category keys to localized strings
+                val categoryLabels = mapOf(
+                    OptionCategory.QUICK_ACTIONS to stringResource(R.string.game_options_quick_actions),
+                    OptionCategory.GAME_MANAGEMENT to stringResource(R.string.game_options_game_management),
+                    OptionCategory.CONTAINER to stringResource(R.string.game_options_container),
+                    OptionCategory.CLOUD_SAVES to stringResource(R.string.game_options_cloud_saves),
+                    OptionCategory.HELP_INFO to stringResource(R.string.game_options_help_info),
+                )
+
+                var isFirstItem = true
+                groupedOptionsByCategory.forEach { (category, categoryOptions) ->
+                    if (categoryOptions.isNotEmpty()) {
+                        OptionSection(
+                            title = categoryLabels[category] ?: category.name,
+                            options = categoryOptions,
+                            onOptionClick = { option ->
+                                option.onClick()
+                                onDismiss()
+                            },
+                            firstItemFocusRequester = if (isFirstItem) firstItemFocusRequester else null,
+                        )
+                        isFirstItem = false
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
                 }
             }
         }
@@ -271,7 +275,7 @@ private fun OptionItem(
             .fillMaxWidth()
             .scale(scale)
             .padding(horizontal = 16.dp, vertical = 2.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(PluviaTheme.shape(12.dp))
             .background(
                 if (isFocused) {
                     MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
@@ -284,7 +288,7 @@ private fun OptionItem(
                     Modifier.border(
                         1.dp,
                         MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                        RoundedCornerShape(12.dp),
+                        PluviaTheme.shape(12.dp),
                     )
                 } else {
                     Modifier

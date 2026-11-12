@@ -117,6 +117,7 @@ private fun FrontendSyncResyncButton() {
             CircularProgressIndicator(
                 modifier = Modifier.size(24.dp),
                 strokeWidth = 2.dp,
+                color = PluviaTheme.progressColor,
             )
         } else {
             Icon(
@@ -643,6 +644,7 @@ fun SettingsGroupInterface(
                 },
                 valueRange = 0f..3f,
                 steps = 2, // Creates exactly 4 positions: 0, 1, 2, 3
+                colors = PluviaTheme.sliderColors()
             )
             // Labels below slider
             Row(

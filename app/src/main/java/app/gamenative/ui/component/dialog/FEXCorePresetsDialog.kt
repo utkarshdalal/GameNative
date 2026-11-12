@@ -42,6 +42,7 @@ import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.settings.SettingsEnvVars
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.settingsTileColors
 import com.winlator.core.StringUtils
 import com.winlator.core.envvars.EnvVarInfo
@@ -134,6 +135,7 @@ fun FEXCorePresetsDialog(
                             DropdownMenu(
                                 expanded = showPresets,
                                 onDismissRequest = { showPresets = false },
+                                containerColor = PluviaTheme.menuContainerColor,
                             ) {
                                 for (preset in getPresets()) {
                                     DropdownMenuItem(
@@ -147,6 +149,7 @@ fun FEXCorePresetsDialog(
                                             ).toString()
                                             showPresets = false
                                         },
+                                        colors = PluviaTheme.menuItemColors(),
                                     )
                                 }
                             }
