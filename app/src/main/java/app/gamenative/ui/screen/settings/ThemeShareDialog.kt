@@ -92,10 +92,13 @@ internal fun ShareThemeDialog(
             Text(stringResource(if (isUpdate) R.string.themes_share_update else R.string.themes_share_title))
         },
         text = {
+            val scroll = rememberScrollState()
+            // the error line sits below the fields; bring it into view
+            LaunchedEffect(error) { if (error != null) scroll.animateScrollTo(scroll.maxValue) }
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
+                    .verticalScroll(scroll),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 NoExtractOutlinedTextField(
@@ -236,10 +239,13 @@ internal fun ReportThemeDialog(
         containerColor = PluviaTheme.dialogContainerColor,
         title = { Text(stringResource(R.string.themes_community_report_title, theme.name)) },
         text = {
+            val scroll = rememberScrollState()
+            // the error line sits below the fields; bring it into view
+            LaunchedEffect(error) { if (error != null) scroll.animateScrollTo(scroll.maxValue) }
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
+                    .verticalScroll(scroll),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Column(modifier = Modifier.selectableGroup()) {
