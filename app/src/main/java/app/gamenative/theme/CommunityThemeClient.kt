@@ -21,6 +21,7 @@ import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.longOrNull
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
+import timber.log.Timber
 
 /** GameNative community themes API. Every call throws [CommunityException] on failure. */
 class CommunityThemeClient(
@@ -101,7 +102,11 @@ class CommunityThemeClient(
         } catch (e: Exception) {
             throw CommunityException("network", e.message)
         } ?: throw CommunityException("unauthorized")
-        if (r.code !in 200..299) throw errorOf(r.code, r.body.toString(Charsets.UTF_8))
+        if (r.code !in 200..299) {
+            val e = errorOf(r.code, r.body.toString(Charsets.UTF_8))
+            Timber.w("Community ${request.method} ${request.url.substringBefore('?')} -> ${r.code} ${e.code}: ${e.message}")
+            throw e
+        }
         return r
     }
 
