@@ -1268,7 +1268,6 @@
     <string name="themes_starter_saved">入門主題已儲存</string>
     <string name="themes_search_hint">搜尋主題</string>
     <string name="themes_load_more">載入更多</string>
-    <string name="themes_downloads">%1$d 次下載</string>
     <string name="themes_store_error">無法載入主題商店：%1$s</string>
     <string name="themes_store_empty">找不到主題</string>
     <string name="themes_retry">重試</string>
@@ -1311,8 +1310,6 @@
     <string name="themes_share_name">名稱</string>
     <string name="themes_share_name_hint">為你的主題取個名字</string>
     <string name="themes_share_description">說明</string>
-    <string name="themes_share_author">作者名稱</string>
-    <string name="themes_share_rights">此主題由我製作,我有權分享其中的全部內容</string>
     <string name="themes_share_done">已將 %1$s 分享到社群</string>
     <string name="themes_share_updated">已在社群清單中更新 %1$s</string>
     <string name="themes_shared_note">已分享到社群</string>
@@ -1343,6 +1340,25 @@
     <string name="themes_sounds_store_error">無法載入音效包：%1$s</string>
     <string name="themes_sounds_store_empty">找不到音效包</string>
     <string name="themes_sounds_delete_title">刪除音效包？</string>
+    <string name="themes_share_display_name">顯示名稱</string>
+    <string name="themes_share_display_name_hint">會與你分享的主題一起公開顯示</string>
+    <string name="themes_share_terms_agree">這個主題由我製作，或我擁有其中所有內容的權利，並且我同意%1$s</string>
+    <string name="themes_share_terms_link">上傳條款</string>
+    <string name="themes_share_terms_read">閱讀上傳條款</string>
+    <string name="themes_share_terms_title">上傳條款</string>
+    <string name="themes_share_terms_error">無法載入上傳條款：%1$s</string>
+    <string name="themes_share_terms_changed">上傳條款已更新。請閱讀並重新同意後再分享。</string>
+    <string name="themes_share_forbidden">此帳號無法分享主題。</string>
+    <string name="themes_share_forbidden_removed">此主題已從社群列表中移除，無法替換。</string>
+    <string name="themes_terms_contact">聯絡方式：%1$s</string>
+    <string name="themes_copyright_policy">版權政策</string>
+    <string name="themes_community_report_copyright_note">正式的版權通知有額外要求。傳送前請閱讀版權政策。</string>
+    <string name="themes_community_hidden_reports">因檢舉已隱藏</string>
+    <string name="themes_community_hidden_copyright">因版權投訴已移除</string>
+    <string name="themes_community_hidden_other">已從社群列表中移除</string>
+    <plurals name="themes_downloads">
+        <item quantity="other">%d 次下載</item>
+    </plurals>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">介面</string>

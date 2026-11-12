@@ -1344,7 +1344,6 @@
     <string name="themes_starter_saved">Başlangıç teması kaydedildi</string>
     <string name="themes_search_hint">Tema ara</string>
     <string name="themes_load_more">Daha fazla yükle</string>
-    <string name="themes_downloads">%1$d indirme</string>
     <string name="themes_store_error">Tema mağazası yüklenemedi: %1$s</string>
     <string name="themes_store_empty">Tema bulunamadı</string>
     <string name="themes_retry">Yeniden dene</string>
@@ -1387,8 +1386,6 @@
     <string name="themes_share_name">Ad</string>
     <string name="themes_share_name_hint">Temana bir ad ver</string>
     <string name="themes_share_description">Açıklama</string>
-    <string name="themes_share_author">Yazar adı</string>
-    <string name="themes_share_rights">Bu temayı ben yaptım ve içindeki her şeyi paylaşma hakkına sahibim</string>
     <string name="themes_share_done">%1$s toplulukla paylaşıldı</string>
     <string name="themes_share_updated">%1$s topluluk listesinde güncellendi</string>
     <string name="themes_shared_note">Toplulukla paylaşıldı</string>
@@ -1419,6 +1416,26 @@
     <string name="themes_sounds_store_error">Ses paketleri yüklenemedi: %1$s</string>
     <string name="themes_sounds_store_empty">Ses paketi bulunamadı</string>
     <string name="themes_sounds_delete_title">Ses paketi silinsin mi?</string>
+    <string name="themes_share_display_name">Görünen ad</string>
+    <string name="themes_share_display_name_hint">Paylaştığın temalarla birlikte herkese açık olarak gösterilir</string>
+    <string name="themes_share_terms_agree">Bu temayı ben yaptım veya içindeki her şeyin haklarına sahibim ve %1$s kabul ediyorum</string>
+    <string name="themes_share_terms_link">yükleme koşullarını</string>
+    <string name="themes_share_terms_read">Yükleme koşullarını oku</string>
+    <string name="themes_share_terms_title">Yükleme koşulları</string>
+    <string name="themes_share_terms_error">Yükleme koşulları yüklenemedi: %1$s</string>
+    <string name="themes_share_terms_changed">Yükleme koşulları değişti. Paylaşmak için koşulları okuyup yeniden kabul et.</string>
+    <string name="themes_share_forbidden">Bu hesap tema paylaşamaz.</string>
+    <string name="themes_share_forbidden_removed">Bu tema topluluk listesinden kaldırıldı ve değiştirilemez.</string>
+    <string name="themes_terms_contact">İletişim: %1$s</string>
+    <string name="themes_copyright_policy">Telif hakkı politikası</string>
+    <string name="themes_community_report_copyright_note">Resmi bir telif hakkı bildiriminin ek gereksinimleri vardır. Göndermeden önce telif hakkı politikasını oku.</string>
+    <string name="themes_community_hidden_reports">Şikayetler sonrası gizlendi</string>
+    <string name="themes_community_hidden_copyright">Telif hakkı şikayeti sonrası kaldırıldı</string>
+    <string name="themes_community_hidden_other">Topluluk listesinden kaldırıldı</string>
+    <plurals name="themes_downloads">
+        <item quantity="one">%d indirme</item>
+        <item quantity="other">%d indirme</item>
+    </plurals>
 
     <string name="settings_interface_title">Arayüz</string>
     <string name="settings_interface_external_links_title">Web bağlantılarını dışarıda aç</string>

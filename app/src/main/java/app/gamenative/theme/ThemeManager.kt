@@ -60,6 +60,10 @@ object ThemeManager {
     private val _activeSpec = MutableStateFlow(ThemeSpec.EMPTY)
     val activeSpec: StateFlow<ThemeSpec> = _activeSpec.asStateFlow()
 
+    private val _shareDisplayName = MutableStateFlow("")
+    /** Public name last used to share a theme; empty until one is saved. */
+    val shareDisplayName: StateFlow<String> = _shareDisplayName.asStateFlow()
+
     private class Entry(
         val id: String,
         var enabled: Boolean,
@@ -86,6 +90,7 @@ object ThemeManager {
     /** Latest list record of each community theme seen this session. */
     private val communitySeen = ConcurrentHashMap<String, CommunityTheme>()
     private val community: CommunityThemeClient get() = CommunityThemeClient.default
+    @Volatile private var communityTermsCache: CommunityTerms? = null
     private val manifests = HashMap<String, DeckyThemeManifest>()
     private var classMap = SteamClassMap.EMPTY
 
@@ -431,9 +436,34 @@ object ThemeManager {
         }
     }
 
+    /** Upload terms of the community list, fetched once per session and again after an upload reports them outdated. */
+    suspend fun communityTerms(): Result<CommunityTerms> =
+        communityOp("communityTerms", "server", needsAccount = false) {
+            communityTermsCache ?: community.terms().also { communityTermsCache = it }
+        }
+
+    suspend fun setShareDisplayName(name: String) {
+        op("setShareDisplayName") {
+            mutex.withLock { saveShareDisplayNameLocked(name) }
+        }
+    }
+
+    private fun saveShareDisplayNameLocked(name: String) {
+        val n = ShareDisplayName.normalize(name)
+        if (n == _shareDisplayName.value) return
+        _shareDisplayName.value = n
+        saveLocked()
+    }
+
     fun shareBlocker(id: String): ShareBlocker? = shareInfo[id]?.blocker ?: if (shareInfo.containsKey(id)) null else ShareBlocker.EMPTY
 
-    suspend fun shareTheme(id: String, name: String, description: String, authorName: String): Result<CommunityTheme> =
+    suspend fun shareTheme(
+        id: String,
+        name: String,
+        description: String,
+        authorName: String,
+        termsVersion: String,
+    ): Result<CommunityTheme> =
         communityOp("shareTheme", "invalid_theme", needsAccount = true) {
             val title = name.trim()
             if (title.isEmpty()) throw CommunityException("invalid_theme", "The theme needs a name")
@@ -456,12 +486,18 @@ object ThemeManager {
                 CommunityThemePackage.write(spec, title, authorName.trim(), version, description.trim(), zip)
                 if (zip.length() > CommunityThemePackage.MAX_ZIP_BYTES) throw CommunityException("too_large")
                 val bytes = zip.readBytes()
-                fun meta(replaces: String?) = CommunityThemeClient.uploadMeta(title, description.trim(), authorName.trim(), spec, replaces)
+                fun meta(replaces: String?) =
+                    CommunityThemeClient.uploadMeta(title, description.trim(), authorName.trim(), spec, replaces, termsVersion)
                 val result = try {
-                    community.upload(meta(linked), bytes)
+                    try {
+                        community.upload(meta(linked), bytes)
+                    } catch (e: CommunityException) {
+                        if (linked == null || e.code != "not_found") throw e
+                        community.upload(meta(null), bytes)
+                    }
                 } catch (e: CommunityException) {
-                    if (linked == null || e.code != "not_found") throw e
-                    community.upload(meta(null), bytes)
+                    if (e.code == "terms_outdated" || e.code == "terms_required") communityTermsCache = null
+                    throw e
                 }
                 CommunityTheme(
                     id = result.id,
@@ -479,15 +515,17 @@ object ThemeManager {
             }
             communitySeen[uploaded.id] = uploaded
             mutex.withLock {
-                entries.firstOrNull { it.id == id }?.let { e ->
+                val e = entries.firstOrNull { it.id == id }
+                if (e != null) {
                     e.communityId = uploaded.id
                     e.communityVersion = uploaded.version
                     e.communityMine = true
                     e.communityInstalled = false
                     e.updateAvailable = null
-                    saveLocked()
-                    recomputeLocked()
                 }
+                _shareDisplayName.value = ShareDisplayName.normalize(authorName)
+                saveLocked()
+                if (e != null) recomputeLocked()
             }
             uploaded
         }
@@ -835,6 +873,7 @@ object ThemeManager {
             val f = File(root, STATE_FILE)
             if (f.isFile) {
                 val obj = Json.parseToJsonElement(f.readText()) as? JsonObject
+                _shareDisplayName.value = ShareDisplayName.read(obj)
                 val themesObj = obj?.get("themes") as? JsonObject
                 val order = (obj?.get("order") as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull } ?: emptyList()
                 for (id in order) {
@@ -884,29 +923,29 @@ object ThemeManager {
 
     private fun saveLocked() {
         fun obj(m: Map<String, String>) = JsonObject(m.mapValues { JsonPrimitive(it.value) })
-        val json = JsonObject(
-            mapOf(
-                "order" to JsonArray(entries.map { JsonPrimitive(it.id) }),
-                "themes" to JsonObject(
-                    entries.associate {
-                        it.id to JsonObject(
-                            buildMap {
-                                put("enabled", JsonPrimitive(it.enabled))
-                                put("choices", obj(it.choices))
-                                put("colors", obj(it.colors))
-                                put("images", obj(it.images))
-                                it.storeId?.let { v -> put("storeId", JsonPrimitive(v)) }
-                                it.storeVersion?.let { v -> put("storeVersion", JsonPrimitive(v)) }
-                                it.communityId?.let { v -> put("communityId", JsonPrimitive(v)) }
-                                it.communityVersion?.let { v -> put("communityVersion", JsonPrimitive(v)) }
-                                if (it.communityInstalled) put("communityInstalled", JsonPrimitive(true))
-                                if (it.communityMine) put("communityMine", JsonPrimitive(true))
-                            },
-                        )
-                    },
-                ),
+        val state = linkedMapOf<String, JsonElement>(
+            "order" to JsonArray(entries.map { JsonPrimitive(it.id) }),
+            "themes" to JsonObject(
+                entries.associate {
+                    it.id to JsonObject(
+                        buildMap {
+                            put("enabled", JsonPrimitive(it.enabled))
+                            put("choices", obj(it.choices))
+                            put("colors", obj(it.colors))
+                            put("images", obj(it.images))
+                            it.storeId?.let { v -> put("storeId", JsonPrimitive(v)) }
+                            it.storeVersion?.let { v -> put("storeVersion", JsonPrimitive(v)) }
+                            it.communityId?.let { v -> put("communityId", JsonPrimitive(v)) }
+                            it.communityVersion?.let { v -> put("communityVersion", JsonPrimitive(v)) }
+                            if (it.communityInstalled) put("communityInstalled", JsonPrimitive(true))
+                            if (it.communityMine) put("communityMine", JsonPrimitive(true))
+                        },
+                    )
+                },
             ),
         )
+        ShareDisplayName.write(state, _shareDisplayName.value)
+        val json = JsonObject(state)
         root.mkdirs()
         val tmp = File(root, "$STATE_FILE.tmp")
         tmp.writeText(json.toString())

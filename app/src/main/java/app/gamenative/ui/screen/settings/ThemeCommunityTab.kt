@@ -46,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -71,6 +72,7 @@ internal class CommunityState {
     var hasMore by mutableStateOf(false)
     var loaded by mutableStateOf(false)
     val installing = mutableStateListOf<String>()
+    val deleting = mutableStateListOf<String>()
     var job: Job? = null
 }
 
@@ -86,6 +88,8 @@ internal fun communityErrorText(ctx: Context, e: Throwable): String {
         "rate_limited" -> ctx.getString(R.string.themes_community_error_rate_limited)
         "not_found" -> ctx.getString(R.string.themes_community_error_not_found)
         "network" -> ctx.getString(R.string.themes_community_error_network)
+        "terms_required", "terms_outdated" -> ctx.getString(R.string.themes_share_terms_changed)
+        "forbidden" -> ctx.getString(R.string.themes_share_forbidden)
         else -> ctx.getString(R.string.themes_community_error_server)
     }
 }
@@ -198,6 +202,7 @@ internal fun CommunityThemesTab(
                         theme = theme,
                         installedTheme = installedByCommunityId[theme.id],
                         installing = theme.id in state.installing,
+                        deleting = theme.id in state.deleting,
                         onInstall = { onInstall(theme) },
                         onReport = { onReport(theme) },
                         onDelete = { onDelete(theme) },
@@ -246,6 +251,7 @@ private fun CommunityThemeRow(
     theme: CommunityTheme,
     installedTheme: InstalledTheme?,
     installing: Boolean,
+    deleting: Boolean,
     onInstall: () -> Unit,
     onReport: () -> Unit,
     onDelete: () -> Unit,
@@ -281,7 +287,7 @@ private fun CommunityThemeRow(
                 }
                 Text(
                     text = listOf(
-                        stringResource(R.string.themes_downloads, theme.downloads),
+                        pluralStringResource(R.plurals.themes_downloads, theme.downloads, theme.downloads),
                         stringResource(R.string.themes_community_version, theme.version),
                     ).joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall,
@@ -298,6 +304,20 @@ private fun CommunityThemeRow(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
+                if (theme.mine && theme.hidden) {
+                    Text(
+                        text = stringResource(
+                            when (theme.hiddenReason) {
+                                "reports" -> R.string.themes_community_hidden_reports
+                                "copyright" -> R.string.themes_community_hidden_copyright
+                                else -> R.string.themes_community_hidden_other
+                            },
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    if (theme.hiddenReason == "copyright") CopyrightPolicyButton()
+                }
             }
 
             Column(
@@ -305,6 +325,7 @@ private fun CommunityThemeRow(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 when {
+                    deleting -> {}
                     installing -> CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp)
                     installedTheme?.updateAvailable != null -> Button(
                         onClick = onInstall,
@@ -331,7 +352,19 @@ private fun CommunityThemeRow(
                         modifier = Modifier.focusOutline(CircleShape),
                     ) { Text(stringResource(R.string.install)) }
                 }
-                if (theme.mine) {
+                if (theme.mine && deleting) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        Text(
+                            text = stringResource(R.string.deleting),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                } else if (theme.mine) {
                     TextButton(
                         onClick = onDelete,
                         modifier = Modifier.focusOutline(CircleShape),

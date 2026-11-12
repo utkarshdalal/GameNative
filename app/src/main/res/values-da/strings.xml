@@ -1095,7 +1095,6 @@
     <string name="themes_starter_saved">Starttema gemt</string>
     <string name="themes_search_hint">Søg efter temaer</string>
     <string name="themes_load_more">Indlæs flere</string>
-    <string name="themes_downloads">%1$d downloads</string>
     <string name="themes_store_error">Kunne ikke indlæse temabutikken: %1$s</string>
     <string name="themes_store_empty">Ingen temaer fundet</string>
     <string name="themes_retry">Prøv igen</string>
@@ -1138,8 +1137,6 @@
     <string name="themes_share_name">Navn</string>
     <string name="themes_share_name_hint">Giv dit tema et navn</string>
     <string name="themes_share_description">Beskrivelse</string>
-    <string name="themes_share_author">Forfatternavn</string>
-    <string name="themes_share_rights">Jeg har lavet dette tema og har ret til at dele alt i det</string>
     <string name="themes_share_done">Delte %1$s med fællesskabet</string>
     <string name="themes_share_updated">Opdaterede %1$s i fællesskabslisten</string>
     <string name="themes_shared_note">Delt med fællesskabet</string>
@@ -1170,6 +1167,26 @@
     <string name="themes_sounds_store_error">Kunne ikke indlæse lydpakker: %1$s</string>
     <string name="themes_sounds_store_empty">Ingen lydpakker fundet</string>
     <string name="themes_sounds_delete_title">Slet lydpakke?</string>
+    <string name="themes_share_display_name">Visningsnavn</string>
+    <string name="themes_share_display_name_hint">Vises offentligt sammen med de temaer, du deler</string>
+    <string name="themes_share_terms_agree">Jeg har lavet dette tema eller har rettighederne til alt i det, og jeg accepterer %1$s</string>
+    <string name="themes_share_terms_link">upload-vilkårene</string>
+    <string name="themes_share_terms_read">Læs upload-vilkårene</string>
+    <string name="themes_share_terms_title">Upload-vilkår</string>
+    <string name="themes_share_terms_error">Kunne ikke indlæse upload-vilkårene: %1$s</string>
+    <string name="themes_share_terms_changed">Upload-vilkårene er ændret. Læs dem, og acceptér igen for at dele.</string>
+    <string name="themes_share_forbidden">Denne konto kan ikke dele temaer.</string>
+    <string name="themes_share_forbidden_removed">Dette tema blev fjernet fra fællesskabslisten og kan ikke erstattes.</string>
+    <string name="themes_terms_contact">Kontakt: %1$s</string>
+    <string name="themes_copyright_policy">Ophavsretspolitik</string>
+    <string name="themes_community_report_copyright_note">En formel ophavsretsmeddelelse har yderligere krav. Læs ophavsretspolitikken, før du sender en.</string>
+    <string name="themes_community_hidden_reports">Skjult efter anmeldelser</string>
+    <string name="themes_community_hidden_copyright">Fjernet efter en klage over ophavsret</string>
+    <string name="themes_community_hidden_other">Fjernet fra fællesskabslisten</string>
+    <plurals name="themes_downloads">
+        <item quantity="one">%d download</item>
+        <item quantity="other">%d downloads</item>
+    </plurals>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Grænseflade</string>

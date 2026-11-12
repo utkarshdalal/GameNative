@@ -1095,7 +1095,6 @@
     <string name="themes_starter_saved">Tema inicial salvo</string>
     <string name="themes_search_hint">Buscar temas</string>
     <string name="themes_load_more">Carregar mais</string>
-    <string name="themes_downloads">%1$d downloads</string>
     <string name="themes_store_error">Não foi possível carregar a loja de temas: %1$s</string>
     <string name="themes_store_empty">Nenhum tema encontrado</string>
     <string name="themes_retry">Tentar novamente</string>
@@ -1138,8 +1137,6 @@
     <string name="themes_share_name">Nome</string>
     <string name="themes_share_name_hint">Dê um nome ao seu tema</string>
     <string name="themes_share_description">Descrição</string>
-    <string name="themes_share_author">Nome do autor</string>
-    <string name="themes_share_rights">Eu criei este tema e tenho o direito de compartilhar tudo o que há nele</string>
     <string name="themes_share_done">%1$s compartilhado com a comunidade</string>
     <string name="themes_share_updated">%1$s atualizado na lista da comunidade</string>
     <string name="themes_shared_note">Compartilhado com a comunidade</string>
@@ -1170,6 +1167,26 @@
     <string name="themes_sounds_store_error">Não foi possível carregar os pacotes de sons: %1$s</string>
     <string name="themes_sounds_store_empty">Nenhum pacote de sons encontrado</string>
     <string name="themes_sounds_delete_title">Excluir pacote de sons?</string>
+    <string name="themes_share_display_name">Nome de exibição</string>
+    <string name="themes_share_display_name_hint">Exibido publicamente com os temas que você compartilha</string>
+    <string name="themes_share_terms_agree">Eu criei este tema ou tenho os direitos sobre tudo nele, e concordo com os %1$s</string>
+    <string name="themes_share_terms_link">termos de envio</string>
+    <string name="themes_share_terms_read">Ler os termos de envio</string>
+    <string name="themes_share_terms_title">Termos de envio</string>
+    <string name="themes_share_terms_error">Não foi possível carregar os termos de envio: %1$s</string>
+    <string name="themes_share_terms_changed">Os termos de envio mudaram. Leia-os e concorde novamente para compartilhar.</string>
+    <string name="themes_share_forbidden">Esta conta não pode compartilhar temas.</string>
+    <string name="themes_share_forbidden_removed">Este tema foi removido da lista da comunidade e não pode ser substituído.</string>
+    <string name="themes_terms_contact">Contato: %1$s</string>
+    <string name="themes_copyright_policy">Política de direitos autorais</string>
+    <string name="themes_community_report_copyright_note">Uma notificação formal de direitos autorais tem requisitos adicionais. Leia a política de direitos autorais antes de enviar uma.</string>
+    <string name="themes_community_hidden_reports">Oculto após denúncias</string>
+    <string name="themes_community_hidden_copyright">Removido após uma reclamação de direitos autorais</string>
+    <string name="themes_community_hidden_other">Removido da lista da comunidade</string>
+    <plurals name="themes_downloads">
+        <item quantity="one">%d download</item>
+        <item quantity="other">%d downloads</item>
+    </plurals>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interface</string>

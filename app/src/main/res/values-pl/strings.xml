@@ -1292,7 +1292,6 @@
     <string name="themes_starter_saved">Zapisano motyw startowy</string>
     <string name="themes_search_hint">Szukaj motywów</string>
     <string name="themes_load_more">Wczytaj więcej</string>
-    <string name="themes_downloads">Pobrania: %1$d</string>
     <string name="themes_store_error">Nie udało się wczytać sklepu z motywami: %1$s</string>
     <string name="themes_store_empty">Nie znaleziono motywów</string>
     <string name="themes_retry">Ponów</string>
@@ -1335,8 +1334,6 @@
     <string name="themes_share_name">Nazwa</string>
     <string name="themes_share_name_hint">Nadaj nazwę swojemu motywowi</string>
     <string name="themes_share_description">Opis</string>
-    <string name="themes_share_author">Imię autora</string>
-    <string name="themes_share_rights">Stworzyłem ten motyw i mam prawo udostępnić wszystko, co zawiera</string>
     <string name="themes_share_done">Udostępniono %1$s społeczności</string>
     <string name="themes_share_updated">Zaktualizowano %1$s na liście społeczności</string>
     <string name="themes_shared_note">Udostępniony społeczności</string>
@@ -1367,6 +1364,28 @@
     <string name="themes_sounds_store_error">Nie można wczytać pakietów dźwięków: %1$s</string>
     <string name="themes_sounds_store_empty">Nie znaleziono pakietów dźwięków</string>
     <string name="themes_sounds_delete_title">Usunąć pakiet dźwięków?</string>
+    <string name="themes_share_display_name">Nazwa wyświetlana</string>
+    <string name="themes_share_display_name_hint">Wyświetlana publicznie przy udostępnianych motywach</string>
+    <string name="themes_share_terms_agree">Ten motyw jest mojego autorstwa lub mam prawa do wszystkiego, co zawiera, i akceptuję %1$s</string>
+    <string name="themes_share_terms_link">warunki przesyłania</string>
+    <string name="themes_share_terms_read">Przeczytaj warunki przesyłania</string>
+    <string name="themes_share_terms_title">Warunki przesyłania</string>
+    <string name="themes_share_terms_error">Nie udało się wczytać warunków przesyłania: %1$s</string>
+    <string name="themes_share_terms_changed">Warunki przesyłania zmieniły się. Przeczytaj je i zaakceptuj ponownie, aby udostępnić.</string>
+    <string name="themes_share_forbidden">To konto nie może udostępniać motywów.</string>
+    <string name="themes_share_forbidden_removed">Ten motyw został usunięty z listy społeczności i nie można go zastąpić.</string>
+    <string name="themes_terms_contact">Kontakt: %1$s</string>
+    <string name="themes_copyright_policy">Zasady dotyczące praw autorskich</string>
+    <string name="themes_community_report_copyright_note">Formalne zgłoszenie naruszenia praw autorskich ma dodatkowe wymagania. Przed wysłaniem przeczytaj zasady dotyczące praw autorskich.</string>
+    <string name="themes_community_hidden_reports">Ukryty po zgłoszeniach</string>
+    <string name="themes_community_hidden_copyright">Usunięty po skardze dotyczącej praw autorskich</string>
+    <string name="themes_community_hidden_other">Usunięty z listy społeczności</string>
+    <plurals name="themes_downloads">
+        <item quantity="one">%d pobranie</item>
+        <item quantity="few">%d pobrania</item>
+        <item quantity="many">%d pobrań</item>
+        <item quantity="other">%d pobrania</item>
+    </plurals>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interfejs</string>

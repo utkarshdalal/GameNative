@@ -1238,7 +1238,6 @@
     <string name="themes_starter_saved">Starter-Design gespeichert</string>
     <string name="themes_search_hint">Designs suchen</string>
     <string name="themes_load_more">Mehr laden</string>
-    <string name="themes_downloads">%1$d Downloads</string>
     <string name="themes_store_error">Design-Store konnte nicht geladen werden: %1$s</string>
     <string name="themes_store_empty">Keine Designs gefunden</string>
     <string name="themes_retry">Erneut versuchen</string>
@@ -1281,8 +1280,6 @@
     <string name="themes_share_name">Name</string>
     <string name="themes_share_name_hint">Gib deinem Theme einen Namen</string>
     <string name="themes_share_description">Beschreibung</string>
-    <string name="themes_share_author">Name des Autors</string>
-    <string name="themes_share_rights">Ich habe dieses Theme erstellt und darf alles darin teilen</string>
     <string name="themes_share_done">%1$s mit der Community geteilt</string>
     <string name="themes_share_updated">%1$s in der Community-Liste aktualisiert</string>
     <string name="themes_shared_note">Mit der Community geteilt</string>
@@ -1313,6 +1310,26 @@
     <string name="themes_sounds_store_error">Soundpakete konnten nicht geladen werden: %1$s</string>
     <string name="themes_sounds_store_empty">Keine Soundpakete gefunden</string>
     <string name="themes_sounds_delete_title">Soundpaket löschen?</string>
+    <string name="themes_share_display_name">Anzeigename</string>
+    <string name="themes_share_display_name_hint">Wird öffentlich bei den Themes angezeigt, die du teilst</string>
+    <string name="themes_share_terms_agree">Ich habe dieses Theme erstellt oder besitze die Rechte an allem darin, und ich stimme den %1$s zu</string>
+    <string name="themes_share_terms_link">Upload-Bedingungen</string>
+    <string name="themes_share_terms_read">Upload-Bedingungen lesen</string>
+    <string name="themes_share_terms_title">Upload-Bedingungen</string>
+    <string name="themes_share_terms_error">Die Upload-Bedingungen konnten nicht geladen werden: %1$s</string>
+    <string name="themes_share_terms_changed">Die Upload-Bedingungen haben sich geändert. Lies sie und stimme erneut zu, um zu teilen.</string>
+    <string name="themes_share_forbidden">Dieses Konto kann keine Themes teilen.</string>
+    <string name="themes_share_forbidden_removed">Dieses Theme wurde aus der Community-Liste entfernt und kann nicht ersetzt werden.</string>
+    <string name="themes_terms_contact">Kontakt: %1$s</string>
+    <string name="themes_copyright_policy">Urheberrechtsrichtlinie</string>
+    <string name="themes_community_report_copyright_note">Eine förmliche Urheberrechtsmeldung hat zusätzliche Anforderungen. Lies vor dem Senden die Urheberrechtsrichtlinie.</string>
+    <string name="themes_community_hidden_reports">Nach Meldungen ausgeblendet</string>
+    <string name="themes_community_hidden_copyright">Nach einer Urheberrechtsbeschwerde entfernt</string>
+    <string name="themes_community_hidden_other">Aus der Community-Liste entfernt</string>
+    <plurals name="themes_downloads">
+        <item quantity="one">%d Download</item>
+        <item quantity="other">%d Downloads</item>
+    </plurals>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Oberfläche</string>

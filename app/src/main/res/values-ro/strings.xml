@@ -1283,7 +1283,6 @@
     <string name="themes_starter_saved">Tema de pornire a fost salvată</string>
     <string name="themes_search_hint">Caută teme</string>
     <string name="themes_load_more">Încarcă mai multe</string>
-    <string name="themes_downloads">%1$d descărcări</string>
     <string name="themes_store_error">Magazinul de teme nu a putut fi încărcat: %1$s</string>
     <string name="themes_store_empty">Nu s-au găsit teme</string>
     <string name="themes_retry">Reîncearcă</string>
@@ -1326,8 +1325,6 @@
     <string name="themes_share_name">Nume</string>
     <string name="themes_share_name_hint">Dă un nume temei tale</string>
     <string name="themes_share_description">Descriere</string>
-    <string name="themes_share_author">Numele autorului</string>
-    <string name="themes_share_rights">Am creat această temă și am dreptul să partajez tot ce conține</string>
     <string name="themes_share_done">%1$s a fost partajată cu comunitatea</string>
     <string name="themes_share_updated">%1$s a fost actualizată în lista comunității</string>
     <string name="themes_shared_note">Partajată cu comunitatea</string>
@@ -1358,6 +1355,27 @@
     <string name="themes_sounds_store_error">Nu s-au putut încărca pachetele de sunete: %1$s</string>
     <string name="themes_sounds_store_empty">Nu s-au găsit pachete de sunete</string>
     <string name="themes_sounds_delete_title">Ștergi pachetul de sunete?</string>
+    <string name="themes_share_display_name">Nume afișat</string>
+    <string name="themes_share_display_name_hint">Afișat public împreună cu temele pe care le distribui</string>
+    <string name="themes_share_terms_agree">Am creat această temă sau dețin drepturile asupra întregului ei conținut și sunt de acord cu %1$s</string>
+    <string name="themes_share_terms_link">termenii de încărcare</string>
+    <string name="themes_share_terms_read">Citește termenii de încărcare</string>
+    <string name="themes_share_terms_title">Termeni de încărcare</string>
+    <string name="themes_share_terms_error">Nu s-au putut încărca termenii de încărcare: %1$s</string>
+    <string name="themes_share_terms_changed">Termenii de încărcare s-au schimbat. Citește-i și acceptă-i din nou pentru a distribui.</string>
+    <string name="themes_share_forbidden">Acest cont nu poate distribui teme.</string>
+    <string name="themes_share_forbidden_removed">Această temă a fost eliminată din lista comunității și nu poate fi înlocuită.</string>
+    <string name="themes_terms_contact">Contact: %1$s</string>
+    <string name="themes_copyright_policy">Politica privind drepturile de autor</string>
+    <string name="themes_community_report_copyright_note">O notificare formală privind drepturile de autor are cerințe suplimentare. Citește politica privind drepturile de autor înainte de a trimite una.</string>
+    <string name="themes_community_hidden_reports">Ascunsă după raportări</string>
+    <string name="themes_community_hidden_copyright">Eliminată după o reclamație privind drepturile de autor</string>
+    <string name="themes_community_hidden_other">Eliminată din lista comunității</string>
+    <plurals name="themes_downloads">
+        <item quantity="one">%d descărcare</item>
+        <item quantity="few">%d descărcări</item>
+        <item quantity="other">%d de descărcări</item>
+    </plurals>
 
 	<!-- Settings: Interface Group -->
 	<string name="settings_interface_title">Interfață</string>

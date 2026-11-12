@@ -1289,7 +1289,6 @@
     <string name="themes_starter_saved">Tema base guardado</string>
     <string name="themes_search_hint">Buscar temas</string>
     <string name="themes_load_more">Cargar más</string>
-    <string name="themes_downloads">%1$d descargas</string>
     <string name="themes_store_error">No se pudo cargar la tienda de temas: %1$s</string>
     <string name="themes_store_empty">No se encontraron temas</string>
     <string name="themes_retry">Reintentar</string>
@@ -1332,8 +1331,6 @@
     <string name="themes_share_name">Nombre</string>
     <string name="themes_share_name_hint">Ponle un nombre a tu tema</string>
     <string name="themes_share_description">Descripción</string>
-    <string name="themes_share_author">Nombre del autor</string>
-    <string name="themes_share_rights">He creado este tema y tengo derecho a compartir todo su contenido</string>
     <string name="themes_share_done">Se compartió %1$s con la comunidad</string>
     <string name="themes_share_updated">Se actualizó %1$s en la lista de la comunidad</string>
     <string name="themes_shared_note">Compartido con la comunidad</string>
@@ -1364,6 +1361,26 @@
     <string name="themes_sounds_store_error">No se pudieron cargar los paquetes de sonidos: %1$s</string>
     <string name="themes_sounds_store_empty">No se encontraron paquetes de sonidos</string>
     <string name="themes_sounds_delete_title">¿Eliminar paquete de sonidos?</string>
+    <string name="themes_share_display_name">Nombre visible</string>
+    <string name="themes_share_display_name_hint">Se muestra públicamente con los temas que compartes</string>
+    <string name="themes_share_terms_agree">He creado este tema o tengo los derechos de todo su contenido, y acepto los %1$s</string>
+    <string name="themes_share_terms_link">términos de subida</string>
+    <string name="themes_share_terms_read">Leer los términos de subida</string>
+    <string name="themes_share_terms_title">Términos de subida</string>
+    <string name="themes_share_terms_error">No se pudieron cargar los términos de subida: %1$s</string>
+    <string name="themes_share_terms_changed">Los términos de subida han cambiado. Léelos y vuelve a aceptarlos para compartir.</string>
+    <string name="themes_share_forbidden">Esta cuenta no puede compartir temas.</string>
+    <string name="themes_share_forbidden_removed">Este tema se eliminó de la lista de la comunidad y no se puede reemplazar.</string>
+    <string name="themes_terms_contact">Contacto: %1$s</string>
+    <string name="themes_copyright_policy">Política de derechos de autor</string>
+    <string name="themes_community_report_copyright_note">Un aviso formal de derechos de autor tiene requisitos adicionales. Lee la política de derechos de autor antes de enviarlo.</string>
+    <string name="themes_community_hidden_reports">Oculto tras denuncias</string>
+    <string name="themes_community_hidden_copyright">Eliminado tras una reclamación de derechos de autor</string>
+    <string name="themes_community_hidden_other">Eliminado de la lista de la comunidad</string>
+    <plurals name="themes_downloads">
+        <item quantity="one">%d descarga</item>
+        <item quantity="other">%d descargas</item>
+    </plurals>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interfaz</string>

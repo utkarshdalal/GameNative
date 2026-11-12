@@ -1299,7 +1299,6 @@
     <string name="themes_starter_saved">Thème de base enregistré</string>
     <string name="themes_search_hint">Rechercher des thèmes</string>
     <string name="themes_load_more">Charger plus</string>
-    <string name="themes_downloads">%1$d téléchargements</string>
     <string name="themes_store_error">Impossible de charger la boutique de thèmes : %1$s</string>
     <string name="themes_store_empty">Aucun thème trouvé</string>
     <string name="themes_retry">Réessayer</string>
@@ -1342,8 +1341,6 @@
     <string name="themes_share_name">Nom</string>
     <string name="themes_share_name_hint">Donnez un nom à votre thème</string>
     <string name="themes_share_description">Description</string>
-    <string name="themes_share_author">Nom de l\'auteur</string>
-    <string name="themes_share_rights">J\'ai créé ce thème et j\'ai le droit de partager tout son contenu</string>
     <string name="themes_share_done">%1$s partagé avec la communauté</string>
     <string name="themes_share_updated">%1$s mis à jour dans la liste de la communauté</string>
     <string name="themes_shared_note">Partagé avec la communauté</string>
@@ -1374,6 +1371,26 @@
     <string name="themes_sounds_store_error">Impossible de charger les packs de sons : %1$s</string>
     <string name="themes_sounds_store_empty">Aucun pack de sons trouvé</string>
     <string name="themes_sounds_delete_title">Supprimer le pack de sons ?</string>
+    <string name="themes_share_display_name">Nom affiché</string>
+    <string name="themes_share_display_name_hint">Affiché publiquement avec les thèmes que vous partagez</string>
+    <string name="themes_share_terms_agree">J\'ai créé ce thème ou je détiens les droits sur tout son contenu, et j\'accepte les %1$s</string>
+    <string name="themes_share_terms_link">conditions de publication</string>
+    <string name="themes_share_terms_read">Lire les conditions de publication</string>
+    <string name="themes_share_terms_title">Conditions de publication</string>
+    <string name="themes_share_terms_error">Impossible de charger les conditions de publication : %1$s</string>
+    <string name="themes_share_terms_changed">Les conditions de publication ont changé. Lisez-les et acceptez-les à nouveau pour partager.</string>
+    <string name="themes_share_forbidden">Ce compte ne peut pas partager de thèmes.</string>
+    <string name="themes_share_forbidden_removed">Ce thème a été retiré de la liste de la communauté et ne peut pas être remplacé.</string>
+    <string name="themes_terms_contact">Contact : %1$s</string>
+    <string name="themes_copyright_policy">Politique relative aux droits d\'auteur</string>
+    <string name="themes_community_report_copyright_note">Une notification formelle de droits d\'auteur comporte des exigences supplémentaires. Lisez la politique relative aux droits d\'auteur avant d\'en envoyer une.</string>
+    <string name="themes_community_hidden_reports">Masqué après des signalements</string>
+    <string name="themes_community_hidden_copyright">Retiré après une plainte pour droits d\'auteur</string>
+    <string name="themes_community_hidden_other">Retiré de la liste de la communauté</string>
+    <plurals name="themes_downloads">
+        <item quantity="one">%d téléchargement</item>
+        <item quantity="other">%d téléchargements</item>
+    </plurals>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interface</string>

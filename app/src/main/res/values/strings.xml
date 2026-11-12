@@ -1461,7 +1461,6 @@
     <string name="themes_starter_saved">Starter theme saved</string>
     <string name="themes_search_hint">Search themes</string>
     <string name="themes_load_more">Load more</string>
-    <string name="themes_downloads">%1$d downloads</string>
     <string name="themes_store_error">Could not load the theme store: %1$s</string>
     <string name="themes_store_empty">No themes found</string>
     <string name="themes_retry">Retry</string>
@@ -1504,8 +1503,6 @@
     <string name="themes_share_name">Name</string>
     <string name="themes_share_name_hint">Give your theme a name</string>
     <string name="themes_share_description">Description</string>
-    <string name="themes_share_author">Author name</string>
-    <string name="themes_share_rights">I made this theme and have the right to share everything in it</string>
     <string name="themes_share_done">Shared %1$s with the community</string>
     <string name="themes_share_updated">Updated %1$s in the community list</string>
     <string name="themes_shared_note">Shared with the community</string>
@@ -1536,6 +1533,26 @@
     <string name="themes_sounds_store_error">Could not load sound packs: %1$s</string>
     <string name="themes_sounds_store_empty">No sound packs found</string>
     <string name="themes_sounds_delete_title">Delete sound pack?</string>
+    <string name="themes_share_display_name">Display name</string>
+    <string name="themes_share_display_name_hint">Shown publicly with the themes you share</string>
+    <string name="themes_share_terms_agree">I made this theme or have the rights to everything in it, and I agree to the %1$s</string>
+    <string name="themes_share_terms_link">upload terms</string>
+    <string name="themes_share_terms_read">Read the upload terms</string>
+    <string name="themes_share_terms_title">Upload terms</string>
+    <string name="themes_share_terms_error">Could not load the upload terms: %1$s</string>
+    <string name="themes_share_terms_changed">The upload terms have changed. Read them and agree again to share.</string>
+    <string name="themes_share_forbidden">This account cannot share themes.</string>
+    <string name="themes_share_forbidden_removed">This theme was removed from the community list and cannot be replaced.</string>
+    <string name="themes_terms_contact">Contact: %1$s</string>
+    <string name="themes_copyright_policy">Copyright policy</string>
+    <string name="themes_community_report_copyright_note">A formal copyright notice has extra requirements. Read the copyright policy before sending one.</string>
+    <string name="themes_community_hidden_reports">Hidden after reports</string>
+    <string name="themes_community_hidden_copyright">Removed after a copyright complaint</string>
+    <string name="themes_community_hidden_other">Removed from the community list</string>
+    <plurals name="themes_downloads">
+        <item quantity="one">%d download</item>
+        <item quantity="other">%d downloads</item>
+    </plurals>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interface</string>

@@ -1441,7 +1441,6 @@ https://gamenative.app
     <string name="themes_starter_saved">Стартовая тема сохранена</string>
     <string name="themes_search_hint">Поиск тем</string>
     <string name="themes_load_more">Загрузить ещё</string>
-    <string name="themes_downloads">Загрузок: %1$d</string>
     <string name="themes_store_error">Не удалось загрузить магазин тем: %1$s</string>
     <string name="themes_store_empty">Темы не найдены</string>
     <string name="themes_retry">Повторить</string>
@@ -1484,8 +1483,6 @@ https://gamenative.app
     <string name="themes_share_name">Название</string>
     <string name="themes_share_name_hint">Дайте теме название</string>
     <string name="themes_share_description">Описание</string>
-    <string name="themes_share_author">Имя автора</string>
-    <string name="themes_share_rights">Я создал эту тему и имею право делиться всем её содержимым</string>
     <string name="themes_share_done">Тема %1$s опубликована в сообществе</string>
     <string name="themes_share_updated">Тема %1$s обновлена в списке сообщества</string>
     <string name="themes_shared_note">Опубликовано в сообществе</string>
@@ -1516,6 +1513,28 @@ https://gamenative.app
     <string name="themes_sounds_store_error">Не удалось загрузить наборы звуков: %1$s</string>
     <string name="themes_sounds_store_empty">Наборы звуков не найдены</string>
     <string name="themes_sounds_delete_title">Удалить набор звуков?</string>
+    <string name="themes_share_display_name">Отображаемое имя</string>
+    <string name="themes_share_display_name_hint">Публично показывается рядом с темами, которыми вы делитесь</string>
+    <string name="themes_share_terms_agree">Я создал эту тему или владею правами на всё её содержимое и принимаю %1$s</string>
+    <string name="themes_share_terms_link">условия загрузки</string>
+    <string name="themes_share_terms_read">Прочитать условия загрузки</string>
+    <string name="themes_share_terms_title">Условия загрузки</string>
+    <string name="themes_share_terms_error">Не удалось загрузить условия загрузки: %1$s</string>
+    <string name="themes_share_terms_changed">Условия загрузки изменились. Прочитайте их и снова примите, чтобы поделиться.</string>
+    <string name="themes_share_forbidden">Этот аккаунт не может делиться темами.</string>
+    <string name="themes_share_forbidden_removed">Эта тема удалена из списка сообщества и не может быть заменена.</string>
+    <string name="themes_terms_contact">Контакт: %1$s</string>
+    <string name="themes_copyright_policy">Политика авторских прав</string>
+    <string name="themes_community_report_copyright_note">У официального уведомления о нарушении авторских прав есть дополнительные требования. Прочитайте политику авторских прав перед отправкой.</string>
+    <string name="themes_community_hidden_reports">Скрыта после жалоб</string>
+    <string name="themes_community_hidden_copyright">Удалена после жалобы на нарушение авторских прав</string>
+    <string name="themes_community_hidden_other">Удалена из списка сообщества</string>
+    <plurals name="themes_downloads">
+        <item quantity="one">%d загрузка</item>
+        <item quantity="few">%d загрузки</item>
+        <item quantity="many">%d загрузок</item>
+        <item quantity="other">%d загрузки</item>
+    </plurals>
 
     <string name="settings_interface_title">Интерфейс</string>
     <string name="settings_interface_wifi_only_subtitle">Предотвратить загрузки по сотовым данным</string>

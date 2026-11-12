@@ -1266,7 +1266,6 @@
     <string name="themes_starter_saved">入门主题已保存</string>
     <string name="themes_search_hint">搜索主题</string>
     <string name="themes_load_more">加载更多</string>
-    <string name="themes_downloads">%1$d 次下载</string>
     <string name="themes_store_error">无法加载主题商店：%1$s</string>
     <string name="themes_store_empty">未找到主题</string>
     <string name="themes_retry">重试</string>
@@ -1309,8 +1308,6 @@
     <string name="themes_share_name">名称</string>
     <string name="themes_share_name_hint">为你的主题起个名字</string>
     <string name="themes_share_description">描述</string>
-    <string name="themes_share_author">作者名称</string>
-    <string name="themes_share_rights">此主题由我制作,我有权分享其中的全部内容</string>
     <string name="themes_share_done">已将 %1$s 分享到社区</string>
     <string name="themes_share_updated">已在社区列表中更新 %1$s</string>
     <string name="themes_shared_note">已分享到社区</string>
@@ -1341,6 +1338,25 @@
     <string name="themes_sounds_store_error">无法加载音效包：%1$s</string>
     <string name="themes_sounds_store_empty">未找到音效包</string>
     <string name="themes_sounds_delete_title">删除音效包？</string>
+    <string name="themes_share_display_name">显示名称</string>
+    <string name="themes_share_display_name_hint">会与你分享的主题一起公开显示</string>
+    <string name="themes_share_terms_agree">这个主题由我制作，或我拥有其中所有内容的权利，并且我同意%1$s</string>
+    <string name="themes_share_terms_link">上传条款</string>
+    <string name="themes_share_terms_read">阅读上传条款</string>
+    <string name="themes_share_terms_title">上传条款</string>
+    <string name="themes_share_terms_error">无法加载上传条款：%1$s</string>
+    <string name="themes_share_terms_changed">上传条款已更新。请阅读并重新同意后再分享。</string>
+    <string name="themes_share_forbidden">此账号无法分享主题。</string>
+    <string name="themes_share_forbidden_removed">此主题已从社区列表中移除，无法替换。</string>
+    <string name="themes_terms_contact">联系方式：%1$s</string>
+    <string name="themes_copyright_policy">版权政策</string>
+    <string name="themes_community_report_copyright_note">正式的版权通知有额外要求。发送前请阅读版权政策。</string>
+    <string name="themes_community_hidden_reports">因举报已隐藏</string>
+    <string name="themes_community_hidden_copyright">因版权投诉已移除</string>
+    <string name="themes_community_hidden_other">已从社区列表中移除</string>
+    <plurals name="themes_downloads">
+        <item quantity="other">%d 次下载</item>
+    </plurals>
 
     <!-- 设置：界面组 -->
     <string name="settings_interface_title">界面</string>

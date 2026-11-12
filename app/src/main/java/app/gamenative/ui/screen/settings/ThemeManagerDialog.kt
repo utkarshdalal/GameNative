@@ -89,6 +89,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -173,8 +174,6 @@ private class StoreState {
 fun ThemeManagerDialog(
     open: Boolean,
     onDismiss: () -> Unit,
-    shareAuthor: String = "",
-    onShareAuthorChange: (String) -> Unit = {},
 ) {
     if (!open) return
 
@@ -311,8 +310,11 @@ fun ThemeManagerDialog(
     }
 
     fun deleteFromCommunity(theme: CommunityTheme) {
+        if (theme.id in community.deleting) return
         scope.launch {
+            community.deleting.add(theme.id)
             val result = withContext(Dispatchers.IO) { ThemeManager.deleteCommunityTheme(theme.id) }
+            community.deleting.remove(theme.id)
             result.onSuccess { community.items.removeAll { it.id == theme.id } }
             snackbarHostState.showSnackbar(
                 result.fold({ ctx.getString(R.string.themes_community_deleted) }, { communityErrorText(ctx, it) }),
@@ -526,11 +528,9 @@ fun ThemeManagerDialog(
         shareTarget?.let { target ->
             ShareThemeDialog(
                 theme = target,
-                lastAuthor = shareAuthor,
                 onDismiss = { shareTarget = null },
-                onShared = { shared, author ->
+                onShared = { shared ->
                     shareTarget = null
-                    onShareAuthorChange(author)
                     val message = ctx.getString(
                         if (target.sharedFromHere) R.string.themes_share_updated else R.string.themes_share_done,
                         shared.name,
@@ -1479,7 +1479,7 @@ private fun StoreThemeRow(
                 }
                 val meta = listOfNotNull(
                     theme.target?.takeIf { it.isNotBlank() },
-                    stringResource(R.string.themes_downloads, theme.downloads),
+                    pluralStringResource(R.plurals.themes_downloads, theme.downloads, theme.downloads),
                 ).joinToString(" · ")
                 Text(
                     text = meta,

@@ -88,6 +88,18 @@ data class CommunityTheme(
     /** Uploaded by the signed-in account. */
     val mine: Boolean = false,
     val updatedAt: String? = null,
+    /** Taken off the public list; only reported in the account's own uploads. */
+    val hidden: Boolean = false,
+    /** Why a [hidden] theme is off the list: reports, copyright or other. */
+    val hiddenReason: String? = null,
+)
+
+/** Current upload terms of the community list; [version] is sent with every upload. */
+data class CommunityTerms(
+    val version: String,
+    val uploadTerms: String,
+    val copyrightPolicy: String,
+    val contact: String? = null,
 )
 
 data class CommunityPage(
@@ -106,5 +118,9 @@ enum class ShareBlocker {
     EMPTY,
 }
 
-/** Failure of a community request. [code] is one of: unauthorized, invalid_theme, text_rejected, too_large, rate_limited, not_found, network, server. */
+/**
+ * Failure of a community request. [code] is one of: unauthorized, invalid_theme, text_rejected, too_large, rate_limited,
+ * not_found, terms_required, terms_outdated (the accepted terms are not the current ones), forbidden (this account may
+ * not upload, or the upload replaces a removed theme), network, server.
+ */
 class CommunityException(val code: String, message: String? = null) : Exception(message ?: code)

@@ -52,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -543,7 +544,7 @@ private fun SoundStoreRow(
                 val meta = listOfNotNull(
                     item.author?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.themes_by_author, it) },
                     item.target?.takeIf { it.isNotBlank() },
-                    stringResource(R.string.themes_downloads, item.downloads),
+                    pluralStringResource(R.plurals.themes_downloads, item.downloads, item.downloads),
                 ).joinToString(" · ")
                 Text(
                     text = meta,

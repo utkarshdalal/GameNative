@@ -81,6 +81,47 @@ class CommunityThemeClientTest {
     }
 
     @Test
+    fun hiddenUploadsCarryTheirReason() {
+        val page = CommunityThemeClient.parsePage(
+            """
+            {"themes":[
+              {"id":"h1","name":"Gone","mine":true,"hidden":true,"hidden_reason":"copyright"},
+              {"id":"h2","name":"Quiet","mine":true,"hidden":true},
+              {"id":"h3","name":"Shown","mine":true,"hidden":false,"hidden_reason":"reports"}
+            ],"has_more":false}
+            """.trimIndent(),
+        )
+        val (gone, quiet, shown) = page.themes
+        assertTrue(gone.hidden)
+        assertEquals("copyright", gone.hiddenReason)
+        assertTrue(quiet.hidden)
+        assertNull(quiet.hiddenReason)
+        assertFalse(shown.hidden)
+        assertNull(shown.hiddenReason)
+    }
+
+    @Test
+    fun termsArePublicAndParsed() = runBlocking {
+        val fake = Fake {
+            ok("""{"version":"2026-11-12","upload_terms":"Be nice.\nOnly your own work.","copyright_policy":"Send notices to us.","contact":"legal@example.test"}""")
+        }
+        val terms = client(fake).terms()
+        val r = fake.requests.single()
+        assertEquals("GET", r.method)
+        assertEquals("https://api.test/api/themes/terms", r.url)
+        assertEquals(CommunityThemeClient.Auth.NONE, r.auth)
+        assertEquals(CommunityTerms("2026-11-12", "Be nice.\nOnly your own work.", "Send notices to us.", "legal@example.test"), terms)
+
+        fake.respond = { ok("""{"upload_terms":"T"}""") }
+        fails("server") { client(fake).terms() }
+        fake.respond = { ok("""{"version":"  "}""") }
+        fails("server") { client(fake).terms() }
+        assertNull(CommunityThemeClient.parseTerms("""{"version":"v2","upload_terms":"T","copyright_policy":"C","contact":null}""").contact)
+        assertNull(CommunityThemeClient.parseTerms("""{"version":"v2","upload_terms":"T","copyright_policy":"C","contact":"  "}""").contact)
+        assertEquals("", CommunityThemeClient.parseTerms("""{"version":"v2"}""").uploadTerms)
+    }
+
+    @Test
     fun publicListIsOptionalAuthWithoutEmptyQuery() = runBlocking {
         val fake = Fake { ok("""{"themes":[],"page":1,"has_more":false}""") }
         val page = client(fake).list("", 0, CommunitySort.POPULAR, mineOnly = false)
@@ -103,6 +144,14 @@ class CommunityThemeClientTest {
         fails("rate_limited") { c.delete("x") }
         fake.respond = { ok("""{"error":"not_found"}""", 404) }
         assertEquals("not_found", fails("not_found") { c.delete("x") }.message)
+        fake.respond = { ok("""{"error":"terms_required","message":"Accept the terms"}""", 422) }
+        assertEquals("Accept the terms", fails("terms_required") { c.delete("x") }.message)
+        fake.respond = { ok("""{"error":"terms_outdated"}""", 422) }
+        fails("terms_outdated") { c.delete("x") }
+        fake.respond = { ok("""{"error":"forbidden"}""", 403) }
+        fails("forbidden") { c.delete("x") }
+        fake.respond = { ok("", 403) }
+        fails("forbidden") { c.delete("x") }
         fake.respond = { ok("<html>oops</html>", 502) }
         fails("server") { c.delete("x") }
         fake.respond = { ok("""{"error":"something_new"}""", 500) }
@@ -122,7 +171,7 @@ class CommunityThemeClientTest {
         val fake = Fake { ok("""{"id":"new-id","version":2}""", 201) }
         val zip = byteArrayOf(0x50, 0x4b, 3, 4, 0, -1, 10, 13)
         val preview = ThemeSpec(primary = argb("#123456"), fontFile = "/abs/font.ttf")
-        val meta = CommunityThemeClient.uploadMeta("Blue", "Calm", "Sam", preview, "old-id")
+        val meta = CommunityThemeClient.uploadMeta("Blue", "Calm", "Sam", preview, "old-id", "2026-11-12")
         val up = client(fake).upload(meta, zip)
         assertEquals(CommunityThemeClient.Upload("new-id", 2), up)
         val r = fake.requests.single()
@@ -137,14 +186,15 @@ class CommunityThemeClientTest {
         assertArrayEquals(head.toByteArray() + zip + tail.toByteArray(), body)
 
         val m = Json.parseToJsonElement(meta.toString()).jsonObject
-        assertEquals(setOf("name", "description", "author_name", "preview", "replaces_id"), m.keys)
+        assertEquals(setOf("name", "description", "author_name", "preview", "replaces_id", "terms_version"), m.keys)
         assertEquals("old-id", m["replaces_id"]!!.jsonPrimitive.content)
+        assertEquals("2026-11-12", m["terms_version"]!!.jsonPrimitive.content)
         val p = m["preview"]!!.jsonObject
         assertEquals("#FF123456", p["primary"]!!.jsonPrimitive.content)
         assertEquals("true", p["hasFont"]!!.jsonPrimitive.content)
         assertFalse(p.toString().contains("/abs/"))
-        assertEquals(JsonNull, CommunityThemeClient.uploadMeta("B", "", "S", null, null)["replaces_id"])
-        assertEquals(JsonNull, CommunityThemeClient.uploadMeta("B", "", "S", null, null)["preview"])
+        assertEquals(JsonNull, CommunityThemeClient.uploadMeta("B", "", "S", null, null, "v")["replaces_id"])
+        assertEquals(JsonNull, CommunityThemeClient.uploadMeta("B", "", "S", null, null, "v")["preview"])
     }
 
     @Test

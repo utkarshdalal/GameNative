@@ -1278,7 +1278,6 @@
     <string name="themes_starter_saved">Стартову тему збережено</string>
     <string name="themes_search_hint">Пошук тем</string>
     <string name="themes_load_more">Завантажити ще</string>
-    <string name="themes_downloads">Завантажень: %1$d</string>
     <string name="themes_store_error">Не вдалося завантажити магазин тем: %1$s</string>
     <string name="themes_store_empty">Теми не знайдено</string>
     <string name="themes_retry">Повторити</string>
@@ -1321,8 +1320,6 @@
     <string name="themes_share_name">Назва</string>
     <string name="themes_share_name_hint">Дайте темі назву</string>
     <string name="themes_share_description">Опис</string>
-    <string name="themes_share_author">Ім\'я автора</string>
-    <string name="themes_share_rights">Я створив цю тему і маю право ділитися всім її вмістом</string>
     <string name="themes_share_done">Тему %1$s опубліковано у спільноті</string>
     <string name="themes_share_updated">Тему %1$s оновлено у списку спільноти</string>
     <string name="themes_shared_note">Опубліковано у спільноті</string>
@@ -1353,6 +1350,28 @@
     <string name="themes_sounds_store_error">Не вдалося завантажити набори звуків: %1$s</string>
     <string name="themes_sounds_store_empty">Наборів звуків не знайдено</string>
     <string name="themes_sounds_delete_title">Видалити набір звуків?</string>
+    <string name="themes_share_display_name">Відображуване ім\'я</string>
+    <string name="themes_share_display_name_hint">Публічно показується поруч із темами, якими ви ділитеся</string>
+    <string name="themes_share_terms_agree">Я створив цю тему або маю права на весь її вміст і приймаю %1$s</string>
+    <string name="themes_share_terms_link">умови завантаження</string>
+    <string name="themes_share_terms_read">Прочитати умови завантаження</string>
+    <string name="themes_share_terms_title">Умови завантаження</string>
+    <string name="themes_share_terms_error">Не вдалося завантажити умови завантаження: %1$s</string>
+    <string name="themes_share_terms_changed">Умови завантаження змінилися. Прочитайте їх і знову прийміть, щоб поділитися.</string>
+    <string name="themes_share_forbidden">Цей обліковий запис не може ділитися темами.</string>
+    <string name="themes_share_forbidden_removed">Цю тему видалено зі списку спільноти, і її не можна замінити.</string>
+    <string name="themes_terms_contact">Контакт: %1$s</string>
+    <string name="themes_copyright_policy">Політика щодо авторських прав</string>
+    <string name="themes_community_report_copyright_note">Офіційне повідомлення про порушення авторських прав має додаткові вимоги. Прочитайте політику щодо авторських прав перед надсиланням.</string>
+    <string name="themes_community_hidden_reports">Приховано після скарг</string>
+    <string name="themes_community_hidden_copyright">Видалено після скарги на порушення авторських прав</string>
+    <string name="themes_community_hidden_other">Видалено зі списку спільноти</string>
+    <plurals name="themes_downloads">
+        <item quantity="one">%d завантаження</item>
+        <item quantity="few">%d завантаження</item>
+        <item quantity="many">%d завантажень</item>
+        <item quantity="other">%d завантаження</item>
+    </plurals>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Інтерфейс</string>

@@ -79,6 +79,11 @@ class CommunityThemeClient(
         return Upload(id, o.int("version") ?: 1)
     }
 
+    suspend fun terms(): CommunityTerms {
+        val r = call(Request("GET", "${baseUrl()}/api/themes/terms", Auth.NONE))
+        return parseTerms(r.body.toString(Charsets.UTF_8))
+    }
+
     suspend fun delete(id: String) {
         expectNoContent(call(Request("DELETE", "${baseUrl()}/api/themes/${encodeId(id)}", Auth.REQUIRED)))
     }
@@ -115,7 +120,10 @@ class CommunityThemeClient(
         const val MAX_JSON_BYTES = 4L * 1024 * 1024
         const val MAX_DOWNLOAD_BYTES = 16L * 1024 * 1024
         private const val JSON_TYPE = "application/json"
-        private val CODES = setOf("unauthorized", "not_found", "too_large", "invalid_theme", "text_rejected", "rate_limited")
+        private val CODES = setOf(
+            "unauthorized", "not_found", "too_large", "invalid_theme", "text_rejected", "rate_limited",
+            "terms_required", "terms_outdated", "forbidden",
+        )
 
         val default: CommunityThemeClient by lazy { CommunityThemeClient(HttpTransport, baseUrl = { GameNativeApi.BASE_URL }) }
 
@@ -133,6 +141,7 @@ class CommunityThemeClient(
             }
             val code = o?.str("error")?.takeIf { it in CODES } ?: when (status) {
                 401 -> "unauthorized"
+                403 -> "forbidden"
                 404 -> "not_found"
                 413 -> "too_large"
                 422 -> "invalid_theme"
@@ -156,7 +165,14 @@ class CommunityThemeClient(
             return out.toByteArray()
         }
 
-        fun uploadMeta(name: String, description: String, authorName: String, preview: ThemeSpec?, replacesId: String?): JsonObject =
+        fun uploadMeta(
+            name: String,
+            description: String,
+            authorName: String,
+            preview: ThemeSpec?,
+            replacesId: String?,
+            termsVersion: String,
+        ): JsonObject =
             JsonObject(
                 linkedMapOf(
                     "name" to JsonPrimitive(name),
@@ -164,8 +180,20 @@ class CommunityThemeClient(
                     "author_name" to JsonPrimitive(authorName),
                     "preview" to (preview?.let(::previewJson) ?: JsonNull),
                     "replaces_id" to (replacesId?.let(::JsonPrimitive) ?: JsonNull),
+                    "terms_version" to JsonPrimitive(termsVersion),
                 ),
             )
+
+        fun parseTerms(body: String): CommunityTerms {
+            val o = parseObject(body)
+            val version = o.str("version")?.trim()?.takeIf { it.isNotEmpty() } ?: throw CommunityException("server", "Terms have no version")
+            return CommunityTerms(
+                version = version,
+                uploadTerms = o.str("upload_terms").orEmpty(),
+                copyrightPolicy = o.str("copyright_policy").orEmpty(),
+                contact = o.str("contact")?.trim()?.takeIf { it.isNotEmpty() },
+            )
+        }
 
         fun parsePage(body: String): CommunityPage {
             val o = parseObject(body)
@@ -176,6 +204,7 @@ class CommunityThemeClient(
 
         fun parseTheme(o: JsonObject): CommunityTheme? {
             val id = o.str("id")?.takeIf { it.isNotBlank() } ?: return null
+            val hidden = (o["hidden"] as? JsonPrimitive)?.booleanOrNull ?: false
             return CommunityTheme(
                 id = id,
                 name = o.str("name") ?: "",
@@ -187,6 +216,8 @@ class CommunityThemeClient(
                 preview = (o["preview"] as? JsonObject)?.let(::parsePreview),
                 mine = (o["mine"] as? JsonPrimitive)?.booleanOrNull ?: false,
                 updatedAt = o.str("updated_at"),
+                hidden = hidden,
+                hiddenReason = o.str("hidden_reason")?.takeIf { hidden && it.isNotBlank() },
             )
         }
 

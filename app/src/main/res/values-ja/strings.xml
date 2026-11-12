@@ -1450,7 +1450,6 @@
     <string name="themes_starter_saved">スターターテーマを保存しました</string>
     <string name="themes_search_hint">テーマを検索</string>
     <string name="themes_load_more">さらに読み込む</string>
-    <string name="themes_downloads">%1$d ダウンロード</string>
     <string name="themes_store_error">テーマストアを読み込めませんでした: %1$s</string>
     <string name="themes_store_empty">テーマが見つかりません</string>
     <string name="themes_retry">再試行</string>
@@ -1493,8 +1492,6 @@
     <string name="themes_share_name">名前</string>
     <string name="themes_share_name_hint">テーマに名前を付けてください</string>
     <string name="themes_share_description">説明</string>
-    <string name="themes_share_author">作者名</string>
-    <string name="themes_share_rights">このテーマは私が作成したもので、含まれるすべてを共有する権利があります</string>
     <string name="themes_share_done">%1$s をコミュニティに共有しました</string>
     <string name="themes_share_updated">コミュニティ一覧の %1$s を更新しました</string>
     <string name="themes_shared_note">コミュニティに共有済み</string>
@@ -1525,6 +1522,25 @@
     <string name="themes_sounds_store_error">サウンドパックを読み込めませんでした: %1$s</string>
     <string name="themes_sounds_store_empty">サウンドパックが見つかりません</string>
     <string name="themes_sounds_delete_title">サウンドパックを削除しますか？</string>
+    <string name="themes_share_display_name">表示名</string>
+    <string name="themes_share_display_name_hint">共有したテーマと一緒に公開されます</string>
+    <string name="themes_share_terms_agree">このテーマは自分で作成したか、含まれるすべての権利を持っており、%1$sに同意します</string>
+    <string name="themes_share_terms_link">アップロード規約</string>
+    <string name="themes_share_terms_read">アップロード規約を読む</string>
+    <string name="themes_share_terms_title">アップロード規約</string>
+    <string name="themes_share_terms_error">アップロード規約を読み込めませんでした: %1$s</string>
+    <string name="themes_share_terms_changed">アップロード規約が変更されました。共有するには内容を確認して再度同意してください。</string>
+    <string name="themes_share_forbidden">このアカウントはテーマを共有できません。</string>
+    <string name="themes_share_forbidden_removed">このテーマはコミュニティ一覧から削除されたため、置き換えできません。</string>
+    <string name="themes_terms_contact">連絡先: %1$s</string>
+    <string name="themes_copyright_policy">著作権ポリシー</string>
+    <string name="themes_community_report_copyright_note">正式な著作権侵害の通知には追加の要件があります。送信する前に著作権ポリシーをお読みください。</string>
+    <string name="themes_community_hidden_reports">報告により非表示</string>
+    <string name="themes_community_hidden_copyright">著作権の申し立てにより削除</string>
+    <string name="themes_community_hidden_other">コミュニティ一覧から削除</string>
+    <plurals name="themes_downloads">
+        <item quantity="other">%d 件のダウンロード</item>
+    </plurals>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">インターフェース</string>
