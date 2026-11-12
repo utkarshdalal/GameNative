@@ -167,4 +167,61 @@ class ContainerUtilsHtml5OverridesTest {
         )
         assertNull(ContainerUtils.runtimeFlipEvent("2171440"))
     }
+
+    @Test
+    fun best_config_map_never_switches_to_or_from_html5() {
+        val toHtml5 = ContainerUtils.applyBestConfigMapToContainerData(
+            ContainerData(containerVariant = Container.BIONIC),
+            mapOf("containerVariant" to Container.CONTAINER_VARIANT_HTML5),
+        )
+        assertEquals(Container.BIONIC, toHtml5.containerVariant)
+
+        val fromHtml5 = ContainerUtils.applyBestConfigMapToContainerData(
+            ContainerData(containerVariant = Container.CONTAINER_VARIANT_HTML5),
+            mapOf("containerVariant" to Container.GLIBC),
+        )
+        assertEquals(Container.CONTAINER_VARIANT_HTML5, fromHtml5.containerVariant)
+
+        val wineToWine = ContainerUtils.applyBestConfigMapToContainerData(
+            ContainerData(containerVariant = Container.BIONIC),
+            mapOf("containerVariant" to Container.GLIBC),
+        )
+        assertEquals(Container.GLIBC, wineToWine.containerVariant)
+    }
+
+    @Test
+    fun imported_html5_settings_keep_this_devices_install_and_identity() {
+        val local = WebViewContainer(
+            id = "STEAM_1150690",
+            installPath = "/storage/emulated/0/Steam/OMORI",
+            engineProfile = "pack:nwjs",
+            webRoot = "www",
+            controlsProfileId = 7L,
+            greenworksCloudObserved = true,
+            decryptionKey = "local",
+        )
+        val imported = WebViewContainer(
+            id = "STEAM_999",
+            installPath = "/sdcard/other-device/OMORI",
+            engineProfile = "pack:rmmv",
+            controlsProfileId = 42L,
+            decryptionKey = "imported",
+            inputMap = "a=b",
+            language = "german",
+            overlayVisible = true,
+            renderScale = 1.5f,
+        )
+        val merged = app.gamenative.ui.util.ContainerConfigTransfer.withImportedHtml5Settings(local, imported)
+        assertEquals(local.id, merged.id)
+        assertEquals(local.installPath, merged.installPath)
+        assertEquals(local.engineProfile, merged.engineProfile)
+        assertEquals(local.webRoot, merged.webRoot)
+        assertEquals(local.controlsProfileId, merged.controlsProfileId)
+        assertEquals(local.decryptionKey, merged.decryptionKey)
+        assertEquals(true, merged.greenworksCloudObserved)
+        assertEquals("a=b", merged.inputMap)
+        assertEquals("german", merged.language)
+        assertEquals(true, merged.overlayVisible)
+        assertEquals(1.5f, merged.renderScale, 0f)
+    }
 }

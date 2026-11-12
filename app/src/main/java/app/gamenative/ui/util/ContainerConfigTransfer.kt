@@ -223,7 +223,7 @@ object ContainerConfigTransfer {
                 SessionReport.markConfigApplied(container, "imported")
             }
 
-            // 4) restore html5 sidecar verbatim when destination is html5 AND wrapper carried one.
+            // 4) apply the html5 settings when the destination is already html5 AND the wrapper carried them.
             if (html5BlockText != null) {
                 withContext(Dispatchers.IO) {
                     val destContainer = ContainerUtils.getOrCreateContainer(context, appId)
@@ -231,11 +231,12 @@ object ContainerConfigTransfer {
                         .equals(Container.CONTAINER_VARIANT_HTML5, ignoreCase = true)
                     val slug = ContainerUtils.webViewContainerSlugForAppId(appId)
                     val decoded = WebViewContainer.decodeFromJson(html5BlockText)
-                    if (isHtml5 && slug != null && decoded != null) {
-                        WebViewContainer.save(slug, decoded)
+                    val local = slug?.let { WebViewContainer.load(it) }
+                    if (isHtml5 && slug != null && decoded != null && local != null) {
+                        WebViewContainer.save(slug, withImportedHtml5Settings(local, decoded))
                     } else {
                         Timber.tag("ContainerConfigTransfer")
-                            .w("html5 block dropped: isHtml5=$isHtml5 slug=$slug decoded=${decoded != null}")
+                            .w("html5 block dropped: isHtml5=$isHtml5 slug=$slug decoded=${decoded != null} local=${local != null}")
                     }
                 }
             }
@@ -266,6 +267,20 @@ object ContainerConfigTransfer {
             false
         }
     }
+
+    // only user settings travel; identity, install path and layout, fingerprint, controls profile and the
+    // decrypt key stay this device's.
+    @androidx.annotation.VisibleForTesting
+    internal fun withImportedHtml5Settings(local: WebViewContainer, imported: WebViewContainer): WebViewContainer =
+        local.copy(
+            inputMap = imported.inputMap,
+            language = imported.language,
+            gestureConfig = imported.gestureConfig,
+            isTouchscreenMode = imported.isTouchscreenMode,
+            overlayOpacity = imported.overlayOpacity,
+            overlayVisible = imported.overlayVisible,
+            renderScale = imported.renderScale,
+        )
 
     // {"wine": .., "html5": ..}. the wrapper is emitted even when the WebViewContainer JSON is missing
     // ("html5": null) so the variant signal survives import.
