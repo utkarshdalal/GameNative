@@ -70,7 +70,7 @@ fun Html5SwitchHint(
                             // same as the dialog: wine fields stay put so a flip back restores them.
                             loadContainerData().copy(containerVariant = Container.CONTAINER_VARIANT_HTML5)
                         }
-                        if (ContainerUtils.applyToContainerGated(context, appId, data)) visible = false
+                        if (ContainerUtils.applyToContainerGated(context, appId, data, switchTrigger = "hint")) visible = false
                     } finally {
                         switching = false
                     }

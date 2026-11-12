@@ -5493,6 +5493,7 @@ private fun exit(
     val sessionProperties = mapOf(
         "game_name" to ContainerUtils.resolveGameName(appId),
         "game_store" to ContainerUtils.extractGameSourceFromContainerId(appId).name,
+        "runtime" to Container.RUNTIME_WINE,
         "session_length" to (frameRating?.sessionLengthSec ?: 0),
         "avg_fps" to (frameRating?.avgFPS ?: 0.0),
         "container_config" to container.containerJson,
