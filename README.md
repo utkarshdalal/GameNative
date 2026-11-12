@@ -87,8 +87,12 @@ Own a broken game and want to donate a key so someone can fix it? Email [support
 
 Most of the time you don't need this — if you just want to play, grab the release above. This is for contributors.
 
-1. Build it like any normal Android Studio project. Ask on Discord if you get stuck.
-2. **SteamGridDB API key (optional):** to pull game artwork for custom games, add your key to `local.properties`:
+1. After cloning, fetch the submodules (the vendored leveldb and snappy-java are built from them):
+   ```sh
+   git submodule update --init --recursive
+   ```
+2. Build it like any normal Android Studio project. Ask on Discord if you get stuck.
+3. **SteamGridDB API key (optional):** to pull game artwork for custom games, add your key to `local.properties`:
    ```properties
    STEAMGRIDDB_API_KEY=your_api_key_here
    ```
