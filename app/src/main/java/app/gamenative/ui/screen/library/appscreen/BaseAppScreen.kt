@@ -1013,25 +1013,40 @@ abstract class BaseAppScreen {
      * This is common behavior for all game sources.
      */
     protected fun resetContainerToDefaults(context: Context, libraryItem: LibraryItem) {
-        val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
-        val isHtml5 = container.containerVariant
-            .equals(Container.CONTAINER_VARIANT_HTML5, ignoreCase = true)
-        val defaults = ContainerUtils.getDefaultContainerData().copy(drives = container.drives)
+        CoroutineScope(Dispatchers.IO).launch {
+            val appId = libraryItem.appId
+            val container = ContainerUtils.getOrCreateContainer(context, appId)
+            val isHtml5 = container.containerVariant
+                .equals(Container.CONTAINER_VARIANT_HTML5, ignoreCase = true)
+            // the global default is never html5, so an html5 game keeps its variant or the reset flips it to wine.
+            val defaults = ContainerUtils.getDefaultContainerData().copy(drives = container.drives).let {
+                if (isHtml5) it.copy(containerVariant = Container.CONTAINER_VARIANT_HTML5) else it
+            }
 
-        ContainerUtils.applyToContainer(context, libraryItem.appId, defaults)
-
-        if (isHtml5) {
-            // re-run the install-time opt-in so reset yields a freshly fingerprinted WebViewContainer.
-            CoroutineScope(Dispatchers.IO).launch {
+            if (isHtml5) {
+                // re-run the install-time opt-in so reset yields a freshly fingerprinted WebViewContainer,
+                // before the wine container like applyGatedVariant.
+                val previous = ContainerUtils.loadWebViewContainerForAppId(appId)
                 runCatching {
-                    Html5OptInService.optIn(context, libraryItem.appId, defaults)
+                    if (Html5OptInService.optIn(context, appId, defaults) == Html5OptInService.Result.Matched) {
+                        val slug = ContainerUtils.webViewContainerSlugForAppId(appId)
+                        val fresh = slug?.let { app.gamenative.runtime.WebViewContainer.load(it) }
+                        if (slug != null && fresh != null && previous != null) {
+                            app.gamenative.runtime.WebViewContainer.save(
+                                slug,
+                                Html5OptInService.keepLaunchState(previous, fresh),
+                            )
+                        }
+                    }
                 }.onFailure {
-                    Timber.tag("BaseAppScreen").w(it, "html5 reset optIn failed for ${libraryItem.appId}")
+                    Timber.tag("BaseAppScreen").w(it, "html5 reset optIn failed for $appId")
                 }
             }
-        }
 
-        SnackbarManager.show("Container reset to defaults")
+            ContainerUtils.applyToContainer(context, appId, defaults)
+
+            SnackbarManager.show("Container reset to defaults")
+        }
     }
 
     /**

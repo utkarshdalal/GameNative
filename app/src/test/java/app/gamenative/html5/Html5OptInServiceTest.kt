@@ -262,4 +262,27 @@ class Html5OptInServiceTest {
             unmockkObject(SnackbarManager)
         }
     }
+
+    @Test
+    fun keepLaunchState_carries_launch_learned_fields_onto_a_fresh_opt_in() {
+        val previous = WebViewContainer(
+            id = "STEAM_1150690",
+            installPath = "/old",
+            engineProfile = "pack:nwjs",
+            inputMap = "custom",
+            controlsProfileId = 9L,
+            greenworksCloudObserved = true,
+            decryptionKey = "--0123456789abcdef0123456789abcdef",
+        )
+        val fresh = WebViewContainer(id = "STEAM_1150690", installPath = "/new", engineProfile = "pack:rmmv")
+
+        val kept = Html5OptInService.keepLaunchState(previous, fresh)
+
+        assertEquals("--0123456789abcdef0123456789abcdef", kept.decryptionKey)
+        assertTrue(kept.greenworksCloudObserved)
+        assertEquals(9L, kept.controlsProfileId)
+        assertEquals("/new", kept.installPath)
+        assertEquals("pack:rmmv", kept.engineProfile)
+        assertEquals("", kept.inputMap)
+    }
 }
