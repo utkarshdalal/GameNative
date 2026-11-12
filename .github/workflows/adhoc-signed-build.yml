@@ -101,9 +101,9 @@ jobs:
 
     - name: Build with Gradle
       run: |
-        ./gradlew -Pkotlin.daemon.jvmargs=-Xmx3g :app:bundleLegacyRelease
-        ./gradlew -Pkotlin.daemon.jvmargs=-Xmx3g :app:bundleModernRelease
-        ./gradlew -Pkotlin.daemon.jvmargs=-Xmx3g :app:bundleLegacyXrRelease
+        ./gradlew -Pkotlin.daemon.jvmargs=-Xmx4g :app:bundleLegacyRelease
+        ./gradlew -Pkotlin.daemon.jvmargs=-Xmx4g :app:bundleModernRelease
+        ./gradlew -Pkotlin.daemon.jvmargs=-Xmx4g :app:bundleLegacyXrRelease
 
     - name: Stage bundles
       run: |
