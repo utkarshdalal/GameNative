@@ -125,6 +125,14 @@ The hook works like this:
 
 The decision is `gno_dlsym_pick` in the core, which the host tests cover.
 
+The overlay must come before `libredirect` in `LD_PRELOAD` (the app inserts it there).
+`libredirect`'s `openat` is a raw syscall and does not call the next library, so an overlay placed
+after it never sees `openat`: the kernel gets the upper path as given, and a directory that exists
+only in lower fails with `ENOENT`. Wine's ntdll opens a directory with `openat` and then
+`fdopendir` to match a name case-insensitively, so an import such as `COMCTL32.dll` from a
+lower-only `winsxs` assembly directory (file on disk: `comctl32.dll`) was not found, while the
+exact-case name resolved through `fstatat`.
+
 Two rules keep the interposition chain (other preloads such as `libredirect` and `libsysvshm`
 sit in the same chain) from recursing:
 

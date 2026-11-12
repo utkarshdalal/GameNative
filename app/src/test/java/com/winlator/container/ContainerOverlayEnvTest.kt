@@ -69,12 +69,30 @@ class ContainerOverlayEnvTest {
     }
 
     @Test
-    fun appendPreload_appendsAfterExistingEntries() {
+    fun insertPreload_appendsWhenThereIsNoRedirect() {
         val lib = "/data/app/x/lib/arm64/libgnoverlay.so"
-        assertEquals(lib, ContainerOverlay.appendPreload("", lib, ":"))
-        assertEquals(lib, ContainerOverlay.appendPreload(null, lib, ":"))
-        assertEquals("a.so:libredirect.so:$lib", ContainerOverlay.appendPreload("a.so:libredirect.so", lib, ":"))
-        assertEquals("a.so $lib", ContainerOverlay.appendPreload("a.so", lib, " "))
-        assertEquals("a.so:$lib", ContainerOverlay.appendPreload("a.so:$lib", lib, ":"))
+        assertEquals(lib, ContainerOverlay.insertPreload("", lib, ":"))
+        assertEquals(lib, ContainerOverlay.insertPreload(null, lib, ":"))
+        assertEquals("a.so:b.so:$lib", ContainerOverlay.insertPreload("a.so:b.so", lib, ":"))
+        assertEquals("a.so $lib", ContainerOverlay.insertPreload("a.so", lib, " "))
+    }
+
+    @Test
+    fun insertPreload_goesAheadOfRedirect() {
+        val lib = "/data/app/x/lib/arm64/libgnoverlay.so"
+        val redirect = "/data/user/0/app.gamenative/files/imagefs/usr/lib/libredirect-bionic-wx.so"
+        assertEquals("a.so:$lib:$redirect", ContainerOverlay.insertPreload("a.so:$redirect", lib, ":"))
+        assertEquals("$lib:$redirect:b.so", ContainerOverlay.insertPreload("$redirect:b.so", lib, ":"))
+        assertEquals(
+            "a.so:$lib:libredirect-bionic-wx-minimal.so:b.so",
+            ContainerOverlay.insertPreload("a.so:libredirect-bionic-wx-minimal.so:b.so", lib, ":"),
+        )
+    }
+
+    @Test
+    fun insertPreload_leavesAnExistingEntryAlone() {
+        val lib = "/data/app/x/lib/arm64/libgnoverlay.so"
+        assertEquals("a.so:$lib", ContainerOverlay.insertPreload("a.so:$lib", lib, ":"))
+        assertEquals("$lib:libredirect.so", ContainerOverlay.insertPreload("$lib:libredirect.so", lib, ":"))
     }
 }
