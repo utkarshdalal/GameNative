@@ -16,6 +16,10 @@ data class InstalledTheme(
     val appliedRules: Int = 0,
     /** Names of themes this one depends on that are not installed. */
     val missingDependencies: List<String> = emptyList(),
+    /** Shipped with the app (the "Custom" theme); cannot be deleted. */
+    val builtIn: Boolean = false,
+    /** Newer version offered by the theme store, or null. */
+    val updateAvailable: String? = null,
 )
 
 sealed interface ThemeOption {
