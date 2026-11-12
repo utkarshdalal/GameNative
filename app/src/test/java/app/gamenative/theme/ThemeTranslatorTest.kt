@@ -39,7 +39,8 @@ class ThemeTranslatorTest {
         assertEquals(argb("#eeeeee"), s.text)
         assertEquals(argb("#999999"), s.textMuted)
         assertEquals(argb("#333333"), s.outline)
-        assertEquals(10f, s.cornerRadiusDp)
+        assertNull("a tile radius is not the app-wide radius", s.cornerRadiusDp)
+        assertEquals(10f, s.layout?.cardCornerRadiusDp)
         assertEquals(argb("#e05a00"), s.primary)
         assertEquals(argb("#ffffff"), s.onPrimary)
         assertEquals(7, r.totalRules)
@@ -74,13 +75,13 @@ class ThemeTranslatorTest {
 
     @Test
     fun toggleOnColourComesFromBeforeOrOnState() {
-        assertNull(translate(".gamepaddialog_ToggleRail_aaaaa { background: #ff0000; }").spec.primary)
-        assertEquals(argb("#00aa55"), translate(".gamepaddialog_ToggleRail_aaaaa::before { background: #00aa55; }").spec.primary)
+        assertNull(translate(".gamepaddialog_ToggleRail_aaaaa { background: #ff0000; }").spec.toggle)
+        assertEquals(argb("#00aa55"), translate(".gamepaddialog_ToggleRail_aaaaa::before { background: #00aa55; }").spec.toggle)
         assertEquals(
             argb("#00aa55"),
-            translate(".gamepaddialog_ToggleRail_aaaaa.gamepaddialog_On_bbbbb { background: #00aa55; }").spec.primary,
+            translate(".gamepaddialog_ToggleRail_aaaaa.gamepaddialog_On_bbbbb { background: #00aa55; }").spec.toggle,
         )
-        assertEquals(argb("#00aa55"), translate(".gamepaddialog_ToggleRail_aaaaa { &::before { background: #00aa55; } }").spec.primary)
+        assertEquals(argb("#00aa55"), translate(".gamepaddialog_ToggleRail_aaaaa { &::before { background: #00aa55; } }").spec.toggle)
     }
 
     @Test
@@ -106,7 +107,7 @@ class ThemeTranslatorTest {
             ":root { --accent: #12ab34; --text: var(--light, #f0f0f0); }",
             ".progressbar_Percent_abcde { background: var(--accent); } .mainmenu_ItemLabel_abcde { color: var(--text); }",
         ).spec
-        assertEquals(argb("#12ab34"), s.primary)
+        assertEquals(argb("#12ab34"), s.toggle)
         assertEquals(argb("#f0f0f0"), s.text)
     }
 

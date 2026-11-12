@@ -42,7 +42,8 @@ object ThemeManager {
     private const val MAX_IMAGE_BYTES = 20L * 1024 * 1024
     private const val STATE_FILE = "state.json"
     private const val STATE_DIR = ".state"
-    private const val CLASS_MAP_FILE = ".classmap.json"
+    private const val CLASS_MAP_FILE = ".classmap2.json"
+    private const val OLD_CLASS_MAP_FILE = ".classmap.json"
     private const val TMP_DIR = ".tmp"
 
     private val started = AtomicBoolean(false)
@@ -64,6 +65,10 @@ object ThemeManager {
         val colors: MutableMap<String, String> = LinkedHashMap(),
         /** Component key -> file name in the theme's state folder. */
         val images: MutableMap<String, String> = LinkedHashMap(),
+        /** Store id and version when the theme was installed from the store. */
+        var storeId: String? = null,
+        var storeVersion: String? = null,
+        var updateAvailable: String? = null,
     )
 
     private val entries = ArrayList<Entry>()
@@ -80,7 +85,12 @@ object ThemeManager {
         scope.launch {
             try {
                 mutex.withLock {
-                    loadLocked()
+                    val saved = loadLocked()
+                    try {
+                        ensureBuiltInLocked(saved)
+                    } catch (e: Exception) {
+                        Timber.e(e, "ThemeManager: built-in theme unavailable")
+                    }
                     recomputeLocked()
                 }
             } catch (e: Exception) {
@@ -88,7 +98,7 @@ object ThemeManager {
             } finally {
                 ready.complete(Unit)
             }
-            if (entries.isNotEmpty()) refreshClassMapIfStale()
+            if (entries.any { it.id != BuiltInTheme.ID }) refreshClassMapIfStale()
         }
     }
 
@@ -121,7 +131,7 @@ object ThemeManager {
         try {
             appContext.contentResolver.openInputStream(uri)?.use { copyCapped(it, zip, ThemeStoreClient.MAX_ZIP_BYTES) }
                 ?: throw IOException("Cannot read the selected file")
-            installZip(zip, displayName(uri)?.substringBeforeLast('.'), enable = true)
+            installZip(zip, displayName(uri)?.substringBeforeLast('.'), enable = true, store = null)
         } finally {
             zip.delete()
         }
@@ -134,7 +144,7 @@ object ThemeManager {
             val name = queryName(DocumentsContract.buildDocumentUriUsingTree(treeUri, rootId))
             copyTree(treeUri, rootId, work, IntArray(1), LongArray(1), 0)
             val themeRoot = ThemeZip.findThemeRoot(work) ?: throw IOException("Folder has no theme.json or theme.css")
-            installFolder(themeRoot, name, enable = true)
+            installFolder(themeRoot, name, enable = true, store = null)
         } finally {
             work.deleteRecursively()
         }
@@ -143,6 +153,7 @@ object ThemeManager {
     suspend fun setEnabled(id: String, enabled: Boolean) = edit("setEnabled", id) { it.enabled = enabled }
 
     suspend fun delete(id: String) {
+        if (id == BuiltInTheme.ID) return
         op("delete") {
             mutex.withLock {
                 entries.removeAll { it.id == id }
@@ -262,32 +273,74 @@ object ThemeManager {
         _themes.value.firstOrNull { it.id == parent.id } ?: parent
     }
 
-    private suspend fun downloadAndInstall(t: StoreTheme, enable: Boolean): InstalledTheme {
+    /**
+     * Asks the store for the current version of every theme installed from it (one request each) and sets
+     * [InstalledTheme.updateAvailable]. Failures leave a theme's state as it was; nothing is thrown.
+     */
+    suspend fun checkForUpdates() {
+        op("checkForUpdates") {
+            val targets = mutex.withLock { entries.mapNotNull { e -> e.storeId?.let { Triple(e.id, it, e.storeVersion) } } }
+            if (targets.isEmpty()) return@op
+            val found = HashMap<String, String?>()
+            for ((id, storeId, installed) in targets) {
+                val latest = try {
+                    ThemeStoreClient.details(storeId)?.first?.version
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Timber.w(e, "ThemeManager: update check for $id failed")
+                    continue
+                }
+                found[id] = latest?.takeIf { StoreVersion.isNewer(it, installed) }
+            }
+            mutex.withLock {
+                for ((id, v) in found) entries.firstOrNull { it.id == id }?.updateAvailable = v
+                recomputeLocked()
+            }
+        }
+    }
+
+    /** Downloads the store's current version of [id] into its folder; options and the enabled state are kept. */
+    suspend fun updateFromStore(id: String): Result<InstalledTheme> = op("updateFromStore") {
+        val storeId = mutex.withLock { entries.firstOrNull { it.id == id }?.storeId }
+            ?: throw IllegalArgumentException("Theme $id was not installed from the store")
+        val record = ThemeStoreClient.details(storeId)?.first ?: throw IOException("Theme $id is no longer in the store")
+        downloadAndInstall(record, enable = false, forceId = id)
+        _themes.value.first { it.id == id }
+    }
+
+    private suspend fun downloadAndInstall(t: StoreTheme, enable: Boolean, forceId: String? = null): InstalledTheme {
         val blob = t.downloadBlobId ?: throw IOException("Theme ${t.name} has no download")
         val zip = File(appContext.cacheDir, "theme-store-${System.nanoTime()}.zip")
         try {
             ThemeStoreClient.downloadBlob(blob, zip)
-            return installZip(zip, t.name, enable)
+            return installZip(zip, t.name, enable, t, forceId)
         } finally {
             zip.delete()
         }
     }
 
-    private suspend fun installZip(zip: File, fallbackName: String?, enable: Boolean): InstalledTheme {
+    private suspend fun installZip(zip: File, fallbackName: String?, enable: Boolean, store: StoreTheme?, forceId: String? = null): InstalledTheme {
         val work = newWorkDir()
         try {
             ThemeZip.extract(zip, work)
             val themeRoot = ThemeZip.findThemeRoot(work) ?: throw IOException("No theme.json or theme.css in the zip")
-            return installFolder(themeRoot, fallbackName, enable)
+            return installFolder(themeRoot, fallbackName, enable, store, forceId)
         } finally {
             work.deleteRecursively()
         }
     }
 
-    private suspend fun installFolder(src: File, fallbackName: String?, enable: Boolean): InstalledTheme {
+    private suspend fun installFolder(
+        src: File,
+        fallbackName: String?,
+        enable: Boolean,
+        store: StoreTheme?,
+        forceId: String? = null,
+    ): InstalledTheme {
         val parsed = ThemeLoader.loadManifest(src)
         val manifest = if (parsed.cssOnly) DeckyThemeManifest.cssOnly(fallbackName?.takeIf { it.isNotBlank() } ?: "Theme") else parsed
-        val id = themeId(manifest.name)
+        val id = forceId ?: themeId(manifest.name)
         val result = mutex.withLock {
             val dest = themeDir(id)
             if (dest.exists()) dest.deleteRecursively()
@@ -297,7 +350,10 @@ object ThemeManager {
             }
             ThemeLoader.clearCache()
             manifests[id] = if (manifest.cssOnly) manifest else ThemeLoader.loadManifest(dest)
-            if (entries.none { it.id == id }) entries.add(Entry(id, enabled = enable))
+            val entry = entries.firstOrNull { it.id == id } ?: Entry(id, enabled = enable).also { entries.add(it) }
+            entry.storeId = store?.id
+            entry.storeVersion = store?.version
+            entry.updateAvailable = null
             saveLocked()
             recomputeLocked()
             _themes.value.first { it.id == id }
@@ -309,8 +365,36 @@ object ThemeManager {
     private fun themeId(name: String): String {
         var id = name.trim().map { if (it.isLetterOrDigit() || it in " ._-()") it else '_' }.joinToString("").trim().take(80)
         if (id.isEmpty()) id = "Theme"
-        if (id.startsWith(".") || id.equals(STATE_FILE, ignoreCase = true)) id = "theme_$id"
+        if (id.startsWith(".") || id.equals(STATE_FILE, ignoreCase = true) || id.equals(BuiltInTheme.ID, ignoreCase = true)) id = "theme_$id"
         return id
+    }
+
+    /** Writes the built-in theme's folder when the app's definition differs from it; the user's option values stay in state. */
+    private fun ensureBuiltInLocked(savedIds: Set<String>) {
+        val dir = themeDir(BuiltInTheme.ID)
+        val json = File(dir, "theme.json")
+        val current = try {
+            if (json.isFile) json.readText() else null
+        } catch (e: IOException) {
+            null
+        }
+        if (current != BuiltInTheme.themeJson) {
+            dir.mkdirs()
+            val tmp = File(dir, "theme.json.tmp")
+            tmp.writeText(BuiltInTheme.themeJson)
+            if (!tmp.renameTo(json)) {
+                json.writeText(BuiltInTheme.themeJson)
+                tmp.delete()
+            }
+            ThemeLoader.clearCache()
+        }
+        manifests[BuiltInTheme.ID] = ThemeLoader.loadManifest(dir)
+        if (BuiltInTheme.ID !in savedIds) {
+            val existing = entries.firstOrNull { it.id == BuiltInTheme.ID }
+            entries.removeAll { it.id == BuiltInTheme.ID }
+            entries.add(0, existing ?: Entry(BuiltInTheme.ID, enabled = false))
+            saveLocked()
+        }
     }
 
     private fun newWorkDir(): File {
@@ -457,6 +541,8 @@ object ThemeManager {
                     totalRules = res.totalRules,
                     appliedRules = res.appliedRules,
                     missingDependencies = missing,
+                    builtIn = e.id == BuiltInTheme.ID,
+                    updateAvailable = e.updateAvailable,
                 ),
             )
         }
@@ -490,9 +576,11 @@ object ThemeManager {
         return out
     }
 
-    private fun loadLocked() {
+    /** Loads state and theme folders; returns the theme ids state.json listed. */
+    private fun loadLocked(): Set<String> {
         root.mkdirs()
         File(root, TMP_DIR).deleteRecursively()
+        File(root, OLD_CLASS_MAP_FILE).delete()
         classMap = try {
             File(root, CLASS_MAP_FILE).takeIf { it.isFile }?.let { SteamClassMap.fromJson(it.readText()) } ?: SteamClassMap.EMPTY
         } catch (e: Exception) {
@@ -514,6 +602,8 @@ object ThemeManager {
                         choices = strMap(t["choices"]),
                         colors = strMap(t["colors"]),
                         images = strMap(t["images"]),
+                        storeId = (t["storeId"] as? JsonPrimitive)?.contentOrNull,
+                        storeVersion = (t["storeVersion"] as? JsonPrimitive)?.contentOrNull,
                     )
                 }
             }
@@ -536,6 +626,7 @@ object ThemeManager {
         }
         for ((id, e) in saved) if (tryLoad(id)) entries.add(e)
         for (d in dirs) if (!saved.containsKey(d.name) && tryLoad(d.name)) entries.add(Entry(d.name, enabled = false))
+        return saved.keys
     }
 
     private fun strMap(e: JsonElement?): MutableMap<String, String> {
@@ -552,12 +643,14 @@ object ThemeManager {
                 "themes" to JsonObject(
                     entries.associate {
                         it.id to JsonObject(
-                            mapOf(
-                                "enabled" to JsonPrimitive(it.enabled),
-                                "choices" to obj(it.choices),
-                                "colors" to obj(it.colors),
-                                "images" to obj(it.images),
-                            ),
+                            buildMap {
+                                put("enabled", JsonPrimitive(it.enabled))
+                                put("choices", obj(it.choices))
+                                put("colors", obj(it.colors))
+                                put("images", obj(it.images))
+                                it.storeId?.let { v -> put("storeId", JsonPrimitive(v)) }
+                                it.storeVersion?.let { v -> put("storeVersion", JsonPrimitive(v)) }
+                            },
                         )
                     },
                 ),

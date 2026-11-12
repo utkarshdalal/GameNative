@@ -266,6 +266,198 @@ object CssValues {
 
     fun blurDp(v: String): Float? = BLUR_RE.find(v)?.groupValues?.get(1)?.toFloatOrNull()
 
+    /** Reference viewport for vh/vw: the Steam Deck screen. */
+    const val VIEWPORT_W = 1280.0
+    const val VIEWPORT_H = 800.0
+
+    enum class Dim { NUMBER, LENGTH, ANGLE }
+
+    /** A number with its dimension; lengths in px, angles in degrees. */
+    data class Quantity(val value: Double, val dim: Dim)
+
+    private val QTY_RE = Regex("^(\\d*\\.?\\d+(?:e[+-]?\\d+)?)([a-z%]*)", RegexOption.IGNORE_CASE)
+
+    /** Evaluates a length, angle or number, `calc()` included; vh/vw use [VIEWPORT_W] x [VIEWPORT_H]. Null for %, var() or junk. */
+    fun quantity(input: String): Quantity? {
+        val s = input.trim()
+        if (s.isEmpty() || s.contains("var(", ignoreCase = true)) return null
+        var i = 0
+        fun skip() { while (i < s.length && s[i].isWhitespace()) i++ }
+        fun unit(n: Double, u: String): Quantity? = when (u.lowercase()) {
+            "" -> Quantity(n, Dim.NUMBER)
+            "px" -> Quantity(n, Dim.LENGTH)
+            "vh" -> Quantity(n * VIEWPORT_H / 100, Dim.LENGTH)
+            "vw" -> Quantity(n * VIEWPORT_W / 100, Dim.LENGTH)
+            "em", "rem" -> Quantity(n * 16, Dim.LENGTH)
+            "deg" -> Quantity(n, Dim.ANGLE)
+            "rad" -> Quantity(n * 180 / Math.PI, Dim.ANGLE)
+            "turn" -> Quantity(n * 360, Dim.ANGLE)
+            "grad" -> Quantity(n * 0.9, Dim.ANGLE)
+            else -> null
+        }
+        lateinit var expr: () -> Quantity?
+        fun factor(): Quantity? {
+            skip()
+            if (i >= s.length) return null
+            if (s.startsWith("calc(", i, ignoreCase = true)) i += 4
+            when (s[i]) {
+                '(' -> {
+                    i++
+                    val v = expr() ?: return null
+                    skip()
+                    if (i >= s.length || s[i] != ')') return null
+                    i++
+                    return v
+                }
+                '-' -> { i++; return factor()?.let { it.copy(value = -it.value) } }
+                '+' -> { i++; return factor() }
+            }
+            val m = QTY_RE.find(s.substring(i)) ?: return null
+            i += m.value.length
+            return unit(m.groupValues[1].toDoubleOrNull() ?: return null, m.groupValues[2])
+        }
+        fun term(): Quantity? {
+            var a = factor() ?: return null
+            while (true) {
+                skip()
+                if (i >= s.length || (s[i] != '*' && s[i] != '/')) return a
+                val op = s[i++]
+                val b = factor() ?: return null
+                a = if (op == '*') {
+                    when {
+                        a.dim == Dim.NUMBER -> Quantity(a.value * b.value, b.dim)
+                        b.dim == Dim.NUMBER -> Quantity(a.value * b.value, a.dim)
+                        else -> return null
+                    }
+                } else {
+                    if (b.dim != Dim.NUMBER || b.value == 0.0) return null
+                    Quantity(a.value / b.value, a.dim)
+                }
+            }
+        }
+        expr = {
+            var a = term()
+            while (a != null) {
+                skip()
+                if (i >= s.length || (s[i] != '+' && s[i] != '-')) break
+                val op = s[i++]
+                val b = term()
+                a = if (b == null || (b.dim != a.dim && !(b.value == 0.0 || a.value == 0.0))) {
+                    null
+                } else {
+                    val dim = if (a.value == 0.0 && a.dim == Dim.NUMBER) b.dim else a.dim
+                    Quantity(if (op == '+') a.value + b.value else a.value - b.value, dim)
+                }
+            }
+            a
+        }
+        val r = expr() ?: return null
+        skip()
+        return if (i == s.length) r else null
+    }
+
+    /** Length in px through [quantity]; a bare 0 counts as a length. */
+    fun lengthPx(v: String): Double? = quantity(v)?.takeIf { it.dim == Dim.LENGTH || (it.dim == Dim.NUMBER && it.value == 0.0) }?.value
+
+    /** `name(args)` calls at the top level of a value such as a transform, in order. */
+    fun functions(v: String): List<Pair<String, List<String>>> {
+        val out = ArrayList<Pair<String, List<String>>>()
+        val rx = Regex("([a-zA-Z-][a-zA-Z0-9-]*)\\(")
+        var i = 0
+        while (true) {
+            val m = rx.find(v, i) ?: break
+            var depth = 0
+            var j = m.range.last
+            while (j < v.length) {
+                if (v[j] == '(') depth++ else if (v[j] == ')') { depth--; if (depth == 0) break }
+                j++
+            }
+            val args = splitTop(v.substring(m.range.last + 1, minOf(j, v.length)), ',').map { it.trim() }
+            out.add(m.groupValues[1].lowercase() to args)
+            i = j + 1
+            if (i >= v.length) break
+        }
+        return out
+    }
+
+    /** Uniform scale factor of a `transform` value, or null when it has none. */
+    fun transformScale(v: String): Double? {
+        for ((fn, args) in functions(v)) {
+            if (fn != "scale") continue
+            val x = quantity(args.getOrNull(0) ?: return null)?.takeIf { it.dim == Dim.NUMBER }?.value ?: return null
+            val y = args.getOrNull(1)?.let { a -> quantity(a)?.takeIf { it.dim == Dim.NUMBER }?.value ?: return null } ?: x
+            return if (kotlin.math.abs(x - y) < 1e-6) x else null
+        }
+        return null
+    }
+
+    /** Tilt in degrees of a `transform`: rotate/skew, or a rotateX/Y under perspective(). */
+    fun transformTilt(v: String): Double? {
+        val fns = functions(v)
+        val perspective = fns.any { it.first == "perspective" }
+        for ((fn, args) in fns) {
+            val ok = fn in setOf("rotate", "rotatez", "skew", "skewx") || (perspective && fn in setOf("rotatey", "rotatex"))
+            if (!ok) continue
+            val a = quantity(args.firstOrNull() ?: continue) ?: return null
+            if (a.dim == Dim.ANGLE) return a.value
+            if (a.dim == Dim.NUMBER && a.value == 0.0) return 0.0
+            return null
+        }
+        return null
+    }
+
+    /** One shadow layer: offsets, blur and spread in px plus its colour. */
+    data class Shadow(val x: Double, val y: Double, val blur: Double, val spread: Double, val color: Rgba?, val inset: Boolean)
+
+    /** Layers of a box-shadow / text-shadow value, or the drop-shadow() calls of a filter. */
+    fun shadows(value: String, property: String): List<Shadow> {
+        val layers = if (property == "filter") {
+            functions(value).filter { it.first == "drop-shadow" }.map { it.second.joinToString(",") }
+        } else {
+            splitTop(value, ',')
+        }
+        val out = ArrayList<Shadow>()
+        for (layer in layers) {
+            val l = layer.trim()
+            if (l.isEmpty() || l.equals("none", ignoreCase = true)) continue
+            val color = findColors(l).firstOrNull()
+            val rest = COLOR_RE.replace(l, " ")
+            val toks = splitTop(rest.trim(), ' ').map { it.trim() }.filter { it.isNotEmpty() }
+            val inset = toks.any { it.equals("inset", ignoreCase = true) }
+            val nums = toks.filterNot { it.equals("inset", ignoreCase = true) }.map { lengthPx(it) ?: return@map null }
+            if (nums.size < 2 || nums.any { it == null }) continue
+            out.add(Shadow(nums[0]!!, nums[1]!!, nums.getOrNull(2) ?: 0.0, nums.getOrNull(3) ?: 0.0, color, inset))
+        }
+        return out
+    }
+
+    /** Blur radius of a glow (an outer shadow centred on its element), or null. */
+    fun glowDp(value: String, property: String): Float? {
+        var best: Double? = null
+        for (s in shadows(value, property)) {
+            if (s.inset || s.blur <= 0 || (s.color != null && s.color.a <= 0.05)) continue
+            if (kotlin.math.abs(s.x) > s.blur / 2 || kotlin.math.abs(s.y) > s.blur / 2) continue
+            if (best == null || s.blur > best) best = s.blur
+        }
+        return best?.toFloat()
+    }
+
+    /** Width and colour of a text-shadow that outlines text (offsets on every side, little blur), or null. */
+    fun textShadowStroke(value: String): Pair<Float, Rgba>? {
+        val layers = shadows(value, "text-shadow")
+        if (layers.size < 3) return null
+        val c = layers[0].color ?: return null
+        if (c.a < 0.5) return null
+        for (s in layers) {
+            if (s.blur > 2 || kotlin.math.abs(s.x) > 3 || kotlin.math.abs(s.y) > 3) return null
+            if (s.color == null || s.color.opaque().toHex() != c.opaque().toHex()) return null
+        }
+        val surrounds = layers.any { it.x < 0 } && layers.any { it.x > 0 } && layers.any { it.y < 0 } && layers.any { it.y > 0 }
+        if (!surrounds) return null
+        val w = layers.maxOf { maxOf(kotlin.math.abs(it.x), kotlin.math.abs(it.y)) }
+        return if (w > 0) w.toFloat() to c else null
+    }
+
     fun firstUrl(v: String): String? {
         val m = URL_RE.find(v) ?: return null
         return (m.groups[1] ?: m.groups[2] ?: m.groups[3])?.value?.trim()?.takeIf { it.isNotEmpty() }

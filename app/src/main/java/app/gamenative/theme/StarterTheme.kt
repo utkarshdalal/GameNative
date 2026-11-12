@@ -70,7 +70,7 @@ object StarterTheme {
  *
  *   --gn-background          page background colour
  *   --gn-surface             panels, dialogs, side menus
- *   --gn-surface-variant     cards and list rows
+ *   --gn-surface-variant     tabs and settings rows
  *   --gn-primary             accent: buttons, toggles, progress bars
  *   --gn-on-primary          text on the accent colour
  *   --gn-text                main text
@@ -84,6 +84,27 @@ object StarterTheme {
  *   --gn-background-gradient linear-gradient(...), used when there is no background image
  *   --gn-panel-opacity       0..1 opacity of panels, e.g. 0.85
  *   --gn-blur                blur behind panels, e.g. 12px
+ *
+ * Per component:
+ *   --gn-card                library tiles and list rows
+ *   --gn-button              secondary buttons
+ *   --gn-on-button           text on secondary buttons
+ *   --gn-toggle              switches, sliders and progress bars when on
+ *   --gn-menu                context menus, dropdowns and dialogs
+ *   --gn-on-menu             text in menus
+ *   --gn-accent-gradient     linear-gradient(...) fill for accent buttons, toggles and progress bars
+ *   --gn-focus-glow          glow around the focused item in the focus colour, e.g. 8px
+ *
+ * Layout:
+ *   --gn-card-scale          library tile size, 0.5..1.5 (1 = default)
+ *   --gn-library-layout      grid, list or carousel
+ *   --gn-title-align         start or center, for game titles
+ *   --gn-title-stroke        outline around game titles, e.g. 2px #000
+ *   --gn-hide-badges         1 hides compatibility and status badges on tiles (1/0, true/false)
+ *   --gn-hide-footer-hints   1 hides the controller button hints at the bottom
+ *   --gn-hero-scale          game page artwork height, 0.5..2 (1 = default)
+ *   --gn-card-tilt           tile tilt, -15deg..15deg
+ *   --gn-card-corner-radius  corner radius of library tiles only, e.g. 4px
  *
  * Colours: #rgb, #rrggbb, #rrggbbaa, rgb(), rgba(), hsl(), hsla() or a CSS colour name.
  * var(--name, fallback) works, so one colour can feed several variables.
@@ -102,6 +123,11 @@ object StarterTheme {
   --gn-panel-opacity: 0.92;
   /* --gn-font: url(fonts/MyFont.ttf); */
   /* --gn-blur: 12px; */
+  /* --gn-card: #222c40; */
+  /* --gn-menu: #182030; */
+  /* --gn-focus-glow: 8px; */
+  /* --gn-card-scale: 1.2; */
+  /* --gn-title-align: center; */
 }
 """.trimStart()
 }

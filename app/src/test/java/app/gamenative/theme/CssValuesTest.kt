@@ -72,4 +72,32 @@ class CssValuesTest {
         assertEquals("a b.png", CssValues.firstUrl("url('a b.png') no-repeat"))
         assertEquals("x.png", CssValues.firstUrl("url(x.png)"))
     }
+
+    @Test
+    fun calcOnTheReferenceViewport() {
+        assertEquals(648.0, CssValues.lengthPx("calc(100vh - 80px - 14px - 58px)")!!, 1e-6)
+        assertEquals(336.0, CssValues.lengthPx("calc(80px + 20vw)")!!, 1e-6)
+        assertEquals(32.0, CssValues.lengthPx("2em")!!, 1e-6)
+        assertEquals(0.0, CssValues.lengthPx("0")!!, 1e-6)
+        assertEquals(5.0, CssValues.quantity("calc(-1*-5deg)")!!.value, 1e-6)
+        assertEquals(90.0, CssValues.quantity("0.25turn")!!.value, 1e-6)
+        assertEquals(CssValues.Dim.NUMBER, CssValues.quantity("calc(2 * (0.5 + 0.25))")!!.dim)
+        assertNull(CssValues.lengthPx("50%"))
+        assertNull(CssValues.lengthPx("calc(100px + 2deg)"))
+        assertNull(CssValues.lengthPx("var(--x)"))
+        assertNull(CssValues.lengthPx("fit-content"))
+    }
+
+    @Test
+    fun transformsAndShadows() {
+        assertEquals(0.7, CssValues.transformScale("translateX(4px) scale(0.7)")!!, 1e-6)
+        assertNull(CssValues.transformScale("scale(1, 2)"))
+        assertEquals(-5.0, CssValues.transformTilt("skew(-5deg) scale(1.05)")!!, 1e-6)
+        assertNull(CssValues.transformTilt("translateX(40%)"))
+        assertEquals(24f, CssValues.glowDp("0px 0px 24px 0px rgba(0, 255, 255, 0.8)", "box-shadow"))
+        assertNull(CssValues.glowDp("inset 0 0 24px #fff", "box-shadow"))
+        val stroke = CssValues.textShadowStroke("2px 2px 0 #111, -2px 2px 0 #111, 2px -2px 0 #111, -2px -2px 0 #111")!!
+        assertEquals(2f, stroke.first)
+        assertEquals("#111111", stroke.second.toHex())
+    }
 }
