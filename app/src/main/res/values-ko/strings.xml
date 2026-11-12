@@ -3238,7 +3238,6 @@
     <string name="webview_download_unsupported_scheme">다운로드를 건너뛰었습니다(지원되지 않는 스킴)</string>
     <string name="webview_download_failed">다운로드 실패: %1$s</string>
     <string name="quickmenu_edit_overlay">오버레이 편집</string>
-    <string name="touch_gestures_label">터치 제스처</string>
     <string name="render_scale_label">렌더 스케일(HTML5 백엔드 전용)</string>
     <string name="render_scale_description">값이 낮을수록 더 적은 픽셀을 렌더링하여 성능과 배터리가 향상되고, 값이 높을수록 더 선명해집니다. 다음 실행 시 적용됩니다. Wine 컨테이너에는 영향이 없습니다.</string>
     <string name="render_scale_follow_global">전역 기본값 따르기</string>
@@ -3250,13 +3249,9 @@
     <string name="render_scale_2x">2×</string>
     <string name="render_scale_3x">3×</string>
     <string name="render_scale_4x">4×(가장 높음, 최저 성능)</string>
-    <string name="html5_controller_tab_edit_physical">물리 컨트롤러 매핑</string>
-    <string name="html5_controller_tab_unavailable">HTML5 컨트롤러 설정을 사용할 수 없습니다 — 컨테이너가 삭제되었을 수 있습니다.</string>
-    <string name="html5_controller_tab_default_config_disabled">기본 HTML5 설정(곧 제공 예정)</string>
     <string name="html5_controller_tab_overlay_opacity_value">오버레이 불투명도: %1$d%%</string>
     <string name="html5_controller_tab_overlay_visible">화면 오버레이 표시</string>
     <string name="html5_overlay_select_element_first">오버레이 요소를 먼저 탭한 다음 편집하세요</string>
-    <string name="container_config_html5_controller_saved">저장됨</string>
     <string name="gesture_cursor_mode">상대 커서</string>
     <string name="gesture_cursor_mode_relative_subtitle">손가락 위치에 디스패치하는 대신 추적되는 커서를 이동합니다</string>
     <string name="gesture_action_open_quick_menu">빠른 메뉴 열기</string>

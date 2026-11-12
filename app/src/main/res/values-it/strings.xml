@@ -3257,7 +3257,6 @@
     <string name="webview_download_unsupported_scheme">Download ignorato (schema non supportato)</string>
     <string name="webview_download_failed">Download non riuscito: %1$s</string>
     <string name="quickmenu_edit_overlay">Modifica overlay</string>
-    <string name="touch_gestures_label">Gesti touch</string>
     <string name="render_scale_label">Scala di rendering (solo backend HTML5)</string>
     <string name="render_scale_description">Valori più bassi renderizzano meno pixel per prestazioni e durata della batteria migliori; valori più alti appaiono più nitidi. Ha effetto al prossimo avvio. Nessun effetto sui contenitori Wine.</string>
     <string name="render_scale_follow_global">Segui il valore globale predefinito</string>
@@ -3269,13 +3268,9 @@
     <string name="render_scale_2x">2×</string>
     <string name="render_scale_3x">3×</string>
     <string name="render_scale_4x">4× (più alta, prestazioni peggiori)</string>
-    <string name="html5_controller_tab_edit_physical">Mappatura controller fisico</string>
-    <string name="html5_controller_tab_unavailable">Impostazioni del controller HTML5 non disponibili — il contenitore potrebbe essere stato eliminato.</string>
-    <string name="html5_controller_tab_default_config_disabled">Configurazione HTML5 predefinita (prossimamente)</string>
     <string name="html5_controller_tab_overlay_opacity_value">Opacità overlay: %1$d%%</string>
     <string name="html5_controller_tab_overlay_visible">Mostra overlay su schermo</string>
     <string name="html5_overlay_select_element_first">Tocca prima un elemento dell\'overlay, poi Modifica</string>
-    <string name="container_config_html5_controller_saved">Salvato</string>
     <string name="gesture_cursor_mode">Cursore relativo</string>
     <string name="gesture_cursor_mode_relative_subtitle">Sposta un cursore tracciato invece di inviare l\'input alla posizione del dito</string>
     <string name="gesture_action_open_quick_menu">Apri menu rapido</string>

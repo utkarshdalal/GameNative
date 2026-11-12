@@ -53,7 +53,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -303,9 +302,6 @@ internal fun visibleContainerVariants(all: List<String>, html5Available: Boolean
 private fun visibleContainerVariants(all: List<String>, html5: Html5DialogOptions?, initialVariant: String): List<String> =
     visibleContainerVariants(all, html5?.available == true, initialVariant)
 
-@Composable
-private fun rememberHtml5EditedState(): MutableState<Boolean> = rememberSaveable { mutableStateOf(false) }
-
 // split out of ContainerConfigDialog, which sits at the dex verifier's register limit: anything it adds can fail
 // verification at runtime (VerifyError on open). fingerprint runs async on IO; blocks re-entry while in flight.
 @Composable
@@ -363,7 +359,6 @@ fun ContainerConfigDialog(
 
         // the html5 controller tab saves to WebViewContainer, which the ContainerData dirty check can't see;
         // this drives the * indicator and unsaved-changes prompt instead.
-        var html5Edited by rememberHtml5EditedState()
         val graphicsDriversRef = remember { mutableStateOf(baseGraphicsDrivers.toMutableList()) }
         var graphicsDrivers by graphicsDriversRef
         val dxWrappers = staticData.dxWrappers
@@ -1110,7 +1105,7 @@ fun ContainerConfigDialog(
         }
 
         val onDismissCheck: () -> Unit = {
-            if (initialConfig != config || html5Edited) {
+            if (initialConfig != config) {
                 dismissDialogState = MessageDialogState(
                     visible = true,
                     title = context.getString(R.string.container_config_unsaved_changes_title),
@@ -1297,7 +1292,7 @@ fun ContainerConfigDialog(
                         CenterAlignedTopAppBar(
                             title = {
                                 Text(
-                                    text = "$title${if (initialConfig != config || html5Edited) "*" else ""}",
+                                    text = "$title${if (initialConfig != config) "*" else ""}",
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
@@ -1313,7 +1308,7 @@ fun ContainerConfigDialog(
                                     (initialConfig.containerVariant == Container.CONTAINER_VARIANT_HTML5 ||
                                         config.containerVariant == Container.CONTAINER_VARIANT_HTML5)
                                 ) {
-                                    // keep this lambda's captures minimal: one more (e.g. html5Edited) and the
+                                    // keep this lambda's captures minimal: one more and the
                                     // dialog fails dex verification at runtime.
                                     Html5SaveAction { onComplete -> html5.onSave(config, onComplete) }
                                 } else {
@@ -1358,7 +1353,7 @@ fun ContainerConfigDialog(
                         true,            // 0 General -- partial, controlled per-item inside
                         true,            // 1 Graphics -- partial, controlled per-item inside
                         !isHtml5Variant, // 2 Emulation
-                        true,            // 3 Controller -- variant-conditional content
+                        !isHtml5Variant, // 3 Controller -- hidden for html5; the in-game quick menu has its settings
                         !isHtml5Variant, // 4 Wine
                         !isHtml5Variant, // 5 Win Components
                         !isHtml5Variant, // 6 Environment
@@ -1393,8 +1388,10 @@ fun ContainerConfigDialog(
                             )
                             .fillMaxSize(),
                     ) {
-                        ScrollableTabRow(selectedTabIndex = selectedTab, edgePadding = 0.dp) {
-                            tabs.forEachIndexed { index, label ->
+                        val visibleTabs = tabs.indices.filter { !(isHtml5Variant && it == 3) }
+                        ScrollableTabRow(selectedTabIndex = visibleTabs.indexOf(selectedTab).coerceAtLeast(0), edgePadding = 0.dp) {
+                            visibleTabs.forEach { index ->
+                                val label = tabs[index]
                                 val tabIsEnabled = tabEnabled[index]
                                 Tab(
                                     selected = selectedTab == index,
@@ -1423,22 +1420,7 @@ fun ContainerConfigDialog(
                             if (selectedTab == 0) GeneralTabContent(state, nonzeroResolutionError, isHtml5 = isHtml5Variant)
                             if (selectedTab == 1) GraphicsTabContent(state, default, isHtml5Variant)
                             if (selectedTab == 2) EmulationTabContent(state)
-                            if (selectedTab == 3) {
-                                // html5 needs appId to resolve its WebViewContainer; the default-config dialog has none.
-                                if (isHtml5Variant && html5 != null) {
-                                    Html5ControllerTabContent(
-                                        appId = html5.appId,
-                                        onWebViewContainerSaved = {
-                                            html5Edited = true
-                                            SnackbarManager.show(
-                                                context.getString(R.string.container_config_html5_controller_saved),
-                                            )
-                                        },
-                                    )
-                                } else {
-                                    ControllerTabContent(state, default)
-                                }
-                            }
+                            if (selectedTab == 3 && !isHtml5Variant) ControllerTabContent(state, default)
                             if (selectedTab == 4) WineTabContent(state)
                             if (selectedTab == 5) WinComponentsTabContent(state)
                             if (selectedTab == 6) EnvironmentTabContent(state)

@@ -3125,7 +3125,6 @@
     <string name="webview_download_unsupported_scheme">İndirme atlandı (desteklenmeyen şema)</string>
     <string name="webview_download_failed">İndirme başarısız: %1$s</string>
     <string name="quickmenu_edit_overlay">Katmanı düzenle</string>
-    <string name="touch_gestures_label">Dokunma hareketleri</string>
     <string name="render_scale_label">İşleme ölçeği (yalnızca HTML5 arka ucu)</string>
     <string name="render_scale_description">Düşük değerler daha az piksel işleyerek performansı ve pil ömrünü artırır; yüksek değerler daha keskin görünür. Bir sonraki başlatmada etkinleşir. Wine konteynerlerini etkilemez.</string>
     <string name="render_scale_follow_global">Genel varsayılanı izle</string>
@@ -3137,13 +3136,9 @@
     <string name="render_scale_2x">2×</string>
     <string name="render_scale_3x">3×</string>
     <string name="render_scale_4x">4× (en yüksek, en kötü performans)</string>
-    <string name="html5_controller_tab_edit_physical">Fiziksel kontrolcü eşlemesi</string>
-    <string name="html5_controller_tab_unavailable">HTML5 kontrolcü ayarları kullanılamıyor — konteyner silinmiş olabilir.</string>
-    <string name="html5_controller_tab_default_config_disabled">Varsayılan HTML5 yapılandırması (yakında)</string>
     <string name="html5_controller_tab_overlay_opacity_value">Katman opaklığı: %%%1$d</string>
     <string name="html5_controller_tab_overlay_visible">Ekran katmanını göster</string>
     <string name="html5_overlay_select_element_first">Önce bir katman öğesine dokunun, sonra Düzenle\'ye basın</string>
-    <string name="container_config_html5_controller_saved">Kaydedildi</string>
     <string name="gesture_cursor_mode">Göreli imleç</string>
     <string name="gesture_cursor_mode_relative_subtitle">Parmak konumunda işlem yapmak yerine izlenen bir imleci hareket ettirir</string>
     <string name="gesture_action_open_quick_menu">Hızlı menüyü aç</string>

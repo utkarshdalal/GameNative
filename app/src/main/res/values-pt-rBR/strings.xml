@@ -3136,7 +3136,6 @@
     <string name="webview_download_unsupported_scheme">Download ignorado (esquema não suportado)</string>
     <string name="webview_download_failed">Falha no download: %1$s</string>
     <string name="quickmenu_edit_overlay">Editar sobreposição</string>
-    <string name="touch_gestures_label">Gestos de toque</string>
     <string name="render_scale_label">Escala de renderização (somente backend HTML5)</string>
     <string name="render_scale_description">Valores menores renderizam menos pixels para melhor desempenho e bateria; valores maiores ficam mais nítidos. Entra em vigor no próximo lançamento. Sem efeito em contêineres Wine.</string>
     <string name="render_scale_follow_global">Seguir padrão global</string>
@@ -3148,13 +3147,9 @@
     <string name="render_scale_2x">2×</string>
     <string name="render_scale_3x">3×</string>
     <string name="render_scale_4x">4× (mais alta, pior desempenho)</string>
-    <string name="html5_controller_tab_edit_physical">Mapeamento de controle físico</string>
-    <string name="html5_controller_tab_unavailable">Configurações de controle HTML5 indisponíveis — o contêiner pode ter sido excluído.</string>
-    <string name="html5_controller_tab_default_config_disabled">Configuração padrão HTML5 (em breve)</string>
     <string name="html5_controller_tab_overlay_opacity_value">Opacidade da sobreposição: %1$d%%</string>
     <string name="html5_controller_tab_overlay_visible">Mostrar sobreposição na tela</string>
     <string name="html5_overlay_select_element_first">Toque em um elemento da sobreposição primeiro, depois em Editar</string>
-    <string name="container_config_html5_controller_saved">Salvo</string>
     <string name="gesture_cursor_mode">Cursor relativo</string>
     <string name="gesture_cursor_mode_relative_subtitle">Move um cursor rastreado em vez de despachar na posição do dedo</string>
     <string name="gesture_action_open_quick_menu">Abrir menu rápido</string>

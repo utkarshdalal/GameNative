@@ -3309,7 +3309,6 @@
     <string name="webview_download_unsupported_scheme">ダウンロードをスキップしました（サポートされていないスキーム）</string>
     <string name="webview_download_failed">ダウンロードに失敗しました: %1$s</string>
     <string name="quickmenu_edit_overlay">オーバーレイを編集</string>
-    <string name="touch_gestures_label">タッチジェスチャー</string>
     <string name="render_scale_label">レンダースケール（HTML5 バックエンドのみ）</string>
     <string name="render_scale_description">値を低くするとレンダリングするピクセルが減り、パフォーマンスとバッテリーが向上します。値を高くするとより鮮明に見えます。次回起動時に有効になります。Wine コンテナには影響しません。</string>
     <string name="render_scale_follow_global">グローバルデフォルトに従う</string>
@@ -3321,13 +3320,9 @@
     <string name="render_scale_2x">2×</string>
     <string name="render_scale_3x">3×</string>
     <string name="render_scale_4x">4×（最高、最低のパフォーマンス）</string>
-    <string name="html5_controller_tab_edit_physical">物理コントローラーのマッピング</string>
-    <string name="html5_controller_tab_unavailable">HTML5 コントローラー設定を利用できません — コンテナが削除された可能性があります。</string>
-    <string name="html5_controller_tab_default_config_disabled">デフォルト HTML5 設定（近日公開）</string>
     <string name="html5_controller_tab_overlay_opacity_value">オーバーレイの不透明度: %1$d%%</string>
     <string name="html5_controller_tab_overlay_visible">オンスクリーンオーバーレイを表示</string>
     <string name="html5_overlay_select_element_first">先にオーバーレイ要素をタップしてから編集してください</string>
-    <string name="container_config_html5_controller_saved">保存しました</string>
     <string name="gesture_cursor_mode">相対カーソル</string>
     <string name="gesture_cursor_mode_relative_subtitle">指の位置でディスパッチする代わりに、追跡カーソルを移動します</string>
     <string name="gesture_action_open_quick_menu">クイックメニューを開く</string>

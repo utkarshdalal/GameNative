@@ -3312,7 +3312,6 @@
     <string name="webview_download_unsupported_scheme">Завантаження пропущено (непідтримувана схема)</string>
     <string name="webview_download_failed">Помилка завантаження: %1$s</string>
     <string name="quickmenu_edit_overlay">Редагувати оверлей</string>
-    <string name="touch_gestures_label">Сенсорні жести</string>
     <string name="render_scale_label">Масштаб рендеру (лише бекенд HTML5)</string>
     <string name="render_scale_description">Нижчі значення рендерять менше пікселів для кращої продуктивності та заряду; вищі значення виглядають чіткіше. Набуває чинності при наступному запуску. Не впливає на контейнери Wine.</string>
     <string name="render_scale_follow_global">Дотримуватися глобального стандарту</string>
@@ -3324,13 +3323,9 @@
     <string name="render_scale_2x">2×</string>
     <string name="render_scale_3x">3×</string>
     <string name="render_scale_4x">4× (найвищий, найгірша продуктивність)</string>
-    <string name="html5_controller_tab_edit_physical">Призначення фізичного контролера</string>
-    <string name="html5_controller_tab_unavailable">Налаштування контролера HTML5 недоступні — контейнер міг бути видалений.</string>
-    <string name="html5_controller_tab_default_config_disabled">Стандартна конфігурація HTML5 (незабаром)</string>
     <string name="html5_controller_tab_overlay_opacity_value">Непрозорість оверлею: %1$d%%</string>
     <string name="html5_controller_tab_overlay_visible">Показати екранний оверлей</string>
     <string name="html5_overlay_select_element_first">Спочатку торкніться елемента оверлею, потім Редагувати</string>
-    <string name="container_config_html5_controller_saved">Збережено</string>
     <string name="gesture_cursor_mode">Відносний курсор</string>
     <string name="gesture_cursor_mode_relative_subtitle">Переміщати відстежуваний курсор замість дії в позиції пальця</string>
     <string name="gesture_action_open_quick_menu">Відкрити швидке меню</string>

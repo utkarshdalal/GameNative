@@ -3206,7 +3206,6 @@
     <string name="webview_download_unsupported_scheme">Download übersprungen (nicht unterstütztes Schema)</string>
     <string name="webview_download_failed">Download fehlgeschlagen: %1$s</string>
     <string name="quickmenu_edit_overlay">Overlay bearbeiten</string>
-    <string name="touch_gestures_label">Touch-Gesten</string>
     <string name="render_scale_label">Renderskalierung (nur HTML5-Backend)</string>
     <string name="render_scale_description">Niedrigere Werte rendern weniger Pixel für bessere Leistung und Akkulaufzeit; höhere Werte sehen schärfer aus. Wird beim nächsten Start wirksam. Keine Auswirkung auf Wine-Container.</string>
     <string name="render_scale_follow_global">Globalen Standard übernehmen</string>
@@ -3218,13 +3217,9 @@
     <string name="render_scale_2x">2×</string>
     <string name="render_scale_3x">3×</string>
     <string name="render_scale_4x">4× (höchste, schlechteste Leistung)</string>
-    <string name="html5_controller_tab_edit_physical">Zuordnung des physischen Controllers</string>
-    <string name="html5_controller_tab_unavailable">HTML5-Controller-Einstellungen nicht verfügbar — der Container wurde möglicherweise gelöscht.</string>
-    <string name="html5_controller_tab_default_config_disabled">Standard-HTML5-Konfiguration (in Kürze verfügbar)</string>
     <string name="html5_controller_tab_overlay_opacity_value">Overlay-Deckkraft: %1$d%%</string>
     <string name="html5_controller_tab_overlay_visible">Bildschirm-Overlay anzeigen</string>
     <string name="html5_overlay_select_element_first">Tippe zuerst ein Overlay-Element an, dann Bearbeiten</string>
-    <string name="container_config_html5_controller_saved">Gespeichert</string>
     <string name="gesture_cursor_mode">Relativer Cursor</string>
     <string name="gesture_cursor_mode_relative_subtitle">Bewegt einen verfolgten Cursor, statt an der Fingerposition auszulösen</string>
     <string name="gesture_action_open_quick_menu">Schnellmenü öffnen</string>

@@ -3240,7 +3240,6 @@ https://gamenative.app
     <string name="webview_download_unsupported_scheme">Загрузка пропущена (неподдерживаемая схема)</string>
     <string name="webview_download_failed">Ошибка загрузки: %1$s</string>
     <string name="quickmenu_edit_overlay">Редактировать наложение</string>
-    <string name="touch_gestures_label">Сенсорные жесты</string>
     <string name="render_scale_label">Масштаб рендеринга (только бэкенд HTML5)</string>
     <string name="render_scale_description">Меньшие значения отрисовывают меньше пикселей ради производительности и заряда; большие выглядят чётче. Применяется при следующем запуске. На контейнеры Wine не влияет.</string>
     <string name="render_scale_follow_global">Следовать глобальному значению по умолчанию</string>
@@ -3252,13 +3251,9 @@ https://gamenative.app
     <string name="render_scale_2x">2×</string>
     <string name="render_scale_3x">3×</string>
     <string name="render_scale_4x">4× (максимальный, худшая производительность)</string>
-    <string name="html5_controller_tab_edit_physical">Назначение физического контроллера</string>
-    <string name="html5_controller_tab_unavailable">Настройки контроллера HTML5 недоступны — возможно, контейнер был удалён.</string>
-    <string name="html5_controller_tab_default_config_disabled">Конфигурация HTML5 по умолчанию (скоро)</string>
     <string name="html5_controller_tab_overlay_opacity_value">Непрозрачность наложения: %1$d%%</string>
     <string name="html5_controller_tab_overlay_visible">Показывать экранное наложение</string>
     <string name="html5_overlay_select_element_first">Сначала коснитесь элемента наложения, затем — Редактировать</string>
-    <string name="container_config_html5_controller_saved">Сохранено</string>
     <string name="gesture_cursor_mode">Относительный курсор</string>
     <string name="gesture_cursor_mode_relative_subtitle">Перемещать отслеживаемый курсор вместо отправки в точке касания</string>
     <string name="gesture_action_open_quick_menu">Открыть быстрое меню</string>

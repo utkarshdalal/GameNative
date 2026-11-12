@@ -3258,7 +3258,6 @@
     <string name="webview_download_unsupported_scheme">已跳过下载（不支持的协议）</string>
     <string name="webview_download_failed">下载失败：%1$s</string>
     <string name="quickmenu_edit_overlay">编辑叠加层</string>
-    <string name="touch_gestures_label">触摸手势</string>
     <string name="render_scale_label">渲染缩放（仅限 HTML5 后端）</string>
     <string name="render_scale_description">较低的值渲染更少像素以获得更好的性能和续航；较高的值看起来更清晰。下次启动时生效。对 Wine 容器无影响。</string>
     <string name="render_scale_follow_global">跟随全局默认</string>
@@ -3270,13 +3269,9 @@
     <string name="render_scale_2x">2×</string>
     <string name="render_scale_3x">3×</string>
     <string name="render_scale_4x">4×（最高，最差性能）</string>
-    <string name="html5_controller_tab_edit_physical">实体手柄映射</string>
-    <string name="html5_controller_tab_unavailable">HTML5 手柄设置不可用 — 容器可能已被删除。</string>
-    <string name="html5_controller_tab_default_config_disabled">默认 HTML5 配置（即将推出）</string>
     <string name="html5_controller_tab_overlay_opacity_value">叠加层不透明度：%1$d%%</string>
     <string name="html5_controller_tab_overlay_visible">显示屏幕叠加层</string>
     <string name="html5_overlay_select_element_first">请先点击一个叠加层元素，然后再编辑</string>
-    <string name="container_config_html5_controller_saved">已保存</string>
     <string name="gesture_cursor_mode">相对光标</string>
     <string name="gesture_cursor_mode_relative_subtitle">移动追踪光标，而非在手指位置派发事件</string>
     <string name="gesture_action_open_quick_menu">打开快捷菜单</string>

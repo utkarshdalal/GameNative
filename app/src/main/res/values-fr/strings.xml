@@ -3266,7 +3266,6 @@
     <string name="webview_download_unsupported_scheme">Téléchargement ignoré (schéma non pris en charge)</string>
     <string name="webview_download_failed">Échec du téléchargement : %1$s</string>
     <string name="quickmenu_edit_overlay">Modifier la superposition</string>
-    <string name="touch_gestures_label">Gestes tactiles</string>
     <string name="render_scale_label">Échelle de rendu (backend HTML5 uniquement)</string>
     <string name="render_scale_description">Les valeurs plus basses affichent moins de pixels pour de meilleures performances et une meilleure autonomie ; les valeurs plus élevées sont plus nettes. Prend effet au prochain lancement. Sans effet sur les conteneurs Wine.</string>
     <string name="render_scale_follow_global">Suivre la valeur par défaut globale</string>
@@ -3278,13 +3277,9 @@
     <string name="render_scale_2x">2×</string>
     <string name="render_scale_3x">3×</string>
     <string name="render_scale_4x">4× (le plus élevé, pires perfs)</string>
-    <string name="html5_controller_tab_edit_physical">Mappage de la manette physique</string>
-    <string name="html5_controller_tab_unavailable">Paramètres de manette HTML5 indisponibles — le conteneur a peut-être été supprimé.</string>
-    <string name="html5_controller_tab_default_config_disabled">Configuration HTML5 par défaut (bientôt disponible)</string>
     <string name="html5_controller_tab_overlay_opacity_value">Opacité de la superposition : %1$d%%</string>
     <string name="html5_controller_tab_overlay_visible">Afficher la superposition à l\'écran</string>
     <string name="html5_overlay_select_element_first">Touchez d\'abord un élément de superposition, puis Modifier</string>
-    <string name="container_config_html5_controller_saved">Enregistré</string>
     <string name="gesture_cursor_mode">Curseur relatif</string>
     <string name="gesture_cursor_mode_relative_subtitle">Déplacer un curseur suivi au lieu d\'envoyer à la position du doigt</string>
     <string name="gesture_action_open_quick_menu">Ouvrir le menu rapide</string>

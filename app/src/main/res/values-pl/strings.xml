@@ -3316,7 +3316,6 @@
     <string name="webview_download_unsupported_scheme">Pobieranie pominięte (nieobsługiwany schemat)</string>
     <string name="webview_download_failed">Pobieranie nie powiodło się: %1$s</string>
     <string name="quickmenu_edit_overlay">Edytuj nakładkę</string>
-    <string name="touch_gestures_label">Gesty dotykowe</string>
     <string name="render_scale_label">Skala renderowania (tylko backend HTML5)</string>
     <string name="render_scale_description">Niższe wartości renderują mniej pikseli dla lepszej wydajności i baterii; wyższe wyglądają ostrzej. Działa od następnego uruchomienia. Bez wpływu na kontenery Wine.</string>
     <string name="render_scale_follow_global">Zgodnie z domyślną globalną</string>
@@ -3328,13 +3327,9 @@
     <string name="render_scale_2x">2×</string>
     <string name="render_scale_3x">3×</string>
     <string name="render_scale_4x">4× (najwyższa, najgorsza wydajność)</string>
-    <string name="html5_controller_tab_edit_physical">Mapowanie kontrolera fizycznego</string>
-    <string name="html5_controller_tab_unavailable">Ustawienia kontrolera HTML5 niedostępne — kontener mógł zostać usunięty.</string>
-    <string name="html5_controller_tab_default_config_disabled">Domyślna konfiguracja HTML5 (wkrótce)</string>
     <string name="html5_controller_tab_overlay_opacity_value">Przezroczystość nakładki: %1$d%%</string>
     <string name="html5_controller_tab_overlay_visible">Pokaż nakładkę ekranową</string>
     <string name="html5_overlay_select_element_first">Najpierw dotknij elementu nakładki, potem Edytuj</string>
-    <string name="container_config_html5_controller_saved">Zapisano</string>
     <string name="gesture_cursor_mode">Kursor względny</string>
     <string name="gesture_cursor_mode_relative_subtitle">Przesuwaj śledzony kursor zamiast dotykać w miejscu palca</string>
     <string name="gesture_action_open_quick_menu">Otwórz szybkie menu</string>

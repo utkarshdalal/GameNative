@@ -3293,7 +3293,6 @@
     <string name="webview_download_unsupported_scheme">Descărcare omisă (schemă neacceptată)</string>
     <string name="webview_download_failed">Descărcarea a eșuat: %1$s</string>
     <string name="quickmenu_edit_overlay">Editați suprapunerea</string>
-    <string name="touch_gestures_label">Gesturi tactile</string>
     <string name="render_scale_label">Scară de randare (doar backend HTML5)</string>
     <string name="render_scale_description">Valorile mai mici randează mai puțini pixeli pentru performanță și autonomie mai bune; valorile mai mari arată mai clar. Se aplică la următoarea lansare. Niciun efect asupra containerelor Wine.</string>
     <string name="render_scale_follow_global">Urmează valoarea implicită globală</string>
@@ -3305,13 +3304,9 @@
     <string name="render_scale_2x">2×</string>
     <string name="render_scale_3x">3×</string>
     <string name="render_scale_4x">4× (cea mai mare, cea mai slabă performanță)</string>
-    <string name="html5_controller_tab_edit_physical">Maparea controlerului fizic</string>
-    <string name="html5_controller_tab_unavailable">Setările controlerului HTML5 sunt indisponibile — este posibil ca containerul să fi fost șters.</string>
-    <string name="html5_controller_tab_default_config_disabled">Configurație HTML5 implicită (în curând)</string>
     <string name="html5_controller_tab_overlay_opacity_value">Opacitate suprapunere: %1$d%%</string>
     <string name="html5_controller_tab_overlay_visible">Afișați suprapunerea pe ecran</string>
     <string name="html5_overlay_select_element_first">Atingeți mai întâi un element al suprapunerii, apoi Editați</string>
-    <string name="container_config_html5_controller_saved">Salvat</string>
     <string name="gesture_cursor_mode">Cursor relativ</string>
     <string name="gesture_cursor_mode_relative_subtitle">Mutați un cursor urmărit în loc să dispeceriți la poziția degetului</string>
     <string name="gesture_action_open_quick_menu">Deschideți meniul rapid</string>

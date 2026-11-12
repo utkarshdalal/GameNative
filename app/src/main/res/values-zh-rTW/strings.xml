@@ -3249,7 +3249,6 @@
     <string name="webview_download_unsupported_scheme">已略過下載（不支援的協定）</string>
     <string name="webview_download_failed">下載失敗：%1$s</string>
     <string name="quickmenu_edit_overlay">編輯覆蓋層</string>
-    <string name="touch_gestures_label">觸控手勢</string>
     <string name="render_scale_label">算繪比例（僅限 HTML5 後端）</string>
     <string name="render_scale_description">較低的數值算繪較少像素以獲得更好的效能與電池續航；較高的數值看起來更清晰。於下次啟動時生效。對 Wine 容器無效。</string>
     <string name="render_scale_follow_global">採用全域預設值</string>
@@ -3261,13 +3260,9 @@
     <string name="render_scale_2x">2×</string>
     <string name="render_scale_3x">3×</string>
     <string name="render_scale_4x">4×（最高，效能最差）</string>
-    <string name="html5_controller_tab_edit_physical">實體控制器對應</string>
-    <string name="html5_controller_tab_unavailable">HTML5 控制器設定無法使用 — 容器可能已被刪除。</string>
-    <string name="html5_controller_tab_default_config_disabled">預設 HTML5 設定（即將推出）</string>
     <string name="html5_controller_tab_overlay_opacity_value">覆蓋層不透明度：%1$d%%</string>
     <string name="html5_controller_tab_overlay_visible">顯示螢幕覆蓋層</string>
     <string name="html5_overlay_select_element_first">請先點選一個覆蓋層元素，再點選「編輯」</string>
-    <string name="container_config_html5_controller_saved">已儲存</string>
     <string name="gesture_cursor_mode">相對游標</string>
     <string name="gesture_cursor_mode_relative_subtitle">移動追蹤式游標，而非在手指位置直接派送事件</string>
     <string name="gesture_action_open_quick_menu">開啟快速選單</string>
