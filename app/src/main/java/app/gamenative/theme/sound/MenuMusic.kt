@@ -104,11 +104,14 @@ internal object MenuMusic {
 
     private fun start(t: Target) {
         if (playing && fade == null) return
-        if (!requestFocus()) return
         var s = session?.takeIf { it.key == t.key }
+        if (s == null) releaseSession()
+        if (!requestFocus()) return
         if (s == null) {
-            releaseSession()
-            s = openSession(t) ?: return
+            s = openSession(t) ?: run {
+                abandonFocus()
+                return
+            }
             session = s
         }
         val player = s.current ?: return
