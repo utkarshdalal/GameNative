@@ -381,7 +381,7 @@ fun SteamControllerBindingEditorDialog(containerId: String, onDismiss: () -> Uni
     if (showHelp) {
         AlertDialog(
             onDismissRequest = { showHelp = false },
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = PluviaTheme.menuColor(MaterialTheme.colorScheme.surface),
             tonalElevation = 0.dp,
             shape = MaterialTheme.shapes.large,
             title = { Text("Steam Controller bindings — help") },
@@ -513,7 +513,7 @@ private fun TriggerPickerDialog(
 
     AlertDialog(
         onDismissRequest = doApply,
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = PluviaTheme.menuColor(MaterialTheme.colorScheme.surface),
         tonalElevation = 0.dp,
         shape = MaterialTheme.shapes.large,
         title = { ScBackTitle("${side.label} behavior", onBack = doApply, style = MaterialTheme.typography.headlineSmall) },
@@ -611,7 +611,7 @@ private fun GyroPickerDialog(current: EditGyro, onDismiss: () -> Unit, onApply: 
 
     AlertDialog(
         onDismissRequest = doApply,
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = PluviaTheme.menuColor(MaterialTheme.colorScheme.surface),
         tonalElevation = 0.dp,
         shape = MaterialTheme.shapes.large,
         title = { ScBackTitle("Gyro behavior", onBack = doApply, style = MaterialTheme.typography.headlineSmall) },
@@ -699,7 +699,7 @@ private fun HapticsDialog(current: EditHaptics, onDismiss: () -> Unit, onApply: 
 
     AlertDialog(
         onDismissRequest = doApply,
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = PluviaTheme.menuColor(MaterialTheme.colorScheme.surface),
         tonalElevation = 0.dp,
         shape = MaterialTheme.shapes.large,
         title = { ScBackTitle("Haptics", onBack = doApply, style = MaterialTheme.typography.headlineSmall) },
@@ -809,7 +809,7 @@ private fun BindingPickerDialog(
         modifier = Modifier.fillMaxWidth(0.95f),
         properties = DialogProperties(usePlatformDefaultWidth = false),
         onDismissRequest = doApply,  // scrim tap / system back also commits (auto-save)
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = PluviaTheme.menuColor(MaterialTheme.colorScheme.surface),
         tonalElevation = 0.dp,
         shape = MaterialTheme.shapes.large,
         title = { ScBackTitle(title, onBack = doApply, style = MaterialTheme.typography.headlineSmall) },
@@ -959,7 +959,6 @@ private fun BindingPickerDialog(
             }
         },
         confirmButton = {},
-        containerColor = PluviaTheme.dialogContainerColor,
         titleContentColor = PluviaTheme.dialogTitleColor,
         textContentColor = PluviaTheme.dialogTextColor,
     )
@@ -1168,7 +1167,7 @@ private fun <T> LabeledDropdown(
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            modifier = Modifier.heightIn(max = 360.dp).background(MaterialTheme.colorScheme.surface),
+            modifier = Modifier.heightIn(max = 360.dp).background(PluviaTheme.menuColor(MaterialTheme.colorScheme.surface)),
             containerColor = PluviaTheme.menuContainerColor,
         ) {
             options.forEach { (value, lbl) ->
@@ -1382,7 +1381,7 @@ private fun AnalogPickerDialog(
         modifier = Modifier.fillMaxWidth(0.95f),
         properties = DialogProperties(usePlatformDefaultWidth = false),
         onDismissRequest = doApply,
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = PluviaTheme.menuColor(MaterialTheme.colorScheme.surface),
         tonalElevation = 0.dp,
         shape = MaterialTheme.shapes.large,
         title = { ScBackTitle("${surface.label} behavior", onBack = doApply, style = MaterialTheme.typography.headlineSmall) },
