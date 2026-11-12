@@ -1492,6 +1492,9 @@ class SteamAppScreen : BaseAppScreen() {
                         Text(stringResource(R.string.cancel))
                     }
                 },
+                containerColor = PluviaTheme.dialogContainerColor,
+                titleContentColor = PluviaTheme.dialogTitleColor,
+                textContentColor = PluviaTheme.dialogTextColor,
             )
         }
 
@@ -1861,6 +1864,7 @@ private fun SteamChangeBranchDialog(
                                     selectedBranch = branch
                                     branchExpanded = false
                                 },
+                                colors = PluviaTheme.menuItemColors(),
                             )
                         }
                     }
@@ -1922,6 +1926,9 @@ private fun SteamChangeBranchDialog(
                 Text(stringResource(R.string.cancel))
             }
         },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 
@@ -1975,6 +1982,7 @@ private fun SteamPreferredCopyDialog(
                                             .padding(end = 8.dp)
                                             .size(16.dp),
                                         strokeWidth = 2.dp,
+                                        color = PluviaTheme.progressColor,
                                     )
                                 }
                                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
@@ -2000,6 +2008,7 @@ private fun SteamPreferredCopyDialog(
                                     selectedSteamId = option.lenderSteamId
                                     expanded = false
                                 },
+                                colors = PluviaTheme.menuItemColors(),
                             )
                         }
                     }
@@ -2019,6 +2028,9 @@ private fun SteamPreferredCopyDialog(
                 Text(stringResource(R.string.cancel))
             }
         },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 
@@ -2040,6 +2052,7 @@ private fun PreferredCopyOptionMenuRow(
             CircularProgressIndicator(
                 modifier = Modifier.size(14.dp),
                 strokeWidth = 2.dp,
+                color = PluviaTheme.progressColor,
             )
         }
     }

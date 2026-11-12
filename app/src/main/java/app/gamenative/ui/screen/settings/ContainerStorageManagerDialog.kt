@@ -344,6 +344,9 @@ fun ContainerStorageManagerTransientUi(
                     Text(stringResource(R.string.cancel))
                 }
             },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 
@@ -389,6 +392,9 @@ fun ContainerStorageManagerTransientUi(
                     Text(stringResource(R.string.cancel))
                 }
             },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 
@@ -494,7 +500,7 @@ fun ContainerStorageManagerContent(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        CircularProgressIndicator()
+                        CircularProgressIndicator(color = PluviaTheme.progressColor)
                         Text(
                             text = stringResource(R.string.container_storage_loading),
                             style = MaterialTheme.typography.bodyMedium,

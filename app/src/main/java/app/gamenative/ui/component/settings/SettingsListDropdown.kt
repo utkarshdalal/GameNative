@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.gamenative.ui.theme.PluviaTheme
 import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
 import com.alorma.compose.settings.ui.base.internal.SettingsTileDefaults
@@ -106,6 +107,7 @@ fun SettingsListDropdown(
                 isDropdownExpanded = false
                 focusRequester.requestFocus()
             },
+            containerColor = PluviaTheme.menuContainerColor,
         ) {
             items.forEachIndexed { index, text ->
                 val isMuted = itemMuted?.getOrNull(index) == true
@@ -122,6 +124,7 @@ fun SettingsListDropdown(
                         isDropdownExpanded = false
                         focusRequester.requestFocus()
                     },
+                    colors = PluviaTheme.menuItemColors(),
                 )
             }
         }

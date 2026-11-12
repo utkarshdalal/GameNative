@@ -25,6 +25,7 @@ import app.gamenative.data.sanitizeGogDescription
 import app.gamenative.service.DownloadService
 import app.gamenative.service.gog.GOGConstants
 import app.gamenative.service.gog.GOGService
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.FormatUtils
 import app.gamenative.utils.CloudSaveBackupManager
 import app.gamenative.utils.MarkerUtils
@@ -846,6 +847,9 @@ class GOGAppScreen : BaseAppScreen() {
                         Text(stringResource(R.string.cancel))
                     }
                 },
+                containerColor = PluviaTheme.dialogContainerColor,
+                titleContentColor = PluviaTheme.dialogTitleColor,
+                textContentColor = PluviaTheme.dialogTextColor,
             )
         }
     }

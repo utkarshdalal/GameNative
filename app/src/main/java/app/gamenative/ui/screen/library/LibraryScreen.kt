@@ -333,7 +333,14 @@ private fun LibraryScreenContent(
     var selectedAppId by remember { mutableStateOf<String?>(null) }
     val carouselListState = rememberLazyListState()
     val isViewWide = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
-    var currentPaneType by remember { mutableStateOf(PrefManager.libraryLayout) }
+    var savedPaneType by remember { mutableStateOf(PrefManager.libraryLayout) }
+    // The theme layout applies for the session without touching the saved preference; a pick made by hand
+    // while the theme is on wins until the theme changes.
+    val themeSpec = PluviaTheme.spec
+    var themePaneType by remember(themeSpec) {
+        mutableStateOf(themeSpec.layout?.libraryLayout.toThemePaneType(savedPaneType, isViewWide))
+    }
+    val currentPaneType = themePaneType ?: savedPaneType
     var recDisclosureShown by remember { mutableStateOf(PrefManager.recDisclosureShown) }
     var showRecTeaserDialog by remember { mutableStateOf(false) }
     val onRecTeaserTapped = {
@@ -349,9 +356,9 @@ private fun LibraryScreenContent(
 
     // Initialize layout if undecided
     LaunchedEffect(Unit) {
-        if (currentPaneType == PaneType.UNDECIDED) {
-            currentPaneType = if (isViewWide) PaneType.GRID_HERO else PaneType.GRID_CAPSULE
-            PrefManager.libraryLayout = currentPaneType
+        if (savedPaneType == PaneType.UNDECIDED) {
+            savedPaneType = if (isViewWide) PaneType.GRID_HERO else PaneType.GRID_CAPSULE
+            PrefManager.libraryLayout = savedPaneType
         }
     }
 
@@ -1305,7 +1312,8 @@ private fun LibraryScreenContent(
                 currentView = currentPaneType,
                 onViewChanged = { newPaneType ->
                     PrefManager.libraryLayout = newPaneType
-                    currentPaneType = newPaneType
+                    savedPaneType = newPaneType
+                    themePaneType = null
                 },
                 steamCollections = state.steamCollections,
                 selectedSteamCollectionIds = state.selectedSteamCollectionIds,
@@ -1410,6 +1418,9 @@ private fun LibraryScreenContent(
                         Text(stringResource(R.string.cancel))
                     }
                 },
+                containerColor = PluviaTheme.dialogContainerColor,
+                titleContentColor = PluviaTheme.dialogTitleColor,
+                textContentColor = PluviaTheme.dialogTextColor,
             )
         }
 
@@ -1420,7 +1431,7 @@ private fun LibraryScreenContent(
                 title = { Text(stringResource(R.string.custom_game_importing)) },
                 text = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator()
+                        CircularProgressIndicator(color = PluviaTheme.progressColor)
                         Spacer(modifier = Modifier.width(16.dp))
                         Column {
                             val mb = (importState.progress?.copiedBytes ?: 0L) / 1_000_000L
@@ -1432,6 +1443,9 @@ private fun LibraryScreenContent(
                     }
                 },
                 confirmButton = { },
+                containerColor = PluviaTheme.dialogContainerColor,
+                titleContentColor = PluviaTheme.dialogTitleColor,
+                textContentColor = PluviaTheme.dialogTextColor,
             )
         }
 
@@ -1482,6 +1496,9 @@ private fun LibraryScreenContent(
                         Text(stringResource(android.R.string.cancel))
                     }
                 },
+                containerColor = PluviaTheme.dialogContainerColor,
+                titleContentColor = PluviaTheme.dialogTitleColor,
+                textContentColor = PluviaTheme.dialogTextColor,
             )
         }
     }
@@ -1567,4 +1584,14 @@ private fun Preview_LibraryScreenContent() {
             onNextTab = {},
         )
     }
+}
+
+private fun String?.toThemePaneType(saved: PaneType, isViewWide: Boolean): PaneType? = when (this?.lowercase()) {
+    "grid" -> when (saved) {
+        PaneType.GRID_HERO, PaneType.GRID_CAPSULE -> saved
+        else -> if (isViewWide) PaneType.GRID_HERO else PaneType.GRID_CAPSULE
+    }
+    "list" -> PaneType.LIST
+    "carousel" -> PaneType.CAROUSEL
+    else -> null
 }

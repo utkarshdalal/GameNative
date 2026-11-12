@@ -61,6 +61,7 @@ import app.gamenative.R
 import app.gamenative.data.ModTargetRoot
 import app.gamenative.mods.ModTargetResolver
 import app.gamenative.mods.ResolvedModTargetRoot
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.ContainerFileImporter
 import app.gamenative.utils.FormatUtils
 import java.io.File
@@ -256,6 +257,7 @@ internal fun ContainerFilesProgressRow(
             LinearProgressIndicator(
                 progress = { progress.coerceIn(0f, 1f) },
                 modifier = Modifier.fillMaxWidth(),
+                color = PluviaTheme.progressColor,
             )
             if (fileName.isNotEmpty()) {
                 Text(
@@ -267,7 +269,7 @@ internal fun ContainerFilesProgressRow(
                 )
             }
         }
-        OutlinedButton(onClick = onCancel) {
+        OutlinedButton(onClick = onCancel, colors = PluviaTheme.outlinedButtonColors()) {
             Text(stringResource(R.string.cancel))
         }
     }

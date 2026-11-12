@@ -29,6 +29,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.CloudSaveBackupManager
 import java.text.DateFormat
 import java.util.Date
@@ -130,5 +131,8 @@ fun SaveBackupRestoreDialog(
                 Text(text = stringResource(R.string.cancel))
             }
         },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }

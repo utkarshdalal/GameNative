@@ -69,6 +69,7 @@ import app.gamenative.steamcontroller.ScEditableProfile
 import app.gamenative.steamcontroller.ScEditableSet
 import app.gamenative.steamcontroller.ScProfile
 import app.gamenative.steamcontroller.ScSource
+import app.gamenative.ui.theme.PluviaTheme
 import com.winlator.xserver.Pointer
 import com.winlator.xserver.XKeycode
 
@@ -402,6 +403,8 @@ fun SteamControllerBindingEditorDialog(containerId: String, onDismiss: () -> Uni
                 }
             },
             confirmButton = { TextButton(onClick = { showHelp = false }) { Text("Close") } },
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 }
@@ -548,6 +551,8 @@ private fun TriggerPickerDialog(
             }
         },
         confirmButton = {},
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 
     // Nested command picker for whichever stage is being bound (reuses the Phase-3 picker; no activator on a stage).
@@ -677,6 +682,8 @@ private fun GyroPickerDialog(current: EditGyro, onDismiss: () -> Unit, onApply: 
             }
         },
         confirmButton = {},
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 
@@ -713,6 +720,8 @@ private fun HapticsDialog(current: EditHaptics, onDismiss: () -> Unit, onApply: 
             }
         },
         confirmButton = {},
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 
@@ -950,6 +959,9 @@ private fun BindingPickerDialog(
             }
         },
         confirmButton = {},
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 
@@ -1157,11 +1169,13 @@ private fun <T> LabeledDropdown(
             expanded = expanded,
             onDismissRequest = { expanded = false },
             modifier = Modifier.heightIn(max = 360.dp).background(MaterialTheme.colorScheme.surface),
+            containerColor = PluviaTheme.menuContainerColor,
         ) {
             options.forEach { (value, lbl) ->
                 DropdownMenuItem(
                     text = { Text(lbl, fontWeight = if (value == selected) FontWeight.Bold else FontWeight.Normal) },
                     onClick = { onSelected(value); expanded = false },
+                    colors = PluviaTheme.menuItemColors(),
                 )
             }
         }
@@ -1457,6 +1471,8 @@ private fun AnalogPickerDialog(
             }
         },
         confirmButton = {},
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 
     // Nested command picker for a slot / the radial center / a d-pad direction.
@@ -1542,7 +1558,7 @@ private fun AnalogSlider(
         // Inset the content so the nav-selection ring hugs the row edge without overlapping the label/slider.
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
             Text("$label: $value$suffix" + if (nav != null) "   ◀ ▶" else "", style = MaterialTheme.typography.labelMedium)
-            Slider(value = value.toFloat(), onValueChange = { onChange(it.toInt()) }, valueRange = min.toFloat()..max.toFloat())
+            Slider(value = value.toFloat(), onValueChange = { onChange(it.toInt()) }, valueRange = min.toFloat()..max.toFloat(), colors = PluviaTheme.sliderColors())
         }
     }
     if (nav != null) {

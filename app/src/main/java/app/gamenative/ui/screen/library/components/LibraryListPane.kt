@@ -144,7 +144,8 @@ internal fun LibraryListPane(
     val pullToRefreshState = rememberPullToRefreshState()
     val windowWidthClass = rememberWindowWidthClass()
 
-    val columnType = remember(currentLayout, windowWidthClass) {
+    val cardScale = PluviaTheme.cardScale
+    val columnType = remember(currentLayout, windowWidthClass, cardScale) {
         when (currentLayout) {
             PaneType.GRID_HERO -> {
                 val minSize = when (windowWidthClass) {
@@ -152,7 +153,7 @@ internal fun LibraryListPane(
                     WindowWidthClass.MEDIUM -> 180.dp
                     WindowWidthClass.EXPANDED -> 200.dp
                 }
-                GridCells.Adaptive(minSize = minSize)
+                GridCells.Adaptive(minSize = minSize * cardScale)
             }
 
             PaneType.GRID_CAPSULE -> {
@@ -161,7 +162,7 @@ internal fun LibraryListPane(
                     WindowWidthClass.MEDIUM -> 130.dp
                     WindowWidthClass.EXPANDED -> 150.dp
                 }
-                GridCells.Adaptive(minSize = minSize)
+                GridCells.Adaptive(minSize = minSize * cardScale)
             }
 
             else -> GridCells.Fixed(1)
@@ -318,7 +319,7 @@ internal fun LibraryListPane(
                                             .padding(16.dp),
                                         contentAlignment = Alignment.Center,
                                     ) {
-                                        CircularProgressIndicator()
+                                        CircularProgressIndicator(color = PluviaTheme.progressColor)
                                     }
                                 }
                             }

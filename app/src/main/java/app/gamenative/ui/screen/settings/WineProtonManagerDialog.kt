@@ -2,6 +2,7 @@ package app.gamenative.ui.screen.settings
 
 import android.content.Context
 import android.net.Uri
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.SnackbarManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -620,7 +621,8 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             modifier = Modifier.weight(1f)
                         )
                         CircularProgressIndicator(
-                            modifier = Modifier.padding(start = 8.dp).height(24.dp)
+                            modifier = Modifier.padding(start = 8.dp).height(24.dp),
+                            color = PluviaTheme.progressColor
                         )
                     }
                 } else if (manifestError != null) {
@@ -661,7 +663,8 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                     onClick = {
                                         selectedWineKey = key
                                         isExpanded = false
-                                    }
+                                    },
+                                    colors = PluviaTheme.menuItemColors()
                                 )
                             }
                         }
@@ -711,7 +714,8 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                     modifier = Modifier.weight(1f)
                                 )
                                 CircularProgressIndicator(
-                                    modifier = Modifier.padding(start = 8.dp).height(24.dp)
+                                    modifier = Modifier.padding(start = 8.dp).height(24.dp),
+                                    color = PluviaTheme.progressColor
                                 )
                             }
                         }
@@ -765,7 +769,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.padding(bottom = 8.dp)
                     ) {
-                        CircularProgressIndicator(modifier = Modifier.height(20.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(modifier = Modifier.height(20.dp), strokeWidth = 2.dp, color = PluviaTheme.progressColor)
                         Text(text = statusMessage ?: stringResource(R.string.wine_proton_processing))
                     }
                 } else if (!statusMessage.isNullOrEmpty()) {
@@ -873,7 +877,10 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
             TextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.close))
             }
-        }
+        },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor
     )
 
     // Untrusted files confirmation
@@ -921,7 +928,10 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     statusMessage = null
                     isStatusSuccess = false
                 }) { Text(stringResource(R.string.cancel)) }
-            }
+            },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor
         )
     }
 
@@ -958,7 +968,10 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
             },
             dismissButton = {
                 TextButton(onClick = { deleteTarget = null }) { Text(stringResource(R.string.cancel)) }
-            }
+            },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor
         )
     }
 }

@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -200,18 +201,26 @@ fun PremiumDialogButton(
         .fillMaxWidth()
         .focusRing(interaction, shape, width = 2.dp)
     if (primary) {
+        val gradient = PluviaTheme.accentGradientBrush.takeIf { colors == null && enabled }
         Button(
             onClick = onClick,
             enabled = enabled,
             interactionSource = interaction,
             shape = shape,
-            colors = colors ?: supportButtonColors(),
-            modifier = buttonModifier,
+            colors = colors ?: if (gradient != null) {
+                ButtonDefaults.buttonColors(
+                    containerColor = Color.Transparent,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                )
+            } else {
+                supportButtonColors()
+            },
+            modifier = if (gradient != null) buttonModifier.background(gradient, shape) else buttonModifier,
         ) {
             content()
         }
     } else {
-        OutlinedButton(onClick = onClick, enabled = enabled, interactionSource = interaction, shape = shape, modifier = buttonModifier) {
+        OutlinedButton(onClick = onClick, enabled = enabled, interactionSource = interaction, shape = shape, modifier = buttonModifier, colors = PluviaTheme.outlinedButtonColors()) {
             content()
         }
     }

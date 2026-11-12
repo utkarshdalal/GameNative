@@ -182,6 +182,7 @@ import app.gamenative.ui.screen.library.components.VideoHero
 import app.gamenative.utils.FormatUtils
 import app.gamenative.utils.HltbService
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedTitleText
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import java.text.SimpleDateFormat
@@ -269,14 +270,20 @@ private fun PrimaryActionButton(
         isInstalled -> PluviaTheme.colors.statusInstalled
         else -> PluviaTheme.colors.statusAvailable
     }
+    val gradient = PluviaTheme.accentGradientBrush.takeIf { !isDownloading }
+    val labelColor = if (gradient != null) MaterialTheme.colorScheme.onPrimary else Color.White
 
     Box(
         modifier = modifier
             .heightIn(min = 52.dp)
             .scale(scale)
             .clip(PluviaTheme.shape(8.dp))
-            .background(
-                if (enabled) buttonColor else buttonColor.copy(alpha = 0.5f),
+            .then(
+                if (gradient != null) {
+                    Modifier.background(gradient, alpha = if (enabled) 1f else 0.5f)
+                } else {
+                    Modifier.background(if (enabled) buttonColor else buttonColor.copy(alpha = 0.5f))
+                },
             )
             .focusRing(interactionSource, PluviaTheme.shape(8.dp), width = 2.dp)
             .focusRequester(focusRequester)
@@ -340,13 +347,13 @@ private fun PrimaryActionButton(
                 Icon(
                     imageVector = if (isInstalled) Icons.Default.PlayArrow else Icons.Default.CloudDownload,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = labelColor,
                     modifier = Modifier.size(24.dp),
                 )
                 Text(
                     text = text,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White,
+                    color = labelColor,
                 )
             }
         }
@@ -381,11 +388,13 @@ private fun ActionIconButton(
             .size(48.dp)
             .clip(PluviaTheme.shape(8.dp))
             .background(
-                if (isFocused) {
-                    Color.White.copy(alpha = 0.2f)
-                } else {
-                    Color.White.copy(alpha = 0.1f)
-                },
+                PluviaTheme.buttonColor(
+                    if (isFocused) {
+                        Color.White.copy(alpha = 0.2f)
+                    } else {
+                        Color.White.copy(alpha = 0.1f)
+                    },
+                ),
             )
             .focusRing(interactionSource, PluviaTheme.shape(8.dp), width = 2.dp)
             .selectable(
@@ -399,7 +408,7 @@ private fun ActionIconButton(
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = Color.White,
+            tint = PluviaTheme.onButtonColor(Color.White),
             modifier = Modifier.size(24.dp),
         )
     }
@@ -1337,10 +1346,10 @@ internal fun AppScreenContent(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 128.dp, start = 20.dp, end = 20.dp, bottom = 16.dp),
+                        .padding(top = 128.dp * PluviaTheme.heroScale, start = 20.dp, end = 20.dp, bottom = 16.dp),
                 ) {
                     // Game title
-                    Text(
+                    ThemedTitleText(
                         text = displayInfo.name,
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.Bold,
@@ -1353,6 +1362,7 @@ internal fun AppScreenContent(
                         color = Color.White,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
+                        modifier = if (PluviaTheme.centerTitles) Modifier.fillMaxWidth() else Modifier,
                     )
 
                     // Developer and year
@@ -1889,6 +1899,7 @@ fun GameMigrationDialog(
                 LinearProgressIndicator(
                     modifier = Modifier.fillMaxWidth(),
                     progress = { progress },
+                    color = PluviaTheme.progressColor,
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -1900,6 +1911,9 @@ fun GameMigrationDialog(
             }
         },
         confirmButton = {},
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 
@@ -2143,6 +2157,9 @@ private fun AchievementDetailDialog(ach: Achievement, onDismiss: () -> Unit) {
                 }
             }
         },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 
@@ -2408,6 +2425,9 @@ private fun AchievementsDialog(
                     Text(stringResource(R.string.cancel))
                 }
             },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
     detailAchievement?.let { ach ->

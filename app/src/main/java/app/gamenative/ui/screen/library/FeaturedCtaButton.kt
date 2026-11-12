@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
@@ -153,7 +154,8 @@ internal fun FeaturedCtaButton(
             shape = shape,
             interactionSource = interactionSource,
             colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = MaterialTheme.colorScheme.primary.copy(alpha = contentAlpha),
+                containerColor = PluviaTheme.buttonColor(Color.Transparent),
+                contentColor = PluviaTheme.onButtonColor(MaterialTheme.colorScheme.primary).copy(alpha = contentAlpha),
             ),
         ) {
             Text(text = label, fontWeight = FontWeight.SemiBold)

@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 
+import app.gamenative.ui.theme.PluviaTheme
 @Composable
 internal fun LibraryFavoritesEmptyState(
     @StringRes titleResId: Int,
@@ -64,6 +65,7 @@ internal fun LibraryFavoritesEmptyState(
             OutlinedButton(
                 onClick = onAction,
                 modifier = Modifier.padding(horizontal = 24.dp),
+                colors = PluviaTheme.outlinedButtonColors(),
             ) {
                 Text(stringResource(actionLabelResId))
             }

@@ -20,6 +20,7 @@ import app.gamenative.display.GamescopeSettings
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.component.settings.SettingsListDropdownSearchable
 import app.gamenative.ui.component.settings.SettingsMultiListDropdown
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import app.gamenative.utils.LsfgVkManager
@@ -247,6 +248,7 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                             state.config.value = config.copy(xrRenderScale = stepped)
                         },
                         valueRange = 25f..100f,
+                        colors = PluviaTheme.sliderColors(),
                     )
                     Text(text = "${config.xrRenderScale}%")
                 }
@@ -338,6 +340,7 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                             state.config.value = config.copy(sharpnessLevel = clamped)
                         },
                         valueRange = 0f..100f,
+                        colors = PluviaTheme.sliderColors(),
                     )
                     Text(text = "${state.sharpnessLevel.value}%")
                 }
@@ -351,6 +354,7 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                             state.config.value = config.copy(sharpnessDenoise = clamped)
                         },
                         valueRange = 0f..100f,
+                        colors = PluviaTheme.sliderColors(),
                     )
                     Text(text = "${state.sharpnessDenoise.value}%")
                 }

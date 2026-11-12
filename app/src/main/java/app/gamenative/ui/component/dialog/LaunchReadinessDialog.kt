@@ -27,7 +27,7 @@ fun LaunchReadinessDialog(
         title = { Text(text = title) },
         text = {
             if (isLoading) {
-                CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                CircularProgressIndicator(modifier = Modifier.size(32.dp), color = PluviaTheme.progressColor)
             } else {
                 Text(text = message)
             }
@@ -38,6 +38,9 @@ fun LaunchReadinessDialog(
         dismissButton = {
             TextButton(onClick = onDismiss, enabled = !isLoading) { Text(text = dismissText) }
         },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 

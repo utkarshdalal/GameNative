@@ -253,7 +253,7 @@ private fun DiscordLinkQrPanel(state: DiscordLinkState, size: Dp) {
                 modifier = Modifier.size(size + 24.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(color = PluviaTheme.progressColor)
             }
         }
         else -> Unit

@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.view.View
+import app.gamenative.ui.theme.ThemeViewColors
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.min
@@ -59,6 +60,21 @@ class ScMenuOverlayView(context: Context) : View(context), ScMenuOverlay {
     init {
         isClickable = false
         isFocusable = false
+        applyThemeColors()
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        applyThemeColors()
+    }
+
+    private fun applyThemeColors() {
+        slotFill.color = ThemeViewColors.panel(Color.argb(200, 40, 44, 52))
+        slotFillHi.color = ThemeViewColors.accent(Color.argb(230, 33, 150, 243))
+        text.color = ThemeViewColors.text(Color.WHITE)
+        cursorFill.color = ThemeViewColors.focus(Color.argb(255, 255, 193, 7))
+        toastBg.color = ThemeViewColors.panel(Color.argb(190, 0, 0, 0))
+        toastTextPaint.color = ThemeViewColors.text(Color.WHITE)
     }
 
     // Never consume touch events — input must pass through to the game.

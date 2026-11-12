@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.Dp
+import app.gamenative.ui.theme.PluviaTheme
 import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
 import com.alorma.compose.settings.ui.base.internal.SettingsTileDefaults
@@ -81,6 +82,7 @@ fun SettingsTextFieldWithSuggestions(
                     DropdownMenu(
                         expanded = suggestionsExpanded,
                         onDismissRequest = { suggestionsExpanded = false },
+                        containerColor = PluviaTheme.menuContainerColor,
                     ) {
                         suggestions.forEach { suggestion ->
                                             // suggestion box headers
@@ -96,6 +98,7 @@ fun SettingsTextFieldWithSuggestions(
                                                     },
                                                     onClick = {},
                                                     enabled = false,
+                                                    colors = PluviaTheme.menuItemColors(),
                                                 )
                                             } else {
                                                 DropdownMenuItem(
@@ -104,6 +107,7 @@ fun SettingsTextFieldWithSuggestions(
                                                         onValueChange(suggestion)
                                                         suggestionsExpanded = false
                                                     },
+                                                    colors = PluviaTheme.menuItemColors(),
                                                 )
                                             }
                         }

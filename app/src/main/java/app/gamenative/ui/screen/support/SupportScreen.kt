@@ -206,7 +206,7 @@ internal fun SupportHeader(
 @Composable
 internal fun CenteredProgress(modifier: Modifier = Modifier) {
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator()
+        CircularProgressIndicator(color = PluviaTheme.progressColor)
     }
 }
 

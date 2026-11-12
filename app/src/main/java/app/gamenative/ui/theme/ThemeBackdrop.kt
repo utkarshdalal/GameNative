@@ -13,9 +13,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.LinearGradientShader
+import androidx.compose.ui.graphics.Shader
+import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
@@ -91,6 +96,29 @@ private fun Modifier.themeGradient(gradient: ThemeGradient): Modifier = drawBehi
                 Brush.linearGradient(colors = colors, start = start, end = end)
             }
             drawRect(brush)
+        }
+    }
+}
+
+/** Size-aware brush for [gradient] with the same CSS angle semantics as the backdrop; null without colours. */
+internal fun cssGradientBrush(gradient: ThemeGradient): Brush? {
+    val colors = gradient.colors.map { Color(it) }
+    if (colors.isEmpty()) return null
+    if (colors.size == 1) return SolidColor(colors[0])
+    val stops = gradient.stops.takeIf { it.size == colors.size }
+    val rad = Math.toRadians(gradient.angleDeg.toDouble())
+    val dx = sin(rad).toFloat()
+    val dy = -cos(rad).toFloat()
+    return object : ShaderBrush() {
+        override fun createShader(size: Size): Shader {
+            val half = (abs(size.width * dx) + abs(size.height * dy)) / 2f
+            val c = Offset(size.width / 2f, size.height / 2f)
+            return LinearGradientShader(
+                from = Offset(c.x - dx * half, c.y - dy * half),
+                to = Offset(c.x + dx * half, c.y + dy * half),
+                colors = colors,
+                colorStops = stops,
+            )
         }
     }
 }

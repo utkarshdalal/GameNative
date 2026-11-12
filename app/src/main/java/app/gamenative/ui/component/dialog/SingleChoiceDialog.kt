@@ -93,6 +93,9 @@ fun SingleChoiceDialog(
                 content = { Text(text = stringResource(R.string.close)) },
             )
         },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 

@@ -115,9 +115,10 @@ fun DebugReportDialog(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(bottom = 16.dp),
+                                        color = PluviaTheme.progressColor,
                                 )
                             } else {
-                                CircularProgressIndicator(modifier = Modifier.padding(bottom = 16.dp))
+                                CircularProgressIndicator(modifier = Modifier.padding(bottom = 16.dp), color = PluviaTheme.progressColor)
                             }
                             Text(
                                 text = stringResource(R.string.debug_report_sending),
@@ -252,6 +253,7 @@ fun DebugReportDialog(
                                         CircularProgressIndicator(
                                             modifier = Modifier.size(16.dp),
                                             strokeWidth = 2.dp,
+                                            color = PluviaTheme.progressColor,
                                         )
                                         Text(
                                             text = stringResource(R.string.debug_report_preparing),

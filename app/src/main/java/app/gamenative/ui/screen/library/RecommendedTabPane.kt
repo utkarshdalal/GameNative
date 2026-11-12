@@ -34,6 +34,7 @@ import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.model.GogRecommendationsViewModel
 import app.gamenative.ui.screen.library.components.LibraryCarouselPane
 import app.gamenative.ui.screen.library.components.LibraryListPane
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.ConversionTracker
 import com.posthog.PostHog
 import android.os.SystemClock
@@ -143,7 +144,7 @@ fun RecommendedTabPane(
     Box(modifier = modifier.fillMaxSize()) {
         when {
             state.loading -> {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = PluviaTheme.progressColor)
             }
 
             items.isEmpty() -> {

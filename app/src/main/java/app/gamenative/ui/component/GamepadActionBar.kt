@@ -122,7 +122,7 @@ fun GamepadActionBar(
     val swapFaceButtons = PrefManager.swapFaceButtons
 
     AnimatedVisibility(
-        visible = visible && actions.isNotEmpty() && showGamepadUI,
+        visible = visible && actions.isNotEmpty() && showGamepadUI && !PluviaTheme.hideFooterHints,
         enter = slideInVertically(
             initialOffsetY = { it },
             animationSpec = spring(

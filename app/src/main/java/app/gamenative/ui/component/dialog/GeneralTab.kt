@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.settings.SettingsListDropdown
+import app.gamenative.ui.theme.PluviaTheme
 import com.alorma.compose.settings.ui.SettingsSwitch
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
@@ -153,7 +154,10 @@ fun GeneralTabContent(
                 ) {
                     Text(text = stringResource(R.string.cancel))
                 }
-            }
+            },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor
         )
     }
 

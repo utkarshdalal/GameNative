@@ -1,5 +1,6 @@
 package app.gamenative.ui.component
 
+import android.graphics.BlurMaskFilter
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -24,6 +25,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -75,6 +77,8 @@ fun Modifier.focusRing(
     val focusColors = PluviaTheme.colors
     val colors = listOf(focusColors.focus, focusColors.focusAlt, focusColors.focus)
     val strokePx = with(LocalDensity.current) { width.toPx() }
+    val glowPx = PluviaTheme.focusGlow?.let { with(LocalDensity.current) { it.toPx() } }
+    val glowColor = focusColors.focus
 
     return drawWithCache {
         // Rebuilt only when the size changes.
@@ -92,7 +96,10 @@ fun Modifier.focusRing(
             }
         }
 
+        val glowPaint = glowPx?.let { focusGlowPaint(glowColor, it) }
+
         onDrawWithContent {
+            glowPaint?.let { paint -> drawIntoCanvas { it.drawOutline(outline, paint) } }
             drawContent()
             // Reading angle here keeps the animation in the draw phase, off recomposition.
             val canvas = drawContext.canvas
@@ -116,4 +123,10 @@ fun Modifier.focusRing(
             canvas.restore()
         }
     }
+}
+
+/** Paint for an outer glow of [radiusPx] around a shape, drawn outside its edge only. */
+internal fun focusGlowPaint(color: Color, radiusPx: Float): Paint = Paint().apply {
+    this.color = color
+    asFrameworkPaint().maskFilter = BlurMaskFilter(radiusPx, BlurMaskFilter.Blur.OUTER)
 }

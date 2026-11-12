@@ -490,9 +490,9 @@ internal fun SuggestionCard(
                     modifier = Modifier.padding(top = 8.dp),
                 )
                 if (value < 0f) {
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = PluviaTheme.progressColor)
                 } else {
-                    LinearProgressIndicator(progress = { value }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+                    LinearProgressIndicator(progress = { value }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = PluviaTheme.progressColor)
                 }
             }
             status?.let { current ->

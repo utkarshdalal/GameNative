@@ -141,11 +141,13 @@ internal fun ListViewCard(
                 ),
             shape = shape,
         colors = CardDefaults.cardColors(
-            containerColor = if (isFocused) {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
-            },
+            containerColor = PluviaTheme.cardColor(
+                if (isFocused) {
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
+                },
+            ),
         ),
         border = when {
             appInfo.isRecommended -> BorderStroke(
@@ -209,7 +211,7 @@ internal fun ListViewCard(
                     },
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = PluviaTheme.onCardColor(MaterialTheme.colorScheme.onSurface),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -248,7 +250,8 @@ internal fun ListViewCard(
                 )
             }
 
-            if (!appInfo.isRecommended && communityCompatibility != null) {
+            val hideBadges = PluviaTheme.hideBadges
+            if (!hideBadges && !appInfo.isRecommended && communityCompatibility != null) {
                 CommunityCompatibilityBadge(
                     verdict = communityCompatibility.verdict,
                     verdictLoaded = communityCompatibility.verdictLoaded,
@@ -256,7 +259,7 @@ internal fun ListViewCard(
                     checking = communityCompatibility.isChecking,
                     showLabel = true,
                 )
-            } else {
+            } else if (!hideBadges) {
                 val badgeStatus = if (appInfo.isRecommended) {
                     GameCompatibilityStatus.RECOMMENDED
                 } else {

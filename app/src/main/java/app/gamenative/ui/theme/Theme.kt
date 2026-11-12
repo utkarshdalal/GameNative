@@ -2,24 +2,38 @@ package app.gamenative.ui.theme
 
 import android.app.Activity
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialogDefaults
+import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
+import androidx.compose.material3.MenuItemColors
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Shapes
+import androidx.compose.material3.SliderColors
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.SwitchColors
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
+import app.gamenative.theme.ThemeLayout
 import app.gamenative.theme.ThemeSpec
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
 import com.alorma.compose.settings.ui.base.internal.SettingsTileDefaults
@@ -78,6 +92,18 @@ data class PluviaColors(
     /** Top bars, tab bars and the footer hint bar. */
     val bar: Color = PluviaCard,
     val brandGradient: List<Color> = BrandGradient,
+
+    /** Theme component colours; null keeps what each component draws by default. */
+    val card: Color? = null,
+    val onCard: Color? = null,
+    val button: Color? = null,
+    val onButton: Color? = null,
+    val toggle: Color? = null,
+    val menu: Color? = null,
+    val onMenu: Color? = null,
+    val onMenuMuted: Color? = null,
+    /** Fill for accent buttons, toggles and progress bars the app draws itself. */
+    val accentBrush: Brush? = null,
 )
 
 val BrandGradient = listOf(PluviaCyan, PluviaPurple, PluviaPink)
@@ -222,10 +248,31 @@ private fun readable(fg: Color, min: Float, backgrounds: List<Color>): Color {
 /** Multiplies the alpha, so a theme colour that is already translucent stays proportionally so. */
 fun Color.scaleAlpha(factor: Float): Color = copy(alpha = (alpha * factor).coerceIn(0f, 1f))
 
+/** Base for light themes: Material light defaults with the Pluvia accent. */
+private val LightColorScheme = lightColorScheme(
+    primary = PluviaPrimary,
+    onPrimary = PluviaForeground,
+    tertiary = PluviaPrimary,
+    onTertiary = PluviaForeground,
+    scrim = Color.Black.copy(alpha = 0.5f),
+)
+
+private const val LIGHT_BACKGROUND_LUMINANCE = 0.5f
+
+/** True when the theme's page colour is light, so the app switches to light defaults and bar icons. */
+internal fun ThemeSpec.isLightBackground(): Boolean {
+    val page = background ?: backgroundGradient?.colors?.firstOrNull() ?: return false
+    return Color(page).copy(alpha = 1f).luminance() > LIGHT_BACKGROUND_LUMINANCE
+}
+
+/** Theme accent: the flat primary, or the first stop of the accent gradient where only a colour fits. */
+private fun ThemeSpec.accentSource(): Int? = primary ?: accentGradient?.colors?.firstOrNull()
+
 private fun buildColorScheme(spec: ThemeSpec): ColorScheme {
     if (spec.isEmpty) return DarkColorScheme
-    val d = DarkColorScheme
+    val d = if (spec.isLightBackground()) LightColorScheme else DarkColorScheme
     val panel = spec.panelOpacity?.coerceIn(0f, 1f) ?: 1f
+    val accentSource = spec.accentSource()
     val background = spec.background.toColor() ?: d.background
     // A theme may set only one colour of a pair; keep every pair it touched readable.
     val themedSurfaces = spec.background != null || spec.surface != null || spec.surfaceVariant != null
@@ -236,11 +283,11 @@ private fun buildColorScheme(spec: ThemeSpec): ColorScheme {
     val variant = (spec.surfaceVariant.toColor() ?: d.surfaceVariant).let {
         if (themedSurfaces) readable(it, MIN_CARD_EDGE, listOf(background)) else it
     }
-    val primary = (spec.primary.toColor() ?: d.primary).let {
-        if (spec.primary != null || themedSurfaces) readable(it, MIN_ACCENT_CONTRAST, listOf(background, surface)) else it
+    val primary = (accentSource.toColor() ?: d.primary).let {
+        if (accentSource != null || themedSurfaces) readable(it, MIN_ACCENT_CONTRAST, listOf(background, surface)) else it
     }
     val onPrimary = (spec.onPrimary.toColor() ?: d.onPrimary).let {
-        if (spec.primary != null || spec.onPrimary != null) readable(it, MIN_TEXT_CONTRAST, listOf(primary)) else it
+        if (accentSource != null || spec.onPrimary != null) readable(it, MIN_TEXT_CONTRAST, listOf(primary)) else it
     }
     val text = (spec.text.toColor() ?: d.onSurface).let {
         if (spec.text != null || themedSurfaces) readable(it, MIN_TEXT_CONTRAST, listOf(background, surface, variant)) else it
@@ -248,7 +295,7 @@ private fun buildColorScheme(spec: ThemeSpec): ColorScheme {
     val muted = (spec.textMuted.toColor() ?: d.onSurfaceVariant).let {
         if (spec.textMuted != null || themedSurfaces) readable(it, MIN_ACCENT_CONTRAST, listOf(background, surface, variant)) else it
     }
-    val tertiary = if (spec.primary != null) primary else d.tertiary
+    val tertiary = if (accentSource != null) primary else d.tertiary
     return d.copy(
         primary = primary,
         onPrimary = onPrimary,
@@ -259,7 +306,7 @@ private fun buildColorScheme(spec: ThemeSpec): ColorScheme {
         secondaryContainer = variant.copy(alpha = 0.8f),
         onSecondaryContainer = text,
         tertiary = tertiary,
-        onTertiary = if (spec.primary != null) onPrimary else d.onTertiary,
+        onTertiary = if (accentSource != null) onPrimary else d.onTertiary,
         tertiaryContainer = tertiary.copy(alpha = 0.2f),
         onTertiaryContainer = text,
         background = background,
@@ -290,16 +337,32 @@ private fun buildPluviaColors(spec: ThemeSpec, scheme: ColorScheme): PluviaColor
     if (spec.isEmpty) return DarkPluviaColors
     val d = DarkPluviaColors
     val panel = spec.panelOpacity?.coerceIn(0f, 1f) ?: 1f
-    val themedAccent = spec.primary != null
+    val light = spec.isLightBackground()
+    val themedAccent = spec.accentSource() != null
     val accent = scheme.primary
     val focus = spec.focus.toColor()?.let { readable(it, MIN_ACCENT_CONTRAST, listOf(scheme.background, scheme.surface)) }
+    val pageBacks = listOf(scheme.background, scheme.surface)
+    val card = spec.card.toColor()
+    val button = spec.button.toColor()
+    val onButton = when {
+        spec.onButton != null -> readable(Color(spec.onButton), MIN_TEXT_CONTRAST, button?.let { listOf(it) } ?: pageBacks)
+        button != null -> readable(scheme.onSurface, MIN_TEXT_CONTRAST, listOf(button))
+        else -> null
+    }
+    val menu = spec.menu.toColor()
+    val menuBacks = menu?.let { listOf(it) } ?: listOf(scheme.surfaceContainer, scheme.surfaceContainerHigh)
+    val onMenu = when {
+        spec.onMenu != null -> readable(Color(spec.onMenu), MIN_TEXT_CONTRAST, menuBacks)
+        menu != null -> readable(scheme.onSurface, MIN_TEXT_CONTRAST, menuBacks)
+        else -> null
+    }
     return d.copy(
         accentCyan = if (themedAccent) accent else d.accentCyan,
         accentPurple = if (themedAccent) accent else d.accentPurple,
-        surfacePanel = (if (spec.surface != null) scheme.surface else d.surfacePanel).scaleAlpha(panel),
-        surfaceElevated = (if (spec.surfaceVariant != null) scheme.surfaceVariant else d.surfaceElevated).scaleAlpha(panel),
-        borderDefault = spec.outline.toColor() ?: d.borderDefault,
-        textMuted = if (spec.textMuted != null) scheme.onSurfaceVariant else d.textMuted,
+        surfacePanel = (if (spec.surface != null || light) scheme.surface else d.surfacePanel).scaleAlpha(panel),
+        surfaceElevated = (if (spec.surfaceVariant != null || light) scheme.surfaceVariant else d.surfaceElevated).scaleAlpha(panel),
+        borderDefault = spec.outline.toColor() ?: if (light) scheme.outlineVariant else d.borderDefault,
+        textMuted = if (spec.textMuted != null || light) scheme.onSurfaceVariant else d.textMuted,
         focus = focus ?: scheme.primary,
         focusAlt = focus ?: scheme.tertiary,
         bar = spec.bar.toColor()?.let { it.copy(alpha = it.alpha.coerceAtLeast(MIN_BAR_ALPHA)) } ?: scheme.surface,
@@ -308,6 +371,15 @@ private fun buildPluviaColors(spec: ThemeSpec, scheme: ColorScheme): PluviaColor
         } else {
             d.brandGradient
         },
+        card = card,
+        onCard = card?.let { readable(scheme.onSurface, MIN_TEXT_CONTRAST, listOf(it)) },
+        button = button,
+        onButton = onButton,
+        toggle = spec.toggle.toColor()?.let { readable(it, MIN_ACCENT_CONTRAST, pageBacks) },
+        menu = menu,
+        onMenu = onMenu,
+        onMenuMuted = onMenu?.let { lerp(it, menuBacks.first(), 0.2f) },
+        accentBrush = spec.accentGradient?.let { cssGradientBrush(it) },
     )
 }
 
@@ -338,12 +410,13 @@ fun PluviaTheme(
     val shapes = remember(spec.cornerRadiusDp) { buildShapes(spec.cornerRadiusDp?.coerceAtLeast(0f)?.dp) }
     val typography = rememberThemeTypography(spec.fontFile)
 
+    val lightBars = remember(spec) { !spec.isEmpty && spec.isLightBackground() }
     val view = LocalView.current
     if (!view.isInEditMode) {
         val window = (view.context as Activity).window
         val insetsController = WindowCompat.getInsetsController(window, view)
-        insetsController.isAppearanceLightStatusBars = false
-        insetsController.isAppearanceLightNavigationBars = false
+        insetsController.isAppearanceLightStatusBars = lightBars
+        insetsController.isAppearanceLightNavigationBars = lightBars
     }
 
     CompositionLocalProvider(
@@ -425,6 +498,218 @@ object PluviaTheme {
     @Composable
     @ReadOnlyComposable
     fun shape(default: Dp): Shape = RoundedCornerShape(radius(default))
+
+    /** True when the theme page colour is light. */
+    val isLight: Boolean
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalThemeSpec.current.let { !it.isEmpty && it.isLightBackground() }
+
+    /** Container of library tiles, list rows and carousel cards (not their artwork). */
+    @Composable
+    @ReadOnlyComposable
+    fun cardColor(default: Color): Color = LocalPluviaColors.current.card ?: default
+
+    /** Text on [cardColor]. */
+    @Composable
+    @ReadOnlyComposable
+    fun onCardColor(default: Color): Color = LocalPluviaColors.current.onCard ?: default
+
+    /** Accent fill as a brush: the theme accent gradient, or [default] as a flat colour. */
+    @Composable
+    @ReadOnlyComposable
+    fun accentBrush(default: Color): Brush = LocalPluviaColors.current.accentBrush ?: SolidColor(default)
+
+    /** The theme accent gradient brush, or null when the theme has none. */
+    val accentGradientBrush: Brush?
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalPluviaColors.current.accentBrush
+
+    /** "On" colour of switches, sliders and progress bars. */
+    @Composable
+    @ReadOnlyComposable
+    fun toggleColor(default: Color): Color = LocalPluviaColors.current.toggle ?: default
+
+    /** Brush for an "on" switch track, slider fill or progress fill the app draws itself. */
+    @Composable
+    @ReadOnlyComposable
+    fun toggleBrush(default: Color): Brush {
+        val c = LocalPluviaColors.current
+        return c.toggle?.let { SolidColor(it) } ?: c.accentBrush ?: SolidColor(default)
+    }
+
+    /** Theme fill for "on" toggles and progress the app draws itself, or null without one. */
+    val toggleFill: Brush?
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalPluviaColors.current.let { c -> c.toggle?.let { SolidColor(it) } ?: c.accentBrush }
+
+    val progressColor: Color
+        @Composable
+        get() = LocalPluviaColors.current.toggle ?: ProgressIndicatorDefaults.linearColor
+
+    @Composable
+    fun switchColors(): SwitchColors {
+        val toggle = LocalPluviaColors.current.toggle ?: return SwitchDefaults.colors()
+        val thumb = readable(MaterialTheme.colorScheme.onPrimary, MIN_ACCENT_CONTRAST, listOf(toggle))
+        return SwitchDefaults.colors(
+            checkedTrackColor = toggle,
+            checkedThumbColor = thumb,
+            checkedIconColor = toggle,
+        )
+    }
+
+    @Composable
+    fun sliderColors(): SliderColors {
+        val toggle = LocalPluviaColors.current.toggle ?: return SliderDefaults.colors()
+        return SliderDefaults.colors(thumbColor = toggle, activeTrackColor = toggle)
+    }
+
+    /** Secondary outlined buttons. */
+    @Composable
+    fun outlinedButtonColors(): ButtonColors {
+        val c = LocalPluviaColors.current
+        if (c.button == null && c.onButton == null) return ButtonDefaults.outlinedButtonColors()
+        return ButtonDefaults.outlinedButtonColors(
+            containerColor = c.button ?: Color.Transparent,
+            contentColor = c.onButton ?: MaterialTheme.colorScheme.primary,
+        )
+    }
+
+    /** Secondary tonal buttons. */
+    @Composable
+    fun tonalButtonColors(): ButtonColors {
+        val c = LocalPluviaColors.current
+        if (c.button == null && c.onButton == null) return ButtonDefaults.filledTonalButtonColors()
+        return ButtonDefaults.filledTonalButtonColors(
+            containerColor = c.button ?: MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = c.onButton ?: MaterialTheme.colorScheme.onSecondaryContainer,
+        )
+    }
+
+    /** Fill of a secondary button the app draws itself. */
+    @Composable
+    @ReadOnlyComposable
+    fun buttonColor(default: Color): Color = LocalPluviaColors.current.button ?: default
+
+    @Composable
+    @ReadOnlyComposable
+    fun onButtonColor(default: Color): Color = LocalPluviaColors.current.onButton ?: default
+
+    /** Container of menus, dialogs and the app's dialog panels. */
+    @Composable
+    @ReadOnlyComposable
+    fun menuColor(default: Color): Color = LocalPluviaColors.current.menu ?: default
+
+    @Composable
+    @ReadOnlyComposable
+    fun onMenuColor(default: Color): Color = LocalPluviaColors.current.onMenu ?: default
+
+    val dialogContainerColor: Color
+        @Composable
+        get() = LocalPluviaColors.current.menu ?: AlertDialogDefaults.containerColor
+
+    val dialogTitleColor: Color
+        @Composable
+        get() = LocalPluviaColors.current.onMenu ?: AlertDialogDefaults.titleContentColor
+
+    val dialogTextColor: Color
+        @Composable
+        get() = LocalPluviaColors.current.onMenuMuted ?: AlertDialogDefaults.textContentColor
+
+    val menuContainerColor: Color
+        @Composable
+        get() = LocalPluviaColors.current.menu ?: MenuDefaults.containerColor
+
+    @Composable
+    fun menuItemColors(): MenuItemColors {
+        val on = LocalPluviaColors.current.onMenu ?: return MenuDefaults.itemColors()
+        return MenuDefaults.itemColors(textColor = on, leadingIconColor = on, trailingIconColor = on)
+    }
+
+    /** Outer focus glow radius, or null for none. */
+    val focusGlow: Dp?
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalThemeSpec.current.focusGlowDp?.takeIf { it > 0f }?.dp
+
+    val layout: ThemeLayout
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalThemeSpec.current.layout ?: EMPTY_LAYOUT
+
+    /** Library tile size multiplier, 1 without a theme. */
+    val cardScale: Float
+        @Composable
+        @ReadOnlyComposable
+        get() = layout.cardScale?.coerceIn(0.5f, 1.5f) ?: 1f
+
+    /** Game page hero height multiplier, 1 without a theme. */
+    val heroScale: Float
+        @Composable
+        @ReadOnlyComposable
+        get() = layout.heroScale?.coerceIn(0.5f, 2f) ?: 1f
+
+    /** Tilt of carousel and home tiles in degrees, 0 without a theme. */
+    val cardTilt: Float
+        @Composable
+        @ReadOnlyComposable
+        get() = layout.cardTiltDeg?.coerceIn(-15f, 15f) ?: 0f
+
+    val hideBadges: Boolean
+        @Composable
+        @ReadOnlyComposable
+        get() = layout.hideBadges == true
+
+    val hideFooterHints: Boolean
+        @Composable
+        @ReadOnlyComposable
+        get() = layout.hideFooterHints == true
+
+    /** True when the theme centres game titles. */
+    val centerTitles: Boolean
+        @Composable
+        @ReadOnlyComposable
+        get() = layout.titleAlign.equals("center", ignoreCase = true)
+
+    /** Tile shape: the theme tile radius, else [default] scaled to the theme corner radius. */
+    @Composable
+    @ReadOnlyComposable
+    fun cardShape(default: Dp): Shape {
+        val tile = layout.cardCornerRadiusDp?.coerceAtLeast(0f) ?: return shape(default)
+        return RoundedCornerShape(tile.dp)
+    }
+}
+
+private val EMPTY_LAYOUT = ThemeLayout()
+
+/**
+ * Gives [content] the theme menu colours as its surface and text, for the app's own option menus.
+ * Without menu colours in the theme it changes nothing.
+ */
+@Composable
+fun MenuColorScope(content: @Composable () -> Unit) {
+    val c = LocalPluviaColors.current
+    if (c.menu == null && c.onMenu == null) {
+        content()
+    } else {
+        val scheme = MaterialTheme.colorScheme
+        val menuScheme = remember(scheme, c) {
+            scheme.copy(
+                surface = c.menu ?: scheme.surface,
+                surfaceContainer = c.menu ?: scheme.surfaceContainer,
+                onSurface = c.onMenu ?: scheme.onSurface,
+                onSurfaceVariant = c.onMenuMuted ?: scheme.onSurfaceVariant,
+            )
+        }
+        MaterialTheme(
+            colorScheme = menuScheme,
+            typography = MaterialTheme.typography,
+            shapes = MaterialTheme.shapes,
+            content = content,
+        )
+    }
 }
 
 /**
@@ -473,7 +758,7 @@ object DarkColors {
 fun settingsTileColors(): SettingsTileColors = SettingsTileDefaults.colors(
     titleColor = MaterialTheme.colorScheme.onSurface,
     subtitleColor = PluviaTheme.colors.textMuted,
-    actionColor = PluviaTheme.colors.accentCyan,
+    actionColor = PluviaTheme.toggleColor(PluviaTheme.colors.accentCyan),
 )
 
 @Composable

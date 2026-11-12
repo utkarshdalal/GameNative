@@ -26,6 +26,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gamenative.R
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.ui.component.settings.SettingsCenteredLabel
 import app.gamenative.ui.theme.settingsTileColors
@@ -130,6 +131,7 @@ fun DrivesTabContent(state: ContainerConfigState) {
                     DropdownMenu(
                         expanded = state.driveLetterMenuExpanded.value,
                         onDismissRequest = { state.driveLetterMenuExpanded.value = false },
+                        containerColor = PluviaTheme.menuContainerColor,
                     ) {
                         state.availableDriveLetters.forEach { letter ->
                             DropdownMenuItem(
@@ -138,6 +140,7 @@ fun DrivesTabContent(state: ContainerConfigState) {
                                     state.selectedDriveLetter.value = letter
                                     state.driveLetterMenuExpanded.value = false
                                 },
+                                colors = PluviaTheme.menuItemColors(),
                             )
                         }
                     }
@@ -165,6 +168,9 @@ fun DrivesTabContent(state: ContainerConfigState) {
                     content = { Text(text = stringResource(R.string.cancel)) },
                 )
             },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 }

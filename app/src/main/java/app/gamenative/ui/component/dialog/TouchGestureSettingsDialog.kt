@@ -994,6 +994,8 @@ private fun TouchActionComboPicker(
                     Text(stringResource(android.R.string.cancel))
                 }
             },
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 }

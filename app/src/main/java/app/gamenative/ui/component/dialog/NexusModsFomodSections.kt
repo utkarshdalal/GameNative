@@ -59,6 +59,7 @@ import app.gamenative.mods.PlannedFileStatus
 import app.gamenative.mods.FomodPluginType
 import app.gamenative.mods.FomodRecipeGenerator
 import app.gamenative.mods.effectiveType
+import app.gamenative.ui.theme.PluviaTheme
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import java.io.File
@@ -80,6 +81,7 @@ internal fun FomodSummarySection(
                     onClick = onConfigure,
                     enabled = (installer.steps.isNotEmpty() || installer.requiredFiles.isNotEmpty()) &&
                         installer.unsupportedWarnings.isEmpty(),
+                        colors = PluviaTheme.outlinedButtonColors(),
                 ) {
                     Text(stringResource(R.string.nexus_configure))
                 }
@@ -379,7 +381,7 @@ internal fun FomodWizardDialog(
                         modifier = Modifier.padding(start = 8.dp),
                     ) {
                         if (generatingPlan) {
-                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = PluviaTheme.progressColor)
                             Spacer(Modifier.size(8.dp))
                             Text(stringResource(R.string.nexus_building_install_plan))
                         } else {
@@ -412,6 +414,9 @@ internal fun FomodWizardDialog(
                     Text(stringResource(R.string.close))
                 }
             },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 
@@ -488,6 +493,9 @@ internal fun FomodWizardDialog(
                     Text(stringResource(R.string.back))
                 }
             },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 }

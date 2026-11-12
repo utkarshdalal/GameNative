@@ -1439,7 +1439,7 @@ internal fun ExecutablePathDropdown(
             placeholder = { Text(stringResource(R.string.container_config_executable_path_placeholder)) },
             trailingIcon = {
                 if (isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = PluviaTheme.progressColor)
                 } else {
                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                 }
@@ -1488,7 +1488,8 @@ internal fun ExecutablePathDropdown(
                         onClick = {
                             onValueChange(executable)
                             expanded = false
-                        }
+                        },
+                        colors = PluviaTheme.menuItemColors()
                     )
                 }
                 DropdownMenuItem(
@@ -1497,7 +1498,8 @@ internal fun ExecutablePathDropdown(
                         customPathText = value
                         showCustomPathDialog = true
                         expanded = false
-                    }
+                    },
+                    colors = PluviaTheme.menuItemColors()
                 )
             }
         }
@@ -1524,7 +1526,10 @@ internal fun ExecutablePathDropdown(
             },
             dismissButton = {
                 TextButton(onClick = { showCustomPathDialog = false }) { Text(stringResource(R.string.cancel)) }
-            }
+            },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor
         )
     }
 }

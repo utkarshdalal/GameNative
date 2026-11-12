@@ -46,6 +46,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -235,10 +236,10 @@ private fun CompactLibraryTabBar(
                             }
                             .clip(PluviaTheme.shape(16.dp))
                             .background(
-                                when {
-                                    isSelected -> MaterialTheme.colorScheme.primary
-                                    isTabFocused -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                                    else -> Color.Transparent
+                                brush = when {
+                                    isSelected -> PluviaTheme.accentBrush(MaterialTheme.colorScheme.primary)
+                                    isTabFocused -> SolidColor(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
+                                    else -> SolidColor(Color.Transparent)
                                 },
                             )
                             .focusRing(tabInteractionSource, PluviaTheme.shape(16.dp), width = 2.dp)
@@ -501,7 +502,7 @@ private fun ExpandedLibraryTabBar(
                         .height(40.dp)
                         .clip(PluviaTheme.shape(20.dp))
                         .background(
-                            brush = Brush.horizontalGradient(
+                            brush = PluviaTheme.accentGradientBrush ?: Brush.horizontalGradient(
                                 colors = listOf(
                                     MaterialTheme.colorScheme.primary,
                                     MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),

@@ -255,9 +255,9 @@ internal fun multiplierText(value: Float, locale: Locale): String {
 
 @Composable
 internal fun settingsSliderColors(showTickMarks: Boolean = true) = SliderDefaults.colors(
-    thumbColor = MaterialTheme.colorScheme.primary,
-    activeTrackColor = MaterialTheme.colorScheme.primary,
-    activeTickColor = if (showTickMarks) MaterialTheme.colorScheme.primary else Color.Transparent,
+    thumbColor = PluviaTheme.toggleColor(MaterialTheme.colorScheme.primary),
+    activeTrackColor = PluviaTheme.toggleColor(MaterialTheme.colorScheme.primary),
+    activeTickColor = if (showTickMarks) PluviaTheme.toggleColor(MaterialTheme.colorScheme.primary) else Color.Transparent,
     inactiveTickColor = if (showTickMarks) {
         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
     } else {
@@ -452,6 +452,8 @@ fun CategorizedActionPicker(
                     Text(stringResource(android.R.string.cancel))
                 }
             },
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 }

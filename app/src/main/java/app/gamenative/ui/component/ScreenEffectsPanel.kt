@@ -66,6 +66,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -805,8 +806,8 @@ fun ScreenEffectsPanel(
                 modifier = Modifier
                     .width(adaptivePanelWidth(420.dp))
                     .fillMaxHeight(),
-            shape = RoundedCornerShape(topStart = 24.dp, bottomStart = 24.dp),
-            color = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(topStart = PluviaTheme.radius(24.dp), bottomStart = PluviaTheme.radius(24.dp)),
+            color = PluviaTheme.panel(MaterialTheme.colorScheme.surface),
             tonalElevation = 4.dp,
             shadowElevation = 24.dp,
         ) {
@@ -972,7 +973,7 @@ private fun ScreenEffectAdjustmentRow(
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
     val accentColor = PluviaTheme.colors.accentPurple
-    val shape = RoundedCornerShape(14.dp)
+    val shape = PluviaTheme.shape(14.dp)
     var isAdjustmentLocked by remember { mutableStateOf(false) }
     val inputBypass = LocalImmersiveInputBypass.current
     LaunchedEffect(isFocused, isAdjustmentLocked) {
@@ -1177,7 +1178,7 @@ private fun ScreenEffectAdjustmentButton(
         modifier = Modifier
             .width(44.dp)
             .fillMaxHeight()
-            .clip(RoundedCornerShape(10.dp))
+            .clip(PluviaTheme.shape(10.dp))
             .background(
                 if (isAdjustmentLocked) {
                     accentColor.copy(alpha = 0.25f)
@@ -1192,7 +1193,7 @@ private fun ScreenEffectAdjustmentButton(
                 } else {
                     MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
                 },
-                shape = RoundedCornerShape(10.dp),
+                shape = PluviaTheme.shape(10.dp),
             )
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -1228,7 +1229,7 @@ internal fun ScreenEffectToggleRow(
     Row(
         modifier = Modifier
             .padding(horizontal = 8.dp, vertical = 2.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(PluviaTheme.shape(14.dp))
             .background(
                 if (isFocused) {
                     Brush.horizontalGradient(
@@ -1251,7 +1252,7 @@ internal fun ScreenEffectToggleRow(
                     Modifier.border(
                         width = 2.dp,
                         color = accentColor.copy(alpha = 0.7f),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = PluviaTheme.shape(14.dp),
                     )
                 } else {
                     Modifier
@@ -1305,7 +1306,7 @@ private fun ScreenEffectRadioRow(
         inputBypass.reportActivate(interactionSource, if (isFocused) onSelect else null)
     }
     val accentColor = PluviaTheme.colors.accentPurple
-    val shape = RoundedCornerShape(14.dp)
+    val shape = PluviaTheme.shape(14.dp)
 
     Row(
         modifier = Modifier
@@ -1404,11 +1405,19 @@ private fun ScreenEffectSwitch(
             .height(32.dp)
             .clip(RoundedCornerShape(999.dp))
             .background(
-                if (enabled) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                if (enabled) {
+                    PluviaTheme.toggleBrush(accentColor)
+                } else {
+                    SolidColor(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
+                },
             )
             .border(
                 width = 1.dp,
-                color = if (enabled) accentColor.copy(alpha = 0.8f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.35f),
+                color = if (enabled) {
+                    PluviaTheme.toggleColor(accentColor).copy(alpha = 0.8f)
+                } else {
+                    MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
+                },
                 shape = RoundedCornerShape(999.dp),
             )
             .padding(4.dp),

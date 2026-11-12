@@ -324,7 +324,7 @@ private fun SignInQrPanel(state: SignInState, size: Dp) {
                 modifier = Modifier.size(size + 24.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(color = PluviaTheme.progressColor)
             }
         }
         SignInState.Expired, SignInState.Failed -> Unit
