@@ -460,7 +460,7 @@ fun ThemeManagerDialog(
 
                     ThemeTab.COMMUNITY -> CommunityThemesTab(
                         state = community,
-                        installedByCommunityId = themes.mapNotNull { t -> t.communityId?.let { it to t } }.toMap(),
+                        installedByCommunityId = themes.filter { it.communityInstalled }.mapNotNull { t -> t.communityId?.let { it to t } }.toMap(),
                         signedIn = signedIn,
                         onSearch = { loadCommunity(reset = true) },
                         onSortChange = { sort ->
@@ -526,7 +526,7 @@ fun ThemeManagerDialog(
                     shareTarget = null
                     onShareAuthorChange(author)
                     val message = ctx.getString(
-                        if (target.communityId != null) R.string.themes_share_updated else R.string.themes_share_done,
+                        if (target.sharedFromHere) R.string.themes_share_updated else R.string.themes_share_done,
                         shared.name,
                     )
                     scope.launch { snackbarHostState.showSnackbar(message) }
@@ -786,7 +786,7 @@ private fun InstalledThemeCard(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    if (theme.communityId != null) {
+                    if (theme.sharedFromHere) {
                         Text(
                             text = stringResource(R.string.themes_shared_note),
                             style = MaterialTheme.typography.bodySmall,
@@ -862,7 +862,7 @@ private fun InstalledThemeCard(
                     Icon(
                         imageVector = Icons.Default.Share,
                         contentDescription = stringResource(
-                            if (theme.communityId != null) R.string.themes_share_update else R.string.themes_share,
+                            if (theme.sharedFromHere) R.string.themes_share_update else R.string.themes_share,
                         ),
                     )
                 }
