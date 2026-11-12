@@ -84,7 +84,8 @@ import kotlinx.coroutines.withContext
 
 private const val PREVIEW_GAP_MS = 300L
 private const val VOLUME_SAVE_DELAY_MS = 150L
-private const val FOCUS_SETTLE_MS = 100L
+private const val FOCUS_SETTLE_MS = 150L
+private const val FOCUS_ATTEMPTS = 4
 
 private val PACK_ZIP_TYPES = arrayOf("application/zip", "application/x-zip-compressed", "application/x-zip", "application/octet-stream")
 
@@ -114,6 +115,8 @@ internal fun ThemeSoundsTab(onMessage: (String) -> Unit) {
     val uiNoneFocus = remember { FocusRequester() }
     val musicNoneFocus = remember { FocusRequester() }
     var focusAfterDelete by remember { mutableStateOf<Boolean?>(null) }
+    val deleteFocus = remember { HashMap<String, FocusRequester>() }
+    var refocusDelete by remember { mutableStateOf<String?>(null) }
 
     val uiPacks = packs.filter { !it.isMusic }
     val musicPacks = packs.filter { it.isMusic }
@@ -190,8 +193,11 @@ internal fun ThemeSoundsTab(onMessage: (String) -> Unit) {
         val uiCount = packs.count { !it.isMusic }
         val index = if (music) 3 + maxOf(uiCount, 1) + 3 + 1 else 3
         listState.scrollToItem(index)
-        delay(FOCUS_SETTLE_MS)
-        runCatching { (if (music) musicNoneFocus else uiNoneFocus).requestFocus() }
+        // The closing dialog hands focus back to the window a moment later; ask again until it lands.
+        repeat(FOCUS_ATTEMPTS) {
+            delay(FOCUS_SETTLE_MS)
+            runCatching { (if (music) musicNoneFocus else uiNoneFocus).requestFocus() }
+        }
     }
 
     LaunchedEffect(volume) {
@@ -204,6 +210,16 @@ internal fun ThemeSoundsTab(onMessage: (String) -> Unit) {
         if (musicVolume == settings.musicVolume) return@LaunchedEffect
         delay(VOLUME_SAVE_DELAY_MS)
         withContext(Dispatchers.IO) { SoundPackManager.setMusicVolume(musicVolume) }
+    }
+
+    // A cancelled delete dialog gives focus back to the delete button that opened it.
+    LaunchedEffect(refocusDelete) {
+        val id = refocusDelete ?: return@LaunchedEffect
+        repeat(FOCUS_ATTEMPTS) {
+            delay(FOCUS_SETTLE_MS)
+            runCatching { deleteFocus[id]?.requestFocus() }
+        }
+        refocusDelete = null
     }
 
     LazyColumn(
@@ -256,6 +272,7 @@ internal fun ThemeSoundsTab(onMessage: (String) -> Unit) {
                 onSelect = { runAction { SoundPackManager.setActivePack(pack.id) } },
                 onPreview = { preview(pack) },
                 onDelete = { deleteTarget = pack },
+                deleteFocusRequester = deleteFocus.getOrPut(pack.id) { FocusRequester() },
             )
         }
         if (uiPacks.isEmpty()) {
@@ -299,6 +316,7 @@ internal fun ThemeSoundsTab(onMessage: (String) -> Unit) {
                 selected = settings.activeMusicPackId == pack.id,
                 onSelect = { runAction { SoundPackManager.setActiveMusicPack(pack.id) } },
                 onDelete = { deleteTarget = pack },
+                deleteFocusRequester = deleteFocus.getOrPut(pack.id) { FocusRequester() },
             )
         }
         if (musicPacks.isEmpty()) {
@@ -392,7 +410,10 @@ internal fun ThemeSoundsTab(onMessage: (String) -> Unit) {
     deleteTarget?.let { target ->
         MenuColorScope {
             AlertDialog(
-                onDismissRequest = { deleteTarget = null },
+                onDismissRequest = {
+                    deleteTarget = null
+                    refocusDelete = target.id
+                },
                 containerColor = PluviaTheme.dialogContainerColor,
                 title = { Text(stringResource(R.string.themes_sounds_delete_title)) },
                 text = {
@@ -407,7 +428,10 @@ internal fun ThemeSoundsTab(onMessage: (String) -> Unit) {
                     }) { Text(stringResource(R.string.delete)) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { deleteTarget = null }) { Text(stringResource(R.string.cancel)) }
+                    TextButton(onClick = {
+                        deleteTarget = null
+                        refocusDelete = target.id
+                    }) { Text(stringResource(R.string.cancel)) }
                 },
             )
         }
@@ -489,6 +513,7 @@ private fun SoundPackRow(
     onPreview: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
     focusRequester: FocusRequester? = null,
+    deleteFocusRequester: FocusRequester? = null,
 ) {
     val shape = RoundedCornerShape(10.dp)
     Card(
@@ -540,7 +565,9 @@ private fun SoundPackRow(
             onDelete?.let {
                 IconButton(
                     onClick = it,
-                    modifier = Modifier.focusOutline(CircleShape),
+                    modifier = Modifier
+                        .then(if (deleteFocusRequester != null) Modifier.focusRequester(deleteFocusRequester) else Modifier)
+                        .focusOutline(CircleShape),
                 ) {
                     Icon(
                         imageVector = Icons.Default.Delete,
