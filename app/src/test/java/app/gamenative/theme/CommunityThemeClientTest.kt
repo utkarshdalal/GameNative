@@ -236,6 +236,13 @@ class CommunityThemeClientTest {
     }
 
     @Test
+    fun listWithoutAThemeArrayIsAServerError() {
+        val fake = Fake { CommunityThemeClient.Response(200, """{"updateAvailable":true,"versionCode":8}""".toByteArray()) }
+        fails("server") { client(fake).list("", 1, CommunitySort.POPULAR, mineOnly = false) }
+        assertTrue(CommunityThemeClient.parsePage("""{"themes":[]}""").themes.isEmpty())
+    }
+
+    @Test
     fun communityVersionComparison() {
         assertEquals("3", CommunityThemeClient.updateVersion(3, 2))
         assertNull(CommunityThemeClient.updateVersion(2, 2))

@@ -158,7 +158,8 @@ class CommunityThemeClient(
 
         fun parsePage(body: String): CommunityPage {
             val o = parseObject(body)
-            val themes = (o["themes"] as? JsonArray)?.mapNotNull { (it as? JsonObject)?.let(::parseTheme) } ?: emptyList()
+            val list = o["themes"] as? JsonArray ?: throw CommunityException("server", "Response has no theme list")
+            val themes = list.mapNotNull { (it as? JsonObject)?.let(::parseTheme) }
             return CommunityPage(themes, (o["has_more"] as? JsonPrimitive)?.booleanOrNull ?: false)
         }
 
