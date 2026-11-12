@@ -38,7 +38,7 @@ class ZipAssetInterceptor(
     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
         // media MUST fall through to the loopback server -- see isMediaUrl.
         if (isMediaUrl(request.url)) return null
-        return serve(request.url)
+        return withDocumentPolicy(serve(request.url))
     }
 
     // also called recursively by the worker-stub path to inline `orig`.

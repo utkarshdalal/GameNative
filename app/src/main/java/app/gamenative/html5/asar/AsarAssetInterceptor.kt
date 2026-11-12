@@ -36,7 +36,7 @@ class AsarAssetInterceptor(
     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
         // media falls through to the loopback HTTP server -- see ZipAssetInterceptor for why.
         if (app.gamenative.html5.host.isMediaUrl(request.url)) return null
-        return serve(request.url)
+        return withDocumentPolicy(serve(request.url))
     }
 
     fun serve(uri: android.net.Uri): WebResourceResponse? {
