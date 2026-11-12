@@ -64,7 +64,9 @@ class CommunityThemeClient(
 
     suspend fun download(id: String, dest: File) {
         val r = call(Request("GET", "${baseUrl()}/api/themes/${encodeId(id)}/download", Auth.OPTIONAL, maxResponseBytes = MAX_DOWNLOAD_BYTES))
-        if (r.body.isEmpty()) throw CommunityException("server", "Empty download")
+        if (r.body.size < 4 || r.body[0] != 'P'.code.toByte() || r.body[1] != 'K'.code.toByte()) {
+            throw CommunityException("server", "Download is not a theme file")
+        }
         dest.writeBytes(r.body)
     }
 
@@ -77,12 +79,16 @@ class CommunityThemeClient(
     }
 
     suspend fun delete(id: String) {
-        call(Request("DELETE", "${baseUrl()}/api/themes/${encodeId(id)}", Auth.REQUIRED))
+        expectNoContent(call(Request("DELETE", "${baseUrl()}/api/themes/${encodeId(id)}", Auth.REQUIRED)))
     }
 
     suspend fun report(id: String, reason: String, details: String?) {
         val body = JsonObject(mapOf("reason" to JsonPrimitive(reason), "details" to (details?.takeIf { it.isNotBlank() }?.let(::JsonPrimitive) ?: JsonNull)))
-        call(Request("POST", "${baseUrl()}/api/themes/${encodeId(id)}/report", Auth.REQUIRED, JSON_TYPE, body.toString().toByteArray()))
+        expectNoContent(call(Request("POST", "${baseUrl()}/api/themes/${encodeId(id)}/report", Auth.REQUIRED, JSON_TYPE, body.toString().toByteArray())))
+    }
+
+    private fun expectNoContent(r: Response) {
+        if (r.code != 204) throw CommunityException("server", "Unexpected response ${r.code}")
     }
 
     private suspend fun call(request: Request): Response {
