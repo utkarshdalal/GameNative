@@ -1,8 +1,10 @@
 package app.gamenative.html5.host
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.webkit.RenderProcessGoneDetail
+import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -28,6 +30,31 @@ abstract class Html5InterceptorBase(
         )
         PluviaApp.events.emit(AndroidEvent.BackPressed)
         return true
+    }
+
+    // the js bridges are visible to every frame, so no document from outside the game's loopback origin may
+    // load. main frame: http(s) links the player taps open in the browser, anything else is dropped. subframes
+    // never reach this for http(s); DOCUMENT_POLICY on every served html document covers them.
+    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+        val url = request.url
+        if (isGameDocumentUrl(url)) return false
+        val scheme = url.scheme?.lowercase()
+        if (request.isForMainFrame && request.hasGesture() && (scheme == "http" || scheme == "https")) {
+            Timber.tag(logTag).i("opening external link in the browser: %s", url)
+            runCatching {
+                context.startActivity(Intent(Intent.ACTION_VIEW, url).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            }.onFailure { Timber.tag(logTag).w(it, "no activity for %s", url) }
+        } else {
+            Timber.tag(logTag).w("blocked navigation mainFrame=%s url=%s", request.isForMainFrame, url)
+        }
+        return true
+    }
+
+    // subresource fetches (xhr, fetch, websocket, media) are not documents and are left alone.
+    protected fun withDocumentPolicy(response: WebResourceResponse?): WebResourceResponse? {
+        if (response?.mimeType?.startsWith("text/html") != true) return response
+        response.responseHeaders = response.responseHeaders.orEmpty() + ("Content-Security-Policy" to DOCUMENT_POLICY)
+        return response
     }
 
     internal fun openShimAsset(shimName: String): WebResourceResponse? {
@@ -114,5 +141,18 @@ abstract class Html5InterceptorBase(
             "application/javascript", "utf-8",
             ByteArrayInputStream(js.toByteArray(Charsets.UTF_8)),
         )
+    }
+
+    companion object {
+        internal const val DOCUMENT_POLICY = "frame-src 'self' data: blob:; object-src 'self' data: blob:; form-action 'self'"
+
+        // the game's own origin is http://<id>.localhost:<port> (WebViewOrigin); about/data/blob/javascript
+        // documents are created by a page that already passed this check.
+        internal fun isGameDocumentUrl(url: Uri): Boolean = when (url.scheme?.lowercase()) {
+            "about", "data", "blob", "javascript" -> true
+            "http" -> url.host?.lowercase()?.endsWith(".localhost") == true &&
+                url.port == WebViewOrigin.ensurePortAllocated()
+            else -> false
+        }
     }
 }

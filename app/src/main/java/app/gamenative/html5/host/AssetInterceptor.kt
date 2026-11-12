@@ -43,7 +43,7 @@ class AssetInterceptor(
         // chromium only runs its Content-Encoding decoder on network responses, not intercepted ones, so
         // these go via the loopback server. gated so other packs keep raw .gz semantics.
         if (contentEncodedCompression && contentEncodingFor(request.url.path) != null) return null
-        return serve(request.url)
+        return withDocumentPolicy(serve(request.url))
     }
 
     // also called recursively by the worker-stub path to inline `orig`.
