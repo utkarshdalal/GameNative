@@ -3,7 +3,7 @@
   "entryPoint": "index.html",
   "wideViewport": true,
   "shims": ["webgl1-npot-fbo-compat", "pack-electron"],
-  "overlay": "electron-default-overlay",
+  "overlay": "default",
   "gamepadKeySynthesisMap": {
     "GAMEPAD_BUTTON_A": "KEY_SPACE",
     "GAMEPAD_BUTTON_B": "KEY_ESC",

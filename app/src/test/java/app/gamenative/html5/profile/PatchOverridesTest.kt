@@ -48,15 +48,15 @@ class PatchOverridesTest {
     }
 
     @Test fun overlay_replaces_when_nonNull() {
-        val pack = packRmmv().copy(overlay = "rmmv-default-overlay")
+        val pack = packRmmv().copy(overlay = "default")
         val merged = ProfileRegistry.applyOverrides(pack, PatchOverrides(overlay = "title-overlay"))
         assertEquals("title-overlay", merged.overlay)
     }
 
     @Test fun overlay_inherits_when_null() {
-        val pack = packRmmv().copy(overlay = "rmmv-default-overlay")
+        val pack = packRmmv().copy(overlay = "default")
         val merged = ProfileRegistry.applyOverrides(pack, PatchOverrides())
-        assertEquals("rmmv-default-overlay", merged.overlay)
+        assertEquals("default", merged.overlay)
     }
 
     @Test fun saves_replaces_when_nonNull() {
