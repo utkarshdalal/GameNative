@@ -440,6 +440,13 @@ object ContainerStorageManager {
         val normalizedId = normalizeContainerId(containerId)
         val homeDir = File(ImageFs.find(context).rootDir, "home")
         val containerDir = File(homeDir, "${ImageFs.USER}-$normalizedId")
+        val runtime = com.winlator.container.Container.normalizeRuntime(
+            readConfig(File(containerDir, ".container"))?.optString("runtime"),
+        )
+        if (runtime != com.winlator.container.Container.RUNTIME_WEBVIEW) {
+            Timber.tag("ContainerStorageManager").w("Reclaim refused for %s — not a webview container", normalizedId)
+            return@withContext Result.success(0L)
+        }
         val driveC = File(containerDir, ".wine/drive_c")
         if (!driveC.exists() || !driveC.isDirectory) {
             Timber.tag("ContainerStorageManager").i(
