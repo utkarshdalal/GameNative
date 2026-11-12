@@ -87,6 +87,7 @@ import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.enums.SortOption
 import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.util.MenuSoundOnOpenChange
 import app.gamenative.ui.util.adaptivePanelWidth
 import java.util.EnumSet
 
@@ -116,6 +117,7 @@ fun LibraryOptionsPanel(
     onClearCuratedLists: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    MenuSoundOnOpenChange(isOpen)
     val firstItemFocusRequester = remember { FocusRequester() }
 
     BackHandler(enabled = isOpen) {

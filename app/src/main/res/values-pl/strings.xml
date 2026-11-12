@@ -1346,6 +1346,27 @@
     <string name="themes_share_blocked_too_large">Ten motyw jest za duży, aby go udostępnić.</string>
     <string name="themes_sign_in_title">Wymagane konto GameNative</string>
     <string name="themes_sign_in_message">Zaloguj się do konta GameNative, aby udostępniać i zgłaszać motywy oraz widzieć swoje przesłane motywy.</string>
+    <string name="themes_tab_sounds">Dźwięki</string>
+    <string name="themes_sounds_interface">Dźwięki interfejsu</string>
+    <string name="themes_sounds_interface_subtitle">Odtwarza dźwięki podczas poruszania się i naciskania przycisków w menu</string>
+    <string name="themes_sounds_volume">Głośność</string>
+    <string name="themes_sounds_volume_subtitle">Głośność dźwięków interfejsu</string>
+    <string name="themes_sounds_pack">Pakiet dźwięków</string>
+    <string name="themes_sounds_none">Brak</string>
+    <string name="themes_sounds_preview">Odsłuchaj</string>
+    <string name="themes_sounds_no_packs">Nie zainstalowano jeszcze żadnych pakietów dźwięków. Zaimportuj jeden lub zainstaluj go ze sklepu.</string>
+    <string name="themes_sounds_music">Muzyka w menu</string>
+    <string name="themes_sounds_music_subtitle">Odtwarza muzykę podczas przeglądania aplikacji</string>
+    <string name="themes_sounds_music_volume">Głośność muzyki</string>
+    <string name="themes_sounds_music_volume_subtitle">Głośność muzyki w menu</string>
+    <string name="themes_sounds_music_pack">Pakiet muzyki</string>
+    <string name="themes_sounds_no_music">Nie zainstalowano jeszcze żadnych pakietów muzyki.</string>
+    <string name="themes_sounds_import">Importuj zip pakietu</string>
+    <string name="themes_sounds_store">Sklep z pakietami dźwięków</string>
+    <string name="themes_sounds_search_hint">Szukaj pakietów dźwięków</string>
+    <string name="themes_sounds_store_error">Nie można wczytać pakietów dźwięków: %1$s</string>
+    <string name="themes_sounds_store_empty">Nie znaleziono pakietów dźwięków</string>
+    <string name="themes_sounds_delete_title">Usunąć pakiet dźwięków?</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interfejs</string>

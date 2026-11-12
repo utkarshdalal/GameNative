@@ -51,6 +51,8 @@ import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
+import app.gamenative.ui.util.NavigateSoundOnFocusGain
+import app.gamenative.ui.util.UiSoundCues
 import com.alorma.compose.settings.ui.SettingsSwitch
 import com.winlator.inputcontrols.Binding
 import java.util.Locale
@@ -91,7 +93,10 @@ fun GestureRow(
                 )
             },
             state = enabled,
-            onCheckedChange = onEnabledChange,
+            onCheckedChange = {
+                UiSoundCues.toggle(it)
+                onEnabledChange(it)
+            },
         )
         if (enabled && expandedContent != null) {
             GestureSubSettings { expandedContent() }
@@ -171,12 +176,16 @@ fun SettingsSliderBlock(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
+    NavigateSoundOnFocusGain(isFocused)
     val focusShape = PluviaTheme.shape(10.dp)
     val adjustmentStep = settingsSliderAdjustmentStep(valueRange, steps)
 
     fun adjustValue(direction: Int) {
         val nextValue = adjustSettingsSliderValue(value, valueRange, adjustmentStep, direction)
-        if (nextValue != value) onValueChange(nextValue)
+        if (nextValue != value) {
+            onValueChange(nextValue)
+            UiSoundCues.slider()
+        }
     }
 
     val content: @Composable () -> Unit = {

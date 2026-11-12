@@ -23,6 +23,7 @@ import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.util.DialogSound
 
 @Composable
 fun MessageDialog(
@@ -41,6 +42,7 @@ fun MessageDialog(
 ) {
     when {
         visible -> {
+            DialogSound()
             AlertDialog(
                 icon = icon?.let { { Icon(imageVector = icon, contentDescription = null) } },
                 title = title?.let { { Text(it) } },

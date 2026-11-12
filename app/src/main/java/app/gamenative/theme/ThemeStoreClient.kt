@@ -27,16 +27,21 @@ object ThemeStoreClient {
             response.body?.string() ?: throw IOException("Empty response for $url")
         }
 
-    fun list(query: String, page: Int): List<StoreTheme> {
+    /** [filter] is the store's package type: `CSS` for themes, `AUDIO` for sound and music packs. */
+    fun list(query: String, page: Int, filter: String = "CSS"): List<StoreTheme> {
         val url = "$API/themes".toHttpUrl().newBuilder()
             .addQueryParameter("page", page.coerceAtLeast(1).toString())
             .addQueryParameter("perPage", PAGE_SIZE.toString())
-            .addQueryParameter("filters", "CSS")
+            .addQueryParameter("filters", filter)
             .addQueryParameter("order", "Most Downloaded")
             .apply { if (query.isNotBlank()) addQueryParameter("search", query.trim()) }
             .build()
             .toString()
-        val root = Json.parseToJsonElement(getText(url)) as? JsonObject ?: return emptyList()
+        return parseList(getText(url))
+    }
+
+    fun parseList(json: String): List<StoreTheme> {
+        val root = Json.parseToJsonElement(json) as? JsonObject ?: return emptyList()
         return (root["items"] as? JsonArray)?.mapNotNull { (it as? JsonObject)?.let(::parseTheme) } ?: emptyList()
     }
 

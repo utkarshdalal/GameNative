@@ -111,8 +111,10 @@ import app.gamenative.ui.screen.auth.EpicOAuthActivity
 import app.gamenative.ui.screen.auth.GOGOAuthActivity
 import app.gamenative.ui.screen.library.components.SystemMenu
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.util.PageSoundOnOpenChange
 import app.gamenative.ui.util.PlatformAuthUiHelpers
 import app.gamenative.ui.util.PlatformLogoutCallbacks
+import app.gamenative.ui.util.TabSoundOnChange
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
@@ -331,6 +333,8 @@ private fun LibraryScreenContent(
     }
 
     var selectedAppId by remember { mutableStateOf<String?>(null) }
+    PageSoundOnOpenChange(selectedAppId != null)
+    TabSoundOnChange(state.currentTab)
     val carouselListState = rememberLazyListState()
     val isViewWide = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     var savedPaneType by remember { mutableStateOf(PrefManager.libraryLayout) }

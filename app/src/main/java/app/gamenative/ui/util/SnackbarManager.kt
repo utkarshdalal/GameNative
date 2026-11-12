@@ -12,6 +12,7 @@ object SnackbarManager {
     val messages = _messages.receiveAsFlow()
 
     fun show(message: String) {
+        UiSoundCues.notification()
         if (_messages.trySend(message).isFailure) {
             Timber.w("[Snackbar]: Dropping message because the buffer is full")
         }

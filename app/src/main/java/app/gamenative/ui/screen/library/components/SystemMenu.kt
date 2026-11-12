@@ -92,6 +92,7 @@ import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.ui.screen.support.SupportReplyWatcher
 import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.util.MenuSoundOnOpenChange
 import app.gamenative.ui.util.SteamIconImage
 import app.gamenative.ui.util.adaptivePanelWidth
 import app.gamenative.ui.util.shouldShowGamepadUI
@@ -275,6 +276,7 @@ fun SystemMenu(
     onAmazonLogoutClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    MenuSoundOnOpenChange(isOpen)
     val scope = rememberCoroutineScope()
     val uriHandler = LocalUriHandler.current
     val firstItemFocusRequester = remember { FocusRequester() }

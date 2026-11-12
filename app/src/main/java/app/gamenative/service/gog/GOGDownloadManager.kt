@@ -254,14 +254,18 @@ class GOGDownloadManager @Inject constructor(
 
             // Step 4: Fetch depot manifests to get file lists
             // Track which depot each file came from for proper productId mapping
-            data class FileWithDepot(val file: DepotFile, val depotProductId: String)
-            val allFilesWithDepots = mutableListOf<FileWithDepot>()
+            data class FileWithDepot(
+                val file: DepotFile,
+                val depotProductId: String,
+                val depotIndex: Int,
+                val fileOrdinal: Int,
+            )
+            val fetchedFilesWithDepots = mutableListOf<FileWithDepot>()
             // Symlinks and empty directories declared in the depot manifests. These carry no chunks,
             // so they bypass the chunk download/assemble path and must be created explicitly.
             val allLinks = mutableListOf<DepotLink>()
             val allDirectories = mutableListOf<DepotDirectory>()
-            // Raw inflated depot-manifest JSON per depot productId — feeds the native GOG engine.
-            val rawDepotJsonByProduct = mutableMapOf<String, MutableList<String>>()
+            val rawDepotJson = mutableListOf<String>()
 
             for ((index, depot) in depots.withIndex()) {
                 downloadInfo.updateStatusMessage("Fetching depot ${index + 1}/${depots.size}...")
@@ -274,12 +278,51 @@ class GOGDownloadManager @Inject constructor(
                 }
 
                 val (depotManifest, depotRawJson) = depotResult.getOrThrow()
-                rawDepotJsonByProduct.getOrPut(depot.productId) { mutableListOf() }.add(depotRawJson)
-                depotManifest.files.forEach { file ->
-                    allFilesWithDepots.add(FileWithDepot(file, depot.productId))
+                rawDepotJson.add(depotRawJson)
+                depotManifest.files.forEachIndexed { ordinal, file ->
+                    fetchedFilesWithDepots.add(FileWithDepot(file, depot.productId, index, ordinal))
                 }
                 allLinks.addAll(depotManifest.links)
                 allDirectories.addAll(depotManifest.directories)
+            }
+
+            // One entry per on-disk path (game and support files land in different roots): a
+            // selected DLC's file replaces the base game's. Entries the engine does not plan are
+            // never written by the gen-2 paths, so they cannot replace a real file. Paths that
+            // would leave the install directory are dropped, as the engine drops them.
+            val baseProductIds = setOf(baseProductId, gameId)
+            val safeFilesWithDepots = fetchedFilesWithDepots.filter { GOGManifestParser.isSafeRelativePath(it.file.path) }
+            if (safeFilesWithDepots.size != fetchedFilesWithDepots.size) {
+                Timber.tag("GOG").w("Ignoring ${fetchedFilesWithDepots.size - safeFilesWithDepots.size} depot file(s) with unsafe paths")
+            }
+            val allFilesWithDepots = listOf(false, true).flatMap { support ->
+                GOGManifestParser.effectiveEntries(
+                    safeFilesWithDepots.filter { it.file.isSupportFile() == support },
+                    path = { it.file.path },
+                    isBase = { it.depotProductId in baseProductIds },
+                    hasContent = { GOGManifestParser.isPlannable(it.file) },
+                )
+            }
+            fun selectionKey(entry: FileWithDepot) = entry.file.isSupportFile() to GOGManifestParser.pathKey(entry.file.path)
+            // Raw inflated depot-manifest JSON per depot productId feeds the native GOG engine,
+            // which installs every file of the manifests it gets and resolves duplicates within
+            // one run the same way; entries replaced by another product's file are removed.
+            val rawDepotJsonByProduct = mutableMapOf<String, MutableList<String>>()
+            run {
+                val kept = allFilesWithDepots.mapTo(HashSet()) { it.depotIndex to it.fileOrdinal }
+                val winnerProductByKey = allFilesWithDepots.associate { selectionKey(it) to it.depotProductId }
+                val replaced = fetchedFilesWithDepots
+                    .filter { (it.depotIndex to it.fileOrdinal) !in kept }
+                    .filter { winnerProductByKey[selectionKey(it)] != it.depotProductId }
+                    .groupBy({ it.depotIndex }, { it.fileOrdinal })
+                for ((index, depot) in depots.withIndex()) {
+                    val dropOrdinals = replaced[index]?.toSet().orEmpty()
+                    if (dropOrdinals.isNotEmpty()) {
+                        Timber.tag("GOG").d("Depot ${depot.manifest}: ${dropOrdinals.size} file(s) replaced by another selected depot")
+                    }
+                    rawDepotJsonByProduct.getOrPut(depot.productId) { mutableListOf() }
+                        .add(GOGManifestParser.withoutDepotFiles(rawDepotJson[index], dropOrdinals))
+                }
             }
 
             val allFiles = allFilesWithDepots.map { it.file }
@@ -476,11 +519,13 @@ class GOGDownloadManager @Inject constructor(
             chunkCacheDir.mkdirs()
             gameInstallDir.mkdirs()
 
-            // Resolve each pending file's productId (same rules as the chunk→product map) for
-            // the per-product native runs.
+            // Native runs go per depot product, whose manifests the engine gets; each run fetches
+            // with the secure link its files resolve to (same rules as the chunk→product map).
             val pendingPathsToProduct = mutableMapOf<String, String>()
+            val linkProductsByProduct = mutableMapOf<String, MutableSet<String>>()
+            val pendingDepotFiles = gameFiles + supportFiles
             run {
-                val pendingPaths = (gameFiles + supportFilesForGameDirAssemble).map { it.path }.toSet()
+                val pendingPaths = pendingDepotFiles.map { it.path }.toSet()
                 allFilesWithDepots.forEach { (file, depotProductId) ->
                     if (file.path !in pendingPaths) return@forEach
                     val productId = when {
@@ -489,19 +534,28 @@ class GOGDownloadManager @Inject constructor(
                         else -> file.productId!!
                     }
                     if (productId in ownedGameIds) {
-                        pendingPathsToProduct[file.path] = productId
-                        // Support files are path-remapped (getSupportInstallPath) for assembly.
-                        val remapped = getSupportInstallPath(file.path)
-                        if (remapped != file.path) pendingPathsToProduct[remapped] = productId
+                        pendingPathsToProduct[file.path] = depotProductId
+                        linkProductsByProduct.getOrPut(depotProductId) { mutableSetOf() }.add(productId)
                     }
                 }
             }
 
-            val nativeResult = downloadGameGen2Native(
+            // A native run fetches with one secure link; a depot whose files need several goes
+            // through the per-chunk downloader instead.
+            val mixedLinkProducts = linkProductsByProduct.filterValues { it.size > 1 }.keys
+            if (mixedLinkProducts.isNotEmpty()) {
+                Timber.tag("GOG").i("Depot product(s) $mixedLinkProducts need several secure links; using the chunk downloader")
+            }
+            val nativeResult = if (mixedLinkProducts.isNotEmpty()) null else downloadGameGen2Native(
                 rawDepotJsonByProduct = rawDepotJsonByProduct,
                 productUrlMap = productUrlMap,
                 pendingPathsToProduct = pendingPathsToProduct,
-                pendingPathsInOrder = (gameFiles + supportFilesForGameDirAssemble).map { it.path },
+                linkProductByProduct = linkProductsByProduct.mapValues { it.value.single() },
+                pendingPathsInOrder = pendingDepotFiles.map { it.path },
+                // The files the engine plans; each must be reported written.
+                requiredPaths = pendingDepotFiles
+                    .filter { GOGManifestParser.isPlannable(it) && it.path in pendingPathsToProduct }
+                    .map { it.path },
                 // Original depot paths (BEFORE getSupportInstallPath strips "app/"):
                 // the relocation pass matches its app/ roots against these.
                 supportDepotPaths = supportFiles.map { it.path }.toSet(),
@@ -864,7 +918,7 @@ class GOGDownloadManager @Inject constructor(
             }
 
             data class FileWithProduct(val file: V1DepotFile, val productId: String)
-            val allV1Files = mutableListOf<FileWithProduct>()
+            val fetchedV1Files = mutableListOf<FileWithProduct>()
 
             downloadInfo.updateStatusMessage("Fetching depot manifests...")
             for ((idx, depot) in filesToDownload.withIndex()) {
@@ -874,8 +928,23 @@ class GOGDownloadManager @Inject constructor(
                     return@withContext Result.failure(depotJsonResult.exceptionOrNull() ?: Exception("Failed to fetch depot manifest"))
                 }
                 val v1Files = parser.parseV1DepotManifest(depotJsonResult.getOrThrow())
-                v1Files.forEach { allV1Files.add(FileWithProduct(it, depot.productId)) }
+                v1Files.forEach { fetchedV1Files.add(FileWithProduct(it, depot.productId)) }
             }
+
+            // One entry per on-disk path (game and support files land in different roots): a
+            // selected DLC's file replaces the base game's.
+            val baseProductIds = setOf(baseProductId, gameId)
+            fun effective(files: List<FileWithProduct>) = GOGManifestParser.effectiveEntries(
+                files,
+                path = { it.file.path },
+                isBase = { it.productId in baseProductIds },
+            )
+            val safeV1Files = fetchedV1Files.filter { GOGManifestParser.isSafeRelativePath(it.file.path) }
+            if (safeV1Files.size != fetchedV1Files.size) {
+                Timber.tag("GOG").w("Ignoring ${fetchedV1Files.size - safeV1Files.size} depot file(s) with unsafe paths")
+            }
+            val allV1Files = effective(safeV1Files.filter { !it.file.isSupport }) +
+                effective(safeV1Files.filter { it.file.isSupport })
 
             var gameFiles = allV1Files.filter { !it.file.isSupport }
             var supportFiles = allV1Files.filter { it.file.isSupport }
@@ -913,7 +982,7 @@ class GOGDownloadManager @Inject constructor(
                 outFile.parentFile?.mkdirs()
 
                 if (file.size == 0L) {
-                    outFile.createNewFile()
+                    FileOutputStream(outFile).close()
                     return Result.success(Unit)
                 }
 
@@ -1052,7 +1121,9 @@ class GOGDownloadManager @Inject constructor(
         rawDepotJsonByProduct: Map<String, List<String>>,
         productUrlMap: MutableMap<String, List<String>>,
         pendingPathsToProduct: Map<String, String>,
+        linkProductByProduct: Map<String, String>,
         pendingPathsInOrder: List<String>,
+        requiredPaths: List<String>,
         supportDepotPaths: Set<String>,
         installDir: File,
         downloadInfo: DownloadInfo,
@@ -1069,7 +1140,8 @@ class GOGDownloadManager @Inject constructor(
         if (pathsByProduct.isEmpty()) return@withContext null
         val orderedProducts = pathsByProduct.keys.sortedBy { if (it == baseProductId) 0 else 1 }
         if (orderedProducts.any { rawDepotJsonByProduct[it].isNullOrEmpty() }) return@withContext null
-        if (orderedProducts.any { productUrlMap[it].isNullOrEmpty() }) return@withContext null
+        fun linkProductOf(product: String) = linkProductByProduct[product] ?: product
+        if (orderedProducts.any { productUrlMap[linkProductOf(it)].isNullOrEmpty() }) return@withContext null
 
         val speedConfig = DownloadSpeedConfig()
         val totalFiles = pendingPathsInOrder.size.coerceAtLeast(1)
@@ -1077,10 +1149,13 @@ class GOGDownloadManager @Inject constructor(
 
         for (product in orderedProducts) {
             val manifests = rawDepotJsonByProduct.getValue(product).toTypedArray()
+            // Skip list for this product's re-runs after a link refresh; other products' files never skip it.
+            val productDonePaths = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
             // All ranked mirrors, best first: the engine fetches every chunk with one
             // candidate URL per mirror, so the fetch core spreads load across hosts and
             // prefers the faster one (a HEAD-probe winner alone can be the slow CDN).
-            var cdnBases = productUrlMap.getValue(product)
+            val linkProduct = linkProductOf(product)
+            var cdnBases = productUrlMap.getValue(linkProduct)
             var refreshesLeft = 3
 
             while (true) {
@@ -1113,6 +1188,7 @@ class GOGDownloadManager @Inject constructor(
                         verified: Boolean,
                     ) {
                         donePaths.add(file)
+                        productDonePaths.add(file)
                         // Note: verified (resume-skipped) files credit NOTHING here. Their
                         // bytes were already counted in the persisted snapshot this run
                         // resumed from — re-crediting double-counts past the expected total
@@ -1171,7 +1247,7 @@ class GOGDownloadManager @Inject constructor(
                     depotManifests = manifests,
                     cdnBases = cdnBases.toTypedArray(),
                     installDir = installDir.absolutePath,
-                    skipPaths = donePaths.toTypedArray(),
+                    skipPaths = productDonePaths.toTypedArray(),
                     // Adaptive-window ceiling (ramps up only while the link delivers).
                     maxWorkers = speedConfig.maxDownloads,
                     processWorkers = speedConfig.maxDecompress,
@@ -1204,7 +1280,7 @@ class GOGDownloadManager @Inject constructor(
                 if (c.linkExpiry && refreshesLeft > 0) {
                     refreshesLeft--
                     Timber.tag("GOG").w("secure link for product $product expired (${c.error}), refreshing")
-                    val linksResult = apiClient.getSecureLink(productId = product, path = "/", generation = generation)
+                    val linksResult = apiClient.getSecureLink(productId = linkProduct, path = "/", generation = generation)
                     val urls = linksResult.getOrNull()?.urls
                     if (urls.isNullOrEmpty()) {
                         return@withContext Result.failure(
@@ -1212,13 +1288,20 @@ class GOGDownloadManager @Inject constructor(
                         )
                     }
                     cdnBases = CdnRankingUtils.rankBaseUrlsByHeadProbe(urls, Net.http, "GOG Galaxy")
-                    productUrlMap[product] = cdnBases
+                    productUrlMap[linkProduct] = cdnBases
                     continue
                 }
                 return@withContext Result.failure(
                     Exception(c.error.ifEmpty { "GOG download failed for product $product" }),
                 )
             }
+        }
+
+        val written = donePaths.mapTo(HashSet()) { GOGManifestParser.pathKey(it) }
+        val unwritten = requiredPaths.count { GOGManifestParser.pathKey(it) !in written }
+        if (unwritten > 0) {
+            Timber.tag("GOG").e("Native run reported $unwritten pending file(s) as not written")
+            return@withContext Result.failure(Exception("Download incomplete: $unwritten file(s) not written"))
         }
 
         // The engine writes depot paths verbatim; GameNative strips the leading "app/" from

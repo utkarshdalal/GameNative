@@ -1149,6 +1149,27 @@
     <string name="themes_share_blocked_too_large">Dette tema er for stort til at blive delt.</string>
     <string name="themes_sign_in_title">GameNative-konto påkrævet</string>
     <string name="themes_sign_in_message">Log ind på din GameNative-konto for at dele temaer, anmelde temaer og se dine uploads.</string>
+    <string name="themes_tab_sounds">Lyde</string>
+    <string name="themes_sounds_interface">Lyde i brugerfladen</string>
+    <string name="themes_sounds_interface_subtitle">Afspil lyde, når du bevæger dig rundt og trykker på knapper i menuer</string>
+    <string name="themes_sounds_volume">Lydstyrke</string>
+    <string name="themes_sounds_volume_subtitle">Hvor højt lydene i brugerfladen afspilles</string>
+    <string name="themes_sounds_pack">Lydpakke</string>
+    <string name="themes_sounds_none">Ingen</string>
+    <string name="themes_sounds_preview">Afspil prøve</string>
+    <string name="themes_sounds_no_packs">Ingen lydpakker installeret endnu. Importér en, eller installer en fra butikken.</string>
+    <string name="themes_sounds_music">Menumusik</string>
+    <string name="themes_sounds_music_subtitle">Afspil musik, mens du browser i appen</string>
+    <string name="themes_sounds_music_volume">Musiklydstyrke</string>
+    <string name="themes_sounds_music_volume_subtitle">Hvor højt menumusikken afspilles</string>
+    <string name="themes_sounds_music_pack">Musikpakke</string>
+    <string name="themes_sounds_no_music">Ingen musikpakker installeret endnu.</string>
+    <string name="themes_sounds_import">Importér pakke-zip</string>
+    <string name="themes_sounds_store">Butik med lydpakker</string>
+    <string name="themes_sounds_search_hint">Søg efter lydpakker</string>
+    <string name="themes_sounds_store_error">Kunne ikke indlæse lydpakker: %1$s</string>
+    <string name="themes_sounds_store_empty">Ingen lydpakker fundet</string>
+    <string name="themes_sounds_delete_title">Slet lydpakke?</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Grænseflade</string>

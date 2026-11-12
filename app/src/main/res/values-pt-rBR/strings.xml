@@ -1149,6 +1149,27 @@
     <string name="themes_share_blocked_too_large">Este tema é grande demais para ser compartilhado.</string>
     <string name="themes_sign_in_title">Conta GameNative necessária</string>
     <string name="themes_sign_in_message">Entre na sua conta GameNative para compartilhar temas, denunciar temas e ver seus envios.</string>
+    <string name="themes_tab_sounds">Sons</string>
+    <string name="themes_sounds_interface">Sons da interface</string>
+    <string name="themes_sounds_interface_subtitle">Toca sons ao navegar e pressionar botões nos menus</string>
+    <string name="themes_sounds_volume">Volume</string>
+    <string name="themes_sounds_volume_subtitle">Volume dos sons da interface</string>
+    <string name="themes_sounds_pack">Pacote de sons</string>
+    <string name="themes_sounds_none">Nenhum</string>
+    <string name="themes_sounds_preview">Ouvir</string>
+    <string name="themes_sounds_no_packs">Nenhum pacote de sons instalado ainda. Importe um ou instale um da loja.</string>
+    <string name="themes_sounds_music">Música do menu</string>
+    <string name="themes_sounds_music_subtitle">Toca música enquanto você navega pelo app</string>
+    <string name="themes_sounds_music_volume">Volume da música</string>
+    <string name="themes_sounds_music_volume_subtitle">Volume da música do menu</string>
+    <string name="themes_sounds_music_pack">Pacote de música</string>
+    <string name="themes_sounds_no_music">Nenhum pacote de música instalado ainda.</string>
+    <string name="themes_sounds_import">Importar zip do pacote</string>
+    <string name="themes_sounds_store">Loja de pacotes de sons</string>
+    <string name="themes_sounds_search_hint">Pesquisar pacotes de sons</string>
+    <string name="themes_sounds_store_error">Não foi possível carregar os pacotes de sons: %1$s</string>
+    <string name="themes_sounds_store_empty">Nenhum pacote de sons encontrado</string>
+    <string name="themes_sounds_delete_title">Excluir pacote de sons?</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interface</string>

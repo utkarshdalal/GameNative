@@ -35,6 +35,7 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.enums.AppTheme
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.util.DialogSound
 
 @Composable
 fun SingleChoiceDialog(
@@ -50,6 +51,7 @@ fun SingleChoiceDialog(
     if (!openDialog) {
         return
     }
+    DialogSound()
 
     AlertDialog(
         onDismissRequest = onDismiss,

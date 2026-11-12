@@ -1353,6 +1353,27 @@
     <string name="themes_share_blocked_too_large">Ce thème est trop volumineux pour être partagé.</string>
     <string name="themes_sign_in_title">Compte GameNative requis</string>
     <string name="themes_sign_in_message">Connectez-vous à votre compte GameNative pour partager des thèmes, signaler des thèmes et voir vos partages.</string>
+    <string name="themes_tab_sounds">Sons</string>
+    <string name="themes_sounds_interface">Sons de l\'interface</string>
+    <string name="themes_sounds_interface_subtitle">Joue des sons lorsque vous vous déplacez et appuyez sur des boutons dans les menus</string>
+    <string name="themes_sounds_volume">Volume</string>
+    <string name="themes_sounds_volume_subtitle">Volume des sons de l\'interface</string>
+    <string name="themes_sounds_pack">Pack de sons</string>
+    <string name="themes_sounds_none">Aucun</string>
+    <string name="themes_sounds_preview">Écouter</string>
+    <string name="themes_sounds_no_packs">Aucun pack de sons installé pour l\'instant. Importez-en un ou installez-en un depuis la boutique.</string>
+    <string name="themes_sounds_music">Musique des menus</string>
+    <string name="themes_sounds_music_subtitle">Joue de la musique pendant que vous parcourez l\'application</string>
+    <string name="themes_sounds_music_volume">Volume de la musique</string>
+    <string name="themes_sounds_music_volume_subtitle">Volume de la musique des menus</string>
+    <string name="themes_sounds_music_pack">Pack de musique</string>
+    <string name="themes_sounds_no_music">Aucun pack de musique installé pour l\'instant.</string>
+    <string name="themes_sounds_import">Importer un zip de pack</string>
+    <string name="themes_sounds_store">Boutique de packs de sons</string>
+    <string name="themes_sounds_search_hint">Rechercher des packs de sons</string>
+    <string name="themes_sounds_store_error">Impossible de charger les packs de sons : %1$s</string>
+    <string name="themes_sounds_store_empty">Aucun pack de sons trouvé</string>
+    <string name="themes_sounds_delete_title">Supprimer le pack de sons ?</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interface</string>
