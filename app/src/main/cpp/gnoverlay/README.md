@@ -140,7 +140,10 @@ sit in the same chain) from recursing:
   aarch64), never a libc wrapper. Bionic wrappers such as `unlink` call `unlinkat@plt`, which
   re-enters the preload chain.
 - Each hook passes through to its own real function (`renameat2` -> real `renameat2`, `rename`
-  -> real `rename`). Bionic's `rename` and `renameat` tail-call `renameat2@plt`. A hook that
+  -> real `rename`). The `open` family does the same for a path outside the overlay (`open` -> real
+  `open`, `__open_2` -> real `__open_2`, ...): libc calls `open` before any constructor has run,
+  and forwarding that as `openat` made `libredirect` build its rewrite rules before it had
+  decoded its package name, so every rewritten path lost the package (`/data/data//files/...`). Bionic's `rename` and `renameat` tail-call `renameat2@plt`. A hook that
   forwarded `renameat2(flags=0)` to libc `renameat` spun forever in a tail-call cycle, which
   was seen on device in `winedevice.exe` via fontconfig's `FcAtomicReplaceOrig`. The remaining
   cross-calls go to direct-syscall stubs (`openat`, `fchmodat` with flags 0, `setxattr`).
