@@ -4,7 +4,7 @@ import app.gamenative.theme.ThemeZip
 import java.io.File
 import kotlin.random.Random
 
-enum class UiSound { NAVIGATE, SELECT, BACK, TAB, MENU_OPEN, MENU_CLOSE, DIALOG_OPEN, DIALOG_CLOSE, TOGGLE_ON, TOGGLE_OFF, SLIDER, TYPE, PAGE_IN, PAGE_OUT, LAUNCH, ERROR, NOTIFY }
+enum class UiSound { NAVIGATE, SELECT, BACK, TAB, MENU_OPEN, MENU_CLOSE, DIALOG_OPEN, DIALOG_CLOSE, TOGGLE_ON, TOGGLE_OFF, SLIDER, SLIDER_DOWN, TYPE, PAGE_IN, PAGE_OUT, LAUNCH, ERROR, NOTIFY }
 
 /** Steam's UI sound file names, which sound pack files replace, and which of them play for each [UiSound]. Pure JVM. */
 object SteamSounds {
@@ -64,6 +64,7 @@ object SteamSounds {
         UiSound.TOGGLE_ON to listOf("deck_ui_switch_toggle_on.wav"),
         UiSound.TOGGLE_OFF to listOf("deck_ui_switch_toggle_off.wav"),
         UiSound.SLIDER to listOf("deck_ui_slider_up.wav", "deck_ui_slider_down.wav"),
+        UiSound.SLIDER_DOWN to listOf("deck_ui_slider_down.wav", "deck_ui_slider_up.wav"),
         UiSound.TYPE to listOf("deck_ui_typing.wav"),
         UiSound.PAGE_IN to listOf("deck_ui_into_game_detail.wav"),
         UiSound.PAGE_OUT to listOf("deck_ui_out_of_game_detail.wav"),

@@ -85,9 +85,10 @@ object UiSoundCues {
 
     fun toggle(on: Boolean) = play(if (on) UiSound.TOGGLE_ON else UiSound.TOGGLE_OFF)
 
-    fun slider() {
+    /** [up] is true when the value rose. */
+    fun slider(up: Boolean) {
         if (!active) return
-        repeatable(UiSound.SLIDER)
+        repeatable(if (up) UiSound.SLIDER else UiSound.SLIDER_DOWN)
     }
 
     /** Focus moves sound only right after controller or keyboard input, so focus set by a screen loading stays quiet. */

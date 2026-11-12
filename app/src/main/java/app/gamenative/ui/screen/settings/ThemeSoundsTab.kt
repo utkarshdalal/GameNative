@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,6 +39,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -50,6 +52,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
@@ -79,6 +84,7 @@ import kotlinx.coroutines.withContext
 
 private const val PREVIEW_GAP_MS = 300L
 private const val VOLUME_SAVE_DELAY_MS = 150L
+private const val FOCUS_SETTLE_MS = 100L
 
 private val PACK_ZIP_TYPES = arrayOf("application/zip", "application/x-zip-compressed", "application/x-zip", "application/octet-stream")
 
@@ -104,6 +110,10 @@ internal fun ThemeSoundsTab(onMessage: (String) -> Unit) {
     var deleteTarget by remember { mutableStateOf<InstalledSoundPack?>(null) }
     var volume by remember { mutableFloatStateOf(settings.volume) }
     var musicVolume by remember { mutableFloatStateOf(settings.musicVolume) }
+    val listState = rememberLazyListState()
+    val uiNoneFocus = remember { FocusRequester() }
+    val musicNoneFocus = remember { FocusRequester() }
+    var focusAfterDelete by remember { mutableStateOf<Boolean?>(null) }
 
     val uiPacks = packs.filter { !it.isMusic }
     val musicPacks = packs.filter { it.isMusic }
@@ -173,6 +183,17 @@ internal fun ThemeSoundsTab(onMessage: (String) -> Unit) {
         if (!store.loaded) loadStore(reset = true)
     }
 
+    // The deleted row held focus; move it to the None row of the same section instead of the top bar.
+    LaunchedEffect(packs) {
+        val music = focusAfterDelete ?: return@LaunchedEffect
+        focusAfterDelete = null
+        val uiCount = packs.count { !it.isMusic }
+        val index = if (music) 3 + maxOf(uiCount, 1) + 3 + 1 else 3
+        listState.scrollToItem(index)
+        delay(FOCUS_SETTLE_MS)
+        runCatching { (if (music) musicNoneFocus else uiNoneFocus).requestFocus() }
+    }
+
     LaunchedEffect(volume) {
         if (volume == settings.volume) return@LaunchedEffect
         delay(VOLUME_SAVE_DELAY_MS)
@@ -186,6 +207,7 @@ internal fun ThemeSoundsTab(onMessage: (String) -> Unit) {
     }
 
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -195,7 +217,13 @@ internal fun ThemeSoundsTab(onMessage: (String) -> Unit) {
                 title = stringResource(R.string.themes_sounds_interface),
                 subtitle = stringResource(R.string.themes_sounds_interface_subtitle),
                 checked = settings.enabled,
-                onCheckedChange = { checked -> runAction { SoundPackManager.setEnabled(checked) } },
+                onCheckedChange = { checked ->
+                    runAction {
+                        SoundPackManager.setEnabled(checked)
+                        // The cue for the switch itself only exists once sounds are on, so confirm with the new pack.
+                        if (checked) SoundPackManager.preview(UiSound.TOGGLE_ON)
+                    }
+                },
             )
         }
         item(key = "ui_volume") {
@@ -217,6 +245,7 @@ internal fun ThemeSoundsTab(onMessage: (String) -> Unit) {
                 detail = null,
                 selected = settings.activePackId == null,
                 onSelect = { runAction { SoundPackManager.setActivePack(null) } },
+                focusRequester = uiNoneFocus,
             )
         }
         items(uiPacks, key = { "ui:${it.id}" }) { pack ->
@@ -260,6 +289,7 @@ internal fun ThemeSoundsTab(onMessage: (String) -> Unit) {
                 detail = null,
                 selected = settings.activeMusicPackId == null,
                 onSelect = { runAction { SoundPackManager.setActiveMusicPack(null) } },
+                focusRequester = musicNoneFocus,
             )
         }
         items(musicPacks, key = { "music:${it.id}" }) { pack ->
@@ -277,16 +307,20 @@ internal fun ThemeSoundsTab(onMessage: (String) -> Unit) {
 
         item(key = "import") {
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
-                if (importing) {
-                    CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp)
-                } else {
-                    OutlinedButton(
-                        onClick = {
-                            SteamService.isImporting = true
-                            zipLauncher.launch(PACK_ZIP_TYPES)
-                        },
-                        modifier = Modifier.focusOutline(CircleShape),
-                    ) { Text(stringResource(R.string.themes_sounds_import)) }
+                // One button in every state, so it keeps focus while the import runs.
+                OutlinedButton(
+                    onClick = {
+                        if (importing) return@OutlinedButton
+                        SteamService.isImporting = true
+                        zipLauncher.launch(PACK_ZIP_TYPES)
+                    },
+                    modifier = Modifier.focusOutline(CircleShape),
+                ) {
+                    if (importing) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text(stringResource(R.string.themes_sounds_import))
+                    }
                 }
             }
         }
@@ -368,6 +402,7 @@ internal fun ThemeSoundsTab(onMessage: (String) -> Unit) {
                 confirmButton = {
                     TextButton(onClick = {
                         deleteTarget = null
+                        focusAfterDelete = target.isMusic
                         runAction { SoundPackManager.delete(target.id) }
                     }) { Text(stringResource(R.string.delete)) }
                 },
@@ -453,6 +488,7 @@ private fun SoundPackRow(
     onSelect: () -> Unit,
     onPreview: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
+    focusRequester: FocusRequester? = null,
 ) {
     val shape = RoundedCornerShape(10.dp)
     Card(
@@ -467,6 +503,7 @@ private fun SoundPackRow(
             Row(
                 modifier = Modifier
                     .weight(1f)
+                    .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
                     .clip(shape)
                     .focusOutline(shape)
                     .selectable(selected = selected, onClick = onSelect, role = Role.RadioButton)
@@ -555,27 +592,33 @@ private fun SoundStoreRow(
                 )
             }
 
-            when {
-                installing -> CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp)
-                installed -> Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Done,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(18.dp),
+            // One button in every state, so focus stays on the row while it installs and after.
+            val idle = !installing && !installed
+            Button(
+                onClick = { if (idle) onInstall() },
+                modifier = Modifier.focusOutline(CircleShape),
+                colors = if (idle) {
+                    ButtonDefaults.buttonColors()
+                } else {
+                    ButtonDefaults.buttonColors(
+                        containerColor = Color.Transparent,
+                        contentColor = MaterialTheme.colorScheme.primary,
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = stringResource(R.string.installed),
-                        style = MaterialTheme.typography.labelLarge,
+                },
+            ) {
+                when {
+                    installing -> CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
                         color = MaterialTheme.colorScheme.primary,
                     )
+                    installed -> {
+                        Icon(imageVector = Icons.Default.Done, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(stringResource(R.string.installed))
+                    }
+                    else -> Text(stringResource(R.string.install))
                 }
-
-                else -> Button(
-                    onClick = onInstall,
-                    modifier = Modifier.focusOutline(CircleShape),
-                ) { Text(stringResource(R.string.install)) }
             }
         }
     }

@@ -184,7 +184,7 @@ fun SettingsSliderBlock(
         val nextValue = adjustSettingsSliderValue(value, valueRange, adjustmentStep, direction)
         if (nextValue != value) {
             onValueChange(nextValue)
-            UiSoundCues.slider()
+            UiSoundCues.slider(up = nextValue > value)
         }
     }
 
