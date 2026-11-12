@@ -15,6 +15,7 @@ object UiSounds {
     private const val MAX_STREAMS = 4
     private const val MAX_FILE_BYTES = 4L * 1024 * 1024
     private const val PREVIEW_KEEP_MS = 20_000L
+    private const val RELEASE_DELAY_MS = 1_500L
 
     private class Bank(val key: String, val pool: SoundPool) {
         val ids = HashMap<UiSound, IntArray>()
@@ -89,10 +90,12 @@ object UiSounds {
         return if (enabled || SystemClock.uptimeMillis() < previewUntil) t else null
     }
 
+    /** Releasing waits [RELEASE_DELAY_MS] so the last cue (toggle off, launch) is not cut off. */
     private fun schedule() {
-        val needsWork = wanted()?.key != bank?.key
-        if (!needsWork) return
-        handler().post { reconcile() }
+        val w = wanted()
+        if (w?.key == bank?.key) return
+        val h = handler()
+        if (w == null) h.postDelayed({ reconcile() }, RELEASE_DELAY_MS) else h.post { reconcile() }
     }
 
     private fun reconcile() {
