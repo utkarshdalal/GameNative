@@ -19,6 +19,48 @@ static inline uint32_t swapRB(uint32_t pixel) {
             ((pixel & 0x000000FF) << 16));
 }
 
+static bool clipCopyArea(int *srcX, int *srcY, int *dstX, int *dstY,
+                         int *width, int *height, int srcStride, int dstStride,
+                         jlong srcCapacity, jlong dstCapacity) {
+    if (*width <= 0 || *height <= 0 || srcStride <= 0 || dstStride <= 0 ||
+        srcCapacity <= 0 || dstCapacity <= 0) return false;
+
+    int srcHeight = (int)(srcCapacity / ((jlong)srcStride * 4));
+    int dstHeight = (int)(dstCapacity / ((jlong)dstStride * 4));
+
+    if (*srcX < 0) {
+        int delta = -*srcX;
+        *srcX = 0;
+        *dstX += delta;
+        *width -= delta;
+    }
+    if (*srcY < 0) {
+        int delta = -*srcY;
+        *srcY = 0;
+        *dstY += delta;
+        *height -= delta;
+    }
+    if (*dstX < 0) {
+        int delta = -*dstX;
+        *dstX = 0;
+        *srcX += delta;
+        *width -= delta;
+    }
+    if (*dstY < 0) {
+        int delta = -*dstY;
+        *dstY = 0;
+        *srcY += delta;
+        *height -= delta;
+    }
+
+    if (*width <= 0 || *height <= 0 || *srcX >= srcStride || *dstX >= dstStride ||
+        *srcY >= srcHeight || *dstY >= dstHeight) return false;
+
+    *width = fmin(*width, fmin(srcStride - *srcX, dstStride - *dstX));
+    *height = fmin(*height, fmin(srcHeight - *srcY, dstHeight - *dstY));
+    return *width > 0 && *height > 0;
+}
+
 static int packColor(int8_t r, int8_t g, int8_t b) {
     return ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF);
 }
@@ -111,30 +153,37 @@ Java_com_winlator_xserver_Drawable_copyArea(JNIEnv *env, jclass obj, jshort srcX
         return;
     }
 
+    int sx = srcX, sy = srcY, dx = dstX, dy = dstY;
+    int copyWidth = width, copyHeight = height;
+    if (!clipCopyArea(&sx, &sy, &dx, &dy, &copyWidth, &copyHeight,
+                      srcStride, dstStride,
+                      (*env)->GetDirectBufferCapacity(env, srcData),
+                      (*env)->GetDirectBufferCapacity(env, dstData))) return;
+
     if (needsSwapRB) {
         /* Convert BGRA to RGBA while copying (X11 uses BGRA, AHB needs RGBA) */
         uint32_t *srcPixels = (uint32_t*)srcDataAddr;
         uint32_t *dstPixels = (uint32_t*)dstDataAddr;
 
-        for (int16_t y = 0; y < height; y++) {
-            uint32_t *srcRow = srcPixels + (srcX + (y + srcY) * srcStride);
-            uint32_t *dstRow = dstPixels + (dstX + (y + dstY) * dstStride);
-            for (int16_t x = 0; x < width; x++) {
+        for (int y = 0; y < copyHeight; y++) {
+            uint32_t *srcRow = srcPixels + (sx + (y + sy) * srcStride);
+            uint32_t *dstRow = dstPixels + (dx + (y + dy) * dstStride);
+            for (int x = 0; x < copyWidth; x++) {
                 dstRow[x] = swapRB(srcRow[x]);
             }
         }
     } else {
         /* Fast path when not using ASR - direct copy without conversion */
-        if (width == srcStride && width == dstStride) {
-            size_t bytes = (size_t)height * dstStride * 4;
-            memcpy(dstDataAddr + (dstX + dstY * dstStride) * 4,
-                   srcDataAddr + (srcX + srcY * srcStride) * 4,
+        if (copyWidth == srcStride && copyWidth == dstStride) {
+            size_t bytes = (size_t)copyHeight * dstStride * 4;
+            memcpy(dstDataAddr + (dx + dy * dstStride) * 4,
+                   srcDataAddr + (sx + sy * srcStride) * 4,
                    bytes);
         } else {
-            size_t rowBytes = (size_t)width * 4;
-            for (int16_t y = 0; y < height; y++) {
-                memcpy(dstDataAddr + (dstX + (y + dstY) * dstStride) * 4,
-                       srcDataAddr + (srcX + (y + srcY) * srcStride) * 4,
+            size_t rowBytes = (size_t)copyWidth * 4;
+            for (int y = 0; y < copyHeight; y++) {
+                memcpy(dstDataAddr + (dx + (y + dy) * dstStride) * 4,
+                       srcDataAddr + (sx + (y + sy) * srcStride) * 4,
                        rowBytes);
             }
         }
@@ -155,10 +204,17 @@ Java_com_winlator_xserver_Drawable_copyAreaOp(JNIEnv *env, jclass obj, jshort sr
         return;
     }
 
-    for (int16_t y = 0; y < height; y++) {
-        for (int16_t x = 0; x < width; x++) {
-            int i = (x + srcX + (y + srcY) * srcStride) * 4;
-            int j = (x + dstX + (y + dstY) * dstStride) * 4;
+    int sx = srcX, sy = srcY, dx = dstX, dy = dstY;
+    int copyWidth = width, copyHeight = height;
+    if (!clipCopyArea(&sx, &sy, &dx, &dy, &copyWidth, &copyHeight,
+                      srcStride, dstStride,
+                      (*env)->GetDirectBufferCapacity(env, srcData),
+                      (*env)->GetDirectBufferCapacity(env, dstData))) return;
+
+    for (int y = 0; y < copyHeight; y++) {
+        for (int x = 0; x < copyWidth; x++) {
+            int i = (x + sx + (y + sy) * srcStride) * 4;
+            int j = (x + dx + (y + dy) * dstStride) * 4;
 
             // Read colors (BGRA format in X11)
             int srcColor = (srcDataAddr[i+0] << 16) | (srcDataAddr[i+1] << 8) | srcDataAddr[i+2];
