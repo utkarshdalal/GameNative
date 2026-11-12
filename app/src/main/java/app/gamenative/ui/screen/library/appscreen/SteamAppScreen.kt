@@ -120,6 +120,12 @@ private data class InstallSizeInfo(
     val availableBytes: Long,
 )
 
+private data class InstallationDisplayState(
+    val isInstalled: Boolean,
+    val installLocation: String?,
+    val lastPlayedText: String,
+)
+
 private fun buildInstallPromptState(context: Context, info: InstallSizeInfo): MessageDialogState {
     val message = context.getString(
         R.string.steam_install_space_prompt,
@@ -310,14 +316,34 @@ class SteamAppScreen : BaseAppScreen() {
             appId = libraryItem.appId,
         )
 
-        var isInstalled by remember(libraryItem.appId) {
-            mutableStateOf(SteamService.isAppInstalled(gameId))
+        var installationState by remember(libraryItem.appId) {
+            mutableStateOf<InstallationDisplayState?>(null)
         }
+        val isInstalled = installationState?.isInstalled == true
+
+        suspend fun loadInstallationState(): InstallationDisplayState = withContext(Dispatchers.IO) {
+            val installed = SteamService.isAppInstalled(gameId)
+            val path = if (installed) getAppDirPath(gameId) else null
+            val lastPlayed = path
+                ?.let(::File)
+                ?.takeIf(File::exists)
+                ?.let { SteamUtils.fromSteamTime((it.lastModified() / 1000).toInt()) }
+                ?: context.getString(R.string.steam_never)
+            InstallationDisplayState(installed, path, lastPlayed)
+        }
+
+        LaunchedEffect(gameId) {
+            installationState = loadInstallationState()
+        }
+
+        val coroutineScope = rememberCoroutineScope()
 
         DisposableEffect(gameId) {
             val listener: (AndroidEvent.LibraryInstallStatusChanged) -> Unit = { event ->
                 if (event.appId == gameId) {
-                    isInstalled = SteamService.isAppInstalled(gameId)
+                    coroutineScope.launch {
+                        installationState = loadInstallationState()
+                    }
                 }
             }
             PluviaApp.events.on<AndroidEvent.LibraryInstallStatusChanged, Unit>(listener)
@@ -340,55 +366,40 @@ class SteamAppScreen : BaseAppScreen() {
             }
         }
 
-        // Get install location
-        val installLocation = remember(isInstalled, gameId) {
-            if (isInstalled) {
-                getAppDirPath(gameId)
-            } else {
-                null
-            }
-        }
+        val installLocation = installationState?.installLocation
 
         // Get size on disk (async, will update via state)
         var sizeOnDisk by remember { mutableStateOf<String?>(null) }
-        LaunchedEffect(isInstalled, gameId) {
-            if (isInstalled) {
-                DownloadService.getSizeOnDiskDisplay(gameId) {
-                    sizeOnDisk = it
+        LaunchedEffect(installationState?.isInstalled, gameId) {
+            when (installationState?.isInstalled) {
+                true -> {
+                    DownloadService.getSizeOnDiskDisplay(gameId) {
+                        sizeOnDisk = it
+                    }
                 }
-            } else {
-                sizeOnDisk = null
+                false -> sizeOnDisk = null
+                null -> Unit
             }
         }
 
         // Get size from store (async, will update via state)
         var sizeFromStore by remember { mutableStateOf<String?>(null) }
-        LaunchedEffect(isInstalled, gameId) {
-            if (!isInstalled) {
-                // Load size from store on IO, assign on Main to respect Compose threading
-                val size = withContext(Dispatchers.IO) {
-                    DownloadService.getSizeFromStoreDisplay(gameId)
+        LaunchedEffect(installationState?.isInstalled, gameId) {
+            when (installationState?.isInstalled) {
+                false -> {
+                    // Load size from store on IO, assign on Main to respect Compose threading
+                    val size = withContext(Dispatchers.IO) {
+                        DownloadService.getSizeFromStoreDisplay(gameId)
+                    }
+                    sizeFromStore = size
                 }
-                sizeFromStore = size
-            } else {
-                sizeFromStore = null
+                true -> sizeFromStore = null
+                null -> Unit
             }
         }
 
-        // Get last played text
-        val lastPlayedText = remember(isInstalled, gameId) {
-            if (isInstalled) {
-                val path = getAppDirPath(gameId)
-                val file = File(path)
-                if (file.exists()) {
-                    SteamUtils.fromSteamTime((file.lastModified() / 1000).toInt())
-                } else {
-                    context.getString(R.string.steam_never)
-                }
-            } else {
-                context.getString(R.string.steam_never)
-            }
-        }
+        val lastPlayedText = installationState?.lastPlayedText
+            ?: context.getString(R.string.steam_never)
 
         // Get playtime text
         var playtimeText by remember { mutableStateOf("0 hrs") }
