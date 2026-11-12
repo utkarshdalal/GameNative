@@ -132,6 +132,7 @@ object UiSounds {
             }
         }
         bank = b
+        Timber.d("UiSounds: SoundPool created for ${t.key}")
         val byPath = HashMap<String, Int>()
         for (sound in UiSound.entries) {
             val files = try {
@@ -168,7 +169,9 @@ object UiSounds {
         val id = SteamSounds.pick(ready) ?: return false
         val v = volume
         return try {
-            b.pool.play(id, v, v, if (sound == UiSound.NAVIGATE) 0 else 1, 0, 1f) != 0
+            val stream = b.pool.play(id, v, v, if (sound == UiSound.NAVIGATE) 0 else 1, 0, 1f)
+            Timber.d("UiSounds: play $sound ${b.names[id]} vol $v stream $stream")
+            stream != 0
         } catch (e: Exception) {
             Timber.w(e, "UiSounds: play failed")
             false
@@ -178,6 +181,7 @@ object UiSounds {
     private fun releaseBank() {
         val b = bank ?: return
         bank = null
+        Timber.d("UiSounds: SoundPool released for ${b.key}")
         try {
             b.pool.release()
         } catch (e: Exception) {

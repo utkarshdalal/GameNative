@@ -116,6 +116,7 @@ internal object MenuMusic {
             if (!player.isPlaying) player.start()
             s.started = true
             playing = true
+            Timber.d("MenuMusic: playing ${t.key}")
         } catch (e: Exception) {
             Timber.w(e, "MenuMusic: start failed")
             releaseSession()
@@ -209,6 +210,7 @@ internal object MenuMusic {
         }
         playing = false
         gain = 0f
+        Timber.d("MenuMusic: paused")
         if (abandonFocus) abandonFocus()
     }
 
@@ -222,6 +224,7 @@ internal object MenuMusic {
         session = null
         playing = false
         gain = 0f
+        Timber.d("MenuMusic: released ${s.key}")
         for (p in listOfNotNull(s.current, s.next)) {
             try {
                 p.release()
