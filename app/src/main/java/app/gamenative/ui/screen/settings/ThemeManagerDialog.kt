@@ -85,6 +85,11 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -997,26 +1002,21 @@ private fun ColorOptionButton(
     compact: Boolean,
     onEditColor: (ThemeOption.Color) -> Unit,
 ) {
-    Box(
-        modifier = Modifier
-            .focusOutline(RoundedCornerShape(10.dp))
-            .padding(2.dp),
+    OutlinedButton(
+        onClick = { onEditColor(option) },
+        modifier = Modifier.focusOutline(CircleShape),
+        contentPadding = if (compact) PaddingValues(horizontal = 12.dp) else ButtonDefaults.ContentPadding,
     ) {
-        OutlinedButton(
-            onClick = { onEditColor(option) },
-            contentPadding = if (compact) PaddingValues(horizontal = 12.dp) else ButtonDefaults.ContentPadding,
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(20.dp)
-                    .clip(CircleShape)
-                    .background(Color(option.argb))
-                    .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape),
-            )
-            if (!compact) {
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = colorToHex(option.argb), maxLines = 1)
-            }
+        Box(
+            modifier = Modifier
+                .size(20.dp)
+                .clip(CircleShape)
+                .background(Color(option.argb))
+                .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape),
+        )
+        if (!compact) {
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(text = colorToHex(option.argb), maxLines = 1)
         }
     }
 }
@@ -1250,10 +1250,24 @@ private fun ColorSliderRow(
             valueRange = range,
             modifier = Modifier
                 .weight(1f)
-                .focusOutline(RoundedCornerShape(8.dp)),
+                .focusOutline(RoundedCornerShape(8.dp))
+                .onPreviewKeyEvent { event ->
+                    // D-pad left and right step the slider, which does not take arrow keys on its own.
+                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                    val step = (range.endInclusive - range.start) / COLOR_SLIDER_STEPS
+                    val next = when (event.key) {
+                        Key.DirectionLeft -> value - step
+                        Key.DirectionRight -> value + step
+                        else -> return@onPreviewKeyEvent false
+                    }.coerceIn(range.start, range.endInclusive)
+                    if (next != value) onChange(next)
+                    true
+                },
         )
     }
 }
+
+private const val COLOR_SLIDER_STEPS = 50f
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -181,7 +181,7 @@ internal fun ShareThemeDialog(
                                     role = Role.Checkbox,
                                     onValueChange = { rights = it },
                                 )
-                                .padding(vertical = 4.dp),
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Checkbox(checked = rights, onCheckedChange = null, enabled = !sending)
@@ -484,7 +484,7 @@ internal fun ReportThemeDialog(
                                     role = Role.RadioButton,
                                     onClick = { reason = code },
                                 )
-                                .padding(vertical = 4.dp),
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             RadioButton(selected = reason == code, onClick = null, enabled = !sending)

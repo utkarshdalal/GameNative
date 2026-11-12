@@ -117,6 +117,17 @@ internal fun ThemeSoundsTab(onMessage: (String) -> Unit) {
     var focusAfterDelete by remember { mutableStateOf<Boolean?>(null) }
     val deleteFocus = remember { HashMap<String, FocusRequester>() }
     var refocusDelete by remember { mutableStateOf<String?>(null) }
+    val importFocus = remember { FocusRequester() }
+
+    // Coming back from the file picker the window has no focused control; put it back on the import button.
+    fun refocusImport() {
+        scope.launch {
+            repeat(FOCUS_ATTEMPTS) {
+                delay(FOCUS_SETTLE_MS)
+                runCatching { importFocus.requestFocus() }
+            }
+        }
+    }
 
     val uiPacks = packs.filter { !it.isMusic }
     val musicPacks = packs.filter { it.isMusic }
@@ -173,6 +184,7 @@ internal fun ThemeSoundsTab(onMessage: (String) -> Unit) {
 
     val zipLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         SteamService.isImporting = false
+        refocusImport()
         uri ?: return@rememberLauncherForActivityResult
         scope.launch {
             importing = true
@@ -332,7 +344,9 @@ internal fun ThemeSoundsTab(onMessage: (String) -> Unit) {
                         SteamService.isImporting = true
                         zipLauncher.launch(PACK_ZIP_TYPES)
                     },
-                    modifier = Modifier.focusOutline(CircleShape),
+                    modifier = Modifier
+                        .focusRequester(importFocus)
+                        .focusOutline(CircleShape),
                 ) {
                     if (importing) {
                         CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
