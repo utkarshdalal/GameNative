@@ -1320,6 +1320,27 @@
     <string name="themes_share_blocked_too_large">此主题太大,无法分享。</string>
     <string name="themes_sign_in_title">需要 GameNative 账号</string>
     <string name="themes_sign_in_message">登录你的 GameNative 账号即可分享主题、举报主题并查看你的上传。</string>
+    <string name="themes_tab_sounds">声音</string>
+    <string name="themes_sounds_interface">界面音效</string>
+    <string name="themes_sounds_interface_subtitle">在菜单中移动和按下按钮时播放音效</string>
+    <string name="themes_sounds_volume">音量</string>
+    <string name="themes_sounds_volume_subtitle">界面音效的音量</string>
+    <string name="themes_sounds_pack">音效包</string>
+    <string name="themes_sounds_none">无</string>
+    <string name="themes_sounds_preview">试听</string>
+    <string name="themes_sounds_no_packs">尚未安装音效包。请导入一个或从商店安装。</string>
+    <string name="themes_sounds_music">菜单音乐</string>
+    <string name="themes_sounds_music_subtitle">浏览应用时播放音乐</string>
+    <string name="themes_sounds_music_volume">音乐音量</string>
+    <string name="themes_sounds_music_volume_subtitle">菜单音乐的音量</string>
+    <string name="themes_sounds_music_pack">音乐包</string>
+    <string name="themes_sounds_no_music">尚未安装音乐包。</string>
+    <string name="themes_sounds_import">导入音效包 zip</string>
+    <string name="themes_sounds_store">音效包商店</string>
+    <string name="themes_sounds_search_hint">搜索音效包</string>
+    <string name="themes_sounds_store_error">无法加载音效包：%1$s</string>
+    <string name="themes_sounds_store_empty">未找到音效包</string>
+    <string name="themes_sounds_delete_title">删除音效包？</string>
 
     <!-- 设置：界面组 -->
     <string name="settings_interface_title">界面</string>

@@ -91,6 +91,7 @@ import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.util.MenuSoundOnOpenChange
 import app.gamenative.ui.util.adaptivePanelWidth
 
 @Composable
@@ -100,6 +101,7 @@ fun GameOptionsPanel(
     options: List<AppMenuOption>,
     modifier: Modifier = Modifier,
 ) {
+    MenuSoundOnOpenChange(isOpen)
     val firstItemFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(isOpen) {

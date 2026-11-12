@@ -1292,6 +1292,27 @@
     <string name="themes_share_blocked_too_large">Dieses Theme ist zu groß zum Teilen.</string>
     <string name="themes_sign_in_title">GameNative-Konto erforderlich</string>
     <string name="themes_sign_in_message">Melde dich bei deinem GameNative-Konto an, um Themes zu teilen, zu melden und deine Uploads zu sehen.</string>
+    <string name="themes_tab_sounds">Sounds</string>
+    <string name="themes_sounds_interface">Oberflächensounds</string>
+    <string name="themes_sounds_interface_subtitle">Spielt Sounds ab, wenn du dich in Menüs bewegst und Tasten drückst</string>
+    <string name="themes_sounds_volume">Lautstärke</string>
+    <string name="themes_sounds_volume_subtitle">Wie laut Oberflächensounds abgespielt werden</string>
+    <string name="themes_sounds_pack">Soundpaket</string>
+    <string name="themes_sounds_none">Keins</string>
+    <string name="themes_sounds_preview">Vorhören</string>
+    <string name="themes_sounds_no_packs">Noch keine Soundpakete installiert. Importiere eins oder installiere eins aus dem Store.</string>
+    <string name="themes_sounds_music">Menümusik</string>
+    <string name="themes_sounds_music_subtitle">Spielt Musik ab, während du die App durchsuchst</string>
+    <string name="themes_sounds_music_volume">Musiklautstärke</string>
+    <string name="themes_sounds_music_volume_subtitle">Wie laut die Menümusik abgespielt wird</string>
+    <string name="themes_sounds_music_pack">Musikpaket</string>
+    <string name="themes_sounds_no_music">Noch keine Musikpakete installiert.</string>
+    <string name="themes_sounds_import">Paket-Zip importieren</string>
+    <string name="themes_sounds_store">Soundpaket-Store</string>
+    <string name="themes_sounds_search_hint">Soundpakete suchen</string>
+    <string name="themes_sounds_store_error">Soundpakete konnten nicht geladen werden: %1$s</string>
+    <string name="themes_sounds_store_empty">Keine Soundpakete gefunden</string>
+    <string name="themes_sounds_delete_title">Soundpaket löschen?</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Oberfläche</string>

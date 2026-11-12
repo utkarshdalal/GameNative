@@ -111,6 +111,8 @@ import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.QuickMenuTickSlider
 import app.gamenative.ui.component.dialog.AccountSignInDialog
 import app.gamenative.ui.component.topbar.BackButton
+import app.gamenative.ui.util.NavigateSoundOnFocusGain
+import app.gamenative.ui.util.TabSoundOnChange
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import java.io.File
@@ -121,7 +123,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private enum class ThemeTab { INSTALLED, COMMUNITY, STEAM_DECK }
+private enum class ThemeTab { INSTALLED, COMMUNITY, STEAM_DECK, SOUNDS }
 
 private const val STARTER_THEME_FILE_NAME = "gamenative-starter-theme.zip"
 
@@ -182,6 +184,7 @@ fun ThemeManagerDialog(
     val themes by ThemeManager.themes.collectAsState()
 
     var tab by rememberSaveable { mutableStateOf(ThemeTab.INSTALLED) }
+    TabSoundOnChange(tab)
     var busy by remember { mutableStateOf(false) }
     val expanded = remember { mutableStateListOf<String>() }
     var deleteTarget by remember { mutableStateOf<InstalledTheme?>(null) }
@@ -416,6 +419,7 @@ fun ThemeManagerDialog(
                                             ThemeTab.INSTALLED -> R.string.themes_tab_installed
                                             ThemeTab.COMMUNITY -> R.string.themes_tab_community
                                             ThemeTab.STEAM_DECK -> R.string.themes_tab_steam_deck
+                                            ThemeTab.SOUNDS -> R.string.themes_tab_sounds
                                         },
                                     ),
                                     maxLines = 1,
@@ -460,7 +464,7 @@ fun ThemeManagerDialog(
 
                     ThemeTab.COMMUNITY -> CommunityThemesTab(
                         state = community,
-                        installedByCommunityId = themes.mapNotNull { t -> t.communityId?.let { it to t } }.toMap(),
+                        installedByCommunityId = themes.filter { it.communityInstalled }.mapNotNull { t -> t.communityId?.let { it to t } }.toMap(),
                         signedIn = signedIn,
                         onSearch = { loadCommunity(reset = true) },
                         onSortChange = { sort ->
@@ -492,6 +496,8 @@ fun ThemeManagerDialog(
                         onInstall = { installFromStore(it) },
                         onUpdate = { updateTheme(it) },
                     )
+
+                    ThemeTab.SOUNDS -> ThemeSoundsTab(onMessage = { scope.launch { snackbarHostState.showSnackbar(it) } })
                 }
             }
         }
@@ -526,7 +532,7 @@ fun ThemeManagerDialog(
                     shareTarget = null
                     onShareAuthorChange(author)
                     val message = ctx.getString(
-                        if (target.communityId != null) R.string.themes_share_updated else R.string.themes_share_done,
+                        if (target.sharedFromHere) R.string.themes_share_updated else R.string.themes_share_done,
                         shared.name,
                     )
                     scope.launch { snackbarHostState.showSnackbar(message) }
@@ -606,6 +612,7 @@ fun ThemeManagerDialog(
 @Composable
 internal fun Modifier.focusOutline(shape: Shape = RoundedCornerShape(12.dp)): Modifier {
     var focused by remember { mutableStateOf(false) }
+    NavigateSoundOnFocusGain(focused)
     val color = MaterialTheme.colorScheme.primary
     return this
         .onFocusChanged { focused = it.hasFocus }
@@ -786,7 +793,7 @@ private fun InstalledThemeCard(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    if (theme.communityId != null) {
+                    if (theme.sharedFromHere) {
                         Text(
                             text = stringResource(R.string.themes_shared_note),
                             style = MaterialTheme.typography.bodySmall,
@@ -862,7 +869,7 @@ private fun InstalledThemeCard(
                     Icon(
                         imageVector = Icons.Default.Share,
                         contentDescription = stringResource(
-                            if (theme.communityId != null) R.string.themes_share_update else R.string.themes_share,
+                            if (theme.sharedFromHere) R.string.themes_share_update else R.string.themes_share,
                         ),
                     )
                 }

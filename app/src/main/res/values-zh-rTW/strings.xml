@@ -1322,6 +1322,27 @@
     <string name="themes_share_blocked_too_large">此主題太大,無法分享。</string>
     <string name="themes_sign_in_title">需要 GameNative 帳號</string>
     <string name="themes_sign_in_message">登入你的 GameNative 帳號即可分享主題、檢舉主題並查看你的上傳。</string>
+    <string name="themes_tab_sounds">聲音</string>
+    <string name="themes_sounds_interface">介面音效</string>
+    <string name="themes_sounds_interface_subtitle">在選單中移動和按下按鈕時播放音效</string>
+    <string name="themes_sounds_volume">音量</string>
+    <string name="themes_sounds_volume_subtitle">介面音效的音量</string>
+    <string name="themes_sounds_pack">音效包</string>
+    <string name="themes_sounds_none">無</string>
+    <string name="themes_sounds_preview">試聽</string>
+    <string name="themes_sounds_no_packs">尚未安裝音效包。請匯入一個或從商店安裝。</string>
+    <string name="themes_sounds_music">選單音樂</string>
+    <string name="themes_sounds_music_subtitle">瀏覽應用程式時播放音樂</string>
+    <string name="themes_sounds_music_volume">音樂音量</string>
+    <string name="themes_sounds_music_volume_subtitle">選單音樂的音量</string>
+    <string name="themes_sounds_music_pack">音樂包</string>
+    <string name="themes_sounds_no_music">尚未安裝音樂包。</string>
+    <string name="themes_sounds_import">匯入音效包 zip</string>
+    <string name="themes_sounds_store">音效包商店</string>
+    <string name="themes_sounds_search_hint">搜尋音效包</string>
+    <string name="themes_sounds_store_error">無法載入音效包：%1$s</string>
+    <string name="themes_sounds_store_empty">找不到音效包</string>
+    <string name="themes_sounds_delete_title">刪除音效包？</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">介面</string>

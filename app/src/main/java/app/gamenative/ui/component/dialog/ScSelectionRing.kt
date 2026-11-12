@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.gamenative.ui.component.focusGlowPaint
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.util.NavigateSoundOnFocusGain
 
 /**
  * The QuickMenu's rotating gradient focus ring (primary↔tertiary sweep), but driven **synchronously** by a [selected]
@@ -49,6 +50,7 @@ fun Modifier.scSelectionRing(
 ): Modifier {
     // Created unconditionally (stable slot) so the ring can't flicker on recompose; spins only while selected.
     val angle = remember { Animatable(0f) }
+    NavigateSoundOnFocusGain(selected)
     LaunchedEffect(selected) {
         if (selected) {
             angle.animateTo(

@@ -22,7 +22,12 @@ data class InstalledTheme(
     val updateAvailable: String? = null,
     /** Id of this theme in the GameNative community list, when it was installed from or shared to it. */
     val communityId: String? = null,
-)
+    /** True when this folder was installed from the community list; false for a theme shared from this device. */
+    val communityInstalled: Boolean = false,
+) {
+    /** This device shared the theme to the community list (it was not installed from there). */
+    val sharedFromHere: Boolean get() = communityId != null && !communityInstalled
+}
 
 sealed interface ThemeOption {
     /** Stable key to pass back to [ThemeManager]. */

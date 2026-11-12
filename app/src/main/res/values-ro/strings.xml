@@ -1337,6 +1337,27 @@
     <string name="themes_share_blocked_too_large">Această temă este prea mare pentru a fi partajată.</string>
     <string name="themes_sign_in_title">Este necesar un cont GameNative</string>
     <string name="themes_sign_in_message">Conectează-te la contul GameNative pentru a partaja teme, a raporta teme și a-ți vedea încărcările.</string>
+    <string name="themes_tab_sounds">Sunete</string>
+    <string name="themes_sounds_interface">Sunetele interfeței</string>
+    <string name="themes_sounds_interface_subtitle">Redă sunete când te deplasezi și apeși butoane în meniuri</string>
+    <string name="themes_sounds_volume">Volum</string>
+    <string name="themes_sounds_volume_subtitle">Cât de tare se redau sunetele interfeței</string>
+    <string name="themes_sounds_pack">Pachet de sunete</string>
+    <string name="themes_sounds_none">Niciunul</string>
+    <string name="themes_sounds_preview">Ascultă</string>
+    <string name="themes_sounds_no_packs">Niciun pachet de sunete instalat încă. Importă unul sau instalează unul din magazin.</string>
+    <string name="themes_sounds_music">Muzica meniului</string>
+    <string name="themes_sounds_music_subtitle">Redă muzică în timp ce navighezi prin aplicație</string>
+    <string name="themes_sounds_music_volume">Volumul muzicii</string>
+    <string name="themes_sounds_music_volume_subtitle">Cât de tare se redă muzica meniului</string>
+    <string name="themes_sounds_music_pack">Pachet de muzică</string>
+    <string name="themes_sounds_no_music">Niciun pachet de muzică instalat încă.</string>
+    <string name="themes_sounds_import">Importă zip-ul pachetului</string>
+    <string name="themes_sounds_store">Magazin de pachete de sunete</string>
+    <string name="themes_sounds_search_hint">Caută pachete de sunete</string>
+    <string name="themes_sounds_store_error">Nu s-au putut încărca pachetele de sunete: %1$s</string>
+    <string name="themes_sounds_store_empty">Nu s-au găsit pachete de sunete</string>
+    <string name="themes_sounds_delete_title">Ștergi pachetul de sunete?</string>
 
 	<!-- Settings: Interface Group -->
 	<string name="settings_interface_title">Interfață</string>

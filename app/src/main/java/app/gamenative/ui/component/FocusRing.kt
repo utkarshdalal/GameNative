@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.util.NavigateSoundOnFocusGain
 
 /**
  * Colored focus ring: a sweep gradient border whose colors rotate around the element while
@@ -50,6 +51,7 @@ fun Modifier.focusRing(
     durationMillis: Int = 5000,
 ): Modifier {
     val focused by interactionSource.collectIsFocusedAsState()
+    NavigateSoundOnFocusGain(focused)
 
     // The Animatable and its driver are created unconditionally (stable remember slots), so the slot
     // count doesn't change between focused/unfocused and the ring can't flicker on recompose (the

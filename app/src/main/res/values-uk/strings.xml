@@ -1332,6 +1332,27 @@
     <string name="themes_share_blocked_too_large">Ця тема завелика, щоб нею поділитися.</string>
     <string name="themes_sign_in_title">Потрібен обліковий запис GameNative</string>
     <string name="themes_sign_in_message">Увійдіть в обліковий запис GameNative, щоб ділитися темами, скаржитися на теми й бачити свої завантаження.</string>
+    <string name="themes_tab_sounds">Звуки</string>
+    <string name="themes_sounds_interface">Звуки інтерфейсу</string>
+    <string name="themes_sounds_interface_subtitle">Відтворювати звуки під час переміщення та натискання кнопок у меню</string>
+    <string name="themes_sounds_volume">Гучність</string>
+    <string name="themes_sounds_volume_subtitle">Гучність звуків інтерфейсу</string>
+    <string name="themes_sounds_pack">Набір звуків</string>
+    <string name="themes_sounds_none">Немає</string>
+    <string name="themes_sounds_preview">Прослухати</string>
+    <string name="themes_sounds_no_packs">Наборів звуків ще не встановлено. Імпортуйте набір або встановіть його з магазину.</string>
+    <string name="themes_sounds_music">Музика в меню</string>
+    <string name="themes_sounds_music_subtitle">Відтворювати музику під час перегляду застосунку</string>
+    <string name="themes_sounds_music_volume">Гучність музики</string>
+    <string name="themes_sounds_music_volume_subtitle">Гучність музики в меню</string>
+    <string name="themes_sounds_music_pack">Набір музики</string>
+    <string name="themes_sounds_no_music">Наборів музики ще не встановлено.</string>
+    <string name="themes_sounds_import">Імпортувати zip набору</string>
+    <string name="themes_sounds_store">Магазин наборів звуків</string>
+    <string name="themes_sounds_search_hint">Пошук наборів звуків</string>
+    <string name="themes_sounds_store_error">Не вдалося завантажити набори звуків: %1$s</string>
+    <string name="themes_sounds_store_empty">Наборів звуків не знайдено</string>
+    <string name="themes_sounds_delete_title">Видалити набір звуків?</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Інтерфейс</string>

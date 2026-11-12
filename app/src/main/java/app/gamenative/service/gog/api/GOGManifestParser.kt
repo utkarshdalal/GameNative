@@ -19,6 +19,68 @@ class GOGManifestParser @Inject constructor() {
 
     companion object {
         private const val TAG = "GOG"
+
+        /** Identity of a depot path on a case-insensitive filesystem, the same file the engine writes. */
+        fun pathKey(path: String): String =
+            path.replace('\\', '/').split('/').filter { it.isNotEmpty() }.joinToString("/").lowercase()
+
+        /** A depot path that stays inside the install directory: non-empty, relative, no `..` segment, no NUL. */
+        fun isSafeRelativePath(path: String): Boolean {
+            val p = path.replace('\\', '/')
+            return p.isNotEmpty() && !p.startsWith('/') && p.split('/').none { it == ".." } && '\u0000' !in p
+        }
+
+        /** Whether the native gen-2 engine plans this file: a safe path and at least one chunk with a CDN hash. */
+        fun isPlannable(file: DepotFile): Boolean =
+            isSafeRelativePath(file.path) && file.chunks.any { it.compressedMd5.isNotEmpty() || it.md5.isNotEmpty() }
+
+        /**
+         * The entries that take effect when several selected depots provide the same path: an
+         * entry with content beats one without (when [hasContent] is given), then a DLC entry
+         * beats a base entry, otherwise the later entry in list order wins. Order of the kept
+         * entries is preserved.
+         */
+        fun <T> effectiveEntries(
+            entries: List<T>,
+            path: (T) -> String,
+            isBase: (T) -> Boolean,
+            hasContent: (T) -> Boolean = { true },
+        ): List<T> {
+            fun rank(entry: T): Int = (if (hasContent(entry)) 2 else 0) + (if (isBase(entry)) 0 else 1)
+            val winners = HashMap<String, Int>(entries.size * 2)
+            entries.forEachIndexed { index, entry ->
+                val key = pathKey(path(entry))
+                val current = winners[key]
+                if (current == null || rank(entry) >= rank(entries[current])) winners[key] = index
+            }
+            if (winners.size == entries.size) return entries
+            val kept = winners.values.toHashSet()
+            return entries.filterIndexed { index, _ -> index in kept }
+        }
+
+        /**
+         * Raw gen-2 depot manifest without the file entries at [dropOrdinals], counted among the
+         * `DepotFile` items in manifest order as [parseDepotManifest] lists them.
+         */
+        fun withoutDepotFiles(rawJson: String, dropOrdinals: Set<Int>): String {
+            if (dropOrdinals.isEmpty()) return rawJson
+            val root = JSONObject(rawJson)
+            val depotObj = root.optJSONObject("depot") ?: root
+            val items = depotObj.optJSONArray("items") ?: return rawJson
+            val kept = org.json.JSONArray()
+            var ordinal = 0
+            for (i in 0 until items.length()) {
+                val item = items.get(i)
+                if (item is JSONObject && item.optString("type", "") == "DepotFile") {
+                    val drop = ordinal in dropOrdinals
+                    ordinal++
+                    if (drop) continue
+                }
+                kept.put(item)
+            }
+            depotObj.put("items", kept)
+            return root.toString()
+        }
     }
 
     /**

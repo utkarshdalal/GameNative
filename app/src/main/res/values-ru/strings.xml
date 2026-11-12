@@ -1495,6 +1495,27 @@ https://gamenative.app
     <string name="themes_share_blocked_too_large">Эта тема слишком большая, чтобы ей поделиться.</string>
     <string name="themes_sign_in_title">Нужен аккаунт GameNative</string>
     <string name="themes_sign_in_message">Войдите в аккаунт GameNative, чтобы делиться темами, отправлять жалобы и видеть свои загрузки.</string>
+    <string name="themes_tab_sounds">Звуки</string>
+    <string name="themes_sounds_interface">Звуки интерфейса</string>
+    <string name="themes_sounds_interface_subtitle">Воспроизводить звуки при перемещении и нажатии кнопок в меню</string>
+    <string name="themes_sounds_volume">Громкость</string>
+    <string name="themes_sounds_volume_subtitle">Громкость звуков интерфейса</string>
+    <string name="themes_sounds_pack">Набор звуков</string>
+    <string name="themes_sounds_none">Нет</string>
+    <string name="themes_sounds_preview">Прослушать</string>
+    <string name="themes_sounds_no_packs">Наборы звуков ещё не установлены. Импортируйте набор или установите его из магазина.</string>
+    <string name="themes_sounds_music">Музыка в меню</string>
+    <string name="themes_sounds_music_subtitle">Воспроизводить музыку во время просмотра приложения</string>
+    <string name="themes_sounds_music_volume">Громкость музыки</string>
+    <string name="themes_sounds_music_volume_subtitle">Громкость музыки в меню</string>
+    <string name="themes_sounds_music_pack">Набор музыки</string>
+    <string name="themes_sounds_no_music">Наборы музыки ещё не установлены.</string>
+    <string name="themes_sounds_import">Импортировать zip набора</string>
+    <string name="themes_sounds_store">Магазин наборов звуков</string>
+    <string name="themes_sounds_search_hint">Поиск наборов звуков</string>
+    <string name="themes_sounds_store_error">Не удалось загрузить наборы звуков: %1$s</string>
+    <string name="themes_sounds_store_empty">Наборы звуков не найдены</string>
+    <string name="themes_sounds_delete_title">Удалить набор звуков?</string>
 
     <string name="settings_interface_title">Интерфейс</string>
     <string name="settings_interface_wifi_only_subtitle">Предотвратить загрузки по сотовым данным</string>

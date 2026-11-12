@@ -779,6 +779,7 @@ object ThemeManager {
                     builtIn = e.id == BuiltInTheme.ID,
                     updateAvailable = e.updateAvailable,
                     communityId = e.communityId,
+                    communityInstalled = e.communityInstalled,
                 ),
             )
         }

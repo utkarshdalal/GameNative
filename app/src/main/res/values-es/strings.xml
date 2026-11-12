@@ -1343,6 +1343,27 @@
     <string name="themes_share_blocked_too_large">Este tema es demasiado grande para compartirlo.</string>
     <string name="themes_sign_in_title">Se necesita una cuenta de GameNative</string>
     <string name="themes_sign_in_message">Inicia sesión en tu cuenta de GameNative para compartir temas, denunciar temas y ver tus subidas.</string>
+    <string name="themes_tab_sounds">Sonidos</string>
+    <string name="themes_sounds_interface">Sonidos de la interfaz</string>
+    <string name="themes_sounds_interface_subtitle">Reproduce sonidos al moverte y pulsar botones en los menús</string>
+    <string name="themes_sounds_volume">Volumen</string>
+    <string name="themes_sounds_volume_subtitle">Volumen de los sonidos de la interfaz</string>
+    <string name="themes_sounds_pack">Paquete de sonidos</string>
+    <string name="themes_sounds_none">Ninguno</string>
+    <string name="themes_sounds_preview">Escuchar</string>
+    <string name="themes_sounds_no_packs">Aún no hay paquetes de sonidos instalados. Importa uno o instala uno desde la tienda.</string>
+    <string name="themes_sounds_music">Música del menú</string>
+    <string name="themes_sounds_music_subtitle">Reproduce música mientras navegas por la app</string>
+    <string name="themes_sounds_music_volume">Volumen de la música</string>
+    <string name="themes_sounds_music_volume_subtitle">Volumen de la música del menú</string>
+    <string name="themes_sounds_music_pack">Paquete de música</string>
+    <string name="themes_sounds_no_music">Aún no hay paquetes de música instalados.</string>
+    <string name="themes_sounds_import">Importar zip de paquete</string>
+    <string name="themes_sounds_store">Tienda de paquetes de sonidos</string>
+    <string name="themes_sounds_search_hint">Buscar paquetes de sonidos</string>
+    <string name="themes_sounds_store_error">No se pudieron cargar los paquetes de sonidos: %1$s</string>
+    <string name="themes_sounds_store_empty">No se encontraron paquetes de sonidos</string>
+    <string name="themes_sounds_delete_title">¿Eliminar paquete de sonidos?</string>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interfaz</string>

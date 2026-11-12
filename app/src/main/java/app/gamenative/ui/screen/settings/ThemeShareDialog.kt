@@ -65,7 +65,7 @@ internal fun ShareThemeDialog(
 ) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
-    val isUpdate = theme.communityId != null
+    val isUpdate = theme.sharedFromHere
     var name by rememberSaveable(theme.id) { mutableStateOf(if (theme.builtIn) "" else theme.name) }
     var description by rememberSaveable(theme.id) { mutableStateOf(theme.description.orEmpty()) }
     var author by rememberSaveable(theme.id) {
