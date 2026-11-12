@@ -163,6 +163,15 @@ object Html5OptInService {
         return Result.Matched
     }
 
+    // what a re-run opt-in (container reset) must not lose: the decrypt key, which Steam only holds in memory,
+    // the greenworks save route, and the controls profile, which would otherwise be orphaned.
+    fun keepLaunchState(previous: WebViewContainer, fresh: WebViewContainer): WebViewContainer =
+        fresh.copy(
+            decryptionKey = previous.decryptionKey,
+            greenworksCloudObserved = previous.greenworksCloudObserved,
+            controlsProfileId = previous.controlsProfileId,
+        )
+
     fun slugFor(appId: String): String? {
         // an existing container wins: it may still carry a legacy slug canonicalize() hasn't renamed,
         // and a derived name would point at a missing dir.
